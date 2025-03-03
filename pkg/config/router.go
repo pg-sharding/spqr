@@ -323,21 +323,6 @@ func validateRouterConfig(cfg *Router) error {
 	return nil
 }
 
-// TODO pass frontend rule instead. use db:user in error message
-func CheckGrants(target Role, rule *FrontendRule) error {
-	if !RouterConfig().EnableRoleSystem {
-		return nil
-	}
-
-	for _, g := range rule.Grants {
-		if g == target || g == RoleAdmin {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("permission denied for user=%s dbname=%s", rule.Usr, rule.DB)
-}
-
 // RouterConfig returns the router configuration.
 //
 // Parameters:
