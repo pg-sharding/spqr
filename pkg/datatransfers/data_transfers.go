@@ -237,6 +237,13 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr coordinator.Coor
 }
 
 func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromId, toId string) error {
+	if shards == nil {
+		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error loading config")
+		}
+	}
+
 	fromShard := shards.ShardsData[fromId]
 	toShard := shards.ShardsData[toId]
 	dbName := fromShard.DB

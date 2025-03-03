@@ -24,7 +24,7 @@ Feature: Redistribution test
     """
     Then command return code should be "0"
 
-  Scenario: REDISTRIBUTE KEY RANGE works with multiple moves
+  Scenario: REDISTRIBUTE KEY RANGE CHECK works with correct config
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
