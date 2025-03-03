@@ -36,7 +36,7 @@ type RuleRouter interface {
 	connectiterator.ConnectIterator
 
 	Shutdown() error
-	Reload(configPath string, prettyLogging bool) error
+	Reload(configPath string) error
 	PreRoute(conn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error)
 
 	AddClient(cl rclient.RouterClient)
@@ -126,7 +126,7 @@ func ParseRules(rcfg *config.Router) (map[route.Key]*config.FrontendRule, map[ro
 }
 
 // TODO : unit tests
-func (r *RuleRouterImpl) Reload(configPath string, prettyLogging bool) error {
+func (r *RuleRouterImpl) Reload(configPath string) error {
 	/*
 			* Reload config changes:
 			* While reloading router config we need
@@ -150,7 +150,7 @@ func (r *RuleRouterImpl) Reload(configPath string, prettyLogging bool) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	spqrlog.ReloadLogger(rcfg.LogFileName, rcfg.LogLevel, prettyLogging)
+	spqrlog.ReloadLogger(rcfg.LogFileName, rcfg.LogLevel, rcfg.PrettyLogging)
 
 	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(rcfg)
 	r.rmgr.Reload(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule)
