@@ -2,12 +2,7 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
-	"strings"
-
-	"github.com/BurntSushi/toml"
-	"gopkg.in/yaml.v2"
 )
 
 const defaultBalancerTimeout = 60
@@ -48,7 +43,7 @@ func LoadBalancerCfg(cfgPath string) (string, error) {
 	}
 	defer func() { _ = file.Close() }()
 
-	if err := initBalancerConfig(file, cfgPath); err != nil {
+	if err := initConfig(file, cfgPath); err != nil {
 		return "", err
 	}
 
@@ -62,28 +57,6 @@ func LoadBalancerCfg(cfgPath string) (string, error) {
 	}
 
 	return string(configBytes), nil
-}
-
-// initBalancerConfig initializes the balancer configuration based on the file content and file format.
-//
-// Parameters:
-//   - file (*os.File): the file containing the configuration data.
-//   - filepath (string): the path of the configuration file.
-//
-// Returns:
-//   - error: an error if any occurred during the initialization process.
-func initBalancerConfig(file *os.File, filepath string) error {
-	if strings.HasSuffix(filepath, ".toml") {
-		_, err := toml.NewDecoder(file).Decode(&cfgBalancer)
-		return err
-	}
-	if strings.HasSuffix(filepath, ".yaml") {
-		return yaml.NewDecoder(file).Decode(&cfgBalancer)
-	}
-	if strings.HasSuffix(filepath, ".json") {
-		return json.NewDecoder(file).Decode(&cfgBalancer)
-	}
-	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", filepath)
 }
 
 // BalancerConfig returns a pointer to the Balancer configuration.
