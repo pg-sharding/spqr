@@ -111,7 +111,11 @@ var runCmd = &cobra.Command{
 		if logLevel != "" {
 			config.RouterConfig().LogLevel = logLevel
 		}
-		spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, prettyLogging)
+		if prettyLogging {
+			config.RouterConfig().PrettyLog = prettyLogging
+		}
+
+		spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLog)
 
 		if memqdbBackupPath != "" {
 			if qdbImpl == "etcd" {
@@ -277,7 +281,7 @@ var runCmd = &cobra.Command{
 
 				switch s {
 				case syscall.SIGUSR1:
-					spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, prettyLogging)
+					spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLog)
 				case syscall.SIGUSR2:
 					if cpuProfile {
 						// write profile
@@ -302,11 +306,11 @@ var runCmd = &cobra.Command{
 					return
 				case syscall.SIGHUP:
 					// reread config file
-					err := router.RuleRouter.Reload(rcfgPath, prettyLogging)
+					err := router.RuleRouter.Reload(rcfgPath)
 					if err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("")
 					}
-					spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, prettyLogging)
+					spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLog)
 				case syscall.SIGINT, syscall.SIGTERM:
 					if cpuProfile {
 						// write profile
