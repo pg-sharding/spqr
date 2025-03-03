@@ -1005,6 +1005,47 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	return nil
 }
 
+// checkKeyRangeMove checks the ability to execute given kr.BatchMoveKeyRange request.
+//
+// Parameters:
+//   - ctx (context.Context): The context for QDB operations.
+//   - req (*kr.BatchMoveKeyRange): The move request to check.
+//
+// Returns:
+//   - error: An error if any occurred.
+func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMoveKeyRange) error {
+	keyRange, err := qc.GetKeyRange(ctx, req.KrId)
+	if err != nil {
+		return err
+	}
+	if keyRange.ShardID == req.ShardId {
+		return nil
+	}
+	if _, err = qc.GetKeyRange(ctx, req.DestKrId); err == nil {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "key range \"%s\" already exists", req.DestKrId)
+	}
+	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	if err != nil {
+		return err
+	}
+	destShardConn, ok := conns.ShardsData[keyRange.ShardID]
+	if !ok {
+		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
+	}
+	destConn, err := datatransfers.GetMasterConnection(ctx, destShardConn)
+	if err != nil {
+		return err
+	}
+
+	sourceShardConn := conns.ShardsData[keyRange.ShardID]
+	sourceConn, err := datatransfers.GetMasterConnection(ctx, sourceShardConn)
+	if err != nil {
+		return err
+	}
+
+	return datatransfers.SetupFDW(ctx, sourceConn, destConn, keyRange.ShardID, req.ShardId)
+}
+
 // TODO : unit tests
 
 // BatchMoveKeyRange moves specified amount of keys from a key range to another shard.
@@ -1470,6 +1511,16 @@ func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.Redi
 	if req.BatchSize <= 0 {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "incorrect batch size %d", req.BatchSize)
 	}
+	if req.Check {
+		return qc.checkKeyRangeMove(ctx, &kr.BatchMoveKeyRange{
+			KrId:      req.KrId,
+			ShardId:   req.ShardId,
+			BatchSize: req.BatchSize,
+			Limit:     -1,
+			DestKrId:  uuid.NewString(),
+			Type:      tasks.SplitRight,
+		})
+	}
 	ch := make(chan error)
 	execCtx := context.TODO()
 	go func() {
@@ -1494,7 +1545,7 @@ func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.Redi
 
 // TODO : unit tests
 
-// executeMoveTasks executes the given RedistributeTask.
+// executeRedistributeTask executes the given RedistributeTask.
 // All intermediary states of the task are synced with the QDB for reliability.
 //
 // Parameters:
@@ -1533,6 +1584,26 @@ func (qc *qdbCoordinator) executeRedistributeTask(ctx context.Context, task *tas
 			return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, "invalid redistribute task state")
 		}
 	}
+}
+
+// executeRedistributeCheckTask checks the ability to execute given RedistributeTask.
+// All intermediary states of the task are synced with the QDB for reliability.
+//
+// Parameters:
+//   - ctx (context.Context): The context for QDB operations.
+//   - task (*tasks.RedistributeTask): The redistribute task to check.
+//
+// Returns:
+//   - error: An error if any occurred.
+func (qc *qdbCoordinator) executeRedistributeCheckTask(ctx context.Context, task *tasks.RedistributeTask) error {
+	return qc.checkKeyRangeMove(ctx, &kr.BatchMoveKeyRange{
+		KrId:      task.KrId,
+		ShardId:   task.ShardId,
+		BatchSize: task.BatchSize,
+		Limit:     -1,
+		DestKrId:  task.TempKrId,
+		Type:      tasks.SplitRight,
+	})
 }
 
 // TODO : unit tests

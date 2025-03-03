@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"fmt"
+
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 )

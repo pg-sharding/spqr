@@ -236,6 +236,39 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr coordinator.Coor
 	return bound, nil
 }
 
+func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromId, toId string) error {
+	fromShard := shards.ShardsData[fromId]
+	toShard := shards.ShardsData[toId]
+	dbName := fromShard.DB
+	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
+	serverName := fmt.Sprintf("%s_%s_%s", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
+	// create postgres_fdw server on receiving shard
+	// TODO find master
+	_, err := to.Exec(ctx, fmt.Sprintf(`CREATE server IF NOT EXISTS %q FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1]))
+	if err != nil {
+		return err
+	}
+	// create user mapping for postgres_fdw server
+	// TODO check if name is taken
+	if _, err = to.Exec(ctx, fmt.Sprintf(`DROP USER MAPPING IF EXISTS FOR %s SERVER %q`, toShard.User, serverName)); err != nil {
+		return err
+	}
+	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE USER MAPPING FOR %s SERVER %q OPTIONS (user '%s', password '%s')`, toShard.User, serverName, fromShard.User, fromShard.Password)); err != nil {
+		return err
+	}
+	// create foreign tables corresponding to such on sending shard
+	// TODO check if schemaName is not used by relations (needs schemas in distributions)
+	schemaName := fmt.Sprintf("%s_schema", serverName)
+	if _, err = to.Exec(ctx, fmt.Sprintf(`DROP SCHEMA IF EXISTS %q CASCADE`, schemaName)); err != nil {
+		return err
+	}
+	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS %q`, schemaName)); err != nil {
+		return err
+	}
+	_, err = to.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA public FROM SERVER %q INTO %q`, serverName, schemaName))
+	return err
+}
+
 // copyData performs physical key-range move from one datashard to another.
 //
 // It is assumed that the passed key range is already locked on every online spqr-router.
