@@ -21,12 +21,30 @@ const (
 // Returns:
 //   - error: An error if the role does not have the necessary grants.
 func CheckGrants(target string, rule *config.FrontendRule) error {
+	// TODO use some common flag
 	if !config.RouterConfig().EnableRoleSystem {
 		return nil
 	}
 
-	for _, g := range rule.Grants {
-		if string(g) == target || g == RoleAdmin {
+	if len(config.RolesConfig().TableGroups) > 1 {
+		return fmt.Errorf("only one table group is supported")
+	}
+
+
+	var allowedUsers []string
+	switch target {
+	case RoleReader:
+		allowedUsers = config.RolesConfig().TableGroups[0].Readers
+	case RoleWriter:
+		allowedUsers = config.RolesConfig().TableGroups[0].Writers
+	case RoleAdmin:
+		allowedUsers = config.RolesConfig().TableGroups[0].Admins
+	default:
+		return fmt.Errorf("unknown role %s", target)
+	}
+
+	for _, user := range allowedUsers {
+		if user == rule.Usr {
 			return nil
 		}
 	}
