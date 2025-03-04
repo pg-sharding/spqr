@@ -10,43 +10,56 @@ func TestCheckGrants(t *testing.T) {
 	tests := []struct {
 		name          string
 		target        string
-		actual        []config.Role
+		rule          *config.FrontendRule
 		enableRoleSys bool
+		tableGroups   []config.TableGroup
 		wantErr       bool
 	}{
 		{
 			name:          "Role system disabled",
 			target:        RoleWriter,
-			actual:        []config.Role{RoleReader},
+			rule:          &config.FrontendRule{Usr: "user1"},
 			enableRoleSys: false,
 			wantErr:       false,
 		},
 		{
 			name:          "Role system enabled, has target role",
 			target:        RoleWriter,
-			actual:        []config.Role{RoleWriter},
+			rule:          &config.FrontendRule{Usr: "user1"},
 			enableRoleSys: true,
-			wantErr:       false,
-		},
-		{
-			name:          "Role system enabled, has admin role",
-			target:        RoleWriter,
-			actual:        []config.Role{RoleAdmin},
-			enableRoleSys: true,
+			tableGroups:   []config.TableGroup{{Writers: []string{"user1"}}},
 			wantErr:       false,
 		},
 		{
 			name:          "Role system enabled, does not have target role",
 			target:        RoleWriter,
-			actual:        []config.Role{RoleReader},
+			rule:          &config.FrontendRule{Usr: "user2"},
 			enableRoleSys: true,
+			tableGroups:   []config.TableGroup{{Writers: []string{"user1"}}},
 			wantErr:       true,
 		},
 		{
-			name:          "Role system enabled, does not have admin role",
+			name:          "Role system enabled, has admin role",
 			target:        RoleAdmin,
-			actual:        []config.Role{RoleReader, RoleWriter},
+			rule:          &config.FrontendRule{Usr: "admin1"},
 			enableRoleSys: true,
+			tableGroups:   []config.TableGroup{{Admins: []string{"admin1"}}},
+			wantErr:       false,
+		},
+		{
+			name:          "Role system enabled, unknown role",
+			target:        "unknown",
+			rule:          &config.FrontendRule{Usr: "user1"},
+			enableRoleSys: true,
+			tableGroups:   []config.TableGroup{{Writers: []string{"user1"}}},
+			wantErr:       true,
+		},
+		{
+			name:          "Multiple table groups not supported",
+			target:        RoleWriter,
+			rule:          &config.FrontendRule{Usr: "user1"},
+			enableRoleSys: true,
+			tableGroups:   []config.TableGroup{{Writers: []string{"user1"}}, {Writers: []string{"user2"}}},
 			wantErr:       true,
 		},
 	}
@@ -54,7 +67,8 @@ func TestCheckGrants(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config.RouterConfig().EnableRoleSystem = tt.enableRoleSys
-			err := CheckGrants(tt.target, &config.FrontendRule{Grants: tt.actual})
+			config.RolesConfig().TableGroups = tt.tableGroups
+			err := CheckGrants(tt.target, tt.rule)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckGrants() error = %v, wantErr %v", err, tt.wantErr)
 			}
