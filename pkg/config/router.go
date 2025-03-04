@@ -54,7 +54,8 @@ type Router struct {
 	AvailabilityZone           string `json:"availability_zone" toml:"availability_zone" yaml:"availability_zone"`
 	PreferSameAvailabilityZone bool   `json:"prefer_same_availability_zone" toml:"prefer_same_availability_zone" yaml:"prefer_same_availability_zone"`
 
-	EnableRoleSystem bool `json:"enable_role_system" toml:"enable_role_system" yaml:"enable_role_system"`
+	EnableRoleSystem bool   `json:"enable_role_system" toml:"enable_role_system" yaml:"enable_role_system"`
+	RolesFile        string `json:"roles_file" toml:"roles_file" yaml:"roles_file"`
 
 	Host             string `json:"host" toml:"host" yaml:"host"`
 	RouterPort       string `json:"router_port" toml:"router_port" yaml:"router_port"`
