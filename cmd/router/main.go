@@ -108,6 +108,14 @@ var runCmd = &cobra.Command{
 		}
 		log.Println("Running config:", cfgStr)
 
+		if config.RouterConfig().EnableRoleSystem && config.RouterConfig().RolesFile != "" {
+			rolesCfgStr, err := config.LoadRolesCfg(config.RouterConfig().RolesFile)
+			if ; err != nil {
+				return err
+			}
+			log.Println("Running roles config:", rolesCfgStr)
+		}
+
 		if logLevel != "" {
 			config.RouterConfig().LogLevel = logLevel
 		}

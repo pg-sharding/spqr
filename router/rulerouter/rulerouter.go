@@ -161,6 +161,11 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 		}
 	}
 
+	if rcfg.EnableRoleSystem && rcfg.RolesFile != "" {
+		_, err := config.LoadRolesCfg(rcfg.RolesFile)
+		return err
+	}
+
 	return nil
 }
 
