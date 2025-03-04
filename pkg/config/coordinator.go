@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 	"time"
 )
@@ -31,18 +32,27 @@ type Coordinator struct {
 //   - string: JSON-formatted config
 //   - error: An error if any occurred during the loading process.
 func LoadCoordinatorCfg(cfgPath string) (string, error) {
+	var ccfg Coordinator
 	file, err := os.Open(cfgPath)
 	if err != nil {
+		cfgCoordinator = ccfg
 		return "", err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			log.Fatalf("failed to close config file: %v", err)
+		}
+	}(file)
 
-	if err := initConfig(file, cfgPath); err != nil {
+	if err := initConfig(file, &ccfg); err != nil {
+		cfgCoordinator = ccfg
 		return "", err
 	}
 
 	configBytes, err := json.MarshalIndent(&cfgCoordinator, "", "  ")
 	if err != nil {
+		cfgCoordinator = ccfg
 		return "", err
 	}
 
