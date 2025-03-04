@@ -9,10 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/statistics"
-	"gopkg.in/yaml.v2"
 )
 
 type PoolMode string
@@ -236,7 +234,7 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 		}
 	}(file)
 
-	if err := initRouterConfig(file, &rcfg); err != nil {
+	if err := initConfig(file, &rcfg); err != nil {
 		cfgRouter = rcfg
 		return "", err
 	}
@@ -257,28 +255,6 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 	// log.Println("Running config:", string(configBytes))
 	cfgRouter = rcfg
 	return string(configBytes), nil
-}
-
-// initRouterConfig initializes the router configuration from a file.
-//
-// Parameters:
-// - file: *os.File - the file to read the configuration from.
-// - cfgRouter: *Router - a pointer to the router configuration struct.
-//
-// Returns:
-// - error: an error if the configuration file format is unknown or if there was an error decoding the file.
-func initRouterConfig(file *os.File, cfgRouter *Router) error {
-	if strings.HasSuffix(file.Name(), ".toml") {
-		_, err := toml.NewDecoder(file).Decode(cfgRouter)
-		return err
-	}
-	if strings.HasSuffix(file.Name(), ".yaml") {
-		return yaml.NewDecoder(file).Decode(cfgRouter)
-	}
-	if strings.HasSuffix(file.Name(), ".json") {
-		return json.NewDecoder(file).Decode(cfgRouter)
-	}
-	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", file.Name())
 }
 
 // validateRouterConfig checks the validity of the router configuration.
