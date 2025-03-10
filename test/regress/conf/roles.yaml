@@ -1,0 +1,7 @@
+- id: "example_table_group"
+  readers:
+    - "regress"
+  writers:
+    - "regress"
+  admins:
+    - "regress"
