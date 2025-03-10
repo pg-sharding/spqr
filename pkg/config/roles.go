@@ -10,7 +10,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-
 var cfgRoles Roles
 
 type Roles struct {
@@ -18,14 +17,13 @@ type Roles struct {
 }
 
 type TableGroup struct {
-	ID	 string   `json:"id" toml:"id" yaml:"id"`
+	ID string `json:"id" toml:"id" yaml:"id"`
 	// TODO support specific tables and table prefixes
 	// Tables []string `json:"tables" toml:"tables" yaml:"tables"`
 	Readers []string `json:"readers" toml:"readers" yaml:"readers"`
 	Writers []string `json:"writers" toml:"writers" yaml:"writers"`
-	Admins []string `json:"admins" toml:"admins" yaml:"admins"`
+	Admins  []string `json:"admins" toml:"admins" yaml:"admins"`
 }
-
 
 // LoadRolesCfg loads the ACLs configuration from the specified file path.
 //

@@ -30,7 +30,6 @@ func CheckGrants(target string, rule *config.FrontendRule) error {
 		return fmt.Errorf("only one table group is supported")
 	}
 
-
 	var allowedUsers []string
 	switch target {
 	case RoleReader:
