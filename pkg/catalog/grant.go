@@ -26,18 +26,19 @@ func CheckGrants(target string, rule *config.FrontendRule) error {
 		return nil
 	}
 
-	if len(config.RolesConfig().TableGroups) > 1 {
+	if len(config.RolesConfig().TableGroups) != 1 {
 		return fmt.Errorf("only one table group is supported")
 	}
 
-	var allowedUsers []string
+	allowedUsers := append([]string{}, config.RolesConfig().TableGroups[0].Admins...)
+
 	switch target {
 	case RoleReader:
-		allowedUsers = config.RolesConfig().TableGroups[0].Readers
+		allowedUsers = append(allowedUsers, config.RolesConfig().TableGroups[0].Readers...)
 	case RoleWriter:
-		allowedUsers = config.RolesConfig().TableGroups[0].Writers
+		allowedUsers = append(allowedUsers, config.RolesConfig().TableGroups[0].Writers...)
 	case RoleAdmin:
-		allowedUsers = config.RolesConfig().TableGroups[0].Admins
+		// do nothing because admins are already added
 	default:
 		return fmt.Errorf("unknown role %s", target)
 	}
