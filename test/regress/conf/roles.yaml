@@ -1,7 +1,9 @@
-- id: "example_table_group"
-  readers:
-    - "regress"
-  writers:
-    - "regress"
-  admins:
-    - "regress"
+table_groups:
+  - id: "example_table_group"
+    readers:
+      - "regress"
+    writers:
+      - "regress"
+    admins:
+      - "regress"
+      - "spqr-console"
