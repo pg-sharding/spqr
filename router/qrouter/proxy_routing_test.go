@@ -600,6 +600,22 @@ func TestSingleShard(t *testing.T) {
 					},
 				},
 			},
+			"tt": {
+				Name: "tt",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "id",
+					},
+				},
+			},
+			"tt2": {
+				Name: "tt2",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "id",
+					},
+				},
+			},
 			"yy": {
 				Name: "yy",
 				DistributionKey: []qdb.DistributionKeyEntry{
@@ -683,7 +699,16 @@ func TestSingleShard(t *testing.T) {
 		// 	exp:   plan.MultiMatchState{},
 		// 	err:   nil,
 		// },
-
+		{
+			query: ` select * from tt where id in (select * from tt2 g where g.id = 7);`,
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
 		{
 			query: "SELECT * FROM sh1.xxtt1 WHERE sh1.xxtt1.i = 21;",
 			exp: plan.ShardDispatchPlan{

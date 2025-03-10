@@ -89,8 +89,10 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 						}
 					}
 				case *lyx.Select:
-					/* TODO support subquery here */
+					/* TODO properly support subquery here */
 					/* SELECT * FROM t WHERE id IN (SELECT 1, 2) */
+
+					_ = qr.DeparseSelectStmt(ctx, q, meta)
 				}
 			}
 
@@ -160,6 +162,24 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 			/*skip*/
 		case *lyx.Select:
 			/* in engine v2 we skip subplans */
+		case *lyx.FuncApplication:
+			// there are several types of queries like DELETE FROM rel WHERE colref = func_application
+			// and func_application is actually routable statement.
+			// ANY(ARRAY(subselect)) if one type.
+
+			if strings.ToLower(texpr.Name) == "any" {
+				if len(texpr.Args) > 0 {
+					// maybe we should consider not only first arg.
+					// however, consider only it
+
+					switch argexpr := texpr.Args[0].(type) {
+					case *lyx.SubLink:
+
+						// ignore all errors.
+						_ = qr.DeparseSelectStmt(ctx, argexpr.SubSelect, meta)
+					}
+				}
+			}
 		default:
 			return fmt.Errorf("route by clause, unknown expr %T: %w", curr, rerrors.ErrComplexQuery)
 		}
@@ -169,6 +189,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 
 // TODO : unit tests
 func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.Node, meta *rmeta.RoutingMetadataContext) error {
+
 	switch s := selectStmt.(type) {
 	case *lyx.Select:
 		if clause := s.FromClause; clause != nil {
@@ -569,7 +590,7 @@ func (qr *ProxyQrouter) resolveValue(meta *rmeta.RoutingMetadataContext, rfqn rf
 
 	singleVal, res := plan.ParseResolveParamValue(fc, ind, tp, bindParams)
 
-	return []interface{}{singleVal}, res
+	return []any{singleVal}, res
 }
 
 // Returns state, is read-only flag and err if any
