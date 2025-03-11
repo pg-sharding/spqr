@@ -1,7 +1,7 @@
 package spqrlog
 
 import (
-	"fmt"
+	"log"
 	"strings"
 
 	"github.com/rs/zerolog"
@@ -23,7 +23,7 @@ var Zero = NewZeroLogger("", "info", true)
 func NewZeroLogger(filepath string, logLevel string, prettyLogging bool) *zerolog.Logger {
 	_, writer, err := newWriter(filepath)
 	if err != nil {
-		fmt.Printf("FAILED TO INITIALIZED LOGGER: %v", err)
+		log.Printf("failed to initialize logger: %v", err)
 	}
 
 	level := parseLevel(logLevel)
@@ -69,6 +69,7 @@ func parseLevel(level string) zerolog.Level {
 	case "fatal":
 		return zerolog.FatalLevel
 	default:
+		log.Printf("unknown log level: %s, defaulting to info", level)
 		return zerolog.InfoLevel
 	}
 }

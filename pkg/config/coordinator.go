@@ -15,6 +15,7 @@ var cfgCoordinator Coordinator
 
 type Coordinator struct {
 	LogLevel             string        `json:"log_level" toml:"log_level" yaml:"log_level"`
+	PrettyLogging        bool          `json:"pretty_logging" toml:"pretty_logging" yaml:"pretty_logging"`
 	QdbAddr              string        `json:"qdb_addr" toml:"qdb_addr" yaml:"qdb_addr"`
 	CoordinatorPort      string        `json:"coordinator_port" toml:"coordinator_port" yaml:"coordinator_port"`
 	GrpcApiPort          string        `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`

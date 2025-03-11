@@ -15,9 +15,11 @@ import (
 )
 
 var (
-	cfgPath    string
-	qdbImpl    string
-	gomaxprocs int
+	cfgPath       string
+	qdbImpl       string
+	gomaxprocs    int
+	prettyLogging bool
+	logLevel      string
 )
 
 var rootCmd = &cobra.Command{
@@ -36,6 +38,15 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 		log.Println("Running config:", cfgStr)
+
+		if logLevel != "" {
+			config.CoordinatorConfig().LogLevel = logLevel
+		}
+		if prettyLogging {
+			config.CoordinatorConfig().PrettyLogging = prettyLogging
+		}
+
+		spqrlog.ReloadLogger("", config.CoordinatorConfig().LogLevel, config.CoordinatorConfig().PrettyLogging)
 
 		if gomaxprocs > 0 {
 			runtime.GOMAXPROCS(gomaxprocs)
@@ -82,6 +93,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/coordinator.yaml", "path to config file")
 	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use.")
 	rootCmd.PersistentFlags().IntVarP(&gomaxprocs, "gomaxprocs", "", 0, "GOMAXPROCS value")
+	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "overload for `log_level` option in router config")
+	rootCmd.PersistentFlags().BoolVarP(&prettyLogging, "pretty-log", "P", false, "enables pretty logging")
 
 	rootCmd.AddCommand(testCmd)
 }
