@@ -12,15 +12,16 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 
 ## Coordinator Settings
 
-| Setting                  | Description                                           | Possible Values       |
-|--------------------------|-------------------------------------------------------|-----------------------|
-| `log_level `             | The level of logging output.                          | `debug`, `info`, `warning`, `error`, `fatal`|
-| `qdb_addr`               | the address of the QDB server                         | Any valid address     |
-| `host`                   | The host address the coordinator listens on.          | Any valid hostname    |
-| `coordinator_port`       | The port number for the coordinator.                  | Any valid port number |
-| `grpc_api_port`          | The port number for the gRPC API.                     | Any valid port number |
-| `auth`                   | See [auth.mdx](./auth)                                | Object of `AuthCfg`   |
-| `frontend_tls`           | See [auth.mdx](./auth)                                | Object of `TLSConfig` |
-| `use_systemd_notifier`   | Whether to use systemd notifier.                      | `true`, `false`       |
-| `systemd_notifier_debug` | Whether to run systemd notifier in debug mode.        | `true`, `false`       |
+| Setting                  | Description                                                   | Possible Values       |
+|--------------------------|---------------------------------------------------------------|-----------------------|
+| `log_level`              | The level of logging output.                                  | `debug`, `info`, `warning`, `error`, `fatal`|
+| `pretty_logging`         | Whether to write logs in an colorized, human-friendly format. | `true`, `false`       |
+| `qdb_addr`               | the address of the QDB server                                 | Any valid address     |
+| `host`                   | The host address the coordinator listens on.                  | Any valid hostname    |
+| `coordinator_port`       | The port number for the coordinator.                          | Any valid port number |
+| `grpc_api_port`          | The port number for the gRPC API.                             | Any valid port number |
+| `auth`                   | See [auth.mdx](./auth)                                        | Object of `AuthCfg`   |
+| `frontend_tls`           | See [auth.mdx](./auth)                                        | Object of `TLSConfig` |
+| `use_systemd_notifier`   | Whether to use systemd notifier.                              | `true`, `false`       |
+| `systemd_notifier_debug` | Whether to run systemd notifier in debug mode.                | `true`, `false`       |
 
