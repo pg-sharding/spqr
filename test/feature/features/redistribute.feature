@@ -5,14 +5,7 @@ Feature: Redistribution test
     ROUTER_CONFIG=/spqr/test/feature/conf/router_three_shards.yaml
     COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator_three_shards.yaml
     """
-
-    #
-    # Make host "coordinator" take control
-    #
     Given cluster is up and running
-    And host "coordinator2" is stopped
-    And host "coordinator2" is started
-
     When I execute SQL on host "coordinator"
     """
     REGISTER ROUTER r1 ADDRESS regress_router:7000;

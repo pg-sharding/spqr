@@ -1,12 +1,6 @@
 Feature: Coordinator show clients, pools and backend_connections
     Background:
-        #
-        # Make host "coordinator" take control
-        #
         Given cluster is up and running
-        And host "coordinator2" is stopped
-        And host "coordinator2" is started
-
         When I execute SQL on host "coordinator"
         """
         REGISTER ROUTER r1 ADDRESS regress_router:7000;

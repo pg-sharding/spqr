@@ -1,12 +1,6 @@
 Feature: Move test
   Background:
-    #
-    # Make host "coordinator" take control
-    #
-    Given cluster is up and running
-    And host "coordinator2" is stopped
-    And host "coordinator2" is started
-    
+    Given cluster is up and running    
     When I execute SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;

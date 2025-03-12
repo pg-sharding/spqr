@@ -60,7 +60,6 @@ const (
 
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
-	coordLockKey      = "coordinator_exists"
 )
 
 func keyLockPath(key string) string {

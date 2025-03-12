@@ -1,12 +1,6 @@
 Feature: Coordinator test
   Background:
-    #
-    # Make host "coordinator" take control
-    #
     Given cluster is up and running
-    And host "coordinator2" is stopped
-    And host "coordinator2" is started
-
     When I run SQL on host "coordinator"
     """
     REGISTER ROUTER r1 ADDRESS regress_router::7000;
@@ -38,7 +32,7 @@ Feature: Coordinator test
     router
     """
 
-    Scenario: first coordinator awaits after recovery
+  Scenario: first coordinator awaits after recovery
     Given host "coordinator" is stopped
     When I run SQL on host "coordinator2"
     """

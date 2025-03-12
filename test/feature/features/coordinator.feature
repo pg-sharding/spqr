@@ -1,16 +1,10 @@
 Feature: Coordinator test
   Background:
-    #
-    # Make host "coordinator" take control
-    #
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster.yaml
     """
     Given cluster is up and running
-    And host "coordinator2" is stopped
-    And host "coordinator2" is started
-
     When I run SQL on host "coordinator"
     """
     REGISTER ROUTER r1 ADDRESS regress_router::7000

@@ -13,13 +13,6 @@ Feature: Proxy console
         Given cluster is up and running
         And host "coordinator" is stopped
         And host "coordinator2" is stopped
-
-        #
-        # Make host "router" take control over coordinator
-        #
-        Given host "router2" is stopped
-        And host "router2" is started
-
         When I run SQL on host "router-admin"
         """
         UNREGISTER ROUTER ALL;

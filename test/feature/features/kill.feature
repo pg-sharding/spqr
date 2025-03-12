@@ -2,8 +2,6 @@ Feature: Kill client test
 
   Scenario: kill client in coordinator works
     Given cluster is up and running
-    And host "coordinator2" is stopped
-    And host "coordinator2" is started
     When I run SQL on host "coordinator"
     """
     REGISTER ROUTER r1 ADDRESS regress_router::7000
