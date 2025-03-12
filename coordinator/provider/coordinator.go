@@ -1586,26 +1586,6 @@ func (qc *qdbCoordinator) executeRedistributeTask(ctx context.Context, task *tas
 	}
 }
 
-// executeRedistributeCheckTask checks the ability to execute given RedistributeTask.
-// All intermediary states of the task are synced with the QDB for reliability.
-//
-// Parameters:
-//   - ctx (context.Context): The context for QDB operations.
-//   - task (*tasks.RedistributeTask): The redistribute task to check.
-//
-// Returns:
-//   - error: An error if any occurred.
-func (qc *qdbCoordinator) executeRedistributeCheckTask(ctx context.Context, task *tasks.RedistributeTask) error {
-	return qc.checkKeyRangeMove(ctx, &kr.BatchMoveKeyRange{
-		KrId:      task.KrId,
-		ShardId:   task.ShardId,
-		BatchSize: task.BatchSize,
-		Limit:     -1,
-		DestKrId:  task.TempKrId,
-		Type:      tasks.SplitRight,
-	})
-}
-
 // TODO : unit tests
 
 // RenameKeyRange renames a key range.
