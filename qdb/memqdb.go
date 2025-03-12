@@ -453,12 +453,8 @@ func (q *MemQDB) RemoveTransferTx(_ context.Context, key string) error {
 }
 
 // ==============================================================================
-//	                           COORDINATOR LOCK
+//	                              COORDINATOR
 // ==============================================================================
-
-func (q *MemQDB) TryCoordinatorLock(_ context.Context) error {
-	return nil
-}
 
 // TODO : unit tests
 func (q *MemQDB) UpdateCoordinator(_ context.Context, address string) error {

@@ -347,21 +347,6 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 		return true
 	}
 
-	if qc.db.TryCoordinatorLock(context.TODO()) != nil {
-		for {
-			select {
-			case <-ctx.Done():
-				return false
-			case <-time.After(time.Second):
-				if err := qc.db.TryCoordinatorLock(context.TODO()); err == nil {
-					return updateCoordinator()
-				} else {
-					spqrlog.Zero.Error().Err(err).Msg("qdb already taken, waiting for connection")
-				}
-			}
-		}
-	}
-
 	return updateCoordinator()
 }
 

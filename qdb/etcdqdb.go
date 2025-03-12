@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"path"
 	"sort"
 	"sync"
@@ -13,11 +12,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/client/v3/clientv3util"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"google.golang.org/grpc"
 
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
@@ -524,65 +521,8 @@ func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 }
 
 // ==============================================================================
-//	                           COORDINATOR LOCK
+//	                              COORDINATOR
 // ==============================================================================
-
-// TODO : unit tests
-func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
-	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
-	if err != nil {
-		return err
-	}
-
-	spqrlog.Zero.Debug().
-		Str("address", host).
-		Msg("etcdqdb: try coordinator lock")
-
-	leaseGrantResp, err := q.cli.Lease.Grant(ctx, CoordKeepAliveTtl)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease grant failed")
-		return err
-	}
-
-	// KeepAlive attempts to keep the given lease alive forever. If the keepalive responses posted
-	// to the channel are not consumed promptly the channel may become full. When full, the lease
-	// client will continue sending keep alive requests to the etcd server, but will drop responses
-	// until there is capacity on the channel to send more responses.
-
-	keepAliveCh, err := q.cli.Lease.KeepAlive(ctx, leaseGrantResp.ID)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease keep alive failed")
-		return err
-	}
-
-	op := clientv3.OpPut(coordLockKey, net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort), clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID)))
-	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(coordLockKey)).Then(op)
-	stat, err := tx.Commit()
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: failed to commit coordinator lock")
-		return err
-	}
-
-	if !stat.Succeeded {
-		_, err := q.cli.Lease.Revoke(ctx, leaseGrantResp.ID)
-		if err != nil {
-			return err
-		}
-		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "qdb is already in use")
-	}
-
-	// okay, we acquired lock, time to spawn keep alive channel
-	go func() {
-		for resp := range keepAliveCh {
-			spqrlog.Zero.Debug().
-				Uint64("raft-term", resp.RaftTerm).
-				Int64("lease-id", int64(resp.ID)).
-				Msg("etcd keep alive channel")
-		}
-	}()
-
-	return nil
-}
 
 // TODO : unit tests
 // TODO : implement
