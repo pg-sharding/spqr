@@ -24,6 +24,13 @@ func (t *DummySessionParamHandler) SetEnhancedMultiShardProcessing(l bool, v boo
 	t.engineV2 = v
 }
 
+func (t *DummySessionParamHandler) CommitStrategy() string {
+	return ""
+}
+
+func (t *DummySessionParamHandler) SetCommitStrategy(l bool, v string) {
+}
+
 // ExecuteOn implements SessionParamsHolder.
 func (t *DummySessionParamHandler) ExecuteOn() string {
 	return t.eo

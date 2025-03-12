@@ -81,6 +81,7 @@ dataspace
 datatransfer
 datname
 davecgh
+dsh
 dbe
 dbi
 dbpool
@@ -645,4 +646,7 @@ yylex
 zerolog
 ZWQy
 zzzz
+twopc
+txid
+samborkent
 subselect

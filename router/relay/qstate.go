@@ -17,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/statistics"
+	"github.com/pg-sharding/spqr/router/twopc"
 )
 
 func AdvancedPoolModeNeeded(rst RelayStateMgr) bool {
@@ -205,6 +206,23 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 		}
 		return rst.QueryExecutor().ExecBegin(rst, query, &st)
 	case parser.ParseStateTXCommit:
+
+		if mp, err := parser.ParseComment(comment); err == nil {
+
+			if val, ok := mp[session.SPQR_COMMIT_STRATEGY]; ok {
+				switch val {
+				case twopc.COMMIT_STRATEGY_2PC:
+					fallthrough
+				case twopc.COMMIT_STRATEGY_1PC:
+					fallthrough
+				case twopc.COMMIT_STRATEGY_BEST_EFFORT:
+					rst.Client().SetCommitStrategy(false, val)
+				default:
+					/*should error-out*/
+				}
+			}
+		}
+
 		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
 			return rst.Client().ReplyCommandComplete("COMMIT")

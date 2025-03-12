@@ -29,6 +29,7 @@ import (
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/twopc"
 )
 
 type RouterClient interface {
@@ -172,6 +173,14 @@ func (cl *PsqlClient) EnhancedMultiShardProcessing() bool {
 	return cl.resolveVirtualBoolParam(session.SPQR_ENGINE_V2)
 }
 
+func (cl *PsqlClient) SetCommitStrategy(local bool, val string) {
+	cl.recordVirtualParam(local, session.SPQR_COMMIT_STRATEGY, val)
+}
+
+func (cl *PsqlClient) CommitStrategy() string {
+	return cl.resolveVirtualStringParam(session.SPQR_COMMIT_STRATEGY)
+}
+
 // SetAutoDistribution implements RouterClient.
 func (cl *PsqlClient) SetAutoDistribution(local bool, val string) {
 	cl.recordVirtualParam(local, session.SPQR_AUTO_DISTRIBUTION, val)
@@ -302,6 +311,8 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 
 		serverP: atomic.Pointer[server.Server]{},
 	}
+
+	cl.SetCommitStrategy(false, twopc.COMMIT_STRATEGY_BEST_EFFORT)
 
 	cl.serverP.Store(nil)
 
