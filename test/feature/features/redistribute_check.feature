@@ -65,7 +65,7 @@ Feature: Redistribution test
     """
     Then command return code should be "0"
 
-    When I run SQL on host "shard1"
+    When I run SQL on host "shard2"
     """
     DROP extension IF EXISTS postgres_fdw;
     """
