@@ -6,8 +6,6 @@ abracadabrav
 ACCC
 addprinc
 adminpassword
-aec
-aescts
 AExpr
 afe
 aliasname
@@ -41,7 +39,6 @@ CANCELREQ
 canreq
 ccb
 ccfg
-cddc
 Cfgs
 CIn
 ckr
@@ -53,7 +50,6 @@ clmp
 cmds
 cmngr
 cnth
-Cntl
 codeql
 colname
 colref
@@ -80,8 +76,11 @@ datashard
 dataspace
 datatransfer
 datname
+<<<<<<< HEAD
 davecgh
 dsh
+=======
+>>>>>>> 9003beb5 (Fix spelling check)
 dbe
 dbi
 dbpool
@@ -101,7 +100,6 @@ distrib
 distrr
 distrs
 dmgr
-dnsutils
 dotnet
 DOUBLEOID
 drb
@@ -131,7 +129,6 @@ FAFBFF
 fdw
 feauter
 feda
-felixge
 ffd
 fff
 ffff
@@ -148,7 +145,6 @@ frmp
 frrule
 frsm
 gcflags
-genproto
 getconn
 gettime
 gitlab
@@ -160,25 +156,20 @@ gofmtcheck
 gofork
 gofrs
 gogen
-goidentity
 goimports
 gokrb
 golangci
 gomaxprocs
 gomock
 gomod
-gonum
 gorm
-gotest
 goyacc
 gpg
 gss
 gssapi
 GSSREQ
 hashfunction
-hashicorp
 hba
-hdrhistogram
 healthcheck
 hfn
 hostnossl
@@ -186,7 +177,6 @@ hostssl
 hotspots
 hst
 HTAP
-httpsnoop
 iana
 idi
 idj
@@ -194,7 +184,6 @@ IDR
 Idxs
 IExecute
 IFail
-inconshreveable
 inds
 inh
 initaited
@@ -223,7 +212,6 @@ jodwjdewo
 jsons
 kadmin
 kadmind
-kardianos
 kcache
 kdb
 kdc
@@ -263,7 +251,6 @@ ldapserver
 LDAPTLS
 ldapwhoami
 ldflags
-leesper
 lft
 libdefaults
 libldap
@@ -273,7 +260,6 @@ libpq
 localrouter
 logdir
 logproxy
-logr
 lol
 lqr
 lsb
@@ -281,10 +267,8 @@ lval
 lwg
 lyx
 markokr
-mattn
 maxuint
 mdblocales
-memdb
 memqdb
 metadb
 MGhyjwicp
@@ -292,7 +276,6 @@ miltishard
 mintlify
 mmgr
 mngr
-moby
 mockcl
 mockcmgr
 mockgen
@@ -303,7 +286,6 @@ mockqr
 mocksh
 mockshard
 mocksrv
-morikuni
 Msgf
 msgroup
 msgtype
@@ -333,25 +315,17 @@ npmjs
 nroute
 nsecs
 nspname
-ntlmssp
 odssd
 ogima
 OIDKRB
 OIDS
 oiwejow
 OLAP
-opentelemetry
 opentracing
 opgejrqr
 optarg
 optval
 opvalue
-osext
-otel
-otelhttp
-otlp
-otlptrace
-otlptracehttp
 outputdir
 Patroni
 Percona
@@ -368,11 +342,9 @@ PGHOST
 pgi
 pgo
 pgoption
-pgpassfile
 PGPORT
 pgproto
 pgquery
-pgservicefile
 pgsharding
 PGSSLMODE
 PGUSER
@@ -381,7 +353,6 @@ pgxconn
 phandler
 phs
 pkgclient
-pmezard
 Pmgr
 podman
 poolmgr
@@ -398,7 +369,6 @@ protobuf
 protoc
 protoimpl
 protoreflect
-psqlclient
 psswd
 pstmt
 PYTHONUNBUFFERED
@@ -452,7 +422,6 @@ RJj
 RLoad
 rmeta
 rmgr
-rogpeppe
 rollbacked
 roolback
 routable
@@ -536,13 +505,13 @@ sspi
 sssssdss
 stchan
 stdcopy
-stdr
 stmtcache
 stoptrace
 stretchr
 strlist
 subplan
 subquery
+subselects
 SVGID
 swo
 swp
@@ -614,7 +583,6 @@ Vitess
 vla
 VMs
 Warningf
-winio
 workloadlog
 workloadreplay
 worldmock
