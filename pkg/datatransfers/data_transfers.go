@@ -241,6 +241,7 @@ func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromId, toId string) erro
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("error loading config")
+			return err
 		}
 	}
 
@@ -309,7 +310,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		}
 		// check that relation exists on sending shard and there is data to copy. If not, skip the relation
 		// TODO get actual schema
-		fromTableExists, err := checkTableExists(ctx, from, strings.ToLower(rel.Name), "public")
+		fromTableExists, err := CheckTableExists(ctx, from, strings.ToLower(rel.Name), "public")
 		if err != nil {
 			return err
 		}
@@ -321,7 +322,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 			return err
 		}
 		// check that relation exists on receiving shard. If not, exit
-		toTableExists, err := checkTableExists(ctx, to, strings.ToLower(rel.Name), "public")
+		toTableExists, err := CheckTableExists(ctx, to, strings.ToLower(rel.Name), "public")
 		if err != nil {
 			return err
 		}
@@ -353,7 +354,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 	return nil
 }
 
-// checkTableExists checks if a table exists in the database.
+// CheckTableExists checks if a table exists in the database.
 //
 // Parameters:
 // - ctx (context.Context): The context for the function.
@@ -364,7 +365,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 // Returns:
 // - bool: true if the table exists, false otherwise.
 // - error: an error if there was a problem executing the query.
-func checkTableExists(ctx context.Context, conn *pgx.Conn, relName, schema string) (bool, error) {
+func CheckTableExists(ctx context.Context, conn *pgx.Conn, relName, schema string) (bool, error) {
 	res := conn.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = '%s'`, relName, schema))
 	exists := false
 	if err := res.Scan(&exists); err != nil {

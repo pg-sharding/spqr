@@ -1043,6 +1043,31 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 		return err
 	}
 
+	ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range ds.Relations {
+		relName := strings.ToLower(rel.Name)
+		// TODO: use the actual schema
+		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, relName, "public")
+		if err != nil {
+			return err
+		}
+		if !sourceTable {
+			spqrlog.Zero.Info().Str("rel", rel.Name).Msg("source table does not exist")
+			continue
+		}
+		destTable, err := datatransfers.CheckTableExists(ctx, destConn, relName, "public")
+		if err != nil {
+			return err
+		}
+		if !destTable {
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" does not exist on the destination shard", rel.Name)
+		}
+	}
+
 	return datatransfers.SetupFDW(ctx, sourceConn, destConn, keyRange.ShardID, req.ShardId)
 }
 
