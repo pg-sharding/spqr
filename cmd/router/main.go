@@ -108,7 +108,10 @@ var runCmd = &cobra.Command{
 		}
 		log.Println("Running config:", cfgStr)
 
-		if config.RouterConfig().EnableRoleSystem && config.RouterConfig().RolesFile != "" {
+		if config.RouterConfig().EnableRoleSystem {
+			if config.RouterConfig().RolesFile == "" {
+				return fmt.Errorf("role system enabled but no roles file specified, see `enable_role_system` and `roles_file` in config")
+			}
 			rolesCfgStr, err := config.LoadRolesCfg(config.RouterConfig().RolesFile)
 			if err != nil {
 				return err
