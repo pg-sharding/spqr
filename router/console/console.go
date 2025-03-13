@@ -79,7 +79,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 	mgr := l.entityMgr
 	switch tstmt := tstmt.(type) {
 	case *spqrparser.Show:
-		if err := catalog.CheckGrants(catalog.RoleReader, rc.Rule()); err != nil {
+		if err := catalog.GC.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
 		}
 		switch tstmt.Cmd {
@@ -96,7 +96,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 			mgr = coord.NewAdapter(conn)
 		}
 	default:
-		if err := catalog.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+		if err := catalog.GC.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
 		}
 		coordAddr, err := l.entityMgr.GetCoordinator(ctx)
