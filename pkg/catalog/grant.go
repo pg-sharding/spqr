@@ -12,20 +12,44 @@ const (
 	RoleAdmin  = "admin"
 )
 
+// GC is a singleton object of GrantChecker.
+var GC GrantChecker = &FakeChecker{}
+
+// Reload reloads the grants checker.
+//
+// Parameters:
+//   - enableRoleSystem (bool): Enable the role system.
+//   - tableGroups ([]TableGroup): The table groups.
+//
+// Returns:
+//   - error: An error if any occurred during the reload process.
+func Reload(enableRoleSystem bool, tableGroups []config.TableGroup) error {
+	grantsChecker, err := NewGrantsChecker(enableRoleSystem, tableGroups)
+	if err != nil {
+		return err
+	}
+
+	GC = grantsChecker
+	return nil
+}
+
+// GrantChecker is an interface for checking grants.
 type GrantChecker interface {
 	CheckGrants(target string, rule *config.FrontendRule) error
 }
 
-type FakeGrantsChecker struct{}
-
-func (f *FakeGrantsChecker) CheckGrants(target string, rule *config.FrontendRule) error {
-	// Always allow access in the fake checker
-	return nil
-}
-
+// NewGrantsChecker creates a new GrantsChecker.
+//
+// Parameters:
+//   - enableRoleSystem (bool): Enable the role system.
+//   - tableGroups ([]TableGroup): The table groups.
+//
+// Returns:
+//   - GrantChecker: The new GrantsChecker.
+//   - error: An error if any occurred during the creation process.
 func NewGrantsChecker(enableRoleSystem bool, tableGroups []config.TableGroup) (GrantChecker, error) {
 	if !enableRoleSystem {
-		return &FakeGrantsChecker{}, nil
+		return &FakeChecker{}, nil
 	}
 
 	if enableRoleSystem && len(tableGroups) == 0 {
@@ -36,36 +60,42 @@ func NewGrantsChecker(enableRoleSystem bool, tableGroups []config.TableGroup) (G
 		return nil, fmt.Errorf("multiple table groups are not supported")
 	}
 
-	return NewCatalog(tableGroups[0].Readers, tableGroups[0].Writers, tableGroups[0].Admins), nil
-}
-
-type Catalog struct {
-	readers map[string]bool
-	writers map[string]bool
-	admins  map[string]bool
-}
-
-func NewCatalog(readers, writers, admins []string) GrantChecker {
 	readersMap := make(map[string]bool)
-	for _, reader := range readers {
+	for _, reader := range tableGroups[0].Readers {
 		readersMap[reader] = true
 	}
 
 	writersMap := make(map[string]bool)
-	for _, writer := range writers {
+	for _, writer := range tableGroups[0].Writers {
 		writersMap[writer] = true
 	}
 
 	adminsMap := make(map[string]bool)
-	for _, admin := range admins {
+	for _, admin := range tableGroups[0].Admins {
 		adminsMap[admin] = true
 	}
 
-	return &Catalog{
+	return &RealChecker{
 		readers: readersMap,
 		writers: writersMap,
 		admins:  adminsMap,
-	}
+	}, nil
+}
+
+// FakeChecker is a fake implementation.
+type FakeChecker struct{}
+
+// CheckGrants fake implementation.
+func (f *FakeChecker) CheckGrants(target string, rule *config.FrontendRule) error {
+	// Always allow access in the fake checker
+	return nil
+}
+
+// RealChecker is a real implementation of the GrantChecker interface.
+type RealChecker struct {
+	readers map[string]bool
+	writers map[string]bool
+	admins  map[string]bool
 }
 
 // CheckGrants checks if the given role has the necessary grants to access the specified database.
@@ -76,7 +106,7 @@ func NewCatalog(readers, writers, admins []string) GrantChecker {
 //
 // Returns:
 //   - error: An error if the role does not have the necessary grants.
-func (c *Catalog) CheckGrants(target string, rule *config.FrontendRule) error {
+func (c *RealChecker) CheckGrants(target string, rule *config.FrontendRule) error {
 	if rule == nil {
 		return fmt.Errorf("rule is nil")
 	}
