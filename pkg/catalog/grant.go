@@ -12,6 +12,62 @@ const (
 	RoleAdmin  = "admin"
 )
 
+type GrantChecker interface {
+	CheckGrants(target string, rule *config.FrontendRule) error
+}
+
+type FakeGrantsChecker struct{}
+
+func (f *FakeGrantsChecker) CheckGrants(target string, rule *config.FrontendRule) error {
+	// Always allow access in the fake checker
+	return nil
+}
+
+func NewGrantsChecker(enableRoleSystem bool, tableGroups []config.TableGroup) (GrantChecker, error) {
+	if !enableRoleSystem {
+		return &FakeGrantsChecker{}, nil
+	}
+
+	if enableRoleSystem && len(tableGroups) == 0 {
+		return nil, fmt.Errorf("role system is enabled but no table groups are defined")
+	}
+
+	if len(tableGroups) > 1 {
+		return nil, fmt.Errorf("multiple table groups are not supported")
+	}
+
+	return NewCatalog(tableGroups[0].Readers, tableGroups[0].Writers, tableGroups[0].Admins), nil
+}
+
+type Catalog struct {
+	readers map[string]bool
+	writers map[string]bool
+	admins  map[string]bool
+}
+
+func NewCatalog(readers, writers, admins []string) GrantChecker {
+	readersMap := make(map[string]bool)
+	for _, reader := range readers {
+		readersMap[reader] = true
+	}
+
+	writersMap := make(map[string]bool)
+	for _, writer := range writers {
+		writersMap[writer] = true
+	}
+
+	adminsMap := make(map[string]bool)
+	for _, admin := range admins {
+		adminsMap[admin] = true
+	}
+
+	return &Catalog{
+		readers: readersMap,
+		writers: writersMap,
+		admins:  adminsMap,
+	}
+}
+
 // CheckGrants checks if the given role has the necessary grants to access the specified database.
 //
 // Parameters:
@@ -20,33 +76,21 @@ const (
 //
 // Returns:
 //   - error: An error if the role does not have the necessary grants.
-func CheckGrants(target string, rule *config.FrontendRule) error {
-	// TODO use some common flag
-	if !config.RouterConfig().EnableRoleSystem {
+func (c *Catalog) CheckGrants(target string, rule *config.FrontendRule) error {
+	if rule == nil {
+		return fmt.Errorf("rule is nil")
+	}
+
+	if c.admins[rule.Usr] {
 		return nil
 	}
 
-	if len(config.RolesConfig().TableGroups) != 1 {
-		return fmt.Errorf("only one table group is supported")
+	if target == RoleReader && c.readers[rule.Usr] {
+		return nil
 	}
 
-	allowedUsers := append([]string{}, config.RolesConfig().TableGroups[0].Admins...)
-
-	switch target {
-	case RoleReader:
-		allowedUsers = append(allowedUsers, config.RolesConfig().TableGroups[0].Readers...)
-	case RoleWriter:
-		allowedUsers = append(allowedUsers, config.RolesConfig().TableGroups[0].Writers...)
-	case RoleAdmin:
-		// do nothing because admins are already added
-	default:
-		return fmt.Errorf("unknown role %s", target)
-	}
-
-	for _, user := range allowedUsers {
-		if user == rule.Usr {
-			return nil
-		}
+	if target == RoleWriter && c.writers[rule.Usr] {
+		return nil
 	}
 
 	return fmt.Errorf("permission denied for user=%s dbname=%s", rule.Usr, rule.DB)
