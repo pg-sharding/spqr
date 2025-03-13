@@ -213,6 +213,20 @@ func (mr *MockRouterClientMockRecorder) CommitActiveSet() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitActiveSet", reflect.TypeOf((*MockRouterClient)(nil).CommitActiveSet))
 }
 
+// CommitStrategy mocks base method.
+func (m *MockRouterClient) CommitStrategy() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CommitStrategy")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// CommitStrategy indicates an expected call of CommitStrategy.
+func (mr *MockRouterClientMockRecorder) CommitStrategy() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitStrategy", reflect.TypeOf((*MockRouterClient)(nil).CommitStrategy))
+}
+
 // ConstructClientParams mocks base method.
 func (m *MockRouterClient) ConstructClientParams() *pgproto3.Query {
 	m.ctrl.T.Helper()
@@ -925,6 +939,18 @@ func (m *MockRouterClient) SetBindParams(arg0 [][]byte) {
 func (mr *MockRouterClientMockRecorder) SetBindParams(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetBindParams", reflect.TypeOf((*MockRouterClient)(nil).SetBindParams), arg0)
+}
+
+// SetCommitStrategy mocks base method.
+func (m *MockRouterClient) SetCommitStrategy(arg0 bool, arg1 string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetCommitStrategy", arg0, arg1)
+}
+
+// SetCommitStrategy indicates an expected call of SetCommitStrategy.
+func (mr *MockRouterClientMockRecorder) SetCommitStrategy(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCommitStrategy", reflect.TypeOf((*MockRouterClient)(nil).SetCommitStrategy), arg0, arg1)
 }
 
 // SetDefaultRouteBehaviour mocks base method.

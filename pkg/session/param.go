@@ -37,6 +37,9 @@ type SessionParamsHolder interface {
 	SetEnhancedMultiShardProcessing(bool, bool)
 	EnhancedMultiShardProcessing() bool
 
+	SetCommitStrategy(bool, string)
+	CommitStrategy() string
+
 	BindParams() [][]byte
 	SetBindParams([][]byte)
 
@@ -55,4 +58,5 @@ const (
 	SPQR_MAINTAIN_PARAMS         = "__spqr__maintain_params"
 	SPQR_EXECUTE_ON              = "__spqr__execute_on"
 	SPQR_ENGINE_V2               = "__spqr__engine_v2"
+	SPQR_COMMIT_STRATEGY         = "__spqr__commit_strategy"
 )

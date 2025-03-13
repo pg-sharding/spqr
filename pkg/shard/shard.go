@@ -84,7 +84,7 @@ type ShardIterator interface {
 	ForEach(cb func(sh Shardinfo) error) error
 }
 
-/* util function to deploy begin on shard. Used by executor and tx expand. */
+/* util function to deploy begin on shard. Used by executor and tx expand and 2pc commit. */
 func DeployTxOnShard(sh Shard, qry pgproto3.FrontendMessage, expTx txstatus.TXStatus) (txstatus.TXStatus, error) {
 	if err := sh.Send(qry); err != nil {
 		return txstatus.TXERR, err

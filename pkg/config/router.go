@@ -99,6 +99,8 @@ type Router struct {
 	IgnoreCancel       bool `json:"ignore_cancel" toml:"ignore_cancel" yaml:"ignore_cancel"`
 	AcceptorBufferSize int  `json:"acceptor_buffer_size" toml:"acceptor_buffer_size" yaml:"acceptor_buffer_size"`
 
+	DefaultCommitStrategy string `json:"distributed_commit_strategy" toml:"distributed_commit_strategy" yaml:"distributed_commit_strategy"`
+
 	ClientInitMax int64 `json:"client_init_max" toml:"client_init_max" yaml:"client_init_max"`
 
 	UseSystemdNotifier   bool `json:"use_systemd_notifier" toml:"use_systemd_notifier" yaml:"use_systemd_notifier"`
