@@ -29,7 +29,7 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 
 type Console interface {
 	Serve(ctx context.Context, rc rclient.RouterClient) error
-	ProcessQuery(ctx context.Context, q string, rc rclient.RouterClient) error
+	ProcessQuery(ctx context.Context, q string, rc rclient.RouterClient, gc catalog.GrantChecker) error
 	Qlog() qlog.Qlog
 	Mgr() meta.EntityMgr
 }
@@ -60,7 +60,7 @@ func NewLocalInstanceConsole(mgr meta.EntityMgr, rrouter rulerouter.RuleRouter, 
 }
 
 // TODO : unit tests
-func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rclient.RouterClient) error {
+func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rclient.RouterClient, gc catalog.GrantChecker) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -79,7 +79,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 	mgr := l.entityMgr
 	switch tstmt := tstmt.(type) {
 	case *spqrparser.Show:
-		if err := catalog.GC.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
 		}
 		switch tstmt.Cmd {
@@ -96,7 +96,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 			mgr = coord.NewAdapter(conn)
 		}
 	default:
-		if err := catalog.GC.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
 		}
 		coordAddr, err := l.entityMgr.GetCoordinator(ctx)
@@ -159,7 +159,7 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
-			if err := l.ProcessQuery(ctx, v.String, rc); err != nil {
+			if err := l.ProcessQuery(ctx, v.String, rc, catalog.GC); err != nil {
 				_ = rc.ReplyErr(err)
 				// continue to consume input
 			}
