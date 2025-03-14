@@ -76,11 +76,6 @@ datashard
 dataspace
 datatransfer
 datname
-<<<<<<< HEAD
-davecgh
-dsh
-=======
->>>>>>> 9003beb5 (Fix spelling check)
 dbe
 dbi
 dbpool
@@ -105,6 +100,7 @@ DOUBLEOID
 drb
 drel
 dserr
+dsh
 dsn
 dss
 dssd
@@ -170,6 +166,7 @@ gssapi
 GSSREQ
 hashfunction
 hba
+HEAD
 healthcheck
 hfn
 hostnossl
@@ -442,6 +439,7 @@ rulemgr
 rulerouter
 runc
 RUnlock
+samborkent
 samehost
 samenet
 samerole
@@ -470,6 +468,7 @@ singleshard
 Smartphone
 snf
 spaolacci
+spelling
 sph
 spqr
 SPQRC
@@ -548,11 +547,13 @@ TRASCE
 tsa
 TSEMICOLON
 tstmt
+twopc
 TXACT
 txactive
 txbefore
 Txcommands
 TXERR
+txid
 txidle
 txs
 txstatus
@@ -614,7 +615,3 @@ yylex
 zerolog
 ZWQy
 zzzz
-twopc
-txid
-samborkent
-subselect
