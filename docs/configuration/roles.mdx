@@ -1,0 +1,47 @@
+---
+title: Roles settings
+description: Specify readers, writes, admins
+---
+
+## Roles
+
+Roles represents a collection of table groups. It is used to define and manage groups of tables in the configuration. The structure supports JSON, TOML, and YAML serialization formats.
+
+By default, the role system is disabled. To enable it, you have to specify `enable_role_system: true` and `roles_file` settings in both your [router's](./router) and [coordinator's](./coordinator) config.
+
+Refer to the [pkg/config/roles.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/roles.go) file for the most up-to-date configuration options.
+
+## Table Group
+
+TableGroup represents a group of tables with associated roles and permissions.
+
+| Setting  | Description                                           | Possible Values       |
+|----------|-------------------------------------------------------|-----------------------|
+| `id`     | Unique identifier for the table group.                | Any string value      |
+| `readers`| List of users with read access to the table group.    | Array of string values|
+| `writers`| List of users with write access to the table group.   | Array of string values|
+| `admins` | List of users with admin access to the table group.   | Array of string values|
+
+## Example
+
+For example, let's assume we have the following roles configuration:
+
+```yaml
+table_groups:
+  - id: "example_table_group"
+    readers:
+      - "user1"
+      - "user2"
+      - "user3"
+    writers:
+      - "prod_user"
+    admins:
+      - "admin_user"
+```
+
+When we try to connect to (any) database as user user1 and run a modify query, we get something like this: 
+
+```sql
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ERROR:  permission denied for user=user1 dbname=prod
+```

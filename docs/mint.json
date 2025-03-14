@@ -80,7 +80,8 @@
                         "configuration/router",
                         "configuration/coordinator",
                         "configuration/balancer",
-                        "configuration/auth"
+                        "configuration/auth",
+                        "configuration/roles"
                     ]
                 },
                 {
