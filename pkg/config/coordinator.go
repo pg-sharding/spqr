@@ -2,13 +2,9 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"os"
-	"strings"
 	"time"
-
-	"github.com/BurntSushi/toml"
-	"gopkg.in/yaml.v2"
 )
 
 var cfgCoordinator Coordinator
@@ -39,44 +35,31 @@ type Coordinator struct {
 //   - string: JSON-formatted config
 //   - error: An error if any occurred during the loading process.
 func LoadCoordinatorCfg(cfgPath string) (string, error) {
+	var ccfg Coordinator
 	file, err := os.Open(cfgPath)
 	if err != nil {
+		cfgCoordinator = ccfg
 		return "", err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			log.Fatalf("failed to close config file: %v", err)
+		}
+	}(file)
 
-	if err := initCoordinatorConfig(file, cfgPath); err != nil {
+	if err := initConfig(file, &ccfg); err != nil {
+		cfgCoordinator = ccfg
 		return "", err
 	}
 
 	configBytes, err := json.MarshalIndent(&cfgCoordinator, "", "  ")
 	if err != nil {
+		cfgCoordinator = ccfg
 		return "", err
 	}
 
 	return string(configBytes), nil
-}
-
-// initCoordinatorConfig initializes the coordinator configuration based on the file content and file format.
-//
-// Parameters:
-//   - file (*os.File): the file containing the configuration data.
-//   - filepath (string): the path of the configuration file.
-//
-// Returns:
-//   - error: an error if any occurred during the initialization process.
-func initCoordinatorConfig(file *os.File, filepath string) error {
-	if strings.HasSuffix(filepath, ".toml") {
-		_, err := toml.NewDecoder(file).Decode(&cfgCoordinator)
-		return err
-	}
-	if strings.HasSuffix(filepath, ".yaml") {
-		return yaml.NewDecoder(file).Decode(&cfgCoordinator)
-	}
-	if strings.HasSuffix(filepath, ".json") {
-		return json.NewDecoder(file).Decode(&cfgCoordinator)
-	}
-	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", filepath)
 }
 
 // CoordinatorConfig returns a pointer to the Coordinator configuration.
