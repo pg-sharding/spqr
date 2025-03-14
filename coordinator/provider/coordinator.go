@@ -1030,14 +1030,17 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 	}
 	destShardConn, ok := conns.ShardsData[req.ShardId]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
+		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("destination shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
 	destConn, err := datatransfers.GetMasterConnection(ctx, destShardConn)
 	if err != nil {
 		return err
 	}
 
-	sourceShardConn := conns.ShardsData[keyRange.ShardID]
+	sourceShardConn, ok := conns.ShardsData[keyRange.ShardID]
+	if !ok {
+		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
+	}
 	sourceConn, err := datatransfers.GetMasterConnection(ctx, sourceShardConn)
 	if err != nil {
 		return err
