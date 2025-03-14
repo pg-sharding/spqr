@@ -203,6 +203,7 @@ func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *
 		KrId:      request.Id,
 		ShardId:   request.ShardId,
 		BatchSize: int(request.BatchSize),
+		Check:     request.Check,
 	})
 }
 

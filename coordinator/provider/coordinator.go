@@ -1005,6 +1005,75 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	return nil
 }
 
+// checkKeyRangeMove checks the ability to execute given kr.BatchMoveKeyRange request.
+//
+// Parameters:
+//   - ctx (context.Context): The context for QDB operations.
+//   - req (*kr.BatchMoveKeyRange): The move request to check.
+//
+// Returns:
+//   - error: An error if any occurred.
+func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMoveKeyRange) error {
+	keyRange, err := qc.GetKeyRange(ctx, req.KrId)
+	if err != nil {
+		return err
+	}
+	if keyRange.ShardID == req.ShardId {
+		return nil
+	}
+	if _, err = qc.GetKeyRange(ctx, req.DestKrId); err == nil {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "key range \"%s\" already exists", req.DestKrId)
+	}
+	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	if err != nil {
+		return err
+	}
+	destShardConn, ok := conns.ShardsData[req.ShardId]
+	if !ok {
+		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("destination shard of key range '%s' does not exist in shard data config", keyRange.ID))
+	}
+	destConn, err := datatransfers.GetMasterConnection(ctx, destShardConn)
+	if err != nil {
+		return err
+	}
+
+	sourceShardConn, ok := conns.ShardsData[keyRange.ShardID]
+	if !ok {
+		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
+	}
+	sourceConn, err := datatransfers.GetMasterConnection(ctx, sourceShardConn)
+	if err != nil {
+		return err
+	}
+
+	ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range ds.Relations {
+		relName := strings.ToLower(rel.Name)
+		// TODO: use the actual schema
+		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, relName, "public")
+		if err != nil {
+			return err
+		}
+		if !sourceTable {
+			spqrlog.Zero.Info().Str("rel", rel.Name).Msg("source table does not exist")
+			continue
+		}
+		destTable, err := datatransfers.CheckTableExists(ctx, destConn, relName, "public")
+		if err != nil {
+			return err
+		}
+		if !destTable {
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" does not exist on the destination shard", rel.Name)
+		}
+	}
+
+	return datatransfers.SetupFDW(ctx, sourceConn, destConn, keyRange.ShardID, req.ShardId)
+}
+
 // TODO : unit tests
 
 // BatchMoveKeyRange moves specified amount of keys from a key range to another shard.
@@ -1470,6 +1539,16 @@ func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.Redi
 	if req.BatchSize <= 0 {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "incorrect batch size %d", req.BatchSize)
 	}
+	if req.Check {
+		return qc.checkKeyRangeMove(ctx, &kr.BatchMoveKeyRange{
+			KrId:      req.KrId,
+			ShardId:   req.ShardId,
+			BatchSize: req.BatchSize,
+			Limit:     -1,
+			DestKrId:  uuid.NewString(),
+			Type:      tasks.SplitRight,
+		})
+	}
 	ch := make(chan error)
 	execCtx := context.TODO()
 	go func() {
@@ -1494,7 +1573,7 @@ func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.Redi
 
 // TODO : unit tests
 
-// executeMoveTasks executes the given RedistributeTask.
+// executeRedistributeTask executes the given RedistributeTask.
 // All intermediary states of the task are synced with the QDB for reliability.
 //
 // Parameters:

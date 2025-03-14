@@ -236,24 +236,15 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr coordinator.Coor
 	return bound, nil
 }
 
-// copyData performs physical key-range move from one datashard to another.
-//
-// It is assumed that the passed key range is already locked on every online spqr-router.
-// The function performs the following steps:
-//   - Create a postgres_fdw on the receiving shard.
-//   - Copy data from the sending shard to the receiving shard via fdw.
-//
-// Parameters:
-// - ctx (context.Context): The context for the function.
-// - from, to (*pgx.Conn): The connections to the sending and receiving shards.
-// - fromId, toId (string): the IDs of the sending and receiving shards.
-// - krg (*kr.KeyRange): the KeyRange object representing the key range being moved.
-// - ds (*distributions.Distribution): the Distributions object representing the distribution of data.
-// - upperBound (kr.KeyRangeBound): the upper bound of the key range being moved.
-//
-// Returns:
-// - error: an error if the move fails.
-func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
+func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromId, toId string) error {
+	if shards == nil {
+		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error loading config")
+			return err
+		}
+	}
+
 	fromShard := shards.ShardsData[fromId]
 	toShard := shards.ShardsData[toId]
 	dbName := fromShard.DB
@@ -283,9 +274,35 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		return err
 	}
 	_, err = to.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA public FROM SERVER %q INTO %q`, serverName, schemaName))
-	if err != nil {
+	return err
+}
+
+// copyData performs physical key-range move from one datashard to another.
+//
+// It is assumed that the passed key range is already locked on every online spqr-router.
+// The function performs the following steps:
+//   - Create a postgres_fdw on the receiving shard.
+//   - Copy data from the sending shard to the receiving shard via fdw.
+//
+// Parameters:
+// - ctx (context.Context): The context for the function.
+// - from, to (*pgx.Conn): The connections to the sending and receiving shards.
+// - fromId, toId (string): the IDs of the sending and receiving shards.
+// - krg (*kr.KeyRange): the KeyRange object representing the key range being moved.
+// - ds (*distributions.Distribution): the Distributions object representing the distribution of data.
+// - upperBound (kr.KeyRangeBound): the upper bound of the key range being moved.
+//
+// Returns:
+// - error: an error if the move fails.
+func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
+	if err := SetupFDW(ctx, from, to, fromId, toId); err != nil {
 		return err
 	}
+	fromShard := shards.ShardsData[fromId]
+	toShard := shards.ShardsData[toId]
+	dbName := fromShard.DB
+	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
+	schemaName := fmt.Sprintf("%s_%s_%s_schema", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
 	for _, rel := range ds.Relations {
 		krCondition, err := kr.GetKRCondition(rel, krg, upperBound, "")
 		if err != nil {
@@ -293,7 +310,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		}
 		// check that relation exists on sending shard and there is data to copy. If not, skip the relation
 		// TODO get actual schema
-		fromTableExists, err := checkTableExists(ctx, from, strings.ToLower(rel.Name), "public")
+		fromTableExists, err := CheckTableExists(ctx, from, strings.ToLower(rel.Name), "public")
 		if err != nil {
 			return err
 		}
@@ -305,7 +322,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 			return err
 		}
 		// check that relation exists on receiving shard. If not, exit
-		toTableExists, err := checkTableExists(ctx, to, strings.ToLower(rel.Name), "public")
+		toTableExists, err := CheckTableExists(ctx, to, strings.ToLower(rel.Name), "public")
 		if err != nil {
 			return err
 		}
@@ -337,7 +354,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 	return nil
 }
 
-// checkTableExists checks if a table exists in the database.
+// CheckTableExists checks if a table exists in the database.
 //
 // Parameters:
 // - ctx (context.Context): The context for the function.
@@ -348,7 +365,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 // Returns:
 // - bool: true if the table exists, false otherwise.
 // - error: an error if there was a problem executing the query.
-func checkTableExists(ctx context.Context, conn *pgx.Conn, relName, schema string) (bool, error) {
+func CheckTableExists(ctx context.Context, conn *pgx.Conn, relName, schema string) (bool, error) {
 	res := conn.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = '%s'`, relName, schema))
 	exists := false
 	if err := res.Scan(&exists); err != nil {
