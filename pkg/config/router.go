@@ -19,7 +19,6 @@ type PoolMode string
 type ShardType string
 type RouterMode string
 type DefaultRouteBehaviour string
-type Role string
 
 const (
 	PoolModeSession     = PoolMode("SESSION")
@@ -33,10 +32,6 @@ const (
 
 	DefaultRouteBehaviourBlock = DefaultRouteBehaviour("BLOCK")
 	DefaultRouteBehaviourAllow = DefaultRouteBehaviour("ALLOW")
-
-	RoleReader = Role("reader")
-	RoleWriter = Role("writer")
-	RoleAdmin  = Role("admin")
 )
 
 var cfgRouter Router
@@ -59,7 +54,8 @@ type Router struct {
 	AvailabilityZone           string `json:"availability_zone" toml:"availability_zone" yaml:"availability_zone"`
 	PreferSameAvailabilityZone bool   `json:"prefer_same_availability_zone" toml:"prefer_same_availability_zone" yaml:"prefer_same_availability_zone"`
 
-	EnableRoleSystem bool `json:"enable_role_system" toml:"enable_role_system" yaml:"enable_role_system"`
+	EnableRoleSystem bool   `json:"enable_role_system" toml:"enable_role_system" yaml:"enable_role_system"`
+	RolesFile        string `json:"roles_file" toml:"roles_file" yaml:"roles_file"`
 
 	Host             string `json:"host" toml:"host" yaml:"host"`
 	RouterPort       string `json:"router_port" toml:"router_port" yaml:"router_port"`
@@ -129,7 +125,6 @@ type BackendRule struct {
 type FrontendRule struct {
 	DB                    string   `json:"db" yaml:"db" toml:"db"`
 	Usr                   string   `json:"usr" yaml:"usr" toml:"usr"`
-	Grants                []Role   `json:"grants" yaml:"grants" toml:"grants"`
 	SearchPath            string   `json:"search_path" yaml:"search_path" toml:"search_path"`
 	AuthRule              *AuthCfg `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
 	PoolMode              PoolMode `json:"pool_mode" yaml:"pool_mode" toml:"pool_mode"`

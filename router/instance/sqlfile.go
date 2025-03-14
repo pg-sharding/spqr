@@ -3,6 +3,7 @@ package instance
 import (
 	"context"
 
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/client"
 )
@@ -30,7 +31,7 @@ func (i *InitSQLMetadataBootstrapper) InitializeMetadata(ctx context.Context, r 
 		spqrlog.Zero.Info().Msg("executing init sql")
 		for _, query := range queries {
 			spqrlog.Zero.Info().Str("query", query).Msg("")
-			if err := r.Console().ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
+			if err := r.Console().ProcessQuery(ctx, query, client.NewFakeClient(), &catalog.FakeChecker{}); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				if i.exitOnInitSQLError {
 					return err

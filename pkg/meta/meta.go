@@ -382,13 +382,13 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 
 	if _, ok := tstmt.(*spqrparser.Show); ok {
-		if err := catalog.CheckGrants(catalog.RoleReader, rc.Rule()); err != nil {
+		if err := catalog.GC.CheckGrants(catalog.RoleReader, rc.Rule()); err != nil {
 			return err
 		}
 		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, cli)
 	}
 
-	if err := catalog.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+	if err := catalog.GC.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 		return err
 	}
 
@@ -508,7 +508,7 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, poo
 			return err
 		}
 		if !ok {
-			return fmt.Errorf("No such client %d", stmt.Target)
+			return fmt.Errorf("no such client %d", stmt.Target)
 		}
 		return cli.KillClient(stmt.Target)
 	default:

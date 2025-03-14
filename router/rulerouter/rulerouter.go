@@ -8,6 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"golang.org/x/sync/semaphore"
@@ -157,6 +158,17 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 
 	if r.notifier != nil {
 		if err = r.notifier.Ready(); err != nil {
+			return err
+		}
+	}
+
+	if rcfg.EnableRoleSystem && rcfg.RolesFile != "" {
+		_, err := config.LoadRolesCfg(rcfg.RolesFile)
+		if err != nil {
+			return err
+		}
+		err = catalog.Reload(rcfg.EnableRoleSystem, config.RolesConfig().TableGroups)
+		if err != nil {
 			return err
 		}
 	}

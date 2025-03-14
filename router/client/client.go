@@ -1150,9 +1150,6 @@ func (f FakeClient) Rule() *config.FrontendRule {
 	return &config.FrontendRule{
 		Usr: DefaultUsr,
 		DB:  DefaultDB,
-		Grants: []config.Role{
-			config.RoleAdmin,
-		},
 	}
 }
 
