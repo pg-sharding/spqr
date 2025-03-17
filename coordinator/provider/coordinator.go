@@ -29,6 +29,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/rulemgr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -196,6 +197,7 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 const defaultWatchRouterTimeout = time.Second
 
 type qdbCoordinator struct {
+	rmgr      rulemgr.RulesMgr
 	tlsconfig *tls.Config
 	db        qdb.XQDB
 	cache     *cache.SchemaCache
@@ -314,6 +316,7 @@ func NewCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*qdbCoordinator, error)
 	return &qdbCoordinator{
 		db:        db,
 		tlsconfig: tlsconfig,
+		rmgr:      rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
 	}, nil
 }
 
@@ -1876,19 +1879,24 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) 
 		Bool("ssl", tlsconfig != nil).
 		Msg("init client connection OK")
 
-	var authRule *config.AuthCfg
-	if config.CoordinatorConfig().Auth != nil {
-		authRule = config.CoordinatorConfig().Auth
-	} else {
-		spqrlog.Zero.Warn().Msg("ATTENTION! Skipping auth checking!")
-		authRule = &config.AuthCfg{
-			Method: config.AuthOK,
+	// match client to frontend rule
+	key := *route.NewRouteKey(cl.Usr(), cl.DB())
+	frRule, err := qc.rmgr.MatchKeyFrontend(key)
+	if err != nil {
+		for _, msg := range []pgproto3.BackendMessage{
+			&pgproto3.ErrorResponse{
+				Severity: "ERROR",
+				Message:  err.Error(),
+			},
+		} {
+			if err := cl.Send(msg); err != nil {
+				return nil, fmt.Errorf("failed to make route failure response: %w", err)
+			}
 		}
+		return nil, err
 	}
 
-	if err := cl.AssignRule(&config.FrontendRule{
-		AuthRule: authRule,
-	}); err != nil {
+	if err := cl.AssignRule(frRule); err != nil {
 		return nil, err
 	}
 

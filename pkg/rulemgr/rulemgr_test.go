@@ -28,6 +28,15 @@ func TestParseRules(t *testing.T) {
 			wantDefaultBR:     nil,
 		},
 		{
+			name:              "nil rules",
+			frontendRules:     nil,
+			backendRules:      nil,
+			wantFrontendRules: map[route.Key]*config.FrontendRule{},
+			wantBackendRules:  map[route.Key]*config.BackendRule{},
+			wantDefaultFR:     nil,
+			wantDefaultBR:     nil,
+		},
+		{
 			name: "single rules with defaults",
 			frontendRules: []*config.FrontendRule{
 				{
