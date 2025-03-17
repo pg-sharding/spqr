@@ -96,37 +96,6 @@ func (r *RuleRouterImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
 }
 
 // TODO : unit tests
-func ParseRules(rcfg *config.Router) (map[route.Key]*config.FrontendRule, map[route.Key]*config.BackendRule, *config.FrontendRule, *config.BackendRule) {
-	frontendRules := map[route.Key]*config.FrontendRule{}
-	var defaultFrontendRule *config.FrontendRule
-	for _, frontendRule := range rcfg.FrontendRules {
-		if frontendRule.PoolDefault {
-			defaultFrontendRule = frontendRule
-			continue
-		}
-		spqrlog.Zero.Debug().
-			Str("db", frontendRule.DB).
-			Str("user", frontendRule.Usr).
-			Msg("adding frontend rule")
-		key := *route.NewRouteKey(frontendRule.Usr, frontendRule.DB)
-		frontendRules[key] = frontendRule
-	}
-
-	backendRules := map[route.Key]*config.BackendRule{}
-	var defaultBackendRule *config.BackendRule
-	for _, backendRule := range rcfg.BackendRules {
-		if backendRule.PoolDefault {
-			defaultBackendRule = backendRule
-			continue
-		}
-		key := *route.NewRouteKey(backendRule.Usr, backendRule.DB)
-		backendRules[key] = backendRule
-	}
-
-	return frontendRules, backendRules, defaultFrontendRule, defaultBackendRule
-}
-
-// TODO : unit tests
 func (r *RuleRouterImpl) Reload(configPath string) error {
 	/*
 			* Reload config changes:
@@ -153,8 +122,7 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 
 	spqrlog.ReloadLogger(rcfg.LogFileName, rcfg.LogLevel, rcfg.PrettyLogging)
 
-	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(rcfg)
-	r.rmgr.Reload(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule)
+	r.rmgr.Reload(rcfg.FrontendRules, rcfg.BackendRules)
 
 	if r.notifier != nil {
 		if err = r.notifier.Ready(); err != nil {
@@ -177,11 +145,10 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 }
 
 func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.Notifier) *RuleRouterImpl {
-	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(rcfg)
 	return &RuleRouterImpl{
 		routePool: NewRouterPoolImpl(rcfg.ShardMapping),
 		rcfg:      rcfg,
-		rmgr:      rulemgr.NewMgr(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule),
+		rmgr:      rulemgr.NewMgr(rcfg.FrontendRules, rcfg.BackendRules),
 		tlsconfig: tlsconfig,
 		clmp:      sync.Map{},
 		notifier:  notifier,

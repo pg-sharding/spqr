@@ -16,11 +16,7 @@ type MatchMgr[T any] interface {
 type RulesMgr interface {
 	MatchKeyFrontend(key route.Key) (*config.FrontendRule, error)
 	MatchKeyBackend(key route.Key) (*config.BackendRule, error)
-
-	Reload(frmp map[route.Key]*config.FrontendRule,
-		bemp map[route.Key]*config.BackendRule,
-		dfr *config.FrontendRule,
-		dbe *config.BackendRule)
+	Reload(frules []*config.FrontendRule, brules []*config.BackendRule)
 }
 
 type RulesMgrImpl struct {
@@ -30,51 +26,52 @@ type RulesMgrImpl struct {
 }
 
 // TODO : unit tests
-func (F *RulesMgrImpl) Reload(frmp map[route.Key]*config.FrontendRule, bemp map[route.Key]*config.BackendRule, dfr *config.FrontendRule, dbe *config.BackendRule) {
+func (F *RulesMgrImpl) Reload(frules []*config.FrontendRule, brules []*config.BackendRule) {
+	mapFR, mapBE, defaultFR, defaultBE := parseRules(frules, brules)
 	F.mu.Lock()
 	defer F.mu.Unlock()
 
 	fe := &MgrImpl[config.FrontendRule]{
-		rule: frmp,
+		rule: mapFR,
 		defaultRuleAllocator: func(key route.Key) *config.FrontendRule {
-			if dfr == nil {
+			if defaultFR == nil {
 				return nil
 			}
 			spqrlog.Zero.Debug().
-				Str("db", dfr.DB).
-				Str("user", dfr.Usr).
+				Str("db", defaultFR.DB).
+				Str("user", defaultFR.Usr).
 				Msg("generating new dynamic rule")
 			return &config.FrontendRule{
 				DB:                    key.DB(),
 				Usr:                   key.Usr(),
-				SearchPath:            dfr.SearchPath,
-				AuthRule:              dfr.AuthRule,
-				PoolMode:              dfr.PoolMode,
-				PoolDiscard:           dfr.PoolDiscard,
-				PoolRollback:          dfr.PoolRollback,
-				PoolPreparedStatement: dfr.PoolPreparedStatement,
-				PoolDefault:           dfr.PoolDefault,
+				SearchPath:            defaultFR.SearchPath,
+				AuthRule:              defaultFR.AuthRule,
+				PoolMode:              defaultFR.PoolMode,
+				PoolDiscard:           defaultFR.PoolDiscard,
+				PoolRollback:          defaultFR.PoolRollback,
+				PoolPreparedStatement: defaultFR.PoolPreparedStatement,
+				PoolDefault:           defaultFR.PoolDefault,
 			}
 		},
 	}
 
 	be := &MgrImpl[config.BackendRule]{
-		rule: bemp,
+		rule: mapBE,
 		defaultRuleAllocator: func(key route.Key) *config.BackendRule {
-			if dbe == nil {
+			if defaultBE == nil {
 				return nil
 			}
 			return &config.BackendRule{
 				DB:                key.DB(),
 				Usr:               key.Usr(),
-				AuthRules:         dbe.AuthRules,
-				DefaultAuthRule:   dbe.DefaultAuthRule,
-				PoolDefault:       dbe.PoolDefault,
-				ConnectionLimit:   dbe.ConnectionLimit,
-				ConnectionRetries: dbe.ConnectionRetries,
-				ConnectionTimeout: dbe.ConnectionTimeout,
-				KeepAlive:         dbe.KeepAlive,
-				TcpUserTimeout:    dbe.TcpUserTimeout,
+				AuthRules:         defaultBE.AuthRules,
+				DefaultAuthRule:   defaultBE.DefaultAuthRule,
+				PoolDefault:       defaultBE.PoolDefault,
+				ConnectionLimit:   defaultBE.ConnectionLimit,
+				ConnectionRetries: defaultBE.ConnectionRetries,
+				ConnectionTimeout: defaultBE.ConnectionTimeout,
+				KeepAlive:         defaultBE.KeepAlive,
+				TcpUserTimeout:    defaultBE.TcpUserTimeout,
 			}
 		},
 	}
@@ -117,49 +114,79 @@ func (m *MgrImpl[T]) MatchKey(key route.Key, underlyingEntityName string) (*T, e
 		" route for user:%s and db:%s is unconfigured in %s", key.Usr(), key.DB(), underlyingEntityName)
 }
 
-func NewMgr(frmp map[route.Key]*config.FrontendRule,
-	bemp map[route.Key]*config.BackendRule,
-	dfr *config.FrontendRule,
-	dbe *config.BackendRule) RulesMgr {
-	fe := &MgrImpl[config.FrontendRule]{
-		rule: frmp,
-		defaultRuleAllocator: func(key route.Key) *config.FrontendRule {
-			if dfr == nil {
-				return nil
-			}
-			// TODO add missing fields
-			return &config.FrontendRule{
-				Usr:                   key.Usr(),
-				DB:                    key.DB(),
-				AuthRule:              dfr.AuthRule,
-				PoolMode:              dfr.PoolMode,
-				PoolPreparedStatement: dfr.PoolPreparedStatement,
-			}
-		},
+// TODO : unit tests
+func parseRules(cfgFrontendRules []*config.FrontendRule, cfgBackendRules []*config.BackendRule) (map[route.Key]*config.FrontendRule, map[route.Key]*config.BackendRule, *config.FrontendRule, *config.BackendRule) {
+	frontendRules := map[route.Key]*config.FrontendRule{}
+	var defaultFrontendRule *config.FrontendRule
+	for _, frontendRule := range cfgFrontendRules {
+		if frontendRule.PoolDefault {
+			defaultFrontendRule = frontendRule
+			continue
+		}
+		spqrlog.Zero.Debug().
+			Str("db", frontendRule.DB).
+			Str("user", frontendRule.Usr).
+			Msg("adding frontend rule")
+		key := *route.NewRouteKey(frontendRule.Usr, frontendRule.DB)
+		frontendRules[key] = frontendRule
 	}
 
-	be := &MgrImpl[config.BackendRule]{
-		rule: bemp,
-		defaultRuleAllocator: func(key route.Key) *config.BackendRule {
-			if dbe == nil {
-				return nil
-			}
-			// TODO add missing fields
-			return &config.BackendRule{
-				Usr:               key.Usr(),
-				DB:                key.DB(),
-				AuthRules:         dbe.AuthRules,
-				DefaultAuthRule:   dbe.DefaultAuthRule,
-				ConnectionLimit:   dbe.ConnectionLimit,
-				ConnectionRetries: dbe.ConnectionRetries,
-				ConnectionTimeout: dbe.ConnectionTimeout,
-			}
-		},
+	backendRules := map[route.Key]*config.BackendRule{}
+	var defaultBackendRule *config.BackendRule
+	for _, backendRule := range cfgBackendRules {
+		if backendRule.PoolDefault {
+			defaultBackendRule = backendRule
+			continue
+		}
+		key := *route.NewRouteKey(backendRule.Usr, backendRule.DB)
+		backendRules[key] = backendRule
 	}
 
+	return frontendRules, backendRules, defaultFrontendRule, defaultBackendRule
+}
+
+// func NewMgr(frmp map[route.Key]*config.FrontendRule,
+//
+//	bemp map[route.Key]*config.BackendRule,
+//	dfr *config.FrontendRule,
+//	dbe *config.BackendRule) RulesMgr {
+func NewMgr(frules []*config.FrontendRule, brules []*config.BackendRule) RulesMgr {
+	frmp, bemp, dfr, dbr := parseRules(frules, brules)
 	return &RulesMgrImpl{
-		fe: fe,
-		be: be,
+		fe: &MgrImpl[config.FrontendRule]{
+			rule: frmp,
+			defaultRuleAllocator: func(key route.Key) *config.FrontendRule {
+				if dfr == nil {
+					return nil
+				}
+				// TODO add missing fields
+				return &config.FrontendRule{
+					Usr:                   key.Usr(),
+					DB:                    key.DB(),
+					AuthRule:              dfr.AuthRule,
+					PoolMode:              dfr.PoolMode,
+					PoolPreparedStatement: dfr.PoolPreparedStatement,
+				}
+			},
+		},
+		be: &MgrImpl[config.BackendRule]{
+			rule: bemp,
+			defaultRuleAllocator: func(key route.Key) *config.BackendRule {
+				if dbr == nil {
+					return nil
+				}
+				// TODO add missing fields
+				return &config.BackendRule{
+					Usr:               key.Usr(),
+					DB:                key.DB(),
+					AuthRules:         dbr.AuthRules,
+					DefaultAuthRule:   dbr.DefaultAuthRule,
+					ConnectionLimit:   dbr.ConnectionLimit,
+					ConnectionRetries: dbr.ConnectionRetries,
+					ConnectionTimeout: dbr.ConnectionTimeout,
+				}
+			},
+		},
 	}
 }
 
