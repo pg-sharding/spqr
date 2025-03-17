@@ -114,7 +114,6 @@ func (m *MgrImpl[T]) MatchKey(key route.Key, underlyingEntityName string) (*T, e
 		" route for user:%s and db:%s is unconfigured in %s", key.Usr(), key.DB(), underlyingEntityName)
 }
 
-// TODO : unit tests
 func parseRules(cfgFrontendRules []*config.FrontendRule, cfgBackendRules []*config.BackendRule) (map[route.Key]*config.FrontendRule, map[route.Key]*config.BackendRule, *config.FrontendRule, *config.BackendRule) {
 	frontendRules := map[route.Key]*config.FrontendRule{}
 	var defaultFrontendRule *config.FrontendRule
