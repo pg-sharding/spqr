@@ -19,12 +19,12 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/pool"
+	"github.com/pg-sharding/spqr/pkg/rulemgr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	rclient "github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
-	"github.com/pg-sharding/spqr/router/rule"
 	notifier "github.com/pg-sharding/spqr/router/sdnotifier"
 	"github.com/pkg/errors"
 )
@@ -49,7 +49,7 @@ type RuleRouter interface {
 
 type RuleRouterImpl struct {
 	routePool RoutePool
-	rmgr      rule.RulesMgr
+	rmgr      rulemgr.RulesMgr
 
 	tlsconfig *tls.Config
 
@@ -181,7 +181,7 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.No
 	return &RuleRouterImpl{
 		routePool: NewRouterPoolImpl(rcfg.ShardMapping),
 		rcfg:      rcfg,
-		rmgr:      rule.NewMgr(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule),
+		rmgr:      rulemgr.NewMgr(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule),
 		tlsconfig: tlsconfig,
 		clmp:      sync.Map{},
 		notifier:  notifier,
