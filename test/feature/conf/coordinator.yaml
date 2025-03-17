@@ -4,6 +4,9 @@ grpc_api_port: 7003
 qdb_addr: '[regress_qdb_0_1]:2379'
 log_level: info
 shard_data: '/spqr/test/feature/conf/shard_data.yaml'
-auth:
-  auth_method: clear_text
-  password: password
+frontend_rules:
+  - db: regress
+    usr: regress
+    auth_rule:
+      auth_method: clear_text
+      password: password
