@@ -1,4 +1,4 @@
-package rule
+package rulemgr
 
 import (
 	"fmt"
