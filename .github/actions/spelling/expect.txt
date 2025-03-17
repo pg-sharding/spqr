@@ -79,6 +79,7 @@ datname
 dbe
 dbi
 dbpool
+dbr
 dbtpcc
 dcd
 ddl
@@ -140,6 +141,7 @@ FQRN
 frmp
 frrule
 frsm
+frules
 gcflags
 getconn
 gettime
