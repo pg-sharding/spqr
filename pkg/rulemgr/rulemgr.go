@@ -144,11 +144,6 @@ func parseRules(cfgFrontendRules []*config.FrontendRule, cfgBackendRules []*conf
 	return frontendRules, backendRules, defaultFrontendRule, defaultBackendRule
 }
 
-// func NewMgr(frmp map[route.Key]*config.FrontendRule,
-//
-//	bemp map[route.Key]*config.BackendRule,
-//	dfr *config.FrontendRule,
-//	dbe *config.BackendRule) RulesMgr {
 func NewMgr(frules []*config.FrontendRule, brules []*config.BackendRule) RulesMgr {
 	frmp, bemp, dfr, dbr := parseRules(frules, brules)
 	return &RulesMgrImpl{
