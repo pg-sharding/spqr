@@ -671,6 +671,7 @@ func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*D
 			ds.Relations[r.Name] = &DistributedRelation{
 				Name:            r.Name,
 				DistributionKey: r.DistributionKey,
+				Sequences:       r.Sequences,
 			}
 			q.RelationDistribution[r.Name] = id
 			if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, r.Name, id)); err != nil {
