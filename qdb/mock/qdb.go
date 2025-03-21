@@ -98,32 +98,32 @@ func (mr *MockShardingSchemaKeeperMockRecorder) UpdateKeyRangeMoveStatus(ctx, mo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateKeyRangeMoveStatus", reflect.TypeOf((*MockShardingSchemaKeeper)(nil).UpdateKeyRangeMoveStatus), ctx, moveId, s)
 }
 
-// MockTopolodyKeeper is a mock of TopolodyKeeper interface.
-type MockTopolodyKeeper struct {
+// MockTopologyKeeper is a mock of TopologyKeeper interface.
+type MockTopologyKeeper struct {
 	ctrl     *gomock.Controller
-	recorder *MockTopolodyKeeperMockRecorder
+	recorder *MockTopologyKeeperMockRecorder
 	isgomock struct{}
 }
 
-// MockTopolodyKeeperMockRecorder is the mock recorder for MockTopolodyKeeper.
-type MockTopolodyKeeperMockRecorder struct {
-	mock *MockTopolodyKeeper
+// MockTopologyKeeperMockRecorder is the mock recorder for MockTopologyKeeper.
+type MockTopologyKeeperMockRecorder struct {
+	mock *MockTopologyKeeper
 }
 
-// NewMockTopolodyKeeper creates a new mock instance.
-func NewMockTopolodyKeeper(ctrl *gomock.Controller) *MockTopolodyKeeper {
-	mock := &MockTopolodyKeeper{ctrl: ctrl}
-	mock.recorder = &MockTopolodyKeeperMockRecorder{mock}
+// NewMockTopologyKeeper creates a new mock instance.
+func NewMockTopologyKeeper(ctrl *gomock.Controller) *MockTopologyKeeper {
+	mock := &MockTopologyKeeper{ctrl: ctrl}
+	mock.recorder = &MockTopologyKeeperMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockTopolodyKeeper) EXPECT() *MockTopolodyKeeperMockRecorder {
+func (m *MockTopologyKeeper) EXPECT() *MockTopologyKeeperMockRecorder {
 	return m.recorder
 }
 
 // AddRouter mocks base method.
-func (m *MockTopolodyKeeper) AddRouter(ctx context.Context, r *qdb.Router) error {
+func (m *MockTopologyKeeper) AddRouter(ctx context.Context, r *qdb.Router) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddRouter", ctx, r)
 	ret0, _ := ret[0].(error)
@@ -131,13 +131,13 @@ func (m *MockTopolodyKeeper) AddRouter(ctx context.Context, r *qdb.Router) error
 }
 
 // AddRouter indicates an expected call of AddRouter.
-func (mr *MockTopolodyKeeperMockRecorder) AddRouter(ctx, r any) *gomock.Call {
+func (mr *MockTopologyKeeperMockRecorder) AddRouter(ctx, r any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddRouter", reflect.TypeOf((*MockTopolodyKeeper)(nil).AddRouter), ctx, r)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddRouter", reflect.TypeOf((*MockTopologyKeeper)(nil).AddRouter), ctx, r)
 }
 
 // CloseRouter mocks base method.
-func (m *MockTopolodyKeeper) CloseRouter(ctx context.Context, rID string) error {
+func (m *MockTopologyKeeper) CloseRouter(ctx context.Context, rID string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CloseRouter", ctx, rID)
 	ret0, _ := ret[0].(error)
@@ -145,13 +145,13 @@ func (m *MockTopolodyKeeper) CloseRouter(ctx context.Context, rID string) error 
 }
 
 // CloseRouter indicates an expected call of CloseRouter.
-func (mr *MockTopolodyKeeperMockRecorder) CloseRouter(ctx, rID any) *gomock.Call {
+func (mr *MockTopologyKeeperMockRecorder) CloseRouter(ctx, rID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseRouter", reflect.TypeOf((*MockTopolodyKeeper)(nil).CloseRouter), ctx, rID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseRouter", reflect.TypeOf((*MockTopologyKeeper)(nil).CloseRouter), ctx, rID)
 }
 
 // DeleteRouter mocks base method.
-func (m *MockTopolodyKeeper) DeleteRouter(ctx context.Context, rID string) error {
+func (m *MockTopologyKeeper) DeleteRouter(ctx context.Context, rID string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteRouter", ctx, rID)
 	ret0, _ := ret[0].(error)
@@ -159,13 +159,13 @@ func (m *MockTopolodyKeeper) DeleteRouter(ctx context.Context, rID string) error
 }
 
 // DeleteRouter indicates an expected call of DeleteRouter.
-func (mr *MockTopolodyKeeperMockRecorder) DeleteRouter(ctx, rID any) *gomock.Call {
+func (mr *MockTopologyKeeperMockRecorder) DeleteRouter(ctx, rID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRouter", reflect.TypeOf((*MockTopolodyKeeper)(nil).DeleteRouter), ctx, rID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRouter", reflect.TypeOf((*MockTopologyKeeper)(nil).DeleteRouter), ctx, rID)
 }
 
 // ListRouters mocks base method.
-func (m *MockTopolodyKeeper) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
+func (m *MockTopologyKeeper) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListRouters", ctx)
 	ret0, _ := ret[0].([]*qdb.Router)
@@ -174,13 +174,13 @@ func (m *MockTopolodyKeeper) ListRouters(ctx context.Context) ([]*qdb.Router, er
 }
 
 // ListRouters indicates an expected call of ListRouters.
-func (mr *MockTopolodyKeeperMockRecorder) ListRouters(ctx any) *gomock.Call {
+func (mr *MockTopologyKeeperMockRecorder) ListRouters(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRouters", reflect.TypeOf((*MockTopolodyKeeper)(nil).ListRouters), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRouters", reflect.TypeOf((*MockTopologyKeeper)(nil).ListRouters), ctx)
 }
 
 // OpenRouter mocks base method.
-func (m *MockTopolodyKeeper) OpenRouter(ctx context.Context, rID string) error {
+func (m *MockTopologyKeeper) OpenRouter(ctx context.Context, rID string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "OpenRouter", ctx, rID)
 	ret0, _ := ret[0].(error)
@@ -188,9 +188,9 @@ func (m *MockTopolodyKeeper) OpenRouter(ctx context.Context, rID string) error {
 }
 
 // OpenRouter indicates an expected call of OpenRouter.
-func (mr *MockTopolodyKeeperMockRecorder) OpenRouter(ctx, rID any) *gomock.Call {
+func (mr *MockTopologyKeeperMockRecorder) OpenRouter(ctx, rID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenRouter", reflect.TypeOf((*MockTopolodyKeeper)(nil).OpenRouter), ctx, rID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenRouter", reflect.TypeOf((*MockTopologyKeeper)(nil).OpenRouter), ctx, rID)
 }
 
 // MockDistributedXactKepper is a mock of DistributedXactKepper interface.

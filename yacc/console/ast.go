@@ -257,6 +257,7 @@ type DistributedRelation struct {
 	Name               string
 	DistributionKey    []DistributionKeyEntry
 	ReplicatedRelation bool
+	Sequences          []string
 }
 
 type AttachRelation struct {
