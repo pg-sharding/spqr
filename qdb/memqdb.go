@@ -29,6 +29,7 @@ type MemQDB struct {
 	MoveTaskGroup        *MoveTaskGroup                      `json:"taskGroup"`
 	RedistributeTask     *RedistributeTask                   `json:"redistributeTask"`
 	BalancerTask         *BalancerTask                       `json:"balancerTask"`
+	Sequences            map[string]*Sequence                `json:"sequences"`
 
 	backupPath string
 	/* caches */
@@ -46,6 +47,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		RelationDistribution: map[string]string{},
 		Routers:              map[string]*Router{},
 		Transactions:         map[string]*DataTransferTransaction{},
+		Sequences:            map[string]*Sequence{},
 
 		backupPath: backupPath,
 	}, nil
@@ -655,7 +657,7 @@ func (q *MemQDB) DropDistribution(_ context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*DistributedRelation) error {
+func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: attach table to distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -666,6 +668,15 @@ func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*D
 		for _, r := range rels {
 			if _, ok := q.RelationDistribution[r.Name]; ok {
 				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", r.Name)
+			}
+
+			for _, colName := range r.Sequences {
+				if err := q.CreateSequence(ctx, &Sequence{
+					RelName: r.Name,
+					ColName: colName,
+				}); err != nil {
+					return err
+				}
 			}
 
 			ds.Relations[r.Name] = &DistributedRelation{
@@ -681,6 +692,44 @@ func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*D
 
 		return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds))
 	}
+}
+
+func (q *MemQDB) CreateSequence(_ context.Context, seq *Sequence) error {
+	spqrlog.Zero.Debug().Interface("sequence", seq).Msg("memqdb: add sequence")
+	key := fmt.Sprintf("%s_%s", seq.RelName, seq.ColName)
+
+	q.mu.RLock()
+	if _, ok := q.Sequences[key]; ok {
+		q.mu.RUnlock()
+		return fmt.Errorf("already exists")
+	}
+	q.mu.RUnlock()
+
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Sequences, key, seq))
+}
+
+func (q *MemQDB) ListAllSequences(_ context.Context) ([]*Sequence, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: list all sequences")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	var ret []*Sequence
+
+	for _, el := range q.Sequences {
+		ret = append(ret, el)
+	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		if ret[i].RelName == ret[j].RelName {
+			return ret[i].ColName < ret[j].ColName
+		}
+		return ret[i].RelName < ret[j].RelName
+	})
+
+	return ret, nil
 }
 
 // TODO: unit tests

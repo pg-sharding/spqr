@@ -297,6 +297,7 @@ const (
 	PreparedStatementsStr = "prepared_statements"
 	UnsupportedStr        = "unsupported"
 	QuantilesStr          = "time_quantiles"
+	SequencesStr          = "sequences"
 )
 
 const (

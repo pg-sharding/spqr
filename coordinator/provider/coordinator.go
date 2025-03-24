@@ -24,6 +24,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -2151,6 +2152,20 @@ func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string
 			Msg("attach relation response")
 		return nil
 	})
+}
+
+func (qc *qdbCoordinator) ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error) {
+	seqs, err := qc.db.ListAllSequences(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := make([]*sequences.Sequence, 0, len(seqs))
+	for _, seq := range seqs {
+		ret = append(ret, sequences.SequenceFromDB(seq))
+	}
+
+	return ret, nil
 }
 
 // AlterDistributionDetach detaches relation from distribution

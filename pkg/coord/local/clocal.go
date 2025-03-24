@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -927,6 +928,18 @@ func (lc *LocalCoordinator) QDB() qdb.QDB {
 
 func (lc *LocalCoordinator) Cache() *cache.SchemaCache {
 	return lc.cache
+}
+
+func (lc *LocalCoordinator) ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error) {
+	seqs, err := lc.qdb.ListAllSequences(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ret := make([]*sequences.Sequence, 0, len(seqs))
+	for _, seq := range seqs {
+		ret = append(ret, sequences.SequenceFromDB(seq))
+	}
+	return ret, nil
 }
 
 // NewLocalCoordinator creates a new LocalCoordinator instance.

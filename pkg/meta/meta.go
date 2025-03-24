@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -34,6 +35,7 @@ type EntityMgr interface {
 	topology.ShardsMgr
 	distributions.DistributionMgr
 	tasks.TaskMgr
+	ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error)
 
 	ShareKeyRange(id string) error
 
@@ -321,12 +323,14 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 	case *spqrparser.AttachRelation:
 
 		rels := []*distributions.DistributedRelation{}
+		seqs := []*sequences.Sequence{}
 
 		for _, drel := range stmt.Relations {
 			if stmt.Distribution.Replicated && !drel.ReplicatedRelation {
 				return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "non replicated relation should be attached to non replicated distribution")
 			}
 			rels = append(rels, distributions.DistributedRelationFromSQL(drel))
+			seqs = append(seqs, sequences.SequencesFromSQL(drel)...)
 		}
 		var selectedDistribId string
 
@@ -636,6 +640,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.PreparedStatements(ctx, resp)
 	case spqrparser.QuantilesStr:
 		return cli.Quantiles(ctx)
+	case spqrparser.SequencesStr:
+		seqs, err := mngr.ListAllSequences(ctx)
+		if err != nil {
+			return err
+		}
+		return cli.Sequences(ctx, seqs)
 	default:
 		return unknownCoordinatorCommand
 	}

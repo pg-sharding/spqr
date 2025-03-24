@@ -15,6 +15,7 @@ import (
 
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
+	sequences "github.com/pg-sharding/spqr/pkg/models/sequences"
 	tasks "github.com/pg-sharding/spqr/pkg/models/tasks"
 	topology "github.com/pg-sharding/spqr/pkg/models/topology"
 	qdb "github.com/pg-sharding/spqr/qdb"
@@ -332,6 +333,21 @@ func (m *MockEntityMgr) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, e
 func (mr *MockEntityMgrMockRecorder) ListAllKeyRanges(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllKeyRanges", reflect.TypeOf((*MockEntityMgr)(nil).ListAllKeyRanges), ctx)
+}
+
+// ListAllSequences mocks base method.
+func (m *MockEntityMgr) ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAllSequences", ctx)
+	ret0, _ := ret[0].([]*sequences.Sequence)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAllSequences indicates an expected call of ListAllSequences.
+func (mr *MockEntityMgrMockRecorder) ListAllSequences(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllSequences", reflect.TypeOf((*MockEntityMgr)(nil).ListAllSequences), ctx)
 }
 
 // ListDistributions mocks base method.

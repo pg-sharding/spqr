@@ -60,6 +60,7 @@ const (
 	redistributeTaskPath     = "/redistribute_task/"
 	balancerTaskPath         = "/balancer_task/"
 	transactionNamespace     = "/transfer_txs/"
+	sequenceNamespace        = "/sequences/"
 
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
@@ -100,6 +101,10 @@ func (q *EtcdQDB) Client() *clientv3.Client {
 
 func transferTxNodePath(key string) string {
 	return path.Join(transactionNamespace, key)
+}
+
+func sequenceNodePath(relName, colName string) string {
+	return path.Join(sequenceNamespace, relName, colName)
 }
 
 // ==============================================================================
@@ -1019,6 +1024,16 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 		}
 		distribution.Relations[rel.Name] = rel
 
+		for _, colName := range rel.Sequences {
+			err := q.CreateSequence(ctx, Sequence{
+				RelName: rel.Name,
+				ColName: colName,
+			})
+			if err != nil {
+				return err
+			}
+		}
+
 		_, err := q.GetRelationDistribution(ctx, rel.Name)
 		switch e := err.(type) {
 		case *spqrerror.SpqrError:
@@ -1041,6 +1056,33 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 	err = q.CreateDistribution(ctx, distribution)
 
 	return err
+}
+
+func (q *EtcdQDB) CreateSequence(ctx context.Context, seq Sequence) error {
+	spqrlog.Zero.Debug().
+		Interface("sequence", seq).
+		Msg("etcdqdb: add sequence")
+
+	rawSequence, err := json.Marshal(seq)
+
+	if err != nil {
+		return err
+	}
+
+	resp, err := q.cli.Put(ctx, sequenceNodePath(seq.RelName, seq.ColName), string(rawSequence))
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: put sequence to qdb")
+
+	return err
+}
+
+func (q *EtcdQDB) GetSequence(ctx context.Context, seqName string) (*Sequence, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
 // TODO: unit tests
@@ -1357,4 +1399,37 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 	_, err = q.cli.Delete(ctx, keyRangeMovesNodePath(moveId))
 
 	return err
+}
+
+func (q *EtcdQDB) ListAllSequences(ctx context.Context) ([]*Sequence, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: list all sequences")
+
+	resp, err := q.cli.Get(ctx, sequenceNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []*Sequence
+
+	for _, e := range resp.Kvs {
+		var seq Sequence
+
+		if err := json.Unmarshal(e.Value, &seq); err != nil {
+			return nil, err
+		}
+		ret = append(ret, &seq)
+	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		if ret[i].RelName == ret[j].RelName {
+			return ret[i].ColName < ret[j].ColName
+		}
+		return ret[i].RelName < ret[j].RelName
+	})
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: list all sequences")
+
+	return ret, nil
 }
