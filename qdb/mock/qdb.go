@@ -560,6 +560,21 @@ func (mr *MockQDBMockRecorder) ListAllKeyRanges(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllKeyRanges", reflect.TypeOf((*MockQDB)(nil).ListAllKeyRanges), arg0)
 }
 
+// ListAllSequences mocks base method.
+func (m *MockQDB) ListAllSequences(ctx context.Context) ([]*qdb.Sequence, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAllSequences", ctx)
+	ret0, _ := ret[0].([]*qdb.Sequence)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAllSequences indicates an expected call of ListAllSequences.
+func (mr *MockQDBMockRecorder) ListAllSequences(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllSequences", reflect.TypeOf((*MockQDB)(nil).ListAllSequences), ctx)
+}
+
 // ListDistributions mocks base method.
 func (m *MockQDB) ListDistributions(ctx context.Context) ([]*qdb.Distribution, error) {
 	m.ctrl.T.Helper()
@@ -1143,6 +1158,21 @@ func (m *MockXQDB) ListAllKeyRanges(arg0 context.Context) ([]*qdb.KeyRange, erro
 func (mr *MockXQDBMockRecorder) ListAllKeyRanges(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllKeyRanges", reflect.TypeOf((*MockXQDB)(nil).ListAllKeyRanges), arg0)
+}
+
+// ListAllSequences mocks base method.
+func (m *MockXQDB) ListAllSequences(ctx context.Context) ([]*qdb.Sequence, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAllSequences", ctx)
+	ret0, _ := ret[0].([]*qdb.Sequence)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAllSequences indicates an expected call of ListAllSequences.
+func (mr *MockXQDBMockRecorder) ListAllSequences(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllSequences", reflect.TypeOf((*MockXQDB)(nil).ListAllSequences), ctx)
 }
 
 // ListDistributions mocks base method.

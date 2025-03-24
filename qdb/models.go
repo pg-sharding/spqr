@@ -136,3 +136,8 @@ type BalancerTask struct {
 	KeyCount  int64  `json:"keyCount"`
 	State     int    `json:"state"`
 }
+
+type Sequence struct {
+	RelName string `json:"rel_name"`
+	ColName string `json:"col_name"`
+}

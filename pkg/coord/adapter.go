@@ -2,11 +2,13 @@ package coord
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -935,4 +937,8 @@ func (a *Adapter) GetCoordinator(ctx context.Context) (string, error) {
 	c := proto.NewTopologyServiceClient(a.conn)
 	resp, err := c.GetCoordinator(ctx, nil)
 	return resp.Address, err
+}
+
+func (a *Adapter) ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error) {
+	return nil, fmt.Errorf("not implemented")
 }
