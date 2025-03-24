@@ -40,7 +40,8 @@ type RedistributeKeyRange struct {
 	KrId      string // KrId is the source key range id
 	ShardId   string // ShardId is the destination shard id
 	BatchSize int    // BatchSize is the amount of keys to be transferred in every transaction.
-	Check     bool   // if Check is set, we perform a dry-run, checking the ability to redistribute
+	Check     bool   // if Check is set, we perform a pre-run check for the ability to redistribute
+	Apply     bool   // if Apply is not set, command will be a dry-run
 }
 
 type KeyRangeMgr interface {

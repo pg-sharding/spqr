@@ -1543,14 +1543,19 @@ func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.Redi
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "incorrect batch size %d", req.BatchSize)
 	}
 	if req.Check {
-		return qc.checkKeyRangeMove(ctx, &kr.BatchMoveKeyRange{
+		if err := qc.checkKeyRangeMove(ctx, &kr.BatchMoveKeyRange{
 			KrId:      req.KrId,
 			ShardId:   req.ShardId,
 			BatchSize: req.BatchSize,
 			Limit:     -1,
 			DestKrId:  uuid.NewString(),
 			Type:      tasks.SplitRight,
-		})
+		}); err != nil {
+			return err
+		}
+	}
+	if !req.Apply {
+		return nil
 	}
 	ch := make(chan error)
 	execCtx := context.TODO()

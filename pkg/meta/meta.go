@@ -667,6 +667,7 @@ func processRedistribute(ctx context.Context, req *spqrparser.RedistributeKeyRan
 		ShardId:   req.DestShardID,
 		BatchSize: req.BatchSize,
 		Check:     req.Check,
+		Apply:     req.Apply,
 	}); err != nil {
 		return cli.ReportError(err)
 	}
