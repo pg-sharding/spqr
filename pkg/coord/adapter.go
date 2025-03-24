@@ -416,6 +416,7 @@ func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.Redistribute
 		ShardId:   req.ShardId,
 		BatchSize: int64(req.BatchSize),
 		Check:     req.Check,
+		Apply:     req.Apply,
 	})
 	return err
 }

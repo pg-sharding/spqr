@@ -94,6 +94,8 @@ func randomHex(n int) (string, error) {
 	opt_asc_desc		   OptAscDesc
 
 	group_clause		   GroupByClause
+
+	opt_batch_size         int
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -146,7 +148,7 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY
 %token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
@@ -228,6 +230,7 @@ func randomHex(n int) (string, error) {
 %type <unite> unite_key_range_stmt
 %type <register_router> register_router_stmt
 %type <unregister_router> unregister_router_stmt
+%type <opt_batch_size> opt_batch_size
 %start any_command
 
 %%
@@ -885,15 +888,17 @@ move_key_range_stmt:
 	}
 
 redistribute_key_range_stmt:
-	REDISTRIBUTE key_range_stmt TO any_id BATCH SIZE any_uint
+	REDISTRIBUTE key_range_stmt TO any_id opt_batch_size
 	{
-		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: int($7)}
-	} | REDISTRIBUTE key_range_stmt TO any_id
-	{
-		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: -1}
-	} | REDISTRIBUTE key_range_stmt TO any_id CHECK {
-		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: -1, Check: true}
+		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: $5, Check: true, Apply: true}
+	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size CHECK {
+		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: $5, Check: true}
+	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size APPLY {
+		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: $5, Apply: true}
 	}
+
+opt_batch_size: BATCH SIZE any_uint			{ $$ = int($3) }
+			| /*EMPTY*/						{ $$ = -1 }
 
 unite_key_range_stmt:
 	UNITE key_range_stmt WITH any_id
