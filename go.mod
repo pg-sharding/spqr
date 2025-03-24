@@ -21,7 +21,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pg-sharding/lyx v0.0.0-20250311105706-d0fbcde756d1
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.33.0
+	github.com/rs/zerolog v1.34.0
 	github.com/samborkent/uuidv7 v0.0.0-20231110121620-f2e19d87e48b
 	github.com/sevlyar/go-daemon v0.1.6
 	github.com/spaolacci/murmur3 v1.1.0
