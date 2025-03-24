@@ -166,6 +166,7 @@ type RedistributeKeyRange struct {
 	KeyRangeID  string
 	BatchSize   int
 	Check       bool
+	Apply       bool
 }
 
 type KeyRangeSelector struct {
