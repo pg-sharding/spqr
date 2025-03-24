@@ -77,10 +77,13 @@ MOVE KEY RANGE <keyRangeID> TO <shardID>
 
 `REDISTRIBUTE KEY RANGE` command is similar to `MOVE KEY RANGE`, but with one key difference: `REDISTRIBUTE` moves the key range in smaller chunks to minimize downtime for write operations.
 
-`BATCH SIZE` is an integer value that controls the number of keys moved in each batch during redistribution.
+`BATCH SIZE` is an integer value that controls the number of keys moved in each batch during redistribution. Default batch size is 500.
+
+You can also use optional keywords `CHECK` and `APPLY`. By default, command will check for the ability to move keys, then perform the actual movement. With `CHECK`, you can perform a dry-run.
+With `APPLY`, you can skip checks.
 
 ```sql
-REDISTRIBUTE KEY RANGE <keyRangeID> TO <shardID> BATCH SIZE <batchSize>;
+REDISTRIBUTE KEY RANGE <keyRangeID> TO <shardID> [ BATCH SIZE <batchSize> ] [ CHECK | APPLY ];
 ```
 
 ### SPLIT KEY RANGE
