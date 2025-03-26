@@ -833,30 +833,6 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
 	 */
 
-	paramsFormatCodes := rm.SPH.BindParamFormatCodes()
-	var queryParamsFormatCodes []int16
-
-	paramsLen := len(rm.SPH.BindParams())
-
-	// https://github.com/postgres/postgres/blob/master/src/backend/tcop/pquery.c#L635-L658
-	if len(paramsFormatCodes) > 1 {
-		queryParamsFormatCodes = paramsFormatCodes
-	} else if len(paramsFormatCodes) == 1 {
-
-		/* single format specified, use for all columns */
-		queryParamsFormatCodes = make([]int16, paramsLen)
-
-		for i := range paramsLen {
-			queryParamsFormatCodes[i] = paramsFormatCodes[0]
-		}
-	} else {
-		/* use default format for all columns */
-		queryParamsFormatCodes = make([]int16, paramsLen)
-		for i := range paramsLen {
-			queryParamsFormatCodes[i] = xproto.FormatCodeText
-		}
-	}
-
 	for rfqn := range rm.Rels {
 		// TODO: check by whole RFQN
 		ds, err := rm.GetRelationDistribution(ctx, rfqn)
@@ -877,51 +853,29 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 			return nil, false, fmt.Errorf("relation %s not found in distribution %s", rfqn.RelationName, ds.Id)
 		}
 
-		compositeKey := make([]interface{}, len(relation.DistributionKey))
+		rt, err := qr.routingTuples(rm, ds, rfqn, relation)
+		if err != nil {
+			return nil, false, err
+		}
 
 		// TODO: multi-column routing. This works only for one-dim routing
-		for i := range len(relation.DistributionKey) {
-			hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[i].HashFunction)
+		for _, tup := range rt {
+
+			currroute, err := rm.DeparseKeyWithRangesInternal(ctx, tup, krs)
 			if err != nil {
-				spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
-				break
+				spqrlog.Zero.Debug().Interface("composite key", tup).Err(err).Msg("encountered the route error")
+				return nil, false, err
 			}
 
-			col := relation.DistributionKey[i].Column
+			spqrlog.Zero.Debug().
+				Interface("currntroute", currroute).
+				Str("table", rfqn.RelationName).
+				Msg("calculated route for table/cols")
 
-			vals, valOk := qr.resolveValue(rm, rfqn, col, rm.SPH.BindParams(), queryParamsFormatCodes)
-
-			if !valOk {
-				break
-			}
-
-			/* TODO: correct support for composite keys here */
-
-			for _, val := range vals {
-				compositeKey[i], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[i], hf)
-				spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[i]).Msg("applying hash function on key")
-
-				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-					return nil, false, err
-				}
-
-				currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
-				if err != nil {
-					spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
-					return nil, false, err
-				}
-
-				spqrlog.Zero.Debug().
-					Interface("currroute", currroute).
-					Str("table", rfqn.RelationName).
-					Msg("calculated route for table/cols")
-
-				route = plan.Combine(route, plan.ShardDispatchPlan{
-					ExecTarget:         currroute,
-					TargetSessionAttrs: tsa,
-				})
-			}
+			route = plan.Combine(route, plan.ShardDispatchPlan{
+				ExecTarget:         currroute,
+				TargetSessionAttrs: tsa,
+			})
 		}
 	}
 
@@ -931,6 +885,72 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	}
 
 	return route, ro, nil
+}
+
+func (qr *ProxyQrouter) routingTuples(rm *rmeta.RoutingMetadataContext,
+	ds *distributions.Distribution, rfqn rfqn.RelationFQN, relation *distributions.DistributedRelation) ([][]interface{}, error) {
+	paramsFormatCodes := rm.SPH.BindParamFormatCodes()
+	var queryParamsFormatCodes []int16
+
+	paramsLen := len(rm.SPH.BindParams())
+
+	/*
+	* https://github.com/postgres/postgres/blob/c65bc2e1d14a2d4daed7c1921ac518f2c5ac3d17/src/backend/tcop/pquery.c#L664-L691
+	 */
+	if len(paramsFormatCodes) > 1 {
+		queryParamsFormatCodes = paramsFormatCodes
+	} else if len(paramsFormatCodes) == 1 {
+
+		/* single format specified, use for all columns */
+		queryParamsFormatCodes = make([]int16, paramsLen)
+
+		for i := range paramsLen {
+			queryParamsFormatCodes[i] = paramsFormatCodes[0]
+		}
+	} else {
+		/* use default format for all columns */
+		queryParamsFormatCodes = make([]int16, paramsLen)
+		for i := range paramsLen {
+			queryParamsFormatCodes[i] = xproto.FormatCodeText
+		}
+	}
+
+	tuples := make([][]interface{}, 0)
+
+	// TODO: multi-column routing. This works only for one-dim routing
+	for i := range len(relation.DistributionKey) {
+		hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[i].HashFunction)
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
+			return nil, err
+		}
+
+		col := relation.DistributionKey[i].Column
+
+		vals, valOk := qr.resolveValue(rm, rfqn, col, rm.SPH.BindParams(), queryParamsFormatCodes)
+
+		if !valOk {
+			break
+		}
+
+		/* TODO: correct support for composite keys here */
+
+		for _, val := range vals {
+			compositeKey := make([]interface{}, len(relation.DistributionKey))
+
+			compositeKey[i], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[i], hf)
+
+			if err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+				return nil, err
+			}
+
+			spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[i]).Msg("applying hash function on key")
+			tuples = append(tuples, compositeKey)
+		}
+	}
+
+	return tuples, nil
 }
 
 // TODO : unit tests
