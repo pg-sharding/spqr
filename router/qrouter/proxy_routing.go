@@ -62,127 +62,195 @@ func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation rfqn.RelationFQN
 	return nil
 }
 
+func (qr *ProxyQrouter) routingTuples(rm *rmeta.RoutingMetadataContext,
+	ds *distributions.Distribution, rfqn rfqn.RelationFQN, relation *distributions.DistributedRelation) ([][]interface{}, error) {
+	paramsFormatCodes := rm.SPH.BindParamFormatCodes()
+	var queryParamsFormatCodes []int16
+
+	paramsLen := len(rm.SPH.BindParams())
+
+	/*
+	* https://github.com/postgres/postgres/blob/c65bc2e1d14a2d4daed7c1921ac518f2c5ac3d17/src/backend/tcop/pquery.c#L664-L691
+	 */
+	if len(paramsFormatCodes) > 1 {
+		queryParamsFormatCodes = paramsFormatCodes
+	} else if len(paramsFormatCodes) == 1 {
+
+		/* single format specified, use for all columns */
+		queryParamsFormatCodes = make([]int16, paramsLen)
+
+		for i := range paramsLen {
+			queryParamsFormatCodes[i] = paramsFormatCodes[0]
+		}
+	} else {
+		/* use default format for all columns */
+		queryParamsFormatCodes = make([]int16, paramsLen)
+		for i := range paramsLen {
+			queryParamsFormatCodes[i] = xproto.FormatCodeText
+		}
+	}
+
+	tuples := make([][]interface{}, 0)
+
+	// TODO: multi-column routing. This works only for one-dim routing
+	for i := range len(relation.DistributionKey) {
+		hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[i].HashFunction)
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
+			return nil, err
+		}
+
+		col := relation.DistributionKey[i].Column
+
+		vals, valOk := qr.resolveValue(rm, rfqn, col, rm.SPH.BindParams(), queryParamsFormatCodes)
+
+		if !valOk {
+			break
+		}
+
+		/* TODO: correct support for composite keys here */
+
+		for _, val := range vals {
+			compositeKey := make([]interface{}, len(relation.DistributionKey))
+
+			compositeKey[i], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[i], hf)
+
+			if err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+				return nil, err
+			}
+
+			spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[i]).Msg("applying hash function on key")
+			tuples = append(tuples, compositeKey)
+		}
+	}
+
+	return tuples, nil
+}
+
 // routeByClause de-parses sharding column-value pair from Where clause of the query
 // TODO : unit tests
 func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingMetadataContext) error {
 
-	queue := make([]lyx.Node, 0)
-	queue = append(queue, expr)
+	switch texpr := expr.(type) {
+	case *lyx.AExprIn:
 
-	for len(queue) != 0 {
-		var curr lyx.Node
-		curr, queue = queue[len(queue)-1], queue[:len(queue)-1]
+		switch lft := texpr.Expr.(type) {
+		case *lyx.ColumnRef:
 
-		switch texpr := curr.(type) {
-		case *lyx.AExprIn:
+			alias, colname := lft.TableAlias, lft.ColName
 
-			switch lft := texpr.Expr.(type) {
-			case *lyx.ColumnRef:
-
-				alias, colname := lft.TableAlias, lft.ColName
-
-				switch q := texpr.SubLink.(type) {
-				case *lyx.AExprList:
-					for _, expr := range q.List {
-						if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
-							return err
-						}
-					}
-				case *lyx.Select:
-					/* TODO properly support subquery here */
-					/* SELECT * FROM t WHERE id IN (SELECT 1, 2) */
-
-					_ = qr.DeparseSelectStmt(ctx, q, meta)
-				}
-			}
-
-		case *lyx.AExprOp:
-
-			switch lft := texpr.Left.(type) {
-			case *lyx.ColumnRef:
-
-				alias, colname := lft.TableAlias, lft.ColName
-
-				/* simple key-value pair */
-				switch right := texpr.Right.(type) {
-				case *lyx.ParamRef, *lyx.AExprSConst, *lyx.AExprIConst:
-					// else  error out?
-
-					// TBD: postpone routing from here to root of parsing tree
-					// maybe extremely inefficient. Will be fixed in SPQR-2.0
-					if err := qr.processConstExpr(alias, colname, right, meta); err != nil {
+			switch q := texpr.SubLink.(type) {
+			case *lyx.AExprList:
+				for _, expr := range q.List {
+					if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
 						return err
 					}
-
-				case *lyx.AExprList:
-					for _, expr := range right.List {
-						if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
-							return err
-						}
-					}
-				case *lyx.FuncApplication:
-					// there are several types of queries like DELETE FROM rel WHERE colref = func_application
-					// and func_application is actually routable statement.
-					// ANY(ARRAY(subselect)) if one type.
-
-					if strings.ToLower(right.Name) == "any" {
-						if len(right.Args) > 0 {
-							// maybe we should consider not only first arg.
-							// however, consider only it
-
-							switch argexpr := right.Args[0].(type) {
-							case *lyx.SubLink:
-
-								// ignore all errors.
-								_ = qr.DeparseSelectStmt(ctx, argexpr.SubSelect, meta)
-							}
-						}
-					}
-
-				default:
-					queue = append(queue, texpr.Left, texpr.Right)
 				}
 			case *lyx.Select:
-				if err := qr.DeparseSelectStmt(ctx, lft, meta); err != nil {
+				/* TODO properly support subquery here */
+				/* SELECT * FROM t WHERE id IN (SELECT 1, 2) */
+
+				_ = qr.DeparseSelectStmt(ctx, q, meta)
+			}
+		}
+
+	case *lyx.AExprOp:
+
+		switch lft := texpr.Left.(type) {
+		case *lyx.ColumnRef:
+
+			alias, colname := lft.TableAlias, lft.ColName
+
+			/* simple key-value pair */
+			switch right := texpr.Right.(type) {
+			case *lyx.ParamRef, *lyx.AExprSConst, *lyx.AExprIConst:
+				// else  error out?
+
+				// TBD: postpone routing from here to root of parsing tree
+				// maybe extremely inefficient. Will be fixed in SPQR-2.0
+				if err := qr.processConstExpr(alias, colname, right, meta); err != nil {
 					return err
 				}
-			default:
-				if texpr.Left != nil {
-					queue = append(queue, texpr.Left)
-				}
-				if texpr.Right != nil {
-					queue = append(queue, texpr.Right)
-				}
-			}
-		case *lyx.ColumnRef:
-			/* colref = colref case, skip */
-		case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprBConst, *lyx.AExprNConst:
-			/* should not happen */
-		case *lyx.AExprEmpty:
-			/*skip*/
-		case *lyx.Select:
-			/* in engine v2 we skip subplans */
-		case *lyx.FuncApplication:
-			// there are several types of queries like DELETE FROM rel WHERE colref = func_application
-			// and func_application is actually routable statement.
-			// ANY(ARRAY(subselect)) if one type.
 
-			if strings.ToLower(texpr.Name) == "any" {
-				if len(texpr.Args) > 0 {
-					// maybe we should consider not only first arg.
-					// however, consider only it
-
-					switch argexpr := texpr.Args[0].(type) {
-					case *lyx.SubLink:
-
-						// ignore all errors.
-						_ = qr.DeparseSelectStmt(ctx, argexpr.SubSelect, meta)
+			case *lyx.AExprList:
+				for _, expr := range right.List {
+					if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
+						return err
 					}
 				}
+			case *lyx.FuncApplication:
+				// there are several types of queries like DELETE FROM rel WHERE colref = func_application
+				// and func_application is actually routable statement.
+				// ANY(ARRAY(subselect)) if one type.
+
+				if strings.ToLower(right.Name) == "any" {
+					if len(right.Args) > 0 {
+						// maybe we should consider not only first arg.
+						// however, consider only it
+
+						switch argexpr := right.Args[0].(type) {
+						case *lyx.SubLink:
+
+							// ignore all errors.
+							_ = qr.DeparseSelectStmt(ctx, argexpr.SubSelect, meta)
+						}
+					}
+				}
+
+			default:
+				if err := qr.routeByClause(ctx, texpr.Left, meta); err != nil {
+					return err
+				}
+
+				if err := qr.routeByClause(ctx, texpr.Right, meta); err != nil {
+					return err
+				}
+			}
+		case *lyx.Select:
+			if err := qr.DeparseSelectStmt(ctx, lft, meta); err != nil {
+				return err
 			}
 		default:
-			return fmt.Errorf("route by clause, unknown expr %T: %w", curr, rerrors.ErrComplexQuery)
+			if texpr.Left != nil {
+				if err := qr.routeByClause(ctx, texpr.Left, meta); err != nil {
+					return err
+				}
+			}
+			if texpr.Right != nil {
+				if err := qr.routeByClause(ctx, texpr.Right, meta); err != nil {
+					return err
+				}
+			}
 		}
+	case *lyx.ColumnRef:
+		/* colref = colref case, skip */
+	case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprBConst, *lyx.AExprNConst:
+		/* should not happen */
+	case *lyx.AExprEmpty:
+		/*skip*/
+	case *lyx.Select:
+		/* in engine v2 we skip subplans */
+	case *lyx.FuncApplication:
+		// there are several types of queries like DELETE FROM rel WHERE colref = func_application
+		// and func_application is actually routable statement.
+		// ANY(ARRAY(subselect)) if one type.
+
+		if strings.ToLower(texpr.Name) == "any" {
+			if len(texpr.Args) > 0 {
+				// maybe we should consider not only first arg.
+				// however, consider only it
+
+				switch argexpr := texpr.Args[0].(type) {
+				case *lyx.SubLink:
+
+					// ignore all errors.
+					_ = qr.DeparseSelectStmt(ctx, argexpr.SubSelect, meta)
+				}
+			}
+		}
+	default:
+		return fmt.Errorf("route by clause, unknown expr %T: %w", expr, rerrors.ErrComplexQuery)
 	}
 	return nil
 }
@@ -885,72 +953,6 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	}
 
 	return route, ro, nil
-}
-
-func (qr *ProxyQrouter) routingTuples(rm *rmeta.RoutingMetadataContext,
-	ds *distributions.Distribution, rfqn rfqn.RelationFQN, relation *distributions.DistributedRelation) ([][]interface{}, error) {
-	paramsFormatCodes := rm.SPH.BindParamFormatCodes()
-	var queryParamsFormatCodes []int16
-
-	paramsLen := len(rm.SPH.BindParams())
-
-	/*
-	* https://github.com/postgres/postgres/blob/c65bc2e1d14a2d4daed7c1921ac518f2c5ac3d17/src/backend/tcop/pquery.c#L664-L691
-	 */
-	if len(paramsFormatCodes) > 1 {
-		queryParamsFormatCodes = paramsFormatCodes
-	} else if len(paramsFormatCodes) == 1 {
-
-		/* single format specified, use for all columns */
-		queryParamsFormatCodes = make([]int16, paramsLen)
-
-		for i := range paramsLen {
-			queryParamsFormatCodes[i] = paramsFormatCodes[0]
-		}
-	} else {
-		/* use default format for all columns */
-		queryParamsFormatCodes = make([]int16, paramsLen)
-		for i := range paramsLen {
-			queryParamsFormatCodes[i] = xproto.FormatCodeText
-		}
-	}
-
-	tuples := make([][]interface{}, 0)
-
-	// TODO: multi-column routing. This works only for one-dim routing
-	for i := range len(relation.DistributionKey) {
-		hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[i].HashFunction)
-		if err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
-			return nil, err
-		}
-
-		col := relation.DistributionKey[i].Column
-
-		vals, valOk := qr.resolveValue(rm, rfqn, col, rm.SPH.BindParams(), queryParamsFormatCodes)
-
-		if !valOk {
-			break
-		}
-
-		/* TODO: correct support for composite keys here */
-
-		for _, val := range vals {
-			compositeKey := make([]interface{}, len(relation.DistributionKey))
-
-			compositeKey[i], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[i], hf)
-
-			if err != nil {
-				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-				return nil, err
-			}
-
-			spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[i]).Msg("applying hash function on key")
-			tuples = append(tuples, compositeKey)
-		}
-	}
-
-	return tuples, nil
 }
 
 // TODO : unit tests
