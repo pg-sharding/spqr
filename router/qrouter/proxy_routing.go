@@ -128,7 +128,7 @@ func (qr *ProxyQrouter) routingTuples(rm *rmeta.RoutingMetadataContext,
 
 // routeByClause de-parses sharding column-value pair from Where clause of the query
 // TODO : unit tests
-func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingMetadataContext) error {
+func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingMetadataContext) ([][]interface{}, error) {
 
 	switch texpr := expr.(type) {
 	case *lyx.AExprIn:
@@ -142,7 +142,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 			case *lyx.AExprList:
 				for _, expr := range q.List {
 					if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
-						return err
+						return nil, err
 					}
 				}
 			case *lyx.Select:
@@ -168,13 +168,13 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 				// TBD: postpone routing from here to root of parsing tree
 				// maybe extremely inefficient. Will be fixed in SPQR-2.0
 				if err := qr.processConstExpr(alias, colname, right, meta); err != nil {
-					return err
+					return nil, err
 				}
 
 			case *lyx.AExprList:
 				for _, expr := range right.List {
 					if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
-						return err
+						return nil, err
 					}
 				}
 			case *lyx.FuncApplication:
@@ -197,27 +197,27 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 				}
 
 			default:
-				if err := qr.routeByClause(ctx, texpr.Left, meta); err != nil {
-					return err
+				if _, err := qr.routeByClause(ctx, texpr.Left, meta); err != nil {
+					return nil, err
 				}
 
-				if err := qr.routeByClause(ctx, texpr.Right, meta); err != nil {
-					return err
+				if _, err := qr.routeByClause(ctx, texpr.Right, meta); err != nil {
+					return nil, err
 				}
 			}
 		case *lyx.Select:
 			if err := qr.DeparseSelectStmt(ctx, lft, meta); err != nil {
-				return err
+				return nil, err
 			}
 		default:
 			if texpr.Left != nil {
-				if err := qr.routeByClause(ctx, texpr.Left, meta); err != nil {
-					return err
+				if _, err := qr.routeByClause(ctx, texpr.Left, meta); err != nil {
+					return nil, err
 				}
 			}
 			if texpr.Right != nil {
-				if err := qr.routeByClause(ctx, texpr.Right, meta); err != nil {
-					return err
+				if _, err := qr.routeByClause(ctx, texpr.Right, meta); err != nil {
+					return nil, err
 				}
 			}
 		}
@@ -248,9 +248,9 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 			}
 		}
 	default:
-		return fmt.Errorf("route by clause, unknown expr %T: %w", expr, rerrors.ErrComplexQuery)
+		return nil, fmt.Errorf("route by clause, unknown expr %T: %w", expr, rerrors.ErrComplexQuery)
 	}
-	return nil
+	return nil, nil
 }
 
 // TODO : unit tests
@@ -270,7 +270,7 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.No
 				Interface("clause", clause).
 				Msg("deparsing select where clause")
 
-			if err := qr.routeByClause(ctx, clause, meta); err == nil {
+			if _, err := qr.routeByClause(ctx, clause, meta); err == nil {
 				return nil
 			}
 		}
@@ -422,6 +422,91 @@ func projectionList(l [][]lyx.Node, prjIndx int) []lyx.Node {
 	return rt
 }
 
+func (qr *ProxyQrouter) AnalyzeQueryV1(
+	ctx context.Context,
+	qstmt lyx.Node,
+	meta *rmeta.RoutingMetadataContext) error {
+	switch stmt := qstmt.(type) {
+	case *lyx.Select:
+		if stmt.WithClause != nil {
+			for _, cte := range stmt.WithClause {
+				meta.CteNames[cte.Name] = struct{}{}
+				if err := qr.AnalyzeQueryV1(ctx, cte.SubQuery, meta); err != nil {
+					return err
+				}
+			}
+		}
+
+		if stmt.FromClause != nil {
+			// collect table alias names, if any
+			// for single-table queries, process as usual
+			if err := qr.processFromClauseList(ctx, stmt.FromClause, meta); err != nil {
+				return err
+			}
+		}
+	case *lyx.Insert:
+		if selectStmt := stmt.SubSelect; selectStmt != nil {
+			switch subS := selectStmt.(type) {
+			case *lyx.Select:
+				spqrlog.Zero.Debug().Msg("analyze insert stmt on select clause")
+				return qr.AnalyzeQueryV1(ctx, subS, meta)
+			default:
+				return nil
+			}
+		}
+
+		return nil
+	case *lyx.Update:
+		clause := stmt.Where
+		if clause == nil {
+			return nil
+		}
+
+		switch q := stmt.TableRef.(type) {
+		case *lyx.RangeVar:
+
+			rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
+
+			if _, err := meta.GetRelationDistribution(ctx, rqdn); err != nil {
+				return err
+			}
+		default:
+			return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+		}
+
+		if err := qr.deparseFromNode(ctx, stmt.TableRef, meta); err != nil {
+			return err
+		}
+
+		return qr.AnalyzeQueryV1(ctx, clause, meta)
+
+	case *lyx.Delete:
+		clause := stmt.Where
+		if clause == nil {
+			return nil
+		}
+
+		switch q := stmt.TableRef.(type) {
+		case *lyx.RangeVar:
+
+			rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
+
+			if _, err := meta.GetRelationDistribution(ctx, rqdn); err != nil {
+				return err
+			}
+		default:
+			return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+		}
+
+		if err := qr.deparseFromNode(ctx, stmt.TableRef, meta); err != nil {
+			return err
+		}
+
+		return qr.AnalyzeQueryV1(ctx, clause, meta)
+	}
+	return nil
+}
+
 // TODO : unit tests
 // May return nil routing state here - thats ok
 func (qr *ProxyQrouter) planQueryV1(
@@ -439,18 +524,13 @@ func (qr *ProxyQrouter) planQueryV1(
 			}
 		}
 
-		if stmt.FromClause != nil {
-			// collect table alias names, if any
-			// for single-table queries, process as usual
-			if err := qr.processFromClauseList(ctx, stmt.FromClause, meta); err != nil {
-				return nil, err
-			}
-		}
 		if stmt.Where == nil {
 			return nil, nil
 		}
 
-		return nil, qr.routeByClause(ctx, stmt.Where, meta)
+		_, err := qr.routeByClause(ctx, stmt.Where, meta)
+
+		return nil, err
 
 	case *lyx.Insert:
 		if selectStmt := stmt.SubSelect; selectStmt != nil {
@@ -539,8 +619,8 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		_ = qr.deparseFromNode(ctx, stmt.TableRef, meta)
-		return nil, qr.routeByClause(ctx, clause, meta)
+		_, err := qr.routeByClause(ctx, clause, meta)
+		return nil, err
 	case *lyx.Delete:
 		clause := stmt.Where
 		if clause == nil {
@@ -564,9 +644,9 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		_ = qr.deparseFromNode(ctx, stmt.TableRef, meta)
+		_, err := qr.routeByClause(ctx, clause, meta)
 
-		return nil, qr.routeByClause(ctx, clause, meta)
+		return nil, err
 	}
 
 	return nil, nil
