@@ -3,7 +3,7 @@ module github.com/pg-sharding/spqr
 go 1.23.0
 
 require (
-	github.com/BurntSushi/toml v1.4.0
+	github.com/BurntSushi/toml v1.5.0
 	github.com/caio/go-tdigest v3.1.0+incompatible
 	github.com/cucumber/godog v0.15.0
 	github.com/docker/docker v28.0.4+incompatible
