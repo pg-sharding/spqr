@@ -917,20 +917,22 @@ func (qr *ProxyQrouter) routingTuples(rm *rmeta.RoutingMetadataContext,
 
 	tuples := make([][]interface{}, 0)
 
-	// TODO: multi-column routing. This works only for one-dim routing
-	for i := range len(relation.DistributionKey) {
-		hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[i].HashFunction)
+	var rec func(lvl int) error
+
+	rec = func(lvl int) error {
+
+		hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[lvl].HashFunction)
 		if err != nil {
 			spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
-			return nil, err
+			return err
 		}
 
-		col := relation.DistributionKey[i].Column
+		col := relation.DistributionKey[lvl].Column
 
 		vals, valOk := qr.resolveValue(rm, rfqn, col, rm.SPH.BindParams(), queryParamsFormatCodes)
 
 		if !valOk {
-			break
+			return nil
 		}
 
 		/* TODO: correct support for composite keys here */
@@ -938,16 +940,26 @@ func (qr *ProxyQrouter) routingTuples(rm *rmeta.RoutingMetadataContext,
 		for _, val := range vals {
 			compositeKey := make([]interface{}, len(relation.DistributionKey))
 
-			compositeKey[i], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[i], hf)
+			compositeKey[lvl], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[lvl], hf)
 
 			if err != nil {
 				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-				return nil, err
+				return err
 			}
 
-			spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[i]).Msg("applying hash function on key")
-			tuples = append(tuples, compositeKey)
+			spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[lvl]).Msg("applying hash function on key")
+			if lvl+1 == len(relation.DistributionKey) {
+				tuples = append(tuples, compositeKey)
+			} else {
+				rec(lvl + 1)
+			}
 		}
+
+		return nil
+	}
+
+	if err := rec(0); err != nil {
+		return nil, err
 	}
 
 	return tuples, nil
