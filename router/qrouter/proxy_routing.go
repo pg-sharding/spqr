@@ -69,9 +69,7 @@ func (qr *ProxyQrouter) routingTuples(rm *rmeta.RoutingMetadataContext,
 
 	paramsLen := len(rm.SPH.BindParams())
 
-	/*
-	* https://github.com/postgres/postgres/blob/c65bc2e1d14a2d4daed7c1921ac518f2c5ac3d17/src/backend/tcop/pquery.c#L664-L691
-	 */
+	/* https://github.com/postgres/postgres/blob/c65bc2e1d14a2d4daed7c1921ac518f2c5ac3d17/src/backend/tcop/pquery.c#L664-L691 */ /* #no-spell-check-line */
 	if len(paramsFormatCodes) > 1 {
 		queryParamsFormatCodes = paramsFormatCodes
 	} else if len(paramsFormatCodes) == 1 {
