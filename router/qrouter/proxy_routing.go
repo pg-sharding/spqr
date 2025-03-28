@@ -737,6 +737,62 @@ func (qr *ProxyQrouter) resolveValue(meta *rmeta.RoutingMetadataContext, rfqn rf
 	return []any{singleVal}, res
 }
 
+func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext, tsa string) (plan.Plan, error) {
+
+	var route plan.Plan
+	/*
+	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
+	 */
+
+	for rfqn := range rm.Rels {
+		// TODO: check by whole RFQN
+		ds, err := rm.GetRelationDistribution(ctx, rfqn)
+		if err != nil {
+			return nil, err
+		} else if ds.Id == distributions.REPLICATED {
+			route = plan.Combine(route, plan.ReferenceRelationState{})
+			continue
+		}
+
+		krs, err := qr.mgr.ListKeyRanges(ctx, ds.Id)
+		if err != nil {
+			return nil, err
+		}
+
+		relation, exists := ds.Relations[rfqn.RelationName]
+		if !exists {
+			return nil, fmt.Errorf("relation %s not found in distribution %s", rfqn.RelationName, ds.Id)
+		}
+
+		rt, err := qr.routingTuples(rm, ds, rfqn, relation)
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: multi-column routing. This works only for one-dim routing
+		for _, tup := range rt {
+
+			currroute, err := rm.DeparseKeyWithRangesInternal(ctx, tup, krs)
+			if err != nil {
+				spqrlog.Zero.Debug().Interface("composite key", tup).Err(err).Msg("encountered the route error")
+				return nil, err
+			}
+
+			spqrlog.Zero.Debug().
+				Interface("currntroute", currroute).
+				Str("table", rfqn.RelationName).
+				Msg("calculated route for table/cols")
+
+			route = plan.Combine(route, plan.ShardDispatchPlan{
+				ExecTarget:         currroute,
+				TargetSessionAttrs: tsa,
+			})
+		}
+	}
+
+	return route, nil
+}
+
 // Returns state, is read-only flag and err if any
 func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, bool, error) {
 	if stmt == nil {
@@ -999,55 +1055,12 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		return nil, false, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
 
-	/*
-	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
-	 */
-
-	for rfqn := range rm.Rels {
-		// TODO: check by whole RFQN
-		ds, err := rm.GetRelationDistribution(ctx, rfqn)
-		if err != nil {
-			return nil, false, err
-		} else if ds.Id == distributions.REPLICATED {
-			route = plan.Combine(route, plan.ReferenceRelationState{})
-			continue
-		}
-
-		krs, err := qr.mgr.ListKeyRanges(ctx, ds.Id)
-		if err != nil {
-			return nil, false, err
-		}
-
-		relation, exists := ds.Relations[rfqn.RelationName]
-		if !exists {
-			return nil, false, fmt.Errorf("relation %s not found in distribution %s", rfqn.RelationName, ds.Id)
-		}
-
-		rt, err := qr.routingTuples(rm, ds, rfqn, relation)
-		if err != nil {
-			return nil, false, err
-		}
-
-		// TODO: multi-column routing. This works only for one-dim routing
-		for _, tup := range rt {
-
-			currroute, err := rm.DeparseKeyWithRangesInternal(ctx, tup, krs)
-			if err != nil {
-				spqrlog.Zero.Debug().Interface("composite key", tup).Err(err).Msg("encountered the route error")
-				return nil, false, err
-			}
-
-			spqrlog.Zero.Debug().
-				Interface("currntroute", currroute).
-				Str("table", rfqn.RelationName).
-				Msg("calculated route for table/cols")
-
-			route = plan.Combine(route, plan.ShardDispatchPlan{
-				ExecTarget:         currroute,
-				TargetSessionAttrs: tsa,
-			})
-		}
+	tmp, err := qr.routeByTuples(ctx, rm, tsa)
+	if err != nil {
+		return nil, false, err
 	}
+
+	route = plan.Combine(route, tmp)
 
 	// set up this variable if not yet
 	if route == nil {
