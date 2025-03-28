@@ -2,7 +2,7 @@
 title: 'Reference Tables'
 ---
 
-A reference table is a table that is fully replicated across all shards instead of being divided into separate partitions. This allows every shard to have a local copy of the table, reducing network overhead and ensuring fast access to frequently used data.
+A reference table is a table that is fully replicated across all shards instead of being divided into separate partitions. This allows **every shard to have a local copy of the table**, reducing network overhead and ensuring fast access to frequently used data.
 
 Reference tables are useful when you need:
 
@@ -12,15 +12,14 @@ Reference tables are useful when you need:
 
 ## Examples
 
-Some common examples when to use reference tables:
+Some typical use cases for reference tables include:
 
-- In eCommerce, sales tax rates apply to all stores.
-- A table with country codes and region names.
-- A list of product categories used by multiple stores.
-- A system-wide list of roles and permissions.
-- Exchange rates.
-- Global settings or feature flags used by all users.
-- In a SaaS platform, a table defining different subscription tiers, their pricing, and feature sets.
+- **eCommerce**: sales tax rates apply to all stores.
+- **Common codes**: a table with country codes and region names.
+- **Roles**: a system-wide list of roles and permissions.
+- **Finance**: Exchange rates.
+- **Global settings**: settings or feature flags.
+- **A SaaS platform**: a table defining different subscription tiers, their pricing, and feature sets.
 
 ## How to use it?
 
@@ -72,5 +71,4 @@ NOTICE: send query to shard(s) : sh2
  AU           |            |   10.00  | GST
  IN           |            |   18.00  | GST
 (6 rows)
-
 ```
