@@ -127,6 +127,11 @@ func (qr *ProxyQrouter) routingTuples(rm *rmeta.RoutingMetadataContext,
 }
 
 func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingMetadataContext) error {
+
+	spqrlog.Zero.Debug().
+		Interface("clause", expr).
+		Msg("deparsing select where clause")
+
 	switch texpr := expr.(type) {
 	case *lyx.AExprIn:
 
@@ -164,24 +169,19 @@ func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, m
 						case *lyx.SubLink:
 
 							// ignore all errors.
-							_ = qr.analyzeSelectStmt(ctx, argexpr.SubSelect, meta)
+							return qr.analyzeSelectStmt(ctx, argexpr.SubSelect, meta)
 						}
 					}
 				}
 
 			default:
-				if texpr.Left != nil {
-					if err := qr.analyzeWhereClause(ctx, texpr.Left, meta); err != nil {
-						return err
-					}
-				}
-
 				if texpr.Right != nil {
 					if err := qr.analyzeWhereClause(ctx, texpr.Right, meta); err != nil {
 						return err
 					}
 				}
 			}
+
 		case *lyx.Select:
 			if err := qr.AnalyzeQueryV1(ctx, lft, meta); err != nil {
 				return err
@@ -220,9 +220,7 @@ func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, m
 				case *lyx.SubLink:
 
 					// ignore all errors.
-					if err := qr.AnalyzeQueryV1(ctx, argexpr.SubSelect, meta); err != nil {
-						return err
-					}
+					return qr.AnalyzeQueryV1(ctx, argexpr.SubSelect, meta)
 				}
 			}
 		}
@@ -381,10 +379,6 @@ func (qr *ProxyQrouter) analyzeSelectStmt(ctx context.Context, selectStmt lyx.No
 		}
 
 		if clause := s.Where; clause != nil {
-			spqrlog.Zero.Debug().
-				Interface("clause", clause).
-				Msg("deparsing select where clause")
-
 			if err := qr.analyzeWhereClause(ctx, clause, meta); err != nil {
 				return err
 			}
@@ -401,6 +395,7 @@ func (qr *ProxyQrouter) analyzeSelectStmt(ctx context.Context, selectStmt lyx.No
 			}
 		}
 
+		return nil
 	/* SELECT * FROM VALUES() ... */
 	case *lyx.ValueClause:
 		/* random route */
@@ -540,6 +535,10 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 	ctx context.Context,
 	qstmt lyx.Node,
 	rm *rmeta.RoutingMetadataContext) error {
+
+	spqrlog.Zero.Debug().
+		Interface("clause", qstmt).
+		Msg("AnalyzeQueryV1: enter")
 
 	analyseHelper := func(tr lyx.FromClauseNode) error {
 		switch q := tr.(type) {
@@ -1175,6 +1174,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 
 		err := qr.AnalyzeQueryV1(ctx, stmt, rm)
 		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to analyze select query")
 			return nil, false, err
 		}
 
