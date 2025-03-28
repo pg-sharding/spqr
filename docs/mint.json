@@ -125,7 +125,8 @@
                         "routing/hints"
                     ]
                 },
-                "welcome/design"
+                "welcome/design",
+                "welcome/talks"
             ]
         }
     ]
