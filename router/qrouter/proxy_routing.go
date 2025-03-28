@@ -200,7 +200,7 @@ func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, m
 		}
 	case *lyx.ColumnRef:
 		/* colref = colref case, skip */
-	case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprBConst, *lyx.AExprNConst:
+	case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprBConst, *lyx.AExprNConst, *lyx.ParamRef:
 		/* should not happen */
 	case *lyx.AExprEmpty:
 		/*skip*/
