@@ -855,8 +855,10 @@ func TestSingleShard(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		/* TODO: fix aliasing here  */
 		{
-			query: "SELECT * FROM t WHERE i = 12 UNION ALL SELECT * FROM xxmixed WHERE i = 22;",
+			query: "SELECT * FROM t t WHERE t.i = 12 UNION ALL SELECT * FROM xxmixed x WHERE x.i = 22;",
 			exp: plan.ShardDispatchPlan{
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
