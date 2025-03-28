@@ -14,12 +14,12 @@ Reference tables are useful when you need:
 
 Some typical use cases for reference tables include:
 
-- **eCommerce**: sales tax rates apply to all stores.
-- **Common codes**: a table with country codes and region names.
-- **Roles**: a system-wide list of roles and permissions.
+- **eCommerce**: Sales tax rates apply to all stores.
+- **Common codes**: A table with country codes and region names.
+- **Roles**: A system-wide list of roles and permissions.
 - **Finance**: Exchange rates.
-- **Global settings**: settings or feature flags.
-- **A SaaS platform**: a table defining different subscription tiers, their pricing, and feature sets.
+- **Global settings**: Settings or feature flags.
+- **SaaS**: A table defining different subscription tiers, their pricing, and feature sets.
 
 ## How to use it?
 
@@ -39,7 +39,12 @@ Then, create the table and insert data:
 
 ```sql
 \c ordersdb
-CREATE TABLE tax_rates(i int, j int);
+CREATE TABLE tax_rates (
+    country_code VARCHAR(2),
+    state_code VARCHAR(2),
+    tax_rate NUMERIC(5, 2),
+    tax_category VARCHAR(50)
+);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY tax_rates FROM 'test_tax_rates.csv' DELIMITER '\t';
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -48,7 +53,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 Verify replication:
 
 ```sql
-TABLE tax_rates /* __spqr__execute_on: sh1 */;
+SELECT * FROM tax_rates /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  country_code | state_code | tax_rate | tax_category
 --------------+------------+----------+--------------
@@ -60,7 +65,7 @@ NOTICE: send query to shard(s) : sh1
  IN           |            |   18.00  | GST
 (6 rows)
 
-TABLE tax_rates /* __spqr__execute_on: sh2 */;
+SELECT * FROM tax_rates /* __spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2
  country_code | state_code | tax_rate | tax_category
 --------------+------------+----------+--------------
