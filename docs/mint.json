@@ -90,6 +90,7 @@
                         "welcome/get_started",
                         "sharding/ranged",
                         "sharding/hashed",
+                        "sharding/reference",
                         {
                             "group": "Cluster Components",
                             "pages": [
