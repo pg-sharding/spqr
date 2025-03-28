@@ -238,6 +238,7 @@ func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, m
 // TODO : unit tests
 func (qr *ProxyQrouter) planByWhereClause(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
+	var p plan.Plan = nil
 	switch texpr := expr.(type) {
 	case *lyx.AExprIn:
 
@@ -305,7 +306,6 @@ func (qr *ProxyQrouter) planByWhereClause(ctx context.Context, expr lyx.Node, me
 				}
 
 			default:
-				var p plan.Plan = nil
 				if tmp, err := qr.planByWhereClause(ctx, texpr.Left, meta); err != nil {
 					return nil, err
 				} else {
@@ -321,7 +321,6 @@ func (qr *ProxyQrouter) planByWhereClause(ctx context.Context, expr lyx.Node, me
 		case *lyx.Select:
 			return qr.planQueryV1(ctx, lft, meta)
 		default:
-			var p plan.Plan = nil
 			if texpr.Left != nil {
 				if tmp, err := qr.planByWhereClause(ctx, texpr.Left, meta); err != nil {
 					return nil, err
@@ -366,7 +365,7 @@ func (qr *ProxyQrouter) planByWhereClause(ctx context.Context, expr lyx.Node, me
 	default:
 		return nil, fmt.Errorf("route by clause, unknown expr %T: %w", expr, rerrors.ErrComplexQuery)
 	}
-	return nil, nil
+	return p, nil
 }
 
 // TODO : unit tests
