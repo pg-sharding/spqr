@@ -62,11 +62,9 @@ func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation rfqn.RelationFQN
 	return nil
 }
 
-func (qr *ProxyQrouter) routingTuples(rm *rmeta.RoutingMetadataContext,
-	ds *distributions.Distribution, rfqn rfqn.RelationFQN, relation *distributions.DistributedRelation) ([][]interface{}, error) {
+func getparams(rm *rmeta.RoutingMetadataContext) []int16 {
 	paramsFormatCodes := rm.SPH.BindParamFormatCodes()
 	var queryParamsFormatCodes []int16
-
 	paramsLen := len(rm.SPH.BindParams())
 
 	/* https://github.com/postgres/postgres/blob/c65bc2e1d14a2d4daed7c1921ac518f2c5ac3d17/src/backend/tcop/pquery.c#L664-L691 */ /* #no-spell-check-line */
@@ -87,43 +85,85 @@ func (qr *ProxyQrouter) routingTuples(rm *rmeta.RoutingMetadataContext,
 			queryParamsFormatCodes[i] = xproto.FormatCodeText
 		}
 	}
+	return queryParamsFormatCodes
+}
 
-	tuples := make([][]interface{}, 0)
+func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext,
+	ds *distributions.Distribution, rfqn rfqn.RelationFQN, relation *distributions.DistributedRelation, tsa string) (plan.Plan, error) {
 
-	// TODO: multi-column routing. This works only for one-dim routing
-	for i := range len(relation.DistributionKey) {
-		hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[i].HashFunction)
+	queryParamsFormatCodes := getparams(rm)
+
+	krs, err := qr.mgr.ListKeyRanges(ctx, ds.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	var rec func(lvl int) error
+	var p plan.Plan = nil
+
+	compositeKey := make([]interface{}, len(relation.DistributionKey))
+
+	rec = func(lvl int) error {
+
+		hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[lvl].HashFunction)
 		if err != nil {
 			spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
-			return nil, err
+			return err
 		}
 
-		col := relation.DistributionKey[i].Column
+		col := relation.DistributionKey[lvl].Column
 
 		vals, valOk := qr.resolveValue(rm, rfqn, col, rm.SPH.BindParams(), queryParamsFormatCodes)
 
 		if !valOk {
-			break
+			return nil
 		}
 
 		/* TODO: correct support for composite keys here */
 
 		for _, val := range vals {
-			compositeKey := make([]interface{}, len(relation.DistributionKey))
 
-			compositeKey[i], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[i], hf)
+			compositeKey[lvl], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[lvl], hf)
 
 			if err != nil {
 				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-				return nil, err
+				return err
 			}
 
-			spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[i]).Msg("applying hash function on key")
-			tuples = append(tuples, compositeKey)
+			spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[lvl]).Msg("applying hash function on key")
+			if lvl+1 == len(relation.DistributionKey) {
+
+				currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
+				if err != nil {
+					spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
+					return err
+				}
+
+				spqrlog.Zero.Debug().
+					Interface("currntroute", currroute).
+					Str("table", rfqn.RelationName).
+					Msg("calculated route for table/cols")
+
+				p = plan.Combine(p, plan.ShardDispatchPlan{
+					ExecTarget:         currroute,
+					TargetSessionAttrs: tsa,
+				})
+
+			} else {
+				if err := rec(lvl + 1); err != nil {
+					return err
+				}
+			}
 		}
+
+		return nil
 	}
 
-	return tuples, nil
+	if err := rec(0); err != nil {
+		return nil, err
+	}
+
+	return p, nil
 }
 
 func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingMetadataContext) error {
@@ -534,7 +574,8 @@ func (qr *ProxyQrouter) planFromClauseList(
 	return p, nil
 }
 
-func (qr *ProxyQrouter) processInsertFromSelectOffsets(ctx context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) ([]int, rfqn.RelationFQN, plan.Plan, error) {
+func (qr *ProxyQrouter) processInsertFromSelectOffsets(
+	ctx context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) ([]int, rfqn.RelationFQN, *distributions.Distribution, error) {
 	insertCols := stmt.Columns
 
 	spqrlog.Zero.Debug().
@@ -564,7 +605,7 @@ func (qr *ProxyQrouter) processInsertFromSelectOffsets(ctx context.Context, stmt
 
 		/* Omit distributed relations */
 		if ds.Id == distributions.REPLICATED {
-			return nil, rfqn.RelationFQN{}, plan.ReferenceRelationState{}, nil
+			return nil, curr_rfqn, ds, nil
 		}
 
 		insertColsPos := map[string]int{}
@@ -582,25 +623,16 @@ func (qr *ProxyQrouter) processInsertFromSelectOffsets(ctx context.Context, stmt
 				* Example: INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
 				* we have no insert cols specified, but still able to route on select
 				 */
-				return nil, rfqn.RelationFQN{}, plan.ShardDispatchPlan{}, nil
+				return nil, curr_rfqn, ds, nil
 			} else {
 				offsets = append(offsets, val)
 			}
 		}
 
-		return offsets, curr_rfqn, plan.ShardDispatchPlan{}, nil
+		return offsets, curr_rfqn, ds, nil
 	default:
 		return nil, rfqn.RelationFQN{}, nil, rerrors.ErrComplexQuery
 	}
-}
-
-/* find this a better place */
-func projectionList(l [][]lyx.Node, prjIndx int) []lyx.Node {
-	var rt []lyx.Node
-	for _, el := range l {
-		rt = append(rt, el[prjIndx])
-	}
-	return rt
 }
 
 func (qr *ProxyQrouter) AnalyzeQueryV1(
@@ -877,42 +909,91 @@ func (qr *ProxyQrouter) planQueryV1(
 				return p, nil
 			}
 
-			offsets, rfqn, state, err := qr.processInsertFromSelectOffsets(ctx, stmt, rm)
+			offsets, rfqn, ds, err := qr.processInsertFromSelectOffsets(ctx, stmt, rm)
 			if err != nil {
 				return nil, err
 			}
 
-			switch state.(type) {
-			case plan.ShardDispatchPlan:
-
-				tlUsable := true
-				if len(routingList) > 0 {
-					/* check first tuple only */
-					for i := range offsets {
-						if offsets[i] >= len(routingList[0]) {
-							tlUsable = false
-							break
-						} else {
-							switch routingList[0][offsets[i]].(type) {
-							case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
-							default:
-								tlUsable = false
-							}
-						}
-					}
-				}
-
-				if tlUsable {
-					for i := range offsets {
-						_ = qr.processConstExprOnRFQN(rfqn, insertCols[offsets[i]], projectionList(routingList, offsets[i]), rm)
-					}
-				}
-			case plan.ReferenceRelationState:
+			if ds.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
 					return planner.PlanDistributedQuery(ctx, rm, stmt)
 				}
 				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 			}
+
+			tlUsable := len(offsets) == len(ds.ColTypes)
+			if len(routingList) > 0 {
+				/* check first tuple only */
+				for i := range offsets {
+					if offsets[i] >= len(routingList[0]) {
+						tlUsable = false
+						break
+					} else {
+						switch routingList[0][offsets[i]].(type) {
+						case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
+						default:
+							tlUsable = false
+						}
+					}
+				}
+			}
+
+			if tlUsable {
+
+				krs, err := qr.mgr.ListKeyRanges(ctx, ds.Id)
+				if err != nil {
+					return nil, err
+				}
+
+				queryParamsFormatCodes := getparams(rm)
+				var p plan.Plan = nil
+
+				for i := range routingList {
+
+					tup := make([]interface{}, len(ds.ColTypes))
+					tupUsable := true
+					for j := range offsets {
+						off, tp := rm.GetDistributionKeyOffsetType(rfqn, insertCols[offsets[j]])
+						if off == -1 {
+							// column not from distr key
+							continue
+						}
+
+						if err := rm.ProcessSingleExpr(rfqn, tp, insertCols[offsets[j]], routingList[i][offsets[j]]); err != nil {
+							return nil, err
+						}
+						vvs, _ := qr.resolveValue(rm, rfqn, insertCols[offsets[j]], rm.SPH.BindParams(), queryParamsFormatCodes)
+						if len(vvs) == 0 {
+							/* XXX: what else ? */
+							tup[j] = vvs[0]
+						} else {
+							tupUsable = false
+						}
+					}
+
+					if !tupUsable {
+						continue
+					}
+
+					ontupPlan, err := rm.DeparseKeyWithRangesInternal(ctx, tup, krs)
+					if err != nil {
+						spqrlog.Zero.Debug().Interface("composite key", tup).Err(err).Msg("encountered the route error")
+						return nil, err
+					}
+
+					spqrlog.Zero.Debug().
+						Interface("single tuple plan", ontupPlan).
+						Msg("calculated route for table/cols")
+
+						/* this is modify stmt */
+					p = plan.Combine(p, plan.ShardDispatchPlan{
+						ExecTarget:         ontupPlan,
+						TargetSessionAttrs: config.TargetSessionAttrsRW,
+					})
+				}
+				return p, nil
+			}
+
 		}
 
 		return p, nil
@@ -1076,40 +1157,17 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 			continue
 		}
 
-		krs, err := qr.mgr.ListKeyRanges(ctx, ds.Id)
-		if err != nil {
-			return nil, err
-		}
-
 		relation, exists := ds.Relations[rfqn.RelationName]
 		if !exists {
 			return nil, fmt.Errorf("relation %s not found in distribution %s", rfqn.RelationName, ds.Id)
 		}
 
-		rt, err := qr.routingTuples(rm, ds, rfqn, relation)
+		tmp, err := qr.routingTuples(ctx, rm, ds, rfqn, relation, tsa)
 		if err != nil {
 			return nil, err
 		}
 
-		// TODO: multi-column routing. This works only for one-dim routing
-		for _, tup := range rt {
-
-			currroute, err := rm.DeparseKeyWithRangesInternal(ctx, tup, krs)
-			if err != nil {
-				spqrlog.Zero.Debug().Interface("composite key", tup).Err(err).Msg("encountered the route error")
-				return nil, err
-			}
-
-			spqrlog.Zero.Debug().
-				Interface("currntroute", currroute).
-				Str("table", rfqn.RelationName).
-				Msg("calculated route for table/cols")
-
-			route = plan.Combine(route, plan.ShardDispatchPlan{
-				ExecTarget:         currroute,
-				TargetSessionAttrs: tsa,
-			})
-		}
+		route = plan.Combine(route, tmp)
 	}
 
 	return route, nil
