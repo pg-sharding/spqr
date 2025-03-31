@@ -1156,13 +1156,21 @@ const file_protos_key_range_proto_rawDesc = "" +
 	"\tlimitType\x18\x04 \x01(\x0e2\x1b.spqr.RedistributeLimitTypeR\tlimitType\x12\x14\n" +
 	"\x05limit\x18\x05 \x01(\x03R\x05limit\x12\x1c\n" +
 	"\tbatchSize\x18\x06 \x01(\x03R\tbatchSize\x12-\n" +
+<<<<<<< HEAD
 	"\tsplitType\x18\a \x01(\x0e2\x0f.spqr.SplitTypeR\tsplitType\"\x91\x01\n" +
+=======
+	"\tsplitType\x18\a \x01(\x0e2\x0f.spqr.SplitTypeR\tsplitType\"{\n" +
+>>>>>>> ab774a88 (reset)
 	"\x1bRedistributeKeyRangeRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\ashardId\x18\x02 \x01(\tR\ashardId\x12\x1c\n" +
 	"\tbatchSize\x18\x03 \x01(\x03R\tbatchSize\x12\x14\n" +
+<<<<<<< HEAD
 	"\x05check\x18\x04 \x01(\bR\x05check\x12\x14\n" +
 	"\x05apply\x18\x05 \x01(\bR\x05apply\"]\n" +
+=======
+	"\x05check\x18\x04 \x01(\bR\x05check\"]\n" +
+>>>>>>> ab774a88 (reset)
 	"\x15RenameKeyRangeRequest\x12\x1e\n" +
 	"\n" +
 	"keyRangeId\x18\x01 \x01(\tR\n" +

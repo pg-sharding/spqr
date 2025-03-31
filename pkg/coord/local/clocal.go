@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -18,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
 	"github.com/pg-sharding/spqr/router/cache"
+	"google.golang.org/grpc"
 )
 
 type LocalCoordinator struct {
@@ -940,6 +942,20 @@ func (lc *LocalCoordinator) ListAllSequences(ctx context.Context) ([]*sequences.
 		ret = append(ret, sequences.SequenceFromDB(seq))
 	}
 	return ret, nil
+}
+
+func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
+	coordAddr, err := lc.GetCoordinator(ctx)
+	if err != nil {
+		return -1, err
+	}
+	conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all
+	if err != nil {
+		return -1, err
+	}
+	defer conn.Close()
+	mgr := coord.NewAdapter(conn)
+	return mgr.NextVal(ctx, seqName)
 }
 
 // NewLocalCoordinator creates a new LocalCoordinator instance.

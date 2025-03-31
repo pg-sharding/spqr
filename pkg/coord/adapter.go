@@ -942,3 +942,14 @@ func (a *Adapter) GetCoordinator(ctx context.Context) (string, error) {
 func (a *Adapter) ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error) {
 	return nil, fmt.Errorf("not implemented")
 }
+
+func (a *Adapter) NextVal(ctx context.Context, seqName string) (int64, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
+	resp, err := c.NextVal(ctx, &proto.NextValRequest{
+		SequenceName: seqName,
+	})
+	if err != nil {
+		return -1, err
+	}
+	return resp.Value, err
+}

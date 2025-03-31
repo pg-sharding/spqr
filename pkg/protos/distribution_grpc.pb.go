@@ -27,6 +27,7 @@ const (
 	DistributionService_AlterDistributionDetach_FullMethodName = "/spqr.DistributionService/AlterDistributionDetach"
 	DistributionService_GetDistribution_FullMethodName         = "/spqr.DistributionService/GetDistribution"
 	DistributionService_GetRelationDistribution_FullMethodName = "/spqr.DistributionService/GetRelationDistribution"
+	DistributionService_NextVal_FullMethodName                 = "/spqr.DistributionService/NextVal"
 )
 
 // DistributionServiceClient is the client API for DistributionService service.
@@ -40,6 +41,7 @@ type DistributionServiceClient interface {
 	AlterDistributionDetach(ctx context.Context, in *AlterDistributionDetachRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetDistribution(ctx context.Context, in *GetDistributionRequest, opts ...grpc.CallOption) (*GetDistributionReply, error)
 	GetRelationDistribution(ctx context.Context, in *GetRelationDistributionRequest, opts ...grpc.CallOption) (*GetRelationDistributionReply, error)
+	NextVal(ctx context.Context, in *NextValRequest, opts ...grpc.CallOption) (*NextValReply, error)
 }
 
 type distributionServiceClient struct {
@@ -120,6 +122,16 @@ func (c *distributionServiceClient) GetRelationDistribution(ctx context.Context,
 	return out, nil
 }
 
+func (c *distributionServiceClient) NextVal(ctx context.Context, in *NextValRequest, opts ...grpc.CallOption) (*NextValReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(NextValReply)
+	err := c.cc.Invoke(ctx, DistributionService_NextVal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DistributionServiceServer is the server API for DistributionService service.
 // All implementations must embed UnimplementedDistributionServiceServer
 // for forward compatibility.
@@ -131,6 +143,7 @@ type DistributionServiceServer interface {
 	AlterDistributionDetach(context.Context, *AlterDistributionDetachRequest) (*emptypb.Empty, error)
 	GetDistribution(context.Context, *GetDistributionRequest) (*GetDistributionReply, error)
 	GetRelationDistribution(context.Context, *GetRelationDistributionRequest) (*GetRelationDistributionReply, error)
+	NextVal(context.Context, *NextValRequest) (*NextValReply, error)
 	mustEmbedUnimplementedDistributionServiceServer()
 }
 
@@ -161,6 +174,9 @@ func (UnimplementedDistributionServiceServer) GetDistribution(context.Context, *
 }
 func (UnimplementedDistributionServiceServer) GetRelationDistribution(context.Context, *GetRelationDistributionRequest) (*GetRelationDistributionReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRelationDistribution not implemented")
+}
+func (UnimplementedDistributionServiceServer) NextVal(context.Context, *NextValRequest) (*NextValReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NextVal not implemented")
 }
 func (UnimplementedDistributionServiceServer) mustEmbedUnimplementedDistributionServiceServer() {}
 func (UnimplementedDistributionServiceServer) testEmbeddedByValue()                             {}
@@ -309,6 +325,24 @@ func _DistributionService_GetRelationDistribution_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DistributionService_NextVal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NextValRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistributionServiceServer).NextVal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistributionService_NextVal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistributionServiceServer).NextVal(ctx, req.(*NextValRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DistributionService_ServiceDesc is the grpc.ServiceDesc for DistributionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -343,6 +377,10 @@ var DistributionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRelationDistribution",
 			Handler:    _DistributionService_GetRelationDistribution_Handler,
+		},
+		{
+			MethodName: "NextVal",
+			Handler:    _DistributionService_NextVal_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -556,11 +556,12 @@ distributed_relation_def:
 			Sequences: $6,
 		}
 	} | 
-	RELATION any_id
+	RELATION any_id opt_sequence
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
 			ReplicatedRelation: true,
+			Sequences: $3,
 		}
 	}
 

@@ -36,6 +36,7 @@ type EntityMgr interface {
 	distributions.DistributionMgr
 	tasks.TaskMgr
 	ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error)
+	NextVal(ctx context.Context, seqName string) (int64, error)
 
 	ShareKeyRange(id string) error
 

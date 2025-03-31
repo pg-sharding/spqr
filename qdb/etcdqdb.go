@@ -1025,7 +1025,7 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 		distribution.Relations[rel.Name] = rel
 
 		for _, colName := range rel.Sequences {
-			err := q.CreateSequence(ctx, Sequence{
+			err := q.createSequence(ctx, Sequence{
 				RelName: rel.Name,
 				ColName: colName,
 			})
@@ -1058,7 +1058,7 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 	return err
 }
 
-func (q *EtcdQDB) CreateSequence(ctx context.Context, seq Sequence) error {
+func (q *EtcdQDB) createSequence(ctx context.Context, seq Sequence) error {
 	spqrlog.Zero.Debug().
 		Interface("sequence", seq).
 		Msg("etcdqdb: add sequence")
@@ -1432,4 +1432,9 @@ func (q *EtcdQDB) ListAllSequences(ctx context.Context) ([]*Sequence, error) {
 		Msg("etcdqdb: list all sequences")
 
 	return ret, nil
+}
+
+func (q *EtcdQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: next val")
+	return -1, nil
 }

@@ -9,6 +9,10 @@ package proto
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+<<<<<<< HEAD
+=======
+	_ "google.golang.org/protobuf/types/known/anypb"
+>>>>>>> ab774a88 (reset)
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	reflect "reflect"
 	sync "sync"
@@ -630,11 +634,103 @@ func (x *GetRelationDistributionReply) GetDistribution() *Distribution {
 	return nil
 }
 
+type NextValRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SequenceName  string                 `protobuf:"bytes,1,opt,name=sequence_name,json=sequenceName,proto3" json:"sequence_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NextValRequest) Reset() {
+	*x = NextValRequest{}
+	mi := &file_protos_distribution_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NextValRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NextValRequest) ProtoMessage() {}
+
+func (x *NextValRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distribution_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NextValRequest.ProtoReflect.Descriptor instead.
+func (*NextValRequest) Descriptor() ([]byte, []int) {
+	return file_protos_distribution_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *NextValRequest) GetSequenceName() string {
+	if x != nil {
+		return x.SequenceName
+	}
+	return ""
+}
+
+type NextValReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         int64                  `protobuf:"varint,1,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NextValReply) Reset() {
+	*x = NextValReply{}
+	mi := &file_protos_distribution_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NextValReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NextValReply) ProtoMessage() {}
+
+func (x *NextValReply) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distribution_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NextValReply.ProtoReflect.Descriptor instead.
+func (*NextValReply) Descriptor() ([]byte, []int) {
+	return file_protos_distribution_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *NextValReply) GetValue() int64 {
+	if x != nil {
+		return x.Value
+	}
+	return 0
+}
+
 var File_protos_distribution_proto protoreflect.FileDescriptor
 
 const file_protos_distribution_proto_rawDesc = "" +
 	"\n" +
+<<<<<<< HEAD
 	"\x19protos/distribution.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"R\n" +
+=======
+	"\x19protos/distribution.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\x19google/protobuf/any.proto\"R\n" +
+>>>>>>> ab774a88 (reset)
 	"\x14DistributionKeyEntry\x12\x16\n" +
 	"\x06column\x18\x01 \x01(\tR\x06column\x12\"\n" +
 	"\fhashFunction\x18\x02 \x01(\tR\fhashFunction\"\xbd\x01\n" +
@@ -668,7 +764,15 @@ const file_protos_distribution_proto_rawDesc = "" +
 	"\x1eGetRelationDistributionRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"V\n" +
 	"\x1cGetRelationDistributionReply\x126\n" +
+<<<<<<< HEAD
 	"\fdistribution\x18\x01 \x01(\v2\x12.spqr.DistributionR\fdistribution2\xec\x04\n" +
+=======
+	"\fdistribution\x18\x01 \x01(\v2\x12.spqr.DistributionR\fdistribution\"5\n" +
+	"\x0eNextValRequest\x12#\n" +
+	"\rsequence_name\x18\x01 \x01(\tR\fsequenceName\"$\n" +
+	"\fNextValReply\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\x03R\x05value2\xa3\x05\n" +
+>>>>>>> ab774a88 (reset)
 	"\x13DistributionService\x12O\n" +
 	"\x12CreateDistribution\x12\x1f.spqr.CreateDistributionRequest\x1a\x16.google.protobuf.Empty\"\x00\x12K\n" +
 	"\x10DropDistribution\x12\x1d.spqr.DropDistributionRequest\x1a\x16.google.protobuf.Empty\"\x00\x12K\n" +
@@ -676,7 +780,12 @@ const file_protos_distribution_proto_rawDesc = "" +
 	"\x17AlterDistributionAttach\x12$.spqr.AlterDistributionAttachRequest\x1a\x16.google.protobuf.Empty\"\x00\x12Y\n" +
 	"\x17AlterDistributionDetach\x12$.spqr.AlterDistributionDetachRequest\x1a\x16.google.protobuf.Empty\"\x00\x12M\n" +
 	"\x0fGetDistribution\x12\x1c.spqr.GetDistributionRequest\x1a\x1a.spqr.GetDistributionReply\"\x00\x12e\n" +
+<<<<<<< HEAD
 	"\x17GetRelationDistribution\x12$.spqr.GetRelationDistributionRequest\x1a\".spqr.GetRelationDistributionReply\"\x00B\fZ\n" +
+=======
+	"\x17GetRelationDistribution\x12$.spqr.GetRelationDistributionRequest\x1a\".spqr.GetRelationDistributionReply\"\x00\x125\n" +
+	"\aNextVal\x12\x14.spqr.NextValRequest\x1a\x12.spqr.NextValReply\"\x00B\fZ\n" +
+>>>>>>> ab774a88 (reset)
 	"spqr/protob\x06proto3"
 
 var (
@@ -691,7 +800,7 @@ func file_protos_distribution_proto_rawDescGZIP() []byte {
 	return file_protos_distribution_proto_rawDescData
 }
 
-var file_protos_distribution_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_protos_distribution_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_protos_distribution_proto_goTypes = []any{
 	(*DistributionKeyEntry)(nil),           // 0: spqr.DistributionKeyEntry
 	(*DistributedRelation)(nil),            // 1: spqr.DistributedRelation
@@ -705,7 +814,13 @@ var file_protos_distribution_proto_goTypes = []any{
 	(*GetDistributionReply)(nil),           // 9: spqr.GetDistributionReply
 	(*GetRelationDistributionRequest)(nil), // 10: spqr.GetRelationDistributionRequest
 	(*GetRelationDistributionReply)(nil),   // 11: spqr.GetRelationDistributionReply
+<<<<<<< HEAD
 	(*emptypb.Empty)(nil),                  // 12: google.protobuf.Empty
+=======
+	(*NextValRequest)(nil),                 // 12: spqr.NextValRequest
+	(*NextValReply)(nil),                   // 13: spqr.NextValReply
+	(*emptypb.Empty)(nil),                  // 14: google.protobuf.Empty
+>>>>>>> ab774a88 (reset)
 }
 var file_protos_distribution_proto_depIdxs = []int32{
 	0,  // 0: spqr.DistributedRelation.distributionKey:type_name -> spqr.DistributionKeyEntry
@@ -717,20 +832,22 @@ var file_protos_distribution_proto_depIdxs = []int32{
 	2,  // 6: spqr.GetRelationDistributionReply.distribution:type_name -> spqr.Distribution
 	3,  // 7: spqr.DistributionService.CreateDistribution:input_type -> spqr.CreateDistributionRequest
 	5,  // 8: spqr.DistributionService.DropDistribution:input_type -> spqr.DropDistributionRequest
-	12, // 9: spqr.DistributionService.ListDistributions:input_type -> google.protobuf.Empty
+	14, // 9: spqr.DistributionService.ListDistributions:input_type -> google.protobuf.Empty
 	6,  // 10: spqr.DistributionService.AlterDistributionAttach:input_type -> spqr.AlterDistributionAttachRequest
 	7,  // 11: spqr.DistributionService.AlterDistributionDetach:input_type -> spqr.AlterDistributionDetachRequest
 	8,  // 12: spqr.DistributionService.GetDistribution:input_type -> spqr.GetDistributionRequest
 	10, // 13: spqr.DistributionService.GetRelationDistribution:input_type -> spqr.GetRelationDistributionRequest
-	12, // 14: spqr.DistributionService.CreateDistribution:output_type -> google.protobuf.Empty
-	12, // 15: spqr.DistributionService.DropDistribution:output_type -> google.protobuf.Empty
-	4,  // 16: spqr.DistributionService.ListDistributions:output_type -> spqr.ListDistributionsReply
-	12, // 17: spqr.DistributionService.AlterDistributionAttach:output_type -> google.protobuf.Empty
-	12, // 18: spqr.DistributionService.AlterDistributionDetach:output_type -> google.protobuf.Empty
-	9,  // 19: spqr.DistributionService.GetDistribution:output_type -> spqr.GetDistributionReply
-	11, // 20: spqr.DistributionService.GetRelationDistribution:output_type -> spqr.GetRelationDistributionReply
-	14, // [14:21] is the sub-list for method output_type
-	7,  // [7:14] is the sub-list for method input_type
+	12, // 14: spqr.DistributionService.NextVal:input_type -> spqr.NextValRequest
+	14, // 15: spqr.DistributionService.CreateDistribution:output_type -> google.protobuf.Empty
+	14, // 16: spqr.DistributionService.DropDistribution:output_type -> google.protobuf.Empty
+	4,  // 17: spqr.DistributionService.ListDistributions:output_type -> spqr.ListDistributionsReply
+	14, // 18: spqr.DistributionService.AlterDistributionAttach:output_type -> google.protobuf.Empty
+	14, // 19: spqr.DistributionService.AlterDistributionDetach:output_type -> google.protobuf.Empty
+	9,  // 20: spqr.DistributionService.GetDistribution:output_type -> spqr.GetDistributionReply
+	11, // 21: spqr.DistributionService.GetRelationDistribution:output_type -> spqr.GetRelationDistributionReply
+	13, // 22: spqr.DistributionService.NextVal:output_type -> spqr.NextValReply
+	15, // [15:23] is the sub-list for method output_type
+	7,  // [7:15] is the sub-list for method input_type
 	7,  // [7:7] is the sub-list for extension type_name
 	7,  // [7:7] is the sub-list for extension extendee
 	0,  // [0:7] is the sub-list for field type_name
@@ -747,7 +864,7 @@ func file_protos_distribution_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_distribution_proto_rawDesc), len(file_protos_distribution_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

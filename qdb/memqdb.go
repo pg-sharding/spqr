@@ -671,7 +671,7 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 			}
 
 			for _, colName := range r.Sequences {
-				if err := q.CreateSequence(ctx, &Sequence{
+				if err := q.createSequence(ctx, &Sequence{
 					RelName: r.Name,
 					ColName: colName,
 				}); err != nil {
@@ -694,19 +694,13 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 	}
 }
 
-func (q *MemQDB) CreateSequence(_ context.Context, seq *Sequence) error {
+func (q *MemQDB) createSequence(_ context.Context, seq *Sequence) error {
 	spqrlog.Zero.Debug().Interface("sequence", seq).Msg("memqdb: add sequence")
 	key := fmt.Sprintf("%s_%s", seq.RelName, seq.ColName)
 
-	q.mu.RLock()
 	if _, ok := q.Sequences[key]; ok {
-		q.mu.RUnlock()
 		return fmt.Errorf("already exists")
 	}
-	q.mu.RUnlock()
-
-	q.mu.Lock()
-	defer q.mu.Unlock()
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Sequences, key, seq))
 }
@@ -873,4 +867,8 @@ func (q *MemQDB) RemoveBalancerTask(_ context.Context) error {
 
 	q.BalancerTask = nil
 	return nil
+}
+
+func (q *MemQDB) NextVal(_ context.Context, _ string) (int64, error) {
+	panic("should never be here")
 }

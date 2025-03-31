@@ -104,6 +104,7 @@ type XQDB interface {
 	// data move state
 	ShardingSchemaKeeper
 	DistributedXactKepper
+	NextVal(ctx context.Context, seqName string) (int64, error)
 
 	TryCoordinatorLock(ctx context.Context) error
 }
