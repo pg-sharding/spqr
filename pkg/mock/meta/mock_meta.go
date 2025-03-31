@@ -439,6 +439,21 @@ func (mr *MockEntityMgrMockRecorder) Move(ctx, move any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockEntityMgr)(nil).Move), ctx, move)
 }
 
+// NextVal mocks base method.
+func (m *MockEntityMgr) NextVal(ctx context.Context, seqName string) (any, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NextVal", ctx, seqName)
+	ret0, _ := ret[0].(any)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NextVal indicates an expected call of NextVal.
+func (mr *MockEntityMgrMockRecorder) NextVal(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockEntityMgr)(nil).NextVal), ctx, seqName)
+}
+
 // QDB mocks base method.
 func (m *MockEntityMgr) QDB() qdb.QDB {
 	m.ctrl.T.Helper()

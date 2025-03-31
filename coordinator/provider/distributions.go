@@ -91,3 +91,11 @@ func (d *DistributionsServer) GetRelationDistribution(ctx context.Context, req *
 	}
 	return &protos.GetRelationDistributionReply{Distribution: distributions.DistributionToProto(ds)}, nil
 }
+
+func (d *DistributionsServer) NextVal(ctx context.Context, req *protos.NextValRequest) (*protos.NextValReply, error) {
+	val, err := d.impl.NextVal(ctx, req.SequenceName)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.NextValReply{Value: val}, nil
+}

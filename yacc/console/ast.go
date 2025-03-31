@@ -105,6 +105,7 @@ type DistributionDefinition struct {
 	ID         string
 	ColTypes   []string
 	Replicated bool
+	Sequences  []string
 }
 
 type ShardingRuleDefinition struct {

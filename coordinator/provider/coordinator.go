@@ -2168,6 +2168,11 @@ func (qc *qdbCoordinator) ListAllSequences(ctx context.Context) ([]*sequences.Se
 	return ret, nil
 }
 
+func (qc *qdbCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
+	// TODO: implement
+	return qc.db.NextVal(ctx, seqName)
+}
+
 // AlterDistributionDetach detaches relation from distribution
 // TODO: unit tests
 func (qc *qdbCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
