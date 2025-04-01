@@ -2050,6 +2050,10 @@ func (qc *qdbCoordinator) ListDistributions(ctx context.Context) ([]*distributio
 // CreateDistribution creates distribution in QDB
 // TODO: unit tests
 func (qc *qdbCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
+	if len(ds.ColTypes) == 0 && ds.Id != distributions.REPLICATED {
+		return fmt.Errorf("empty distributions are disallowed")
+	}
+
 	if err := qc.db.CreateDistribution(ctx, distributions.DistributionToDB(ds)); err != nil {
 		return err
 	}
