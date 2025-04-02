@@ -90,6 +90,8 @@
                         "welcome/get_started",
                         "sharding/ranged",
                         "sharding/hashed",
+                        "sharding/sharded_tables",
+                        "sharding/reference_tables",
                         {
                             "group": "Cluster Components",
                             "pages": [
@@ -123,7 +125,8 @@
                         "routing/hints"
                     ]
                 },
-                "welcome/design"
+                "welcome/design",
+                "welcome/talks"
             ]
         }
     ]

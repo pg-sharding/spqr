@@ -1,0 +1,26 @@
+---
+title: 'Sharded Tables'
+---
+
+Sharded tables, also known as **replicated tables** or **distributed tables**, are tables that are distributed across multiple shards, allowing each shard to store a portion of the data.
+
+Sharded tables are useful when you need or have:
+
+- Distributed data across multiple shards for performance and scalability.
+- Large datasets that need to be partitioned.
+- High availability and fault tolerance by spreading data across multiple servers.
+- Certain types of queries isolated to specific shards, reducing the query load on other parts of the system.
+
+## Examples
+
+Some typical use cases for sharded tables include:
+
+- **eCommerce**: Product catalogs, where each product has information about categories, descriptions, and prices, which can be sharded based on product IDs.
+- **Social Media**: User data and posts, sharded by user ID.
+- **Finance**: Transaction records, sharded by account number or transaction ID.
+- **IoT**: Data from devices, sharded by device ID or geographical region.
+- **Logs and Analytics**: Event logs and analytics data, sharded by date or region.
+
+## How to use it?
+
+See the [Get Started](/welcome/get_started) guide.

@@ -1,0 +1,79 @@
+---
+title: 'Reference Tables'
+---
+
+A reference table is a table that is fully replicated across all shards instead of being divided into separate partitions. This allows **every shard to have a local copy of the table**, reducing network overhead and ensuring fast access to frequently used data.
+
+Reference tables are useful when you need:
+
+- Consistent access to shared data across all shards.
+- Fast lookups without cross-shard queries.
+- Integrity constraints on small tables used across different parts of an application.
+
+## Examples
+
+Some typical use cases for reference tables include:
+
+- **eCommerce**: Sales tax rates apply to all stores.
+- **Common codes**: A table with country codes and region names.
+- **Roles**: A system-wide list of roles and permissions.
+- **Finance**: Exchange rates.
+- **Global settings**: Settings or feature flags.
+- **SaaS**: A table defining different subscription tiers, their pricing, and feature sets.
+
+## How to use it?
+
+To create a reference table, use the SPQR administrative console:
+
+```sql
+\c spqr-console
+CREATE REFERENCE TABLE tax_rates;
+         attach table          
+-------------------------------
+ relation name   -> tax_rates
+ distribution id -> REPLICATED
+(2 rows)
+```
+
+Then, create the table and insert data:
+
+```sql
+\c ordersdb
+CREATE TABLE tax_rates (
+    country_code VARCHAR(2),
+    state_code VARCHAR(2),
+    tax_rate NUMERIC(5, 2),
+    tax_category VARCHAR(50)
+);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+COPY tax_rates FROM 'test_tax_rates.csv' DELIMITER '\t';
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+```
+
+Verify replication:
+
+```sql
+SELECT * FROM tax_rates /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ country_code | state_code | tax_rate | tax_category
+--------------+------------+----------+--------------
+ US           | CA         |   7.25   | Sales
+ US           | NY         |   8.875  | Sales
+ GB           |            |   20.00  | VAT
+ CA           |            |   5.00   | GST
+ AU           |            |   10.00  | GST
+ IN           |            |   18.00  | GST
+(6 rows)
+
+SELECT * FROM tax_rates /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ country_code | state_code | tax_rate | tax_category
+--------------+------------+----------+--------------
+ US           | CA         |   7.25   | Sales
+ US           | NY         |   8.875  | Sales
+ GB           |            |   20.00  | VAT
+ CA           |            |   5.00   | GST
+ AU           |            |   10.00  | GST
+ IN           |            |   18.00  | GST
+(6 rows)
+```
