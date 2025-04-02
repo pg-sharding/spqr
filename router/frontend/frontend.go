@@ -1,7 +1,6 @@
 package frontend
 
 import (
-	"context"
 	"io"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -119,14 +118,9 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		// copy interface
 		cpQ := *q
 		q = &cpQ
+		qr.SetQuery(q.String)
 		return relay.ProcQueryAdvancedTx(rst, q.String, func() error {
-			spqrlog.Zero.Debug().Interface("query", q.String).Type("mgr", qr.Mgr()).Msg("here1")
-			val, err := qr.Mgr().NextVal(context.TODO(), "something")
-			if err != nil {
-				return err
-			}
-			spqrlog.Zero.Debug().Interface("next val", val).Msg("here2")
-			// modify query here
+			q.String = rst.QueryRouter().Query()
 			rst.AddQuery(q)
 			// this call completes relay, sends RFQ
 			return rst.ProcessMessageBuf(true, true)
