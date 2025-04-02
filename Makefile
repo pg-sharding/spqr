@@ -190,6 +190,7 @@ mockgen:
 	mockgen -source=./pkg/meta/meta.go -destination=./pkg/mock/meta/mock_meta.go -package=mock
 	mockgen -source=./pkg/clientinteractor/interactor.go -destination=pkg/mock/clientinteractor/mock_interactor.go -package=mock
 	mockgen -source=qdb/qdb.go -destination=qdb/mock/qdb.go -package=mock
+	mockgen -source=./coordinator/coordinator.go -destination=./coordinator/mock/mock_coordinator.go -package=mock
 
 yaccgen:
 	make -C ./yacc/console gen
