@@ -24,6 +24,9 @@ import (
 type EtcdQDB struct {
 	cli *clientv3.Client
 	mu  sync.Mutex
+
+	// FOR TESTS ONLY
+	seqNames map[string]int64
 }
 
 var _ XQDB = &EtcdQDB{}
@@ -45,7 +48,8 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 		Msg("etcdqdb: NewEtcdQDB")
 
 	return &EtcdQDB{
-		cli: cli,
+		cli:      cli,
+		seqNames: map[string]int64{},
 	}, nil
 }
 
@@ -1436,5 +1440,7 @@ func (q *EtcdQDB) ListAllSequences(ctx context.Context) ([]*Sequence, error) {
 
 func (q *EtcdQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: next val")
-	return -1, nil
+	next := q.seqNames[seqName]
+	q.seqNames[seqName]++
+	return next, nil
 }
