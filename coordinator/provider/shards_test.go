@@ -14,7 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-var someShards = []topology.DataShard{
+var someShards = []*topology.DataShard{
 	{
 		ID: "id-first",
 		Cfg: &config.Shard{
