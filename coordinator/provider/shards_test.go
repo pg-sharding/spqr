@@ -34,7 +34,7 @@ var someShards = []*topology.DataShard{
 	},
 }
 
-var someProtoShards = []proto.Shard{
+var someProtoShards = []*proto.Shard{
 	{
 		Id:    "id-first",
 		Hosts: []string{"aboba:1337", "eshkere:228"},
@@ -61,8 +61,13 @@ func TestListShards(t *testing.T) {
 	assert.NoError(err)
 	actualShards := res.GetShards()
 	assert.Equal(len(someProtoShards), len(actualShards))
+
 	for _, sh := range actualShards {
-		assert.Contains(someProtoShards, *sh)
+		for _, expected := range someProtoShards {
+			if expected.GetId() == sh.GetId() {
+				assert.EqualExportedValues(expected, sh)
+			}
+		}
 	}
 }
 
