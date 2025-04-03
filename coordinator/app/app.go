@@ -43,8 +43,6 @@ func NewApp(c coordinator.Coordinator) *App {
 func (app *App) Run(withPsql bool) error {
 	spqrlog.Zero.Info().Msg("running coordinator app")
 
-	app.coordinator.RunCoordinator(context.TODO(), !withPsql)
-
 	var notifier *sdnotifier.Notifier
 	if config.CoordinatorConfig().UseSystemdNotifier {
 		// systemd notifier
@@ -57,7 +55,18 @@ func (app *App) Run(withPsql bool) error {
 		if err := notifier.Ready(); err != nil {
 			return fmt.Errorf("could not send ready msg: %s", err)
 		}
+
+		go func() {
+			for {
+				if err := notifier.Notify(); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("error sending systemd notification")
+				}
+				time.Sleep(sdnotifier.Timeout)
+			}
+		}()
 	}
+
+	app.coordinator.RunCoordinator(context.TODO(), !withPsql)
 
 	wg := &sync.WaitGroup{}
 
@@ -81,17 +90,6 @@ func (app *App) Run(withPsql bool) error {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}(wg)
-
-	if notifier != nil {
-		go func() {
-			for {
-				if err := notifier.Notify(); err != nil {
-					spqrlog.Zero.Error().Err(err).Msg("error sending systemd notification")
-				}
-				time.Sleep(sdnotifier.Timeout)
-			}
-		}()
-	}
 
 	wg.Wait()
 
