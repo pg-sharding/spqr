@@ -34,23 +34,19 @@ var someShards = []*topology.DataShard{
 	},
 }
 
-var someProtoShards = []proto.ListShardsReply{
+var someProtoShards = []proto.Shard{
 	{
-		Shards: []*proto.Shard{
-			{
-				Id:    "id-first",
-				Hosts: []string{"aboba:1337", "eshkere:228"},
-			},
-			{
-				Id:    "id-second",
-				Hosts: []string{"goooal:1488"},
-			},
-		},
+		Id:    "id-first",
+		Hosts: []string{"aboba:1337", "eshkere:228"},
+	},
+	{
+		Id:    "id-second",
+		Hosts: []string{"goooal:1488"},
 	},
 }
 
 func TestListShards(t *testing.T) {
-	assertions := assert.New(t)
+	assert := assert.New(t)
 
 	ctrl := gomock.NewController(t)
 	coordinator := mock.NewMockCoordinator(ctrl)
@@ -62,8 +58,12 @@ func TestListShards(t *testing.T) {
 
 	res, err := shardServer.ListShards(ctx, emptypb)
 
-	assertions.NoError(err)
-	assertions.Equal(someProtoShards, res)
+	assert.NoError(err)
+	actualShards := res.GetShards()
+	assert.Equal(len(someProtoShards), len(actualShards))
+	for _, sh := range actualShards {
+		assert.Contains(someProtoShards, *sh)
+	}
 }
 
 func TestListShards_ReturnsCoordinatorError(t *testing.T) {
