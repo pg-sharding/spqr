@@ -2121,13 +2121,14 @@ func (qc *qdbCoordinator) GetRelationDistribution(ctx context.Context, relName s
 // AlterDistributionAttach attaches relation to distribution
 // TODO: unit tests
 func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
-	if err := qc.db.AlterDistributionAttach(ctx, id, func() []*qdb.DistributedRelation {
-		qdbRels := make([]*qdb.DistributedRelation, len(rels))
-		for i, rel := range rels {
-			qdbRels[i] = distributions.DistributedRelationToDB(rel)
+	qdbRels := make([]*qdb.DistributedRelation, 0, len(rels))
+	for _, rel := range rels {
+		if !rel.ReplicatedRelation && len(rel.Sequences) > 0 {
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequences are supported for replicated relations only")
 		}
-		return qdbRels
-	}()); err != nil {
+		qdbRels = append(qdbRels, distributions.DistributedRelationToDB(rel))
+	}
+	if err := qc.db.AlterDistributionAttach(ctx, id, qdbRels); err != nil {
 		return err
 	}
 

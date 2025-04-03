@@ -670,15 +670,6 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", r.Name)
 			}
 
-			for _, colName := range r.Sequences {
-				if err := q.createSequence(ctx, &Sequence{
-					RelName: r.Name,
-					ColName: colName,
-				}); err != nil {
-					return err
-				}
-			}
-
 			ds.Relations[r.Name] = &DistributedRelation{
 				Name:            r.Name,
 				DistributionKey: r.DistributionKey,
@@ -692,17 +683,6 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 
 		return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds))
 	}
-}
-
-func (q *MemQDB) createSequence(_ context.Context, seq *Sequence) error {
-	spqrlog.Zero.Debug().Interface("sequence", seq).Msg("memqdb: add sequence")
-	key := fmt.Sprintf("%s_%s", seq.RelName, seq.ColName)
-
-	if _, ok := q.Sequences[key]; ok {
-		return fmt.Errorf("already exists")
-	}
-
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Sequences, key, seq))
 }
 
 func (q *MemQDB) ListAllSequences(_ context.Context) ([]*Sequence, error) {

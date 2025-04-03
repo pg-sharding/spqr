@@ -440,10 +440,10 @@ func (mr *MockEntityMgrMockRecorder) Move(ctx, move any) *gomock.Call {
 }
 
 // NextVal mocks base method.
-func (m *MockEntityMgr) NextVal(ctx context.Context, seqName string) (any, error) {
+func (m *MockEntityMgr) NextVal(ctx context.Context, seqName string) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NextVal", ctx, seqName)
-	ret0, _ := ret[0].(any)
+	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -34,7 +34,8 @@ const (
 //   - *DistributedRelation: The created DistributedRelation object.
 func DistributedRelationFromDB(rel *qdb.DistributedRelation) *DistributedRelation {
 	rdistr := &DistributedRelation{
-		Name: rel.Name,
+		Name:      rel.Name,
+		Sequences: make([]string, len(rel.Sequences)),
 	}
 
 	for _, e := range rel.DistributionKey {
@@ -45,6 +46,7 @@ func DistributedRelationFromDB(rel *qdb.DistributedRelation) *DistributedRelatio
 	}
 
 	rdistr.ReplicatedRelation = rel.ReplicatedRelation
+	copy(rdistr.Sequences, rel.Sequences)
 
 	return rdistr
 }

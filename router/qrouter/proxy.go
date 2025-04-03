@@ -29,7 +29,7 @@ type ProxyQrouter struct {
 	schemaCache *cache.SchemaCache
 
 	initialized *atomic.Bool
-	query       string
+	query       *string
 }
 
 var _ QueryRouter = &ProxyQrouter{}
@@ -50,10 +50,10 @@ func (qr *ProxyQrouter) SchemaCache() *cache.SchemaCache {
 	return qr.schemaCache
 }
 
-func (qr *ProxyQrouter) SetQuery(q string) {
+func (qr *ProxyQrouter) SetQuery(q *string) {
 	qr.query = q
 }
-func (qr *ProxyQrouter) Query() string {
+func (qr *ProxyQrouter) Query() *string {
 	return qr.query
 }
 

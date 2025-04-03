@@ -9,10 +9,7 @@ package proto
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-<<<<<<< HEAD
-=======
 	_ "google.golang.org/protobuf/types/known/anypb"
->>>>>>> ab774a88 (reset)
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	reflect "reflect"
 	sync "sync"
@@ -726,11 +723,7 @@ var File_protos_distribution_proto protoreflect.FileDescriptor
 
 const file_protos_distribution_proto_rawDesc = "" +
 	"\n" +
-<<<<<<< HEAD
-	"\x19protos/distribution.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"R\n" +
-=======
 	"\x19protos/distribution.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\x19google/protobuf/any.proto\"R\n" +
->>>>>>> ab774a88 (reset)
 	"\x14DistributionKeyEntry\x12\x16\n" +
 	"\x06column\x18\x01 \x01(\tR\x06column\x12\"\n" +
 	"\fhashFunction\x18\x02 \x01(\tR\fhashFunction\"\xbd\x01\n" +
@@ -764,15 +757,11 @@ const file_protos_distribution_proto_rawDesc = "" +
 	"\x1eGetRelationDistributionRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"V\n" +
 	"\x1cGetRelationDistributionReply\x126\n" +
-<<<<<<< HEAD
-	"\fdistribution\x18\x01 \x01(\v2\x12.spqr.DistributionR\fdistribution2\xec\x04\n" +
-=======
 	"\fdistribution\x18\x01 \x01(\v2\x12.spqr.DistributionR\fdistribution\"5\n" +
 	"\x0eNextValRequest\x12#\n" +
 	"\rsequence_name\x18\x01 \x01(\tR\fsequenceName\"$\n" +
 	"\fNextValReply\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\x03R\x05value2\xa3\x05\n" +
->>>>>>> ab774a88 (reset)
 	"\x13DistributionService\x12O\n" +
 	"\x12CreateDistribution\x12\x1f.spqr.CreateDistributionRequest\x1a\x16.google.protobuf.Empty\"\x00\x12K\n" +
 	"\x10DropDistribution\x12\x1d.spqr.DropDistributionRequest\x1a\x16.google.protobuf.Empty\"\x00\x12K\n" +
@@ -780,12 +769,8 @@ const file_protos_distribution_proto_rawDesc = "" +
 	"\x17AlterDistributionAttach\x12$.spqr.AlterDistributionAttachRequest\x1a\x16.google.protobuf.Empty\"\x00\x12Y\n" +
 	"\x17AlterDistributionDetach\x12$.spqr.AlterDistributionDetachRequest\x1a\x16.google.protobuf.Empty\"\x00\x12M\n" +
 	"\x0fGetDistribution\x12\x1c.spqr.GetDistributionRequest\x1a\x1a.spqr.GetDistributionReply\"\x00\x12e\n" +
-<<<<<<< HEAD
-	"\x17GetRelationDistribution\x12$.spqr.GetRelationDistributionRequest\x1a\".spqr.GetRelationDistributionReply\"\x00B\fZ\n" +
-=======
 	"\x17GetRelationDistribution\x12$.spqr.GetRelationDistributionRequest\x1a\".spqr.GetRelationDistributionReply\"\x00\x125\n" +
 	"\aNextVal\x12\x14.spqr.NextValRequest\x1a\x12.spqr.NextValReply\"\x00B\fZ\n" +
->>>>>>> ab774a88 (reset)
 	"spqr/protob\x06proto3"
 
 var (
@@ -814,13 +799,9 @@ var file_protos_distribution_proto_goTypes = []any{
 	(*GetDistributionReply)(nil),           // 9: spqr.GetDistributionReply
 	(*GetRelationDistributionRequest)(nil), // 10: spqr.GetRelationDistributionRequest
 	(*GetRelationDistributionReply)(nil),   // 11: spqr.GetRelationDistributionReply
-<<<<<<< HEAD
-	(*emptypb.Empty)(nil),                  // 12: google.protobuf.Empty
-=======
 	(*NextValRequest)(nil),                 // 12: spqr.NextValRequest
 	(*NextValReply)(nil),                   // 13: spqr.NextValReply
 	(*emptypb.Empty)(nil),                  // 14: google.protobuf.Empty
->>>>>>> ab774a88 (reset)
 }
 var file_protos_distribution_proto_depIdxs = []int32{
 	0,  // 0: spqr.DistributedRelation.distributionKey:type_name -> spqr.DistributionKeyEntry
