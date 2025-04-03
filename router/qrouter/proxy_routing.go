@@ -1449,8 +1449,8 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 func (qr *ProxyQrouter) insertSequenceValue(ctx context.Context, ds *distributions.Distribution, rfqn rfqn.RelationFQN) error {
 	query := *qr.query
 	rel := ds.Relations[rfqn.RelationName]
-	for _, seq := range rel.Sequences {
-		nextval, err := qr.mgr.NextVal(ctx, seq)
+	for _, colName := range rel.Sequences {
+		nextval, err := qr.mgr.NextVal(ctx, rel.Name, colName)
 		if err != nil {
 			return err
 		}
@@ -1460,7 +1460,7 @@ func (qr *ProxyQrouter) insertSequenceValue(ctx context.Context, ds *distributio
 		if colsOpenInd == -1 || valuesOpenInd == -1 {
 			return fmt.Errorf("failed to insert sequences")
 		}
-		query = query[:colsOpenInd+1] + seq + ", " + query[colsOpenInd+1:valuesOpenInd+1] + fmt.Sprintf("%d", nextval) + ", " + query[valuesOpenInd+1:]
+		query = query[:colsOpenInd+1] + colName + ", " + query[colsOpenInd+1:valuesOpenInd+1] + fmt.Sprintf("%d", nextval) + ", " + query[valuesOpenInd+1:]
 	}
 	*qr.query = query
 	return nil

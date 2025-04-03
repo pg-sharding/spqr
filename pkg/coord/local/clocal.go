@@ -947,7 +947,7 @@ func (lc *LocalCoordinator) ListAllSequences(ctx context.Context) ([]*sequences.
 	return ret, nil
 }
 
-func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
+func (lc *LocalCoordinator) NextVal(ctx context.Context, relName, colName string) (int64, error) {
 	coordAddr, err := lc.GetCoordinator(ctx)
 	if err != nil {
 		return -1, err
@@ -958,7 +958,7 @@ func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64,
 	}
 	defer conn.Close()
 	mgr := coord.NewAdapter(conn)
-	return mgr.NextVal(ctx, seqName)
+	return mgr.NextVal(ctx, relName, colName)
 }
 
 // NewLocalCoordinator creates a new LocalCoordinator instance.

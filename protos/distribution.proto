@@ -12,18 +12,23 @@ message DistributionKeyEntry {
   string hashFunction = 2;
 }
 
+message Sequence {
+  string relName = 1;
+  string colName = 2;
+}
+
 message DistributedRelation {
   string name = 1;
   repeated DistributionKeyEntry distributionKey = 2;
   bool ReplicatedRelation = 3;
-  repeated string Sequences = 4;
+  repeated Sequence Sequences = 4;
 }
 
 message Distribution {
   string id = 1;
   repeated string ColumnTypes = 2;
   repeated DistributedRelation relations = 3;
-  repeated string Sequences = 4;
+  repeated Sequence Sequences = 4;
 }
 
 message CreateDistributionRequest{
@@ -66,7 +71,7 @@ message GetRelationDistributionReply {
 }
 
 message NextValRequest {
-  string sequence_name = 1;
+  Sequence seq = 1;
 }
 
 message NextValReply {

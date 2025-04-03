@@ -849,6 +849,6 @@ func (q *MemQDB) RemoveBalancerTask(_ context.Context) error {
 	return nil
 }
 
-func (q *MemQDB) NextVal(_ context.Context, _ string) (int64, error) {
+func (q *MemQDB) NextVal(_ context.Context, _ Sequence) (int64, error) {
 	panic("should never be here")
 }

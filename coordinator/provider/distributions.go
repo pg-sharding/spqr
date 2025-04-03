@@ -93,7 +93,7 @@ func (d *DistributionsServer) GetRelationDistribution(ctx context.Context, req *
 }
 
 func (d *DistributionsServer) NextVal(ctx context.Context, req *protos.NextValRequest) (*protos.NextValReply, error) {
-	val, err := d.impl.NextVal(ctx, req.SequenceName)
+	val, err := d.impl.NextVal(ctx, req.Seq.RelName, req.Seq.ColName)
 	if err != nil {
 		return nil, err
 	}
