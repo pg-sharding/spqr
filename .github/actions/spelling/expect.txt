@@ -264,11 +264,13 @@ lol
 lqr
 lsb
 lval
+lvl
 lwg
 lyx
 markokr
 maxuint
 mdblocales
+mcol
 memqdb
 metadb
 MGhyjwicp
