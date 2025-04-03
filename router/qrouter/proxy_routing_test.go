@@ -302,6 +302,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 		dh := session.NewDummyHandler("dd")
 		dh.SetEnhancedMultiShardProcessing(false, true)
+		pr.SetQuery(&tt.query)
 		tmp, err := pr.Route(context.TODO(), parserRes, dh)
 
 		if tt.err == nil {
