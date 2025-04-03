@@ -196,6 +196,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			{
 				Name:               stmt.TableName,
 				ReplicatedRelation: true,
+				Sequences:          stmt.Sequences,
 			},
 		}
 

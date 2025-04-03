@@ -118,9 +118,9 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		qr.SetQuery(q.String)
+		qr.SetQuery(&q.String)
+		spqrlog.Zero.Debug().Msgf("here222 %p", &q.String)
 		return relay.ProcQueryAdvancedTx(rst, q.String, func() error {
-			q.String = rst.QueryRouter().Query()
 			rst.AddQuery(q)
 			// this call completes relay, sends RFQ
 			return rst.ProcessMessageBuf(true, true)

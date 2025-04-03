@@ -614,11 +614,12 @@ create_stmt:
 		$$ = &Create{Element: $2}
 	}
 	|
-	CREATE REFERENCE TABLE any_id
+	CREATE REFERENCE TABLE any_id opt_sequence
 	{
 		$$ = &Create{
 			Element: &ReferenceRelationDefinition{
 				TableName: $4,
+				Sequences: $5,
 			},
 		}
 	}

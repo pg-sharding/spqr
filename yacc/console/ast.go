@@ -122,6 +122,7 @@ type ShardingRuleEntry struct {
 
 type ReferenceRelationDefinition struct {
 	TableName string
+	Sequences []string
 }
 
 type KeyRangeBound struct {

@@ -1265,6 +1265,21 @@ func (mr *MockXQDBMockRecorder) LockKeyRange(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRange", reflect.TypeOf((*MockXQDB)(nil).LockKeyRange), ctx, id)
 }
 
+// NextVal mocks base method.
+func (m *MockXQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NextVal", ctx, seqName)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NextVal indicates an expected call of NextVal.
+func (mr *MockXQDBMockRecorder) NextVal(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockXQDB)(nil).NextVal), ctx, seqName)
+}
+
 // OpenRouter mocks base method.
 func (m *MockXQDB) OpenRouter(ctx context.Context, rID string) error {
 	m.ctrl.T.Helper()

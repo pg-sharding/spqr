@@ -795,6 +795,7 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) ([]pgproto
 
 	flusher := func(buff []BufferedMessage, waitForResp, replyCl bool) error {
 		for len(buff) > 0 {
+			spqrlog.Zero.Debug().Msgf("here333: %p", &buff[0].msg.(*pgproto3.Query).String)
 			var v BufferedMessage
 			v, buff = buff[0], buff[1:]
 			spqrlog.Zero.Debug().
