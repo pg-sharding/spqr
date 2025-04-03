@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
-	_ "os"
+	"os"
 	"syscall"
 	"time"
 
@@ -181,20 +181,19 @@ func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 
 func setTCPUserTimeout(d time.Duration) func(string, string, syscall.RawConn) error {
 	return func(network, address string, c syscall.RawConn) error {
-		// var sysErr error
-		// var err = c.Control(func(fd uintptr) {
-		// 	/*
-		// 		#define TCP_USER_TIMEOUT	 18 // How long for loss retry before timeout
-		// 	*/
+		var sysErr error
+		var err = c.Control(func(fd uintptr) {
+			/*
+				#define TCP_USER_TIMEOUT	 18 // How long for loss retry before timeout
+			*/
 
-		// 	sysErr = syscall.SetsockoptInt(int(fd), syscall.SOL_TCP, 0x12,
-		// 		int(d.Milliseconds()))
-		// })
-		// if sysErr != nil {
-		// 	return os.NewSyscallError("setsockopt", sysErr)
-		// }
-		// return err
-		return nil
+			sysErr = syscall.SetsockoptInt(int(fd), syscall.SOL_TCP, 0x12,
+				int(d.Milliseconds()))
+		})
+		if sysErr != nil {
+			return os.NewSyscallError("setsockopt", sysErr)
+		}
+		return err
 	}
 }
 
