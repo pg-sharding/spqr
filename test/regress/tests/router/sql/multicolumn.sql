@@ -34,6 +34,11 @@ SELECT * FROM mcol_sh WHERE id = 100 AND seq = 90;
 SELECT * FROM mcol_sh WHERE id = 2000 AND seq = 10;
 SELECT * FROM mcol_sh WHERE id = 2000 AND seq = 200;
 
+UPDATE mcol_sh SET val = val + 1 WHERE id = 2000 AND seq = 200;
+SELECT * FROM mcol_sh WHERE id = 2000 AND seq = 200;
+
+SELECT * FROM mcol_sh WHERE id = 2000 AND seq = 200 OR id = 2000 AND seq =10;
+
 DROP TABLE mcol_sh;
 
 \c spqr-console
