@@ -7,6 +7,7 @@ import (
 	"net"
 	"path"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -69,6 +70,7 @@ const (
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
 	coordLockKey      = "coordinator_exists"
+	sequencespace     = "sequence_space"
 )
 
 func keyLockPath(key string) string {
@@ -1067,13 +1069,7 @@ func (q *EtcdQDB) createSequence(ctx context.Context, seq Sequence) error {
 		Interface("sequence", seq).
 		Msg("etcdqdb: add sequence")
 
-	rawSequence, err := json.Marshal(seq)
-
-	if err != nil {
-		return err
-	}
-
-	resp, err := q.cli.Put(ctx, sequenceNodePath(seq.RelName, seq.ColName), string(rawSequence))
+	resp, err := q.cli.Put(ctx, sequenceNodePath(seq.RelName, seq.ColName), "0")
 	if err != nil {
 		return err
 	}
@@ -1438,9 +1434,40 @@ func (q *EtcdQDB) ListAllSequences(ctx context.Context) ([]*Sequence, error) {
 	return ret, nil
 }
 
-func (q *EtcdQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
+func (q *EtcdQDB) NextVal(ctx context.Context, seq Sequence) (int64, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: next val")
-	next := q.seqNames[seqName]
-	q.seqNames[seqName]++
-	return next, nil
+
+	id := sequenceNodePath(seq.RelName, seq.ColName)
+	sess, err := concurrency.NewSession(q.cli)
+	if err != nil {
+		return -1, err
+	}
+	defer closeSession(sess)
+
+	mu := concurrency.NewMutex(sess, sequencespace)
+	if err = mu.Lock(ctx); err != nil {
+		return -1, err
+	}
+	defer unlockMutex(mu, ctx)
+
+	resp, err := q.cli.Get(ctx, id)
+	if err != nil {
+		return -1, err
+	}
+
+	var nextval int64 = 0
+	switch resp.Count {
+	case 1:
+		var err error
+		nextval, err = strconv.ParseInt(string(resp.Kvs[0].Value), 10, 64)
+		if err != nil {
+			return -1, err
+		}
+	default:
+	}
+
+	nextval++
+	_, err = q.cli.Put(ctx, id, fmt.Sprintf("%d", nextval))
+
+	return nextval, err
 }

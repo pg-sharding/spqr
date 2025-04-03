@@ -943,10 +943,13 @@ func (a *Adapter) ListAllSequences(ctx context.Context) ([]*sequences.Sequence, 
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (a *Adapter) NextVal(ctx context.Context, seqName string) (int64, error) {
+func (a *Adapter) NextVal(ctx context.Context, relName, colName string) (int64, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 	resp, err := c.NextVal(ctx, &proto.NextValRequest{
-		SequenceName: seqName,
+		Seq: &proto.Sequence{
+			RelName: relName,
+			ColName: colName,
+		},
 	})
 	if err != nil {
 		return -1, err

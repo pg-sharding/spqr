@@ -89,7 +89,7 @@ func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation 
 func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRelation {
 	rdistr := &proto.DistributedRelation{
 		Name:      rel.Name,
-		Sequences: make([]string, len(rel.Sequences)),
+		Sequences: make([]*proto.Sequence, len(rel.Sequences)),
 	}
 
 	for _, e := range rel.DistributionKey {
@@ -98,9 +98,11 @@ func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRela
 			HashFunction: e.HashFunction,
 		})
 	}
+	for i, colName := range rel.Sequences {
+		rdistr.Sequences[i] = &proto.Sequence{RelName: rel.Name, ColName: colName}
+	}
 
 	rdistr.ReplicatedRelation = rel.ReplicatedRelation
-	copy(rdistr.Sequences, rel.Sequences)
 
 	return rdistr
 }
@@ -126,7 +128,9 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRe
 	}
 
 	rdistr.ReplicatedRelation = rel.ReplicatedRelation
-	copy(rdistr.Sequences, rel.Sequences)
+	for i, seq := range rel.Sequences {
+		rdistr.Sequences[i] = seq.ColName
+	}
 
 	return rdistr
 }
