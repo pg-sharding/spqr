@@ -25,8 +25,14 @@ INSERT INTO mcol_sh (id, seq, val) VALUES (100, 90, 1);
 INSERT INTO mcol_sh (id, seq, val) VALUES (2000, 10, 1);
 INSERT INTO mcol_sh (id, seq, val) VALUES (2000, 200, 1);
 
-
+SELECT * FROM mcol_sh WHERE id = 0 AND seq = 10;
+SELECT * FROM mcol_sh WHERE id = 0 AND seq = 200;
+SELECT * FROM mcol_sh WHERE id = 1 AND seq = 1;
+SELECT * FROM mcol_sh WHERE id = 2 AND seq = 2;
 SELECT * FROM mcol_sh WHERE id = 100 AND seq = 10;
+SELECT * FROM mcol_sh WHERE id = 100 AND seq = 90;
+SELECT * FROM mcol_sh WHERE id = 2000 AND seq = 10;
+SELECT * FROM mcol_sh WHERE id = 2000 AND seq = 200;
 
 DROP TABLE mcol_sh;
 

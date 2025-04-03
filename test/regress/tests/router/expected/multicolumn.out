@@ -63,11 +63,60 @@ INSERT INTO mcol_sh (id, seq, val) VALUES (2000, 10, 1);
 NOTICE: send query to shard(s) : sh4
 INSERT INTO mcol_sh (id, seq, val) VALUES (2000, 200, 1);
 NOTICE: send query to shard(s) : sh4
+SELECT * FROM mcol_sh WHERE id = 0 AND seq = 10;
+NOTICE: send query to shard(s) : sh1
+ id | seq | val 
+----+-----+-----
+  0 |  10 |   1
+(1 row)
+
+SELECT * FROM mcol_sh WHERE id = 0 AND seq = 200;
+NOTICE: send query to shard(s) : sh2
+ id | seq | val 
+----+-----+-----
+  0 | 200 |   1
+(1 row)
+
+SELECT * FROM mcol_sh WHERE id = 1 AND seq = 1;
+NOTICE: send query to shard(s) : sh2
+ id | seq | val 
+----+-----+-----
+  1 |   1 |   1
+(1 row)
+
+SELECT * FROM mcol_sh WHERE id = 2 AND seq = 2;
+NOTICE: send query to shard(s) : sh2
+ id | seq | val 
+----+-----+-----
+  2 |   2 |   1
+(1 row)
+
 SELECT * FROM mcol_sh WHERE id = 100 AND seq = 10;
 NOTICE: send query to shard(s) : sh3
  id  | seq | val 
 -----+-----+-----
  100 |  10 |   1
+(1 row)
+
+SELECT * FROM mcol_sh WHERE id = 100 AND seq = 90;
+NOTICE: send query to shard(s) : sh3
+ id  | seq | val 
+-----+-----+-----
+ 100 |  90 |   1
+(1 row)
+
+SELECT * FROM mcol_sh WHERE id = 2000 AND seq = 10;
+NOTICE: send query to shard(s) : sh4
+  id  | seq | val 
+------+-----+-----
+ 2000 |  10 |   1
+(1 row)
+
+SELECT * FROM mcol_sh WHERE id = 2000 AND seq = 200;
+NOTICE: send query to shard(s) : sh4
+  id  | seq | val 
+------+-----+-----
+ 2000 | 200 |   1
 (1 row)
 
 DROP TABLE mcol_sh;
