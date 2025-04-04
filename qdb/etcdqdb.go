@@ -25,9 +25,6 @@ import (
 type EtcdQDB struct {
 	cli *clientv3.Client
 	mu  sync.Mutex
-
-	// FOR TESTS ONLY
-	seqNames map[string]int64
 }
 
 var _ XQDB = &EtcdQDB{}
@@ -49,8 +46,7 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 		Msg("etcdqdb: NewEtcdQDB")
 
 	return &EtcdQDB{
-		cli:      cli,
-		seqNames: map[string]int64{},
+		cli: cli,
 	}, nil
 }
 

@@ -607,7 +607,6 @@ func (qr *ProxyQrouter) processInsertFromSelectOffsets(
 		if ds.Id == distributions.REPLICATED {
 			err := qr.insertSequenceValue(ctx, ds, curr_rfqn)
 			return nil, curr_rfqn, ds, err
-			// check for sequences
 		}
 
 		insertColsPos := map[string]int{}
