@@ -139,6 +139,9 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*KeyRange
 	}
 
 	switch len(raw.Kvs) {
+	case 0:
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "no key range found at %v", nodePath)
+
 	case 1:
 		ret := KeyRange{}
 		if err := json.Unmarshal(raw.Kvs[0].Value, &ret); err != nil {
@@ -147,7 +150,7 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*KeyRange
 		return &ret, nil
 
 	default:
-		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to fetch key range at %v", nodePath)
+		return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "possible data corruption: multiple key-value pairs found for %v", nodePath)
 	}
 }
 
