@@ -223,6 +223,11 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 			exp:   nil,
 			err:   spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD),
 		},
+		{
+			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: true */;",
+			exp:   nil,
+			err:   spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD),
+		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 

@@ -264,11 +264,13 @@ lol
 lqr
 lsb
 lval
+lvl
 lwg
 lyx
 markokr
 maxuint
 mdblocales
+mcol
 memqdb
 metadb
 MGhyjwicp
@@ -326,6 +328,7 @@ opgejrqr
 optarg
 optval
 opvalue
+ontup
 outputdir
 Patroni
 Percona
@@ -585,6 +588,7 @@ vasya
 vguoyguoygoyy
 Vitess
 vla
+vvs
 VMs
 Warningf
 workloadlog
