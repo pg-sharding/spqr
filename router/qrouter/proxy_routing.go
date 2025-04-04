@@ -1447,6 +1447,10 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 }
 
 func (qr *ProxyQrouter) insertSequenceValue(ctx context.Context, ds *distributions.Distribution, rfqn rfqn.RelationFQN) error {
+	if qr.query == nil {
+		return nil
+	}
+
 	query := *qr.query
 	rel := ds.Relations[rfqn.RelationName]
 	errInsert := fmt.Errorf("failed to insert sequences")
