@@ -645,6 +645,46 @@ func TestAlter(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "ALTER REPLICATED DISTRIBUTION ATTACH RELATION t SEQUENCE id1;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Distribution: &spqrparser.DistributionSelector{
+							Replicated: true,
+						},
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name:               "t",
+								ReplicatedRelation: true,
+								Sequences:          []string{"id1"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1 SEQUENCE id1, id2;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name: "t",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										Column: "id1",
+									},
+								},
+								Sequences: []string{"id1", "id2"},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
@@ -692,6 +732,16 @@ func TestDistribution(t *testing.T) {
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
 					TableName: "xtab",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE REFERENCE TABLE xtab SEQUENCE id",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ReferenceRelationDefinition{
+					TableName: "xtab",
+					Sequences: []string{"id"},
 				},
 			},
 			err: nil,

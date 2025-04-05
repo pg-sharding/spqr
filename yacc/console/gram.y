@@ -149,8 +149,8 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY
-%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED
-%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS
+%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED SEQUENCE
+%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS SEQUENCES
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
 %token <str> BATCH SIZE
@@ -192,6 +192,8 @@ func randomHex(n int) (string, error) {
 %type<entrieslist> sharding_rule_argument_list
 %type<dEntrieslist> distribution_key_argument_list
 %type<shruleEntry> sharding_rule_entry
+%type<strlist> opt_sequence
+%type<strlist> sequence_column_list
 
 %type<distrKeyEntry> distribution_key_entry
 
@@ -404,7 +406,7 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr, RelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr:
+		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr, RelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr, SequencesStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -546,21 +548,37 @@ distribution_key_entry:
 	}
 
 distributed_relation_def:
-	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list
+	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list opt_sequence
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
 			DistributionKey: $5,
+			Sequences: $6,
 		}
 	} | 
-	RELATION any_id
+	RELATION any_id opt_sequence
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
 			ReplicatedRelation: true,
+			Sequences: $3,
 		}
 	}
 
+
+opt_sequence:
+	SEQUENCE sequence_column_list {
+		$$ = $2
+	} | /* EMPTY */ {
+		$$ = nil
+	}
+
+sequence_column_list:
+	any_id {
+		$$ = []string{$1}
+	} | sequence_column_list TCOMMA any_id {
+		$$ = append($1, $3)
+	}
 
 
 distributed_relation_list_def:
@@ -596,11 +614,12 @@ create_stmt:
 		$$ = &Create{Element: $2}
 	}
 	|
-	CREATE REFERENCE TABLE any_id
+	CREATE REFERENCE TABLE any_id opt_sequence
 	{
 		$$ = &Create{
 			Element: &ReferenceRelationDefinition{
 				TableName: $4,
+				Sequences: $5,
 			},
 		}
 	}

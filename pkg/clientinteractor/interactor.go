@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -1512,6 +1513,21 @@ func (pi *PSQLInteractor) PreparedStatements(ctx context.Context, shs []shard.Pr
 	}
 
 	return pi.CompleteMsg(len(shs))
+}
+
+func (pi *PSQLInteractor) Sequences(ctx context.Context, seqs []*sequences.Sequence) error {
+	if err := pi.WriteHeader("relation", "column"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	for _, seq := range seqs {
+		if err := pi.WriteDataRow(seq.RelName, seq.ColName); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+	return pi.CompleteMsg(len(seqs))
 }
 
 func groupBy[T any](headers []string, values []T, getters []func(s T) string, groupByCol string, pi *PSQLInteractor) error {

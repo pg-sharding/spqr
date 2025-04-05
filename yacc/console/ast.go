@@ -105,6 +105,7 @@ type DistributionDefinition struct {
 	ID         string
 	ColTypes   []string
 	Replicated bool
+	Sequences  []string
 }
 
 type ShardingRuleDefinition struct {
@@ -121,6 +122,7 @@ type ShardingRuleEntry struct {
 
 type ReferenceRelationDefinition struct {
 	TableName string
+	Sequences []string
 }
 
 type KeyRangeBound struct {
@@ -257,6 +259,7 @@ type DistributedRelation struct {
 	Name               string
 	DistributionKey    []DistributionKeyEntry
 	ReplicatedRelation bool
+	Sequences          []string
 }
 
 type AttachRelation struct {
@@ -296,6 +299,7 @@ const (
 	PreparedStatementsStr = "prepared_statements"
 	UnsupportedStr        = "unsupported"
 	QuantilesStr          = "time_quantiles"
+	SequencesStr          = "sequences"
 )
 
 const (

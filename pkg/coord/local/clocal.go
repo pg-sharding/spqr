@@ -7,9 +7,11 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -17,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
 	"github.com/pg-sharding/spqr/router/cache"
+	"google.golang.org/grpc"
 )
 
 type LocalCoordinator struct {
@@ -158,6 +161,9 @@ func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id stri
 	for _, r := range rels {
 		if len(r.DistributionKey) != len(ds.ColTypes) {
 			return fmt.Errorf("cannot attach relation %v to this dataspace: number of column mismatch", r.Name)
+		}
+		if !r.ReplicatedRelation && len(r.Sequences) > 0 {
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequences are supported for replicated relations only")
 		}
 		dRels = append(dRels, distributions.DistributedRelationToDB(r))
 	}
@@ -927,6 +933,32 @@ func (lc *LocalCoordinator) QDB() qdb.QDB {
 
 func (lc *LocalCoordinator) Cache() *cache.SchemaCache {
 	return lc.cache
+}
+
+func (lc *LocalCoordinator) ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error) {
+	seqs, err := lc.qdb.ListAllSequences(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ret := make([]*sequences.Sequence, 0, len(seqs))
+	for _, seq := range seqs {
+		ret = append(ret, sequences.SequenceFromDB(seq))
+	}
+	return ret, nil
+}
+
+func (lc *LocalCoordinator) NextVal(ctx context.Context, relName, colName string) (int64, error) {
+	coordAddr, err := lc.GetCoordinator(ctx)
+	if err != nil {
+		return -1, err
+	}
+	conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all
+	if err != nil {
+		return -1, err
+	}
+	defer conn.Close()
+	mgr := coord.NewAdapter(conn)
+	return mgr.NextVal(ctx, relName, colName)
 }
 
 // NewLocalCoordinator creates a new LocalCoordinator instance.

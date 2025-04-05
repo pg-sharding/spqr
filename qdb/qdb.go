@@ -90,6 +90,8 @@ type QDB interface {
 
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)
+
+	ListAllSequences(ctx context.Context) ([]*Sequence, error)
 }
 
 // XQDB means extended QDB
@@ -102,6 +104,7 @@ type XQDB interface {
 	// data move state
 	ShardingSchemaKeeper
 	DistributedXactKepper
+	NextVal(ctx context.Context, seq Sequence) (int64, error)
 
 	TryCoordinatorLock(ctx context.Context) error
 }

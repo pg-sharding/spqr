@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -34,6 +35,9 @@ type EntityMgr interface {
 	topology.ShardsMgr
 	distributions.DistributionMgr
 	tasks.TaskMgr
+
+	ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error)
+	NextVal(ctx context.Context, relName, colName string) (int64, error)
 
 	ShareKeyRange(id string) error
 
@@ -193,6 +197,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			{
 				Name:               stmt.TableName,
 				ReplicatedRelation: true,
+				Sequences:          stmt.Sequences,
 			},
 		}
 
@@ -636,6 +641,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.PreparedStatements(ctx, resp)
 	case spqrparser.QuantilesStr:
 		return cli.Quantiles(ctx)
+	case spqrparser.SequencesStr:
+		seqs, err := mngr.ListAllSequences(ctx)
+		if err != nil {
+			return err
+		}
+		return cli.Sequences(ctx, seqs)
 	default:
 		return unknownCoordinatorCommand
 	}

@@ -24,6 +24,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -2120,13 +2121,14 @@ func (qc *qdbCoordinator) GetRelationDistribution(ctx context.Context, relName s
 // AlterDistributionAttach attaches relation to distribution
 // TODO: unit tests
 func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
-	if err := qc.db.AlterDistributionAttach(ctx, id, func() []*qdb.DistributedRelation {
-		qdbRels := make([]*qdb.DistributedRelation, len(rels))
-		for i, rel := range rels {
-			qdbRels[i] = distributions.DistributedRelationToDB(rel)
+	qdbRels := make([]*qdb.DistributedRelation, 0, len(rels))
+	for _, rel := range rels {
+		if !rel.ReplicatedRelation && len(rel.Sequences) > 0 {
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequences are supported for replicated relations only")
 		}
-		return qdbRels
-	}()); err != nil {
+		qdbRels = append(qdbRels, distributions.DistributedRelationToDB(rel))
+	}
+	if err := qc.db.AlterDistributionAttach(ctx, id, qdbRels); err != nil {
 		return err
 	}
 
@@ -2151,6 +2153,24 @@ func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string
 			Msg("attach relation response")
 		return nil
 	})
+}
+
+func (qc *qdbCoordinator) ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error) {
+	seqs, err := qc.db.ListAllSequences(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := make([]*sequences.Sequence, 0, len(seqs))
+	for _, seq := range seqs {
+		ret = append(ret, sequences.SequenceFromDB(seq))
+	}
+
+	return ret, nil
+}
+
+func (qc *qdbCoordinator) NextVal(ctx context.Context, relName, colName string) (int64, error) {
+	return qc.db.NextVal(ctx, qdb.Sequence{RelName: relName, ColName: colName})
 }
 
 // AlterDistributionDetach detaches relation from distribution

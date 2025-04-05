@@ -605,7 +605,8 @@ func (qr *ProxyQrouter) processInsertFromSelectOffsets(
 
 		/* Omit distributed relations */
 		if ds.Id == distributions.REPLICATED {
-			return nil, curr_rfqn, ds, nil
+			err := qr.insertSequenceValue(ctx, ds, curr_rfqn)
+			return nil, curr_rfqn, ds, err
 		}
 
 		insertColsPos := map[string]int{}
@@ -1442,4 +1443,32 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		}
 	}
 	return nil, rerrors.ErrComplexQuery
+}
+
+func (qr *ProxyQrouter) insertSequenceValue(ctx context.Context, ds *distributions.Distribution, rfqn rfqn.RelationFQN) error {
+	if qr.query == nil {
+		return nil
+	}
+
+	query := *qr.query
+	rel := ds.Relations[rfqn.RelationName]
+	errInsert := fmt.Errorf("failed to insert sequences")
+	for _, colName := range rel.Sequences {
+		nextval, err := qr.mgr.NextVal(ctx, rel.Name, colName)
+		if err != nil {
+			return err
+		}
+		// Modify query here
+		colsOpenInd := strings.Index(query, "(")
+		if colsOpenInd == -1 {
+			return errInsert
+		}
+		valuesOpenInd := colsOpenInd + 1 + strings.Index(query[colsOpenInd+1:], "(")
+		if valuesOpenInd == -1 {
+			return errInsert
+		}
+		query = query[:colsOpenInd+1] + colName + ", " + query[colsOpenInd+1:valuesOpenInd+1] + fmt.Sprintf("%d", nextval) + ", " + query[valuesOpenInd+1:]
+	}
+	*qr.query = query
+	return nil
 }

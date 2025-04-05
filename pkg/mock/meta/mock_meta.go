@@ -15,6 +15,7 @@ import (
 
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
+	sequences "github.com/pg-sharding/spqr/pkg/models/sequences"
 	tasks "github.com/pg-sharding/spqr/pkg/models/tasks"
 	topology "github.com/pg-sharding/spqr/pkg/models/topology"
 	qdb "github.com/pg-sharding/spqr/qdb"
@@ -334,6 +335,21 @@ func (mr *MockEntityMgrMockRecorder) ListAllKeyRanges(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllKeyRanges", reflect.TypeOf((*MockEntityMgr)(nil).ListAllKeyRanges), ctx)
 }
 
+// ListAllSequences mocks base method.
+func (m *MockEntityMgr) ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAllSequences", ctx)
+	ret0, _ := ret[0].([]*sequences.Sequence)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAllSequences indicates an expected call of ListAllSequences.
+func (mr *MockEntityMgrMockRecorder) ListAllSequences(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllSequences", reflect.TypeOf((*MockEntityMgr)(nil).ListAllSequences), ctx)
+}
+
 // ListDistributions mocks base method.
 func (m *MockEntityMgr) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
 	m.ctrl.T.Helper()
@@ -421,6 +437,21 @@ func (m *MockEntityMgr) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 func (mr *MockEntityMgrMockRecorder) Move(ctx, move any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockEntityMgr)(nil).Move), ctx, move)
+}
+
+// NextVal mocks base method.
+func (m *MockEntityMgr) NextVal(ctx context.Context, relName, colName string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NextVal", ctx, relName, colName)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NextVal indicates an expected call of NextVal.
+func (mr *MockEntityMgrMockRecorder) NextVal(ctx, relName, colName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockEntityMgr)(nil).NextVal), ctx, relName, colName)
 }
 
 // QDB mocks base method.
