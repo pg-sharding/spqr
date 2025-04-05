@@ -2170,7 +2170,6 @@ func (qc *qdbCoordinator) ListAllSequences(ctx context.Context) ([]*sequences.Se
 }
 
 func (qc *qdbCoordinator) NextVal(ctx context.Context, relName, colName string) (int64, error) {
-	// TODO: implement
 	return qc.db.NextVal(ctx, qdb.Sequence{RelName: relName, ColName: colName})
 }
 
