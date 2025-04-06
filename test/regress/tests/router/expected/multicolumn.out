@@ -44,8 +44,48 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION mcol_sh DISTRIBUTION KEY id, seq;
  distribution id -> ds1
 (2 rows)
 
+-- check that different type works
+CREATE DISTRIBUTION ds2 COLUMN TYPES integer, varchar;
+    add distribution    
+------------------------
+ distribution id -> ds2
+(1 row)
+
+CREATE KEY RANGE FROM 0,'aaaaa' ROUTE TO sh1 FOR DISTRIBUTION ds2;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE KEY RANGE FROM 0,'zzzzz' ROUTE TO sh2 FOR DISTRIBUTION ds2;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE KEY RANGE FROM 100,    'aaaaa' ROUTE TO sh3 FOR DISTRIBUTION ds2;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
+
+CREATE KEY RANGE FROM 100, 'zzzzz' ROUTE TO sh4 FOR DISTRIBUTION ds2;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
+
+ALTER DISTRIBUTION ds2 ATTACH RELATION mcol_dt DISTRIBUTION KEY id, addr;
+        attach table        
+----------------------------
+ relation name   -> mcol_dt
+ distribution id -> ds2
+(2 rows)
+
 \c regress
 CREATE TABLE mcol_sh(id INT, seq INT, val INT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE mcol_dt(id INT, addr TEXT, val INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO mcol_sh (id, seq, val) VALUES (0, 10, 1);
 NOTICE: send query to shard(s) : sh1
@@ -180,7 +220,88 @@ NOTICE: send query to shard(s) : sh4
  2000 | 200 |   1
 (3 rows)
 
+TRUNCATE mcol_sh;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+COPY mcol_sh (val, seq, id) FROM stdin;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM mcol_sh ORDER BY 1,2,3 /*__spqr__execute_on: sh1*/;
+NOTICE: send query to shard(s) : sh1
+ id | seq | val 
+----+-----+-----
+  0 |  10 |   1
+  0 |  50 |   3
+  0 |  99 |   3
+  0 |  99 |   3
+(4 rows)
+
+SELECT * FROM mcol_sh ORDER BY 1,2,3 /*__spqr__execute_on: sh2*/;
+NOTICE: send query to shard(s) : sh2
+ id | seq | val 
+----+-----+-----
+  0 | 100 |   6
+  0 | 200 |   1
+  1 |   1 |   1
+  1 |   2 |   1
+ 99 |   0 |   3
+ 99 | 100 |   3
+(6 rows)
+
+SELECT * FROM mcol_sh ORDER BY 1,2,3 /*__spqr__execute_on: sh3*/;
+NOTICE: send query to shard(s) : sh3
+ id  | seq | val 
+-----+-----+-----
+ 100 |  10 |   1
+ 100 |  90 |   1
+ 100 |  99 |   3
+(3 rows)
+
+SELECT * FROM mcol_sh ORDER BY 1,2,3 /*__spqr__execute_on: sh4*/;
+NOTICE: send query to shard(s) : sh4
+  id  | seq | val 
+------+-----+-----
+  100 | 100 |   3
+ 2000 |  10 |   1
+ 2000 | 200 |   1
+(3 rows)
+
+COPY mcol_dt (id, addr, val) FROM stdin;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM mcol_dt ORDER BY 1,2,3 /*__spqr__execute_on: sh1*/;
+NOTICE: send query to shard(s) : sh1
+ id | addr  | val 
+----+-------+-----
+  0 | aaaaa |   1
+(1 row)
+
+SELECT * FROM mcol_dt ORDER BY 1,2,3 /*__spqr__execute_on: sh2*/;
+NOTICE: send query to shard(s) : sh2
+ id  | addr  | val 
+-----+-------+-----
+   0 | zzzzz |   2
+  50 | dssd  |   4
+  50 | sb    |   3
+ 100 | aaaa  |   5
+(4 rows)
+
+SELECT * FROM mcol_dt ORDER BY 1,2,3 /*__spqr__execute_on: sh3*/;
+NOTICE: send query to shard(s) : sh3
+ id  | addr  | val 
+-----+-------+-----
+ 100 | aaaaa |   6
+(1 row)
+
+SELECT * FROM mcol_dt ORDER BY 1,2,3 /*__spqr__execute_on: sh4*/;
+NOTICE: send query to shard(s) : sh4
+ id  | addr  | val 
+-----+-------+-----
+ 100 | zzzzz |   9
+ 150 | zzzzz |   7
+ 150 | zzzzz |   8
+(3 rows)
+
 DROP TABLE mcol_sh;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE mcol_dt;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
@@ -194,7 +315,8 @@ DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------
  distribution id -> ds1
-(1 row)
+ distribution id -> ds2
+(2 rows)
 
 DROP KEY RANGE ALL;
  drop key range 

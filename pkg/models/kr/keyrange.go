@@ -230,20 +230,16 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 			i2 := key[i].(string)
 			if i1 == i2 {
 				// continue
-			} else if i1 < i2 {
-				return true
 			} else {
-				return false
+				return i1 < i2
 			}
 		case qdb.ColumnTypeVarcharDeprecated:
 			i1 := bound[i].(string)
 			i2 := key[i].(string)
 			if i1 == i2 {
 				// continue
-			} else if CmpRangesLessStringsDeprecated(i1, i2) {
-				return true
 			} else {
-				return false
+				return CmpRangesLessStringsDeprecated(i1, i2)
 			}
 		default:
 			panic(MissTypedKeyRange)
