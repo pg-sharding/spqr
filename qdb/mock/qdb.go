@@ -326,6 +326,20 @@ func (mr *MockQDBMockRecorder) AlterDistributionDetach(ctx, id, relName any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributionDetach", reflect.TypeOf((*MockQDB)(nil).AlterDistributionDetach), ctx, id, relName)
 }
 
+// AlterSequenceAttach mocks base method.
+func (m *MockQDB) AlterSequenceAttach(ctx context.Context, seqName, relName, colName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterSequenceAttach", ctx, seqName, relName, colName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterSequenceAttach indicates an expected call of AlterSequenceAttach.
+func (mr *MockQDBMockRecorder) AlterSequenceAttach(ctx, seqName, relName, colName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterSequenceAttach", reflect.TypeOf((*MockQDB)(nil).AlterSequenceAttach), ctx, seqName, relName, colName)
+}
+
 // CheckLockedKeyRange mocks base method.
 func (m *MockQDB) CheckLockedKeyRange(ctx context.Context, id string) (*qdb.KeyRange, error) {
 	m.ctrl.T.Helper()
@@ -530,6 +544,21 @@ func (mr *MockQDBMockRecorder) GetRelationDistribution(ctx, relation any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationDistribution", reflect.TypeOf((*MockQDB)(nil).GetRelationDistribution), ctx, relation)
 }
 
+// GetRelationSequence mocks base method.
+func (m *MockQDB) GetRelationSequence(ctx context.Context, relName string) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRelationSequence", ctx, relName)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRelationSequence indicates an expected call of GetRelationSequence.
+func (mr *MockQDBMockRecorder) GetRelationSequence(ctx, relName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationSequence", reflect.TypeOf((*MockQDB)(nil).GetRelationSequence), ctx, relName)
+}
+
 // GetShard mocks base method.
 func (m *MockQDB) GetShard(ctx context.Context, shardID string) (*qdb.Shard, error) {
 	m.ctrl.T.Helper()
@@ -561,10 +590,10 @@ func (mr *MockQDBMockRecorder) ListAllKeyRanges(arg0 any) *gomock.Call {
 }
 
 // ListAllSequences mocks base method.
-func (m *MockQDB) ListAllSequences(ctx context.Context) ([]*qdb.Sequence, error) {
+func (m *MockQDB) ListAllSequences(ctx context.Context) ([]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListAllSequences", ctx)
-	ret0, _ := ret[0].([]*qdb.Sequence)
+	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -633,6 +662,21 @@ func (m *MockQDB) LockKeyRange(ctx context.Context, id string) (*qdb.KeyRange, e
 func (mr *MockQDBMockRecorder) LockKeyRange(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRange", reflect.TypeOf((*MockQDB)(nil).LockKeyRange), ctx, id)
+}
+
+// NextVal mocks base method.
+func (m *MockQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NextVal", ctx, seqName)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NextVal indicates an expected call of NextVal.
+func (mr *MockQDBMockRecorder) NextVal(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockQDB)(nil).NextVal), ctx, seqName)
 }
 
 // RemoveBalancerTask mocks base method.
@@ -867,6 +911,20 @@ func (m *MockXQDB) AlterDistributionDetach(ctx context.Context, id, relName stri
 func (mr *MockXQDBMockRecorder) AlterDistributionDetach(ctx, id, relName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributionDetach", reflect.TypeOf((*MockXQDB)(nil).AlterDistributionDetach), ctx, id, relName)
+}
+
+// AlterSequenceAttach mocks base method.
+func (m *MockXQDB) AlterSequenceAttach(ctx context.Context, seqName, relName, colName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterSequenceAttach", ctx, seqName, relName, colName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterSequenceAttach indicates an expected call of AlterSequenceAttach.
+func (mr *MockXQDBMockRecorder) AlterSequenceAttach(ctx, seqName, relName, colName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterSequenceAttach", reflect.TypeOf((*MockXQDB)(nil).AlterSequenceAttach), ctx, seqName, relName, colName)
 }
 
 // CheckLockedKeyRange mocks base method.
@@ -1115,6 +1173,21 @@ func (mr *MockXQDBMockRecorder) GetRelationDistribution(ctx, relation any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationDistribution", reflect.TypeOf((*MockXQDB)(nil).GetRelationDistribution), ctx, relation)
 }
 
+// GetRelationSequence mocks base method.
+func (m *MockXQDB) GetRelationSequence(ctx context.Context, relName string) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRelationSequence", ctx, relName)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRelationSequence indicates an expected call of GetRelationSequence.
+func (mr *MockXQDBMockRecorder) GetRelationSequence(ctx, relName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationSequence", reflect.TypeOf((*MockXQDB)(nil).GetRelationSequence), ctx, relName)
+}
+
 // GetShard mocks base method.
 func (m *MockXQDB) GetShard(ctx context.Context, shardID string) (*qdb.Shard, error) {
 	m.ctrl.T.Helper()
@@ -1161,10 +1234,10 @@ func (mr *MockXQDBMockRecorder) ListAllKeyRanges(arg0 any) *gomock.Call {
 }
 
 // ListAllSequences mocks base method.
-func (m *MockXQDB) ListAllSequences(ctx context.Context) ([]*qdb.Sequence, error) {
+func (m *MockXQDB) ListAllSequences(ctx context.Context) ([]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListAllSequences", ctx)
-	ret0, _ := ret[0].([]*qdb.Sequence)
+	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1266,18 +1339,18 @@ func (mr *MockXQDBMockRecorder) LockKeyRange(ctx, id any) *gomock.Call {
 }
 
 // NextVal mocks base method.
-func (m *MockXQDB) NextVal(ctx context.Context, seq qdb.Sequence) (int64, error) {
+func (m *MockXQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NextVal", ctx, seq)
+	ret := m.ctrl.Call(m, "NextVal", ctx, seqName)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // NextVal indicates an expected call of NextVal.
-func (mr *MockXQDBMockRecorder) NextVal(ctx, seq any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) NextVal(ctx, seqName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockXQDB)(nil).NextVal), ctx, seq)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockXQDB)(nil).NextVal), ctx, seqName)
 }
 
 // OpenRouter mocks base method.

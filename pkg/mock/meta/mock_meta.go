@@ -15,7 +15,6 @@ import (
 
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
-	sequences "github.com/pg-sharding/spqr/pkg/models/sequences"
 	tasks "github.com/pg-sharding/spqr/pkg/models/tasks"
 	topology "github.com/pg-sharding/spqr/pkg/models/topology"
 	qdb "github.com/pg-sharding/spqr/qdb"
@@ -336,10 +335,10 @@ func (mr *MockEntityMgrMockRecorder) ListAllKeyRanges(ctx any) *gomock.Call {
 }
 
 // ListAllSequences mocks base method.
-func (m *MockEntityMgr) ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error) {
+func (m *MockEntityMgr) ListAllSequences(ctx context.Context) ([]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListAllSequences", ctx)
-	ret0, _ := ret[0].([]*sequences.Sequence)
+	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -440,18 +439,18 @@ func (mr *MockEntityMgrMockRecorder) Move(ctx, move any) *gomock.Call {
 }
 
 // NextVal mocks base method.
-func (m *MockEntityMgr) NextVal(ctx context.Context, relName, colName string) (int64, error) {
+func (m *MockEntityMgr) NextVal(ctx context.Context, seqName string) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NextVal", ctx, relName, colName)
+	ret := m.ctrl.Call(m, "NextVal", ctx, seqName)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // NextVal indicates an expected call of NextVal.
-func (mr *MockEntityMgrMockRecorder) NextVal(ctx, relName, colName any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) NextVal(ctx, seqName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockEntityMgr)(nil).NextVal), ctx, relName, colName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockEntityMgr)(nil).NextVal), ctx, seqName)
 }
 
 // QDB mocks base method.

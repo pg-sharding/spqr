@@ -8,6 +8,7 @@ import (
 	"path"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -51,17 +52,18 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 }
 
 const (
-	keyRangesNamespace       = "/keyranges/"
-	distributionNamespace    = "/distributions/"
-	keyRangeMovesNamespace   = "/krmoves/"
-	routersNamespace         = "/routers/"
-	shardsNamespace          = "/shards/"
-	relationMappingNamespace = "/relation_mappings/"
-	taskGroupPath            = "/move_task_group"
-	redistributeTaskPath     = "/redistribute_task/"
-	balancerTaskPath         = "/balancer_task/"
-	transactionNamespace     = "/transfer_txs/"
-	sequenceNamespace        = "/sequences/"
+	keyRangesNamespace             = "/keyranges/"
+	distributionNamespace          = "/distributions/"
+	keyRangeMovesNamespace         = "/krmoves/"
+	routersNamespace               = "/routers/"
+	shardsNamespace                = "/shards/"
+	relationMappingNamespace       = "/relation_mappings/"
+	taskGroupPath                  = "/move_task_group"
+	redistributeTaskPath           = "/redistribute_task/"
+	balancerTaskPath               = "/balancer_task/"
+	transactionNamespace           = "/transfer_txs/"
+	sequenceNamespace              = "/sequences/"
+	columnSequenceMappingNamespace = "/column_sequence_mappings/"
 
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
@@ -105,8 +107,15 @@ func transferTxNodePath(key string) string {
 	return path.Join(transactionNamespace, key)
 }
 
-func sequenceNodePath(relName, colName string) string {
-	return path.Join(sequenceNamespace, relName, colName)
+func sequenceNodePath(key string) string {
+	return path.Join(sequenceNamespace, key)
+}
+
+func relationSequenceMappingNodePath(relName string) string {
+	return path.Join(columnSequenceMappingNamespace, relName)
+}
+func columnSequenceMappingNodePath(relName, colName string) string {
+	return path.Join(relationSequenceMappingNodePath(relName), colName)
 }
 
 // ==============================================================================
@@ -1026,16 +1035,6 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 		}
 		distribution.Relations[rel.Name] = rel
 
-		for _, colName := range rel.Sequences {
-			err := q.createSequence(ctx, Sequence{
-				RelName: rel.Name,
-				ColName: colName,
-			})
-			if err != nil {
-				return err
-			}
-		}
-
 		_, err := q.GetRelationDistribution(ctx, rel.Name)
 		switch e := err.(type) {
 		case *spqrerror.SpqrError:
@@ -1056,23 +1055,6 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 	}
 
 	err = q.CreateDistribution(ctx, distribution)
-
-	return err
-}
-
-func (q *EtcdQDB) createSequence(ctx context.Context, seq Sequence) error {
-	spqrlog.Zero.Debug().
-		Interface("sequence", seq).
-		Msg("etcdqdb: add sequence")
-
-	resp, err := q.cli.Put(ctx, sequenceNodePath(seq.RelName, seq.ColName), "0")
-	if err != nil {
-		return err
-	}
-
-	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Msg("etcdqdb: put sequence to qdb")
 
 	return err
 }
@@ -1397,7 +1379,68 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 	return err
 }
 
-func (q *EtcdQDB) ListAllSequences(ctx context.Context) ([]*Sequence, error) {
+func (q *EtcdQDB) AlterSequenceAttach(ctx context.Context, seqName string, relName, colName string) error {
+	spqrlog.Zero.Debug().
+		Str("column", colName).
+		Msg("etcdqdb: attach column to sequence")
+
+	if err := q.createSequence(ctx, seqName); err != nil {
+		return err
+	}
+
+	resp, err := q.cli.Put(ctx, columnSequenceMappingNodePath(relName, colName), seqName)
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: attach column to sequence")
+	return err
+}
+
+func (q *EtcdQDB) GetRelationSequence(ctx context.Context, relName string) (map[string]string, error) {
+	spqrlog.Zero.Debug().
+		Str("relName", relName).
+		Msg("etcdqdb: get column sequence")
+
+	key := relationSequenceMappingNodePath(relName)
+	resp, err := q.cli.Get(ctx, key, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	ret := map[string]string{}
+	for _, kv := range resp.Kvs {
+		_, colName := path.Split(string(kv.Key))
+		ret[colName] = string(kv.Value)
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", ret).
+		Msg("etcdqdb: get column sequence")
+
+	return ret, nil
+}
+
+func (q *EtcdQDB) createSequence(ctx context.Context, seqName string) error {
+	spqrlog.Zero.Debug().
+		Str("sequence", seqName).
+		Msg("etcdqdb: add sequence")
+
+	key := sequenceNodePath(seqName)
+	resp, err := q.cli.Get(ctx, key)
+	if err != nil {
+		return err
+	}
+
+	if len(resp.Kvs) == 0 {
+		_, err := q.cli.Put(ctx, key, "0")
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (q *EtcdQDB) ListAllSequences(ctx context.Context) ([]string, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all sequences")
 
 	resp, err := q.cli.Get(ctx, sequenceNamespace, clientv3.WithPrefix())
@@ -1405,22 +1448,14 @@ func (q *EtcdQDB) ListAllSequences(ctx context.Context) ([]*Sequence, error) {
 		return nil, err
 	}
 
-	var ret []*Sequence
+	var ret []string
 
 	for _, e := range resp.Kvs {
-		var seq Sequence
-
-		if err := json.Unmarshal(e.Value, &seq); err != nil {
-			return nil, err
-		}
-		ret = append(ret, &seq)
+		ret = append(ret, strings.TrimPrefix(string(e.Key), sequenceNamespace))
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
-		if ret[i].RelName == ret[j].RelName {
-			return ret[i].ColName < ret[j].ColName
-		}
-		return ret[i].RelName < ret[j].RelName
+		return ret[i] < ret[j]
 	})
 
 	spqrlog.Zero.Debug().
@@ -1430,10 +1465,10 @@ func (q *EtcdQDB) ListAllSequences(ctx context.Context) ([]*Sequence, error) {
 	return ret, nil
 }
 
-func (q *EtcdQDB) NextVal(ctx context.Context, seq Sequence) (int64, error) {
+func (q *EtcdQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: next val")
 
-	id := sequenceNodePath(seq.RelName, seq.ColName)
+	id := sequenceNodePath(seqName)
 	sess, err := concurrency.NewSession(q.cli)
 	if err != nil {
 		return -1, err

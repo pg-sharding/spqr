@@ -11,7 +11,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -134,7 +133,19 @@ func (lc *LocalCoordinator) CreateDistribution(ctx context.Context, ds *distribu
 	if len(ds.ColTypes) == 0 && ds.Id != distributions.REPLICATED {
 		return fmt.Errorf("empty distributions are disallowed")
 	}
-	return lc.qdb.CreateDistribution(ctx, distributions.DistributionToDB(ds))
+	err := lc.qdb.CreateDistribution(ctx, distributions.DistributionToDB(ds))
+	if err != nil {
+		return err
+	}
+	for _, rel := range ds.Relations {
+		for colName, seqName := range rel.ColumnSequenceMapping {
+			err = lc.qdb.AlterSequenceAttach(ctx, seqName, rel.Name, colName)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // TODO : unit tests
@@ -162,13 +173,25 @@ func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id stri
 		if len(r.DistributionKey) != len(ds.ColTypes) {
 			return fmt.Errorf("cannot attach relation %v to this dataspace: number of column mismatch", r.Name)
 		}
-		if !r.ReplicatedRelation && len(r.Sequences) > 0 {
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequences are supported for replicated relations only")
+		if !r.ReplicatedRelation && len(r.ColumnSequenceMapping) > 0 {
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequence are supported for replicated relations only")
 		}
 		dRels = append(dRels, distributions.DistributedRelationToDB(r))
 	}
 
-	return lc.qdb.AlterDistributionAttach(ctx, id, dRels)
+	err = lc.qdb.AlterDistributionAttach(ctx, id, dRels)
+	if err != nil {
+		return err
+	}
+
+	for _, r := range rels {
+		for colName, seqName := range r.ColumnSequenceMapping {
+			if err := lc.qdb.AlterSequenceAttach(ctx, seqName, r.Name, colName); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // TODO : unit tests
@@ -208,7 +231,17 @@ func (lc *LocalCoordinator) GetDistribution(ctx context.Context, id string) (*di
 	if err != nil {
 		return nil, err
 	}
-	return distributions.DistributionFromDB(ret), nil
+	ds := distributions.DistributionFromDB(ret)
+
+	for relName := range ds.Relations {
+		mapping, err := lc.qdb.GetRelationSequence(ctx, relName)
+		if err != nil {
+			return nil, err
+		}
+		ds.Relations[relName].ColumnSequenceMapping = mapping
+	}
+
+	return ds, nil
 }
 
 // GetRelationDistribution retrieves a distribution based on the given relation from the local coordinator's QDB.
@@ -228,7 +261,15 @@ func (lc *LocalCoordinator) GetRelationDistribution(ctx context.Context, relatio
 	if err != nil {
 		return nil, err
 	}
-	return distributions.DistributionFromDB(ret), nil
+	ds := distributions.DistributionFromDB(ret)
+	for relName := range ds.Relations {
+		mapping, err := lc.qdb.GetRelationSequence(ctx, relName)
+		if err != nil {
+			return nil, err
+		}
+		ds.Relations[relName].ColumnSequenceMapping = mapping
+	}
+	return ds, nil
 }
 
 // TODO : unit tests
@@ -935,19 +976,11 @@ func (lc *LocalCoordinator) Cache() *cache.SchemaCache {
 	return lc.cache
 }
 
-func (lc *LocalCoordinator) ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error) {
-	seqs, err := lc.qdb.ListAllSequences(ctx)
-	if err != nil {
-		return nil, err
-	}
-	ret := make([]*sequences.Sequence, 0, len(seqs))
-	for _, seq := range seqs {
-		ret = append(ret, sequences.SequenceFromDB(seq))
-	}
-	return ret, nil
+func (lc *LocalCoordinator) ListAllSequences(ctx context.Context) ([]string, error) {
+	return lc.qdb.ListAllSequences(ctx)
 }
 
-func (lc *LocalCoordinator) NextVal(ctx context.Context, relName, colName string) (int64, error) {
+func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
 	coordAddr, err := lc.GetCoordinator(ctx)
 	if err != nil {
 		return -1, err
@@ -958,7 +991,7 @@ func (lc *LocalCoordinator) NextVal(ctx context.Context, relName, colName string
 	}
 	defer conn.Close()
 	mgr := coord.NewAdapter(conn)
-	return mgr.NextVal(ctx, relName, colName)
+	return mgr.NextVal(ctx, seqName)
 }
 
 // NewLocalCoordinator creates a new LocalCoordinator instance.

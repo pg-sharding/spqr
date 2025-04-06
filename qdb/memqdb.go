@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -29,7 +30,8 @@ type MemQDB struct {
 	MoveTaskGroup        *MoveTaskGroup                      `json:"taskGroup"`
 	RedistributeTask     *RedistributeTask                   `json:"redistributeTask"`
 	BalancerTask         *BalancerTask                       `json:"balancerTask"`
-	Sequences            map[string]*Sequence                `json:"sequences"`
+	Sequences            map[string]bool                     `json:"sequences"`
+	ColumnSequence       map[string]string                   `json:"column_sequence"`
 
 	backupPath string
 	/* caches */
@@ -47,7 +49,8 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		RelationDistribution: map[string]string{},
 		Routers:              map[string]*Router{},
 		Transactions:         map[string]*DataTransferTransaction{},
-		Sequences:            map[string]*Sequence{},
+		Sequences:            map[string]bool{},
+		ColumnSequence:       map[string]string{},
 
 		backupPath: backupPath,
 	}, nil
@@ -673,7 +676,6 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 			ds.Relations[r.Name] = &DistributedRelation{
 				Name:            r.Name,
 				DistributionKey: r.DistributionKey,
-				Sequences:       r.Sequences,
 			}
 			q.RelationDistribution[r.Name] = id
 			if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, r.Name, id)); err != nil {
@@ -683,27 +685,6 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 
 		return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds))
 	}
-}
-
-func (q *MemQDB) ListAllSequences(_ context.Context) ([]*Sequence, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: list all sequences")
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-
-	var ret []*Sequence
-
-	for _, el := range q.Sequences {
-		ret = append(ret, el)
-	}
-
-	sort.Slice(ret, func(i, j int) bool {
-		if ret[i].RelName == ret[j].RelName {
-			return ret[i].ColName < ret[j].ColName
-		}
-		return ret[i].RelName < ret[j].RelName
-	})
-
-	return ret, nil
 }
 
 // TODO: unit tests
@@ -849,6 +830,51 @@ func (q *MemQDB) RemoveBalancerTask(_ context.Context) error {
 	return nil
 }
 
-func (q *MemQDB) NextVal(_ context.Context, _ Sequence) (int64, error) {
+func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName, relName, colName string) error {
+	spqrlog.Zero.Debug().
+		Str("sequence", seqName).
+		Str("relation", relName).
+		Str("column", colName).Msg("memqdb: alter sequence attach")
+
+	if _, ok := q.Sequences[seqName]; !ok {
+		q.Sequences[seqName] = true
+		err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Sequences, seqName, true))
+		if err != nil {
+			return err
+		}
+	}
+
+	key := fmt.Sprintf("%s_%s", relName, colName)
+	q.ColumnSequence[key] = seqName
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.ColumnSequence, key, seqName))
+}
+
+func (q *MemQDB) GetRelationSequence(_ context.Context, relName string) (map[string]string, error) {
+	spqrlog.Zero.Debug().
+		Str("relation", relName).
+		Interface("mapping", q.ColumnSequence).Msg("memqdb: get relation sequence")
+
+	mapping := map[string]string{}
+	for key, seqName := range q.ColumnSequence {
+		data := strings.Split(key, "_")
+		seqRelName := data[0]
+		colName := data[1]
+
+		if seqRelName == relName {
+			mapping[colName] = seqName
+		}
+	}
+	return mapping, nil
+}
+
+func (q *MemQDB) ListAllSequences(_ context.Context) ([]string, error) {
+	seqNames := []string{}
+	for seqName := range q.Sequences {
+		seqNames = append(seqNames, seqName)
+	}
+	return seqNames, nil
+}
+
+func (q *MemQDB) NextVal(_ context.Context, _ string) (int64, error) {
 	panic("should never be here")
 }

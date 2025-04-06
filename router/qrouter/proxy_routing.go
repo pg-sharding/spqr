@@ -1453,8 +1453,8 @@ func (qr *ProxyQrouter) insertSequenceValue(ctx context.Context, ds *distributio
 	query := *qr.query
 	rel := ds.Relations[rfqn.RelationName]
 	errInsert := fmt.Errorf("failed to insert sequences")
-	for _, colName := range rel.Sequences {
-		nextval, err := qr.mgr.NextVal(ctx, rel.Name, colName)
+	for colName, seqName := range rel.ColumnSequenceMapping {
+		nextval, err := qr.mgr.NextVal(ctx, seqName)
 		if err != nil {
 			return err
 		}

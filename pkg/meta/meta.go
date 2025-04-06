@@ -11,7 +11,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -36,8 +35,8 @@ type EntityMgr interface {
 	distributions.DistributionMgr
 	tasks.TaskMgr
 
-	ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error)
-	NextVal(ctx context.Context, relName, colName string) (int64, error)
+	ListAllSequences(ctx context.Context) ([]string, error)
+	NextVal(ctx context.Context, seqName string) (int64, error)
 
 	ShareKeyRange(id string) error
 
@@ -197,7 +196,13 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			{
 				Name:               stmt.TableName,
 				ReplicatedRelation: true,
-				Sequences:          stmt.Sequences,
+				ColumnSequenceMapping: func() map[string]string {
+					ret := map[string]string{}
+					for _, colName := range stmt.AutoIncrementColumns {
+						ret[colName] = distributions.SequenceName(stmt.TableName, colName)
+					}
+					return ret
+				}(),
 			},
 		}
 

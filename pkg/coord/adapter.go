@@ -8,7 +8,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -939,17 +938,14 @@ func (a *Adapter) GetCoordinator(ctx context.Context) (string, error) {
 	return resp.Address, err
 }
 
-func (a *Adapter) ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error) {
+func (a *Adapter) ListAllSequences(ctx context.Context) ([]string, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (a *Adapter) NextVal(ctx context.Context, relName, colName string) (int64, error) {
+func (a *Adapter) NextVal(ctx context.Context, seqName string) (int64, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 	resp, err := c.NextVal(ctx, &proto.NextValRequest{
-		Seq: &proto.Sequence{
-			RelName: relName,
-			ColName: colName,
-		},
+		Seq: seqName,
 	})
 	if err != nil {
 		return -1, err

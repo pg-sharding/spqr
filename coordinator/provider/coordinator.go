@@ -24,7 +24,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -1673,7 +1672,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	// Configure distributions
 	dsCl := routerproto.NewDistributionServiceClient(cc)
 	spqrlog.Zero.Debug().Msg("qdb coordinator: configure distributions")
-	dss, err := qc.db.ListDistributions(ctx)
+	dss, err := qc.ListDistributions(ctx)
 	if err != nil {
 		return err
 	}
@@ -1696,7 +1695,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 		Distributions: func() []*routerproto.Distribution {
 			res := make([]*routerproto.Distribution, len(dss))
 			for i, ds := range dss {
-				res[i] = distributions.DistributionToProto(distributions.DistributionFromDB(ds))
+				res[i] = distributions.DistributionToProto(ds)
 			}
 			return res
 		}(),
@@ -2043,7 +2042,15 @@ func (qc *qdbCoordinator) ListDistributions(ctx context.Context) ([]*distributio
 	}
 	res := make([]*distributions.Distribution, 0)
 	for _, ds := range distrs {
-		res = append(res, distributions.DistributionFromDB(ds))
+		ret := distributions.DistributionFromDB(ds)
+		for relName := range ds.Relations {
+			mapping, err := qc.db.GetRelationSequence(ctx, relName)
+			if err != nil {
+				return nil, err
+			}
+			ret.Relations[relName].ColumnSequenceMapping = mapping
+		}
+		res = append(res, ret)
 	}
 	return res, nil
 }
@@ -2105,7 +2112,15 @@ func (qc *qdbCoordinator) GetDistribution(ctx context.Context, id string) (*dist
 	if err != nil {
 		return nil, err
 	}
-	return distributions.DistributionFromDB(ds), nil
+	ret := distributions.DistributionFromDB(ds)
+	for relName := range ret.Relations {
+		mapping, err := qc.db.GetRelationSequence(ctx, relName)
+		if err != nil {
+			return nil, err
+		}
+		ret.Relations[relName].ColumnSequenceMapping = mapping
+	}
+	return ret, nil
 }
 
 // GetRelationDistribution retrieves info about distribution attached to relation from QDB
@@ -2115,7 +2130,18 @@ func (qc *qdbCoordinator) GetRelationDistribution(ctx context.Context, relName s
 	if err != nil {
 		return nil, err
 	}
-	return distributions.DistributionFromDB(ds), nil
+	ret, err := distributions.DistributionFromDB(ds), nil
+	if err != nil {
+		return nil, err
+	}
+	for relName := range ret.Relations {
+		mapping, err := qc.db.GetRelationSequence(ctx, relName)
+		if err != nil {
+			return nil, err
+		}
+		ret.Relations[relName].ColumnSequenceMapping = mapping
+	}
+	return ret, nil
 }
 
 // AlterDistributionAttach attaches relation to distribution
@@ -2123,13 +2149,21 @@ func (qc *qdbCoordinator) GetRelationDistribution(ctx context.Context, relName s
 func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
 	qdbRels := make([]*qdb.DistributedRelation, 0, len(rels))
 	for _, rel := range rels {
-		if !rel.ReplicatedRelation && len(rel.Sequences) > 0 {
+		if !rel.ReplicatedRelation && len(rel.ColumnSequenceMapping) > 0 {
 			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequences are supported for replicated relations only")
 		}
 		qdbRels = append(qdbRels, distributions.DistributedRelationToDB(rel))
 	}
 	if err := qc.db.AlterDistributionAttach(ctx, id, qdbRels); err != nil {
 		return err
+	}
+
+	for _, rel := range rels {
+		for colName, seqName := range rel.ColumnSequenceMapping {
+			if err := qc.db.AlterSequenceAttach(ctx, seqName, rel.Name, colName); err != nil {
+				return err
+			}
+		}
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -2155,22 +2189,12 @@ func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string
 	})
 }
 
-func (qc *qdbCoordinator) ListAllSequences(ctx context.Context) ([]*sequences.Sequence, error) {
-	seqs, err := qc.db.ListAllSequences(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	ret := make([]*sequences.Sequence, 0, len(seqs))
-	for _, seq := range seqs {
-		ret = append(ret, sequences.SequenceFromDB(seq))
-	}
-
-	return ret, nil
+func (qc *qdbCoordinator) ListAllSequences(ctx context.Context) ([]string, error) {
+	return qc.db.ListAllSequences(ctx)
 }
 
-func (qc *qdbCoordinator) NextVal(ctx context.Context, relName, colName string) (int64, error) {
-	return qc.db.NextVal(ctx, qdb.Sequence{RelName: relName, ColName: colName})
+func (qc *qdbCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
+	return qc.db.NextVal(ctx, seqName)
 }
 
 // AlterDistributionDetach detaches relation from distribution

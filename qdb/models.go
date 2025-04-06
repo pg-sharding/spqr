@@ -85,7 +85,6 @@ type DistributedRelation struct {
 	Name               string                 `json:"name"`
 	DistributionKey    []DistributionKeyEntry `json:"column_names"`
 	ReplicatedRelation bool                   `json:"replicated_relation,omitempty"`
-	Sequences          []string               `json:"sequences,omitempty"`
 }
 
 type Distribution struct {

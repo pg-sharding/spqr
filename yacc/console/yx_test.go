@@ -646,7 +646,7 @@ func TestAlter(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "ALTER REPLICATED DISTRIBUTION ATTACH RELATION t SEQUENCE id1;",
+			query: "ALTER REPLICATED DISTRIBUTION ATTACH RELATION t AUTO INCREMENT id1;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.AttachRelation{
@@ -655,9 +655,9 @@ func TestAlter(t *testing.T) {
 						},
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name:               "t",
-								ReplicatedRelation: true,
-								Sequences:          []string{"id1"},
+								Name:                 "t",
+								ReplicatedRelation:   true,
+								AutoIncrementColumns: []string{"id1"},
 							},
 						},
 					},
@@ -665,7 +665,7 @@ func TestAlter(t *testing.T) {
 			},
 		},
 		{
-			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1 SEQUENCE id1, id2;",
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1 AUTO INCREMENT id1, id2;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.AttachRelation{
@@ -677,7 +677,7 @@ func TestAlter(t *testing.T) {
 										Column: "id1",
 									},
 								},
-								Sequences: []string{"id1", "id2"},
+								AutoIncrementColumns: []string{"id1", "id2"},
 							},
 						},
 						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
@@ -737,11 +737,11 @@ func TestDistribution(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "CREATE REFERENCE TABLE xtab SEQUENCE id",
+			query: "CREATE REFERENCE TABLE xtab AUTO INCREMENT id",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
-					TableName: "xtab",
-					Sequences: []string{"id"},
+					TableName:            "xtab",
+					AutoIncrementColumns: []string{"id"},
 				},
 			},
 			err: nil,
