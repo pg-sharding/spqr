@@ -1,6 +1,7 @@
 package pgcopy
 
 import (
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/rmeta"
@@ -9,8 +10,8 @@ import (
 type CopyState struct {
 	RM *rmeta.RoutingMetadataContext
 
-	Delimiter  byte
-	TargetType string
+	Delimiter byte
+	Ds        *distributions.Distribution
 
 	/* For replicated relations */
 	Scatter bool

@@ -260,12 +260,6 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		}, nil
 	}
 
-	TargetType := ds.ColTypes[0]
-
-	if len(ds.ColTypes) != 1 {
-		return nil, fmt.Errorf("multi-column copy processing is not yet supported")
-	}
-
 	hashFunc := make([]hashfunction.HashFunctionType, len(ds.Relations[relname].DistributionKey))
 
 	krs, err := mgr.ListKeyRanges(ctx, ds.Id)
@@ -299,7 +293,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		Delimiter:    delimiter,
 		Krs:          krs,
 		RM:           rmeta.NewRoutingMetadataContext(s.cl, mgr),
-		TargetType:   TargetType,
+		Ds:           ds,
 		HashFunc:     hashFunc,
 		ColumnOffset: co,
 	}, nil
@@ -347,7 +341,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		if b == '\n' || b == cps.Delimiter {
 
 			if indx, ok := backMap[currentAttr]; ok {
-				tmp, err := hashfunction.ApplyHashFunctionOnStringRepr(data.Data[prevDelimiter:i], cps.TargetType, cps.HashFunc[indx])
+				tmp, err := hashfunction.ApplyHashFunctionOnStringRepr(data.Data[prevDelimiter:i], cps.Ds.ColTypes[indx], cps.HashFunc[indx])
 				if err != nil {
 					return nil, err
 				}
