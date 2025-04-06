@@ -39,6 +39,31 @@ SELECT * FROM mcol_sh WHERE id = 2000 AND seq = 200;
 
 SELECT * FROM mcol_sh WHERE id = 2000 AND seq = 200 OR id = 2000 AND seq =10;
 
+TRUNCATE mcol_sh;
+COPY mcol_sh (id, seq, val) FROM stdin;
+0	10	1
+0	99	3
+0	50	3
+0	200	1
+0	100	6
+1	1	1
+2	2	1
+100	99	3
+99	100	3
+0	99	3
+99	0	3
+100	100	3
+100	10	1
+100	90	1
+2000	10	1
+2000	200	1
+\.
+
+SELECT * FROM mcol_sh ORDER BY 1,2,3 /*__spqr__execute_on: sh1*/;
+SELECT * FROM mcol_sh ORDER BY 1,2,3 /*__spqr__execute_on: sh2*/;
+SELECT * FROM mcol_sh ORDER BY 1,2,3 /*__spqr__execute_on: sh3*/;
+SELECT * FROM mcol_sh ORDER BY 1,2,3 /*__spqr__execute_on: sh4*/;
+
 DROP TABLE mcol_sh;
 
 \c spqr-console
