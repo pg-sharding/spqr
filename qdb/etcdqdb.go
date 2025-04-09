@@ -1450,9 +1450,7 @@ func (q *EtcdQDB) ListSequences(ctx context.Context) ([]string, error) {
 		ret = append(ret, strings.TrimPrefix(string(e.Key), sequenceNamespace))
 	}
 
-	sort.Slice(ret, func(i, j int) bool {
-		return ret[i] < ret[j]
-	})
+	sort.Strings(ret)
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
