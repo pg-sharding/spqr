@@ -336,6 +336,21 @@ func (mr *MockCoordinatorMockRecorder) ListAllKeyRanges(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllKeyRanges", reflect.TypeOf((*MockCoordinator)(nil).ListAllKeyRanges), ctx)
 }
 
+// ListAllSequences mocks base method.
+func (m *MockCoordinator) ListAllSequences(ctx context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAllSequences", ctx)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAllSequences indicates an expected call of ListAllSequences.
+func (mr *MockCoordinatorMockRecorder) ListAllSequences(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllSequences", reflect.TypeOf((*MockCoordinator)(nil).ListAllSequences), ctx)
+}
+
 // ListDistributions mocks base method.
 func (m *MockCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
 	m.ctrl.T.Helper()
@@ -423,6 +438,21 @@ func (m *MockCoordinator) Move(ctx context.Context, move *kr.MoveKeyRange) error
 func (mr *MockCoordinatorMockRecorder) Move(ctx, move any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockCoordinator)(nil).Move), ctx, move)
+}
+
+// NextVal mocks base method.
+func (m *MockCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NextVal", ctx, seqName)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NextVal indicates an expected call of NextVal.
+func (mr *MockCoordinatorMockRecorder) NextVal(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockCoordinator)(nil).NextVal), ctx, seqName)
 }
 
 // ProcClient mocks base method.
