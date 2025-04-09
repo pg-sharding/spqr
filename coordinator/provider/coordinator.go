@@ -21,6 +21,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
+	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -198,6 +199,7 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 const defaultWatchRouterTimeout = time.Second
 
 type qdbCoordinator struct {
+	coord.BaseCoordinator
 	rmgr         rulemgr.RulesMgr
 	tlsconfig    *tls.Config
 	db           qdb.XQDB
@@ -205,9 +207,9 @@ type qdbCoordinator struct {
 	acquiredLock bool
 }
 
-func (qc *qdbCoordinator) ShareKeyRange(id string) error {
-	return qc.db.ShareKeyRange(id)
-}
+//func (qc *qdbCoordinator) ShareKeyRange(id string) error {
+//	return qc.db.ShareKeyRange(id)
+//}
 
 func (qc *qdbCoordinator) QDB() qdb.QDB {
 	return qc.db
@@ -316,10 +318,11 @@ func NewCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*qdbCoordinator, error)
 	}
 
 	return &qdbCoordinator{
-		db:           db,
-		tlsconfig:    tlsconfig,
-		rmgr:         rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
-		acquiredLock: false,
+		BaseCoordinator: coord.NewBaseCoordinator(db),
+		db:              db,
+		tlsconfig:       tlsconfig,
+		rmgr:            rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
+		acquiredLock:    false,
 	}, nil
 }
 
@@ -508,8 +511,7 @@ func (qc *qdbCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRa
 		Str("key-range-id", keyRange.ID).
 		Msg("add key range")
 
-	err := ops.CreateKeyRangeWithChecks(ctx, qc.db, keyRange)
-	if err != nil {
+	if err := qc.BaseCoordinator.CreateKeyRange(ctx, keyRange); err != nil {
 		return err
 	}
 
@@ -523,39 +525,6 @@ func (qc *qdbCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRa
 			Msg("add key range response")
 		return err
 	})
-}
-
-// GetKeyRange gets key range by id
-// TODO unit tests
-func (qc *qdbCoordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
-	krDb, err := qc.db.GetKeyRange(ctx, krId)
-	if err != nil {
-		return nil, err
-	}
-	ds, err := qc.db.GetDistribution(ctx, krDb.DistributionId)
-	if err != nil {
-		return nil, err
-	}
-	return kr.KeyRangeFromDB(krDb, ds.ColTypes), nil
-}
-
-// TODO : unit tests
-func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
-	keyRanges, err := qc.db.ListKeyRanges(ctx, distribution)
-	if err != nil {
-		return nil, err
-	}
-
-	keyr := make([]*kr.KeyRange, 0, len(keyRanges))
-	for _, keyRange := range keyRanges {
-		ds, err := qc.db.GetDistribution(ctx, keyRange.DistributionId)
-		if err != nil {
-			return nil, err
-		}
-		keyr = append(keyr, kr.KeyRangeFromDB(keyRange, ds.ColTypes))
-	}
-
-	return keyr, nil
 }
 
 // TODO : unit tests
@@ -584,18 +553,10 @@ func (qc *qdbCoordinator) MoveKeyRange(ctx context.Context, keyRange *kr.KeyRang
 
 // TODO : unit tests
 func (qc *qdbCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
-
-	keyRangeDB, err := qc.QDB().LockKeyRange(ctx, keyRangeID)
+	keyRange, err := qc.BaseCoordinator.LockKeyRange(ctx, keyRangeID)
 	if err != nil {
 		return nil, err
 	}
-	ds, err := qc.QDB().GetDistribution(ctx, keyRangeDB.DistributionId)
-	if err != nil {
-		_ = qc.QDB().UnlockKeyRange(ctx, keyRangeID)
-		return nil, err
-	}
-
-	keyRange := kr.KeyRangeFromDB(keyRangeDB, ds.ColTypes)
 
 	return keyRange, qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
@@ -612,7 +573,7 @@ func (qc *qdbCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (
 
 // TODO : unit tests
 func (qc *qdbCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID string) error {
-	if err := qc.db.UnlockKeyRange(ctx, keyRangeID); err != nil {
+	if err := qc.BaseCoordinator.UnlockKeyRange(ctx, keyRangeID); err != nil {
 		return err
 	}
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -632,87 +593,8 @@ func (qc *qdbCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID string)
 // Split splits key range by req.bound
 // TODO : unit tests
 func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
-	spqrlog.Zero.Debug().
-		Str("krid", req.Krid).
-		Interface("bound", req.Bound).
-		Str("source-id", req.SourceID).
-		Msg("split request is")
-
-	if _, err := qc.db.GetKeyRange(ctx, req.Krid); err == nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.Krid)
-	}
-
-	krOldDB, err := qc.db.LockKeyRange(ctx, req.SourceID)
-	if err != nil {
+	if err := qc.BaseCoordinator.Split(ctx, req); err != nil {
 		return err
-	}
-
-	defer func() {
-		if err := qc.db.UnlockKeyRange(ctx, req.SourceID); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-		}
-	}()
-
-	ds, err := qc.QDB().GetDistribution(ctx, krOldDB.DistributionId)
-
-	if err != nil {
-		return err
-	}
-
-	krOld := kr.KeyRangeFromDB(krOldDB, ds.ColTypes)
-
-	eph := kr.KeyRangeFromBytes(req.Bound, ds.ColTypes)
-
-	if kr.CmpRangesEqual(krOld.LowerBound, eph.LowerBound, ds.ColTypes) {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound equals lower of the key range")
-	}
-
-	if kr.CmpRangesLess(eph.LowerBound, krOld.LowerBound, ds.ColTypes) {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound is out of key range")
-	}
-
-	krs, err := qc.ListKeyRanges(ctx, ds.ID)
-	if err != nil {
-		return err
-	}
-	for _, kRange := range krs {
-		if kr.CmpRangesLess(krOld.LowerBound, kRange.LowerBound, ds.ColTypes) && kr.CmpRangesLessEqual(kRange.LowerBound, eph.LowerBound, ds.ColTypes) {
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound intersects with \"%s\" key range", kRange.ID)
-		}
-	}
-
-	krNew := kr.KeyRangeFromDB(
-		&qdb.KeyRange{
-			// fix multidim case
-			LowerBound: func() [][]byte {
-				if req.SplitLeft {
-					return krOld.Raw()
-				}
-				return req.Bound
-			}(),
-			KeyRangeID:     req.Krid,
-			ShardID:        krOld.ShardID,
-			DistributionId: krOld.Distribution,
-		},
-		ds.ColTypes,
-	)
-
-	spqrlog.Zero.Debug().
-		Bytes("lower-bound", krNew.Raw()[0]).
-		Str("shard-id", krNew.ShardID).
-		Str("id", krNew.ID).
-		Msg("new key range")
-
-	if req.SplitLeft {
-		krOld.LowerBound = kr.KeyRangeFromBytes(req.Bound, ds.ColTypes).LowerBound
-	}
-
-	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, krOld); err != nil {
-		return err
-	}
-
-	if err := ops.CreateKeyRangeWithChecks(ctx, qc.db, krNew); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -720,7 +602,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		resp, err := cl.SplitKeyRange(ctx, &routerproto.SplitKeyRangeRequest{
 			Bound:    req.Bound[0], // fix multidim case
 			SourceId: req.SourceID,
-			NewId:    krNew.ID,
+			NewId:    req.Krid,
 		})
 		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
@@ -776,71 +658,8 @@ func (qc *qdbCoordinator) DropKeyRange(ctx context.Context, id string) error {
 
 // TODO : unit tests
 func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
-	krBaseDb, err := qc.db.LockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId)
-	if err != nil {
+	if err := qc.BaseCoordinator.Unite(ctx, uniteKeyRange); err != nil {
 		return err
-	}
-
-	defer func() {
-		if err := qc.db.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-		}
-	}()
-
-	krAppendageDb, err := qc.db.LockKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if err := qc.db.UnlockKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-		}
-	}()
-
-	ds, err := qc.db.GetDistribution(ctx, krBaseDb.DistributionId)
-	if err != nil {
-		return err
-	}
-
-	krBase := kr.KeyRangeFromDB(krBaseDb, ds.ColTypes)
-	krAppendage := kr.KeyRangeFromDB(krAppendageDb, ds.ColTypes)
-
-	if krBase.ShardID != krAppendage.ShardID {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges routing different shards")
-	}
-	if krBase.Distribution != krAppendage.Distribution {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges of different distributions")
-	}
-	// TODO: check all types when composite keys are supported
-	krLeft, krRight := krBase, krAppendage
-	if kr.CmpRangesLess(krRight.LowerBound, krLeft.LowerBound, ds.ColTypes) {
-		krLeft, krRight = krRight, krLeft
-	}
-
-	krs, err := qc.ListKeyRanges(ctx, ds.ID)
-	if err != nil {
-		return err
-	}
-	for _, kRange := range krs {
-		if kRange.ID != krLeft.ID &&
-			kRange.ID != krRight.ID &&
-			kr.CmpRangesLessEqual(krLeft.LowerBound, kRange.LowerBound, ds.ColTypes) &&
-			kr.CmpRangesLessEqual(kRange.LowerBound, krRight.LowerBound, ds.ColTypes) {
-			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
-		}
-	}
-
-	if err := qc.db.DropKeyRange(ctx, krAppendage.ID); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s", err.Error())
-	}
-
-	if krLeft.ID != krBase.ID {
-		krBase.LowerBound = krAppendage.LowerBound
-	}
-
-	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, krBase); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err.Error())
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -1860,22 +1679,6 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 	return qc.db.DeleteRouter(ctx, rID)
 }
 
-func (qc *qdbCoordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
-	group, err := qc.db.GetMoveTaskGroup(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return tasks.TaskGroupFromDb(group), nil
-}
-
-func (qc *qdbCoordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
-	return qc.db.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
-}
-
-func (qc *qdbCoordinator) RemoveMoveTaskGroup(ctx context.Context) error {
-	return qc.db.RemoveMoveTaskGroup(ctx)
-}
-
 func (qc *qdbCoordinator) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {
 	taskDb, err := qc.db.GetBalancerTask(ctx)
 	if err != nil {
@@ -2031,23 +1834,7 @@ func (qc *qdbCoordinator) DropShard(ctx context.Context, shardId string) error {
 
 // TODO : unit tests
 func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
-	shardList, err := qc.db.ListShards(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	shards := make([]*topology.DataShard, 0, len(shardList))
-
-	for _, shard := range shardList {
-		shards = append(shards, &topology.DataShard{
-			ID: shard.ID,
-			Cfg: &config.Shard{
-				RawHosts: shard.RawHosts,
-			},
-		})
-	}
-
-	return shards, nil
+	return qc.BaseCoordinator.ListShards(ctx)
 }
 
 // TODO : unit tests
@@ -2073,33 +1860,13 @@ func (qc *qdbCoordinator) GetCoordinator(ctx context.Context) (string, error) {
 // ListDistributions returns all distributions from QDB
 // TODO: unit tests
 func (qc *qdbCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
-	distrs, err := qc.db.ListDistributions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	res := make([]*distributions.Distribution, 0)
-	for _, ds := range distrs {
-		ret := distributions.DistributionFromDB(ds)
-		for relName := range ds.Relations {
-			mapping, err := qc.db.GetRelationSequence(ctx, relName)
-			if err != nil {
-				return nil, err
-			}
-			ret.Relations[relName].ColumnSequenceMapping = mapping
-		}
-		res = append(res, ret)
-	}
-	return res, nil
+	return qc.BaseCoordinator.ListDistributions(ctx)
 }
 
 // CreateDistribution creates distribution in QDB
 // TODO: unit tests
 func (qc *qdbCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
-	if len(ds.ColTypes) == 0 && ds.Id != distributions.REPLICATED {
-		return fmt.Errorf("empty distributions are disallowed")
-	}
-
-	if err := qc.db.CreateDistribution(ctx, distributions.DistributionToDB(ds)); err != nil {
+	if err := qc.BaseCoordinator.CreateDistribution(ctx, ds); err != nil {
 		return err
 	}
 
@@ -2145,62 +1912,20 @@ func (qc *qdbCoordinator) DropDistribution(ctx context.Context, id string) error
 // GetDistribution retrieves info about distribution from QDB
 // TODO: unit tests
 func (qc *qdbCoordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
-	ds, err := qc.db.GetDistribution(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	ret := distributions.DistributionFromDB(ds)
-	for relName := range ret.Relations {
-		mapping, err := qc.db.GetRelationSequence(ctx, relName)
-		if err != nil {
-			return nil, err
-		}
-		ret.Relations[relName].ColumnSequenceMapping = mapping
-	}
-	return ret, nil
+	return qc.BaseCoordinator.GetDistribution(ctx, id)
 }
 
 // GetRelationDistribution retrieves info about distribution attached to relation from QDB
 // TODO: unit tests
 func (qc *qdbCoordinator) GetRelationDistribution(ctx context.Context, relName string) (*distributions.Distribution, error) {
-	ds, err := qc.db.GetRelationDistribution(ctx, relName)
-	if err != nil {
-		return nil, err
-	}
-	ret, err := distributions.DistributionFromDB(ds), nil
-	if err != nil {
-		return nil, err
-	}
-	for relName := range ret.Relations {
-		mapping, err := qc.db.GetRelationSequence(ctx, relName)
-		if err != nil {
-			return nil, err
-		}
-		ret.Relations[relName].ColumnSequenceMapping = mapping
-	}
-	return ret, nil
+	return qc.BaseCoordinator.GetRelationDistribution(ctx, relName)
 }
 
 // AlterDistributionAttach attaches relation to distribution
 // TODO: unit tests
 func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
-	qdbRels := make([]*qdb.DistributedRelation, 0, len(rels))
-	for _, rel := range rels {
-		if !rel.ReplicatedRelation && len(rel.ColumnSequenceMapping) > 0 {
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequences are supported for replicated relations only")
-		}
-		qdbRels = append(qdbRels, distributions.DistributedRelationToDB(rel))
-	}
-	if err := qc.db.AlterDistributionAttach(ctx, id, qdbRels); err != nil {
+	if err := qc.BaseCoordinator.AlterDistributionAttach(ctx, id, rels); err != nil {
 		return err
-	}
-
-	for _, rel := range rels {
-		for colName, seqName := range rel.ColumnSequenceMapping {
-			if err := qc.db.AlterSequenceAttach(ctx, seqName, rel.Name, colName); err != nil {
-				return err
-			}
-		}
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -2291,7 +2016,7 @@ func (qc *qdbCoordinator) DropSequence(ctx context.Context, seqName string) erro
 // AlterDistributionDetach detaches relation from distribution
 // TODO: unit tests
 func (qc *qdbCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
-	if err := qc.db.AlterDistributionDetach(ctx, id, relName); err != nil {
+	if err := qc.BaseCoordinator.AlterDistributionDetach(ctx, id, relName); err != nil {
 		return err
 	}
 
