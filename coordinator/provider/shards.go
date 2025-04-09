@@ -40,7 +40,6 @@ func (s *ShardServer) AddWorldShard(ctx context.Context, request *protos.AddWorl
 	panic("ShardServer.AddWorldShard not implemented")
 }
 
-// TODO : unit tests
 // TODO: remove ShardRequest.
 func (s *ShardServer) ListShards(ctx context.Context, _ *emptypb.Empty) (*protos.ListShardsReply, error) {
 	shardList, err := s.impl.ListShards(ctx)
