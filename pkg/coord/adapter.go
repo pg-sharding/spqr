@@ -2,7 +2,6 @@ package coord
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -938,8 +937,13 @@ func (a *Adapter) GetCoordinator(ctx context.Context) (string, error) {
 	return resp.Address, err
 }
 
-func (a *Adapter) ListAllSequences(ctx context.Context) ([]string, error) {
-	return nil, fmt.Errorf("not implemented")
+func (a *Adapter) ListSequences(ctx context.Context) ([]string, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
+	resp, err := c.ListSequences(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Names, nil
 }
 
 func (a *Adapter) NextVal(ctx context.Context, seqName string) (int64, error) {

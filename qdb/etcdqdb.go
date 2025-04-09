@@ -1059,10 +1059,6 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 	return err
 }
 
-func (q *EtcdQDB) GetSequence(ctx context.Context, seqName string) (*Sequence, error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
 // TODO: unit tests
 func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
 	spqrlog.Zero.Debug().
@@ -1440,7 +1436,7 @@ func (q *EtcdQDB) createSequence(ctx context.Context, seqName string) error {
 	return nil
 }
 
-func (q *EtcdQDB) ListAllSequences(ctx context.Context) ([]string, error) {
+func (q *EtcdQDB) ListSequences(ctx context.Context) ([]string, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all sequences")
 
 	resp, err := q.cli.Get(ctx, sequenceNamespace, clientv3.WithPrefix())

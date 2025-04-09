@@ -35,7 +35,7 @@ type EntityMgr interface {
 	distributions.DistributionMgr
 	tasks.TaskMgr
 
-	ListAllSequences(ctx context.Context) ([]string, error)
+	ListSequences(ctx context.Context) ([]string, error)
 	NextVal(ctx context.Context, seqName string) (int64, error)
 
 	ShareKeyRange(id string) error
@@ -647,7 +647,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	case spqrparser.QuantilesStr:
 		return cli.Quantiles(ctx)
 	case spqrparser.SequencesStr:
-		seqs, err := mngr.ListAllSequences(ctx)
+		seqs, err := mngr.ListSequences(ctx)
 		if err != nil {
 			return err
 		}

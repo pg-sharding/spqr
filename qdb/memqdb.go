@@ -867,7 +867,7 @@ func (q *MemQDB) GetRelationSequence(_ context.Context, relName string) (map[str
 	return mapping, nil
 }
 
-func (q *MemQDB) ListAllSequences(_ context.Context) ([]string, error) {
+func (q *MemQDB) ListSequences(_ context.Context) ([]string, error) {
 	seqNames := []string{}
 	for seqName := range q.Sequences {
 		seqNames = append(seqNames, seqName)

@@ -976,8 +976,8 @@ func (lc *LocalCoordinator) Cache() *cache.SchemaCache {
 	return lc.cache
 }
 
-func (lc *LocalCoordinator) ListAllSequences(ctx context.Context) ([]string, error) {
-	return lc.qdb.ListAllSequences(ctx)
+func (lc *LocalCoordinator) ListSequences(ctx context.Context) ([]string, error) {
+	return lc.qdb.ListSequences(ctx)
 }
 
 func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {

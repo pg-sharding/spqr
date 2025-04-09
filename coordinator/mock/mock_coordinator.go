@@ -336,21 +336,6 @@ func (mr *MockCoordinatorMockRecorder) ListAllKeyRanges(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllKeyRanges", reflect.TypeOf((*MockCoordinator)(nil).ListAllKeyRanges), ctx)
 }
 
-// ListAllSequences mocks base method.
-func (m *MockCoordinator) ListAllSequences(ctx context.Context) ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAllSequences", ctx)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListAllSequences indicates an expected call of ListAllSequences.
-func (mr *MockCoordinatorMockRecorder) ListAllSequences(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllSequences", reflect.TypeOf((*MockCoordinator)(nil).ListAllSequences), ctx)
-}
-
 // ListDistributions mocks base method.
 func (m *MockCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
 	m.ctrl.T.Helper()
@@ -394,6 +379,21 @@ func (m *MockCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, 
 func (mr *MockCoordinatorMockRecorder) ListRouters(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRouters", reflect.TypeOf((*MockCoordinator)(nil).ListRouters), ctx)
+}
+
+// ListSequences mocks base method.
+func (m *MockCoordinator) ListSequences(ctx context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListSequences", ctx)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListSequences indicates an expected call of ListSequences.
+func (mr *MockCoordinatorMockRecorder) ListSequences(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSequences", reflect.TypeOf((*MockCoordinator)(nil).ListSequences), ctx)
 }
 
 // ListShards mocks base method.

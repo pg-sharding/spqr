@@ -2189,8 +2189,8 @@ func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string
 	})
 }
 
-func (qc *qdbCoordinator) ListAllSequences(ctx context.Context) ([]string, error) {
-	return qc.db.ListAllSequences(ctx)
+func (qc *qdbCoordinator) ListSequences(ctx context.Context) ([]string, error) {
+	return qc.db.ListSequences(ctx)
 }
 
 func (qc *qdbCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
