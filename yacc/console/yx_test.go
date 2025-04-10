@@ -632,6 +632,7 @@ func TestAlter(t *testing.T) {
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.AttachRelation{
 						Distribution: &spqrparser.DistributionSelector{
+							ID:         "REPLICATED",
 							Replicated: true,
 						},
 						Relations: []*spqrparser.DistributedRelation{
@@ -652,6 +653,7 @@ func TestAlter(t *testing.T) {
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.AttachRelation{
 						Distribution: &spqrparser.DistributionSelector{
+							ID:         "REPLICATED",
 							Replicated: true,
 						},
 						Relations: []*spqrparser.DistributedRelation{
