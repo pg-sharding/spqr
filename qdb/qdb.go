@@ -95,6 +95,7 @@ type QDB interface {
 	AlterSequenceAttach(ctx context.Context, seqName string, relName, colName string) error
 	GetRelationSequence(ctx context.Context, relName string) (map[string]string, error)
 	NextVal(ctx context.Context, seqName string) (int64, error)
+	DropSequence(ctx context.Context, seqName string) error
 }
 
 // XQDB means extended QDB

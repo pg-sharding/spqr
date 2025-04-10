@@ -425,6 +425,20 @@ func (mr *MockQDBMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropKeyRangeAll", reflect.TypeOf((*MockQDB)(nil).DropKeyRangeAll), ctx)
 }
 
+// DropSequence mocks base method.
+func (m *MockQDB) DropSequence(ctx context.Context, seqName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropSequence", ctx, seqName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropSequence indicates an expected call of DropSequence.
+func (mr *MockQDBMockRecorder) DropSequence(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropSequence", reflect.TypeOf((*MockQDB)(nil).DropSequence), ctx, seqName)
+}
+
 // DropShard mocks base method.
 func (m *MockQDB) DropShard(ctx context.Context, shardID string) error {
 	m.ctrl.T.Helper()
@@ -1052,6 +1066,20 @@ func (m *MockXQDB) DropKeyRangeAll(ctx context.Context) error {
 func (mr *MockXQDBMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropKeyRangeAll", reflect.TypeOf((*MockXQDB)(nil).DropKeyRangeAll), ctx)
+}
+
+// DropSequence mocks base method.
+func (m *MockXQDB) DropSequence(ctx context.Context, seqName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropSequence", ctx, seqName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropSequence indicates an expected call of DropSequence.
+func (mr *MockXQDBMockRecorder) DropSequence(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropSequence", reflect.TypeOf((*MockXQDB)(nil).DropSequence), ctx, seqName)
 }
 
 // DropShard mocks base method.

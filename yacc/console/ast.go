@@ -280,6 +280,12 @@ func (*DetachRelation) iStatement()         {}
 func (*DetachRelation) iAlter()             {}
 func (*DetachRelation) iAlterDistribution() {}
 
+type SequenceSelector struct {
+	Name string
+}
+
+func (*SequenceSelector) iDrop() {}
+
 // The following constants represent SHOW statements.
 const (
 	DatabasesStr          = "databases"
@@ -318,6 +324,7 @@ func (*ShardingRuleSelector) iStatement()        {}
 func (*DistributionSelector) iStatement()        {}
 func (*ShardSelector) iStatement()               {}
 func (*TaskGroupSelector) iStatement()           {}
+func (*SequenceSelector) iStatement()            {}
 func (*Lock) iStatement()                        {}
 func (*Unlock) iStatement()                      {}
 func (*Shutdown) iStatement()                    {}

@@ -29,6 +29,7 @@ const (
 	DistributionService_GetRelationDistribution_FullMethodName = "/spqr.DistributionService/GetRelationDistribution"
 	DistributionService_NextVal_FullMethodName                 = "/spqr.DistributionService/NextVal"
 	DistributionService_ListSequences_FullMethodName           = "/spqr.DistributionService/ListSequences"
+	DistributionService_DropSequence_FullMethodName            = "/spqr.DistributionService/DropSequence"
 )
 
 // DistributionServiceClient is the client API for DistributionService service.
@@ -44,6 +45,7 @@ type DistributionServiceClient interface {
 	GetRelationDistribution(ctx context.Context, in *GetRelationDistributionRequest, opts ...grpc.CallOption) (*GetRelationDistributionReply, error)
 	NextVal(ctx context.Context, in *NextValRequest, opts ...grpc.CallOption) (*NextValReply, error)
 	ListSequences(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListSequencesReply, error)
+	DropSequence(ctx context.Context, in *DropSequenceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type distributionServiceClient struct {
@@ -135,6 +137,15 @@ func (c *distributionServiceClient) ListSequences(ctx context.Context, in *empty
 	return out, nil
 }
 
+func (c *distributionServiceClient) DropSequence(ctx context.Context, in *DropSequenceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, DistributionService_DropSequence_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DistributionServiceServer is the server API for DistributionService service.
 // All implementations must embed UnimplementedDistributionServiceServer
 // for forward compatibility
@@ -148,6 +159,7 @@ type DistributionServiceServer interface {
 	GetRelationDistribution(context.Context, *GetRelationDistributionRequest) (*GetRelationDistributionReply, error)
 	NextVal(context.Context, *NextValRequest) (*NextValReply, error)
 	ListSequences(context.Context, *emptypb.Empty) (*ListSequencesReply, error)
+	DropSequence(context.Context, *DropSequenceRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedDistributionServiceServer()
 }
 
@@ -181,6 +193,9 @@ func (UnimplementedDistributionServiceServer) NextVal(context.Context, *NextValR
 }
 func (UnimplementedDistributionServiceServer) ListSequences(context.Context, *emptypb.Empty) (*ListSequencesReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSequences not implemented")
+}
+func (UnimplementedDistributionServiceServer) DropSequence(context.Context, *DropSequenceRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DropSequence not implemented")
 }
 func (UnimplementedDistributionServiceServer) mustEmbedUnimplementedDistributionServiceServer() {}
 
@@ -357,6 +372,24 @@ func _DistributionService_ListSequences_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DistributionService_DropSequence_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DropSequenceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistributionServiceServer).DropSequence(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistributionService_DropSequence_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistributionServiceServer).DropSequence(ctx, req.(*DropSequenceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DistributionService_ServiceDesc is the grpc.ServiceDesc for DistributionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -399,6 +432,10 @@ var DistributionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSequences",
 			Handler:    _DistributionService_ListSequences_Handler,
+		},
+		{
+			MethodName: "DropSequence",
+			Handler:    _DistributionService_DropSequence_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

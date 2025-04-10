@@ -688,7 +688,7 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 }
 
 // TODO: unit tests
-func (q *MemQDB) AlterDistributionDetach(_ context.Context, id string, relName string) error {
+func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: attach table to distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -697,6 +697,11 @@ func (q *MemQDB) AlterDistributionDetach(_ context.Context, id string, relName s
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution \"%s\" not found", id)
 	}
+
+	if err := q.AlterSequenceDetachRelation(ctx, relName); err != nil {
+		return err
+	}
+
 	delete(ds.Relations, relName)
 	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds)); err != nil {
 		return err
@@ -847,6 +852,40 @@ func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName, relName, colNam
 	key := fmt.Sprintf("%s_%s", relName, colName)
 	q.ColumnSequence[key] = seqName
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.ColumnSequence, key, seqName))
+}
+
+func (q *MemQDB) AlterSequenceDetachRelation(_ context.Context, relName string) error {
+	spqrlog.Zero.Debug().
+		Str("relation", relName).
+		Msg("memqdb: detach relation from sequence")
+
+	for col := range q.ColumnSequence {
+		rel := strings.Split(col, "_")[0]
+		if rel == relName {
+			if err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.ColumnSequence, col)); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (q *MemQDB) DropSequence(ctx context.Context, seqName string) error {
+	for col, colSeq := range q.ColumnSequence {
+		if colSeq == seqName {
+			data := strings.Split(col, "_")
+			relName := data[0]
+			colName := data[1]
+			return spqrerror.Newf(spqrerror.SPQR_SEQUENCE_ERROR, "column %q is attached to sequence", fmt.Sprintf("%s.%s", relName, colName))
+		}
+	}
+
+	if _, ok := q.Sequences[seqName]; !ok {
+		return nil
+	}
+
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Sequences, seqName))
 }
 
 func (q *MemQDB) GetRelationSequence(_ context.Context, relName string) (map[string]string, error) {

@@ -946,6 +946,14 @@ func (a *Adapter) ListSequences(ctx context.Context) ([]string, error) {
 	return resp.Names, nil
 }
 
+func (a *Adapter) DropSequence(ctx context.Context, seqName string) error {
+	c := proto.NewDistributionServiceClient(a.conn)
+	_, err := c.DropSequence(ctx, &proto.DropSequenceRequest{
+		Name: seqName,
+	})
+	return err
+}
+
 func (a *Adapter) NextVal(ctx context.Context, seqName string) (int64, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 	resp, err := c.NextVal(ctx, &proto.NextValRequest{

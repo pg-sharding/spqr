@@ -13,3 +13,4 @@ test: teardown
 test: delete_distribution
 test: sharding_rules
 test: default_distribution
+test: sequence

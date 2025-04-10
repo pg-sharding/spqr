@@ -980,6 +980,10 @@ func (lc *LocalCoordinator) ListSequences(ctx context.Context) ([]string, error)
 	return lc.qdb.ListSequences(ctx)
 }
 
+func (lc *LocalCoordinator) DropSequence(ctx context.Context, seqName string) error {
+	return lc.qdb.DropSequence(ctx, seqName)
+}
+
 func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
 	coordAddr, err := lc.GetCoordinator(ctx)
 	if err != nil {

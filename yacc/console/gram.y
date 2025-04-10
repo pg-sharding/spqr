@@ -149,7 +149,7 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY
-%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT
+%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS SEQUENCES
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
@@ -459,6 +459,10 @@ drop_stmt:
 	| DROP TASK GROUP
 	{
 		$$ = &Drop{Element: &TaskGroupSelector{}}
+	}
+	| DROP SEQUENCE any_id
+	{
+		$$ = &Drop{Element: &SequenceSelector{Name: $3}}
 	}
 
 add_stmt:
@@ -882,7 +886,7 @@ distribution_select_stmt:
 	{
 		$$ = &DistributionSelector{ID: $2, Replicated: false}
 	} | REPLICATED DISTRIBUTION {
-		$$ = &DistributionSelector{ Replicated: true }
+		$$ = &DistributionSelector{ Replicated: true, ID: "REPLICATED" }
 	}
 
 split_key_range_stmt:

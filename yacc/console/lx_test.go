@@ -208,6 +208,14 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.CACHE,
 			},
 		},
+		{
+			query: "DROP SEQUENCE seq",
+			exp: []int{
+				spqrparser.DROP,
+				spqrparser.SEQUENCE,
+				spqrparser.IDENT,
+			},
+		},
 	} {
 		tmp := spqrparser.NewStringTokenizer(tt.query)
 

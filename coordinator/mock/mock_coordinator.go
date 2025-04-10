@@ -202,6 +202,20 @@ func (mr *MockCoordinatorMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropKeyRangeAll", reflect.TypeOf((*MockCoordinator)(nil).DropKeyRangeAll), ctx)
 }
 
+// DropSequence mocks base method.
+func (m *MockCoordinator) DropSequence(ctx context.Context, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropSequence", ctx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropSequence indicates an expected call of DropSequence.
+func (mr *MockCoordinatorMockRecorder) DropSequence(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropSequence", reflect.TypeOf((*MockCoordinator)(nil).DropSequence), ctx, name)
+}
+
 // DropShard mocks base method.
 func (m *MockCoordinator) DropShard(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()

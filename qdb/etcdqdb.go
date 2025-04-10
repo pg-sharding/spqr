@@ -1070,6 +1070,10 @@ func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relNam
 		return err
 	}
 
+	if err := q.AlterSequenceDetachRelation(ctx, relName); err != nil {
+		return err
+	}
+
 	delete(distribution.Relations, relName)
 	if err = q.CreateDistribution(ctx, distribution); err != nil {
 		return err
@@ -1391,6 +1395,18 @@ func (q *EtcdQDB) AlterSequenceAttach(ctx context.Context, seqName string, relNa
 	return err
 }
 
+func (q *EtcdQDB) AlterSequenceDetachRelation(ctx context.Context, relName string) error {
+	spqrlog.Zero.Debug().
+		Str("relation", relName).
+		Msg("etcdqdb: detach relation from sequence")
+
+	resp, err := q.cli.Delete(ctx, relationSequenceMappingNodePath(relName), clientv3.WithPrefix())
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: detach relation from sequence")
+	return err
+}
+
 func (q *EtcdQDB) GetRelationSequence(ctx context.Context, relName string) (map[string]string, error) {
 	spqrlog.Zero.Debug().
 		Str("relName", relName).
@@ -1415,6 +1431,27 @@ func (q *EtcdQDB) GetRelationSequence(ctx context.Context, relName string) (map[
 	return ret, nil
 }
 
+func (q *EtcdQDB) getSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
+	resp, err := q.cli.Get(ctx, columnSequenceMappingNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	cols := []string{}
+	for _, kv := range resp.Kvs {
+		if string(kv.Value) != seqName {
+			continue
+		}
+
+		s := strings.Split(string(kv.Key), "/")
+		colName := s[len(s)-1]
+		relName := s[len(s)-2]
+		cols = append(cols, fmt.Sprintf("%s.%s", relName, colName))
+	}
+
+	return cols, nil
+}
+
 func (q *EtcdQDB) createSequence(ctx context.Context, seqName string) error {
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).
@@ -1434,6 +1471,20 @@ func (q *EtcdQDB) createSequence(ctx context.Context, seqName string) error {
 	}
 
 	return nil
+}
+
+func (q *EtcdQDB) DropSequence(ctx context.Context, seqName string) error {
+	depends, err := q.getSequenceColumns(ctx, seqName)
+	if err != nil {
+		return err
+	}
+	if len(depends) != 0 {
+		return spqrerror.Newf(spqrerror.SPQR_SEQUENCE_ERROR, "column %q is attached to sequence", depends[0])
+	}
+
+	key := sequenceNodePath(seqName)
+	_, err = q.cli.Delete(ctx, key)
+	return err
 }
 
 func (q *EtcdQDB) ListSequences(ctx context.Context) ([]string, error) {

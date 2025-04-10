@@ -29,4 +29,3 @@ test: ddl
 test: engine_v2
 test: subplan
 test: subselects
-test: sequence

@@ -22,6 +22,7 @@ const (
 	SPQR_METADATA_CORRUPTION = "SPQRZ"
 	SPQR_INVALID_REQUEST     = "SPQRJ"
 	SPQR_CONFIG_ERROR        = "SPQRM"
+	SPQR_SEQUENCE_ERROR      = "SPQRQ"
 )
 
 var existingErrorCodeMap = map[string]string{
@@ -41,6 +42,7 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_ROUTER_ERROR:        "Router error",
 	SPQR_METADATA_CORRUPTION: "routing metadata corrupted",
 	SPQR_INVALID_REQUEST:     "Invalid Request",
+	SPQR_SEQUENCE_ERROR:      "Sequence error",
 }
 
 var ShardingRulesRemoved = New(SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR, see https://github.com/pg-sharding/spqr/blob/master/docs/Syntax.md")

@@ -645,6 +645,7 @@ func TestAlter(t *testing.T) {
 			},
 			err: nil,
 		},
+
 		{
 			query: "ALTER REPLICATED DISTRIBUTION ATTACH RELATION t AUTO INCREMENT id1;",
 			exp: &spqrparser.Alter{

@@ -2197,6 +2197,26 @@ func (qc *qdbCoordinator) NextVal(ctx context.Context, seqName string) (int64, e
 	return qc.db.NextVal(ctx, seqName)
 }
 
+func (qc *qdbCoordinator) DropSequence(ctx context.Context, seqName string) error {
+	if err := qc.db.DropSequence(ctx, seqName); err != nil {
+		return err
+	}
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewDistributionServiceClient(cc)
+		resp, err := cl.DropSequence(context.TODO(), &routerproto.DropSequenceRequest{
+			Name: seqName,
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("drop sequence response")
+		return nil
+	})
+}
+
 // AlterDistributionDetach detaches relation from distribution
 // TODO: unit tests
 func (qc *qdbCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
