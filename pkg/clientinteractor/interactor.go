@@ -1529,13 +1529,14 @@ func (pi *PSQLInteractor) Sequences(ctx context.Context, seqs []string) error {
 	return pi.CompleteMsg(len(seqs))
 }
 
-// DropTaskGroup drops all tasks in the task group.
+// DropSequence drops sequence with a given name.
 //
 // Parameters:
 // - _ (context.Context): The context parameter.
+// - name (string): Name of the sequence
 //
 // Returns:
-// - error: An error if there was a problem dropping the tasks.
+// - error: An error if there was a problem dropping the sequence.
 func (pi *PSQLInteractor) DropSequence(_ context.Context, name string) error {
 	if err := pi.WriteHeader("drop sequence"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")

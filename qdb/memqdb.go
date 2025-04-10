@@ -914,6 +914,7 @@ func (q *MemQDB) ListSequences(_ context.Context) ([]string, error) {
 	for seqName := range q.Sequences {
 		seqNames = append(seqNames, seqName)
 	}
+	sort.Strings(seqNames)
 	return seqNames, nil
 }
 
