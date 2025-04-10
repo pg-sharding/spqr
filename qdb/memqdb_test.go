@@ -247,3 +247,38 @@ func Test_MemQDB_GetKeyRange(t *testing.T) {
 	_, err = memqdb.GetKeyRange(ctx, "krid3")
 	assert.NotNil(err)
 }
+
+func TestMemQDB_NextVal(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.TODO()
+
+	memqdb, err := qdb.NewMemQDB("")
+	assert.NoError(err)
+
+	err = memqdb.AlterSequenceAttach(ctx, "seq", "test", "id")
+	assert.NoError(err)
+
+	// Test concurrency
+	var wg sync.WaitGroup
+	const goroutines = 10
+	const increments = 1000
+	wg.Add(goroutines)
+
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			for j := 0; j < increments; j++ {
+				_, err := memqdb.NextVal(ctx, "seq")
+				assert.NoError(err)
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	// Verify final value
+	expectedValue := int64(goroutines*increments + 1)
+	val, err := memqdb.NextVal(ctx, "seq")
+	assert.NoError(err)
+	assert.Equal(expectedValue, val)
+}

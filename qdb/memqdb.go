@@ -32,6 +32,8 @@ type MemQDB struct {
 	BalancerTask         *BalancerTask                       `json:"balancerTask"`
 	Sequences            map[string]bool                     `json:"sequences"`
 	ColumnSequence       map[string]string                   `json:"column_sequence"`
+	SequenceToValues     map[string]int64                    `json:"sequence_to_values"`
+	SequenceLock         sync.RWMutex
 
 	backupPath string
 	/* caches */
@@ -51,6 +53,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		Transactions:         map[string]*DataTransferTransaction{},
 		Sequences:            map[string]bool{},
 		ColumnSequence:       map[string]string{},
+		SequenceToValues:     map[string]int64{},
 
 		backupPath: backupPath,
 	}, nil
@@ -914,6 +917,14 @@ func (q *MemQDB) ListSequences(_ context.Context) ([]string, error) {
 	return seqNames, nil
 }
 
-func (q *MemQDB) NextVal(_ context.Context, _ string) (int64, error) {
-	panic("should never be here")
+func (q *MemQDB) NextVal(_ context.Context, seqName string) (int64, error) {
+	q.SequenceLock.Lock()
+	defer q.SequenceLock.Unlock()
+	spqrlog.Zero.Debug().
+		Str("sequence", seqName).
+		Msg("memqdb: get next value for sequence")
+
+	next := q.SequenceToValues[seqName] + 1
+	q.SequenceToValues[seqName] = next
+	return next, nil
 }
