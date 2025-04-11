@@ -44,10 +44,22 @@ ALTER DISTRIBUTION <distribution_name> DETACH RELATION <relation_name>
 
 ### CREATE REFERENCE TABLE
 
-This command is used to create a [reference table](/sharding/reference_tables), which is a table that is replicated across all shards in the cluster. Optionally, you can specify an auto-increment column for the table using the AUTO INCREMENT clause.
+This command is used to create a [reference table](/sharding/reference_tables). The `AUTO INCREMENT` argument creates [a sequence](/sharding/reference_tables#sequences).
 
 ```sql
 CREATE REFERENCE TABLE <table_name> [AUTO INCREMENT <column_name>]
+```
+
+### DROP SEQUENCE
+
+This command is used to drop [a sequence](/sharding/reference_tables#sequences).
+
+```sql
+DROP SEQUENCE t1_id;
+   drop sequence   
+-------------------
+ sequence -> t1_id
+(1 row)
 ```
 
 ### CREATE KEY RANGE
@@ -117,7 +129,7 @@ This command is used to retrieve information about a specific entity of SPQR clu
 ```sql
 SHOW entity [WHERE where_clause]
 
-where entity is one of databases, routers, pools, shards, backend_connections, key_ranges, clients, status, distributions, version, relations, task_groups, prepared_statements:
+where entity is one of databases, routers, pools, shards, backend_connections, key_ranges, clients, status, distributions, version, relations, sequences, task_groups, prepared_statements:
 ```
 
 The`where_clause` is used to filter the results based on specific conditions. It allows you to specify criteria for selecting the information to be shown.
