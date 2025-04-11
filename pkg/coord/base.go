@@ -486,3 +486,7 @@ func (qc *BaseCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) err
 	}
 	return nil
 }
+
+func (bc *BaseCoordinator) ListSequences(ctx context.Context) ([]string, error) {
+	return bc.qdb.ListSequences(ctx)
+}
