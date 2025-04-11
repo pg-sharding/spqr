@@ -25,7 +25,7 @@ DROP DISTRIBUTION <distribution_name> [CASCADE]
 
 ### ALTER DISTRIBUTION ATTACH RELATION
 
-This command is used to alter an existing distribution. You can attach one or more relations to the distribution using the ATTACH RELATION clause.
+This command is used to alter an existing distribution. You can attach one or more [relations](/sharding/sharded_tables) to the distribution using the ATTACH RELATION clause.
 
 ```sql
 ALTER DISTRIBUTION <distribution_name> ATTACH RELATION <relation_name> [, <relation_name> ...] 
@@ -40,6 +40,14 @@ This command is used to alter an existing distribution. You can detach a relatio
 
 ```sql
 ALTER DISTRIBUTION <distribution_name> DETACH RELATION <relation_name>
+```
+
+### CREATE REFERENCE TABLE
+
+This command is used to create a [reference table](/sharding/reference_tables), which is a table that is replicated across all shards in the cluster. Optionally, you can specify an auto-increment column for the table using the AUTO INCREMENT clause.
+
+```sql
+CREATE REFERENCE TABLE <table_name> [AUTO INCREMENT <column_name>]
 ```
 
 ### CREATE KEY RANGE
