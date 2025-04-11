@@ -104,12 +104,19 @@ Then, create the table and insert data:
 ```sql
 \c ordersdb
 CREATE TABLE country_regions (
-    id SERIAL PRIMARY KEY,
+    id INT,
     country_code VARCHAR(2),
     region_name VARCHAR(100)
 );
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-COPY country_regions FROM 'country_regions.csv' DELIMITER '\t';
+
+INSERT INTO country_regions (country_code, region_name) 
+VALUES
+    ('US', 'United States'),
+    ('CA', 'Canada'),
+    ('GB', 'United Kingdom'),
+    ('AU', 'Australia'),
+    ('IN', 'India');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ```
 
