@@ -149,8 +149,8 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY
-%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED
-%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS
+%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE
+%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS SEQUENCES
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
 %token <str> BATCH SIZE
@@ -192,6 +192,8 @@ func randomHex(n int) (string, error) {
 %type<entrieslist> sharding_rule_argument_list
 %type<dEntrieslist> distribution_key_argument_list
 %type<shruleEntry> sharding_rule_entry
+%type<strlist> opt_auto_increment
+%type<strlist> auto_inc_column_list
 
 %type<distrKeyEntry> distribution_key_entry
 
@@ -404,7 +406,7 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr, RelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr:
+		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr, RelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr, SequencesStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -457,6 +459,10 @@ drop_stmt:
 	| DROP TASK GROUP
 	{
 		$$ = &Drop{Element: &TaskGroupSelector{}}
+	}
+	| DROP SEQUENCE any_id
+	{
+		$$ = &Drop{Element: &SequenceSelector{Name: $3}}
 	}
 
 add_stmt:
@@ -546,21 +552,37 @@ distribution_key_entry:
 	}
 
 distributed_relation_def:
-	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list
+	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
 			DistributionKey: $5,
+			AutoIncrementColumns: $6,
 		}
 	} | 
-	RELATION any_id
+	RELATION any_id opt_auto_increment
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
 			ReplicatedRelation: true,
+			AutoIncrementColumns: $3,
 		}
 	}
 
+
+opt_auto_increment:
+	AUTO INCREMENT auto_inc_column_list {
+		$$ = $3
+	} | /* EMPTY */ {
+		$$ = nil
+	}
+
+auto_inc_column_list:
+	any_id {
+		$$ = []string{$1}
+	} | auto_inc_column_list TCOMMA any_id {
+		$$ = append($1, $3)
+	}
 
 
 distributed_relation_list_def:
@@ -596,11 +618,12 @@ create_stmt:
 		$$ = &Create{Element: $2}
 	}
 	|
-	CREATE REFERENCE TABLE any_id
+	CREATE REFERENCE TABLE any_id opt_auto_increment
 	{
 		$$ = &Create{
 			Element: &ReferenceRelationDefinition{
 				TableName: $4,
+				AutoIncrementColumns: $5,
 			},
 		}
 	}
@@ -863,7 +886,7 @@ distribution_select_stmt:
 	{
 		$$ = &DistributionSelector{ID: $2, Replicated: false}
 	} | REPLICATED DISTRIBUTION {
-		$$ = &DistributionSelector{ Replicated: true }
+		$$ = &DistributionSelector{ Replicated: true, ID: "REPLICATED" }
 	}
 
 split_key_range_stmt:

@@ -15,9 +15,10 @@ type DistributionKeyEntry struct {
 }
 
 type DistributedRelation struct {
-	Name               string
-	DistributionKey    []DistributionKeyEntry
-	ReplicatedRelation bool
+	Name                  string
+	DistributionKey       []DistributionKeyEntry
+	ReplicatedRelation    bool
+	ColumnSequenceMapping map[string]string
 }
 
 const (
@@ -83,7 +84,8 @@ func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation 
 //   - *proto.DistributedRelation: The converted proto.DistributedRelation object.
 func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRelation {
 	rdistr := &proto.DistributedRelation{
-		Name: rel.Name,
+		Name:            rel.Name,
+		SequenceColumns: rel.ColumnSequenceMapping,
 	}
 
 	for _, e := range rel.DistributionKey {
@@ -107,7 +109,8 @@ func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRela
 //   - *DistributedRelation: The created DistributedRelation object.
 func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRelation {
 	rdistr := &DistributedRelation{
-		Name: rel.Name,
+		Name:                  rel.Name,
+		ColumnSequenceMapping: rel.SequenceColumns,
 	}
 
 	for _, e := range rel.DistributionKey {
@@ -131,7 +134,8 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRe
 //   - *DistributedRelation: The created DistributedRelation object.
 func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *DistributedRelation {
 	rdistr := &DistributedRelation{
-		Name: rel.Name,
+		Name:                  rel.Name,
+		ColumnSequenceMapping: map[string]string{},
 	}
 
 	for _, e := range rel.DistributionKey {
@@ -139,6 +143,9 @@ func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *Distribute
 			Column:       e.Column,
 			HashFunction: e.HashFunction,
 		})
+	}
+	for _, colName := range rel.AutoIncrementColumns {
+		rdistr.ColumnSequenceMapping[colName] = SequenceName(rel.Name, colName)
 	}
 
 	rdistr.ReplicatedRelation = rel.ReplicatedRelation
@@ -297,4 +304,8 @@ func GetHashedColumn(col string, hash string) (string, error) {
 	default:
 		return "", spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "invalid hash function \"%s\"", hash)
 	}
+}
+
+func SequenceName(relName, colName string) string {
+	return fmt.Sprintf("%s_%s", relName, colName)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -34,6 +35,10 @@ type EntityMgr interface {
 	topology.ShardsMgr
 	distributions.DistributionMgr
 	tasks.TaskMgr
+	sequences.SequenceMgr
+
+	ListSequences(ctx context.Context) ([]string, error)
+	NextVal(ctx context.Context, seqName string) (int64, error)
 
 	ShareKeyRange(id string) error
 
@@ -154,6 +159,11 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			return err
 		}
 		return cli.DropTaskGroup(ctx)
+	case *spqrparser.SequenceSelector:
+		if err := mngr.DropSequence(ctx, stmt.Name); err != nil {
+			return err
+		}
+		return cli.DropSequence(ctx, stmt.Name)
 	default:
 		return fmt.Errorf("unknown drop statement")
 	}
@@ -193,6 +203,13 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			{
 				Name:               stmt.TableName,
 				ReplicatedRelation: true,
+				ColumnSequenceMapping: func() map[string]string {
+					ret := map[string]string{}
+					for _, colName := range stmt.AutoIncrementColumns {
+						ret[colName] = distributions.SequenceName(stmt.TableName, colName)
+					}
+					return ret
+				}(),
 			},
 		}
 
@@ -636,6 +653,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.PreparedStatements(ctx, resp)
 	case spqrparser.QuantilesStr:
 		return cli.Quantiles(ctx)
+	case spqrparser.SequencesStr:
+		seqs, err := mngr.ListSequences(ctx)
+		if err != nil {
+			return err
+		}
+		return cli.Sequences(ctx, seqs)
 	default:
 		return unknownCoordinatorCommand
 	}

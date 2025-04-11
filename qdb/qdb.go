@@ -90,6 +90,12 @@ type QDB interface {
 
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)
+
+	ListSequences(ctx context.Context) ([]string, error)
+	AlterSequenceAttach(ctx context.Context, seqName string, relName, colName string) error
+	GetRelationSequence(ctx context.Context, relName string) (map[string]string, error)
+	NextVal(ctx context.Context, seqName string) (int64, error)
+	DropSequence(ctx context.Context, seqName string) error
 }
 
 // XQDB means extended QDB

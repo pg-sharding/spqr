@@ -1,0 +1,69 @@
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE REPLICATED DISTRIBUTION;
+       add distribution        
+-------------------------------
+ distribution id -> REPLICATED
+(1 row)
+
+ALTER REPLICATED DISTRIBUTION ATTACH RELATION t AUTO INCREMENT id;
+         attach table          
+-------------------------------
+ relation name   -> t
+ distribution id -> REPLICATED
+(2 rows)
+
+CREATE REFERENCE TABLE t1 AUTO INCREMENT id;
+         attach table          
+-------------------------------
+ relation name   -> t1
+ distribution id -> REPLICATED
+(2 rows)
+
+SHOW SEQUENCES;
+ name  
+-------
+ t1_id
+ t_id
+(2 rows)
+
+DROP SEQUENCE t1_id;
+ERROR:  column "t1.id" is attached to sequence.
+ALTER REPLICATED DISTRIBUTION DETACH RELATION t1;
+        detach relation        
+-------------------------------
+ relation name   -> t1
+ distribution id -> REPLICATED
+(2 rows)
+
+DROP SEQUENCE t1_id;
+   drop sequence   
+-------------------
+ sequence -> t1_id
+(1 row)
+
+CREATE DISTRIBUTION ds COLUMN TYPES integer;
+   add distribution    
+-----------------------
+ distribution id -> ds
+(1 row)
+
+ALTER DISTRIBUTION ds ATTACH RELATION t2 DISTRIBUTION KEY id AUTO INCREMENT id1;
+ERROR:  sequence are supported for replicated relations only.
+DROP DISTRIBUTION ALL CASCADE;
+       drop distribution       
+-------------------------------
+ distribution id -> REPLICATED
+ distribution id -> ds
+(2 rows)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

@@ -70,4 +70,7 @@ var reservedWords = map[string]int{
 	"reference":    REFERENCE,
 	"check":        CHECK,
 	"apply":        APPLY,
+	"auto":         AUTO,
+	"increment":    INCREMENT,
+	"sequence":     SEQUENCE,
 }

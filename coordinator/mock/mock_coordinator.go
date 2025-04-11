@@ -202,6 +202,20 @@ func (mr *MockCoordinatorMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropKeyRangeAll", reflect.TypeOf((*MockCoordinator)(nil).DropKeyRangeAll), ctx)
 }
 
+// DropSequence mocks base method.
+func (m *MockCoordinator) DropSequence(ctx context.Context, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropSequence", ctx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropSequence indicates an expected call of DropSequence.
+func (mr *MockCoordinatorMockRecorder) DropSequence(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropSequence", reflect.TypeOf((*MockCoordinator)(nil).DropSequence), ctx, name)
+}
+
 // DropShard mocks base method.
 func (m *MockCoordinator) DropShard(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
@@ -381,6 +395,21 @@ func (mr *MockCoordinatorMockRecorder) ListRouters(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRouters", reflect.TypeOf((*MockCoordinator)(nil).ListRouters), ctx)
 }
 
+// ListSequences mocks base method.
+func (m *MockCoordinator) ListSequences(ctx context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListSequences", ctx)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListSequences indicates an expected call of ListSequences.
+func (mr *MockCoordinatorMockRecorder) ListSequences(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSequences", reflect.TypeOf((*MockCoordinator)(nil).ListSequences), ctx)
+}
+
 // ListShards mocks base method.
 func (m *MockCoordinator) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
 	m.ctrl.T.Helper()
@@ -423,6 +452,21 @@ func (m *MockCoordinator) Move(ctx context.Context, move *kr.MoveKeyRange) error
 func (mr *MockCoordinatorMockRecorder) Move(ctx, move any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockCoordinator)(nil).Move), ctx, move)
+}
+
+// NextVal mocks base method.
+func (m *MockCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NextVal", ctx, seqName)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NextVal indicates an expected call of NextVal.
+func (mr *MockCoordinatorMockRecorder) NextVal(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockCoordinator)(nil).NextVal), ctx, seqName)
 }
 
 // ProcClient mocks base method.

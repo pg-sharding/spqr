@@ -1,0 +1,52 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE REFERENCE TABLE test AUTO INCREMENT id;
+         attach table          
+-------------------------------
+ relation name   -> test
+ distribution id -> REPLICATED
+(2 rows)
+
+\c regress
+CREATE TABLE test(id int, age int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO test(age) VALUES (16) /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO test(age) VALUES (17) /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO test(age) VALUES (18) /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM test /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ id | age 
+----+-----
+  1 |  16
+  2 |  17
+  3 |  18
+(3 rows)
+
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+       drop distribution       
+-------------------------------
+ distribution id -> REPLICATED
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

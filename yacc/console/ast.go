@@ -102,9 +102,10 @@ type DropStmt interface {
 }
 
 type DistributionDefinition struct {
-	ID         string
-	ColTypes   []string
-	Replicated bool
+	ID                   string
+	ColTypes             []string
+	Replicated           bool
+	AutoIncrementColumns []string
 }
 
 type ShardingRuleDefinition struct {
@@ -120,7 +121,8 @@ type ShardingRuleEntry struct {
 }
 
 type ReferenceRelationDefinition struct {
-	TableName string
+	TableName            string
+	AutoIncrementColumns []string
 }
 
 type KeyRangeBound struct {
@@ -254,9 +256,10 @@ type DistributionKeyEntry struct {
 }
 
 type DistributedRelation struct {
-	Name               string
-	DistributionKey    []DistributionKeyEntry
-	ReplicatedRelation bool
+	Name                 string
+	DistributionKey      []DistributionKeyEntry
+	ReplicatedRelation   bool
+	AutoIncrementColumns []string
 }
 
 type AttachRelation struct {
@@ -277,6 +280,12 @@ func (*DetachRelation) iStatement()         {}
 func (*DetachRelation) iAlter()             {}
 func (*DetachRelation) iAlterDistribution() {}
 
+type SequenceSelector struct {
+	Name string
+}
+
+func (*SequenceSelector) iDrop() {}
+
 // The following constants represent SHOW statements.
 const (
 	DatabasesStr          = "databases"
@@ -296,6 +305,7 @@ const (
 	PreparedStatementsStr = "prepared_statements"
 	UnsupportedStr        = "unsupported"
 	QuantilesStr          = "time_quantiles"
+	SequencesStr          = "sequences"
 )
 
 const (
@@ -314,6 +324,7 @@ func (*ShardingRuleSelector) iStatement()        {}
 func (*DistributionSelector) iStatement()        {}
 func (*ShardSelector) iStatement()               {}
 func (*TaskGroupSelector) iStatement()           {}
+func (*SequenceSelector) iStatement()            {}
 func (*Lock) iStatement()                        {}
 func (*Unlock) iStatement()                      {}
 func (*Shutdown) iStatement()                    {}

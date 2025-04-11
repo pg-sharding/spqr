@@ -5,6 +5,7 @@ package spqr;
 option go_package = "spqr/proto";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/any.proto";
 
 message DistributionKeyEntry {
   string column = 1;
@@ -15,6 +16,7 @@ message DistributedRelation {
   string name = 1;
   repeated DistributionKeyEntry distributionKey = 2;
   bool ReplicatedRelation = 3;
+  map<string, string> sequenceColumns = 4;
 }
 
 message Distribution {
@@ -62,6 +64,22 @@ message GetRelationDistributionReply {
   Distribution distribution = 1;
 }
 
+message NextValRequest {
+  string seq = 1;
+}
+
+message NextValReply {
+  int64 value = 1;
+}
+
+message ListSequencesReply {
+  repeated string names = 1;
+}
+
+message DropSequenceRequest {
+  string name = 1;
+}
+
 service DistributionService {
   rpc CreateDistribution(CreateDistributionRequest) returns (google.protobuf.Empty) {}
   rpc DropDistribution(DropDistributionRequest) returns (google.protobuf.Empty) {}
@@ -73,4 +91,8 @@ service DistributionService {
   rpc GetDistribution(GetDistributionRequest) returns (GetDistributionReply) {}
 
   rpc GetRelationDistribution(GetRelationDistributionRequest) returns (GetRelationDistributionReply) {}
+
+  rpc NextVal(NextValRequest) returns (NextValReply) {}
+  rpc ListSequences(google.protobuf.Empty) returns (ListSequencesReply) {}
+  rpc DropSequence(DropSequenceRequest) returns (google.protobuf.Empty) {}
 }

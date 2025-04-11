@@ -7,6 +7,8 @@ import (
 	"net"
 	"path"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -50,20 +52,23 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 }
 
 const (
-	keyRangesNamespace       = "/keyranges/"
-	distributionNamespace    = "/distributions/"
-	keyRangeMovesNamespace   = "/krmoves/"
-	routersNamespace         = "/routers/"
-	shardsNamespace          = "/shards/"
-	relationMappingNamespace = "/relation_mappings/"
-	taskGroupPath            = "/move_task_group"
-	redistributeTaskPath     = "/redistribute_task/"
-	balancerTaskPath         = "/balancer_task/"
-	transactionNamespace     = "/transfer_txs/"
+	keyRangesNamespace             = "/keyranges/"
+	distributionNamespace          = "/distributions/"
+	keyRangeMovesNamespace         = "/krmoves/"
+	routersNamespace               = "/routers/"
+	shardsNamespace                = "/shards/"
+	relationMappingNamespace       = "/relation_mappings/"
+	taskGroupPath                  = "/move_task_group"
+	redistributeTaskPath           = "/redistribute_task/"
+	balancerTaskPath               = "/balancer_task/"
+	transactionNamespace           = "/transfer_txs/"
+	sequenceNamespace              = "/sequences/"
+	columnSequenceMappingNamespace = "/column_sequence_mappings/"
 
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
 	coordLockKey      = "coordinator_exists"
+	sequencespace     = "sequence_space"
 )
 
 func keyLockPath(key string) string {
@@ -100,6 +105,17 @@ func (q *EtcdQDB) Client() *clientv3.Client {
 
 func transferTxNodePath(key string) string {
 	return path.Join(transactionNamespace, key)
+}
+
+func sequenceNodePath(key string) string {
+	return path.Join(sequenceNamespace, key)
+}
+
+func relationSequenceMappingNodePath(relName string) string {
+	return path.Join(columnSequenceMappingNamespace, relName)
+}
+func columnSequenceMappingNodePath(relName, colName string) string {
+	return path.Join(relationSequenceMappingNodePath(relName), colName)
 }
 
 // ==============================================================================
@@ -1054,6 +1070,10 @@ func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relNam
 		return err
 	}
 
+	if err := q.AlterSequenceDetachRelation(ctx, relName); err != nil {
+		return err
+	}
+
 	delete(distribution.Relations, relName)
 	if err = q.CreateDistribution(ctx, distribution); err != nil {
 		return err
@@ -1357,4 +1377,173 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 	_, err = q.cli.Delete(ctx, keyRangeMovesNodePath(moveId))
 
 	return err
+}
+
+func (q *EtcdQDB) AlterSequenceAttach(ctx context.Context, seqName string, relName, colName string) error {
+	spqrlog.Zero.Debug().
+		Str("column", colName).
+		Msg("etcdqdb: attach column to sequence")
+
+	if err := q.createSequence(ctx, seqName); err != nil {
+		return err
+	}
+
+	resp, err := q.cli.Put(ctx, columnSequenceMappingNodePath(relName, colName), seqName)
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: attach column to sequence")
+	return err
+}
+
+func (q *EtcdQDB) AlterSequenceDetachRelation(ctx context.Context, relName string) error {
+	spqrlog.Zero.Debug().
+		Str("relation", relName).
+		Msg("etcdqdb: detach relation from sequence")
+
+	resp, err := q.cli.Delete(ctx, relationSequenceMappingNodePath(relName), clientv3.WithPrefix())
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: detach relation from sequence")
+	return err
+}
+
+func (q *EtcdQDB) GetRelationSequence(ctx context.Context, relName string) (map[string]string, error) {
+	spqrlog.Zero.Debug().
+		Str("relName", relName).
+		Msg("etcdqdb: get column sequence")
+
+	key := relationSequenceMappingNodePath(relName)
+	resp, err := q.cli.Get(ctx, key, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	ret := map[string]string{}
+	for _, kv := range resp.Kvs {
+		_, colName := path.Split(string(kv.Key))
+		ret[colName] = string(kv.Value)
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", ret).
+		Msg("etcdqdb: get column sequence")
+
+	return ret, nil
+}
+
+func (q *EtcdQDB) getSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
+	resp, err := q.cli.Get(ctx, columnSequenceMappingNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	cols := []string{}
+	for _, kv := range resp.Kvs {
+		if string(kv.Value) != seqName {
+			continue
+		}
+
+		s := strings.Split(string(kv.Key), "/")
+		colName := s[len(s)-1]
+		relName := s[len(s)-2]
+		cols = append(cols, fmt.Sprintf("%s.%s", relName, colName))
+	}
+
+	return cols, nil
+}
+
+func (q *EtcdQDB) createSequence(ctx context.Context, seqName string) error {
+	spqrlog.Zero.Debug().
+		Str("sequence", seqName).
+		Msg("etcdqdb: add sequence")
+
+	key := sequenceNodePath(seqName)
+	resp, err := q.cli.Get(ctx, key)
+	if err != nil {
+		return err
+	}
+
+	if len(resp.Kvs) == 0 {
+		_, err := q.cli.Put(ctx, key, "0")
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (q *EtcdQDB) DropSequence(ctx context.Context, seqName string) error {
+	depends, err := q.getSequenceColumns(ctx, seqName)
+	if err != nil {
+		return err
+	}
+	if len(depends) != 0 {
+		return spqrerror.Newf(spqrerror.SPQR_SEQUENCE_ERROR, "column %q is attached to sequence", depends[0])
+	}
+
+	key := sequenceNodePath(seqName)
+	_, err = q.cli.Delete(ctx, key)
+	return err
+}
+
+func (q *EtcdQDB) ListSequences(ctx context.Context) ([]string, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: list all sequences")
+
+	resp, err := q.cli.Get(ctx, sequenceNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []string
+
+	for _, e := range resp.Kvs {
+		ret = append(ret, strings.TrimPrefix(string(e.Key), sequenceNamespace))
+	}
+
+	sort.Strings(ret)
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: list all sequences")
+
+	return ret, nil
+}
+
+func (q *EtcdQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: next val")
+
+	id := sequenceNodePath(seqName)
+	sess, err := concurrency.NewSession(q.cli)
+	if err != nil {
+		return -1, err
+	}
+	defer closeSession(sess)
+
+	mu := concurrency.NewMutex(sess, sequencespace)
+	if err = mu.Lock(ctx); err != nil {
+		return -1, err
+	}
+	defer unlockMutex(mu, ctx)
+
+	resp, err := q.cli.Get(ctx, id)
+	if err != nil {
+		return -1, err
+	}
+
+	var nextval int64 = 0
+	switch resp.Count {
+	case 1:
+		var err error
+		nextval, err = strconv.ParseInt(string(resp.Kvs[0].Value), 10, 64)
+		if err != nil {
+			return -1, err
+		}
+	default:
+	}
+
+	nextval++
+	_, err = q.cli.Put(ctx, id, fmt.Sprintf("%d", nextval))
+
+	return nextval, err
 }
