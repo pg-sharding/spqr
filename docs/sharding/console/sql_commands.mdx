@@ -25,7 +25,7 @@ DROP DISTRIBUTION <distribution_name> [CASCADE]
 
 ### ALTER DISTRIBUTION ATTACH RELATION
 
-This command is used to alter an existing distribution. You can attach one or more relations to the distribution using the ATTACH RELATION clause.
+This command is used to alter an existing distribution. You can attach one or more [relations](/sharding/sharded_tables) to the distribution using the ATTACH RELATION clause.
 
 ```sql
 ALTER DISTRIBUTION <distribution_name> ATTACH RELATION <relation_name> [, <relation_name> ...] 
@@ -40,6 +40,26 @@ This command is used to alter an existing distribution. You can detach a relatio
 
 ```sql
 ALTER DISTRIBUTION <distribution_name> DETACH RELATION <relation_name>
+```
+
+### CREATE REFERENCE TABLE
+
+This command is used to create a [reference table](/sharding/reference_tables). The `AUTO INCREMENT` argument creates [a sequence](/sharding/reference_tables#sequences).
+
+```sql
+CREATE REFERENCE TABLE <table_name> [AUTO INCREMENT <column_name>]
+```
+
+### DROP SEQUENCE
+
+This command is used to drop [a sequence](/sharding/reference_tables#sequences).
+
+```sql
+DROP SEQUENCE t1_id;
+   drop sequence   
+-------------------
+ sequence -> t1_id
+(1 row)
 ```
 
 ### CREATE KEY RANGE
@@ -109,7 +129,7 @@ This command is used to retrieve information about a specific entity of SPQR clu
 ```sql
 SHOW entity [WHERE where_clause]
 
-where entity is one of databases, routers, pools, shards, backend_connections, key_ranges, clients, status, distributions, version, relations, task_groups, prepared_statements:
+where entity is one of databases, routers, pools, shards, backend_connections, key_ranges, clients, status, distributions, version, relations, sequences, task_groups, prepared_statements:
 ```
 
 The`where_clause` is used to filter the results based on specific conditions. It allows you to specify criteria for selecting the information to be shown.

@@ -50,7 +50,7 @@ Whether to explicitly block multishard queries. Overload for [query_routing.defa
 
 ```sql
 DROP DATABASE prod;
-ERROR:  client processing error: error processing query 'DROP DATABASE prod': failed to match any datashard., tx status IDLE
+ERROR:  client processing error: 'DROP DATABASE prod': failed to match any datashard., tx status IDLE
 
 DROP DATABASE prod /* __spqr__default_route_behaviour: allow */;
 NOTICE: send query to shard(s) : shard1,shard2,shard3,shard4
