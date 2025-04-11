@@ -54,6 +54,7 @@ run_tests "common" "regress_router" "7432"
 cat /regress/tests/**/regression.diffs > /regress/tests/combined.diffs 2>&-
 
 if test -s /regress/tests/combined.diffs; then
+    sleep 3000000s
     exit 1
 fi
 exit 0
