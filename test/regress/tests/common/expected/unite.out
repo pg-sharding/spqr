@@ -35,6 +35,48 @@ SHOW key_ranges;
  krid1        | sh1      | ds1             | 0
 (1 row)
 
+CREATE KEY RANGE krid3 FROM 20 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 20
+(1 row)
+
+LOCK KEY RANGE krid3;
+    lock key range     
+-----------------------
+ key range id -> krid3
+(1 row)
+
+UNITE KEY RANGE krid2 WITH krid3;
+ERROR:  key range "krid3" is locked.
+
+UNLOCK KEY RANGE krid3;
+   unlock key range    
+-----------------------
+ key range id -> krid3
+(1 row)
+
+-- non adjacent key ranges
+UNITE KEY RANGE krid1 WITH krid3;
+ERROR: something
+
+-- reverse order
+UNITE KEY RANGE krid2 WITH krid1;
+         merge key ranges         
+----------------------------------
+ merge key ranges krid2 and krid1
+(1 row)
+
+-- routing to different shards
+CREATE KEY RANGE krid4 FROM 40 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 40
+(1 row)
+
+UNITE KEY RANGE krid3 WITH krid4;
+ERROR: something
+
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------
