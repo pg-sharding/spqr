@@ -649,10 +649,6 @@ func (lc *LocalCoordinator) Cache() *cache.SchemaCache {
 	return lc.cache
 }
 
-func (lc *LocalCoordinator) ListSequences(ctx context.Context) ([]string, error) {
-	return lc.qdb.ListSequences(ctx)
-}
-
 func (lc *LocalCoordinator) DropSequence(ctx context.Context, seqName string) error {
 	return lc.qdb.DropSequence(ctx, seqName)
 }
