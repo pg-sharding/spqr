@@ -23,7 +23,6 @@ Some typical use cases for reference tables include:
 
 ## How to use it?
 
-
 <Warning>
 Creating a reference table in SPQR is just a metadata operation. You will need to create this table on the shards as well, either through the SPQR router or any other method you prefer.
 </Warning>
@@ -81,4 +80,49 @@ NOTICE: send query to shard(s) : sh2
  AU           |            |   10.00  | GST
  IN           |            |   18.00  | GST
 (6 rows)
+```
+
+## Sequences
+In some cases, it may be beneficial to avoid manually specifying a unique identifier (commonly the `id` column) when creating new records. Instead, you can rely on the [AUTO INCREMENT](https://www.postgresql.org/docs/11/sql-createsequence.html) feature provided by the database. 
+
+For reference tables, this can be challenging because the `id` values must remain synchronized across all shards. Fortunately, SPQR supports this functionality through a feature called **sequences**.
+
+Here’s an example of how you can automatically generate `id` values. To create a reference table with country codes and region names, follow these steps:
+
+```sql
+\c spqr-console
+CREATE REFERENCE TABLE country_regions AUTO INCREMENT id;
+         attach table          
+-------------------------------
+ relation name   -> country_regions
+ distribution id -> REPLICATED
+(2 rows)
+```
+
+Then, create the table and insert data:
+
+```sql
+\c ordersdb
+CREATE TABLE country_regions (
+    id SERIAL PRIMARY KEY,
+    country_code VARCHAR(2),
+    region_name VARCHAR(100)
+);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+COPY country_regions FROM 'country_regions.csv' DELIMITER '\t';
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+```
+
+Verify replication:
+
+```sql
+SELECT * FROM country_regions /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ id | country_code |    region_name    
+----+--------------+-------------------
+  1 | US           | United States
+  2 | CA           | Canada
+  3 | GB           | United Kingdom
+  4 | AU           | Australia
+  5 | IN           | India
 ```
