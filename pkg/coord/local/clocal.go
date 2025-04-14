@@ -87,17 +87,7 @@ func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id stri
 	return lc.BaseCoordinator.AlterDistributionAttach(ctx, id, rels)
 }
 
-// TODO : unit tests
-
-// AlterDistributionDetach alters the distribution by detaching a specific distributed relation.
-//
-// Parameters:
-// - ctx (context.Context): the context.Context object for managing the request's lifetime.
-// - id (string): the ID of the distribution to be altered.
-// - relName (string): the name of the distributed relation to be detached.
-//
-// Returns:
-// - error: an error if the alteration operation fails.
+// AlterDistributionDetach detaches relation from distribution
 func (lc *LocalCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -514,18 +504,6 @@ func (lc *LocalCoordinator) ListRouters(ctx context.Context) ([]*topology.Router
 	}}, nil
 }
 
-// CreateKeyRange creates a new key range in the LocalCoordinator.
-//
-// Parameters:
-// - ctx (context.Context): The context of the operation.
-// - kr (*kr.KeyRange): The key range object to be created.
-//
-// Returns:
-// - error: An error if the creation encounters any issues.
-//func (lc *LocalCoordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-//	return ops.CreateKeyRangeWithChecks(ctx, lc.qdb, kr)
-//}
-
 // MoveKeyRange is disabled in LocalCoordinator
 //
 // Returns:
@@ -622,17 +600,6 @@ func (lc *LocalCoordinator) GetCoordinator(ctx context.Context) (string, error) 
 func (lc *LocalCoordinator) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
 	return nil, ErrNotCoordinator
 }
-
-// ShareKeyRange shares a key range with the LocalCoordinator.
-//
-// Parameters:
-// - id (string): The ID of the key range to be shared.
-//
-// Returns:
-// - error: An error indicating the sharing status.
-//func (lc *LocalCoordinator) ShareKeyRange(id string) error {
-//	return lc.qdb.ShareKeyRange(id)
-//}
 
 // QDB returns the QDB instance associated with the LocalCoordinator.
 //

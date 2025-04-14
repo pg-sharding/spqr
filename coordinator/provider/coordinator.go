@@ -207,10 +207,6 @@ type qdbCoordinator struct {
 	acquiredLock bool
 }
 
-//func (qc *qdbCoordinator) ShareKeyRange(id string) error {
-//	return qc.db.ShareKeyRange(id)
-//}
-
 func (qc *qdbCoordinator) QDB() qdb.QDB {
 	return qc.db
 }
