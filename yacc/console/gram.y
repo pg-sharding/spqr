@@ -76,6 +76,7 @@ func randomHex(n int) (string, error) {
 	distributed_relation   *DistributedRelation
 	
 	relations              []*DistributedRelation
+	relation               *DistributedRelation
 	entrieslist            []ShardingRuleEntry
 	dEntrieslist 	       []DistributionKeyEntry
 
@@ -212,6 +213,7 @@ func randomHex(n int) (string, error) {
 %type<relations> relation_attach_stmt
 %type<relations> distributed_relation_list_def
 
+%type<distributed_relation> relation_alter_stmt
 %type<distributed_relation> distributed_relation_def
 
 %type<strlist> col_types_list opt_col_types hosts_list
@@ -528,6 +530,15 @@ distribution_alter_stmt:
 				RelationName: $4,
 			},
 		}
+	} |
+	distribution_select_stmt relation_alter_stmt
+	{
+		$$ = &AlterDistribution{
+			Element: &AlterRelation{
+				Distribution: $1,
+				Relation: $2,
+			},
+		}
 	}
 
 
@@ -604,6 +615,11 @@ distributed_relation_list_def:
 
 relation_attach_stmt:
 	ATTACH distributed_relation_list_def {
+		$$ = $2
+	}
+
+relation_alter_stmt:
+	ALTER distributed_relation_def {
 		$$ = $2
 	}
 
