@@ -332,18 +332,25 @@ func (qc *BaseCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKey
 		}
 	}()
 
-	krAppendageDb, err := qc.qdb.LockKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId)
+	/*
+		krAppendageDb, err := qc.qdb.LockKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId)
+		if err != nil {
+			return err
+		}
+
+		defer func() {
+			if err := qc.qdb.UnlockKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+			}
+		}()
+	*/
+
+	ds, err := qc.qdb.GetDistribution(ctx, krBaseDb.DistributionId)
 	if err != nil {
 		return err
 	}
 
-	defer func() {
-		if err := qc.qdb.UnlockKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-		}
-	}()
-
-	ds, err := qc.qdb.GetDistribution(ctx, krBaseDb.DistributionId)
+	krAppendageDb, err := qc.qdb.GetKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId)
 	if err != nil {
 		return err
 	}
