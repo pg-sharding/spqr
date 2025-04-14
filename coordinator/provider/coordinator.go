@@ -370,6 +370,7 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 		}
 	}
 
+	qc.acquiredLock = true
 	return updateCoordinator()
 }
 
