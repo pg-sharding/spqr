@@ -149,7 +149,7 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY
-%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE
+%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
@@ -194,6 +194,7 @@ func randomHex(n int) (string, error) {
 %type<shruleEntry> sharding_rule_entry
 %type<strlist> opt_auto_increment
 %type<strlist> auto_inc_column_list
+%type<str> opt_schema_name
 
 %type<distrKeyEntry> distribution_key_entry
 
@@ -552,18 +553,20 @@ distribution_key_entry:
 	}
 
 distributed_relation_def:
-	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
+	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment opt_schema_name
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
+			SchemaName: $7,
 			DistributionKey: $5,
 			AutoIncrementColumns: $6,
 		}
 	} | 
-	RELATION any_id opt_auto_increment
+	RELATION any_id opt_auto_increment opt_schema_name
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
+			SchemaName: $4,
 			ReplicatedRelation: true,
 			AutoIncrementColumns: $3,
 		}
@@ -575,6 +578,13 @@ opt_auto_increment:
 		$$ = $3
 	} | /* EMPTY */ {
 		$$ = nil
+	}
+
+opt_schema_name:
+	SCHEMA any_id {
+		$$ = $2
+	} | /* EMPTY */ {
+		$$ = ""
 	}
 
 auto_inc_column_list:
