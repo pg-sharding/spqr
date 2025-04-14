@@ -24,7 +24,14 @@ Feature: Coordinator test
     """
     router
     """
-    And I fail to run SQL on host "coordinator2"
+    When I run SQL on host "coordinator2"
+    """
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    """
+    Then SQL error on host "coordinator2" should match regexp
+    """
+    console is in read only mode
+    """
 
   Scenario: Second coordinator turns on when other is dead
     Given host "coordinator" is stopped
@@ -38,7 +45,7 @@ Feature: Coordinator test
     router
     """
 
-    Scenario: first coordinator awaits after recovery
+  Scenario: first coordinator awaits after recovery
     Given host "coordinator" is stopped
     When I run SQL on host "coordinator2"
     """
@@ -50,4 +57,11 @@ Feature: Coordinator test
     router
     """
     Given host "coordinator" is started
-    And I fail to run SQL on host "coordinator"
+    When I run SQL on host "coordinator"
+    """
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    console is in read only mode
+    """

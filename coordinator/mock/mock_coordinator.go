@@ -335,6 +335,20 @@ func (mr *MockCoordinatorMockRecorder) GetShard(ctx, shardID any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShard", reflect.TypeOf((*MockCoordinator)(nil).GetShard), ctx, shardID)
 }
 
+// IsReadOnly mocks base method.
+func (m *MockCoordinator) IsReadOnly() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsReadOnly")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsReadOnly indicates an expected call of IsReadOnly.
+func (mr *MockCoordinatorMockRecorder) IsReadOnly() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsReadOnly", reflect.TypeOf((*MockCoordinator)(nil).IsReadOnly))
+}
+
 // ListAllKeyRanges mocks base method.
 func (m *MockCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	m.ctrl.T.Helper()

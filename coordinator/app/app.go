@@ -66,7 +66,7 @@ func (app *App) Run(withPsql bool) error {
 		}()
 	}
 
-	app.coordinator.RunCoordinator(context.TODO(), !withPsql)
+	go app.coordinator.RunCoordinator(context.TODO(), !withPsql)
 
 	wg := &sync.WaitGroup{}
 
@@ -137,6 +137,10 @@ func (app *App) ServeCoordinator(wg *sync.WaitGroup) error {
 
 func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
 	defer wg.Done()
+
+	for app.coordinator.IsReadOnly() {
+		time.Sleep(time.Second)
+	}
 
 	serv := grpc.NewServer()
 	reflection.Register(serv)
