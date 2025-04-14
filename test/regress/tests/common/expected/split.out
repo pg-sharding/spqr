@@ -46,13 +46,17 @@ LOCK KEY RANGE krid1;
 (1 row)
 
 SPLIT KEY RANGE krid4 FROM krid1 BY 5;
-ERROR:  key range "krid1" is locked.
+ERROR:  key range krid1 is locked.
 UNLOCK KEY RANGE krid1;
    unlock key range    
 -----------------------
  key range id -> krid1
 (1 row)
 
+SPLIT KEY RANGE krid4 FROM krid1 BY 50;
+ERROR:  failed to split because bound intersects with "krid2" key range.
+SPLIT KEY RANGE krid4 FROM krid2 BY 5;
+ERROR:  failed to split because bound is out of key range.
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------
