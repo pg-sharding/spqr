@@ -140,6 +140,7 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRe
 func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *DistributedRelation {
 	rdistr := &DistributedRelation{
 		Name:                  rel.Name,
+		SchemaName:            rel.SchemaName,
 		ColumnSequenceMapping: map[string]string{},
 	}
 

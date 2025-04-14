@@ -257,6 +257,7 @@ type DistributionKeyEntry struct {
 
 type DistributedRelation struct {
 	Name                 string
+	SchemaName           string
 	DistributionKey      []DistributionKeyEntry
 	ReplicatedRelation   bool
 	AutoIncrementColumns []string
