@@ -16,6 +16,7 @@ type DistributionKeyEntry struct {
 
 type DistributedRelation struct {
 	Name                  string
+	SchemaName            string
 	DistributionKey       []DistributionKeyEntry
 	ReplicatedRelation    bool
 	ColumnSequenceMapping map[string]string
@@ -34,7 +35,8 @@ const (
 //   - *DistributedRelation: The created DistributedRelation object.
 func DistributedRelationFromDB(rel *qdb.DistributedRelation) *DistributedRelation {
 	rdistr := &DistributedRelation{
-		Name: rel.Name,
+		Name:       rel.Name,
+		SchemaName: rel.SchemaName,
 	}
 
 	for _, e := range rel.DistributionKey {
@@ -59,7 +61,8 @@ func DistributedRelationFromDB(rel *qdb.DistributedRelation) *DistributedRelatio
 //   - *qdb.DistributedRelation: The converted qdb.DistributedRelation object.
 func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation {
 	rdistr := &qdb.DistributedRelation{
-		Name: rel.Name,
+		Name:       rel.Name,
+		SchemaName: rel.SchemaName,
 	}
 
 	for _, e := range rel.DistributionKey {
@@ -85,6 +88,7 @@ func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation 
 func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRelation {
 	rdistr := &proto.DistributedRelation{
 		Name:            rel.Name,
+		SchemaName:      rel.SchemaName,
 		SequenceColumns: rel.ColumnSequenceMapping,
 	}
 
@@ -110,6 +114,7 @@ func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRela
 func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRelation {
 	rdistr := &DistributedRelation{
 		Name:                  rel.Name,
+		SchemaName:            rel.SchemaName,
 		ColumnSequenceMapping: rel.SequenceColumns,
 	}
 

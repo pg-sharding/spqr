@@ -17,6 +17,7 @@ message DistributedRelation {
   repeated DistributionKeyEntry distributionKey = 2;
   bool ReplicatedRelation = 3;
   map<string, string> sequenceColumns = 4;
+  string schema_name = 5;
 }
 
 message Distribution {
