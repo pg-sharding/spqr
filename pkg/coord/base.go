@@ -216,14 +216,40 @@ func (qc *BaseCoordinator) CreateDistribution(ctx context.Context, ds *distribut
 	return qc.qdb.CreateDistribution(ctx, distributions.DistributionToDB(ds))
 }
 
+// TODO : unit tests
+
+// AlterDistributionDetach alters the distribution by detaching a specific distributed relation.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+// - id (string): the ID of the distribution to be altered.
+// - relName (string): the name of the distributed relation to be detached.
+//
+// Returns:
+// - error: an error if the alteration operation fails.
 func (qc *BaseCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
 	return qc.qdb.AlterDistributionDetach(ctx, id, relName)
 }
 
+// ShareKeyRange shares a key range with the LocalCoordinator.
+//
+// Parameters:
+// - id (string): The ID of the key range to be shared.
+//
+// Returns:
+// - error: An error indicating the sharing status.
 func (qc *BaseCoordinator) ShareKeyRange(id string) error {
 	return qc.qdb.ShareKeyRange(id)
 }
 
+// CreateKeyRange creates a new key range in the LocalCoordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - kr (*kr.KeyRange): The key range object to be created.
+//
+// Returns:
+// - error: An error if the creation encounters any issues.
 func (lc *BaseCoordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	return ops.CreateKeyRangeWithChecks(ctx, lc.qdb, kr)
 }
