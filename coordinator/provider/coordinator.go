@@ -351,6 +351,9 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 		}
 		return true
 	}
+	defer func() {
+		qc.acquiredLock = true
+	}()
 
 	if qc.db.TryCoordinatorLock(context.TODO()) != nil {
 		for {
@@ -367,7 +370,6 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 		}
 	}
 
-	qc.acquiredLock = true
 	return updateCoordinator()
 }
 
