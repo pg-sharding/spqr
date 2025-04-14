@@ -57,11 +57,11 @@ Feature: Coordinator test
     router
     """
     Given host "coordinator" is started
-    When I run SQL on host "coordinator2"
+    When I run SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     """
-    Then SQL error on host "coordinator2" should match regexp
+    Then SQL error on host "coordinator" should match regexp
     """
     console is in read only mode
     """
