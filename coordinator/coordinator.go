@@ -12,4 +12,5 @@ type Coordinator interface {
 	meta.EntityMgr
 
 	RunCoordinator(ctx context.Context, initialRouter bool)
+	IsReadOnly() bool
 }

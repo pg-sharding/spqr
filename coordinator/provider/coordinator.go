@@ -197,10 +197,11 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 const defaultWatchRouterTimeout = time.Second
 
 type qdbCoordinator struct {
-	rmgr      rulemgr.RulesMgr
-	tlsconfig *tls.Config
-	db        qdb.XQDB
-	cache     *cache.SchemaCache
+	rmgr         rulemgr.RulesMgr
+	tlsconfig    *tls.Config
+	db           qdb.XQDB
+	cache        *cache.SchemaCache
+	acquiredLock bool
 }
 
 func (qc *qdbCoordinator) ShareKeyRange(id string) error {
@@ -314,9 +315,10 @@ func NewCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*qdbCoordinator, error)
 	}
 
 	return &qdbCoordinator{
-		db:        db,
-		tlsconfig: tlsconfig,
-		rmgr:      rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
+		db:           db,
+		tlsconfig:    tlsconfig,
+		rmgr:         rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
+		acquiredLock: false,
 	}, nil
 }
 
@@ -365,6 +367,7 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 		}
 	}
 
+	qc.acquiredLock = true
 	return updateCoordinator()
 }
 
@@ -1967,7 +1970,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt por
 				Type("type", tstmt).
 				Msg("parsed statement is")
 
-			if err := meta.Proc(ctx, tstmt, qc, ci, cl, nil); err != nil {
+			if err := meta.Proc(ctx, tstmt, qc, ci, cl, nil, qc.IsReadOnly()); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				_ = cli.ReportError(err)
 			} else {
@@ -2281,4 +2284,8 @@ func (qc *qdbCoordinator) finishMoveTasksInProgress(ctx context.Context) error {
 		return qc.WriteBalancerTask(ctx, balancerTask)
 	}
 	return qc.executeMoveTasks(ctx, taskGroup)
+}
+
+func (qc *qdbCoordinator) IsReadOnly() bool {
+	return !qc.acquiredLock
 }

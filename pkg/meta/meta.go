@@ -394,7 +394,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, rc rclient.RouterClient, writer workloadlog.WorkloadLog) error {
+func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, rc rclient.RouterClient, writer workloadlog.WorkloadLog, ro bool) error {
 	cli := clientinteractor.NewPSQLInteractor(rc)
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 
@@ -403,6 +403,10 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 			return err
 		}
 		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, cli)
+	}
+
+	if ro {
+		return fmt.Errorf("console is in read only mode")
 	}
 
 	if err := catalog.GC.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
