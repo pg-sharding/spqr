@@ -402,7 +402,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		if err := catalog.GC.CheckGrants(catalog.RoleReader, rc.Rule()); err != nil {
 			return err
 		}
-		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, cli)
+		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, cli, ro)
 	}
 
 	if ro {
@@ -550,7 +550,7 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, poo
 //
 // Returns:
 // - error: An error if the operation encounters any issues.
-func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor) error {
+func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor, ro bool) error {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
 	switch stmt.Cmd {
 	case spqrparser.BackendConnectionsStr:
@@ -663,6 +663,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 		return cli.Sequences(ctx, seqs)
+	case spqrparser.IsReadOnlyStr:
+		return cli.IsReadOnly(ctx, ro)
 	default:
 		return unknownCoordinatorCommand
 	}
