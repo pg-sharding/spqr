@@ -41,6 +41,14 @@ Feature: Coordinator test
     """
     true
     """
+    When I run SQL on host "coordinator"
+    """
+    SHOW is_read_only;
+    """
+    Then SQL result should match regexp
+    """
+    false
+    """
 
   Scenario: Second coordinator turns on when other is dead
     Given host "coordinator" is stopped
@@ -82,4 +90,12 @@ Feature: Coordinator test
     Then SQL result should match regexp
     """
     true
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW is_read_only;
+    """
+    Then SQL result should match regexp
+    """
+    false
     """
