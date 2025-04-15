@@ -4,8 +4,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/go-faster/city"
+	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/spaolacci/murmur3"
 )
@@ -41,6 +43,14 @@ var (
 func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (interface{}, error) {
 	switch hf {
 	case HashFunctionIdent:
+		if ctype == qdb.ColumnTypeUUID {
+			val := inp.(string)
+			val = strings.ToLower(val)
+			err := uuid.Validate(val)
+			if err != nil {
+				return nil, err
+			}
+		}
 		return inp, nil
 	case HashFunctionMurmur:
 		switch ctype {
@@ -130,6 +140,8 @@ func ApplyHashFunctionOnStringRepr(inp []byte, ctype string, hf HashFunctionType
 		}
 		parsedInp = n
 
+	case qdb.ColumnTypeUUID:
+		parsedInp = string(inp)
 	case qdb.ColumnTypeVarchar:
 		fallthrough
 	case qdb.ColumnTypeVarcharHashed:

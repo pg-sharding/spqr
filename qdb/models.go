@@ -74,6 +74,7 @@ var (
 	ColumnTypeVarcharDeprecated = "_varchar"
 	ColumnTypeInteger           = "integer"
 	ColumnTypeUinteger          = "uinteger"
+	ColumnTypeUUID              = "uuid"
 )
 
 type DistributionKeyEntry struct {

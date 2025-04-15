@@ -103,6 +103,7 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 	var p plan.Plan = nil
 
 	compositeKey := make([]interface{}, len(relation.DistributionKey))
+	spqrlog.Zero.Debug().Strs("col types", ds.ColTypes).Msg("here")
 
 	rec = func(lvl int) error {
 

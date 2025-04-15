@@ -255,6 +255,8 @@ func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation rfqn.Relati
 		return rm.RecordParamRefExpr(resolvedRelation, colname, right.Number-1)
 	case *lyx.AExprSConst:
 		switch tp {
+		case qdb.ColumnTypeUUID:
+			fallthrough
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough
 		case qdb.ColumnTypeVarcharHashed:
@@ -278,6 +280,8 @@ func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation rfqn.Relati
 		}
 	case *lyx.AExprIConst:
 		switch tp {
+		case qdb.ColumnTypeUUID:
+			return fmt.Errorf("uuid type is not supported for AExprIConst expression")
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough
 		case qdb.ColumnTypeVarcharHashed:

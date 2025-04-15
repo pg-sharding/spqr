@@ -56,6 +56,10 @@ func (kr *KeyRange) InFuncSQL(attribInd int, raw []byte) {
 		fallthrough
 	case qdb.ColumnTypeVarchar:
 		kr.LowerBound[attribInd] = string(raw)
+	case qdb.ColumnTypeUUID:
+		val := string(raw)
+		val = strings.ToLower(val)
+		kr.LowerBound[attribInd] = val
 	}
 }
 
@@ -72,6 +76,8 @@ func (kr *KeyRange) InFunc(attribInd int, raw []byte) {
 	case qdb.ColumnTypeVarcharDeprecated:
 		fallthrough
 	case qdb.ColumnTypeVarchar:
+		kr.LowerBound[attribInd] = string(raw)
+	case qdb.ColumnTypeUUID:
 		kr.LowerBound[attribInd] = string(raw)
 	}
 }
@@ -91,6 +97,8 @@ func (kr *KeyRange) OutFunc(attribInd int) []byte {
 	case qdb.ColumnTypeVarcharDeprecated:
 		fallthrough
 	case qdb.ColumnTypeVarchar:
+		return []byte(kr.LowerBound[attribInd].(string))
+	case qdb.ColumnTypeUUID:
 		return []byte(kr.LowerBound[attribInd].(string))
 	}
 	return nil
@@ -225,6 +233,8 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 			} else {
 				return false
 			}
+		case qdb.ColumnTypeUUID:
+			fallthrough
 		case qdb.ColumnTypeVarchar:
 			i1 := bound[i].(string)
 			i2 := key[i].(string)
@@ -271,6 +281,8 @@ func CmpRangesEqual(bound KeyRangeBound, key KeyRangeBound, types []string) bool
 			} else {
 				return false
 			}
+		case qdb.ColumnTypeUUID:
+			fallthrough
 		case qdb.ColumnTypeVarchar:
 			i1 := bound[i].(string)
 			i2 := key[i].(string)
