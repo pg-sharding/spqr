@@ -97,6 +97,7 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.VARCHAR,
 				spqrparser.TCOMMA,
 				spqrparser.VARCHAR,
+				spqrparser.TCOMMA,
 				spqrparser.UUID,
 			},
 		},
