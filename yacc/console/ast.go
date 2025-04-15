@@ -306,6 +306,7 @@ const (
 	UnsupportedStr        = "unsupported"
 	QuantilesStr          = "time_quantiles"
 	SequencesStr          = "sequences"
+	IsReadOnlyStr         = "is_read_only"
 )
 
 const (

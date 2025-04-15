@@ -1551,6 +1551,20 @@ func (pi *PSQLInteractor) DropSequence(_ context.Context, name string) error {
 	return pi.CompleteMsg(0)
 }
 
+func (pi *PSQLInteractor) IsReadOnly(ctx context.Context, ro bool) error {
+	if err := pi.WriteHeader("is read only"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	if err := pi.WriteDataRow(fmt.Sprintf("%v", ro)); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	return pi.CompleteMsg(0)
+}
+
 func groupBy[T any](headers []string, values []T, getters []func(s T) string, groupByCol string, pi *PSQLInteractor) error {
 	ind := -1
 	for i, header := range headers {

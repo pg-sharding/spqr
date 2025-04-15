@@ -33,6 +33,23 @@ Feature: Coordinator test
     console is in read only mode
     """
 
+    When I run SQL on host "coordinator2"
+    """
+    SHOW is_read_only;
+    """
+    Then SQL result should match regexp
+    """
+    true
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW is_read_only;
+    """
+    Then SQL result should match regexp
+    """
+    false
+    """
+
   Scenario: Second coordinator turns on when other is dead
     Given host "coordinator" is stopped
     When I run SQL on host "coordinator2"
@@ -64,4 +81,21 @@ Feature: Coordinator test
     Then SQL error on host "coordinator" should match regexp
     """
     console is in read only mode
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    SHOW is_read_only;
+    """
+    Then SQL result should match regexp
+    """
+    true
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW is_read_only;
+    """
+    Then SQL result should match regexp
+    """
+    false
     """
