@@ -310,7 +310,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		}
 		// check that relation exists on sending shard and there is data to copy. If not, skip the relation
 		// TODO get actual schema
-		fromTableExists, err := CheckTableExists(ctx, from, strings.ToLower(rel.Name), "public")
+		fromTableExists, err := CheckTableExists(ctx, from, strings.ToLower(rel.Name), rel.SchemaName)
 		if err != nil {
 			return err
 		}
@@ -322,7 +322,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 			return err
 		}
 		// check that relation exists on receiving shard. If not, exit
-		toTableExists, err := CheckTableExists(ctx, to, strings.ToLower(rel.Name), "public")
+		toTableExists, err := CheckTableExists(ctx, to, strings.ToLower(rel.Name), rel.SchemaName)
 		if err != nil {
 			return err
 		}

@@ -1204,15 +1204,8 @@ func (*qdbCoordinator) getKeyStats(
 	relationCount = make(map[string]int64)
 	// TODO: account for schema?
 	for _, rel := range relations {
-		row := conn.QueryRow(ctx, fmt.Sprintf(`SELECT EXISTS (
-   SELECT FROM pg_catalog.pg_class c
-   JOIN   pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-   WHERE  c.relname = '%s'
-   AND    c.relkind = 'r'    -- only tables
-   );
-`, strings.ToLower(rel.Name)))
-		relExists := false
-		if err = row.Scan(&relExists); err != nil {
+		relExists, err := datatransfers.CheckTableExists(ctx, conn, rel.Name, rel.SchemaName)
+		if err != nil {
 			return 0, nil, err
 		}
 		if !relExists {
@@ -1228,7 +1221,7 @@ func (*qdbCoordinator) getKeyStats(
 				FROM %s as t
 				WHERE %s;
 `, rel.Name, cond)
-		row = conn.QueryRow(ctx, query)
+		row := conn.QueryRow(ctx, query)
 		var count int64
 		if err = row.Scan(&count); err != nil {
 			return 0, nil, err
