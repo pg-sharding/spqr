@@ -1,6 +1,8 @@
 package plan
 
 import (
+	"slices"
+
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
@@ -82,6 +84,31 @@ func (rrs ReferenceRelationState) ExecutionTargets() []*kr.ShardKey {
 
 const NOSHARD = ""
 
+func mergeExecTagrets(l, r []*kr.ShardKey) []*kr.ShardKey {
+	/* XXX: nil means all */
+	if l == nil {
+		return nil
+	}
+	/* XXX: nil means all */
+	if r == nil {
+		return nil
+	}
+	ret := l
+
+	for _, e := range r {
+		if slices.ContainsFunc[[]*kr.ShardKey](ret, func(
+			el *kr.ShardKey,
+		) bool {
+			return e.Name == el.Name
+		}) {
+			continue
+		}
+		ret = append(ret, e)
+	}
+
+	return ret
+}
+
 // TODO : unit tests
 func Combine(p1, p2 Plan) Plan {
 	if p1 == nil && p2 == nil {
@@ -101,7 +128,9 @@ func Combine(p1, p2 Plan) Plan {
 
 	switch shq1 := p1.(type) {
 	case ScatterPlan:
-		return p1
+		return ScatterPlan{
+			ExecTargets: mergeExecTagrets(p1.ExecutionTargets(), p2.ExecutionTargets()),
+		}
 	case RandomDispatchPlan:
 		return p2
 	case ReferenceRelationState:
@@ -109,12 +138,18 @@ func Combine(p1, p2 Plan) Plan {
 	case ShardDispatchPlan:
 		switch shq2 := p2.(type) {
 		case ScatterPlan:
-			return p2
+			return ScatterPlan{
+				ExecTargets: mergeExecTagrets(p1.ExecutionTargets(), p2.ExecutionTargets()),
+			}
 		case ReferenceRelationState:
 			return p1
 		case ShardDispatchPlan:
 			if shq2.ExecTarget.Name == shq1.ExecTarget.Name {
 				return p1
+			} else {
+				return ScatterPlan{
+					ExecTargets: mergeExecTagrets(p1.ExecutionTargets(), p2.ExecutionTargets()),
+				}
 			}
 		}
 	}
