@@ -2194,6 +2194,40 @@ func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string
 	})
 }
 
+// AlterDistributedRelation changes relation attached to a distribution
+// TODO: unit tests
+func (qc *qdbCoordinator) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
+	if !rel.ReplicatedRelation && len(rel.ColumnSequenceMapping) > 0 {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequences are supported for replicated relations only")
+	}
+	qdbRel := distributions.DistributedRelationToDB(rel)
+	if err := qc.db.AlterDistributedRelation(ctx, id, qdbRel); err != nil {
+		return err
+	}
+
+	for colName, seqName := range rel.ColumnSequenceMapping {
+		if err := qc.db.AlterSequenceAttach(ctx, seqName, rel.Name, colName); err != nil {
+			return err
+		}
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewDistributionServiceClient(cc)
+		resp, err := cl.AlterDistributedRelation(context.TODO(), &routerproto.AlterDistributedRelationRequest{
+			Id:       id,
+			Relation: distributions.DistributedRelationToProto(rel),
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("alter relation response")
+		return nil
+	})
+}
+
 func (qc *qdbCoordinator) ListSequences(ctx context.Context) ([]string, error) {
 	return qc.db.ListSequences(ctx)
 }

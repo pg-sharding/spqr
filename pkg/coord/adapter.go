@@ -749,6 +749,26 @@ func (a *Adapter) AlterDistributionAttach(ctx context.Context, id string, rels [
 	return err
 }
 
+// TODO : unit tests
+
+// AlterDistributedRelation alters the metadata of a distributed relation.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+// - id (string): The ID of the distribution of the relation.
+// - rel (*distributions.DistributedRelation): The metadata for the distributed relation.
+//
+// Returns:
+// - error: An error if the alteration of the distribution's attachments fails, otherwise nil.
+func (a *Adapter) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
+	c := proto.NewDistributionServiceClient(a.conn)
+	_, err := c.AlterDistributedRelation(ctx, &proto.AlterDistributedRelationRequest{
+		Id:       id,
+		Relation: distributions.DistributedRelationToProto(rel),
+	})
+	return err
+}
+
 // AlterDistributionDetach detaches a relation from a distribution using the provided ID and relation name.
 //
 // Parameters:

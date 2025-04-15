@@ -214,6 +214,46 @@ func (lc *LocalCoordinator) AlterDistributionDetach(ctx context.Context, id stri
 
 // TODO : unit tests
 
+// AlterDistributedRelation alters metadata of a distributed relation.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+// - id (string): the ID of the distribution of the relation.
+// - rel (*distributions.DistributedRelation): the metadata of the distributed relation.
+//
+// Returns:
+// - error: an error if the alteration operation fails.
+func (lc *LocalCoordinator) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
+	lc.mu.Lock()
+	defer lc.mu.Unlock()
+
+	ds, err := lc.qdb.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if len(rel.DistributionKey) != len(ds.ColTypes) {
+		return fmt.Errorf("cannot attach relation %v to this dataspace: number of column mismatch", rel.Name)
+	}
+	if !rel.ReplicatedRelation && len(rel.ColumnSequenceMapping) > 0 {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequence are supported for replicated relations only")
+	}
+
+	err = lc.qdb.AlterDistributedRelation(ctx, id, distributions.DistributedRelationToDB(rel))
+	if err != nil {
+		return err
+	}
+
+	for colName, seqName := range rel.ColumnSequenceMapping {
+		if err := lc.qdb.AlterSequenceAttach(ctx, seqName, rel.Name, colName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// TODO : unit tests
+
 // GetDistribution retrieves a distribution from the local coordinator's QDB by its ID.
 //
 // Parameters:

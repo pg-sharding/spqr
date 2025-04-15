@@ -74,6 +74,20 @@ func (mr *MockEntityMgrMockRecorder) AddWorldShard(ctx, shard any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddWorldShard", reflect.TypeOf((*MockEntityMgr)(nil).AddWorldShard), ctx, shard)
 }
 
+// AlterDistributedRelation mocks base method.
+func (m *MockEntityMgr) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterDistributedRelation", ctx, id, rel)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterDistributedRelation indicates an expected call of AlterDistributedRelation.
+func (mr *MockEntityMgrMockRecorder) AlterDistributedRelation(ctx, id, rel any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelation", reflect.TypeOf((*MockEntityMgr)(nil).AlterDistributedRelation), ctx, id, rel)
+}
+
 // AlterDistributionAttach mocks base method.
 func (m *MockEntityMgr) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
 	m.ctrl.T.Helper()
@@ -145,17 +159,17 @@ func (mr *MockEntityMgrMockRecorder) CreateDistribution(ctx, ds any) *gomock.Cal
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockEntityMgr) CreateKeyRange(ctx context.Context, arg1 *kr.KeyRange) error {
+func (m *MockEntityMgr) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, arg1)
+	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, kr)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateKeyRange indicates an expected call of CreateKeyRange.
-func (mr *MockEntityMgrMockRecorder) CreateKeyRange(ctx, arg1 any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) CreateKeyRange(ctx, kr any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).CreateKeyRange), ctx, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).CreateKeyRange), ctx, kr)
 }
 
 // DropDistribution mocks base method.

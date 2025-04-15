@@ -14,4 +14,5 @@ type DistributionMgr interface {
 
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
 	AlterDistributionDetach(ctx context.Context, id string, relName string) error
+	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
 }

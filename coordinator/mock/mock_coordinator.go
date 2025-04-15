@@ -76,6 +76,20 @@ func (mr *MockCoordinatorMockRecorder) AddWorldShard(ctx, shard any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddWorldShard", reflect.TypeOf((*MockCoordinator)(nil).AddWorldShard), ctx, shard)
 }
 
+// AlterDistributedRelation mocks base method.
+func (m *MockCoordinator) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterDistributedRelation", ctx, id, rel)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterDistributedRelation indicates an expected call of AlterDistributedRelation.
+func (mr *MockCoordinatorMockRecorder) AlterDistributedRelation(ctx, id, rel any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelation", reflect.TypeOf((*MockCoordinator)(nil).AlterDistributedRelation), ctx, id, rel)
+}
+
 // AlterDistributionAttach mocks base method.
 func (m *MockCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
 	m.ctrl.T.Helper()

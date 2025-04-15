@@ -1084,6 +1084,33 @@ func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relNam
 }
 
 // TODO : unit tests
+func (q *EtcdQDB) AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: alter distributed table")
+
+	distribution, err := q.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if _, ok := distribution.Relations[rel.Name]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
+	}
+	distribution.Relations[rel.Name] = rel
+
+	if ds, err := q.GetRelationDistribution(ctx, rel.Name); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
+	} else if ds.ID != id {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", rel.Name, ds.ID, id)
+	}
+
+	err = q.CreateDistribution(ctx, distribution)
+
+	return err
+}
+
+// TODO : unit tests
 func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).

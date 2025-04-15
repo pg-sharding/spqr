@@ -76,6 +76,11 @@ func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *
 	return nil, nil
 }
 
+func (d *DistributionsServer) AlterDistributedRelation(ctx context.Context, req *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
+	err := d.impl.AlterDistributedRelation(ctx, req.GetId(), distributions.DistributedRelationFromProto(req.GetRelation()))
+	return nil, err
+}
+
 func (d *DistributionsServer) GetDistribution(ctx context.Context, req *protos.GetDistributionRequest) (*protos.GetDistributionReply, error) {
 	ds, err := d.impl.GetDistribution(ctx, req.GetId())
 	if err != nil {

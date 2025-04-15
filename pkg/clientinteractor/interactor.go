@@ -1330,6 +1330,36 @@ func (pi *PSQLInteractor) AlterDistributionDetach(_ context.Context, id string, 
 
 // TODO : unit tests
 
+// AlterDistributedRelation alters metadata for a distributed relation in the PSQL client.
+//
+// Parameters:
+// - _ (context.Context): The context for the operation. (Unused)
+// - id (string): The ID of the distribution to alter the relation of.
+// - relName (string): The name of the relation to alter.
+//
+// Returns:
+// - error: An error if any occurred during the operation.
+func (pi *PSQLInteractor) AlterDistributedRelation(_ context.Context, id string, relName string) error {
+	if err := pi.WriteHeader("alter relation"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	if err := pi.WriteDataRow(fmt.Sprintf("relation name   -> %s", relName)); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	if err := pi.WriteDataRow(fmt.Sprintf("distribution id -> %s", id)); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	return pi.CompleteMsg(0)
+}
+
+// TODO : unit tests
+
 // ReportStmtRoutedToAllShards reports that a statement has been routed to all shards in the PSQL client.
 //
 // Parameters:
