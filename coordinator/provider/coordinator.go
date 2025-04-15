@@ -1059,10 +1059,12 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 		return err
 	}
 
+	schemas := make(map[string]struct{})
 	for _, rel := range ds.Relations {
+		schemas[rel.GetSchema()] = struct{}{}
 		relName := strings.ToLower(rel.Name)
 		// TODO: use the actual schema
-		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, relName, "public")
+		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, relName, rel.GetSchema())
 		if err != nil {
 			return err
 		}
@@ -1070,7 +1072,7 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 			spqrlog.Zero.Info().Str("rel", rel.Name).Msg("source table does not exist")
 			continue
 		}
-		destTable, err := datatransfers.CheckTableExists(ctx, destConn, relName, "public")
+		destTable, err := datatransfers.CheckTableExists(ctx, destConn, relName, rel.GetSchema())
 		if err != nil {
 			return err
 		}
@@ -1079,7 +1081,7 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 		}
 	}
 
-	return datatransfers.SetupFDW(ctx, sourceConn, destConn, keyRange.ShardID, req.ShardId)
+	return datatransfers.SetupFDW(ctx, sourceConn, destConn, keyRange.ShardID, req.ShardId, schemas)
 }
 
 // TODO : unit tests
@@ -1202,9 +1204,13 @@ func (*qdbCoordinator) getKeyStats(
 	nextBound kr.KeyRangeBound,
 ) (totalCount int64, relationCount map[string]int64, err error) {
 	relationCount = make(map[string]int64)
-	// TODO: account for schema?
 	for _, rel := range relations {
-		relExists, err := datatransfers.CheckTableExists(ctx, conn, rel.Name, rel.SchemaName)
+		relExists, err := datatransfers.CheckTableExists(ctx, conn, rel.Name, func() string {
+			if rel.SchemaName == "" {
+				return "public"
+			}
+			return rel.SchemaName
+		}())
 		if err != nil {
 			return 0, nil, err
 		}

@@ -2,6 +2,7 @@ package distributions
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
@@ -314,4 +315,15 @@ func GetHashedColumn(col string, hash string) (string, error) {
 
 func SequenceName(relName, colName string) string {
 	return fmt.Sprintf("%s_%s", relName, colName)
+}
+
+func (r *DistributedRelation) GetSchema() string {
+	if r.SchemaName == "" {
+		return "public"
+	}
+	return r.SchemaName
+}
+
+func (r *DistributedRelation) GetFullName() string {
+	return fmt.Sprintf("%s.%s", r.GetSchema(), strings.ToLower(r.Name))
 }
