@@ -84,7 +84,7 @@ func (rrs ReferenceRelationState) ExecutionTargets() []*kr.ShardKey {
 
 const NOSHARD = ""
 
-func mergeExecTagrets(l, r []*kr.ShardKey) []*kr.ShardKey {
+func mergeExecTargets(l, r []*kr.ShardKey) []*kr.ShardKey {
 	/* XXX: nil means all */
 	if l == nil {
 		return nil
@@ -129,7 +129,7 @@ func Combine(p1, p2 Plan) Plan {
 	switch shq1 := p1.(type) {
 	case ScatterPlan:
 		return ScatterPlan{
-			ExecTargets: mergeExecTagrets(p1.ExecutionTargets(), p2.ExecutionTargets()),
+			ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
 		}
 	case RandomDispatchPlan:
 		return p2
@@ -139,7 +139,7 @@ func Combine(p1, p2 Plan) Plan {
 		switch shq2 := p2.(type) {
 		case ScatterPlan:
 			return ScatterPlan{
-				ExecTargets: mergeExecTagrets(p1.ExecutionTargets(), p2.ExecutionTargets()),
+				ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
 			}
 		case ReferenceRelationState:
 			return p1
@@ -148,7 +148,7 @@ func Combine(p1, p2 Plan) Plan {
 				return p1
 			} else {
 				return ScatterPlan{
-					ExecTargets: mergeExecTagrets(p1.ExecutionTargets(), p2.ExecutionTargets()),
+					ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
 				}
 			}
 		}
