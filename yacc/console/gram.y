@@ -162,7 +162,7 @@ func randomHex(n int) (string, error) {
 
 %token<str> TASK GROUP
 
-%token<str> VARCHAR INTEGER INT TYPES
+%token<str> VARCHAR INTEGER INT TYPES UUID
 
 /* any operator */
 %token<str> OP
@@ -708,6 +708,8 @@ col_types_elem:
 		$$ = "uinteger"
 	} | INT HASH {
 		$$ = "uinteger"
+	} | UUID {
+		$$ = "uuid"
 	}
 
 sharding_rule_define_stmt:

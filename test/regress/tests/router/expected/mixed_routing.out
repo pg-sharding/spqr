@@ -150,7 +150,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 -- check that uuid type works
-CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
+CREATE DISTRIBUTION ds2 COLUMN TYPES uuid;
     add distribution    
 ------------------------
  distribution id -> ds2
@@ -180,7 +180,7 @@ CREATE TABLE xxmixeduuid(id uuid);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xxmixeduuid (id) VALUES('00000000-0000-0EA0-0FAB-AB031389FF09');
 NOTICE: send query to shard(s) : sh1
-INSERT INTO xxmixeduuid (id) VALUES('FA98123B-0000-0EA0-0FAB-AB031389FF09');
+INSERT INTO xxmixeduuid (id) VALUES('fa98123B-0000-0Ea0-0fab-ab031389FF09');
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xxmixeduuid (id) VALUES('1234AAAA-98AB-0000-0000-BCAD0192EFEF');
 NOTICE: send query to shard(s) : sh1
@@ -221,6 +221,10 @@ NOTICE: send query to shard(s) : sh2
  ffffffff-ffff-ffff-ffff-fffffffffffe
 (2 rows)
 
+INSERT INTO xxmixeduuid (id) VALUES('something');
+ERROR:  client processing error: error processing query 'INSERT INTO xxmixeduuid (id) VALUES('something');': invalid UUID length: 9, tx status IDLE
+INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
+ERROR:  client processing error: error processing query 'INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');': invalid UUID format, tx status IDLE
 DROP TABLE xxmixeduuid;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console

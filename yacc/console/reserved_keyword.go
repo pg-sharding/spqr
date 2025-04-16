@@ -55,6 +55,7 @@ var reservedWords = map[string]int{
 	"varchar":      VARCHAR,
 	"int":          INT,
 	"integer":      INTEGER,
+	"uuid":         UUID,
 	"alter":        ALTER,
 	"relation":     RELATION,
 	"detach":       DETACH,

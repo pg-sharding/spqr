@@ -86,7 +86,7 @@ func TestSimpleLex(t *testing.T) {
 			},
 		},
 		{
-			query: "CREATE DISTRIBUTION db1 SHARDING COLUMN TYPES varchar, varchar",
+			query: "CREATE DISTRIBUTION db1 SHARDING COLUMN TYPES varchar, varchar, uuid",
 			exp: []int{
 				spqrparser.CREATE,
 				spqrparser.DISTRIBUTION,
@@ -97,6 +97,8 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.VARCHAR,
 				spqrparser.TCOMMA,
 				spqrparser.VARCHAR,
+				spqrparser.TCOMMA,
+				spqrparser.UUID,
 			},
 		},
 		{
