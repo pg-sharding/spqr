@@ -141,7 +141,7 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 				}
 
 				spqrlog.Zero.Debug().
-					Interface("currntroute", currroute).
+					Interface("current route", currroute).
 					Str("table", rfqn.RelationName).
 					Msg("calculated route for table/cols")
 

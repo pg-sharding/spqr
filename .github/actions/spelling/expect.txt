@@ -1,5 +1,7 @@
 aaaa
+aaaaa
 abalance
+aboba
 abortable
 abracadabras
 abracadabrav
@@ -10,6 +12,7 @@ AExpr
 afe
 aliasname
 anyerr
+anypb
 AOk
 apk
 appdefaults
@@ -62,6 +65,7 @@ coordctl
 copymap
 cpg
 cptr
+createsequence
 crt
 csm
 Cta
@@ -69,7 +73,6 @@ ctl
 ctsa
 currkr
 currroute
-currntroute 
 Darth
 datacenter
 datarow
@@ -77,7 +80,6 @@ datashard
 dataspace
 datatransfer
 datname
-dbe
 dbi
 dbpool
 dbr
@@ -91,7 +93,6 @@ denchick
 denis
 deparsed
 deparses
-deparsing
 diffs
 distrib
 distrr
@@ -107,7 +108,6 @@ dsn
 dss
 dssd
 dstmt
-dkey
 dumbo
 ebff
 eda
@@ -120,6 +120,7 @@ Elts
 emptypb
 entrieslist
 eph
+eshkere
 etcdctl
 etcdqdb
 expd
@@ -159,20 +160,24 @@ gogen
 goimports
 gokrb
 golangci
+golangconf
 gomaxprocs
 gomock
 gomod
+goooal
 gorm
 goyacc
 gpg
 gss
 gssapi
 GSSREQ
+GST
 hashfunction
 hba
-HEAD
 healthcheck
 hfn
+highload
+HIy
 hostnossl
 hostssl
 hotspots
@@ -213,6 +218,7 @@ jodwjdewo
 jsons
 kadmin
 kadmind
+kapusta
 kcache
 kdb
 kdc
@@ -225,6 +231,7 @@ keyspace
 keytab
 keytabdata
 keytabfile
+KFS
 killall
 kinit
 Kirill
@@ -246,6 +253,7 @@ krsqdb
 krsql
 ktadd
 Kvs
+laooog
 larg
 LDAPS
 ldapserver
@@ -270,8 +278,8 @@ lwg
 lyx
 markokr
 maxuint
-mdblocales
 mcol
+mdblocales
 memqdb
 metadb
 MGhyjwicp
@@ -324,12 +332,13 @@ OIDKRB
 OIDS
 oiwejow
 OLAP
+ontup
 opentracing
 opgejrqr
 optarg
 optval
 opvalue
-ontup
+ordersdb
 outputdir
 Patroni
 Percona
@@ -365,8 +374,8 @@ Postgre
 postgresql
 ppp
 pppp
+PPu
 pqr
-pquery
 prepstatement
 prj
 protobuf
@@ -475,7 +484,7 @@ singleshard
 Smartphone
 snf
 spaolacci
-spelling
+spb
 sph
 spqr
 SPQRC
@@ -494,6 +503,7 @@ SPQRM
 SPQRN
 SPQRO
 spqrparser
+SPQRQ
 spqrql
 SPQRR
 SPQRT
@@ -529,7 +539,6 @@ tbl
 tcase
 TCLOSEBR
 TCOMMA
-tcop
 tcs
 tctx
 tdb
@@ -548,7 +557,6 @@ tlt
 tmpnum
 topbar
 TOPENBR
-Topolody
 tpcc
 TRASCE
 tsa
@@ -589,9 +597,11 @@ vasya
 vguoyguoygoyy
 Vitess
 vla
-vvs
 VMs
+Volkov
+vvs
 Warningf
+WMma
 workloadlog
 workloadreplay
 worldmock
@@ -599,15 +609,18 @@ wrongpassword
 wtf
 xac
 Xact
+xad
 xbb
+xbd
+Xcpbs
 xdg
-xec
 xerrors
 xfe
 xjoin
 xproto
 XQDB
 xtab
+XTw
 xxerr
 xxm
 xxmixed
@@ -619,7 +632,9 @@ yaccgen
 yandex
 yjoin
 YMid
+youtube
 yylex
 zerolog
 ZWQy
 zzzz
+zzzzz
