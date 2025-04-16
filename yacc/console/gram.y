@@ -94,6 +94,8 @@ func randomHex(n int) (string, error) {
 	opt_asc_desc		   OptAscDesc
 
 	group_clause		   GroupByClause
+
+	opt_batch_size         int
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -146,9 +148,9 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK
-%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED
-%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY
+%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE
+%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
 %token <str> BATCH SIZE
@@ -190,6 +192,8 @@ func randomHex(n int) (string, error) {
 %type<entrieslist> sharding_rule_argument_list
 %type<dEntrieslist> distribution_key_argument_list
 %type<shruleEntry> sharding_rule_entry
+%type<strlist> opt_auto_increment
+%type<strlist> auto_inc_column_list
 
 %type<distrKeyEntry> distribution_key_entry
 
@@ -228,6 +232,7 @@ func randomHex(n int) (string, error) {
 %type <unite> unite_key_range_stmt
 %type <register_router> register_router_stmt
 %type <unregister_router> unregister_router_stmt
+%type <opt_batch_size> opt_batch_size
 %start any_command
 
 %%
@@ -401,7 +406,7 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr, RelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr:
+		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr, RelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -454,6 +459,10 @@ drop_stmt:
 	| DROP TASK GROUP
 	{
 		$$ = &Drop{Element: &TaskGroupSelector{}}
+	}
+	| DROP SEQUENCE any_id
+	{
+		$$ = &Drop{Element: &SequenceSelector{Name: $3}}
 	}
 
 add_stmt:
@@ -543,21 +552,37 @@ distribution_key_entry:
 	}
 
 distributed_relation_def:
-	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list
+	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
 			DistributionKey: $5,
+			AutoIncrementColumns: $6,
 		}
 	} | 
-	RELATION any_id
+	RELATION any_id opt_auto_increment
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
 			ReplicatedRelation: true,
+			AutoIncrementColumns: $3,
 		}
 	}
 
+
+opt_auto_increment:
+	AUTO INCREMENT auto_inc_column_list {
+		$$ = $3
+	} | /* EMPTY */ {
+		$$ = nil
+	}
+
+auto_inc_column_list:
+	any_id {
+		$$ = []string{$1}
+	} | auto_inc_column_list TCOMMA any_id {
+		$$ = append($1, $3)
+	}
 
 
 distributed_relation_list_def:
@@ -593,11 +618,12 @@ create_stmt:
 		$$ = &Create{Element: $2}
 	}
 	|
-	CREATE REFERENCE TABLE any_id
+	CREATE REFERENCE TABLE any_id opt_auto_increment
 	{
 		$$ = &Create{
 			Element: &ReferenceRelationDefinition{
 				TableName: $4,
+				AutoIncrementColumns: $5,
 			},
 		}
 	}
@@ -860,7 +886,7 @@ distribution_select_stmt:
 	{
 		$$ = &DistributionSelector{ID: $2, Replicated: false}
 	} | REPLICATED DISTRIBUTION {
-		$$ = &DistributionSelector{ Replicated: true }
+		$$ = &DistributionSelector{ Replicated: true, ID: "REPLICATED" }
 	}
 
 split_key_range_stmt:
@@ -885,15 +911,17 @@ move_key_range_stmt:
 	}
 
 redistribute_key_range_stmt:
-	REDISTRIBUTE key_range_stmt TO any_id BATCH SIZE any_uint
+	REDISTRIBUTE key_range_stmt TO any_id opt_batch_size
 	{
-		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: int($7)}
-	} | REDISTRIBUTE key_range_stmt TO any_id
-	{
-		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: -1}
-	} | REDISTRIBUTE key_range_stmt TO any_id CHECK {
-		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: -1, Check: true}
+		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: $5, Check: true, Apply: true}
+	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size CHECK {
+		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: $5, Check: true}
+	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size APPLY {
+		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: $5, Apply: true}
 	}
+
+opt_batch_size: BATCH SIZE any_uint			{ $$ = int($3) }
+			| /*EMPTY*/						{ $$ = -1 }
 
 unite_key_range_stmt:
 	UNITE key_range_stmt WITH any_id

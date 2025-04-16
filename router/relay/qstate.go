@@ -59,7 +59,7 @@ func ProcQueryAdvancedTx(rst RelayStateMgr, query string, binderQ func() error, 
 			rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
 		}
 
-		err = fmt.Errorf("client processing error: error processing query '%v': %w, tx status %s", query, err, rst.QueryExecutor().TxStatus().String())
+		err = fmt.Errorf("client processing error: '%v': %w, tx status %s", query, err, rst.QueryExecutor().TxStatus().String())
 
 		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
 			// TODO: figure out if we need this

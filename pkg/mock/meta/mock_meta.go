@@ -200,6 +200,20 @@ func (mr *MockEntityMgrMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropKeyRangeAll", reflect.TypeOf((*MockEntityMgr)(nil).DropKeyRangeAll), ctx)
 }
 
+// DropSequence mocks base method.
+func (m *MockEntityMgr) DropSequence(ctx context.Context, name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropSequence", ctx, name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropSequence indicates an expected call of DropSequence.
+func (mr *MockEntityMgrMockRecorder) DropSequence(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropSequence", reflect.TypeOf((*MockEntityMgr)(nil).DropSequence), ctx, name)
+}
+
 // DropShard mocks base method.
 func (m *MockEntityMgr) DropShard(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
@@ -379,6 +393,21 @@ func (mr *MockEntityMgrMockRecorder) ListRouters(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRouters", reflect.TypeOf((*MockEntityMgr)(nil).ListRouters), ctx)
 }
 
+// ListSequences mocks base method.
+func (m *MockEntityMgr) ListSequences(ctx context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListSequences", ctx)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListSequences indicates an expected call of ListSequences.
+func (mr *MockEntityMgrMockRecorder) ListSequences(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSequences", reflect.TypeOf((*MockEntityMgr)(nil).ListSequences), ctx)
+}
+
 // ListShards mocks base method.
 func (m *MockEntityMgr) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
 	m.ctrl.T.Helper()
@@ -421,6 +450,21 @@ func (m *MockEntityMgr) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 func (mr *MockEntityMgrMockRecorder) Move(ctx, move any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockEntityMgr)(nil).Move), ctx, move)
+}
+
+// NextVal mocks base method.
+func (m *MockEntityMgr) NextVal(ctx context.Context, seqName string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NextVal", ctx, seqName)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NextVal indicates an expected call of NextVal.
+func (mr *MockEntityMgrMockRecorder) NextVal(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockEntityMgr)(nil).NextVal), ctx, seqName)
 }
 
 // QDB mocks base method.

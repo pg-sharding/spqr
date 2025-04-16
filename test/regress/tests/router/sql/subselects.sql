@@ -20,6 +20,12 @@ CREATE TABLE ref_rel_1(i int, j int);
 SELECT * FROM (SELECT * FROM table1 WHERE i = 1) AS a;
 SELECT * FROM (SELECT * FROM (SELECT * FROM table1 WHERE i = 1) AS a) AS b;
 
+-- should dispatch to sh3
+SELECT 1, (SELECT i FROM table1 WHERE i = 201);
+
+-- should dispatch to sh3 and sh4 (TODO: parallel processing)
+SELECT 1, (SELECT i FROM table1 WHERE i = 201), (SELECT i FROM table1 WHERE i = 301);
+
 DROP TABLE table1;
 DROP TABLE ref_rel_1;
 

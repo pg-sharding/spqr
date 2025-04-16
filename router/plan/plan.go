@@ -82,6 +82,32 @@ func (rrs ReferenceRelationState) ExecutionTargets() []*kr.ShardKey {
 
 const NOSHARD = ""
 
+func mergeExecTargets(l, r []*kr.ShardKey) []*kr.ShardKey {
+	/* XXX: nil means all */
+	if l == nil {
+		return nil
+	}
+	/* XXX: nil means all */
+	if r == nil {
+		return nil
+	}
+	ret := l
+
+	rightMap := map[string]struct{}{}
+	for _, e := range l {
+		rightMap[e.Name] = struct{}{}
+	}
+
+	for _, e := range r {
+		if _, ok := rightMap[e.Name]; ok {
+			continue
+		}
+		ret = append(ret, e)
+	}
+
+	return ret
+}
+
 // TODO : unit tests
 func Combine(p1, p2 Plan) Plan {
 	if p1 == nil && p2 == nil {
@@ -101,7 +127,9 @@ func Combine(p1, p2 Plan) Plan {
 
 	switch shq1 := p1.(type) {
 	case ScatterPlan:
-		return p1
+		return ScatterPlan{
+			ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
+		}
 	case RandomDispatchPlan:
 		return p2
 	case ReferenceRelationState:
@@ -109,12 +137,18 @@ func Combine(p1, p2 Plan) Plan {
 	case ShardDispatchPlan:
 		switch shq2 := p2.(type) {
 		case ScatterPlan:
-			return p2
+			return ScatterPlan{
+				ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
+			}
 		case ReferenceRelationState:
 			return p1
 		case ShardDispatchPlan:
 			if shq2.ExecTarget.Name == shq1.ExecTarget.Name {
 				return p1
+			} else {
+				return ScatterPlan{
+					ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
+				}
 			}
 		}
 	}

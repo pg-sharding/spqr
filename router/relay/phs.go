@@ -260,42 +260,42 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		}, nil
 	}
 
-	TargetType := ds.ColTypes[0]
-
-	if len(ds.ColTypes) != 1 {
-		return nil, fmt.Errorf("multi-column copy processing is not yet supported")
-	}
-
-	var hashFunc hashfunction.HashFunctionType
-
-	if v, err := hashfunction.HashFunctionByName(ds.Relations[relname].DistributionKey[0].HashFunction); err != nil {
-		return nil, err
-	} else {
-		hashFunc = v
-	}
+	hashFunc := make([]hashfunction.HashFunctionType, len(ds.Relations[relname].DistributionKey))
 
 	krs, err := mgr.ListKeyRanges(ctx, ds.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	colOffset := -1
-	for indx, c := range stmt.Columns {
-		if c == ds.Relations[relname].DistributionKey[0].Column {
-			colOffset = indx
-			break
+	co := make([]int, len(ds.Relations[relname].DistributionKey))
+	for dKey := range ds.Relations[relname].DistributionKey {
+
+		if v, err := hashfunction.HashFunctionByName(ds.Relations[relname].DistributionKey[dKey].HashFunction); err != nil {
+			return nil, err
+		} else {
+			hashFunc[dKey] = v
 		}
-	}
-	if colOffset == -1 {
-		return nil, fmt.Errorf("failed to resolve target copy column offset")
+
+		colOffset := -1
+		for indx, c := range stmt.Columns {
+			if c == ds.Relations[relname].DistributionKey[dKey].Column {
+				colOffset = indx
+				break
+			}
+		}
+		if colOffset == -1 {
+			return nil, fmt.Errorf("failed to resolve target copy column offset")
+		}
+		co[dKey] = colOffset
 	}
 
 	return &pgcopy.CopyState{
-		Delimiter:  delimiter,
-		Krs:        krs,
-		RM:         rmeta.NewRoutingMetadataContext(s.cl, mgr),
-		TargetType: TargetType,
-		HashFunc:   hashFunc,
+		Delimiter:    delimiter,
+		Krs:          krs,
+		RM:           rmeta.NewRoutingMetadataContext(s.cl, mgr),
+		Ds:           ds,
+		HashFunc:     hashFunc,
+		ColumnOffset: co,
 	}, nil
 }
 
@@ -318,7 +318,14 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 
 	rowsMp := map[string][]byte{}
 
-	values := make([]interface{}, 0)
+	/* like hashfunction array */
+	values := make([]interface{}, len(cps.HashFunc))
+
+	backMap := map[int]int{}
+
+	for i, v := range cps.ColumnOffset {
+		backMap[v] = i
+	}
 
 	// Parse data
 	// and decide where to route
@@ -333,12 +340,12 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		}
 		if b == '\n' || b == cps.Delimiter {
 
-			if currentAttr == cps.ColumnOffset {
-				tmp, err := hashfunction.ApplyHashFunctionOnStringRepr(data.Data[prevDelimiter:i], cps.TargetType, cps.HashFunc)
+			if indx, ok := backMap[currentAttr]; ok {
+				tmp, err := hashfunction.ApplyHashFunctionOnStringRepr(data.Data[prevDelimiter:i], cps.Ds.ColTypes[indx], cps.HashFunc[indx])
 				if err != nil {
 					return nil, err
 				}
-				values = append(values, tmp)
+				values[indx] = tmp
 			}
 
 			currentAttr++
@@ -347,6 +354,8 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		if b != '\n' {
 			continue
 		}
+
+		/* By this time, row should contains all routing info */
 
 		// check where this tuple should go
 		currroute, err := cps.RM.DeparseKeyWithRangesInternal(ctx, values, cps.Krs)
@@ -358,7 +367,9 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 			return nil, fmt.Errorf("multishard copy is not supported: %+v at line number %d %d %v", values[0], prevLine, i, b)
 		}
 
-		values = nil
+		/* reset values  */
+		values = make([]interface{}, len(cps.HashFunc))
+
 		rowsMp[currroute.Name] = append(rowsMp[currroute.Name], data.Data[prevLine:i+1]...)
 		currentAttr = 0
 		prevLine = i + 1

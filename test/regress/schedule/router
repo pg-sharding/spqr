@@ -9,6 +9,7 @@ test: hash_routing_int
 test: with_tables
 test: single_shard_joins
 test: multishard
+test: multicolumn
 test: error
 test: error2
 test: routing_hint
@@ -23,6 +24,7 @@ test: distributed_relation_multishard_modify
 test: part_table
 test: target_list_routing
 test: reference_table
+test: cte
 test: ddl
 test: engine_v2
 test: subplan

@@ -197,10 +197,11 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 const defaultWatchRouterTimeout = time.Second
 
 type qdbCoordinator struct {
-	rmgr      rulemgr.RulesMgr
-	tlsconfig *tls.Config
-	db        qdb.XQDB
-	cache     *cache.SchemaCache
+	rmgr         rulemgr.RulesMgr
+	tlsconfig    *tls.Config
+	db           qdb.XQDB
+	cache        *cache.SchemaCache
+	acquiredLock bool
 }
 
 func (qc *qdbCoordinator) ShareKeyRange(id string) error {
@@ -314,9 +315,10 @@ func NewCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*qdbCoordinator, error)
 	}
 
 	return &qdbCoordinator{
-		db:        db,
-		tlsconfig: tlsconfig,
-		rmgr:      rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
+		db:           db,
+		tlsconfig:    tlsconfig,
+		rmgr:         rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
+		acquiredLock: false,
 	}, nil
 }
 
@@ -349,6 +351,9 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 		}
 		return true
 	}
+	defer func() {
+		qc.acquiredLock = true
+	}()
 
 	if qc.db.TryCoordinatorLock(context.TODO()) != nil {
 		for {
@@ -1543,14 +1548,19 @@ func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.Redi
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "incorrect batch size %d", req.BatchSize)
 	}
 	if req.Check {
-		return qc.checkKeyRangeMove(ctx, &kr.BatchMoveKeyRange{
+		if err := qc.checkKeyRangeMove(ctx, &kr.BatchMoveKeyRange{
 			KrId:      req.KrId,
 			ShardId:   req.ShardId,
 			BatchSize: req.BatchSize,
 			Limit:     -1,
 			DestKrId:  uuid.NewString(),
 			Type:      tasks.SplitRight,
-		})
+		}); err != nil {
+			return err
+		}
+	}
+	if !req.Apply {
+		return nil
 	}
 	ch := make(chan error)
 	execCtx := context.TODO()
@@ -1667,7 +1677,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	// Configure distributions
 	dsCl := routerproto.NewDistributionServiceClient(cc)
 	spqrlog.Zero.Debug().Msg("qdb coordinator: configure distributions")
-	dss, err := qc.db.ListDistributions(ctx)
+	dss, err := qc.ListDistributions(ctx)
 	if err != nil {
 		return err
 	}
@@ -1690,7 +1700,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 		Distributions: func() []*routerproto.Distribution {
 			res := make([]*routerproto.Distribution, len(dss))
 			for i, ds := range dss {
-				res[i] = distributions.DistributionToProto(distributions.DistributionFromDB(ds))
+				res[i] = distributions.DistributionToProto(ds)
 			}
 			return res
 		}(),
@@ -1962,7 +1972,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt por
 				Type("type", tstmt).
 				Msg("parsed statement is")
 
-			if err := meta.Proc(ctx, tstmt, qc, ci, cl, nil); err != nil {
+			if err := meta.Proc(ctx, tstmt, qc, ci, cl, nil, qc.IsReadOnly()); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				_ = cli.ReportError(err)
 			} else {
@@ -2037,7 +2047,15 @@ func (qc *qdbCoordinator) ListDistributions(ctx context.Context) ([]*distributio
 	}
 	res := make([]*distributions.Distribution, 0)
 	for _, ds := range distrs {
-		res = append(res, distributions.DistributionFromDB(ds))
+		ret := distributions.DistributionFromDB(ds)
+		for relName := range ds.Relations {
+			mapping, err := qc.db.GetRelationSequence(ctx, relName)
+			if err != nil {
+				return nil, err
+			}
+			ret.Relations[relName].ColumnSequenceMapping = mapping
+		}
+		res = append(res, ret)
 	}
 	return res, nil
 }
@@ -2045,6 +2063,10 @@ func (qc *qdbCoordinator) ListDistributions(ctx context.Context) ([]*distributio
 // CreateDistribution creates distribution in QDB
 // TODO: unit tests
 func (qc *qdbCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
+	if len(ds.ColTypes) == 0 && ds.Id != distributions.REPLICATED {
+		return fmt.Errorf("empty distributions are disallowed")
+	}
+
 	if err := qc.db.CreateDistribution(ctx, distributions.DistributionToDB(ds)); err != nil {
 		return err
 	}
@@ -2095,7 +2117,15 @@ func (qc *qdbCoordinator) GetDistribution(ctx context.Context, id string) (*dist
 	if err != nil {
 		return nil, err
 	}
-	return distributions.DistributionFromDB(ds), nil
+	ret := distributions.DistributionFromDB(ds)
+	for relName := range ret.Relations {
+		mapping, err := qc.db.GetRelationSequence(ctx, relName)
+		if err != nil {
+			return nil, err
+		}
+		ret.Relations[relName].ColumnSequenceMapping = mapping
+	}
+	return ret, nil
 }
 
 // GetRelationDistribution retrieves info about distribution attached to relation from QDB
@@ -2105,20 +2135,40 @@ func (qc *qdbCoordinator) GetRelationDistribution(ctx context.Context, relName s
 	if err != nil {
 		return nil, err
 	}
-	return distributions.DistributionFromDB(ds), nil
+	ret, err := distributions.DistributionFromDB(ds), nil
+	if err != nil {
+		return nil, err
+	}
+	for relName := range ret.Relations {
+		mapping, err := qc.db.GetRelationSequence(ctx, relName)
+		if err != nil {
+			return nil, err
+		}
+		ret.Relations[relName].ColumnSequenceMapping = mapping
+	}
+	return ret, nil
 }
 
 // AlterDistributionAttach attaches relation to distribution
 // TODO: unit tests
 func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
-	if err := qc.db.AlterDistributionAttach(ctx, id, func() []*qdb.DistributedRelation {
-		qdbRels := make([]*qdb.DistributedRelation, len(rels))
-		for i, rel := range rels {
-			qdbRels[i] = distributions.DistributedRelationToDB(rel)
+	qdbRels := make([]*qdb.DistributedRelation, 0, len(rels))
+	for _, rel := range rels {
+		if !rel.ReplicatedRelation && len(rel.ColumnSequenceMapping) > 0 {
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequences are supported for replicated relations only")
 		}
-		return qdbRels
-	}()); err != nil {
+		qdbRels = append(qdbRels, distributions.DistributedRelationToDB(rel))
+	}
+	if err := qc.db.AlterDistributionAttach(ctx, id, qdbRels); err != nil {
 		return err
+	}
+
+	for _, rel := range rels {
+		for colName, seqName := range rel.ColumnSequenceMapping {
+			if err := qc.db.AlterSequenceAttach(ctx, seqName, rel.Name, colName); err != nil {
+				return err
+			}
+		}
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -2140,6 +2190,34 @@ func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
 			Msg("attach relation response")
+		return nil
+	})
+}
+
+func (qc *qdbCoordinator) ListSequences(ctx context.Context) ([]string, error) {
+	return qc.db.ListSequences(ctx)
+}
+
+func (qc *qdbCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
+	return qc.db.NextVal(ctx, seqName)
+}
+
+func (qc *qdbCoordinator) DropSequence(ctx context.Context, seqName string) error {
+	if err := qc.db.DropSequence(ctx, seqName); err != nil {
+		return err
+	}
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewDistributionServiceClient(cc)
+		resp, err := cl.DropSequence(context.TODO(), &routerproto.DropSequenceRequest{
+			Name: seqName,
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("drop sequence response")
 		return nil
 	})
 }
@@ -2208,4 +2286,8 @@ func (qc *qdbCoordinator) finishMoveTasksInProgress(ctx context.Context) error {
 		return qc.WriteBalancerTask(ctx, balancerTask)
 	}
 	return qc.executeMoveTasks(ctx, taskGroup)
+}
+
+func (qc *qdbCoordinator) IsReadOnly() bool {
+	return !qc.acquiredLock
 }

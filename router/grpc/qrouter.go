@@ -478,6 +478,12 @@ func (l *LocalQrouterServer) RemoveBalancerTask(ctx context.Context, _ *emptypb.
 	return nil, l.mgr.RemoveBalancerTask(ctx)
 }
 
+// TODO : unit tests
+func (l *LocalQrouterServer) DropSequence(ctx context.Context, request *protos.DropSequenceRequest) (*emptypb.Empty, error) {
+	err := l.mgr.DropSequence(ctx, request.Name)
+	return nil, err
+}
+
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
 
 	lqr := &LocalQrouterServer{

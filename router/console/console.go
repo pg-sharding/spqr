@@ -73,7 +73,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 		Msg("processQueryInternal: parsed query with type")
 
 	if !config.RouterConfig().WithCoordinator {
-		return meta.Proc(ctx, tstmt, l.entityMgr, l.rrouter, rc, l.writer)
+		return meta.Proc(ctx, tstmt, l.entityMgr, l.rrouter, rc, l.writer, false)
 	}
 
 	mgr := l.entityMgr
@@ -112,7 +112,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 	}
 
 	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
-	return meta.Proc(ctx, tstmt, mgr, l.rrouter, rc, l.writer)
+	return meta.Proc(ctx, tstmt, mgr, l.rrouter, rc, l.writer, false)
 }
 
 // TODO : unit tests

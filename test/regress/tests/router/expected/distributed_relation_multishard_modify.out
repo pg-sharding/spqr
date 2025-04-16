@@ -39,7 +39,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY distrr_mm_test(id,t) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 UPDATE distrr_mm_test SET t = 'm' WHERE id IN (3, 34) /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2
 SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  id |  t  
@@ -63,7 +63,7 @@ NOTICE: send query to shard(s) : sh2
 (5 rows)
 
 DELETE FROM distrr_mm_test  WHERE id IN (2, 35) /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2
 SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  id |  t  

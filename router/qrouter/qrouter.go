@@ -29,6 +29,9 @@ type QueryRouter interface {
 
 	Mgr() meta.EntityMgr
 	SchemaCache() *cache.SchemaCache
+
+	SetQuery(q *string)
+	Query() *string
 }
 
 func NewQrouter(qtype config.RouterMode, shardMapping map[string]*config.Shard, mgr meta.EntityMgr, qcfg *config.QRouter, cache *cache.SchemaCache) (QueryRouter, error) {

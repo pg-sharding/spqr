@@ -130,6 +130,27 @@ func TestSimpleLex(t *testing.T) {
 			},
 		},
 		{
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1, id2 AUTO INCREMENT id1, id3",
+			exp: []int{
+				spqrparser.ALTER,
+				spqrparser.DISTRIBUTION,
+				spqrparser.IDENT,
+				spqrparser.ATTACH,
+				spqrparser.RELATION,
+				spqrparser.IDENT,
+				spqrparser.DISTRIBUTION,
+				spqrparser.KEY,
+				spqrparser.IDENT,
+				spqrparser.TCOMMA,
+				spqrparser.IDENT,
+				spqrparser.AUTO,
+				spqrparser.INCREMENT,
+				spqrparser.IDENT,
+				spqrparser.TCOMMA,
+				spqrparser.IDENT,
+			},
+		},
+		{
 			query: "ALTER DISTRIBUTION ds1 DETACH RELATION t",
 			exp: []int{
 				spqrparser.ALTER,
@@ -185,6 +206,14 @@ func TestSimpleLex(t *testing.T) {
 			exp: []int{
 				spqrparser.INVALIDATE,
 				spqrparser.CACHE,
+			},
+		},
+		{
+			query: "DROP SEQUENCE seq",
+			exp: []int{
+				spqrparser.DROP,
+				spqrparser.SEQUENCE,
+				spqrparser.IDENT,
 			},
 		},
 	} {

@@ -12,16 +12,28 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES int;
  distribution id -> ds1
 (1 row)
 
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
  bound -> 1
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 30 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
- bound -> 30
+ bound -> 100
+(1 row)
+
+CREATE KEY RANGE FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 200
+(1 row)
+
+CREATE KEY RANGE FROM 300 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 300
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test DISTRIBUTION KEY id;
@@ -31,12 +43,129 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test DISTRIBUTION KEY id;
  distribution id -> ds1
 (2 rows)
 
+ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test_mult DISTRIBUTION KEY id;
+           attach table            
+-----------------------------------
+ relation name   -> copy_test_mult
+ distribution id -> ds1
+(2 rows)
+
 \c regress
 CREATE TABLE copy_test (id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-COPY copy_test(id) FROM STDIN WHERE id <= 10;
+CREATE TABLE copy_test_mult (id int, uid int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-SELECT * FROM copy_test WHERE id <= 10;
+COPY copy_test(id) FROM STDIN;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ id 
+----
+  1
+  2
+  3
+  5
+  7
+ 10
+ 15
+ 99
+ 99
+(9 rows)
+
+SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ id  
+-----
+ 101
+ 120
+ 199
+ 199
+(4 rows)
+
+SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ id  
+-----
+ 200
+ 201
+ 290
+ 299
+(4 rows)
+
+SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+  id   
+-------
+   300
+   301
+   301
+   310
+   312
+   399
+ 10001
+(7 rows)
+
+COPY copy_test(id) FROM STDIN;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ id 
+----
+  1
+  2
+  3
+  5
+  7
+ 10
+ 15
+ 16
+ 99
+ 99
+(10 rows)
+
+SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ id  
+-----
+ 101
+ 116
+ 120
+ 199
+ 199
+(5 rows)
+
+SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ id  
+-----
+ 200
+ 201
+ 216
+ 290
+ 299
+(5 rows)
+
+SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+  id   
+-------
+   300
+   301
+   301
+   310
+   312
+   316
+   399
+   616
+ 10001
+(9 rows)
+
+TRUNCATE copy_test;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+/* test conditional copy */
+COPY copy_test(id) FROM STDIN WHERE id <= 10 OR id % 2 = 1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  id 
 ----
@@ -45,64 +174,115 @@ NOTICE: send query to shard(s) : sh1
   3
   4
   5
+  6
+ 10
+ 11
+ 99
+(9 rows)
+
+SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ id  
+-----
+ 101
+ 199
+(2 rows)
+
+SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ id  
+-----
+ 201
+ 299
+(2 rows)
+
+SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+ id  
+-----
+ 301
+(1 row)
+
+/* copy with several columns */
+COPY copy_test_mult (id, uid) FROM stdin;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ id | uid 
+----+-----
+  1 |  14
+  2 |  14
+ 16 |  14
+ 99 |  14
+(4 rows)
+
+SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ id  | uid 
+-----+-----
+ 101 |  14
+ 165 |  14
+ 199 |  14
+(3 rows)
+
+SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ id  | uid 
+-----+-----
+ 202 |  14
+ 203 |  14
+(2 rows)
+
+SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+   id    | uid 
+---------+-----
+ 2012021 |  14
+(1 row)
+
+COPY copy_test_mult (uid, id) FROM stdin;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ id | uid 
+----+-----
+  1 |  14
+  2 |  14
+ 16 |  14
+ 16 |   7
+ 99 |  14
 (5 rows)
 
-COPY copy_test(id) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-SELECT * FROM copy_test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-  id  
-------
-    1
-    2
-    3
-    4
-    5
-    1
-    2
-    3
-    4
-    5
-   12
-   23
-   22
-   32
-   42
- 3434
-   43
-(17 rows)
+SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ id  | uid 
+-----+-----
+ 101 |  14
+ 116 |   7
+ 165 |  14
+ 199 |  14
+(4 rows)
 
-COPY copy_test(id) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-SELECT * FROM copy_test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-  id  
-------
-    1
-    2
-    3
-    4
-    5
-    1
-    2
-    3
-    4
-    5
-   12
-   23
-   22
-   32
-   42
- 3434
-   43
-   41
-   42
-   43
-   44
-   45
-(22 rows)
+SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ id  | uid 
+-----+-----
+ 202 |  14
+ 203 |  14
+ 216 |   7
+(3 rows)
+
+SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+   id    | uid 
+---------+-----
+     316 |   7
+ 2012021 |  14
+(2 rows)
 
 DROP TABLE copy_test;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE copy_test_mult;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 

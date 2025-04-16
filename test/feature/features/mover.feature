@@ -207,5 +207,5 @@ Feature: Mover test
     Then command return code should be "0"
     And command output should match regexp
     """
-    failed to fetch key range at /keyranges/krid3
+    no key range found at /keyranges/krid3
     """
