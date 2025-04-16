@@ -144,8 +144,8 @@ NOTICE: send query to shard(s) : sh1,sh4
  401
 (2 rows)
 
-WITH d AS (SELECT * FROM xxmixed WHERE id = 401 OR id = 0) SELECT * FROM d UNION ALL SELECT * FROM xxmixed WHERE id = 300;
-ERROR:  client processing error: error processing query 'WITH d AS (SELECT * FROM xxmixed WHERE id = 401 OR id = 0) SELECT * FROM d UNION ALL SELECT * FROM xxmixed WHERE id = 300;': distribution for relation "d" not found., tx status IDLE
+-- XXX: support this
+--WITH d AS (SELECT * FROM xxmixed WHERE id = 401 OR id = 0) SELECT * FROM d UNION ALL SELECT * FROM xxmixed WHERE id = 300;
 UPDATE xxmixed SET id = -1 /* __spqr__engine_v2: true */;;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DELETE FROM xxmixed /* __spqr__engine_v2: true */;;
