@@ -501,7 +501,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    \{"count": 70000\}
+    \{"count":70000\}
     """
     When I run SQL on host "coordinator"
     """
