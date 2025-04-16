@@ -351,7 +351,7 @@ Feature: Move test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    failed to fetch key range at /keyranges/krid3
+    no key range found at /keyranges/krid3
     """
 
   Scenario: Move fails when table does not exist on receiver
