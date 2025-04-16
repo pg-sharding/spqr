@@ -12,3 +12,4 @@
 ^go.sum$
 ^go.mod$
 ^tests$
+^pkg/protos/

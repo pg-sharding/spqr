@@ -1,0 +1,63 @@
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id;
+      attach table      
+------------------------
+ relation name   -> a
+ distribution id -> ds1
+(2 rows)
+
+SHOW relations;
+ Relation name | Distribution ID |  Distribution key  
+---------------+-----------------+--------------------
+ a             | ds1             | ("a_id", identity)
+(1 row)
+
+ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another;
+     alter relation     
+------------------------
+ relation name   -> a
+ distribution id -> ds1
+(2 rows)
+
+SHOW relations;
+ Relation name | Distribution ID |   Distribution key    
+---------------+-----------------+-----------------------
+ a             | ds1             | ("another", identity)
+(1 row)
+
+ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;
+     alter relation     
+------------------------
+ relation name   -> a
+ distribution id -> ds1
+(2 rows)
+
+SHOW relations;
+ Relation name | Distribution ID |   Distribution key    
+---------------+-----------------+-----------------------
+ a             | ds1             | ("another", identity)
+(1 row)
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

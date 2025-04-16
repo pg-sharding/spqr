@@ -142,6 +142,12 @@ func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, reques
 	return nil, nil
 }
 
+// AlterDistributedRelation alters the distributed relation
+// TODO: unit tests
+func (l *LocalQrouterServer) AlterDistributedRelation(ctx context.Context, request *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.AlterDistributedRelation(ctx, request.GetId(), distributions.DistributedRelationFromProto(request.GetRelation()))
+}
+
 // GetDistribution retrieves info about distribution from QDB
 // TODO: unit tests
 func (l *LocalQrouterServer) GetDistribution(ctx context.Context, request *protos.GetDistributionRequest) (*protos.GetDistributionReply, error) {

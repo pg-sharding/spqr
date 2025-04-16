@@ -1059,10 +1059,11 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 		return err
 	}
 
+	schemas := make(map[string]struct{})
 	for _, rel := range ds.Relations {
+		schemas[rel.GetSchema()] = struct{}{}
 		relName := strings.ToLower(rel.Name)
-		// TODO: use the actual schema
-		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, relName, "public")
+		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, relName, rel.GetSchema())
 		if err != nil {
 			return err
 		}
@@ -1070,7 +1071,7 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 			spqrlog.Zero.Info().Str("rel", rel.Name).Msg("source table does not exist")
 			continue
 		}
-		destTable, err := datatransfers.CheckTableExists(ctx, destConn, relName, "public")
+		destTable, err := datatransfers.CheckTableExists(ctx, destConn, relName, rel.GetSchema())
 		if err != nil {
 			return err
 		}
@@ -1079,7 +1080,7 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 		}
 	}
 
-	return datatransfers.SetupFDW(ctx, sourceConn, destConn, keyRange.ShardID, req.ShardId)
+	return datatransfers.SetupFDW(ctx, sourceConn, destConn, keyRange.ShardID, req.ShardId, schemas)
 }
 
 // TODO : unit tests
@@ -1202,17 +1203,9 @@ func (*qdbCoordinator) getKeyStats(
 	nextBound kr.KeyRangeBound,
 ) (totalCount int64, relationCount map[string]int64, err error) {
 	relationCount = make(map[string]int64)
-	// TODO: account for schema?
 	for _, rel := range relations {
-		row := conn.QueryRow(ctx, fmt.Sprintf(`SELECT EXISTS (
-   SELECT FROM pg_catalog.pg_class c
-   JOIN   pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-   WHERE  c.relname = '%s'
-   AND    c.relkind = 'r'    -- only tables
-   );
-`, strings.ToLower(rel.Name)))
-		relExists := false
-		if err = row.Scan(&relExists); err != nil {
+		relExists, err := datatransfers.CheckTableExists(ctx, conn, strings.ToLower(rel.Name), rel.GetSchema())
+		if err != nil {
 			return 0, nil, err
 		}
 		if !relExists {
@@ -1227,8 +1220,8 @@ func (*qdbCoordinator) getKeyStats(
 				SELECT count(*) 
 				FROM %s as t
 				WHERE %s;
-`, rel.Name, cond)
-		row = conn.QueryRow(ctx, query)
+`, rel.GetFullName(), cond)
+		row := conn.QueryRow(ctx, query)
 		var count int64
 		if err = row.Scan(&count); err != nil {
 			return 0, nil, err
@@ -1337,7 +1330,7 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 `,
 		columns,
 		orderByClause,
-		rel.Name,
+		rel.GetFullName(),
 		condition,
 		orderByClause,
 		limit,
@@ -1353,7 +1346,7 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 		}(),
 		limit,
 		step,
-		rel.Name,
+		rel.GetFullName(),
 		condition,
 	)
 	rows, err := conn.Query(ctx, query)
@@ -2190,6 +2183,40 @@ func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
 			Msg("attach relation response")
+		return nil
+	})
+}
+
+// AlterDistributedRelation changes relation attached to a distribution
+// TODO: unit tests
+func (qc *qdbCoordinator) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
+	if !rel.ReplicatedRelation && len(rel.ColumnSequenceMapping) > 0 {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequences are supported for replicated relations only")
+	}
+	qdbRel := distributions.DistributedRelationToDB(rel)
+	if err := qc.db.AlterDistributedRelation(ctx, id, qdbRel); err != nil {
+		return err
+	}
+
+	for colName, seqName := range rel.ColumnSequenceMapping {
+		if err := qc.db.AlterSequenceAttach(ctx, seqName, rel.Name, colName); err != nil {
+			return err
+		}
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewDistributionServiceClient(cc)
+		resp, err := cl.AlterDistributedRelation(context.TODO(), &routerproto.AlterDistributedRelationRequest{
+			Id:       id,
+			Relation: distributions.DistributedRelationToProto(rel),
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("alter relation response")
 		return nil
 	})
 }

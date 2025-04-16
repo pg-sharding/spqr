@@ -298,6 +298,20 @@ func (mr *MockQDBMockRecorder) AddShard(ctx, shard any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddShard", reflect.TypeOf((*MockQDB)(nil).AddShard), ctx, shard)
 }
 
+// AlterDistributedRelation mocks base method.
+func (m *MockQDB) AlterDistributedRelation(ctx context.Context, id string, rel *qdb.DistributedRelation) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterDistributedRelation", ctx, id, rel)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterDistributedRelation indicates an expected call of AlterDistributedRelation.
+func (mr *MockQDBMockRecorder) AlterDistributedRelation(ctx, id, rel any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelation", reflect.TypeOf((*MockQDB)(nil).AlterDistributedRelation), ctx, id, rel)
+}
+
 // AlterDistributionAttach mocks base method.
 func (m *MockQDB) AlterDistributionAttach(ctx context.Context, id string, rels []*qdb.DistributedRelation) error {
 	m.ctrl.T.Helper()
@@ -897,6 +911,20 @@ func (m *MockXQDB) AddShard(ctx context.Context, shard *qdb.Shard) error {
 func (mr *MockXQDBMockRecorder) AddShard(ctx, shard any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddShard", reflect.TypeOf((*MockXQDB)(nil).AddShard), ctx, shard)
+}
+
+// AlterDistributedRelation mocks base method.
+func (m *MockXQDB) AlterDistributedRelation(ctx context.Context, id string, rel *qdb.DistributedRelation) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterDistributedRelation", ctx, id, rel)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterDistributedRelation indicates an expected call of AlterDistributedRelation.
+func (mr *MockXQDBMockRecorder) AlterDistributedRelation(ctx, id, rel any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelation", reflect.TypeOf((*MockXQDB)(nil).AlterDistributedRelation), ctx, id, rel)
 }
 
 // AlterDistributionAttach mocks base method.

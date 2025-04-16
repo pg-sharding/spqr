@@ -17,6 +17,7 @@ message DistributedRelation {
   repeated DistributionKeyEntry distributionKey = 2;
   bool ReplicatedRelation = 3;
   map<string, string> sequenceColumns = 4;
+  string schema_name = 5;
 }
 
 message Distribution {
@@ -46,6 +47,11 @@ message AlterDistributionAttachRequest{
 message AlterDistributionDetachRequest{
   string id = 1;
   repeated string relNames = 2;
+}
+
+message AlterDistributedRelationRequest{
+  string id = 1;
+  DistributedRelation relation = 2;
 }
 
 message GetDistributionRequest{
@@ -87,6 +93,7 @@ service DistributionService {
 
   rpc AlterDistributionAttach(AlterDistributionAttachRequest) returns (google.protobuf.Empty) {}
   rpc AlterDistributionDetach(AlterDistributionDetachRequest) returns (google.protobuf.Empty) {}
+  rpc AlterDistributedRelation(AlterDistributedRelationRequest) returns (google.protobuf.Empty) {}
 
   rpc GetDistribution(GetDistributionRequest) returns (GetDistributionReply) {}
 

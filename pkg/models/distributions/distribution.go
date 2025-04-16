@@ -2,6 +2,7 @@ package distributions
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
@@ -16,6 +17,7 @@ type DistributionKeyEntry struct {
 
 type DistributedRelation struct {
 	Name                  string
+	SchemaName            string
 	DistributionKey       []DistributionKeyEntry
 	ReplicatedRelation    bool
 	ColumnSequenceMapping map[string]string
@@ -34,7 +36,8 @@ const (
 //   - *DistributedRelation: The created DistributedRelation object.
 func DistributedRelationFromDB(rel *qdb.DistributedRelation) *DistributedRelation {
 	rdistr := &DistributedRelation{
-		Name: rel.Name,
+		Name:       rel.Name,
+		SchemaName: rel.SchemaName,
 	}
 
 	for _, e := range rel.DistributionKey {
@@ -59,7 +62,8 @@ func DistributedRelationFromDB(rel *qdb.DistributedRelation) *DistributedRelatio
 //   - *qdb.DistributedRelation: The converted qdb.DistributedRelation object.
 func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation {
 	rdistr := &qdb.DistributedRelation{
-		Name: rel.Name,
+		Name:       rel.Name,
+		SchemaName: rel.SchemaName,
 	}
 
 	for _, e := range rel.DistributionKey {
@@ -85,6 +89,7 @@ func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation 
 func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRelation {
 	rdistr := &proto.DistributedRelation{
 		Name:            rel.Name,
+		SchemaName:      rel.SchemaName,
 		SequenceColumns: rel.ColumnSequenceMapping,
 	}
 
@@ -110,6 +115,7 @@ func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRela
 func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRelation {
 	rdistr := &DistributedRelation{
 		Name:                  rel.Name,
+		SchemaName:            rel.SchemaName,
 		ColumnSequenceMapping: rel.SequenceColumns,
 	}
 
@@ -135,6 +141,7 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRe
 func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *DistributedRelation {
 	rdistr := &DistributedRelation{
 		Name:                  rel.Name,
+		SchemaName:            rel.SchemaName,
 		ColumnSequenceMapping: map[string]string{},
 	}
 
@@ -308,4 +315,15 @@ func GetHashedColumn(col string, hash string) (string, error) {
 
 func SequenceName(relName, colName string) string {
 	return fmt.Sprintf("%s_%s", relName, colName)
+}
+
+func (r *DistributedRelation) GetSchema() string {
+	if r.SchemaName == "" {
+		return "public"
+	}
+	return r.SchemaName
+}
+
+func (r *DistributedRelation) GetFullName() string {
+	return fmt.Sprintf("%s.%s", r.GetSchema(), strings.ToLower(r.Name))
 }

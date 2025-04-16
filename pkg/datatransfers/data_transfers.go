@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	pgx "github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
@@ -236,7 +237,7 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr coordinator.Coor
 	return bound, nil
 }
 
-func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromId, toId string) error {
+func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromId, toId string, schemas map[string]struct{}) error {
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
@@ -273,7 +274,11 @@ func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromId, toId string) erro
 	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS %q`, schemaName)); err != nil {
 		return err
 	}
-	_, err = to.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA public FROM SERVER %q INTO %q`, serverName, schemaName))
+	for schema := range schemas {
+		if _, err = to.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA %s FROM SERVER %q INTO %q`, schema, serverName, schemaName)); err != nil {
+			return err
+		}
+	}
 	return err
 }
 
@@ -295,7 +300,11 @@ func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromId, toId string) erro
 // Returns:
 // - error: an error if the move fails.
 func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
-	if err := SetupFDW(ctx, from, to, fromId, toId); err != nil {
+	schemas := make(map[string]struct{})
+	for _, rel := range ds.Relations {
+		schemas[rel.GetSchema()] = struct{}{}
+	}
+	if err := SetupFDW(ctx, from, to, fromId, toId, schemas); err != nil {
 		return err
 	}
 	fromShard := shards.ShardsData[fromId]
@@ -310,26 +319,28 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		}
 		// check that relation exists on sending shard and there is data to copy. If not, skip the relation
 		// TODO get actual schema
-		fromTableExists, err := CheckTableExists(ctx, from, strings.ToLower(rel.Name), "public")
+		relSchemaName := rel.GetSchema()
+		fromTableExists, err := CheckTableExists(ctx, from, strings.ToLower(rel.Name), relSchemaName)
 		if err != nil {
 			return err
 		}
 		if !fromTableExists {
 			continue
 		}
-		fromCount, err := getEntriesCount(ctx, from, rel.Name, krCondition)
+		relFullName := rel.GetFullName()
+		fromCount, err := getEntriesCount(ctx, from, relFullName, krCondition)
 		if err != nil {
 			return err
 		}
 		// check that relation exists on receiving shard. If not, exit
-		toTableExists, err := CheckTableExists(ctx, to, strings.ToLower(rel.Name), "public")
+		toTableExists, err := CheckTableExists(ctx, to, strings.ToLower(rel.Name), relSchemaName)
 		if err != nil {
 			return err
 		}
 		if !toTableExists {
 			return fmt.Errorf("relation %s does not exist on receiving shard", rel.Name)
 		}
-		toCount, err := getEntriesCount(ctx, to, rel.Name, krCondition)
+		toCount, err := getEntriesCount(ctx, to, relFullName, krCondition)
 		if err != nil {
 			return err
 		}
@@ -345,10 +356,10 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 					INSERT INTO %s
 					SELECT * FROM %s
 					WHERE %s
-`, strings.ToLower(rel.Name), fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.Name)), krCondition)
+`, relFullName, fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.Name)), krCondition)
 		_, err = to.Exec(ctx, query)
 		if err != nil {
-			return err
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
 		}
 	}
 	return nil

@@ -76,6 +76,7 @@ func randomHex(n int) (string, error) {
 	distributed_relation   *DistributedRelation
 	
 	relations              []*DistributedRelation
+	relation               *DistributedRelation
 	entrieslist            []ShardingRuleEntry
 	dEntrieslist 	       []DistributionKeyEntry
 
@@ -149,7 +150,7 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY
-%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE
+%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
@@ -194,6 +195,7 @@ func randomHex(n int) (string, error) {
 %type<shruleEntry> sharding_rule_entry
 %type<strlist> opt_auto_increment
 %type<strlist> auto_inc_column_list
+%type<str> opt_schema_name
 
 %type<distrKeyEntry> distribution_key_entry
 
@@ -211,6 +213,7 @@ func randomHex(n int) (string, error) {
 %type<relations> relation_attach_stmt
 %type<relations> distributed_relation_list_def
 
+%type<distributed_relation> relation_alter_stmt
 %type<distributed_relation> distributed_relation_def
 
 %type<strlist> col_types_list opt_col_types hosts_list
@@ -527,6 +530,15 @@ distribution_alter_stmt:
 				RelationName: $4,
 			},
 		}
+	} |
+	distribution_select_stmt relation_alter_stmt
+	{
+		$$ = &AlterDistribution{
+			Element: &AlterRelation{
+				Distribution: $1,
+				Relation: $2,
+			},
+		}
 	}
 
 
@@ -552,18 +564,20 @@ distribution_key_entry:
 	}
 
 distributed_relation_def:
-	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
+	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment opt_schema_name
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
+			SchemaName: $7,
 			DistributionKey: $5,
 			AutoIncrementColumns: $6,
 		}
 	} | 
-	RELATION any_id opt_auto_increment
+	RELATION any_id opt_auto_increment opt_schema_name
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
+			SchemaName: $4,
 			ReplicatedRelation: true,
 			AutoIncrementColumns: $3,
 		}
@@ -575,6 +589,13 @@ opt_auto_increment:
 		$$ = $3
 	} | /* EMPTY */ {
 		$$ = nil
+	}
+
+opt_schema_name:
+	SCHEMA any_id {
+		$$ = $2
+	} | /* EMPTY */ {
+		$$ = ""
 	}
 
 auto_inc_column_list:
@@ -594,6 +615,11 @@ distributed_relation_list_def:
 
 relation_attach_stmt:
 	ATTACH distributed_relation_list_def {
+		$$ = $2
+	}
+
+relation_alter_stmt:
+	ALTER distributed_relation_def {
 		$$ = $2
 	}
 

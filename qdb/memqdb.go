@@ -676,10 +676,7 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", r.Name)
 			}
 
-			ds.Relations[r.Name] = &DistributedRelation{
-				Name:            r.Name,
-				DistributionKey: r.DistributionKey,
-			}
+			ds.Relations[r.Name] = r
 			q.RelationDistribution[r.Name] = id
 			if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, r.Name, id)); err != nil {
 				return err
@@ -712,6 +709,30 @@ func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relName
 
 	err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.RelationDistribution, relName))
 	return err
+}
+
+// TODO : unit tests
+func (q *MemQDB) AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error {
+	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: alter distributed relation")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	ds, ok := q.Distributions[id]
+	if !ok {
+		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "no such distribution")
+	}
+	if dsID, ok := q.RelationDistribution[rel.Name]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
+	} else if dsID != id {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", rel.Name, dsID, id)
+	}
+
+	ds.Relations[rel.Name] = rel
+	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, rel.Name, id)); err != nil {
+		return err
+	}
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds))
 }
 
 // TODO : unit tests

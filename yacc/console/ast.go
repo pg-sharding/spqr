@@ -257,6 +257,7 @@ type DistributionKeyEntry struct {
 
 type DistributedRelation struct {
 	Name                 string
+	SchemaName           string
 	DistributionKey      []DistributionKeyEntry
 	ReplicatedRelation   bool
 	AutoIncrementColumns []string
@@ -270,6 +271,15 @@ type AttachRelation struct {
 func (*AttachRelation) iStatement()         {}
 func (*AttachRelation) iAlter()             {}
 func (*AttachRelation) iAlterDistribution() {}
+
+type AlterRelation struct {
+	Distribution *DistributionSelector
+	Relation     *DistributedRelation
+}
+
+func (*AlterRelation) iStatement()         {}
+func (*AlterRelation) iAlter()             {}
+func (*AlterRelation) iAlterDistribution() {}
 
 type DetachRelation struct {
 	Distribution *DistributionSelector

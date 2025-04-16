@@ -71,6 +71,7 @@ type QDB interface {
 
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
 	AlterDistributionDetach(ctx context.Context, id string, relName string) error
+	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
 
 	GetDistribution(ctx context.Context, id string) (*Distribution, error)
 	// TODO: fix this by passing FQRN (fully qualified relation name (+schema))
