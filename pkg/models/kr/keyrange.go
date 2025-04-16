@@ -57,9 +57,7 @@ func (kr *KeyRange) InFuncSQL(attribInd int, raw []byte) {
 	case qdb.ColumnTypeVarchar:
 		kr.LowerBound[attribInd] = string(raw)
 	case qdb.ColumnTypeUUID:
-		val := string(raw)
-		val = strings.ToLower(val)
-		kr.LowerBound[attribInd] = val
+		kr.LowerBound[attribInd] = strings.ToLower(string(raw))
 	}
 }
 
