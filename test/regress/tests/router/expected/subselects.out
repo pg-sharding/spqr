@@ -67,6 +67,23 @@ NOTICE: send query to shard(s) : sh1
 ---
 (0 rows)
 
+-- should dispatch to sh3
+SELECT 1, (SELECT i FROM table1 WHERE i = 201);
+NOTICE: send query to shard(s) : sh3
+ ?column? | i 
+----------+---
+        1 |  
+(1 row)
+
+-- should dispatch to sh3 and sh4 (TODO: parallel processing)
+SELECT 1, (SELECT i FROM table1 WHERE i = 201), (SELECT i FROM table1 WHERE i = 301);
+NOTICE: send query to shard(s) : sh3,sh4
+ ?column? | i | i 
+----------+---+---
+        1 |   |  
+        1 |   |  
+(2 rows)
+
 DROP TABLE table1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE ref_rel_1;

@@ -795,10 +795,10 @@ func (qr *ProxyQrouter) planQueryV1(
 				switch e := expr.(type) {
 				/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
 				case *lyx.FuncApplication:
-
 					/* for queries, that need to access data on shard, ignore these "virtual" func.	 */
 					if e.Name == "current_schema" || e.Name == "set_config" || e.Name == "pg_is_in_recovery" || e.Name == "version" {
-						return plan.RandomDispatchPlan{}, nil
+						p = plan.Combine(p, plan.RandomDispatchPlan{})
+						continue
 					}
 					for _, innerExp := range e.Args {
 						switch iE := innerExp.(type) {
@@ -812,12 +812,12 @@ func (qr *ProxyQrouter) planQueryV1(
 					}
 				/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
 				case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst:
-					return plan.RandomDispatchPlan{}, nil
+					p = plan.Combine(p, plan.RandomDispatchPlan{})
 
 				/* Special case for SELECT current_schema */
 				case *lyx.ColumnRef:
 					if e.ColName == "current_schema" {
-						return plan.RandomDispatchPlan{}, nil
+						p = plan.Combine(p, plan.RandomDispatchPlan{})
 					}
 				case *lyx.Select:
 
