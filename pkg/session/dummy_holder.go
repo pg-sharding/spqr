@@ -1,6 +1,10 @@
 package session
 
-import "github.com/pg-sharding/spqr/router/routehint"
+import (
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/tsa"
+	"github.com/pg-sharding/spqr/router/routehint"
+)
 
 type DummySessionParamHandler struct {
 	b            [][]byte
@@ -12,6 +16,16 @@ type DummySessionParamHandler struct {
 
 	engineV2 bool
 	eo       string
+}
+
+// GetTsa implements SessionParamsHolder.
+func (t *DummySessionParamHandler) GetTsa() tsa.TSA {
+	return config.TargetSessionAttrsRW
+}
+
+// SetTsa implements SessionParamsHolder.
+func (t *DummySessionParamHandler) SetTsa(string) {
+
 }
 
 // EnhancedMultiShardProcessing implements SessionParamsHolder.

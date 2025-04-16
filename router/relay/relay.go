@@ -627,7 +627,7 @@ func (rst *RelayStateImpl) selectRandomRoute() (*kr.ShardKey, error) {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, error) {
+func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, plan.Plan, error) {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
 	span := opentracing.StartSpan("reroute")
@@ -653,35 +653,38 @@ func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, error) {
 		var err error
 		queryPlan, err = rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl)
 		if err != nil {
-			return nil, fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
+			return nil, nil, fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 		}
 	}
 
 	rst.routingState = queryPlan
 
 	switch v := queryPlan.(type) {
+	case plan.VirtualPlan:
+		/* XXX: connect to routes in subplan */
+		return nil, queryPlan, nil
 	case plan.ScatterPlan:
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Msgf("parsed ScatterPlan")
-		return rst.Qr.DataShardsRoutes(), nil
+		return rst.Qr.DataShardsRoutes(), queryPlan, nil
 	case plan.DDLState:
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Msgf("parsed DDLState")
-		return rst.Qr.DataShardsRoutes(), nil
+		return rst.Qr.DataShardsRoutes(), queryPlan, nil
 	case plan.ShardDispatchPlan:
 		// TBD: do it better
-		return []*kr.ShardKey{v.ExecTarget}, nil
+		return []*kr.ShardKey{v.ExecTarget}, queryPlan, nil
 	case plan.RandomDispatchPlan:
 		r, err := rst.selectRandomRoute()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
-		return []*kr.ShardKey{r}, nil
+		return []*kr.ShardKey{r}, queryPlan, nil
 	default:
-		return nil, fmt.Errorf("unexpected query plan %T", v)
+		return nil, nil, fmt.Errorf("unexpected query plan %T", v)
 	}
 }
 
@@ -1419,7 +1422,7 @@ func (rst *RelayStateImpl) PrepareRelayStep() error {
 			/* With engine v2 we can expand transaction on more targets */
 			/* TODO: XXX */
 
-			r, err := rst.Reroute()
+			r, _, err := rst.Reroute()
 			if err != nil {
 				return err
 			}
@@ -1437,11 +1440,16 @@ func (rst *RelayStateImpl) PrepareRelayStep() error {
 		return nil
 	}
 
-	r, err := rst.Reroute()
+	r, q, err := rst.Reroute()
 
 	switch err {
 	case nil:
-		return rst.procRoutes(r)
+		switch q.(type) {
+		case plan.VirtualPlan:
+			return nil
+		default:
+			return rst.procRoutes(r)
+		}
 	case ErrSkipQuery:
 		if err := rst.Client().ReplyErr(err); err != nil {
 			return err

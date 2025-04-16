@@ -6,8 +6,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -90,7 +93,7 @@ func getparams(rm *rmeta.RoutingMetadataContext) []int16 {
 }
 
 func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext,
-	ds *distributions.Distribution, rfqn rfqn.RelationFQN, relation *distributions.DistributedRelation, tsa string) (plan.Plan, error) {
+	ds *distributions.Distribution, rfqn rfqn.RelationFQN, relation *distributions.DistributedRelation, tsa tsa.TSA) (plan.Plan, error) {
 
 	queryParamsFormatCodes := getparams(rm)
 
@@ -791,12 +794,37 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
 		if len(stmt.FromClause) == 0 && (stmt.LArg == nil || stmt.RArg == nil) {
+			virtualRowCols := []pgproto3.FieldDescription{}
+			virtualRowVals := [][]byte{}
+
 			for _, expr := range stmt.TargetList {
 				switch e := expr.(type) {
 				/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
 				case *lyx.FuncApplication:
+
 					/* for queries, that need to access data on shard, ignore these "virtual" func.	 */
-					if e.Name == "current_schema" || e.Name == "set_config" || e.Name == "pg_is_in_recovery" || e.Name == "version" {
+					if e.Name == "pg_is_in_recovery" {
+						p = plan.Combine(p, plan.VirtualPlan{})
+						virtualRowCols = append(virtualRowCols,
+							pgproto3.FieldDescription{
+								Name:                 []byte("pg_is_in_recovery"),
+								DataTypeOID:          catalog.ARRAYOID,
+								TypeModifier:         -1,
+								DataTypeSize:         1,
+								TableAttributeNumber: 0,
+								TableOID:             0,
+								Format:               0,
+							})
+
+						if rm.SPH.GetTsa() == config.TargetSessionAttrsRW {
+							virtualRowVals = append(virtualRowVals, []byte{byte('f')})
+						} else {
+							virtualRowVals = append(virtualRowVals, []byte{byte('t')})
+						}
+						continue
+					}
+
+					if e.Name == "current_schema" || e.Name == "set_config" || e.Name == "version" {
 						p = plan.Combine(p, plan.RandomDispatchPlan{})
 						continue
 					}
@@ -827,6 +855,14 @@ func (qr *ProxyQrouter) planQueryV1(
 						p = plan.Combine(p, tmp)
 					}
 				}
+			}
+
+			switch q := p.(type) {
+			case plan.VirtualPlan:
+				q.VirtualRowCols = virtualRowCols
+				q.VirtualRowVals = virtualRowVals
+
+				return q, nil
 			}
 
 		}
@@ -1142,7 +1178,7 @@ func (qr *ProxyQrouter) resolveValue(meta *rmeta.RoutingMetadataContext, rfqn rf
 	return []any{singleVal}, res
 }
 
-func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext, tsa string) (plan.Plan, error) {
+func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext, tsa tsa.TSA) (plan.Plan, error) {
 
 	var route plan.Plan
 	/*
@@ -1176,7 +1212,7 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 }
 
 // Returns state, is read-only flag and err if any
-func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, bool, error) {
+func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, tsa tsa.TSA) (plan.Plan, bool, error) {
 	if stmt == nil {
 		// empty statement
 		return plan.RandomDispatchPlan{}, false, nil
@@ -1205,8 +1241,6 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	 */
 
 	/* TODO: delay this until step 2. */
-
-	tsa := config.TargetSessionAttrsAny
 
 	var route plan.Plan
 	route = nil
@@ -1398,13 +1432,15 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 // TODO : unit tests
 func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
 	meta := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
-	route, ro, err := qr.routeWithRules(ctx, meta, stmt)
+	route, ro, err := qr.routeWithRules(ctx, meta, stmt, sph.GetTsa())
 	if err != nil {
 		return nil, err
 	}
 
 	switch v := route.(type) {
 	case plan.ShardDispatchPlan:
+		return v, nil
+	case plan.VirtualPlan:
 		return v, nil
 	case plan.RandomDispatchPlan:
 		return v, nil
