@@ -335,7 +335,6 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 				if entry.HashFunction == "city" {
 					for _, colType := range ds.ColTypes {
 						if colType == "varchar" {
-							//ds.ColTypes[i] = "varchar hash"
 							return fmt.Errorf("hash function CITY is incompatible with column type varchar. HINT: Change column type to 'varchar hash' for CITY hash function")
 						}
 					}
