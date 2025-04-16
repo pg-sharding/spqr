@@ -44,9 +44,7 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 	switch hf {
 	case HashFunctionIdent:
 		if ctype == qdb.ColumnTypeUUID {
-			val := strings.ToLower(inp.(string))
-			err := uuid.Validate(val)
-			if err != nil {
+			if err := uuid.Validate(strings.ToLower(inp.(string))); err != nil {
 				return nil, err
 			}
 		}
