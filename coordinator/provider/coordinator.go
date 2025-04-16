@@ -1063,7 +1063,6 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 	for _, rel := range ds.Relations {
 		schemas[rel.GetSchema()] = struct{}{}
 		relName := strings.ToLower(rel.Name)
-		// TODO: use the actual schema
 		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, relName, rel.GetSchema())
 		if err != nil {
 			return err
@@ -1205,12 +1204,7 @@ func (*qdbCoordinator) getKeyStats(
 ) (totalCount int64, relationCount map[string]int64, err error) {
 	relationCount = make(map[string]int64)
 	for _, rel := range relations {
-		relExists, err := datatransfers.CheckTableExists(ctx, conn, rel.Name, func() string {
-			if rel.SchemaName == "" {
-				return "public"
-			}
-			return rel.SchemaName
-		}())
+		relExists, err := datatransfers.CheckTableExists(ctx, conn, rel.Name, rel.GetSchema())
 		if err != nil {
 			return 0, nil, err
 		}
