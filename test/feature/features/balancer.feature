@@ -47,7 +47,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    10
+    \{"count":10\}
     """
     When I run SQL on host "shard1"
     """
@@ -56,7 +56,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    99990
+    \{"count":99990\}
     """
     When I run SQL on host "coordinator"
     """
@@ -109,7 +109,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    30
+    \{"count":30\}
     """
     When I run SQL on host "shard1"
     """
@@ -118,7 +118,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    99970
+    \{"count":99970\}
     """
     When I run SQL on host "coordinator"
     """
@@ -171,7 +171,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should not match regexp
     """
-    50000
+    \{"count":50000\}
     """
 
   Scenario: balancer works when transferring to previous key range
@@ -204,7 +204,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    99970
+    \{"count":99970\}
     """
     When I run SQL on host "shard1"
     """
@@ -213,7 +213,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    30
+    \{"count":30\}
     """
     When I run SQL on host "coordinator"
     """
@@ -265,7 +265,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    30
+    \{"count":30\}
     """
     When I run SQL on host "shard1"
     """
@@ -274,7 +274,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    99970
+    \{"count":99970\}
     """
     When I run SQL on host "coordinator"
     """
@@ -329,7 +329,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    10
+    \{"count":10\}
     """
     When I run SQL on host "shard1"
     """
@@ -338,7 +338,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    99990
+    \{"count":99990\}
     """
     When I run SQL on host "coordinator"
     """
@@ -396,7 +396,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard1"
     """
@@ -405,7 +405,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    9990
+    \{"count":9990\}
     """
     When I run SQL on host "shard2"
     """
@@ -414,7 +414,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    30
+    \{"count":30\}
     """
     When I run SQL on host "shard1"
     """
@@ -423,7 +423,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    99970
+    \{"count":99970\}
     """
     When I run SQL on host "coordinator"
     """
@@ -492,7 +492,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    30000
+    \{"count":30000\}
     """
     When I run SQL on host "shard1"
     """
@@ -501,7 +501,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    70000
+    \{"count": 70000\}
     """
     When I run SQL on host "coordinator"
     """
