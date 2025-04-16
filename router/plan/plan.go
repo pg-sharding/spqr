@@ -93,13 +93,13 @@ func mergeExecTargets(l, r []*kr.ShardKey) []*kr.ShardKey {
 	}
 	ret := l
 
-	var rmp map[string]struct{}
+	rightMap := map[string]struct{}{}
 	for _, e := range l {
-		rmp[e.Name] = struct{}{}
+		rightMap[e.Name] = struct{}{}
 	}
 
 	for _, e := range r {
-		if _, ok := rmp[e.Name]; ok {
+		if _, ok := rightMap[e.Name]; ok {
 			continue
 		}
 		ret = append(ret, e)
