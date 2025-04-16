@@ -1,8 +1,11 @@
 package plan
 
 import (
+	"github.com/jackc/pgx/v5/pgproto3"
+
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
 type Plan interface {
@@ -33,7 +36,7 @@ type ShardDispatchPlan struct {
 	Plan
 
 	ExecTarget         *kr.ShardKey
-	TargetSessionAttrs string
+	TargetSessionAttrs tsa.TSA
 }
 
 func (sms ShardDispatchPlan) ExecutionTargets() []*kr.ShardKey {
@@ -58,6 +61,9 @@ func (rdp RandomDispatchPlan) ExecutionTargets() []*kr.ShardKey {
 
 type VirtualPlan struct {
 	Plan
+	VirtualRowCols []pgproto3.FieldDescription
+	VirtualRowVals [][]byte
+	SubPlan        Plan
 }
 
 func (vp VirtualPlan) ExecutionTargets() []*kr.ShardKey {
@@ -126,6 +132,8 @@ func Combine(p1, p2 Plan) Plan {
 		Msg("combine two plans")
 
 	switch shq1 := p1.(type) {
+	case VirtualPlan:
+		return p2
 	case ScatterPlan:
 		return ScatterPlan{
 			ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),

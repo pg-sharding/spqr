@@ -423,7 +423,7 @@ func (lc *LocalCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew st
 func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *topology.DataShard) error {
 	spqrlog.Zero.Info().
 		Str("node", ds.ID).
-		Msg("adding node")
+		Msg("adding datashard node in local coordinator")
 
 	lc.DataShardCfgs[ds.ID] = ds.Cfg
 

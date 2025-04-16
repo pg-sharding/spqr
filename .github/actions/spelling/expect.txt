@@ -16,6 +16,7 @@ apk
 appdefaults
 APREQ
 aqo
+ARRAYOID
 argexpr
 asd
 astmt
@@ -326,6 +327,7 @@ nspname
 odssd
 ogima
 OIDKRB
+oid
 OIDS
 oiwejow
 OLAP
@@ -342,6 +344,7 @@ Percona
 PGAASINTERNALNETS
 pgbench
 pgbin
+pgcat
 pgconn
 pgcopy
 pgcs
