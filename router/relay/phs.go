@@ -270,7 +270,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 	co := make([]int, len(ds.Relations[relname].DistributionKey))
 	for dKey := range ds.Relations[relname].DistributionKey {
 
-		if v, err := hashfunction.HashFunctionByName(ds.Relations[relname].DistributionKey[dkey].HashFunction); err != nil {
+		if v, err := hashfunction.HashFunctionByName(ds.Relations[relname].DistributionKey[dKey].HashFunction); err != nil {
 			return nil, err
 		} else {
 			hashFunc[dKey] = v
