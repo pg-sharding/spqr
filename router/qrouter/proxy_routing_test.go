@@ -206,6 +206,14 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 				SubPlan: plan.ScatterPlan{
 					SubPlan: plan.ModifyTable{},
 				},
+				ExecTargets: []*kr.ShardKey{
+					&kr.ShardKey{
+						Name: "sh1",
+					},
+					&kr.ShardKey{
+						Name: "sh2",
+					},
+				},
 			},
 			err: nil,
 		},
@@ -214,6 +222,14 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 			exp: plan.ScatterPlan{
 				SubPlan: plan.ScatterPlan{
 					SubPlan: plan.ModifyTable{},
+				},
+				ExecTargets: []*kr.ShardKey{
+					&kr.ShardKey{
+						Name: "sh1",
+					},
+					&kr.ShardKey{
+						Name: "sh2",
+					},
 				},
 			},
 			err: nil,
@@ -243,7 +259,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 
 			assert.NoError(err, "query %s", tt.query)
 
-			assert.Equal(tt.exp, tmp)
+			assert.Equal(tt.exp, tmp, tt.query)
 		}
 	}
 }
@@ -281,19 +297,25 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
 			exp: plan.ScatterPlan{
-				SubPlan: plan.ModifyTable{},
+				SubPlan: plan.ScatterPlan{
+					SubPlan: plan.ModifyTable{},
+				},
 			},
 		},
 		{
 			query: `UPDATE test_ref_rel SET i = i + 1 ;`,
 			exp: plan.ScatterPlan{
-				SubPlan: plan.ModifyTable{},
+				SubPlan: plan.ScatterPlan{
+					SubPlan: plan.ModifyTable{},
+				},
 			},
 		},
 		{
 			query: `DELETE FROM test_ref_rel WHERE i = 2;`,
 			exp: plan.ScatterPlan{
-				SubPlan: plan.ModifyTable{},
+				SubPlan: plan.ScatterPlan{
+					SubPlan: plan.ModifyTable{},
+				},
 			},
 		},
 	} {
@@ -310,7 +332,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 			assert.Equal(tt.exp, tmp)
 		} else {
-			assert.Equal(err, tt.err)
+			assert.Equal(err, tt.err, tt.query)
 		}
 	}
 }
