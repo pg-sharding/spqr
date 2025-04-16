@@ -1204,7 +1204,7 @@ func (*qdbCoordinator) getKeyStats(
 ) (totalCount int64, relationCount map[string]int64, err error) {
 	relationCount = make(map[string]int64)
 	for _, rel := range relations {
-		relExists, err := datatransfers.CheckTableExists(ctx, conn, rel.Name, rel.GetSchema())
+		relExists, err := datatransfers.CheckTableExists(ctx, conn, strings.ToLower(rel.Name), rel.GetSchema())
 		if err != nil {
 			return 0, nil, err
 		}
@@ -1330,7 +1330,7 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 `,
 		columns,
 		orderByClause,
-		rel.Name,
+		rel.GetFullName(),
 		condition,
 		orderByClause,
 		limit,
@@ -1346,7 +1346,7 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 		}(),
 		limit,
 		step,
-		rel.Name,
+		rel.GetFullName(),
 		condition,
 	)
 	rows, err := conn.Query(ctx, query)
