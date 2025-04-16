@@ -72,6 +72,7 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 			return nil, errUnknownColumnType(ctype, hf)
 		}
 	case HashFunctionCity:
+
 		switch ctype {
 		case qdb.ColumnTypeInteger:
 			buf := make([]byte, 8)
