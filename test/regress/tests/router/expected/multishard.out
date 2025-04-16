@@ -13,16 +13,28 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
- bound -> 1
+ bound -> 0
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid2 FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
- bound -> 11
+ bound -> 100
+(1 row)
+
+CREATE KEY RANGE krid3 FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 200
+(1 row)
+
+CREATE KEY RANGE krid4 FROM 300 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 300
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION xxmixed DISTRIBUTION KEY id;
@@ -35,48 +47,105 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxmixed DISTRIBUTION KEY id;
 \c regress
 CREATE TABLE xxmixed(id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-INSERT INTO xxmixed (id) VALUES(1);
-NOTICE: send query to shard(s) : sh1
-INSERT INTO xxmixed (id) VALUES(10);
-NOTICE: send query to shard(s) : sh1
-INSERT INTO xxmixed (id) VALUES(11);
-NOTICE: send query to shard(s) : sh2
-INSERT INTO xxmixed (id) VALUES(20);
-NOTICE: send query to shard(s) : sh2
-INSERT INTO xxmixed (id) VALUES(21);
-NOTICE: send query to shard(s) : sh2
-INSERT INTO xxmixed (id) VALUES(22);
-NOTICE: send query to shard(s) : sh2
-INSERT INTO xxmixed (id) VALUES(29);
-NOTICE: send query to shard(s) : sh2
-INSERT INTO xxmixed (id) VALUES(30);
-NOTICE: send query to shard(s) : sh2
-INSERT INTO xxmixed (id) VALUES(30);
-NOTICE: send query to shard(s) : sh2
-INSERT INTO xxmixed (id) VALUES(30);
-NOTICE: send query to shard(s) : sh2
-INSERT INTO xxmixed (id) VALUES(30);
-NOTICE: send query to shard(s) : sh2
-INSERT INTO xxmixed (id) VALUES(30);
-NOTICE: send query to shard(s) : sh2
+COPY xxmixed (id) FROM STDIN;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+/* XXX: sort result here is not stable until proper router processing support */
 SELECT * FROM xxmixed ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
- id 
-----
-  1
- 10
- 11
- 20
- 21
- 22
- 29
- 30
- 30
- 30
- 30
- 30
-(12 rows)
+ id  
+-----
+   0
+   1
+  10
+  20
+  30
+  50
+  99
+ 100
+ 101
+ 102
+ 150
+ 152
+ 199
+ 201
+ 201
+ 250
+ 299
+ 300
+ 301
+ 350
+ 399
+ 400
+ 401
+(23 rows)
 
+SELECT * FROM xxmixed WHERE id = 0 OR id = 199;
+NOTICE: send query to shard(s) : sh1,sh2
+ id  
+-----
+   0
+ 199
+(2 rows)
+
+SELECT * FROM xxmixed WHERE id = 0 OR id = 399;
+NOTICE: send query to shard(s) : sh1,sh4
+ id  
+-----
+   0
+ 399
+(2 rows)
+
+SELECT * FROM xxmixed WHERE id = 1 OR id = 299 OR id = 350;
+NOTICE: send query to shard(s) : sh1,sh3,sh4
+ id  
+-----
+   1
+ 299
+ 350
+(3 rows)
+
+SELECT * FROM xxmixed WHERE id = 299 OR id = 350;
+NOTICE: send query to shard(s) : sh3,sh4
+ id  
+-----
+ 299
+ 350
+(2 rows)
+
+SELECT * FROM xxmixed WHERE id = 201 UNION ALL SELECT * FROM xxmixed WHERE id = 199;
+NOTICE: send query to shard(s) : sh2,sh3
+ id  
+-----
+ 199
+ 201
+ 201
+(3 rows)
+
+SELECT * FROM xxmixed WHERE id = 401 UNION ALL SELECT * FROM xxmixed WHERE id = 99;
+NOTICE: send query to shard(s) : sh1,sh4
+ id  
+-----
+  99
+ 401
+(2 rows)
+
+SELECT * FROM xxmixed WHERE id = 401 EXCEPT ALL SELECT * FROM xxmixed WHERE id = 99;
+NOTICE: send query to shard(s) : sh1,sh4
+ id  
+-----
+ 401
+(1 row)
+
+WITH d AS (SELECT * FROM xxmixed WHERE id = 401 OR id = 0) TABLE d;
+NOTICE: send query to shard(s) : sh1,sh4
+ id  
+-----
+   0
+ 401
+(2 rows)
+
+-- XXX: support this
+--WITH d AS (SELECT * FROM xxmixed WHERE id = 401 OR id = 0) SELECT * FROM d UNION ALL SELECT * FROM xxmixed WHERE id = 300;
 UPDATE xxmixed SET id = -1 /* __spqr__engine_v2: true */;;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DELETE FROM xxmixed /* __spqr__engine_v2: true */;;
