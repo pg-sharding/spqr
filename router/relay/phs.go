@@ -268,17 +268,17 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 	}
 
 	co := make([]int, len(ds.Relations[relname].DistributionKey))
-	for dkey := range ds.Relations[relname].DistributionKey {
+	for dKey := range ds.Relations[relname].DistributionKey {
 
-		if v, err := hashfunction.HashFunctionByName(ds.Relations[relname].DistributionKey[dkey].HashFunction); err != nil {
+		if v, err := hashfunction.HashFunctionByName(ds.Relations[relname].DistributionKey[dKey].HashFunction); err != nil {
 			return nil, err
 		} else {
-			hashFunc[dkey] = v
+			hashFunc[dKey] = v
 		}
 
 		colOffset := -1
 		for indx, c := range stmt.Columns {
-			if c == ds.Relations[relname].DistributionKey[dkey].Column {
+			if c == ds.Relations[relname].DistributionKey[dKey].Column {
 				colOffset = indx
 				break
 			}
@@ -286,7 +286,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		if colOffset == -1 {
 			return nil, fmt.Errorf("failed to resolve target copy column offset")
 		}
-		co[dkey] = colOffset
+		co[dKey] = colOffset
 	}
 
 	return &pgcopy.CopyState{

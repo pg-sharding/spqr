@@ -68,7 +68,7 @@ const (
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
 	coordLockKey      = "coordinator_exists"
-	sequencespace     = "sequence_space"
+	sequenceSpace     = "sequence_space"
 )
 
 func keyLockPath(key string) string {
@@ -1520,7 +1520,7 @@ func (q *EtcdQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
 	}
 	defer closeSession(sess)
 
-	mu := concurrency.NewMutex(sess, sequencespace)
+	mu := concurrency.NewMutex(sess, sequenceSpace)
 	if err = mu.Lock(ctx); err != nil {
 		return -1, err
 	}
