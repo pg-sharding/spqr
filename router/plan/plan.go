@@ -1,8 +1,6 @@
 package plan
 
 import (
-	"slices"
-
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
@@ -95,12 +93,13 @@ func mergeExecTargets(l, r []*kr.ShardKey) []*kr.ShardKey {
 	}
 	ret := l
 
+	var rmp map[string]struct{}
+	for _, e := range l {
+		rmp[e.Name] = struct{}{}
+	}
+
 	for _, e := range r {
-		if slices.ContainsFunc[[]*kr.ShardKey](ret, func(
-			el *kr.ShardKey,
-		) bool {
-			return e.Name == el.Name
-		}) {
+		if _, ok := rmp[e.Name]; ok {
 			continue
 		}
 		ret = append(ret, e)
