@@ -1220,7 +1220,7 @@ func (*qdbCoordinator) getKeyStats(
 				SELECT count(*) 
 				FROM %s as t
 				WHERE %s;
-`, rel.Name, cond)
+`, rel.GetFullName(), cond)
 		row := conn.QueryRow(ctx, query)
 		var count int64
 		if err = row.Scan(&count); err != nil {
