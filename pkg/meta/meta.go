@@ -336,13 +336,28 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AttachRelation:
-
 		rels := []*distributions.DistributedRelation{}
-
 		for _, drel := range stmt.Relations {
 			if stmt.Distribution.Replicated && !drel.ReplicatedRelation {
+
 				return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "non replicated relation should be attached to non replicated distribution")
 			}
+
+			ds, err := mngr.GetDistribution(ctx, stmt.Distribution.ID)
+			if err != nil {
+				return cli.ReportError(err)
+			}
+
+			for _, entry := range drel.DistributionKey {
+				if entry.HashFunction == "city" {
+					for _, colType := range ds.ColTypes {
+						if colType == "varchar" {
+							return fmt.Errorf("hash function CITY is incompatible with column type varchar. HINT: Change column type to 'varchar hash' for CITY hash function")
+						}
+					}
+				}
+			}
+
 			rels = append(rels, distributions.DistributedRelationFromSQL(drel))
 		}
 		var selectedDistribId string
@@ -360,7 +375,6 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 					return cli.ReportError(err)
 				}
 			}
-
 		} else {
 			selectedDistribId = stmt.Distribution.ID
 		}
@@ -370,6 +384,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		}
 
 		return cli.AlterDistributionAttach(ctx, selectedDistribId, rels)
+
 	case *spqrparser.DetachRelation:
 		if err := mngr.AlterDistributionDetach(ctx, stmt.Distribution.ID, stmt.RelationName); err != nil {
 			return err
