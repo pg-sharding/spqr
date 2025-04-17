@@ -1068,15 +1068,15 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 			return err
 		}
 		if !sourceTable {
-			spqrlog.Zero.Info().Str("rel", rel.Name).Msg("source table does not exist")
-			continue
+			spqrlog.Zero.Info().Str("rel", rel.GetFullName()).Msg("source table does not exist")
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" does not exist on the source shard, possible misconfiguration of schema names", rel.GetFullName())
 		}
 		destTable, err := datatransfers.CheckTableExists(ctx, destConn, relName, rel.GetSchema())
 		if err != nil {
 			return err
 		}
 		if !destTable {
-			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" does not exist on the destination shard", rel.Name)
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" does not exist on the destination shard", rel.GetFullName())
 		}
 	}
 
