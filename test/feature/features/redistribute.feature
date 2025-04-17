@@ -18,7 +18,6 @@ Feature: Redistribution test
     REGISTER ROUTER r1 ADDRESS regress_router:7000;
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
-    ALTER DISTRIBUTION ds1 ATTACH RELATION xMove2 DISTRIBUTION KEY w_id;
     ADD SHARD sh1 WITH HOSTS 'postgresql://regress@spqr_shard_1:6432/regress';
     ADD SHARD sh2 WITH HOSTS 'postgresql://regress@spqr_shard_2:6432/regress';
     """
@@ -187,6 +186,7 @@ Feature: Redistribution test
   Scenario: REDISTRIBUTE KEY RANGE works with multiple relations
     When I execute SQL on host "coordinator"
     """
+    ALTER DISTRIBUTION ds1 ATTACH RELATION xMove2 DISTRIBUTION KEY w_id;
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
@@ -646,6 +646,8 @@ Feature: Redistribution test
   Scenario: REDISTRIBUTE KEY RANGE works with multiple schemas
     When I execute SQL on host "coordinator"
     """
+    ALTER DISTRIBUTION ds1 ATTACH RELATION xMove2 DISTRIBUTION KEY w_id;
+    ALTER DISTRIBUTION ds1 ALTER RELATION xMove DISTRIBUTION KEY w_id SCHEMA my_schema;
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
@@ -665,7 +667,6 @@ Feature: Redistribution test
     Then command return code should be "0"
     When I run SQL on host "coordinator" with timeout "300" seconds
     """
-    ALTER DISTRIBUTION ds1 ALTER RELATION xMove DISTRIBUTION KEY w_id SCHEMA my_schema;
     REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 100 APPLY;
     """
     Then command return code should be "0"

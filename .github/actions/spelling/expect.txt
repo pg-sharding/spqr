@@ -1,5 +1,4 @@
 aaaa
-aaaaa
 abalance
 aboba
 abortable
@@ -12,7 +11,6 @@ AExpr
 afe
 aliasname
 anyerr
-anypb
 AOk
 apk
 appdefaults
@@ -124,17 +122,13 @@ eshkere
 etcdctl
 etcdqdb
 expd
-extendee
 FAFBFF
 fdw
 feauter
 feda
 ffd
 fff
-ffff
-ffffffff
 fffffffffffe
-FFFFFFFFFFFF
 FFFFFFFFFFFFFFFF
 filerow
 fmtcheck
@@ -187,7 +181,6 @@ iana
 idi
 idj
 IDR
-Idxs
 IExecute
 IFail
 inds
@@ -380,8 +373,6 @@ prepstatement
 prj
 protobuf
 protoc
-protoimpl
-protoreflect
 psswd
 pstmt
 PYTHONUNBUFFERED
@@ -444,7 +435,6 @@ routerparser
 routerproto
 routingstate
 rowmap
-RPCs
 rqdn
 RQF
 rqfn
@@ -607,16 +597,12 @@ workloadreplay
 worldmock
 wrongpassword
 wtf
-xac
 Xact
-xad
-xbb
-xbd
 Xcpbs
 xdg
 xerrors
-xfe
 xjoin
+xmove
 xproto
 XQDB
 xtab
@@ -627,7 +613,6 @@ xxmixed
 xxmixeduuid
 xxtest
 xxtt
-xxxx
 yaccgen
 yandex
 yjoin
@@ -636,5 +621,3 @@ youtube
 yylex
 zerolog
 ZWQy
-zzzz
-zzzzz
