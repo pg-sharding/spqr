@@ -61,17 +61,20 @@ Feature: MemQDB save state into a file
       {
         "Relation name": "a",
         "Distribution ID": "ds1",
-        "Distribution key": "(\"a_id\", murmur)"
+        "Distribution key": "(\"a_id\", murmur)",
+        "Schema name": ""
       },
       {
         "Relation name": "b",
         "Distribution ID": "ds1",
-        "Distribution key": "(\"b_id\", identity)"
+        "Distribution key": "(\"b_id\", identity)",
+        "Schema name": ""
       },
       {
         "Relation name": "c",
         "Distribution ID": "ds2",
-        "Distribution key": "(\"c_id\", identity)"
+        "Distribution key": "(\"c_id\", identity)",
+        "Schema name": ""
       }
     ]
     """
