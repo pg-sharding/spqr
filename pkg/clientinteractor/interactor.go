@@ -1507,7 +1507,11 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 				}
 				dsKey[i] = fmt.Sprintf("(\"%s\", %s)", e.Column, hashfunction.ToString(t))
 			}
-			if err := pi.WriteDataRow(rel.Name, ds, strings.Join(dsKey, ","), rel.SchemaName); err != nil {
+			schema := rel.SchemaName
+			if schema == "" {
+				schema = "$search_path"
+			}
+			if err := pi.WriteDataRow(rel.Name, ds, strings.Join(dsKey, ","), schema); err != nil {
 				return err
 			}
 			c++
