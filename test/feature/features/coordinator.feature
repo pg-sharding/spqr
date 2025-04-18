@@ -640,7 +640,8 @@ Feature: Coordinator test
       {
         "Relation name": "test",
         "Distribution ID": "ds1",
-        "Distribution key": "(\"id\", identity)"
+        "Distribution key": "(\"id\", identity)",
+        "Schema name": "$search_path"
       }
     ]
     """

@@ -95,7 +95,7 @@ SHOW key_ranges;
 (0 rows)
 
 SHOW relations;
- Relation name | Distribution ID | Distribution key 
----------------+-----------------+------------------
+ Relation name | Distribution ID | Distribution key | Schema name 
+---------------+-----------------+------------------+-------------
 (0 rows)
 

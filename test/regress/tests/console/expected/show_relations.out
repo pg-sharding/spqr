@@ -40,18 +40,18 @@ ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id_1 HASH FUNCTION I
 (2 rows)
 
 SHOW relations;
- Relation name | Distribution ID |           Distribution key            
----------------+-----------------+---------------------------------------
- a             | ds1             | ("a_id", identity)
- b             | ds1             | ("b_id", murmur)
- c             | ds2             | ("c_id_1", identity),("c_id_2", city)
+ Relation name | Distribution ID |           Distribution key            | Schema name  
+---------------+-----------------+---------------------------------------+--------------
+ a             | ds1             | ("a_id", identity)                    | $search_path
+ b             | ds1             | ("b_id", murmur)                      | $search_path
+ c             | ds2             | ("c_id_1", identity),("c_id_2", city) | $search_path
 (3 rows)
 
 SHOW relations WHERE distribution_id = 'ds1';
- Relation name | Distribution ID |  Distribution key  
----------------+-----------------+--------------------
- a             | ds1             | ("a_id", identity)
- b             | ds1             | ("b_id", murmur)
+ Relation name | Distribution ID |  Distribution key  | Schema name  
+---------------+-----------------+--------------------+--------------
+ a             | ds1             | ("a_id", identity) | $search_path
+ b             | ds1             | ("b_id", murmur)   | $search_path
 (2 rows)
 
 SHOW relations WHERE unknown_param = 'ds1';

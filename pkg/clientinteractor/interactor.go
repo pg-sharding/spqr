@@ -1473,12 +1473,8 @@ func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.Shar
 // Returns:
 // - error: An error if any occurred during the operation.
 func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.DistributedRelation, condition spqrparser.WhereClauseNode) error {
-	if err := pi.cl.Send(&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-		TextOidFD("Relation name"),
-		TextOidFD("Distribution ID"),
-		TextOidFD("Distribution key"),
-	}}); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
+	if err := pi.WriteHeader("Relation name", "Distribution ID", "Distribution key", "Schema name"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error sending header")
 		return err
 	}
 
@@ -1511,14 +1507,11 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 				}
 				dsKey[i] = fmt.Sprintf("(\"%s\", %s)", e.Column, hashfunction.ToString(t))
 			}
-			if err := pi.cl.Send(&pgproto3.DataRow{
-				Values: [][]byte{
-					[]byte(rel.Name),
-					[]byte(ds),
-					[]byte(strings.Join(dsKey, ",")),
-				},
-			}); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+			schema := rel.SchemaName
+			if schema == "" {
+				schema = "$search_path"
+			}
+			if err := pi.WriteDataRow(rel.Name, ds, strings.Join(dsKey, ","), schema); err != nil {
 				return err
 			}
 			c++
