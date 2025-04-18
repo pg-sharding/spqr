@@ -596,9 +596,10 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.SplitKeyRange(ctx, &routerproto.SplitKeyRangeRequest{
-			Bound:    req.Bound[0], // fix multidim case
-			SourceId: req.SourceID,
-			NewId:    req.Krid,
+			Bound:     req.Bound[0], // fix multidim case
+			SourceId:  req.SourceID,
+			NewId:     req.Krid,
+			SplitLeft: req.SplitLeft,
 		})
 		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
