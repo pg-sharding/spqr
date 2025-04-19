@@ -12,16 +12,16 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
-CREATE KEY RANGE kridi1 from 1 route to sh1 FOR DISTRIBUTION ds1;
- add key range 
----------------
- bound -> 1
-(1 row)
-
 CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
  bound -> 11
+(1 row)
+
+CREATE KEY RANGE kridi1 from 1 route to sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION x DISTRIBUTION KEY id;

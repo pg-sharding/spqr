@@ -13,16 +13,16 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
- add key range 
----------------
- bound -> 1
-(1 row)
-
 CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
  bound -> 11
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION xxmixed DISTRIBUTION KEY id;
@@ -156,16 +156,16 @@ CREATE DISTRIBUTION ds2 COLUMN TYPES uuid;
  distribution id -> ds2
 (1 row)
 
-CREATE KEY RANGE krid3 FROM 00000000-0000-0000-0000-000000000000 ROUTE TO sh1 FOR DISTRIBUTION ds2;
-                  add key range                  
--------------------------------------------------
- bound -> '00000000-0000-0000-0000-000000000000'
-(1 row)
-
 CREATE KEY RANGE krid4 FROM 88888888-8888-8888-8888-888888888888 ROUTE TO sh2 FOR DISTRIBUTION ds2;
                   add key range                  
 -------------------------------------------------
  bound -> '88888888-8888-8888-8888-888888888888'
+(1 row)
+
+CREATE KEY RANGE krid3 FROM 00000000-0000-0000-0000-000000000000 ROUTE TO sh1 FOR DISTRIBUTION ds2;
+                  add key range                  
+-------------------------------------------------
+ bound -> '00000000-0000-0000-0000-000000000000'
 (1 row)
 
 ALTER DISTRIBUTION ds2 ATTACH RELATION xxmixeduuid DISTRIBUTION KEY id;
