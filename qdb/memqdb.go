@@ -220,7 +220,7 @@ func (q *MemQDB) DropKeyRange(_ context.Context, id string) error {
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("no lock in MemQDB for key range \"%s\"", id))
 	}
 	if !lock.TryLock() {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is locked", id)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id)
 	}
 	defer lock.Unlock()
 
@@ -303,7 +303,7 @@ func (q *MemQDB) TryLockKeyRange(lock *sync.RWMutex, id string, read bool) error
 		res = lock.TryLock()
 	}
 	if !res {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is locked", id)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id)
 	}
 
 	if _, ok := q.Krs[id]; !ok {
