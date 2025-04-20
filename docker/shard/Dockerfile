@@ -48,7 +48,7 @@ RUN chmod a+x /usr/local/bin/entrypoint.sh
 RUN git clone https://github.com/munakoiso/pg_comment_stats.git && \
     cd pg_comment_stats && \
     make && make install && \
-    cd .. && git clone git@github.com:pg-sharding/spqrguard.git && \
+    cd .. && git clone https://github.com/pg-sharding/spqrguard.git && \
     cd spqrguard && \
     make && make install && \
     cd .. && git clone https://github.com/markokr/pghashlib.git && \
