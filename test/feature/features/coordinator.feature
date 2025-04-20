@@ -20,8 +20,8 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer; 
-    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
     """
     Then command return code should be "0"
@@ -37,8 +37,8 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1_test COLUMN TYPES integer;
-    CREATE KEY RANGE krid11 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1_test;
     CREATE KEY RANGE krid22 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1_test;
+    CREATE KEY RANGE krid11 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1_test;
     ALTER DISTRIBUTION ds1_test ATTACH RELATION test1 DISTRIBUTION KEY id;
     """
     Then command return code should be "0"
@@ -76,8 +76,8 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1_test COLUMN TYPES integer;
-    CREATE KEY RANGE krid11 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1_test;
     CREATE KEY RANGE krid22 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1_test;
+    CREATE KEY RANGE krid11 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1_test;
     ALTER DISTRIBUTION ds1_test ATTACH RELATION test1 DISTRIBUTION KEY id;
     """
     Then command return code should be "0"
@@ -584,8 +584,8 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
     """
     Then command return code should be "0"
