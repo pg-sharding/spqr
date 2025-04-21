@@ -193,11 +193,12 @@ Feature: Coordinator test
     Then command return code should be "0"
 
   Scenario: Router synchronization after registration works
-    Given I run SQL on host "coordinator"
+    When I run SQL on host "coordinator"
     """
     UNREGISTER ROUTER r1;
     REGISTER ROUTER r1 ADDRESS regress_router::7000
     """
+    Then command return code should be "0"
     When I run SQL on host "router-admin"
     """
     SHOW key_ranges

@@ -1570,31 +1570,37 @@ func (qc *QDBCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	// Configure key ranges.
 	krClient := routerproto.NewKeyRangeServiceClient(cc)
 	spqrlog.Zero.Debug().Msg("qdb coordinator: configure key ranges")
-	keyRanges, err := qc.db.ListAllKeyRanges(ctx)
-	if err != nil {
-		return err
-	}
 	if _, err = krClient.DropAllKeyRanges(ctx, nil); err != nil {
 		return err
 	}
 
-	for _, keyRange := range keyRanges {
-		ds, err := qc.db.GetDistribution(ctx, keyRange.DistributionId)
+	for _, ds := range dss {
+		krs, err := qc.db.ListKeyRanges(ctx, ds.Id)
 		if err != nil {
 			return err
 		}
-		resp, err := krClient.CreateKeyRange(ctx, &routerproto.CreateKeyRangeRequest{
-			KeyRangeInfo: kr.KeyRangeFromDB(keyRange, ds.ColTypes).ToProto(),
+
+		sort.Slice(krs, func(i, j int) bool {
+			l := kr.KeyRangeFromDB(krs[i], ds.ColTypes)
+			r := kr.KeyRangeFromDB(krs[j], ds.ColTypes)
+			return !kr.CmpRangesLess(l.LowerBound, r.LowerBound, ds.ColTypes)
 		})
 
-		if err != nil {
-			return err
-		}
+		for _, keyrange := range krs {
+			resp, err := krClient.CreateKeyRange(ctx, &routerproto.CreateKeyRangeRequest{
+				KeyRangeInfo: kr.KeyRangeFromDB(keyrange, ds.ColTypes).ToProto(),
+			})
 
-		spqrlog.Zero.Debug().
-			Interface("response", resp).
-			Msg("got response while adding key range")
+			if err != nil {
+				return err
+			}
+
+			spqrlog.Zero.Debug().
+				Interface("response", resp).
+				Msg("got response while adding key range")
+		}
 	}
+
 	spqrlog.Zero.Debug().Msg("successfully add all key ranges")
 
 	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
