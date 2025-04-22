@@ -1485,7 +1485,6 @@ func (qc *qdbCoordinator) getNextKeyRange(ctx context.Context, keyRange *kr.KeyR
 // Returns:
 //   - error: An error if any occurred.
 func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
-	qc.WriteMoveTaskGroup(ctx, taskGroup)
 	for len(taskGroup.Tasks) != 0 {
 		task := taskGroup.Tasks[0]
 		switch task.State {
