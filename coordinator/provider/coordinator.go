@@ -1307,6 +1307,7 @@ func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req 
 		return nil, err
 	}
 	columns := strings.Join(colsArr, ", ")
+	subColumns := "sub." + strings.Join(colsArr, ", sub.")
 	orderByClause := columns + " " + func() string {
 		switch req.Type {
 		case tasks.SplitLeft:
@@ -1320,8 +1321,7 @@ func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req 
 	query := fmt.Sprintf(`
 WITH 
 sub as (
-    SELECT DISTINCT ON (%s)
-		%s, row_number() OVER(ORDER BY %s) as row_n
+    SELECT %s, row_number() OVER(ORDER BY %s) as row_n
     FROM (
         SELECT * FROM %s
         WHERE %s
@@ -1342,13 +1342,13 @@ total_rows AS (
 	FROM %s
 	WHERE %s
 )
-SELECT sub.*, total_rows.count <= constants.row_count
+SELECT DISTINCT ON (%s) sub.*, total_rows.count <= constants.row_count
 FROM sub JOIN max_row ON true JOIN constants ON true JOIN total_rows ON true
 WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count)
    OR (sub.row_n = constants.row_count)
-   OR (max_row.row_n < constants.row_count AND sub.row_n = max_row.row_n);
+   OR (max_row.row_n < constants.row_count AND sub.row_n = max_row.row_n)
+ORDER BY (%s) DESC;
 `,
-		columns,
 		columns,
 		orderByClause,
 		rel.GetFullName(),
@@ -1369,6 +1369,8 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 		step,
 		rel.GetFullName(),
 		condition,
+		subColumns,
+		subColumns,
 	)
 	spqrlog.Zero.Debug().Str("query", query).Msg("get split bound")
 	rows, err := conn.Query(ctx, query)
