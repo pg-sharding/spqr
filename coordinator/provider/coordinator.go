@@ -1071,12 +1071,31 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 			spqrlog.Zero.Info().Str("rel", rel.GetFullName()).Msg("source table does not exist")
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" does not exist on the source shard, possible misconfiguration of schema names", rel.GetFullName())
 		}
+		for _, col := range rel.DistributionKey {
+			exists, err := datatransfers.CheckColumnExists(ctx, sourceConn, relName, rel.GetSchema(), col.Column)
+			if err != nil {
+				return err
+			}
+			if !exists {
+				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "distribution key column \"%s\" not found in relation \"%s\" on source shard", col.Column, rel.GetFullName())
+			}
+		}
 		destTable, err := datatransfers.CheckTableExists(ctx, destConn, relName, rel.GetSchema())
 		if err != nil {
 			return err
 		}
 		if !destTable {
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" does not exist on the destination shard", rel.GetFullName())
+		}
+		// TODO check whole table schema for compatibility
+		for _, col := range rel.DistributionKey {
+			exists, err := datatransfers.CheckColumnExists(ctx, destConn, relName, rel.GetSchema(), col.Column)
+			if err != nil {
+				return err
+			}
+			if !exists {
+				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "distribution key column \"%s\" not found in relation \"%s\" on destination shard", col.Column, rel.GetFullName())
+			}
 		}
 	}
 

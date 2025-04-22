@@ -385,6 +385,27 @@ func CheckTableExists(ctx context.Context, conn *pgx.Conn, relName, schema strin
 	return exists, nil
 }
 
+// CheckColumnExists checks if specified column exists in a relation.
+//
+// Parameters:
+// - ctx (context.Context): the context for database operations;
+// - conn (*pgx.Conn): the connection to the database;
+// - relName (string): the name of the table to check;
+// - schema (string): the schema of the table to check;
+// - colName (string): the name of the column to check.
+//
+// Returns:
+// - bool: true if the column exists, false otherwise;
+// - error: an error if there was a problem executing the query.
+func CheckColumnExists(ctx context.Context, conn *pgx.Conn, relName, schema, colName string) (bool, error) {
+	res := conn.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as column_exists FROM information_schema.columns WHERE table_name = '%s' AND table_schema = '%s' AND column_name = '%s'`, relName, schema, colName))
+	exists := false
+	if err := res.Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 // getEntriesCount retrieves the number of entries from a database table based on the provided condition.
 //
 // Parameters:
