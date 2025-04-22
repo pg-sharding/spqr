@@ -1062,8 +1062,8 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 	schemas := make(map[string]struct{})
 	for _, rel := range ds.Relations {
 		schemas[rel.GetSchema()] = struct{}{}
-		relName := strings.ToLower(rel.Name)
-		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, relName, rel.GetSchema())
+		schemaName := rel.GetSchema()
+		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, rel.Name, schemaName)
 		if err != nil {
 			return err
 		}
@@ -1072,7 +1072,7 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" does not exist on the source shard, possible misconfiguration of schema names", rel.GetFullName())
 		}
 		for _, col := range rel.DistributionKey {
-			exists, err := datatransfers.CheckColumnExists(ctx, sourceConn, relName, rel.GetSchema(), col.Column)
+			exists, err := datatransfers.CheckColumnExists(ctx, sourceConn, rel.Name, schemaName, col.Column)
 			if err != nil {
 				return err
 			}
@@ -1080,7 +1080,7 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "distribution key column \"%s\" not found in relation \"%s\" on source shard", col.Column, rel.GetFullName())
 			}
 		}
-		destTable, err := datatransfers.CheckTableExists(ctx, destConn, relName, rel.GetSchema())
+		destTable, err := datatransfers.CheckTableExists(ctx, destConn, rel.Name, schemaName)
 		if err != nil {
 			return err
 		}
@@ -1089,7 +1089,7 @@ func (qc *qdbCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 		}
 		// TODO check whole table schema for compatibility
 		for _, col := range rel.DistributionKey {
-			exists, err := datatransfers.CheckColumnExists(ctx, destConn, relName, rel.GetSchema(), col.Column)
+			exists, err := datatransfers.CheckColumnExists(ctx, destConn, rel.Name, schemaName, col.Column)
 			if err != nil {
 				return err
 			}

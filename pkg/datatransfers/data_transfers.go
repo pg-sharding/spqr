@@ -180,7 +180,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			// drop data from sending shard
 			for _, rel := range ds.Relations {
 				// TODO get actual schema
-				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = 'public'`, strings.ToLower(rel.Name)))
+				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = 'public'`, rel.Name))
 				fromTableExists := false
 				if err = res.Scan(&fromTableExists); err != nil {
 					return err
@@ -192,7 +192,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				if err != nil {
 					return err
 				}
-				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, strings.ToLower(rel.Name), cond))
+				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, rel.Name, cond))
 				if err != nil {
 					return err
 				}
@@ -320,7 +320,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		// check that relation exists on sending shard and there is data to copy. If not, skip the relation
 		// TODO get actual schema
 		relSchemaName := rel.GetSchema()
-		fromTableExists, err := CheckTableExists(ctx, from, strings.ToLower(rel.Name), relSchemaName)
+		fromTableExists, err := CheckTableExists(ctx, from, rel.Name, relSchemaName)
 		if err != nil {
 			return err
 		}
@@ -333,7 +333,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 			return err
 		}
 		// check that relation exists on receiving shard. If not, exit
-		toTableExists, err := CheckTableExists(ctx, to, strings.ToLower(rel.Name), relSchemaName)
+		toTableExists, err := CheckTableExists(ctx, to, rel.Name, relSchemaName)
 		if err != nil {
 			return err
 		}
@@ -356,7 +356,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 					INSERT INTO %s
 					SELECT * FROM %s
 					WHERE %s
-`, relFullName, fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.Name)), krCondition)
+`, relFullName, fmt.Sprintf("%q.%q", schemaName, rel.Name), krCondition)
 		_, err = to.Exec(ctx, query)
 		if err != nil {
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 
@@ -83,7 +82,7 @@ FROM information_schema.tables;
 	rows.Close()
 
 	for _, rel := range rels {
-		if _, ok := res[strings.ToLower(rel.Name)]; !ok {
+		if _, ok := res[rel.Name]; !ok {
 			continue
 		}
 		spqrlog.Zero.Debug().
