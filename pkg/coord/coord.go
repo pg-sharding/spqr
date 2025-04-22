@@ -15,12 +15,12 @@ import (
 	"github.com/pg-sharding/spqr/qdb/ops"
 )
 
-type BaseCoordinator struct {
+type Coordinator struct {
 	qdb qdb.QDB
 }
 
-func NewBaseCoordinator(qdb qdb.QDB) BaseCoordinator {
-	return BaseCoordinator{
+func NewCoordinator(qdb qdb.QDB) Coordinator {
+	return Coordinator{
 		qdb: qdb,
 	}
 }
@@ -33,7 +33,7 @@ func NewBaseCoordinator(qdb qdb.QDB) BaseCoordinator {
 // Returns:
 // - *tasks.MoveTaskGroup: the retrieved task group, or nil if an error occurred.
 // - error: an error if the retrieval process fails.
-func (lc *BaseCoordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
+func (lc *Coordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
 	group, err := lc.qdb.GetMoveTaskGroup(ctx)
 	if err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func (lc *BaseCoordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTas
 
 // GetDistribution retrieves info about distribution from QDB
 // TODO: unit tests
-func (lc *BaseCoordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
+func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
 	ret, err := lc.qdb.GetDistribution(ctx, id)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (lc *BaseCoordinator) GetDistribution(ctx context.Context, id string) (*dis
 
 // GetRelationDistribution retrieves info about distribution attached to relation from QDB
 // TODO: unit tests
-func (lc *BaseCoordinator) GetRelationDistribution(ctx context.Context, relation string) (*distributions.Distribution, error) {
+func (lc *Coordinator) GetRelationDistribution(ctx context.Context, relation string) (*distributions.Distribution, error) {
 	ret, err := lc.qdb.GetRelationDistribution(ctx, relation)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (lc *BaseCoordinator) GetRelationDistribution(ctx context.Context, relation
 	return ds, nil
 }
 
-func (lc *BaseCoordinator) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
+func (lc *Coordinator) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
 	resp, err := lc.qdb.ListShards(ctx)
 	if err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func (lc *BaseCoordinator) ListShards(ctx context.Context) ([]*topology.DataShar
 // Returns:
 // - *kr.KeyRange: the KeyRange object retrieved.
 // - error: an error if the retrieval encounters any issues.
-func (qc *BaseCoordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
+func (qc *Coordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
 	krDb, err := qc.qdb.GetKeyRange(ctx, krId)
 	if err != nil {
 		return nil, err
@@ -130,7 +130,7 @@ func (qc *BaseCoordinator) GetKeyRange(ctx context.Context, krId string) (*kr.Ke
 // Returns:
 // - []*kr.KeyRange: a slice of KeyRange objects retrieved.
 // - error: an error if the retrieval encounters any issues.
-func (qc *BaseCoordinator) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
+func (qc *Coordinator) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
 	keyRanges, err := qc.qdb.ListKeyRanges(ctx, distribution)
 	if err != nil {
 		return nil, err
@@ -156,7 +156,7 @@ func (qc *BaseCoordinator) ListKeyRanges(ctx context.Context, distribution strin
 //
 // Returns:
 // - error: an error if the write operation fails.
-func (qc *BaseCoordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
+func (qc *Coordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
 	return qc.qdb.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
 }
 
@@ -167,7 +167,7 @@ func (qc *BaseCoordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *ta
 //
 // Returns:
 // - error: an error if the removal operation fails.
-func (qc *BaseCoordinator) RemoveMoveTaskGroup(ctx context.Context) error {
+func (qc *Coordinator) RemoveMoveTaskGroup(ctx context.Context) error {
 	return qc.qdb.RemoveMoveTaskGroup(ctx)
 }
 
@@ -181,7 +181,7 @@ func (qc *BaseCoordinator) RemoveMoveTaskGroup(ctx context.Context) error {
 // Returns:
 // - []*distributions.Distribution: a slice of distributions.Distribution objects representing the retrieved distributions.
 // - error: an error if the retrieval operation fails.
-func (qc *BaseCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
+func (qc *Coordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
 	distrs, err := qc.qdb.ListDistributions(ctx)
 	if err != nil {
 		return nil, err
@@ -201,7 +201,7 @@ func (qc *BaseCoordinator) ListDistributions(ctx context.Context) ([]*distributi
 	return res, nil
 }
 
-func (qc *BaseCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
+func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
 	if len(ds.ColTypes) == 0 && ds.Id != distributions.REPLICATED {
 		return fmt.Errorf("empty distributions are disallowed")
 	}
@@ -227,7 +227,7 @@ func (qc *BaseCoordinator) CreateDistribution(ctx context.Context, ds *distribut
 //
 // Returns:
 // - error: an error if the alteration operation fails.
-func (qc *BaseCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
+func (qc *Coordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
 	return qc.qdb.AlterDistributionDetach(ctx, id, relName)
 }
 
@@ -238,7 +238,7 @@ func (qc *BaseCoordinator) AlterDistributionDetach(ctx context.Context, id strin
 //
 // Returns:
 // - error: An error indicating the sharing status.
-func (qc *BaseCoordinator) ShareKeyRange(id string) error {
+func (qc *Coordinator) ShareKeyRange(id string) error {
 	return qc.qdb.ShareKeyRange(id)
 }
 
@@ -250,7 +250,7 @@ func (qc *BaseCoordinator) ShareKeyRange(id string) error {
 //
 // Returns:
 // - error: An error if the creation encounters any issues.
-func (lc *BaseCoordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	return ops.CreateKeyRangeWithChecks(ctx, lc.qdb, kr)
 }
 
@@ -265,7 +265,7 @@ func (lc *BaseCoordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) 
 // Returns:
 // - *kr.KeyRange: the locked KeyRange object.
 // - error: an error if the lock operation encounters any issues.
-func (qc *BaseCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
+func (qc *Coordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
 	keyRangeDB, err := qc.qdb.LockKeyRange(ctx, keyRangeID)
 	if err != nil {
 		return nil, err
@@ -289,7 +289,7 @@ func (qc *BaseCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) 
 //
 // Returns:
 // - error: an error if the unlock operation encounters any issues.
-func (qc *BaseCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID string) error {
+func (qc *Coordinator) UnlockKeyRange(ctx context.Context, keyRangeID string) error {
 	return qc.qdb.UnlockKeyRange(ctx, keyRangeID)
 }
 
@@ -304,7 +304,7 @@ func (qc *BaseCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID string
 //
 // Returns:
 // - error: an error if the alteration operation fails.
-func (lc *BaseCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
+func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
 	ds, err := lc.qdb.GetDistribution(ctx, id)
 	if err != nil {
 		return err
@@ -346,7 +346,7 @@ func (lc *BaseCoordinator) AlterDistributionAttach(ctx context.Context, id strin
 //
 // Returns:
 // - error: an error if the unite operation encounters any issues.
-func (qc *BaseCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
+func (qc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
 	krBaseDb, err := qc.qdb.LockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId)
 	if err != nil {
 		return err
@@ -434,7 +434,7 @@ func (qc *BaseCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKey
 //
 // Returns:
 // - error: an error if the split operation encounters any issues.
-func (qc *BaseCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
+func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	spqrlog.Zero.Debug().
 		Str("krid", req.Krid).
 		Interface("bound", req.Bound).
@@ -520,6 +520,6 @@ func (qc *BaseCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) err
 	return nil
 }
 
-func (bc *BaseCoordinator) ListSequences(ctx context.Context) ([]string, error) {
+func (bc *Coordinator) ListSequences(ctx context.Context) ([]string, error) {
 	return bc.qdb.ListSequences(ctx)
 }

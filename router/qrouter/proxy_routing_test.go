@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/coord/local"
+	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -48,7 +48,7 @@ func TestMultiShardRouting(t *testing.T) {
 		},
 	})
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -190,7 +190,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -284,7 +284,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		},
 	})
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -394,7 +394,7 @@ func TestComment(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -483,7 +483,7 @@ func TestCTE(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -707,7 +707,7 @@ func TestSingleShard(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -973,7 +973,7 @@ func TestInsertOffsets(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1119,7 +1119,7 @@ func TestJoins(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1227,7 +1227,7 @@ func TestUnnest(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1323,7 +1323,7 @@ func TestCopySingleShard(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1405,7 +1405,7 @@ func TestCopyMultiShard(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1473,7 +1473,7 @@ func TestSetStmt(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1576,7 +1576,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1784,7 +1784,7 @@ func TestHashRouting(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},

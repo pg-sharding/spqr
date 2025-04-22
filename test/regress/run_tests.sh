@@ -45,6 +45,7 @@ run_tests "router" "regress_router" "6432"
 run_tests "pooler" "regress_pooler" "6432"
 run_tests "coordinator" "regress_coordinator" "7002"
 
+# these tests are to compare the results of the local and qdb coordinators
 run_tests "common" "regress_coordinator" "7002"
 insert_greeting
 run_tests "common" "regress_router" "7432"

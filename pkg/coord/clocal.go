@@ -1,4 +1,4 @@
-package local
+package coord
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -22,7 +21,7 @@ import (
 )
 
 type LocalCoordinator struct {
-	coord.BaseCoordinator
+	Coordinator
 
 	mu sync.Mutex
 
@@ -67,7 +66,7 @@ func (lc *LocalCoordinator) RemoveBalancerTask(context.Context) error {
 func (lc *LocalCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-	return lc.BaseCoordinator.CreateDistribution(ctx, ds)
+	return lc.Coordinator.CreateDistribution(ctx, ds)
 }
 
 // TODO : unit tests
@@ -84,7 +83,7 @@ func (lc *LocalCoordinator) CreateDistribution(ctx context.Context, ds *distribu
 func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-	return lc.BaseCoordinator.AlterDistributionAttach(ctx, id, rels)
+	return lc.Coordinator.AlterDistributionAttach(ctx, id, rels)
 }
 
 // AlterDistributionDetach detaches relation from distribution
@@ -92,7 +91,7 @@ func (lc *LocalCoordinator) AlterDistributionDetach(ctx context.Context, id stri
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	return lc.BaseCoordinator.AlterDistributionDetach(ctx, id, relName)
+	return lc.Coordinator.AlterDistributionDetach(ctx, id, relName)
 }
 
 // TODO : unit tests
@@ -149,7 +148,7 @@ func (lc *LocalCoordinator) AlterDistributedRelation(ctx context.Context, id str
 func (lc *LocalCoordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-	return lc.BaseCoordinator.GetDistribution(ctx, id)
+	return lc.Coordinator.GetDistribution(ctx, id)
 }
 
 // GetRelationDistribution retrieves a distribution based on the given relation from the local coordinator's QDB.
@@ -164,7 +163,7 @@ func (lc *LocalCoordinator) GetDistribution(ctx context.Context, id string) (*di
 func (lc *LocalCoordinator) GetRelationDistribution(ctx context.Context, relation string) (*distributions.Distribution, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-	return lc.BaseCoordinator.GetRelationDistribution(ctx, relation)
+	return lc.Coordinator.GetRelationDistribution(ctx, relation)
 }
 
 // TODO : unit tests
@@ -214,7 +213,7 @@ func (lc *LocalCoordinator) DropDistribution(ctx context.Context, id string) err
 // - []*topology.DataShard: A slice of topology.DataShard objects representing the list of data shards.
 // - error: An error if the retrieval operation fails.
 func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
-	return lc.BaseCoordinator.ListShards(ctx)
+	return lc.Coordinator.ListShards(ctx)
 }
 
 // AddWorldShard adds a world shard to the LocalCoordinator.
@@ -633,7 +632,7 @@ func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64,
 		return -1, err
 	}
 	defer conn.Close()
-	mgr := coord.NewAdapter(conn)
+	mgr := NewAdapter(conn)
 	return mgr.NextVal(ctx, seqName)
 }
 
@@ -646,10 +645,10 @@ func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64,
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
 func NewLocalCoordinator(db qdb.QDB, cache *cache.SchemaCache) meta.EntityMgr {
 	return &LocalCoordinator{
-		BaseCoordinator: coord.NewBaseCoordinator(db),
-		DataShardCfgs:   map[string]*config.Shard{},
-		WorldShardCfgs:  map[string]*config.Shard{},
-		qdb:             db,
-		cache:           cache,
+		Coordinator:    NewCoordinator(db),
+		DataShardCfgs:  map[string]*config.Shard{},
+		WorldShardCfgs: map[string]*config.Shard{},
+		qdb:            db,
+		cache:          cache,
 	}
 }
