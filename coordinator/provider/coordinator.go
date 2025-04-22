@@ -1320,7 +1320,8 @@ func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req 
 	query := fmt.Sprintf(`
 WITH 
 sub as (
-    SELECT %s, row_number() OVER(ORDER BY %s) as row_n
+    SELECT DISTINCT ON (%s)
+		%s, row_number() OVER(ORDER BY %s) as row_n
     FROM (
         SELECT * FROM %s
         WHERE %s
@@ -1348,6 +1349,7 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
    OR (max_row.row_n < constants.row_count AND sub.row_n = max_row.row_n);
 `,
 		columns,
+		columns,
 		orderByClause,
 		rel.GetFullName(),
 		condition,
@@ -1368,6 +1370,7 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 		rel.GetFullName(),
 		condition,
 	)
+	spqrlog.Zero.Debug().Str("query", query).Msg("get split bound")
 	rows, err := conn.Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -1385,7 +1388,9 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 			spqrlog.Zero.Error().Err(err).Str("rel", rel.Name).Msg("error getting move tasks")
 			return nil, err
 		}
-
+		for i, value := range values {
+			spqrlog.Zero.Debug().Str("value", value).Int("index", i).Msg("got split bound")
+		}
 		bound := make([][]byte, len(colsArr))
 		for i, t := range ds.ColTypes {
 			switch t {
@@ -1478,6 +1483,7 @@ func (qc *qdbCoordinator) getNextKeyRange(ctx context.Context, keyRange *kr.KeyR
 // Returns:
 //   - error: An error if any occurred.
 func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
+	qc.WriteMoveTaskGroup(ctx, taskGroup)
 	for len(taskGroup.Tasks) != 0 {
 		task := taskGroup.Tasks[0]
 		switch task.State {
