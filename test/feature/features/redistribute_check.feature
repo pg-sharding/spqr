@@ -17,7 +17,7 @@ Feature: Redistribution test
     """
     REGISTER ROUTER r1 ADDRESS regress_router:7000;
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION xmove DISTRIBUTION KEY w_id;
     ADD SHARD sh1 WITH HOSTS 'postgresql://regress@spqr_shard_1:6432/regress';
     ADD SHARD sh2 WITH HOSTS 'postgresql://regress@spqr_shard_2:6432/regress';
     """
