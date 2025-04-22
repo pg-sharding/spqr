@@ -65,6 +65,7 @@ cpg
 cptr
 createsequence
 crt
+cqdb
 csm
 Cta
 ctl
