@@ -1307,7 +1307,15 @@ func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req 
 		return nil, err
 	}
 	columns := strings.Join(colsArr, ", ")
-	orderByClause := columns + " " + func() string {
+	selectAsColumnsElems := make([]string, len(colsArr))
+	subColumnsElems := make([]string, len(colsArr))
+	for i := range selectAsColumnsElems {
+		selectAsColumnsElems[i] = fmt.Sprintf("%s as col%d", colsArr[i], i)
+		subColumnsElems[i] = fmt.Sprintf("sub.col%d", i)
+	}
+	selectAsColumns := strings.Join(selectAsColumnsElems, ", ")
+	subColumns := strings.Join(subColumnsElems, ", ")
+	sort := func() string {
 		switch req.Type {
 		case tasks.SplitLeft:
 			return "ASC"
@@ -1317,6 +1325,7 @@ func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req 
 			return "DESC"
 		}
 	}()
+	orderByClause := columns + " " + sort
 	query := fmt.Sprintf(`
 WITH 
 sub as (
@@ -1341,13 +1350,14 @@ total_rows AS (
 	FROM %s
 	WHERE %s
 )
-SELECT sub.*, total_rows.count <= constants.row_count
+SELECT DISTINCT ON (%s) sub.*, total_rows.count <= constants.row_count
 FROM sub JOIN max_row ON true JOIN constants ON true JOIN total_rows ON true
 WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count)
    OR (sub.row_n = constants.row_count)
-   OR (max_row.row_n < constants.row_count AND sub.row_n = max_row.row_n);
+   OR (max_row.row_n < constants.row_count AND sub.row_n = max_row.row_n)
+ORDER BY (%s) %s;
 `,
-		columns,
+		selectAsColumns,
 		orderByClause,
 		rel.GetFullName(),
 		condition,
@@ -1367,7 +1377,11 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 		step,
 		rel.GetFullName(),
 		condition,
+		subColumns,
+		subColumns,
+		sort,
 	)
+	spqrlog.Zero.Debug().Str("query", query).Msg("get split bound")
 	rows, err := conn.Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -1385,7 +1399,9 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 			spqrlog.Zero.Error().Err(err).Str("rel", rel.Name).Msg("error getting move tasks")
 			return nil, err
 		}
-
+		for i, value := range values[:len(values)-1] {
+			spqrlog.Zero.Debug().Str("value", value).Int("index", i).Msg("got split bound")
+		}
 		bound := make([][]byte, len(colsArr))
 		for i, t := range ds.ColTypes {
 			switch t {
