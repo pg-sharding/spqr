@@ -1,4 +1,2 @@
 DROP DATABASE regress;
-NOTICE: send query to shard(s) : sh1,sh2
-ERROR:  database "regress" is being accessed by other users
-DETAIL:  There is 1 other session using the database.
+ERROR:  client processing error: error processing query 'DROP DATABASE regress;': syntax error on pos 5, tx status IDLE

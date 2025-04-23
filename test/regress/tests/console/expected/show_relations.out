@@ -33,19 +33,14 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION b DISTRIBUTION KEY b_id HASH FUNCTION MUR
 
 ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id_1 HASH FUNCTION IDENT,
                                                           c_id_2 HASH FUNCTION CITY;
-      attach table      
-------------------------
- relation name   -> c
- distribution id -> ds2
-(2 rows)
-
+ERROR:  Hash function CITY is incompatible with column type varchar
+HINT: Change column type to 'varchar hash' for CITY hash function
 SHOW relations;
- Relation name | Distribution ID |           Distribution key            
----------------+-----------------+---------------------------------------
+ Relation name | Distribution ID |  Distribution key  
+---------------+-----------------+--------------------
  a             | ds1             | ("a_id", identity)
  b             | ds1             | ("b_id", murmur)
- c             | ds2             | ("c_id_1", identity),("c_id_2", city)
-(3 rows)
+(2 rows)
 
 SHOW relations WHERE distribution_id = 'ds1';
  Relation name | Distribution ID |  Distribution key  

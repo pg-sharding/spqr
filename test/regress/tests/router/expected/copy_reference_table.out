@@ -13,12 +13,7 @@ CREATE REPLICATED DISTRIBUTION;
 (1 row)
 
 ALTER REPLICATED DISTRIBUTION ATTACH RELATION test_ref_rel;
-          attach table           
----------------------------------
- relation name   -> test_ref_rel
- distribution id -> REPLICATED
-(2 rows)
-
+ERROR:  distribution "" not found.
 -- test both ways of ref relation crete syntax
 CREATE REFERENCE TABLE test_ref_rel_2;
            attach table            
@@ -29,55 +24,56 @@ CREATE REFERENCE TABLE test_ref_rel_2;
 
 \c regress
 CREATE TABLE test_ref_rel(i int, j int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  client processing error: error processing query 'CREATE TABLE test_ref_rel(i int, j int);': distribution for relation "test_ref_rel" not found., tx status IDLE
 CREATE TABLE test_ref_rel_2(i int, j int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY test_ref_rel FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  relation "test_ref_rel" does not exist
+1	2
+2	3
+3	4
+4	5
+\.
+invalid command \.
 COPY test_ref_rel_2 FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  client processing error: error processing query '1	2
+2	3
+3	4
+4	5
+COPY test_ref_rel_2 FROM STDIN;': syntax error on pos 0, tx status IDLE
+1	2
+2	3
+3	4
+4	5
+\.
+invalid command \.
 TABLE test_ref_rel /* __spqr__execute_on: sh1 */;
-NOTICE: send query to shard(s) : sh1
- i | j 
----+---
- 1 | 2
- 2 | 3
- 3 | 4
- 4 | 5
-(4 rows)
-
+ERROR:  client processing error: error processing query '1	2
+2	3
+3	4
+4	5
+TABLE test_ref_rel /* __spqr__execute_on: sh1 */;': syntax error on pos 0, tx status IDLE
 TABLE test_ref_rel /* __spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2
- i | j 
----+---
- 1 | 2
- 2 | 3
- 3 | 4
- 4 | 5
-(4 rows)
-
+ERROR:  relation "test_ref_rel" does not exist
+LINE 1: TABLE test_ref_rel /* __spqr__execute_on: sh2 */;
+              ^
 TABLE test_ref_rel_2 /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  i | j 
 ---+---
- 1 | 2
- 2 | 3
- 3 | 4
- 4 | 5
-(4 rows)
+(0 rows)
 
 TABLE test_ref_rel_2 /* __spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2
  i | j 
 ---+---
- 1 | 2
- 2 | 3
- 3 | 4
- 4 | 5
-(4 rows)
+(0 rows)
 
 DROP TABLE test_ref_rel;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  table "test_ref_rel" does not exist
 DROP TABLE test_ref_rel_2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
