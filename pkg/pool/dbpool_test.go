@@ -493,3 +493,106 @@ func TestBuildHostOrder(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildHostOrder_IgnoreUnavailableHosts(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	underyling_pool := mockpool.NewMockMultiShardPool(ctrl)
+
+	key := kr.ShardKey{
+		Name: "sh1",
+	}
+
+	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
+		key.Name: {
+			RawHosts: []string{
+				"sas-123.db.yandex.net:6432:sas",
+				"sas-234.db.yandex.net:6432:sas",
+				"vla-123.db.yandex.net:6432:vla",
+				"vla-234.db.yandex.net:6432:vla",
+				"klg-123.db.yandex.net:6432:klg",
+				"klg-234.db.yandex.net:6432:klg",
+			},
+		},
+	}, &startup.StartupParams{}, underyling_pool, time.Hour)
+
+	dbpool.CacheTSAChecks.Store(pool.TsaKey{
+		Tsa:  config.TargetSessionAttrsAny,
+		Host: "sas-123.db.yandex.net:6432",
+		AZ:   "sas",
+	}, false)
+
+	dbpool.CacheTSAChecks.Store(pool.TsaKey{
+		Tsa:  config.TargetSessionAttrsAny,
+		Host: "sas-234.db.yandex.net:6432",
+		AZ:   "sas",
+	}, true)
+
+	dbpool.CacheTSAChecks.Store(pool.TsaKey{
+		Tsa:  config.TargetSessionAttrsAny,
+		Host: "vla-123.db.yandex.net:6432",
+		AZ:   "vla",
+	}, false)
+
+	dbpool.CacheTSAChecks.Store(pool.TsaKey{
+		Tsa:  config.TargetSessionAttrsAny,
+		Host: "vla-234.db.yandex.net:6432",
+		AZ:   "vla",
+	}, true)
+
+	dbpool.CacheTSAChecks.Store(pool.TsaKey{
+		Tsa:  config.TargetSessionAttrsAny,
+		Host: "klg-123.db.yandex.net:6432",
+		AZ:   "klg",
+	}, false)
+
+	dbpool.CacheTSAChecks.Store(pool.TsaKey{
+		Tsa:  config.TargetSessionAttrsAny,
+		Host: "klg-234.db.yandex.net:6432",
+		AZ:   "klg",
+	}, true)
+
+	tests := []struct {
+		name              string
+		ignoreUnavailable bool
+		expectedHosts     []string
+	}{
+		{
+			name:              "Ignore unavailable hosts",
+			ignoreUnavailable: true,
+			expectedHosts: []string{
+				"sas-234.db.yandex.net:6432",
+				"vla-234.db.yandex.net:6432",
+				"klg-234.db.yandex.net:6432",
+			},
+		},
+		{
+			name:              "Include unavailable hosts",
+			ignoreUnavailable: false,
+			expectedHosts: []string{
+				"sas-234.db.yandex.net:6432",
+				"vla-234.db.yandex.net:6432",
+				"klg-234.db.yandex.net:6432",
+				"sas-123.db.yandex.net:6432",
+				"vla-123.db.yandex.net:6432",
+				"klg-123.db.yandex.net:6432",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config.RouterConfig().IgnoreUnavailableHosts = tt.ignoreUnavailable
+
+			hostOrder, err := dbpool.BuildHostOrder(key, config.TargetSessionAttrsAny)
+			assert.NoError(t, err)
+
+			var hostAddresses []string
+			for _, host := range hostOrder {
+				hostAddresses = append(hostAddresses, host.Address)
+			}
+
+			assert.Equal(t, tt.expectedHosts, hostAddresses)
+		})
+	}
+}
