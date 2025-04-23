@@ -1315,7 +1315,7 @@ func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req 
 	}
 	selectAsColumns := strings.Join(selectAsColumnsElems, ", ")
 	subColumns := strings.Join(subColumnsElems, ", ")
-	orderByClause := columns + " " + func() string {
+	sort := func() string {
 		switch req.Type {
 		case tasks.SplitLeft:
 			return "ASC"
@@ -1325,6 +1325,7 @@ func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req 
 			return "DESC"
 		}
 	}()
+	orderByClause := columns + " " + sort
 	query := fmt.Sprintf(`
 WITH 
 sub as (
@@ -1354,7 +1355,7 @@ FROM sub JOIN max_row ON true JOIN constants ON true JOIN total_rows ON true
 WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count)
    OR (sub.row_n = constants.row_count)
    OR (max_row.row_n < constants.row_count AND sub.row_n = max_row.row_n)
-ORDER BY (%s) DESC;
+ORDER BY (%s) %s;
 `,
 		selectAsColumns,
 		orderByClause,
@@ -1378,6 +1379,7 @@ ORDER BY (%s) DESC;
 		condition,
 		subColumns,
 		subColumns,
+		sort,
 	)
 	spqrlog.Zero.Debug().Str("query", query).Msg("get split bound")
 	rows, err := conn.Query(ctx, query)
