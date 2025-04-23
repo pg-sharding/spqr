@@ -54,10 +54,10 @@ func TestTSA_RW(t *testing.T) {
 	instance.EXPECT().Hostname().AnyTimes().Return("host1")
 	sh.EXPECT().Name().Return("sh1").AnyTimes()
 
-	res, _, err := checker.CheckTSA(sh)
-
-	assert.NoError(err, "")
-	assert.Equal(true, res)
+	cr, err := checker.CheckTSA(sh)
+	assert.NoError(err)
+	assert.Equal(true, cr.RW)
+	assert.Equal("is primary", cr.Reason)
 }
 
 // TestTSA_RO is a unit test function that tests the CheckTSA function of the TSA checker.
@@ -99,8 +99,9 @@ func TestTSA_RO(t *testing.T) {
 	instance.EXPECT().Hostname().AnyTimes().Return("host1")
 	sh.EXPECT().Name().Return("sh1").AnyTimes()
 
-	res, _, err := checker.CheckTSA(sh)
+	cr, err := checker.CheckTSA(sh)
 
-	assert.NoError(err, "")
-	assert.Equal(false, res)
+	assert.NoError(err)
+	assert.Equal(false, cr.RW)
+	assert.Equal("transaction_read_only is [[111 110]]", cr.Reason)
 }

@@ -27,7 +27,6 @@ type TsaKey struct {
 }
 
 type DBPool struct {
-	Pool
 	pool           MultiShardPool
 	shardMapping   map[string]*config.Shard
 	cacheTSAChecks sync.Map
@@ -111,8 +110,11 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
 	totalMsg := make([]string, 0)
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
-		ch, reason, err := s.checker.CheckTSA(shard)
-		spqrlog.Zero.Debug().Uint("id", shard.ID()).Bool("result", ch).Msg("checking for read-only")
+		cr, err := s.checker.CheckTSA(shard)
+		spqrlog.Zero.Debug().
+			Uint("id", shard.ID()).
+			Bool("result", cr.RW).
+			Msg("checking for read-only")
 
 		if err != nil {
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
@@ -131,10 +133,10 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 			Tsa:  tsa,
 			Host: shard.Instance().Hostname(),
 			AZ:   shard.Instance().AvailabilityZone(),
-		}, !ch)
+		}, !cr.RW)
 
-		if ch {
-			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), reason))
+		if cr.RW {
+			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), cr.Reason))
 			_ = s.Put(shard)
 			return false
 		}
@@ -166,7 +168,7 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
 	totalMsg := make([]string, 0)
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
-		ch, reason, err := s.checker.CheckTSA(shard)
+		cr, err := s.checker.CheckTSA(shard)
 
 		if err != nil {
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
@@ -184,10 +186,10 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 			Tsa:  tsa,
 			Host: shard.Instance().Hostname(),
 			AZ:   shard.Instance().AvailabilityZone(),
-		}, ch)
+		}, cr.RW)
 
-		if !ch {
-			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), reason))
+		if !cr.RW {
+			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), cr.Reason))
 			_ = s.Put(shard)
 			return false
 		}
