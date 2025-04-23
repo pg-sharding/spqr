@@ -1307,7 +1307,14 @@ func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req 
 		return nil, err
 	}
 	columns := strings.Join(colsArr, ", ")
-	subColumns := "sub." + strings.Join(colsArr, ", sub.")
+	selectAsColumnsElems := make([]string, len(colsArr))
+	subColumnsElems := make([]string, len(colsArr))
+	for i := range selectAsColumnsElems {
+		selectAsColumnsElems[i] = fmt.Sprintf("%s as col%d", colsArr[i], i)
+		subColumnsElems[i] = fmt.Sprintf("sub.col%d", i)
+	}
+	selectAsColumns := strings.Join(selectAsColumnsElems, ", ")
+	subColumns := strings.Join(subColumnsElems, ", ")
 	orderByClause := columns + " " + func() string {
 		switch req.Type {
 		case tasks.SplitLeft:
@@ -1349,7 +1356,7 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
    OR (max_row.row_n < constants.row_count AND sub.row_n = max_row.row_n)
 ORDER BY (%s) DESC;
 `,
-		columns,
+		selectAsColumns,
 		orderByClause,
 		rel.GetFullName(),
 		condition,
@@ -1390,7 +1397,7 @@ ORDER BY (%s) DESC;
 			spqrlog.Zero.Error().Err(err).Str("rel", rel.Name).Msg("error getting move tasks")
 			return nil, err
 		}
-		for i, value := range values {
+		for i, value := range values[:len(values)-1] {
 			spqrlog.Zero.Debug().Str("value", value).Int("index", i).Msg("got split bound")
 		}
 		bound := make([][]byte, len(colsArr))
