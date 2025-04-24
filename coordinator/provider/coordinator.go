@@ -8,6 +8,7 @@ import (
 	"math"
 	"net"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1472,6 +1473,9 @@ func (qc *qdbCoordinator) getNextKeyRange(ctx context.Context, keyRange *kr.KeyR
 	if err != nil {
 		return nil, err
 	}
+	sort.Slice(krs, func(i, j int) bool {
+		return kr.CmpRangesLessEqual(krs[i].LowerBound, krs[j].LowerBound, keyRange.ColumnTypes)
+	})
 
 	ind := slices.IndexFunc(krs, func(other *kr.KeyRange) bool {
 		return other.ID == keyRange.ID
