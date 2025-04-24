@@ -147,12 +147,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			spqrlog.Zero.Error().Err(err).Msg("error loading config")
 		}
 	}
-
-	shardData, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
-	if err != nil {
-		return err
-	}
-	fromCfg, ok := shardData.ShardsData[fromId]
+	fromCfg, ok := shards.ShardsData[fromId]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", fromId)
 	}
@@ -161,7 +156,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
 	}
-	toCfg, ok := shardData.ShardsData[toId]
+	toCfg, ok := shards.ShardsData[toId]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", toId)
 	}
