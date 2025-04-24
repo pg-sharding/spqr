@@ -340,7 +340,7 @@ Feature: Move test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    failed to connect
+    shard with ID .* not found in config
     """
 
   Scenario: Move nonexistent key range fails
