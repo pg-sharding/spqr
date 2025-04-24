@@ -159,6 +159,9 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 
 	routerClient, err := r.RuleRouter.PreRoute(netconn, pt)
 	if err != nil {
+		if routerClient == nil {
+			return 0, err
+		}
 		return routerClient.ID(), err
 	}
 
