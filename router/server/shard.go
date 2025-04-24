@@ -235,6 +235,9 @@ func (srv *ShardServer) TxStatus() txstatus.TXStatus {
 func (srv *ShardServer) Datashards() []shard.Shard {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
+	if srv.shard == nil {
+		return nil
+	}
 	return []shard.Shard{srv.shard}
 }
 
