@@ -237,7 +237,7 @@ func (srv *ShardServer) Datashards() []shard.Shard {
 	defer srv.mu.RUnlock()
 	if srv.shard == nil {
 		return nil
-	}	
+	}
 	return []shard.Shard{srv.shard}
 }
 
