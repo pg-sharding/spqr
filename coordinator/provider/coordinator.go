@@ -952,7 +952,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 			if err != nil {
 				return err
 			}
-			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeComplete); err != nil {
+			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeStarted); err != nil {
 				return err
 			}
 			move.Status = qdb.MoveKeyRangeStarted
