@@ -52,7 +52,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard2"
     """
@@ -61,7 +61,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    1000
+    \{"count":1000\}
     """
     When I run SQL on host "coordinator"
     """
@@ -107,7 +107,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard2"
     """
@@ -116,7 +116,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    1000
+    \{"count":1000\}
     """
     When I run SQL on host "coordinator"
     """
@@ -157,7 +157,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard2"
     """
@@ -166,7 +166,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "coordinator"
     """
@@ -215,7 +215,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard2"
     """
@@ -224,7 +224,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    1000
+    \{"count":1000\}
     """
     When I run SQL on host "shard1"
     """
@@ -233,7 +233,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard2"
     """
@@ -242,7 +242,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    100
+    \{"count":100\}
     """
     When I run SQL on host "coordinator"
     """
@@ -294,7 +294,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard2"
     """
@@ -303,7 +303,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    1000
+    \{"count":1000\}
     """
     When I run SQL on host "coordinator"
     """
@@ -355,7 +355,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard2"
     """
@@ -364,7 +364,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    1000
+    \{"count":1000\}
     """
     When I run SQL on host "coordinator"
     """
@@ -416,7 +416,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard2"
     """
@@ -425,7 +425,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard3"
     """
@@ -434,7 +434,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    1000
+    \{"count":1000\}
     """
     When I run SQL on host "coordinator"
     """
@@ -499,7 +499,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard2"
     """
@@ -508,7 +508,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    1000
+    \{"count":1000\}
     """
     When I run SQL on host "coordinator"
     """
@@ -559,7 +559,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard2"
     """
@@ -568,7 +568,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    1000
+    \{"count":1000\}
     """
     When I run SQL on host "coordinator"
     """
@@ -617,7 +617,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard2"
     """
@@ -626,7 +626,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    1000
+    \{"count":1000\}
     """
     When I run SQL on host "coordinator"
     """
@@ -677,7 +677,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard2"
     """
@@ -686,7 +686,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    1000
+    \{"count":1000\}
     """
     When I run SQL on host "shard1"
     """
@@ -695,7 +695,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard2"
     """
@@ -704,7 +704,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    1000
+    \{"count":1000\}
     """
     When I run SQL on host "coordinator"
     """
@@ -750,7 +750,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    \{"count":0\}
     """
     When I run SQL on host "shard2"
     """
@@ -759,7 +759,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    1500
+    \{"count":1500\}
     """
     When I run SQL on host "coordinator"
     """
