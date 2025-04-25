@@ -6,9 +6,9 @@ import (
 	"runtime"
 
 	"github.com/pg-sharding/spqr/coordinator/app"
-	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/spf13/cobra"
@@ -74,7 +74,7 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("init frontend TLS: %w", err)
 		}
 
-		coordinator, err := provider.NewCoordinator(frTLS, db)
+		coordinator, err := coord.NewQDBCoordinator(frTLS, db)
 		if err != nil {
 			return err
 		}

@@ -1,10 +1,10 @@
-package local_test
+package coord_test
 
 import (
 	"context"
 	"testing"
 
-	"github.com/pg-sharding/spqr/pkg/coord/local"
+	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/qdb"
 	mock "github.com/pg-sharding/spqr/qdb/mock"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +18,7 @@ func TestListKeyRangesCaches(t *testing.T) {
 
 	db := mock.NewMockQDB(ctrl)
 
-	lc := local.NewLocalCoordinator(db, nil)
+	lc := coord.NewLocalCoordinator(db, nil)
 
 	krs := []*qdb.KeyRange{
 		{

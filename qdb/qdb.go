@@ -91,6 +91,7 @@ type QDB interface {
 
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)
+	ListRouters(ctx context.Context) ([]*Router, error)
 
 	ListSequences(ctx context.Context) ([]string, error)
 	AlterSequenceAttach(ctx context.Context, seqName string, relName, colName string) error

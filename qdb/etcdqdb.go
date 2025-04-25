@@ -339,7 +339,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 
 			return q.GetKeyRange(ctx, keyRangeID)
 		case 1:
-			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %v locked", keyRangeID)
+			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", keyRangeID)
 		default:
 			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "too much key ranges matched: %d", len(resp.Kvs))
 		}
@@ -350,11 +350,13 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 	fetchCtx, cf := context.WithTimeout(ctx, 15*time.Second)
 	defer cf()
 
+	var lastErr error
 	for {
 		select {
 		case <-timer.C:
 			val, err := fetcher(ctx, sess, id)
 			if err != nil {
+				lastErr = err
 				spqrlog.Zero.Error().
 					Err(err).
 					Msg("error while fetching")
@@ -364,7 +366,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 			return val, nil
 
 		case <-fetchCtx.Done():
-			return nil, spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "lock key range deadlines exceeded")
+			return nil, lastErr
 		}
 	}
 }
