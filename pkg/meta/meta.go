@@ -507,6 +507,15 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 	case *spqrparser.InvalidateCache:
 		mgr.Cache().Reset()
 		return cli.CompleteMsg(0)
+	case *spqrparser.RetryMoveTaskGroup:
+		taskGroup, err := mgr.GetMoveTaskGroup(ctx)
+		if err != nil {
+			return err
+		}
+		if err = mgr.RetryMoveTaskGroup(ctx); err != nil {
+			return err
+		}
+		return cli.MoveTaskGroup(ctx, taskGroup)
 	default:
 		return unknownCoordinatorCommand
 	}
