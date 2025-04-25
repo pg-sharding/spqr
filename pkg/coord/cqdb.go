@@ -1314,6 +1314,9 @@ func (qc *QDBCoordinator) getNextKeyRange(ctx context.Context, keyRange *kr.KeyR
 // Returns:
 //   - error: An error if any occurred.
 func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
+	if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
+		return err
+	}
 	for len(taskGroup.Tasks) != 0 {
 		task := taskGroup.Tasks[0]
 		switch task.State {
@@ -1369,6 +1372,14 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 		}
 	}
 	return qc.RemoveMoveTaskGroup(ctx)
+}
+
+func (qc *qdbCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
+	taskGroup, err := qc.GetMoveTaskGroup(ctx)
+	if err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get move task group: %s", err)
+	}
+	return qc.executeMoveTasks(ctx, taskGroup)
 }
 
 // TODO : unit tests
