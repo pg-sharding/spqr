@@ -881,6 +881,12 @@ func (a *Adapter) RemoveMoveTaskGroup(ctx context.Context) error {
 	return err
 }
 
+func (a *Adapter) RetryMoveTaskGroup(ctx context.Context) error {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	_, err := tasksService.RetryMoveTaskGroup(ctx, nil)
+	return err
+}
+
 // GetBalancerTask retrieves current balancer task from the system.
 //
 // Parameters:

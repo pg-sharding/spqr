@@ -23,6 +23,7 @@ const (
 	MoveTasksService_GetMoveTaskGroup_FullMethodName    = "/spqr.MoveTasksService/GetMoveTaskGroup"
 	MoveTasksService_WriteMoveTaskGroup_FullMethodName  = "/spqr.MoveTasksService/WriteMoveTaskGroup"
 	MoveTasksService_RemoveMoveTaskGroup_FullMethodName = "/spqr.MoveTasksService/RemoveMoveTaskGroup"
+	MoveTasksService_RetryMoveTaskGroup_FullMethodName  = "/spqr.MoveTasksService/RetryMoveTaskGroup"
 )
 
 // MoveTasksServiceClient is the client API for MoveTasksService service.
@@ -32,6 +33,7 @@ type MoveTasksServiceClient interface {
 	GetMoveTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetMoveTaskGroupReply, error)
 	WriteMoveTaskGroup(ctx context.Context, in *WriteMoveTaskGroupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	RemoveMoveTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RetryMoveTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type moveTasksServiceClient struct {
@@ -69,6 +71,15 @@ func (c *moveTasksServiceClient) RemoveMoveTaskGroup(ctx context.Context, in *em
 	return out, nil
 }
 
+func (c *moveTasksServiceClient) RetryMoveTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MoveTasksService_RetryMoveTaskGroup_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MoveTasksServiceServer is the server API for MoveTasksService service.
 // All implementations must embed UnimplementedMoveTasksServiceServer
 // for forward compatibility
@@ -76,6 +87,7 @@ type MoveTasksServiceServer interface {
 	GetMoveTaskGroup(context.Context, *emptypb.Empty) (*GetMoveTaskGroupReply, error)
 	WriteMoveTaskGroup(context.Context, *WriteMoveTaskGroupRequest) (*emptypb.Empty, error)
 	RemoveMoveTaskGroup(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	RetryMoveTaskGroup(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedMoveTasksServiceServer()
 }
 
@@ -91,6 +103,9 @@ func (UnimplementedMoveTasksServiceServer) WriteMoveTaskGroup(context.Context, *
 }
 func (UnimplementedMoveTasksServiceServer) RemoveMoveTaskGroup(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveMoveTaskGroup not implemented")
+}
+func (UnimplementedMoveTasksServiceServer) RetryMoveTaskGroup(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RetryMoveTaskGroup not implemented")
 }
 func (UnimplementedMoveTasksServiceServer) mustEmbedUnimplementedMoveTasksServiceServer() {}
 
@@ -159,6 +174,24 @@ func _MoveTasksService_RemoveMoveTaskGroup_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MoveTasksService_RetryMoveTaskGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MoveTasksServiceServer).RetryMoveTaskGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MoveTasksService_RetryMoveTaskGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MoveTasksServiceServer).RetryMoveTaskGroup(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MoveTasksService_ServiceDesc is the grpc.ServiceDesc for MoveTasksService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -177,6 +210,10 @@ var MoveTasksService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveMoveTaskGroup",
 			Handler:    _MoveTasksService_RemoveMoveTaskGroup_Handler,
+		},
+		{
+			MethodName: "RetryMoveTaskGroup",
+			Handler:    _MoveTasksService_RetryMoveTaskGroup_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

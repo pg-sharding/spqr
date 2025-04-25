@@ -565,6 +565,20 @@ func (mr *MockEntityMgrMockRecorder) RenameKeyRange(ctx, krId, krIdNew any) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).RenameKeyRange), ctx, krId, krIdNew)
 }
 
+// RetryMoveTaskGroup mocks base method.
+func (m *MockEntityMgr) RetryMoveTaskGroup(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RetryMoveTaskGroup indicates an expected call of RetryMoveTaskGroup.
+func (mr *MockEntityMgrMockRecorder) RetryMoveTaskGroup(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RetryMoveTaskGroup), ctx)
+}
+
 // ShareKeyRange mocks base method.
 func (m *MockEntityMgr) ShareKeyRange(id string) error {
 	m.ctrl.T.Helper()
