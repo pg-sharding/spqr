@@ -560,8 +560,9 @@ func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string) error
 //
 // Returns:
 // - error: An error if sending the tasks fails, otherwise nil.
-func (pi *PSQLInteractor) MoveTaskGroup(_ context.Context, ts *tasks.MoveTaskGroup) error {
+func (pi *PSQLInteractor) MoveTaskGroup(_ context.Context, ts *tasks.MoveTaskGroup, colTypes []string) error {
 	spqrlog.Zero.Debug().Msg("listing move tasks")
+	spqrlog.Zero.Debug().Strs("colTypes", colTypes).Msg("")
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -579,18 +580,11 @@ func (pi *PSQLInteractor) MoveTaskGroup(_ context.Context, ts *tasks.MoveTaskGro
 	}
 
 	for _, task := range ts.Tasks {
-
-		bound := make([]byte, 0)
-		for _, el := range task.Bound {
-			if len(bound) != 0 {
-				bound = append(bound, ';')
-			}
-			bound = append(bound, el...)
-		}
+		kRange := kr.KeyRangeFromBytes(task.Bound, colTypes)
 		if err := pi.cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
 				[]byte(tasks.TaskStateToStr(task.State)),
-				bound,
+				[]byte(strings.Join(kRange.SendRaw(), ";")),
 				[]byte(ts.KrIdFrom),
 				[]byte(ts.KrIdTo),
 			},

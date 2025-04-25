@@ -512,10 +512,14 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		if err != nil {
 			return err
 		}
+		kRange, err := mgr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+		if err != nil {
+			return err
+		}
 		if err = mgr.RetryMoveTaskGroup(ctx); err != nil {
 			return err
 		}
-		return cli.MoveTaskGroup(ctx, taskGroup)
+		return cli.MoveTaskGroup(ctx, taskGroup, kRange.ColumnTypes)
 	default:
 		return unknownCoordinatorCommand
 	}
@@ -657,7 +661,11 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
-		return cli.MoveTaskGroup(ctx, group)
+		kRange, err := mngr.GetKeyRange(ctx, group.KrIdFrom)
+		if err != nil {
+			return err
+		}
+		return cli.MoveTaskGroup(ctx, group, kRange.ColumnTypes)
 	case spqrparser.PreparedStatementsStr:
 
 		var resp []shard.PreparedStatementsMgrDescriptor

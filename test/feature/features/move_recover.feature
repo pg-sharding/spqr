@@ -547,3 +547,85 @@ Feature: Move recover test
     002
     """
     And qdb should not contain transaction "krid2"
+  
+  Scenario: Move task group retry works
+    When I record in qdb move task group
+    """
+    {
+        "tasks":
+        [
+            {
+                "bound":         ["FAAAAAAAAAA="],
+                "state":         0,
+                "kr_id_temp":    "krid_temp1" 
+            },
+            {
+                "bound":         ["CgAAAAAAAAA="],
+                "state":         0,
+                "kr_id_temp":    "krid_temp2"
+            }
+        ],
+        "shard_to_id":   "sh2",
+        "kr_id_from":    "krid1",
+        "kr_id_to":      "krid2",
+        "type":          1
+    }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    SHOW task_group
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "State":                    "PLANNED",
+        "Bound":                    "10",
+        "Source key range ID":      "krid1",
+        "Destination key range ID": "krid2"
+      },
+      {
+        "State":                    "PLANNED",
+        "Bound":                    "5",
+        "Source key range ID":      "krid1",
+        "Destination key range ID": "krid2"
+      }
+    ]
+    """
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) SELECT generate_series(1, 10), 'sample data';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) SELECT generate_series(11, 12), 'sample data';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator" with timeout "120" seconds
+    """
+    RETRY MOVE TASK GROUP
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    4
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    8
+    """
