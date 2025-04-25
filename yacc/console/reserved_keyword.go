@@ -75,4 +75,5 @@ var reservedWords = map[string]int{
 	"increment":    INCREMENT,
 	"sequence":     SEQUENCE,
 	"schema":       SCHEMA,
+	"retry":        RETRY,
 }
