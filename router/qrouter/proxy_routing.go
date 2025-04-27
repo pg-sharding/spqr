@@ -1274,6 +1274,9 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 			return nil, false, err
 		}
 		return plan.DDLState{}, false, nil
+	case *lyx.DiscardStmt:
+		/* Send vacuum to each shard */
+		return plan.DDLState{}, false, nil
 	case *lyx.Vacuum:
 		/* Send vacuum to each shard */
 		return plan.DDLState{}, false, nil
