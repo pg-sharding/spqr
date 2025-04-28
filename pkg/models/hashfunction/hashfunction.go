@@ -41,7 +41,7 @@ var (
 //   - []interface: The hashed byte slice.
 //   - error: An error if any error occurs during the process.
 
-func encodeUInt64(inp uint64) []byte {
+func EncodeUInt64(inp uint64) []byte {
 	const ENCODING_BYTES_BIG = binary.MaxVarintLen64
 	const ENCODING_BYTES = 8
 	const BOUND = 1 << 56 /* 72057594037927936 */
@@ -52,6 +52,12 @@ func encodeUInt64(inp uint64) []byte {
 	}
 
 	buf := make([]byte, sz)
+	binary.PutUvarint(buf, inp)
+	return buf
+}
+
+func EncodeUInt64Old(inp uint64) []byte {
+	buf := make([]byte, 8)
 	binary.PutUvarint(buf, inp)
 	return buf
 }
@@ -75,7 +81,7 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 			return uint64(h), nil
 
 		case qdb.ColumnTypeUinteger:
-			buf := encodeUInt64(inp.(uint64))
+			buf := EncodeUInt64(inp.(uint64))
 			h := murmur3.Sum32(buf)
 			return uint64(h), nil
 		case qdb.ColumnTypeVarcharHashed:
@@ -103,7 +109,7 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 			return uint64(h), nil
 
 		case qdb.ColumnTypeUinteger:
-			buf := encodeUInt64(inp.(uint64))
+			buf := EncodeUInt64(inp.(uint64))
 			h := city.Hash32(buf)
 			return uint64(h), nil
 		case qdb.ColumnTypeVarcharHashed:
