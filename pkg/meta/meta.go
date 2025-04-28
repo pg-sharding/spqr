@@ -512,14 +512,18 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		if err != nil {
 			return err
 		}
-		kRange, err := mgr.GetKeyRange(ctx, taskGroup.KrIdFrom)
-		if err != nil {
-			return err
+		colTypes := make([]string, 0)
+		if len(taskGroup.Tasks) > 0 {
+			kRange, err := mgr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+			if err != nil {
+				return err
+			}
+			colTypes = kRange.ColumnTypes
 		}
 		if err = mgr.RetryMoveTaskGroup(ctx); err != nil {
 			return err
 		}
-		return cli.MoveTaskGroup(ctx, taskGroup, kRange.ColumnTypes)
+		return cli.MoveTaskGroup(ctx, taskGroup, colTypes)
 	default:
 		return unknownCoordinatorCommand
 	}
@@ -661,11 +665,16 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
-		kRange, err := mngr.GetKeyRange(ctx, group.KrIdFrom)
-		if err != nil {
-			return err
+		colTypes := make([]string, 0)
+		if len(group.Tasks) > 0 {
+			kRange, err := mngr.GetKeyRange(ctx, group.KrIdFrom)
+			if err != nil {
+				return err
+			}
+			colTypes = kRange.ColumnTypes
 		}
-		return cli.MoveTaskGroup(ctx, group, kRange.ColumnTypes)
+
+		return cli.MoveTaskGroup(ctx, group, colTypes)
 	case spqrparser.PreparedStatementsStr:
 
 		var resp []shard.PreparedStatementsMgrDescriptor
