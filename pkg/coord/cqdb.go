@@ -1374,7 +1374,7 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 	return qc.RemoveMoveTaskGroup(ctx)
 }
 
-func (qc *qdbCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
+func (qc *QDBCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
 	taskGroup, err := qc.GetMoveTaskGroup(ctx)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get move task group: %s", err)
