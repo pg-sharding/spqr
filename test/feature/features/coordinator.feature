@@ -653,17 +653,17 @@ Feature: Coordinator test
       "tasks":
       [
         {
-          "bound":         ["MQ=="],
+          "bound":         ["AgAAAAAAAAA="],
           "state":         1
         },
         {
-          "bound":         ["MTA="],
+          "bound":         ["FAAAAAAAAAA="],
           "state":         0
         }
       ],
       "shard_to_id":   "sh_to",
-      "kr_id_from":    "kr_from",
-      "kr_id_to":      "kr_to"
+      "kr_id_from":    "krid1",
+      "kr_id_to":      "krid2"
     }
     """
     Then command return code should be "0"
@@ -678,14 +678,14 @@ Feature: Coordinator test
       {
         "State":                    "SPLIT",
         "Bound":                    "1",
-        "Source key range ID":      "kr_from",
-        "Destination key range ID": "kr_to"
+        "Source key range ID":      "krid1",
+        "Destination key range ID": "krid2"
       },
       {
         "State":                    "PLANNED",
         "Bound":                    "10",
-        "Source key range ID":      "kr_from",
-        "Destination key range ID": "kr_to"
+        "Source key range ID":      "krid1",
+        "Destination key range ID": "krid2"
       }
     ]
     """
