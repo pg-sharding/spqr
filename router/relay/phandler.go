@@ -34,9 +34,9 @@ type QueryStateExecutor interface {
 	ExecRollback(rst RelayStateMgr, query string) error
 
 	/* Copy execution */
-	ProcCopyPrepare(ctx context.Context, mgr meta.EntityMgr, stmt *lyx.Copy) (*pgcopy.CopyState, error)
+	ProcCopyPrepare(ctx context.Context, mgr meta.EntityMgr, stmt *lyx.Copy, attached bool) (*pgcopy.CopyState, error)
 	ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error)
-	ProcCopyComplete(query pgproto3.FrontendMessage) error
+	ProcCopyComplete(query pgproto3.FrontendMessage) (txstatus.TXStatus, error)
 
 	ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error)
 

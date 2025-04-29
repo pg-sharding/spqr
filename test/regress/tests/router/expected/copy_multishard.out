@@ -36,7 +36,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY i HASH FUNCTION MURMU
 
 -- TEST
 \c regress
-CREATE TABLE xx (i bigint, j bigint);
+CREATE TABLE xx (i bigint, j bigint CHECK(j != 11));
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -121,6 +121,42 @@ NOTICE: send query to shard(s) : sh2
   144115188075855872 |  144115188075855872
  9223372036854775807 | 9223372036854775807
 (22 rows)
+
+TRUNCATE xx;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  new row for relation "xx" violates check constraint "xx_j_check"
+DETAIL:  Failing row contains (1, 11).
+CONTEXT:  COPY xx, line 2: "1|11"
+TABLE xx;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ i | j 
+---+---
+(0 rows)
+
+BEGIN;
+COPY xx (i, j) FROM STDIN WITH DELIMITER '|' /*__spqr__engine_v2: true*/;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  new row for relation "xx" violates check constraint "xx_j_check"
+DETAIL:  Failing row contains (1, 11).
+CONTEXT:  COPY xx, line 3: "1|11"
+ROLLBACK;
+TABLE xx;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ i | j 
+---+---
+(0 rows)
+
+BEGIN;
+COPY xx (i, j) FROM STDIN WITH DELIMITER '|' /*__spqr__engine_v2: true*/;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ROLLBACK;
+TABLE xx;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ i | j 
+---+---
+(0 rows)
 
 DROP TABLE xx;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
