@@ -18,7 +18,7 @@ func TestChecker_CheckTSA(t *testing.T) {
 
 	mockShard := mockshard.NewMockShard(ctrl)
 	mockShard.EXPECT().ID().Return(uint(42)).AnyTimes() // Add expectation for ID method
-	checker := tsa.Checker{}
+	checker := tsa.NetChecker{}
 
 	t.Run("RW test", func(t *testing.T) {
 		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)

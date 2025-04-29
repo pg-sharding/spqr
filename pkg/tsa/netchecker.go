@@ -9,26 +9,21 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
-type Checker struct {
+type NetChecker struct {
 }
 
-var _ TSAChecker = (*Checker)(nil)
+var _ TSAChecker = (*NetChecker)(nil)
 
-// CheckTSA checks if the given shard is in a read-only state.
-// It sends a query to the shard to retrieve the value of the "transaction_read_only" setting.
-// If the query is successful and the value is "off", it means the shard is in a read-write state.
-// If the value is not "off", it means the shard is in a read-only state.
-// The function returns a boolean indicating whether the shard is in a read-write state,
-// a string describing the reason for the state, and an error if any occurred during the process.
+// CheckTSA checks the TSA for a given shard and returns the result, comment, and error.
+// CheckTSA do not use the cache, it always check the TSA.
 //
 // Parameters:
 //   - sh: The shard to check the TSA for.
 //
 // Returns:
-//   - bool: A boolean indicating whether the shard is in a read-write state.
-//   - string: A string describing the reason for the state.
+//   - CheckResult: A struct containing the result of the TSA check.
 //   - error: An error if any occurred during the process.
-func (Checker) CheckTSA(sh shard.Shard) (CheckResult, error) {
+func (NetChecker) CheckTSA(sh shard.Shard) (CheckResult, error) {
 	if err := sh.Send(&pgproto3.Query{
 		String: "SHOW transaction_read_only",
 	}); err != nil {

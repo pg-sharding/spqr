@@ -7,7 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 )
 
-type CacheEntry struct {
+type cacheEntry struct {
 	result    bool
 	comment   string
 	lastCheck int64
@@ -16,7 +16,7 @@ type CacheEntry struct {
 type CachedTSAChecker struct {
 	mu            sync.Mutex
 	recheckPeriod time.Duration
-	cache         map[string]CacheEntry
+	cache         map[string]cacheEntry
 	innerChecker  TSAChecker
 }
 
@@ -31,8 +31,8 @@ func NewTSAChecker() TSAChecker {
 	return &CachedTSAChecker{
 		mu:            sync.Mutex{},
 		recheckPeriod: time.Second,
-		cache:         map[string]CacheEntry{},
-		innerChecker:  &Checker{},
+		cache:         map[string]cacheEntry{},
+		innerChecker:  &NetChecker{},
 	}
 }
 
@@ -40,23 +40,20 @@ func NewTSACheckerWithDuration(tsaRecheckDuration time.Duration) TSAChecker {
 	return &CachedTSAChecker{
 		mu:            sync.Mutex{},
 		recheckPeriod: tsaRecheckDuration,
-		cache:         map[string]CacheEntry{},
-		innerChecker:  &Checker{},
+		cache:         map[string]cacheEntry{},
+		innerChecker:  &NetChecker{},
 	}
 }
 
 // CheckTSA checks the TSA for a given shard and returns the result, comment, and error.
 // If the TSA check result is already cached and not expired, it returns the cached result.
 // Otherwise, it performs the TSA check and updates the cache with the new result.
-// The function returns a boolean indicating whether the shard is in a read-write state,
-// a string describing the reason for the state, and an error if any occurred during the process.
 //
 // Parameters:
 //   - sh: The shard to check the TSA for.
 //
 // Returns:
-//   - bool: A boolean indicating whether the shard is in a read-write state.
-//   - string: A string describing the reason for the state.
+//   - CheckResult: A struct containing the result of the TSA check.
 //   - error: An error if any occurred during the process.
 func (ctsa *CachedTSAChecker) CheckTSA(sh shard.Shard) (CheckResult, error) {
 	ctsa.mu.Lock()
@@ -74,7 +71,7 @@ func (ctsa *CachedTSAChecker) CheckTSA(sh shard.Shard) (CheckResult, error) {
 	if err != nil {
 		return cr, err
 	}
-	ctsa.cache[sh.Instance().Hostname()] = CacheEntry{
+	ctsa.cache[sh.Instance().Hostname()] = cacheEntry{
 		lastCheck: n,
 		comment:   cr.Reason,
 		result:    cr.RW,
