@@ -56,12 +56,6 @@ func EncodeUInt64(inp uint64) []byte {
 	return buf
 }
 
-func EncodeUInt64Old(inp uint64) []byte {
-	buf := make([]byte, 8)
-	binary.PutUvarint(buf, inp)
-	return buf
-}
-
 func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (interface{}, error) {
 
 	switch hf {
