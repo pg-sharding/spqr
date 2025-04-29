@@ -77,6 +77,13 @@ func (s *QueryStateExecutorImpl) Deploy(server server.Server) error {
 	return s.deployTxStatusInternal(server, s.savedBegin, txstatus.TXACT)
 }
 
+func (s *QueryStateExecutorImpl) DeployTx(server server.Server, query string) error {
+	s.SetTxStatus(txstatus.TXACT)
+	s.savedBegin = &pgproto3.Query{String: query}
+
+	return s.deployTxStatusInternal(server, s.savedBegin, txstatus.TXACT)
+}
+
 func (s *QueryStateExecutorImpl) SetTxStatus(status txstatus.TXStatus) {
 	s.txStatus = status
 	/* handle implicit transactions - rollback all local state for params */
@@ -94,7 +101,7 @@ func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *
 	s.cl.StartTx()
 	s.savedBegin = &pgproto3.Query{String: query}
 
-	spqrlog.Zero.Debug().Msg("start new transaction")
+	spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Msg("start new transaction")
 
 	for _, opt := range st.Options {
 		switch opt {
@@ -105,6 +112,24 @@ func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *
 		}
 	}
 	return rst.Client().ReplyCommandComplete("BEGIN")
+}
+
+func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
+	spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Str("commit strategy", s.cl.CommitStrategy()).Msg("execute commit")
+
+	serv := s.cl.Server()
+
+	if s.cl.CommitStrategy() == twopc.COMMIT_STRATEGY_2PC && len(serv.Datashards()) > 1 {
+		if err := twopc.ExecuteTwoPhaseCommit(s.cl.ID(), serv); err != nil {
+			return err
+		}
+	} else {
+		if err := s.deployTxStatusInternal(serv,
+			&pgproto3.Query{String: query}, txstatus.TXIDLE); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // query in commit query. maybe commit or commit `name`
@@ -119,21 +144,26 @@ func (s *QueryStateExecutorImpl) ExecCommit(rst RelayStateMgr, query string) err
 		return nil
 	}
 
-	spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Str("commit strategy", s.cl.CommitStrategy()).Msg("execute commit")
-
-	if s.cl.CommitStrategy() == twopc.COMMIT_STRATEGY_2PC && len(s.Client().Server().Datashards()) > 1 {
-		if err := twopc.ExecuteTwoPhaseCommit(s.cl.ID(), s.Client().Server()); err != nil {
-			return err
-		}
-	} else {
-		if err := s.deployTxStatusInternal(s.Client().Server(),
-			&pgproto3.Query{String: query}, txstatus.TXIDLE); err != nil {
-			return err
-		}
+	if err := s.ExecCommitTx(query); err != nil {
+		return err
 	}
 
 	rst.Client().CommitActiveSet()
 	return rst.Client().ReplyCommandComplete("COMMIT")
+}
+
+func (s *QueryStateExecutorImpl) ExecRollbackServer() error {
+	if server := s.cl.Server(); server != nil {
+		for _, sh := range server.Datashards() {
+			if err := sh.Cleanup(&config.FrontendRule{
+				PoolRollback: true,
+			}); err != nil {
+				return err
+			}
+		}
+	}
+	s.SetTxStatus(txstatus.TXIDLE)
+	return nil
 }
 
 /* TODO: proper support for rollback to savepoint */
@@ -149,15 +179,8 @@ func (s *QueryStateExecutorImpl) ExecRollback(rst RelayStateMgr, query string) e
 	}
 
 	/* unroute will take care of tx server */
-	s.SetTxStatus(txstatus.TXIDLE)
-	if server := s.cl.Server(); server != nil {
-		for _, sh := range server.Datashards() {
-			if err := sh.Cleanup(&config.FrontendRule{
-				PoolRollback: true,
-			}); err != nil {
-				return err
-			}
-		}
+	if err := s.ExecRollbackServer(); err != nil {
+		return err
 	}
 	s.cl.Rollback()
 	return s.cl.ReplyCommandComplete("ROLLBACK")
@@ -216,7 +239,7 @@ func (s *QueryStateExecutorImpl) ExecSetLocal(rst RelayStateMgr, query, name, va
 }
 
 // TODO: unit tests
-func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.EntityMgr, stmt *lyx.Copy) (*pgcopy.CopyState, error) {
+func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.EntityMgr, stmt *lyx.Copy, attachedCopy bool) (*pgcopy.CopyState, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", s.cl.ID()).
 		Msg("client pre-process copy")
@@ -242,7 +265,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 	}
 
 	/* If 'execute on' is specified or explicit tx is going, then no routing */
-	if s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT {
+	if attachedCopy {
 		return &pgcopy.CopyState{
 			Delimiter: delimiter,
 			Attached:  true,
@@ -396,7 +419,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage) error {
+func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage) (txstatus.TXStatus, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", s.cl.ID()).
 		Type("query-type", query).
@@ -405,26 +428,61 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	/* non-null server should never be set to null here until we call Unroute()
 	in complete relay */
 	if server == nil {
-		return fmt.Errorf("client not routed in copy complete phase, resetting")
-	}
-	if err := server.Send(query); err != nil {
-		return err
+		return txstatus.TXERR, fmt.Errorf("client not routed in copy complete phase, resetting")
 	}
 
-	for {
-		msg, err := server.Receive()
-		if err != nil {
-			return err
+	for _, sh := range server.Datashards() {
+		if err := sh.Send(query); err != nil {
+			return txstatus.TXERR, err
 		}
-		switch msg.(type) {
-		case *pgproto3.CommandComplete, *pgproto3.ErrorResponse:
-			return s.cl.Send(msg)
-		default:
-			if err := s.cl.Send(msg); err != nil {
-				return err
+	}
+
+	var ccmsg *pgproto3.CommandComplete = nil
+	var errmsg *pgproto3.ErrorResponse = nil
+
+	txt := txstatus.TXIDLE
+
+	for _, sh := range server.Datashards() {
+
+	wl:
+		for {
+			msg, err := sh.Receive()
+			if err != nil {
+				return txt, err
+			}
+			switch v := msg.(type) {
+			case *pgproto3.ReadyForQuery:
+				/* should always be NOT idle */
+				if v.TxStatus == byte(txstatus.TXIDLE) {
+					return txt, fmt.Errorf("copy state out of sync")
+				}
+				if txt != txstatus.TXERR {
+					txt = txstatus.TXStatus(v.TxStatus)
+				}
+				break wl
+			case *pgproto3.CommandComplete:
+				ccmsg = v
+			case *pgproto3.ErrorResponse:
+				errmsg = v
+			default:
 			}
 		}
 	}
+
+	if errmsg != nil {
+		if err := s.cl.Send(errmsg); err != nil {
+			return txt, err
+		}
+	} else {
+		if ccmsg == nil {
+			return txt, fmt.Errorf("copy state out of sync")
+		}
+		if err := s.cl.Send(ccmsg); err != nil {
+			return txt, err
+		}
+	}
+
+	return txt, nil
 }
 
 // TODO : unit tests
@@ -439,6 +497,21 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 		Uints("shards", shard.ShardIDs(serv.Datashards())).
 		Type("query-type", qd.Msg).
 		Msg("relay process query")
+
+	doFinalizeTx := false
+	attachedCopy := s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
+
+	switch qd.Stmt.(type) {
+	case *lyx.Copy:
+		spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
+
+		if serv.TxStatus() == txstatus.TXIDLE {
+			if err := s.DeployTx(serv, "BEGIN"); err != nil {
+				return nil, err
+			}
+			doFinalizeTx = true
+		}
+	}
 
 	if qd.P == nil {
 		if err := serv.Send(qd.Msg); err != nil {
@@ -506,11 +579,11 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 
 			q := qd.Stmt.(*lyx.Copy)
 
-			if err := func() error {
+			return nil, func() error {
 				var leftoverMsgData []byte
 				ctx := context.TODO()
 
-				cps, err := s.ProcCopyPrepare(ctx, mgr, q)
+				cps, err := s.ProcCopyPrepare(ctx, mgr, q, attachedCopy)
 				if err != nil {
 					return err
 				}
@@ -530,14 +603,25 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 							return err
 						}
 					case *pgproto3.CopyDone, *pgproto3.CopyFail:
-						return s.ProcCopyComplete(cpMsg)
+						if txt, err := s.ProcCopyComplete(cpMsg); err != nil {
+							return err
+						} else {
+							if doFinalizeTx {
+								if txt == txstatus.TXACT {
+									return s.ExecCommitTx("COMMIT")
+								} else {
+									return s.ExecRollbackServer()
+								}
+							}
+
+						}
+
+						return nil
 					default:
 						/* panic? */
 					}
 				}
-			}(); err != nil {
-				return nil, err
-			}
+			}()
 		case *pgproto3.ReadyForQuery:
 			s.SetTxStatus(txstatus.TXStatus(v.TxStatus))
 			return unreplied, nil
