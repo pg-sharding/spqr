@@ -25,7 +25,7 @@ CREATE KEY RANGE krid2 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  bound -> 2147483648
 (1 row)
 
--- the set of all unsigned 32-bit integers (0 to 4294967295)
+-- the set of all unsigned 64-bit integers (0 to 9223372036854775807)
 ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY i HASH FUNCTION MURMUR;
       attach table      
 ------------------------
@@ -35,7 +35,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY i HASH FUNCTION MURMU
 
 -- TEST
 \c regress
-CREATE TABLE xx (i int, j int);
+CREATE TABLE xx (i bigint, j bigint);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -59,6 +59,12 @@ INSERT INTO xx (i, j) VALUES(9,9);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (i, j) VALUES(10,10);
 NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (i, j) VALUES(4294967296,4294967296);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (i, j) VALUES(4294967297,4294967297);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (i, j) VALUES(9223372036854775807,9223372036854775807);
+NOTICE: send query to shard(s) : sh2
 TABLE xx /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  i | j 
@@ -75,21 +81,29 @@ NOTICE: send query to shard(s) : sh1
 
 TABLE xx /* __spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2
- i  | j  
-----+----
-  2 |  2
-  3 |  3
-  4 |  4
-  7 |  7
-  8 |  8
- 10 | 10
-  2 |  2
-  3 |  3
-  4 |  4
-  7 |  7
-  8 |  8
- 10 | 10
-(12 rows)
+          i          |          j          
+---------------------+---------------------
+                   2 |                   2
+                   3 |                   3
+                   4 |                   4
+                   7 |                   7
+                   8 |                   8
+                  10 |                  10
+          4294967296 |          4294967296
+          4294967297 |          4294967297
+   72057594037927936 |   72057594037927936
+   72057594037927937 |   72057594037927937
+ 9223372036854775807 | 9223372036854775807
+                   2 |                   2
+                   3 |                   3
+                   4 |                   4
+                   7 |                   7
+                   8 |                   8
+                  10 |                  10
+          4294967296 |          4294967296
+          4294967297 |          4294967297
+ 9223372036854775807 | 9223372036854775807
+(20 rows)
 
 DROP TABLE xx;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
