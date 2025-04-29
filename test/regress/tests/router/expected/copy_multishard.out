@@ -13,6 +13,8 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES int hash;
  distribution id -> ds1
 (1 row)
 
+-- MURMUR hash reduces input to one uint32 integer
+-- so we route on the set of all unsigned 32-bit integers (0 to 4294967295)
 CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
@@ -25,7 +27,6 @@ CREATE KEY RANGE krid2 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  bound -> 2147483648
 (1 row)
 
--- the set of all unsigned 64-bit integers (0 to 9223372036854775807)
 ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY i HASH FUNCTION MURMUR;
       attach table      
 ------------------------
@@ -63,21 +64,35 @@ INSERT INTO xx (i, j) VALUES(4294967296,4294967296);
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xx (i, j) VALUES(4294967297,4294967297);
 NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (i, j) VALUES(4294967298,4294967298);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx (i, j) VALUES(144115188075855872,144115188075855872);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (i, j) VALUES(144115188075855871,144115188075855871);
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (i, j) VALUES(9223372036854775807,9223372036854775807);
 NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (i, j) VALUES(9223372036854775806,9223372036854775806);
+NOTICE: send query to shard(s) : sh1
 TABLE xx /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
- i | j 
----+---
- 1 | 1
- 5 | 5
- 6 | 6
- 9 | 9
- 1 | 1
- 5 | 5
- 6 | 6
- 9 | 9
-(8 rows)
+          i          |          j          
+---------------------+---------------------
+                   1 |                   1
+                   5 |                   5
+                   6 |                   6
+                   9 |                   9
+   72057594037927938 |   72057594037927938
+  144115188075855871 |  144115188075855871
+ 9223372036854775806 | 9223372036854775806
+                   1 |                   1
+                   5 |                   5
+                   6 |                   6
+                   9 |                   9
+          4294967298 |          4294967298
+  144115188075855871 |  144115188075855871
+ 9223372036854775806 | 9223372036854775806
+(14 rows)
 
 TABLE xx /* __spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2
@@ -93,6 +108,7 @@ NOTICE: send query to shard(s) : sh2
           4294967297 |          4294967297
    72057594037927936 |   72057594037927936
    72057594037927937 |   72057594037927937
+  144115188075855872 |  144115188075855872
  9223372036854775807 | 9223372036854775807
                    2 |                   2
                    3 |                   3
@@ -102,8 +118,9 @@ NOTICE: send query to shard(s) : sh2
                   10 |                  10
           4294967296 |          4294967296
           4294967297 |          4294967297
+  144115188075855872 |  144115188075855872
  9223372036854775807 | 9223372036854775807
-(20 rows)
+(22 rows)
 
 DROP TABLE xx;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
