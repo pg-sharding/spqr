@@ -636,6 +636,10 @@ func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64,
 	return mgr.NextVal(ctx, seqName)
 }
 
+func (lc *LocalCoordinator) RetryMoveTaskGroup(_ context.Context) error {
+	return ErrNotCoordinator
+}
+
 // NewLocalCoordinator creates a new LocalCoordinator instance.
 //
 // Parameters:

@@ -97,6 +97,8 @@ func randomHex(n int) (string, error) {
 	group_clause		   GroupByClause
 
 	opt_batch_size         int
+
+	retryMoveTaskGroup     *RetryMoveTaskGroup
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -156,6 +158,7 @@ func randomHex(n int) (string, error) {
 %token <str> CLIENT
 %token <str> BATCH SIZE
 %token <str> INVALIDATE CACHE
+%token <str> RETRY
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -236,6 +239,9 @@ func randomHex(n int) (string, error) {
 %type <register_router> register_router_stmt
 %type <unregister_router> unregister_router_stmt
 %type <opt_batch_size> opt_batch_size
+
+%type <retryMoveTaskGroup> retry_move_task_group
+
 %start any_command
 
 %%
@@ -323,6 +329,10 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| invalidate_cache_stmt
+	{
+		setParseTree(yylex, $1)
+	} 
+	| retry_move_task_group
 	{
 		setParseTree(yylex, $1)
 	}
@@ -993,5 +1003,13 @@ unregister_router_stmt:
     {
         $$ = &UnregisterRouter{ID: `*`}
     }
+
+// move tasks
+
+retry_move_task_group:
+	RETRY MOVE TASK GROUP 
+	{
+		$$ = &RetryMoveTaskGroup{}
+	}
 %%
 

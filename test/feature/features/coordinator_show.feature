@@ -537,17 +537,24 @@ Feature: Coordinator show clients, pools and backend_connections
         """
 
     Scenario: Show task group
+        When I execute SQL on host "coordinator"
+        """
+        CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+        CREATE KEY RANGE kr_from FROM 0 ROUTE TO sh1;
+        CREATE KEY RANGE kr_to FROM 20 ROUTE TO sh1;
+        """
+        Then command return code should be "0"
         When I record in qdb move task group
         """
         {
             "tasks":
             [
                 {
-                    "bound":         ["MQ=="],
+                    "bound":         ["AgAAAAAAAAA="],
                     "state":         1
                 },
                 {
-                    "bound":         ["MTA="],
+                    "bound":         ["FAAAAAAAAAA="],
                     "state":         0
                 }
             ],

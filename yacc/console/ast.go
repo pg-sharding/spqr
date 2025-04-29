@@ -296,6 +296,9 @@ type SequenceSelector struct {
 
 func (*SequenceSelector) iDrop() {}
 
+type RetryMoveTaskGroup struct {}
+func (*RetryMoveTaskGroup) iStatement() {}
+
 // The following constants represent SHOW statements.
 const (
 	DatabasesStr          = "databases"
