@@ -170,6 +170,11 @@ func (cl *PsqlClient) SetEnhancedMultiShardProcessing(local bool, val bool) {
 
 // ExecuteOn implements RouterClient.
 func (cl *PsqlClient) EnhancedMultiShardProcessing() bool {
+	if _, ok := cl.localParamSet[session.SPQR_ENGINE_V2]; !ok {
+		if _, ok := cl.activeParamSet[session.SPQR_ENGINE_V2]; !ok {
+			return config.RouterConfig().Qr.EnhancedMultiShardProcessing
+		}
+	}
 	return cl.resolveVirtualBoolParam(session.SPQR_ENGINE_V2)
 }
 

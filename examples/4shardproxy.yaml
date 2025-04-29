@@ -19,6 +19,9 @@ use_init_sql: true
 
 memqdb_backup_path: "memqdb.json"
 
+query_routing:
+    enhanced_multishard_processing: true
+
 frontend_tls:
   key_file: /etc/odyssey/ssl/server.key
   cert_file: /etc/odyssey/ssl/server.crt
