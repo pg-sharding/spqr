@@ -48,7 +48,7 @@ backend_rules:
     pool_discard: false
     pool_rollback: true
   - pool_default: true
-    connection_limit: 2
+    connection_limit: 50
     pool_discard: false
     pool_rollback: true
 
