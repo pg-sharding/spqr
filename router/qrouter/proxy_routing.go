@@ -1401,13 +1401,13 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 
 	if !config.RouterConfig().Qr.AlwaysCheckRules {
 		if len(config.RouterConfig().ShardMapping) == 1 {
-			fshrd := ""
+			firstShard := ""
 			for s := range config.RouterConfig().ShardMapping {
-				fshrd = s
+				firstShard = s
 			}
 			return plan.ShardDispatchPlan{
 				ExecTarget: &kr.ShardKey{
-					Name: fshrd,
+					Name: firstShard,
 				},
 			}, nil
 		}
