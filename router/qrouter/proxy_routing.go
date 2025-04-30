@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -1397,6 +1398,21 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 
 // TODO : unit tests
 func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
+
+	if !config.RouterConfig().Qr.AlwaysCheckRules {
+		if len(config.RouterConfig().ShardMapping) == 1 {
+			fshrd := ""
+			for s := range config.RouterConfig().ShardMapping {
+				fshrd = s
+			}
+			return plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
+					Name: fshrd,
+				},
+			}, nil
+		}
+	}
+
 	meta := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
 	route, ro, err := qr.routeWithRules(ctx, meta, stmt)
 	if err != nil {
