@@ -524,6 +524,7 @@ SVGID
 swo
 swp
 sysbench
+rport
 tableref
 targ
 taskmgr
