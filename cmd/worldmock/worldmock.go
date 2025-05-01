@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 
@@ -12,28 +13,34 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
-	"github.com/pg-sharding/spqr/router/port"
+	rport "github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
 )
 
 type WorldMock struct {
-	addr string
+	addr         string
+	port         string
+	replyNotices bool
 }
 
-func NewWorldMock(addr string) *WorldMock {
+func NewWorldMock(addr string, port string) *WorldMock {
 	return &WorldMock{
-		addr: addr,
+		addr:         addr,
+		port:         port,
+		replyNotices: false,
 	}
 }
 
 func (w *WorldMock) Run() error {
 	ctx := context.Background()
 
-	listener, err := net.Listen("tcp", ":6432")
+	listener, err := net.Listen("tcp", net.JoinHostPort(w.addr, w.port))
 	if err != nil {
 		return err
 	}
 	defer listener.Close()
+
+	spqrlog.Zero.Debug().Str("host", w.addr).Str("port", w.port).Msg("spqr worldmock listening")
 
 	cChan := make(chan net.Conn)
 
@@ -68,7 +75,7 @@ func (w *WorldMock) Run() error {
 }
 
 func (w *WorldMock) serv(netconn net.Conn) error {
-	cl := client.NewPsqlClient(netconn, port.DefaultRouterPortType, "", false, "")
+	cl := client.NewPsqlClient(netconn, rport.DefaultRouterPortType, "", false, "")
 
 	err := cl.Init(nil)
 
@@ -91,31 +98,35 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 	}
 	spqrlog.Zero.Info().Msg("client auth OK")
 
-	for {
-		msg, err := cl.Receive()
-		if err != nil {
-			return err
+	flusher := func(msgs []pgproto3.BackendMessage) error {
+		for _, msg := range msgs {
+			if err := cl.Send(msg); err != nil {
+				return err
+			}
 		}
 
-		spqrlog.Zero.Debug().
-			Interface("message", msg).
-			Msg("received message")
+		return nil
+	}
 
-		switch v := msg.(type) {
-		case *pgproto3.Parse:
-			spqrlog.Zero.Info().
-				Str("name", v.Name).
-				Str("query", v.Query).
-				Msg("received prep stmt")
-		case *pgproto3.Query:
-			spqrlog.Zero.Info().
-				Str("message", v.String).
-				Msg("received message")
+	executor := func(q string, sendDesc bool, completeRelay bool) error {
 
+		if w.replyNotices {
 			_ = cl.ReplyDebugNotice("you are receiving the message from the mock world shard")
+		}
 
-			err := func() error {
-				for _, msg := range []pgproto3.BackendMessage{
+		if len(q) >= 3 && strings.ToUpper(q[0:3]) == "SET" {
+
+			return flusher([]pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{CommandTag: []byte("SET")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			})
+		} else {
+
+			var msgs []pgproto3.BackendMessage
+			if sendDesc {
+				msgs = []pgproto3.BackendMessage{
 					&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 						{
 							Name:                 []byte("worldmock"),
@@ -129,20 +140,97 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 					}},
 					&pgproto3.DataRow{Values: [][]byte{[]byte("row1")}},
 					&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-					&pgproto3.ReadyForQuery{
-						TxStatus: byte(txstatus.TXIDLE),
-					},
-				} {
-					if err := cl.Send(msg); err != nil {
-						return err
-					}
 				}
+			} else {
+				msgs = []pgproto3.BackendMessage{
+					&pgproto3.DataRow{Values: [][]byte{[]byte("row1")}},
+					&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				}
+			}
 
-				return nil
-			}()
+			if completeRelay {
+				msgs = append(msgs, &pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				})
+			}
+
+			return flusher(msgs)
+		}
+	}
+
+	lastQuery := ""
+
+	for {
+		msg, err := cl.Receive()
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Msgf("received message: %T, %+v", msg, msg)
+
+		switch v := msg.(type) {
+		case *pgproto3.Parse:
+			spqrlog.Zero.Info().
+				Str("name", v.Name).
+				Str("query", v.Query).
+				Msg("received prep stmt")
+			err := flusher([]pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+			})
 
 			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+				spqrlog.Zero.Error().Err(err).Msg("error serving client")
+			} else {
+				lastQuery = v.Query
+			}
+		case *pgproto3.Bind:
+			spqrlog.Zero.Info().
+				Str("name", v.PreparedStatement).
+				Msg("received prep stmt")
+			err := flusher([]pgproto3.BackendMessage{
+				&pgproto3.BindComplete{},
+			})
+
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("error serving client")
+			}
+		case *pgproto3.Execute:
+			err := executor(lastQuery, true, false)
+
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("error serving client")
+			}
+		case *pgproto3.Close:
+			spqrlog.Zero.Info().
+				Str("name", v.Name).
+				Msg("received prep stmt")
+			err := flusher([]pgproto3.BackendMessage{
+				&pgproto3.CloseComplete{},
+			})
+
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("error serving client")
+			}
+		case *pgproto3.Sync:
+			err = flusher([]pgproto3.BackendMessage{
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			})
+
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("error serving client")
+			}
+		case *pgproto3.Query:
+			spqrlog.Zero.Info().
+				Str("message", v.String).
+				Msg("received message")
+
+			err := executor(v.String, true, true)
+
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("error serving client")
 			}
 
 		default:
