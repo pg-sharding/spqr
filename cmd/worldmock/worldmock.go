@@ -122,6 +122,26 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 					TxStatus: byte(txstatus.TXIDLE),
 				},
 			})
+		} else if len(q) >= 4 && strings.ToUpper(q[0:4]) == "SHOW" {
+
+			return flusher([]pgproto3.BackendMessage{
+				&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+					{
+						Name:                 []byte("pg_is_in_recovery"),
+						TableOID:             0,
+						TableAttributeNumber: 0,
+						DataTypeOID:          25,
+						DataTypeSize:         -1,
+						TypeModifier:         -1,
+						Format:               0,
+					},
+				}},
+				&pgproto3.DataRow{Values: [][]byte{[]byte("off")}},
+				&pgproto3.CommandComplete{CommandTag: []byte("SHOW")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			})
 		} else {
 
 			var msgs []pgproto3.BackendMessage
