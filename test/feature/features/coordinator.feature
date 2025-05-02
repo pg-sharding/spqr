@@ -270,7 +270,7 @@ Feature: Coordinator test
     [{
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
-      "Lower bound":"0",
+      "Lower bound":"50",
       "Shard ID":"sh1"
     }]
     """
@@ -279,7 +279,7 @@ Feature: Coordinator test
     [{
       "Key range ID":"krid3",
       "Distribution ID":"ds1",
-      "Lower bound":"5",
+      "Lower bound":"70",
       "Shard ID":"sh1"
     }]
     """
@@ -294,7 +294,7 @@ Feature: Coordinator test
     [{
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
-      "Lower bound":"0",
+      "Lower bound":"50",
       "Shard ID":"sh1"
     }]
     """
@@ -303,7 +303,7 @@ Feature: Coordinator test
     [{
       "Key range ID":"krid3",
       "Distribution ID":"ds1",
-      "Lower bound":"5",
+      "Lower bound":"70",
       "Shard ID":"sh1"
     }]
     """
@@ -319,7 +319,7 @@ Feature: Coordinator test
     [{
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
-      "Lower bound":"0",
+      "Lower bound":"50",
       "Shard ID":"sh1"
     }]
     """
@@ -334,7 +334,7 @@ Feature: Coordinator test
     [{
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
-      "Lower bound":"0",
+      "Lower bound":"50",
       "Shard ID":"sh1"
     }]
     """
@@ -362,8 +362,8 @@ Feature: Coordinator test
   Scenario: Unite non-adjacent key ranges fails
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid3 FROM 30 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    UNITE KEY RANGE krid1 WITH krid3
+    CREATE KEY RANGE krid3 FROM 30 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    UNITE KEY RANGE krid3 WITH krid2
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -397,7 +397,7 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-    UNITE KEY RANGE krid2 WITH krid3
+    UNITE KEY RANGE krid1 WITH krid3
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -410,7 +410,7 @@ Feature: Coordinator test
     #
     When I run SQL on host "coordinator"
     """
-    SPLIT KEY RANGE krid3 FROM krid1 BY 40
+    SPLIT KEY RANGE krid3 FROM krid1 BY 120
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -434,7 +434,7 @@ Feature: Coordinator test
     #
     When I run SQL on host "coordinator"
     """
-    SPLIT KEY RANGE krid3 FROM krid2 BY 11
+    SPLIT KEY RANGE krid3 FROM krid2 BY 100
     """
     Then SQL error on host "coordinator" should match regexp
     """

@@ -4,7 +4,7 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
--- create key range works 
+-- create key range works
 CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  add key range 
 ---------------

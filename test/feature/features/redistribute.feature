@@ -780,10 +780,10 @@ Feature: Redistribution test
   Scenario: REDISTRIBUTE KEY RANGE orders key ranges correctly
     When I execute SQL on host "coordinator"
     """ 
-    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    CREATE KEY RANGE kr2 FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE kr3 FROM 150 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr2 FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE kr4 FROM 90 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
 

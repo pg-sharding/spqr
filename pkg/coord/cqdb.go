@@ -989,7 +989,7 @@ func (qc *QDBCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 			KrIdFrom:  req.KrId,
 			KrIdTo:    req.DestKrId,
 			ShardToId: req.ShardId,
-			Type:      tasks.SplitRight,
+			Type:      req.Type,
 			Tasks: []*tasks.MoveTask{
 				{
 					KrIdTemp: req.DestKrId,

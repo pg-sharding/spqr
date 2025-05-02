@@ -5,7 +5,6 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 )
 
@@ -31,8 +30,6 @@ func CreateKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 
 	var nearestKr *kr.KeyRange = nil
 	for _, v := range existsKrids {
-
-		spqrlog.Zero.Info().Bytes("types", v.LowerBound[0]).Msg("adding key range")
 		eph := kr.KeyRangeFromBytes(v.LowerBound, keyRange.ColumnTypes)
 		if kr.CmpRangesLessEqual(eph.LowerBound, keyRange.LowerBound, keyRange.ColumnTypes) {
 			if nearestKr == nil || kr.CmpRangesLess(nearestKr.LowerBound, eph.LowerBound, nearestKr.ColumnTypes) {
@@ -42,6 +39,7 @@ func CreateKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 			}
 		}
 	}
+
 	if nearestKr != nil && nearestKr.ShardID != keyRange.ShardID {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v intersects with key range %v in QDB", keyRange.ID, nearestKr.ID)
 	}
