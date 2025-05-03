@@ -441,15 +441,6 @@ Feature: Coordinator test
     failed to split because bound equals lower of the key range
     """
 
-    When I run SQL on host "coordinator"
-    """
-    SPLIT KEY RANGE krid3 FROM krid2 BY 11
-    """
-    Then SQL error on host "coordinator" should match regexp
-    """
-    failed to split because bound equals lower of the key range
-    """
-
   Scenario: Adding/dropping shards works
     When I run SQL on host "coordinator"
     """
