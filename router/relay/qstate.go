@@ -136,61 +136,57 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 		mp, err := parser.ParseComment(comment)
 
 		if err == nil {
-			if val, ok := mp["target-session-attrs"]; ok {
-				// TBD: validate
-				spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
-				rst.Client().SetTsa(val)
-			}
+			for key, val := range mp {
+				switch key {
+				case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
+					fallthrough
+				case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+					fallthrough
+				case session.SPQR_TARGET_SESSION_ATTRS:
+					// TBD: validate value
+					spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
+					rst.Client().SetTsa(val)
+				case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
+					spqrlog.Zero.Debug().Str("default route", val).Msg("parse default route behaviour from comment")
+					rst.Client().SetDefaultRouteBehaviour(true, val)
+				case session.SPQR_SHARDING_KEY:
+					spqrlog.Zero.Debug().Str("sharding key", val).Msg("parse sharding key from comment")
+					rst.Client().SetShardingKey(true, val)
+				case session.SPQR_DISTRIBUTION:
+					spqrlog.Zero.Debug().Str("distribution", val).Msg("parse distribution from comment")
+					rst.Client().SetDistribution(true, val)
+				case session.SPQR_SCATTER_QUERY:
+					/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
+					spqrlog.Zero.Debug().Str("scatter query", val).Msg("parse scatter query from comment")
+					rst.Client().SetScatterQuery(val != "")
+				case session.SPQR_EXECUTE_ON:
 
-			if val, ok := mp[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR]; ok {
-				spqrlog.Zero.Debug().Str("default route", val).Msg("parse default route behaviour from comment")
-				rst.Client().SetDefaultRouteBehaviour(true, val)
-			}
-
-			if val, ok := mp[session.SPQR_SHARDING_KEY]; ok {
-				spqrlog.Zero.Debug().Str("sharding key", val).Msg("parse sharding key from comment")
-				rst.Client().SetShardingKey(true, val)
-			}
-
-			if val, ok := mp[session.SPQR_DISTRIBUTION]; ok {
-				spqrlog.Zero.Debug().Str("distribution", val).Msg("parse distribution from comment")
-				rst.Client().SetDistribution(true, val)
-			}
-
-			/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
-			if val, ok := mp[session.SPQR_SCATTER_QUERY]; ok {
-				spqrlog.Zero.Debug().Str("scatter query", val).Msg("parse scatter query from comment")
-				rst.Client().SetScatterQuery(val != "")
-			}
-
-			if val, ok := mp[session.SPQR_AUTO_DISTRIBUTION]; ok {
-				if valDistrib, ok := mp[session.SPQR_DISTRIBUTION_KEY]; ok {
-					_, err = rst.QueryRouter().Mgr().GetDistribution(context.TODO(), val)
-					if err != nil {
-						return err
+					if _, ok := config.RouterConfig().ShardMapping[val]; !ok {
+						return fmt.Errorf("no such shard: %v", val)
 					}
+					rst.Client().SetExecuteOn(true, val)
+				case session.SPQR_ENGINE_V2:
+					if val == "true" {
+						rst.Client().SetEnhancedMultiShardProcessing(true, true)
+					}
+				case session.SPQR_AUTO_DISTRIBUTION:
+					if valDistrib, ok := mp[session.SPQR_DISTRIBUTION_KEY]; ok {
+						_, err = rst.QueryRouter().Mgr().GetDistribution(context.TODO(), val)
+						if err != nil {
+							return err
+						}
 
-					/* This is an ddl query, which creates relation along with attaching to distribution */
-					rst.Client().SetAutoDistribution(true, val)
-					rst.Client().SetDistributionKey(true, valDistrib)
+						/* This is an ddl query, which creates relation along with attaching to distribution */
+						rst.Client().SetAutoDistribution(true, val)
+						rst.Client().SetDistributionKey(true, valDistrib)
 
-					/* this is too early to do anything with distribution hint, as we do not yet parsed
-					* DDL of about-to-be-created relation
-					 */
-				} else {
-					return fmt.Errorf("spqr distribution specified, but distribution key omitted")
+						/* this is too early to do anything with distribution hint, as we do not yet parsed
+						* DDL of about-to-be-created relation
+						 */
+					} else {
+						return fmt.Errorf("spqr distribution specified, but distribution key omitted")
+					}
 				}
-			}
-
-			if val, ok := mp[session.SPQR_EXECUTE_ON]; ok {
-				if _, ok := config.RouterConfig().ShardMapping[val]; !ok {
-					return fmt.Errorf("no such shard: %v", val)
-				}
-				rst.Client().SetExecuteOn(true, val)
-			}
-
-			if val, ok := mp[session.SPQR_ENGINE_V2]; ok && val == "true" {
-				rst.Client().SetEnhancedMultiShardProcessing(true, true)
 			}
 		}
 
