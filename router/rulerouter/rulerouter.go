@@ -170,12 +170,6 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 
 	_ = r.initSem.Acquire(context.TODO(), 1)
 
-	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(cl)).
-		Str("db", cl.DB()).
-		Str("user", cl.Usr()).
-		Msg("client initialized")
-
 	if err := cl.Init(tlsConfig); err != nil {
 		r.initSem.Release(1)
 		return cl, err
@@ -189,10 +183,8 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	}
 
 	if cl.Usr() == "spqr-ping" && cl.DB() == "spqr-ping" {
-		spqrlog.Zero.Debug().Msg("ping detected")
 		return r.preRoutePingPong(cl)
 	}
-	spqrlog.Zero.Debug().Msg("ping NOT detected")
 
 	if pt == port.ADMRouterPortType || cl.DB() == "spqr-console" {
 		return r.preRouteInitializedClientAdm(cl)
