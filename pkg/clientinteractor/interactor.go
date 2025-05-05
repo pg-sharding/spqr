@@ -1560,6 +1560,17 @@ func (pi *PSQLInteractor) DropSequence(_ context.Context, name string) error {
 	return pi.CompleteMsg(0)
 }
 
+func (pi *PSQLInteractor) Ping(ctx context.Context) error {
+	if err := pi.WriteHeader("ping"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+	}
+	if err := pi.WriteDataRow("pong"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+	return pi.CompleteMsg(0)
+}
+
 func (pi *PSQLInteractor) IsReadOnly(ctx context.Context, ro bool) error {
 	if err := pi.WriteHeader("is read only"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")

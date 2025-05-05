@@ -9,10 +9,13 @@ import (
 	"net"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
@@ -173,6 +176,60 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 		}
 
 		return routerClient.ID(), r.RuleRouter.CancelClient(routerClient.CancelMsg())
+	}
+
+	if routerClient.Usr() == "spqr-ping" && routerClient.DB() == "spqr-ping" {
+		msgs := []pgproto3.BackendMessage{
+			&pgproto3.AuthenticationOk{},
+		}
+
+		params := []string{"client_encoding", "standard_conforming_strings"}
+		for _, p := range params {
+			if v, ok := routerClient.Params()[p]; ok {
+				msgs = append(msgs, &pgproto3.ParameterStatus{Name: p, Value: v})
+			}
+		}
+
+		msgs = append(msgs, []pgproto3.BackendMessage{
+			&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
+			&pgproto3.ParameterStatus{Name: "client_encoding", Value: "UTF8"},
+			&pgproto3.ParameterStatus{Name: "DateStyle", Value: "ISO"},
+			&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
+			&pgproto3.ReadyForQuery{
+				TxStatus: byte(txstatus.TXIDLE),
+			},
+		}...)
+
+		for _, msg := range msgs {
+			if err := routerClient.Send(msg); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+				return routerClient.ID(), err
+			}
+		}
+
+		spqrlog.Zero.Info().Msg("console.ProcClient start")
+
+		for {
+			msg, err := routerClient.Receive()
+
+			if err != nil {
+				return routerClient.ID(), err
+			}
+
+			switch v := msg.(type) {
+			case *pgproto3.Query:
+				if err := clientinteractor.NewPSQLInteractor(routerClient).Ping(context.Background()); err != nil {
+					_ = routerClient.ReplyErr(err)
+					// continue to consume input
+				}
+			case *pgproto3.Terminate:
+				return routerClient.ID(), nil
+			default:
+				spqrlog.Zero.Info().
+					Type("message type", v).
+					Msg("got unexpected postgresql proto message with type")
+			}
+		}
 	}
 
 	if pt == port.ADMRouterPortType || routerClient.DB() == "spqr-console" {
