@@ -209,27 +209,27 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 
 		spqrlog.Zero.Info().Msg("console.ProcClient start")
 
-		for {
-			msg, err := routerClient.Receive()
+		msg, err := routerClient.Receive()
 
-			if err != nil {
-				return routerClient.ID(), err
-			}
-
-			switch v := msg.(type) {
-			case *pgproto3.Query:
-				if err := clientinteractor.NewPSQLInteractor(routerClient).Ping(context.Background()); err != nil {
-					_ = routerClient.ReplyErr(err)
-					// continue to consume input
-				}
-			case *pgproto3.Terminate:
-				return routerClient.ID(), nil
-			default:
-				spqrlog.Zero.Info().
-					Type("message type", v).
-					Msg("got unexpected postgresql proto message with type")
-			}
+		if err != nil {
+			return routerClient.ID(), err
 		}
+
+		switch v := msg.(type) {
+		case *pgproto3.Query:
+			if err := clientinteractor.NewPSQLInteractor(routerClient).Ping(context.Background()); err != nil {
+				_ = routerClient.ReplyErr(err)
+				// continue to consume input
+			}
+		case *pgproto3.Terminate:
+			return routerClient.ID(), nil
+		default:
+			spqrlog.Zero.Info().
+				Type("message type", v).
+				Msg("got unexpected postgresql proto message with type")
+		}
+
+		return routerClient.ID(), nil
 	}
 
 	if pt == port.ADMRouterPortType || routerClient.DB() == "spqr-console" {
