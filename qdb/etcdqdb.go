@@ -472,13 +472,10 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 		return err
 	}
 
-	kvs, err := q.cli.Delete(ctx, keyLockPath(keyRangeNodePath(krId)))
+	_, err = q.cli.Delete(ctx, keyLockPath(keyRangeNodePath(krId)))
 	if err != nil {
 		return err
 	}
-	spqrlog.Zero.Debug().
-		Int("kvs", len(kvs.PrevKvs)).
-		Msg("etcdqdb: rename key range delete lock")
 
 	return q.CreateKeyRange(ctx, kr)
 }
