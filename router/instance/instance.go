@@ -181,33 +181,17 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 	if routerClient.Usr() == "spqr-ping" && routerClient.DB() == "spqr-ping" {
 		msgs := []pgproto3.BackendMessage{
 			&pgproto3.AuthenticationOk{},
-		}
-
-		params := []string{"client_encoding", "standard_conforming_strings"}
-		for _, p := range params {
-			if v, ok := routerClient.Params()[p]; ok {
-				msgs = append(msgs, &pgproto3.ParameterStatus{Name: p, Value: v})
-			}
-		}
-
-		msgs = append(msgs, []pgproto3.BackendMessage{
-			&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
-			&pgproto3.ParameterStatus{Name: "client_encoding", Value: "UTF8"},
-			&pgproto3.ParameterStatus{Name: "DateStyle", Value: "ISO"},
-			&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
 			&pgproto3.ReadyForQuery{
 				TxStatus: byte(txstatus.TXIDLE),
 			},
-		}...)
+		}
 
 		for _, msg := range msgs {
 			if err := routerClient.Send(msg); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+				spqrlog.Zero.Error().Err(err).Msg("failed to send message to routerClient during ping")
 				return routerClient.ID(), err
 			}
 		}
-
-		spqrlog.Zero.Info().Msg("console.ProcClient start")
 
 		msg, err := routerClient.Receive()
 
@@ -217,7 +201,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
-			if err := clientinteractor.NewPSQLInteractor(routerClient).Ping(context.Background()); err != nil {
+			if err := clientinteractor.NewPSQLInteractor(routerClient).ReadyForQuery(); err != nil {
 				_ = routerClient.ReplyErr(err)
 				// continue to consume input
 			}
