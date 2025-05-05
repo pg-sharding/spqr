@@ -35,6 +35,7 @@ Bootstrapper
 bts
 buildpackage
 byt
+cachedchecker
 caio
 CANCELREQ
 canreq
@@ -307,6 +308,7 @@ myworkloadlog
 NALMm
 nconn
 NConst
+netchecker
 netconn
 Newf
 nkr
