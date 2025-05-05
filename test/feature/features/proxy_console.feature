@@ -203,9 +203,9 @@ Feature: Proxy console
         When I run SQL on host "router-admin"
         """
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-        CREATE KEY RANGE old_krid FROM 0 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+        CREATE KEY RANGE old_krid FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
         UNREGISTER ROUTER r1;
-        CREATE KEY RANGE new_krid FROM 100 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+        CREATE KEY RANGE new_krid FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
         """
         Then command return code should be "0"
 
@@ -218,7 +218,7 @@ Feature: Proxy console
         [{
             "Key range ID":"old_krid",
             "Distribution ID":"ds1",
-            "Lower bound":"0",
+            "Lower bound":"100",
             "Shard ID":"sh2"
         }]
         """

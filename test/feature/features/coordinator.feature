@@ -20,8 +20,8 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer; 
-    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 50 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
     """
     Then command return code should be "0"
@@ -37,8 +37,8 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1_test COLUMN TYPES integer;
-    CREATE KEY RANGE krid11 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1_test;
     CREATE KEY RANGE krid22 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1_test;
+    CREATE KEY RANGE krid11 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1_test;
     ALTER DISTRIBUTION ds1_test ATTACH RELATION test1 DISTRIBUTION KEY id;
     """
     Then command return code should be "0"
@@ -76,8 +76,8 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1_test COLUMN TYPES integer;
-    CREATE KEY RANGE krid11 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1_test;
     CREATE KEY RANGE krid22 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1_test;
+    CREATE KEY RANGE krid11 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1_test;
     ALTER DISTRIBUTION ds1_test ATTACH RELATION test1 DISTRIBUTION KEY id;
     """
     Then command return code should be "0"
@@ -193,11 +193,12 @@ Feature: Coordinator test
     Then command return code should be "0"
 
   Scenario: Router synchronization after registration works
-    Given I run SQL on host "coordinator"
+    When I run SQL on host "coordinator"
     """
     UNREGISTER ROUTER r1;
     REGISTER ROUTER r1 ADDRESS regress_router::7000
     """
+    Then command return code should be "0"
     When I run SQL on host "router-admin"
     """
     SHOW key_ranges
@@ -207,13 +208,13 @@ Feature: Coordinator test
     [{
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
-      "Lower bound":"0",
+      "Lower bound":"50",
       "Shard ID":"sh1"
     },
     {
       "Key range ID":"krid2",
       "Distribution ID":"ds1",
-      "Lower bound":"11",
+      "Lower bound":"100",
       "Shard ID":"sh2"
     }]
     """
@@ -221,7 +222,7 @@ Feature: Coordinator test
   Scenario: Add key range with the same id fails
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid1 FROM 50 ROUTE TO sh1 FOR DISTRIBUTION ds1
+    CREATE KEY RANGE krid1 FROM 30 ROUTE TO sh1 FOR DISTRIBUTION ds1
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -235,7 +236,7 @@ Feature: Coordinator test
     """
     When I run SQL on host "router"
     """
-    SELECT name FROM test WHERE id=5
+    SELECT name FROM test WHERE id=70
     """
     Then SQL error on host "router" should match regexp
     """
@@ -248,8 +249,8 @@ Feature: Coordinator test
     """
     When I run SQL on host "router"
     """
-    INSERT INTO test(id, name) VALUES(5, 'random_word');
-    SELECT name FROM test WHERE id=5
+    INSERT INTO test(id, name) VALUES(70, 'random_word');
+    SELECT name FROM test WHERE id=70
     """
     Then command return code should be "0"
     And SQL result should match regexp
@@ -260,7 +261,7 @@ Feature: Coordinator test
   Scenario: Split/Unite key range works
     When I run SQL on host "coordinator"
     """
-    SPLIT KEY RANGE krid3 FROM krid1 BY 5;
+    SPLIT KEY RANGE krid3 FROM krid1 BY 70;
     SHOW key_ranges
     """
     Then command return code should be "0"
@@ -269,7 +270,7 @@ Feature: Coordinator test
     [{
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
-      "Lower bound":"0",
+      "Lower bound":"50",
       "Shard ID":"sh1"
     }]
     """
@@ -278,7 +279,7 @@ Feature: Coordinator test
     [{
       "Key range ID":"krid3",
       "Distribution ID":"ds1",
-      "Lower bound":"5",
+      "Lower bound":"70",
       "Shard ID":"sh1"
     }]
     """
@@ -293,7 +294,7 @@ Feature: Coordinator test
     [{
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
-      "Lower bound":"0",
+      "Lower bound":"50",
       "Shard ID":"sh1"
     }]
     """
@@ -302,7 +303,7 @@ Feature: Coordinator test
     [{
       "Key range ID":"krid3",
       "Distribution ID":"ds1",
-      "Lower bound":"5",
+      "Lower bound":"70",
       "Shard ID":"sh1"
     }]
     """
@@ -318,7 +319,7 @@ Feature: Coordinator test
     [{
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
-      "Lower bound":"0",
+      "Lower bound":"50",
       "Shard ID":"sh1"
     }]
     """
@@ -333,7 +334,7 @@ Feature: Coordinator test
     [{
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
-      "Lower bound":"0",
+      "Lower bound":"50",
       "Shard ID":"sh1"
     }]
     """
@@ -361,8 +362,8 @@ Feature: Coordinator test
   Scenario: Unite non-adjacent key ranges fails
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid3 FROM 100 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    UNITE KEY RANGE krid1 WITH krid3
+    CREATE KEY RANGE krid3 FROM 30 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    UNITE KEY RANGE krid3 WITH krid2
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -373,8 +374,8 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     DROP KEY RANGE krid3;
-    CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-    UNITE KEY RANGE krid3 WITH krid2
+    CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    UNITE KEY RANGE krid3 WITH krid1
     """
     Then command return code should be "0"
 
@@ -387,16 +388,16 @@ Feature: Coordinator test
     [{
       "Key range ID":"krid3",
       "Distribution ID":"ds1",
-      "Lower bound":"11",
-      "Shard ID":"sh2"
+      "Lower bound":"31",
+      "Shard ID":"sh1"
     }]
     """
 
   Scenario: Unite key ranges routing different shards fails
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    UNITE KEY RANGE krid2 WITH krid3
+    CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    UNITE KEY RANGE krid1 WITH krid3
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -409,7 +410,7 @@ Feature: Coordinator test
     #
     When I run SQL on host "coordinator"
     """
-    SPLIT KEY RANGE krid3 FROM krid1 BY 40
+    SPLIT KEY RANGE krid3 FROM krid1 BY 120
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -433,16 +434,7 @@ Feature: Coordinator test
     #
     When I run SQL on host "coordinator"
     """
-    SPLIT KEY RANGE krid3 FROM krid2 BY 11
-    """
-    Then SQL error on host "coordinator" should match regexp
-    """
-    failed to split because bound equals lower of the key range
-    """
-
-    When I run SQL on host "coordinator"
-    """
-    SPLIT KEY RANGE krid3 FROM krid2 BY 11
+    SPLIT KEY RANGE krid3 FROM krid2 BY 100
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -584,8 +576,8 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
     """
     Then command return code should be "0"

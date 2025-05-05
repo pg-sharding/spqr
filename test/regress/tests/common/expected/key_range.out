@@ -5,18 +5,18 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 (1 row)
 
 -- create key range works
-CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
- add key range 
----------------
- bound -> 0
-(1 row)
-
 CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
  bound -> 11
 (1 row)
 
+CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
 -- intersecting key range
-CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid3 FROM 50 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 ERROR:  key range krid3 intersects with key range krid2 in QDB.

@@ -20,8 +20,8 @@ Feature: Balancer test
   Scenario: balancer works
     When I execute SQL on host "coordinator"
     """
-    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE kr2 FROM 100000 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
 
@@ -82,8 +82,8 @@ Feature: Balancer test
   Scenario: balancer works with several possible moves
     When I execute SQL on host "coordinator"
     """
-    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE kr2 FROM 100000 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
 
@@ -144,8 +144,8 @@ Feature: Balancer test
   Scenario: balancer does not move more than necessary
     When I execute SQL on host "coordinator"
     """
-    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE kr2 FROM 100000 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
 
@@ -177,8 +177,8 @@ Feature: Balancer test
   Scenario: balancer works when transferring to previous key range
     When I execute SQL on host "coordinator"
     """
-    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE kr2 FROM 100000 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
 
@@ -302,8 +302,8 @@ Feature: Balancer test
   Scenario: balancer works with cpu metric
     When I execute SQL on host "coordinator"
     """
-    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE kr2 FROM 100000 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
 
@@ -366,10 +366,10 @@ Feature: Balancer test
     """
     CREATE DISTRIBUTION ds2 COLUMN TYPES integer;
     ALTER DISTRIBUTION ds2 ATTACH RELATION xMove2 DISTRIBUTION KEY w_id;
-    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE kr2 FROM 100000 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-    CREATE KEY RANGE kr3 FROM 10 ROUTE TO sh1 FOR DISTRIBUTION ds2;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE kr4 FROM 10000 ROUTE TO sh2 FOR DISTRIBUTION ds2;
+    CREATE KEY RANGE kr3 FROM 10 ROUTE TO sh1 FOR DISTRIBUTION ds2;
     """
     Then command return code should be "0"
     When I run SQL on host "router"
@@ -461,12 +461,12 @@ Feature: Balancer test
   Scenario: balancer can move the whole key range
     When I execute SQL on host "coordinator"
     """
-    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    CREATE KEY RANGE kr2 FROM 20000 ROUTE TO sh1 FOR DISTRIBUTION ds1; 
-    CREATE KEY RANGE kr3 FROM 40000 ROUTE TO sh1 FOR DISTRIBUTION ds1; 
-    CREATE KEY RANGE kr4 FROM 60000 ROUTE TO sh1 FOR DISTRIBUTION ds1; 
-    CREATE KEY RANGE kr5 FROM 70000 ROUTE TO sh1 FOR DISTRIBUTION ds1; 
     CREATE KEY RANGE kr6 FROM 100000 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr5 FROM 70000 ROUTE TO sh1 FOR DISTRIBUTION ds1; 
+    CREATE KEY RANGE kr4 FROM 60000 ROUTE TO sh1 FOR DISTRIBUTION ds1; 
+    CREATE KEY RANGE kr3 FROM 40000 ROUTE TO sh1 FOR DISTRIBUTION ds1; 
+    CREATE KEY RANGE kr2 FROM 20000 ROUTE TO sh1 FOR DISTRIBUTION ds1; 
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
 

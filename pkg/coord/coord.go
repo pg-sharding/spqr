@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -450,11 +451,13 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return err
 	}
 
-	defer func() {
-		if err := qc.qdb.UnlockKeyRange(ctx, req.SourceID); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-		}
-	}()
+	if !req.SplitLeft {
+		defer func() {
+			if err := qc.qdb.UnlockKeyRange(ctx, req.SourceID); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+			}
+		}()
+	}
 
 	ds, err := qc.qdb.GetDistribution(ctx, krOldDB.DistributionId)
 
@@ -484,39 +487,39 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		}
 	}
 
-	krNew := kr.KeyRangeFromDB(
+	krTemp := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
 			// fix multidim case
-			LowerBound: func() [][]byte {
-				if req.SplitLeft {
-					return krOld.Raw()
-				}
-				return req.Bound
-			}(),
-			KeyRangeID:     req.Krid,
+			LowerBound:     req.Bound,
+			KeyRangeID:     uuid.NewString(),
 			ShardID:        krOld.ShardID,
 			DistributionId: krOld.Distribution,
 		},
 		ds.ColTypes,
 	)
 
-	spqrlog.Zero.Debug().
-		Bytes("lower-bound", krNew.Raw()[0]).
-		Str("shard-id", krNew.ShardID).
-		Str("id", krNew.ID).
-		Msg("new key range")
-
-	if req.SplitLeft {
-		krOld.LowerBound = kr.KeyRangeFromBytes(req.Bound, ds.ColTypes).LowerBound
+	if err := ops.CreateKeyRangeWithChecks(ctx, qc.qdb, krTemp); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
 	}
 
-	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.qdb, krOld); err != nil {
+	spqrlog.Zero.Debug().
+		Bytes("lower-bound", krTemp.Raw()[0]).
+		Str("shard-id", krTemp.ShardID).
+		Str("id", krTemp.ID).
+		Msg("new key range")
+
+	rightKr := req.Krid
+	if req.SplitLeft {
+		rightKr = krOld.ID
+		if err := qc.qdb.RenameKeyRange(ctx, krOld.ID, req.Krid); err != nil {
+			return err
+		}
+	}
+
+	if err := qc.qdb.RenameKeyRange(ctx, krTemp.ID, rightKr); err != nil {
 		return err
 	}
 
-	if err := ops.CreateKeyRangeWithChecks(ctx, qc.qdb, krNew); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
-	}
 	return nil
 }
 

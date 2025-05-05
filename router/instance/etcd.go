@@ -2,6 +2,7 @@ package instance
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -39,6 +40,12 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 		if err != nil {
 			return err
 		}
+
+		sort.Slice(krs, func(i, j int) bool {
+			l := kr.KeyRangeFromDB(krs[i], d.ColTypes)
+			r := kr.KeyRangeFromDB(krs[j], d.ColTypes)
+			return !kr.CmpRangesLess(l.LowerBound, r.LowerBound, d.ColTypes)
+		})
 
 		for _, ckr := range krs {
 			if err := r.Console().Mgr().CreateKeyRange(ctx, kr.KeyRangeFromDB(ckr, d.ColTypes)); err != nil {

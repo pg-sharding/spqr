@@ -472,6 +472,11 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 		return err
 	}
 
+	_, err = q.cli.Delete(ctx, keyLockPath(keyRangeNodePath(krId)))
+	if err != nil {
+		return err
+	}
+
 	return q.CreateKeyRange(ctx, kr)
 }
 

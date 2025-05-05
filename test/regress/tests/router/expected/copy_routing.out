@@ -12,16 +12,10 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES int;
  distribution id -> ds1
 (1 row)
 
-CREATE KEY RANGE FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 300 ROUTE TO sh4 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
- bound -> 1
-(1 row)
-
-CREATE KEY RANGE FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
- add key range 
----------------
- bound -> 100
+ bound -> 300
 (1 row)
 
 CREATE KEY RANGE FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
@@ -30,10 +24,16 @@ CREATE KEY RANGE FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
  bound -> 200
 (1 row)
 
-CREATE KEY RANGE FROM 300 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
- bound -> 300
+ bound -> 100
+(1 row)
+
+CREATE KEY RANGE FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test DISTRIBUTION KEY id;
