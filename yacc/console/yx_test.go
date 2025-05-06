@@ -668,7 +668,7 @@ func TestAlter(t *testing.T) {
 			},
 		},
 		{
-			query: "ALTER REPLICATED DISTRIBUTION ATTACH RELATION t AUTO INCREMENT id1 STARTT 42;",
+			query: "ALTER REPLICATED DISTRIBUTION ATTACH RELATION t AUTO INCREMENT id1 START 42;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.AttachRelation{
@@ -710,7 +710,7 @@ func TestAlter(t *testing.T) {
 			},
 		},
 		{
-			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1 AUTO INCREMENT id1, id2 STARTT 123, 321;",
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1 AUTO INCREMENT id1, id2 START 123, 321;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.AttachRelation{
@@ -854,7 +854,7 @@ func TestDistribution(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "CREATE REFERENCE TABLE xtab AUTO INCREMENT id STARTT 42",
+			query: "CREATE REFERENCE TABLE xtab AUTO INCREMENT id START 42",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
 					TableName:            "xtab",
