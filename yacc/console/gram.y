@@ -153,7 +153,7 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY
-%token <str> SHARDING COLUMN TABLE TABLES HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA
+%token <str> SHARDING COLUMN TABLE TABLES HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT STARTT SEQUENCE SCHEMA
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
@@ -199,7 +199,9 @@ func randomHex(n int) (string, error) {
 %type<dEntrieslist> distribution_key_argument_list
 %type<shruleEntry> sharding_rule_entry
 %type<strlist> opt_auto_increment
+%type<strlist> opt_auto_increment_start
 %type<strlist> auto_inc_column_list
+%type<strlist> auto_inc_start_list
 %type<str> opt_schema_name
 
 %type<distrKeyEntry> distribution_key_entry
@@ -581,13 +583,23 @@ distribution_key_entry:
 	}
 
 distributed_relation_def:
-	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment opt_schema_name
+	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment opt_auto_increment_start opt_schema_name
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
-			SchemaName: $7,
 			DistributionKey: $5,
 			AutoIncrementColumns: $6,
+			AutoIncrementStart: $7,
+			SchemaName: $8,
+		}
+	} | 
+    RELATION any_id DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment opt_schema_name
+	{
+		$$ = &DistributedRelation{
+			Name: 	 $2,
+			DistributionKey: $5,
+			AutoIncrementColumns: $6,
+			SchemaName: $7,
 		}
 	} | 
 	RELATION any_id opt_auto_increment opt_schema_name
@@ -608,6 +620,13 @@ opt_auto_increment:
 		$$ = nil
 	}
 
+opt_auto_increment_start:
+	STARTT auto_inc_start_list {
+		$$ = $2
+	} | /* EMPTY */ {
+		$$ = nil
+	}
+
 opt_schema_name:
 	SCHEMA any_id {
 		$$ = $2
@@ -619,6 +638,13 @@ auto_inc_column_list:
 	any_id {
 		$$ = []string{$1}
 	} | auto_inc_column_list TCOMMA any_id {
+		$$ = append($1, $3)
+	}
+
+auto_inc_start_list:
+	any_id {
+		$$ = []string{$1}
+	} | auto_inc_start_list TCOMMA any_id {
 		$$ = append($1, $3)
 	}
 
@@ -661,12 +687,13 @@ create_stmt:
 		$$ = &Create{Element: $2}
 	}
 	|
-	CREATE REFERENCE TABLE any_id opt_auto_increment
+	CREATE REFERENCE TABLE any_id opt_auto_increment opt_auto_increment_start
 	{
 		$$ = &Create{
 			Element: &ReferenceRelationDefinition{
 				TableName: $4,
 				AutoIncrementColumns: $5,
+				AutoIncrementStart: $6,
 			},
 		}
 	}

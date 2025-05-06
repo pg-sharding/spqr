@@ -668,6 +668,27 @@ func TestAlter(t *testing.T) {
 			},
 		},
 		{
+			query: "ALTER REPLICATED DISTRIBUTION ATTACH RELATION t AUTO INCREMENT id1 STARTT 42;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Distribution: &spqrparser.DistributionSelector{
+							ID:         "REPLICATED",
+							Replicated: true,
+						},
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name:                 "t",
+								ReplicatedRelation:   true,
+								AutoIncrementColumns: []string{"id1"},
+								AutoIncrementStart:   []string{"42"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1 AUTO INCREMENT id1, id2;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
@@ -681,6 +702,28 @@ func TestAlter(t *testing.T) {
 									},
 								},
 								AutoIncrementColumns: []string{"id1", "id2"},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+		},
+		{
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1 AUTO INCREMENT id1, id2 STARTT 123, 321;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name: "t",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										Column: "id1",
+									},
+								},
+								AutoIncrementColumns: []string{"id1", "id2"},
+								AutoIncrementStart:   []string{"123", "321"},
 							},
 						},
 						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
@@ -806,6 +849,17 @@ func TestDistribution(t *testing.T) {
 				Element: &spqrparser.ReferenceRelationDefinition{
 					TableName:            "xtab",
 					AutoIncrementColumns: []string{"id"},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE REFERENCE TABLE xtab AUTO INCREMENT id STARTT 42",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ReferenceRelationDefinition{
+					TableName:            "xtab",
+					AutoIncrementColumns: []string{"id"},
+					AutoIncrementStart:   []string{"42"},
 				},
 			},
 			err: nil,
