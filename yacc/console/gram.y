@@ -612,7 +612,7 @@ opt_auto_increment:
             Starts: $4,
         }
     } | /* EMPTY */ {
-        $$ = nil
+        $$ = &AutoIncrement{}
     }
 
 opt_auto_increment_start:

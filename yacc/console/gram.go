@@ -2505,7 +2505,7 @@ yydefault:
 //line gram.y:607
 >>>>>>> b252c210 (fixes after review)
 		{
-			yyVAL.autoincrement = nil
+			yyVAL.autoincrement = &AutoIncrement{}
 		}
 	case 71:
 <<<<<<< HEAD
