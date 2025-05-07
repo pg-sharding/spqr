@@ -327,7 +327,6 @@ nspname
 odssd
 ogima
 OIDKRB
-oid
 OIDS
 oiwejow
 OLAP
