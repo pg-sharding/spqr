@@ -66,9 +66,9 @@ coordctl
 copymap
 cpg
 cptr
+cqdb
 createsequence
 crt
-cqdb
 csm
 Cta
 ctl
@@ -441,6 +441,7 @@ routerparser
 routerproto
 routingstate
 rowmap
+rport
 rqdn
 RQF
 rqfn
@@ -528,7 +529,6 @@ SVGID
 swo
 swp
 sysbench
-rport
 tableref
 targ
 taskmgr
@@ -573,6 +573,7 @@ txtstatus
 uax
 uber
 uinteger
+uintegerlist
 Uints
 umi
 unconfigured

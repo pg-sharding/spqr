@@ -46,8 +46,11 @@ ALTER DISTRIBUTION <distribution_name> DETACH RELATION <relation_name>
 
 This command is used to create a [reference table](/sharding/reference_tables). The `AUTO INCREMENT` argument creates [a sequence](/sharding/reference_tables#sequences).
 
+<Note>You may specify initial sequence value with `START` keyword.</Note>
+
 ```sql
-CREATE REFERENCE TABLE <table_name> [AUTO INCREMENT <column_name>]
+CREATE REFERENCE TABLE <table_name> [AUTO INCREMENT <column_name> [, <column_name> ...] >]
+CREATE REFERENCE TABLE <table_name> [AUTO INCREMENT <column_name START start_value> [, <column_name START start_value> ...] >]
 ```
 
 ### DROP SEQUENCE
