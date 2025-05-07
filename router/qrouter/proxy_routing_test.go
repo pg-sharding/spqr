@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -412,7 +414,7 @@ func TestComment(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -511,7 +513,7 @@ func TestCTE(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 		},
 
@@ -527,7 +529,7 @@ func TestCTE(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 		},
 		{
@@ -547,7 +549,7 @@ func TestCTE(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 		},
 		// {
@@ -582,7 +584,7 @@ func TestCTE(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 		},
 	} {
@@ -733,7 +735,7 @@ func TestSingleShard(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -743,7 +745,7 @@ func TestSingleShard(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -754,7 +756,7 @@ func TestSingleShard(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -765,7 +767,7 @@ func TestSingleShard(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -784,7 +786,7 @@ func TestSingleShard(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 		},
 
@@ -802,7 +804,7 @@ func TestSingleShard(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 		},
 		{
@@ -811,7 +813,7 @@ func TestSingleShard(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -822,7 +824,7 @@ func TestSingleShard(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -832,7 +834,7 @@ func TestSingleShard(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -843,7 +845,7 @@ func TestSingleShard(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -857,7 +859,7 @@ func TestSingleShard(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -868,7 +870,7 @@ func TestSingleShard(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -879,7 +881,7 @@ func TestSingleShard(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -891,7 +893,7 @@ func TestSingleShard(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -992,7 +994,7 @@ func TestInsertOffsets(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -1005,7 +1007,7 @@ func TestInsertOffsets(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -1016,7 +1018,7 @@ func TestInsertOffsets(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -1028,7 +1030,7 @@ func TestInsertOffsets(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -1039,7 +1041,7 @@ func TestInsertOffsets(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -1135,7 +1137,7 @@ func TestJoins(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -1146,7 +1148,7 @@ func TestJoins(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -1246,7 +1248,7 @@ func TestUnnest(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -1257,7 +1259,7 @@ func TestUnnest(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -1640,8 +1642,18 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT pg_is_in_recovery();",
 			distribution: distribution.ID,
-			exp:          plan.RandomDispatchPlan{},
-			err:          nil,
+			exp: plan.VirtualPlan{
+				VirtualRowCols: []pgproto3.FieldDescription{
+					pgproto3.FieldDescription{
+						Name:         []byte("pg_is_in_recovery"),
+						DataTypeOID:  catalog.ARRAYOID,
+						TypeModifier: -1,
+						DataTypeSize: 1,
+					},
+				},
+				VirtualRowVals: [][]byte{[]byte{byte('f')}},
+			},
+			err: nil,
 		},
 		{
 			query:        "SELECT set_config('log_statement_stats', 'off', false);",
@@ -1686,7 +1698,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
@@ -1720,7 +1732,8 @@ LIMIT 1000
 		// 				ColumnTypes:  []string{qdb.ColumnTypeVarchar},
 		// 			},
 		// 		},
-		// 		TargetSessionAttrs: "any",
+		//
+		//		TargetSessionAttrs: config.TargetSessionAttrsRW,
 		// 	},
 		// 	err: nil,
 		// },
@@ -1803,7 +1816,7 @@ func TestHashRouting(t *testing.T) {
 				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
-				TargetSessionAttrs: "any",
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
 			},
 			err: nil,
 		},
