@@ -816,8 +816,10 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) ([]pgproto
 			var v BufferedMessage
 			v, buff = buff[0], buff[1:]
 			spqrlog.Zero.Debug().
+				Uint("client-id", rst.Client().ID()).
 				Bool("waitForResp", waitForResp).
 				Bool("replyCl", replyCl).
+				Interface("plan", rst.routingState).
 				Msg("flushing")
 
 			resolvedReplyCl := replyCl
@@ -833,6 +835,7 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) ([]pgproto
 					Stmt: rst.qp.Stmt(),
 					P:    rst.routingState, /*  ugh... fix this someday */
 				}, rst.Qr.Mgr(), waitForResp, resolvedReplyCl); err != nil {
+				spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Err(err).Msg("error executing query")
 				return err
 			} else {
 				unreplied = append(unreplied, unrep_local...)

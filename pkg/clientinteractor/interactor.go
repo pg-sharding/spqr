@@ -146,7 +146,7 @@ func IntOidFD(stmt string) pgproto3.FieldDescription {
 		Name:                 []byte(stmt),
 		TableOID:             0,
 		TableAttributeNumber: 0,
-		DataTypeOID:          catalog.INTOID,
+		DataTypeOID:          catalog.INT8OID,
 		DataTypeSize:         8,
 		TypeModifier:         -1,
 		Format:               0,

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -3692,6 +3693,155 @@ func TestMixedProtoTxcommands(t *testing.T) {
 					CommandTag: []byte("ROLLBACK"),
 				},
 				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for ind, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.ErrorResponse:
+				/* skip */
+				if retMsgType.Severity != "ERROR" {
+					retMsg, err = frontend.Receive()
+					assert.NoError(t, err)
+				}
+			case *pgproto3.NoticeResponse:
+				retMsg, err = frontend.Receive()
+				assert.NoError(t, err)
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("iter msg %d", ind))
+		}
+	}
+}
+
+func TestXProtoPureVirtual(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+
+	type MessageGroup struct {
+		Request  []pgproto3.FrontendMessage
+		Response []pgproto3.BackendMessage
+	}
+
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Query: "SELECT 1",
+					Name:  "q1",
+				},
+				&pgproto3.Parse{
+					Query: "SELECT pg_is_in_recovery()",
+					Name:  "q2",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "q2",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "q2",
+				},
+				&pgproto3.Execute{},
+
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "q1",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "q1",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParameterDescription{ParameterOIDs: []uint32{}},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("pg_is_in_recovery"),
+							TableOID:             0x0,
+							TableAttributeNumber: 0x0,
+							DataTypeOID:          catalog.ARRAYOID,
+							DataTypeSize:         1,
+							TypeModifier:         -1,
+							Format:               0,
+						},
+					},
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("f")},
+				},
+
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ParameterDescription{ParameterOIDs: []uint32{}},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("?column?"),
+							TableOID:             0x0,
+							TableAttributeNumber: 0x0,
+							DataTypeOID:          catalog.INT4OID,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+							Format:               0,
+						},
+					},
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
 			},
 		},
 	} {

@@ -71,11 +71,6 @@ func TestMultiShardRouting(t *testing.T) {
 			err:   nil,
 		},
 		{
-			query: "select 42;",
-			exp:   plan.RandomDispatchPlan{},
-			err:   nil,
-		},
-		{
 			query: "select current_schema;",
 			exp:   plan.RandomDispatchPlan{},
 			err:   nil,
@@ -1670,8 +1665,18 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT 1;",
 			distribution: distribution.ID,
-			exp:          plan.RandomDispatchPlan{},
-			err:          nil,
+			exp: plan.VirtualPlan{
+				VirtualRowCols: []pgproto3.FieldDescription{
+					pgproto3.FieldDescription{
+						Name:         []byte("?column?"),
+						DataTypeOID:  catalog.INT4OID,
+						TypeModifier: -1,
+						DataTypeSize: 4,
+					},
+				},
+				VirtualRowVals: [][]byte{[]byte("1")},
+			},
+			err: nil,
 		},
 		{
 			query:        "SELECT true;",
@@ -1682,8 +1687,18 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT 'Hello, world!'",
 			distribution: distribution.ID,
-			exp:          plan.RandomDispatchPlan{},
-			err:          nil,
+			exp: plan.VirtualPlan{
+				VirtualRowCols: []pgproto3.FieldDescription{
+					pgproto3.FieldDescription{
+						Name:         []byte("?column?"),
+						DataTypeOID:  catalog.TEXTOID,
+						TypeModifier: -1,
+						DataTypeSize: -1,
+					},
+				},
+				VirtualRowVals: [][]byte{[]byte("Hello, world!")},
+			},
+			err: nil,
 		},
 		{
 			query:        "SELECT * FROM users;",
