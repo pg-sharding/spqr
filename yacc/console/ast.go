@@ -106,7 +106,7 @@ type DistributionDefinition struct {
 	ColTypes             []string
 	Replicated           bool
 	AutoIncrementColumns []string
-	AutoIncrementStart   []string
+	AutoIncrementStart   []uint
 }
 
 type ShardingRuleDefinition struct {
@@ -124,7 +124,7 @@ type ShardingRuleEntry struct {
 type ReferenceRelationDefinition struct {
 	TableName            string
 	AutoIncrementColumns []string
-	AutoIncrementStart   []string
+	AutoIncrementStart   []uint
 }
 
 type KeyRangeBound struct {
@@ -267,7 +267,7 @@ type DistributedRelation struct {
 	DistributionKey      []DistributionKeyEntry
 	ReplicatedRelation   bool
 	AutoIncrementColumns []string
-	AutoIncrementStart   []string
+	AutoIncrementStart   []uint
 }
 
 type AttachRelation struct {

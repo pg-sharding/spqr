@@ -29,6 +29,7 @@ func randomHex(n int) (string, error) {
 	bytes                  []byte
 	integer                int
 	uinteger               uint
+	uintegerlist           []uint
 	bool                   bool
 	empty                  struct{}
 
@@ -199,9 +200,9 @@ func randomHex(n int) (string, error) {
 %type<dEntrieslist> distribution_key_argument_list
 %type<shruleEntry> sharding_rule_entry
 %type<strlist> opt_auto_increment
-%type<strlist> opt_auto_increment_start
+%type<uintegerlist> opt_auto_increment_start
 %type<strlist> auto_inc_column_list
-%type<strlist> auto_inc_start_list
+%type<uintegerlist> auto_inc_start_list
 %type<str> opt_schema_name
 
 %type<distrKeyEntry> distribution_key_entry
@@ -642,10 +643,10 @@ auto_inc_column_list:
 	}
 
 auto_inc_start_list:
-	any_id {
-		$$ = []string{$1}
-	} | auto_inc_start_list TCOMMA any_id {
-		$$ = append($1, $3)
+    auto_inc_start_list TCOMMA ICONST {
+		$$ = append($1, uint($3))
+	} | ICONST {
+		$$ = []uint{uint($1)}
 	}
 
 
