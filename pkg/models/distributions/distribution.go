@@ -151,7 +151,7 @@ func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *Distribute
 			HashFunction: e.HashFunction,
 		})
 	}
-	for _, colName := range rel.AutoIncrementColumns {
+	for _, colName := range rel.AutoIncrement.Columns {
 		rdistr.ColumnSequenceMapping[colName] = SequenceName(rel.Name, colName)
 	}
 

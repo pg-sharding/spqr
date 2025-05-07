@@ -205,7 +205,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 				ReplicatedRelation: true,
 				ColumnSequenceMapping: func() map[string]string {
 					ret := map[string]string{}
-					for _, colName := range stmt.AutoIncrementColumns {
+					for _, colName := range stmt.AutoIncrement.Columns {
 						ret[colName] = distributions.SequenceName(stmt.TableName, colName)
 					}
 					return ret
