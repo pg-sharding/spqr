@@ -1448,7 +1448,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		 */
 		switch strings.ToUpper(sph.DefaultRouteBehaviour()) {
 		case "BLOCK":
-			return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_DEFAULT_ROUTE_BLOCK)
 		case "ALLOW":
 			fallthrough
 		default:

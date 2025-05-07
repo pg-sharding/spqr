@@ -4,6 +4,7 @@ import "fmt"
 
 const (
 	SPQR_UNEXPECTED          = "SPQRU"
+	SPQR_DEFAULT_ROUTE_BLOCK = "SPQRW"
 	SPQR_NO_DATASHARD        = "SPQRD"
 	SPQR_SKIP                = "SPQRE"
 	SPQR_COMPLEX_QUERY       = "SPQRC"
@@ -27,6 +28,7 @@ const (
 
 var existingErrorCodeMap = map[string]string{
 	SPQR_NO_DATASHARD:        "failed to match any datashard",
+	SPQR_DEFAULT_ROUTE_BLOCK: "query is blocked due to the default route behavior",
 	SPQR_SKIP:                "skip executing this query, wait for next",
 	SPQR_COMPLEX_QUERY:       "ComplexQuery",
 	SPQR_SKIP_COLUMN:         "SkipColumn",
