@@ -86,11 +86,12 @@ type yySymType struct {
 	shruleEntry ShardingRuleEntry
 
 	distrKeyEntry DistributionKeyEntry
+	aiEntry       AutoIncrementEntry
 
 	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
 	distribution_selector  *DistributionSelector
-	autoincrement          *AutoIncrement
+	aiEntrieslist          []AutoIncrementEntry
 
 	colref ColumnRef
 	where  WhereClauseNode
@@ -399,6 +400,7 @@ const yyInitialStackSize = 16
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 //line gram.y:1027
 =======
 //line gram.y:1041
@@ -409,6 +411,9 @@ const yyInitialStackSize = 16
 =======
 //line gram.y:1035
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:1037
+>>>>>>> 052500a5 (fixes after review 2)
 
 //line yacctab:1
 var yyExca = [...]int8{
@@ -419,6 +424,7 @@ var yyExca = [...]int8{
 
 const yyPrivate = 57344
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -576,86 +582,94 @@ var yyPact = [...]int16{
 >>>>>>> d59ef666 (minor)
 =======
 const yyLast = 350
+=======
+const yyLast = 351
+>>>>>>> 052500a5 (fixes after review 2)
 
 var yyAct = [...]int16{
-	156, 252, 215, 269, 212, 185, 206, 180, 179, 155,
-	178, 171, 177, 183, 153, 170, 164, 137, 107, 266,
-	267, 168, 188, 207, 208, 209, 64, 210, 167, 152,
-	112, 62, 133, 66, 144, 70, 104, 60, 69, 59,
-	263, 79, 233, 67, 257, 258, 259, 92, 200, 173,
-	94, 214, 102, 95, 99, 103, 78, 161, 95, 141,
-	124, 95, 95, 260, 245, 95, 123, 110, 111, 174,
-	113, 95, 122, 68, 176, 173, 121, 225, 198, 189,
-	182, 214, 142, 106, 118, 120, 97, 224, 125, 126,
-	253, 234, 110, 58, 186, 174, 51, 277, 136, 139,
-	165, 52, 143, 49, 186, 50, 147, 149, 91, 115,
-	70, 145, 264, 53, 162, 105, 147, 241, 114, 96,
-	98, 148, 157, 158, 159, 160, 146, 77, 150, 127,
-	109, 100, 251, 51, 72, 140, 186, 216, 52, 175,
-	49, 242, 50, 239, 238, 237, 138, 95, 101, 166,
-	53, 184, 135, 108, 169, 231, 232, 65, 131, 132,
-	129, 93, 48, 202, 88, 61, 204, 47, 46, 194,
-	201, 87, 45, 220, 217, 218, 284, 220, 95, 44,
-	203, 276, 213, 119, 243, 211, 138, 57, 221, 219,
-	154, 184, 56, 55, 71, 73, 222, 54, 90, 226,
-	83, 84, 85, 86, 229, 227, 281, 191, 81, 220,
-	235, 230, 193, 192, 223, 117, 240, 80, 82, 81,
-	228, 191, 236, 213, 95, 248, 193, 192, 80, 181,
-	196, 244, 246, 75, 43, 249, 1, 197, 22, 199,
-	19, 250, 255, 254, 18, 17, 261, 16, 15, 14,
-	12, 13, 270, 8, 271, 9, 151, 265, 187, 134,
-	205, 272, 130, 163, 274, 128, 273, 21, 89, 20,
-	30, 31, 256, 279, 278, 172, 275, 280, 270, 247,
-	283, 282, 33, 32, 38, 39, 262, 268, 24, 23,
-	27, 28, 29, 34, 35, 6, 5, 4, 3, 40,
-	7, 36, 11, 10, 76, 74, 63, 2, 195, 190,
-	116, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	156, 253, 212, 270, 185, 215, 248, 206, 179, 180,
+	155, 171, 178, 177, 153, 183, 170, 164, 137, 107,
+	267, 268, 64, 188, 207, 208, 209, 62, 210, 66,
+	168, 70, 167, 152, 69, 112, 133, 144, 104, 67,
+	60, 79, 59, 258, 259, 260, 92, 265, 233, 200,
+	94, 173, 102, 214, 99, 103, 78, 161, 95, 141,
+	95, 124, 95, 95, 261, 245, 95, 110, 111, 68,
+	113, 174, 95, 123, 122, 176, 121, 225, 198, 189,
+	182, 142, 106, 214, 173, 97, 118, 120, 125, 126,
+	254, 224, 110, 234, 277, 186, 186, 165, 136, 139,
+	162, 91, 143, 70, 174, 241, 147, 149, 114, 96,
+	115, 105, 98, 145, 216, 252, 147, 72, 242, 239,
+	238, 237, 157, 158, 159, 160, 148, 77, 146, 150,
+	127, 109, 100, 186, 58, 138, 140, 51, 95, 175,
+	51, 101, 52, 135, 49, 52, 50, 49, 65, 50,
+	166, 184, 231, 232, 53, 169, 108, 53, 61, 131,
+	132, 129, 93, 202, 88, 87, 204, 48, 220, 194,
+	201, 95, 47, 220, 217, 218, 46, 138, 45, 243,
+	44, 203, 213, 154, 221, 276, 211, 71, 73, 90,
+	219, 184, 57, 83, 84, 85, 86, 56, 222, 119,
+	226, 55, 191, 54, 229, 227, 263, 193, 192, 235,
+	81, 220, 230, 223, 240, 228, 191, 81, 117, 80,
+	82, 193, 192, 213, 196, 249, 80, 181, 236, 95,
+	75, 197, 246, 244, 43, 1, 250, 22, 199, 19,
+	18, 17, 256, 251, 255, 16, 262, 15, 14, 12,
+	13, 8, 9, 271, 151, 272, 266, 187, 134, 205,
+	130, 163, 273, 128, 249, 274, 21, 89, 20, 257,
+	275, 30, 31, 172, 278, 264, 280, 279, 271, 247,
+	282, 281, 269, 33, 32, 38, 39, 6, 5, 24,
+	23, 27, 28, 29, 34, 35, 4, 3, 7, 11,
+	40, 10, 36, 76, 74, 63, 2, 195, 190, 116,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 37, 0, 0, 0, 0,
-	0, 0, 41, 0, 42, 0, 0, 0, 25, 26,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 37, 0, 0, 0,
+	0, 0, 0, 41, 0, 42, 0, 0, 0, 25,
+	26,
 }
 
 var yyPact = [...]int16{
+<<<<<<< HEAD
 	264, -1000, 164, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
 >>>>>>> b252c210 (fixes after review)
+=======
+	265, -1000, 165, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
+>>>>>>> 052500a5 (fixes after review 2)
 	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
-	-1000, -1000, -1000, 92, 55, -47, -49, -15, 88, 88,
-	229, 52, 204, -1000, 88, 88, 88, 88, 149, 142,
-	60, -32, 131, -1000, -1000, -1000, -1000, -1000, -1000, 220,
-	71, 25, 73, 61, -1000, -1000, -1000, -1000, 105, -20,
-	-51, -1000, 68, -1000, 22, 120, 58, 220, -59, 220,
-	70, -1000, 62, -1000, 207, -1000, 169, 169, -1000, -1000,
-	-1000, -1000, -1000, 8, 3, -3, -10, 220, 57, -1000,
-	124, 220, -1000, -56, 110, -1000, -1000, 143, 67, -11,
-	18, 220, -53, 169, -1000, 54, 49, -1000, -1000, 120,
-	-1000, -1000, -1000, -1000, -1000, 220, -60, 174, -1000, -1000,
-	-1000, 220, 220, 220, 220, -16, -1000, -1000, -1000, 65,
-	-1000, 51, 51, -61, -1000, -72, 103, 33, 220, 6,
-	215, 16, 204, 53, -1000, -1000, -1000, -1000, -1000, -1000,
-	-1000, -76, 12, 217, 174, 226, -1000, 11, -1000, -28,
-	-1000, 204, 220, 51, -1000, 220, -1000, -1000, -67, 33,
-	7, -1000, 93, 220, 220, -1000, 215, 165, -1000, -1000,
-	-1000, -1000, 204, 202, -1000, -1000, 35, -1000, 10, 220,
-	174, -1000, -1000, -1000, 203, 204, -1000, -1000, 215, 116,
-	-35, -1000, -1000, -1000, 43, 210, -1000, 101, 100, 99,
-	-1000, 7, -1000, -1000, 69, -1000, 96, -1000, -1000, 161,
-	215, -5, 202, 204, 220, 220, -1000, 217, -1000, -1000,
-	197, -1000, -1000, 169, 86, 36, -67, -1000, -1000, -1000,
-	-1000, 220, -37, -6, -1000, 220, -1000, 28, -1000, -77,
-	-1000, 220, -1000, 220, -1000, -1000, -1000, -1000, -1000, -1000,
-	220, -23, -1000, 220, 167, -1000, -1000, -1000, 85, -1000,
-	93, -1000, -23, -1000, -1000, 194, -1000, 220, 36, -1000,
-	-1000, 162, -1000, -1000, -1000,
+	-1000, -1000, -1000, 99, 96, -44, -46, -19, 71, 71,
+	226, 52, 206, -1000, 71, 71, 71, 71, 143, 142,
+	53, -33, 132, -1000, -1000, -1000, -1000, -1000, -1000, 225,
+	61, 24, 65, 62, -1000, -1000, -1000, -1000, 98, -20,
+	-49, -1000, 64, -1000, 21, 123, 59, 225, -54, 225,
+	60, -1000, 63, -1000, 210, -1000, 185, 185, -1000, -1000,
+	-1000, -1000, -1000, 8, 5, 4, -9, 225, 58, -1000,
+	125, 225, -1000, -52, 101, -1000, -1000, 134, 68, -11,
+	17, 225, -50, 185, -1000, 56, 54, -1000, -1000, 123,
+	-1000, -1000, -1000, -1000, -1000, 225, -56, 167, -1000, -1000,
+	-1000, 225, 225, 225, 225, -16, -1000, -1000, -1000, 51,
+	-1000, 48, 48, -57, -1000, -63, 92, 42, 225, 7,
+	213, 16, 206, 44, -1000, -1000, -1000, -1000, -1000, -1000,
+	-1000, -75, 12, 212, 167, 220, -1000, 11, -1000, -27,
+	-1000, 206, 225, 48, -1000, 225, -1000, -1000, -66, 42,
+	9, -1000, 70, 225, 225, -1000, 213, 161, -1000, -1000,
+	-1000, -1000, 206, 201, -1000, -1000, 39, -1000, 10, 225,
+	167, -1000, -1000, -1000, 198, 206, -1000, -1000, 213, 113,
+	-29, -1000, -1000, -1000, 45, 216, -1000, 77, 76, 75,
+	-1000, 9, -1000, -1000, 57, -1000, 73, -1000, -1000, 156,
+	213, -4, 201, 206, 225, 225, -1000, 212, -1000, -1000,
+	199, -1000, -1000, 185, 69, 36, -66, -1000, -1000, -1000,
+	-1000, 225, -38, -5, -1000, 225, -1000, 194, -1000, -37,
+	-76, -1000, 225, -1000, 225, -1000, -1000, -1000, -1000, -1000,
+	-1000, 225, -21, 225, -1000, 171, -1000, -1000, -1000, 82,
+	-1000, 70, -1000, -21, -1000, -1000, -1000, 225, 36, -1000,
+	-1000, -1000, -1000,
 }
 
 var yyPgo = [...]int16{
-	0, 310, 14, 10, 12, 309, 308, 9, 8, 0,
-	7, 307, 306, 165, 157, 305, 304, 303, 302, 300,
-	298, 297, 296, 295, 172, 168, 167, 162, 15, 287,
-	11, 5, 286, 279, 276, 1, 3, 17, 275, 2,
-	272, 4, 269, 268, 267, 265, 263, 262, 16, 260,
-	259, 13, 6, 18, 258, 257, 256, 255, 253, 251,
-	250, 249, 248, 247, 245, 244, 240, 239, 238, 236,
+	0, 309, 14, 12, 13, 308, 307, 10, 8, 0,
+	9, 306, 305, 158, 148, 304, 303, 301, 299, 298,
+	297, 296, 288, 287, 178, 176, 172, 167, 16, 282,
+	4, 279, 275, 11, 1, 3, 6, 18, 273, 5,
+	269, 2, 268, 267, 266, 263, 261, 260, 17, 259,
+	258, 15, 7, 19, 257, 256, 254, 252, 251, 250,
+	249, 248, 247, 245, 241, 240, 239, 238, 237, 235,
 	234,
 }
 
@@ -666,6 +680,7 @@ var yyR1 = [...]int8{
 	5, 5, 6, 6, 7, 2, 2, 2, 1, 1,
 	15, 16, 53, 53, 19, 19, 19, 19, 19, 19,
 	19, 19, 19, 20, 20, 20, 20, 22, 22, 23,
+<<<<<<< HEAD
 <<<<<<< HEAD
 	42, 43, 43, 43, 29, 29, 36, 48, 48, 48,
 	31, 31, 32, 32, 35, 35, 33, 33, 34, 34,
@@ -690,6 +705,18 @@ var yyR1 = [...]int8{
 	14, 61, 18, 18, 62, 63, 63, 63, 67, 67,
 	64, 60, 59, 44, 65, 66, 66, 68,
 >>>>>>> b252c210 (fixes after review)
+=======
+	42, 43, 43, 43, 29, 29, 35, 48, 48, 30,
+	30, 31, 31, 36, 32, 32, 34, 34, 46, 46,
+	45, 47, 21, 21, 21, 21, 21, 55, 55, 55,
+	54, 54, 56, 56, 17, 58, 24, 24, 50, 50,
+	49, 49, 52, 52, 52, 52, 52, 52, 52, 25,
+	25, 28, 28, 33, 37, 37, 38, 38, 40, 40,
+	40, 39, 39, 41, 41, 3, 3, 4, 4, 26,
+	26, 27, 27, 51, 51, 57, 12, 13, 14, 14,
+	61, 18, 18, 62, 63, 63, 63, 67, 67, 64,
+	60, 59, 44, 65, 66, 66, 68,
+>>>>>>> 052500a5 (fixes after review 2)
 }
 
 var yyR2 = [...]int8{
@@ -746,16 +773,16 @@ var yyChk = [...]int16{
 	1, 1, 1, 1, 1, 3, 3, 3, 0, 2,
 	1, 1, 1, 0, 2, 4, 2, 4, 3, 4,
 	3, 3, 3, 2, 2, 2, 2, 4, 4, 3,
-	2, 2, 4, 2, 3, 1, 2, 7, 4, 4,
-	0, 2, 0, 2, 0, 1, 3, 3, 1, 1,
-	2, 2, 2, 2, 2, 2, 2, 5, 1, 1,
-	0, 4, 0, 3, 0, 5, 2, 3, 2, 3,
-	0, 3, 1, 1, 2, 1, 1, 2, 2, 1,
-	6, 5, 1, 2, 2, 2, 0, 2, 2, 1,
-	1, 1, 3, 0, 3, 0, 1, 1, 1, 3,
-	9, 8, 5, 4, 1, 3, 2, 3, 3, 2,
-	2, 6, 3, 3, 4, 5, 6, 6, 3, 0,
-	4, 2, 1, 2, 5, 3, 3, 4,
+	2, 2, 4, 2, 3, 1, 2, 7, 4, 3,
+	0, 3, 1, 2, 2, 0, 2, 0, 1, 2,
+	2, 2, 2, 2, 2, 2, 5, 1, 1, 0,
+	4, 0, 3, 0, 5, 2, 3, 2, 3, 0,
+	3, 1, 1, 2, 1, 1, 2, 2, 1, 6,
+	5, 1, 2, 2, 2, 0, 2, 2, 1, 1,
+	1, 3, 0, 3, 0, 1, 1, 1, 3, 9,
+	8, 5, 4, 1, 3, 2, 3, 3, 2, 2,
+	6, 3, 3, 4, 5, 6, 6, 3, 0, 4,
+	2, 1, 2, 5, 3, 3, 4,
 }
 
 var yyChk = [...]int16{
@@ -776,10 +803,11 @@ var yyChk = [...]int16{
 	68, 70, 64, -9, 87, -10, 72, -9, 72, -9,
 	-53, -56, 89, -2, 16, -7, -9, -9, -9, -9,
 	-9, 73, 49, -46, -48, 49, -48, 89, 93, -37,
-	-28, -30, -38, 42, 62, -9, 68, -4, -3, -8,
-	-10, 14, 64, -51, -8, -31, 51, -54, 98, 67,
+	-28, -33, -38, 42, 62, -9, 68, -4, -3, -8,
+	-10, 14, 64, -51, -8, -30, 51, -54, 98, 67,
 	-5, 4, 10, 9, -2, -6, 4, 11, 67, -67,
 	76, -8, -9, -48, -9, -49, -52, 90, 91, 92,
+<<<<<<< HEAD
 	94, -28, -41, -30, 74, -39, 44, -9, -9, -4,
 <<<<<<< HEAD
 	12, 23, -51, 12, -32, 84, 52, 67, -7, -2,
@@ -799,6 +827,16 @@ var yyChk = [...]int16{
 	-9, -9, -9, -41, -9, -34, 14, 12, -31, -39,
 	-41, 12, -36, -35, 14,
 >>>>>>> b252c210 (fixes after review)
+=======
+	94, -28, -41, -33, 74, -39, 44, -9, -9, -4,
+	12, 23, -51, 12, 52, 67, -7, -2, 17, -8,
+	-4, 39, 40, 77, 48, -30, 12, 44, 44, 44,
+	-41, 48, 45, 23, -3, 69, -8, -31, -36, -9,
+	-7, -10, 46, -34, 54, -52, -9, -40, 81, 82,
+	83, 69, -9, 12, -32, 84, -55, 96, 97, -29,
+	-35, -9, -9, -9, -41, -36, 14, 12, -30, -39,
+	-41, -35, -34,
+>>>>>>> 052500a5 (fixes after review 2)
 }
 
 var yyDef = [...]int16{
@@ -834,14 +872,15 @@ var yyDef = [...]int16{
 	67, 127, 65, 68,
 =======
 	21, 22, 23, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 152, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 151, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 1, 3, 53, 54, 55, 56, 0,
-	0, 0, 0, 0, 83, 84, 85, 86, 0, 0,
+	0, 0, 0, 0, 82, 83, 84, 85, 0, 0,
 	0, 44, 0, 46, 0, 43, 0, 0, 0, 0,
-	0, 96, 0, 136, 38, 40, 0, 0, 41, 151,
+	0, 95, 0, 135, 38, 40, 0, 0, 41, 150,
 	25, 26, 27, 0, 0, 0, 0, 0, 0, 60,
-	0, 0, 153, 0, 100, 28, 98, 116, 0, 0,
+	0, 0, 152, 0, 99, 28, 97, 115, 0, 0,
 	0, 0, 0, 0, 59, 0, 0, 48, 42, 43,
+<<<<<<< HEAD
 <<<<<<< HEAD
 	140, 50, 51, 52, 141, 0, 95, 0, 143, 24,
 	144, 0, 0, 0, 0, 0, 156, 157, 61, 0,
@@ -882,6 +921,26 @@ var yyDef = [...]int16{
 	123, 73, 125, 131, 76, 71, 78, 0, 74, 66,
 	130, 0, 64, 67, 77,
 >>>>>>> b252c210 (fixes after review)
+=======
+	138, 50, 51, 52, 139, 0, 93, 0, 141, 24,
+	142, 0, 0, 0, 0, 0, 154, 155, 61, 0,
+	63, 0, 0, 0, 96, 0, 115, 0, 0, 0,
+	0, 0, 0, 70, 57, 58, 45, 137, 47, 136,
+	49, 91, 0, 39, 0, 0, 34, 0, 143, 148,
+	149, 0, 0, 80, 78, 0, 81, 156, 0, 0,
+	124, 111, 122, 0, 0, 114, 0, 0, 127, 125,
+	126, 24, 0, 132, 133, 86, 0, 94, 0, 0,
+	0, 29, 30, 31, 0, 0, 32, 33, 0, 144,
+	0, 153, 62, 79, 70, 98, 101, 102, 104, 105,
+	108, 124, 110, 112, 0, 113, 0, 116, 117, 0,
+	0, 0, 131, 0, 0, 0, 92, 37, 35, 36,
+	140, 145, 146, 0, 0, 77, 0, 103, 106, 107,
+	109, 0, 0, 0, 128, 0, 134, 69, 72, 75,
+	89, 147, 0, 68, 0, 100, 123, 121, 118, 119,
+	120, 0, 124, 0, 73, 0, 90, 87, 88, 70,
+	65, 122, 76, 124, 130, 71, 74, 0, 77, 66,
+	129, 64, 67,
+>>>>>>> 052500a5 (fixes after review 2)
 }
 
 var yyTok1 = [...]int8{
@@ -1255,6 +1314,7 @@ yydefault:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 //line gram.y:257
 =======
 //line gram.y:256
@@ -1265,10 +1325,14 @@ yydefault:
 =======
 //line gram.y:258
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:259
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 		}
 	case 3:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1282,10 +1346,14 @@ yydefault:
 =======
 //line gram.y:259
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:260
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 		}
 	case 4:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1299,11 +1367,15 @@ yydefault:
 =======
 //line gram.y:264
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:265
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].create)
 		}
 	case 5:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1317,11 +1389,15 @@ yydefault:
 =======
 //line gram.y:268
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:269
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].create)
 		}
 	case 6:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1335,11 +1411,15 @@ yydefault:
 =======
 //line gram.y:272
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:273
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].trace)
 		}
 	case 7:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1353,11 +1433,15 @@ yydefault:
 =======
 //line gram.y:276
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:277
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].stoptrace)
 		}
 	case 8:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1371,11 +1455,15 @@ yydefault:
 =======
 //line gram.y:280
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:281
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].drop)
 		}
 	case 9:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1389,11 +1477,15 @@ yydefault:
 =======
 //line gram.y:284
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:285
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].lock)
 		}
 	case 10:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1407,11 +1499,15 @@ yydefault:
 =======
 //line gram.y:288
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:289
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].unlock)
 		}
 	case 11:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1425,11 +1521,15 @@ yydefault:
 =======
 //line gram.y:292
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:293
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].show)
 		}
 	case 12:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1443,11 +1543,15 @@ yydefault:
 =======
 //line gram.y:296
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:297
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].kill)
 		}
 	case 13:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1461,11 +1565,15 @@ yydefault:
 =======
 //line gram.y:300
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:301
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].listen)
 		}
 	case 14:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1479,11 +1587,15 @@ yydefault:
 =======
 //line gram.y:304
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:305
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].shutdown)
 		}
 	case 15:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1497,11 +1609,15 @@ yydefault:
 =======
 //line gram.y:308
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:309
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].split)
 		}
 	case 16:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1515,11 +1631,15 @@ yydefault:
 =======
 //line gram.y:312
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:313
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].move)
 		}
 	case 17:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1533,11 +1653,15 @@ yydefault:
 =======
 //line gram.y:316
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:317
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].redistribute)
 		}
 	case 18:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1551,11 +1675,15 @@ yydefault:
 =======
 //line gram.y:320
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:321
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].unite)
 		}
 	case 19:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1569,11 +1697,15 @@ yydefault:
 =======
 //line gram.y:324
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:325
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].register_router)
 		}
 	case 20:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1587,11 +1719,15 @@ yydefault:
 =======
 //line gram.y:328
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:329
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].unregister_router)
 		}
 	case 21:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1605,11 +1741,15 @@ yydefault:
 =======
 //line gram.y:332
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:333
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].alter)
 		}
 	case 22:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1623,11 +1763,15 @@ yydefault:
 =======
 //line gram.y:336
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:337
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].invalidate_cache)
 		}
 	case 23:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1641,23 +1785,27 @@ yydefault:
 =======
 //line gram.y:340
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:341
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			setParseTree(yylex, yyDollar[1].retryMoveTaskGroup)
 		}
 	case 24:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:345
+//line gram.y:346
 		{
 			setParseTree(yylex, yyDollar[1].sync_reference_tables)
 		}
 	case 25:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:350
+//line gram.y:351
 		{
 			yyVAL.uinteger = uint(yyDollar[1].uinteger)
 		}
 	case 26:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1671,11 +1819,15 @@ yydefault:
 =======
 //line gram.y:354
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:355
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
 	case 27:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1688,11 +1840,15 @@ yydefault:
 =======
 //line gram.y:356
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:357
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.str = strconv.Itoa(int(yyDollar[1].uinteger))
 		}
 	case 28:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 //line gram.y:359
@@ -1703,6 +1859,9 @@ yydefault:
 =======
 //line gram.y:361
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:362
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
@@ -1717,6 +1876,7 @@ yydefault:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 //line gram.y:364
 =======
 //line gram.y:365
@@ -1727,11 +1887,15 @@ yydefault:
 =======
 //line gram.y:367
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:368
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
 	case 30:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1744,17 +1908,21 @@ yydefault:
 =======
 //line gram.y:369
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:370
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.str = "AND"
 		}
 	case 31:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:371
+//line gram.y:372
 		{
 			yyVAL.str = "OR"
 		}
 	case 32:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 //line gram.y:374
@@ -1765,6 +1933,9 @@ yydefault:
 =======
 //line gram.y:376
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:377
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.str = yyDollar[1].str
 		}
@@ -1776,7 +1947,7 @@ yydefault:
 		}
 	case 32:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:378
+//line gram.y:379
 		{
 			yyVAL.str = "OR"
 		}
@@ -1788,6 +1959,7 @@ yydefault:
 		}
 	case 34:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1807,6 +1979,9 @@ yydefault:
 =======
 //line gram.y:384
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:385
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.colref = ColumnRef{
 				ColName: yyDollar[1].str,
@@ -1814,6 +1989,7 @@ yydefault:
 		}
 	case 36:
 		yyDollar = yyS[yypt-3 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1827,11 +2003,15 @@ yydefault:
 =======
 //line gram.y:392
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:393
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.where = yyDollar[2].where
 		}
 	case 37:
 		yyDollar = yyS[yypt-3 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1845,6 +2025,9 @@ yydefault:
 =======
 //line gram.y:395
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:396
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.where = WhereClauseLeaf{
 				ColRef: yyDollar[1].colref,
@@ -1854,6 +2037,7 @@ yydefault:
 		}
 	case 38:
 		yyDollar = yyS[yypt-3 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1867,6 +2051,9 @@ yydefault:
 =======
 //line gram.y:403
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:404
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.where = WhereClauseOp{
 				Op:    yyDollar[2].str,
@@ -1876,6 +2063,7 @@ yydefault:
 		}
 	case 39:
 		yyDollar = yyS[yypt-0 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1889,11 +2077,15 @@ yydefault:
 =======
 //line gram.y:413
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:414
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.where = WhereClauseEmpty{}
 		}
 	case 40:
 		yyDollar = yyS[yypt-2 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1907,11 +2099,15 @@ yydefault:
 =======
 //line gram.y:417
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:418
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.where = yyDollar[2].where
 		}
 	case 41:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1925,6 +2121,9 @@ yydefault:
 =======
 //line gram.y:424
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:425
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			switch v := strings.ToLower(string(yyDollar[1].str)); v {
 			case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr, RelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr:
@@ -1938,6 +2137,7 @@ yydefault:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 //line gram.y:438
 =======
 //line gram.y:433
@@ -1948,6 +2148,9 @@ yydefault:
 =======
 //line gram.y:435
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:436
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			switch v := string(yyDollar[1].str); v {
 			case ClientStr:
@@ -1961,6 +2164,7 @@ yydefault:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 //line gram.y:448
 =======
 //line gram.y:443
@@ -1971,6 +2175,9 @@ yydefault:
 =======
 //line gram.y:445
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:446
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.bool = true
 		}
@@ -1979,6 +2186,7 @@ yydefault:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 //line gram.y:448
 =======
 //line gram.y:443
@@ -1989,11 +2197,15 @@ yydefault:
 =======
 //line gram.y:445
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:446
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.bool = false
 		}
 	case 45:
 		yyDollar = yyS[yypt-2 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2007,11 +2219,15 @@ yydefault:
 =======
 //line gram.y:449
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:450
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.drop = &Drop{Element: yyDollar[2].key_range_selector}
 		}
 	case 46:
 		yyDollar = yyS[yypt-4 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2025,11 +2241,15 @@ yydefault:
 =======
 //line gram.y:453
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:454
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.drop = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
 		}
 	case 47:
 		yyDollar = yyS[yypt-2 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2043,11 +2263,15 @@ yydefault:
 =======
 //line gram.y:457
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:458
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.drop = &Drop{Element: yyDollar[2].sharding_rule_selector}
 		}
 	case 48:
 		yyDollar = yyS[yypt-4 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2061,11 +2285,15 @@ yydefault:
 =======
 //line gram.y:461
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:462
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.drop = &Drop{Element: &ShardingRuleSelector{ID: `*`}}
 		}
 	case 49:
 		yyDollar = yyS[yypt-3 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2079,11 +2307,15 @@ yydefault:
 =======
 //line gram.y:465
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:466
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.drop = &Drop{Element: yyDollar[2].distribution_selector, CascadeDelete: yyDollar[3].bool}
 		}
 	case 50:
 		yyDollar = yyS[yypt-4 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2097,11 +2329,15 @@ yydefault:
 =======
 //line gram.y:469
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:470
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.drop = &Drop{Element: &DistributionSelector{ID: `*`}, CascadeDelete: yyDollar[4].bool}
 		}
 	case 51:
 		yyDollar = yyS[yypt-3 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2115,11 +2351,15 @@ yydefault:
 =======
 //line gram.y:473
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:474
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.drop = &Drop{Element: &ShardSelector{ID: yyDollar[3].str}}
 		}
 	case 52:
 		yyDollar = yyS[yypt-3 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2133,11 +2373,15 @@ yydefault:
 =======
 //line gram.y:477
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:478
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.drop = &Drop{Element: &TaskGroupSelector{}}
 		}
 	case 53:
 		yyDollar = yyS[yypt-3 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2151,11 +2395,15 @@ yydefault:
 =======
 //line gram.y:481
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:482
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.drop = &Drop{Element: &SequenceSelector{Name: yyDollar[3].str}}
 		}
 	case 54:
 		yyDollar = yyS[yypt-2 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2169,11 +2417,15 @@ yydefault:
 =======
 //line gram.y:488
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:489
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.create = &Create{Element: yyDollar[2].ds}
 		}
 	case 55:
 		yyDollar = yyS[yypt-2 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2187,11 +2439,15 @@ yydefault:
 =======
 //line gram.y:493
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:494
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.create = &Create{Element: yyDollar[2].sharding_rule}
 		}
 	case 56:
 		yyDollar = yyS[yypt-2 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2205,11 +2461,15 @@ yydefault:
 =======
 //line gram.y:498
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:499
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.create = &Create{Element: yyDollar[2].kr}
 		}
 	case 57:
 		yyDollar = yyS[yypt-2 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2223,11 +2483,15 @@ yydefault:
 =======
 //line gram.y:502
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:503
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.create = &Create{Element: yyDollar[2].shard}
 		}
 	case 58:
 		yyDollar = yyS[yypt-4 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2241,11 +2505,15 @@ yydefault:
 =======
 //line gram.y:508
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:509
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.trace = &TraceStmt{All: true}
 		}
 	case 59:
 		yyDollar = yyS[yypt-4 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2259,6 +2527,9 @@ yydefault:
 =======
 //line gram.y:511
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:512
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.trace = &TraceStmt{
 				Client: yyDollar[4].uinteger,
@@ -2266,6 +2537,7 @@ yydefault:
 		}
 	case 60:
 		yyDollar = yyS[yypt-3 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2279,11 +2551,15 @@ yydefault:
 =======
 //line gram.y:519
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:520
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.stoptrace = &StopTraceStmt{}
 		}
 	case 61:
 		yyDollar = yyS[yypt-2 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2297,11 +2573,15 @@ yydefault:
 =======
 //line gram.y:525
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:526
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.alter = &Alter{Element: yyDollar[2].alter_distribution}
 		}
 	case 62:
 		yyDollar = yyS[yypt-2 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2315,6 +2595,9 @@ yydefault:
 =======
 //line gram.y:531
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:532
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.alter_distribution = &AlterDistribution{
 				Element: &AttachRelation{
@@ -2328,6 +2611,7 @@ yydefault:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 //line gram.y:543
 =======
 //line gram.y:538
@@ -2338,6 +2622,9 @@ yydefault:
 =======
 //line gram.y:540
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:541
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.alter_distribution = &AlterDistribution{
 				Element: &DetachRelation{
@@ -2351,6 +2638,7 @@ yydefault:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 //line gram.y:552
 =======
 //line gram.y:547
@@ -2361,6 +2649,9 @@ yydefault:
 =======
 //line gram.y:549
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:550
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.alter_distribution = &AlterDistribution{
 				Element: &AlterRelation{
@@ -2374,6 +2665,7 @@ yydefault:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 //line gram.y:564
 =======
 //line gram.y:559
@@ -2384,11 +2676,15 @@ yydefault:
 =======
 //line gram.y:561
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:562
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.dEntrieslist = append(yyDollar[1].dEntrieslist, yyDollar[3].distrKeyEntry)
 		}
 	case 66:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2402,6 +2698,9 @@ yydefault:
 =======
 //line gram.y:563
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:564
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.dEntrieslist = []DistributionKeyEntry{
 				yyDollar[1].distrKeyEntry,
@@ -2409,6 +2708,7 @@ yydefault:
 		}
 	case 67:
 		yyDollar = yyS[yypt-2 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2422,6 +2722,9 @@ yydefault:
 =======
 //line gram.y:573
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:574
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.distrKeyEntry = DistributionKeyEntry{
 				Column:       yyDollar[1].str,
@@ -2444,14 +2747,18 @@ yydefault:
 >>>>>>> 7ecc9870 (fix unittest)
 =======
 		yyDollar = yyS[yypt-7 : yypt+1]
+<<<<<<< HEAD
 //line gram.y:582
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:583
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.distributed_relation = &DistributedRelation{
-				Name:            yyDollar[2].str,
-				DistributionKey: yyDollar[5].dEntrieslist,
-				AutoIncrement:   yyDollar[6].autoincrement,
-				SchemaName:      yyDollar[7].str,
+				Name:                 yyDollar[2].str,
+				DistributionKey:      yyDollar[5].dEntrieslist,
+				AutoIncrementEntries: yyDollar[6].aiEntrieslist,
+				SchemaName:           yyDollar[7].str,
 			}
 		}
 <<<<<<< HEAD
@@ -2461,16 +2768,17 @@ yydefault:
 =======
 	case 68:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line gram.y:591
+//line gram.y:592
 		{
 			yyVAL.distributed_relation = &DistributedRelation{
-				Name:               yyDollar[2].str,
-				ReplicatedRelation: true,
-				AutoIncrement:      yyDollar[3].autoincrement,
-				SchemaName:         yyDollar[4].str,
+				Name:                 yyDollar[2].str,
+				ReplicatedRelation:   true,
+				AutoIncrementEntries: yyDollar[3].aiEntrieslist,
+				SchemaName:           yyDollar[4].str,
 			}
 		}
 	case 69:
+<<<<<<< HEAD
 		yyDollar = yyS[yypt-4 : yypt+1]
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -2480,13 +2788,13 @@ yydefault:
 //line gram.y:600
 >>>>>>> 7ecc9870 (fix unittest)
 =======
+=======
+		yyDollar = yyS[yypt-3 : yypt+1]
+>>>>>>> 052500a5 (fixes after review 2)
 //line gram.y:602
 >>>>>>> b252c210 (fixes after review)
 		{
-			yyVAL.autoincrement = &AutoIncrement{
-				Columns: yyDollar[3].strlist,
-				Starts:  yyDollar[4].uintegerlist,
-			}
+			yyVAL.aiEntrieslist = yyDollar[3].aiEntrieslist
 		}
 	case 70:
 <<<<<<< HEAD
@@ -2502,12 +2810,17 @@ yydefault:
 >>>>>>> 7ecc9870 (fix unittest)
 =======
 		yyDollar = yyS[yypt-0 : yypt+1]
+<<<<<<< HEAD
 //line gram.y:607
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:604
+>>>>>>> 052500a5 (fixes after review 2)
 		{
-			yyVAL.autoincrement = &AutoIncrement{}
+			yyVAL.aiEntrieslist = nil
 		}
 	case 71:
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -2521,29 +2834,60 @@ yydefault:
 >>>>>>> b252c210 (fixes after review)
 		yyDollar = yyS[yypt-2 : yypt+1]
 //line gram.y:612
+=======
+		yyDollar = yyS[yypt-3 : yypt+1]
+//line gram.y:610
+>>>>>>> 052500a5 (fixes after review 2)
 		{
-			yyVAL.uintegerlist = yyDollar[2].uintegerlist
+			yyVAL.aiEntrieslist = append(yyDollar[1].aiEntrieslist, yyDollar[3].aiEntry)
 		}
 	case 72:
-		yyDollar = yyS[yypt-0 : yypt+1]
-//line gram.y:614
+		yyDollar = yyS[yypt-1 : yypt+1]
+//line gram.y:612
 		{
-			yyVAL.uintegerlist = nil
+			yyVAL.aiEntrieslist = []AutoIncrementEntry{
+				yyDollar[1].aiEntry,
+			}
 		}
 	case 73:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:619
+//line gram.y:620
+		{
+			yyVAL.aiEntry = AutoIncrementEntry{
+				Column: yyDollar[1].str,
+				Start:  yyDollar[2].uinteger,
+			}
+		}
+	case 74:
+		yyDollar = yyS[yypt-2 : yypt+1]
+//line gram.y:629
+		{
+			yyVAL.uinteger = yyDollar[2].uinteger
+		}
+	case 75:
+		yyDollar = yyS[yypt-0 : yypt+1]
+//line gram.y:631
+		{
+			yyVAL.uinteger = 0
+		}
+	case 76:
+		yyDollar = yyS[yypt-2 : yypt+1]
+//line gram.y:636
 		{
 			yyVAL.str = yyDollar[2].str
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 	case 75:
 >>>>>>> 732e79a8 (initial)
 =======
 	case 74:
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 77:
+>>>>>>> 052500a5 (fixes after review 2)
 		yyDollar = yyS[yypt-0 : yypt+1]
-//line gram.y:621
+//line gram.y:638
 		{
 			yyVAL.strlist = nil
 		}
@@ -2560,6 +2904,7 @@ yydefault:
 		{
 			yyVAL.str = ""
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 	case 74:
 		yyDollar = yyS[yypt-1 : yypt+1]
@@ -2634,15 +2979,11 @@ yydefault:
 		{
 			yyVAL.uintegerlist = append(yyDollar[1].uintegerlist, uint(yyDollar[3].uinteger))
 		}
+=======
+>>>>>>> 052500a5 (fixes after review 2)
 	case 78:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:635
-		{
-			yyVAL.uintegerlist = []uint{uint(yyDollar[1].uinteger)}
-		}
-	case 79:
-		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:641
+//line gram.y:643
 		{
 <<<<<<< HEAD
 			yyVAL.uintegerlist = []uint{uint(yyDollar[1].uinteger)}
@@ -2691,24 +3032,25 @@ yydefault:
 =======
 			yyVAL.relations = []*DistributedRelation{yyDollar[1].distributed_relation}
 		}
-	case 80:
+	case 79:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:643
+//line gram.y:645
 		{
 			yyVAL.relations = append(yyDollar[1].relations, yyDollar[2].distributed_relation)
 		}
-	case 81:
+	case 80:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:648
+//line gram.y:650
 		{
 			yyVAL.relations = yyDollar[2].relations
 		}
-	case 82:
+	case 81:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:653
+//line gram.y:655
 		{
 			yyVAL.distributed_relation = yyDollar[2].distributed_relation
 		}
+<<<<<<< HEAD
 >>>>>>> b252c210 (fixes after review)
 	case 83:
 		yyDollar = yyS[yypt-2 : yypt+1]
@@ -2718,38 +3060,44 @@ yydefault:
 =======
 //line gram.y:659
 >>>>>>> 7ecc9870 (fix unittest)
+=======
+	case 82:
+		yyDollar = yyS[yypt-2 : yypt+1]
+//line gram.y:661
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.create = &Create{Element: yyDollar[2].ds}
 		}
-	case 84:
+	case 83:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:664
+//line gram.y:666
 		{
 			yyVAL.create = &Create{Element: yyDollar[2].sharding_rule}
 		}
-	case 85:
+	case 84:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:669
+//line gram.y:671
 		{
 			yyVAL.create = &Create{Element: yyDollar[2].kr}
 		}
-	case 86:
+	case 85:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:674
+//line gram.y:676
 		{
 			yyVAL.create = &Create{Element: yyDollar[2].shard}
 		}
-	case 87:
+	case 86:
 		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:679
+//line gram.y:681
 		{
 			yyVAL.create = &Create{
 				Element: &ReferenceRelationDefinition{
-					TableName:     yyDollar[4].str,
-					AutoIncrement: yyDollar[5].autoincrement,
+					TableName:            yyDollar[4].str,
+					AutoIncrementEntries: yyDollar[5].aiEntrieslist,
 				},
 			}
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	case 85:
@@ -2770,37 +3118,44 @@ yydefault:
 =======
 	case 88:
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 87:
+>>>>>>> 052500a5 (fixes after review 2)
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:689
+//line gram.y:691
 		{
 			yyVAL.opt_asc_desc = &SortByAsc{}
 		}
-	case 89:
+	case 88:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:690
+//line gram.y:692
 		{
 			yyVAL.opt_asc_desc = &SortByDesc{}
 		}
-	case 90:
+	case 89:
 		yyDollar = yyS[yypt-0 : yypt+1]
-//line gram.y:691
+//line gram.y:693
 		{
 			yyVAL.opt_asc_desc = &SortByDefault{}
 		}
-	case 91:
+	case 90:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line gram.y:695
+//line gram.y:697
 		{
 			yyVAL.order_clause = &Order{Col: yyDollar[3].colref, OptAscDesc: yyDollar[4].opt_asc_desc}
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 	case 93:
 >>>>>>> 732e79a8 (initial)
 =======
 	case 92:
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 91:
+>>>>>>> 052500a5 (fixes after review 2)
 		yyDollar = yyS[yypt-0 : yypt+1]
-//line gram.y:698
+//line gram.y:700
 		{
 			yyVAL.opt_asc_desc = &SortByDefault{}
 		}
@@ -2817,6 +3172,7 @@ yydefault:
 		{
 			yyVAL.order_clause = OrderClause(nil)
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 	case 90:
 		yyDollar = yyS[yypt-3 : yypt+1]
@@ -2850,31 +3206,35 @@ yydefault:
 =======
 	case 93:
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 92:
+>>>>>>> 052500a5 (fixes after review 2)
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:703
+//line gram.y:705
 		{
 			yyVAL.group_clause = GroupBy{Col: yyDollar[3].colref}
 		}
-	case 94:
+	case 93:
 		yyDollar = yyS[yypt-0 : yypt+1]
-//line gram.y:706
+//line gram.y:708
 		{
 			yyVAL.group_clause = GroupByClauseEmpty{}
 		}
-	case 95:
+	case 94:
 		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:711
+//line gram.y:713
 		{
 			yyVAL.show = &Show{Cmd: yyDollar[2].str, Where: yyDollar[3].where, GroupBy: yyDollar[4].group_clause, Order: yyDollar[5].order_clause}
 		}
-	case 96:
+	case 95:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:716
+//line gram.y:718
 		{
 			yyVAL.lock = &Lock{KeyRangeID: yyDollar[2].key_range_selector.KeyRangeID}
 		}
-	case 97:
+	case 96:
 		yyDollar = yyS[yypt-3 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 //line gram.y:730
@@ -2885,12 +3245,16 @@ yydefault:
 =======
 //line gram.y:724
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:726
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.ds = &DistributionDefinition{
 				ID:       yyDollar[2].str,
 				ColTypes: yyDollar[3].strlist,
 			}
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	case 95:
@@ -2910,11 +3274,17 @@ yydefault:
 		yyDollar = yyS[yypt-2 : yypt+1]
 //line gram.y:731
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 97:
+		yyDollar = yyS[yypt-2 : yypt+1]
+//line gram.y:733
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.ds = &DistributionDefinition{
 				Replicated: true,
 			}
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	case 96:
@@ -2931,13 +3301,17 @@ yydefault:
 =======
 	case 99:
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 98:
+>>>>>>> 052500a5 (fixes after review 2)
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:739
+//line gram.y:741
 		{
 			yyVAL.strlist = yyDollar[3].strlist
 		}
-	case 100:
+	case 99:
 		yyDollar = yyS[yypt-0 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 //line gram.y:747
@@ -2948,10 +3322,14 @@ yydefault:
 =======
 //line gram.y:741
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:743
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			/* empty column types should be prohibited */
 			yyVAL.strlist = nil
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	case 98:
@@ -2966,27 +3344,34 @@ yydefault:
 =======
 	case 101:
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 100:
+>>>>>>> 052500a5 (fixes after review 2)
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:747
+//line gram.y:749
 		{
 			yyVAL.strlist = append(yyDollar[1].strlist, yyDollar[3].str)
 		}
-	case 102:
+	case 101:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:749
+//line gram.y:751
 		{
 			yyVAL.strlist = []string{
 				yyDollar[1].str,
 			}
 		}
 <<<<<<< HEAD
+<<<<<<< HEAD
 	case 104:
 >>>>>>> 732e79a8 (initial)
 =======
 	case 103:
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 102:
+>>>>>>> 052500a5 (fixes after review 2)
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:756
+//line gram.y:758
 		{
 			yyVAL.strlist = []string{
 				yyDollar[1].str,
@@ -2999,6 +3384,7 @@ yydefault:
 		{
 			yyVAL.str = "varchar"
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 	case 101:
 		yyDollar = yyS[yypt-2 : yypt+1]
@@ -3020,30 +3406,27 @@ yydefault:
 =======
 	case 104:
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 103:
+>>>>>>> 052500a5 (fixes after review 2)
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:758
+//line gram.y:760
 		{
 			yyVAL.str = "varchar hashed"
 		}
-	case 105:
-		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:760
-		{
-			yyVAL.str = "integer"
-		}
-	case 106:
+	case 104:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line gram.y:762
 		{
 			yyVAL.str = "integer"
 		}
-	case 107:
-		yyDollar = yyS[yypt-2 : yypt+1]
+	case 105:
+		yyDollar = yyS[yypt-1 : yypt+1]
 //line gram.y:764
 		{
-			yyVAL.str = "uinteger"
+			yyVAL.str = "integer"
 		}
-	case 108:
+	case 106:
 		yyDollar = yyS[yypt-2 : yypt+1]
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -3067,6 +3450,7 @@ yydefault:
 		{
 			yyVAL.str = "uinteger"
 		}
+<<<<<<< HEAD
 	case 105:
 		yyDollar = yyS[yypt-2 : yypt+1]
 //line gram.y:752
@@ -3100,18 +3484,29 @@ yydefault:
 =======
 >>>>>>> b252c210 (fixes after review)
 		yyDollar = yyS[yypt-1 : yypt+1]
+=======
+	case 107:
+		yyDollar = yyS[yypt-2 : yypt+1]
+>>>>>>> 052500a5 (fixes after review 2)
 //line gram.y:768
+		{
+			yyVAL.str = "uinteger"
+		}
+	case 108:
+		yyDollar = yyS[yypt-1 : yypt+1]
+//line gram.y:770
 		{
 			yyVAL.str = "uuid"
 		}
-	case 110:
+	case 109:
 		yyDollar = yyS[yypt-6 : yypt+1]
-//line gram.y:774
+//line gram.y:776
 		{
 			yyVAL.sharding_rule = &ShardingRuleDefinition{ID: yyDollar[3].str, TableName: yyDollar[4].str, Entries: yyDollar[5].entrieslist, Distribution: yyDollar[6].str}
 		}
-	case 111:
+	case 110:
 		yyDollar = yyS[yypt-5 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 //line gram.y:785
@@ -3122,6 +3517,9 @@ yydefault:
 =======
 //line gram.y:779
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:781
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			str, err := randomHex(6)
 			if err != nil {
@@ -3129,6 +3527,7 @@ yydefault:
 			}
 			yyVAL.sharding_rule = &ShardingRuleDefinition{ID: "shrule" + str, TableName: yyDollar[3].str, Entries: yyDollar[4].entrieslist, Distribution: yyDollar[5].str}
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	case 109:
@@ -3148,10 +3547,16 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line gram.y:788
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 111:
+		yyDollar = yyS[yypt-1 : yypt+1]
+//line gram.y:790
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.entrieslist = make([]ShardingRuleEntry, 0)
 			yyVAL.entrieslist = append(yyVAL.entrieslist, yyDollar[1].shruleEntry)
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	case 110:
@@ -3168,13 +3573,17 @@ yydefault:
 =======
 	case 113:
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 112:
+>>>>>>> 052500a5 (fixes after review 2)
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:794
+//line gram.y:796
 		{
 			yyVAL.entrieslist = append(yyDollar[1].entrieslist, yyDollar[2].shruleEntry)
 		}
-	case 114:
+	case 113:
 		yyDollar = yyS[yypt-2 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 //line gram.y:806
@@ -3185,12 +3594,16 @@ yydefault:
 =======
 //line gram.y:800
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:802
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.shruleEntry = ShardingRuleEntry{
 				Column:       yyDollar[1].str,
 				HashFunction: yyDollar[2].str,
 			}
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	case 112:
@@ -3241,25 +3654,39 @@ yydefault:
 =======
 =======
 	case 115:
+=======
+	case 114:
+>>>>>>> 052500a5 (fixes after review 2)
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:809
+//line gram.y:811
 		{
 			yyVAL.str = yyDollar[2].str
 		}
+<<<<<<< HEAD
 >>>>>>> b252c210 (fixes after review)
 	case 116:
+=======
+	case 115:
+>>>>>>> 052500a5 (fixes after review 2)
 		yyDollar = yyS[yypt-0 : yypt+1]
-//line gram.y:812
+//line gram.y:814
 		{
 			yyVAL.str = ""
 		}
+	case 116:
+		yyDollar = yyS[yypt-2 : yypt+1]
+//line gram.y:818
+		{
+			yyVAL.str = yyDollar[2].str
+		}
 	case 117:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:816
+//line gram.y:823
 		{
 			yyVAL.str = yyDollar[2].str
 		}
 	case 118:
+<<<<<<< HEAD
 		yyDollar = yyS[yypt-2 : yypt+1]
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -3296,43 +3723,52 @@ yydefault:
 =======
 	case 120:
 >>>>>>> b252c210 (fixes after review)
+=======
+>>>>>>> 052500a5 (fixes after review 2)
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line gram.y:829
 		{
-			yyVAL.str = "murmur"
+			yyVAL.str = "identity"
 		}
-	case 121:
+	case 119:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line gram.y:831
 		{
+			yyVAL.str = "murmur"
+		}
+	case 120:
+		yyDollar = yyS[yypt-1 : yypt+1]
+//line gram.y:833
+		{
 			yyVAL.str = "city"
 		}
-	case 122:
+	case 121:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:837
+//line gram.y:839
 		{
 			yyVAL.str = yyDollar[3].str
 		}
-	case 123:
+	case 122:
 		yyDollar = yyS[yypt-0 : yypt+1]
-//line gram.y:839
+//line gram.y:841
 		{
 			yyVAL.str = ""
 		}
-	case 124:
+	case 123:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:844
+//line gram.y:846
 		{
 			yyVAL.str = yyDollar[3].str
 		}
-	case 125:
+	case 124:
 		yyDollar = yyS[yypt-0 : yypt+1]
-//line gram.y:846
+//line gram.y:848
 		{
 			yyVAL.str = "default"
 		}
-	case 126:
+	case 125:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 //line gram.y:857
@@ -3343,6 +3779,9 @@ yydefault:
 =======
 //line gram.y:851
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:853
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.str = yyDollar[3].str
 		}
@@ -3352,8 +3791,9 @@ yydefault:
 		{
 			yyVAL.str = "default"
 		}
-	case 127:
+	case 126:
 		yyDollar = yyS[yypt-1 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -3373,11 +3813,15 @@ yydefault:
 =======
 //line gram.y:854
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:856
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			buf := make([]byte, 8)
 			binary.PutVarint(buf, int64(yyDollar[1].uinteger))
 			yyVAL.bytes = buf
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	case 125:
@@ -3397,6 +3841,11 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line gram.y:861
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 127:
+		yyDollar = yyS[yypt-1 : yypt+1]
+//line gram.y:863
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.krbound = &KeyRangeBound{
 				Pivots: [][]byte{
@@ -3404,6 +3853,7 @@ yydefault:
 				},
 			}
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	case 126:
@@ -3423,11 +3873,17 @@ yydefault:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line gram.y:868
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 128:
+		yyDollar = yyS[yypt-3 : yypt+1]
+//line gram.y:870
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.krbound = &KeyRangeBound{
 				Pivots: append(yyDollar[1].krbound.Pivots, yyDollar[3].bytes),
 			}
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	case 127:
@@ -3447,6 +3903,11 @@ yydefault:
 		yyDollar = yyS[yypt-9 : yypt+1]
 //line gram.y:877
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 129:
+		yyDollar = yyS[yypt-9 : yypt+1]
+//line gram.y:879
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.kr = &KeyRangeDefinition{
 				KeyRangeID:   yyDollar[3].str,
@@ -3455,6 +3916,7 @@ yydefault:
 				Distribution: yyDollar[9].str,
 			}
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	case 128:
@@ -3474,6 +3936,11 @@ yydefault:
 		yyDollar = yyS[yypt-8 : yypt+1]
 //line gram.y:886
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 130:
+		yyDollar = yyS[yypt-8 : yypt+1]
+//line gram.y:888
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			str, err := randomHex(6)
 			if err != nil {
@@ -3486,6 +3953,7 @@ yydefault:
 				KeyRangeID:   "kr" + str,
 			}
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	case 129:
@@ -3502,13 +3970,17 @@ yydefault:
 =======
 	case 132:
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 131:
+>>>>>>> 052500a5 (fixes after review 2)
 		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:901
+//line gram.y:903
 		{
 			yyVAL.shard = &ShardDefinition{Id: yyDollar[2].str, Hosts: yyDollar[5].strlist}
 		}
-	case 133:
+	case 132:
 		yyDollar = yyS[yypt-4 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 //line gram.y:912
@@ -3519,6 +3991,9 @@ yydefault:
 =======
 //line gram.y:906
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:908
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			str, err := randomHex(6)
 			if err != nil {
@@ -3526,6 +4001,7 @@ yydefault:
 			}
 			yyVAL.shard = &ShardDefinition{Id: "shard" + str, Hosts: yyDollar[4].strlist}
 		}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	case 131:
@@ -3680,145 +4156,149 @@ yydefault:
 =======
 	case 134:
 >>>>>>> b252c210 (fixes after review)
+=======
+	case 133:
+>>>>>>> 052500a5 (fixes after review 2)
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:916
+//line gram.y:918
 		{
 			yyVAL.strlist = []string{yyDollar[1].str}
 		}
-	case 135:
+	case 134:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:921
+//line gram.y:923
 		{
 			yyVAL.strlist = append(yyDollar[1].strlist, yyDollar[3].str)
 		}
-	case 136:
+	case 135:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:927
+//line gram.y:929
 		{
 			yyVAL.unlock = &Unlock{KeyRangeID: yyDollar[2].key_range_selector.KeyRangeID}
 		}
-	case 137:
+	case 136:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:933
+//line gram.y:935
 		{
 			yyVAL.sharding_rule_selector = &ShardingRuleSelector{ID: yyDollar[3].str}
 		}
-	case 138:
+	case 137:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:939
+//line gram.y:941
 		{
 			yyVAL.key_range_selector = &KeyRangeSelector{KeyRangeID: yyDollar[3].str}
 		}
-	case 139:
-		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:945
-		{
-			yyVAL.distribution_selector = &DistributionSelector{ID: yyDollar[2].str, Replicated: false}
-		}
-	case 140:
+	case 138:
 		yyDollar = yyS[yypt-2 : yypt+1]
 //line gram.y:947
 		{
+			yyVAL.distribution_selector = &DistributionSelector{ID: yyDollar[2].str, Replicated: false}
+		}
+	case 139:
+		yyDollar = yyS[yypt-2 : yypt+1]
+//line gram.y:949
+		{
 			yyVAL.distribution_selector = &DistributionSelector{Replicated: true, ID: "REPLICATED"}
 		}
-	case 141:
+	case 140:
 		yyDollar = yyS[yypt-6 : yypt+1]
-//line gram.y:953
+//line gram.y:955
 		{
 			yyVAL.split = &SplitKeyRange{KeyRangeID: yyDollar[2].key_range_selector.KeyRangeID, KeyRangeFromID: yyDollar[4].str, Border: yyDollar[6].krbound}
 		}
-	case 142:
+	case 141:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:959
+//line gram.y:961
 		{
 			yyVAL.kill = &Kill{Cmd: yyDollar[2].str, Target: yyDollar[3].uinteger}
 		}
-	case 143:
+	case 142:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:962
+//line gram.y:964
 		{
 			yyVAL.kill = &Kill{Cmd: "client", Target: yyDollar[3].uinteger}
 		}
-	case 144:
+	case 143:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line gram.y:968
+//line gram.y:970
 		{
 			yyVAL.move = &MoveKeyRange{KeyRangeID: yyDollar[2].key_range_selector.KeyRangeID, DestShardID: yyDollar[4].str}
 		}
-	case 145:
+	case 144:
 		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:974
+//line gram.y:976
 		{
 			yyVAL.redistribute = &RedistributeKeyRange{KeyRangeID: yyDollar[2].key_range_selector.KeyRangeID, DestShardID: yyDollar[4].str, BatchSize: yyDollar[5].opt_batch_size, Check: true, Apply: true}
 		}
-	case 146:
-		yyDollar = yyS[yypt-6 : yypt+1]
-//line gram.y:976
-		{
-			yyVAL.redistribute = &RedistributeKeyRange{KeyRangeID: yyDollar[2].key_range_selector.KeyRangeID, DestShardID: yyDollar[4].str, BatchSize: yyDollar[5].opt_batch_size, Check: true}
-		}
-	case 147:
+	case 145:
 		yyDollar = yyS[yypt-6 : yypt+1]
 //line gram.y:978
 		{
+			yyVAL.redistribute = &RedistributeKeyRange{KeyRangeID: yyDollar[2].key_range_selector.KeyRangeID, DestShardID: yyDollar[4].str, BatchSize: yyDollar[5].opt_batch_size, Check: true}
+		}
+	case 146:
+		yyDollar = yyS[yypt-6 : yypt+1]
+//line gram.y:980
+		{
 			yyVAL.redistribute = &RedistributeKeyRange{KeyRangeID: yyDollar[2].key_range_selector.KeyRangeID, DestShardID: yyDollar[4].str, BatchSize: yyDollar[5].opt_batch_size, Apply: true}
 		}
-	case 148:
+	case 147:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:982
+//line gram.y:984
 		{
 			yyVAL.opt_batch_size = int(yyDollar[3].uinteger)
 		}
-	case 149:
+	case 148:
 		yyDollar = yyS[yypt-0 : yypt+1]
-//line gram.y:983
+//line gram.y:985
 		{
 			yyVAL.opt_batch_size = -1
 		}
-	case 150:
+	case 149:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line gram.y:987
+//line gram.y:989
 		{
 			yyVAL.unite = &UniteKeyRange{KeyRangeIDL: yyDollar[2].key_range_selector.KeyRangeID, KeyRangeIDR: yyDollar[4].str}
 		}
-	case 151:
+	case 150:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:993
+//line gram.y:995
 		{
 			yyVAL.listen = &Listen{addr: yyDollar[2].str}
 		}
-	case 152:
+	case 151:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:999
+//line gram.y:1001
 		{
 			yyVAL.shutdown = &Shutdown{}
 		}
-	case 153:
+	case 152:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:1005
+//line gram.y:1007
 		{
 			yyVAL.invalidate_cache = &InvalidateCache{}
 		}
-	case 154:
+	case 153:
 		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:1013
+//line gram.y:1015
 		{
 			yyVAL.register_router = &RegisterRouter{ID: yyDollar[3].str, Addr: yyDollar[5].str}
 		}
-	case 155:
+	case 154:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:1019
+//line gram.y:1021
 		{
 			yyVAL.unregister_router = &UnregisterRouter{ID: yyDollar[3].str}
 		}
-	case 156:
+	case 155:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:1024
+//line gram.y:1026
 		{
 			yyVAL.unregister_router = &UnregisterRouter{ID: `*`}
 		}
-	case 157:
+	case 156:
 		yyDollar = yyS[yypt-4 : yypt+1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 //line gram.y:1038
@@ -3829,6 +4309,9 @@ yydefault:
 =======
 //line gram.y:1032
 >>>>>>> b252c210 (fixes after review)
+=======
+//line gram.y:1034
+>>>>>>> 052500a5 (fixes after review 2)
 		{
 			yyVAL.retryMoveTaskGroup = &RetryMoveTaskGroup{}
 		}
