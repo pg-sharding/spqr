@@ -658,9 +658,11 @@ func TestAlter(t *testing.T) {
 						},
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name:                 "t",
-								ReplicatedRelation:   true,
-								AutoIncrementColumns: []string{"id1"},
+								Name:               "t",
+								ReplicatedRelation: true,
+								AutoIncrement: &spqrparser.AutoIncrement{
+									Columns: []string{"id1"},
+								},
 							},
 						},
 					},
@@ -678,10 +680,12 @@ func TestAlter(t *testing.T) {
 						},
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name:                 "t",
-								ReplicatedRelation:   true,
-								AutoIncrementColumns: []string{"id1"},
-								AutoIncrementStart:   []uint{32},
+								Name:               "t",
+								ReplicatedRelation: true,
+								AutoIncrement: &spqrparser.AutoIncrement{
+									Columns: []string{"id1"},
+									Starts:   []uint{42},
+								},
 							},
 						},
 					},
@@ -701,7 +705,9 @@ func TestAlter(t *testing.T) {
 										Column: "id1",
 									},
 								},
-								AutoIncrementColumns: []string{"id1", "id2"},
+								AutoIncrement: &spqrparser.AutoIncrement{
+									Columns: []string{"id1", "id2"},
+								},
 							},
 						},
 						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
@@ -722,8 +728,10 @@ func TestAlter(t *testing.T) {
 										Column: "id1",
 									},
 								},
-								AutoIncrementColumns: []string{"id1", "id2"},
-								AutoIncrementStart:   []uint{123, 321},
+								AutoIncrement: &spqrparser.AutoIncrement{
+									Columns: []string{"id1", "id2"},
+									Starts:   []uint{123, 321},
+								},
 							},
 						},
 						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
@@ -847,8 +855,10 @@ func TestDistribution(t *testing.T) {
 			query: "CREATE REFERENCE TABLE xtab AUTO INCREMENT id",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
-					TableName:            "xtab",
-					AutoIncrementColumns: []string{"id"},
+					TableName: "xtab",
+					AutoIncrement: &spqrparser.AutoIncrement{
+						Columns: []string{"id"},
+					},
 				},
 			},
 			err: nil,
@@ -857,9 +867,11 @@ func TestDistribution(t *testing.T) {
 			query: "CREATE REFERENCE TABLE xtab AUTO INCREMENT id START 42",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
-					TableName:            "xtab",
-					AutoIncrementColumns: []string{"id"},
-					AutoIncrementStart:   []uint{42},
+					TableName: "xtab",
+					AutoIncrement: &spqrparser.AutoIncrement{
+						Columns: []string{"id"},
+						Starts:   []uint{42},
+					},
 				},
 			},
 			err: nil,

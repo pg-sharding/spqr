@@ -89,6 +89,7 @@ func randomHex(n int) (string, error) {
 	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
 	distribution_selector  *DistributionSelector
+	autoincrement          *AutoIncrement
 
     colref                 ColumnRef
     where                  WhereClauseNode
@@ -199,7 +200,7 @@ func randomHex(n int) (string, error) {
 %type<entrieslist> sharding_rule_argument_list
 %type<dEntrieslist> distribution_key_argument_list
 %type<shruleEntry> sharding_rule_entry
-%type<strlist> opt_auto_increment
+%type<autoincrement> opt_auto_increment
 %type<uintegerlist> opt_auto_increment_start
 %type<strlist> auto_inc_column_list
 %type<uintegerlist> auto_inc_start_list
@@ -584,22 +585,12 @@ distribution_key_entry:
 	}
 
 distributed_relation_def:
-	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment opt_auto_increment_start opt_schema_name
+	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment opt_schema_name
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
 			DistributionKey: $5,
-			AutoIncrementColumns: $6,
-			AutoIncrementStart: $7,
-			SchemaName: $8,
-		}
-	} | 
-    RELATION any_id DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment opt_schema_name
-	{
-		$$ = &DistributedRelation{
-			Name: 	 $2,
-			DistributionKey: $5,
-			AutoIncrementColumns: $6,
+			AutoIncrement: $6,
 			SchemaName: $7,
 		}
 	} | 
@@ -607,19 +598,22 @@ distributed_relation_def:
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
-			SchemaName: $4,
 			ReplicatedRelation: true,
-			AutoIncrementColumns: $3,
+			AutoIncrement: $3,
+			SchemaName: $4,
 		}
 	}
 
 
 opt_auto_increment:
-	AUTO INCREMENT auto_inc_column_list {
-		$$ = $3
-	} | /* EMPTY */ {
-		$$ = nil
-	}
+    AUTO INCREMENT auto_inc_column_list opt_auto_increment_start {
+        $$ = &AutoIncrement{
+            Columns: $3,
+            Starts: $4,
+        }
+    } | /* EMPTY */ {
+        $$ = nil
+    }
 
 opt_auto_increment_start:
 	START auto_inc_start_list {
@@ -688,13 +682,12 @@ create_stmt:
 		$$ = &Create{Element: $2}
 	}
 	|
-	CREATE REFERENCE TABLE any_id opt_auto_increment opt_auto_increment_start
+	CREATE REFERENCE TABLE any_id opt_auto_increment
 	{
 		$$ = &Create{
 			Element: &ReferenceRelationDefinition{
 				TableName: $4,
-				AutoIncrementColumns: $5,
-				AutoIncrementStart: $6,
+                AutoIncrement: $5,
 			},
 		}
 	}

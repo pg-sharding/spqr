@@ -102,11 +102,10 @@ type DropStmt interface {
 }
 
 type DistributionDefinition struct {
-	ID                   string
-	ColTypes             []string
-	Replicated           bool
-	AutoIncrementColumns []string
-	AutoIncrementStart   []uint
+	ID            string
+	ColTypes      []string
+	Replicated    bool
+	AutoIncrement *AutoIncrement
 }
 
 type ShardingRuleDefinition struct {
@@ -122,9 +121,13 @@ type ShardingRuleEntry struct {
 }
 
 type ReferenceRelationDefinition struct {
-	TableName            string
-	AutoIncrementColumns []string
-	AutoIncrementStart   []uint
+	TableName     string
+	AutoIncrement *AutoIncrement
+}
+
+type AutoIncrement struct {
+	Columns []string
+	Starts  []uint
 }
 
 type KeyRangeBound struct {
@@ -262,12 +265,11 @@ type DistributionKeyEntry struct {
 }
 
 type DistributedRelation struct {
-	Name                 string
-	SchemaName           string
-	DistributionKey      []DistributionKeyEntry
-	ReplicatedRelation   bool
-	AutoIncrementColumns []string
-	AutoIncrementStart   []uint
+	Name               string
+	SchemaName         string
+	DistributionKey    []DistributionKeyEntry
+	ReplicatedRelation bool
+	AutoIncrement      *AutoIncrement
 }
 
 type AttachRelation struct {
