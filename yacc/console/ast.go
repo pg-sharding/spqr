@@ -216,6 +216,10 @@ type Kill struct {
 
 type InvalidateCache struct{}
 
+type SyncReferenceTables struct {
+	ShardID string
+}
+
 // coordinator
 
 type RegisterRouter struct {
@@ -296,7 +300,8 @@ type SequenceSelector struct {
 
 func (*SequenceSelector) iDrop() {}
 
-type RetryMoveTaskGroup struct {}
+type RetryMoveTaskGroup struct{}
+
 func (*RetryMoveTaskGroup) iStatement() {}
 
 // The following constants represent SHOW statements.
@@ -357,6 +362,7 @@ func (*WhereClauseLeaf) iStatement()             {}
 func (*WhereClauseEmpty) iStatement()            {}
 func (*WhereClauseOp) iStatement()               {}
 func (*InvalidateCache) iStatement()             {}
+func (*SyncReferenceTables) iStatement()         {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
