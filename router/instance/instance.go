@@ -9,12 +9,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
@@ -175,48 +173,6 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 		}
 
 		return routerClient.ID(), r.RuleRouter.CancelClient(routerClient.CancelMsg())
-	}
-
-	if routerClient.Usr() == "spqr-ping" && routerClient.DB() == "spqr-ping" {
-		msgs := []pgproto3.BackendMessage{
-			&pgproto3.AuthenticationOk{},
-			&pgproto3.NoticeResponse{
-				Message: "SPQR router is alive",
-			},
-			&pgproto3.ReadyForQuery{
-				TxStatus: byte(txstatus.TXIDLE),
-			},
-		}
-
-		for _, msg := range msgs {
-			if err := routerClient.Send(msg); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to send message to routerClient during ping")
-				return routerClient.ID(), err
-			}
-		}
-
-		for {
-			if _, err := routerClient.Receive(); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to receive message from routerClient during ping")
-				return routerClient.ID(), err
-			}
-
-			msgs := []pgproto3.BackendMessage{
-				&pgproto3.CommandComplete{},
-				&pgproto3.NoticeResponse{
-					Message: "SPQR router is alive",
-				},
-				&pgproto3.ReadyForQuery{
-					TxStatus: byte(txstatus.TXIDLE),
-				},
-			}
-			for _, msg := range msgs {
-				if err := routerClient.Send(msg); err != nil {
-					spqrlog.Zero.Error().Err(err).Msg("failed to send message to routerClient during ping")
-					return routerClient.ID(), err
-				}
-			}
-		}
 	}
 
 	if pt == port.ADMRouterPortType || routerClient.DB() == "spqr-console" {

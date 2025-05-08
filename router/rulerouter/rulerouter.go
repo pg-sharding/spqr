@@ -183,7 +183,17 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	}
 
 	if cl.Usr() == "spqr-ping" && cl.DB() == "spqr-ping" {
-		return r.preRoutePingPong(cl)
+		// TODO : unit tests
+		rule := &config.FrontendRule{
+			Usr:      "spqr-ping",
+			DB:       "spqr-ping",
+			AuthRule: &config.AuthCfg{Method: config.AuthOK},
+			PoolMode: config.PoolModeVirtual,
+		}
+		if err := cl.AssignRule(rule); err != nil {
+			_ = cl.ReplyErrMsg("failed to assign rule", spqrerror.SPQR_ROUTING_ERROR, txstatus.TXIDLE)
+			return nil, err
+		}
 	}
 
 	if pt == port.ADMRouterPortType || cl.DB() == "spqr-console" {
@@ -271,22 +281,6 @@ func (r *RuleRouterImpl) preRouteInitializedClientAdm(cl rclient.RouterClient) (
 	}
 
 	if err := auth.AuthFrontend(cl, frRule); err != nil {
-		_ = cl.ReplyErr(err)
-		return cl, err
-	}
-
-	return cl, nil
-}
-
-// TODO : unit tests
-func (r *RuleRouterImpl) preRoutePingPong(cl rclient.RouterClient) (rclient.RouterClient, error) {
-	rule := &config.FrontendRule{Usr: "spqr-ping", DB: "spqr-ping", AuthRule: &config.AuthCfg{Method: config.AuthOK}}
-	if err := cl.AssignRule(rule); err != nil {
-		_ = cl.ReplyErrMsg("failed to assign rule", spqrerror.SPQR_ROUTING_ERROR, txstatus.TXIDLE)
-		return nil, err
-	}
-
-	if err := auth.AuthFrontend(cl, rule); err != nil {
 		_ = cl.ReplyErr(err)
 		return cl, err
 	}

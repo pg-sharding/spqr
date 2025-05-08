@@ -681,6 +681,8 @@ func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 	return nil
 }
 
+const pingRoute = "spqr-ping"
+
 // startup + ssl/cancel
 func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 	for {
@@ -793,7 +795,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			Uint32("cancel_key", cl.cancel_key).
 			Uint32("cancel_pid", cl.cancel_pid)
 
-		if cl.DB() == "spqr-ping" && cl.Usr() == "spqr-ping" {
+		if cl.DB() == pingRoute && cl.Usr() == pingRoute {
 			return nil
 		}
 
@@ -845,18 +847,20 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		Str("db", cl.DB()).
 		Msg("client connection for rule accepted")
 
-	ps, err := rt.Params()
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for key, msg := range ps {
-		if err := cl.Send(&pgproto3.ParameterStatus{
-			Name:  key,
-			Value: msg,
-		}); err != nil {
+	/* XXX: generate defaults for virtual pool too */
+	if cl.Rule().PoolMode != config.PoolModeVirtual {
+		ps, err := rt.Params()
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
+		}
+		for key, msg := range ps {
+			if err := cl.Send(&pgproto3.ParameterStatus{
+				Name:  key,
+				Value: msg,
+			}); err != nil {
+				return err
+			}
 		}
 	}
 

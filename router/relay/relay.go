@@ -569,7 +569,9 @@ func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
 		return nil
 	}
 
-	if rst.Client().Server().TxStatus() == txstatus.TXERR {
+	serv := rst.Client().Server()
+
+	if serv == nil || serv.TxStatus() == txstatus.TXERR {
 		/* should never happen */
 		return expandInTxError
 	}
@@ -658,6 +660,16 @@ func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, plan.Plan, error) {
 	}
 
 	rst.routingState = queryPlan
+
+	if rst.Client().Rule().PoolMode == config.PoolModeVirtual {
+		/* never try to get connection */
+		switch queryPlan.(type) {
+		case plan.VirtualPlan:
+			return nil, queryPlan, nil
+		default:
+			return nil, nil, fmt.Errorf("query processing for this client is disabled")
+		}
+	}
 
 	switch v := queryPlan.(type) {
 	case plan.VirtualPlan:
@@ -1582,7 +1594,16 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool) error {
+
+	/* XXX: tx management is handled outside this call, so do not complete relay here */
+
+	spqrlog.Zero.Debug().
+		Uint("client", rst.Client().ID()).
+		Msg("relay step: process message buf for client")
 	if _, err := rst.PrepareRelayStep(); err != nil {
+		/* some critical connection issue, client processing cannot be competed.
+		* empty our msg buf */
+		rst.msgBuf = nil
 		return err
 	}
 
@@ -1600,6 +1621,10 @@ func (rst *RelayStateImpl) ProcessMessage(
 		Uint("client", rst.Client().ID()).
 		Msg("relay step: process message for client")
 	if _, err := rst.PrepareRelayStep(); err != nil {
+		if err := rst.CompleteRelay(replyCl); err != nil {
+			spqrlog.Zero.Error().Err(err).Uint("client", rst.Client().ID()).Msg("failed to complete relay")
+			return err
+		}
 		return err
 	}
 
@@ -1607,7 +1632,7 @@ func (rst *RelayStateImpl) ProcessMessage(
 
 	if _, err := rst.RelayStep(msg, waitForResp, replyCl); err != nil {
 		if err := rst.CompleteRelay(replyCl); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to complete relay")
+			spqrlog.Zero.Error().Err(err).Uint("client", rst.Client().ID()).Msg("failed to complete relay")
 			return err
 		}
 		return err

@@ -23,6 +23,7 @@ type DefaultRouteBehaviour string
 const (
 	PoolModeSession     = PoolMode("SESSION")
 	PoolModeTransaction = PoolMode("TRANSACTION")
+	PoolModeVirtual     = PoolMode("VIRTUAL")
 
 	DataShard  = ShardType("DATA")
 	WorldShard = ShardType("WORLD")

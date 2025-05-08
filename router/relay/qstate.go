@@ -97,6 +97,8 @@ func ProcQueryAdvancedTx(rst RelayStateMgr, query string, binderQ func() error, 
 
 	/* outer function will complete relay here */
 
+	spqrlog.Zero.Debug().Err(err).Uint("client-id", rst.Client().ID()).Msg("completing client relay with error")
+
 	switch err {
 	case io.ErrUnexpectedEOF:
 		fallthrough
