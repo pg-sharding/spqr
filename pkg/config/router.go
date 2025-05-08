@@ -92,9 +92,8 @@ type Router struct {
 
 	WithCoordinator bool `json:"with_coordinator" toml:"with_coordinator" yaml:"with_coordinator"`
 
-	IgnoreCancel          bool `json:"ignore_cancel" toml:"ignore_cancel" yaml:"ignore_cancel"`
-	AcceptorBufferSize    int  `json:"acceptor_buffer_size" toml:"acceptor_buffer_size" yaml:"acceptor_buffer_size"`
-	DisableObsoleteClient bool `json:"disable_obsolete_client" toml:"disable_obsolete_client" yaml:"disable_obsolete_client"`
+	IgnoreCancel       bool `json:"ignore_cancel" toml:"ignore_cancel" yaml:"ignore_cancel"`
+	AcceptorBufferSize int  `json:"acceptor_buffer_size" toml:"acceptor_buffer_size" yaml:"acceptor_buffer_size"`
 
 	DefaultCommitStrategy string `json:"distributed_commit_strategy" toml:"distributed_commit_strategy" yaml:"distributed_commit_strategy"`
 

@@ -20,7 +20,6 @@ type RoutePool interface {
 		frRule *config.FrontendRule,
 	) (*route.Route, error)
 
-	Obsolete(key route.Key) *route.Route
 	Shutdown() error
 	NotifyRoutes(func(route *route.Route) error) error
 }
@@ -64,16 +63,6 @@ func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) error) error {
 	})
 
 	return err
-}
-
-// TODO : unit tests
-func (r *RoutePoolImpl) Obsolete(key route.Key) *route.Route {
-	ret, ok := r.pool.LoadAndDelete(key)
-	if ok {
-		return ret.(*route.Route)
-	}
-
-	return nil
 }
 
 // TODO : unit tests
