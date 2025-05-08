@@ -35,7 +35,7 @@ jobs:
         uses: golangci/golangci-lint-action@v8
         with:
           version: latest
-          args: --timeout=10m --out-format=colored-line-number --skip-dirs=yacc/console
+          args: --timeout=10m --skip-dirs=yacc/console
 
   goimports:
     runs-on: ubuntu-latest
