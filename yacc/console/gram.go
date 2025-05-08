@@ -538,8 +538,8 @@ var yyErrorMessages = [...]struct {
 /*	parser for yacc output	*/
 
 var (
-	yyDebug        = 1
-	yyErrorVerbose = true
+	yyDebug        = 0
+	yyErrorVerbose = false
 )
 
 type yyLexer interface {
