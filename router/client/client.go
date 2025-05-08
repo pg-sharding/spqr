@@ -793,6 +793,10 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			Uint32("cancel_key", cl.cancel_key).
 			Uint32("cancel_pid", cl.cancel_pid)
 
+		if cl.DB() == "spqr-ping" && cl.Usr() == "spqr-ping" {
+			return nil
+		}
+
 		if tlsconfig != nil && protoVer != conn.SSLREQ {
 			if err := cl.Send(
 				&pgproto3.ErrorResponse{
