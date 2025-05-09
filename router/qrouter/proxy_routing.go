@@ -877,7 +877,22 @@ func (qr *ProxyQrouter) planQueryV1(
 
 					virtualRowVals = append(virtualRowVals, []byte(e.Value))
 
-				case *lyx.AExprIConst, *lyx.AExprNConst, *lyx.AExprBConst:
+				case *lyx.AExprIConst:
+
+					p = plan.Combine(p, plan.VirtualPlan{})
+					virtualRowCols = append(virtualRowCols,
+						pgproto3.FieldDescription{
+							Name:                 []byte("?column?"),
+							DataTypeOID:          catalog.INTOID,
+							TypeModifier:         -1,
+							DataTypeSize:         1,
+							TableAttributeNumber: 0,
+							TableOID:             0,
+							Format:               0,
+						})
+
+					virtualRowVals = append(virtualRowVals, []byte(fmt.Sprintf("%d", e.Value)))
+				case *lyx.AExprNConst, *lyx.AExprBConst:
 					p = plan.Combine(p, plan.RandomDispatchPlan{})
 
 				/* Special case for SELECT current_schema */
