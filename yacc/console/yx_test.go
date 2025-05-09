@@ -923,6 +923,32 @@ func TestRefresh(t *testing.T) {
 	}
 }
 
+func TestSyncReferenceTable(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "SYNC REFERENCE TABLES sh1",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID: "sh1",
+			},
+			err: nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
 func TestRetryMoveTaskGroup(t *testing.T) {
 	assert := assert.New(t)
 

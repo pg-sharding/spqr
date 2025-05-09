@@ -62,6 +62,7 @@ func randomHex(n int) (string, error) {
 	redistribute           *RedistributeKeyRange
 
 	invalidate_cache       *InvalidateCache
+	sync_reference_tables  *SyncReferenceTables
 
 	shutdown               *Shutdown
 	listen                 *Listen
@@ -152,12 +153,13 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY
-%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA
+%token <str> SHARDING COLUMN TABLE TABLES HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
 %token <str> BATCH SIZE
 %token <str> INVALIDATE CACHE
+%token <str> SYNC
 %token <str> RETRY
 
 %token <str> IDENTITY MURMUR CITY 
@@ -212,6 +214,7 @@ func randomHex(n int) (string, error) {
 %type<alter_distribution> distribution_alter_stmt
 
 %type<invalidate_cache> invalidate_cache_stmt
+%type<sync_reference_tables> sync_reference_tables_stmt
 
 %type<relations> relation_attach_stmt
 %type<relations> distributed_relation_list_def
@@ -333,6 +336,10 @@ command:
 		setParseTree(yylex, $1)
 	} 
 	| retry_move_task_group
+	{
+		setParseTree(yylex, $1)
+	}
+	| sync_reference_tables_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -983,6 +990,12 @@ invalidate_cache_stmt:
 	INVALIDATE CACHE
 	{
 		$$ = &InvalidateCache{}
+	}
+
+sync_reference_tables_stmt:
+	SYNC REFERENCE TABLES any_id
+	{
+		$$ = &SyncReferenceTables{ShardID: $4}
 	}
 
 // coordinator
