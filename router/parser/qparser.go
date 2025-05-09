@@ -107,7 +107,7 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	comment := ""
 	for i := range len(query) - 4 {
 
-		if query[i] == '/' || query[i+1] == '*' {
+		if query[i] != '/' || query[i+1] != '*' {
 			continue
 		}
 		j := i + 2
