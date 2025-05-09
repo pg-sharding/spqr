@@ -1,0 +1,40 @@
+SELECT 1;
+ ?column? 
+----------
+        1
+(1 row)
+
+SELECT 1, 2, 3;
+ ?column? | ?column? | ?column? 
+----------+----------+----------
+        1 |        2 |        3
+(1 row)
+
+SELECT 'postgres is cool';
+     ?column?     
+------------------
+ postgres is cool
+(1 row)
+
+SELECT pg_is_in_recovery();
+ pg_is_in_recovery 
+-------------------
+ f
+(1 row)
+
+SELECT current_setting('transaction_read_only');
+ current_setting 
+-----------------
+ f
+(1 row)
+
+SELECT pg_is_in_recovery(), 1, 'kek';
+ pg_is_in_recovery | ?column? | ?column? 
+-------------------+----------+----------
+ f                 |        1 | kek
+(1 row)
+
+-- XXX:support
+--SHOW transaction_read_only;
+-- XXX: support ignore patterns to test this
+-- SELECT now(), 1;
