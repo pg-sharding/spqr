@@ -99,7 +99,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 
 		if len(krs) != 0 && !isCascade {
-			return fmt.Errorf("cannot drop distribution %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too", stmt.ID)
+			return fmt.Errorf("cannot drop distribution %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID) //nolint:staticcheck
 		}
 
 		for _, kr := range krs {
@@ -115,7 +115,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 				return err
 			}
 			if len(ds.Relations) != 0 && !isCascade {
-				return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically", stmt.ID)
+				return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID) //nolint:staticcheck
 			}
 
 			for _, rel := range ds.Relations {
@@ -138,7 +138,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		for _, ds := range dss {
 			if ds.Id != "default" {
 				if len(ds.Relations) != 0 && !isCascade {
-					return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically", ds.Id)
+					return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", ds.Id) //nolint:staticcheck
 				}
 				ret = append(ret, ds.ID())
 				err = mngr.DropDistribution(ctx, ds.Id)
