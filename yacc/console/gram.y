@@ -29,6 +29,7 @@ func randomHex(n int) (string, error) {
 	bytes                  []byte
 	integer                int
 	uinteger               uint
+	uintegerlist           []uint
 	bool                   bool
 	empty                  struct{}
 
@@ -84,10 +85,12 @@ func randomHex(n int) (string, error) {
 	shruleEntry            ShardingRuleEntry
 
 	distrKeyEntry          DistributionKeyEntry
+	aiEntry                AutoIncrementEntry
 
 	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
 	distribution_selector  *DistributionSelector
+	aiEntrieslist          []AutoIncrementEntry
 
     colref                 ColumnRef
     where                  WhereClauseNode
@@ -197,12 +200,14 @@ func randomHex(n int) (string, error) {
 
 %type<entrieslist> sharding_rule_argument_list
 %type<dEntrieslist> distribution_key_argument_list
+%type<aiEntrieslist> opt_auto_increment
+%type<aiEntrieslist> auto_inc_argument_list
+%type<uinteger> opt_auto_increment_start_clause
 %type<shruleEntry> sharding_rule_entry
-%type<strlist> opt_auto_increment
-%type<strlist> auto_inc_column_list
 %type<str> opt_schema_name
 
 %type<distrKeyEntry> distribution_key_entry
+%type<aiEntry> auto_increment_entry
 
 %type<str> sharding_rule_table_clause
 %type<str> sharding_rule_column_clause
@@ -585,27 +590,53 @@ distributed_relation_def:
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
-			SchemaName: $7,
 			DistributionKey: $5,
-			AutoIncrementColumns: $6,
+			AutoIncrementEntries: $6,
+			SchemaName: $7,
 		}
 	} | 
 	RELATION any_id opt_auto_increment opt_schema_name
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
-			SchemaName: $4,
 			ReplicatedRelation: true,
-			AutoIncrementColumns: $3,
+			AutoIncrementEntries: $3,
+			SchemaName: $4,
 		}
 	}
 
-
 opt_auto_increment:
-	AUTO INCREMENT auto_inc_column_list {
-		$$ = $3
+    AUTO INCREMENT auto_inc_argument_list {
+        $$ = $3
+    } | /* EMPTY */ {
+        $$ = nil
+    }
+
+auto_inc_argument_list: 
+    auto_inc_argument_list TCOMMA auto_increment_entry
+    {
+      $$ = append($1, $3)
+    } | auto_increment_entry {
+      $$ = []AutoIncrementEntry {
+		  $1,
+	  }
+    } 
+
+auto_increment_entry:
+	any_id opt_auto_increment_start_clause
+	{
+		$$ = AutoIncrementEntry {
+			Column: $1,
+			Start: $2,
+		}
+	}
+
+opt_auto_increment_start_clause:
+	START ICONST
+	{
+		$$ = $2
 	} | /* EMPTY */ {
-		$$ = nil
+		$$ = 0
 	}
 
 opt_schema_name:
@@ -614,14 +645,6 @@ opt_schema_name:
 	} | /* EMPTY */ {
 		$$ = ""
 	}
-
-auto_inc_column_list:
-	any_id {
-		$$ = []string{$1}
-	} | auto_inc_column_list TCOMMA any_id {
-		$$ = append($1, $3)
-	}
-
 
 distributed_relation_list_def:
 	distributed_relation_def {
@@ -666,7 +689,7 @@ create_stmt:
 		$$ = &Create{
 			Element: &ReferenceRelationDefinition{
 				TableName: $4,
-				AutoIncrementColumns: $5,
+                AutoIncrementEntries: $5,
 			},
 		}
 	}

@@ -91,7 +91,7 @@ Here’s an example of how you can automatically generate `id` values. To create
 
 ```sql
 \c spqr-console
-CREATE REFERENCE TABLE country_regions AUTO INCREMENT id;
+CREATE REFERENCE TABLE country_regions AUTO INCREMENT id; -- you may specify initial sequence value via START keyword
          attach table          
 -------------------------------
  relation name   -> country_regions

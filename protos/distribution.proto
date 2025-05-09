@@ -5,7 +5,6 @@ package spqr;
 option go_package = "spqr/proto";
 
 import "google/protobuf/empty.proto";
-import "google/protobuf/any.proto";
 
 message DistributionKeyEntry {
   string column = 1;
