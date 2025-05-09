@@ -528,15 +528,16 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 
 		m.multistate = InitialState
 		m.status = txstatus.TXIDLE
-		if cntTXAct == 0 {
+		switch cntTXAct {
+		case 0:
 			return &pgproto3.ReadyForQuery{
 				TxStatus: byte(txstatus.TXIDLE), // XXX : fix this
 			}, nil
-		} else if cntTXAct == cntUnSync {
+		case cntUnSync:
 			return &pgproto3.ReadyForQuery{
 				TxStatus: byte(txstatus.TXACT), // XXX : fix this
 			}, nil
-		} else {
+		default:
 			rollback()
 			return nil, fmt.Errorf("multishard server: unsync in tx status among shard connections")
 		}
