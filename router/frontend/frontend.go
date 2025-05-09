@@ -175,7 +175,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 
 		switch err {
 		case nil:
-			break
+			continue
 		case io.ErrUnexpectedEOF:
 			fallthrough
 		case io.EOF:
