@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -43,7 +44,12 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			log.Printf("failed to close config file: %v", err)
+		}
+	}(file)
 
 	if err := initCoordinatorConfig(file, cfgPath); err != nil {
 		return "", err

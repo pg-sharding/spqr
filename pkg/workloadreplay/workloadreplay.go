@@ -36,7 +36,11 @@ func ReplayLogs(host string, port string, user string, db string, file string) e
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close file")
+		}
+	}()
 
 	sessionsMessageBuffer := map[int](chan workloadlog.TimedMessage){}
 

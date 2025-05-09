@@ -29,7 +29,11 @@ func (p *Proxy) Run() error {
 		log.Fatal(err)
 		return err
 	}
-	defer listener.Close()
+	defer func() {
+		if err := listener.Close(); err != nil {
+			log.Printf("error closing listener: %v", err)
+		}
+	}()
 
 	cChan := make(chan net.Conn)
 

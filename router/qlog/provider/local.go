@@ -28,7 +28,11 @@ func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) erro
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close file")
+		}
+	}()
 
 	_, _ = file.WriteString(q)
 	_, _ = file.WriteString("\n")

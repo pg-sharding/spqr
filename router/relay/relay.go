@@ -468,7 +468,11 @@ func (rst *RelayStateImpl) multishardDescribePortal(bind *pgproto3.Bind) (*preps
 }
 
 func (rst *RelayStateImpl) Close() error {
-	defer rst.Cl.Close()
+	defer func() {
+		if err := rst.Cl.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close client connection")
+		}
+	}()
 	defer rst.ActiveShardsReset()
 	return rst.poolMgr.UnRouteCB(rst.Cl, rst.activeShards)
 }

@@ -74,7 +74,12 @@ func RestoreQDB(backupPath string) (*MemQDB, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer f.Close()
+		defer func(file *os.File) {
+			err := file.Close()
+			if err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to close file")
+			}
+		}(f)
 		return qdb, nil
 	}
 	data, err := os.ReadFile(backupPath)
@@ -106,7 +111,12 @@ func (q *MemQDB) DumpState() error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close file")
+		}
+	}(f)
 
 	state, err := json.MarshalIndent(q, "", "	")
 
@@ -118,7 +128,12 @@ func (q *MemQDB) DumpState() error {
 	if err != nil {
 		return err
 	}
-	f.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close file")
+		}
+	}(f)
 
 	err = os.Rename(tmpPath, q.backupPath)
 	if err != nil {

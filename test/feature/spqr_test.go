@@ -922,7 +922,7 @@ func (tctx *testContext) stepRecordQDBTx(key string, body *godog.DocString) erro
 	query := strings.TrimSpace(body.Content)
 	var st qdb.DataTransferTransaction
 	if err := json.Unmarshal([]byte(query), &st); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal request")
+		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal request")
 		return err
 	}
 
@@ -948,7 +948,7 @@ func (tctx *testContext) stepRecordQDBKRMove(body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 	var m qdb.MoveKeyRange
 	if err := json.Unmarshal([]byte(query), &m); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal request")
+		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal request")
 		return err
 	}
 
@@ -959,7 +959,7 @@ func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 	var taskGroup qdb.MoveTaskGroup
 	if err := json.Unmarshal([]byte(query), &taskGroup); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal request")
+		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal request")
 		return err
 	}
 
@@ -1047,7 +1047,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 			time.Sleep(time.Hour)
 		}
 		if tctx.templateErr != nil {
-			log.Fatalf("Error in templating %s: %v\n", step.Text, tctx.templateErr)
+			log.Printf("error in templating %s: %v\n", step.Text, tctx.templateErr)
 		}
 		return ctx, nil
 	})

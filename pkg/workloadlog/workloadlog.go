@@ -204,7 +204,12 @@ func flush(interceptedData []byte, file string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close file")
+		}
+	}(f)
 
 	_, err = f.Write(interceptedData)
 	if err != nil {
