@@ -565,8 +565,6 @@ func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 	return nil
 }
 
-var expandInTxError = fmt.Errorf("unexpected server expand request")
-
 // TODO : unit tests
 func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
 	// if there is no routes to expand, there is nowhere to do
@@ -576,7 +574,7 @@ func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
 
 	if rst.Client().Server().TxStatus() == txstatus.TXERR {
 		/* should never happen */
-		return expandInTxError
+		return fmt.Errorf("unexpected server expand request")
 	}
 
 	_ = rst.Client().SwitchServerConn(rst.Client().Server().ToMultishard())
