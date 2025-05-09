@@ -153,6 +153,34 @@ func NewSessConnManager() *SessConnManager {
 	return &SessConnManager{}
 }
 
+type VirtualConnManager struct {
+}
+
+// ConnectionActive implements PoolMgr.
+func (v *VirtualConnManager) ConnectionActive(rst ConnectionKeeper) bool {
+	return true
+}
+
+// TXEndCB implements PoolMgr.
+func (v *VirtualConnManager) TXEndCB(rst ConnectionKeeper) error {
+	return nil
+}
+
+// UnRouteCB implements PoolMgr.
+func (v *VirtualConnManager) UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error {
+	return nil
+}
+
+// UnRouteWithError implements PoolMgr.
+func (v *VirtualConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
+	return unRouteWithError(v, client, sh, errmsg)
+}
+
+// ValidateReRoute implements PoolMgr.
+func (v *VirtualConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
+	return false
+}
+
 // TODO : unit tests
 func MatchConnectionPooler(client client.RouterClient) (PoolMgr, error) {
 	switch client.Rule().PoolMode {
@@ -160,10 +188,12 @@ func MatchConnectionPooler(client client.RouterClient) (PoolMgr, error) {
 		return NewSessConnManager(), nil
 	case config.PoolModeTransaction:
 		return NewTxConnManager(), nil
+	case config.PoolModeVirtual:
+		return &VirtualConnManager{}, nil
 	default:
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
-				Message:  fmt.Sprintf("unknown pool mode for route %v", client.ID()),
+				Message:  fmt.Sprintf("unknown route pool mode for client %v", client.ID()),
 				Severity: "ERROR",
 			},
 		} {
