@@ -1491,7 +1491,7 @@ func (rst *RelayStateImpl) PrepareRelayStep() (plan.Plan, error) {
 		if err := rst.Client().ReplyErr(err); err != nil {
 			return nil, err
 		}
-		return ErrSkipQuery
+		return nil, ErrSkipQuery
 	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return nil, ErrSkipQuery
