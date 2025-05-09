@@ -69,7 +69,7 @@ func RestoreQDB(backupPath string) (*MemQDB, error) {
 		return qdb, nil
 	}
 	if _, err := os.Stat(backupPath); err != nil {
-		spqrlog.Zero.Info().Err(err).Msg("memqdb backup file not exists. Creating new one.")
+		spqrlog.Zero.Info().Err(err).Msg("memqdb backup file not exists. Creating new one")
 		f, err := os.Create(backupPath)
 		if err != nil {
 			return nil, err

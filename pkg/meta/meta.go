@@ -99,7 +99,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 
 		if len(krs) != 0 && !isCascade {
-			return fmt.Errorf("cannot drop distribution %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
+			return fmt.Errorf("cannot drop distribution %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too", stmt.ID)
 		}
 
 		for _, kr := range krs {
@@ -115,7 +115,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 				return err
 			}
 			if len(ds.Relations) != 0 && !isCascade {
-				return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID)
+				return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically", stmt.ID)
 			}
 
 			for _, rel := range ds.Relations {
@@ -237,7 +237,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 					return cli.ReportError(err)
 				}
 			} else {
-				return fmt.Errorf("REPLICATED distribution already exist.")
+				return fmt.Errorf("REPLICATED distribution already exist")
 			}
 		} else {
 			distribution = distributions.NewDistribution(stmt.ID, stmt.ColTypes)
