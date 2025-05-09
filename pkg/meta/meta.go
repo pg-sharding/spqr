@@ -46,7 +46,7 @@ type EntityMgr interface {
 	Cache() *cache.SchemaCache
 }
 
-var unknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
+var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 
 // TODO : unit tests
 
@@ -300,7 +300,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 		return cli.AddShard(dataShard)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -319,7 +319,7 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 	case *spqrparser.AlterDistribution:
 		return processAlterDistribution(ctx, stmt.Element, mngr, cli)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -381,7 +381,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		}
 		return cli.AlterDistributedRelation(ctx, stmt.Distribution.ID, stmt.Relation.Name)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -525,7 +525,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		}
 		return cli.MoveTaskGroup(ctx, taskGroup, colTypes)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -555,7 +555,7 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, poo
 		}
 		return cli.KillClient(stmt.Target)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -697,7 +697,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	case spqrparser.IsReadOnlyStr:
 		return cli.IsReadOnly(ctx, ro)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }
 

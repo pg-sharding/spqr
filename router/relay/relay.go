@@ -502,12 +502,13 @@ func (rst *RelayStateImpl) Flush() {
 }
 
 var ErrSkipQuery = fmt.Errorf("wait for a next query")
+var ErrMatchShardError = fmt.Errorf("failed to match datashard")
 
 // TODO : unit tests
 func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 	// if there is no routes configured, there is nowhere to route to
 	if len(routes) == 0 {
-		return qrouter.MatchShardError
+		return ErrMatchShardError
 	}
 
 	spqrlog.Zero.Debug().
@@ -1488,8 +1489,8 @@ func (rst *RelayStateImpl) PrepareRelayStep() (plan.Plan, error) {
 		if err := rst.Client().ReplyErr(err); err != nil {
 			return nil, err
 		}
-		return nil, ErrSkipQuery
-	case qrouter.MatchShardError:
+		return ErrSkipQuery
+	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return nil, ErrSkipQuery
 	default:
@@ -1534,7 +1535,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(route *kr.ShardKey) error
 			return err
 		}
 		return ErrSkipQuery
-	case qrouter.MatchShardError:
+	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return ErrSkipQuery
 	default:
@@ -1571,7 +1572,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 			return noopCloseRouteFunc, err
 		}
 		return noopCloseRouteFunc, ErrSkipQuery
-	case qrouter.MatchShardError:
+	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return noopCloseRouteFunc, ErrSkipQuery
 	default:

@@ -218,9 +218,7 @@ func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shkey *kr.Sha
 	return nil
 }
 
-var (
-	MultiShardSyncBroken = fmt.Errorf("multishard state is out of sync")
-)
+var ErrMultiShardSyncBroken = fmt.Errorf("multishard state is out of sync")
 
 func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 	rollback := func() {
@@ -301,14 +299,14 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					continue
 				case *pgproto3.CopyOutResponse:
 					if m.multistate != InitialState && m.multistate != CopyOutState {
-						return nil, MultiShardSyncBroken
+						return nil, ErrMultiShardSyncBroken
 					}
 					m.states[i] = ShardCopyState
 					m.multistate = CopyOutState
 					m.copyBuf = append(m.copyBuf, retMsg)
 				case *pgproto3.CopyInResponse:
 					if m.multistate != InitialState && m.multistate != CopyInState {
-						return nil, MultiShardSyncBroken
+						return nil, ErrMultiShardSyncBroken
 					}
 					m.states[i] = ShardCopyState
 					m.multistate = CopyInState
@@ -321,7 +319,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					saveRd = retMsg // all should be same
 				case *pgproto3.ReadyForQuery:
 					if m.multistate != InitialState {
-						return nil, MultiShardSyncBroken
+						return nil, ErrMultiShardSyncBroken
 					}
 					m.states[i] = ShardRFQState
 					saveRFQ = retMsg
@@ -335,7 +333,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					continue
 				case *pgproto3.ErrorResponse:
 					if m.multistate != InitialState {
-						return nil, MultiShardSyncBroken
+						return nil, ErrMultiShardSyncBroken
 					}
 					spqrlog.Zero.Error().
 						Uint("client", spqrlog.GetPointer(m)).
@@ -350,7 +348,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					m.states[i] = ErrorState
 					rollback()
 					// sync is broken
-					return nil, MultiShardSyncBroken
+					return nil, ErrMultiShardSyncBroken
 				}
 				break
 			}
@@ -397,7 +395,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 				continue
 			}
 			if m.states[i] != ShardCopyState {
-				return nil, MultiShardSyncBroken
+				return nil, ErrMultiShardSyncBroken
 			}
 
 			msg, err := m.activeShards[i].Receive()
@@ -423,7 +421,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 				m.states[i] = ErrorState
 				rollback()
 				// sync is broken
-				return nil, MultiShardSyncBroken
+				return nil, ErrMultiShardSyncBroken
 			default:
 				return msg, nil
 			}
@@ -468,7 +466,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 				m.states[i] = ErrorState
 				rollback()
 				// sync is broken
-				return nil, MultiShardSyncBroken
+				return nil, ErrMultiShardSyncBroken
 			default:
 				return msg, nil
 			}
@@ -495,7 +493,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 			cntUnSync++
 
 			if m.states[i] != ShardCCState {
-				return nil, MultiShardSyncBroken
+				return nil, ErrMultiShardSyncBroken
 			}
 
 			if err := func() error {
@@ -514,7 +512,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 						return nil
 					default:
 						// sync is broken
-						return MultiShardSyncBroken
+						return ErrMultiShardSyncBroken
 					}
 				}
 			}(); err != nil {

@@ -187,8 +187,7 @@ func KeyRangeBoundFromStrings(colTypes []string, vals []string) ([]interface{}, 
 	return kr.LowerBound, nil
 }
 
-// TODO: use it
-var MissTypedKeyRange = fmt.Errorf("key range bound is mistyped")
+var ErrMissTypedKeyRange = fmt.Errorf("key range bound is mistyped")
 
 // CmpRangesLess compares two byte slices, kr and other, and returns true if kr is less than other.
 // The comparison is based on the length of the slices and the lexicographic order of their string representations.
@@ -250,7 +249,7 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 				return CmpRangesLessStringsDeprecated(i1, i2)
 			}
 		default:
-			panic(MissTypedKeyRange)
+			panic(ErrMissTypedKeyRange)
 		}
 	}
 
@@ -299,7 +298,7 @@ func CmpRangesEqual(bound KeyRangeBound, key KeyRangeBound, types []string) bool
 				return false
 			}
 		default:
-			panic(MissTypedKeyRange)
+			panic(ErrMissTypedKeyRange)
 		}
 	}
 
