@@ -558,7 +558,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 		Str("address", host).
 		Msg("etcdqdb: try coordinator lock")
 
-	leaseGrantResp, err := q.cli.Lease.Grant(ctx, CoordKeepAliveTtl)
+	leaseGrantResp, err := q.cli.Grant(ctx, CoordKeepAliveTtl)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease grant failed")
 		return err
@@ -569,7 +569,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	// client will continue sending keep alive requests to the etcd server, but will drop responses
 	// until there is capacity on the channel to send more responses.
 
-	keepAliveCh, err := q.cli.Lease.KeepAlive(ctx, leaseGrantResp.ID)
+	keepAliveCh, err := q.cli.KeepAlive(ctx, leaseGrantResp.ID)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease keep alive failed")
 		return err
@@ -584,7 +584,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	}
 
 	if !stat.Succeeded {
-		_, err := q.cli.Lease.Revoke(ctx, leaseGrantResp.ID)
+		_, err := q.cli.Revoke(ctx, leaseGrantResp.ID)
 		if err != nil {
 			return err
 		}
