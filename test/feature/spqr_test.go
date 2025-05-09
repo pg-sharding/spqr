@@ -1054,7 +1054,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.After(func(ctx context.Context, scenario *godog.Scenario, err error) (context.Context, error) {
 		if err != nil {
 			name := scenario.Name
-			name = strings.Replace(name, " ", "_", -1)
+			name = strings.ReplaceAll(name, " ", "_")
 			err2 := tctx.saveLogs(name)
 			if err2 != nil {
 				log.Printf("failed to save logs: %v", err2)
