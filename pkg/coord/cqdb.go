@@ -87,7 +87,11 @@ func (ci grpcConnectionIterator) IterRouter(cb func(cc *grpc.ClientConn, addr st
 		if err != nil {
 			return err
 		}
-		defer cc.Close()
+		defer func() {
+			if err := cc.Close(); err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+			}
+		}()
 
 		if err := cb(cc, r.Address); err != nil {
 			return err
@@ -248,7 +252,11 @@ func (qc *QDBCoordinator) watchRouters(ctx context.Context) {
 					return err
 				}
 
-				defer cc.Close()
+				defer func() {
+					if err := cc.Close(); err != nil {
+						spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+					}
+				}()
 
 				rrClient := routerproto.NewTopologyServiceClient(cc)
 
@@ -458,7 +466,11 @@ func (qc *QDBCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 			if err != nil {
 				return err
 			}
-			defer cc.Close()
+			defer func() {
+				if err := cc.Close(); err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+				}
+			}()
 
 			if err := cb(cc); err != nil {
 				spqrlog.Zero.Debug().Err(err).Str("router id", rtr.ID).Msg("traverse routers")
@@ -1531,7 +1543,11 @@ func (qc *QDBCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	if err != nil {
 		return err
 	}
-	defer cc.Close()
+	defer func() {
+		if err := cc.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+		}
+	}()
 
 	// Configure distributions
 	dsCl := routerproto.NewDistributionServiceClient(cc)
@@ -1635,7 +1651,11 @@ func (qc *QDBCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, qRou
 	if err != nil {
 		return err
 	}
-	defer cc.Close()
+	defer func() {
+		if err := cc.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+		}
+	}()
 
 	/* Update current coordinator address. */
 	/* Todo: check that router metadata is in sync. */
@@ -1675,7 +1695,11 @@ func (qc *QDBCoordinator) RegisterRouter(ctx context.Context, r *topology.Router
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to ping router: %s", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+		}
+	}()
 	cl := routerproto.NewTopologyServiceClient(conn)
 	_, err = cl.GetRouterStatus(ctx, nil)
 	if err != nil {

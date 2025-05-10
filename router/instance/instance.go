@@ -154,7 +154,11 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 }
 
 func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, error) {
-	defer netconn.Close()
+	defer func() {
+		if err := netconn.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close netconn")
+		}
+	}()
 	defer r.RuleRouter.ReleaseConnection()
 
 	routerClient, err := r.RuleRouter.PreRoute(netconn, pt)

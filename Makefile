@@ -168,7 +168,7 @@ fmtcheck:
 	@sh -c "'$(CURDIR)/script/gofmtcheck.sh'"
 
 lint:
-	golangci-lint run --timeout=10m --out-format=colored-line-number --skip-dirs=yacc/console
+	golangci-lint run --timeout=10m --color=always
 
 ####################### GENERATE #######################
 

@@ -151,22 +151,22 @@ func RecordFinishedTransaction(t time.Time, client uint) {
 		routerTime := float64(t.Sub(clientST.RouterStart).Microseconds()) / 1000
 		err := queryStatistics.RouterTime[client].Add(routerTime)
 		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("Failed to record transaction duration")
+			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
 		err = queryStatistics.RouterTimeTotal.Add(routerTime)
 		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("Failed to record transaction duration")
+			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
 	}
 	if !clientST.ShardStart.IsZero() {
 		shardTime := float64(t.Sub(clientST.ShardStart).Microseconds()) / 1000
 		err := queryStatistics.ShardTime[client].Add(shardTime)
 		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("Failed to record transaction duration")
+			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
 		err = queryStatistics.ShardTimeTotal.Add(shardTime)
 		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("Failed to record transaction duration")
+			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
 	}
 }

@@ -41,7 +41,7 @@ func LoadShardDataCfg(cfgPath string) (*DatatransferConnections, error) {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			log.Fatalf("failed to close config file: %v", err)
+			log.Printf("failed to close config file: %v", err)
 		}
 	}(file)
 

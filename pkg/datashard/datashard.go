@@ -132,7 +132,11 @@ func (sh *Conn) Cancel() error {
 	if err != nil {
 		return err
 	}
-	defer pgiTmp.Close()
+	defer func() {
+		if err := pgiTmp.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close pgiTmp")
+		}
+	}()
 
 	msg := &pgproto3.CancelRequest{
 		ProcessID: sh.backend_key_pid,

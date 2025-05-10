@@ -2,21 +2,15 @@ package qrouter
 
 import (
 	"context"
-	"fmt"
-
-	"github.com/pg-sharding/spqr/pkg/models/kr"
-
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pkg/errors"
-
-	"github.com/pg-sharding/lyx/lyx"
 )
-
-var MatchShardError = fmt.Errorf("failed to match datashard")
 
 type QueryRouter interface {
 	Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error)

@@ -468,7 +468,11 @@ func (rst *RelayStateImpl) multishardDescribePortal(bind *pgproto3.Bind) (*preps
 }
 
 func (rst *RelayStateImpl) Close() error {
-	defer rst.Cl.Close()
+	defer func() {
+		if err := rst.Cl.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close client connection")
+		}
+	}()
 	defer rst.ActiveShardsReset()
 	return rst.poolMgr.UnRouteCB(rst.Cl, rst.activeShards)
 }
@@ -502,12 +506,13 @@ func (rst *RelayStateImpl) Flush() {
 }
 
 var ErrSkipQuery = fmt.Errorf("wait for a next query")
+var ErrMatchShardError = fmt.Errorf("failed to match datashard")
 
 // TODO : unit tests
 func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 	// if there is no routes configured, there is nowhere to route to
 	if len(routes) == 0 {
-		return qrouter.MatchShardError
+		return ErrMatchShardError
 	}
 
 	spqrlog.Zero.Debug().
@@ -560,8 +565,6 @@ func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 	return nil
 }
 
-var expandInTxError = fmt.Errorf("unexpected server expand request")
-
 // TODO : unit tests
 func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
 	// if there is no routes to expand, there is nowhere to do
@@ -571,7 +574,7 @@ func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
 
 	if rst.Client().Server().TxStatus() == txstatus.TXERR {
 		/* should never happen */
-		return expandInTxError
+		return fmt.Errorf("unexpected server expand request")
 	}
 
 	_ = rst.Client().SwitchServerConn(rst.Client().Server().ToMultishard())
@@ -1489,7 +1492,7 @@ func (rst *RelayStateImpl) PrepareRelayStep() (plan.Plan, error) {
 			return nil, err
 		}
 		return nil, ErrSkipQuery
-	case qrouter.MatchShardError:
+	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return nil, ErrSkipQuery
 	default:
@@ -1534,7 +1537,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(route *kr.ShardKey) error
 			return err
 		}
 		return ErrSkipQuery
-	case qrouter.MatchShardError:
+	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return ErrSkipQuery
 	default:
@@ -1571,7 +1574,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 			return noopCloseRouteFunc, err
 		}
 		return noopCloseRouteFunc, ErrSkipQuery
-	case qrouter.MatchShardError:
+	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return noopCloseRouteFunc, ErrSkipQuery
 	default:
