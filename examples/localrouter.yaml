@@ -43,6 +43,7 @@ frontend_rules:
 backend_rules:
   - usr: md5test
     db: db1
+    connection_limit: 50
     pool_discard: false
     pool_rollback: true
     auth_rules:
@@ -53,6 +54,7 @@ backend_rules:
         password: 'md530a094812a8deb360615bef1f3db0695'
   - usr: user1
     db: db1
+    connection_limit: 50
     pool_discard: false
     pool_rollback: true
   - pool_default: true

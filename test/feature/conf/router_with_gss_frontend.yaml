@@ -41,6 +41,7 @@ shards:
 backend_rules:
   - db: regress
     usr: regress
+    connection_limit: 50
     auth_rules:
       sh1:
         password: 12345678

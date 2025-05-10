@@ -23,6 +23,7 @@ pool_mode = "TRANSACTION"
 [[backend_rules]]
 usr = "opgejrqr"
 db = "opgejrqr"
+connection_limit = 50
 pool_discard = true
 pool_rollback = true
 

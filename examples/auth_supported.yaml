@@ -51,6 +51,7 @@ frontend_rules:
 backend_rules:
   - usr: us1
     db: db1
+    connection_limit: 50
     auth_rules:
       sh1:
          auth_method: clear_text
@@ -60,6 +61,7 @@ backend_rules:
       password: 321
   - usr: user1
     db: db1
+    connection_limit: 50
     auth_rules:
       sh1:
          auth_method: clear_text
