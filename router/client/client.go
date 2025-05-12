@@ -55,6 +55,7 @@ type RouterClient interface {
 
 	GetTsa() tsa.TSA
 	SetTsa(string)
+	ResetTsa()
 
 	ReplyParseComplete() error
 	ReplyBindComplete() error

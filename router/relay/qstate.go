@@ -347,10 +347,17 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 		}
 		return rst.Client().ReplyCommandComplete("SHOW")
 	case parser.ParseStateResetStmt:
-		rst.Client().ResetParam(st.Name)
+		switch st.Name {
+		case session.SPQR_TARGET_SESSION_ATTRS:
+			fallthrough
+		case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+			rst.Client().ResetTsa()
+		default:
+			rst.Client().ResetParam(st.Name)
 
-		if err := rst.QueryExecutor().ExecReset(rst, query, st.Name); err != nil {
-			return err
+			if err := rst.QueryExecutor().ExecReset(rst, query, st.Name); err != nil {
+				return err
+			}
 		}
 
 		return rst.Client().ReplyCommandComplete("RESET")
