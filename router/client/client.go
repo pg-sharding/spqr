@@ -1133,7 +1133,7 @@ func (cl *PsqlClient) SetTsa(s string) {
 	case config.TargetSessionAttrsAny, config.TargetSessionAttrsPS, config.TargetSessionAttrsRW, config.TargetSessionAttrsRO:
 		cl.tsa = tsa.TSA(s)
 	default:
-
+		// XXX: else error out!
 	}
 }
 

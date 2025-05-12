@@ -267,6 +267,12 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 				}
 			case session.SPQR_EXECUTE_ON:
 				rst.Client().SetExecuteOn(false, st.Value)
+			case session.SPQR_TARGET_SESSION_ATTRS:
+				fallthrough
+			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+				fallthrough
+			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
+				rst.Client().SetTsa(st.Value)
 			default:
 				rst.Client().SetParam(st.Name, st.Value)
 			}
@@ -320,14 +326,24 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 				})
 		case session.SPQR_EXECUTE_ON:
 			ReplyVirtualParamState(rst.Client(), "execute on", []byte(rst.Client().ExecuteOn()))
+		case session.SPQR_TARGET_SESSION_ATTRS:
+			fallthrough
+		case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+			fallthrough
+		case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
+			ReplyVirtualParamState(rst.Client(), "target session attrs", []byte(rst.Client().GetTsa()))
 		default:
 
-			/* If router does dot have any info about param, fire query to random shard. */
-			if _, ok := rst.Client().Params()[param]; !ok {
-				return queryProc()
-			}
+			if strings.HasPrefix(st.Name, "__spqr__") {
+				ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
+			} else {
+				/* If router does dot have any info about param, fire query to random shard. */
+				if _, ok := rst.Client().Params()[param]; !ok {
+					return queryProc()
+				}
 
-			ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
+				ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
+			}
 		}
 		return rst.Client().ReplyCommandComplete("SHOW")
 	case parser.ParseStateResetStmt:
