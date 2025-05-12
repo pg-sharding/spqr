@@ -37,6 +37,7 @@
     {
       "usr": "user1",
       "db": "db1",
+      "connection_limit": 50,
       "pool_discard": false,
       "pool_rollback": true
     },
