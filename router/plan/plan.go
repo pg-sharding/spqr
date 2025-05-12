@@ -131,6 +131,12 @@ func Combine(p1, p2 Plan) Plan {
 		Interface("plan2", p2).
 		Msg("combine two plans")
 
+	switch p2.(type) {
+	// let p2 be always non-virtual, except for p1 & p2 both virtual
+	case VirtualPlan:
+		p1, p2 = p2, p1
+	}
+
 	switch shq1 := p1.(type) {
 	case VirtualPlan:
 		return p2
