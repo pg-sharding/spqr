@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/rand"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -93,9 +92,7 @@ type PsqlClient struct {
 	tsa        tsa.TSA
 	defaultTsa tsa.TSA
 
-	/* protects client.Send() (backend) */
-	muBe sync.Mutex
-	be   *pgproto3.Backend
+	be *pgproto3.Backend
 
 	startupMsg *pgproto3.StartupMessage
 
@@ -956,8 +953,7 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 		Uint("client", cl.ID()).
 		Type("msg-type", msg).
 		Msgf("sending msg to client")
-	cl.muBe.Lock()
-	defer cl.muBe.Unlock()
+
 	cl.be.Send(msg)
 
 	switch msg.(type) {
