@@ -101,7 +101,7 @@ func (wl *WorkloadLogger) StartLogging(all bool, id uint) {
 // IsLogging checks if the workload logger is currently logging.
 // It returns true if the logger is in any mode other than None, and false otherwise.
 func (wl *WorkloadLogger) IsLogging() bool {
-	return !(wl.mode == None)
+	return wl.mode != None
 }
 
 // GetMode returns the current mode of the WorkloadLogger.
@@ -204,7 +204,12 @@ func flush(interceptedData []byte, file string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close file")
+		}
+	}(f)
 
 	_, err = f.Write(interceptedData)
 	if err != nil {

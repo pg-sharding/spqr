@@ -22,7 +22,7 @@ func ParseComment(comm string) (map[string]string, error) {
 
 		// now we are looking at *probably* first char of opt name
 		j := i
-		for ; j < len(comm) && !(comm[j] == ':' || unicode.IsSpace(rune(comm[j]))); j++ {
+		for ; j < len(comm) && comm[j] != ':' && !unicode.IsSpace(rune(comm[j])); j++ {
 		}
 		optarg_end := j - 1
 
@@ -58,7 +58,7 @@ func ParseComment(comm string) (map[string]string, error) {
 
 		// now we are looking at first char of opt value
 		optval_pos := j
-		for j+1 < len(comm) && !(unicode.IsSpace(rune(comm[j+1])) || comm[j+1] == ',') {
+		for j+1 < len(comm) && !unicode.IsSpace(rune(comm[j+1])) && comm[j+1] != ',' {
 			j++
 		}
 

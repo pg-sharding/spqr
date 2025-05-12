@@ -88,7 +88,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&memProfile, "mem-profile", false, "profile mem or not")
 
 	// Other flags
-	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use.")
+	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use")
 	rootCmd.PersistentFlags().BoolVarP(&daemonize, "daemonize", "d", false, "run as a daemon or not. Opposite of `console`")
 	rootCmd.PersistentFlags().BoolVarP(&console, "console", "", false, "run as a console app or not. Opposite of `daemonize`")
 	rootCmd.PersistentFlags().BoolVarP(&prettyLogging, "pretty-log", "P", false, "enables pretty logging")

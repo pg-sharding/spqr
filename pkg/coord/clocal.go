@@ -631,7 +631,11 @@ func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64,
 	if err != nil {
 		return -1, err
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+		}
+	}()
 	mgr := NewAdapter(conn)
 	return mgr.NextVal(ctx, seqName)
 }

@@ -38,7 +38,11 @@ func (w *WorldMock) Run() error {
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
+	defer func() {
+		if err := listener.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close listener")
+		}
+	}()
 
 	spqrlog.Zero.Debug().Str("host", w.addr).Str("port", w.port).Msg("spqr worldmock listening")
 

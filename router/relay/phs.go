@@ -33,17 +33,14 @@ type QueryStateExecutorImpl struct {
 	savedBegin *pgproto3.Query
 }
 
-var unexpectedDeployTxErr = fmt.Errorf("unexpected executor tx state in transaction deploy")
-var unroutedClientDeployError = fmt.Errorf("failed to deploy tx status for unrouted client")
-
 func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *pgproto3.Query, expTx txstatus.TXStatus) error {
 	if serv == nil {
-		return unroutedClientDeployError
+		return fmt.Errorf("failed to deploy tx status for unrouted client")
 	}
 
 	if s.txStatus == txstatus.TXIDLE {
 		/* unexpected? */
-		return unexpectedDeployTxErr
+		return fmt.Errorf("unexpected executor tx state in transaction deploy")
 	}
 
 	for _, sh := range serv.Datashards() {

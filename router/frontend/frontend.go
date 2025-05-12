@@ -141,7 +141,11 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 	}
 	rst := relay.NewRelayState(qr, cl, cmngr)
 
-	defer rst.Close()
+	defer func() {
+		if err := rst.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close relay state")
+		}
+	}()
 
 	var msg pgproto3.FrontendMessage
 	var err error
@@ -175,7 +179,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 
 		switch err {
 		case nil:
-			break
+			continue
 		case io.ErrUnexpectedEOF:
 			fallthrough
 		case io.EOF:
