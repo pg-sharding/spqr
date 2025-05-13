@@ -9,8 +9,19 @@ services:
         build:
             dockerfile: ./docker/spqr/Dockerfile
             context: .
-    shard1:
+
+    x-shard-common: 
+        &shard-common
         image: spqr-shard-image
+        healthcheck:
+            test: 'pg_isready -U postgres --dbname=postgres'
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        
+
+    shard1:
+        <<: *shard-common
         environment:
             - POSTGRES_USER=user1
             - POSTGRES_DB=db1
@@ -18,8 +29,20 @@ services:
             - "7432:6432"
         hostname: spqr_shard_1
         container_name: spqr_shard_1
+    
+    shard1-replica:
+        <<: *shard-common
+        environment:
+            - POSTGRES_USER=user1
+            - POSTGRES_DB=db1
+            - PG_MASTER=spqr_shard_1
+        ports:
+            - "7532:6432"
+        hostname: spqr_shard_1_replica
+        container_name: spqr_shard_1_replica
+
     shard2:
-        image: spqr-shard-image
+        <<: *shard-common
         environment:
             - POSTGRES_USER=user1
             - POSTGRES_DB=db1
@@ -27,8 +50,20 @@ services:
             - "7433:6432"
         hostname: spqr_shard_2
         container_name: spqr_shard_2
+    
+    shard2-replica:
+        <<: *shard-common
+        environment:
+            - POSTGRES_USER=user1
+            - POSTGRES_DB=db1
+            - PG_MASTER=spqr_shard_2
+        ports:
+            - "7533:6432"
+        hostname: spqr_shard_2_replica
+        container_name: spqr_shard_2_replica
+
     shard3:
-        image: spqr-shard-image
+        <<: *shard-common
         environment:
             - POSTGRES_USER=user1
             - POSTGRES_DB=db1
@@ -36,8 +71,20 @@ services:
             - "7434:6432"
         hostname: spqr_shard_3
         container_name: spqr_shard_3
+
+    shard3-replica:
+        <<: *shard-common
+        environment:
+            - POSTGRES_USER=user1
+            - POSTGRES_DB=db1
+            - PG_MASTER=spqr_shard_3
+        ports:
+            - "7534:6432"
+        hostname: spqr_shard_3_replica
+        container_name: spqr_shard_3_replica
+
     shard4:
-        image: spqr-shard-image
+        <<: *shard-common
         environment:
             - POSTGRES_USER=user1
             - POSTGRES_DB=db1
@@ -45,6 +92,18 @@ services:
             - "7435:6432"
         hostname: spqr_shard_4
         container_name: spqr_shard_4
+
+    shard4-replica:
+        <<: *shard-common
+        environment:
+            - POSTGRES_USER=user1
+            - POSTGRES_DB=db1
+            - PG_MASTER=spqr_shard_4
+        ports:
+            - "7535:6432"
+        hostname: spqr_shard_4_replica
+        container_name: spqr_shard_4_replica
+
     coordinator:
         build:
             dockerfile: ./docker/coordinator/Dockerfile
