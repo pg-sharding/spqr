@@ -91,14 +91,14 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 		return r.params, nil
 	}
 
-	var anyK *kr.ShardKey
+	var anyK kr.ShardKey
 	for k := range r.servPool.ShardMapping() {
 		anyK.Name = k
 		break
 	}
 
 	// maxuint64
-	serv, err := r.servPool.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, anyK, tsa.TSA(config.TargetSessionAttrsAny))
+	serv, err := r.servPool.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, &anyK, tsa.TSA(config.TargetSessionAttrsAny))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return shard.ParameterSet{}, err
