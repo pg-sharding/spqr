@@ -1034,6 +1034,7 @@ func (cl *PsqlClient) DefaultReply() error {
 }
 
 func (cl *PsqlClient) Close() error {
+	spqrlog.Zero.Debug().Uint("client-id", cl.ID()).Msg("closing client")
 	return cl.conn.Close()
 }
 

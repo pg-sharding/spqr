@@ -802,8 +802,10 @@ func (qr *ProxyQrouter) planQueryV1(
 
 			for _, expr := range stmt.TargetList {
 				actualExpr := expr
+				colname := "?column?"
 				if rt, ok := expr.(*lyx.ResTarget); ok {
 					actualExpr = rt.Value
+					colname = rt.Name
 				}
 
 				switch e := actualExpr.(type) {
@@ -874,7 +876,38 @@ func (qr *ProxyQrouter) planQueryV1(
 						p = plan.Combine(p, plan.RandomDispatchPlan{})
 					}
 				/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
-				case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst:
+				case *lyx.AExprSConst:
+
+					p = plan.Combine(p, plan.VirtualPlan{})
+					virtualRowCols = append(virtualRowCols,
+						pgproto3.FieldDescription{
+							Name:                 []byte(colname),
+							DataTypeOID:          catalog.TEXTOID,
+							TypeModifier:         -1,
+							DataTypeSize:         -1,
+							TableAttributeNumber: 0,
+							TableOID:             0,
+							Format:               0,
+						})
+
+					virtualRowVals = append(virtualRowVals, []byte(e.Value))
+
+				case *lyx.AExprIConst:
+
+					p = plan.Combine(p, plan.VirtualPlan{})
+					virtualRowCols = append(virtualRowCols,
+						pgproto3.FieldDescription{
+							Name:                 []byte(colname),
+							DataTypeOID:          catalog.INT4OID,
+							TypeModifier:         -1,
+							DataTypeSize:         4,
+							TableAttributeNumber: 0,
+							TableOID:             0,
+							Format:               0,
+						})
+
+					virtualRowVals = append(virtualRowVals, []byte(fmt.Sprintf("%d", e.Value)))
+				case *lyx.AExprNConst, *lyx.AExprBConst:
 					p = plan.Combine(p, plan.RandomDispatchPlan{})
 
 				/* Special case for SELECT current_schema */
