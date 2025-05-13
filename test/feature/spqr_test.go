@@ -1069,7 +1069,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 
 	// host manipulation
 	s.Step(`^cluster environment is$`, tctx.stepClusterEnvironmentIs)
-	s.Step(`^cluster is up and running$`, func() error { return tctx.stepClusterIsUpAndRunning() })
+	s.Step(`^cluster is up and running$`, tctx.stepClusterIsUpAndRunning)
 	s.Step(`^cluster is failed up and running$`, func() error {
 		err := tctx.stepClusterIsUpAndRunning()
 		if err != nil {
