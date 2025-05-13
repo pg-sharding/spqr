@@ -22,9 +22,9 @@ services:
 
     shard1:
         <<: *shard-common
-        environment:
-            - POSTGRES_USER=user1
-            - POSTGRES_DB=db1
+        environment: &shard-env-common
+            POSTGRES_USER: user1
+            POSTGRES_DB: db1
         ports:
             - "7432:6432"
         hostname: spqr_shard_1
@@ -33,9 +33,8 @@ services:
     shard1-replica:
         <<: *shard-common
         environment:
-            - POSTGRES_USER=user1
-            - POSTGRES_DB=db1
-            - PG_MASTER=spqr_shard_1
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_1
         ports:
             - "7532:6432"
         hostname: spqr_shard_1_replica
@@ -44,8 +43,7 @@ services:
     shard2:
         <<: *shard-common
         environment:
-            - POSTGRES_USER=user1
-            - POSTGRES_DB=db1
+            <<: *shard-env-common
         ports:
             - "7433:6432"
         hostname: spqr_shard_2
@@ -54,9 +52,8 @@ services:
     shard2-replica:
         <<: *shard-common
         environment:
-            - POSTGRES_USER=user1
-            - POSTGRES_DB=db1
-            - PG_MASTER=spqr_shard_2
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_2
         ports:
             - "7533:6432"
         hostname: spqr_shard_2_replica
@@ -65,8 +62,7 @@ services:
     shard3:
         <<: *shard-common
         environment:
-            - POSTGRES_USER=user1
-            - POSTGRES_DB=db1
+            <<: *shard-env-common
         ports:
             - "7434:6432"
         hostname: spqr_shard_3
@@ -75,9 +71,8 @@ services:
     shard3-replica:
         <<: *shard-common
         environment:
-            - POSTGRES_USER=user1
-            - POSTGRES_DB=db1
-            - PG_MASTER=spqr_shard_3
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_3
         ports:
             - "7534:6432"
         hostname: spqr_shard_3_replica
@@ -86,8 +81,7 @@ services:
     shard4:
         <<: *shard-common
         environment:
-            - POSTGRES_USER=user1
-            - POSTGRES_DB=db1
+            <<: *shard-env-common
         ports:
             - "7435:6432"
         hostname: spqr_shard_4
@@ -96,9 +90,8 @@ services:
     shard4-replica:
         <<: *shard-common
         environment:
-            - POSTGRES_USER=user1
-            - POSTGRES_DB=db1
-            - PG_MASTER=spqr_shard_4
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_4
         ports:
             - "7535:6432"
         hostname: spqr_shard_4_replica
