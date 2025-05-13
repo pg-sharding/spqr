@@ -81,9 +81,9 @@ SHOW __spqr__target_session_attrs;
  prefer-standby
 (1 row)
 
-select extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer;
+select (select extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer) zz;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-  extract   
+     zz     
 ------------
  1733749500
  1733749500
@@ -97,9 +97,9 @@ SHOW __spqr__target_session_attrs;
  read-write
 (1 row)
 
-select /* target-session-attrs: prefer-standby */ extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer;
+select (select /* target-session-attrs: prefer-standby */ extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer) zz;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-  extract   
+     zz     
 ------------
  1733749500
  1733749500

@@ -24,11 +24,11 @@ SET __spqr__target_session_attrs TO 'prefer-standby';
 SELECT pg_is_in_recovery();
 SHOW __spqr__target_session_attrs;
 
-select extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer;
+select (select extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer) zz;
 
 SHOW __spqr__target_session_attrs;
 
-select /* target-session-attrs: prefer-standby */ extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer;
+select (select /* target-session-attrs: prefer-standby */ extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer) zz;
 
 SHOW __spqr__target_session_attrs;
 RESET __spqr__target_session_attrs;
