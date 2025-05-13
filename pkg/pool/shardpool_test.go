@@ -35,7 +35,7 @@ func TestShardPoolConnectionAcquirePut(t *testing.T) {
 	shardconn.EXPECT().ID().AnyTimes().Return(uint(1234))
 	shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
 
-	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
+	shp := pool.NewShardPool(func(shardKey *kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
 		return shardconn, nil
 	}, config.Host{Address: "h1"}, &config.BackendRule{
 		ConnectionLimit: 1,
@@ -46,7 +46,7 @@ func TestShardPoolConnectionAcquirePut(t *testing.T) {
 	assert.Equal(1, statistics.QueueResidualSize)
 	assert.Equal(0, statistics.IdleConnections)
 
-	conn, err := shp.Connection(10, kr.ShardKey{
+	conn, err := shp.Connection(10, &kr.ShardKey{
 		Name: "sh1",
 	})
 
@@ -82,7 +82,7 @@ func TestShardPoolConnectionAcquireDiscard(t *testing.T) {
 
 	shardconn.EXPECT().Close().Times(1)
 
-	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
+	shp := pool.NewShardPool(func(shardKey *kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
 		return shardconn, nil
 	}, config.Host{Address: "h1"}, &config.BackendRule{
 		ConnectionLimit: 1,
@@ -93,7 +93,7 @@ func TestShardPoolConnectionAcquireDiscard(t *testing.T) {
 	assert.Equal(1, statistics.QueueResidualSize)
 	assert.Equal(0, statistics.IdleConnections)
 
-	conn, err := shp.Connection(10, kr.ShardKey{
+	conn, err := shp.Connection(10, &kr.ShardKey{
 		Name: "sh1",
 	})
 
@@ -121,7 +121,7 @@ func TestShardPoolAllocFnError(t *testing.T) {
 	ins := mockinst.NewMockDBInstance(ctrl)
 	ins.EXPECT().Hostname().AnyTimes().Return("h1")
 
-	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
+	shp := pool.NewShardPool(func(shardKey *kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
 		return nil, errors.New("bad")
 	}, config.Host{Address: "h1"}, &config.BackendRule{
 		ConnectionLimit: 1,
@@ -132,7 +132,7 @@ func TestShardPoolAllocFnError(t *testing.T) {
 	assert.Equal(1, statistics.QueueResidualSize)
 	assert.Equal(0, statistics.IdleConnections)
 
-	conn, err := shp.Connection(10, kr.ShardKey{
+	conn, err := shp.Connection(10, &kr.ShardKey{
 		Name: "sh1",
 	})
 
@@ -177,7 +177,7 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 
 	var mu sync.Mutex
 
-	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
+	shp := pool.NewShardPool(func(shardKey *kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
 		mu.Lock()
 		defer mu.Unlock()
 
@@ -207,7 +207,7 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 			defer wg.Done()
 
 			for range 100 {
-				conn, err := shp.Connection(1, kr.ShardKey{
+				conn, err := shp.Connection(1, &kr.ShardKey{
 					Name: "1",
 				})
 				if err != nil {

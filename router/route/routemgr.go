@@ -14,8 +14,7 @@ type RouteMgr interface {
 	RerouteToRandomRoute() error
 	RerouteToTargetRoute(route *kr.ShardKey) error
 
-	CurrentRoutes() []kr.ShardKey
 	/* Unroute Routines */
-	UnRouteWithError(shkey []kr.ShardKey, errmsg error) error
-	Unroute(shkey []kr.ShardKey) error
+	UnRouteWithError(shkey []*kr.ShardKey, errmsg error) error
+	Unroute(shkey []*kr.ShardKey) error
 }

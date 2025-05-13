@@ -31,7 +31,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	underyling_pool := mockpool.NewMockMultiShardPool(ctrl)
 
-	key := kr.ShardKey{
+	key := &kr.ShardKey{
 		Name: "sh1",
 	}
 
@@ -218,7 +218,7 @@ func TestDbPoolRaces(t *testing.T) {
 		}
 	}
 
-	dbpool := pool.NewDBPoolWithAllocator(cfg, &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
+	dbpool := pool.NewDBPoolWithAllocator(cfg, &startup.StartupParams{}, func(shardKey *kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
 		mu.Lock()
 		defer mu.Unlock()
 
@@ -246,7 +246,7 @@ func TestDbPoolRaces(t *testing.T) {
 			go func() {
 				defer sem.Release(1)
 
-				sh, err := dbpool.ConnectionWithTSA(uint(i), kr.ShardKey{Name: shards[i%3]}, config.TargetSessionAttrsPS)
+				sh, err := dbpool.ConnectionWithTSA(uint(i), &kr.ShardKey{Name: shards[i%3]}, config.TargetSessionAttrsPS)
 				assert.NoError(err)
 				err = dbpool.Put(sh)
 				assert.NoError(err)
@@ -263,7 +263,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	underyling_pool := mockpool.NewMockMultiShardPool(ctrl)
 
-	key := kr.ShardKey{
+	key := &kr.ShardKey{
 		Name: "sh1",
 	}
 
@@ -419,7 +419,7 @@ func TestBuildHostOrder(t *testing.T) {
 
 	tests := []struct {
 		name               string
-		shardKey           kr.ShardKey
+		shardKey           *kr.ShardKey
 		targetSessionAttrs tsa.TSA
 		shuffleHosts       bool
 		preferAZ           string
@@ -427,7 +427,7 @@ func TestBuildHostOrder(t *testing.T) {
 	}{
 		{
 			name:               "No shuffle, no preferred AZ",
-			shardKey:           kr.ShardKey{Name: "sh1"},
+			shardKey:           &kr.ShardKey{Name: "sh1"},
 			targetSessionAttrs: config.TargetSessionAttrsAny,
 			shuffleHosts:       false,
 			preferAZ:           "",
@@ -442,7 +442,7 @@ func TestBuildHostOrder(t *testing.T) {
 		},
 		{
 			name:               "Shuffle hosts",
-			shardKey:           kr.ShardKey{Name: "sh1"},
+			shardKey:           &kr.ShardKey{Name: "sh1"},
 			targetSessionAttrs: config.TargetSessionAttrsAny,
 			shuffleHosts:       true,
 			preferAZ:           "",
@@ -457,7 +457,7 @@ func TestBuildHostOrder(t *testing.T) {
 		},
 		{
 			name:               "Preferred AZ",
-			shardKey:           kr.ShardKey{Name: "sh1"},
+			shardKey:           &kr.ShardKey{Name: "sh1"},
 			targetSessionAttrs: config.TargetSessionAttrsAny,
 			shuffleHosts:       false,
 			preferAZ:           "klg",

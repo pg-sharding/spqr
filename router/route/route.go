@@ -91,7 +91,7 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 		return r.params, nil
 	}
 
-	var anyK kr.ShardKey
+	var anyK *kr.ShardKey
 	for k := range r.servPool.ShardMapping() {
 		anyK.Name = k
 		break

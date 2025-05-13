@@ -111,7 +111,7 @@ type ParseCacheEntry struct {
 
 type RelayStateImpl struct {
 	traceMsgs    bool
-	activeShards []kr.ShardKey
+	activeShards []*kr.ShardKey
 
 	routingState plan.Plan
 
@@ -481,7 +481,7 @@ func (rst *RelayStateImpl) ActiveShardsReset() {
 	rst.activeShards = nil
 }
 
-func (rst *RelayStateImpl) ActiveShards() []kr.ShardKey {
+func (rst *RelayStateImpl) ActiveShards() []*kr.ShardKey {
 	return rst.activeShards
 }
 
@@ -525,7 +525,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 
 	rst.activeShards = nil
 	for _, shr := range routes {
-		rst.activeShards = append(rst.activeShards, *shr)
+		rst.activeShards = append(rst.activeShards, shr)
 	}
 
 	if config.RouterConfig().PgprotoDebug {
@@ -584,20 +584,20 @@ func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
 	beforeTx := rst.Client().Server().TxStatus()
 
 	for _, shkey := range routes {
-		if slices.ContainsFunc(rst.activeShards, func(c kr.ShardKey) bool {
-			return *shkey == c
+		if slices.ContainsFunc(rst.activeShards, func(c *kr.ShardKey) bool {
+			return shkey == c
 		}) {
 			continue
 		}
 
-		rst.activeShards = append(rst.activeShards, *shkey)
+		rst.activeShards = append(rst.activeShards, shkey)
 
 		spqrlog.Zero.Debug().
 			Str("client tsa", string(rst.Client().GetTsa())).
 			Str("deploying tx", beforeTx.String()).
 			Msg("expanding shard with tsa")
 
-		if err := rst.Client().Server().ExpandDataShard(rst.Client().ID(), *shkey, rst.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
+		if err := rst.Client().Server().ExpandDataShard(rst.Client().ID(), shkey, rst.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
 			return err
 		}
 	}
@@ -624,10 +624,6 @@ func (rst *RelayStateImpl) selectRandomRoute() (*kr.ShardKey, error) {
 	}
 
 	r := routes[rand.Int()%len(routes)]
-	rst.routingState = plan.ShardDispatchPlan{
-		ExecTarget: r,
-	}
-
 	return r, nil
 }
 
@@ -697,6 +693,10 @@ func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, plan.Plan, error) {
 			return nil, nil, err
 		}
 
+		rst.routingState = plan.ShardDispatchPlan{
+			ExecTarget: r,
+		}
+
 		return []*kr.ShardKey{r}, queryPlan, nil
 	default:
 		return nil, nil, fmt.Errorf("unexpected query plan %T", v)
@@ -720,6 +720,11 @@ func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 	if err != nil {
 		return err
 	}
+
+	rst.routingState = plan.ShardDispatchPlan{
+		ExecTarget: r,
+	}
+
 	return rst.procRoutes([]*kr.ShardKey{r})
 }
 
@@ -742,16 +747,6 @@ func (rst *RelayStateImpl) RerouteToTargetRoute(route *kr.ShardKey) error {
 	}
 
 	return rst.procRoutes([]*kr.ShardKey{route})
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) CurrentRoutes() []kr.ShardKey {
-	switch q := rst.routingState.(type) {
-	case plan.ShardDispatchPlan:
-		return []kr.ShardKey{*q.ExecTarget}
-	default:
-		return nil
-	}
 }
 
 // TODO : unit tests
@@ -812,14 +807,11 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) ([]pgproto
 	var unreplied []pgproto3.BackendMessage
 
 	flusher := func(buff []BufferedMessage, waitForResp, replyCl bool) error {
-		for len(buff) > 0 {
-			var v BufferedMessage
-			v, buff = buff[0], buff[1:]
+		for _, v := range buff {
 			spqrlog.Zero.Debug().
 				Uint("client-id", rst.Client().ID()).
 				Bool("waitForResp", waitForResp).
 				Bool("replyCl", replyCl).
-				Interface("plan", rst.routingState).
 				Msg("flushing")
 
 			resolvedReplyCl := replyCl
@@ -900,10 +892,10 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Unroute(shkey []kr.ShardKey) error {
-	newActiveShards := make([]kr.ShardKey, 0)
+func (rst *RelayStateImpl) Unroute(shkey []*kr.ShardKey) error {
+	newActiveShards := make([]*kr.ShardKey, 0)
 	for _, el := range rst.activeShards {
-		if slices.IndexFunc(shkey, func(k kr.ShardKey) bool {
+		if slices.IndexFunc(shkey, func(k *kr.ShardKey) bool {
 			return k == el
 		}) == -1 {
 			newActiveShards = append(newActiveShards, el)
@@ -922,7 +914,7 @@ func (rst *RelayStateImpl) Unroute(shkey []kr.ShardKey) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) error {
+func (rst *RelayStateImpl) UnRouteWithError(shkey []*kr.ShardKey, errmsg error) error {
 	_ = rst.poolMgr.UnRouteWithError(rst.Cl, shkey, errmsg)
 	return rst.Reset()
 }
@@ -1161,9 +1153,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 				// TODO: multi-shard statements
 				if rst.bindRoute == nil {
-					routes := rst.CurrentRoutes()
+					routes := rst.routingState.ExecutionTargets()
 					if len(routes) == 1 {
-						rst.bindRoute = &routes[0]
+						rst.bindRoute = routes[0]
 					} else {
 						err := fmt.Errorf("failed to deploy prepared statement")
 
@@ -1580,7 +1572,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 
 	switch err := rst.RerouteToRandomRoute(); err {
 	case nil:
-		routes := rst.CurrentRoutes()
+		routes := rst.routingState.ExecutionTargets()
 		return func() error {
 			return rst.Unroute(routes)
 		}, nil

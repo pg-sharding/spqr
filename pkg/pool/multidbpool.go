@@ -102,7 +102,7 @@ func (p *MultiDBPool) Connection(db string) (shard.Shard, error) {
 	host := hosts[rand.Int()%len(hosts)]
 
 	// get connection
-	conn, err := pool.ConnectionHost(uint(rand.Uint64()), kr.ShardKey{Name: shardName, RW: false}, host)
+	conn, err := pool.ConnectionHost(uint(rand.Uint64()), &kr.ShardKey{Name: shardName, RW: false}, host)
 	if err != nil {
 		return nil, err
 	}
