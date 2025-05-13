@@ -21,22 +21,19 @@ frontend_rules:
     auth_rule:
       auth_method: ok
 shards:
-  sh1:
+  sh1: &shard-common
     db: regress
     usr: regress
     pwd: 12345678
     type: DATA
     hosts:
-      - 'spqr_shard_1:6432'
-      - 'spqr_shard_1_replica:6432'
+      spqr_shard_1: 6432
+      spqr_shard_1_replica: 6432
   sh2:
-    db: regress
-    usr: regress
-    pwd: 12345678
-    type: DATA
+    <<: &shard-common
     hosts:
-      - 'spqr_shard_2:6432'
-      - 'spqr_shard_2_replica:6432'
+      spqr_shard_2: 6432
+      spqr_shard_2_replica: 6432
 
 backend_rules:
   - db: regress

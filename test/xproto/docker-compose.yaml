@@ -1,32 +1,48 @@
 services:
-    shard1:
+    x-shard-common:
+        &shard-common
         image: spqr-shard-image
-        environment:
-            - POSTGRES_USER=regress
-            - POSTGRES_DB=regress
+        healthcheck:
+            test: pg_isready -p 6432 -U regress -d regress
+            interval: 10s
+            timeout: 3s
+            retries: 50
+
+    shard1:
+        <<: *shard-common
+        environment: &shard-env-common
+            POSTGRES_USER: regress
+            POSTGRES_DB: regress
         ports:
             - "7432:6432"
         hostname: spqr_shard_1
         container_name: spqr_shard_1
-        healthcheck:
-            test: psql -h spqr_shard_1 -p 6432 -U regress -d regress
-            interval: 10s
-            timeout: 3s
-            retries: 50
-    shard2:
-        image: spqr-shard-image
+    shard1-replica:
+        <<: *shard-common
         environment:
-            - POSTGRES_USER=regress
-            - POSTGRES_DB=regress
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_1
+        ports:
+            - "7532:6432"
+        hostname: spqr_shard_1_replica
+        container_name: spqr_shard_1_replica
+    shard2:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
         ports:
             - "7433:6432"
         hostname: spqr_shard_2
         container_name: spqr_shard_2
-        healthcheck:
-            test: psql -h spqr_shard_2 -p 6432 -U regress -d regress
-            interval: 10s
-            timeout: 3s
-            retries: 50
+    shard2-replica:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_2
+        ports:
+            - "7533:6432"
+        hostname: spqr_shard_2_replica
+        container_name: spqr_shard_2_replica
     router:
         build:
             dockerfile: ./test/xproto/router/Dockerfile
@@ -40,7 +56,11 @@ services:
         depends_on:
             shard1:
                 condition: service_healthy
+            shard1-replica:
+                condition: service_healthy
             shard2:
+                condition: service_healthy
+            shard2-replica:
                 condition: service_healthy
 
     coordinator:
