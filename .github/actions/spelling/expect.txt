@@ -621,6 +621,7 @@ xxmixed
 xxmixeduuid
 xxtest
 xxtt
+xyx
 yaccgen
 yandex
 yjoin

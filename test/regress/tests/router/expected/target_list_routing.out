@@ -61,6 +61,13 @@ NOTICE: send query to shard(s) : sh2
  124
 (1 row)
 
+select (select sum(j) as xyx from sh2.tlt1 where i = 112) as aboba;
+NOTICE: send query to shard(s) : sh2
+ aboba 
+-------
+   124
+(1 row)
+
 select (select sum(j) from sh2.tlt1 where i = 112), (select sum(j) from sh2.tlt1 where sh2.tlt1.i = 113);
 NOTICE: send query to shard(s) : sh2
  sum | sum 

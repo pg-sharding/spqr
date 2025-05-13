@@ -178,6 +178,7 @@ func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, m
 		Msg("analyzing select where clause")
 
 	switch texpr := expr.(type) {
+	/* lyx.ResTarget is unexpected here */
 	case *lyx.AExprIn:
 
 		switch texpr.Expr.(type) {
@@ -312,6 +313,7 @@ func (qr *ProxyQrouter) planByWhereClause(ctx context.Context, expr lyx.Node, me
 	case *lyx.AExprOp:
 
 		switch lft := texpr.Left.(type) {
+		/* lyx.ResTarget is unexpected here */
 		case *lyx.ColumnRef:
 
 			alias, colname := lft.TableAlias, lft.ColName
@@ -799,7 +801,12 @@ func (qr *ProxyQrouter) planQueryV1(
 			virtualRowVals := [][]byte{}
 
 			for _, expr := range stmt.TargetList {
-				switch e := expr.(type) {
+				actualExpr := expr
+				if rt, ok := expr.(*lyx.ResTarget); ok {
+					actualExpr = rt.Value
+				}
+
+				switch e := actualExpr.(type) {
 				/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
 				case *lyx.FuncApplication:
 
