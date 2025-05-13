@@ -857,6 +857,7 @@ func (qr *ProxyQrouter) planQueryV1(
 						p = plan.Combine(p, plan.RandomDispatchPlan{})
 						continue
 					}
+					deduced := false
 					for _, innerExp := range e.Args {
 						switch iE := innerExp.(type) {
 						case *lyx.Select:
@@ -864,8 +865,13 @@ func (qr *ProxyQrouter) planQueryV1(
 								return nil, err
 							} else {
 								p = plan.Combine(p, tmp)
+								deduced = true
 							}
 						}
+					}
+					if !deduced {
+						/* very questionable. */
+						p = plan.Combine(p, plan.RandomDispatchPlan{})
 					}
 				/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
 				case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst:
