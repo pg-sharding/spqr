@@ -110,7 +110,7 @@ func (m *MockPool) EXPECT() *MockPoolMockRecorder {
 }
 
 // Connection mocks base method.
-func (m *MockPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, error) {
+func (m *MockPool) Connection(clid uint, shardKey *kr.ShardKey) (shard.Shard, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Connection", clid, shardKey)
 	ret0, _ := ret[0].(shard.Shard)
@@ -205,7 +205,7 @@ func (m *MockMultiShardPool) EXPECT() *MockMultiShardPoolMockRecorder {
 }
 
 // ConnectionHost mocks base method.
-func (m *MockMultiShardPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.Shard, error) {
+func (m *MockMultiShardPool) ConnectionHost(clid uint, shardKey *kr.ShardKey, host config.Host) (shard.Shard, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConnectionHost", clid, shardKey, host)
 	ret0, _ := ret[0].(shard.Shard)

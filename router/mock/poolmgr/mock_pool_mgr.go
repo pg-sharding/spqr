@@ -44,10 +44,10 @@ func (m *MockConnectionKeeper) EXPECT() *MockConnectionKeeperMockRecorder {
 }
 
 // ActiveShards mocks base method.
-func (m *MockConnectionKeeper) ActiveShards() []kr.ShardKey {
+func (m *MockConnectionKeeper) ActiveShards() []*kr.ShardKey {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ActiveShards")
-	ret0, _ := ret[0].([]kr.ShardKey)
+	ret0, _ := ret[0].([]*kr.ShardKey)
 	return ret0
 }
 
@@ -190,7 +190,7 @@ func (mr *MockPoolMgrMockRecorder) TXEndCB(rst any) *gomock.Call {
 }
 
 // UnRouteCB mocks base method.
-func (m *MockPoolMgr) UnRouteCB(arg0 client.RouterClient, sh []kr.ShardKey) error {
+func (m *MockPoolMgr) UnRouteCB(arg0 client.RouterClient, sh []*kr.ShardKey) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UnRouteCB", arg0, sh)
 	ret0, _ := ret[0].(error)
@@ -204,7 +204,7 @@ func (mr *MockPoolMgrMockRecorder) UnRouteCB(arg0, sh any) *gomock.Call {
 }
 
 // UnRouteWithError mocks base method.
-func (m *MockPoolMgr) UnRouteWithError(arg0 client.RouterClient, sh []kr.ShardKey, errmsg error) error {
+func (m *MockPoolMgr) UnRouteWithError(arg0 client.RouterClient, sh []*kr.ShardKey, errmsg error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UnRouteWithError", arg0, sh, errmsg)
 	ret0, _ := ret[0].(error)
