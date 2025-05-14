@@ -26,10 +26,11 @@ func (sp ScatterPlan) ExecutionTargets() []*kr.ShardKey {
 
 type ModifyTable struct {
 	Plan
+	ExecTargets []*kr.ShardKey
 }
 
 func (mt ModifyTable) ExecutionTargets() []*kr.ShardKey {
-	return nil
+	return mt.ExecTargets
 }
 
 type ShardDispatchPlan struct {
@@ -45,18 +46,20 @@ func (sms ShardDispatchPlan) ExecutionTargets() []*kr.ShardKey {
 
 type DDLState struct {
 	Plan
+	ExecTargets []*kr.ShardKey
 }
 
 func (ddl DDLState) ExecutionTargets() []*kr.ShardKey {
-	return nil
+	return ddl.ExecTargets
 }
 
 type RandomDispatchPlan struct {
 	Plan
+	ExecTargets []*kr.ShardKey
 }
 
 func (rdp RandomDispatchPlan) ExecutionTargets() []*kr.ShardKey {
-	return nil
+	return rdp.ExecTargets
 }
 
 type VirtualPlan struct {
@@ -72,18 +75,20 @@ func (vp VirtualPlan) ExecutionTargets() []*kr.ShardKey {
 
 type CopyState struct {
 	Plan
+	ExecTargets []*kr.ShardKey
 }
 
 func (cs CopyState) ExecutionTargets() []*kr.ShardKey {
-	return nil
+	return cs.ExecTargets
 }
 
 type ReferenceRelationState struct {
 	Plan
+	ExecTargets []*kr.ShardKey
 }
 
 func (rrs ReferenceRelationState) ExecutionTargets() []*kr.ShardKey {
-	return nil
+	return rrs.ExecTargets
 }
 
 const NOSHARD = ""

@@ -44,13 +44,15 @@ func unRouteShardsCommon(cl client.RouterClient, sh []kr.ShardKey) error {
 	var anyerr error
 	anyerr = nil
 
-	if cl.Server() == nil {
+	serv := cl.Server()
+
+	if serv == nil {
 		/* If there is nothing to unroute, return */
 		return nil
 	}
 
-	if cl.Server().TxStatus() != txstatus.TXIDLE {
-		if err := cl.Server().Reset(); err != nil {
+	if serv.TxStatus() != txstatus.TXIDLE {
+		if err := serv.Reset(); err != nil {
 			return err
 		}
 		// TODO: figure out if we need this
@@ -60,10 +62,10 @@ func unRouteShardsCommon(cl client.RouterClient, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
 		spqrlog.Zero.Debug().
 			Uint("client", cl.ID()).
-			Uint("shardn", spqrlog.GetPointer(cl.Server())).
+			Uint("shardn", spqrlog.GetPointer(serv)).
 			Str("key", shkey.Name).
 			Msg("client unrouting from datashard")
-		if err := cl.Server().UnRouteShard(shkey, cl.Rule()); err != nil {
+		if err := serv.UnRouteShard(shkey, cl.Rule()); err != nil {
 			anyerr = err
 		}
 	}

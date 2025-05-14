@@ -3,6 +3,7 @@ package qrouter
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 
@@ -1280,7 +1281,7 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 }
 
 // Returns state, is read-only flag and err if any
-func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, tsa tsa.TSA) (plan.Plan, bool, error) {
+func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, tsa tsa.TSA) (plan.Plan, bool, error) {
 	if stmt == nil {
 		// empty statement
 		return plan.RandomDispatchPlan{}, false, nil
@@ -1497,6 +1498,18 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	return route, ro, nil
 }
 
+func (qr *ProxyQrouter) SelectRandomRoute() (plan.Plan, error) {
+	routes := qr.DataShardsRoutes()
+	if len(routes) == 0 {
+		return nil, fmt.Errorf("no routes configured")
+	}
+
+	r := routes[rand.Int()%len(routes)]
+	return plan.ShardDispatchPlan{
+		ExecTarget: r,
+	}, nil
+}
+
 // TODO : unit tests
 func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
 
@@ -1515,7 +1528,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	}
 
 	meta := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
-	route, ro, err := qr.routeWithRules(ctx, meta, stmt, sph.GetTsa())
+	route, ro, err := qr.RouteWithRules(ctx, meta, stmt, sph.GetTsa())
 	if err != nil {
 		return nil, err
 	}
@@ -1529,12 +1542,16 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		return v, nil
 	case plan.ReferenceRelationState:
 		/* check for unroutable here - TODO */
-		return plan.RandomDispatchPlan{}, nil
+
+		return qr.SelectRandomRoute()
 	case plan.DDLState:
+		v.ExecTargets = qr.DataShardsRoutes()
 		return v, nil
 	case plan.CopyState:
 		/* temporary */
-		return plan.ScatterPlan{}, nil
+		return plan.ScatterPlan{
+			ExecTargets: qr.DataShardsRoutes(),
+		}, nil
 	case plan.ScatterPlan:
 		if sph.EnhancedMultiShardProcessing() {
 			if v.SubPlan == nil {

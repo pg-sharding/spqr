@@ -186,9 +186,14 @@ func TestFrontendXProto(t *testing.T) {
 	beRule := &config.BackendRule{}
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
+	qr.EXPECT().SelectRandomRoute().AnyTimes().Return(plan.ShardDispatchPlan{
+		ExecTarget: &kr.ShardKey{
+			Name: "sh1",
+		},
+	}, nil)
 
 	sh.EXPECT().ID().AnyTimes()
-	sh.EXPECT().Send(gomock.Any()).AnyTimes()
+	sh.EXPECT().Send(gomock.Any()).AnyTimes().Return(nil)
 	sh.EXPECT().Receive().AnyTimes()
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
@@ -272,7 +277,12 @@ func TestFrontendXProto(t *testing.T) {
 	res := false
 	rd := &prepstatement.PreparedStatementDescriptor{}
 
-	srv.EXPECT().HasPrepareStatement(gomock.Any(), gomock.Any()).DoAndReturn(func(interface{}, interface{}) (interface{}, interface{}) { return res, rd }).AnyTimes()
+	srv.EXPECT().Send(gomock.Any()).AnyTimes().Return(nil)
+
+	srv.EXPECT().HasPrepareStatement(gomock.Any(), gomock.Any()).DoAndReturn(func(interface{}, interface{}) (interface{}, interface{}) {
+		return res, rd
+	}).AnyTimes()
+
 	srv.EXPECT().StorePrepareStatement(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do(func(interface{}, interface{}, interface{}, interface{}) {
 		res = true
 		rd.ParamDesc = &pgproto3.ParameterDescription{}
@@ -280,18 +290,22 @@ func TestFrontendXProto(t *testing.T) {
 	}).AnyTimes()
 	/* */
 
-	srv.EXPECT().Send(&pgproto3.Parse{
+	sh.EXPECT().SHKey().AnyTimes().Return(kr.ShardKey{
+		Name: "sh1",
+	})
+
+	srv.EXPECT().SendShard(&pgproto3.Parse{
 		Name:          "17731273590378676854",
 		Query:         "select 'Hello, world!'",
 		ParameterOIDs: nil,
-	}).Times(1).Return(nil)
+	}, gomock.Any()).Times(1).Return(nil)
 
-	srv.EXPECT().Send(&pgproto3.Describe{
+	srv.EXPECT().SendShard(&pgproto3.Describe{
 		Name:       "17731273590378676854",
 		ObjectType: 'S',
-	}).Times(1).Return(nil)
+	}, gomock.Any()).Times(1).Return(nil)
 
-	srv.EXPECT().SendShard(&pgproto3.Sync{}, gomock.Any()).Times(1).Return(nil)
+	srv.EXPECT().SendShard(&pgproto3.Sync{}, gomock.Any()).AnyTimes().Return(nil)
 
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ParseComplete{}, nil)
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ParameterDescription{

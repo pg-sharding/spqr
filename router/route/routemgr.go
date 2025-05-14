@@ -8,7 +8,7 @@ import (
 type RouteMgr interface {
 	// Parse and analyze user query, and decide which shard routes
 	// will participate in query execution
-	Reroute() ([]*kr.ShardKey, plan.Plan, error)
+	Reroute() (plan.Plan, error)
 	// Acquire (prepare) connection to any random shard route
 	// Without any user query analysis
 	RerouteToRandomRoute() error
