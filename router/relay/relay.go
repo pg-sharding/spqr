@@ -690,6 +690,7 @@ func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 	if err != nil {
 		return err
 	}
+	rst.routingState = r
 	return rst.procRoutes(r.ExecutionTargets())
 }
 

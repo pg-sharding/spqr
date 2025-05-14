@@ -1302,7 +1302,9 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	case *routehint.ScatterRouteHint:
 		// still, need to check config settings (later)
 		/* XXX: we return true for RO here to fool DRB */
-		return plan.ScatterPlan{}, true, nil
+		return plan.ScatterPlan{
+			ExecTargets: qr.DataShardsRoutes(),
+		}, true, nil
 	}
 
 	/*
@@ -1553,6 +1555,8 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 			ExecTargets: qr.DataShardsRoutes(),
 		}, nil
 	case plan.ScatterPlan:
+
+		v.ExecTargets = qr.DataShardsRoutes()
 		if sph.EnhancedMultiShardProcessing() {
 			if v.SubPlan == nil {
 				v.SubPlan, err = planner.PlanDistributedQuery(ctx, meta, stmt)
