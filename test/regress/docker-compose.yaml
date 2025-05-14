@@ -134,6 +134,14 @@ services:
                 condition: service_healthy
             shard4:
                 condition: service_healthy
+            shard1-replica:
+                condition: service_healthy
+            shard2-replica:
+                condition: service_healthy
+            shard3-replica:
+                condition: service_healthy
+            shard4-replica:
+                condition: service_healthy
 
     coordinator:
         build:
