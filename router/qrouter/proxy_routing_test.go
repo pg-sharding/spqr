@@ -301,6 +301,14 @@ func TestReferenceRelationRouting(t *testing.T) {
 				SubPlan: plan.ScatterPlan{
 					SubPlan: plan.ModifyTable{},
 				},
+				ExecTargets: []*kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
 			},
 		},
 		{
@@ -309,6 +317,14 @@ func TestReferenceRelationRouting(t *testing.T) {
 				SubPlan: plan.ScatterPlan{
 					SubPlan: plan.ModifyTable{},
 				},
+				ExecTargets: []*kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
 			},
 		},
 		{
@@ -316,6 +332,14 @@ func TestReferenceRelationRouting(t *testing.T) {
 			exp: plan.ScatterPlan{
 				SubPlan: plan.ScatterPlan{
 					SubPlan: plan.ModifyTable{},
+				},
+				ExecTargets: []*kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
 				},
 			},
 		},

@@ -24,6 +24,8 @@ SET __spqr__target_session_attrs TO 'prefer-standby';
 SELECT pg_is_in_recovery();
 SHOW __spqr__target_session_attrs;
 
+SET __spqr__engine_v2 TO true;
+
 select (select extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer) zz;
 
 SHOW __spqr__target_session_attrs;

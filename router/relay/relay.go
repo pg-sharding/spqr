@@ -664,7 +664,7 @@ func (rst *RelayStateImpl) Reroute() (plan.Plan, error) {
 	}
 
 	switch v := queryPlan.(type) {
-	case plan.VirtualPlan, plan.ScatterPlan, plan.DDLState, plan.ShardDispatchPlan, plan.RandomDispatchPlan:
+	case plan.VirtualPlan, plan.ScatterPlan, plan.DDLState, plan.ShardDispatchPlan:
 		return queryPlan, nil
 	default:
 		return nil, fmt.Errorf("unexpected query plan %T", v)
@@ -1443,6 +1443,8 @@ func (rst *RelayStateImpl) PrepareRelayStep() (plan.Plan, error) {
 
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateReRoute(rst) {
+		spqrlog.Zero.Debug().Bool("engine v2", rst.Client().EnhancedMultiShardProcessing()).Msg("checking transaction expand possibility")
+
 		if rst.Client().EnhancedMultiShardProcessing() {
 			/* With engine v2 we can expand transaction on more targets */
 			/* TODO: XXX */

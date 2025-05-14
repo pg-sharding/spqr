@@ -51,7 +51,7 @@ INSERT INTO xxmixed (id) VALUES(29);
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xxmixed (id) VALUES(30);
 NOTICE: send query to shard(s) : sh2
-SELECT * FROM xxmixed ORDER BY id;
+SELECT * FROM xxmixed ORDER BY id /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id 
 ----

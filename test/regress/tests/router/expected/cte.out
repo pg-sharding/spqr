@@ -87,7 +87,7 @@ INSERT INTO table1 (i) VALUES(10);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO table1 WITH s AS (SELECT i + 1 FROM table1 WHERE i = 10) TABLE s;
 NOTICE: send query to shard(s) : sh1
-TABLE table1;
+TABLE table1 /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  i  
 ----

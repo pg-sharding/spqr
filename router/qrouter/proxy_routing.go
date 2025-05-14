@@ -1541,7 +1541,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	case plan.VirtualPlan:
 		return v, nil
 	case plan.RandomDispatchPlan:
-		return v, nil
+		return qr.SelectRandomRoute()
 	case plan.ReferenceRelationState:
 		/* check for unroutable here - TODO */
 
@@ -1556,7 +1556,6 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		}, nil
 	case plan.ScatterPlan:
 
-		v.ExecTargets = qr.DataShardsRoutes()
 		if sph.EnhancedMultiShardProcessing() {
 			if v.SubPlan == nil {
 				v.SubPlan, err = planner.PlanDistributedQuery(ctx, meta, stmt)
@@ -1564,8 +1563,12 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 					return nil, err
 				}
 			}
+			if v.ExecTargets == nil {
+				v.ExecTargets = qr.DataShardsRoutes()
+			}
 			return v, nil
 		}
+
 		/*
 		* Here we have a chance for advanced multi-shard query processing.
 		* Try to build distributed plan, else scatter-out.
