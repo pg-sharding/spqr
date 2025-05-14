@@ -281,7 +281,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 				case "true", "on", "ok":
 					rst.Client().SetEnhancedMultiShardProcessing(false, true)
 				case "false", "off", "no":
-					rst.Client().SetEnhancedMultiShardProcessing(false, true)
+					rst.Client().SetEnhancedMultiShardProcessing(false, false)
 				}
 			default:
 				rst.Client().SetParam(st.Name, st.Value)

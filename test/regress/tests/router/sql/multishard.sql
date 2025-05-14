@@ -39,7 +39,7 @@ COPY xxmixed (id) FROM STDIN;
 \.
 
 /* XXX: sort result here is not stable until proper router processing support */
-SELECT * FROM xxmixed ORDER BY id;
+SELECT * FROM xxmixed ORDER BY id /* __spqr__engine_v2: true */;
 
 SELECT * FROM xxmixed WHERE id = 0 OR id = 199;
 SELECT * FROM xxmixed WHERE id = 0 OR id = 399;

@@ -65,7 +65,7 @@ INSERT INTO tt (i) VALUES(1);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 -- should exists 
-RESET __spqr__engine_v2;
+SET __spqr__engine_v2 TO true;
 TABLE tt;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  i 

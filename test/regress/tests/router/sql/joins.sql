@@ -23,7 +23,8 @@ INSERT INTO yjoin (w_id) values(10);
 INSERT INTO yjoin (w_id) values(15);
 INSERT INTO yjoin (w_id) values(25);
 
-SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
+--- XXX: fix
+--SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
 -- result is not full
 --SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
 

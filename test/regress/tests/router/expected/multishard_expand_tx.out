@@ -99,7 +99,7 @@ NOTICE: send query to shard(s) : sh3
 DELETE FROM xxm_expd /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ROLLBACK;
-SELECT * FROM xxm_expd ORDER BY id;
+SELECT * FROM xxm_expd ORDER BY id /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id  |  j  
 -----+-----

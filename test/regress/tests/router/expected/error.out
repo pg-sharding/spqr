@@ -40,10 +40,10 @@ NOTICE: send query to shard(s) : sh1
 ----
 (0 rows)
 
-SELECT * FROM x WHERE ixxxd = 1;
+SELECT * FROM x WHERE ixxxd = 1 /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  column "ixxxd" does not exist
-LINE 1: SELECT * FROM x WHERE ixxxd = 1;
+LINE 1: SELECT * FROM x WHERE ixxxd = 1 /* __spqr__engine_v2: true *...
                               ^
 SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;
 ERROR:  client processing error: 'SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;': syntax error on pos 32, tx status IDLE

@@ -11,8 +11,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION delivery DISTRIBUTION KEY order_id;
 \c regress
 
 CREATE TABLE orders(id INT PRIMARY KEY);
-
 CREATE TABLE delivery(id INT PRIMARY KEY, order_id INT, FOREIGN KEY(order_id) REFERENCES orders(id));
+
+SET __spqr__engine_v2 TO true;
 
 INSERT INTO orders(id) VALUES (5);
 INSERT INTO delivery(id,order_id) VALUES (10, 5);
