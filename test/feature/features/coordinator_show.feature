@@ -24,11 +24,11 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         Given I execute SQL on host "router"
         """
-        SELECT pg_sleep(1)
+        SELECT pg_sleep(1) /* __spqr__scatter_query: true */
         """
         And I execute SQL on host "router2"
         """
-        SELECT pg_sleep(1)
+        SELECT pg_sleep(1) /* __spqr__scatter_query: true */
         """
 
     Scenario: empty answer when no routers
