@@ -15,11 +15,6 @@ services:
     x-shard-common:
         &shard-common
         image: ${SHARD_IMAGE:-spqr-shard-image}
-        healthcheck:
-            test: 'pg_isready -p 6432 -U regress -d regress'
-            interval: 10s
-            timeout: 3s
-            retries: 50
         depends_on:
             - shard-image-mdb
 
@@ -32,6 +27,11 @@ services:
             - "7432:6432"
         hostname: spqr_shard_1
         container_name: spqr_shard_1
+        healthcheck: &shard-primeary-healthcheck
+            test: 'pg_isready -p 6432 -U regress -d regress'
+            interval: 10s
+            timeout: 3s
+            retries: 50
     
     shard1-replica:
         <<: *shard-common
@@ -42,6 +42,9 @@ services:
             - "7532:6432"
         hostname: spqr_shard_1_replica
         container_name: spqr_shard_1_replica
+        healthcheck: &shard-replica-healthcheck
+            <<: *shard-primary-healthcheck
+            start_interval: 20s
 
     shard2:
         <<: *shard-common
@@ -51,6 +54,8 @@ services:
             - "7433:6432"
         hostname: spqr_shard_2
         container_name: spqr_shard_2
+        healthcheck:
+          <<: *shard-primary-healthcheck
     
     shard2-replica:
         <<: *shard-common
@@ -61,6 +66,8 @@ services:
             - "7533:6432"
         hostname: spqr_shard_2_replica
         container_name: spqr_shard_2_replica
+        healthcheck:
+          <<: *shard-replica-healthcheck
 
     shard3:
         <<: *shard-common
@@ -70,6 +77,8 @@ services:
             - "7434:6432"
         hostname: spqr_shard_3
         container_name: spqr_shard_3
+        healthcheck:
+          <<: *shard-primary-healthcheck
 
     shard3-replica:
         <<: *shard-common
@@ -80,6 +89,8 @@ services:
             - "7534:6432"
         hostname: spqr_shard_3_replica
         container_name: spqr_shard_3_replica
+        healthcheck:
+          <<: *shard-replica-healthcheck
 
     shard4:
         <<: *shard-common
@@ -89,6 +100,8 @@ services:
             - "7435:6432"
         hostname: spqr_shard_4
         container_name: spqr_shard_4
+        healthcheck:
+          <<: *shard-primary-healthcheck
 
     shard4-replica:
         <<: *shard-common
@@ -99,6 +112,8 @@ services:
             - "7535:6432"
         hostname: spqr_shard_4_replica
         container_name: spqr_shard_4_replica
+        healthcheck:
+          <<: *shard-replica-healthcheck
 
     pooler:
         build:
