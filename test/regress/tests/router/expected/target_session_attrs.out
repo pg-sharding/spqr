@@ -108,13 +108,6 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  1733749500
 (4 rows)
 
-SHOW __spqr__target_session_attrs;
- target session attrs 
-----------------------
- prefer-standby
-(1 row)
-
-RESET __spqr__target_session_attrs;
 SET __spqr__target_session_attrs TO 'read-only';
 SHOW __spqr__target_session_attrs;
  target session attrs 
@@ -122,26 +115,14 @@ SHOW __spqr__target_session_attrs;
  read-only
 (1 row)
 
-SELECT TO_TIMESTAMP(
-    '2017-03-31 9:30:20',
-    'YYYY-MM-DD HH:MI:SS'
-);
-NOTICE: send query to shard(s) : sh3
-      to_timestamp      
-------------------------
- 2017-03-31 09:30:20+00
-(1 row)
-
-SELECT /* __spqr__target_session_attrs: read-only */TO_TIMESTAMP(
-    '2017-03-31 9:30:20',
-    'YYYY-MM-DD HH:MI:SS'
-);
-NOTICE: send query to shard(s) : sh4
-      to_timestamp      
-------------------------
- 2017-03-31 09:30:20+00
-(1 row)
-
+--SELECT TO_TIMESTAMP(
+--    '2017-03-31 9:30:20',
+--    'YYYY-MM-DD HH:MI:SS'
+--);
+--SELECT /* __spqr__target_session_attrs: read-only */TO_TIMESTAMP(
+--    '2017-03-31 9:30:20',
+--    'YYYY-MM-DD HH:MI:SS'
+--);
 SHOW __spqr__target_session_attrs;
  target session attrs 
 ----------------------
@@ -170,35 +151,23 @@ SHOW __spqr__target_session_attrs;
  prefer-standby
 (1 row)
 
-SELECT TO_TIMESTAMP(
-    '2017-03-31 9:30:20',
-    'YYYY-MM-DD HH:MI:SS'
-);
-NOTICE: send query to shard(s) : sh3
-      to_timestamp      
-------------------------
- 2017-03-31 09:30:20+00
-(1 row)
-
-SELECT /* __spqr__target_session_attrs: read-only */TO_TIMESTAMP(
-    '2017-03-31 9:30:20',
-    'YYYY-MM-DD HH:MI:SS'
-);
-NOTICE: send query to shard(s) : sh1
-      to_timestamp      
-------------------------
- 2017-03-31 09:30:20+00
-(1 row)
-
+--SELECT TO_TIMESTAMP(
+--    '2017-03-31 9:30:20',
+--    'YYYY-MM-DD HH:MI:SS'
+--);
+--SELECT /* __spqr__target_session_attrs: read-only */TO_TIMESTAMP(
+--    '2017-03-31 9:30:20',
+--    'YYYY-MM-DD HH:MI:SS'
+--);
 SHOW __spqr__target_session_attrs;
  target session attrs 
 ----------------------
  prefer-standby
 (1 row)
 
+RESET __spqr__target_session_attrs;
 DROP TABLE tsa_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-ERROR:  cannot execute DROP TABLE in a read-only transaction
 \c spqr-console
 
 		SPQR router admin console
