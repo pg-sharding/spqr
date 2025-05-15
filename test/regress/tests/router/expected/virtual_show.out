@@ -68,3 +68,32 @@ SHOW target_session_attrs;
  read-write
 (1 row)
 
+SET __spqr__engine_v2 TO false;
+SHOW __spqr__engine_v2;
+ __spqr__engine_v2 
+-------------------
+ no
+(1 row)
+
+SET __spqr__engine_v2 TO ok;
+SHOW __spqr__engine_v2;
+ __spqr__engine_v2 
+-------------------
+ ok
+(1 row)
+
+BEGIN;
+SET __spqr__engine_v2 TO off;
+SHOW __spqr__engine_v2;
+ __spqr__engine_v2 
+-------------------
+ no
+(1 row)
+
+ROLLBACK;
+SHOW __spqr__engine_v2;
+ __spqr__engine_v2 
+-------------------
+ ok
+(1 row)
+

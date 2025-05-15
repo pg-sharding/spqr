@@ -4,7 +4,7 @@ import "github.com/pg-sharding/spqr/pkg/tsa"
 
 type SessionParamsHolder interface {
 	GetTsa() tsa.TSA
-	SetTsa(string)
+	SetTsa(bool, string)
 
 	// Get current session DRB
 	DefaultRouteBehaviour() string

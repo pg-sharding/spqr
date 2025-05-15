@@ -104,9 +104,11 @@ func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *
 	for _, opt := range st.Options {
 		switch opt {
 		case lyx.TransactionReadOnly:
-			rst.Client().SetTsa(config.TargetSessionAttrsPS)
+			rst.Client().SetTsa(false, config.TargetSessionAttrsPS)
 		case lyx.TransactionReadWrite:
-			rst.Client().SetTsa(config.TargetSessionAttrsRW)
+			rst.Client().SetTsa(false, config.TargetSessionAttrsRW)
+		default:
+			rst.Client().SetTsa(false, config.TargetSessionAttrsRW)
 		}
 	}
 	return rst.Client().ReplyCommandComplete("BEGIN")

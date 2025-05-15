@@ -53,8 +53,6 @@ type RouterClient interface {
 
 	/* Client target-session-attrs policy */
 
-	GetTsa() tsa.TSA
-	SetTsa(string)
 	ResetTsa()
 
 	ReplyParseComplete() error
@@ -90,8 +88,7 @@ type PsqlClient struct {
 	prepStmtsHash map[string]uint64
 
 	/* target-session-attrs */
-	tsa        tsa.TSA
-	defaultTsa tsa.TSA
+	defaultTsa string
 
 	be *pgproto3.Backend
 
@@ -285,11 +282,11 @@ func (cl *PsqlClient) SetScatterQuery(val bool) {
 }
 
 func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, instanceDefaultTsa string) RouterClient {
-	var target_session_attrs tsa.TSA
+	var target_session_attrs string
 	if instanceDefaultTsa != "" {
-		target_session_attrs = tsa.TSA(instanceDefaultTsa)
+		target_session_attrs = instanceDefaultTsa
 	} else {
-		target_session_attrs = tsa.TSA(config.TargetSessionAttrsRW)
+		target_session_attrs = config.TargetSessionAttrsRW
 	}
 
 	// enforce default port behaviour
@@ -307,7 +304,6 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		startupMsg:    &pgproto3.StartupMessage{},
 		prepStmts:     map[string]*prepstatement.PreparedStatementDefinition{},
 		prepStmtsHash: map[string]uint64{},
-		tsa:           target_session_attrs,
 		defaultTsa:    target_session_attrs,
 
 		show_notice_messages: showNoticeMessages,
@@ -653,7 +649,6 @@ func (cl *PsqlClient) Unroute() error {
 	}
 
 	cl.serverP.Store(nil)
-	cl.ResetTsa()
 	return nil
 }
 
@@ -1123,20 +1118,25 @@ func (cl *PsqlClient) Shutdown() error {
 }
 
 func (cl *PsqlClient) GetTsa() tsa.TSA {
-	return cl.tsa
+	if _, ok := cl.localParamSet[session.SPQR_TARGET_SESSION_ATTRS]; !ok {
+		if _, ok := cl.activeParamSet[session.SPQR_TARGET_SESSION_ATTRS]; !ok {
+			return tsa.TSA(cl.defaultTsa)
+		}
+	}
+	return tsa.TSA(cl.resolveVirtualStringParam(session.SPQR_TARGET_SESSION_ATTRS))
 }
 
-func (cl *PsqlClient) SetTsa(s string) {
+func (cl *PsqlClient) SetTsa(local bool, s string) {
 	switch s {
 	case config.TargetSessionAttrsAny, config.TargetSessionAttrsPS, config.TargetSessionAttrsRW, config.TargetSessionAttrsRO:
-		cl.tsa = tsa.TSA(s)
+		cl.recordVirtualParam(local, session.SPQR_TARGET_SESSION_ATTRS, s)
 	default:
 		// XXX: else error out!
 	}
 }
 
 func (cl *PsqlClient) ResetTsa() {
-	cl.tsa = cl.defaultTsa
+	cl.SetTsa(false, cl.defaultTsa)
 }
 
 func (cl *PsqlClient) CancelMsg() *pgproto3.CancelRequest {

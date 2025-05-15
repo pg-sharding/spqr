@@ -1002,15 +1002,15 @@ func (mr *MockRouterClientMockRecorder) SetDistributionKey(local, val any) *gomo
 }
 
 // SetEnhancedMultiShardProcessing mocks base method.
-func (m *MockRouterClient) SetEnhancedMultiShardProcessing(arg0, arg1 bool) {
+func (m *MockRouterClient) SetEnhancedMultiShardProcessing(local, val bool) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetEnhancedMultiShardProcessing", arg0, arg1)
+	m.ctrl.Call(m, "SetEnhancedMultiShardProcessing", local, val)
 }
 
 // SetEnhancedMultiShardProcessing indicates an expected call of SetEnhancedMultiShardProcessing.
-func (mr *MockRouterClientMockRecorder) SetEnhancedMultiShardProcessing(arg0, arg1 any) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) SetEnhancedMultiShardProcessing(local, val any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEnhancedMultiShardProcessing", reflect.TypeOf((*MockRouterClient)(nil).SetEnhancedMultiShardProcessing), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEnhancedMultiShardProcessing", reflect.TypeOf((*MockRouterClient)(nil).SetEnhancedMultiShardProcessing), local, val)
 }
 
 // SetExecuteOn mocks base method.
@@ -1098,15 +1098,15 @@ func (mr *MockRouterClientMockRecorder) SetShowNoticeMsg(val any) *gomock.Call {
 }
 
 // SetTsa mocks base method.
-func (m *MockRouterClient) SetTsa(arg0 string) {
+func (m *MockRouterClient) SetTsa(arg0 bool, arg1 string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetTsa", arg0)
+	m.ctrl.Call(m, "SetTsa", arg0, arg1)
 }
 
 // SetTsa indicates an expected call of SetTsa.
-func (mr *MockRouterClientMockRecorder) SetTsa(arg0 any) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) SetTsa(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTsa", reflect.TypeOf((*MockRouterClient)(nil).SetTsa), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTsa", reflect.TypeOf((*MockRouterClient)(nil).SetTsa), arg0, arg1)
 }
 
 // ShardingKey mocks base method.
