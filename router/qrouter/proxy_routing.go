@@ -1515,21 +1515,37 @@ func (qr *ProxyQrouter) SelectRandomRoute() (plan.Plan, error) {
 }
 
 func CheckRoOnlyQuery(stmt lyx.Node) bool {
-	rw := true
 	switch v := stmt.(type) {
 	/*
-		*  XXX: should we be bit restictive here than upstream?
+		*  XXX: should we be bit restrictive here than upstream?
 		There are some possible cases when values clause is NOT ro-query.
-		for example (as of now unsuppoted, but):
+		for example (as of now unsupported, but):
 
 				example/postgres M # values((with d as (insert into zz select 1 returning *) table d));
 				ERROR:  0A000: WITH clause containing a data-modifying statement must be at the top level
-				LINE 1: values((with d as (insert into zz select 1 returning *) tabl...
+				LINE 1: values((with d as (insert into zz select 1 returning *) table...
 				                     ^
 
 	*/
 	case *lyx.ValueClause:
-		return rw
+		for _, ve := range v.Values {
+			for _, e := range ve {
+				if !CheckRoOnlyQuery(e) {
+					return false
+				}
+			}
+		}
+
+		return true
+
+	case *lyx.AExprBConst, *lyx.AExprIConst, *lyx.EmptyQuery, *lyx.AExprNConst:
+		return true
+	case *lyx.ColumnRef:
+		return true
+	case *lyx.AExprOp:
+		return CheckRoOnlyQuery(v.Left) && CheckRoOnlyQuery(v.Right)
+	case *lyx.CommonTableExpr:
+		return CheckRoOnlyQuery(v.SubQuery)
 	case *lyx.Select:
 		if v.LArg != nil {
 			if !CheckRoOnlyQuery(v.LArg) {
@@ -1583,11 +1599,27 @@ func CheckRoOnlyQuery(stmt lyx.Node) bool {
 			}
 		}
 
+		for _, tle := range v.TargetList {
+			switch v := tle.(type) {
+			case *lyx.Select:
+				if !CheckRoOnlyQuery(tle) {
+					return false
+				}
+			case *lyx.FuncApplication:
+				/* only allow white list of functions here */
+				switch v.Name {
+				case "now", "pg_is_in_recovery":
+					/* these cases ok */
+				default:
+					return false
+				}
+			}
+		}
+
 		return true
 	default:
-		rw = false
+		return false
 	}
-	return rw
 }
 
 // TODO : unit tests
