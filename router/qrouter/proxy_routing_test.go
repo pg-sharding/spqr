@@ -1197,7 +1197,7 @@ func TestJoins(t *testing.T) {
 			err:   nil,
 		},
 
-		// non-sahrding columns
+		// non-sharding columns
 		{
 			query: "SELECT * FROM xjoin a JOIN yjoin b ON a.j = b.j;",
 			exp:   plan.ScatterPlan{},
