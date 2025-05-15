@@ -222,11 +222,11 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 
 	var effectiveTargetSessionAttrs tsa.TSA
 	if targetSessionAttrs == config.TargetSessionAttrsSmartRW {
-		if key.RW {
-			effectiveTargetSessionAttrs = config.TargetSessionAttrsRW
-		} else {
+		if key.RO {
 			/* if query is proved read-only, try to pick up a standby */
 			effectiveTargetSessionAttrs = config.TargetSessionAttrsPS
+		} else {
+			effectiveTargetSessionAttrs = config.TargetSessionAttrsRW
 		}
 	} else {
 		effectiveTargetSessionAttrs = targetSessionAttrs
@@ -235,7 +235,8 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 	spqrlog.Zero.Debug().
 		Uint("client", clid).
 		Str("shard", key.Name).
-		Str("tsa", string(effectiveTargetSessionAttrs)).
+		Bool("RO", key.RO).
+		Str("effective tsa", string(effectiveTargetSessionAttrs)).
 		Msg("acquiring new instance connection for client to shard with target session attrs")
 
 	hostOrder, err := s.BuildHostOrder(key, effectiveTargetSessionAttrs)

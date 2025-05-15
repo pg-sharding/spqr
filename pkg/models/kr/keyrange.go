@@ -16,7 +16,7 @@ type KeyRangeBound []interface{}
 
 type ShardKey struct {
 	Name string
-	RW   bool
+	RO   bool
 }
 
 // qdb KeyRange with its distribution column types

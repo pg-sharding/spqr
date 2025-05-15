@@ -1635,16 +1635,16 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 				firstShard = s
 			}
 
-			rw := true
+			ro := true
 
 			if config.RouterConfig().Qr.AutoRouteRoOnStandby {
-				rw = CheckRoOnlyQuery(stmt)
+				ro = CheckRoOnlyQuery(stmt)
 			}
 
 			return plan.ShardDispatchPlan{
 				ExecTarget: &kr.ShardKey{
 					Name: firstShard,
-					RW:   rw,
+					RO:   ro,
 				},
 			}, nil
 		}
