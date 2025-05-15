@@ -29,10 +29,10 @@ INSERT INTO yjoin (w_id) values(25);
 --SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
 
 SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 ORDER BY id;
--- XXX: this used to work by miracle. We should re-support this
---SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;
+-- XXX: this used to work by miracle. We should re-support this in engine v2
+SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id /* __spqr__engine_v2: false */;
 -- Join condition is distribution key, scatter out
---SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
+SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id /* __spqr__engine_v2: false  */;
 
 DROP TABLE xjoin;
 DROP TABLE yjoin;
