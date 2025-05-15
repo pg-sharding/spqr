@@ -109,6 +109,9 @@ type QRouter struct {
 	DefaultRouteBehaviour        DefaultRouteBehaviour `json:"default_route_behaviour" toml:"default_route_behaviour" yaml:"default_route_behaviour"`
 	EnhancedMultiShardProcessing bool                  `json:"enhanced_multishard_processing" toml:"enhanced_multishard_processing" yaml:"enhanced_multishard_processing"`
 	AlwaysCheckRules             bool                  `json:"always_check_rules" toml:"always_check_rules" yaml:"always_check_rules"`
+
+	/* XXX: for now, supported only for single-shard topology */
+	AutoRouteRoOnStandby bool `json:"auto_route_ro_on_standby" toml:"auto_route_ro_on_standby" yaml:"auto_route_ro_on_standby"`
 }
 
 const (

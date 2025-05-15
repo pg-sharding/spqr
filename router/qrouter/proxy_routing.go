@@ -1514,6 +1514,82 @@ func (qr *ProxyQrouter) SelectRandomRoute() (plan.Plan, error) {
 	}, nil
 }
 
+func CheckRoOnlyQuery(stmt lyx.Node) bool {
+	rw := true
+	switch v := stmt.(type) {
+	/*
+		*  XXX: should we be bit restictive here than upstream?
+		There are some possible cases when values clause is NOT ro-query.
+		for example (as of now unsuppoted, but):
+
+				example/postgres M # values((with d as (insert into zz select 1 returning *) table d));
+				ERROR:  0A000: WITH clause containing a data-modifying statement must be at the top level
+				LINE 1: values((with d as (insert into zz select 1 returning *) tabl...
+				                     ^
+
+	*/
+	case *lyx.ValueClause:
+		return rw
+	case *lyx.Select:
+		if v.LArg != nil {
+			if !CheckRoOnlyQuery(v.LArg) {
+				return false
+			}
+		}
+
+		if v.RArg != nil {
+			if !CheckRoOnlyQuery(v.RArg) {
+				return false
+			}
+		}
+
+		for _, ch := range v.WithClause {
+			if !CheckRoOnlyQuery(ch) {
+				return false
+			}
+		}
+
+		/* XXX:
+
+		there can be sub-selects in from clause. Can they be non-readonly?
+
+		db1=# create table zz( i int);
+		CREATE TABLE
+		db1=# create function f () returns int as $$ insert into zz values(1) returning * $$ language sql;
+		CREATE FUNCTION
+		db1=# select * from zz, (select f());
+		 i | f
+		---+---
+		(0 rows)
+
+		db1=# table zz;
+		 i
+		---
+		 1
+		(1 row)
+		*/
+
+		for _, rte := range v.FromClause {
+			switch ch := rte.(type) {
+			case *lyx.JoinExpr, *lyx.RangeVar:
+				/* hope this is ro */
+			case *lyx.SubSelect:
+				if !CheckRoOnlyQuery(ch) {
+					return false
+				}
+			default:
+				/* We do not really expect here anything else */
+				return false
+			}
+		}
+
+		return true
+	default:
+		rw = false
+	}
+	return rw
+}
+
 // TODO : unit tests
 func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
 
@@ -1523,9 +1599,17 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 			for s := range config.RouterConfig().ShardMapping {
 				firstShard = s
 			}
+
+			rw := true
+
+			if config.RouterConfig().Qr.AutoRouteRoOnStandby {
+				rw = CheckRoOnlyQuery(stmt)
+			}
+
 			return plan.ShardDispatchPlan{
 				ExecTarget: &kr.ShardKey{
 					Name: firstShard,
+					RW:   rw,
 				},
 			}, nil
 		}
