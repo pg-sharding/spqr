@@ -2,6 +2,7 @@ package qrouter
 
 import (
 	"context"
+
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -17,6 +18,7 @@ type QueryRouter interface {
 
 	WorldShardsRoutes() []*kr.ShardKey
 	DataShardsRoutes() []*kr.ShardKey
+	SelectRandomRoute() (plan.Plan, error)
 
 	Initialized() bool
 	Initialize() bool

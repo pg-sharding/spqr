@@ -60,6 +60,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test DISTRIBUTION KEY id;
 (2 rows)
 
 \c regress
+SET __spqr__engine_v2 TO off;
 BEGIN;
 SELECT FROM copy_test WHERE id = 29;
 NOTICE: send query to shard(s) : sh1

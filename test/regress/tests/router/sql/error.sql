@@ -10,7 +10,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION x DISTRIBUTION KEY id;
 CREATE TABLE x(id int);
 
 SELECT * FROM x WHERE id = 1;
-SELECT * FROM x WHERE ixxxd = 1;
+SELECT * FROM x WHERE ixxxd = 1 /* __spqr__engine_v2: true */;
 SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;
 SELECT * FROM x WHERE id = 1;
 

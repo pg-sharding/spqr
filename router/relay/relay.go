@@ -3,7 +3,6 @@ package relay
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sort"
 	"strings"
 	"time"
@@ -218,6 +217,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 		return nil, nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
 	}
 	shardId := shards[0].ID()
+	shardKey := shards[0].SHKey()
 
 	if ok, rd := serv.HasPrepareStatement(hash, shardId); ok {
 		return rd, &pgproto3.ParseComplete{}, nil
@@ -225,18 +225,19 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 
 	// Do not wait for result
 	// simply fire backend msg
-	if err := serv.Send(&pgproto3.Parse{
+	if err := serv.SendShard(&pgproto3.Parse{
 		Name:          d.Name,
 		Query:         d.Query,
 		ParameterOIDs: d.ParameterOIDs,
-	}); err != nil {
+	}, &shardKey); err != nil {
 		return nil, nil, err
 	}
 
-	err := serv.Send(&pgproto3.Describe{
+	err := serv.SendShard(&pgproto3.Describe{
 		ObjectType: 'S',
 		Name:       d.Name,
-	})
+	}, &shardKey)
+
 	if err != nil {
 		return nil, nil, err
 	}
@@ -617,28 +618,16 @@ func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
 	return nil
 }
 
-func (rst *RelayStateImpl) selectRandomRoute() (*kr.ShardKey, error) {
-	routes := rst.Qr.DataShardsRoutes()
-	if len(routes) == 0 {
-		return nil, fmt.Errorf("no routes configured")
-	}
-
-	r := routes[rand.Int()%len(routes)]
-	rst.routingState = plan.ShardDispatchPlan{
-		ExecTarget: r,
-	}
-
-	return r, nil
-}
-
 // TODO : unit tests
-func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, plan.Plan, error) {
+func (rst *RelayStateImpl) Reroute() (plan.Plan, error) {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
-	span := opentracing.StartSpan("reroute")
-	defer span.Finish()
-	span.SetTag("user", rst.Cl.Usr())
-	span.SetTag("db", rst.Cl.DB())
+	if config.RouterConfig().WithJaeger {
+		span := opentracing.StartSpan("reroute")
+		defer span.Finish()
+		span.SetTag("user", rst.Cl.Usr())
+		span.SetTag("db", rst.Cl.DB())
+	}
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -658,7 +647,7 @@ func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, plan.Plan, error) {
 		var err error
 		queryPlan, err = rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
+			return nil, fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 		}
 	}
 
@@ -668,38 +657,17 @@ func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, plan.Plan, error) {
 		/* never try to get connection */
 		switch queryPlan.(type) {
 		case plan.VirtualPlan:
-			return nil, queryPlan, nil
+			return queryPlan, nil
 		default:
-			return nil, nil, fmt.Errorf("query processing for this client is disabled")
+			return nil, fmt.Errorf("query processing for this client is disabled")
 		}
 	}
 
 	switch v := queryPlan.(type) {
-	case plan.VirtualPlan:
-		/* XXX: connect to routes in subplan */
-		return nil, queryPlan, nil
-	case plan.ScatterPlan:
-		spqrlog.Zero.Debug().
-			Uint("client", rst.Client().ID()).
-			Msgf("parsed ScatterPlan")
-		return rst.Qr.DataShardsRoutes(), queryPlan, nil
-	case plan.DDLState:
-		spqrlog.Zero.Debug().
-			Uint("client", rst.Client().ID()).
-			Msgf("parsed DDLState")
-		return rst.Qr.DataShardsRoutes(), queryPlan, nil
-	case plan.ShardDispatchPlan:
-		// TBD: do it better
-		return []*kr.ShardKey{v.ExecTarget}, queryPlan, nil
-	case plan.RandomDispatchPlan:
-		r, err := rst.selectRandomRoute()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return []*kr.ShardKey{r}, queryPlan, nil
+	case plan.VirtualPlan, plan.ScatterPlan, plan.DDLState, plan.ShardDispatchPlan:
+		return queryPlan, nil
 	default:
-		return nil, nil, fmt.Errorf("unexpected query plan %T", v)
+		return nil, fmt.Errorf("unexpected query plan %T", v)
 	}
 }
 
@@ -707,30 +675,35 @@ func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, plan.Plan, error) {
 func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
-	span := opentracing.StartSpan("reroute")
-	defer span.Finish()
-	span.SetTag("user", rst.Cl.Usr())
-	span.SetTag("db", rst.Cl.DB())
+	if config.RouterConfig().WithJaeger {
+		span := opentracing.StartSpan("reroute")
+		defer span.Finish()
+		span.SetTag("user", rst.Cl.Usr())
+		span.SetTag("db", rst.Cl.DB())
+	}
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("rerouting the client connection to random shard, resolving shard")
 
-	r, err := rst.selectRandomRoute()
+	r, err := rst.QueryRouter().SelectRandomRoute()
 	if err != nil {
 		return err
 	}
-	return rst.procRoutes([]*kr.ShardKey{r})
+	rst.routingState = r
+	return rst.procRoutes(r.ExecutionTargets())
 }
 
 // TODO : unit tests
 func (rst *RelayStateImpl) RerouteToTargetRoute(route *kr.ShardKey) error {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
-	span := opentracing.StartSpan("reroute")
-	defer span.Finish()
-	span.SetTag("user", rst.Cl.Usr())
-	span.SetTag("db", rst.Cl.DB())
+	if config.RouterConfig().WithJaeger {
+		span := opentracing.StartSpan("reroute")
+		defer span.Finish()
+		span.SetTag("user", rst.Cl.Usr())
+		span.SetTag("db", rst.Cl.DB())
+	}
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -1421,7 +1394,6 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 	switch stm := rst.qp.Stmt().(type) {
 	case *lyx.Insert:
 		// load columns from information schema
-		// Do not check err here, just keep going
 		if len(stm.Columns) == 0 {
 			switch tableref := stm.TableRef.(type) {
 			case *lyx.RangeVar:
@@ -1431,6 +1403,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 					stm.Columns, schemaErr = cptr.GetColumns(rst.Cl.DB(), tableref.SchemaName, tableref.RelationName)
 					if schemaErr != nil {
 						spqrlog.Zero.Err(schemaErr).Msg("get columns from schema cache")
+						return state, comm, spqrerror.Newf(spqrerror.SPQR_FAILED_MATCH, "failed to get schema cache: %s", err)
 					}
 				}
 			}
@@ -1470,14 +1443,17 @@ func (rst *RelayStateImpl) PrepareRelayStep() (plan.Plan, error) {
 
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateReRoute(rst) {
+		spqrlog.Zero.Debug().Bool("engine v2", rst.Client().EnhancedMultiShardProcessing()).Msg("checking transaction expand possibility")
+
 		if rst.Client().EnhancedMultiShardProcessing() {
 			/* With engine v2 we can expand transaction on more targets */
 			/* TODO: XXX */
 
-			r, q, err := rst.Reroute()
+			q, err := rst.Reroute()
 			if err != nil {
 				return nil, err
 			}
+			r := q.ExecutionTargets()
 
 			/*
 			 * Try to keep single-shard connection as long as possible
@@ -1492,7 +1468,7 @@ func (rst *RelayStateImpl) PrepareRelayStep() (plan.Plan, error) {
 		return nil, nil
 	}
 
-	r, q, err := rst.Reroute()
+	q, err := rst.Reroute()
 
 	switch err {
 	case nil:
@@ -1500,7 +1476,7 @@ func (rst *RelayStateImpl) PrepareRelayStep() (plan.Plan, error) {
 		case plan.VirtualPlan:
 			return q, nil
 		default:
-			return q, rst.procRoutes(r)
+			return q, rst.procRoutes(q.ExecutionTargets())
 		}
 	case ErrSkipQuery:
 		if err := rst.Client().ReplyErr(err); err != nil {

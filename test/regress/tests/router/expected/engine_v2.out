@@ -49,12 +49,18 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY table1 (id) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- should fail
+SET __spqr__engine_v2 TO false;
 BEGIN;
-DELETE FROM table1;
+DELETE FROM table1; 
 ERROR:  client processing error: error processing query 'DELETE FROM table1;': failed to match any datashard., tx status ERROR
 ROLLBACK;
 BEGIN;
-DELETE FROM table1 /* __spqr__engine_v2: true  */; 
+DELETE FROM table1 /* __spqr__engine_v2: off */;
+ERROR:  client processing error: error processing query 'DELETE FROM table1 /* __spqr__engine_v2: off */;': failed to match any datashard., tx status ERROR
+ROLLBACK;
+-- should succeed
+BEGIN;
+DELETE FROM table1 /* __spqr__engine_v2: on  */; 
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT id FROM table1 ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -62,6 +68,17 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ----
 (0 rows)
 
+ROLLBACK;
+-- should fail
+BEGIN;
+DELETE FROM table1; 
+ERROR:  client processing error: error processing query 'DELETE FROM table1;': failed to match any datashard., tx status ERROR
+ROLLBACK;
+-- now success
+SET __spqr__engine_v2 TO true;
+BEGIN;
+DELETE FROM table1; 
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ROLLBACK;
 SELECT id FROM table1 ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

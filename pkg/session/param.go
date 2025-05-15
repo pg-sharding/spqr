@@ -38,7 +38,7 @@ type SessionParamsHolder interface {
 	ScatterQuery() bool
 
 	/* Check if we apply engine v2 routing for query */
-	SetEnhancedMultiShardProcessing(bool, bool)
+	SetEnhancedMultiShardProcessing(local bool, val bool)
 	EnhancedMultiShardProcessing() bool
 
 	SetCommitStrategy(bool, string)
