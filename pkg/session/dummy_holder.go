@@ -24,7 +24,7 @@ func (t *DummySessionParamHandler) GetTsa() tsa.TSA {
 }
 
 // SetTsa implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetTsa(string) {
+func (t *DummySessionParamHandler) SetTsa(bool, string) {
 
 }
 

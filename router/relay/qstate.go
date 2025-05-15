@@ -147,7 +147,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 				case session.SPQR_TARGET_SESSION_ATTRS:
 					// TBD: validate value
 					spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
-					rst.Client().SetTsa(val)
+					rst.Client().SetTsa(true, val)
 				case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
 					spqrlog.Zero.Debug().Str("default route", val).Msg("parse default route behaviour from comment")
 					rst.Client().SetDefaultRouteBehaviour(true, val)
@@ -275,7 +275,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
 				fallthrough
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-				rst.Client().SetTsa(st.Value)
+				rst.Client().SetTsa(false, st.Value)
 			case session.SPQR_ENGINE_V2:
 				switch st.Value {
 				case "true", "on", "ok":

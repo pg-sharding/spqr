@@ -95,7 +95,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SHOW __spqr__target_session_attrs;
  target session attrs 
 ----------------------
- read-write
+ prefer-standby
 (1 row)
 
 select (select /* target-session-attrs: prefer-standby */ extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer) zz;
@@ -111,12 +111,94 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SHOW __spqr__target_session_attrs;
  target session attrs 
 ----------------------
- read-write
+ prefer-standby
 (1 row)
 
 RESET __spqr__target_session_attrs;
+SET __spqr__target_session_attrs TO 'read-only';
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ read-only
+(1 row)
+
+SELECT TO_TIMESTAMP(
+    '2017-03-31 9:30:20',
+    'YYYY-MM-DD HH:MI:SS'
+);
+NOTICE: send query to shard(s) : sh3
+      to_timestamp      
+------------------------
+ 2017-03-31 09:30:20+00
+(1 row)
+
+SELECT /* __spqr__target_session_attrs: read-only */TO_TIMESTAMP(
+    '2017-03-31 9:30:20',
+    'YYYY-MM-DD HH:MI:SS'
+);
+NOTICE: send query to shard(s) : sh4
+      to_timestamp      
+------------------------
+ 2017-03-31 09:30:20+00
+(1 row)
+
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ read-only
+(1 row)
+
+SET __spqr__target_session_attrs TO 'prefer-standby';
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ prefer-standby
+(1 row)
+
+BEGIN;
+SET __spqr__target_session_attrs TO 'read-write';
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ read-write
+(1 row)
+
+ROLLBACK;
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ prefer-standby
+(1 row)
+
+SELECT TO_TIMESTAMP(
+    '2017-03-31 9:30:20',
+    'YYYY-MM-DD HH:MI:SS'
+);
+NOTICE: send query to shard(s) : sh3
+      to_timestamp      
+------------------------
+ 2017-03-31 09:30:20+00
+(1 row)
+
+SELECT /* __spqr__target_session_attrs: read-only */TO_TIMESTAMP(
+    '2017-03-31 9:30:20',
+    'YYYY-MM-DD HH:MI:SS'
+);
+NOTICE: send query to shard(s) : sh1
+      to_timestamp      
+------------------------
+ 2017-03-31 09:30:20+00
+(1 row)
+
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ prefer-standby
+(1 row)
+
 DROP TABLE tsa_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  cannot execute DROP TABLE in a read-only transaction
 \c spqr-console
 
 		SPQR router admin console
