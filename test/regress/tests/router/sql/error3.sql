@@ -9,7 +9,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION x DISTRIBUTION KEY id;
 
 CREATE TABLE x(id int);
 
-SELECT * FROM x;
+SELECT * FROM x;  /* __spqr__default_route_behaviour: BLOCK */;
 
 DROP TABLE x;
 
