@@ -1186,22 +1186,48 @@ func TestJoins(t *testing.T) {
 
 		{
 			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where w_idx = 15 ORDER BY id;",
-			exp:   plan.ScatterPlan{},
-			err:   nil,
+			exp: plan.ScatterPlan{
+				ExecTargets: []*kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
 		},
 
 		// sharding columns, but unparsed
 		{
 			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where i = 15 ORDER BY id;",
-			exp:   plan.ScatterPlan{},
-			err:   nil,
+			exp: plan.ScatterPlan{ExecTargets: []*kr.ShardKey{
+				{
+					Name: "sh1",
+				},
+				{
+					Name: "sh2",
+				},
+			},
+			},
+			err: nil,
 		},
 
 		// non-sharding columns
 		{
 			query: "SELECT * FROM xjoin a JOIN yjoin b ON a.j = b.j;",
-			exp:   plan.ScatterPlan{},
-			err:   nil,
+			exp: plan.ScatterPlan{
+				ExecTargets: []*kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
@@ -1757,8 +1783,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM users;",
 			distribution: distribution.ID,
-			exp:          plan.ScatterPlan{},
-			err:          nil,
+			exp: plan.ScatterPlan{
+				ExecTargets: []*kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
 		},
 		{
 			query:        "SELECT * FROM users WHERE id = '5f57cd31-806f-4789-a6fa-1d959ec4c64a';",
