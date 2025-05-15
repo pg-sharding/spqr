@@ -115,10 +115,11 @@ type QRouter struct {
 }
 
 const (
-	TargetSessionAttrsRW  = "read-write"
-	TargetSessionAttrsRO  = "read-only"
-	TargetSessionAttrsPS  = "prefer-standby"
-	TargetSessionAttrsAny = "any"
+	TargetSessionAttrsRW      = "read-write"
+	TargetSessionAttrsSmartRW = "smart-read-write"
+	TargetSessionAttrsRO      = "read-only"
+	TargetSessionAttrsPS      = "prefer-standby"
+	TargetSessionAttrsAny     = "any"
 )
 
 type Shard struct {

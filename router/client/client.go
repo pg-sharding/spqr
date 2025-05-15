@@ -1128,7 +1128,11 @@ func (cl *PsqlClient) GetTsa() tsa.TSA {
 
 func (cl *PsqlClient) SetTsa(local bool, s string) {
 	switch s {
-	case config.TargetSessionAttrsAny, config.TargetSessionAttrsPS, config.TargetSessionAttrsRW, config.TargetSessionAttrsRO:
+	case config.TargetSessionAttrsAny,
+		config.TargetSessionAttrsPS,
+		config.TargetSessionAttrsRW,
+		config.TargetSessionAttrsSmartRW,
+		config.TargetSessionAttrsRO:
 		cl.recordVirtualParam(local, session.SPQR_TARGET_SESSION_ATTRS, s)
 	default:
 		// XXX: else error out!

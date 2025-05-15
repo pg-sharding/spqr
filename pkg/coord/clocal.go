@@ -309,7 +309,7 @@ func (lc *LocalCoordinator) DataShardsRoutes() []*kr.ShardKey {
 	for name := range lc.DataShardCfgs {
 		ret = append(ret, &kr.ShardKey{
 			Name: name,
-			RW:   true,
+			RO:   false,
 		})
 	}
 
@@ -334,7 +334,7 @@ func (lc *LocalCoordinator) WorldShardsRoutes() []*kr.ShardKey {
 	for name := range lc.WorldShardCfgs {
 		ret = append(ret, &kr.ShardKey{
 			Name: name,
-			RW:   true,
+			RO:   true,
 		})
 	}
 

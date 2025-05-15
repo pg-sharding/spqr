@@ -1514,6 +1514,9 @@ func (qr *ProxyQrouter) SelectRandomRoute() (plan.Plan, error) {
 	}, nil
 }
 
+/*
+* This function assumes that INSTEAD OF rules on selects in PostgreSQL are only RIR
+ */
 func CheckRoOnlyQuery(stmt lyx.Node) bool {
 	switch v := stmt.(type) {
 	/*
@@ -1632,16 +1635,16 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 				firstShard = s
 			}
 
-			rw := true
+			ro := true
 
 			if config.RouterConfig().Qr.AutoRouteRoOnStandby {
-				rw = CheckRoOnlyQuery(stmt)
+				ro = CheckRoOnlyQuery(stmt)
 			}
 
 			return plan.ShardDispatchPlan{
 				ExecTarget: &kr.ShardKey{
 					Name: firstShard,
-					RW:   rw,
+					RO:   ro,
 				},
 			}, nil
 		}
