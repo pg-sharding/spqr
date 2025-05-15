@@ -1514,6 +1514,9 @@ func (qr *ProxyQrouter) SelectRandomRoute() (plan.Plan, error) {
 	}, nil
 }
 
+/*
+* This function assumes that INSTEAD OF rules on selects in PostgreSQL are only RIR
+ */
 func CheckRoOnlyQuery(stmt lyx.Node) bool {
 	switch v := stmt.(type) {
 	/*
