@@ -59,7 +59,10 @@ jobs:
                   false;
                 fi
              else 
-                make POSTGRES_VERSION=${{ matrix.version }} codename=${{ matrix.os-version }} regress; 
+                if !(make POSTGRES_VERSION=${{ matrix.version }} codename=${{ matrix.os-version }} regress; ); then
+                  docker compose -f test/regress/docker-compose.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | grep -i error | awk '{print $1}' | xargs -n 1 docker logs; 
+                  false;
+                fi
              fi
 
   gorm-regress:
