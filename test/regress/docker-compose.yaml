@@ -27,7 +27,7 @@ services:
             - "7432:6432"
         hostname: spqr_shard_1
         container_name: spqr_shard_1
-        healthcheck: &shard-primeary-healthcheck
+        healthcheck: &shard-primary-healthcheck
             test: 'pg_isready -p 6432 -U regress -d regress'
             interval: 10s
             timeout: 3s
