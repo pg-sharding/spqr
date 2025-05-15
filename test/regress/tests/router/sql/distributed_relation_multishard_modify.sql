@@ -35,11 +35,14 @@ DELETE FROM distrr_mm_test  WHERE id IN (2, 35) /* __spqr__engine_v2: true */;
 SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh1 */;
 SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh2 */;
 
--- insert should fail even with engine V2
+-- This insert should succeed regardless of engine V2
 
-INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx');
+INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx') /* __spqr__engine_v2: false*/;
 INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx') /* __spqr__engine_v2: true */;
-INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx');
+
+-- This insert should fail even with engine V2
+
+INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx')/* __spqr__engine_v2: false */;
 INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx') /* __spqr__engine_v2: true */;
 
 DROP TABLE distrr_mm_test;

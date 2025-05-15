@@ -32,13 +32,32 @@ COPY table1 (id) FROM STDIN;
 \.
 
 -- should fail
+
+SET __spqr__engine_v2 TO false;
 BEGIN;
-DELETE FROM table1;
+DELETE FROM table1; 
 ROLLBACK;
 
 BEGIN;
-DELETE FROM table1 /* __spqr__engine_v2: true  */; 
+DELETE FROM table1 /* __spqr__engine_v2: off */;
+ROLLBACK;
+
+-- should succeed
+BEGIN;
+DELETE FROM table1 /* __spqr__engine_v2: on  */; 
 SELECT id FROM table1 ORDER BY id;
+ROLLBACK;
+
+
+-- should fail
+BEGIN;
+DELETE FROM table1; 
+ROLLBACK;
+
+-- now success
+SET __spqr__engine_v2 TO true;
+BEGIN;
+DELETE FROM table1; 
 ROLLBACK;
 
 SELECT id FROM table1 ORDER BY id;

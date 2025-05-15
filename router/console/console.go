@@ -92,7 +92,11 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 			if err != nil {
 				return err
 			}
-			defer conn.Close()
+			defer func() {
+				if err := conn.Close(); err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+				}
+			}()
 			mgr = coord.NewAdapter(conn)
 		}
 	default:
@@ -107,7 +111,11 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 		if err != nil {
 			return err
 		}
-		defer conn.Close()
+		defer func() {
+			if err := conn.Close(); err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+			}
+		}()
 		mgr = coord.NewAdapter(conn)
 	}
 

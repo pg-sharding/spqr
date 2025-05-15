@@ -39,7 +39,8 @@ INSERT INTO table1 (i) VALUES(10);
 
 INSERT INTO table1 WITH s AS (SELECT i + 1 FROM table1 WHERE i = 10) TABLE s;
 
-TABLE table1;
+
+TABLE table1 /* __spqr__engine_v2: true */;
 
 DROP TABLE table1;
 DROP TABLE ref_rel_1;

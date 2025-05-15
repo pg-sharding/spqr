@@ -3,12 +3,16 @@ package qrouter
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -91,7 +95,7 @@ func getparams(rm *rmeta.RoutingMetadataContext) []int16 {
 }
 
 func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext,
-	ds *distributions.Distribution, rfqn rfqn.RelationFQN, relation *distributions.DistributedRelation, tsa string) (plan.Plan, error) {
+	ds *distributions.Distribution, rfqn rfqn.RelationFQN, relation *distributions.DistributedRelation, tsa tsa.TSA) (plan.Plan, error) {
 
 	queryParamsFormatCodes := getparams(rm)
 
@@ -175,6 +179,7 @@ func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, m
 		Msg("analyzing select where clause")
 
 	switch texpr := expr.(type) {
+	/* lyx.ResTarget is unexpected here */
 	case *lyx.AExprIn:
 
 		switch texpr.Expr.(type) {
@@ -309,6 +314,7 @@ func (qr *ProxyQrouter) planByWhereClause(ctx context.Context, expr lyx.Node, me
 	case *lyx.AExprOp:
 
 		switch lft := texpr.Left.(type) {
+		/* lyx.ResTarget is unexpected here */
 		case *lyx.ColumnRef:
 
 			alias, colname := lft.TableAlias, lft.ColName
@@ -792,15 +798,69 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
 		if len(stmt.FromClause) == 0 && (stmt.LArg == nil || stmt.RArg == nil) {
+			virtualRowCols := []pgproto3.FieldDescription{}
+			virtualRowVals := [][]byte{}
+
 			for _, expr := range stmt.TargetList {
-				switch e := expr.(type) {
+				actualExpr := expr
+				colname := "?column?"
+				if rt, ok := expr.(*lyx.ResTarget); ok {
+					actualExpr = rt.Value
+					colname = rt.Name
+				}
+
+				switch e := actualExpr.(type) {
 				/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
 				case *lyx.FuncApplication:
+
 					/* for queries, that need to access data on shard, ignore these "virtual" func.	 */
-					if e.Name == "current_schema" || e.Name == "set_config" || e.Name == "pg_is_in_recovery" || e.Name == "version" {
+					if e.Name == "pg_is_in_recovery" {
+						p = plan.Combine(p, plan.VirtualPlan{})
+						virtualRowCols = append(virtualRowCols,
+							pgproto3.FieldDescription{
+								Name:                 []byte("pg_is_in_recovery"),
+								DataTypeOID:          catalog.ARRAYOID,
+								TypeModifier:         -1,
+								DataTypeSize:         1,
+								TableAttributeNumber: 0,
+								TableOID:             0,
+								Format:               0,
+							})
+
+						if rm.SPH.GetTsa() == config.TargetSessionAttrsRW {
+							virtualRowVals = append(virtualRowVals, []byte{byte('f')})
+						} else {
+							virtualRowVals = append(virtualRowVals, []byte{byte('t')})
+						}
+						continue
+					} else if e.Name == "current_setting" && len(e.Args) == 1 {
+						if val, ok := e.Args[0].(*lyx.AExprSConst); ok && val.Value == "transaction_read_only" {
+							p = plan.Combine(p, plan.VirtualPlan{})
+							virtualRowCols = append(virtualRowCols,
+								pgproto3.FieldDescription{
+									Name:                 []byte("current_setting"),
+									DataTypeOID:          catalog.ARRAYOID,
+									TypeModifier:         -1,
+									DataTypeSize:         1,
+									TableAttributeNumber: 0,
+									TableOID:             0,
+									Format:               0,
+								})
+
+							if rm.SPH.GetTsa() == config.TargetSessionAttrsRW {
+								virtualRowVals = append(virtualRowVals, []byte{byte('f')})
+							} else {
+								virtualRowVals = append(virtualRowVals, []byte{byte('t')})
+							}
+							continue
+						}
+					}
+
+					if e.Name == "current_schema" || e.Name == "now" || e.Name == "set_config" || e.Name == "version" || e.Name == "current_setting" {
 						p = plan.Combine(p, plan.RandomDispatchPlan{})
 						continue
 					}
+					deduced := false
 					for _, innerExp := range e.Args {
 						switch iE := innerExp.(type) {
 						case *lyx.Select:
@@ -808,11 +868,47 @@ func (qr *ProxyQrouter) planQueryV1(
 								return nil, err
 							} else {
 								p = plan.Combine(p, tmp)
+								deduced = true
 							}
 						}
 					}
+					if !deduced {
+						/* very questionable. */
+						p = plan.Combine(p, plan.RandomDispatchPlan{})
+					}
 				/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
-				case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst:
+				case *lyx.AExprSConst:
+
+					p = plan.Combine(p, plan.VirtualPlan{})
+					virtualRowCols = append(virtualRowCols,
+						pgproto3.FieldDescription{
+							Name:                 []byte(colname),
+							DataTypeOID:          catalog.TEXTOID,
+							TypeModifier:         -1,
+							DataTypeSize:         -1,
+							TableAttributeNumber: 0,
+							TableOID:             0,
+							Format:               0,
+						})
+
+					virtualRowVals = append(virtualRowVals, []byte(e.Value))
+
+				case *lyx.AExprIConst:
+
+					p = plan.Combine(p, plan.VirtualPlan{})
+					virtualRowCols = append(virtualRowCols,
+						pgproto3.FieldDescription{
+							Name:                 []byte(colname),
+							DataTypeOID:          catalog.INT4OID,
+							TypeModifier:         -1,
+							DataTypeSize:         4,
+							TableAttributeNumber: 0,
+							TableOID:             0,
+							Format:               0,
+						})
+
+					virtualRowVals = append(virtualRowVals, []byte(fmt.Sprintf("%d", e.Value)))
+				case *lyx.AExprNConst, *lyx.AExprBConst:
 					p = plan.Combine(p, plan.RandomDispatchPlan{})
 
 				/* Special case for SELECT current_schema */
@@ -828,6 +924,14 @@ func (qr *ProxyQrouter) planQueryV1(
 						p = plan.Combine(p, tmp)
 					}
 				}
+			}
+
+			switch q := p.(type) {
+			case plan.VirtualPlan:
+				q.VirtualRowCols = virtualRowCols
+				q.VirtualRowVals = virtualRowVals
+
+				return q, nil
 			}
 
 		}
@@ -1067,7 +1171,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 			_, err = qr.mgr.GetRelationDistribution(ctx, relname)
 			return err
 		default:
-			return fmt.Errorf("Partition of is not a range var")
+			return fmt.Errorf("partition of is not a range var")
 		}
 	}
 
@@ -1143,7 +1247,7 @@ func (qr *ProxyQrouter) resolveValue(meta *rmeta.RoutingMetadataContext, rfqn rf
 	return []any{singleVal}, res
 }
 
-func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext, tsa string) (plan.Plan, error) {
+func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext, tsa tsa.TSA) (plan.Plan, error) {
 
 	var route plan.Plan
 	/*
@@ -1177,7 +1281,7 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 }
 
 // Returns state, is read-only flag and err if any
-func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, bool, error) {
+func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, tsa tsa.TSA) (plan.Plan, bool, error) {
 	if stmt == nil {
 		// empty statement
 		return plan.RandomDispatchPlan{}, false, nil
@@ -1198,7 +1302,9 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	case *routehint.ScatterRouteHint:
 		// still, need to check config settings (later)
 		/* XXX: we return true for RO here to fool DRB */
-		return plan.ScatterPlan{}, true, nil
+		return plan.ScatterPlan{
+			ExecTargets: qr.DataShardsRoutes(),
+		}, true, nil
 	}
 
 	/*
@@ -1206,8 +1312,6 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	 */
 
 	/* TODO: delay this until step 2. */
-
-	tsa := config.TargetSessionAttrsAny
 
 	var route plan.Plan
 	route = nil
@@ -1390,10 +1494,24 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 
 	// set up this variable if not yet
 	if route == nil {
-		route = plan.ScatterPlan{}
+		route = plan.ScatterPlan{
+			ExecTargets: qr.DataShardsRoutes(),
+		}
 	}
 
 	return route, ro, nil
+}
+
+func (qr *ProxyQrouter) SelectRandomRoute() (plan.Plan, error) {
+	routes := qr.DataShardsRoutes()
+	if len(routes) == 0 {
+		return nil, fmt.Errorf("no routes configured")
+	}
+
+	r := routes[rand.Int()%len(routes)]
+	return plan.ShardDispatchPlan{
+		ExecTarget: r,
+	}, nil
 }
 
 // TODO : unit tests
@@ -1414,7 +1532,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	}
 
 	meta := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
-	route, ro, err := qr.routeWithRules(ctx, meta, stmt)
+	route, ro, err := qr.RouteWithRules(ctx, meta, stmt, sph.GetTsa())
 	if err != nil {
 		return nil, err
 	}
@@ -1422,17 +1540,24 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	switch v := route.(type) {
 	case plan.ShardDispatchPlan:
 		return v, nil
-	case plan.RandomDispatchPlan:
+	case plan.VirtualPlan:
 		return v, nil
+	case plan.RandomDispatchPlan:
+		return qr.SelectRandomRoute()
 	case plan.ReferenceRelationState:
 		/* check for unroutable here - TODO */
-		return plan.RandomDispatchPlan{}, nil
+
+		return qr.SelectRandomRoute()
 	case plan.DDLState:
+		v.ExecTargets = qr.DataShardsRoutes()
 		return v, nil
 	case plan.CopyState:
 		/* temporary */
-		return plan.ScatterPlan{}, nil
+		return plan.ScatterPlan{
+			ExecTargets: qr.DataShardsRoutes(),
+		}, nil
 	case plan.ScatterPlan:
+
 		if sph.EnhancedMultiShardProcessing() {
 			if v.SubPlan == nil {
 				v.SubPlan, err = planner.PlanDistributedQuery(ctx, meta, stmt)
@@ -1440,8 +1565,12 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 					return nil, err
 				}
 			}
+			if v.ExecTargets == nil {
+				v.ExecTargets = qr.DataShardsRoutes()
+			}
 			return v, nil
 		}
+
 		/*
 		* Here we have a chance for advanced multi-shard query processing.
 		* Try to build distributed plan, else scatter-out.

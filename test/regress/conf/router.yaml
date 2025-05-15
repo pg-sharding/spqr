@@ -10,6 +10,8 @@ world_shard_fallback: true
 show_notice_messages: true
 enable_role_system: true
 roles_file: /spqr/test/regress/conf/roles.yaml
+query_routing:
+    enhanced_multishard_processing: true
 frontend_tls:
   key_file: /etc/spqr/ssl/server.key
   cert_file: /etc/spqr/ssl/server.crt
@@ -58,6 +60,7 @@ shards:
 backend_rules:
   - db: regress
     usr: regress
+    connection_limit: 50
     pool_discard: true
     pool_rollback: true
     auth_rules:

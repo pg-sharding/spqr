@@ -36,6 +36,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY i HASH FUNCTION MURMU
 
 -- TEST
 \c regress
+SET __spqr__engine_v2 TO true;
 CREATE TABLE xx (i bigint, j bigint CHECK(j != 11));
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
@@ -158,6 +159,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ---+---
 (0 rows)
 
+SET __spqr__engine_v2 TO false;
 DROP TABLE xx;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console

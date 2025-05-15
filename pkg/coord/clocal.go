@@ -423,7 +423,7 @@ func (lc *LocalCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew st
 func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *topology.DataShard) error {
 	spqrlog.Zero.Info().
 		Str("node", ds.ID).
-		Msg("adding node")
+		Msg("adding datashard node in local coordinator")
 
 	lc.DataShardCfgs[ds.ID] = ds.Cfg
 
@@ -631,7 +631,11 @@ func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64,
 	if err != nil {
 		return -1, err
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+		}
+	}()
 	mgr := NewAdapter(conn)
 	return mgr.NextVal(ctx, seqName)
 }

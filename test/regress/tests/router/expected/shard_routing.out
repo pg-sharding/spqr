@@ -134,7 +134,7 @@ NOTICE: send query to shard(s) : sh2
 INSERT INTO xxtt1 VALUES(333, 333, 333);
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xxtt1 VALUES(333, 333);
-ERROR:  client processing error: error processing query 'INSERT INTO xxtt1 VALUES(333, 333);': failed to match any datashard., tx status IDLE
+ERROR:  client processing error: error processing query 'INSERT INTO xxtt1 VALUES(333, 333);': too complex query to route, tx status IDLE
 SELECT * FROM xxtt1 WHERE w_id >= 1;
 NOTICE: send query to shard(s) : sh1
   i  |   j    | w_id 

@@ -16,6 +16,7 @@ apk
 appdefaults
 APREQ
 aqo
+ARRAYOID
 argexpr
 asd
 astmt
@@ -65,9 +66,9 @@ coordctl
 copymap
 cpg
 cptr
+cqdb
 createsequence
 crt
-cqdb
 csm
 Cta
 ctl
@@ -342,6 +343,7 @@ Percona
 PGAASINTERNALNETS
 pgbench
 pgbin
+pgcat
 pgconn
 pgcopy
 pgcs
@@ -439,6 +441,7 @@ routerparser
 routerproto
 routingstate
 rowmap
+rport
 rqdn
 RQF
 rqfn
@@ -526,7 +529,6 @@ SVGID
 swo
 swp
 sysbench
-rport
 tableref
 targ
 taskmgr
@@ -571,6 +573,7 @@ txtstatus
 uax
 uber
 uinteger
+uintegerlist
 Uints
 umi
 unconfigured
@@ -616,8 +619,10 @@ xxerr
 xxm
 xxmixed
 xxmixeduuid
+xxmultish
 xxtest
 xxtt
+xyx
 yaccgen
 yandex
 yjoin

@@ -19,7 +19,7 @@ INSERT INTO xxmixed (id) VALUES(22);
 INSERT INTO xxmixed (id) VALUES(29);
 INSERT INTO xxmixed (id) VALUES(30);
 
-SELECT * FROM xxmixed ORDER BY id;
+SELECT * FROM xxmixed ORDER BY id /* __spqr__engine_v2: true */;
 SELECT * FROM xxmixed WHERE id <= 10 ORDER BY id;
 SELECT * FROM xxmixed WHERE id <= 20 ORDER BY id;
 SELECT * FROM xxmixed WHERE id <= 30 ORDER BY id;

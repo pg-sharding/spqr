@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg"
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -93,15 +94,6 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 	return nil
 }
 
-// TEXTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L81
-const TEXTOID = 25
-
-// DOUBLEOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L223
-const DOUBLEOID = 701
-
-// INTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L55
-const INTOID = 20
-
 // TODO : unit tests
 
 // TextOidFD generates a pgproto3.FieldDescription object with the provided statement text.
@@ -116,7 +108,7 @@ func TextOidFD(stmt string) pgproto3.FieldDescription {
 		Name:                 []byte(stmt),
 		TableOID:             0,
 		TableAttributeNumber: 0,
-		DataTypeOID:          TEXTOID,
+		DataTypeOID:          catalog.TEXTOID,
 		DataTypeSize:         -1,
 		TypeModifier:         -1,
 		Format:               0,
@@ -135,7 +127,7 @@ func FloatOidFD(stmt string) pgproto3.FieldDescription {
 		Name:                 []byte(stmt),
 		TableOID:             0,
 		TableAttributeNumber: 0,
-		DataTypeOID:          DOUBLEOID,
+		DataTypeOID:          catalog.DOUBLEOID,
 		DataTypeSize:         8,
 		TypeModifier:         -1,
 		Format:               0,
@@ -154,7 +146,7 @@ func IntOidFD(stmt string) pgproto3.FieldDescription {
 		Name:                 []byte(stmt),
 		TableOID:             0,
 		TableAttributeNumber: 0,
-		DataTypeOID:          INTOID,
+		DataTypeOID:          catalog.INT8OID,
 		DataTypeSize:         8,
 		TypeModifier:         -1,
 		Format:               0,

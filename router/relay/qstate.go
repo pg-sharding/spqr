@@ -97,6 +97,8 @@ func ProcQueryAdvancedTx(rst RelayStateMgr, query string, binderQ func() error, 
 
 	/* outer function will complete relay here */
 
+	spqrlog.Zero.Debug().Err(err).Uint("client-id", rst.Client().ID()).Msg("completing client relay with error")
+
 	switch err {
 	case io.ErrUnexpectedEOF:
 		fallthrough
@@ -166,8 +168,11 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 					}
 					rst.Client().SetExecuteOn(true, val)
 				case session.SPQR_ENGINE_V2:
-					if val == "true" {
+					switch val {
+					case "true", "ok", "on":
 						rst.Client().SetEnhancedMultiShardProcessing(true, true)
+					case "false", "no", "off":
+						rst.Client().SetEnhancedMultiShardProcessing(true, false)
 					}
 				case session.SPQR_AUTO_DISTRIBUTION:
 					if valDistrib, ok := mp[session.SPQR_DISTRIBUTION_KEY]; ok {
@@ -265,6 +270,19 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 				}
 			case session.SPQR_EXECUTE_ON:
 				rst.Client().SetExecuteOn(false, st.Value)
+			case session.SPQR_TARGET_SESSION_ATTRS:
+				fallthrough
+			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+				fallthrough
+			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
+				rst.Client().SetTsa(st.Value)
+			case session.SPQR_ENGINE_V2:
+				switch st.Value {
+				case "true", "on", "ok":
+					rst.Client().SetEnhancedMultiShardProcessing(false, true)
+				case "false", "off", "no":
+					rst.Client().SetEnhancedMultiShardProcessing(false, false)
+				}
 			default:
 				rst.Client().SetParam(st.Name, st.Value)
 			}
@@ -318,21 +336,38 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 				})
 		case session.SPQR_EXECUTE_ON:
 			ReplyVirtualParamState(rst.Client(), "execute on", []byte(rst.Client().ExecuteOn()))
+		case session.SPQR_TARGET_SESSION_ATTRS:
+			fallthrough
+		case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+			fallthrough
+		case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
+			ReplyVirtualParamState(rst.Client(), "target session attrs", []byte(rst.Client().GetTsa()))
 		default:
 
-			/* If router does dot have any info about param, fire query to random shard. */
-			if _, ok := rst.Client().Params()[param]; !ok {
-				return queryProc()
-			}
+			if strings.HasPrefix(st.Name, "__spqr__") {
+				ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
+			} else {
+				/* If router does dot have any info about param, fire query to random shard. */
+				if _, ok := rst.Client().Params()[param]; !ok {
+					return queryProc()
+				}
 
-			ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
+				ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
+			}
 		}
 		return rst.Client().ReplyCommandComplete("SHOW")
 	case parser.ParseStateResetStmt:
-		rst.Client().ResetParam(st.Name)
+		switch st.Name {
+		case session.SPQR_TARGET_SESSION_ATTRS:
+			fallthrough
+		case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+			rst.Client().ResetTsa()
+		default:
+			rst.Client().ResetParam(st.Name)
 
-		if err := rst.QueryExecutor().ExecReset(rst, query, st.Name); err != nil {
-			return err
+			if err := rst.QueryExecutor().ExecReset(rst, query, st.Name); err != nil {
+				return err
+			}
 		}
 
 		return rst.Client().ReplyCommandComplete("RESET")
@@ -360,7 +395,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 		if AdvancedPoolModeNeeded(rst) {
 			spqrlog.Zero.Debug().Msg("sql level prep statement pooling support is on")
 
-			/* no OIDS for SQL level prep stmt */
+			/* no oid for SQL level prep stmt */
 			rst.Client().StorePreparedStatement(&prepstatement.PreparedStatementDefinition{
 				Name:  st.Name,
 				Query: st.Query,

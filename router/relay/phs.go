@@ -16,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
+	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/twopc"
@@ -32,17 +33,14 @@ type QueryStateExecutorImpl struct {
 	savedBegin *pgproto3.Query
 }
 
-var unexpectedDeployTxErr = fmt.Errorf("unexpected executor tx state in transaction deploy")
-var unroutedClientDeployError = fmt.Errorf("failed to deploy tx status for unrouted client")
-
 func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *pgproto3.Query, expTx txstatus.TXStatus) error {
 	if serv == nil {
-		return unroutedClientDeployError
+		return fmt.Errorf("failed to deploy tx status for unrouted client")
 	}
 
 	if s.txStatus == txstatus.TXIDLE {
 		/* unexpected? */
-		return unexpectedDeployTxErr
+		return fmt.Errorf("unexpected executor tx state in transaction deploy")
 	}
 
 	for _, sh := range serv.Datashards() {
@@ -487,6 +485,53 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
+
+	switch q := qd.P.(type) {
+	case plan.VirtualPlan:
+		/* execute logic without shard dispatch */
+
+		/* XXX: fetch all tuples from sub-plan */
+
+		if q.SubPlan == nil {
+
+			/* only send row description for simple proto case */
+			switch qd.Msg.(type) {
+			case *pgproto3.Query:
+
+				if err := s.Client().Send(&pgproto3.RowDescription{
+					Fields: q.VirtualRowCols,
+				}); err != nil {
+					return nil, err
+				}
+
+				if err := s.Client().Send(&pgproto3.DataRow{
+					Values: q.VirtualRowVals,
+				}); err != nil {
+					return nil, err
+				}
+				if err := s.Client().Send(&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				}); err != nil {
+					return nil, err
+				}
+			case *pgproto3.Sync:
+
+				if err := s.Client().Send(&pgproto3.DataRow{
+					Values: q.VirtualRowVals,
+				}); err != nil {
+					return nil, err
+				}
+				if err := s.Client().Send(&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				}); err != nil {
+					return nil, err
+				}
+			}
+
+			return nil, nil
+		}
+	}
+
 	serv := s.Client().Server()
 
 	if serv == nil {

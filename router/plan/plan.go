@@ -1,8 +1,11 @@
 package plan
 
 import (
+	"github.com/jackc/pgx/v5/pgproto3"
+
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
 type Plan interface {
@@ -23,17 +26,18 @@ func (sp ScatterPlan) ExecutionTargets() []*kr.ShardKey {
 
 type ModifyTable struct {
 	Plan
+	ExecTargets []*kr.ShardKey
 }
 
 func (mt ModifyTable) ExecutionTargets() []*kr.ShardKey {
-	return nil
+	return mt.ExecTargets
 }
 
 type ShardDispatchPlan struct {
 	Plan
 
 	ExecTarget         *kr.ShardKey
-	TargetSessionAttrs string
+	TargetSessionAttrs tsa.TSA
 }
 
 func (sms ShardDispatchPlan) ExecutionTargets() []*kr.ShardKey {
@@ -42,22 +46,27 @@ func (sms ShardDispatchPlan) ExecutionTargets() []*kr.ShardKey {
 
 type DDLState struct {
 	Plan
+	ExecTargets []*kr.ShardKey
 }
 
 func (ddl DDLState) ExecutionTargets() []*kr.ShardKey {
-	return nil
+	return ddl.ExecTargets
 }
 
 type RandomDispatchPlan struct {
 	Plan
+	ExecTargets []*kr.ShardKey
 }
 
 func (rdp RandomDispatchPlan) ExecutionTargets() []*kr.ShardKey {
-	return nil
+	return rdp.ExecTargets
 }
 
 type VirtualPlan struct {
 	Plan
+	VirtualRowCols []pgproto3.FieldDescription
+	VirtualRowVals [][]byte
+	SubPlan        Plan
 }
 
 func (vp VirtualPlan) ExecutionTargets() []*kr.ShardKey {
@@ -66,18 +75,20 @@ func (vp VirtualPlan) ExecutionTargets() []*kr.ShardKey {
 
 type CopyState struct {
 	Plan
+	ExecTargets []*kr.ShardKey
 }
 
 func (cs CopyState) ExecutionTargets() []*kr.ShardKey {
-	return nil
+	return cs.ExecTargets
 }
 
 type ReferenceRelationState struct {
 	Plan
+	ExecTargets []*kr.ShardKey
 }
 
 func (rrs ReferenceRelationState) ExecutionTargets() []*kr.ShardKey {
-	return nil
+	return rrs.ExecTargets
 }
 
 const NOSHARD = ""
@@ -125,7 +136,15 @@ func Combine(p1, p2 Plan) Plan {
 		Interface("plan2", p2).
 		Msg("combine two plans")
 
+	switch p2.(type) {
+	// let p2 be always non-virtual, except for p1 & p2 both virtual
+	case VirtualPlan:
+		p1, p2 = p2, p1
+	}
+
 	switch shq1 := p1.(type) {
+	case VirtualPlan:
+		return p2
 	case ScatterPlan:
 		return ScatterPlan{
 			ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),

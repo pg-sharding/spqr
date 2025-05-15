@@ -29,6 +29,7 @@ func randomHex(n int) (string, error) {
 	bytes                  []byte
 	integer                int
 	uinteger               uint
+	uintegerlist           []uint
 	bool                   bool
 	empty                  struct{}
 
@@ -62,6 +63,7 @@ func randomHex(n int) (string, error) {
 	redistribute           *RedistributeKeyRange
 
 	invalidate_cache       *InvalidateCache
+	sync_reference_tables  *SyncReferenceTables
 
 	shutdown               *Shutdown
 	listen                 *Listen
@@ -83,10 +85,12 @@ func randomHex(n int) (string, error) {
 	shruleEntry            ShardingRuleEntry
 
 	distrKeyEntry          DistributionKeyEntry
+	aiEntry                AutoIncrementEntry
 
 	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
 	distribution_selector  *DistributionSelector
+	aiEntrieslist          []AutoIncrementEntry
 
     colref                 ColumnRef
     where                  WhereClauseNode
@@ -152,12 +156,13 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY
-%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA
+%token <str> SHARDING COLUMN TABLE TABLES HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
 %token <str> BATCH SIZE
 %token <str> INVALIDATE CACHE
+%token <str> SYNC
 %token <str> RETRY
 
 %token <str> IDENTITY MURMUR CITY 
@@ -195,12 +200,14 @@ func randomHex(n int) (string, error) {
 
 %type<entrieslist> sharding_rule_argument_list
 %type<dEntrieslist> distribution_key_argument_list
+%type<aiEntrieslist> opt_auto_increment
+%type<aiEntrieslist> auto_inc_argument_list
+%type<uinteger> opt_auto_increment_start_clause
 %type<shruleEntry> sharding_rule_entry
-%type<strlist> opt_auto_increment
-%type<strlist> auto_inc_column_list
 %type<str> opt_schema_name
 
 %type<distrKeyEntry> distribution_key_entry
+%type<aiEntry> auto_increment_entry
 
 %type<str> sharding_rule_table_clause
 %type<str> sharding_rule_column_clause
@@ -212,6 +219,7 @@ func randomHex(n int) (string, error) {
 %type<alter_distribution> distribution_alter_stmt
 
 %type<invalidate_cache> invalidate_cache_stmt
+%type<sync_reference_tables> sync_reference_tables_stmt
 
 %type<relations> relation_attach_stmt
 %type<relations> distributed_relation_list_def
@@ -333,6 +341,10 @@ command:
 		setParseTree(yylex, $1)
 	} 
 	| retry_move_task_group
+	{
+		setParseTree(yylex, $1)
+	}
+	| sync_reference_tables_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -578,27 +590,53 @@ distributed_relation_def:
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
-			SchemaName: $7,
 			DistributionKey: $5,
-			AutoIncrementColumns: $6,
+			AutoIncrementEntries: $6,
+			SchemaName: $7,
 		}
 	} | 
 	RELATION any_id opt_auto_increment opt_schema_name
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
-			SchemaName: $4,
 			ReplicatedRelation: true,
-			AutoIncrementColumns: $3,
+			AutoIncrementEntries: $3,
+			SchemaName: $4,
 		}
 	}
 
-
 opt_auto_increment:
-	AUTO INCREMENT auto_inc_column_list {
-		$$ = $3
+    AUTO INCREMENT auto_inc_argument_list {
+        $$ = $3
+    } | /* EMPTY */ {
+        $$ = nil
+    }
+
+auto_inc_argument_list: 
+    auto_inc_argument_list TCOMMA auto_increment_entry
+    {
+      $$ = append($1, $3)
+    } | auto_increment_entry {
+      $$ = []AutoIncrementEntry {
+		  $1,
+	  }
+    } 
+
+auto_increment_entry:
+	any_id opt_auto_increment_start_clause
+	{
+		$$ = AutoIncrementEntry {
+			Column: $1,
+			Start: $2,
+		}
+	}
+
+opt_auto_increment_start_clause:
+	START ICONST
+	{
+		$$ = $2
 	} | /* EMPTY */ {
-		$$ = nil
+		$$ = 0
 	}
 
 opt_schema_name:
@@ -607,14 +645,6 @@ opt_schema_name:
 	} | /* EMPTY */ {
 		$$ = ""
 	}
-
-auto_inc_column_list:
-	any_id {
-		$$ = []string{$1}
-	} | auto_inc_column_list TCOMMA any_id {
-		$$ = append($1, $3)
-	}
-
 
 distributed_relation_list_def:
 	distributed_relation_def {
@@ -659,7 +689,7 @@ create_stmt:
 		$$ = &Create{
 			Element: &ReferenceRelationDefinition{
 				TableName: $4,
-				AutoIncrementColumns: $5,
+                AutoIncrementEntries: $5,
 			},
 		}
 	}
@@ -983,6 +1013,12 @@ invalidate_cache_stmt:
 	INVALIDATE CACHE
 	{
 		$$ = &InvalidateCache{}
+	}
+
+sync_reference_tables_stmt:
+	SYNC REFERENCE TABLES any_id
+	{
+		$$ = &SyncReferenceTables{ShardID: $4}
 	}
 
 // coordinator

@@ -62,6 +62,59 @@ NOTICE: send query to shard(s) : sh1
 -- SELECT pg_is_in_recovery() /* target-session-attrs: read-only */ , id FROM tsa_test WHERE id = 22;
 -- NOTICE: send query to shard(s) : sh1
 -- ERROR:  failed to find replica
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ read-write
+(1 row)
+
+SET __spqr__target_session_attrs TO 'prefer-standby';
+SELECT pg_is_in_recovery();
+ pg_is_in_recovery 
+-------------------
+ t
+(1 row)
+
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ prefer-standby
+(1 row)
+
+SET __spqr__engine_v2 TO true;
+select (select extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer) zz;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+     zz     
+------------
+ 1733749500
+ 1733749500
+ 1733749500
+ 1733749500
+(4 rows)
+
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ read-write
+(1 row)
+
+select (select /* target-session-attrs: prefer-standby */ extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer) zz;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+     zz     
+------------
+ 1733749500
+ 1733749500
+ 1733749500
+ 1733749500
+(4 rows)
+
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ read-write
+(1 row)
+
+RESET __spqr__target_session_attrs;
 DROP TABLE tsa_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console

@@ -107,7 +107,7 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	comment := ""
 	for i := range len(query) - 4 {
 
-		if !(query[i] == '/' && query[i+1] == '*') {
+		if query[i] != '/' || query[i+1] != '*' {
 			continue
 		}
 		j := i + 2
@@ -176,13 +176,9 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 
 		return qp.state, comment, nil
 	case *lyx.VariableShowStmt:
-		if strings.HasPrefix(q.Name, "__spqr__") {
-			return ParseStateShowStmt{
-				Name: q.Name,
-			}, comment, nil
-		}
-
-		return ParseStateShowStmt{}, comment, nil
+		return ParseStateShowStmt{
+			Name: q.Name,
+		}, comment, nil
 	case *lyx.VariableSetStmt:
 		spqrlog.Zero.Debug().
 			Str("name", q.Name).

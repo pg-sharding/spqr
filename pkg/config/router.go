@@ -23,6 +23,7 @@ type DefaultRouteBehaviour string
 const (
 	PoolModeSession     = PoolMode("SESSION")
 	PoolModeTransaction = PoolMode("TRANSACTION")
+	PoolModeVirtual     = PoolMode("VIRTUAL")
 
 	DataShard  = ShardType("DATA")
 	WorldShard = ShardType("WORLD")
@@ -205,7 +206,7 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			log.Fatalf("failed to close config file: %v", err)
+			log.Printf("failed to close config file: %v", err)
 		}
 	}(file)
 

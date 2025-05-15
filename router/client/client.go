@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/rand"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -56,6 +55,7 @@ type RouterClient interface {
 
 	GetTsa() tsa.TSA
 	SetTsa(string)
+	ResetTsa()
 
 	ReplyParseComplete() error
 	ReplyBindComplete() error
@@ -93,9 +93,7 @@ type PsqlClient struct {
 	tsa        tsa.TSA
 	defaultTsa tsa.TSA
 
-	/* protects client.Send() (backend) */
-	muBe sync.Mutex
-	be   *pgproto3.Backend
+	be *pgproto3.Backend
 
 	startupMsg *pgproto3.StartupMessage
 
@@ -681,6 +679,8 @@ func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 	return nil
 }
 
+const pingRoute = "spqr-ping"
+
 // startup + ssl/cancel
 func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 	for {
@@ -793,6 +793,10 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			Uint32("cancel_key", cl.cancel_key).
 			Uint32("cancel_pid", cl.cancel_pid)
 
+		if cl.DB() == pingRoute && cl.Usr() == pingRoute {
+			return nil
+		}
+
 		if tlsconfig != nil && protoVer != conn.SSLREQ {
 			if err := cl.Send(
 				&pgproto3.ErrorResponse{
@@ -841,18 +845,20 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		Str("db", cl.DB()).
 		Msg("client connection for rule accepted")
 
-	ps, err := rt.Params()
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for key, msg := range ps {
-		if err := cl.Send(&pgproto3.ParameterStatus{
-			Name:  key,
-			Value: msg,
-		}); err != nil {
+	/* XXX: generate defaults for virtual pool too */
+	if cl.Rule().PoolMode != config.PoolModeVirtual {
+		ps, err := rt.Params()
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
+		}
+		for key, msg := range ps {
+			if err := cl.Send(&pgproto3.ParameterStatus{
+				Name:  key,
+				Value: msg,
+			}); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -947,9 +953,8 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	spqrlog.Zero.Debug().
 		Uint("client", cl.ID()).
 		Type("msg-type", msg).
-		Msg("sending msg to client")
-	cl.muBe.Lock()
-	defer cl.muBe.Unlock()
+		Msgf("sending msg to client")
+
 	cl.be.Send(msg)
 
 	switch msg.(type) {
@@ -1029,6 +1034,7 @@ func (cl *PsqlClient) DefaultReply() error {
 }
 
 func (cl *PsqlClient) Close() error {
+	spqrlog.Zero.Debug().Uint("client-id", cl.ID()).Msg("closing client")
 	return cl.conn.Close()
 }
 
@@ -1125,7 +1131,7 @@ func (cl *PsqlClient) SetTsa(s string) {
 	case config.TargetSessionAttrsAny, config.TargetSessionAttrsPS, config.TargetSessionAttrsRW, config.TargetSessionAttrsRO:
 		cl.tsa = tsa.TSA(s)
 	default:
-
+		// XXX: else error out!
 	}
 }
 

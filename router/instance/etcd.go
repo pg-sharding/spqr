@@ -21,7 +21,11 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 	if err != nil {
 		return err
 	}
-	defer etcdConn.Client().Close()
+	defer func() {
+		if err := etcdConn.Client().Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close etcd client")
+		}
+	}()
 
 	/* Initialize distributions */
 	ds, err := etcdConn.ListDistributions(ctx)

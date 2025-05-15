@@ -19,6 +19,22 @@ SELECT pg_is_in_recovery(), id FROM tsa_test WHERE id = 22 /* target-session-att
 -- NOTICE: send query to shard(s) : sh1
 -- ERROR:  failed to find replica
 
+SHOW __spqr__target_session_attrs;
+SET __spqr__target_session_attrs TO 'prefer-standby';
+SELECT pg_is_in_recovery();
+SHOW __spqr__target_session_attrs;
+
+SET __spqr__engine_v2 TO true;
+
+select (select extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer) zz;
+
+SHOW __spqr__target_session_attrs;
+
+select (select /* target-session-attrs: prefer-standby */ extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer) zz;
+
+SHOW __spqr__target_session_attrs;
+RESET __spqr__target_session_attrs;
+
 DROP TABLE tsa_test;
 
 \c spqr-console

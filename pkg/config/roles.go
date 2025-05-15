@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -38,7 +39,12 @@ func LoadRolesCfg(cfgPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			log.Printf("failed to close config file: %v", err)
+		}
+	}(file)
 
 	if err := initRolesConfig(file, cfgPath); err != nil {
 		return "", err
