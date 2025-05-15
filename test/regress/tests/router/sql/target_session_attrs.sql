@@ -32,7 +32,45 @@ SHOW __spqr__target_session_attrs;
 
 select (select /* target-session-attrs: prefer-standby */ extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer) zz;
 
+SET __spqr__target_session_attrs TO 'read-only';
 SHOW __spqr__target_session_attrs;
+
+--SELECT TO_TIMESTAMP(
+--    '2017-03-31 9:30:20',
+--    'YYYY-MM-DD HH:MI:SS'
+--);
+
+--SELECT /* __spqr__target_session_attrs: read-only */TO_TIMESTAMP(
+--    '2017-03-31 9:30:20',
+--    'YYYY-MM-DD HH:MI:SS'
+--);
+
+SHOW __spqr__target_session_attrs;
+
+SET __spqr__target_session_attrs TO 'prefer-standby';
+SHOW __spqr__target_session_attrs;
+
+BEGIN;
+
+SET __spqr__target_session_attrs TO 'read-write';
+SHOW __spqr__target_session_attrs;
+
+ROLLBACK;
+
+SHOW __spqr__target_session_attrs;
+
+--SELECT TO_TIMESTAMP(
+--    '2017-03-31 9:30:20',
+--    'YYYY-MM-DD HH:MI:SS'
+--);
+
+--SELECT /* __spqr__target_session_attrs: read-only */TO_TIMESTAMP(
+--    '2017-03-31 9:30:20',
+--    'YYYY-MM-DD HH:MI:SS'
+--);
+
+SHOW __spqr__target_session_attrs;
+
 RESET __spqr__target_session_attrs;
 
 DROP TABLE tsa_test;
