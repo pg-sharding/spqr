@@ -549,6 +549,7 @@ texpr
 textoid
 tgz
 timeb
+tle
 tlsconfig
 tlt
 tmpnum
