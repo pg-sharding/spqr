@@ -54,7 +54,10 @@ jobs:
         run: |
              if [[ ${{ matrix.version }} == *"-mdb" ]]; then 
                 version=$(echo ${{ matrix.version }} | awk '{ print substr($1, 1, 2)  }'); 
-                make POSTGRES_VERSION=$version codename=${{ matrix.os-version }} mdb-branch=MDB_$version shard-image=shard-image-mdb regress || (docker compose -f test/regress/docker-compose.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | grep -i error | awk '{print $1}' | xargs -n 1 docker logs);
+                if !(make POSTGRES_VERSION=$version codename=${{ matrix.os-version }} mdb-branch=MDB_$version shard-image=shard-image-mdb regress); then
+                  docker compose -f test/regress/docker-compose.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | grep -i error | awk '{print $1}' | xargs -n 1 docker logs; 
+                  false;
+                fi
              else 
                 make POSTGRES_VERSION=${{ matrix.version }} codename=${{ matrix.os-version }} regress; 
              fi
