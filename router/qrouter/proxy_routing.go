@@ -1494,7 +1494,9 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 
 	// set up this variable if not yet
 	if route == nil {
-		route = plan.ScatterPlan{}
+		route = plan.ScatterPlan{
+			ExecTargets: qr.DataShardsRoutes(),
+		}
 	}
 
 	return route, ro, nil

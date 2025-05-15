@@ -1196,12 +1196,20 @@ func TestJoins(t *testing.T) {
 			exp:   plan.ScatterPlan{},
 			err:   nil,
 		},
+
+		// non-sahrding columns
+		{
+			query: "SELECT * FROM xjoin a JOIN yjoin b ON a.j = b.j;",
+			exp:   plan.ScatterPlan{},
+			err:   nil,
+		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
 		dh := session.NewDummyHandler(distribution)
+
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
 
