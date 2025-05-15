@@ -11,6 +11,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY i HASH FUNCTION MURMU
 
 -- TEST
 \c regress
+
+SET __spqr__engine_v2 TO true;
+
 CREATE TABLE xx (i bigint, j bigint CHECK(j != 11));
 
 COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
@@ -89,6 +92,7 @@ ROLLBACK;
 
 TABLE xx;
 
+SET __spqr__engine_v2 TO false;
 DROP TABLE xx;
 
 \c spqr-console

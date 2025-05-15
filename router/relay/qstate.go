@@ -168,8 +168,11 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 					}
 					rst.Client().SetExecuteOn(true, val)
 				case session.SPQR_ENGINE_V2:
-					if val == "true" {
+					switch val {
+					case "true", "ok", "on":
 						rst.Client().SetEnhancedMultiShardProcessing(true, true)
+					case "false", "no", "off":
+						rst.Client().SetEnhancedMultiShardProcessing(true, false)
 					}
 				case session.SPQR_AUTO_DISTRIBUTION:
 					if valDistrib, ok := mp[session.SPQR_DISTRIBUTION_KEY]; ok {
@@ -273,6 +276,13 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 				fallthrough
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
 				rst.Client().SetTsa(st.Value)
+			case session.SPQR_ENGINE_V2:
+				switch st.Value {
+				case "true", "on", "ok":
+					rst.Client().SetEnhancedMultiShardProcessing(false, true)
+				case "false", "off", "no":
+					rst.Client().SetEnhancedMultiShardProcessing(false, false)
+				}
 			default:
 				rst.Client().SetParam(st.Name, st.Value)
 			}

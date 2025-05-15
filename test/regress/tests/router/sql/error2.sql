@@ -13,6 +13,8 @@ CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
 CREATE TABLE tt(i INT) /*  */;
 
+SET __spqr__engine_v2 TO false;
+
 BEGIN;
 
 INSERT INTO tt (i) VALUES(1);
@@ -27,6 +29,7 @@ INSERT INTO tt (i) VALUES(1);
 ROLLBACK;
 
 -- should exists 
+SET __spqr__engine_v2 TO true;
 TABLE tt;
 DROP TABLE tt;
 

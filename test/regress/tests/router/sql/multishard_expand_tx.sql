@@ -58,7 +58,7 @@ SELECT * FROM xxm_expd WHERE id = 212 /* __spqr__engine_v2: true */;
 DELETE FROM xxm_expd /* __spqr__engine_v2: true */;
 ROLLBACK;
 
-SELECT * FROM xxm_expd ORDER BY id;
+SELECT * FROM xxm_expd ORDER BY id /* __spqr__engine_v2: true */;
 
 UPDATE xxm_expd SET id = -1 /* __spqr__engine_v2: true */;
 DELETE FROM xxm_expd /* __spqr__engine_v2: true */;

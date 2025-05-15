@@ -102,6 +102,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		if len(v.FromClause) == 0 {
 			return plan.ScatterPlan{}, nil
 		}
+
 		if len(v.FromClause) > 1 {
 			return nil, rerrors.ErrComplexQuery
 		}
