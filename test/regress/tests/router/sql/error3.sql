@@ -1,4 +1,4 @@
-\c db1
+\c spqr-console
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 
 CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
