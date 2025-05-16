@@ -349,6 +349,7 @@ pgcopy
 pgcs
 PGDATABASE
 pgdg
+pgexec
 pghashlib
 PGHOST
 pgi
@@ -358,6 +359,7 @@ PGPORT
 pgproto
 pgquery
 pgsharding
+pgsync
 PGSSLMODE
 PGUSER
 pgx
