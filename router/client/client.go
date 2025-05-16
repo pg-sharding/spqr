@@ -101,6 +101,8 @@ type PsqlClient struct {
 	show_notice_messages bool
 	maintain_params      bool
 
+	id uint
+
 	serverP atomic.Pointer[server.Server]
 }
 
@@ -312,6 +314,8 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 	}
 
 	cl.SetCommitStrategy(false, twopc.COMMIT_STRATEGY_BEST_EFFORT)
+
+	cl.id = spqrlog.GetPointer(cl)
 
 	cl.serverP.Store(nil)
 
@@ -610,7 +614,7 @@ func (cl *PsqlClient) ReplyWarningf(fmtString string, args ...interface{}) error
 }
 
 func (cl *PsqlClient) ID() uint {
-	return spqrlog.GetPointer(cl)
+	return cl.id
 }
 
 func (cl *PsqlClient) Shards() []shard.Shard {

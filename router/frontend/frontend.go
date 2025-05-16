@@ -33,7 +33,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return relay.ProcQueryAdvancedTx(rst, q.Query, func() error {
+			return rst.ProcQueryAdvancedTx(q.Query, func() error {
 				rst.AddQuery(q)
 				return rst.ProcessMessageBuf(true, true)
 			}, true, true)
@@ -57,7 +57,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return relay.ProcQueryAdvancedTx(rst, q.String, func() error {
+			return rst.ProcQueryAdvancedTx(q.String, func() error {
 				rst.AddQuery(q)
 				return rst.ProcessMessageBuf(true, true)
 			}, false, true)
@@ -75,7 +75,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		}
 
 		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(rst.Client())).
+			Uint("client", rst.Client().ID()).
 			Msg("client connection synced")
 		return nil
 	case *pgproto3.Parse:
@@ -119,7 +119,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		cpQ := *q
 		q = &cpQ
 		qr.SetQuery(&q.String)
-		return relay.ProcQueryAdvancedTx(rst, q.String, func() error {
+		return rst.ProcQueryAdvancedTx(q.String, func() error {
 			rst.AddQuery(q)
 			// this call completes relay, sends RFQ
 			return rst.ProcessMessageBuf(true, true)
