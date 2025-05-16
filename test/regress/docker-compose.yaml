@@ -11,74 +11,109 @@ services:
             dockerfile: docker/shard/Dockerfile.mdb
         depends_on:
             - regress-mdb-image
+    
+    x-shard-common:
+        &shard-common
+        image: ${SHARD_IMAGE:-spqr-shard-image}
+        depends_on:
+            - shard-image-mdb
 
     shard1:
-        image: ${SHARD_IMAGE:-spqr-shard-image}
-        environment:
-            - POSTGRES_USER=regress
-            - POSTGRES_DB=regress
+        <<: *shard-common
+        environment: &shard-env-common
+            POSTGRES_USER: regress
+            POSTGRES_DB: regress
         ports:
             - "7432:6432"
         hostname: spqr_shard_1
         container_name: spqr_shard_1
-        healthcheck:
-            test: psql -h spqr_shard_1 -p 6432 -U regress -d regress
+        healthcheck: &shard-primary-healthcheck
+            test: 'pg_isready -p 6432 -U regress -d regress'
             interval: 10s
             timeout: 3s
             retries: 50
-        depends_on:
-            - shard-image-mdb
+    
+    shard1-replica:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_1
+        ports:
+            - "7532:6432"
+        hostname: spqr_shard_1_replica
+        container_name: spqr_shard_1_replica
+        healthcheck: &shard-replica-healthcheck
+            <<: *shard-primary-healthcheck
+            start_interval: 20s
 
     shard2:
-        image: ${SHARD_IMAGE:-spqr-shard-image}
+        <<: *shard-common
         environment:
-            - POSTGRES_USER=regress
-            - POSTGRES_DB=regress
+            <<: *shard-env-common
         ports:
             - "7433:6432"
         hostname: spqr_shard_2
         container_name: spqr_shard_2
         healthcheck:
-            test: psql -h spqr_shard_2 -p 6432 -U regress -d regress
-            interval: 10s
-            timeout: 3s
-            retries: 50
-        depends_on:
-            - shard-image-mdb
+          <<: *shard-primary-healthcheck
+    
+    shard2-replica:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_2
+        ports:
+            - "7533:6432"
+        hostname: spqr_shard_2_replica
+        container_name: spqr_shard_2_replica
+        healthcheck:
+          <<: *shard-replica-healthcheck
 
     shard3:
-        image: ${SHARD_IMAGE:-spqr-shard-image}
+        <<: *shard-common
         environment:
-            - POSTGRES_USER=regress
-            - POSTGRES_DB=regress
+            <<: *shard-env-common
         ports:
             - "7434:6432"
         hostname: spqr_shard_3
         container_name: spqr_shard_3
         healthcheck:
-            test: psql -h spqr_shard_3 -p 6432 -U regress -d regress
-            interval: 10s
-            timeout: 3s
-            retries: 50        
-        depends_on:
-            - shard-image-mdb
+          <<: *shard-primary-healthcheck
+
+    shard3-replica:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_3
+        ports:
+            - "7534:6432"
+        hostname: spqr_shard_3_replica
+        container_name: spqr_shard_3_replica
+        healthcheck:
+          <<: *shard-replica-healthcheck
 
     shard4:
-        image: ${SHARD_IMAGE:-spqr-shard-image}
+        <<: *shard-common
         environment:
-            - POSTGRES_USER=regress
-            - POSTGRES_DB=regress
+            <<: *shard-env-common
         ports:
             - "7435:6432"
         hostname: spqr_shard_4
         container_name: spqr_shard_4
         healthcheck:
-            test: psql -h spqr_shard_4 -p 6432 -U regress -d regress
-            interval: 10s
-            timeout: 3s
-            retries: 50
-        depends_on:
-            - shard-image-mdb
+          <<: *shard-primary-healthcheck
+
+    shard4-replica:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_4
+        ports:
+            - "7535:6432"
+        hostname: spqr_shard_4_replica
+        container_name: spqr_shard_4_replica
+        healthcheck:
+          <<: *shard-replica-healthcheck
 
     pooler:
         build:
@@ -113,6 +148,14 @@ services:
             shard3:
                 condition: service_healthy
             shard4:
+                condition: service_healthy
+            shard1-replica:
+                condition: service_healthy
+            shard2-replica:
+                condition: service_healthy
+            shard3-replica:
+                condition: service_healthy
+            shard4-replica:
                 condition: service_healthy
 
     coordinator:
