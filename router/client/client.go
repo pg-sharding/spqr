@@ -101,6 +101,10 @@ type PsqlClient struct {
 	show_notice_messages bool
 	maintain_params      bool
 
+	id uint
+
+	cacheCC pgproto3.CommandComplete
+
 	serverP atomic.Pointer[server.Server]
 }
 
@@ -313,6 +317,8 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 
 	cl.SetCommitStrategy(false, twopc.COMMIT_STRATEGY_BEST_EFFORT)
 
+	cl.id = spqrlog.GetPointer(cl)
+
 	cl.serverP.Store(nil)
 
 	return cl
@@ -521,6 +527,7 @@ func (cl *PsqlClient) SetParam(name, value string) {
 }
 
 func (cl *PsqlClient) Reply(msg string) error {
+	cl.cacheCC.CommandTag = []byte("SELECT 1")
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
@@ -534,7 +541,7 @@ func (cl *PsqlClient) Reply(msg string) error {
 			},
 		}},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(msg)}},
-		&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+		&cl.cacheCC,
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -546,15 +553,21 @@ func (cl *PsqlClient) Reply(msg string) error {
 }
 
 func (cl *PsqlClient) ReplyCommandComplete(commandTag string) error {
-	return cl.Send(&pgproto3.CommandComplete{CommandTag: []byte(commandTag)})
+	cl.cacheCC.CommandTag = []byte(commandTag)
+	return cl.Send(&cl.cacheCC)
 }
 
+var (
+	bindCMsg  = &pgproto3.BindComplete{}
+	parseCMsg = &pgproto3.ParseComplete{}
+)
+
 func (cl *PsqlClient) ReplyParseComplete() error {
-	return cl.Send(&pgproto3.ParseComplete{})
+	return cl.Send(parseCMsg)
 }
 
 func (cl *PsqlClient) ReplyBindComplete() error {
-	return cl.Send(&pgproto3.BindComplete{})
+	return cl.Send(bindCMsg)
 }
 
 func (cl *PsqlClient) Reset() error {
@@ -610,7 +623,7 @@ func (cl *PsqlClient) ReplyWarningf(fmtString string, args ...interface{}) error
 }
 
 func (cl *PsqlClient) ID() uint {
-	return spqrlog.GetPointer(cl)
+	return cl.id
 }
 
 func (cl *PsqlClient) Shards() []shard.Shard {

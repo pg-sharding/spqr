@@ -95,3 +95,4 @@ func (l *LocalQrouter) Mgr() meta.EntityMgr {
 }
 
 func (l *LocalQrouter) SetQuery(_ *string) {}
+func (l *LocalQrouter) Query() *string     { return nil }

@@ -50,7 +50,7 @@ func ReplyVirtualParamState(cl client.Client, name string, val []byte) {
 
 var errAbortedTx = fmt.Errorf("current transaction is aborted, commands ignored until end of transaction block")
 
-func ProcQueryAdvancedTx(rst RelayStateMgr, query string, binderQ func() error, doCaching, completeRelay bool) error {
+func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() error, doCaching, completeRelay bool) error {
 
 	state, comment, err := rst.Parse(query, doCaching)
 	if err != nil {
@@ -81,7 +81,7 @@ func ProcQueryAdvancedTx(rst RelayStateMgr, query string, binderQ func() error, 
 		}
 	}
 
-	err = ProcQueryAdvanced(rst, query, state, comment, binderQ, doCaching)
+	err = rst.ProcQueryAdvanced(query, state, comment, binderQ, doCaching)
 
 	if txbefore != txstatus.TXIDLE && err != nil {
 		rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
@@ -121,82 +121,82 @@ func ProcQueryAdvancedTx(rst RelayStateMgr, query string, binderQ func() error, 
 	}
 }
 
+func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error {
+	mp, err := parser.ParseComment(comment)
+
+	if err == nil {
+		for key, val := range mp {
+			switch key {
+			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
+				fallthrough
+			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+				fallthrough
+			case session.SPQR_TARGET_SESSION_ATTRS:
+				// TBD: validate value
+				spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
+				rst.Client().SetTsa(true, val)
+			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
+				spqrlog.Zero.Debug().Str("default route", val).Msg("parse default route behaviour from comment")
+				rst.Client().SetDefaultRouteBehaviour(true, val)
+			case session.SPQR_SHARDING_KEY:
+				spqrlog.Zero.Debug().Str("sharding key", val).Msg("parse sharding key from comment")
+				rst.Client().SetShardingKey(true, val)
+			case session.SPQR_DISTRIBUTION:
+				spqrlog.Zero.Debug().Str("distribution", val).Msg("parse distribution from comment")
+				rst.Client().SetDistribution(true, val)
+			case session.SPQR_SCATTER_QUERY:
+				/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
+				spqrlog.Zero.Debug().Str("scatter query", val).Msg("parse scatter query from comment")
+				rst.Client().SetScatterQuery(val != "")
+			case session.SPQR_EXECUTE_ON:
+
+				if _, ok := config.RouterConfig().ShardMapping[val]; !ok {
+					return fmt.Errorf("no such shard: %v", val)
+				}
+				rst.Client().SetExecuteOn(true, val)
+			case session.SPQR_ENGINE_V2:
+				switch val {
+				case "true", "ok", "on":
+					rst.Client().SetEnhancedMultiShardProcessing(true, true)
+				case "false", "no", "off":
+					rst.Client().SetEnhancedMultiShardProcessing(true, false)
+				}
+			case session.SPQR_AUTO_DISTRIBUTION:
+				if valDistrib, ok := mp[session.SPQR_DISTRIBUTION_KEY]; ok {
+					_, err = rst.QueryRouter().Mgr().GetDistribution(context.TODO(), val)
+					if err != nil {
+						return err
+					}
+
+					/* This is an ddl query, which creates relation along with attaching to distribution */
+					rst.Client().SetAutoDistribution(true, val)
+					rst.Client().SetDistributionKey(true, valDistrib)
+
+					/* this is too early to do anything with distribution hint, as we do not yet parsed
+					* DDL of about-to-be-created relation
+					 */
+				} else {
+					return fmt.Errorf("spqr distribution specified, but distribution key omitted")
+				}
+			}
+		}
+	}
+
+	return binderQ()
+}
+
 // ProcQueryAdvanced processes query, with router relay state
 // There are several types of query that we want to process in non-passthrough way.
 // For example, after BEGIN we wait until first client query witch can be router to some shard.
 // So, we need to process SETs, BEGINs, ROLLBACKs etc ourselves.
 // QueryStateExecutor provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState, comment string, binderQ func() error, doCaching bool) error {
+func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseState, comment string, binderQ func() error, doCaching bool) error {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
 
-	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client())).Msgf("process relay state advanced")
-
-	queryProc := func() error {
-		mp, err := parser.ParseComment(comment)
-
-		if err == nil {
-			for key, val := range mp {
-				switch key {
-				case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-					fallthrough
-				case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
-					fallthrough
-				case session.SPQR_TARGET_SESSION_ATTRS:
-					// TBD: validate value
-					spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
-					rst.Client().SetTsa(true, val)
-				case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-					spqrlog.Zero.Debug().Str("default route", val).Msg("parse default route behaviour from comment")
-					rst.Client().SetDefaultRouteBehaviour(true, val)
-				case session.SPQR_SHARDING_KEY:
-					spqrlog.Zero.Debug().Str("sharding key", val).Msg("parse sharding key from comment")
-					rst.Client().SetShardingKey(true, val)
-				case session.SPQR_DISTRIBUTION:
-					spqrlog.Zero.Debug().Str("distribution", val).Msg("parse distribution from comment")
-					rst.Client().SetDistribution(true, val)
-				case session.SPQR_SCATTER_QUERY:
-					/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
-					spqrlog.Zero.Debug().Str("scatter query", val).Msg("parse scatter query from comment")
-					rst.Client().SetScatterQuery(val != "")
-				case session.SPQR_EXECUTE_ON:
-
-					if _, ok := config.RouterConfig().ShardMapping[val]; !ok {
-						return fmt.Errorf("no such shard: %v", val)
-					}
-					rst.Client().SetExecuteOn(true, val)
-				case session.SPQR_ENGINE_V2:
-					switch val {
-					case "true", "ok", "on":
-						rst.Client().SetEnhancedMultiShardProcessing(true, true)
-					case "false", "no", "off":
-						rst.Client().SetEnhancedMultiShardProcessing(true, false)
-					}
-				case session.SPQR_AUTO_DISTRIBUTION:
-					if valDistrib, ok := mp[session.SPQR_DISTRIBUTION_KEY]; ok {
-						_, err = rst.QueryRouter().Mgr().GetDistribution(context.TODO(), val)
-						if err != nil {
-							return err
-						}
-
-						/* This is an ddl query, which creates relation along with attaching to distribution */
-						rst.Client().SetAutoDistribution(true, val)
-						rst.Client().SetDistributionKey(true, valDistrib)
-
-						/* this is too early to do anything with distribution hint, as we do not yet parsed
-						* DDL of about-to-be-created relation
-						 */
-					} else {
-						return fmt.Errorf("spqr distribution specified, but distribution key omitted")
-					}
-				}
-			}
-		}
-
-		return binderQ()
-	}
+	spqrlog.Zero.Debug().Str("query", query).Uint("client", rst.Client().ID()).Msgf("process relay state advanced")
 
 	switch st := state.(type) {
 	case parser.ParseStateTXBegin:
@@ -349,7 +349,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 			} else {
 				/* If router does dot have any info about param, fire query to random shard. */
 				if _, ok := rst.Client().Params()[param]; !ok {
-					return queryProc()
+					return rst.queryProc(comment, binderQ)
 				}
 
 				ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
@@ -403,7 +403,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 			return nil
 		} else {
 			// process like regular query
-			return queryProc()
+			return rst.queryProc(comment, binderQ)
 		}
 	case parser.ParseStateExecute:
 		if AdvancedPoolModeNeeded(rst) {
@@ -413,7 +413,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 			return nil
 		} else {
 			// process like regular query
-			return queryProc()
+			return rst.queryProc(comment, binderQ)
 		}
 	case parser.ParseStateExplain:
 		return rst.Client().Send(
@@ -423,6 +423,6 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 				Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
 			})
 	default:
-		return queryProc()
+		return rst.queryProc(comment, binderQ)
 	}
 }

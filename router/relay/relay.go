@@ -66,6 +66,8 @@ type RelayStateMgr interface {
 
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 	ProcessExtendedBuffer() error
+
+	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching, completeRelay bool) error
 }
 
 type BufferedMessageType int
@@ -121,7 +123,8 @@ type RelayStateImpl struct {
 	Cl      client.RouterClient
 	poolMgr poolmgr.PoolMgr
 
-	msgBuf []BufferedMessage
+	msgBuf      []pgproto3.FrontendMessage
+	msgBufReply []bool
 
 	holdRouting bool
 
@@ -776,56 +779,49 @@ func (rst *RelayStateImpl) Connect() error {
 	return nil
 }
 
+func (rst *RelayStateImpl) flusher(waitForResp, replyCl bool) ([]pgproto3.BackendMessage, error) {
+
+	var unreplied []pgproto3.BackendMessage
+
+	for i, v := range rst.msgBuf {
+		spqrlog.Zero.Debug().
+			Uint("client-id", rst.Client().ID()).
+			Bool("waitForResp", waitForResp).
+			Bool("replyCl", replyCl).
+			Interface("plan", rst.routingState).
+			Msg("flushing")
+
+		resolvedReplyCl := replyCl && rst.msgBufReply[i]
+
+		if unrep_local, err := rst.qse.ProcQuery(
+			&QueryDesc{
+				Msg:  v,
+				Stmt: rst.qp.Stmt(),
+				P:    rst.routingState, /*  ugh... fix this someday */
+			}, rst.Qr.Mgr(), waitForResp, resolvedReplyCl); err != nil {
+			spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Err(err).Msg("error executing query")
+			return nil, err
+		} else {
+			unreplied = append(unreplied, unrep_local...)
+		}
+
+	}
+
+	return unreplied, nil
+}
+
 // TODO : unit tests
 func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("flushing message buffer")
 
-	var unreplied []pgproto3.BackendMessage
+	msgs, err := rst.flusher(waitForResp, replyCl)
 
-	flusher := func(buff []BufferedMessage, waitForResp, replyCl bool) error {
-		for len(buff) > 0 {
-			var v BufferedMessage
-			v, buff = buff[0], buff[1:]
-			spqrlog.Zero.Debug().
-				Uint("client-id", rst.Client().ID()).
-				Bool("waitForResp", waitForResp).
-				Bool("replyCl", replyCl).
-				Interface("plan", rst.routingState).
-				Msg("flushing")
+	rst.msgBuf = rst.msgBuf[:0]
+	rst.msgBufReply = rst.msgBufReply[:0]
 
-			resolvedReplyCl := replyCl
-
-			switch v.tp {
-			case BufferedMessageInternal:
-				resolvedReplyCl = false
-			}
-
-			if unrep_local, err := rst.qse.ProcQuery(
-				&QueryDesc{
-					Msg:  v.msg,
-					Stmt: rst.qp.Stmt(),
-					P:    rst.routingState, /*  ugh... fix this someday */
-				}, rst.Qr.Mgr(), waitForResp, resolvedReplyCl); err != nil {
-				spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Err(err).Msg("error executing query")
-				return err
-			} else {
-				unreplied = append(unreplied, unrep_local...)
-			}
-
-		}
-
-		return nil
-	}
-	buf := rst.msgBuf
-	rst.msgBuf = nil
-
-	if err := flusher(buf, waitForResp, replyCl); err != nil {
-		return nil, err
-	}
-
-	return unreplied, nil
+	return msgs, err
 }
 
 // TODO : unit tests
@@ -906,7 +902,8 @@ func (rst *RelayStateImpl) AddQuery(q pgproto3.FrontendMessage) {
 		Uint("client", rst.Client().ID()).
 		Type("message-type", q).
 		Msg("client relay: adding message to message buffer")
-	rst.msgBuf = append(rst.msgBuf, RegularBufferedMessage(q))
+	rst.msgBuf = append(rst.msgBuf, q)
+	rst.msgBufReply = append(rst.msgBufReply, true)
 }
 
 // TODO : unit tests
@@ -914,7 +911,8 @@ func (rst *RelayStateImpl) AddSilentQuery(q pgproto3.FrontendMessage) {
 	spqrlog.Zero.Debug().
 		Interface("query", q).
 		Msg("adding silent query")
-	rst.msgBuf = append(rst.msgBuf, InternalBufferedMessage(q))
+	rst.msgBuf = append(rst.msgBuf, q)
+	rst.msgBufReply = append(rst.msgBufReply, false)
 }
 
 // TODO : unit tests
@@ -954,6 +952,15 @@ func (rst *RelayStateImpl) DeployPrepStmt(qname string) (*prepstatement.Prepared
 		ParameterOIDs: def.ParameterOIDs,
 	})
 }
+
+var (
+	pgexec = &pgproto3.Execute{}
+	pgsync = &pgproto3.Sync{}
+
+	emptyExecFunc = func() error {
+		return nil
+	}
+)
 
 // TODO : unit tests
 func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
@@ -1059,11 +1066,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				return err
 			}
 
-			rst.execute = func() error {
-				return nil
-			}
+			rst.execute = emptyExecFunc
 
-			err := ProcQueryAdvancedTx(rst, def.Query, func() error {
+			err := rst.ProcQueryAdvancedTx(def.Query, func() error {
 				rst.saveBind = &pgproto3.Bind{}
 				rst.saveBind.DestinationPortal = q.DestinationPortal
 
@@ -1079,7 +1084,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 				// Do not respond with BindComplete, as the relay step should take care of itself.
 				_, err := rst.PrepareRelayStep()
-				spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Interface("iface", rst.routingState).Err(err).Msg("executing proc query adv callback prepare relay step")
 
 				if err != nil {
 					return err
@@ -1109,8 +1113,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 					rst.execute = func() error {
 						rst.AddQuery(msg)
-						rst.AddQuery(&pgproto3.Execute{})
-						rst.AddQuery(&pgproto3.Sync{})
+						rst.AddQuery(pgexec)
+						rst.AddQuery(pgsync)
 
 						_, err := rst.RelayFlush(true, true)
 						// do not complete relay here yet
@@ -1122,9 +1126,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.execute = func() error {
 						rst.AddQuery(msg)
 
-						rst.AddQuery(&pgproto3.Execute{})
-
-						rst.AddQuery(&pgproto3.Sync{})
+						rst.AddQuery(pgexec)
+						rst.AddQuery(pgsync)
 						// do not complete relay here yet
 						_, err = rst.RelayFlush(true, true)
 						return err
@@ -1163,9 +1166,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						// do not send saved bind twice
 					}
 
-					rst.AddQuery(&pgproto3.Execute{})
-
-					rst.AddQuery(&pgproto3.Sync{})
+					rst.AddQuery(pgexec)
+					rst.AddQuery(pgsync)
 					// do not complete relay here yet
 					_, err = rst.RelayFlush(true, true)
 					return err
@@ -1278,7 +1280,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						return err
 					}
 
-					unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
+					unreplied, err := rst.RelayStep(pgsync, true, false)
 					if err != nil {
 						return err
 					}
