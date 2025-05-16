@@ -123,7 +123,8 @@ type RelayStateImpl struct {
 	Cl      client.RouterClient
 	poolMgr poolmgr.PoolMgr
 
-	msgBuf []BufferedMessage
+	msgBuf      []pgproto3.FrontendMessage
+	msgBufReply []bool
 
 	holdRouting bool
 
@@ -778,11 +779,11 @@ func (rst *RelayStateImpl) Connect() error {
 	return nil
 }
 
-func (rst *RelayStateImpl) flusher(buff []BufferedMessage, waitForResp, replyCl bool) ([]pgproto3.BackendMessage, error) {
+func (rst *RelayStateImpl) flusher(waitForResp, replyCl bool) ([]pgproto3.BackendMessage, error) {
 
 	var unreplied []pgproto3.BackendMessage
 
-	for _, v := range buff {
+	for i, v := range rst.msgBuf {
 		spqrlog.Zero.Debug().
 			Uint("client-id", rst.Client().ID()).
 			Bool("waitForResp", waitForResp).
@@ -790,16 +791,11 @@ func (rst *RelayStateImpl) flusher(buff []BufferedMessage, waitForResp, replyCl 
 			Interface("plan", rst.routingState).
 			Msg("flushing")
 
-		resolvedReplyCl := replyCl
-
-		switch v.tp {
-		case BufferedMessageInternal:
-			resolvedReplyCl = false
-		}
+		resolvedReplyCl := replyCl && rst.msgBufReply[i]
 
 		if unrep_local, err := rst.qse.ProcQuery(
 			&QueryDesc{
-				Msg:  v.msg,
+				Msg:  v,
 				Stmt: rst.qp.Stmt(),
 				P:    rst.routingState, /*  ugh... fix this someday */
 			}, rst.Qr.Mgr(), waitForResp, resolvedReplyCl); err != nil {
@@ -820,10 +816,12 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) ([]pgproto
 		Uint("client", rst.Client().ID()).
 		Msg("flushing message buffer")
 
-	buf := rst.msgBuf
-	rst.msgBuf = nil
+	msgs, err := rst.flusher(waitForResp, replyCl)
 
-	return rst.flusher(buf, waitForResp, replyCl)
+	rst.msgBuf = rst.msgBuf[:0]
+	rst.msgBufReply = rst.msgBufReply[:0]
+
+	return msgs, err
 }
 
 // TODO : unit tests
@@ -904,7 +902,8 @@ func (rst *RelayStateImpl) AddQuery(q pgproto3.FrontendMessage) {
 		Uint("client", rst.Client().ID()).
 		Type("message-type", q).
 		Msg("client relay: adding message to message buffer")
-	rst.msgBuf = append(rst.msgBuf, RegularBufferedMessage(q))
+	rst.msgBuf = append(rst.msgBuf, q)
+	rst.msgBufReply = append(rst.msgBufReply, true)
 }
 
 // TODO : unit tests
@@ -912,7 +911,8 @@ func (rst *RelayStateImpl) AddSilentQuery(q pgproto3.FrontendMessage) {
 	spqrlog.Zero.Debug().
 		Interface("query", q).
 		Msg("adding silent query")
-	rst.msgBuf = append(rst.msgBuf, InternalBufferedMessage(q))
+	rst.msgBuf = append(rst.msgBuf, q)
+	rst.msgBufReply = append(rst.msgBufReply, false)
 }
 
 // TODO : unit tests

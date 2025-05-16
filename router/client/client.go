@@ -103,6 +103,8 @@ type PsqlClient struct {
 
 	id uint
 
+	cacheCC pgproto3.CommandComplete
+
 	serverP atomic.Pointer[server.Server]
 }
 
@@ -525,6 +527,7 @@ func (cl *PsqlClient) SetParam(name, value string) {
 }
 
 func (cl *PsqlClient) Reply(msg string) error {
+	cl.cacheCC.CommandTag = []byte("SELECT 1")
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
@@ -538,7 +541,7 @@ func (cl *PsqlClient) Reply(msg string) error {
 			},
 		}},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(msg)}},
-		&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+		&cl.cacheCC,
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -550,15 +553,21 @@ func (cl *PsqlClient) Reply(msg string) error {
 }
 
 func (cl *PsqlClient) ReplyCommandComplete(commandTag string) error {
-	return cl.Send(&pgproto3.CommandComplete{CommandTag: []byte(commandTag)})
+	cl.cacheCC.CommandTag = []byte(commandTag)
+	return cl.Send(&cl.cacheCC)
 }
 
+var (
+	bindCMsg  = &pgproto3.BindComplete{}
+	parseCMsg = &pgproto3.ParseComplete{}
+)
+
 func (cl *PsqlClient) ReplyParseComplete() error {
-	return cl.Send(&pgproto3.ParseComplete{})
+	return cl.Send(parseCMsg)
 }
 
 func (cl *PsqlClient) ReplyBindComplete() error {
-	return cl.Send(&pgproto3.BindComplete{})
+	return cl.Send(bindCMsg)
 }
 
 func (cl *PsqlClient) Reset() error {
