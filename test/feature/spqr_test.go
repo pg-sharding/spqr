@@ -1108,8 +1108,6 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^qdb should not contain key range moves$`, tctx.stepQDBShouldNotContainKRMoves)
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
-	s.Step(`^I fail to run SQL on host "([^"]*)"$`, tctx.stepIFailSQLOnHost)
-	s.Step(`^I fail to run SQL on host "([^"]*)" as user "([^"]*)"$`, tctx.stepIFailSQLOnHostAsUser)
 	s.Step(`^I wait for host "([^"]*)" to respond$`, tctx.stepWaitPostgresqlToRespond)
 
 	// variable manipulation
