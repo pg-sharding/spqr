@@ -55,12 +55,12 @@ jobs:
              if [[ ${{ matrix.version }} == *"-mdb" ]]; then 
                 version=$(echo ${{ matrix.version }} | awk '{ print substr($1, 1, 2)  }'); 
                 if !(make POSTGRES_VERSION=$version codename=${{ matrix.os-version }} mdb-branch=MDB_$version shard-image=shard-image-mdb regress); then
-                  docker compose -f test/regress/docker-compose.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | grep -i error | awk '{print $1}' | xargs -n 1 docker logs; 
+                  docker compose -f test/regress/docker-compose.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | grep -i unhealthy | awk '{print $1}' | xargs -n 1 docker logs; 
                   exit 1;
                 fi
              else 
                 if !(make POSTGRES_VERSION=${{ matrix.version }} codename=${{ matrix.os-version }} regress; ); then
-                  docker compose -f test/regress/docker-compose.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | grep -i error | awk '{print $1}' | xargs -n 1 docker logs; 
+                  docker compose -f test/regress/docker-compose.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | grep -i unhealthy | awk '{print $1}' | xargs -n 1 docker logs; 
                   exit 1;
                 fi
              fi
