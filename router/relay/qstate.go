@@ -303,9 +303,22 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		// manually create router response
 		// here we just reply single row with single column value
 
+		pd := &PortalDesc{
+			rd: &pgproto3.RowDescription{
+				Fields: []pgproto3.FieldDescription{
+					{
+						Name:         []byte(st.Name),
+						DataTypeOID:  25,
+						DataTypeSize: -1,
+						TypeModifier: -1,
+					},
+				},
+			},
+		}
+
 		switch param {
 		case session.SPQR_DISTRIBUTION:
-			return noDataPd, rst.Client().Send(
+			return pd, rst.Client().Send(
 				&pgproto3.ErrorResponse{
 					Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
 						session.SPQR_DISTRIBUTION),
@@ -334,7 +347,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		case session.SPQR_SHARDING_KEY:
 			ReplyVirtualParamState(rst.Client(), "sharding key", []byte(rst.Client().ShardingKey()))
 		case session.SPQR_SCATTER_QUERY:
-			return noDataPd, rst.Client().Send(
+			return pd, rst.Client().Send(
 				&pgproto3.ErrorResponse{
 					Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
 						session.SPQR_SCATTER_QUERY),
@@ -356,13 +369,13 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			} else {
 				/* If router does dot have any info about param, fire query to random shard. */
 				if _, ok := rst.Client().Params()[param]; !ok {
-					return noDataPd, rst.queryProc(comment, binderQ)
+					return pd, rst.queryProc(comment, binderQ)
 				}
 
 				ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
 			}
 		}
-		return noDataPd, rst.Client().ReplyCommandComplete("SHOW")
+		return pd, rst.Client().ReplyCommandComplete("SHOW")
 	case parser.ParseStateResetStmt:
 		switch st.Name {
 		case session.SPQR_TARGET_SESSION_ATTRS:
