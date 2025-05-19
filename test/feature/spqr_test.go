@@ -800,22 +800,6 @@ func (tctx *testContext) stepIRunSQLOnHostAsUser(host string, user string, body 
 	return err
 }
 
-func (tctx *testContext) stepIFailSQLOnHost(host string) error {
-	_, err := tctx.queryPostgresql(host, shardUser, "SELECT 1", struct{}{}, postgresqlQueryTimeout)
-	if err == nil {
-		return fmt.Errorf("host is accessible via SQL")
-	}
-	return nil
-}
-
-func (tctx *testContext) stepIFailSQLOnHostAsUser(host string, user string) error {
-	_, err := tctx.queryPostgresql(host, user, "SELECT 1", struct{}{}, postgresqlQueryTimeout)
-	if err == nil {
-		return fmt.Errorf("host is accessible via SQL")
-	}
-	return nil
-}
-
 func (tctx *testContext) stepSQLResultShouldNotMatch(matcher string, body *godog.DocString) error {
 	m, err := matchers.GetMatcher(matcher)
 	if err != nil {

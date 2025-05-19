@@ -56,7 +56,7 @@ func jsonContains(a, e interface{}, path []string, reStrCmp bool) []string {
 	if a == nil && e == nil {
 		return nil
 	}
-	if av.Kind() != ev.Kind() && !(reStrCmp && ev.Kind() == reflect.String) {
+	if av.Kind() != ev.Kind() && (!reStrCmp || ev.Kind() != reflect.String) {
 		return path
 	}
 	switch ev.Kind() {
