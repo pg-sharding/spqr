@@ -139,8 +139,8 @@ func (dc *DockerComposer) Up(env []string) error {
 	if err != nil {
 		// to save container logs
 		_ = dc.fillContainers()
-		containers, err := dc.api.ContainerList(context.Background(), container.ListOptions{All: true})
-		if err != nil {
+		containers, apiErr := dc.api.ContainerList(context.Background(), container.ListOptions{All: true})
+		if apiErr != nil {
 			return err
 		}
 		for _, c := range containers { // nolint: gocritic
