@@ -199,7 +199,7 @@ var ErrMissTypedKeyRange = fmt.Errorf("key range bound is mistyped")
 // Returns:
 //   - bool: True if kr is less than other, false otherwise.
 //
-// TODO : unit tests
+// TODO : unit tests DONE
 func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool {
 	// Here we panic if we failed to convert key range bound
 	// element to expected type. We consider panic as much better
