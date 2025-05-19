@@ -33,11 +33,11 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcQueryAdvancedTx(q.Query, func() error {
+			_, err := rst.ProcQueryAdvancedTx(q.Query, func() error {
 				rst.AddQuery(q)
 				return rst.ProcessMessageBuf(true, true)
 			}, true, true)
-
+			return err
 		case *pgproto3.Execute:
 			// copy interface
 			cpQ := *q
@@ -57,10 +57,11 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcQueryAdvancedTx(q.String, func() error {
+			_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
 				rst.AddQuery(q)
 				return rst.ProcessMessageBuf(true, true)
 			}, false, true)
+			return err
 		default:
 			return nil
 		}
@@ -119,11 +120,13 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		cpQ := *q
 		q = &cpQ
 		qr.SetQuery(&q.String)
-		return rst.ProcQueryAdvancedTx(q.String, func() error {
+		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
 			rst.AddQuery(q)
 			// this call completes relay, sends RFQ
 			return rst.ProcessMessageBuf(true, true)
 		}, false, true)
+
+		return err
 	default:
 		return nil
 	}
