@@ -11,7 +11,7 @@ fi
 rm -fr /var/lib/postgresql/$POSTGRES_VERSION/main/ 
 
 if [ "x" != "x$PG_MASTER" ]; then
-    until sudo -u postgres psql -h $PG_MASTER -d postgres -p 6432 -c "SELECT pg_create_physical_replication_slot('replication_slot');"
+    until sudo -u postgres psql -h $PG_MASTER -d postgres -p 6432 -c "SELECT pg_drop_replication_slot('replication_slot');"; sudo -u postgres psql -h $PG_MASTER -d postgres -p 6432 -c "SELECT pg_create_physical_replication_slot('replication_slot');"
     do
         echo 'Waiting for replication slot creation'
         sleep 1s
