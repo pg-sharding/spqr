@@ -1375,6 +1375,10 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			err := rst.execute()
 			rst.execute = nil
 			rst.bindRoute = nil
+			if rst.lastBindName == "" {
+				delete(rst.savedPortalDesc, rst.lastBindName)
+			}
+			rst.lastBindName = ""
 			if err != nil {
 				return err
 			}
