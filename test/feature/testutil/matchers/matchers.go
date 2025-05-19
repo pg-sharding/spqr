@@ -47,7 +47,7 @@ func RegexpMatcher(actual string, expected string) error {
 }
 
 // nolint: gocyclo
-func jsonContains(a, e interface{}, path []string) []string {
+func jsonContains(a, e interface{}, path []string, reStrCmp bool) []string {
 	av := reflect.ValueOf(a)
 	ev := reflect.ValueOf(e)
 	if (a == nil && e != nil) || (a != nil && e == nil) {
@@ -56,7 +56,7 @@ func jsonContains(a, e interface{}, path []string) []string {
 	if a == nil && e == nil {
 		return nil
 	}
-	if av.Kind() != ev.Kind() {
+	if av.Kind() != ev.Kind() && !(reStrCmp && ev.Kind() == reflect.String) {
 		return path
 	}
 	switch ev.Kind() {
@@ -74,7 +74,7 @@ func jsonContains(a, e interface{}, path []string) []string {
 			if !ok {
 				return append(path, k)
 			}
-			res := jsonContains(v2, v1, append(path, k))
+			res := jsonContains(v2, v1, append(path, k), reStrCmp)
 			if len(res) != 0 {
 				return res
 			}
@@ -92,7 +92,7 @@ func jsonContains(a, e interface{}, path []string) []string {
 		for i, v1 := range es {
 			for ; j < len(as); j++ {
 				v2 := as[j]
-				res := jsonContains(v2, v1, append(path, strconv.Itoa(j)))
+				res := jsonContains(v2, v1, append(path, strconv.Itoa(j)), reStrCmp)
 				if len(res) == 0 {
 					break
 				}
@@ -111,6 +111,29 @@ func jsonContains(a, e interface{}, path []string) []string {
 			return path
 		}
 	case reflect.String:
+		if reStrCmp {
+			switch av.Kind() {
+			case reflect.String:
+				if regexp.MustCompile(e.(string)).Find([]byte(a.(string))) == nil {
+					return path
+				}
+			case reflect.Int:
+				if regexp.MustCompile(e.(string)).Find(fmt.Appendf(nil, "%d", a.(int))) == nil {
+					return path
+				}
+			case reflect.Float32:
+				if regexp.MustCompile(e.(string)).Find(fmt.Appendf(nil, "%f", a.(float32))) == nil {
+					return path
+				}
+			case reflect.Float64:
+				if regexp.MustCompile(e.(string)).Find(fmt.Appendf(nil, "%f", a.(float64))) == nil {
+					return path
+				}
+			default:
+				return path
+			}
+			break
+		}
 		if a.(string) != e.(string) {
 			return path
 		}
@@ -131,7 +154,7 @@ func JSONMatcher(actual string, expected string) error {
 	if err := json.Unmarshal([]byte(expected), &e); err != nil {
 		panic(fmt.Errorf("expected value is not valid json: %s", err))
 	}
-	res := jsonContains(a, e, []string{""})
+	res := jsonContains(a, e, []string{""}, false)
 	if len(res) > 0 {
 		return &JSONMatcherError{MatcherError{actual, expected}, res}
 	}
@@ -150,6 +173,22 @@ func JSONExactlyMatcher(actual string, expected string) error {
 	}
 	if !reflect.DeepEqual(a, e) {
 		return &MatcherError{actual, expected}
+	}
+	return nil
+}
+
+// JSONRegexpMatcher works like JSONMatcher, but checks strings as regexp
+func JSONRegexpMatcher(actual string, expected string) error {
+	var a, e interface{}
+	if err := json.Unmarshal([]byte(actual), &a); err != nil {
+		return fmt.Errorf("actual value is not valid json: %s", err)
+	}
+	if err := json.Unmarshal([]byte(expected), &e); err != nil {
+		panic(fmt.Errorf("expected value is not valid json: %s", err))
+	}
+	res := jsonContains(a, e, []string{""}, true)
+	if len(res) > 0 {
+		return &JSONMatcherError{MatcherError{actual, expected}, res}
 	}
 	return nil
 }
@@ -176,4 +215,5 @@ func init() {
 	RegisterMatcher("regexp", RegexpMatcher)
 	RegisterMatcher("json", JSONMatcher)
 	RegisterMatcher("json_exactly", JSONExactlyMatcher)
+	RegisterMatcher("json_regexp", JSONRegexpMatcher)
 }
