@@ -67,7 +67,7 @@ type RelayStateMgr interface {
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 	ProcessExtendedBuffer() error
 
-	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching, completeRelay bool) error
+	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching, completeRelay bool) (*PortalDesc, error)
 }
 
 type BufferedMessageType int
@@ -134,7 +134,7 @@ type RelayStateImpl struct {
 	execute func() error
 
 	saveBind        *pgproto3.Bind
-	savedPortalDesc map[string]PortalDesc
+	savedPortalDesc map[string]*PortalDesc
 
 	parseCache map[string]ParseCacheEntry
 
@@ -172,7 +172,8 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		Cl:              client,
 		poolMgr:         manager,
 		execute:         nil,
-		savedPortalDesc: map[string]PortalDesc{},
+		saveBind:        &pgproto3.Bind{},
+		savedPortalDesc: map[string]*PortalDesc{},
 		parseCache:      map[string]ParseCacheEntry{},
 	}
 }
@@ -1066,13 +1067,13 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				return err
 			}
 
+			rst.lastBindName = q.PreparedStatement
+
 			rst.execute = emptyExecFunc
 
-			err := rst.ProcQueryAdvancedTx(def.Query, func() error {
-				rst.saveBind = &pgproto3.Bind{}
+			pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
 				rst.saveBind.DestinationPortal = q.DestinationPortal
 
-				rst.lastBindName = q.PreparedStatement
 				hash := rst.Client().PreparedStatementQueryHashByName(q.PreparedStatement)
 
 				rst.saveBind.PreparedStatement = fmt.Sprintf("%d", hash)
@@ -1180,6 +1181,10 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				return err
 			}
 
+			if pd != nil {
+				rst.savedPortalDesc[q.PreparedStatement] = pd
+			}
+
 		case *pgproto3.Describe:
 			// save txstatus because it may be overwritten if we have no backend connection
 			saveTxStat := rst.qse.TxStatus()
@@ -1204,7 +1209,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						}
 					}
 				} else {
-					cachedPd = PortalDesc{}
+					cachedPd = &PortalDesc{}
 
 					err := rst.PrepareRelayStepOnHintRoute(rst.bindRoute)
 					if err != nil {
