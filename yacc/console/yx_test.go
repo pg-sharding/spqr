@@ -13,7 +13,7 @@ func TestSimpleTrace(t *testing.T) {
 	assert := assert.New(t)
 
 	type tcase struct {
-		query string
+		query string 
 		exp   spqrparser.Statement
 		err   error
 	}
@@ -261,11 +261,11 @@ func TestRedistribute(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 500",
+			query: "REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 1000",
 			exp: &spqrparser.RedistributeKeyRange{
 				KeyRangeID:  "kr1",
 				DestShardID: "sh2",
-				BatchSize:   500,
+				BatchSize:   1000,
 				Check:       true,
 				Apply:       true,
 			},
@@ -281,7 +281,7 @@ func TestRedistribute(t *testing.T) {
 			exp: &spqrparser.RedistributeKeyRange{
 				KeyRangeID:  "kr1",
 				DestShardID: "sh2",
-				BatchSize:   -1,
+				BatchSize:   500,
 				Check:       true,
 				Apply:       true,
 			},
@@ -292,7 +292,7 @@ func TestRedistribute(t *testing.T) {
 			exp: &spqrparser.RedistributeKeyRange{
 				KeyRangeID:  "kr1",
 				DestShardID: "sh2",
-				BatchSize:   -1,
+				BatchSize:   500,
 				Check:       true,
 				Apply:       false,
 			},
@@ -303,7 +303,7 @@ func TestRedistribute(t *testing.T) {
 			exp: &spqrparser.RedistributeKeyRange{
 				KeyRangeID:  "kr1",
 				DestShardID: "sh2",
-				BatchSize:   -1,
+				BatchSize:   500,
 				Check:       false,
 				Apply:       true,
 			},

@@ -1856,7 +1856,7 @@ yydefault:
 		yyDollar = yyS[yypt-0 : yypt+1]
 //line gram.y:992
 		{
-			yyVAL.opt_batch_size = -1
+			yyVAL.opt_batch_size = 500
 		}
 	case 150:
 		yyDollar = yyS[yypt-4 : yypt+1]
