@@ -57,9 +57,9 @@ ALTER DISTRIBUTION ds2 ATTACH RELATION yy DISTRIBUTION KEY w_id;
 (2 rows)
 
 ALTER DISTRIBUTION ds3 ATTACH RELATION xx DISTRIBUTION KEY w_id;
-ERROR:  distribution "ds3" not found.
+ERROR:  distribution "ds3" not found
 ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
-ERROR:  relation "xx" is already attached.
+ERROR:  relation "xx" is already attached
 \c regress
 DROP TABLE IF EXISTS xx;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -93,7 +93,7 @@ NOTICE: send query to shard(s) : sh2
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION yy DISTRIBUTION KEY w_id;
-ERROR:  relation "yy" is already attached.
+ERROR:  relation "yy" is already attached
 ALTER DISTRIBUTION ds2 DETACH RELATION yy;
     detach relation     
 ------------------------
