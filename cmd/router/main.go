@@ -372,11 +372,13 @@ var runCmd = &cobra.Command{
 			router.Initialize()
 		}
 
-		errCh := make(chan err)
+		errCh := make(chan error)
 
-		go func(){
-			for err <- errCh:
-				return err
+		go func() {
+			for {
+				_ = <-errCh
+				os.Exit(1)
+			}
 		}()
 
 		wg := &sync.WaitGroup{}
