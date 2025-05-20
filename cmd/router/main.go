@@ -372,13 +372,21 @@ var runCmd = &cobra.Command{
 			router.Initialize()
 		}
 
+		errCh := make(chan err)
+
+		go func(){
+			for err <- errCh:
+				return err
+		}()
+
 		wg := &sync.WaitGroup{}
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
 			err := app.ServeRouter(ctx)
 			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+				spqrlog.Zero.Error().Err(err).Msg("failed to serve SQL console")
+				errCh <- err
 			}
 			wg.Done()
 		}(wg)
@@ -387,7 +395,8 @@ var runCmd = &cobra.Command{
 		go func(wg *sync.WaitGroup) {
 			err := app.ServeGrpcApi(ctx)
 			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+				spqrlog.Zero.Error().Err(err).Msg("failed to serve gRPC API")
+				errCh <- err
 			}
 			wg.Done()
 		}(wg)
@@ -396,7 +405,8 @@ var runCmd = &cobra.Command{
 		go func(wg *sync.WaitGroup) {
 			err := app.ServeAdminConsole(ctx)
 			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+				spqrlog.Zero.Error().Err(err).Msg("failed to serve SQL administrative console")
+				errCh <- err
 			}
 			wg.Done()
 		}(wg)
@@ -405,7 +415,8 @@ var runCmd = &cobra.Command{
 		go func(wg *sync.WaitGroup) {
 			err := app.ServiceUnixSocket(ctx)
 			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+				spqrlog.Zero.Error().Err(err).Msg("failed to serve unix socket")
+				errCh <- err
 			}
 			wg.Done()
 		}(wg)
