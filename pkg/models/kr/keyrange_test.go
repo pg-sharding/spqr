@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/stretchr/testify/assert"
-	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/qdb"
+	"github.com/stretchr/testify/assert"
 )
 
 // TestGetKRCondition is a unit test function that tests the behavior of the GetKRCondition function.
