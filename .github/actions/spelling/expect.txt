@@ -16,12 +16,13 @@ apk
 appdefaults
 APREQ
 aqo
-ARRAYOID
 argexpr
+ARRAYOID
 asd
 astmt
 authed
 autotools
+basebackup
 bbc
 bcad
 bcc
@@ -197,10 +198,10 @@ inp
 inputdir
 installable
 interactor
-INTOID
 ipam
 IRun
 isgomock
+isready
 issuecomment
 iuwehiuhweui
 ixxxd
@@ -327,7 +328,6 @@ nspname
 odssd
 ogima
 OIDKRB
-OIDS
 oiwejow
 OLAP
 ontup
@@ -347,6 +347,7 @@ pgcat
 pgconn
 pgcopy
 pgcs
+pgdata
 PGDATABASE
 pgdg
 pgexec

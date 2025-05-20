@@ -156,7 +156,6 @@ func CreateTables() {
 	if val, ok := params["password"]; ok {
 		dsn = dsn + " password=" + val
 	}
-
 	conn, err := pgx.Connect(context.Background(), dsn)
 	if err != nil {
 		panic(fmt.Errorf("failed to connect to database: %s", err))
