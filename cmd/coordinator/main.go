@@ -15,11 +15,11 @@ import (
 )
 
 var (
-	cfgPath          string
-	qdbImpl          string
-	gomaxprocs       int
-	prettyLogging    bool
-	logLevel         string
+	cfgPath       string
+	qdbImpl       string
+	gomaxprocs    int
+	prettyLogging bool
+	logLevel      string
 )
 
 var rootCmd = &cobra.Command{

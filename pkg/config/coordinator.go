@@ -57,7 +57,7 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 	}
 
 	configBytes, err := json.MarshalIndent(&cfgCoordinator, "", "  ")
-	
+
 	if err != nil {
 		return "", err
 	}
@@ -75,7 +75,7 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 //   - error: an error if any occurred during the initialization process.
 func initCoordinatorConfig(file *os.File, filepath string) error {
 	cfgCoordinator.DefaultBatchSize = 500
-	
+
 	if strings.HasSuffix(filepath, ".toml") {
 		_, err := toml.NewDecoder(file).Decode(&cfgCoordinator)
 		return err

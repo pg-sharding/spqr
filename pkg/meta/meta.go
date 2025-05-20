@@ -25,8 +25,6 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
-
-
 type EntityMgr interface {
 	kr.KeyRangeMgr
 	topology.RouterMgr
