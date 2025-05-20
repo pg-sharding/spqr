@@ -26,12 +26,11 @@ CREATE REFERENCE TABLE t1 AUTO INCREMENT id;
 (2 rows)
 
 SHOW SEQUENCES;
-  name   
----------
+ name  
+-------
  t1_id
  t_id
- test_id
-(3 rows)
+(2 rows)
 
 DROP SEQUENCE t1_id;
 ERROR:  column "t1.id" is attached to sequence

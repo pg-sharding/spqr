@@ -93,7 +93,7 @@ NOTICE: send query to shard(s) : sh2
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION yy DISTRIBUTION KEY w_id;
-ERROR:  relation "yy" is already attached.
+ERROR:  relation "yy" is already attached
 ALTER DISTRIBUTION ds2 DETACH RELATION yy;
     detach relation     
 ------------------------
