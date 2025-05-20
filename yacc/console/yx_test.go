@@ -13,7 +13,7 @@ func TestSimpleTrace(t *testing.T) {
 	assert := assert.New(t)
 
 	type tcase struct {
-		query string 
+		query string
 		exp   spqrparser.Statement
 		err   error
 	}

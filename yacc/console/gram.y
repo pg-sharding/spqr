@@ -989,7 +989,7 @@ redistribute_key_range_stmt:
 	}
 
 opt_batch_size: BATCH SIZE any_uint			{ $$ = int($3) }
-			| /*EMPTY*/						{ $$ = -1}
+			| /*EMPTY*/						{ $$ = -1 }
 
 unite_key_range_stmt:
 	UNITE key_range_stmt WITH any_id

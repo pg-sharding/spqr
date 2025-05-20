@@ -15,11 +15,11 @@ import (
 )
 
 var (
-	cfgPath       string
-	qdbImpl       string
-	gomaxprocs    int
-	prettyLogging bool
-	logLevel      string
+	cfgPath          string
+	qdbImpl          string
+	gomaxprocs       int
+	prettyLogging    bool
+	logLevel         string
 )
 
 var rootCmd = &cobra.Command{
@@ -106,6 +106,7 @@ func init() {
 	rootCmd.PersistentFlags().IntVarP(&gomaxprocs, "gomaxprocs", "", 0, "GOMAXPROCS value")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "overload for `log_level` option in router config")
 	rootCmd.PersistentFlags().BoolVarP(&prettyLogging, "pretty-log", "P", false, "enables pretty logging")
+	
 	rootCmd.AddCommand(testCmd)
 }
 
