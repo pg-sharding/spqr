@@ -1061,6 +1061,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 			def := rst.Client().PreparedStatementDefinitionByName(q.PreparedStatement)
 
+			if def == nil {
+				/* this prepared statement was not prepared by client */
+				return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", q.PreparedStatement)
+			}
+
 			// We implicitly assume that there is always Execute after Bind for the same portal.
 			// however, postgresql protocol allows some more cases.
 			if err := rst.Client().ReplyBindComplete(); err != nil {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/router/client"
@@ -189,7 +190,14 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 			return nil
 			// ok
 		default:
-			return err
+			switch err.(type) {
+			case *spqrerror.SpqrError:
+				if rerr := rst.Client().ReplyErr(err); rerr != nil {
+					return err
+				}
+			default:
+				return err
+			}
 		}
 	}
 }

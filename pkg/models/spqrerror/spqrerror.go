@@ -23,6 +23,8 @@ const (
 	SPQR_INVALID_REQUEST     = "SPQRJ"
 	SPQR_CONFIG_ERROR        = "SPQRM"
 	SPQR_SEQUENCE_ERROR      = "SPQRQ"
+
+	PG_PREPARED_STATEMENT_DOES_NOT_EXISTS = "26000"
 )
 
 var existingErrorCodeMap = map[string]string{
@@ -129,5 +131,5 @@ func Newf(errorCode string, format string, a ...any) *SpqrError {
 // Returns:
 //   - string: The formatted error message.
 func (er *SpqrError) Error() string {
-	return fmt.Sprintf("%s.", er.Err.Error())
+	return fmt.Sprintf("%s", er.Err.Error())
 }
