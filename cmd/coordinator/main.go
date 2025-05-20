@@ -20,7 +20,6 @@ var (
 	gomaxprocs       int
 	prettyLogging    bool
 	logLevel         string
-	defaultBatchSize int
 )
 
 var rootCmd = &cobra.Command{
@@ -107,7 +106,6 @@ func init() {
 	rootCmd.PersistentFlags().IntVarP(&gomaxprocs, "gomaxprocs", "", 0, "GOMAXPROCS value")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "overload for `log_level` option in router config")
 	rootCmd.PersistentFlags().BoolVarP(&prettyLogging, "pretty-log", "P", false, "enables pretty logging")
-	rootCmd.PersistentFlags().IntVarP(&defaultBatchSize, "defaultBatchSize", "", 500, "default Batch Size for RedistributeKeyRangeRequest")
 	rootCmd.AddCommand(testCmd)
 }
 

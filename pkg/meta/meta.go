@@ -25,9 +25,7 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
-const (
-	defaultBatchSize = 500
-)
+
 
 type EntityMgr interface {
 	kr.KeyRangeMgr
@@ -718,9 +716,9 @@ func processRedistribute(ctx context.Context, req *spqrparser.RedistributeKeyRan
 	if req.BatchSize <= 0 {
 		spqrlog.Zero.Debug().
 			Int("batch-size-got", req.BatchSize).
-			Int("batch-size-use", defaultBatchSize).
+			Int("batch-size-use", config.CoordinatorConfig().DefaultBatchSize).
 			Msg("redistribute: using default batch size")
-		req.BatchSize = defaultBatchSize
+		req.BatchSize = config.CoordinatorConfig().DefaultBatchSize
 	}
 	if err := mngr.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
 		KrId:      req.KeyRangeID,
