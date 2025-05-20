@@ -376,7 +376,7 @@ var runCmd = &cobra.Command{
 
 		go func() {
 			for {
-				_ = <-errCh
+				<-errCh
 				os.Exit(1)
 			}
 		}()
