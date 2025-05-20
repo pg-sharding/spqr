@@ -15,9 +15,9 @@ SELECT pg_is_in_recovery() /* target-session-attrs: read-write */ , id FROM tsa_
 SELECT pg_is_in_recovery(), id FROM tsa_test WHERE id = 22 /* target-session-attrs: read-write */;
 
 -- read-only is also supported but there is no high availability cluster in our tests yet, so it returns error
--- SELECT pg_is_in_recovery() /* target-session-attrs: read-only */ , id FROM tsa_test WHERE id = 22;
--- NOTICE: send query to shard(s) : sh1
--- ERROR:  failed to find replica
+SELECT pg_is_in_recovery() /* target-session-attrs: read-only */ , id FROM tsa_test WHERE id = 22;
+
+SET __spqr__execute_on TO sh1;
 
 SHOW __spqr__target_session_attrs;
 SET __spqr__target_session_attrs TO 'prefer-standby';
@@ -35,15 +35,15 @@ select (select /* target-session-attrs: prefer-standby */ extract(epoch from TIM
 SET __spqr__target_session_attrs TO 'read-only';
 SHOW __spqr__target_session_attrs;
 
---SELECT TO_TIMESTAMP(
---    '2017-03-31 9:30:20',
---    'YYYY-MM-DD HH:MI:SS'
---);
+SELECT TO_TIMESTAMP(
+    '2017-03-31 9:30:20',
+    'YYYY-MM-DD HH:MI:SS'
+);
 
---SELECT /* __spqr__target_session_attrs: read-only */TO_TIMESTAMP(
---    '2017-03-31 9:30:20',
---    'YYYY-MM-DD HH:MI:SS'
---);
+SELECT /* __spqr__target_session_attrs: read-only */TO_TIMESTAMP(
+    '2017-03-31 9:30:20',
+    'YYYY-MM-DD HH:MI:SS'
+);
 
 SHOW __spqr__target_session_attrs;
 
@@ -59,15 +59,15 @@ ROLLBACK;
 
 SHOW __spqr__target_session_attrs;
 
---SELECT TO_TIMESTAMP(
---    '2017-03-31 9:30:20',
---    'YYYY-MM-DD HH:MI:SS'
---);
+SELECT TO_TIMESTAMP(
+    '2017-03-31 9:30:20',
+    'YYYY-MM-DD HH:MI:SS'
+);
 
---SELECT /* __spqr__target_session_attrs: read-only */TO_TIMESTAMP(
---    '2017-03-31 9:30:20',
---    'YYYY-MM-DD HH:MI:SS'
---);
+SELECT /* __spqr__target_session_attrs: read-only */TO_TIMESTAMP(
+    '2017-03-31 9:30:20',
+    'YYYY-MM-DD HH:MI:SS'
+);
 
 SHOW __spqr__target_session_attrs;
 
