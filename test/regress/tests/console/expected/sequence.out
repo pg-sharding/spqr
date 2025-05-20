@@ -26,14 +26,15 @@ CREATE REFERENCE TABLE t1 AUTO INCREMENT id;
 (2 rows)
 
 SHOW SEQUENCES;
- name  
--------
+  name   
+---------
  t1_id
  t_id
-(2 rows)
+ test_id
+(3 rows)
 
 DROP SEQUENCE t1_id;
-ERROR:  column "t1.id" is attached to sequence.
+ERROR:  column "t1.id" is attached to sequence
 ALTER REPLICATED DISTRIBUTION DETACH RELATION t1;
         detach relation        
 -------------------------------
@@ -54,7 +55,7 @@ CREATE DISTRIBUTION ds COLUMN TYPES integer;
 (1 row)
 
 ALTER DISTRIBUTION ds ATTACH RELATION t2 DISTRIBUTION KEY id AUTO INCREMENT id1;
-ERROR:  sequence are supported for replicated relations only.
+ERROR:  sequence are supported for replicated relations only
 DROP DISTRIBUTION ALL CASCADE;
        drop distribution       
 -------------------------------

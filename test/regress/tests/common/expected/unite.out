@@ -37,7 +37,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
 
 -- non adjacent key ranges
 UNITE KEY RANGE krid1 WITH krid3;
-ERROR:  failed to unite non-adjacent key ranges.
+ERROR:  failed to unite non-adjacent key ranges
 UNITE KEY RANGE krid1 WITH krid2;
          merge key ranges         
 ----------------------------------
@@ -60,7 +60,7 @@ LOCK KEY RANGE krid1;
 (1 row)
 
 UNITE KEY RANGE krid1 WITH krid3;
-ERROR:  key range krid1 is locked.
+ERROR:  key range krid1 is locked
 UNLOCK KEY RANGE krid1;
    unlock key range    
 -----------------------
@@ -76,7 +76,7 @@ UNITE KEY RANGE krid3 WITH krid1;
 
 -- routing to different shards
 UNITE KEY RANGE krid3 WITH krid4;
-ERROR:  failed to unite key ranges routing different shards.
+ERROR:  failed to unite key ranges routing different shards
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------

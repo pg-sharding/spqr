@@ -131,5 +131,5 @@ func Newf(errorCode string, format string, a ...any) *SpqrError {
 // Returns:
 //   - string: The formatted error message.
 func (er *SpqrError) Error() string {
-	return fmt.Sprintf("%s", er.Err.Error())
+	return er.Err.Error()
 }
