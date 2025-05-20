@@ -18,7 +18,15 @@ Feature: Config reloading works
     """
     Then command return code should be "0"
     And I wait for host "shard1" to respond
-    When I fail to run SQL on host "router" as user "regress2"
+    When I run SQL on host "router" as user "regress2"
+    """
+    SELECT 1 /* __spqr__execute_on:: sh1 */
+    """
+    Then command return code should be "1"
+    And SQL error on host "router" should match regexp
+    """
+    shard sh1 failed to find primary
+    """
     # Edit config and reload spqr-router
     When I run command on host "router"
     """

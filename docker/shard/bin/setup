@@ -9,7 +9,8 @@ touch $SETUP_LOG
 # Start postgresql
 
 cat >> /var/lib/postgresql/$POSTGRES_VERSION/main/pg_hba.conf <<-EOF
-host   all       all       all           trust
+host   all               all       all           trust
+host   replication       all       all           trust
 EOF
 
 cat >> /var/lib/postgresql/$POSTGRES_VERSION/main/postgresql.conf <<-EOF

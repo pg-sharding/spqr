@@ -800,22 +800,6 @@ func (tctx *testContext) stepIRunSQLOnHostAsUser(host string, user string, body 
 	return err
 }
 
-func (tctx *testContext) stepIFailSQLOnHost(host string) error {
-	_, err := tctx.queryPostgresql(host, shardUser, "SELECT 1", struct{}{}, postgresqlQueryTimeout)
-	if err == nil {
-		return fmt.Errorf("host is accessible via SQL")
-	}
-	return nil
-}
-
-func (tctx *testContext) stepIFailSQLOnHostAsUser(host string, user string) error {
-	_, err := tctx.queryPostgresql(host, user, "SELECT 1", struct{}{}, postgresqlQueryTimeout)
-	if err == nil {
-		return fmt.Errorf("host is accessible via SQL")
-	}
-	return nil
-}
-
 func (tctx *testContext) stepSQLResultShouldNotMatch(matcher string, body *godog.DocString) error {
 	m, err := matchers.GetMatcher(matcher)
 	if err != nil {
@@ -1069,7 +1053,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 
 	// host manipulation
 	s.Step(`^cluster environment is$`, tctx.stepClusterEnvironmentIs)
-	s.Step(`^cluster is up and running$`, func() error { return tctx.stepClusterIsUpAndRunning() })
+	s.Step(`^cluster is up and running$`, tctx.stepClusterIsUpAndRunning)
 	s.Step(`^cluster is failed up and running$`, func() error {
 		err := tctx.stepClusterIsUpAndRunning()
 		if err != nil {
@@ -1108,8 +1092,6 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^qdb should not contain key range moves$`, tctx.stepQDBShouldNotContainKRMoves)
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
-	s.Step(`^I fail to run SQL on host "([^"]*)"$`, tctx.stepIFailSQLOnHost)
-	s.Step(`^I fail to run SQL on host "([^"]*)" as user "([^"]*)"$`, tctx.stepIFailSQLOnHostAsUser)
 	s.Step(`^I wait for host "([^"]*)" to respond$`, tctx.stepWaitPostgresqlToRespond)
 
 	// variable manipulation
