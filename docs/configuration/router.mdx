@@ -47,9 +47,9 @@ Refer to the `FrontendRule` struct in the [pkg/config/rules.go](https://github.c
 | `search_path`             | The search path used for the database connection                               | Any valid search path    |
 | `auth_rule`               | See [General Auth Settings](./auth.go)                                         | Object of `AuthCfg`      |
 | `pool_mode`               | The mode of connection pooling used                                            | `SESSION`, `TRANSACTION` |
-| `pool_discard`            | Determines if connections are discarded from the pool under certain conditions | `true`, `false`          |
+| `pool_discard`            | Determines if `DISCARD ALL` will be issued after transaction end               | `true`, `false`          |
 | `pool_rollback`           | Specifies whether to execute a rollback on connections returned to the pool    | `true`, `false`          |
-| `pool_prepared_statement` | Indicates if prepared statements should be pooled                              | `true`, `false`           |
+| `pool_prepared_statement` | Indicates if prepared statements should be pooled                              | `true`, `false`          |
 | `pool_default`            | If set to true, uses the default pool settings defined elsewhere               | `true`, `false`          |
 
 ## Backend Rules
