@@ -90,8 +90,8 @@ services:
         condition: service_healthy
       shard3-replica:
         condition: service_healthy
-      # kdc:
-      #   condition: service_started
+      kdc:
+        condition: service_started
     healthcheck: &router-healthcheck
       test: psql -h regress_router -p 6432 -U regress -d regress
       interval: 10s
@@ -209,11 +209,11 @@ services:
     healthcheck:
       <<: *ldap-healthcheck
 
-  # kdc:
-  #   build:
-  #     context: ./conf/kdc
-  #   volumes:
-  #     - ./conf/kdc/start.sh:/start.sh
-  #     - keytab:/keytab
+  kdc:
+    build:
+      context: ./conf/kdc
+    volumes:
+      - ./conf/kdc/start.sh:/start.sh
+      - keytab:/keytab
 volumes:
   keytab:
