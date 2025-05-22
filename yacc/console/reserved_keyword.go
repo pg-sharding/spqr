@@ -34,6 +34,7 @@ var reservedWords = map[string]int{
 	"route":        ROUTE,
 	"distribution": DISTRIBUTION,
 	"table":        TABLE,
+	"tables":       TABLES,
 	"hash":         HASH,
 	"function":     FUNCTION,
 	"where":        WHERE,
@@ -75,4 +76,6 @@ var reservedWords = map[string]int{
 	"increment":    INCREMENT,
 	"sequence":     SEQUENCE,
 	"schema":       SCHEMA,
+	"retry":        RETRY,
+	"sync":         SYNC,
 }

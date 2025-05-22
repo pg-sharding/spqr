@@ -339,7 +339,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 
 			return q.GetKeyRange(ctx, keyRangeID)
 		case 1:
-			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %v locked", keyRangeID)
+			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", keyRangeID)
 		default:
 			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "too much key ranges matched: %d", len(resp.Kvs))
 		}
@@ -350,11 +350,13 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 	fetchCtx, cf := context.WithTimeout(ctx, 15*time.Second)
 	defer cf()
 
+	var lastErr error
 	for {
 		select {
 		case <-timer.C:
 			val, err := fetcher(ctx, sess, id)
 			if err != nil {
+				lastErr = err
 				spqrlog.Zero.Error().
 					Err(err).
 					Msg("error while fetching")
@@ -364,7 +366,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 			return val, nil
 
 		case <-fetchCtx.Done():
-			return nil, spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "lock key range deadlines exceeded")
+			return nil, lastErr
 		}
 	}
 }
@@ -470,6 +472,11 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 		return err
 	}
 
+	_, err = q.cli.Delete(ctx, keyLockPath(keyRangeNodePath(krId)))
+	if err != nil {
+		return err
+	}
+
 	return q.CreateKeyRange(ctx, kr)
 }
 
@@ -485,13 +492,13 @@ func (q *EtcdQDB) RecordTransferTx(ctx context.Context, key string, info *DataTr
 
 	bts, err := json.Marshal(info)
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to marshal transaction")
+		spqrlog.Zero.Error().Err(err).Msg("failed to marshal transaction")
 		return err
 	}
 
 	_, err = q.cli.Put(ctx, transferTxNodePath(key), string(bts))
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to write transaction")
+		spqrlog.Zero.Error().Err(err).Msg("failed to write transaction")
 		return err
 	}
 
@@ -506,7 +513,7 @@ func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferT
 
 	resp, err := q.cli.Get(ctx, transferTxNodePath(key))
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to get transaction")
+		spqrlog.Zero.Error().Err(err).Msg("failed to get transaction")
 		return nil, err
 	}
 
@@ -516,7 +523,7 @@ func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferT
 	}
 
 	if err := json.Unmarshal(resp.Kvs[0].Value, &st); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal transaction")
+		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal transaction")
 		return nil, err
 	}
 	return &st, nil
@@ -530,7 +537,7 @@ func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 
 	_, err := q.cli.Delete(ctx, transferTxNodePath(key))
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to delete transaction")
+		spqrlog.Zero.Error().Err(err).Msg("failed to delete transaction")
 		return err
 	}
 	return nil
@@ -551,7 +558,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 		Str("address", host).
 		Msg("etcdqdb: try coordinator lock")
 
-	leaseGrantResp, err := q.cli.Lease.Grant(ctx, CoordKeepAliveTtl)
+	leaseGrantResp, err := q.cli.Grant(ctx, CoordKeepAliveTtl)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease grant failed")
 		return err
@@ -562,7 +569,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	// client will continue sending keep alive requests to the etcd server, but will drop responses
 	// until there is capacity on the channel to send more responses.
 
-	keepAliveCh, err := q.cli.Lease.KeepAlive(ctx, leaseGrantResp.ID)
+	keepAliveCh, err := q.cli.KeepAlive(ctx, leaseGrantResp.ID)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease keep alive failed")
 		return err
@@ -577,7 +584,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	}
 
 	if !stat.Succeeded {
-		_, err := q.cli.Lease.Revoke(ctx, leaseGrantResp.ID)
+		_, err := q.cli.Revoke(ctx, leaseGrantResp.ID)
 		if err != nil {
 			return err
 		}

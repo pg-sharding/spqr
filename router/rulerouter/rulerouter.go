@@ -182,6 +182,20 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 		return cl, nil
 	}
 
+	if cl.Usr() == "spqr-ping" && cl.DB() == "spqr-ping" {
+		// TODO : unit tests
+		rule := &config.FrontendRule{
+			Usr:      "spqr-ping",
+			DB:       "spqr-ping",
+			AuthRule: &config.AuthCfg{Method: config.AuthOK},
+			PoolMode: config.PoolModeVirtual,
+		}
+		if err := cl.AssignRule(rule); err != nil {
+			_ = cl.ReplyErrMsg("failed to assign rule", spqrerror.SPQR_ROUTING_ERROR, txstatus.TXIDLE)
+			return nil, err
+		}
+	}
+
 	if pt == port.ADMRouterPortType || cl.DB() == "spqr-console" {
 		return r.preRouteInitializedClientAdm(cl)
 	}
@@ -227,7 +241,9 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 
 	if err := cl.Auth(rt); err != nil {
 		_ = cl.ReplyErr(err)
-		r.routePool.Obsolete(key)
+		if !config.RouterConfig().DisableObsoleteClient {
+			r.routePool.Obsolete(key)
+		}
 		return cl, err
 	}
 

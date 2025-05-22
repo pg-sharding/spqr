@@ -85,7 +85,7 @@ func (l *LocalQrouter) DataShardsRoutes() []*kr.ShardKey {
 	return []*kr.ShardKey{
 		{
 			Name: l.ds.ID,
-			RW:   false,
+			RO:   false,
 		},
 	}
 }
@@ -95,3 +95,4 @@ func (l *LocalQrouter) Mgr() meta.EntityMgr {
 }
 
 func (l *LocalQrouter) SetQuery(_ *string) {}
+func (l *LocalQrouter) Query() *string     { return nil }

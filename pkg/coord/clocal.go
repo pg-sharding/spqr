@@ -1,4 +1,4 @@
-package local
+package coord
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -22,6 +21,8 @@ import (
 )
 
 type LocalCoordinator struct {
+	Coordinator
+
 	mu sync.Mutex
 
 	ColumnMapping map[string]struct{}
@@ -35,45 +36,6 @@ type LocalCoordinator struct {
 	qdb qdb.QDB
 
 	cache *cache.SchemaCache
-}
-
-// GetMoveTaskGroup retrieves the MoveTask group from the local coordinator's QDB.
-//
-// Parameters:
-// - ctx (context.Context): the context.Context object for managing the request's lifetime.
-//
-// Returns:
-// - *tasks.MoveTaskGroup: the retrieved task group, or nil if an error occurred.
-// - error: an error if the retrieval process fails.
-func (lc *LocalCoordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
-	group, err := lc.qdb.GetMoveTaskGroup(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return tasks.TaskGroupFromDb(group), nil
-}
-
-// WriteMoveTaskGroup writes the given task group to the local coordinator's QDB.
-//
-// Parameters:
-// - ctx (context.Context): the context.Context object for managing the request's lifetime.
-// - taskGroup (*tasks.MoveTaskGroup): the task group to be written to the QDB.
-//
-// Returns:
-// - error: an error if the write operation fails.
-func (lc *LocalCoordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
-	return lc.qdb.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
-}
-
-// RemoveMoveTaskGroup removes the task group from the local coordinator's QDB.
-//
-// Parameters:
-// - ctx (context.Context): the context.Context object for managing the request's lifetime.
-//
-// Returns:
-// - error: an error if the removal operation fails.
-func (lc *LocalCoordinator) RemoveMoveTaskGroup(ctx context.Context) error {
-	return lc.qdb.RemoveMoveTaskGroup(ctx)
 }
 
 // GetBalancerTask is disabled in LocalCoordinator
@@ -93,32 +55,6 @@ func (lc *LocalCoordinator) RemoveBalancerTask(context.Context) error {
 
 // TODO : unit tests
 
-// ListDistributions retrieves a list of distributions from the local coordinator's QDB.
-//
-// Parameters:
-// - ctx (context.Context): the context.Context object for managing the request's lifetime.
-//
-// Returns:
-// - []*distributions.Distribution: a slice of distributions.Distribution objects representing the retrieved distributions.
-// - error: an error if the retrieval operation fails.
-func (lc *LocalCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-
-	resp, err := lc.qdb.ListDistributions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var retDsp []*distributions.Distribution
-
-	for _, dsp := range resp {
-		retDsp = append(retDsp, distributions.DistributionFromDB(dsp))
-	}
-	return retDsp, nil
-}
-
-// TODO : unit tests
-
 // CreateDistribution creates a distribution in the local coordinator's QDB.
 //
 // Parameters:
@@ -130,22 +66,7 @@ func (lc *LocalCoordinator) ListDistributions(ctx context.Context) ([]*distribut
 func (lc *LocalCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-	if len(ds.ColTypes) == 0 && ds.Id != distributions.REPLICATED {
-		return fmt.Errorf("empty distributions are disallowed")
-	}
-	err := lc.qdb.CreateDistribution(ctx, distributions.DistributionToDB(ds))
-	if err != nil {
-		return err
-	}
-	for _, rel := range ds.Relations {
-		for colName, seqName := range rel.ColumnSequenceMapping {
-			err = lc.qdb.AlterSequenceAttach(ctx, seqName, rel.Name, colName)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	return lc.Coordinator.CreateDistribution(ctx, ds)
 }
 
 // TODO : unit tests
@@ -162,54 +83,15 @@ func (lc *LocalCoordinator) CreateDistribution(ctx context.Context, ds *distribu
 func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-
-	ds, err := lc.qdb.GetDistribution(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	dRels := []*qdb.DistributedRelation{}
-	for _, r := range rels {
-		if len(r.DistributionKey) != len(ds.ColTypes) {
-			return fmt.Errorf("cannot attach relation %v to this dataspace: number of column mismatch", r.Name)
-		}
-		if !r.ReplicatedRelation && len(r.ColumnSequenceMapping) > 0 {
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequence are supported for replicated relations only")
-		}
-		dRels = append(dRels, distributions.DistributedRelationToDB(r))
-	}
-
-	err = lc.qdb.AlterDistributionAttach(ctx, id, dRels)
-	if err != nil {
-		return err
-	}
-
-	for _, r := range rels {
-		for colName, seqName := range r.ColumnSequenceMapping {
-			if err := lc.qdb.AlterSequenceAttach(ctx, seqName, r.Name, colName); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	return lc.Coordinator.AlterDistributionAttach(ctx, id, rels)
 }
 
-// TODO : unit tests
-
-// AlterDistributionDetach alters the distribution by detaching a specific distributed relation.
-//
-// Parameters:
-// - ctx (context.Context): the context.Context object for managing the request's lifetime.
-// - id (string): the ID of the distribution to be altered.
-// - relName (string): the name of the distributed relation to be detached.
-//
-// Returns:
-// - error: an error if the alteration operation fails.
+// AlterDistributionDetach detaches relation from distribution
 func (lc *LocalCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	return lc.qdb.AlterDistributionDetach(ctx, id, relName)
+	return lc.Coordinator.AlterDistributionDetach(ctx, id, relName)
 }
 
 // TODO : unit tests
@@ -266,22 +148,7 @@ func (lc *LocalCoordinator) AlterDistributedRelation(ctx context.Context, id str
 func (lc *LocalCoordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-
-	ret, err := lc.qdb.GetDistribution(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	ds := distributions.DistributionFromDB(ret)
-
-	for relName := range ds.Relations {
-		mapping, err := lc.qdb.GetRelationSequence(ctx, relName)
-		if err != nil {
-			return nil, err
-		}
-		ds.Relations[relName].ColumnSequenceMapping = mapping
-	}
-
-	return ds, nil
+	return lc.Coordinator.GetDistribution(ctx, id)
 }
 
 // GetRelationDistribution retrieves a distribution based on the given relation from the local coordinator's QDB.
@@ -296,20 +163,7 @@ func (lc *LocalCoordinator) GetDistribution(ctx context.Context, id string) (*di
 func (lc *LocalCoordinator) GetRelationDistribution(ctx context.Context, relation string) (*distributions.Distribution, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-
-	ret, err := lc.qdb.GetRelationDistribution(ctx, relation)
-	if err != nil {
-		return nil, err
-	}
-	ds := distributions.DistributionFromDB(ret)
-	for relName := range ds.Relations {
-		mapping, err := lc.qdb.GetRelationSequence(ctx, relName)
-		if err != nil {
-			return nil, err
-		}
-		ds.Relations[relName].ColumnSequenceMapping = mapping
-	}
-	return ds, nil
+	return lc.Coordinator.GetRelationDistribution(ctx, relation)
 }
 
 // TODO : unit tests
@@ -359,21 +213,7 @@ func (lc *LocalCoordinator) DropDistribution(ctx context.Context, id string) err
 // - []*topology.DataShard: A slice of topology.DataShard objects representing the list of data shards.
 // - error: An error if the retrieval operation fails.
 func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
-	resp, err := lc.qdb.ListShards(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var retShards []*topology.DataShard
-
-	for _, sh := range resp {
-		retShards = append(retShards, &topology.DataShard{
-			ID: sh.ID,
-			Cfg: &config.Shard{
-				RawHosts: sh.RawHosts,
-			},
-		})
-	}
-	return retShards, nil
+	return lc.Coordinator.ListShards(ctx)
 }
 
 // AddWorldShard adds a world shard to the LocalCoordinator.
@@ -469,7 +309,7 @@ func (lc *LocalCoordinator) DataShardsRoutes() []*kr.ShardKey {
 	for name := range lc.DataShardCfgs {
 		ret = append(ret, &kr.ShardKey{
 			Name: name,
-			RW:   true,
+			RO:   false,
 		})
 	}
 
@@ -494,7 +334,7 @@ func (lc *LocalCoordinator) WorldShardsRoutes() []*kr.ShardKey {
 	for name := range lc.WorldShardCfgs {
 		ret = append(ret, &kr.ShardKey{
 			Name: name,
-			RW:   true,
+			RO:   true,
 		})
 	}
 
@@ -565,170 +405,6 @@ func (lc *LocalCoordinator) RedistributeKeyRange(_ context.Context, _ *kr.Redist
 	return ErrNotCoordinator
 }
 
-// TODO : unit tests
-
-// Unite merges two key ranges identified by req.BaseKeyRangeId and req.AppendageKeyRangeId into a single key range.
-//
-// Parameters:
-// - ctx (context.Context): The context.Context object for managing the request's lifetime.
-// - req (*kr.UniteKeyRange): a pointer to a UniteKeyRange object containing the necessary information for the unite operation.
-//
-// Returns:
-// - error: an error if the unite operation encounters any issues.
-func (lc *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
-	var krBase *qdb.KeyRange
-	var krAppendage *qdb.KeyRange
-	var err error
-
-	if krBase, err = lc.qdb.LockKeyRange(ctx, req.BaseKeyRangeId); err != nil { //nolint:all TODO
-		return err
-	}
-
-	defer func(qdb qdb.QDB, ctx context.Context, keyRangeID string) {
-		err := qdb.UnlockKeyRange(ctx, keyRangeID)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return
-		}
-	}(lc.qdb, ctx, req.BaseKeyRangeId)
-
-	ds, err := lc.qdb.GetDistribution(ctx, krBase.DistributionId)
-	if err != nil {
-		return err
-	}
-
-	// TODO: krRight seems to be empty.
-	if krAppendage, err = lc.qdb.GetKeyRange(ctx, req.AppendageKeyRangeId); err != nil {
-		return err
-	}
-
-	if err = lc.qdb.DropKeyRange(ctx, krAppendage.KeyRangeID); err != nil {
-		return err
-	}
-
-	newBound := krBase.LowerBound
-	if kr.CmpRangesLess(kr.KeyRangeFromDB(krAppendage, ds.ColTypes).LowerBound, kr.KeyRangeFromDB(krBase, ds.ColTypes).LowerBound, ds.ColTypes) {
-		newBound = krAppendage.LowerBound
-	}
-
-	krBaseCopy := krBase
-	krBaseCopy.LowerBound = newBound
-	united := kr.KeyRangeFromDB(krBaseCopy, ds.ColTypes)
-
-	return ops.ModifyKeyRangeWithChecks(ctx, lc.qdb, united)
-}
-
-// Caller should lock key range
-// TODO : unit tests
-
-// Split splits an existing key range identified by req.SourceID into two new key ranges.
-//
-// Parameters:
-// - ctx (context.Context): The context.Context object for managing the request's lifetime.
-// - req (*kr.SplitKeyRange): a pointer to a SplitKeyRange object containing the necessary information for the split operation.
-//
-// Returns:
-// - error: an error if the split operation encounters any issues.
-func (lc *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
-	var krOld *qdb.KeyRange
-	var err error
-
-	spqrlog.Zero.Debug().
-		Str("krid", req.Krid).
-		Interface("bound", req.Bound).
-		Str("source-id", req.SourceID).
-		Msg("split request is")
-
-	if krOld, err = lc.qdb.LockKeyRange(ctx, req.SourceID); err != nil {
-		return err
-	}
-
-	defer func() {
-		if err := lc.qdb.UnlockKeyRange(ctx, req.SourceID); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-		}
-	}()
-
-	ds, err := lc.qdb.GetDistribution(ctx, krOld.DistributionId)
-	if err != nil {
-		return err
-	}
-
-	krNew := kr.KeyRangeFromDB(
-		&qdb.KeyRange{
-			LowerBound: func() [][]byte {
-				if req.SplitLeft {
-					return krOld.LowerBound
-				}
-				return req.Bound // fix multidim case !
-			}(),
-			KeyRangeID:     req.Krid,
-			ShardID:        krOld.ShardID,
-			DistributionId: krOld.DistributionId,
-		},
-		ds.ColTypes,
-	)
-
-	spqrlog.Zero.Debug().
-		Bytes("lower-bound", krNew.Raw()[0]).
-		Str("shard-id", krNew.ShardID).
-		Str("id", krNew.ID).
-		Msg("new key range")
-
-	if req.SplitLeft {
-		krOld.LowerBound = req.Bound // TODO: fix
-	}
-
-	if err := ops.ModifyKeyRangeWithChecks(ctx, lc.qdb, kr.KeyRangeFromDB(krOld, ds.ColTypes)); err != nil {
-		return err
-	}
-
-	if err := ops.CreateKeyRangeWithChecks(ctx, lc.qdb, krNew); err != nil {
-		return fmt.Errorf("failed to add a new key range: %w", err)
-	}
-
-	return nil
-}
-
-// TODO : unit tests
-
-// LockKeyRange locks a key range identified by krid and returns the corresponding KeyRange object.
-//
-// Parameters:
-// - ctx (context.Context): The context.Context object for managing the request's lifetime.
-// - krid (string): the ID of the key range to lock.
-//
-// Returns:
-// - *kr.KeyRange: the locked KeyRange object.
-// - error: an error if the lock operation encounters any issues.
-func (lc *LocalCoordinator) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, error) {
-	keyRangeDB, err := lc.qdb.LockKeyRange(ctx, krid)
-	if err != nil {
-		return nil, err
-	}
-
-	ds, err := lc.qdb.GetDistribution(ctx, keyRangeDB.DistributionId)
-	if err != nil {
-		return nil, err
-	}
-
-	return kr.KeyRangeFromDB(keyRangeDB, ds.ColTypes), nil
-}
-
-// TODO : unit tests
-
-// UnlockKeyRange unlocks a key range identified by krid.
-//
-// Parameters:
-// - ctx (context.Context): The context.Context object for managing the request's lifetime.
-// - krid (string): the ID of the key range to lock.
-//
-// Returns:
-// - error: an error if the unlock operation encounters any issues.
-func (lc *LocalCoordinator) UnlockKeyRange(ctx context.Context, krid string) error {
-	return lc.qdb.UnlockKeyRange(ctx, krid)
-}
-
 // RenameKeyRange is disabled in LocalCoordinator
 func (lc *LocalCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
 	return lc.qdb.RenameKeyRange(ctx, krId, krIdNew)
@@ -747,7 +423,7 @@ func (lc *LocalCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew st
 func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *topology.DataShard) error {
 	spqrlog.Zero.Info().
 		Str("node", ds.ID).
-		Msg("adding node")
+		Msg("adding datashard node in local coordinator")
 
 	lc.DataShardCfgs[ds.ID] = ds.Cfg
 
@@ -774,60 +450,6 @@ func (lc *LocalCoordinator) Shards() []string {
 	}
 
 	return ret
-}
-
-// TODO unit tests
-
-// GetKeyRange gets key range by id
-// GetKeyRange retrieves a key range identified by krId from the LocalCoordinator.
-//
-// Parameters:
-// - ctx (context.Context): the context of the operation.
-// - krId (string): the ID of the key range to retrieve.
-//
-// Returns:
-// - *kr.KeyRange: the KeyRange object retrieved.
-// - error: an error if the retrieval encounters any issues.
-func (lc *LocalCoordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
-	krDb, err := lc.qdb.GetKeyRange(ctx, krId)
-	if err != nil {
-		return nil, err
-	}
-	ds, err := lc.qdb.GetDistribution(ctx, krDb.DistributionId)
-	if err != nil {
-		return nil, err
-	}
-	return kr.KeyRangeFromDB(krDb, ds.ColTypes), nil
-}
-
-// TODO : unit tests
-
-// ListKeyRanges retrieves a list of key ranges associated with the specified distribution from the LocalCoordinator.
-//
-// Parameters:
-// - ctx: the context of the operation.
-// - distribution: the distribution to filter the key ranges by.
-//
-// Returns:
-// - []*kr.KeyRange: a slice of KeyRange objects retrieved.
-// - error: an error if the retrieval encounters any issues.
-func (lc *LocalCoordinator) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
-	var ret []*kr.KeyRange
-	if krs, err := lc.qdb.ListKeyRanges(ctx, distribution); err != nil {
-		return nil, err
-	} else {
-		for _, keyRange := range krs {
-			ds, err := lc.qdb.GetDistribution(ctx, keyRange.DistributionId)
-
-			if err != nil {
-				return nil, err
-			}
-
-			ret = append(ret, kr.KeyRangeFromDB(keyRange, ds.ColTypes))
-		}
-	}
-
-	return ret, nil
 }
 
 // TODO : unit tests
@@ -879,18 +501,6 @@ func (lc *LocalCoordinator) ListRouters(ctx context.Context) ([]*topology.Router
 	return []*topology.Router{{
 		ID: "local",
 	}}, nil
-}
-
-// CreateKeyRange creates a new key range in the LocalCoordinator.
-//
-// Parameters:
-// - ctx (context.Context): The context of the operation.
-// - kr (*kr.KeyRange): The key range object to be created.
-//
-// Returns:
-// - error: An error if the creation encounters any issues.
-func (lc *LocalCoordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	return ops.CreateKeyRangeWithChecks(ctx, lc.qdb, kr)
 }
 
 // MoveKeyRange is disabled in LocalCoordinator
@@ -990,17 +600,6 @@ func (lc *LocalCoordinator) GetShard(ctx context.Context, shardID string) (*topo
 	return nil, ErrNotCoordinator
 }
 
-// ShareKeyRange shares a key range with the LocalCoordinator.
-//
-// Parameters:
-// - id (string): The ID of the key range to be shared.
-//
-// Returns:
-// - error: An error indicating the sharing status.
-func (lc *LocalCoordinator) ShareKeyRange(id string) error {
-	return lc.qdb.ShareKeyRange(id)
-}
-
 // QDB returns the QDB instance associated with the LocalCoordinator.
 //
 // Parameters:
@@ -1014,10 +613,6 @@ func (lc *LocalCoordinator) QDB() qdb.QDB {
 
 func (lc *LocalCoordinator) Cache() *cache.SchemaCache {
 	return lc.cache
-}
-
-func (lc *LocalCoordinator) ListSequences(ctx context.Context) ([]string, error) {
-	return lc.qdb.ListSequences(ctx)
 }
 
 func (lc *LocalCoordinator) DropSequence(ctx context.Context, seqName string) error {
@@ -1036,9 +631,17 @@ func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64,
 	if err != nil {
 		return -1, err
 	}
-	defer conn.Close()
-	mgr := coord.NewAdapter(conn)
+	defer func() {
+		if err := conn.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+		}
+	}()
+	mgr := NewAdapter(conn)
 	return mgr.NextVal(ctx, seqName)
+}
+
+func (lc *LocalCoordinator) RetryMoveTaskGroup(_ context.Context) error {
+	return ErrNotCoordinator
 }
 
 // NewLocalCoordinator creates a new LocalCoordinator instance.
@@ -1050,6 +653,7 @@ func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64,
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
 func NewLocalCoordinator(db qdb.QDB, cache *cache.SchemaCache) meta.EntityMgr {
 	return &LocalCoordinator{
+		Coordinator:    NewCoordinator(db),
 		DataShardCfgs:  map[string]*config.Shard{},
 		WorldShardCfgs: map[string]*config.Shard{},
 		qdb:            db,

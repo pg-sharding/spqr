@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/rand"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -54,8 +53,7 @@ type RouterClient interface {
 
 	/* Client target-session-attrs policy */
 
-	GetTsa() tsa.TSA
-	SetTsa(string)
+	ResetTsa()
 
 	ReplyParseComplete() error
 	ReplyBindComplete() error
@@ -90,12 +88,9 @@ type PsqlClient struct {
 	prepStmtsHash map[string]uint64
 
 	/* target-session-attrs */
-	tsa        tsa.TSA
-	defaultTsa tsa.TSA
+	defaultTsa string
 
-	/* protects client.Send() (backend) */
-	muBe sync.Mutex
-	be   *pgproto3.Backend
+	be *pgproto3.Backend
 
 	startupMsg *pgproto3.StartupMessage
 
@@ -105,6 +100,10 @@ type PsqlClient struct {
 
 	show_notice_messages bool
 	maintain_params      bool
+
+	id uint
+
+	cacheCC pgproto3.CommandComplete
 
 	serverP atomic.Pointer[server.Server]
 }
@@ -170,6 +169,11 @@ func (cl *PsqlClient) SetEnhancedMultiShardProcessing(local bool, val bool) {
 
 // ExecuteOn implements RouterClient.
 func (cl *PsqlClient) EnhancedMultiShardProcessing() bool {
+	if _, ok := cl.localParamSet[session.SPQR_ENGINE_V2]; !ok {
+		if _, ok := cl.activeParamSet[session.SPQR_ENGINE_V2]; !ok {
+			return config.RouterConfig().Qr.EnhancedMultiShardProcessing
+		}
+	}
 	return cl.resolveVirtualBoolParam(session.SPQR_ENGINE_V2)
 }
 
@@ -282,11 +286,11 @@ func (cl *PsqlClient) SetScatterQuery(val bool) {
 }
 
 func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, instanceDefaultTsa string) RouterClient {
-	var target_session_attrs tsa.TSA
+	var target_session_attrs string
 	if instanceDefaultTsa != "" {
-		target_session_attrs = tsa.TSA(instanceDefaultTsa)
+		target_session_attrs = instanceDefaultTsa
 	} else {
-		target_session_attrs = tsa.TSA(config.TargetSessionAttrsRW)
+		target_session_attrs = config.TargetSessionAttrsRW
 	}
 
 	// enforce default port behaviour
@@ -304,7 +308,6 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		startupMsg:    &pgproto3.StartupMessage{},
 		prepStmts:     map[string]*prepstatement.PreparedStatementDefinition{},
 		prepStmtsHash: map[string]uint64{},
-		tsa:           target_session_attrs,
 		defaultTsa:    target_session_attrs,
 
 		show_notice_messages: showNoticeMessages,
@@ -313,6 +316,8 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 	}
 
 	cl.SetCommitStrategy(false, twopc.COMMIT_STRATEGY_BEST_EFFORT)
+
+	cl.id = spqrlog.GetPointer(cl)
 
 	cl.serverP.Store(nil)
 
@@ -522,6 +527,7 @@ func (cl *PsqlClient) SetParam(name, value string) {
 }
 
 func (cl *PsqlClient) Reply(msg string) error {
+	cl.cacheCC.CommandTag = []byte("SELECT 1")
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
@@ -535,7 +541,7 @@ func (cl *PsqlClient) Reply(msg string) error {
 			},
 		}},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(msg)}},
-		&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+		&cl.cacheCC,
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -547,15 +553,21 @@ func (cl *PsqlClient) Reply(msg string) error {
 }
 
 func (cl *PsqlClient) ReplyCommandComplete(commandTag string) error {
-	return cl.Send(&pgproto3.CommandComplete{CommandTag: []byte(commandTag)})
+	cl.cacheCC.CommandTag = []byte(commandTag)
+	return cl.Send(&cl.cacheCC)
 }
 
+var (
+	bindCMsg  = &pgproto3.BindComplete{}
+	parseCMsg = &pgproto3.ParseComplete{}
+)
+
 func (cl *PsqlClient) ReplyParseComplete() error {
-	return cl.Send(&pgproto3.ParseComplete{})
+	return cl.Send(parseCMsg)
 }
 
 func (cl *PsqlClient) ReplyBindComplete() error {
-	return cl.Send(&pgproto3.BindComplete{})
+	return cl.Send(bindCMsg)
 }
 
 func (cl *PsqlClient) Reset() error {
@@ -611,7 +623,7 @@ func (cl *PsqlClient) ReplyWarningf(fmtString string, args ...interface{}) error
 }
 
 func (cl *PsqlClient) ID() uint {
-	return spqrlog.GetPointer(cl)
+	return cl.id
 }
 
 func (cl *PsqlClient) Shards() []shard.Shard {
@@ -650,7 +662,6 @@ func (cl *PsqlClient) Unroute() error {
 	}
 
 	cl.serverP.Store(nil)
-	cl.ResetTsa()
 	return nil
 }
 
@@ -675,6 +686,8 @@ func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 
 	return nil
 }
+
+const pingRoute = "spqr-ping"
 
 // startup + ssl/cancel
 func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
@@ -788,6 +801,10 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			Uint32("cancel_key", cl.cancel_key).
 			Uint32("cancel_pid", cl.cancel_pid)
 
+		if cl.DB() == pingRoute && cl.Usr() == pingRoute {
+			return nil
+		}
+
 		if tlsconfig != nil && protoVer != conn.SSLREQ {
 			if err := cl.Send(
 				&pgproto3.ErrorResponse{
@@ -836,18 +853,20 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		Str("db", cl.DB()).
 		Msg("client connection for rule accepted")
 
-	ps, err := rt.Params()
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for key, msg := range ps {
-		if err := cl.Send(&pgproto3.ParameterStatus{
-			Name:  key,
-			Value: msg,
-		}); err != nil {
+	/* XXX: generate defaults for virtual pool too */
+	if cl.Rule().PoolMode != config.PoolModeVirtual {
+		ps, err := rt.Params()
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
+		}
+		for key, msg := range ps {
+			if err := cl.Send(&pgproto3.ParameterStatus{
+				Name:  key,
+				Value: msg,
+			}); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -942,9 +961,8 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	spqrlog.Zero.Debug().
 		Uint("client", cl.ID()).
 		Type("msg-type", msg).
-		Msg("sending msg to client")
-	cl.muBe.Lock()
-	defer cl.muBe.Unlock()
+		Msgf("sending msg to client")
+
 	cl.be.Send(msg)
 
 	switch msg.(type) {
@@ -1024,6 +1042,7 @@ func (cl *PsqlClient) DefaultReply() error {
 }
 
 func (cl *PsqlClient) Close() error {
+	spqrlog.Zero.Debug().Uint("client-id", cl.ID()).Msg("closing client")
 	return cl.conn.Close()
 }
 
@@ -1112,20 +1131,29 @@ func (cl *PsqlClient) Shutdown() error {
 }
 
 func (cl *PsqlClient) GetTsa() tsa.TSA {
-	return cl.tsa
+	if _, ok := cl.localParamSet[session.SPQR_TARGET_SESSION_ATTRS]; !ok {
+		if _, ok := cl.activeParamSet[session.SPQR_TARGET_SESSION_ATTRS]; !ok {
+			return tsa.TSA(cl.defaultTsa)
+		}
+	}
+	return tsa.TSA(cl.resolveVirtualStringParam(session.SPQR_TARGET_SESSION_ATTRS))
 }
 
-func (cl *PsqlClient) SetTsa(s string) {
+func (cl *PsqlClient) SetTsa(local bool, s string) {
 	switch s {
-	case config.TargetSessionAttrsAny, config.TargetSessionAttrsPS, config.TargetSessionAttrsRW, config.TargetSessionAttrsRO:
-		cl.tsa = tsa.TSA(s)
+	case config.TargetSessionAttrsAny,
+		config.TargetSessionAttrsPS,
+		config.TargetSessionAttrsRW,
+		config.TargetSessionAttrsSmartRW,
+		config.TargetSessionAttrsRO:
+		cl.recordVirtualParam(local, session.SPQR_TARGET_SESSION_ATTRS, s)
 	default:
-
+		// XXX: else error out!
 	}
 }
 
 func (cl *PsqlClient) ResetTsa() {
-	cl.tsa = cl.defaultTsa
+	cl.SetTsa(false, cl.defaultTsa)
 }
 
 func (cl *PsqlClient) CancelMsg() *pgproto3.CancelRequest {

@@ -647,6 +647,21 @@ func (mr *MockQDBMockRecorder) ListKeyRanges(arg0, distribution any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListKeyRanges", reflect.TypeOf((*MockQDB)(nil).ListKeyRanges), arg0, distribution)
 }
 
+// ListRouters mocks base method.
+func (m *MockQDB) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRouters", ctx)
+	ret0, _ := ret[0].([]*qdb.Router)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRouters indicates an expected call of ListRouters.
+func (mr *MockQDBMockRecorder) ListRouters(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRouters", reflect.TypeOf((*MockQDB)(nil).ListRouters), ctx)
+}
+
 // ListSequences mocks base method.
 func (m *MockQDB) ListSequences(ctx context.Context) ([]string, error) {
 	m.ctrl.T.Helper()

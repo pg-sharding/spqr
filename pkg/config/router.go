@@ -23,6 +23,7 @@ type DefaultRouteBehaviour string
 const (
 	PoolModeSession     = PoolMode("SESSION")
 	PoolModeTransaction = PoolMode("TRANSACTION")
+	PoolModeVirtual     = PoolMode("VIRTUAL")
 
 	DataShard  = ShardType("DATA")
 	WorldShard = ShardType("WORLD")
@@ -92,8 +93,9 @@ type Router struct {
 
 	WithCoordinator bool `json:"with_coordinator" toml:"with_coordinator" yaml:"with_coordinator"`
 
-	IgnoreCancel       bool `json:"ignore_cancel" toml:"ignore_cancel" yaml:"ignore_cancel"`
-	AcceptorBufferSize int  `json:"acceptor_buffer_size" toml:"acceptor_buffer_size" yaml:"acceptor_buffer_size"`
+	IgnoreCancel          bool `json:"ignore_cancel" toml:"ignore_cancel" yaml:"ignore_cancel"`
+	AcceptorBufferSize    int  `json:"acceptor_buffer_size" toml:"acceptor_buffer_size" yaml:"acceptor_buffer_size"`
+	DisableObsoleteClient bool `json:"disable_obsolete_client" toml:"disable_obsolete_client" yaml:"disable_obsolete_client"`
 
 	DefaultCommitStrategy string `json:"distributed_commit_strategy" toml:"distributed_commit_strategy" yaml:"distributed_commit_strategy"`
 
@@ -106,13 +108,18 @@ type Router struct {
 type QRouter struct {
 	DefaultRouteBehaviour        DefaultRouteBehaviour `json:"default_route_behaviour" toml:"default_route_behaviour" yaml:"default_route_behaviour"`
 	EnhancedMultiShardProcessing bool                  `json:"enhanced_multishard_processing" toml:"enhanced_multishard_processing" yaml:"enhanced_multishard_processing"`
+	AlwaysCheckRules             bool                  `json:"always_check_rules" toml:"always_check_rules" yaml:"always_check_rules"`
+
+	/* XXX: for now, supported only for single-shard topology */
+	AutoRouteRoOnStandby bool `json:"auto_route_ro_on_standby" toml:"auto_route_ro_on_standby" yaml:"auto_route_ro_on_standby"`
 }
 
 const (
-	TargetSessionAttrsRW  = "read-write"
-	TargetSessionAttrsRO  = "read-only"
-	TargetSessionAttrsPS  = "prefer-standby"
-	TargetSessionAttrsAny = "any"
+	TargetSessionAttrsRW      = "read-write"
+	TargetSessionAttrsSmartRW = "smart-read-write"
+	TargetSessionAttrsRO      = "read-only"
+	TargetSessionAttrsPS      = "prefer-standby"
+	TargetSessionAttrsAny     = "any"
 )
 
 type Shard struct {
@@ -203,7 +210,7 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			log.Fatalf("failed to close config file: %v", err)
+			log.Printf("failed to close config file: %v", err)
 		}
 	}(file)
 
@@ -218,6 +225,10 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 	}
 
 	statistics.InitStatistics(rcfg.TimeQuantiles)
+	/* init default_target_session_attrs as read-write if nothing else specified */
+	if rcfg.DefaultTSA == "" {
+		rcfg.DefaultTSA = TargetSessionAttrsRW
+	}
 
 	configBytes, err := json.MarshalIndent(rcfg, "", "  ")
 	if err != nil {

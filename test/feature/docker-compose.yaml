@@ -1,46 +1,71 @@
 services:
   shard1:
     image: spqr-shard-image
-    environment:
-      - POSTGRES_USER=regress
-      - POSTGRES_DB=regress
+    environment: &feature-env-common
+      POSTGRES_USER: regress
+      POSTGRES_DB: regress
     ports:
       - "5500:6432"
     hostname: spqr_shard_1
     container_name: spqr_shard_1
-    healthcheck:
-      test: psql -h spqr_shard_1 -p 6432 -U regress -d regress
+    healthcheck: &shard-healthcheck
+      test: 'pg_isready -U regress --dbname=regress -p 6432'
       interval: 10s
       timeout: 3s
       retries: 50
+  shard1-replica:
+    image: spqr-shard-image
+    environment:
+      <<: *feature-env-common
+      PG_MASTER: spqr_shard_1
+    ports:
+      - "5600:6432"
+    hostname: spqr_shard_1_replica
+    container_name: spqr_shard_1_replica
+    healthcheck: 
+      <<: *shard-healthcheck
   shard2:
     image: spqr-shard-image
     environment:
-      - POSTGRES_USER=regress
-      - POSTGRES_DB=regress
+      <<: *feature-env-common
     ports:
       - "5501:6432"
     hostname: spqr_shard_2
     container_name: spqr_shard_2
-    healthcheck:
-      test: psql -h spqr_shard_2 -p 6432 -U regress -d regress
-      interval: 10s
-      timeout: 3s
-      retries: 50
+    healthcheck: 
+      <<: *shard-healthcheck
+  shard2-replica:
+    image: spqr-shard-image
+    environment:
+      <<: *feature-env-common
+      PG_MASTER: spqr_shard_2
+    ports:
+      - "5601:6432"
+    hostname: spqr_shard_2_replica
+    container_name: spqr_shard_2_replica
+    healthcheck: 
+      <<: *shard-healthcheck 
   shard3:
     image: spqr-shard-image
     environment:
-      - POSTGRES_USER=regress
-      - POSTGRES_DB=regress
+      <<: *feature-env-common
     ports:
       - "5502:6432"
     hostname: spqr_shard_3
     container_name: spqr_shard_3
-    healthcheck:
-      test: psql -h spqr_shard_3 -p 6432 -U regress -d regress
-      interval: 10s
-      timeout: 3s
-      retries: 50
+    healthcheck: 
+      <<: *shard-healthcheck
+  shard3-replica:
+    image: spqr-shard-image
+    environment:
+      <<: *feature-env-common
+      PG_MASTER: spqr_shard_3
+    ports:
+      - "5602:6432"
+    hostname: spqr_shard_3_replica
+    container_name: spqr_shard_3_replica
+    healthcheck: 
+      <<: *shard-healthcheck
   router:
     build:
       dockerfile: ./docker/router/Dockerfile
@@ -60,9 +85,17 @@ services:
         condition: service_healthy
       shard2:
         condition: service_healthy
+      shard1-replica:
+        condition: service_healthy
+      shard2-replica:
+        condition: service_healthy
+      shard3:
+        condition: service_healthy
+      shard3-replica:
+        condition: service_healthy
       kdc:
         condition: service_started
-    healthcheck:
+    healthcheck: &router-healthcheck
       test: psql -h regress_router -p 6432 -U regress -d regress
       interval: 10s
       timeout: 3s
@@ -89,11 +122,17 @@ services:
         condition: service_healthy
       shard2:
         condition: service_healthy
+      shard1-replica:
+        condition: service_healthy
+      shard2-replica:
+        condition: service_healthy
+      shard3:
+        condition: service_healthy
+      shard3-replica:
+        condition: service_healthy
     healthcheck:
+      <<: *router-healthcheck
       test: psql -h regress_router_2 -p 6432 -U regress -d regress
-      interval: 10s
-      timeout: 3s
-      retries: 50
     volumes:
       - keytab:/keytab
       - ./conf/kdc/krb5.conf:/etc/krb5.conf
@@ -154,7 +193,7 @@ services:
     ports:
       - "1389:389"
       - "1636:636"
-    healthcheck:
+    healthcheck: &ldap-healthcheck
       test: ldapwhoami -D "cn=regress,ou=users,dc=example,dc=com" -w 12345678
       interval: 10s
       timeout: 3s
@@ -176,10 +215,7 @@ services:
       - "2389:389"
       - "2636:636"
     healthcheck:
-      test: ldapwhoami -D "cn=regress,ou=users,dc=example,dc=com" -w 12345678
-      interval: 10s
-      timeout: 3s
-      retries: 50
+      <<: *ldap-healthcheck
 
   kdc:
     build:
@@ -189,11 +225,3 @@ services:
       - keytab:/keytab
 volumes:
   keytab:
-#networks:
-#  mysync_net:
-#    driver: bridge
-#    ipam:
-#      driver: default
-#      config:
-#       - subnet: 192.168.233.0/24
-#         gateway: 192.168.233.1

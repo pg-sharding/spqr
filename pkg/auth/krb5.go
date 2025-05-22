@@ -34,13 +34,13 @@ func NewKerberosModule(base BaseAuthModule) *Kerberos {
 	}
 	var kt *keytab.Keytab
 	var err error
-	if ktFileProp, ok := k.BaseAuthModule.properties[keyTabFileProperty]; ok {
+	if ktFileProp, ok := k.properties[keyTabFileProperty]; ok {
 		ktFile, _ := ktFileProp.(string)
 		kt, err = keytab.Load(ktFile)
 		if err != nil {
 			panic(err) // If the "krb5.keytab" file is not available the application will show an error message.
 		}
-	} else if ktDataProp, ok := k.BaseAuthModule.properties[keyTabDataProperty]; ok {
+	} else if ktDataProp, ok := k.properties[keyTabDataProperty]; ok {
 		ktData := ktDataProp.(string)
 		b, _ := hex.DecodeString(ktData)
 		kt = keytab.New()
@@ -50,7 +50,7 @@ func NewKerberosModule(base BaseAuthModule) *Kerberos {
 		}
 	}
 	k.kt = kt
-	if spProp, ok := k.BaseAuthModule.properties[servicePrincipalProperty]; ok {
+	if spProp, ok := k.properties[servicePrincipalProperty]; ok {
 		k.servicePrincipal = spProp.(string)
 	}
 

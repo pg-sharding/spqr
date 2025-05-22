@@ -25,6 +25,7 @@ shards:
     type: DATA
     hosts:
       - 'spqr_shard_1:6432'
+      - 'spqr_shard_1_replica:6432'
   sh2:
     db: regress
     usr: regress
@@ -32,10 +33,12 @@ shards:
     type: DATA
     hosts:
       - 'spqr_shard_2:6432'
+      - 'spqr_shard_2_replica:6432'
 
 backend_rules:
   - db: regress
     usr: regress
+    connection_limit: 50
     pool_discard: true
     pool_rollback: true
     auth_rules:

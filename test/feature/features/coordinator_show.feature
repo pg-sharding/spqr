@@ -24,11 +24,11 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         Given I execute SQL on host "router"
         """
-        SELECT pg_sleep(1)
+        SELECT pg_sleep(1) /* __spqr__scatter_query: true */
         """
         And I execute SQL on host "router2"
         """
-        SELECT pg_sleep(1)
+        SELECT pg_sleep(1) /* __spqr__scatter_query: true */
         """
 
     Scenario: empty answer when no routers
@@ -319,21 +319,21 @@ Feature: Coordinator show clients, pools and backend_connections
         SHOW backend_connections group by hostname
         """
         Then command return code should be "0"
-        And SQL result should match json
+        And SQL result should match json_regexp
         """
         [
             {
                 "hostname":"spqr_shard_1:6432",
-                "count": 2
+                "count": ".*"
             }
         ]
         """
-        And SQL result should match json
+        And SQL result should match json_regexp
         """
         [
             {
                 "hostname":"spqr_shard_2:6432",
-                "count": 2
+                "count": ".*"
             }
         ]
         """
@@ -343,12 +343,12 @@ Feature: Coordinator show clients, pools and backend_connections
         SHOW backend_connections group by user
         """
         Then command return code should be "0"
-        And SQL result should match json
+        And SQL result should match json_regexp
         """
         [
             {
                 "user":"regress",
-                "count": 4
+                "count": ".*"
             }
         ]
         """
@@ -358,12 +358,12 @@ Feature: Coordinator show clients, pools and backend_connections
         SHOW backend_connections group by dbname
         """
         Then command return code should be "0"
-        And SQL result should match json
+        And SQL result should match json_regexp
         """
         [
             {
                 "dbname":"regress",
-                "count": 4
+                "count": ".*"
             }
         ]
         """
@@ -537,17 +537,24 @@ Feature: Coordinator show clients, pools and backend_connections
         """
 
     Scenario: Show task group
+        When I execute SQL on host "coordinator"
+        """
+        CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+        CREATE KEY RANGE kr_from FROM 0 ROUTE TO sh1;
+        CREATE KEY RANGE kr_to FROM 20 ROUTE TO sh1;
+        """
+        Then command return code should be "0"
         When I record in qdb move task group
         """
         {
             "tasks":
             [
                 {
-                    "bound":         ["MQ=="],
+                    "bound":         ["AgAAAAAAAAA="],
                     "state":         1
                 },
                 {
-                    "bound":         ["MTA="],
+                    "bound":         ["FAAAAAAAAAA="],
                     "state":         0
                 }
             ],

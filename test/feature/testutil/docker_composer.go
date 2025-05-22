@@ -139,6 +139,27 @@ func (dc *DockerComposer) Up(env []string) error {
 	if err != nil {
 		// to save container logs
 		_ = dc.fillContainers()
+		containers, apiErr := dc.api.ContainerList(context.Background(), container.ListOptions{All: true})
+		if apiErr != nil {
+			return err
+		}
+		for _, c := range containers { // nolint: gocritic
+			prj := c.Labels["com.docker.compose.project"]
+			srv := c.Labels["com.docker.compose.service"]
+			if prj != dc.projectName || srv == "" {
+				continue
+			}
+			dc.containers[srv] = c
+			if (c.State != "running" || c.Status[len(c.Status)-len("(unhealthy)"):] == "(unhealthy)") && !dc.stopped[srv] {
+				r, err := dc.api.ContainerLogs(context.TODO(), c.ID, container.LogsOptions{ShowStdout: true, ShowStderr: true})
+				if err != nil {
+					fmt.Printf("failed to get logs from \"%s\": %s\n", c.Names[0], err)
+				} else {
+					fmt.Printf("logs from \"%s\"", c.Names[0])
+					_, _ = io.Copy(os.Stderr, r)
+				}
+			}
+		}
 		return err
 	}
 	err = dc.fillContainers()
@@ -321,13 +342,9 @@ func (dc *DockerComposer) Stop(service string) error {
 	if !ok {
 		return fmt.Errorf("no such service: %s", service)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), defaultDockerTimeout)
+	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
-	stopTimeout := int(defaultContainerStopTimeout)
-	err := dc.api.ContainerStop(ctx, cont.ID, container.StopOptions{
-		Signal:  "",
-		Timeout: &stopTimeout,
-	})
+	err := dc.api.ContainerStop(ctx, cont.ID, container.StopOptions{})
 	dc.stopped[service] = true
 	return err
 }

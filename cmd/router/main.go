@@ -16,9 +16,9 @@ import (
 	"syscall"
 
 	coordApp "github.com/pg-sharding/spqr/coordinator/app"
-	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -88,7 +88,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&memProfile, "mem-profile", false, "profile mem or not")
 
 	// Other flags
-	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use.")
+	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use")
 	rootCmd.PersistentFlags().BoolVarP(&daemonize, "daemonize", "d", false, "run as a daemon or not. Opposite of `console`")
 	rootCmd.PersistentFlags().BoolVarP(&console, "console", "", false, "run as a console app or not. Opposite of `daemonize`")
 	rootCmd.PersistentFlags().BoolVarP(&prettyLogging, "pretty-log", "P", false, "enables pretty logging")
@@ -272,7 +272,7 @@ var runCmd = &cobra.Command{
 						return fmt.Errorf("init frontend TLS: %w", err)
 					}
 
-					coordinator, err := provider.NewCoordinator(frTLS, db)
+					coordinator, err := coord.NewQDBCoordinator(frTLS, db)
 					if err != nil {
 						return err
 					}
@@ -372,13 +372,23 @@ var runCmd = &cobra.Command{
 			router.Initialize()
 		}
 
+		errCh := make(chan error)
+
+		go func() {
+			for {
+				<-errCh
+				os.Exit(1)
+			}
+		}()
+
 		wg := &sync.WaitGroup{}
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
 			err := app.ServeRouter(ctx)
 			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+				spqrlog.Zero.Error().Err(err).Msg("failed to serve SQL console")
+				errCh <- err
 			}
 			wg.Done()
 		}(wg)
@@ -387,7 +397,8 @@ var runCmd = &cobra.Command{
 		go func(wg *sync.WaitGroup) {
 			err := app.ServeGrpcApi(ctx)
 			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+				spqrlog.Zero.Error().Err(err).Msg("failed to serve gRPC API")
+				errCh <- err
 			}
 			wg.Done()
 		}(wg)
@@ -396,7 +407,8 @@ var runCmd = &cobra.Command{
 		go func(wg *sync.WaitGroup) {
 			err := app.ServeAdminConsole(ctx)
 			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+				spqrlog.Zero.Error().Err(err).Msg("failed to serve SQL administrative console")
+				errCh <- err
 			}
 			wg.Done()
 		}(wg)
@@ -405,7 +417,8 @@ var runCmd = &cobra.Command{
 		go func(wg *sync.WaitGroup) {
 			err := app.ServiceUnixSocket(ctx)
 			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+				spqrlog.Zero.Error().Err(err).Msg("failed to serve unix socket")
+				errCh <- err
 			}
 			wg.Done()
 		}(wg)

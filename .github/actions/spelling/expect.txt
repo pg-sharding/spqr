@@ -17,10 +17,12 @@ appdefaults
 APREQ
 aqo
 argexpr
+ARRAYOID
 asd
 astmt
 authed
 autotools
+basebackup
 bbc
 bcad
 bcc
@@ -35,11 +37,13 @@ Bootstrapper
 bts
 buildpackage
 byt
+cachedchecker
 caio
 CANCELREQ
 canreq
 ccb
 ccfg
+ccmsg
 Cfgs
 CIn
 ckr
@@ -63,6 +67,7 @@ coordctl
 copymap
 cpg
 cptr
+cqdb
 createsequence
 crt
 csm
@@ -193,10 +198,10 @@ inp
 inputdir
 installable
 interactor
-INTOID
 ipam
 IRun
 isgomock
+isready
 issuecomment
 iuwehiuhweui
 ixxxd
@@ -305,6 +310,7 @@ myworkloadlog
 NALMm
 nconn
 NConst
+netchecker
 netconn
 Newf
 nkr
@@ -322,7 +328,6 @@ nspname
 odssd
 ogima
 OIDKRB
-OIDS
 oiwejow
 OLAP
 ontup
@@ -338,11 +343,14 @@ Percona
 PGAASINTERNALNETS
 pgbench
 pgbin
+pgcat
 pgconn
 pgcopy
 pgcs
+pgdata
 PGDATABASE
 pgdg
+pgexec
 pghashlib
 PGHOST
 pgi
@@ -352,6 +360,7 @@ PGPORT
 pgproto
 pgquery
 pgsharding
+pgsync
 PGSSLMODE
 PGUSER
 pgx
@@ -421,6 +430,7 @@ rfq
 rfqn
 RFQNIs
 rgrpc
+RIR
 Rjaken
 RJj
 RLoad
@@ -435,6 +445,7 @@ routerparser
 routerproto
 routingstate
 rowmap
+rport
 rqdn
 RQF
 rqfn
@@ -542,6 +553,7 @@ texpr
 textoid
 tgz
 timeb
+tle
 tlsconfig
 tlt
 tmpnum
@@ -566,6 +578,7 @@ txtstatus
 uax
 uber
 uinteger
+uintegerlist
 Uints
 umi
 unconfigured
@@ -611,8 +624,10 @@ xxerr
 xxm
 xxmixed
 xxmixeduuid
+xxmultish
 xxtest
 xxtt
+xyx
 yaccgen
 yandex
 yjoin

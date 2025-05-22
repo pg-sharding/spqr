@@ -125,7 +125,7 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 		spqrlog.Zero.Debug().
 			Str("cert_file", c.CertFile).
 			Str("key_file", c.KeyFile).
-			Msg("loading tls ")
+			Msg("loading tls")
 		cert, err := tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
 		if err != nil {
 			return nil, fmt.Errorf("unable to X509 key pair: %w", err)

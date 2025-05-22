@@ -2,7 +2,7 @@ package server
 
 import (
 	"fmt"
-	"sync"
+	"sync/atomic"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -20,14 +20,12 @@ var ErrShardUnavailable = fmt.Errorf("shard is unavailable, try again later")
 
 type ShardServer struct {
 	pool  *pool.DBPool
-	shard shard.Shard
-	// protects shard
-	mu sync.RWMutex
+	shard atomic.Pointer[shard.Shard]
 }
 
 // ToMultishard implements Server.
 func (srv *ShardServer) ToMultishard() Server {
-	return NewMultiShardServerFromShard(srv.pool, srv.shard)
+	return NewMultiShardServerFromShard(srv.pool, *srv.shard.Load())
 }
 
 // ExpandDataShard implements Server.
@@ -37,88 +35,84 @@ func (srv *ShardServer) ExpandDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TS
 
 // DataPending implements Server.
 func (srv *ShardServer) DataPending() bool {
-	return srv.shard.DataPending()
+	return (*srv.shard.Load()).DataPending()
 }
 
 func NewShardServer(spool *pool.DBPool) *ShardServer {
 	return &ShardServer{
-		pool: spool,
-		mu:   sync.RWMutex{},
+		pool:  spool,
+		shard: atomic.Pointer[shard.Shard]{},
 	}
 }
 
 // TODO : unit tests
 func (srv *ShardServer) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
-	b, rd := srv.shard.HasPrepareStatement(hash, shardId)
+	b, rd := (*srv.shard.Load()).HasPrepareStatement(hash, shardId)
 	return b, rd
 }
 
 // TODO : unit tests
 func (srv *ShardServer) Name() string {
-	srv.mu.RLock()
-	defer srv.mu.RUnlock()
-	if srv.shard == nil {
+	v := srv.shard.Load()
+	if v == nil {
 		return ""
 	}
-	return srv.shard.Name()
+	return (*v).Name()
 }
 
 // TODO : unit tests
 func (srv *ShardServer) StorePrepareStatement(hash uint64, shardId uint, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
-	return srv.shard.StorePrepareStatement(hash, shardId, def, rd)
+	return (*srv.shard.Load()).StorePrepareStatement(hash, shardId, def, rd)
 }
 
 // TODO : unit tests
 func (srv *ShardServer) Sync() int64 {
-	srv.mu.RLock()
-	defer srv.mu.RUnlock()
-	if srv.shard == nil {
+	v := srv.shard.Load()
+	if v == nil {
 		return 0
 	}
-	return srv.shard.Sync()
+	return (*v).Sync()
 }
 
 // TODO : unit tests
 func (srv *ShardServer) Reset() error {
 	// todo there are no shard writes, so use rLock
-	srv.mu.RLock()
-	defer srv.mu.RUnlock()
-	if srv.shard == nil {
+	v := srv.shard.Load()
+	if v == nil {
 		return ErrShardUnavailable
 	}
 
-	defer func() { srv.shard = nil }()
+	err := srv.pool.Put(*v)
 
-	return srv.pool.Put(srv.shard)
+	srv.shard.Store(nil)
+
+	return err
 }
 
 // TODO : unit tests
 func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRule) error {
-	srv.mu.Lock()
-	defer srv.mu.Unlock()
-	if srv.shard == nil {
+	v := srv.shard.Load()
+	if v == nil {
 		return nil
 	}
 
-	defer func() {
-		srv.shard = nil
-	}()
+	srv.shard.Store(nil)
 
-	if srv.shard.SHKey().Name != shkey.Name {
-		return fmt.Errorf("active datashard does not match unrouted: %v != %v", srv.shard.SHKey().Name, shkey.Name)
+	if (*v).SHKey().Name != shkey.Name {
+		return fmt.Errorf("active datashard does not match unrouted: %v != %v", (*v).SHKey().Name, shkey.Name)
 	}
 
-	if srv.shard.Sync() != 0 {
+	if (*v).Sync() != 0 {
 		/* will automatically discard connection,
 		but we will not perform cleanup, which may stuck forever */
-		return srv.pool.Put(srv.shard)
+		return srv.pool.Put((*v))
 	}
 
-	if err := srv.cleanupLockFree(rule); err != nil {
+	if err := srv.cleanupLockFree(*v, rule); err != nil {
 		return err
 	}
 
-	if err := srv.pool.Put(srv.shard); err != nil {
+	if err := srv.pool.Put(*v); err != nil {
 		return err
 	}
 
@@ -127,16 +121,16 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 
 // TODO : unit tests
 func (srv *ShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA) error {
-	srv.mu.Lock()
-	defer srv.mu.Unlock()
-	if srv.shard != nil {
+	v := srv.shard.Load()
+	if v != nil {
 		return fmt.Errorf("single datashard " +
 			"server does not support more than 1 datashard connection simultaneously")
 	}
 
-	var err error
-	if srv.shard, err = srv.pool.ConnectionWithTSA(clid, shkey, tsa); err != nil {
+	if val, err := srv.pool.ConnectionWithTSA(clid, shkey, tsa); err != nil {
 		return err
+	} else {
+		srv.shard.Store(&val)
 	}
 
 	return nil
@@ -144,21 +138,22 @@ func (srv *ShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA) 
 
 // TODO : unit tests
 func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
-	srv.mu.RLock()
-	defer srv.mu.RUnlock()
-	spqrlog.Zero.Debug().
-		Uint("single-shard", srv.shard.ID()).
-		Type("query-type", query).
-		Msg("single-shard sending msg to server")
-	if srv.shard == nil {
+	v := srv.shard.Load()
+
+	if v == nil {
 		return ErrShardUnavailable
 	}
-	return srv.shard.Send(query)
+	spqrlog.Zero.Debug().
+		Uint("single-shard", (*v).ID()).
+		Type("query-type", query).
+		Msg("single-shard sending msg to server")
+
+	return (*v).Send(query)
 }
 
 // TODO : unit tests
 func (srv *ShardServer) SendShard(query pgproto3.FrontendMessage, shkey *kr.ShardKey) error {
-	if srv.shard.SHKey().Name != shkey.Name {
+	if (*srv.shard.Load()).SHKey().Name != shkey.Name {
 		return spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 	}
 	return srv.Send(query)
@@ -166,22 +161,22 @@ func (srv *ShardServer) SendShard(query pgproto3.FrontendMessage, shkey *kr.Shar
 
 // TODO : unit tests
 func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
-	srv.mu.RLock()
-	defer srv.mu.RUnlock()
-	msg, err := srv.shard.Receive()
+
+	msg, err := (*srv.shard.Load()).Receive()
 	spqrlog.Zero.Debug().
-		Uint("single-shard", srv.shard.ID()).
+		Uint("single-shard", (*srv.shard.Load()).ID()).
 		Type("message-type", msg).
 		Str("txstatus", srv.TxStatus().String()).
 		Uints("shards", shard.ShardIDs(srv.Datashards())).
 		Err(err).
 		Msg("single-shard receiving msg from server")
+
 	return msg, err
 }
 
 // TODO : unit tests
 func (srv *ShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, error) {
-	if srv.shard.ID() != shardId {
+	if (*srv.shard.Load()).ID() != shardId {
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 	}
 	return srv.Receive()
@@ -189,53 +184,53 @@ func (srv *ShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, err
 
 // TODO : unit tests
 func (srv *ShardServer) Cleanup(rule *config.FrontendRule) error {
-	srv.mu.RLock()
-	defer srv.mu.RUnlock()
-	return srv.cleanupLockFree(rule)
+	return srv.cleanupLockFree(*srv.shard.Load(), rule)
 }
 
 // TODO : unit tests
-func (srv *ShardServer) cleanupLockFree(rule *config.FrontendRule) error {
-	if srv.shard == nil {
+func (srv *ShardServer) cleanupLockFree(v shard.Shard, rule *config.FrontendRule) error {
+	if v == nil {
 		return ErrShardUnavailable
 	}
-	return srv.shard.Cleanup(rule)
+	return v.Cleanup(rule)
 }
 
 // TODO : unit tests
 func (srv *ShardServer) Cancel() error {
-	srv.mu.RLock()
-	defer srv.mu.RUnlock()
-	if srv.shard == nil {
+	v := srv.shard.Load()
+	if v == nil {
 		return ErrShardUnavailable
 	}
-	return srv.shard.Cancel()
+	return (*v).Cancel()
 }
 
 // TODO : unit tests
 func (srv *ShardServer) SetTxStatus(tx txstatus.TXStatus) {
-	srv.mu.RLock()
-	defer srv.mu.RUnlock()
-	if srv.shard != nil {
-		srv.shard.SetTxStatus(tx)
+	v := srv.shard.Load()
+	if v != nil {
+		(*v).SetTxStatus(tx)
 	}
 }
 
 // TODO : unit tests
 func (srv *ShardServer) TxStatus() txstatus.TXStatus {
-	srv.mu.RLock()
-	defer srv.mu.RUnlock()
-	if srv.shard == nil {
+	v := srv.shard.Load()
+	if v == nil {
 		return txstatus.TXERR
 	}
-	return srv.shard.TxStatus()
+	return (*v).TxStatus()
 }
 
 // TODO : unit tests
 func (srv *ShardServer) Datashards() []shard.Shard {
-	srv.mu.RLock()
-	defer srv.mu.RUnlock()
-	return []shard.Shard{srv.shard}
+	var rv []shard.Shard = nil
+	v := srv.shard.Load()
+
+	if v != nil {
+		rv = []shard.Shard{*v}
+	}
+
+	return rv
 }
 
 var _ Server = &ShardServer{}

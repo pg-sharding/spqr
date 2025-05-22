@@ -69,12 +69,17 @@ func RestoreQDB(backupPath string) (*MemQDB, error) {
 		return qdb, nil
 	}
 	if _, err := os.Stat(backupPath); err != nil {
-		spqrlog.Zero.Info().Err(err).Msg("memqdb backup file not exists. Creating new one.")
+		spqrlog.Zero.Info().Err(err).Msg("memqdb backup file not exists. Creating new one")
 		f, err := os.Create(backupPath)
 		if err != nil {
 			return nil, err
 		}
-		defer f.Close()
+		defer func(file *os.File) {
+			err := file.Close()
+			if err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to close file")
+			}
+		}(f)
 		return qdb, nil
 	}
 	data, err := os.ReadFile(backupPath)
@@ -106,7 +111,12 @@ func (q *MemQDB) DumpState() error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close file")
+		}
+	}(f)
 
 	state, err := json.MarshalIndent(q, "", "	")
 
@@ -118,7 +128,12 @@ func (q *MemQDB) DumpState() error {
 	if err != nil {
 		return err
 	}
-	f.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close file")
+		}
+	}(f)
 
 	err = os.Rename(tmpPath, q.backupPath)
 	if err != nil {
@@ -220,7 +235,7 @@ func (q *MemQDB) DropKeyRange(_ context.Context, id string) error {
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("no lock in MemQDB for key range \"%s\"", id))
 	}
 	if !lock.TryLock() {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is locked", id)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id)
 	}
 	defer lock.Unlock()
 
@@ -303,7 +318,7 @@ func (q *MemQDB) TryLockKeyRange(lock *sync.RWMutex, id string, read bool) error
 		res = lock.TryLock()
 	}
 	if !res {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is locked", id)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id)
 	}
 
 	if _, ok := q.Krs[id]; !ok {

@@ -159,17 +159,17 @@ func (mr *MockEntityMgrMockRecorder) CreateDistribution(ctx, ds any) *gomock.Cal
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockEntityMgr) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+func (m *MockEntityMgr) CreateKeyRange(ctx context.Context, arg1 *kr.KeyRange) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, kr)
+	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateKeyRange indicates an expected call of CreateKeyRange.
-func (mr *MockEntityMgrMockRecorder) CreateKeyRange(ctx, kr any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) CreateKeyRange(ctx, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).CreateKeyRange), ctx, kr)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).CreateKeyRange), ctx, arg1)
 }
 
 // DropDistribution mocks base method.
@@ -563,6 +563,20 @@ func (m *MockEntityMgr) RenameKeyRange(ctx context.Context, krId, krIdNew string
 func (mr *MockEntityMgrMockRecorder) RenameKeyRange(ctx, krId, krIdNew any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).RenameKeyRange), ctx, krId, krIdNew)
+}
+
+// RetryMoveTaskGroup mocks base method.
+func (m *MockEntityMgr) RetryMoveTaskGroup(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RetryMoveTaskGroup indicates an expected call of RetryMoveTaskGroup.
+func (mr *MockEntityMgrMockRecorder) RetryMoveTaskGroup(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RetryMoveTaskGroup), ctx)
 }
 
 // ShareKeyRange mocks base method.

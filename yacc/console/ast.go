@@ -105,7 +105,7 @@ type DistributionDefinition struct {
 	ID                   string
 	ColTypes             []string
 	Replicated           bool
-	AutoIncrementColumns []string
+	AutoIncrementEntries []AutoIncrementEntry
 }
 
 type ShardingRuleDefinition struct {
@@ -122,7 +122,12 @@ type ShardingRuleEntry struct {
 
 type ReferenceRelationDefinition struct {
 	TableName            string
-	AutoIncrementColumns []string
+	AutoIncrementEntries []AutoIncrementEntry
+}
+
+type AutoIncrementEntry struct {
+	Column string
+	Start  uint
 }
 
 type KeyRangeBound struct {
@@ -216,6 +221,10 @@ type Kill struct {
 
 type InvalidateCache struct{}
 
+type SyncReferenceTables struct {
+	ShardID string
+}
+
 // coordinator
 
 type RegisterRouter struct {
@@ -260,7 +269,7 @@ type DistributedRelation struct {
 	SchemaName           string
 	DistributionKey      []DistributionKeyEntry
 	ReplicatedRelation   bool
-	AutoIncrementColumns []string
+	AutoIncrementEntries []AutoIncrementEntry
 }
 
 type AttachRelation struct {
@@ -295,6 +304,10 @@ type SequenceSelector struct {
 }
 
 func (*SequenceSelector) iDrop() {}
+
+type RetryMoveTaskGroup struct{}
+
+func (*RetryMoveTaskGroup) iStatement() {}
 
 // The following constants represent SHOW statements.
 const (
@@ -354,6 +367,7 @@ func (*WhereClauseLeaf) iStatement()             {}
 func (*WhereClauseEmpty) iStatement()            {}
 func (*WhereClauseOp) iStatement()               {}
 func (*InvalidateCache) iStatement()             {}
+func (*SyncReferenceTables) iStatement()         {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}

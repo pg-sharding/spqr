@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/router/client"
@@ -33,11 +34,11 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return relay.ProcQueryAdvancedTx(rst, q.Query, func() error {
+			_, err := rst.ProcQueryAdvancedTx(q.Query, func() error {
 				rst.AddQuery(q)
 				return rst.ProcessMessageBuf(true, true)
 			}, true, true)
-
+			return err
 		case *pgproto3.Execute:
 			// copy interface
 			cpQ := *q
@@ -57,10 +58,11 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return relay.ProcQueryAdvancedTx(rst, q.String, func() error {
+			_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
 				rst.AddQuery(q)
 				return rst.ProcessMessageBuf(true, true)
 			}, false, true)
+			return err
 		default:
 			return nil
 		}
@@ -75,7 +77,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		}
 
 		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(rst.Client())).
+			Uint("client", rst.Client().ID()).
 			Msg("client connection synced")
 		return nil
 	case *pgproto3.Parse:
@@ -119,11 +121,13 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		cpQ := *q
 		q = &cpQ
 		qr.SetQuery(&q.String)
-		return relay.ProcQueryAdvancedTx(rst, q.String, func() error {
+		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
 			rst.AddQuery(q)
 			// this call completes relay, sends RFQ
 			return rst.ProcessMessageBuf(true, true)
 		}, false, true)
+
+		return err
 	default:
 		return nil
 	}
@@ -141,7 +145,11 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 	}
 	rst := relay.NewRelayState(qr, cl, cmngr)
 
-	defer rst.Close()
+	defer func() {
+		if err := rst.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close relay state")
+		}
+	}()
 
 	var msg pgproto3.FrontendMessage
 	var err error
@@ -175,14 +183,21 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 
 		switch err {
 		case nil:
-			break
+			continue
 		case io.ErrUnexpectedEOF:
 			fallthrough
 		case io.EOF:
 			return nil
 			// ok
 		default:
-			return err
+			switch err.(type) {
+			case *spqrerror.SpqrError:
+				if rerr := rst.Client().ReplyErr(err); rerr != nil {
+					return err
+				}
+			default:
+				return err
+			}
 		}
 	}
 }

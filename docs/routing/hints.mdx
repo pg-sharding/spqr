@@ -23,11 +23,13 @@ For every query, you may specify special hints in different ways:
 ### `target-session-attrs`
 
 The `target-session-attrs` parameter in PostgreSQL is used to specify the desired session state when connecting to a database. It is particularly useful in scenarios with multiple servers and failover configurations, where you want to ensure your session connects to the server with the desired role or state.
+`target_session_attrs` and `__spqr__target_session_attrs` are both aliases for `target-session-attrs`
 
 Possible values for `target-session-attrs`:
 
 - `read-write`: Connects to a server in read-write mode, and fails if the primary is unavailable.
-- `read-only`: Connects to read-only servers. Fails if none available.
+- `smart-read-write`: Connects to a server in read-write mode, and fails if the primary is unavailable. Automatically routes read-only queries to standbys (with prefer-standby semantics), if query_routing: auto_route_ro_on_standby is set to true in configure file.
+- `read-only`: Connects only to read-only (in recovery) servers. Fails if none available.
 - `prefer-standby` or `prefer-replica`: Prefers connecting to standby servers. If none are available, it connects to primary.
 - `any`: Connect to any available server, regardless of state.
 

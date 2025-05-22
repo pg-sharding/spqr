@@ -6,6 +6,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -147,4 +148,146 @@ func TestGetKRCondition(t *testing.T) {
 			"test case %d", i,
 		)
 	}
+}
+
+func TestCmpRangesLess_UInteger(t *testing.T) {
+	tests := []struct {
+		name   string
+		bound  kr.KeyRangeBound
+		key    kr.KeyRangeBound
+		types  []string
+		expect bool
+	}{
+		{
+			name:   "uint64: bound < key",
+			bound:  kr.KeyRangeBound{uint64(10)},
+			key:    kr.KeyRangeBound{uint64(20)},
+			types:  []string{qdb.ColumnTypeUinteger},
+			expect: true,
+		},
+		{
+			name:   "uint64: bound > key",
+			bound:  kr.KeyRangeBound{uint64(30)},
+			key:    kr.KeyRangeBound{uint64(20)},
+			types:  []string{qdb.ColumnTypeUinteger},
+			expect: false,
+		},
+		{
+			name:   "uint64: bound == key",
+			bound:  kr.KeyRangeBound{uint64(20)},
+			key:    kr.KeyRangeBound{uint64(20)},
+			types:  []string{qdb.ColumnTypeUinteger},
+			expect: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := kr.CmpRangesLess(tt.bound, tt.key, tt.types)
+			assert.Equal(t, tt.expect, result)
+		})
+	}
+}
+
+func TestCmpRangesLess_Integer(t *testing.T) {
+	tests := []struct {
+		name   string
+		bound  kr.KeyRangeBound
+		key    kr.KeyRangeBound
+		types  []string
+		expect bool
+	}{
+		{
+			name:   "int64: bound < key (negative)",
+			bound:  kr.KeyRangeBound{int64(-10)},
+			key:    kr.KeyRangeBound{int64(10)},
+			types:  []string{qdb.ColumnTypeInteger},
+			expect: true,
+		},
+		{
+			name:   "int64: bound > key",
+			bound:  kr.KeyRangeBound{int64(30)},
+			key:    kr.KeyRangeBound{int64(20)},
+			types:  []string{qdb.ColumnTypeInteger},
+			expect: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := kr.CmpRangesLess(tt.bound, tt.key, tt.types)
+			assert.Equal(t, tt.expect, result)
+		})
+	}
+}
+
+func TestCmpRangesLess_String(t *testing.T) {
+	tests := []struct {
+		name   string
+		bound  kr.KeyRangeBound
+		key    kr.KeyRangeBound
+		types  []string
+		expect bool
+	}{
+		{
+			name:   "string: bound < key",
+			bound:  kr.KeyRangeBound{"apple"},
+			key:    kr.KeyRangeBound{"banana"},
+			types:  []string{qdb.ColumnTypeVarchar},
+			expect: true,
+		},
+		{
+			name:   "string: bound > key",
+			bound:  kr.KeyRangeBound{"zebra"},
+			key:    kr.KeyRangeBound{"apple"},
+			types:  []string{qdb.ColumnTypeVarchar},
+			expect: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := kr.CmpRangesLess(tt.bound, tt.key, tt.types)
+			assert.Equal(t, tt.expect, result)
+		})
+	}
+}
+
+func TestCmpRangesLess_DeprecatedString(t *testing.T) {
+	tests := []struct {
+		name   string
+		bound  kr.KeyRangeBound
+		key    kr.KeyRangeBound
+		types  []string
+		expect bool
+	}{
+		{
+			name:   "deprecated string: custom comparison",
+			bound:  kr.KeyRangeBound{"a"},
+			key:    kr.KeyRangeBound{"b"},
+			types:  []string{qdb.ColumnTypeVarcharDeprecated},
+			expect: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := kr.CmpRangesLess(tt.bound, tt.key, tt.types)
+			assert.Equal(t, tt.expect, result)
+		})
+	}
+}
+
+func TestCmpRangesLess_PanicOnTypeMismatch(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic on type mismatch")
+		}
+	}()
+
+	bound := kr.KeyRangeBound{"not-a-number"}
+	key := kr.KeyRangeBound{uint64(10)}
+	types := []string{qdb.ColumnTypeUinteger}
+
+	kr.CmpRangesLess(bound, key, types)
 }

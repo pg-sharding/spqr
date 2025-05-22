@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -46,7 +47,12 @@ func LoadBalancerCfg(cfgPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer func() { _ = file.Close() }()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			log.Printf("failed to close config file: %v", err)
+		}
+	}(file)
 
 	if err := initBalancerConfig(file, cfgPath); err != nil {
 		return "", err

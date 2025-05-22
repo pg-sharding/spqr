@@ -1,0 +1,17 @@
+.*
+test/feature/features
+test/feature/testutil
+test/feature/spqr_test.go
+test/feature/docker-compose.yaml
+test/regress/docker-compose.yaml
+test/regress/Dockerfile
+test/xproto/router/Dockerfile
+test/stress/Dockerfile
+test/drivers
+docker-compose.yaml
+docker/spqr/Dockerfile
+docker/router/Dockerfile
+docker/shard/Dockerfile
+docker/slicer/Dockerfile
+docker/coordinator/Dockerfile
+docker/generator/Dockerfile

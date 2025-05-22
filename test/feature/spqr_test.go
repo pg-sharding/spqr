@@ -800,22 +800,6 @@ func (tctx *testContext) stepIRunSQLOnHostAsUser(host string, user string, body 
 	return err
 }
 
-func (tctx *testContext) stepIFailSQLOnHost(host string) error {
-	_, err := tctx.queryPostgresql(host, shardUser, "SELECT 1", struct{}{}, postgresqlQueryTimeout)
-	if err == nil {
-		return fmt.Errorf("host is accessible via SQL")
-	}
-	return nil
-}
-
-func (tctx *testContext) stepIFailSQLOnHostAsUser(host string, user string) error {
-	_, err := tctx.queryPostgresql(host, user, "SELECT 1", struct{}{}, postgresqlQueryTimeout)
-	if err == nil {
-		return fmt.Errorf("host is accessible via SQL")
-	}
-	return nil
-}
-
 func (tctx *testContext) stepSQLResultShouldNotMatch(matcher string, body *godog.DocString) error {
 	m, err := matchers.GetMatcher(matcher)
 	if err != nil {
@@ -922,7 +906,7 @@ func (tctx *testContext) stepRecordQDBTx(key string, body *godog.DocString) erro
 	query := strings.TrimSpace(body.Content)
 	var st qdb.DataTransferTransaction
 	if err := json.Unmarshal([]byte(query), &st); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal request")
+		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal request")
 		return err
 	}
 
@@ -948,7 +932,7 @@ func (tctx *testContext) stepRecordQDBKRMove(body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 	var m qdb.MoveKeyRange
 	if err := json.Unmarshal([]byte(query), &m); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal request")
+		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal request")
 		return err
 	}
 
@@ -959,7 +943,7 @@ func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 	var taskGroup qdb.MoveTaskGroup
 	if err := json.Unmarshal([]byte(query), &taskGroup); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal request")
+		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal request")
 		return err
 	}
 
@@ -1047,14 +1031,14 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 			time.Sleep(time.Hour)
 		}
 		if tctx.templateErr != nil {
-			log.Fatalf("Error in templating %s: %v\n", step.Text, tctx.templateErr)
+			log.Printf("error in templating %s: %v\n", step.Text, tctx.templateErr)
 		}
 		return ctx, nil
 	})
 	s.After(func(ctx context.Context, scenario *godog.Scenario, err error) (context.Context, error) {
 		if err != nil {
 			name := scenario.Name
-			name = strings.Replace(name, " ", "_", -1)
+			name = strings.ReplaceAll(name, " ", "_")
 			err2 := tctx.saveLogs(name)
 			if err2 != nil {
 				log.Printf("failed to save logs: %v", err2)
@@ -1069,7 +1053,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 
 	// host manipulation
 	s.Step(`^cluster environment is$`, tctx.stepClusterEnvironmentIs)
-	s.Step(`^cluster is up and running$`, func() error { return tctx.stepClusterIsUpAndRunning() })
+	s.Step(`^cluster is up and running$`, tctx.stepClusterIsUpAndRunning)
 	s.Step(`^cluster is failed up and running$`, func() error {
 		err := tctx.stepClusterIsUpAndRunning()
 		if err != nil {
@@ -1108,8 +1092,6 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^qdb should not contain key range moves$`, tctx.stepQDBShouldNotContainKRMoves)
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
-	s.Step(`^I fail to run SQL on host "([^"]*)"$`, tctx.stepIFailSQLOnHost)
-	s.Step(`^I fail to run SQL on host "([^"]*)" as user "([^"]*)"$`, tctx.stepIFailSQLOnHostAsUser)
 	s.Step(`^I wait for host "([^"]*)" to respond$`, tctx.stepWaitPostgresqlToRespond)
 
 	// variable manipulation

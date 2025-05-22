@@ -46,7 +46,7 @@ type EntityMgr interface {
 	Cache() *cache.SchemaCache
 }
 
-var unknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
+var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 
 // TODO : unit tests
 
@@ -99,7 +99,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 
 		if len(krs) != 0 && !isCascade {
-			return fmt.Errorf("cannot drop distribution %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
+			return fmt.Errorf("cannot drop distribution %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID) //nolint:staticcheck
 		}
 
 		for _, kr := range krs {
@@ -115,7 +115,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 				return err
 			}
 			if len(ds.Relations) != 0 && !isCascade {
-				return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID)
+				return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID) //nolint:staticcheck
 			}
 
 			for _, rel := range ds.Relations {
@@ -138,7 +138,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		for _, ds := range dss {
 			if ds.Id != "default" {
 				if len(ds.Relations) != 0 && !isCascade {
-					return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically", ds.Id)
+					return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", ds.Id) //nolint:staticcheck
 				}
 				ret = append(ret, ds.ID())
 				err = mngr.DropDistribution(ctx, ds.Id)
@@ -205,8 +205,8 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 				ReplicatedRelation: true,
 				ColumnSequenceMapping: func() map[string]string {
 					ret := map[string]string{}
-					for _, colName := range stmt.AutoIncrementColumns {
-						ret[colName] = distributions.SequenceName(stmt.TableName, colName)
+					for _, entry := range stmt.AutoIncrementEntries {
+						ret[entry.Column] = distributions.SequenceName(stmt.TableName, entry.Column)
 					}
 					return ret
 				}(),
@@ -237,7 +237,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 					return cli.ReportError(err)
 				}
 			} else {
-				return fmt.Errorf("REPLICATED distribution already exist.")
+				return fmt.Errorf("REPLICATED distribution already exist")
 			}
 		} else {
 			distribution = distributions.NewDistribution(stmt.ID, stmt.ColTypes)
@@ -300,7 +300,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 		return cli.AddShard(dataShard)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -319,7 +319,7 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 	case *spqrparser.AlterDistribution:
 		return processAlterDistribution(ctx, stmt.Element, mngr, cli)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -381,7 +381,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		}
 		return cli.AlterDistributedRelation(ctx, stmt.Distribution.ID, stmt.Relation.Name)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -507,8 +507,25 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 	case *spqrparser.InvalidateCache:
 		mgr.Cache().Reset()
 		return cli.CompleteMsg(0)
+	case *spqrparser.RetryMoveTaskGroup:
+		taskGroup, err := mgr.GetMoveTaskGroup(ctx)
+		if err != nil {
+			return err
+		}
+		colTypes := make([]string, 0)
+		if len(taskGroup.Tasks) > 0 {
+			kRange, err := mgr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+			if err != nil {
+				return err
+			}
+			colTypes = kRange.ColumnTypes
+		}
+		if err = mgr.RetryMoveTaskGroup(ctx); err != nil {
+			return err
+		}
+		return cli.MoveTaskGroup(ctx, taskGroup, colTypes)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -538,7 +555,7 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, poo
 		}
 		return cli.KillClient(stmt.Target)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -648,7 +665,16 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
-		return cli.MoveTaskGroup(ctx, group)
+		colTypes := make([]string, 0)
+		if len(group.Tasks) > 0 {
+			kRange, err := mngr.GetKeyRange(ctx, group.KrIdFrom)
+			if err != nil {
+				return err
+			}
+			colTypes = kRange.ColumnTypes
+		}
+
+		return cli.MoveTaskGroup(ctx, group, colTypes)
 	case spqrparser.PreparedStatementsStr:
 
 		var resp []shard.PreparedStatementsMgrDescriptor
@@ -671,7 +697,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	case spqrparser.IsReadOnlyStr:
 		return cli.IsReadOnly(ctx, ro)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }
 

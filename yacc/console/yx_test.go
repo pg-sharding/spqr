@@ -658,9 +658,38 @@ func TestAlter(t *testing.T) {
 						},
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name:                 "t",
-								ReplicatedRelation:   true,
-								AutoIncrementColumns: []string{"id1"},
+								Name:               "t",
+								ReplicatedRelation: true,
+								AutoIncrementEntries: []spqrparser.AutoIncrementEntry{
+									{
+										Column: "id1",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			query: "ALTER REPLICATED DISTRIBUTION ATTACH RELATION t AUTO INCREMENT id1 START 42;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Distribution: &spqrparser.DistributionSelector{
+							ID:         "REPLICATED",
+							Replicated: true,
+						},
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name:               "t",
+								ReplicatedRelation: true,
+								AutoIncrementEntries: []spqrparser.AutoIncrementEntry{
+									{
+										Column: "id1",
+										Start:  42,
+									},
+								},
 							},
 						},
 					},
@@ -680,7 +709,44 @@ func TestAlter(t *testing.T) {
 										Column: "id1",
 									},
 								},
-								AutoIncrementColumns: []string{"id1", "id2"},
+								AutoIncrementEntries: []spqrparser.AutoIncrementEntry{
+									{
+										Column: "id1",
+									},
+									{
+										Column: "id2",
+									},
+								},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+		},
+		{
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1 AUTO INCREMENT id1 START 123, id2 START 321;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name: "t",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										Column: "id1",
+									},
+								},
+								AutoIncrementEntries: []spqrparser.AutoIncrementEntry{
+									{
+										Column: "id1",
+										Start:  123,
+									},
+									{
+										Column: "id2",
+										Start:  321,
+									},
+								},
 							},
 						},
 						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
@@ -804,8 +870,46 @@ func TestDistribution(t *testing.T) {
 			query: "CREATE REFERENCE TABLE xtab AUTO INCREMENT id",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
-					TableName:            "xtab",
-					AutoIncrementColumns: []string{"id"},
+					TableName: "xtab",
+					AutoIncrementEntries: []spqrparser.AutoIncrementEntry{
+						{
+							Column: "id",
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE REFERENCE TABLE xtab AUTO INCREMENT id START 42",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ReferenceRelationDefinition{
+					TableName: "xtab",
+					AutoIncrementEntries: []spqrparser.AutoIncrementEntry{
+						{
+							Column: "id",
+							Start:  42,
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE REFERENCE TABLE xtab AUTO INCREMENT id1 START 42, id2 START 43",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ReferenceRelationDefinition{
+					TableName: "xtab",
+					AutoIncrementEntries: []spqrparser.AutoIncrementEntry{
+						{
+							Column: "id1",
+							Start:  42,
+						},
+						{
+							Column: "id2",
+							Start:  43,
+						},
+					},
 				},
 			},
 			err: nil,
@@ -912,6 +1016,56 @@ func TestRefresh(t *testing.T) {
 		{
 			query: "INVALIDATE CACHE",
 			exp:   &spqrparser.InvalidateCache{},
+			err:   nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
+func TestSyncReferenceTable(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "SYNC REFERENCE TABLES sh1",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID: "sh1",
+			},
+			err: nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
+func TestRetryMoveTaskGroup(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "RETRY MOVE TASK GROUP",
+			exp:   &spqrparser.RetryMoveTaskGroup{},
 			err:   nil,
 		},
 	} {

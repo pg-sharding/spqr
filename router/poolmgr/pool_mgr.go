@@ -44,13 +44,15 @@ func unRouteShardsCommon(cl client.RouterClient, sh []kr.ShardKey) error {
 	var anyerr error
 	anyerr = nil
 
-	if cl.Server() == nil {
+	serv := cl.Server()
+
+	if serv == nil {
 		/* If there is nothing to unroute, return */
 		return nil
 	}
 
-	if cl.Server().TxStatus() != txstatus.TXIDLE {
-		if err := cl.Server().Reset(); err != nil {
+	if serv.TxStatus() != txstatus.TXIDLE {
+		if err := serv.Reset(); err != nil {
 			return err
 		}
 		// TODO: figure out if we need this
@@ -60,10 +62,10 @@ func unRouteShardsCommon(cl client.RouterClient, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
 		spqrlog.Zero.Debug().
 			Uint("client", cl.ID()).
-			Uint("shardn", spqrlog.GetPointer(cl.Server())).
+			Uint("shardn", spqrlog.GetPointer(serv)).
 			Str("key", shkey.Name).
 			Msg("client unrouting from datashard")
-		if err := cl.Server().UnRouteShard(shkey, cl.Rule()); err != nil {
+		if err := serv.UnRouteShard(shkey, cl.Rule()); err != nil {
 			anyerr = err
 		}
 	}
@@ -153,6 +155,34 @@ func NewSessConnManager() *SessConnManager {
 	return &SessConnManager{}
 }
 
+type VirtualConnManager struct {
+}
+
+// ConnectionActive implements PoolMgr.
+func (v *VirtualConnManager) ConnectionActive(rst ConnectionKeeper) bool {
+	return true
+}
+
+// TXEndCB implements PoolMgr.
+func (v *VirtualConnManager) TXEndCB(rst ConnectionKeeper) error {
+	return nil
+}
+
+// UnRouteCB implements PoolMgr.
+func (v *VirtualConnManager) UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error {
+	return nil
+}
+
+// UnRouteWithError implements PoolMgr.
+func (v *VirtualConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
+	return unRouteWithError(v, client, sh, errmsg)
+}
+
+// ValidateReRoute implements PoolMgr.
+func (v *VirtualConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
+	return false
+}
+
 // TODO : unit tests
 func MatchConnectionPooler(client client.RouterClient) (PoolMgr, error) {
 	switch client.Rule().PoolMode {
@@ -160,10 +190,12 @@ func MatchConnectionPooler(client client.RouterClient) (PoolMgr, error) {
 		return NewSessConnManager(), nil
 	case config.PoolModeTransaction:
 		return NewTxConnManager(), nil
+	case config.PoolModeVirtual:
+		return &VirtualConnManager{}, nil
 	default:
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
-				Message:  fmt.Sprintf("unknown pool mode for route %v", client.ID()),
+				Message:  fmt.Sprintf("unknown route pool mode for client %v", client.ID()),
 				Severity: "ERROR",
 			},
 		} {

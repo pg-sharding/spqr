@@ -8,11 +8,18 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/pg-sharding/spqr/pkg/catalog"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/stretchr/testify/assert"
 )
+
+type MessageGroup struct {
+	Request  []pgproto3.FrontendMessage
+	Response []pgproto3.BackendMessage
+}
 
 func getC() (net.Conn, error) {
 	const proto = "tcp"
@@ -102,11 +109,11 @@ func SetupSharding() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;")
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;")
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
@@ -118,11 +125,11 @@ func SetupSharding() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid3 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds2;")
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid4 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds2;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid4 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds2;")
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid3 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds2;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
@@ -155,7 +162,6 @@ func CreateTables() {
 	if val, ok := params["password"]; ok {
 		dsn = dsn + " password=" + val
 	}
-
 	conn, err := pgx.Connect(context.Background(), dsn)
 	if err != nil {
 		panic(fmt.Errorf("failed to connect to database: %s", err))
@@ -203,11 +209,6 @@ func TestSimpleQuery(t *testing.T) {
 	if err := waitRFQ(frontend); err != nil {
 		assert.NoError(t, err, "startup failed")
 		return
-	}
-
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
 	}
 
 	for _, msgroup := range []MessageGroup{
@@ -337,11 +338,6 @@ func TestSimpleAdvancedParsing(t *testing.T) {
 		return
 	}
 
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
-	}
-
 	for _, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
@@ -453,11 +449,6 @@ func TestHintRoutingXproto(t *testing.T) {
 	if err := waitRFQ(frontend); err != nil {
 		assert.NoError(t, err, "startup failed")
 		return
-	}
-
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
 	}
 
 	for gr, msgroup := range []MessageGroup{
@@ -668,11 +659,6 @@ func TestSimpleAdvancedSETParsing(t *testing.T) {
 		return
 	}
 
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
-	}
-
 	for _, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
@@ -838,7 +824,7 @@ func TestSimpleAdvancedSETParsing(t *testing.T) {
 	}
 }
 
-func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
+func TestUnknownBindStatementError(t *testing.T) {
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -862,9 +848,100 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 		return
 	}
 
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "ppp_qqq_1",
+					Query: "SELECT now()",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "ppp_qqq_2",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS,
+					Message:  "prepared statement \"ppp_qqq_2\" does not exist",
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for ind, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.ErrorResponse:
+				/* do not check this */
+				retMsgType.Line = 0
+				retMsgType.Routine = ""
+				retMsgType.Position = 0
+				retMsgType.SeverityUnlocalized = ""
+				retMsgType.File = ""
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("index=%d", ind))
+		}
+	}
+}
+
+func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
 	}
 
 	for _, msgroup := range []MessageGroup{
@@ -1071,11 +1148,6 @@ func TestPrepStmtSimple(t *testing.T) {
 		return
 	}
 
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
-	}
-
 	for _, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
@@ -1262,11 +1334,6 @@ func TestPrepStmtDescribeAndBind(t *testing.T) {
 	if err := waitRFQ(frontend); err != nil {
 		assert.NoError(t, err, "startup failed")
 		return
-	}
-
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
 	}
 
 	for i, msgroup := range []MessageGroup{
@@ -1538,12 +1605,6 @@ func TestPrepStmtDescribePortalAndBind(t *testing.T) {
 		assert.NoError(t, err, "startup failed")
 		return
 	}
-
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
-	}
-
 	for _, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
@@ -1638,11 +1699,6 @@ func TestPrepStmtAdvancedParsing(t *testing.T) {
 	if err := waitRFQ(frontend); err != nil {
 		assert.NoError(t, err, "startup failed")
 		return
-	}
-
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
 	}
 
 	for _, msgroup := range []MessageGroup{
@@ -1877,11 +1933,6 @@ func TestPrepStmt(t *testing.T) {
 	if err := waitRFQ(frontend); err != nil {
 		assert.NoError(t, err, "startup failed")
 		return
-	}
-
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
 	}
 
 	for _, msgroup := range []MessageGroup{
@@ -2215,11 +2266,6 @@ func TestPrepExtendedPipeline(t *testing.T) {
 		return
 	}
 
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
-	}
-
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
@@ -2462,11 +2508,6 @@ func TestPrepExtendedErrorParse(t *testing.T) {
 		return
 	}
 
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
-	}
-
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
@@ -2597,11 +2638,6 @@ func TestDoubleDescribe(t *testing.T) {
 		return
 	}
 
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
-	}
-
 	tt := []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
@@ -2724,11 +2760,6 @@ func TestMultiPortal(t *testing.T) {
 	if err := waitRFQ(frontend); err != nil {
 		assert.NoError(t, err, "startup failed")
 		return
-	}
-
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
 	}
 
 	tt := []MessageGroup{
@@ -2937,11 +2968,6 @@ func TestPrepStmtBinaryFormat(t *testing.T) {
 		return
 	}
 
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
-	}
-
 	for _, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
@@ -3084,11 +3110,6 @@ func TestDDL(t *testing.T) {
 	if err := waitRFQ(frontend); err != nil {
 		assert.NoError(t, err, "startup failed")
 		return
-	}
-
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
 	}
 
 	for _, msgroup := range []MessageGroup{
@@ -3307,11 +3328,6 @@ func TestMixedProtoTxcommands(t *testing.T) {
 	if err := waitRFQ(frontend); err != nil {
 		assert.NoError(t, err, "startup failed")
 		return
-	}
-
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
 	}
 
 	for _, msgroup := range []MessageGroup{
@@ -3692,6 +3708,150 @@ func TestMixedProtoTxcommands(t *testing.T) {
 					CommandTag: []byte("ROLLBACK"),
 				},
 				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for ind, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.ErrorResponse:
+				/* skip */
+				if retMsgType.Severity != "ERROR" {
+					retMsg, err = frontend.Receive()
+					assert.NoError(t, err)
+				}
+			case *pgproto3.NoticeResponse:
+				retMsg, err = frontend.Receive()
+				assert.NoError(t, err)
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("iter msg %d", ind))
+		}
+	}
+}
+
+func TestXProtoPureVirtual(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Query: "SELECT 1",
+					Name:  "q1",
+				},
+				&pgproto3.Parse{
+					Query: "SELECT pg_is_in_recovery()",
+					Name:  "q2",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "q2",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "q2",
+				},
+				&pgproto3.Execute{},
+
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "q1",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "q1",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParameterDescription{ParameterOIDs: []uint32{}},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("pg_is_in_recovery"),
+							TableOID:             0x0,
+							TableAttributeNumber: 0x0,
+							DataTypeOID:          catalog.ARRAYOID,
+							DataTypeSize:         1,
+							TypeModifier:         -1,
+							Format:               0,
+						},
+					},
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("f")},
+				},
+
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ParameterDescription{ParameterOIDs: []uint32{}},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("?column?"),
+							TableOID:             0x0,
+							TableAttributeNumber: 0x0,
+							DataTypeOID:          catalog.INT4OID,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+							Format:               0,
+						},
+					},
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte("1")},
+				},
+
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
 			},
 		},
 	} {

@@ -1,8 +1,8 @@
 
 \c spqr-console
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
 ALTER DISTRIBUTION ds1 ATTACH RELATION tlt1 DISTRIBUTION KEY i;
 
 \c regress
@@ -21,6 +21,7 @@ INSERT INTO sh2.tlt1 (i, j) VALUES(112, 124);
 INSERT INTO sh2.tlt1 (i, j) VALUES(113, 125);
 
 select (select sum(j) from sh2.tlt1 where i = 112);
+select (select sum(j) as xyx from sh2.tlt1 where i = 112) as aboba;
 select (select sum(j) from sh2.tlt1 where i = 112), (select sum(j) from sh2.tlt1 where sh2.tlt1.i = 113);
 select  coalesce((select sum(j) from sh2.tlt1 where i = 1), 0), coalesce((select sum(j) from sh2.tlt1 where i = 2 and j not in (select 12)), 0);
 

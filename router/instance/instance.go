@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/coord/local"
+	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
@@ -88,7 +88,7 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	}
 
 	cache := cache.NewSchemaCache(config.RouterConfig().ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
-	lc := local.NewLocalCoordinator(db, cache)
+	lc := coord.NewLocalCoordinator(db, cache)
 
 	var notifier *sdnotifier.Notifier
 	if config.RouterConfig().UseSystemdNotifier {
@@ -154,11 +154,18 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 }
 
 func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, error) {
-	defer netconn.Close()
+	defer func() {
+		if err := netconn.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close netconn")
+		}
+	}()
 	defer r.RuleRouter.ReleaseConnection()
 
 	routerClient, err := r.RuleRouter.PreRoute(netconn, pt)
 	if err != nil {
+		if routerClient == nil {
+			return 0, err
+		}
 		return routerClient.ID(), err
 	}
 

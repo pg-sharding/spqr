@@ -595,6 +595,20 @@ func (mr *MockCoordinatorMockRecorder) RenameKeyRange(ctx, krId, krIdNew any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RenameKeyRange", reflect.TypeOf((*MockCoordinator)(nil).RenameKeyRange), ctx, krId, krIdNew)
 }
 
+// RetryMoveTaskGroup mocks base method.
+func (m *MockCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RetryMoveTaskGroup indicates an expected call of RetryMoveTaskGroup.
+func (mr *MockCoordinatorMockRecorder) RetryMoveTaskGroup(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).RetryMoveTaskGroup), ctx)
+}
+
 // RunCoordinator mocks base method.
 func (m *MockCoordinator) RunCoordinator(ctx context.Context, initialRouter bool) {
 	m.ctrl.T.Helper()

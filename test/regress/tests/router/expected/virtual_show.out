@@ -1,0 +1,99 @@
+SHOW __spqr__distribution;
+ERROR:  parameter "__spqr__distribution" isn't user accessible
+SHOW __spqr__default_route_behaviour;
+ default route behaviour 
+-------------------------
+ 
+(1 row)
+
+SHOW __spqr__auto_distribution;
+ __spqr__auto_distribution 
+---------------------------
+ 
+(1 row)
+
+SHOW __spqr__distribution_key;
+ __spqr__distribution_key 
+--------------------------
+ 
+(1 row)
+
+SHOW __spqr__sharding_key;
+ sharding key 
+--------------
+ 
+(1 row)
+
+SHOW __spqr__scatter_query;
+ERROR:  parameter "__spqr__scatter_query" isn't user accessible
+SHOW __spqr__reply_notice;
+ show notice messages 
+----------------------
+ true
+(1 row)
+
+SHOW __spqr__maintain_params;
+ maintain params 
+-----------------
+ false
+(1 row)
+
+SHOW __spqr__execute_on;
+ execute on 
+------------
+ 
+(1 row)
+
+SHOW __spqr__engine_v2;
+ __spqr__engine_v2 
+-------------------
+ 
+(1 row)
+
+SHOW __spqr__commit_strategy;
+ __spqr__commit_strategy 
+-------------------------
+ best-effort
+(1 row)
+
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ read-write
+(1 row)
+
+SHOW target_session_attrs;
+ target session attrs 
+----------------------
+ read-write
+(1 row)
+
+SET __spqr__engine_v2 TO false;
+SHOW __spqr__engine_v2;
+ __spqr__engine_v2 
+-------------------
+ no
+(1 row)
+
+SET __spqr__engine_v2 TO ok;
+SHOW __spqr__engine_v2;
+ __spqr__engine_v2 
+-------------------
+ ok
+(1 row)
+
+BEGIN;
+SET __spqr__engine_v2 TO off;
+SHOW __spqr__engine_v2;
+ __spqr__engine_v2 
+-------------------
+ no
+(1 row)
+
+ROLLBACK;
+SHOW __spqr__engine_v2;
+ __spqr__engine_v2 
+-------------------
+ ok
+(1 row)
+

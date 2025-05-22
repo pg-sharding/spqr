@@ -27,7 +27,6 @@ type TsaKey struct {
 }
 
 type DBPool struct {
-	Pool
 	pool           MultiShardPool
 	shardMapping   map[string]*config.Shard
 	cacheTSAChecks sync.Map
@@ -111,8 +110,11 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
 	totalMsg := make([]string, 0)
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
-		ch, reason, err := s.checker.CheckTSA(shard)
-		spqrlog.Zero.Debug().Uint("id", shard.ID()).Bool("result", ch).Msg("checking for read-only")
+		cr, err := s.checker.CheckTSA(shard)
+		spqrlog.Zero.Debug().
+			Uint("id", shard.ID()).
+			Bool("result", cr.RW).
+			Msg("checking for read-only")
 
 		if err != nil {
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
@@ -131,10 +133,10 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 			Tsa:  tsa,
 			Host: shard.Instance().Hostname(),
 			AZ:   shard.Instance().AvailabilityZone(),
-		}, !ch)
+		}, !cr.RW)
 
-		if ch {
-			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), reason))
+		if cr.RW {
+			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), cr.Reason))
 			_ = s.Put(shard)
 			return false
 		}
@@ -166,7 +168,7 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
 	totalMsg := make([]string, 0)
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
-		ch, reason, err := s.checker.CheckTSA(shard)
+		cr, err := s.checker.CheckTSA(shard)
 
 		if err != nil {
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
@@ -184,10 +186,10 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 			Tsa:  tsa,
 			Host: shard.Instance().Hostname(),
 			AZ:   shard.Instance().AvailabilityZone(),
-		}, ch)
+		}, cr.RW)
 
-		if !ch {
-			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), reason))
+		if !cr.RW {
+			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), cr.Reason))
 			_ = s.Put(shard)
 			return false
 		}
@@ -217,19 +219,33 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 //
 // TODO : unit tests
 func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.Shard, error) {
+
+	var effectiveTargetSessionAttrs tsa.TSA
+	if targetSessionAttrs == config.TargetSessionAttrsSmartRW {
+		if key.RO {
+			/* if query is proved read-only, try to pick up a standby */
+			effectiveTargetSessionAttrs = config.TargetSessionAttrsPS
+		} else {
+			effectiveTargetSessionAttrs = config.TargetSessionAttrsRW
+		}
+	} else {
+		effectiveTargetSessionAttrs = targetSessionAttrs
+	}
+
 	spqrlog.Zero.Debug().
 		Uint("client", clid).
 		Str("shard", key.Name).
-		Str("tsa", string(targetSessionAttrs)).
+		Bool("RO", key.RO).
+		Str("effective tsa", string(effectiveTargetSessionAttrs)).
 		Msg("acquiring new instance connection for client to shard with target session attrs")
 
-	hostOrder, err := s.BuildHostOrder(key, targetSessionAttrs)
+	hostOrder, err := s.BuildHostOrder(key, effectiveTargetSessionAttrs)
 	if err != nil {
 		return nil, err
 	}
 
 	/* pool.Connection will reorder hosts in such way, that preferred tsa will go first */
-	switch targetSessionAttrs {
+	switch effectiveTargetSessionAttrs {
 	case "":
 		fallthrough
 	case config.TargetSessionAttrsAny:
@@ -263,15 +279,15 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 		}
 		return nil, fmt.Errorf("failed to get connection to any shard host within: %s", strings.Join(total_msg, ", "))
 	case config.TargetSessionAttrsRO:
-		return s.selectReadOnlyShardHost(clid, key, hostOrder, targetSessionAttrs)
+		return s.selectReadOnlyShardHost(clid, key, hostOrder, effectiveTargetSessionAttrs)
 	case config.TargetSessionAttrsPS:
-		if res, err := s.selectReadOnlyShardHost(clid, key, hostOrder, targetSessionAttrs); err != nil {
-			return s.selectReadWriteShardHost(clid, key, hostOrder, targetSessionAttrs)
+		if res, err := s.selectReadOnlyShardHost(clid, key, hostOrder, effectiveTargetSessionAttrs); err != nil {
+			return s.selectReadWriteShardHost(clid, key, hostOrder, effectiveTargetSessionAttrs)
 		} else {
 			return res, nil
 		}
 	case config.TargetSessionAttrsRW:
-		return s.selectReadWriteShardHost(clid, key, hostOrder, targetSessionAttrs)
+		return s.selectReadWriteShardHost(clid, key, hostOrder, effectiveTargetSessionAttrs)
 	default:
 		return nil, fmt.Errorf("failed to match correct target session attrs")
 	}

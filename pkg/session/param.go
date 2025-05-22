@@ -1,6 +1,10 @@
 package session
 
+import "github.com/pg-sharding/spqr/pkg/tsa"
+
 type SessionParamsHolder interface {
+	GetTsa() tsa.TSA
+	SetTsa(bool, string)
 
 	// Get current session DRB
 	DefaultRouteBehaviour() string
@@ -34,7 +38,7 @@ type SessionParamsHolder interface {
 	ScatterQuery() bool
 
 	/* Check if we apply engine v2 routing for query */
-	SetEnhancedMultiShardProcessing(bool, bool)
+	SetEnhancedMultiShardProcessing(local bool, val bool)
 	EnhancedMultiShardProcessing() bool
 
 	SetCommitStrategy(bool, string)
@@ -59,4 +63,9 @@ const (
 	SPQR_EXECUTE_ON              = "__spqr__execute_on"
 	SPQR_ENGINE_V2               = "__spqr__engine_v2"
 	SPQR_COMMIT_STRATEGY         = "__spqr__commit_strategy"
+	SPQR_TARGET_SESSION_ATTRS    = "__spqr__target_session_attrs"
+
+	/* backward compatibility */
+	SPQR_TARGET_SESSION_ATTRS_ALIAS   = "target_session_attrs"
+	SPQR_TARGET_SESSION_ATTRS_ALIAS_2 = "target-session-attrs"
 )

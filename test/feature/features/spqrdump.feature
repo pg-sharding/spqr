@@ -17,8 +17,8 @@ Feature: spqr-dump test
     When I run SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
     """
     Then command return code should be "0"
@@ -40,8 +40,8 @@ Feature: spqr-dump test
     When I run SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer, varchar;
-    CREATE KEY RANGE krid1 FROM 0,'a' ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE krid2 FROM 11,'b' ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 0,'a' ROUTE TO sh1 FOR DISTRIBUTION ds1;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id, id_2;
     """
     Then command return code should be "0"
@@ -63,8 +63,8 @@ Feature: spqr-dump test
     When I run SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id HASH FUNCTION murmur;
     """
     Then command return code should be "0"

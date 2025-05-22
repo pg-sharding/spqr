@@ -162,3 +162,55 @@ Feature: Redistribution test
     """
     relation "public.xmove" does not exist on the source shard, possible misconfiguration of schema names
     """
+
+  Scenario: REDISTRIBUTE KEY RANGE CHECK checks for distribution key in source relation
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(s TEXT);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
+    """
+    Then command return code should be "1"
+    And command output should match regexp
+    """
+    distribution key column "w_id" not found in relation "public.xmove" on source shard
+    """
+
+  Scenario: REDISTRIBUTE KEY RANGE CHECK checks for distribution key in destination relation
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(s TEXT);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
+    """
+    Then command return code should be "1"
+    And command output should match regexp
+    """
+    distribution key column "w_id" not found in relation "public.xmove" on destination shard
+    """

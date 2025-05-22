@@ -3,7 +3,6 @@ package relay
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sort"
 	"strings"
 	"time"
@@ -54,7 +53,7 @@ type RelayStateMgr interface {
 
 	PrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error)
 
-	PrepareRelayStep() error
+	PrepareRelayStep() (plan.Plan, error)
 	PrepareRelayStepOnAnyRoute() (func() error, error)
 	PrepareRelayStepOnHintRoute(route *kr.ShardKey) error
 
@@ -67,6 +66,8 @@ type RelayStateMgr interface {
 
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 	ProcessExtendedBuffer() error
+
+	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching, completeRelay bool) (*PortalDesc, error)
 }
 
 type BufferedMessageType int
@@ -122,7 +123,8 @@ type RelayStateImpl struct {
 	Cl      client.RouterClient
 	poolMgr poolmgr.PoolMgr
 
-	msgBuf []BufferedMessage
+	msgBuf      []pgproto3.FrontendMessage
+	msgBufReply []bool
 
 	holdRouting bool
 
@@ -132,7 +134,7 @@ type RelayStateImpl struct {
 	execute func() error
 
 	saveBind        *pgproto3.Bind
-	savedPortalDesc map[string]PortalDesc
+	savedPortalDesc map[string]*PortalDesc
 
 	parseCache map[string]ParseCacheEntry
 
@@ -170,7 +172,8 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		Cl:              client,
 		poolMgr:         manager,
 		execute:         nil,
-		savedPortalDesc: map[string]PortalDesc{},
+		saveBind:        &pgproto3.Bind{},
+		savedPortalDesc: map[string]*PortalDesc{},
 		parseCache:      map[string]ParseCacheEntry{},
 	}
 }
@@ -218,6 +221,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 		return nil, nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
 	}
 	shardId := shards[0].ID()
+	shardKey := shards[0].SHKey()
 
 	if ok, rd := serv.HasPrepareStatement(hash, shardId); ok {
 		return rd, &pgproto3.ParseComplete{}, nil
@@ -225,18 +229,19 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 
 	// Do not wait for result
 	// simply fire backend msg
-	if err := serv.Send(&pgproto3.Parse{
+	if err := serv.SendShard(&pgproto3.Parse{
 		Name:          d.Name,
 		Query:         d.Query,
 		ParameterOIDs: d.ParameterOIDs,
-	}); err != nil {
+	}, &shardKey); err != nil {
 		return nil, nil, err
 	}
 
-	err := serv.Send(&pgproto3.Describe{
+	err := serv.SendShard(&pgproto3.Describe{
 		ObjectType: 'S',
 		Name:       d.Name,
-	})
+	}, &shardKey)
+
 	if err != nil {
 		return nil, nil, err
 	}
@@ -468,7 +473,11 @@ func (rst *RelayStateImpl) multishardDescribePortal(bind *pgproto3.Bind) (*preps
 }
 
 func (rst *RelayStateImpl) Close() error {
-	defer rst.Cl.Close()
+	defer func() {
+		if err := rst.Cl.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close client connection")
+		}
+	}()
 	defer rst.ActiveShardsReset()
 	return rst.poolMgr.UnRouteCB(rst.Cl, rst.activeShards)
 }
@@ -502,12 +511,13 @@ func (rst *RelayStateImpl) Flush() {
 }
 
 var ErrSkipQuery = fmt.Errorf("wait for a next query")
+var ErrMatchShardError = fmt.Errorf("failed to match datashard")
 
 // TODO : unit tests
 func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 	// if there is no routes configured, there is nowhere to route to
 	if len(routes) == 0 {
-		return qrouter.MatchShardError
+		return ErrMatchShardError
 	}
 
 	spqrlog.Zero.Debug().
@@ -560,8 +570,6 @@ func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 	return nil
 }
 
-var expandInTxError = fmt.Errorf("unexpected server expand request")
-
 // TODO : unit tests
 func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
 	// if there is no routes to expand, there is nowhere to do
@@ -569,9 +577,11 @@ func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
 		return nil
 	}
 
-	if rst.Client().Server().TxStatus() == txstatus.TXERR {
+	serv := rst.Client().Server()
+
+	if serv == nil || serv.TxStatus() == txstatus.TXERR {
 		/* should never happen */
-		return expandInTxError
+		return fmt.Errorf("unexpected server expand request")
 	}
 
 	_ = rst.Client().SwitchServerConn(rst.Client().Server().ToMultishard())
@@ -612,28 +622,16 @@ func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
 	return nil
 }
 
-func (rst *RelayStateImpl) selectRandomRoute() (*kr.ShardKey, error) {
-	routes := rst.Qr.DataShardsRoutes()
-	if len(routes) == 0 {
-		return nil, fmt.Errorf("no routes configured")
-	}
-
-	r := routes[rand.Int()%len(routes)]
-	rst.routingState = plan.ShardDispatchPlan{
-		ExecTarget: r,
-	}
-
-	return r, nil
-}
-
 // TODO : unit tests
-func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, error) {
+func (rst *RelayStateImpl) Reroute() (plan.Plan, error) {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
-	span := opentracing.StartSpan("reroute")
-	defer span.Finish()
-	span.SetTag("user", rst.Cl.Usr())
-	span.SetTag("db", rst.Cl.DB())
+	if config.RouterConfig().WithJaeger {
+		span := opentracing.StartSpan("reroute")
+		defer span.Finish()
+		span.SetTag("user", rst.Cl.Usr())
+		span.SetTag("db", rst.Cl.DB())
+	}
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -659,27 +657,19 @@ func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, error) {
 
 	rst.routingState = queryPlan
 
-	switch v := queryPlan.(type) {
-	case plan.ScatterPlan:
-		spqrlog.Zero.Debug().
-			Uint("client", rst.Client().ID()).
-			Msgf("parsed ScatterPlan")
-		return rst.Qr.DataShardsRoutes(), nil
-	case plan.DDLState:
-		spqrlog.Zero.Debug().
-			Uint("client", rst.Client().ID()).
-			Msgf("parsed DDLState")
-		return rst.Qr.DataShardsRoutes(), nil
-	case plan.ShardDispatchPlan:
-		// TBD: do it better
-		return []*kr.ShardKey{v.ExecTarget}, nil
-	case plan.RandomDispatchPlan:
-		r, err := rst.selectRandomRoute()
-		if err != nil {
-			return nil, err
+	if rst.Client().Rule().PoolMode == config.PoolModeVirtual {
+		/* never try to get connection */
+		switch queryPlan.(type) {
+		case plan.VirtualPlan:
+			return queryPlan, nil
+		default:
+			return nil, fmt.Errorf("query processing for this client is disabled")
 		}
+	}
 
-		return []*kr.ShardKey{r}, nil
+	switch v := queryPlan.(type) {
+	case plan.VirtualPlan, plan.ScatterPlan, plan.DDLState, plan.ShardDispatchPlan:
+		return queryPlan, nil
 	default:
 		return nil, fmt.Errorf("unexpected query plan %T", v)
 	}
@@ -689,30 +679,35 @@ func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, error) {
 func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
-	span := opentracing.StartSpan("reroute")
-	defer span.Finish()
-	span.SetTag("user", rst.Cl.Usr())
-	span.SetTag("db", rst.Cl.DB())
+	if config.RouterConfig().WithJaeger {
+		span := opentracing.StartSpan("reroute")
+		defer span.Finish()
+		span.SetTag("user", rst.Cl.Usr())
+		span.SetTag("db", rst.Cl.DB())
+	}
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("rerouting the client connection to random shard, resolving shard")
 
-	r, err := rst.selectRandomRoute()
+	r, err := rst.QueryRouter().SelectRandomRoute()
 	if err != nil {
 		return err
 	}
-	return rst.procRoutes([]*kr.ShardKey{r})
+	rst.routingState = r
+	return rst.procRoutes(r.ExecutionTargets())
 }
 
 // TODO : unit tests
 func (rst *RelayStateImpl) RerouteToTargetRoute(route *kr.ShardKey) error {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
-	span := opentracing.StartSpan("reroute")
-	defer span.Finish()
-	span.SetTag("user", rst.Cl.Usr())
-	span.SetTag("db", rst.Cl.DB())
+	if config.RouterConfig().WithJaeger {
+		span := opentracing.StartSpan("reroute")
+		defer span.Finish()
+		span.SetTag("user", rst.Cl.Usr())
+		span.SetTag("db", rst.Cl.DB())
+	}
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -785,53 +780,49 @@ func (rst *RelayStateImpl) Connect() error {
 	return nil
 }
 
+func (rst *RelayStateImpl) flusher(waitForResp, replyCl bool) ([]pgproto3.BackendMessage, error) {
+
+	var unreplied []pgproto3.BackendMessage
+
+	for i, v := range rst.msgBuf {
+		spqrlog.Zero.Debug().
+			Uint("client-id", rst.Client().ID()).
+			Bool("waitForResp", waitForResp).
+			Bool("replyCl", replyCl).
+			Interface("plan", rst.routingState).
+			Msg("flushing")
+
+		resolvedReplyCl := replyCl && rst.msgBufReply[i]
+
+		if unrep_local, err := rst.qse.ProcQuery(
+			&QueryDesc{
+				Msg:  v,
+				Stmt: rst.qp.Stmt(),
+				P:    rst.routingState, /*  ugh... fix this someday */
+			}, rst.Qr.Mgr(), waitForResp, resolvedReplyCl); err != nil {
+			spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Err(err).Msg("error executing query")
+			return nil, err
+		} else {
+			unreplied = append(unreplied, unrep_local...)
+		}
+
+	}
+
+	return unreplied, nil
+}
+
 // TODO : unit tests
 func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("flushing message buffer")
 
-	var unreplied []pgproto3.BackendMessage
+	msgs, err := rst.flusher(waitForResp, replyCl)
 
-	flusher := func(buff []BufferedMessage, waitForResp, replyCl bool) error {
-		for len(buff) > 0 {
-			var v BufferedMessage
-			v, buff = buff[0], buff[1:]
-			spqrlog.Zero.Debug().
-				Bool("waitForResp", waitForResp).
-				Bool("replyCl", replyCl).
-				Msg("flushing")
+	rst.msgBuf = rst.msgBuf[:0]
+	rst.msgBufReply = rst.msgBufReply[:0]
 
-			resolvedReplyCl := replyCl
-
-			switch v.tp {
-			case BufferedMessageInternal:
-				resolvedReplyCl = false
-			}
-
-			if unrep_local, err := rst.qse.ProcQuery(
-				&QueryDesc{
-					Msg:  v.msg,
-					Stmt: rst.qp.Stmt(),
-					P:    rst.routingState, /*  ugh... fix this someday */
-				}, rst.Qr.Mgr(), waitForResp, resolvedReplyCl); err != nil {
-				return err
-			} else {
-				unreplied = append(unreplied, unrep_local...)
-			}
-
-		}
-
-		return nil
-	}
-	buf := rst.msgBuf
-	rst.msgBuf = nil
-
-	if err := flusher(buf, waitForResp, replyCl); err != nil {
-		return nil, err
-	}
-
-	return unreplied, nil
+	return msgs, err
 }
 
 // TODO : unit tests
@@ -912,7 +903,8 @@ func (rst *RelayStateImpl) AddQuery(q pgproto3.FrontendMessage) {
 		Uint("client", rst.Client().ID()).
 		Type("message-type", q).
 		Msg("client relay: adding message to message buffer")
-	rst.msgBuf = append(rst.msgBuf, RegularBufferedMessage(q))
+	rst.msgBuf = append(rst.msgBuf, q)
+	rst.msgBufReply = append(rst.msgBufReply, true)
 }
 
 // TODO : unit tests
@@ -920,7 +912,8 @@ func (rst *RelayStateImpl) AddSilentQuery(q pgproto3.FrontendMessage) {
 	spqrlog.Zero.Debug().
 		Interface("query", q).
 		Msg("adding silent query")
-	rst.msgBuf = append(rst.msgBuf, InternalBufferedMessage(q))
+	rst.msgBuf = append(rst.msgBuf, q)
+	rst.msgBufReply = append(rst.msgBufReply, false)
 }
 
 // TODO : unit tests
@@ -961,6 +954,15 @@ func (rst *RelayStateImpl) DeployPrepStmt(qname string) (*prepstatement.Prepared
 	})
 }
 
+var (
+	pgexec = &pgproto3.Execute{}
+	pgsync = &pgproto3.Sync{}
+
+	emptyExecFunc = func() error {
+		return nil
+	}
+)
+
 // TODO : unit tests
 func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
@@ -994,6 +996,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 	}
 
 	for _, msg := range rst.xBuf {
+
+	singleMsgLoop:
+
 		switch q := msg.(type) {
 		case *pgproto3.Parse:
 
@@ -1056,21 +1061,24 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 			def := rst.Client().PreparedStatementDefinitionByName(q.PreparedStatement)
 
+			if def == nil {
+				/* this prepared statement was not prepared by client */
+				return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", q.PreparedStatement)
+			}
+
 			// We implicitly assume that there is always Execute after Bind for the same portal.
 			// however, postgresql protocol allows some more cases.
 			if err := rst.Client().ReplyBindComplete(); err != nil {
 				return err
 			}
 
-			rst.execute = func() error {
-				return nil
-			}
+			rst.lastBindName = q.PreparedStatement
 
-			err := ProcQueryAdvancedTx(rst, def.Query, func() error {
-				rst.saveBind = &pgproto3.Bind{}
+			rst.execute = emptyExecFunc
+
+			pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
 				rst.saveBind.DestinationPortal = q.DestinationPortal
 
-				rst.lastBindName = q.PreparedStatement
 				hash := rst.Client().PreparedStatementQueryHashByName(q.PreparedStatement)
 
 				rst.saveBind.PreparedStatement = fmt.Sprintf("%d", hash)
@@ -1081,8 +1089,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				rst.saveBind.Parameters = q.Parameters
 
 				// Do not respond with BindComplete, as the relay step should take care of itself.
-				err := rst.PrepareRelayStep()
-				spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Err(err).Msg("executing proc query adv callback")
+				_, err := rst.PrepareRelayStep()
 
 				if err != nil {
 					return err
@@ -1094,8 +1101,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.HoldRouting()
 				}
 
-				_, ok := rst.routingState.(plan.DDLState)
-				if ok {
+				switch rst.routingState.(type) {
+				case plan.DDLState:
 					routes := rst.Qr.DataShardsRoutes()
 					if err := rst.procRoutes(routes); err != nil {
 						return err
@@ -1112,14 +1119,25 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 					rst.execute = func() error {
 						rst.AddQuery(msg)
-						rst.AddQuery(&pgproto3.Execute{})
-						rst.AddQuery(&pgproto3.Sync{})
+						rst.AddQuery(pgexec)
+						rst.AddQuery(pgsync)
 
 						_, err := rst.RelayFlush(true, true)
 						// do not complete relay here yet
 						return err
 					}
 
+					return nil
+				case plan.VirtualPlan:
+					rst.execute = func() error {
+						rst.AddQuery(msg)
+
+						rst.AddQuery(pgexec)
+						rst.AddQuery(pgsync)
+						// do not complete relay here yet
+						_, err = rst.RelayFlush(true, true)
+						return err
+					}
 					return nil
 				}
 
@@ -1131,7 +1149,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					} else {
 						err := fmt.Errorf("failed to deploy prepared statement")
 
-						spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Err(err).Msg("executing proc query adv callback")
+						spqrlog.Zero.Error().Uint("client", rst.Client().ID()).Err(err).Msg("query adv callback")
 
 						return err
 					}
@@ -1154,9 +1172,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						// do not send saved bind twice
 					}
 
-					rst.AddQuery(&pgproto3.Execute{})
-
-					rst.AddQuery(&pgproto3.Sync{})
+					rst.AddQuery(pgexec)
+					rst.AddQuery(pgsync)
 					// do not complete relay here yet
 					_, err = rst.RelayFlush(true, true)
 					return err
@@ -1167,6 +1184,10 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 			if err != nil {
 				return err
+			}
+
+			if pd != nil {
+				rst.savedPortalDesc[q.PreparedStatement] = pd
 			}
 
 		case *pgproto3.Describe:
@@ -1193,15 +1214,15 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						}
 					}
 				} else {
-					cachedPd = PortalDesc{}
+					cachedPd = &PortalDesc{}
 
 					err := rst.PrepareRelayStepOnHintRoute(rst.bindRoute)
 					if err != nil {
 						return err
 					}
 
-					_, isDDL := rst.routingState.(plan.DDLState)
-					if isDDL {
+					switch q := rst.routingState.(type) {
+					case plan.DDLState:
 						pstmt := rst.Client().PreparedStatementDefinitionByName(rst.lastBindName)
 						hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
 						pstmt.Name = fmt.Sprintf("%d", hash)
@@ -1222,12 +1243,29 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 								return err
 							}
 						}
-						break
-					} else {
+						break singleMsgLoop
+					case plan.VirtualPlan:
+						// skip deploy
+
+						cachedPd.rd = &pgproto3.RowDescription{
+							Fields: q.VirtualRowCols,
+						}
+
+						// send to the client
+						if err := rst.Client().Send(cachedPd.rd); err != nil {
+							return err
+						}
+
+						cachedPd.nodata = nil
+
+						rst.savedPortalDesc[rst.lastBindName] = cachedPd
+						break singleMsgLoop
+					default:
 						if _, _, err := rst.DeployPrepStmt(rst.lastBindName); err != nil {
 							return err
 						}
 					}
+
 					// do not send saved bind twice
 					if rst.saveBind == nil {
 						// wtf?
@@ -1252,7 +1290,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						return err
 					}
 
-					unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
+					unreplied, err := rst.RelayStep(pgsync, true, false)
 					if err != nil {
 						return err
 					}
@@ -1294,6 +1332,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.savedPortalDesc[rst.lastBindName] = cachedPd
 				}
 			} else {
+				/* q.ObjectType == 'S' */
 				spqrlog.Zero.Debug().
 					Uint("client", rst.Client().ID()).
 					Str("stmt-name", q.Name).
@@ -1341,6 +1380,10 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			err := rst.execute()
 			rst.execute = nil
 			rst.bindRoute = nil
+			if rst.lastBindName == "" {
+				delete(rst.savedPortalDesc, rst.lastBindName)
+			}
+			rst.lastBindName = ""
 			if err != nil {
 				return err
 			}
@@ -1367,7 +1410,6 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 	switch stm := rst.qp.Stmt().(type) {
 	case *lyx.Insert:
 		// load columns from information schema
-		// Do not check err here, just keep going
 		if len(stm.Columns) == 0 {
 			switch tableref := stm.TableRef.(type) {
 			case *lyx.RangeVar:
@@ -1377,6 +1419,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 					stm.Columns, schemaErr = cptr.GetColumns(rst.Cl.DB(), tableref.SchemaName, tableref.RelationName)
 					if schemaErr != nil {
 						spqrlog.Zero.Err(schemaErr).Msg("get columns from schema cache")
+						return state, comm, spqrerror.Newf(spqrerror.SPQR_FAILED_MATCH, "failed to get schema cache: %s", err)
 					}
 				}
 			}
@@ -1403,7 +1446,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 var _ RelayStateMgr = &RelayStateImpl{}
 
 // TODO : unit tests
-func (rst *RelayStateImpl) PrepareRelayStep() error {
+func (rst *RelayStateImpl) PrepareRelayStep() (plan.Plan, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Str("user", rst.Client().Usr()).
@@ -1411,48 +1454,57 @@ func (rst *RelayStateImpl) PrepareRelayStep() error {
 		Msg("preparing relay step for client")
 
 	if rst.holdRouting {
-		return nil
+		return nil, nil
 	}
+
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateReRoute(rst) {
+		spqrlog.Zero.Debug().Bool("engine v2", rst.Client().EnhancedMultiShardProcessing()).Msg("checking transaction expand possibility")
+
 		if rst.Client().EnhancedMultiShardProcessing() {
 			/* With engine v2 we can expand transaction on more targets */
 			/* TODO: XXX */
 
-			r, err := rst.Reroute()
+			q, err := rst.Reroute()
 			if err != nil {
-				return err
+				return nil, err
 			}
+			r := q.ExecutionTargets()
 
 			/*
 			 * Try to keep single-shard connection as long as possible
 			 */
 			if len(r) == 1 && len(rst.ActiveShards()) == 1 && rst.ActiveShards()[0].Name == r[0].Name {
-				return nil
+				return q, nil
 			}
 
 			/* else expand transaction */
-			return rst.expandRoutes(r)
+			return q, rst.expandRoutes(r)
 		}
-		return nil
+		return nil, nil
 	}
 
-	r, err := rst.Reroute()
+	q, err := rst.Reroute()
 
 	switch err {
 	case nil:
-		return rst.procRoutes(r)
+		switch q.(type) {
+		case plan.VirtualPlan:
+			return q, nil
+		default:
+			return q, rst.procRoutes(q.ExecutionTargets())
+		}
 	case ErrSkipQuery:
 		if err := rst.Client().ReplyErr(err); err != nil {
-			return err
+			return nil, err
 		}
-		return ErrSkipQuery
-	case qrouter.MatchShardError:
+		return nil, ErrSkipQuery
+	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
-		return ErrSkipQuery
+		return nil, ErrSkipQuery
 	default:
 		rst.msgBuf = nil
-		return err
+		return q, err
 	}
 }
 
@@ -1492,7 +1544,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(route *kr.ShardKey) error
 			return err
 		}
 		return ErrSkipQuery
-	case qrouter.MatchShardError:
+	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return ErrSkipQuery
 	default:
@@ -1529,7 +1581,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 			return noopCloseRouteFunc, err
 		}
 		return noopCloseRouteFunc, ErrSkipQuery
-	case qrouter.MatchShardError:
+	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return noopCloseRouteFunc, ErrSkipQuery
 	default:
@@ -1540,7 +1592,16 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool) error {
-	if err := rst.PrepareRelayStep(); err != nil {
+
+	/* XXX: tx management is handled outside this call, so do not complete relay here */
+
+	spqrlog.Zero.Debug().
+		Uint("client", rst.Client().ID()).
+		Msg("relay step: process message buf for client")
+	if _, err := rst.PrepareRelayStep(); err != nil {
+		/* some critical connection issue, client processing cannot be competed.
+		* empty our msg buf */
+		rst.msgBuf = nil
 		return err
 	}
 
@@ -1557,7 +1618,11 @@ func (rst *RelayStateImpl) ProcessMessage(
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("relay step: process message for client")
-	if err := rst.PrepareRelayStep(); err != nil {
+	if _, err := rst.PrepareRelayStep(); err != nil {
+		if err := rst.CompleteRelay(replyCl); err != nil {
+			spqrlog.Zero.Error().Err(err).Uint("client", rst.Client().ID()).Msg("failed to complete relay")
+			return err
+		}
 		return err
 	}
 
@@ -1565,7 +1630,7 @@ func (rst *RelayStateImpl) ProcessMessage(
 
 	if _, err := rst.RelayStep(msg, waitForResp, replyCl); err != nil {
 		if err := rst.CompleteRelay(replyCl); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to complete relay")
+			spqrlog.Zero.Error().Err(err).Uint("client", rst.Client().ID()).Msg("failed to complete relay")
 			return err
 		}
 		return err

@@ -12,16 +12,16 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
-CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
- add key range 
----------------
- bound -> 0
-(1 row)
-
 CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
  bound -> 11
+(1 row)
+
+CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 0
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION tlt1 DISTRIBUTION KEY i;
@@ -59,6 +59,13 @@ NOTICE: send query to shard(s) : sh2
  sum 
 -----
  124
+(1 row)
+
+select (select sum(j) as xyx from sh2.tlt1 where i = 112) as aboba;
+NOTICE: send query to shard(s) : sh2
+ aboba 
+-------
+   124
 (1 row)
 
 select (select sum(j) from sh2.tlt1 where i = 112), (select sum(j) from sh2.tlt1 where sh2.tlt1.i = 113);

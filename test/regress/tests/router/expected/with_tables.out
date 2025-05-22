@@ -12,16 +12,16 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
- add key range 
----------------
- bound -> 1
-(1 row)
-
 CREATE KEY RANGE krid2 FROM 101 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
  bound -> 101
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
@@ -43,6 +43,7 @@ CREATE TABLE orders(id INT PRIMARY KEY);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE delivery(id INT PRIMARY KEY, order_id INT, FOREIGN KEY(order_id) REFERENCES orders(id));
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SET __spqr__engine_v2 TO false;
 INSERT INTO orders(id) VALUES (5);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO delivery(id,order_id) VALUES (10, 5);
