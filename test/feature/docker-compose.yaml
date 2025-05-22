@@ -74,10 +74,7 @@ services:
       - "6432:6432"
       - "7432:7432"
       - "7012:7002"
-    environment:
-      - ROUTER_CONFIG=${ROUTER_CONFIG}
-      - ROUTER_LOG=/var/log/spqr-router.log
-      - COORDINATOR_CONFIG=${ROUTER_COORDINATOR_CONFIG}
+    command: ["--config", $ROUTER_CONFIG, "--coordinator-config", $COORDINATOR_CONFIG]
     hostname: regress_router
     container_name: regress_router
     depends_on:
@@ -93,8 +90,8 @@ services:
         condition: service_healthy
       shard3-replica:
         condition: service_healthy
-      kdc:
-        condition: service_started
+      # kdc:
+      #   condition: service_started
     healthcheck: &router-healthcheck
       test: psql -h regress_router -p 6432 -U regress -d regress
       interval: 10s
@@ -111,10 +108,7 @@ services:
       - "6433:6432"
       - "7433:7432"
       - "7022:7002"
-    environment:
-      - ROUTER_CONFIG=${ROUTER_CONFIG}
-      - ROUTER_LOG=/var/log/spqr-router.log
-      - COORDINATOR_CONFIG=${ROUTER_2_COORDINATOR_CONFIG}
+    command: ["--config", $ROUTER_CONFIG, "--coordinator-config", $COORDINATOR_CONFIG]
     hostname: regress_router_2
     container_name: regress_router_2
     depends_on:
@@ -217,11 +211,11 @@ services:
     healthcheck:
       <<: *ldap-healthcheck
 
-  kdc:
-    build:
-      context: ./conf/kdc
-    volumes:
-      - ./conf/kdc/start.sh:/start.sh
-      - keytab:/keytab
+  # kdc:
+  #   build:
+  #     context: ./conf/kdc
+  #   volumes:
+  #     - ./conf/kdc/start.sh:/start.sh
+  #     - keytab:/keytab
 volumes:
   keytab:
