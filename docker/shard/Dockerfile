@@ -47,10 +47,10 @@ RUN chmod a+x /usr/local/bin/entrypoint.sh
 
 RUN git clone https://github.com/munakoiso/pg_comment_stats.git && \
     cd pg_comment_stats && \
-    make USE_PGXS=1 && make install && \
+    make && make install && \
     cd .. && git clone https://github.com/pg-sharding/spqrguard.git && \
     cd spqrguard && \
-    make && make install && \
+    make USE_PGXS=1 && make install && \
     cd .. && git clone https://github.com/markokr/pghashlib.git && \
     cd pghashlib && \
     make && make install
