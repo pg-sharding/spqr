@@ -49,8 +49,7 @@ services:
             context: ../../
         ports:
             - "6432:6432"
-        environment:
-            - ROUTER_CONFIG=/spqr/test/xproto/conf/router.yaml
+        command: ["--config", "/spqr/test/xproto/conf/router.yaml"]
         hostname: regress_router
         container_name: regress_router
         depends_on:
