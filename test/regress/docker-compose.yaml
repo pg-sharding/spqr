@@ -121,9 +121,7 @@ services:
             context: ../../
         ports:
             - "6433:6432"
-        environment:
-            - ROUTER_CONFIG=/spqr/test/regress/conf/localrouter.yaml
-            - ROUTER_LOG=/var/log/spqr-router.log
+        command: ["--config", "/spqr/test/regress/conf/localrouter.yaml"]
         hostname: regress_pooler
         container_name: regress_pooler
         depends_on:
@@ -135,9 +133,7 @@ services:
             context: ../../
         ports:
             - "6432:6432"
-        environment:
-            - ROUTER_CONFIG=/spqr/test/regress/conf/router.yaml
-            - ROUTER_LOG=/var/log/spqr-router.log
+        command: ["--config", "/spqr/test/regress/conf/router.yaml"]
         hostname: regress_router
         container_name: regress_router
         depends_on:
