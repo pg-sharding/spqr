@@ -49,8 +49,7 @@ services:
     ports:
       - "7002:7002"
       - "7003:7003"
-    environment:
-      - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
+    command: [ "-c", "/spqr/test/regress/conf/coordinator.yaml" ]
     hostname: regress_coordinator
     container_name: regress_coordinator
     depends_on:
