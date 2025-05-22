@@ -342,13 +342,9 @@ func (dc *DockerComposer) Stop(service string) error {
 	if !ok {
 		return fmt.Errorf("no such service: %s", service)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), defaultDockerTimeout)
+	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
-	stopTimeout := int(defaultContainerStopTimeout)
-	err := dc.api.ContainerStop(ctx, cont.ID, container.StopOptions{
-		Signal:  "",
-		Timeout: &stopTimeout,
-	})
+	err := dc.api.ContainerStop(ctx, cont.ID, container.StopOptions{})
 	dc.stopped[service] = true
 	return err
 }
