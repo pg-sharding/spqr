@@ -45,7 +45,7 @@ services:
         container_name: spqr_shard_2_replica
     router:
         build:
-            dockerfile: ./test/xproto/router/Dockerfile
+            dockerfile: docker/router/Dockerfile
             context: ../../
         ports:
             - "6432:6432"
