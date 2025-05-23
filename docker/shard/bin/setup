@@ -22,7 +22,7 @@ log_filename = 'postgresql-13-main.log'
 listen_addresses = '*'
 port = 6432
 max_prepared_transactions = 5
-shared_preload_libraries = 'pg_stat_statements,pg_stat_kcache,pg_comment_stats,spqrguard'
+shared_preload_libraries = 'pg_stat_statements,pg_stat_kcache,pg_comment_stats'
 EOF
 
 sudo -u postgres /usr/lib/postgresql/$POSTGRES_VERSION/bin/pg_ctl -D /var/lib/postgresql/$POSTGRES_VERSION/main/ start
