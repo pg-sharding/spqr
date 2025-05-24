@@ -144,8 +144,9 @@ func (h *shardPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, er
 		h.mu.Lock()
 
 		if len(h.pool) > 0 {
-			sh, h.pool = h.pool[0], h.pool[1:]
-			h.active[sh.ID()] = sh
+			sz := len(h.pool)
+			sh, h.pool = h.pool[sz-1], h.pool[:sz-1]
+			// h.active[sh.ID()] = sh
 			h.mu.Unlock()
 
 			spqrlog.Zero.Debug().
@@ -177,9 +178,10 @@ func (h *shardPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, er
 		Msg("allocated new connections")
 
 	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	h.active[sh.ID()] = sh
+	{
+		// h.active[sh.ID()] = sh
+	}
+	h.mu.Unlock()
 
 	return sh, nil
 }
@@ -204,17 +206,17 @@ func (h *shardPool) Discard(sh shard.Shard) error {
 	err := sh.Close()
 
 	h.mu.Lock()
-	defer h.mu.Unlock()
 
-	if _, ok := h.active[sh.ID()]; !ok {
-		// double free
-		panic(fmt.Sprintf("data corruption: connection already discarded: %v, hostname: %s, shard %s", sh.ID(), sh.InstanceHostname(), sh.ShardKeyName()))
-	}
+	// if _, ok := h.active[sh.ID()]; !ok {
+	// 	// double free
+	// 	panic(fmt.Sprintf("data corruption: connection already discarded: %v, hostname: %s, shard %s", sh.ID(), sh.InstanceHostname(), sh.ShardKeyName()))
+	// }
 
+	// delete(h.active, sh.ID())
+
+	h.mu.Unlock()
 	/* acquired tok, release it */
 	h.queue <- struct{}{}
-
-	delete(h.active, sh.ID())
 
 	return err
 }
@@ -242,18 +244,18 @@ func (h *shardPool) Put(sh shard.Shard) error {
 	}
 
 	h.mu.Lock()
-	defer h.mu.Unlock()
 
-	if _, ok := h.active[sh.ID()]; !ok {
-		panic(fmt.Sprintf("data corruption: connection already put: %v, hostname: %s, shard %s", sh.ID(), sh.InstanceHostname(), sh.ShardKeyName()))
-	}
+	// if _, ok := h.active[sh.ID()]; !ok {
+	// 	panic(fmt.Sprintf("data corruption: connection already put: %v, hostname: %s, shard %s", sh.ID(), sh.InstanceHostname(), sh.ShardKeyName()))
+	// }
 
+	// delete(h.active, sh.ID())
+
+	h.pool = append(h.pool, sh)
+	h.mu.Unlock()
 	/* acquired tok, release it */
 	h.queue <- struct{}{}
 
-	delete(h.active, sh.ID())
-
-	h.pool = append(h.pool, sh)
 	return nil
 }
 
