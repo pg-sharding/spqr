@@ -74,6 +74,9 @@ func RecordShardOperation(duration time.Duration) {
 }
 
 func GetMoveStats() *MoveStatistics {
+	if moveStatistics.TotalMoves == 0 {
+		return &MoveStatistics{}
+	}
 	return &MoveStatistics{
 		ShardTime:  moveStatistics.ShardTimeTotal / time.Duration(moveStatistics.TotalMoves),
 		QDBTime:    moveStatistics.QDBTimeTotal / time.Duration(moveStatistics.TotalMoves),
