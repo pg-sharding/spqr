@@ -330,6 +330,7 @@ const (
 	QuantilesStr          = "time_quantiles"
 	SequencesStr          = "sequences"
 	IsReadOnlyStr         = "is_read_only"
+	MoveStatsStr          = "move_stats"
 )
 
 const (
