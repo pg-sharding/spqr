@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/coordinator/provider"
+	"github.com/pg-sharding/spqr/coordinator/statistics"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -446,6 +447,7 @@ func (qc *QDBCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 // cb receives grpc connection to router`s admin console
 func (qc *QDBCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.ClientConn) error) error {
 	spqrlog.Zero.Debug().Msg("qdb coordinator traverse")
+	t := time.Now()
 
 	rtrs, err := qc.db.ListRouters(ctx)
 	if err != nil {
@@ -476,13 +478,13 @@ func (qc *QDBCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 				spqrlog.Zero.Debug().Err(err).Str("router id", rtr.ID).Msg("traverse routers")
 				return err
 			}
-
 			return nil
 		}(); err != nil {
 			return err
 		}
 	}
 
+	statistics.RecordRouterOperation(time.Since(t))
 	return nil
 }
 
@@ -691,6 +693,7 @@ func (qc *QDBCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 
 // TODO : unit tests
 func (qc *QDBCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKeyRange) (string, error) {
+	t := time.Now()
 	ls, err := qc.db.ListKeyRangeMoves(ctx)
 	if err != nil {
 		return "", err
@@ -708,15 +711,18 @@ func (qc *QDBCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKey
 	if err := qc.db.RecordKeyRangeMove(ctx, m); err != nil {
 		return "", err
 	}
+	statistics.RecordQDBOperation(time.Since(t))
 
 	return m.MoveId, nil
 }
 
 func (qc *QDBCoordinator) GetKeyRangeMove(ctx context.Context, krId string) (*qdb.MoveKeyRange, error) {
+	t := time.Now()
 	ls, err := qc.db.ListKeyRangeMoves(ctx)
 	if err != nil {
 		return nil, err
 	}
+	statistics.RecordQDBOperation(time.Since(t))
 
 	for _, krm := range ls {
 		// after the coordinator restarts, it will continue the move that was previously initiated.
@@ -780,9 +786,11 @@ func (qc *QDBCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 			if err != nil {
 				return err
 			}
+			t := time.Now()
 			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeStarted); err != nil {
 				return err
 			}
+			statistics.RecordQDBOperation(time.Since(t))
 			move.Status = qdb.MoveKeyRangeStarted
 		case qdb.MoveKeyRangeStarted:
 			// move the data
@@ -790,11 +798,14 @@ func (qc *QDBCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 			if err != nil {
 				return err
 			}
+
+			t := time.Now()
 			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db, qc)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 				return err
 			}
+			statistics.RecordShardOperation(time.Since(t))
 
 			// update key range
 			krg, err := qc.GetKeyRange(ctx, req.Krid)
@@ -802,10 +813,12 @@ func (qc *QDBCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 				return err
 			}
 			krg.ShardID = req.ShardId
+			t = time.Now()
 			if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, krg); err != nil {
 				// TODO: check if unlock here is ok
 				return err
 			}
+			statistics.RecordQDBOperation(time.Since(t))
 
 			// Notify all routers about scheme changes.
 			if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -822,18 +835,22 @@ func (qc *QDBCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 				return err
 			}
 
+			t = time.Now()
 			if err := qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeComplete); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 			}
+			statistics.RecordQDBOperation(time.Since(t))
 			move.Status = qdb.MoveKeyRangeComplete
 		case qdb.MoveKeyRangeComplete:
 			// unlock key range
 			if err := qc.UnlockKeyRange(ctx, req.Krid); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 			}
+			t := time.Now()
 			if err := qc.db.DeleteKeyRangeMove(ctx, move.MoveId); err != nil {
 				return err
 			}
+			statistics.RecordQDBOperation(time.Since(t))
 			move = nil
 		default:
 			return fmt.Errorf("unknown key range move status: \"%s\"", move.Status)
@@ -942,6 +959,7 @@ func (qc *QDBCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 // Returns:
 //   - error: Any error occurred during transfer.
 func (qc *QDBCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
+	statistics.RecordMoveStart(time.Now())
 	keyRange, err := qc.GetKeyRange(ctx, req.KrId)
 	if err != nil {
 		return err
@@ -1023,6 +1041,7 @@ func (qc *QDBCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 		case <-ctx.Done():
 			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
 		case err := <-ch:
+			statistics.RecordMoveFinish(time.Now())
 			return err
 		}
 	}
@@ -1050,6 +1069,7 @@ func (*QDBCoordinator) getKeyStats(
 	keyRange *kr.KeyRange,
 	nextBound kr.KeyRangeBound,
 ) (totalCount int64, relationCount map[string]int64, err error) {
+	t := time.Now()
 	relationCount = make(map[string]int64)
 	for _, rel := range relations {
 		relExists, err := datatransfers.CheckTableExists(ctx, conn, strings.ToLower(rel.Name), rel.GetSchema())
@@ -1077,6 +1097,7 @@ func (*QDBCoordinator) getKeyStats(
 		relationCount[rel.Name] = count
 		totalCount += count
 	}
+	statistics.RecordShardOperation(time.Since(t))
 	return
 }
 
@@ -1211,10 +1232,12 @@ ORDER BY (%s) %s;
 		sort,
 	)
 	spqrlog.Zero.Debug().Str("query", query).Msg("get split bound")
+	t := time.Now()
 	rows, err := conn.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
+	statistics.RecordShardOperation(time.Since(t))
 	var moveWhole bool
 	for rows.Next() {
 		values := make([]string, len(rel.DistributionKey)+1)
@@ -1519,9 +1542,11 @@ func (qc *QDBCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew stri
 	if _, err := qc.GetKeyRange(ctx, krIdNew); err == nil {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
 	}
+	t := time.Now()
 	if err := qc.db.RenameKeyRange(ctx, krId, krIdNew); err != nil {
 		return err
 	}
+	statistics.RecordQDBOperation(time.Since(t))
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		_, err := cl.RenameKeyRange(ctx, &routerproto.RenameKeyRangeRequest{KeyRangeId: krId, NewKeyRangeId: krIdNew})
