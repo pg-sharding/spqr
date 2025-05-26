@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 type statisticsInt struct {
@@ -31,6 +32,7 @@ type MoveStatistics struct {
 }
 
 func RecordMoveStart(t time.Time) error {
+	spqrlog.Zero.Debug().Msg("move stats: record move start")
 	moveStatistics.MoveInProgress = true
 	moveStatistics.QDBTime = 0
 	moveStatistics.ShardTime = 0
@@ -40,6 +42,7 @@ func RecordMoveStart(t time.Time) error {
 }
 
 func RecordMoveFinish(t time.Time) error {
+	spqrlog.Zero.Debug().Msg("move stats: record move finish")
 	if !moveStatistics.MoveInProgress {
 		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "unable to record move finish: there's no move in progress")
 	}

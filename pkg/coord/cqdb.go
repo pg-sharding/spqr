@@ -1041,7 +1041,7 @@ func (qc *QDBCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 		case <-ctx.Done():
 			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
 		case err := <-ch:
-			statistics.RecordMoveFinish(time.Now())
+			_ = statistics.RecordMoveFinish(time.Now())
 			return err
 		}
 	}
