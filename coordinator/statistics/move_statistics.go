@@ -24,6 +24,7 @@ type statisticsInt struct {
 var moveStatistics = statisticsInt{}
 
 type MoveStatistics struct {
+	TotalTime  time.Duration
 	RouterTime time.Duration
 	ShardTime  time.Duration
 	QDBTime    time.Duration
@@ -46,6 +47,7 @@ func RecordMoveFinish(t time.Time) error {
 	moveStatistics.QDBTimeTotal += moveStatistics.QDBTime
 	moveStatistics.RouterTimeTotal += moveStatistics.RouterTime
 	moveStatistics.ShardTimeTotal += moveStatistics.ShardTime
+	moveStatistics.MoveTimeTotal += t.Sub(moveStatistics.CurrentMoveStartTime)
 	moveStatistics.TotalMoves++
 	moveStatistics.QDBTime = 0
 	moveStatistics.ShardTime = 0
@@ -76,5 +78,6 @@ func GetMoveStats() *MoveStatistics {
 		ShardTime:  moveStatistics.ShardTimeTotal / time.Duration(moveStatistics.TotalMoves),
 		QDBTime:    moveStatistics.QDBTimeTotal / time.Duration(moveStatistics.TotalMoves),
 		RouterTime: moveStatistics.RouterTimeTotal / time.Duration(moveStatistics.TotalMoves),
+		TotalTime:  moveStatistics.MoveTimeTotal / time.Duration(moveStatistics.TotalMoves),
 	}
 }

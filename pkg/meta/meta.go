@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pg-sharding/spqr/coordinator/statistics"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
@@ -696,6 +697,9 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.Sequences(ctx, seqs)
 	case spqrparser.IsReadOnlyStr:
 		return cli.IsReadOnly(ctx, ro)
+	case spqrparser.MoveStatsStr:
+		stats := statistics.GetMoveStats()
+		return cli.MoveStats(ctx, stats)
 	default:
 		return ErrUnknownCoordinatorCommand
 	}
