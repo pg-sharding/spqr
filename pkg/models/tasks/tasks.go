@@ -334,7 +334,7 @@ func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
 	}
 }
 
-// TaskToDb converts a MoveTask struct to a qdb.MoveTask struct.
+// MoveTaskToDb converts a MoveTask struct to a qdb.MoveTask struct.
 // It takes a pointer to a MoveTask struct as input and returns a pointer to a qdb.MoveTask struct.
 // The function creates a new qdb.MoveTask object and copies the values from the input MoveTask object to the output qdb.MoveTask object.
 //
@@ -343,7 +343,7 @@ func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
 //
 // Returns:
 //   - *qdb.MoveTask: The converted qdb.MoveTask object.
-func TaskToDb(task *MoveTask) *qdb.MoveTask {
+func MoveTaskToDb(task *MoveTask) *qdb.MoveTask {
 	if task == nil {
 		return nil
 	}

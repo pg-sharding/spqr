@@ -1262,7 +1262,7 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 }
 
 func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
-	spqrlog.Zero.Debug().Msg("etcdqdb: write move task")
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: write move task")
 
 	taskJson, err := json.Marshal(task)
 	if err != nil {
@@ -1274,7 +1274,7 @@ func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
 }
 
 func (q *EtcdQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error) {
-	spqrlog.Zero.Debug().Msg("etcdqdb: get move task")
+	spqrlog.Zero.Debug().Str("id", id).Msg("etcdqdb: get move task")
 
 	resp, err := q.cli.Get(ctx, moveTaskNodePath(id))
 	if err != nil {
@@ -1286,6 +1286,13 @@ func (q *EtcdQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error)
 	}
 
 	return task, nil
+}
+
+func (q *EtcdQDB) RemoveMoveTask(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().Str("id", id).Msg("etcdqdb: remove move task")
+
+	_, err := q.cli.Delete(ctx, moveTaskNodePath(id))
+	return err
 }
 
 // TODO: unit tests
