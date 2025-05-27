@@ -1280,6 +1280,7 @@ ORDER BY (%s) %s;
 	if len(taskList) <= 1 && moveWhole {
 		taskList = []*tasks.MoveTask{
 			{
+				ID:       uuid.NewString(),
 				KrIdTemp: req.DestKrId,
 				State:    tasks.TaskPlanned,
 				Bound:    nil,
@@ -1287,7 +1288,7 @@ ORDER BY (%s) %s;
 		}
 	} else if moveWhole {
 		// Avoid splitting key range by its own bound when moving the whole range
-		taskList[len(taskList)-1] = &tasks.MoveTask{KrIdTemp: req.KrId, Bound: nil, State: tasks.TaskSplit}
+		taskList[len(taskList)-1] = &tasks.MoveTask{ID: uuid.NewString(), KrIdTemp: req.KrId, Bound: nil, State: tasks.TaskSplit}
 	}
 
 	return &tasks.MoveTaskGroup{

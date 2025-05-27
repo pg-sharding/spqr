@@ -102,6 +102,7 @@ func TaskToProto(task *MoveTask) *protos.MoveTask {
 		return nil
 	}
 	return &protos.MoveTask{
+		ID:             task.ID,
 		KeyRangeIdTemp: task.KrIdTemp,
 		Bound:          task.Bound,
 		Status:         TaskStateToProto(task.State),
@@ -234,6 +235,7 @@ func TaskFromProto(task *protos.MoveTask) *MoveTask {
 		return nil
 	}
 	return &MoveTask{
+		ID:       task.ID,
 		KrIdTemp: task.KeyRangeIdTemp,
 		Bound:    task.Bound,
 		State:    TaskStateFromProto(task.Status),
@@ -348,6 +350,7 @@ func MoveTaskToDb(task *MoveTask) *qdb.MoveTask {
 		return nil
 	}
 	return &qdb.MoveTask{
+		ID:       task.ID,
 		KrIdTemp: task.KrIdTemp,
 		Bound:    task.Bound,
 		State:    int(task.State),
@@ -398,6 +401,7 @@ func TaskGroupFromDb(group *qdb.MoveTaskGroup, tasks map[string]*qdb.MoveTask) (
 //   - *MoveTask: The converted MoveTask object.
 func TaskFromDb(task *qdb.MoveTask) *MoveTask {
 	return &MoveTask{
+		ID:       task.ID,
 		KrIdTemp: task.KrIdTemp,
 		Bound:    task.Bound,
 		State:    TaskState(task.State),
