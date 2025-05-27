@@ -1318,8 +1318,30 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 	return err
 }
 
-func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
+func (q *EtcdQDB) CreateMoveTask(ctx context.Context, task *MoveTask) error {
 	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: write move task")
+
+	res, err := q.cli.Get(ctx, moveTaskNodePath(task.ID), clientv3.WithCountOnly())
+	if res.Count != 0 {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "move task \"%s\" already exists", task.ID)
+	}
+
+	taskJson, err := json.Marshal(task)
+	if err != nil {
+		return err
+	}
+
+	_, err = q.cli.Put(ctx, moveTaskNodePath(task.ID), string(taskJson))
+	return err
+}
+
+func (q *EtcdQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: write move task")
+
+	res, err := q.cli.Get(ctx, moveTaskNodePath(task.ID), clientv3.WithCountOnly())
+	if res.Count == 0 {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "move task \"%s\" not found", task.ID)
+	}
 
 	taskJson, err := json.Marshal(task)
 	if err != nil {

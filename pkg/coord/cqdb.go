@@ -1271,7 +1271,7 @@ ORDER BY (%s) %s;
 				binary.PutVarint(bound[i], number)
 			}
 		}
-		taskList = append(taskList, &tasks.MoveTask{KrIdTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound})
+		taskList = append(taskList, &tasks.MoveTask{ID: uuid.NewString(), KrIdTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound})
 	}
 	taskList[0].KrIdTemp = req.DestKrId
 
@@ -1353,7 +1353,7 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 					return err
 				}
 				task.State = tasks.TaskSplit
-				if err := qc.WriteMoveTask(ctx, task); err != nil {
+				if err := qc.UpdateMoveTask(ctx, task); err != nil {
 					return err
 				}
 				break
@@ -1375,7 +1375,7 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 				return err
 			}
 			task.State = tasks.TaskSplit
-			if err := qc.WriteMoveTask(ctx, task); err != nil {
+			if err := qc.UpdateMoveTask(ctx, task); err != nil {
 				return err
 			}
 		case tasks.TaskSplit:
@@ -1383,7 +1383,7 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 				return err
 			}
 			task.State = tasks.TaskMoved
-			if err := qc.WriteMoveTask(ctx, task); err != nil {
+			if err := qc.UpdateMoveTask(ctx, task); err != nil {
 				return err
 			}
 		case tasks.TaskMoved:

@@ -850,10 +850,28 @@ func (q *MemQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error) 
 }
 
 // TODO: unit tests
-func (q *MemQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
-	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: write move task")
+func (q *MemQDB) CreateMoveTask(ctx context.Context, task *MoveTask) error {
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: create move task")
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
+	if _, ok := q.MoveTasks[task.ID]; ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "move task \"%s\" already exists", task.ID)
+	}
+
+	q.MoveTasks[task.ID] = task
+	return nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: update move task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if _, ok := q.MoveTasks[task.ID]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "move task \"%s\" not found", task.ID)
+	}
 
 	q.MoveTasks[task.ID] = task
 	return nil

@@ -187,14 +187,14 @@ func (qc *Coordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.
 		return err
 	}
 	for _, task := range taskGroup.Tasks[taskGroup.CurrentTaskIndex:] {
-		if err := qc.qdb.WriteMoveTask(ctx, tasks.MoveTaskToDb(task)); err != nil {
+		if err := qc.qdb.CreateMoveTask(ctx, tasks.MoveTaskToDb(task)); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// WriteMoveTask writes the given move task to the coordinator's QDB.
+// CreateMoveTask writes the given move task to the coordinator's QDB if task doesn't already exists
 //
 // Parameters:
 // - ctx (context.Context): the context.Context object for managing the request's lifetime.
@@ -202,8 +202,20 @@ func (qc *Coordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.
 //
 // Returns:
 // - error: an error if the write operation fails.
-func (qc *Coordinator) WriteMoveTask(ctx context.Context, task *tasks.MoveTask) error {
-	return qc.qdb.WriteMoveTask(ctx, tasks.MoveTaskToDb(task))
+func (qc *Coordinator) CreateMoveTask(ctx context.Context, task *tasks.MoveTask) error {
+	return qc.qdb.CreateMoveTask(ctx, tasks.MoveTaskToDb(task))
+}
+
+// UpdateMoveTask writes the given move task to the coordinator's QDB if task already exists
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+// - task (*tasks.MoveTask): the task to be written to the QDB.
+//
+// Returns:
+// - error: an error if the write operation fails.
+func (qc *Coordinator) UpdateMoveTask(ctx context.Context, task *tasks.MoveTask) error {
+	return qc.qdb.UpdateMoveTask(ctx, tasks.MoveTaskToDb(task))
 }
 
 // RemoveMoveTaskGroup removes the task group from the local coordinator's QDB.
