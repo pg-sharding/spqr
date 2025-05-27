@@ -40,7 +40,7 @@ func (lc *Coordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGro
 		return nil, err
 	}
 	taskMap := make(map[string]*qdb.MoveTask, len(groupDB.TaskIDs))
-	for _, id := range groupDB.TaskIDs {
+	for _, id := range groupDB.TaskIDs[groupDB.CurrentTaskInd:] {
 		task, err := lc.qdb.GetMoveTask(ctx, id)
 		if err != nil {
 			return nil, err
@@ -186,7 +186,7 @@ func (qc *Coordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.
 	if err := qc.qdb.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup)); err != nil {
 		return err
 	}
-	for _, task := range taskGroup.Tasks {
+	for _, task := range taskGroup.Tasks[taskGroup.CurrentTaskIndex:] {
 		if err := qc.qdb.WriteMoveTask(ctx, tasks.MoveTaskToDb(task)); err != nil {
 			return err
 		}
