@@ -790,7 +790,7 @@ func (q *MemQDB) GetMoveTaskGroup(_ context.Context) (*MoveTaskGroup, error) {
 
 	if q.MoveTaskGroup == nil {
 		return &MoveTaskGroup{
-			Tasks: []*MoveTask{},
+			TaskIDs: []string{},
 		}, nil
 	}
 	return q.MoveTaskGroup, nil
@@ -833,6 +833,24 @@ func (q *MemQDB) GetCurrentMoveTaskIndex(ctx context.Context) (int, error) {
 	defer q.mu.RUnlock()
 
 	return q.MoveTaskGroup.CurrentTaskInd, nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get current move task index")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return nil, fmt.Errorf("not implemented!")
+}
+
+// TODO: unit tests
+func (q *MemQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
+	spqrlog.Zero.Debug().Msg("memqdb: get current move task index")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return fmt.Errorf("not implemented!")
 }
 
 // TODO: unit tests

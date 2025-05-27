@@ -1344,7 +1344,7 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 	if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
 		return err
 	}
-	for len(taskGroup.Tasks) != 0 {
+	for taskGroup.CurrentTaskIndex < len(taskGroup.Tasks) {
 		task := taskGroup.Tasks[0]
 		switch task.State {
 		case tasks.TaskPlanned:
@@ -1392,7 +1392,7 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 					return err
 				}
 			}
-			taskGroup.Tasks = taskGroup.Tasks[1:]
+			taskGroup.CurrentTaskIndex++
 			if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
 				return err
 			}

@@ -3,11 +3,13 @@ package tasks
 import (
 	"fmt"
 
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 )
 
 type MoveTask struct {
+	ID       string
 	Bound    [][]byte
 	KrIdTemp string
 	State    TaskState
@@ -37,11 +39,12 @@ const (
 )
 
 type MoveTaskGroup struct {
-	ShardToId string
-	KrIdFrom  string
-	KrIdTo    string
-	Tasks     []*MoveTask
-	Type      SplitType
+	ShardToId        string
+	KrIdFrom         string
+	KrIdTo           string
+	Tasks            []*MoveTask
+	Type             SplitType
+	CurrentTaskIndex int
 }
 
 type RedistributeTaskState int
@@ -317,10 +320,10 @@ func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
 		return nil
 	}
 	return &qdb.MoveTaskGroup{
-		Tasks: func() []*qdb.MoveTask {
-			res := make([]*qdb.MoveTask, len(group.Tasks))
+		TaskIDs: func() []string {
+			res := make([]string, len(group.Tasks))
 			for i, task := range group.Tasks {
-				res[i] = TaskToDb(task)
+				res[i] = task.ID
 			}
 			return res
 		}(),
@@ -362,23 +365,26 @@ func TaskToDb(task *MoveTask) *qdb.MoveTask {
 //
 // Returns:
 //   - *MoveTaskGroup: The converted MoveTaskGroup object.
-func TaskGroupFromDb(group *qdb.MoveTaskGroup) *MoveTaskGroup {
+func TaskGroupFromDb(group *qdb.MoveTaskGroup, tasks map[string]*qdb.MoveTask) (*MoveTaskGroup, error) {
 	if group == nil {
-		return nil
+		return nil, nil
 	}
+	res := make([]*MoveTask, len(group.TaskIDs))
+	for i, id := range group.TaskIDs {
+		task, ok := tasks[id]
+		if !ok {
+			return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "task with ID \"%s\" not found", id)
+		}
+		res[i] = TaskFromDb(task)
+	}
+
 	return &MoveTaskGroup{
-		Tasks: func() []*MoveTask {
-			res := make([]*MoveTask, len(group.Tasks))
-			for i, task := range group.Tasks {
-				res[i] = TaskFromDb(task)
-			}
-			return res
-		}(),
+		Tasks:     res,
 		Type:      SplitType(group.Type),
 		ShardToId: group.ShardToId,
 		KrIdFrom:  group.KrIdFrom,
 		KrIdTo:    group.KrIdTo,
-	}
+	}, nil
 }
 
 // TaskFromDb converts a qdb.MoveTask object to a MoveTask object.
