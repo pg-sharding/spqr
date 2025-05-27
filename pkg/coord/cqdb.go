@@ -1346,7 +1346,7 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 		return err
 	}
 	for taskGroup.CurrentTaskIndex < len(taskGroup.Tasks) {
-		task := taskGroup.Tasks[0]
+		task := taskGroup.Tasks[taskGroup.CurrentTaskIndex]
 		switch task.State {
 		case tasks.TaskPlanned:
 			if task.Bound == nil && taskGroup.KrIdTo == task.KrIdTemp {
