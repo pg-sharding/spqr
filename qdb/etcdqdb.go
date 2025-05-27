@@ -59,6 +59,7 @@ const (
 	shardsNamespace                = "/shards/"
 	relationMappingNamespace       = "/relation_mappings/"
 	taskGroupPath                  = "/move_task_group"
+	moveTasksNamespace             = "/move_tasks/"
 	currentTaskIndexPath           = "/current_task_index"
 	moveTasksCountPath             = "/total_move_tasks"
 	redistributeTaskPath           = "/redistribute_task/"
@@ -118,6 +119,10 @@ func relationSequenceMappingNodePath(relName string) string {
 }
 func columnSequenceMappingNodePath(relName, colName string) string {
 	return path.Join(relationSequenceMappingNodePath(relName), colName)
+}
+
+func moveTaskNodePath(id string) string {
+	return path.Join(moveTasksNamespace, id)
 }
 
 // ==============================================================================
@@ -1181,7 +1186,7 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 
 	if len(resp.Kvs) == 0 {
 		return &MoveTaskGroup{
-			Tasks: []*MoveTask{},
+			TaskIDs: []string{},
 		}, nil
 	}
 
@@ -1215,7 +1220,7 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup) 
 	if _, err = q.cli.Put(ctx, taskGroupPath, string(groupJson)); err != nil {
 		return err
 	}
-	if _, err = q.cli.Put(ctx, moveTasksCountPath, fmt.Sprintf("%d", len(group.Tasks))); err != nil {
+	if _, err = q.cli.Put(ctx, moveTasksCountPath, fmt.Sprintf("%d", len(group.TaskIDs))); err != nil {
 		return err
 	}
 	_, err = q.cli.Put(ctx, currentTaskIndexPath, fmt.Sprintf("%d", group.CurrentTaskInd))
@@ -1254,6 +1259,33 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 	}
 	_, err := q.cli.Delete(ctx, taskGroupPath)
 	return err
+}
+
+func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
+	spqrlog.Zero.Debug().Msg("etcdqdb: write move task")
+
+	taskJson, err := json.Marshal(task)
+	if err != nil {
+		return err
+	}
+
+	_, err = q.cli.Put(ctx, moveTaskNodePath(task.ID), string(taskJson))
+	return err
+}
+
+func (q *EtcdQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: get move task")
+
+	resp, err := q.cli.Get(ctx, moveTaskNodePath(id))
+	if err != nil {
+		return nil, err
+	}
+	var task *MoveTask
+	if err := json.Unmarshal(resp.Kvs[0].Value, &task); err != nil {
+		return nil, err
+	}
+
+	return task, nil
 }
 
 // TODO: unit tests
