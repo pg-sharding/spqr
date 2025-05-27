@@ -113,11 +113,13 @@ type MoveTask struct {
 }
 
 type MoveTaskGroup struct {
-	Tasks     []*MoveTask `json:"tasks"`
-	Type      int         `json:"type"`
-	ShardToId string      `json:"shard_to_id"`
-	KrIdFrom  string      `json:"kr_id_from"`
-	KrIdTo    string      `json:"kr_id_to"`
+	Tasks          []*MoveTask `json:"tasks"`
+	Type           int         `json:"type"`
+	ShardToId      string      `json:"shard_to_id"`
+	KrIdFrom       string      `json:"kr_id_from"`
+	KrIdTo         string      `json:"kr_id_to"`
+	TotalTaskCount int
+	CurrentTaskInd int
 }
 
 type RedistributeTask struct {

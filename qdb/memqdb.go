@@ -817,6 +817,25 @@ func (q *MemQDB) RemoveMoveTaskGroup(_ context.Context) error {
 }
 
 // TODO: unit tests
+func (q *MemQDB) UpdateMoveTaskGroupSetCurrentTask(ctx context.Context, taskIndex int) error {
+	spqrlog.Zero.Debug().Msg("memqdb: update move task group: set current task index")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.MoveTaskGroup.CurrentTaskInd = taskIndex
+	return nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) GetCurrentMoveTaskIndex(ctx context.Context) (int, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get current move task index")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.MoveTaskGroup.CurrentTaskInd, nil
+}
+
+// TODO: unit tests
 func (q *MemQDB) GetRedistributeTask(_ context.Context) (*RedistributeTask, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get redistribute task")
 	q.mu.RLock()

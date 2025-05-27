@@ -59,6 +59,8 @@ const (
 	shardsNamespace                = "/shards/"
 	relationMappingNamespace       = "/relation_mappings/"
 	taskGroupPath                  = "/move_task_group"
+	currentTaskIndexPath           = "/current_task_index"
+	moveTasksCountPath             = "/total_move_tasks"
 	redistributeTaskPath           = "/redistribute_task/"
 	balancerTaskPath               = "/balancer_task/"
 	transactionNamespace           = "/transfer_txs/"
@@ -1188,6 +1190,15 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 		return nil, err
 	}
 
+	resp, err = q.cli.Get(ctx, currentTaskIndexPath)
+	if err != nil {
+		return nil, err
+	}
+	taskGroup.CurrentTaskInd, err = strconv.Atoi(string(resp.Kvs[0].Value))
+	if err != nil {
+		return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "failed to convert current task index to integer: %s")
+	}
+
 	return taskGroup, nil
 }
 
@@ -1201,8 +1212,33 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup) 
 		return err
 	}
 
-	_, err = q.cli.Put(ctx, taskGroupPath, string(groupJson))
+	if _, err = q.cli.Put(ctx, taskGroupPath, string(groupJson)); err != nil {
+		return err
+	}
+	if _, err = q.cli.Put(ctx, moveTasksCountPath, fmt.Sprintf("%d", len(group.Tasks))); err != nil {
+		return err
+	}
+	_, err = q.cli.Put(ctx, currentTaskIndexPath, fmt.Sprintf("%d", group.CurrentTaskInd))
 	return err
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) UpdateMoveTaskGroupSetCurrentTask(ctx context.Context, taskIndex int) error {
+	_, err := q.cli.Put(ctx, currentTaskIndexPath, fmt.Sprintf("%d", taskIndex))
+	return err
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) GetCurrentMoveTaskIndex(ctx context.Context) (int, error) {
+	resp, err := q.cli.Get(ctx, currentTaskIndexPath)
+	if err != nil {
+		return -1, err
+	}
+	res, err := strconv.Atoi(string(resp.Kvs[0].Value))
+	if err != nil {
+		return -1, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "failed to convert current task index to integer: %s")
+	}
+	return res, nil
 }
 
 // TODO: unit tests
@@ -1210,6 +1246,12 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: remove task group")
 
+	if _, err := q.cli.Delete(ctx, currentTaskIndexPath); err != nil {
+		return err
+	}
+	if _, err := q.cli.Delete(ctx, moveTasksCountPath); err != nil {
+		return err
+	}
 	_, err := q.cli.Delete(ctx, taskGroupPath)
 	return err
 }
