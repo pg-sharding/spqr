@@ -370,7 +370,7 @@ func TaskGroupFromDb(group *qdb.MoveTaskGroup, tasks map[string]*qdb.MoveTask) (
 		return nil, nil
 	}
 	res := make([]*MoveTask, len(group.TaskIDs))
-	for i, id := range group.TaskIDs {
+	for i, id := range group.TaskIDs[group.CurrentTaskInd:] {
 		task, ok := tasks[id]
 		if !ok {
 			return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "task with ID \"%s\" not found", id)
