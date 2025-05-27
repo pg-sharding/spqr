@@ -959,7 +959,9 @@ func (qc *QDBCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 // Returns:
 //   - error: Any error occurred during transfer.
 func (qc *QDBCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
-	statistics.RecordMoveStart(time.Now())
+	if err := statistics.RecordMoveStart(time.Now()); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("failed to record key range move start in statistics")
+	}
 	keyRange, err := qc.GetKeyRange(ctx, req.KrId)
 	if err != nil {
 		return err
@@ -1041,7 +1043,9 @@ func (qc *QDBCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 		case <-ctx.Done():
 			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
 		case err := <-ch:
-			_ = statistics.RecordMoveFinish(time.Now())
+			if statErr := statistics.RecordMoveFinish(time.Now()); statErr != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to record key range move finish in statistics")
+			}
 			return err
 		}
 	}

@@ -1,7 +1,6 @@
 package statistics
 
 import (
-	"sync"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -19,7 +18,6 @@ type statisticsInt struct {
 	CurrentMoveStartTime time.Time
 	TotalMoves           int
 	MoveInProgress       bool
-	lock                 sync.RWMutex
 }
 
 var moveStatistics = statisticsInt{}
