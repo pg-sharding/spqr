@@ -35,11 +35,36 @@ func NewCoordinator(qdb qdb.QDB) Coordinator {
 // - *tasks.MoveTaskGroup: the retrieved task group, or nil if an error occurred.
 // - error: an error if the retrieval process fails.
 func (lc *Coordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
-	group, err := lc.qdb.GetMoveTaskGroup(ctx)
+	groupDB, err := lc.qdb.GetMoveTaskGroup(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return tasks.TaskGroupFromDb(group), nil
+	taskMap := make(map[string]*qdb.MoveTask, len(groupDB.TaskIDs))
+	for _, id := range groupDB.TaskIDs {
+		task, err := lc.qdb.GetMoveTask(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		taskMap[id] = task
+	}
+	return tasks.TaskGroupFromDb(groupDB, taskMap)
+}
+
+// GetMoveTask retrieves the MoveTask from the coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+// - id (string): the ID of the task to be retrieved
+//
+// Returns:
+// - *tasks.MoveTask: the retrieved move task, or nil if an error occurred.
+// - error: an error if the retrieval process fails.
+func (qc *Coordinator) GetMoveTask(ctx context.Context, id string) (*tasks.MoveTask, error) {
+	task, err := qc.qdb.GetMoveTask(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return tasks.TaskFromDb(task), err
 }
 
 // GetDistribution retrieves info about distribution from QDB
@@ -149,7 +174,7 @@ func (qc *Coordinator) ListKeyRanges(ctx context.Context, distribution string) (
 	return keyr, nil
 }
 
-// WriteMoveTaskGroup writes the given task group to the local coordinator's QDB.
+// WriteMoveTaskGroup writes the given task group to the coordinator's QDB.
 //
 // Parameters:
 // - ctx (context.Context): the context.Context object for managing the request's lifetime.
@@ -158,7 +183,27 @@ func (qc *Coordinator) ListKeyRanges(ctx context.Context, distribution string) (
 // Returns:
 // - error: an error if the write operation fails.
 func (qc *Coordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
-	return qc.qdb.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
+	if err := qc.qdb.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup)); err != nil {
+		return err
+	}
+	for _, task := range taskGroup.Tasks {
+		if err := qc.qdb.WriteMoveTask(ctx, tasks.MoveTaskToDb(task)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// WriteMoveTask writes the given move task to the coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+// - task (*tasks.MoveTask): the task to be written to the QDB.
+//
+// Returns:
+// - error: an error if the write operation fails.
+func (qc *Coordinator) WriteMoveTask(ctx context.Context, task *tasks.MoveTask) error {
+	return qc.qdb.WriteMoveTask(ctx, tasks.MoveTaskToDb(task))
 }
 
 // RemoveMoveTaskGroup removes the task group from the local coordinator's QDB.

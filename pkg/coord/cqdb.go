@@ -1353,7 +1353,7 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 					return err
 				}
 				task.State = tasks.TaskSplit
-				if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
+				if err := qc.WriteMoveTask(ctx, task); err != nil {
 					return err
 				}
 				break
@@ -1375,7 +1375,7 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 				return err
 			}
 			task.State = tasks.TaskSplit
-			if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
+			if err := qc.WriteMoveTask(ctx, task); err != nil {
 				return err
 			}
 		case tasks.TaskSplit:
@@ -1383,7 +1383,7 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 				return err
 			}
 			task.State = tasks.TaskMoved
-			if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
+			if err := qc.WriteMoveTask(ctx, task); err != nil {
 				return err
 			}
 		case tasks.TaskMoved:
@@ -1393,7 +1393,10 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 				}
 			}
 			taskGroup.CurrentTaskIndex++
-			if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
+			if err := qc.qdb.UpdateMoveTaskGroupSetCurrentTask(ctx, taskGroup.CurrentTaskIndex); err != nil {
+				return err
+			}
+			if err := qc.qdb.RemoveMoveTask(ctx, task.ID); err != nil {
 				return err
 			}
 		}

@@ -84,6 +84,7 @@ type QDB interface {
 	RemoveMoveTaskGroup(ctx context.Context) error
 	WriteMoveTask(ctx context.Context, task *MoveTask) error
 	GetMoveTask(ctx context.Context, id string) (*MoveTask, error)
+	RemoveMoveTask(ctx context.Context, id string) error
 
 	GetRedistributeTask(ctx context.Context) (*RedistributeTask, error)
 	WriteRedistributeTask(ctx context.Context, task *RedistributeTask) error

@@ -854,6 +854,15 @@ func (q *MemQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
 }
 
 // TODO: unit tests
+func (q *MemQDB) RemoveMoveTask(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().Msg("memqdb: get current move task index")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return fmt.Errorf("not implemented!")
+}
+
+// TODO: unit tests
 func (q *MemQDB) GetRedistributeTask(_ context.Context) (*RedistributeTask, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get redistribute task")
 	q.mu.RLock()
