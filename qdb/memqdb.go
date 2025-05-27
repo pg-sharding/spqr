@@ -28,6 +28,7 @@ type MemQDB struct {
 	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
 	Coordinator          string                              `json:"coordinator"`
 	MoveTaskGroup        *MoveTaskGroup                      `json:"taskGroup"`
+	MoveTasks            map[string]*MoveTask                `json:"moveTasks"`
 	RedistributeTask     *RedistributeTask                   `json:"redistributeTask"`
 	BalancerTask         *BalancerTask                       `json:"balancerTask"`
 	Sequences            map[string]bool                     `json:"sequences"`
@@ -837,29 +838,39 @@ func (q *MemQDB) GetCurrentMoveTaskIndex(ctx context.Context) (int, error) {
 
 // TODO: unit tests
 func (q *MemQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: get current move task index")
+	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: get move task")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return nil, fmt.Errorf("not implemented!")
+	task, ok := q.MoveTasks[id]
+	if !ok {
+		return nil, fmt.Errorf("move task \"%s\" not found in QDB", id)
+	}
+	return task, nil
 }
 
 // TODO: unit tests
 func (q *MemQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
-	spqrlog.Zero.Debug().Msg("memqdb: get current move task index")
-	q.mu.RLock()
-	defer q.mu.RUnlock()
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: write move task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	return fmt.Errorf("not implemented!")
+	q.MoveTasks[task.ID] = task
+	return nil
 }
 
 // TODO: unit tests
 func (q *MemQDB) RemoveMoveTask(ctx context.Context, id string) error {
-	spqrlog.Zero.Debug().Msg("memqdb: get current move task index")
+	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: remove move task")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return fmt.Errorf("not implemented!")
+	_, ok := q.MoveTasks[id]
+	if !ok {
+		return fmt.Errorf("move task \"%s\" not found in QDB", id)
+	}
+	delete(q.MoveTasks, id)
+	return nil
 }
 
 // TODO: unit tests
