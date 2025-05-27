@@ -5,6 +5,8 @@ test/feature/spqr_test.go
 test/feature/docker-compose.yaml
 test/regress/docker-compose.yaml
 test/regress/Dockerfile
+test/regress/tests
+test/regress/schedule
 test/xproto/router/Dockerfile
 test/stress/Dockerfile
 test/drivers
