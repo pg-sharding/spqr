@@ -7,6 +7,7 @@ test: show_version
 test: show_relations
 test: show_time_quantiles
 test: show_is_read_only
+test: show_move_stats
 test: drop
 test: add
 test: hash

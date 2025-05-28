@@ -1,0 +1,13 @@
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+SHOW move_stats;
+ total time | router time | QDB time | shard time 
+------------+-------------+----------+------------
+ 0s         | 0s          | 0s       | 0s
+(1 row)
+

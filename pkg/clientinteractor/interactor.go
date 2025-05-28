@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	coordStats "github.com/pg-sharding/spqr/coordinator/statistics"
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
@@ -1572,6 +1573,17 @@ func (pi *PSQLInteractor) IsReadOnly(ctx context.Context, ro bool) error {
 	}
 
 	return pi.CompleteMsg(0)
+}
+
+func (pi *PSQLInteractor) MoveStats(ctx context.Context, stats *coordStats.MoveStatistics) error {
+	if err := pi.WriteHeader("total time", "router time", "QDB time", "shard time"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+	if err := pi.WriteDataRow(stats.TotalTime.String(), stats.RouterTime.String(), stats.QDBTime.String(), stats.ShardTime.String()); err != nil {
+		return err
+	}
+	return pi.CompleteMsg(1)
 }
 
 func groupBy[T any](headers []string, values []T, getters []func(s T) string, groupByCol string, pi *PSQLInteractor) error {

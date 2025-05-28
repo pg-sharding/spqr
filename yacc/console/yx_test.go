@@ -135,6 +135,14 @@ func TestSimpleShow(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "SHOW move_stats",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.MoveStatsStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
