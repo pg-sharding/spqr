@@ -45,6 +45,7 @@ services:
         healthcheck: &shard-replica-healthcheck
             <<: *shard-primary-healthcheck
             start_interval: 20s
+            start_period: 60s
 
     shard2:
         <<: *shard-common
