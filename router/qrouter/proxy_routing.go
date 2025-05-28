@@ -810,6 +810,32 @@ func (qr *ProxyQrouter) planQueryV1(
 				}
 
 				switch e := actualExpr.(type) {
+				case *lyx.AExprNot:
+					/* inspect our arg. If this is pg_is_in_recovery, apply NOT */
+					switch arg := e.Arg.(type) {
+					case *lyx.FuncApplication:
+						if arg.Name == "pg_is_in_recovery" {
+							p = plan.Combine(p, plan.VirtualPlan{})
+							virtualRowCols = append(virtualRowCols,
+								pgproto3.FieldDescription{
+									Name:                 []byte("pg_is_in_recovery"),
+									DataTypeOID:          catalog.ARRAYOID,
+									TypeModifier:         -1,
+									DataTypeSize:         1,
+									TableAttributeNumber: 0,
+									TableOID:             0,
+									Format:               0,
+								})
+
+							/* notice this sign */
+							if rm.SPH.GetTsa() != config.TargetSessionAttrsRW {
+								virtualRowVals = append(virtualRowVals, []byte{byte('f')})
+							} else {
+								virtualRowVals = append(virtualRowVals, []byte{byte('t')})
+							}
+							continue
+						}
+					}
 				/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
 				case *lyx.FuncApplication:
 
