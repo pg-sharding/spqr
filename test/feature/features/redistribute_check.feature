@@ -100,7 +100,8 @@ Feature: Redistribution test
 
     When I run command on host "shard2"
     """
-    echo 'host all all all password' > /var/lib/postgresql/13/main/pg_hba.conf
+    datadir=$(sudo -u postgres psql -p 6432 -c "SHOW data_directory" | grep 'var/lib')
+    echo 'host all all all password' > $datadir/pg_hba.conf
     service postgresql reload
     """
     Then command return code should be "0"
