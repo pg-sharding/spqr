@@ -226,6 +226,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 				cChan <- nil
 				return
 			}
+			spqrlog.Zero.Info().Str("remote addr", c.RemoteAddr().String()).Msg("new network client connection")
 
 			cChan <- c
 		}
