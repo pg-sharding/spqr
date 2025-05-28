@@ -78,6 +78,7 @@ currkr
 currroute
 Darth
 datacenter
+datadir
 datarow
 datashard
 dataspace
@@ -187,7 +188,6 @@ idi
 idj
 IDR
 IExecute
-IFail
 inds
 inh
 initaited
@@ -198,7 +198,6 @@ inp
 inputdir
 installable
 interactor
-ipam
 IRun
 isgomock
 isready
@@ -305,7 +304,6 @@ multierr
 multishard
 munakoiso
 mylogs
-mysync
 myworkloadlog
 NALMm
 nconn
@@ -360,8 +358,8 @@ PGPORT
 pgproto
 pgquery
 pgsharding
-pgsync
 PGSSLMODE
+pgsync
 PGUSER
 pgx
 pgxconn
@@ -389,7 +387,6 @@ qcfg
 qdb
 QDBKR
 QDBTx
-Qdocker
 Qgo
 qlogger
 qlogprovider
@@ -494,8 +491,8 @@ spqrdump
 SPQRE
 spqrerror
 SPQRF
-SPQRH
 spqrguard
+SPQRH
 SPQRI
 SPQRJ
 SPQRK
