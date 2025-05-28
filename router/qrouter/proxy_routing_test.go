@@ -1666,6 +1666,22 @@ func TestRouteWithRules_Select(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query:        "SELECT NOT pg_is_in_recovery();",
+			distribution: distribution.ID,
+			exp: plan.VirtualPlan{
+				VirtualRowCols: []pgproto3.FieldDescription{
+					pgproto3.FieldDescription{
+						Name:         []byte("pg_is_in_recovery"),
+						DataTypeOID:  catalog.ARRAYOID,
+						TypeModifier: -1,
+						DataTypeSize: 1,
+					},
+				},
+				VirtualRowVals: [][]byte{[]byte{byte('t')}},
+			},
+			err: nil,
+		},
+		{
 			query:        "SELECT * FROM information_schema.columns;",
 			distribution: distribution.ID,
 			exp:          plan.RandomDispatchPlan{},
