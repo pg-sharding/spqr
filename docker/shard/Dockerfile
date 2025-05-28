@@ -1,4 +1,4 @@
-ARG codename=focal
+ARG codename=jammy
 FROM ubuntu:${codename}
 
 ENV POSTGRES_USER $POSTGRES_USER
