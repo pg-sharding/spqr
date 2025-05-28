@@ -3,6 +3,7 @@ services:
         image: spqr-shard-image
         build:
             dockerfile: ./docker/shard/Dockerfile
+            no_cache: true
             context: .
     spqr-base-image:
         image: spqr-base-image
