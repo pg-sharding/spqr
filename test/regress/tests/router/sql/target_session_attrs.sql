@@ -16,12 +16,14 @@ SELECT pg_is_in_recovery(), id FROM tsa_test WHERE id = 22 /* target-session-att
 
 -- read-only is also supported but there is no high availability cluster in our tests yet, so it returns error
 SELECT pg_is_in_recovery() /* target-session-attrs: read-only */ , id FROM tsa_test WHERE id = 22;
+SELECT NOT pg_is_in_recovery() /* target-session-attrs: read-only */ , id FROM tsa_test WHERE id = 22;
 
 SET __spqr__execute_on TO sh1;
 
 SHOW __spqr__target_session_attrs;
 SET __spqr__target_session_attrs TO 'prefer-standby';
 SELECT pg_is_in_recovery();
+SELECT NOT pg_is_in_recovery();
 SHOW __spqr__target_session_attrs;
 
 SET __spqr__engine_v2 TO true;
