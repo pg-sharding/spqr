@@ -20,7 +20,7 @@ Feature: Config reloading works
     And I wait for host "shard1" to respond
     When I run SQL on host "router" as user "regress2"
     """
-    SELECT 1 /* __spqr__execute_on:: sh1 */
+    SELECT 1 /* __spqr__execute_on:: sh1, __spqr__target_session_attr:: read-write */
     """
     Then command return code should be "1"
     And SQL error on host "router" should match regexp
