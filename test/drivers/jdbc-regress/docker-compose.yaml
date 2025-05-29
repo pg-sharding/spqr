@@ -4,6 +4,8 @@ services:
     build:
       context: ../../..
       dockerfile: docker/spqr/Dockerfile
+      tags:
+        - spqr-base-image
 
   shard1:
     image: spqr-shard-image
