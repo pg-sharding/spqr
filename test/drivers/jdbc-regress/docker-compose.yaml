@@ -73,6 +73,8 @@ services:
     hostname: regress_router
     container_name: regress_router
     depends_on:
+      x-base-image:
+        condition: service_completed_successfully
       shard1:
         condition: service_healthy
       shard2:
