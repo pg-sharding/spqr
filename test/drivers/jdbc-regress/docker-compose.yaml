@@ -4,12 +4,16 @@ services:
     build:
       context: ../../..
       dockerfile: docker/spqr/Dockerfile
+      tags:
+        - docker.io/library/spqr-base-image
     
   x-shard-image:
     image: spqr-shard-image
     build:
       context: ../../..
       dockerfile: docker/shard/Dockerfile
+      tags:
+        - docker.io/library/spqr-shard-image
   
   x-shard-common:
     &shard-common
@@ -37,18 +41,18 @@ services:
       - "7433:6432"
     hostname: spqr_shard_2
     container_name: spqr_shard_2
-  shard3:
-    <<: *shard-common
-    ports:
-      - "7434:6432"
-    hostname: spqr_shard_3
-    container_name: spqr_shard_3
-  shard4:
-    <<: *shard-common
-    ports:
-      - "7435:6432"
-    hostname: spqr_shard_4
-    container_name: spqr_shard_4
+  # shard3:
+  #   <<: *shard-common
+  #   ports:
+  #     - "7434:6432"
+  #   hostname: spqr_shard_3
+  #   container_name: spqr_shard_3
+  # shard4:
+  #   <<: *shard-common
+  #   ports:
+  #     - "7435:6432"
+  #   hostname: spqr_shard_4
+  #   container_name: spqr_shard_4
   router:
     build:
       dockerfile: ./docker/router/Dockerfile
@@ -65,10 +69,10 @@ services:
         condition: service_healthy
       shard2:
         condition: service_healthy
-      shard3:
-        condition: service_healthy
-      shard4:
-        condition: service_healthy
+      # shard3:
+      #   condition: service_healthy
+      # shard4:
+      #   condition: service_healthy
 
   coordinator:
     build:
