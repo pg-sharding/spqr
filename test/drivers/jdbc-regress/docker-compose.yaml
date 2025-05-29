@@ -4,16 +4,12 @@ services:
     build:
       context: ../../..
       dockerfile: docker/spqr/Dockerfile
-      tags: 
-      - spqr-base-image
     
   x-shard-image:
     image: spqr-shard-image
     build:
       context: ../../..
       dockerfile: docker/shard/Dockerfile
-      tags:
-        - docker.io/library/spqr-shard-image
   
   x-shard-common:
     &shard-common
