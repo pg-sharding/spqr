@@ -1,15 +1,15 @@
 ARG codename=jammy
 FROM ubuntu:${codename}
 
-ENV POSTGRES_USER $POSTGRES_USER
-ENV POSTGRES_DB $POSTGRES_DB
+ENV POSTGRES_USER=$POSTGRES_USER
+ENV POSTGRES_DB=$POSTGRES_DB
 ARG POSTGRES_VERSION=15
-ENV POSTGRES_VERSION $POSTGRES_VERSION
+ENV POSTGRES_VERSION=$POSTGRES_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Moskow
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-RUN echo nameserver 8.8.8.8 | sudo tee /etc/resolv.conf
+RUN echo nameserver 8.8.8.8 | tee /etc/resolv.conf
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
