@@ -419,6 +419,7 @@ rerr
 rerrors
 resharding
 reshke
+resolv
 retcode
 retmsg
 retst
