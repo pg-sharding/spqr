@@ -1,4 +1,10 @@
 services:
+  x-base-image:
+    image: spqr-base-image
+    build:
+      context: ../../..
+      dockerfile: docker/spqr/Dockerfile
+
   shard1:
     image: spqr-shard-image
     environment:
