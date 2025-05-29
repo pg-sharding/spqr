@@ -126,6 +126,15 @@ jobs:
           context: .
           file: docker/shard/Dockerfile
           push: false
+          tags: spqr-shard-image
+      
+      - name: Build shard image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/spqr/Dockerfile
+          push: false
+          tags: spqr-base-image
 
       - name: Run tests
         run: make jdbc_regress
