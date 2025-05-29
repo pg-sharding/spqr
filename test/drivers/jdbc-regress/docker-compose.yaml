@@ -1,9 +1,11 @@
 services:
   x-base-image:
-    image: spqr-base-image
+    image: spqr-base-image-build
     build:
       context: ../../..
       dockerfile: docker/spqr/Dockerfile
+      tags: 
+      - spqr-base-image
     
   x-shard-image:
     image: spqr-shard-image
