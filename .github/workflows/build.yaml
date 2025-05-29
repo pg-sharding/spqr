@@ -31,3 +31,22 @@ jobs:
         fi
     - name: build
       run: make build
+    
+  
+  build-docker:
+    name: Build docker images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build shard image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/shard/Dockerfile
+          push: false
+

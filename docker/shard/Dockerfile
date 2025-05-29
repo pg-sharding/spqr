@@ -9,7 +9,6 @@ ENV POSTGRES_VERSION=$POSTGRES_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Moskow
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-RUN sed -i 's/http:\/\/.*.ubuntu.com/https:\/\/mirror.yandex.ru/g' /etc/apt/sources.list
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
