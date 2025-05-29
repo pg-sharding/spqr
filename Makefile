@@ -22,8 +22,8 @@ deps:
 
 ####################### BUILD #######################
 
-codename ?= focal
-POSTGRES_VERSION ?= 13
+codename ?= jammy
+POSTGRES_VERSION ?= 15
 
 build_balancer:
 	go build -pgo=auto -o spqr-balancer ./cmd/balancer

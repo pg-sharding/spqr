@@ -66,7 +66,13 @@ NOTICE: send query to shard(s) : sh1
  t                 | 22
 (1 row)
 
-SET __spqr__execute_on TO sh1;
+SELECT NOT pg_is_in_recovery() /* target-session-attrs: read-only */ , id FROM tsa_test WHERE id = 22;
+NOTICE: send query to shard(s) : sh1
+ ?column? | id 
+----------+----
+ f        | 22
+(1 row)
+
 SHOW __spqr__target_session_attrs;
  target session attrs 
 ----------------------
@@ -75,10 +81,15 @@ SHOW __spqr__target_session_attrs;
 
 SET __spqr__target_session_attrs TO 'prefer-standby';
 SELECT pg_is_in_recovery();
-NOTICE: send query to shard(s) : sh1
  pg_is_in_recovery 
 -------------------
  t
+(1 row)
+
+SELECT NOT pg_is_in_recovery();
+ pg_is_in_recovery 
+-------------------
+ f
 (1 row)
 
 SHOW __spqr__target_session_attrs;
@@ -87,6 +98,7 @@ SHOW __spqr__target_session_attrs;
  prefer-standby
 (1 row)
 
+SET __spqr__execute_on TO sh1;
 SET __spqr__engine_v2 TO true;
 select (select extract(epoch from TIMESTAMP '2024-12-09T21:05:00' AT TIME ZONE 'UTC-8')::integer) zz;
 NOTICE: send query to shard(s) : sh1

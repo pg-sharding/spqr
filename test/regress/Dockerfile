@@ -1,4 +1,4 @@
-ARG codename=focal
+ARG codename=jammy
 FROM ubuntu:${codename}
 
 ARG POSTGRES_VERSION=13

@@ -42,7 +42,7 @@ jobs:
 
     strategy:
       matrix:
-        os-version: ['focal', 'jammy', 'noble']
+        os-version: ['jammy', 'noble']
         version: ['13', '14', '15', '16', '17', '13-mdb', '14-mdb', '15-mdb', '16-mdb', '17-mdb']
 
     steps:
