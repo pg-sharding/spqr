@@ -95,6 +95,16 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v4
+      
+      - name: Setup buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build shard image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/shard/Dockerfile
+          push: false
 
       - name: Run tests
         run: make gorm_regress
@@ -106,6 +116,16 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v4
+      
+      - name: Setup buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build shard image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/shard/Dockerfile
+          push: false
 
       - name: Run tests
         run: make jdbc_regress
@@ -117,6 +137,16 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v4
+      
+      - name: Setup buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build shard image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/shard/Dockerfile
+          push: false
 
       - name: Run tests
         run: make xproto_regress
