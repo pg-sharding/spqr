@@ -49,6 +49,29 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v4
+      
+      - name: Setup buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build shard image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/shard/Dockerfile
+          push: false
+          build-args: |
+            "POSTGRES_VERSION=${{ matrix.version }}"
+            "codename=${{ matrix.os-version }}"
+      
+      - name: Build MDB shard image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/shard/Dockerfile.mdb
+          push: false
+          build-args: |
+            "POSTGRES_VERSION=${{ matrix.version }}"
+            "codename=${{ matrix.os-version }}"
 
       - name: Run tests
         run: |
