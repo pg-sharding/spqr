@@ -3,11 +3,13 @@ package tasks
 import (
 	"fmt"
 
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 )
 
 type MoveTask struct {
+	ID       string
 	Bound    [][]byte
 	KrIdTemp string
 	State    TaskState
@@ -37,11 +39,12 @@ const (
 )
 
 type MoveTaskGroup struct {
-	ShardToId string
-	KrIdFrom  string
-	KrIdTo    string
-	Tasks     []*MoveTask
-	Type      SplitType
+	ShardToId        string
+	KrIdFrom         string
+	KrIdTo           string
+	Tasks            []*MoveTask
+	Type             SplitType
+	CurrentTaskIndex int
 }
 
 type RedistributeTaskState int
@@ -99,6 +102,7 @@ func TaskToProto(task *MoveTask) *protos.MoveTask {
 		return nil
 	}
 	return &protos.MoveTask{
+		ID:             task.ID,
 		KeyRangeIdTemp: task.KrIdTemp,
 		Bound:          task.Bound,
 		Status:         TaskStateToProto(task.State),
@@ -231,6 +235,7 @@ func TaskFromProto(task *protos.MoveTask) *MoveTask {
 		return nil
 	}
 	return &MoveTask{
+		ID:       task.ID,
 		KrIdTemp: task.KeyRangeIdTemp,
 		Bound:    task.Bound,
 		State:    TaskStateFromProto(task.Status),
@@ -317,10 +322,10 @@ func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
 		return nil
 	}
 	return &qdb.MoveTaskGroup{
-		Tasks: func() []*qdb.MoveTask {
-			res := make([]*qdb.MoveTask, len(group.Tasks))
+		TaskIDs: func() []string {
+			res := make([]string, len(group.Tasks))
 			for i, task := range group.Tasks {
-				res[i] = TaskToDb(task)
+				res[i] = task.ID
 			}
 			return res
 		}(),
@@ -331,7 +336,7 @@ func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
 	}
 }
 
-// TaskToDb converts a MoveTask struct to a qdb.MoveTask struct.
+// MoveTaskToDb converts a MoveTask struct to a qdb.MoveTask struct.
 // It takes a pointer to a MoveTask struct as input and returns a pointer to a qdb.MoveTask struct.
 // The function creates a new qdb.MoveTask object and copies the values from the input MoveTask object to the output qdb.MoveTask object.
 //
@@ -340,11 +345,12 @@ func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
 //
 // Returns:
 //   - *qdb.MoveTask: The converted qdb.MoveTask object.
-func TaskToDb(task *MoveTask) *qdb.MoveTask {
+func MoveTaskToDb(task *MoveTask) *qdb.MoveTask {
 	if task == nil {
 		return nil
 	}
 	return &qdb.MoveTask{
+		ID:       task.ID,
 		KrIdTemp: task.KrIdTemp,
 		Bound:    task.Bound,
 		State:    int(task.State),
@@ -362,23 +368,26 @@ func TaskToDb(task *MoveTask) *qdb.MoveTask {
 //
 // Returns:
 //   - *MoveTaskGroup: The converted MoveTaskGroup object.
-func TaskGroupFromDb(group *qdb.MoveTaskGroup) *MoveTaskGroup {
+func TaskGroupFromDb(group *qdb.MoveTaskGroup, tasks map[string]*qdb.MoveTask) (*MoveTaskGroup, error) {
 	if group == nil {
-		return nil
+		return nil, nil
 	}
+	res := make([]*MoveTask, len(group.TaskIDs))
+	for i, id := range group.TaskIDs[group.CurrentTaskInd:] {
+		task, ok := tasks[id]
+		if !ok {
+			return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "task with ID \"%s\" not found", id)
+		}
+		res[i] = TaskFromDb(task)
+	}
+
 	return &MoveTaskGroup{
-		Tasks: func() []*MoveTask {
-			res := make([]*MoveTask, len(group.Tasks))
-			for i, task := range group.Tasks {
-				res[i] = TaskFromDb(task)
-			}
-			return res
-		}(),
+		Tasks:     res,
 		Type:      SplitType(group.Type),
 		ShardToId: group.ShardToId,
 		KrIdFrom:  group.KrIdFrom,
 		KrIdTo:    group.KrIdTo,
-	}
+	}, nil
 }
 
 // TaskFromDb converts a qdb.MoveTask object to a MoveTask object.
@@ -392,6 +401,7 @@ func TaskGroupFromDb(group *qdb.MoveTaskGroup) *MoveTaskGroup {
 //   - *MoveTask: The converted MoveTask object.
 func TaskFromDb(task *qdb.MoveTask) *MoveTask {
 	return &MoveTask{
+		ID:       task.ID,
 		KrIdTemp: task.KrIdTemp,
 		Bound:    task.Bound,
 		State:    TaskState(task.State),

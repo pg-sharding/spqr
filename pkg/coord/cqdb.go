@@ -1283,7 +1283,7 @@ ORDER BY (%s) %s;
 				binary.PutVarint(bound[i], number)
 			}
 		}
-		taskList = append(taskList, &tasks.MoveTask{KrIdTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound})
+		taskList = append(taskList, &tasks.MoveTask{ID: uuid.NewString(), KrIdTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound})
 	}
 	taskList[0].KrIdTemp = req.DestKrId
 
@@ -1292,6 +1292,7 @@ ORDER BY (%s) %s;
 	if len(taskList) <= 1 && moveWhole {
 		taskList = []*tasks.MoveTask{
 			{
+				ID:       uuid.NewString(),
 				KrIdTemp: req.DestKrId,
 				State:    tasks.TaskPlanned,
 				Bound:    nil,
@@ -1299,7 +1300,7 @@ ORDER BY (%s) %s;
 		}
 	} else if moveWhole {
 		// Avoid splitting key range by its own bound when moving the whole range
-		taskList[len(taskList)-1] = &tasks.MoveTask{KrIdTemp: req.KrId, Bound: nil, State: tasks.TaskSplit}
+		taskList[len(taskList)-1] = &tasks.MoveTask{ID: uuid.NewString(), KrIdTemp: req.KrId, Bound: nil, State: tasks.TaskSplit}
 	}
 
 	return &tasks.MoveTaskGroup{
@@ -1356,8 +1357,8 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 	if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
 		return err
 	}
-	for len(taskGroup.Tasks) != 0 {
-		task := taskGroup.Tasks[0]
+	for taskGroup.CurrentTaskIndex < len(taskGroup.Tasks) {
+		task := taskGroup.Tasks[taskGroup.CurrentTaskIndex]
 		switch task.State {
 		case tasks.TaskPlanned:
 			if task.Bound == nil && taskGroup.KrIdTo == task.KrIdTemp {
@@ -1365,7 +1366,7 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 					return err
 				}
 				task.State = tasks.TaskSplit
-				if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
+				if err := qc.UpdateMoveTask(ctx, task); err != nil {
 					return err
 				}
 				break
@@ -1387,7 +1388,7 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 				return err
 			}
 			task.State = tasks.TaskSplit
-			if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
+			if err := qc.UpdateMoveTask(ctx, task); err != nil {
 				return err
 			}
 		case tasks.TaskSplit:
@@ -1395,7 +1396,7 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 				return err
 			}
 			task.State = tasks.TaskMoved
-			if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
+			if err := qc.UpdateMoveTask(ctx, task); err != nil {
 				return err
 			}
 		case tasks.TaskMoved:
@@ -1404,8 +1405,11 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 					return err
 				}
 			}
-			taskGroup.Tasks = taskGroup.Tasks[1:]
-			if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
+			taskGroup.CurrentTaskIndex++
+			if err := qc.qdb.UpdateMoveTaskGroupSetCurrentTask(ctx, taskGroup.CurrentTaskIndex); err != nil {
+				return err
+			}
+			if err := qc.qdb.RemoveMoveTask(ctx, task.ID); err != nil {
 				return err
 			}
 		}

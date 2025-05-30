@@ -28,6 +28,7 @@ type MemQDB struct {
 	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
 	Coordinator          string                              `json:"coordinator"`
 	MoveTaskGroup        *MoveTaskGroup                      `json:"taskGroup"`
+	MoveTasks            map[string]*MoveTask                `json:"moveTasks"`
 	RedistributeTask     *RedistributeTask                   `json:"redistributeTask"`
 	BalancerTask         *BalancerTask                       `json:"balancerTask"`
 	Sequences            map[string]bool                     `json:"sequences"`
@@ -790,7 +791,7 @@ func (q *MemQDB) GetMoveTaskGroup(_ context.Context) (*MoveTaskGroup, error) {
 
 	if q.MoveTaskGroup == nil {
 		return &MoveTaskGroup{
-			Tasks: []*MoveTask{},
+			TaskIDs: []string{},
 		}, nil
 	}
 	return q.MoveTaskGroup, nil
@@ -813,6 +814,80 @@ func (q *MemQDB) RemoveMoveTaskGroup(_ context.Context) error {
 	defer q.mu.Unlock()
 
 	q.MoveTaskGroup = nil
+	return nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) UpdateMoveTaskGroupSetCurrentTask(ctx context.Context, taskIndex int) error {
+	spqrlog.Zero.Debug().Msg("memqdb: update move task group: set current task index")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.MoveTaskGroup.CurrentTaskInd = taskIndex
+	return nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) GetCurrentMoveTaskIndex(ctx context.Context) (int, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get current move task index")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.MoveTaskGroup.CurrentTaskInd, nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error) {
+	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: get move task")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	task, ok := q.MoveTasks[id]
+	if !ok {
+		return nil, fmt.Errorf("move task \"%s\" not found in QDB", id)
+	}
+	return task, nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) CreateMoveTask(ctx context.Context, task *MoveTask) error {
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: create move task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if _, ok := q.MoveTasks[task.ID]; ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "move task \"%s\" already exists", task.ID)
+	}
+
+	q.MoveTasks[task.ID] = task
+	return nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: update move task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if _, ok := q.MoveTasks[task.ID]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "move task \"%s\" not found", task.ID)
+	}
+
+	q.MoveTasks[task.ID] = task
+	return nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) RemoveMoveTask(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: remove move task")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	_, ok := q.MoveTasks[id]
+	if !ok {
+		return fmt.Errorf("move task \"%s\" not found in QDB", id)
+	}
+	delete(q.MoveTasks, id)
 	return nil
 }
 
