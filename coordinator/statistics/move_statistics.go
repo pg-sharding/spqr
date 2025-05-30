@@ -7,34 +7,36 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
+const (
+	MoveStatsTotalTime    = "total"
+	MoveStatsRouterTime   = "router"
+	MoveStatsShardTime    = "shard"
+	MoveStatsQDBPrefix    = "qdb"
+	MoveStatsQDBTotalTime = "qdb.Total"
+)
+
 type statisticsInt struct {
-	QDBTime              time.Duration
-	RouterTime           time.Duration
-	ShardTime            time.Duration
-	QDBTimeTotal         time.Duration
-	RouterTimeTotal      time.Duration
-	ShardTimeTotal       time.Duration
-	MoveTimeTotal        time.Duration
+	CurrentExecTimes     map[string]time.Duration
+	TotalTimes           map[string]*MoveStatisticsElem
 	CurrentMoveStartTime time.Time
 	TotalMoves           int
 	MoveInProgress       bool
 }
 
-var moveStatistics = statisticsInt{}
+var moveStatistics = statisticsInt{
+	CurrentExecTimes: make(map[string]time.Duration),
+	TotalTimes:       make(map[string]*MoveStatisticsElem),
+}
 
-type MoveStatistics struct {
-	TotalTime  time.Duration
-	RouterTime time.Duration
-	ShardTime  time.Duration
-	QDBTime    time.Duration
+type MoveStatisticsElem struct {
+	TotalDuration time.Duration
+	SampleCount   int
 }
 
 func RecordMoveStart(t time.Time) error {
 	spqrlog.Zero.Debug().Msg("move stats: record move start")
 	moveStatistics.MoveInProgress = true
-	moveStatistics.QDBTime = 0
-	moveStatistics.ShardTime = 0
-	moveStatistics.RouterTime = 0
+	moveStatistics.CurrentExecTimes = make(map[string]time.Duration)
 	moveStatistics.CurrentMoveStartTime = t
 	return nil
 }
@@ -45,43 +47,46 @@ func RecordMoveFinish(t time.Time) error {
 		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "unable to record move finish: there's no move in progress")
 	}
 	moveStatistics.MoveInProgress = false
-	moveStatistics.QDBTimeTotal += moveStatistics.QDBTime
-	moveStatistics.RouterTimeTotal += moveStatistics.RouterTime
-	moveStatistics.ShardTimeTotal += moveStatistics.ShardTime
-	moveStatistics.MoveTimeTotal += t.Sub(moveStatistics.CurrentMoveStartTime)
+	for stat, duration := range moveStatistics.CurrentExecTimes {
+		if _, ok := moveStatistics.TotalTimes[stat]; !ok {
+			moveStatistics.TotalTimes[stat] = &MoveStatisticsElem{}
+		}
+		moveStatistics.TotalTimes[stat].SampleCount++
+		moveStatistics.TotalTimes[stat].TotalDuration += duration
+	}
+	if _, ok := moveStatistics.TotalTimes[MoveStatsTotalTime]; !ok {
+		moveStatistics.TotalTimes[MoveStatsTotalTime] = &MoveStatisticsElem{}
+	}
+	moveStatistics.TotalTimes[MoveStatsTotalTime].SampleCount++
+	moveStatistics.TotalTimes[MoveStatsTotalTime].TotalDuration += t.Sub(moveStatistics.CurrentMoveStartTime)
 	moveStatistics.TotalMoves++
-	moveStatistics.QDBTime = 0
-	moveStatistics.ShardTime = 0
-	moveStatistics.RouterTime = 0
+	moveStatistics.CurrentExecTimes = make(map[string]time.Duration)
 	return nil
 }
 
-func RecordQDBOperation(duration time.Duration) {
+func RecordQDBOperation(stat string, duration time.Duration) {
 	if moveStatistics.MoveInProgress {
-		moveStatistics.QDBTime += duration
+		moveStatistics.CurrentExecTimes[MoveStatsQDBPrefix+"."+stat] += duration
+		moveStatistics.CurrentExecTimes[MoveStatsQDBTotalTime] += duration
 	}
 }
 
 func RecordRouterOperation(duration time.Duration) {
 	if moveStatistics.MoveInProgress {
-		moveStatistics.RouterTime += duration
+		moveStatistics.CurrentExecTimes[MoveStatsRouterTime] += duration
 	}
 }
 
 func RecordShardOperation(duration time.Duration) {
 	if moveStatistics.MoveInProgress {
-		moveStatistics.ShardTime += duration
+		moveStatistics.CurrentExecTimes[MoveStatsShardTime] += duration
 	}
 }
 
-func GetMoveStats() *MoveStatistics {
-	if moveStatistics.TotalMoves == 0 {
-		return &MoveStatistics{}
+func GetMoveStats() map[string]time.Duration {
+	res := make(map[string]time.Duration)
+	for k, v := range moveStatistics.TotalTimes {
+		res[k] = v.TotalDuration / time.Duration(v.SampleCount)
 	}
-	return &MoveStatistics{
-		ShardTime:  moveStatistics.ShardTimeTotal / time.Duration(moveStatistics.TotalMoves),
-		QDBTime:    moveStatistics.QDBTimeTotal / time.Duration(moveStatistics.TotalMoves),
-		RouterTime: moveStatistics.RouterTimeTotal / time.Duration(moveStatistics.TotalMoves),
-		TotalTime:  moveStatistics.MoveTimeTotal / time.Duration(moveStatistics.TotalMoves),
-	}
+	return res
 }

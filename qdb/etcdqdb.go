@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pg-sharding/spqr/coordinator/statistics"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -128,6 +129,8 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: add key range")
 
+	t := time.Now()
+
 	rawKeyRange, err := json.Marshal(keyRange)
 
 	if err != nil {
@@ -143,6 +146,7 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 		Interface("response", resp).
 		Msg("etcdqdb: put key range to qdb")
 
+	statistics.RecordQDBOperation("CreateKeyRange", time.Since(t))
 	return err
 }
 
@@ -176,11 +180,14 @@ func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 		Str("id", id).
 		Msg("etcdqdb: get key range")
 
+	t := time.Now()
+
 	ret, err := q.fetchKeyRange(ctx, keyRangeNodePath(id))
 
 	spqrlog.Zero.Debug().
 		Interface("ret", ret).
 		Msg("etcdqdb: get key range")
+	statistics.RecordQDBOperation("GetKeyRange", time.Since(t))
 	return ret, err
 }
 
@@ -189,6 +196,8 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 	spqrlog.Zero.Debug().
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: update key range")
+
+	t := time.Now()
 
 	rawKeyRange, err := json.Marshal(keyRange)
 	if err != nil {
@@ -203,6 +212,7 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: put key range to qdb")
+	statistics.RecordQDBOperation("UpdateKeyRange", time.Since(t))
 	return err
 }
 
@@ -228,12 +238,15 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) error {
 		Str("id", id).
 		Msg("etcdqdb: drop key range")
 
+	t := time.Now()
+
 	resp, err := q.cli.Delete(ctx, keyRangeNodePath(id))
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: drop key range")
 
+	statistics.RecordQDBOperation("DropKeyRange", time.Since(t))
 	return err
 }
 
@@ -242,6 +255,8 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, distribution string) ([]*Ke
 	spqrlog.Zero.Debug().
 		Str("distribution", distribution).
 		Msg("etcdqdb: list key ranges")
+
+	t := time.Now()
 
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
 	if err != nil {
@@ -270,12 +285,15 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, distribution string) ([]*Ke
 		Str("distribution", distribution).
 		Msg("etcdqdb: list key ranges")
 
+	statistics.RecordQDBOperation("ListKeyRanges", time.Since(t))
 	return keyRanges, nil
 }
 
 // TODO : unit tests
 func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all key ranges")
+
+	t := time.Now()
 
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
 	if err != nil {
@@ -301,6 +319,7 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 		Interface("response", resp).
 		Msg("etcdqdb: list all key ranges")
 
+	statistics.RecordQDBOperation("ListAllKeyRanges", time.Since(t))
 	return ret, nil
 }
 
@@ -309,6 +328,8 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: lock key range")
+
+	t := time.Now()
 
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -363,9 +384,12 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 				continue
 			}
 
+			statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
+
 			return val, nil
 
 		case <-fetchCtx.Done():
+			statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
 			return nil, lastErr
 		}
 	}
@@ -377,6 +401,7 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 		Str("id", id).
 		Msg("etcdqdb: unlock key range")
 
+	t := time.Now()
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -415,6 +440,7 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 		select {
 		case <-time.After(time.Second):
 			if err := unlocker(ctx, sess, id); err != nil {
+				statistics.RecordQDBOperation("UnlockKeyRange", time.Since(t))
 				return nil
 			}
 		case <-fetchCtx.Done():
@@ -429,6 +455,8 @@ func (q *EtcdQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange
 		Str("id", id).
 		Msg("etcdqdb: check locked key range")
 
+	t := time.Now()
+
 	resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(id)))
 	if err != nil {
 		return nil, err
@@ -436,8 +464,10 @@ func (q *EtcdQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange
 
 	switch len(resp.Kvs) {
 	case 0:
+		statistics.RecordQDBOperation("CheckLockedKeyRange", time.Since(t))
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", id)
 	case 1:
+		statistics.RecordQDBOperation("CheckLockedKeyRange", time.Since(t))
 		return q.GetKeyRange(ctx, id)
 	default:
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "too much key ranges matched: %d", len(resp.Kvs))
@@ -459,6 +489,7 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 		Str("new id", krIdNew).
 		Msg("etcdqdb: rename key range")
 
+	t := time.Now()
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -477,7 +508,9 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 		return err
 	}
 
-	return q.CreateKeyRange(ctx, kr)
+	err = q.CreateKeyRange(ctx, kr)
+	statistics.RecordQDBOperation("CheckLockedKeyRange", time.Since(t))
+	return err
 }
 
 // ==============================================================================
@@ -490,6 +523,7 @@ func (q *EtcdQDB) RecordTransferTx(ctx context.Context, key string, info *DataTr
 		Str("key", key).
 		Msg("etcdqdb: record data transfer tx")
 
+	t := time.Now()
 	bts, err := json.Marshal(info)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to marshal transaction")
@@ -502,6 +536,7 @@ func (q *EtcdQDB) RecordTransferTx(ctx context.Context, key string, info *DataTr
 		return err
 	}
 
+	statistics.RecordQDBOperation("RecordTransferTx", time.Since(t))
 	return nil
 }
 
@@ -511,6 +546,7 @@ func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferT
 		Str("key", key).
 		Msg("etcdqdb: get data transfer tx")
 
+	t := time.Now()
 	resp, err := q.cli.Get(ctx, transferTxNodePath(key))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to get transaction")
@@ -526,6 +562,7 @@ func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferT
 		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal transaction")
 		return nil, err
 	}
+	statistics.RecordQDBOperation("GetTransferTx", time.Since(t))
 	return &st, nil
 }
 
@@ -535,11 +572,13 @@ func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 		Str("key", key).
 		Msg("etcdqdb: remove data transfer tx")
 
+	t := time.Now()
 	_, err := q.cli.Delete(ctx, transferTxNodePath(key))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to delete transaction")
 		return err
 	}
+	statistics.RecordQDBOperation("RemoveTransferTx", time.Since(t))
 	return nil
 }
 
@@ -804,6 +843,7 @@ func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
 // TODO : unit tests
 func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list routers")
+	t := time.Now()
 	resp, err := q.cli.Get(ctx, routersNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
@@ -830,6 +870,7 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 		Interface("response", resp).
 		Msg("etcdqdb: list routers")
 
+	statistics.RecordQDBOperation("ListRouters", time.Since(t))
 	return ret, nil
 }
 
@@ -843,6 +884,7 @@ func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 		Str("id", shard.ID).
 		Strs("hosts", shard.RawHosts).
 		Msg("etcdqdb: add shard")
+	t := time.Now()
 
 	bytes, err := json.Marshal(shard)
 	if err != nil {
@@ -857,12 +899,14 @@ func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 		Interface("response", resp).
 		Msg("etcdqdb: add shard")
 
+	statistics.RecordQDBOperation("AddShard", time.Since(t))
 	return nil
 }
 
 // TODO : unit tests
 func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list shards")
+	t := time.Now()
 
 	resp, err := q.cli.Get(ctx, shardsNamespace, clientv3.WithPrefix())
 	if err != nil {
@@ -882,6 +926,7 @@ func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 		return shards[i].ID < shards[j].ID
 	})
 
+	statistics.RecordQDBOperation("ListShards", time.Since(t))
 	return shards, nil
 }
 
@@ -890,6 +935,7 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: get shard")
+	t := time.Now()
 
 	nodePath := shardNodePath(id)
 	resp, err := q.cli.Get(ctx, nodePath)
@@ -910,6 +956,7 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 		shardInfo.RawHosts = append(shardInfo.RawHosts, string(shard.Value))
 	}
 
+	statistics.RecordQDBOperation("GetShard", time.Since(t))
 	return shardInfo, nil
 }
 
@@ -918,9 +965,11 @@ func (q *EtcdQDB) DropShard(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: drop shard")
+	t := time.Now()
 
 	nodePath := shardNodePath(id)
 	_, err := q.cli.Delete(ctx, nodePath)
+	statistics.RecordQDBOperation("DropShard", time.Since(t))
 	return err
 }
 
@@ -1172,6 +1221,8 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: get task group")
 
+	t := time.Now()
+
 	resp, err := q.cli.Get(ctx, taskGroupPath)
 	if err != nil {
 		return nil, err
@@ -1188,6 +1239,7 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 		return nil, err
 	}
 
+	statistics.RecordQDBOperation("GetMoveTaskGroup", time.Since(t))
 	return taskGroup, nil
 }
 
@@ -1196,12 +1248,15 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup) 
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: write task group")
 
+	t := time.Now()
+
 	groupJson, err := json.Marshal(group)
 	if err != nil {
 		return err
 	}
 
 	_, err = q.cli.Put(ctx, taskGroupPath, string(groupJson))
+	statistics.RecordQDBOperation("WriteMoveTaskGroup", time.Since(t))
 	return err
 }
 
@@ -1210,7 +1265,10 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: remove task group")
 
+	t := time.Now()
+
 	_, err := q.cli.Delete(ctx, taskGroupPath)
+	statistics.RecordQDBOperation("RemoveMoveTaskGroup", time.Since(t))
 	return err
 }
 
@@ -1311,6 +1369,7 @@ func (q *EtcdQDB) RemoveBalancerTask(ctx context.Context) error {
 // TODO : unit tests
 func (q *EtcdQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list move key range operations")
+	t := time.Now()
 
 	resp, err := q.cli.Get(ctx, keyRangeMovesNamespace, clientv3.WithPrefix())
 	if err != nil {
@@ -1334,6 +1393,7 @@ func (q *EtcdQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: list move key range operations")
+	statistics.RecordQDBOperation("ListKeyRangeMoves", time.Since(t))
 	return moves, nil
 }
 
@@ -1342,6 +1402,7 @@ func (q *EtcdQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error
 	spqrlog.Zero.Debug().
 		Str("id", m.MoveId).
 		Msg("etcdqdb: add move key range operation")
+	t := time.Now()
 
 	rawMoveKeyRange, err := json.Marshal(m)
 
@@ -1357,6 +1418,7 @@ func (q *EtcdQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error
 		Interface("response", resp).
 		Msg("etcdqdb: add move key range operation")
 
+	statistics.RecordQDBOperation("RecordKeyRangeMove", time.Since(t))
 	return nil
 }
 
@@ -1365,6 +1427,7 @@ func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s
 	spqrlog.Zero.Debug().
 		Str("id", moveId).
 		Msg("etcdqdb: update key range move status")
+	t := time.Now()
 
 	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId))
 	if err != nil {
@@ -1389,6 +1452,7 @@ func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s
 		Interface("response", respModify).
 		Msg("etcdqdb: update status of move key range operation")
 
+	statistics.RecordQDBOperation("RecordKeyRangeMove", time.Since(t))
 	return nil
 }
 
@@ -1396,6 +1460,7 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 	spqrlog.Zero.Debug().
 		Str("id", moveId).
 		Msg("etcdqdb: delete key range move")
+	t := time.Now()
 
 	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId))
 	if err != nil {
@@ -1410,6 +1475,7 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 	}
 	_, err = q.cli.Delete(ctx, keyRangeMovesNodePath(moveId))
 
+	statistics.RecordQDBOperation("DeleteKeyRangeMove", time.Since(t))
 	return err
 }
 

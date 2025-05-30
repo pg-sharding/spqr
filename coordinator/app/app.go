@@ -83,13 +83,13 @@ func (app *App) Run(withPsql bool) error {
 				spqrlog.Zero.Error().Err(err).Msg("")
 			}
 		}(wg)
+		wg.Add(1)
+		go func(wg *sync.WaitGroup) {
+			if err := app.ServeUnixSocket(wg); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+			}
+		}(wg)
 	}
-	wg.Add(1)
-	go func(wg *sync.WaitGroup) {
-		if err := app.ServeUnixSocket(wg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-		}
-	}(wg)
 
 	wg.Wait()
 

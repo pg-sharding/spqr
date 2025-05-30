@@ -3,10 +3,8 @@ package coord
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/pg-sharding/spqr/coordinator/statistics"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -47,7 +45,6 @@ func (lc *Coordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGro
 // GetDistribution retrieves info about distribution from QDB
 // TODO: unit tests
 func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
-	t := time.Now()
 	ret, err := lc.qdb.GetDistribution(ctx, id)
 	if err != nil {
 		return nil, err
@@ -60,7 +57,6 @@ func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distrib
 		}
 		ds.Relations[relName].ColumnSequenceMapping = mapping
 	}
-	statistics.RecordQDBOperation(time.Since(t))
 	return ds, nil
 }
 
@@ -113,7 +109,6 @@ func (lc *Coordinator) ListShards(ctx context.Context) ([]*topology.DataShard, e
 // - *kr.KeyRange: the KeyRange object retrieved.
 // - error: an error if the retrieval encounters any issues.
 func (qc *Coordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
-	t := time.Now()
 	krDb, err := qc.qdb.GetKeyRange(ctx, krId)
 	if err != nil {
 		return nil, err
@@ -122,7 +117,6 @@ func (qc *Coordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRan
 	if err != nil {
 		return nil, err
 	}
-	statistics.RecordQDBOperation(time.Since(t))
 	return kr.KeyRangeFromDB(krDb, ds.ColTypes), nil
 }
 
@@ -138,7 +132,6 @@ func (qc *Coordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRan
 // - []*kr.KeyRange: a slice of KeyRange objects retrieved.
 // - error: an error if the retrieval encounters any issues.
 func (qc *Coordinator) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
-	t := time.Now()
 	keyRanges, err := qc.qdb.ListKeyRanges(ctx, distribution)
 	if err != nil {
 		return nil, err
@@ -152,7 +145,6 @@ func (qc *Coordinator) ListKeyRanges(ctx context.Context, distribution string) (
 		}
 		keyr = append(keyr, kr.KeyRangeFromDB(keyRange, ds.ColTypes))
 	}
-	statistics.RecordQDBOperation(time.Since(t))
 
 	return keyr, nil
 }
@@ -166,10 +158,7 @@ func (qc *Coordinator) ListKeyRanges(ctx context.Context, distribution string) (
 // Returns:
 // - error: an error if the write operation fails.
 func (qc *Coordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
-	t := time.Now()
-	err := qc.qdb.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
-	statistics.RecordQDBOperation(time.Since(t))
-	return err
+	return qc.qdb.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
 }
 
 // RemoveMoveTaskGroup removes the task group from the local coordinator's QDB.
@@ -180,10 +169,7 @@ func (qc *Coordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.
 // Returns:
 // - error: an error if the removal operation fails.
 func (qc *Coordinator) RemoveMoveTaskGroup(ctx context.Context) error {
-	t := time.Now()
-	err := qc.qdb.RemoveMoveTaskGroup(ctx)
-	statistics.RecordQDBOperation(time.Since(t))
-	return err
+	return qc.qdb.RemoveMoveTaskGroup(ctx)
 }
 
 // TODO : unit tests
@@ -281,7 +267,6 @@ func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) erro
 // - *kr.KeyRange: the locked KeyRange object.
 // - error: an error if the lock operation encounters any issues.
 func (qc *Coordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
-	t := time.Now()
 	keyRangeDB, err := qc.qdb.LockKeyRange(ctx, keyRangeID)
 	if err != nil {
 		return nil, err
@@ -291,7 +276,6 @@ func (qc *Coordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr
 		_ = qc.qdb.UnlockKeyRange(ctx, keyRangeID)
 		return nil, err
 	}
-	statistics.RecordQDBOperation(time.Since(t))
 
 	return kr.KeyRangeFromDB(keyRangeDB, ds.ColTypes), nil
 }
@@ -307,10 +291,7 @@ func (qc *Coordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr
 // Returns:
 // - error: an error if the unlock operation encounters any issues.
 func (qc *Coordinator) UnlockKeyRange(ctx context.Context, keyRangeID string) error {
-	t := time.Now()
-	err := qc.qdb.UnlockKeyRange(ctx, keyRangeID)
-	statistics.RecordQDBOperation(time.Since(t))
-	return err
+	return qc.qdb.UnlockKeyRange(ctx, keyRangeID)
 }
 
 // TODO : unit tests
@@ -367,22 +348,17 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 // Returns:
 // - error: an error if the unite operation encounters any issues.
 func (qc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
-	t := time.Now()
 	krBaseDb, err := qc.qdb.LockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId)
 	if err != nil {
 		return err
 	}
-	statistics.RecordQDBOperation(time.Since(t))
 
 	defer func() {
-		t := time.Now()
 		if err := qc.qdb.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
-		statistics.RecordQDBOperation(time.Since(t))
 	}()
 
-	t = time.Now()
 	ds, err := qc.qdb.GetDistribution(ctx, krBaseDb.DistributionId)
 	if err != nil {
 		return err
@@ -392,7 +368,6 @@ func (qc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 	if err != nil {
 		return err
 	}
-	statistics.RecordQDBOperation(time.Since(t))
 
 	krBase := kr.KeyRangeFromDB(krBaseDb, ds.ColTypes)
 	krAppendage := kr.KeyRangeFromDB(krAppendageDb, ds.ColTypes)
@@ -422,7 +397,6 @@ func (qc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		}
 	}
 
-	t = time.Now()
 	if err := qc.qdb.DropKeyRange(ctx, krAppendage.ID); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s", err.Error())
 	}
@@ -434,7 +408,6 @@ func (qc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.qdb, krBase); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err.Error())
 	}
-	statistics.RecordQDBOperation(time.Since(t))
 	return nil
 }
 
@@ -456,7 +429,6 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		Str("source-id", req.SourceID).
 		Msg("split request is")
 
-	t := time.Now()
 	if _, err := qc.qdb.GetKeyRange(ctx, req.Krid); err == nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.Krid)
 	}
@@ -475,7 +447,6 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	}
 
 	ds, err := qc.qdb.GetDistribution(ctx, krOldDB.DistributionId)
-	statistics.RecordQDBOperation(time.Since(t))
 
 	if err != nil {
 		return err
@@ -514,7 +485,6 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		ds.ColTypes,
 	)
 
-	t = time.Now()
 	if err := ops.CreateKeyRangeWithChecks(ctx, qc.qdb, krTemp); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
 	}
@@ -537,7 +507,6 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return err
 	}
 
-	statistics.RecordQDBOperation(time.Since(t))
 	return nil
 }
 
