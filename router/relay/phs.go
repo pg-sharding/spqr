@@ -33,6 +33,10 @@ type QueryStateExecutorImpl struct {
 	savedBegin *pgproto3.Query
 }
 
+var (
+	errUnAttached = fmt.Errorf("client is not currently attached to server")
+)
+
 func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *pgproto3.Query, expTx txstatus.TXStatus) error {
 	if serv == nil {
 		return fmt.Errorf("failed to deploy tx status for unrouted client")
@@ -60,6 +64,9 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *p
 
 // Deploy implements QueryStateExecutor.
 func (s *QueryStateExecutorImpl) Deploy(server server.Server) error {
+	if server == nil {
+		return errUnAttached
+	}
 	if s.txStatus == txstatus.TXIDLE {
 		/* unexpected? */
 		return nil
@@ -93,10 +100,14 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 }
 
 func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error {
-	// explicitly set silent query message, as it can differ from query begin in xproto
+	if rst.PoolMgr().ConnectionActive(rst) {
+		return rst.QueryExecutor().DeployTx(rst.Client().Server(), query)
+	}
 
 	s.SetTxStatus(txstatus.TXACT)
 	s.cl.StartTx()
+
+	// explicitly set silent query message, as it can differ from query begin in xproto
 	s.savedBegin = &pgproto3.Query{String: query}
 
 	spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Msg("start new transaction")
