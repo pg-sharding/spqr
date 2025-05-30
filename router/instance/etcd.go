@@ -66,9 +66,14 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 		if err != nil {
 			if retryCnt > 0 {
 				/* await the router to appear */
-				time.Sleep(time.Second)
-				retryCnt--
-				continue
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-time.After(time.Second):
+
+					retryCnt--
+					continue
+				}
 			}
 			return err
 		}
