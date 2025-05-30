@@ -12,12 +12,6 @@ SHOW __spqr__auto_distribution;
  
 (1 row)
 
-SHOW __spqr__distribution_key;
- __spqr__distribution_key 
---------------------------
- 
-(1 row)
-
 SHOW __spqr__sharding_key;
  sharding key 
 --------------

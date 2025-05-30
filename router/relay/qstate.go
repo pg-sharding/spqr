@@ -162,7 +162,7 @@ func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error
 					rst.Client().SetEnhancedMultiShardProcessing(true, false)
 				}
 			case session.SPQR_AUTO_DISTRIBUTION:
-				if valDistrib, ok := mp[session.SPQR_DISTRIBUTION_KEY]; ok {
+				if valDistrib, ok := mp[session.SPQR_SHARDING_KEY]; ok {
 					_, err = rst.QueryRouter().Mgr().GetDistribution(context.TODO(), val)
 					if err != nil {
 						return err
@@ -170,7 +170,7 @@ func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error
 
 					/* This is an ddl query, which creates relation along with attaching to distribution */
 					rst.Client().SetAutoDistribution(true, val)
-					rst.Client().SetDistributionKey(true, valDistrib)
+					rst.Client().SetShardingKey(true, valDistrib)
 
 					/* this is too early to do anything with distribution hint, as we do not yet parsed
 					* DDL of about-to-be-created relation

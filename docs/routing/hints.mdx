@@ -20,10 +20,10 @@ For every query, you may specify special hints in different ways:
     RESET __spqr__default_route_behaviour;
     ```
 
-### `target-session-attrs`
+### __spqr__target_session_attrs
 
 The `target-session-attrs` parameter in PostgreSQL is used to specify the desired session state when connecting to a database. It is particularly useful in scenarios with multiple servers and failover configurations, where you want to ensure your session connects to the server with the desired role or state.
-`target_session_attrs` and `__spqr__target_session_attrs` are both aliases for `target-session-attrs`
+`__spqr__target_session_attrs`, `target_session_attrs` and `__spqr__target_session_attrs` are aliases for `target-session-attrs`
 
 Possible values for `target-session-attrs`:
 
@@ -46,7 +46,7 @@ SELECT pg_is_in_recovery() /* target-session-attrs: read-only */;
 (1 row)
 ```
 
-### `default_route_behaviour`
+### __spqr__default_route_behaviour
 
 Whether to explicitly block multishard queries. Overload for [query_routing.default_route_behaviour](/configuration/router#feature-flags).
 
@@ -58,7 +58,7 @@ DROP DATABASE prod /* __spqr__default_route_behaviour: allow */;
 NOTICE: send query to shard(s) : shard1,shard2,shard3,shard4
 ```
 
-### `__spqr__execute_on`
+### __spqr__execute_on
 
 The __spqr__execute_on parameter is used to specify the shard on which a query should be executed.
 
@@ -66,7 +66,7 @@ The __spqr__execute_on parameter is used to specify the shard on which a query s
 SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: shard2 */;
 ```
 
-### `__spqr__reply_notice`
+### __spqr__reply_notice
 
 Whether to show notice messages. Overload for [query_routing.default_route_behaviour](/configuration/router#debug-settings). 
 
@@ -76,7 +76,7 @@ INSERT INTO xxtest_sw (id) VALUES(1), (2), (3);
 NOTICE: send query to shard(s) : sh1
 ```
 
-### `__spqr__sharding_key`
+### __spqr__sharding_key
 
 The __spqr__sharding_key explicitly pass the sharding key to the SPQR Router.
 
@@ -84,10 +84,36 @@ The __spqr__sharding_key explicitly pass the sharding key to the SPQR Router.
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30*/;
 ```
 
-### `__spqr__distribution`
+### __spqr__distribution
 
 The __spqr__distribution explicitly specify which distribution the SPQR router should use for query routing.
 
 ```sql
-DELETE FROM users WHERE /* __spqr__sharding_key: 123, __spqr__distribution: ds1 */ name = 'denchick';
+DELETE FROM users WHERE name = 'denchick'
+/* __spqr__distribution: ds1,__spqr__sharding_key: 123 */;
 ```
+
+### __spqr__auto_distribution
+
+The __spqr__auto_distribution parameter is used to automatically determine what distribution to use when possible.
+```sql
+SELECT * FROM users WHERE name = 'denchick'
+/* __spqr__auto_distribution: true,__spqr__sharding_key: 123 */;
+```
+
+### __spqr__scatter_query
+
+The __spqr__scatter_query parameter is used to indicate that the query should be sent to all shards in the cluster.
+
+```sql
+SELECT * FROM users /* __spqr__scatter_query: true */;
+```
+
+### __spqr__commit_strategy
+
+The __spqr__commit_strategy parameter is used to specify the commit strategy for a distributed transaction. Possible values are `1pc` and `2pc`. `best-effort` is an alias for `1pc`.
+
+```sql
+SELECT * FROM users /* __spqr__commit_strategy: 1pc */ WHERE id = 123;
+```
+

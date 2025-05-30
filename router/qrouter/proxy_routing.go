@@ -1362,7 +1362,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 						Name: q.RelationName,
 						DistributionKey: []distributions.DistributionKeyEntry{
 							{
-								Column: rm.SPH.DistributionKey(),
+								Column: rm.SPH.ShardingKey(),
 								/* support hash function here */
 							},
 						},

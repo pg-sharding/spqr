@@ -195,16 +195,6 @@ func (cl *PsqlClient) AutoDistribution() string {
 	return cl.resolveVirtualStringParam(session.SPQR_AUTO_DISTRIBUTION)
 }
 
-// SetDistributionKey implements RouterClient.
-func (cl *PsqlClient) SetDistributionKey(local bool, val string) {
-	cl.recordVirtualParam(local, session.SPQR_DISTRIBUTION_KEY, val)
-}
-
-// DistributionKey implements RouterClient.
-func (cl *PsqlClient) DistributionKey() string {
-	return cl.resolveVirtualStringParam(session.SPQR_DISTRIBUTION_KEY)
-}
-
 // MaintainParams implements RouterClient.
 func (cl *PsqlClient) MaintainParams() bool {
 	return cl.maintain_params
