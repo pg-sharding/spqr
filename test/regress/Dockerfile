@@ -6,8 +6,10 @@ ARG POSTGRES_VERSION=13
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Israel
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN apt update && apt install -y ca-certificates
+RUN sed -i 's/archive.ubuntu.com/mirror.yandex.ru/g' /etc/apt/sources.list
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update -o Acquire::AllowInsecureRepositories=true && apt-get install -y --no-install-recommends --allow-unauthenticated \
 	curl lsb-release ca-certificates gnupg
 
 RUN install -d /usr/share/postgresql-common/pgdg && \
