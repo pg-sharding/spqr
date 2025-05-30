@@ -26,13 +26,13 @@ codename ?= jammy
 POSTGRES_VERSION ?= 15
 
 build_balancer:
-	go build -pgo=auto -o spqr-balancer ./cmd/balancer
+	go build -pgo=auto -o spqr-balancer $(LDFLAGS) $(GCFLAGS) ./cmd/balancer
 
 build_coorctl:
 	go build -pgo=auto -o coorctl ./cmd/coordctl
 
 build_coordinator: 
-	go build -pgo=auto -o spqr-coordinator ./cmd/coordinator
+	go build -pgo=auto -o spqr-coordinator  $(LDFLAGS) $(GCFLAGS) ./cmd/coordinator
 
 build_router: 
 	go build -pgo=auto -o spqr-router $(LDFLAGS) $(GCFLAGS) ./cmd/router
