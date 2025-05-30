@@ -53,6 +53,8 @@ var (
 	prettyLogging bool
 	gomaxprocs    int
 
+	withCoord bool
+
 	rootCmd = &cobra.Command{
 		Use:   "spqr-router run --config `path-to-config-folder`",
 		Short: "spqr-router",
@@ -70,6 +72,7 @@ func init() {
 	// Router and coordinator config paths
 	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yaml", "path to router config file")
 	rootCmd.PersistentFlags().StringVarP(&ccfgPath, "coordinator-config", "", "/etc/spqr/coordinator.yaml", "path to coordinator config file")
+	rootCmd.PersistentFlags().BoolVarP(&withCoord, "with-coordinator", "", false, "start spqr coordinator in separate goroutine")
 
 	// Overload for values from the config file
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "overload for `log_level` option in router config")
@@ -253,7 +256,7 @@ var runCmd = &cobra.Command{
 				return err
 			}
 		}
-		if config.RouterConfig().WithCoordinator {
+		if config.RouterConfig().WithCoordinator || withCoord {
 			go func() {
 				if err := func() error {
 					cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
