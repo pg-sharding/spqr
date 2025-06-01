@@ -388,7 +388,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 
 // TODO : unit tests
 
-// Proc processes various coordinator commands based on the provided statement.
+// ProcMetadataCommand processes various coordinator commands based on the provided statement.
 //
 // Parameters:
 // - ctx (context.Context): The context for the function.
@@ -400,7 +400,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, rc rclient.RouterClient, writer workloadlog.WorkloadLog, ro bool) error {
+func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, rc rclient.RouterClient, writer workloadlog.WorkloadLog, ro bool) error {
 	cli := clientinteractor.NewPSQLInteractor(rc)
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 
@@ -525,6 +525,8 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 			return err
 		}
 		return cli.MoveTaskGroup(ctx, taskGroup, colTypes)
+	case *spqrparser.SyncReferenceTables:
+		return cli.ReportError(fmt.Errorf("sync reference table cmd not implemented"))
 	default:
 		return ErrUnknownCoordinatorCommand
 	}

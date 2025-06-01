@@ -1860,7 +1860,7 @@ func (qc *QDBCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt por
 				Type("type", tstmt).
 				Msg("parsed statement is")
 
-			if err := meta.Proc(ctx, tstmt, qc, ci, cl, nil, qc.IsReadOnly()); err != nil {
+			if err := meta.ProcMetadataCommand(ctx, tstmt, qc, ci, cl, nil, qc.IsReadOnly()); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				_ = cli.ReportError(err)
 			} else {

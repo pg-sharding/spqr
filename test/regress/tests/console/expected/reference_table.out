@@ -1,0 +1,16 @@
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE REFERENCE TABLE zz;
+         attach table          
+-------------------------------
+ relation name   -> zz
+ distribution id -> REPLICATED
+(2 rows)
+
+SYNC REFERENCE TABLES sh1;
+ERROR:  sync reference table cmd not implemented
