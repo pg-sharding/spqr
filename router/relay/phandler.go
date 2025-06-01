@@ -28,6 +28,7 @@ type QueryStateExecutor interface {
 	Client() client.RouterClient
 
 	Deploy(server server.Server) error
+	DeployTx(server server.Server, query string) error
 
 	ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error
 	ExecCommit(rst RelayStateMgr, query string) error

@@ -288,6 +288,9 @@ func validateRouterConfig(cfg *Router) error {
 		if rule.AuthRule == nil {
 			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "No auth rule provided for frontend rule \"%s.%s\"", rule.Usr, rule.DB)
 		}
+		if rule.PoolMode == PoolModeSession && len(cfg.ShardMapping) > 1 {
+			return spqrerror.New(spqrerror.SPQR_CONFIG_ERROR, "session pooling makes sence only for single-shard (balancer) deployment")
+		}
 		switch rule.AuthRule.Method {
 		case AuthGSS:
 			if rule.AuthRule.GssConfig == nil {
