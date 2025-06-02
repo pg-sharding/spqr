@@ -1547,15 +1547,12 @@ func (qc *QDBCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew stri
 	if err := qc.db.RenameKeyRange(ctx, krId, krIdNew); err != nil {
 		return err
 	}
-	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		_, err := cl.RenameKeyRange(ctx, &routerproto.RenameKeyRangeRequest{KeyRangeId: krId, NewKeyRangeId: krIdNew})
 
 		return err
-	}); err != nil {
-		return err
-	}
-	return qc.UnlockKeyRange(ctx, krId)
+	})
 }
 
 // TODO : unit tests

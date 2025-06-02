@@ -341,52 +341,22 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	fetcher := func(ctx context.Context, keyRangeID string) (*KeyRange, error) {
-		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(keyRangeID)))
+	resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(id)), clientv3.WithCountOnly())
+	if err != nil {
+		return nil, err
+	}
+	switch resp.Count {
+	case 0:
+		_, err := q.cli.Put(ctx, keyLockPath(keyRangeNodePath(id)), "locked")
 		if err != nil {
 			return nil, err
 		}
-		switch len(resp.Kvs) {
-		case 0:
-			_, err := q.cli.Put(ctx, keyLockPath(keyRangeNodePath(keyRangeID)), "locked")
-			if err != nil {
-				return nil, err
-			}
-
-			return q.GetKeyRange(ctx, keyRangeID)
-		case 1:
-			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", keyRangeID)
-		default:
-			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "too much key ranges matched: %d", len(resp.Kvs))
-		}
-	}
-
-	timer := time.NewTimer(time.Second)
-
-	fetchCtx, cf := context.WithTimeout(ctx, 15*time.Second)
-	defer cf()
-
-	var lastErr error
-	for {
-		select {
-		case <-timer.C:
-			val, err := fetcher(ctx, id)
-			if err != nil {
-				lastErr = err
-				spqrlog.Zero.Error().
-					Err(err).
-					Msg("error while fetching")
-				continue
-			}
-
-			statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
-
-			return val, nil
-
-		case <-fetchCtx.Done():
-			statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
-			return nil, lastErr
-		}
+		statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
+		return q.GetKeyRange(ctx, id)
+	case 1:
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id)
+	default:
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "too much key ranges matched: %d", len(resp.Kvs))
 	}
 }
 
@@ -400,37 +370,21 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	unlocker := func(ctx context.Context, keyRangeID string) error {
-		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(keyRangeID)))
-		if err != nil {
-			return err
-		}
-		switch len(resp.Kvs) {
-		case 0:
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %v unlocked", keyRangeID)
-		case 1:
-			_, err := q.cli.Delete(ctx, keyLockPath(keyRangeNodePath(keyRangeID)))
-			return err
-		default:
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "too much key ranges matched: %d", len(resp.Kvs))
-		}
+	resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(id)), clientv3.WithCountOnly())
+	if err != nil {
+		return err
 	}
-
-	fetchCtx, cf := context.WithTimeout(ctx, 15*time.Second)
-	defer cf()
-	ticker := time.NewTicker(time.Second)
-
-	for {
-		select {
-		case <-ticker.C:
-			if err := unlocker(ctx, id); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("Failed to unlock key range")
-			}
-			statistics.RecordQDBOperation("UnlockKeyRange", time.Since(t))
-			return nil
-		case <-fetchCtx.Done():
-			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "lock key range deadlines exceeded")
-		}
+	switch resp.Count {
+	case 0:
+		statistics.RecordQDBOperation("UnlockKeyRange", time.Since(t))
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %v unlocked", id)
+	case 1:
+		_, err := q.cli.Delete(ctx, keyLockPath(keyRangeNodePath(id)))
+		statistics.RecordQDBOperation("UnlockKeyRange", time.Since(t))
+		return err
+	default:
+		statistics.RecordQDBOperation("UnlockKeyRange", time.Since(t))
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "too much key ranges matched: %d", len(resp.Kvs))
 	}
 }
 
@@ -494,7 +448,7 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 	}
 
 	err = q.CreateKeyRange(ctx, kr)
-	statistics.RecordQDBOperation("CheckLockedKeyRange", time.Since(t))
+	statistics.RecordQDBOperation("RenameKeyRange", time.Since(t))
 	return err
 }
 
