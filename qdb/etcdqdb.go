@@ -341,19 +341,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	sess, err := concurrency.NewSession(q.cli)
-	if err != nil {
-		return nil, err
-	}
-	defer closeSession(sess)
-
-	fetcher := func(ctx context.Context, sess *concurrency.Session, keyRangeID string) (*KeyRange, error) {
-		mu := concurrency.NewMutex(sess, keyspace)
-		if err = mu.Lock(ctx); err != nil {
-			return nil, err
-		}
-		defer unlockMutex(mu, ctx)
-
+	fetcher := func(ctx context.Context, keyRangeID string) (*KeyRange, error) {
 		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(keyRangeID)))
 		if err != nil {
 			return nil, err
@@ -382,7 +370,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 	for {
 		select {
 		case <-timer.C:
-			val, err := fetcher(ctx, sess, id)
+			val, err := fetcher(ctx, id)
 			if err != nil {
 				lastErr = err
 				spqrlog.Zero.Error().
