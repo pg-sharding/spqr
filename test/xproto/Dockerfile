@@ -1,6 +1,6 @@
-FROM golang:1.23.0
+FROM golang:latest
 
 WORKDIR /root
 COPY . /root
 
-ENTRYPOINT go test ./test/xproto
+ENTRYPOINT [ "go", "test", "./test/xproto" ]
