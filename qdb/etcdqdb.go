@@ -412,19 +412,7 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	sess, err := concurrency.NewSession(q.cli)
-	if err != nil {
-		return err
-	}
-	defer closeSession(sess)
-
-	unlocker := func(ctx context.Context, sess *concurrency.Session, keyRangeID string) error {
-		mu := concurrency.NewMutex(sess, keyspace)
-		if err = mu.Lock(ctx); err != nil {
-			return err
-		}
-		defer unlockMutex(mu, ctx)
-
+	unlocker := func(ctx context.Context, keyRangeID string) error {
 		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(keyRangeID)))
 		if err != nil {
 			return err
@@ -442,14 +430,16 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 
 	fetchCtx, cf := context.WithTimeout(ctx, 15*time.Second)
 	defer cf()
+	ticker := time.NewTicker(time.Second)
 
 	for {
 		select {
-		case <-time.After(time.Second):
-			if err := unlocker(ctx, sess, id); err != nil {
-				statistics.RecordQDBOperation("UnlockKeyRange", time.Since(t))
-				return nil
+		case <-ticker.C:
+			if err := unlocker(ctx, id); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("Failed to unlock key range")
 			}
+			statistics.RecordQDBOperation("UnlockKeyRange", time.Since(t))
+			return nil
 		case <-fetchCtx.Done():
 			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "lock key range deadlines exceeded")
 		}
