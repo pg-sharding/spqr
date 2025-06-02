@@ -1,6 +1,6 @@
 log_level: log
 
-host: '::1'
+host: '[localhost]'
 router_port: '6432'
 router_ro_port: '6433'
 admin_console_port: '7432'
