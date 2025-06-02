@@ -14,3 +14,14 @@ CREATE REFERENCE TABLE zz;
 
 SYNC REFERENCE TABLES sh1;
 ERROR:  sync reference table cmd not implemented
+DROP DISTRIBUTION ALL CASCADE;
+       drop distribution       
+-------------------------------
+ distribution id -> REPLICATED
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+
