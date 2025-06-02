@@ -70,10 +70,10 @@ demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
  attached relation orders to distribution ds1
 (1 row)
 
-demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION item DISTRIBUTION KEY order_id;
+demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION items DISTRIBUTION KEY order_id;
                  attach table                 
----------------------------------------------
- attached relation item to distribution ds1
+----------------------------------------------
+ attached relation items to distribution ds1
 (1 row)
 ```
 
@@ -114,8 +114,8 @@ CREATE TABLE
 
 demo=> CREATE TABLE items (
     id SERIAL NOT NULL PRIMARY KEY,
-    order_id SERIAL NOT NULL PRIMARY KEY,
-    name VARCHAR,
+    order_id SERIAL NOT NULL,
+    name VARCHAR
 );
 NOTICE: send query to shard(s) : shard01,shard02
 CREATE TABLE
