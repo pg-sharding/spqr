@@ -202,6 +202,7 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 }
 
 const defaultWatchRouterTimeout = time.Second
+const defaultLockCoordinatorTimeout = time.Second
 
 type QDBCoordinator struct {
 	Coordinator
@@ -332,14 +333,14 @@ func NewQDBCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*QDBCoordinator, err
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) lockCoordinator(ctx context.Context, initialRouter bool) bool {
-	updateCoordinator := func() bool {
+func (qc *QDBCoordinator) lockCoordinator(ctx context.Context, initialRouter bool) error {
+	updateCoordinator := func() error {
 		if !initialRouter {
-			return true
+			return nil
 		}
 		routerHost, err := config.GetHostOrHostname(config.RouterConfig().Host)
 		if err != nil {
-			return false
+			return err
 		}
 		router := &topology.Router{
 			ID:      uuid.NewString(),
@@ -352,13 +353,13 @@ func (qc *QDBCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 
 		host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
 		if err != nil {
-			return false
+			return err
 		}
 		coordAddr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
 		if err := qc.UpdateCoordinator(ctx, coordAddr); err != nil {
-			return false
+			return err
 		}
-		return true
+		return nil
 	}
 	defer func() {
 		qc.acquiredLock = true
@@ -368,12 +369,13 @@ func (qc *QDBCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 		for {
 			select {
 			case <-ctx.Done():
-				return false
+				return nil
 			case <-time.After(time.Second):
 				if err := qc.db.TryCoordinatorLock(context.TODO()); err == nil {
 					return updateCoordinator()
 				} else {
 					spqrlog.Zero.Error().Err(err).Msg("qdb already taken, waiting for connection")
+					/* retry lock attempt */
 				}
 			}
 		}
@@ -387,8 +389,11 @@ func (qc *QDBCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 //
 // TODO: unit tests
 func (qc *QDBCoordinator) RunCoordinator(ctx context.Context, initialRouter bool) {
-	if !qc.lockCoordinator(ctx, initialRouter) {
-		return
+	for err := qc.lockCoordinator(ctx, initialRouter); err != nil; {
+		spqrlog.Zero.Error().Err(err).Msg("error getting qdb lock, retrying")
+
+		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().LockIterationTimeout, defaultLockCoordinatorTimeout))
+		continue
 	}
 
 	if err := qc.finishRedistributeTasksInProgress(ctx); err != nil {
