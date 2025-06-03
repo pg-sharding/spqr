@@ -198,6 +198,7 @@ inp
 inputdir
 installable
 interactor
+IRecord
 IRun
 isgomock
 isready
