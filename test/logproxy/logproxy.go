@@ -58,9 +58,7 @@ func (p *Proxy) Run() error {
 		case c := <-cChan:
 
 			go func() {
-				if err := p.serv(c); err != nil {
-					log.Fatal(err)
-				}
+				log.Fatal(p.serv(c))
 			}()
 		}
 	}
