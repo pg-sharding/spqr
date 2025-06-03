@@ -554,16 +554,8 @@ Feature: Move recover test
     {
         "tasks":
         [
-            {
-                "bound":         ["FAAAAAAAAAA="],
-                "state":         0,
-                "kr_id_temp":    "krid_temp1" 
-            },
-            {
-                "bound":         ["CgAAAAAAAAA="],
-                "state":         0,
-                "kr_id_temp":    "krid_temp2"
-            }
+            "1",
+            "2"
         ],
         "shard_to_id":   "sh2",
         "kr_id_from":    "krid1",
@@ -572,6 +564,25 @@ Feature: Move recover test
     }
     """
     Then command return code should be "0"
+    When I record in qdb move task
+    """
+    {
+        "id":            "1",
+        "bound":         ["FAAAAAAAAAA="],
+        "state":         0,
+        "kr_id_temp":    "krid_temp1" 
+    }
+    """
+    Then command return code should be "0"
+    When I record in qdb move task
+    """
+    {
+        "id":            "2",
+        "bound":         ["CgAAAAAAAAA="],
+        "state":         0,
+        "kr_id_temp":    "krid_temp2"
+    }
+    """
     When I run SQL on host "coordinator"
     """
     SHOW task_group
