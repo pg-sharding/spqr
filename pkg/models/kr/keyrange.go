@@ -83,13 +83,13 @@ func (kr *KeyRange) InFunc(attribInd int, raw []byte) {
 func (kr *KeyRange) OutFunc(attribInd int) []byte {
 	switch kr.ColumnTypes[attribInd] {
 	case qdb.ColumnTypeInteger:
-		raw := make([]byte, 8)
+		raw := make([]byte, binary.MaxVarintLen64)
 		_ = binary.PutVarint(raw, kr.LowerBound[attribInd].(int64))
 		return raw
 	case qdb.ColumnTypeVarcharHashed:
 		fallthrough
 	case qdb.ColumnTypeUinteger:
-		raw := make([]byte, 8)
+		raw := make([]byte, binary.MaxVarintLen64)
 		_ = binary.PutUvarint(raw, kr.LowerBound[attribInd].(uint64))
 		return raw
 	case qdb.ColumnTypeVarcharDeprecated:

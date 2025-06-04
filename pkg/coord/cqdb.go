@@ -1269,14 +1269,14 @@ ORDER BY (%s) %s;
 				if err != nil {
 					return nil, err
 				}
-				bound[i] = make([]byte, 8)
+				bound[i] = make([]byte, binary.MaxVarintLen64)
 				binary.PutUvarint(bound[i], number)
 			case qdb.ColumnTypeInteger:
 				number, err := strconv.ParseInt(values[i], 10, 64)
 				if err != nil {
 					return nil, err
 				}
-				bound[i] = make([]byte, 8)
+				bound[i] = make([]byte, binary.MaxVarintLen64)
 				binary.PutVarint(bound[i], number)
 			}
 		}

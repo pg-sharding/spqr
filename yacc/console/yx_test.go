@@ -351,14 +351,29 @@ func TestKeyRange(t *testing.T) {
 					Distribution: "ds1",
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
-							{2, 0, 0, 0, 0, 0, 0, 0},
+							{2, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 						},
 					},
 				},
 			},
 			err: nil,
 		},
-
+		{
+			query: "CREATE KEY RANGE krid2 FROM 4611686018427387904 ROUTE TO sh2 FOR DISTRIBUTION ds1;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangeDefinition{
+					ShardID:      "sh2",
+					KeyRangeID:   "krid2",
+					Distribution: "ds1",
+					LowerBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{
+							{128, 128, 128, 128, 128, 128, 128, 128, 128, 1},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
 		{
 			query: "CREATE KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 ROUTE TO sh2 FOR DISTRIBUTION ds1;",
 			exp: &spqrparser.Create{
@@ -387,7 +402,7 @@ func TestKeyRange(t *testing.T) {
 					Distribution: "ds1",
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
-							{0, 0, 0, 0, 0, 0, 0, 0},
+							{0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 							[]byte("a"),
 						},
 					},
@@ -468,7 +483,7 @@ func TestSplitKeyRange(t *testing.T) {
 			exp: &spqrparser.SplitKeyRange{
 				Border: &spqrparser.KeyRangeBound{
 					Pivots: [][]byte{
-						{10, 0, 0, 0, 0, 0, 0, 0},
+						{10, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 					},
 				},
 				KeyRangeFromID: "krid1",
