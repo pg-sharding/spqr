@@ -861,7 +861,7 @@ key_range_bound_elem:
 		$$ = []byte($1)
 	}
 	| any_uint {
-		buf := make([]byte, 8)
+		buf := make([]byte, binary.MaxVarintLen64)
 		binary.PutVarint(buf, int64($1))
 		$$ = buf
 	}

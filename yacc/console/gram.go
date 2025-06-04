@@ -1700,7 +1700,7 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line gram.y:863
 		{
-			buf := make([]byte, 8)
+			buf := make([]byte, binary.MaxVarintLen64)
 			binary.PutVarint(buf, int64(yyDollar[1].uinteger))
 			yyVAL.bytes = buf
 		}
