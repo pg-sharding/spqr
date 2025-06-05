@@ -1375,28 +1375,9 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	case *lyx.Grant:
 		return plan.DDLState{}, false, nil
 	case *lyx.CreateTable:
-		if val := rm.SPH.AutoDistribution(); val != "" {
-
-			switch q := node.TableRv.(type) {
-			case *lyx.RangeVar:
-
-				/* pre-attach relation to its distribution
-				 * sic! this is not transactional not abortable
-				 */
-				if err := qr.mgr.AlterDistributionAttach(ctx, val, []*distributions.DistributedRelation{
-					{
-						Name: q.RelationName,
-						DistributionKey: []distributions.DistributionKeyEntry{
-							{
-								Column: rm.SPH.DistributionKey(),
-								/* support hash function here */
-							},
-						},
-					},
-				}); err != nil {
-					return nil, false, err
-				}
-			}
+		ds, err := planner.PlanCreateTable(ctx, rm, node)
+		if err != nil {
+			return nil, false, err
 		}
 		/*
 		 * Disallow to create table which does not contain any sharding column
@@ -1404,7 +1385,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
 			return nil, false, err
 		}
-		return plan.DDLState{}, false, nil
+		return ds, false, nil
 	case *lyx.Vacuum:
 		/* Send vacuum to each shard */
 		return plan.DDLState{}, false, nil

@@ -114,8 +114,8 @@ func (lc *LocalCoordinator) AlterDistributedRelation(ctx context.Context, id str
 		return err
 	}
 
-	if len(rel.DistributionKey) != len(ds.ColTypes) {
-		return fmt.Errorf("cannot attach relation %v to this dataspace: number of column mismatch", rel.Name)
+	if ds.ID != distributions.REPLICATED && len(rel.DistributionKey) != len(ds.ColTypes) {
+		return fmt.Errorf("cannot attach relation %v to distribution %v: number of column mismatch", rel.Name, ds.ID)
 	}
 	if !rel.ReplicatedRelation && len(rel.ColumnSequenceMapping) > 0 {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequence are supported for replicated relations only")
