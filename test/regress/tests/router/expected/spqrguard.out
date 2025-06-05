@@ -1,0 +1,6 @@
+SET __spqr__maintain_params TO TRUE;
+SET allow_system_table_mods TO true;
+CREATE EXTENSION spqrguard;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP EXTENSION spqrguard;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
