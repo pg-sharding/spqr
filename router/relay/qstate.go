@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
@@ -162,21 +163,28 @@ func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error
 					rst.Client().SetEnhancedMultiShardProcessing(true, false)
 				}
 			case session.SPQR_AUTO_DISTRIBUTION:
-				if valDistrib, ok := mp[session.SPQR_DISTRIBUTION_KEY]; ok {
-					_, err = rst.QueryRouter().Mgr().GetDistribution(context.TODO(), val)
-					if err != nil {
-						return err
-					}
+				/* Should we create distributed or reference relation? */
 
-					/* This is an ddl query, which creates relation along with attaching to distribution */
+				if val == distributions.REPLICATED {
+					/* This is an ddl query, which creates relation along with attaching to REPLICATED distribution */
 					rst.Client().SetAutoDistribution(true, val)
-					rst.Client().SetDistributionKey(true, valDistrib)
-
-					/* this is too early to do anything with distribution hint, as we do not yet parsed
-					* DDL of about-to-be-created relation
-					 */
 				} else {
-					return fmt.Errorf("spqr distribution specified, but distribution key omitted")
+					if valDistrib, ok := mp[session.SPQR_DISTRIBUTION_KEY]; ok {
+						_, err = rst.QueryRouter().Mgr().GetDistribution(context.TODO(), val)
+						if err != nil {
+							return err
+						}
+
+						/* This is an ddl query, which creates relation along with attaching to distribution */
+						rst.Client().SetAutoDistribution(true, val)
+						rst.Client().SetDistributionKey(true, valDistrib)
+
+						/* this is too early to do anything with distribution hint, as we do not yet parsed
+						* DDL of about-to-be-created relation
+						 */
+					} else {
+						return fmt.Errorf("spqr distribution specified, but distribution key omitted")
+					}
 				}
 			}
 		}

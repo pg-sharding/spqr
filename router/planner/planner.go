@@ -6,11 +6,62 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 )
+
+func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *lyx.CreateTable) (plan.Plan, error) {
+	if val := rm.SPH.AutoDistribution(); val != "" {
+
+		switch q := v.TableRv.(type) {
+		case *lyx.RangeVar:
+
+			/* pre-attach relation to its distribution
+			 * sic! this is not transactional nor abortable
+			 */
+			spqrlog.Zero.Debug().Str("relation", q.RelationName).Str("distribution", val).Msg("attaching relation")
+
+			if val == distributions.REPLICATED {
+				if _, err := rm.Mgr.GetDistribution(ctx, distributions.REPLICATED); err != nil {
+					err := rm.Mgr.CreateDistribution(ctx, &distributions.Distribution{
+						Id:       distributions.REPLICATED,
+						ColTypes: nil,
+					})
+					if err != nil {
+						spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
+						return nil, err
+					}
+				}
+			}
+
+			if err := rm.Mgr.AlterDistributionAttach(ctx, val, []*distributions.DistributedRelation{
+				{
+					Name:               q.RelationName,
+					ReplicatedRelation: val == distributions.REPLICATED,
+					DistributionKey: []distributions.DistributionKeyEntry{
+						{
+							Column: rm.SPH.DistributionKey(),
+							/* support hash function here */
+						},
+					},
+				},
+			}); err != nil {
+				return nil, err
+			}
+		}
+	}
+	/* TODO: support */
+	// /*
+	//  * Disallow to create table which does not contain any sharding column
+	//  */
+	// if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
+	// 	return nil, false, err
+	// }
+	return plan.DDLState{}, nil
+}
 
 func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {
 
@@ -36,38 +87,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 
 	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateTable:
-		if val := rm.SPH.AutoDistribution(); val != "" {
-
-			switch q := v.TableRv.(type) {
-			case *lyx.RangeVar:
-
-				/* pre-attach relation to its distribution
-				 * sic! this is not transactional not abortable
-				 */
-				if err := rm.Mgr.AlterDistributionAttach(ctx, val, []*distributions.DistributedRelation{
-					{
-						Name: q.RelationName,
-						DistributionKey: []distributions.DistributionKeyEntry{
-							{
-								Column: rm.SPH.DistributionKey(),
-								/* support hash function here */
-							},
-						},
-					},
-				}); err != nil {
-					return nil, err
-				}
-			}
-		}
-
-		/* TODO: support */
-		// /*
-		//  * Disallow to create table which does not contain any sharding column
-		//  */
-		// if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
-		// 	return nil, false, err
-		// }
-		return plan.DDLState{}, nil
+		return PlanCreateTable(ctx, rm, v)
 	case *lyx.Vacuum:
 		/* Send vacuum to each shard */
 		return plan.DDLState{}, nil

@@ -370,8 +370,8 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 
 	dRels := []*qdb.DistributedRelation{}
 	for _, r := range rels {
-		if len(r.DistributionKey) != len(ds.ColTypes) {
-			return fmt.Errorf("cannot attach relation %v to this dataspace: number of column mismatch", r.Name)
+		if !r.ReplicatedRelation && len(r.DistributionKey) != len(ds.ColTypes) {
+			return fmt.Errorf("cannot attach relation %v to distribution %v: number of column mismatch", r.Name, ds.ID)
 		}
 		if !r.ReplicatedRelation && len(r.ColumnSequenceMapping) > 0 {
 			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequence are supported for replicated relations only")
