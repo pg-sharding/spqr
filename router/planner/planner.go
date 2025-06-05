@@ -49,7 +49,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 						Name: q.RelationName,
 						DistributionKey: []distributions.DistributionKeyEntry{
 							{
-								Column: rm.SPH.DistributionKey(),
+								Column: rm.SPH.ShardingKey(),
 								/* support hash function here */
 							},
 						},

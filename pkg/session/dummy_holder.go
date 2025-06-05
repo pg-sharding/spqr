@@ -55,16 +55,6 @@ func (t *DummySessionParamHandler) SetExecuteOn(l bool, v string) {
 	t.eo = v
 }
 
-// DistributionKey implements SessionParamsHolder.
-func (t *DummySessionParamHandler) DistributionKey() string {
-	return ""
-}
-
-// SetDistributionKey implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetDistributionKey(bool, string) {
-
-}
-
 // AutoDistribution implements SessionParamsHolder.
 func (t *DummySessionParamHandler) AutoDistribution() string {
 	return ""

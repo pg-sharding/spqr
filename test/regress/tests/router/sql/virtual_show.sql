@@ -3,7 +3,6 @@
 SHOW __spqr__distribution;
 SHOW __spqr__default_route_behaviour;
 SHOW __spqr__auto_distribution;
-SHOW __spqr__distribution_key;
 SHOW __spqr__sharding_key;
 SHOW __spqr__scatter_query;
 SHOW __spqr__reply_notice;
