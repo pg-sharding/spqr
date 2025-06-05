@@ -467,6 +467,7 @@ sconst
 screenshots
 sdnotifier
 serviceprincipal
+sethvargo
 sevlyar
 shardconn
 Shardinfo
