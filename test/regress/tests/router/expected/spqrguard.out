@@ -1,0 +1,58 @@
+SET __spqr__maintain_params TO TRUE;
+SET allow_system_table_mods TO true;
+CREATE EXTENSION spqrguard;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE guard_zz(i INT) /* __spqr__auto_distribution: REPLICATED */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT spqr_metadata.mark_reference_relation('guard_zz') /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ mark_reference_relation 
+-------------------------
+ 
+(1 row)
+
+SELECT spqr_metadata.mark_reference_relation('guard_zz') /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ mark_reference_relation 
+-------------------------
+ 
+(1 row)
+
+SELECT spqr_metadata.mark_reference_relation('guard_zz') /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ mark_reference_relation 
+-------------------------
+ 
+(1 row)
+
+SELECT spqr_metadata.mark_reference_relation('guard_zz') /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+ mark_reference_relation 
+-------------------------
+ 
+(1 row)
+
+INSERT INTO guard_zz (i) VALUES(1);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SET spqrguard.prevent_reference_table_modify TO on;
+INSERT INTO guard_zz (i) VALUES(1);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  unable to modify SPQR reference relation within read-only transaction
+DROP TABLE guard_zz;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP EXTENSION spqrguard;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+       drop distribution       
+-------------------------------
+ distribution id -> REPLICATED
+(1 row)
+
