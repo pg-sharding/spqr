@@ -30,6 +30,7 @@ type Coordinator struct {
 	LockIterationTimeout time.Duration   `json:"lock_iteration_timeout" toml:"lock_iteration_timeout" yaml:"lock_iteration_timeout"`
 	EnableRoleSystem     bool            `json:"enable_role_system" toml:"enable_role_system" yaml:"enable_role_system"`
 	RolesFile            string          `json:"roles_file" toml:"roles_file" yaml:"roles_file"`
+	DefaultBatchSize     int             `json:"default_batch_size" toml:"default_batch_size" yaml:"default_batch_size"`
 }
 
 // LoadCoordinatorCfg loads the coordinator configuration from the specified file path.
@@ -57,6 +58,7 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 	}
 
 	configBytes, err := json.MarshalIndent(&cfgCoordinator, "", "  ")
+
 	if err != nil {
 		return "", err
 	}
@@ -73,6 +75,8 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 // Returns:
 //   - error: an error if any occurred during the initialization process.
 func initCoordinatorConfig(file *os.File, filepath string) error {
+	cfgCoordinator.DefaultBatchSize = 500
+
 	if strings.HasSuffix(filepath, ".toml") {
 		_, err := toml.NewDecoder(file).Decode(&cfgCoordinator)
 		return err
