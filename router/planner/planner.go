@@ -103,7 +103,8 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		 */
 		// XXX: do it
 		return plan.DDLState{}, nil
-
+	case *lyx.CreateExtension:
+		return plan.DDLState{}, nil
 	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
