@@ -101,13 +101,26 @@ func NewProxyRouter(shardMapping map[string]*config.Shard, mgr meta.EntityMgr, q
 		schemaCache:    cache,
 	}
 
+	ctx := context.TODO()
+
+	sds, err := mgr.ListShards(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, ds := range sds {
+		err := mgr.DropShard(ctx, ds.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	for name, shardCfg := range shardMapping {
 		switch shardCfg.Type {
 		case config.WorldShard:
 		case config.DataShard:
 			fallthrough // default is datashard
 		default:
-			if err := mgr.AddDataShard(context.TODO(), &topology.DataShard{
+			if err := mgr.AddDataShard(ctx, &topology.DataShard{
 				ID:  name,
 				Cfg: shardCfg,
 			}); err != nil {

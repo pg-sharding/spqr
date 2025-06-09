@@ -577,6 +577,10 @@ func (q *MemQDB) AddShard(_ context.Context, shard *Shard) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
+	if _, ok := q.Shards[shard.ID]; ok {
+		return fmt.Errorf("shard with id %s already exists", shard.ID)
+	}
+
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, shard))
 }
 
