@@ -6,13 +6,17 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 SHOW shards;
- listing data shards 
----------------------
- shard id -> sh1
- shard id -> sh2
- shard id -> sh3
- shard id -> sh4
-(4 rows)
+ shard |      host      
+-------+----------------
+ sh1   | localhost:5550
+ sh1   | localhost:5650
+ sh2   | localhost:5551
+ sh2   | localhost:5651
+ sh3   | localhost:5552
+ sh3   | localhost:5652
+ sh4   | localhost:5553
+ sh4   | localhost:5653
+(8 rows)
 
 CREATE SHARD sh1 WITH HOSTS localhost:6432;
 ERROR:  shard with id sh1 already exists
@@ -23,14 +27,18 @@ CREATE SHARD sh5 WITH HOSTS localhost:6432;
 (1 row)
 
 SHOW shards;
- listing data shards 
----------------------
- shard id -> sh1
- shard id -> sh2
- shard id -> sh3
- shard id -> sh4
- shard id -> sh5
-(5 rows)
+ shard |      host      
+-------+----------------
+ sh1   | localhost:5550
+ sh1   | localhost:5650
+ sh2   | localhost:5551
+ sh2   | localhost:5651
+ sh3   | localhost:5552
+ sh3   | localhost:5652
+ sh4   | localhost:5553
+ sh4   | localhost:5653
+ sh5   | localhost:6432
+(9 rows)
 
 DROP SHARD sh5;
    drop shard    
@@ -39,11 +47,15 @@ DROP SHARD sh5;
 (1 row)
 
 SHOW shards;
- listing data shards 
----------------------
- shard id -> sh1
- shard id -> sh2
- shard id -> sh3
- shard id -> sh4
-(4 rows)
+ shard |      host      
+-------+----------------
+ sh1   | localhost:5550
+ sh1   | localhost:5650
+ sh2   | localhost:5551
+ sh2   | localhost:5651
+ sh3   | localhost:5552
+ sh3   | localhost:5652
+ sh4   | localhost:5553
+ sh4   | localhost:5653
+(8 rows)
 
