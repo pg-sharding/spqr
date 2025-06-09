@@ -559,13 +559,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
-		var resp []*topology.DataShard
-		for _, sh := range shards {
-			resp = append(resp, &topology.DataShard{
-				ID: sh.ID,
-			})
-		}
-		return cli.Shards(ctx, resp)
+		return cli.Shards(ctx, shards)
 	case spqrparser.KeyRangesStr:
 		ranges, err := mngr.ListAllKeyRanges(ctx)
 		if err != nil {
