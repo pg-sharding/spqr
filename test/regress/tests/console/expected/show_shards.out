@@ -32,3 +32,18 @@ SHOW shards;
  shard id -> sh5
 (5 rows)
 
+DROP SHARD sh5;
+   drop shard    
+-----------------
+ shard id -> sh5
+(1 row)
+
+SHOW shards;
+ listing data shards 
+---------------------
+ shard id -> sh1
+ shard id -> sh2
+ shard id -> sh3
+ shard id -> sh4
+(4 rows)
+
