@@ -14,3 +14,36 @@ SHOW shards;
  shard id -> sh4
 (4 rows)
 
+CREATE SHARD sh1 WITH HOSTS localhost:6432;
+ERROR:  shard with id sh1 already exists
+CREATE SHARD sh5 WITH HOSTS localhost:6432;
+    add shard    
+-----------------
+ shard id -> sh5
+(1 row)
+
+SHOW shards;
+ listing data shards 
+---------------------
+ shard id -> sh1
+ shard id -> sh2
+ shard id -> sh3
+ shard id -> sh4
+ shard id -> sh5
+(5 rows)
+
+DROP SHARD sh5;
+   drop shard    
+-----------------
+ shard id -> sh5
+(1 row)
+
+SHOW shards;
+ listing data shards 
+---------------------
+ shard id -> sh1
+ shard id -> sh2
+ shard id -> sh3
+ shard id -> sh4
+(4 rows)
+
