@@ -103,6 +103,9 @@ func NewProxyRouter(shardMapping map[string]*config.Shard, mgr meta.EntityMgr, q
 
 	ctx := context.TODO()
 
+	/* XXX: since memqdb is persistent on disk, in some cases we need to
+	* recreate whole topology. TODO: get this info from coor, not config
+	 */
 	sds, err := mgr.ListShards(ctx)
 	if err != nil {
 		return nil, err
