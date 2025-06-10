@@ -489,6 +489,22 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &SequenceSelector{Name: $3}}
 	}
+	| DROP REFERENCE RELATION any_id
+	{
+		$$ = &Drop{
+			Element: &ReferenceRelationSelector{
+				ID: $4,
+			},
+		}
+	}
+	| DROP REFERENCE TABLE any_id
+	{
+		$$ = &Drop{
+			Element: &ReferenceRelationSelector{
+				ID: $4,
+			},
+		}
+	}
 
 add_stmt:
 	// TODO: drop

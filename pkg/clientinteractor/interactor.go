@@ -1253,6 +1253,20 @@ func (pi *PSQLInteractor) DropDistribution(ctx context.Context, ids []string) er
 	return pi.CompleteMsg(0)
 }
 
+func (pi *PSQLInteractor) DropReferenceRelation(ctx context.Context, id string) error {
+	if err := pi.WriteHeader("reference relation id"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	if err := pi.WriteDataRow(id); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	return pi.CompleteMsg(0)
+}
+
 // TODO : unit tests
 
 // AlterDistributionAttach attaches tables to a distribution in the PSQL client.

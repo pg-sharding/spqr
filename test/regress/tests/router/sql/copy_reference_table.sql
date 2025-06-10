@@ -1,9 +1,6 @@
 \c spqr-console
 
-CREATE REPLICATED DISTRIBUTION;
-ALTER REPLICATED DISTRIBUTION ATTACH RELATION test_ref_rel;
-
--- test both ways of ref relation crete syntax
+CREATE REFERENCE TABLE test_ref_rel;
 CREATE REFERENCE TABLE test_ref_rel_2;
 
 \c regress

@@ -648,77 +648,6 @@ func TestAlter(t *testing.T) {
 			},
 			err: nil,
 		},
-
-		{
-			query: "ALTER REPLICATED DISTRIBUTION ATTACH RELATION t;",
-			exp: &spqrparser.Alter{
-				Element: &spqrparser.AlterDistribution{
-					Element: &spqrparser.AttachRelation{
-						Distribution: &spqrparser.DistributionSelector{
-							ID:         "REPLICATED",
-							Replicated: true,
-						},
-						Relations: []*spqrparser.DistributedRelation{
-							{
-								Name:               "t",
-								ReplicatedRelation: true,
-							},
-						},
-					},
-				},
-			},
-			err: nil,
-		},
-
-		{
-			query: "ALTER REPLICATED DISTRIBUTION ATTACH RELATION t AUTO INCREMENT id1;",
-			exp: &spqrparser.Alter{
-				Element: &spqrparser.AlterDistribution{
-					Element: &spqrparser.AttachRelation{
-						Distribution: &spqrparser.DistributionSelector{
-							ID:         "REPLICATED",
-							Replicated: true,
-						},
-						Relations: []*spqrparser.DistributedRelation{
-							{
-								Name:               "t",
-								ReplicatedRelation: true,
-								AutoIncrementEntries: []spqrparser.AutoIncrementEntry{
-									{
-										Column: "id1",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			query: "ALTER REPLICATED DISTRIBUTION ATTACH RELATION t AUTO INCREMENT id1 START 42;",
-			exp: &spqrparser.Alter{
-				Element: &spqrparser.AlterDistribution{
-					Element: &spqrparser.AttachRelation{
-						Distribution: &spqrparser.DistributionSelector{
-							ID:         "REPLICATED",
-							Replicated: true,
-						},
-						Relations: []*spqrparser.DistributedRelation{
-							{
-								Name:               "t",
-								ReplicatedRelation: true,
-								AutoIncrementEntries: []spqrparser.AutoIncrementEntry{
-									{
-										Column: "id1",
-										Start:  42,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
 		{
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1 AUTO INCREMENT id1, id2;",
 			exp: &spqrparser.Alter{
@@ -872,15 +801,6 @@ func TestDistribution(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "CREATE REPLICATED DISTRIBUTION",
-			exp: &spqrparser.Create{
-				Element: &spqrparser.DistributionDefinition{
-					Replicated: true,
-				},
-			},
-			err: nil,
-		},
-		{
 			query: "CREATE REFERENCE TABLE xtab",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
@@ -936,6 +856,14 @@ func TestDistribution(t *testing.T) {
 				},
 			},
 			err: nil,
+		},
+		{
+			query: `DROP REFERENCE RELATION r1`,
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.ReferenceRelationSelector{
+					ID: "r1",
+				},
+			},
 		},
 		{
 			query: "CREATE DISTRIBUTION db1 COLUMN TYPES varchar hash;",
