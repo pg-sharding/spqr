@@ -185,8 +185,11 @@ type ShardingRuleSelector struct {
 }
 
 type DistributionSelector struct {
-	ID         string
-	Replicated bool
+	ID string
+}
+
+type ReferenceRelationSelector struct {
+	ID string
 }
 
 type ShardSelector struct {
@@ -195,11 +198,12 @@ type ShardSelector struct {
 
 type TaskGroupSelector struct{}
 
-func (*KeyRangeSelector) iDrop()     {}
-func (*ShardingRuleSelector) iDrop() {}
-func (*DistributionSelector) iDrop() {}
-func (*ShardSelector) iDrop()        {}
-func (*TaskGroupSelector) iDrop()    {}
+func (*KeyRangeSelector) iDrop()          {}
+func (*ShardingRuleSelector) iDrop()      {}
+func (*DistributionSelector) iDrop()      {}
+func (*ReferenceRelationSelector) iDrop() {}
+func (*ShardSelector) iDrop()             {}
+func (*TaskGroupSelector) iDrop()         {}
 
 type Lock struct {
 	KeyRangeID string
@@ -347,6 +351,7 @@ func (*Set) iStatement()                         {}
 func (*KeyRangeSelector) iStatement()            {}
 func (*ShardingRuleSelector) iStatement()        {}
 func (*DistributionSelector) iStatement()        {}
+func (*ReferenceRelationSelector) iStatement()   {}
 func (*ShardSelector) iStatement()               {}
 func (*TaskGroupSelector) iStatement()           {}
 func (*SequenceSelector) iStatement()            {}

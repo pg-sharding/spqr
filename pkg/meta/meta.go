@@ -81,6 +81,11 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 	case *spqrparser.ShardingRuleSelector:
 		return cli.ReportError(spqrerror.ShardingRulesRemoved)
+	case *spqrparser.ReferenceRelationSelector:
+		if err := mngr.AlterDistributionDetach(ctx, distributions.REPLICATED, stmt.ID); err != nil {
+			return err
+		}
+		return cli.DropReferenceRelation(ctx, stmt.ID)
 	case *spqrparser.DistributionSelector:
 		var krs []*kr.KeyRange
 		var err error
@@ -341,30 +346,11 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		rels := []*distributions.DistributedRelation{}
 
 		for _, drel := range stmt.Relations {
-			if stmt.Distribution.Replicated && !drel.ReplicatedRelation {
-				return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "non replicated relation should be attached to non replicated distribution")
-			}
+
 			rels = append(rels, distributions.DistributedRelationFromSQL(drel))
 		}
-		var selectedDistribId string
 
-		if stmt.Distribution.Replicated {
-			selectedDistribId = distributions.REPLICATED
-
-			if _, err := mngr.GetDistribution(ctx, selectedDistribId); err != nil {
-				err := mngr.CreateDistribution(ctx, &distributions.Distribution{
-					Id:       distributions.REPLICATED,
-					ColTypes: nil,
-				})
-				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
-					return cli.ReportError(err)
-				}
-			}
-
-		} else {
-			selectedDistribId = stmt.Distribution.ID
-		}
+		selectedDistribId := stmt.Distribution.ID
 
 		if err := mngr.AlterDistributionAttach(ctx, selectedDistribId, rels); err != nil {
 			return cli.ReportError(err)

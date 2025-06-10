@@ -489,6 +489,22 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &SequenceSelector{Name: $3}}
 	}
+	| DROP REFERENCE RELATION any_id
+	{
+		$$ = &Drop{
+			Element: &ReferenceRelationSelector{
+				ID: $4,
+			},
+		}
+	}
+	| DROP REFERENCE TABLE any_id
+	{
+		$$ = &Drop{
+			Element: &ReferenceRelationSelector{
+				ID: $4,
+			},
+		}
+	}
 
 add_stmt:
 	// TODO: drop
@@ -736,13 +752,6 @@ distribution_define_stmt:
 			ColTypes: $3,
 		}
 	}
-	| REPLICATED DISTRIBUTION
-	{
-		$$ = &DistributionDefinition{
-			Replicated: true,
-		}
-	}
-	;
 
 opt_col_types:
 	COLUMN TYPES col_types_list {
@@ -952,9 +961,7 @@ key_range_stmt:
 distribution_select_stmt:
 	DISTRIBUTION any_id
 	{
-		$$ = &DistributionSelector{ID: $2, Replicated: false}
-	} | REPLICATED DISTRIBUTION {
-		$$ = &DistributionSelector{ Replicated: true, ID: "REPLICATED" }
+		$$ = &DistributionSelector{ID: $2}
 	}
 
 split_key_range_stmt:

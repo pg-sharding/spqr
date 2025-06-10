@@ -47,6 +47,7 @@ type DistributedXactKepper interface {
 * implementation to keep the distributed state in sync.
  */
 type QDB interface {
+	/* Key ranges */
 	CreateKeyRange(ctx context.Context, keyRange *KeyRange) error
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
@@ -60,15 +61,18 @@ type QDB interface {
 	ShareKeyRange(id string) error
 	RenameKeyRange(ctx context.Context, krId, ktIdNew string) error
 
+	/* Shards */
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShard(ctx context.Context, shardID string) (*Shard, error)
 	DropShard(ctx context.Context, shardID string) error
 
+	/* Distribution management */
 	CreateDistribution(ctx context.Context, distr *Distribution) error
 	ListDistributions(ctx context.Context) ([]*Distribution, error)
 	DropDistribution(ctx context.Context, id string) error
 
+	/* Update distribution */
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
 	AlterDistributionDetach(ctx context.Context, id string, relName string) error
 	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
@@ -77,28 +81,35 @@ type QDB interface {
 	// TODO: fix this by passing FQRN (fully qualified relation name (+schema))
 	GetRelationDistribution(ctx context.Context, relation string) (*Distribution, error)
 
+	/* Task group */
 	GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error)
 	WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup) error
 	UpdateMoveTaskGroupSetCurrentTask(ctx context.Context, taskIndex int) error
 	GetCurrentMoveTaskIndex(ctx context.Context) (int, error)
 	RemoveMoveTaskGroup(ctx context.Context) error
+
+	/* MOVE tasks */
 	CreateMoveTask(ctx context.Context, task *MoveTask) error
 	GetMoveTask(ctx context.Context, id string) (*MoveTask, error)
 	UpdateMoveTask(ctx context.Context, task *MoveTask) error
 	RemoveMoveTask(ctx context.Context, id string) error
 
+	/* Redistribute tasks */
 	GetRedistributeTask(ctx context.Context) (*RedistributeTask, error)
 	WriteRedistributeTask(ctx context.Context, task *RedistributeTask) error
 	RemoveRedistributeTask(ctx context.Context) error
 
+	/* Balancer interaction */
 	GetBalancerTask(ctx context.Context) (*BalancerTask, error)
 	WriteBalancerTask(ctx context.Context, task *BalancerTask) error
 	RemoveBalancerTask(ctx context.Context) error
 
+	/* Coordinator interaction */
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)
 	ListRouters(ctx context.Context) ([]*Router, error)
 
+	/* Sequences for reference relation */
 	ListSequences(ctx context.Context) ([]string, error)
 	AlterSequenceAttach(ctx context.Context, seqName string, relName, colName string) error
 	GetRelationSequence(ctx context.Context, relName string) (map[string]string, error)
