@@ -5,13 +5,7 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-CREATE REPLICATED DISTRIBUTION;
-       add distribution        
--------------------------------
- distribution id -> REPLICATED
-(1 row)
-
-ALTER REPLICATED DISTRIBUTION ATTACH RELATION t AUTO INCREMENT id;
+CREATE REFERENCE TABLE t AUTO INCREMENT id;
          attach table          
 -------------------------------
  relation name   -> t
@@ -34,12 +28,11 @@ SHOW SEQUENCES;
 
 DROP SEQUENCE t1_id;
 ERROR:  column "t1.id" is attached to sequence
-ALTER REPLICATED DISTRIBUTION DETACH RELATION t1;
-        detach relation        
--------------------------------
- relation name   -> t1
- distribution id -> REPLICATED
-(2 rows)
+DROP REFERENCE RELATION t1;
+ reference relation id 
+-----------------------
+ t1
+(1 row)
 
 DROP SEQUENCE t1_id;
    drop sequence   

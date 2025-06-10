@@ -39,6 +39,12 @@ NOTICE: send query to shard(s) : sh2
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
+DROP REFERENCE RELATION test;
+ reference relation id 
+-----------------------
+ test
+(1 row)
+
 DROP DISTRIBUTION ALL CASCADE;
        drop distribution       
 -------------------------------
@@ -49,4 +55,10 @@ DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
+
+DROP SEQUENCE test_id;
+    drop sequence    
+---------------------
+ sequence -> test_id
+(1 row)
 

@@ -13,5 +13,8 @@ SELECT * FROM test /* __spqr__execute_on: sh2 */;
 
 \c spqr-console
 
+DROP REFERENCE RELATION test;
+
 DROP DISTRIBUTION ALL CASCADE;
 DROP KEY RANGE ALL;
+DROP SEQUENCE test_id;
