@@ -17,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -441,6 +442,33 @@ func (pi *PSQLInteractor) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRa
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("bound -> %s", keyRange.SendRaw()[0]))}},
+	} {
+		if err := pi.cl.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
+	return pi.CompleteMsg(0)
+}
+
+// CreateReferenceRelation sends the row description message for adding a reference relation, followed by a data row
+// indicating the creation of the specified key range, and completes the message.
+//
+// Parameters:
+// - ctx (context.Context): The context parameter.
+// - rrel (*rrelation.ReferenceRelation): The relation object to be created.
+//
+// Returns:
+//   - error: An error if sending the messages fails, otherwise nil.
+func (pi *PSQLInteractor) CreateReferenceRelation(ctx context.Context, rrel *rrelation.ReferenceRelation) error {
+	if err := pi.WriteHeader("add reference relation"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.DataRow{Values: [][]byte{[]byte(rrel.Name)}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
