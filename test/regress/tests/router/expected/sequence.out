@@ -7,11 +7,10 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE REFERENCE TABLE test AUTO INCREMENT id;
-         attach table          
--------------------------------
- relation name   -> test
- distribution id -> REPLICATED
-(2 rows)
+ add reference relation 
+------------------------
+ test
+(1 row)
 
 \c regress
 CREATE TABLE test(id int, age int);

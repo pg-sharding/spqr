@@ -6,18 +6,16 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE REFERENCE TABLE t AUTO INCREMENT id;
-         attach table          
--------------------------------
- relation name   -> t
- distribution id -> REPLICATED
-(2 rows)
+ add reference relation 
+------------------------
+ t
+(1 row)
 
 CREATE REFERENCE TABLE t1 AUTO INCREMENT id;
-         attach table          
--------------------------------
- relation name   -> t1
- distribution id -> REPLICATED
-(2 rows)
+ add reference relation 
+------------------------
+ t1
+(1 row)
 
 SHOW SEQUENCES;
  name  

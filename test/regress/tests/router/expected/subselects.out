@@ -37,11 +37,10 @@ CREATE KEY RANGE FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 (1 row)
 
 CREATE REFERENCE TABLE ref_rel_1;
-         attach table          
--------------------------------
- relation name   -> ref_rel_1
- distribution id -> REPLICATED
-(2 rows)
+ add reference relation 
+------------------------
+ ref_rel_1
+(1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY i;
        attach table        
