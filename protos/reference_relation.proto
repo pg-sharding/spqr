@@ -22,7 +22,7 @@ message DropReferenceTablesRequest {
 }
 
 
-message ListReferenceTablessReply {
+message ListReferenceTablesReply {
   repeated ReferenceRelation relations = 1;
 }
 
@@ -30,10 +30,10 @@ message SyncReferenceTablesRequest {
     string shard_id = 1;
 }
 
-service ReferenceTablesService {
+service ReferenceTableservice {
   rpc CreateReferenceTables(CreateReferenceTablesRequest) returns (google.protobuf.Empty) {}
   rpc DropReferenceTables(DropReferenceTablesRequest) returns (google.protobuf.Empty) {}
-  rpc ListReferenceTabless(google.protobuf.Empty) returns (ListReferenceTablessReply) {}
+  rpc ListReferenceTables(google.protobuf.Empty) returns (ListReferenceTablesReply) {}
 
   rpc SyncReferenceTables(SyncReferenceTablesRequest) returns (google.protobuf.Empty) {} 
 }
