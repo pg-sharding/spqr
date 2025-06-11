@@ -39,7 +39,9 @@ func CreateKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 			}
 		}
 	}
-
+	if nearestKr != nil && kr.CmpRangesEqual(nearestKr.LowerBound, keyRange.LowerBound, keyRange.ColumnTypes) {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v equals key range %v in QDB", keyRange.ID, nearestKr.ID)
+	}
 	if nearestKr != nil && nearestKr.ShardID != keyRange.ShardID {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v intersects with key range %v in QDB", keyRange.ID, nearestKr.ID)
 	}
