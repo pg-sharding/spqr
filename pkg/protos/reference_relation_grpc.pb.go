@@ -20,201 +20,201 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ReferenceTablesService_CreateReferenceTables_FullMethodName = "/spqr.ReferenceTablesService/CreateReferenceTables"
-	ReferenceTablesService_DropReferenceTables_FullMethodName   = "/spqr.ReferenceTablesService/DropReferenceTables"
-	ReferenceTablesService_ListReferenceTabless_FullMethodName  = "/spqr.ReferenceTablesService/ListReferenceTabless"
-	ReferenceTablesService_SyncReferenceTables_FullMethodName   = "/spqr.ReferenceTablesService/SyncReferenceTables"
+	ReferenceRelationsService_CreateReferenceRelations_FullMethodName = "/spqr.ReferenceRelationsService/CreateReferenceRelations"
+	ReferenceRelationsService_DropReferenceRelations_FullMethodName   = "/spqr.ReferenceRelationsService/DropReferenceRelations"
+	ReferenceRelationsService_ListReferenceRelations_FullMethodName   = "/spqr.ReferenceRelationsService/ListReferenceRelations"
+	ReferenceRelationsService_SyncReferenceRelations_FullMethodName   = "/spqr.ReferenceRelationsService/SyncReferenceRelations"
 )
 
-// ReferenceTablesServiceClient is the client API for ReferenceTablesService service.
+// ReferenceRelationsServiceClient is the client API for ReferenceRelationsService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ReferenceTablesServiceClient interface {
-	CreateReferenceTables(ctx context.Context, in *CreateReferenceTablesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	DropReferenceTables(ctx context.Context, in *DropReferenceTablesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	ListReferenceTabless(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListReferenceTablessReply, error)
-	SyncReferenceTables(ctx context.Context, in *SyncReferenceTablesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+type ReferenceRelationsServiceClient interface {
+	CreateReferenceRelations(ctx context.Context, in *CreateReferenceRelationsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DropReferenceRelations(ctx context.Context, in *DropReferenceRelationsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListReferenceRelations(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListReferenceRelationsReply, error)
+	SyncReferenceRelations(ctx context.Context, in *SyncReferenceRelationsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
-type referenceTablesServiceClient struct {
+type referenceRelationsServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewReferenceTablesServiceClient(cc grpc.ClientConnInterface) ReferenceTablesServiceClient {
-	return &referenceTablesServiceClient{cc}
+func NewReferenceRelationsServiceClient(cc grpc.ClientConnInterface) ReferenceRelationsServiceClient {
+	return &referenceRelationsServiceClient{cc}
 }
 
-func (c *referenceTablesServiceClient) CreateReferenceTables(ctx context.Context, in *CreateReferenceTablesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *referenceRelationsServiceClient) CreateReferenceRelations(ctx context.Context, in *CreateReferenceRelationsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, ReferenceTablesService_CreateReferenceTables_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ReferenceRelationsService_CreateReferenceRelations_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *referenceTablesServiceClient) DropReferenceTables(ctx context.Context, in *DropReferenceTablesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *referenceRelationsServiceClient) DropReferenceRelations(ctx context.Context, in *DropReferenceRelationsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, ReferenceTablesService_DropReferenceTables_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ReferenceRelationsService_DropReferenceRelations_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *referenceTablesServiceClient) ListReferenceTabless(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListReferenceTablessReply, error) {
-	out := new(ListReferenceTablessReply)
-	err := c.cc.Invoke(ctx, ReferenceTablesService_ListReferenceTabless_FullMethodName, in, out, opts...)
+func (c *referenceRelationsServiceClient) ListReferenceRelations(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListReferenceRelationsReply, error) {
+	out := new(ListReferenceRelationsReply)
+	err := c.cc.Invoke(ctx, ReferenceRelationsService_ListReferenceRelations_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *referenceTablesServiceClient) SyncReferenceTables(ctx context.Context, in *SyncReferenceTablesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *referenceRelationsServiceClient) SyncReferenceRelations(ctx context.Context, in *SyncReferenceRelationsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, ReferenceTablesService_SyncReferenceTables_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ReferenceRelationsService_SyncReferenceRelations_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// ReferenceTablesServiceServer is the server API for ReferenceTablesService service.
-// All implementations must embed UnimplementedReferenceTablesServiceServer
+// ReferenceRelationsServiceServer is the server API for ReferenceRelationsService service.
+// All implementations must embed UnimplementedReferenceRelationsServiceServer
 // for forward compatibility
-type ReferenceTablesServiceServer interface {
-	CreateReferenceTables(context.Context, *CreateReferenceTablesRequest) (*emptypb.Empty, error)
-	DropReferenceTables(context.Context, *DropReferenceTablesRequest) (*emptypb.Empty, error)
-	ListReferenceTabless(context.Context, *emptypb.Empty) (*ListReferenceTablessReply, error)
-	SyncReferenceTables(context.Context, *SyncReferenceTablesRequest) (*emptypb.Empty, error)
-	mustEmbedUnimplementedReferenceTablesServiceServer()
+type ReferenceRelationsServiceServer interface {
+	CreateReferenceRelations(context.Context, *CreateReferenceRelationsRequest) (*emptypb.Empty, error)
+	DropReferenceRelations(context.Context, *DropReferenceRelationsRequest) (*emptypb.Empty, error)
+	ListReferenceRelations(context.Context, *emptypb.Empty) (*ListReferenceRelationsReply, error)
+	SyncReferenceRelations(context.Context, *SyncReferenceRelationsRequest) (*emptypb.Empty, error)
+	mustEmbedUnimplementedReferenceRelationsServiceServer()
 }
 
-// UnimplementedReferenceTablesServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedReferenceTablesServiceServer struct {
+// UnimplementedReferenceRelationsServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedReferenceRelationsServiceServer struct {
 }
 
-func (UnimplementedReferenceTablesServiceServer) CreateReferenceTables(context.Context, *CreateReferenceTablesRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateReferenceTables not implemented")
+func (UnimplementedReferenceRelationsServiceServer) CreateReferenceRelations(context.Context, *CreateReferenceRelationsRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateReferenceRelations not implemented")
 }
-func (UnimplementedReferenceTablesServiceServer) DropReferenceTables(context.Context, *DropReferenceTablesRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DropReferenceTables not implemented")
+func (UnimplementedReferenceRelationsServiceServer) DropReferenceRelations(context.Context, *DropReferenceRelationsRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DropReferenceRelations not implemented")
 }
-func (UnimplementedReferenceTablesServiceServer) ListReferenceTabless(context.Context, *emptypb.Empty) (*ListReferenceTablessReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListReferenceTabless not implemented")
+func (UnimplementedReferenceRelationsServiceServer) ListReferenceRelations(context.Context, *emptypb.Empty) (*ListReferenceRelationsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListReferenceRelations not implemented")
 }
-func (UnimplementedReferenceTablesServiceServer) SyncReferenceTables(context.Context, *SyncReferenceTablesRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SyncReferenceTables not implemented")
+func (UnimplementedReferenceRelationsServiceServer) SyncReferenceRelations(context.Context, *SyncReferenceRelationsRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SyncReferenceRelations not implemented")
 }
-func (UnimplementedReferenceTablesServiceServer) mustEmbedUnimplementedReferenceTablesServiceServer() {
+func (UnimplementedReferenceRelationsServiceServer) mustEmbedUnimplementedReferenceRelationsServiceServer() {
 }
 
-// UnsafeReferenceTablesServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ReferenceTablesServiceServer will
+// UnsafeReferenceRelationsServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ReferenceRelationsServiceServer will
 // result in compilation errors.
-type UnsafeReferenceTablesServiceServer interface {
-	mustEmbedUnimplementedReferenceTablesServiceServer()
+type UnsafeReferenceRelationsServiceServer interface {
+	mustEmbedUnimplementedReferenceRelationsServiceServer()
 }
 
-func RegisterReferenceTablesServiceServer(s grpc.ServiceRegistrar, srv ReferenceTablesServiceServer) {
-	s.RegisterService(&ReferenceTablesService_ServiceDesc, srv)
+func RegisterReferenceRelationsServiceServer(s grpc.ServiceRegistrar, srv ReferenceRelationsServiceServer) {
+	s.RegisterService(&ReferenceRelationsService_ServiceDesc, srv)
 }
 
-func _ReferenceTablesService_CreateReferenceTables_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateReferenceTablesRequest)
+func _ReferenceRelationsService_CreateReferenceRelations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateReferenceRelationsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ReferenceTablesServiceServer).CreateReferenceTables(ctx, in)
+		return srv.(ReferenceRelationsServiceServer).CreateReferenceRelations(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ReferenceTablesService_CreateReferenceTables_FullMethodName,
+		FullMethod: ReferenceRelationsService_CreateReferenceRelations_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ReferenceTablesServiceServer).CreateReferenceTables(ctx, req.(*CreateReferenceTablesRequest))
+		return srv.(ReferenceRelationsServiceServer).CreateReferenceRelations(ctx, req.(*CreateReferenceRelationsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ReferenceTablesService_DropReferenceTables_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DropReferenceTablesRequest)
+func _ReferenceRelationsService_DropReferenceRelations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DropReferenceRelationsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ReferenceTablesServiceServer).DropReferenceTables(ctx, in)
+		return srv.(ReferenceRelationsServiceServer).DropReferenceRelations(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ReferenceTablesService_DropReferenceTables_FullMethodName,
+		FullMethod: ReferenceRelationsService_DropReferenceRelations_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ReferenceTablesServiceServer).DropReferenceTables(ctx, req.(*DropReferenceTablesRequest))
+		return srv.(ReferenceRelationsServiceServer).DropReferenceRelations(ctx, req.(*DropReferenceRelationsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ReferenceTablesService_ListReferenceTabless_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ReferenceRelationsService_ListReferenceRelations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ReferenceTablesServiceServer).ListReferenceTabless(ctx, in)
+		return srv.(ReferenceRelationsServiceServer).ListReferenceRelations(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ReferenceTablesService_ListReferenceTabless_FullMethodName,
+		FullMethod: ReferenceRelationsService_ListReferenceRelations_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ReferenceTablesServiceServer).ListReferenceTabless(ctx, req.(*emptypb.Empty))
+		return srv.(ReferenceRelationsServiceServer).ListReferenceRelations(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ReferenceTablesService_SyncReferenceTables_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SyncReferenceTablesRequest)
+func _ReferenceRelationsService_SyncReferenceRelations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SyncReferenceRelationsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ReferenceTablesServiceServer).SyncReferenceTables(ctx, in)
+		return srv.(ReferenceRelationsServiceServer).SyncReferenceRelations(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ReferenceTablesService_SyncReferenceTables_FullMethodName,
+		FullMethod: ReferenceRelationsService_SyncReferenceRelations_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ReferenceTablesServiceServer).SyncReferenceTables(ctx, req.(*SyncReferenceTablesRequest))
+		return srv.(ReferenceRelationsServiceServer).SyncReferenceRelations(ctx, req.(*SyncReferenceRelationsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// ReferenceTablesService_ServiceDesc is the grpc.ServiceDesc for ReferenceTablesService service.
+// ReferenceRelationsService_ServiceDesc is the grpc.ServiceDesc for ReferenceRelationsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var ReferenceTablesService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "spqr.ReferenceTablesService",
-	HandlerType: (*ReferenceTablesServiceServer)(nil),
+var ReferenceRelationsService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "spqr.ReferenceRelationsService",
+	HandlerType: (*ReferenceRelationsServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "CreateReferenceTables",
-			Handler:    _ReferenceTablesService_CreateReferenceTables_Handler,
+			MethodName: "CreateReferenceRelations",
+			Handler:    _ReferenceRelationsService_CreateReferenceRelations_Handler,
 		},
 		{
-			MethodName: "DropReferenceTables",
-			Handler:    _ReferenceTablesService_DropReferenceTables_Handler,
+			MethodName: "DropReferenceRelations",
+			Handler:    _ReferenceRelationsService_DropReferenceRelations_Handler,
 		},
 		{
-			MethodName: "ListReferenceTabless",
-			Handler:    _ReferenceTablesService_ListReferenceTabless_Handler,
+			MethodName: "ListReferenceRelations",
+			Handler:    _ReferenceRelationsService_ListReferenceRelations_Handler,
 		},
 		{
-			MethodName: "SyncReferenceTables",
-			Handler:    _ReferenceTablesService_SyncReferenceTables_Handler,
+			MethodName: "SyncReferenceRelations",
+			Handler:    _ReferenceRelationsService_SyncReferenceRelations_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
