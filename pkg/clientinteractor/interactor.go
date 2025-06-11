@@ -462,7 +462,7 @@ func (pi *PSQLInteractor) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRa
 // Returns:
 //   - error: An error if sending the messages fails, otherwise nil.
 func (pi *PSQLInteractor) CreateReferenceRelation(ctx context.Context, rrel *rrelation.ReferenceRelation) error {
-	if err := pi.WriteHeader("add reference relation"); err != nil {
+	if err := pi.WriteHeader("create reference relation"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
@@ -473,6 +473,32 @@ func (pi *PSQLInteractor) CreateReferenceRelation(ctx context.Context, rrel *rre
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
+		}
+	}
+
+	return pi.CompleteMsg(0)
+}
+
+func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation) error {
+	if err := pi.WriteHeader("reference relations", "schema version", "column mappings"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	for _, rrel := range rrs {
+		for _, msg := range []pgproto3.BackendMessage{
+			&pgproto3.DataRow{
+				Values: [][]byte{
+					[]byte(rrel.Name),
+					[]byte(fmt.Sprintf("%d", rrel.SchemaVersion)),
+					[]byte(fmt.Sprintf("%+v", rrel.ColumnSequenceMapping)),
+				},
+			},
+		} {
+			if err := pi.cl.Send(msg); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+				return err
+			}
 		}
 	}
 

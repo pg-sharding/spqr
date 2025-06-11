@@ -7,14 +7,14 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE REFERENCE TABLE test_ref_rel;
- add reference relation 
-------------------------
+ create reference relation 
+---------------------------
  test_ref_rel
 (1 row)
 
 CREATE REFERENCE TABLE test_ref_rel_2;
- add reference relation 
-------------------------
+ create reference relation 
+---------------------------
  test_ref_rel_2
 (1 row)
 
