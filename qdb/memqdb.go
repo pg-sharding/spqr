@@ -958,12 +958,7 @@ func (q *MemQDB) CreateSequence(_ context.Context, seqName string, initialValue 
 		Str("sequence", seqName).Msg("memqdb: alter sequence attach")
 
 	q.Sequences[seqName] = true
-	err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Sequences, seqName, true))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Sequences, seqName, true))
 }
 
 func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName, relName, colName string) error {
@@ -973,11 +968,7 @@ func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName, relName, colNam
 		Str("column", colName).Msg("memqdb: alter sequence attach")
 
 	if _, ok := q.Sequences[seqName]; !ok {
-		q.Sequences[seqName] = true
-		err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Sequences, seqName, true))
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("sequence %s does not exists", seqName)
 	}
 
 	key := fmt.Sprintf("%s_%s", relName, colName)

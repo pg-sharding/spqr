@@ -255,7 +255,7 @@ func TestMemQDB_NextVal(t *testing.T) {
 	memqdb, err := qdb.NewMemQDB("")
 	assert.NoError(err)
 
-	err = memqdb.CreateSequence(ctx, "seqid", 0)
+	err = memqdb.CreateSequence(ctx, "seq", 0)
 	assert.NoError(err)
 
 	err = memqdb.AlterSequenceAttach(ctx, "seq", "test", "id")
