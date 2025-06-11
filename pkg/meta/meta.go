@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
@@ -223,7 +224,9 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return cli.ReportError(err)
 		}
 
-		return cli.AlterDistributionAttach(ctx, selectedDistribId, rels)
+		return cli.CreateReferenceRelation(ctx, &rrelation.ReferenceRelation{
+			Name: rels[0].Name,
+		})
 
 	case *spqrparser.DistributionDefinition:
 		if stmt.ID == "default" {

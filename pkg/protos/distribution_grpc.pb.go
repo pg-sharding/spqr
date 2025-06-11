@@ -31,7 +31,6 @@ const (
 	DistributionService_NextVal_FullMethodName                  = "/spqr.DistributionService/NextVal"
 	DistributionService_ListSequences_FullMethodName            = "/spqr.DistributionService/ListSequences"
 	DistributionService_DropSequence_FullMethodName             = "/spqr.DistributionService/DropSequence"
-	DistributionService_SyncReferenceTables_FullMethodName      = "/spqr.DistributionService/SyncReferenceTables"
 )
 
 // DistributionServiceClient is the client API for DistributionService service.
@@ -49,7 +48,6 @@ type DistributionServiceClient interface {
 	NextVal(ctx context.Context, in *NextValRequest, opts ...grpc.CallOption) (*NextValReply, error)
 	ListSequences(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListSequencesReply, error)
 	DropSequence(ctx context.Context, in *DropSequenceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	SyncReferenceTables(ctx context.Context, in *SyncReferenceTablesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type distributionServiceClient struct {
@@ -159,15 +157,6 @@ func (c *distributionServiceClient) DropSequence(ctx context.Context, in *DropSe
 	return out, nil
 }
 
-func (c *distributionServiceClient) SyncReferenceTables(ctx context.Context, in *SyncReferenceTablesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, DistributionService_SyncReferenceTables_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // DistributionServiceServer is the server API for DistributionService service.
 // All implementations must embed UnimplementedDistributionServiceServer
 // for forward compatibility
@@ -183,7 +172,6 @@ type DistributionServiceServer interface {
 	NextVal(context.Context, *NextValRequest) (*NextValReply, error)
 	ListSequences(context.Context, *emptypb.Empty) (*ListSequencesReply, error)
 	DropSequence(context.Context, *DropSequenceRequest) (*emptypb.Empty, error)
-	SyncReferenceTables(context.Context, *SyncReferenceTablesRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedDistributionServiceServer()
 }
 
@@ -223,9 +211,6 @@ func (UnimplementedDistributionServiceServer) ListSequences(context.Context, *em
 }
 func (UnimplementedDistributionServiceServer) DropSequence(context.Context, *DropSequenceRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropSequence not implemented")
-}
-func (UnimplementedDistributionServiceServer) SyncReferenceTables(context.Context, *SyncReferenceTablesRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SyncReferenceTables not implemented")
 }
 func (UnimplementedDistributionServiceServer) mustEmbedUnimplementedDistributionServiceServer() {}
 
@@ -438,24 +423,6 @@ func _DistributionService_DropSequence_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DistributionService_SyncReferenceTables_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SyncReferenceTablesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DistributionServiceServer).SyncReferenceTables(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: DistributionService_SyncReferenceTables_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DistributionServiceServer).SyncReferenceTables(ctx, req.(*SyncReferenceTablesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // DistributionService_ServiceDesc is the grpc.ServiceDesc for DistributionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -506,10 +473,6 @@ var DistributionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DropSequence",
 			Handler:    _DistributionService_DropSequence_Handler,
-		},
-		{
-			MethodName: "SyncReferenceTables",
-			Handler:    _DistributionService_SyncReferenceTables_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

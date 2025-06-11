@@ -6,11 +6,10 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE REFERENCE TABLE zz;
-         attach table          
--------------------------------
- relation name   -> zz
- distribution id -> REPLICATED
-(2 rows)
+ add reference relation 
+------------------------
+ zz
+(1 row)
 
 SYNC REFERENCE TABLES sh1;
 ERROR:  sync reference table cmd not implemented

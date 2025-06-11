@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package spqr;
+
+option go_package = "spqr/proto";
+
+import "google/protobuf/empty.proto";
+
+message ReferenceRelation {
+  string name = 1;
+  map<string, string> sequenceColumns = 2;
+  int64 schema_version = 3;
+  repeated string shardIds = 4;
+}
+
+message CreateReferenceRelationsRequest{
+  repeated ReferenceRelation relations = 1;
+}
+
+message DropReferenceRelationsRequest {
+  repeated string ids = 1;
+}
+
+
+message ListReferenceRelationsReply {
+  repeated ReferenceRelation relations = 1;
+}
+
+message SyncReferenceRelationsRequest {
+    string shard_id = 1;
+}
+
+service ReferenceRelationsService {
+  rpc CreateReferenceRelations(CreateReferenceRelationsRequest) returns (google.protobuf.Empty) {}
+  rpc DropReferenceRelations(DropReferenceRelationsRequest) returns (google.protobuf.Empty) {}
+  rpc ListReferenceRelations(google.protobuf.Empty) returns (ListReferenceRelationsReply) {}
+
+  rpc SyncReferenceRelations(SyncReferenceRelationsRequest) returns (google.protobuf.Empty) {} 
+}

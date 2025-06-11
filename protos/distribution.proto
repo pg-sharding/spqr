@@ -85,10 +85,6 @@ message DropSequenceRequest {
   string name = 1;
 }
 
-message SyncReferenceTablesRequest {
-    string shard_id = 1;
-}
-
 service DistributionService {
   rpc CreateDistribution(CreateDistributionRequest) returns (google.protobuf.Empty) {}
   rpc DropDistribution(DropDistributionRequest) returns (google.protobuf.Empty) {}
@@ -105,6 +101,4 @@ service DistributionService {
   rpc NextVal(NextValRequest) returns (NextValReply) {}
   rpc ListSequences(google.protobuf.Empty) returns (ListSequencesReply) {}
   rpc DropSequence(DropSequenceRequest) returns (google.protobuf.Empty) {}
-
-  rpc SyncReferenceTables(SyncReferenceTablesRequest) returns (google.protobuf.Empty) {} 
 }
