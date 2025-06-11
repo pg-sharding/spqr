@@ -990,3 +990,14 @@ func (a *Adapter) NextVal(ctx context.Context, seqName string) (int64, error) {
 	}
 	return resp.Value, err
 }
+
+func (a *Adapter) CurrVal(ctx context.Context, seqName string) (int64, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
+	resp, err := c.CurrVal(ctx, &proto.CurrValRequest{
+		Seq: seqName,
+	})
+	if err != nil {
+		return -1, err
+	}
+	return resp.Value, err
+}

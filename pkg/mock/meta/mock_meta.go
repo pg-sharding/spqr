@@ -172,6 +172,21 @@ func (mr *MockEntityMgrMockRecorder) CreateKeyRange(ctx, arg1 any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).CreateKeyRange), ctx, arg1)
 }
 
+// CurrVal mocks base method.
+func (m *MockEntityMgr) CurrVal(ctx context.Context, seqName string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CurrVal", ctx, seqName)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CurrVal indicates an expected call of CurrVal.
+func (mr *MockEntityMgrMockRecorder) CurrVal(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrVal", reflect.TypeOf((*MockEntityMgr)(nil).CurrVal), ctx, seqName)
+}
+
 // DropDistribution mocks base method.
 func (m *MockEntityMgr) DropDistribution(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()

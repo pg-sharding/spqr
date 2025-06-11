@@ -953,6 +953,19 @@ func (q *MemQDB) RemoveBalancerTask(_ context.Context) error {
 	return nil
 }
 
+func (q *MemQDB) CreateSequence(_ context.Context, seqName string, initialValue int64) error {
+	spqrlog.Zero.Debug().
+		Str("sequence", seqName).Msg("memqdb: alter sequence attach")
+
+	q.Sequences[seqName] = true
+	err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Sequences, seqName, true))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName, relName, colName string) error {
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).
@@ -1042,5 +1055,16 @@ func (q *MemQDB) NextVal(_ context.Context, seqName string) (int64, error) {
 
 	next := q.SequenceToValues[seqName] + 1
 	q.SequenceToValues[seqName] = next
+	return next, nil
+}
+
+func (q *MemQDB) CurrVal(_ context.Context, seqName string) (int64, error) {
+	q.SequenceLock.Lock()
+	defer q.SequenceLock.Unlock()
+	spqrlog.Zero.Debug().
+		Str("sequence", seqName).
+		Msg("memqdb: get next value for sequence")
+
+	next := q.SequenceToValues[seqName]
 	return next, nil
 }

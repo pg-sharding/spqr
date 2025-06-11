@@ -77,6 +77,14 @@ message NextValReply {
   int64 value = 1;
 }
 
+message CurrValRequest {
+  string seq = 1;
+}
+
+message CurrValReply {
+  int64 value = 1;
+}
+
 message ListSequencesReply {
   repeated string names = 1;
 }
@@ -99,6 +107,8 @@ service DistributionService {
   rpc GetRelationDistribution(GetRelationDistributionRequest) returns (GetRelationDistributionReply) {}
 
   rpc NextVal(NextValRequest) returns (NextValReply) {}
+  rpc CurrVal(CurrValRequest) returns (CurrValReply) {}
+
   rpc ListSequences(google.protobuf.Empty) returns (ListSequencesReply) {}
   rpc DropSequence(DropSequenceRequest) returns (google.protobuf.Empty) {}
 }
