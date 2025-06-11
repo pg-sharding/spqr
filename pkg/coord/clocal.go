@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -38,18 +39,121 @@ type LocalCoordinator struct {
 	cache *cache.SchemaCache
 }
 
-// GetBalancerTask is disabled in LocalCoordinator
-func (lc *LocalCoordinator) GetBalancerTask(context.Context) (*tasks.BalancerTask, error) {
+// CreateKeyRange implements meta.EntityMgr.
+// Subtle: this method shadows the method (Coordinator).CreateKeyRange of LocalCoordinator.Coordinator.
+func (lc *LocalCoordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+	return lc.Coordinator.CreateKeyRange(ctx, kr)
+}
+
+// GetBalancerTask implements meta.EntityMgr.
+func (lc *LocalCoordinator) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {
 	return nil, ErrNotCoordinator
 }
 
-// WriteBalancerTask is disabled in LocalCoordinator
-func (lc *LocalCoordinator) WriteBalancerTask(context.Context, *tasks.BalancerTask) error {
+// GetKeyRange implements meta.EntityMgr.
+// Subtle: this method shadows the method (Coordinator).GetKeyRange of LocalCoordinator.Coordinator.
+func (lc *LocalCoordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
+	return lc.Coordinator.GetKeyRange(ctx, krId)
+}
+
+// GetMoveTaskGroup implements meta.EntityMgr.
+// Subtle: this method shadows the method (Coordinator).GetMoveTaskGroup of LocalCoordinator.Coordinator.
+func (lc *LocalCoordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
+	return nil, ErrNotCoordinator
+}
+
+// ListDistributions implements meta.EntityMgr.
+// Subtle: this method shadows the method (Coordinator).ListDistributions of LocalCoordinator.Coordinator.
+func (lc *LocalCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
+	return lc.Coordinator.ListDistributions(ctx)
+}
+
+// ListKeyRanges implements meta.EntityMgr.
+// Subtle: this method shadows the method (Coordinator).ListKeyRanges of LocalCoordinator.Coordinator.
+func (lc *LocalCoordinator) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
+	return lc.Coordinator.ListKeyRanges(ctx, distribution)
+}
+
+// ListReferenceRelations implements meta.EntityMgr.
+func (lc *LocalCoordinator) ListReferenceRelations(ctx context.Context) ([]*rrelation.ReferenceRelation, error) {
+	dds, err := lc.Coordinator.ListDistributions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var res []*rrelation.ReferenceRelation
+
+	for _, ds := range dds {
+		if ds.Id != distributions.REPLICATED {
+			continue
+		}
+		for _, r := range ds.Relations {
+			res = append(res, &rrelation.ReferenceRelation{
+				Name:                  r.Name,
+				SchemaVersion:         0,
+				ColumnSequenceMapping: r.ColumnSequenceMapping,
+				ShardId:               []string{"all"},
+			})
+		}
+	}
+
+	return res, nil
+}
+
+// ListSequences implements meta.EntityMgr.
+// Subtle: this method shadows the method (Coordinator).ListSequences of LocalCoordinator.Coordinator.
+func (lc *LocalCoordinator) ListSequences(ctx context.Context) ([]string, error) {
+	return lc.Coordinator.ListSequences(ctx)
+}
+
+// LockKeyRange implements meta.EntityMgr.
+// Subtle: this method shadows the method (Coordinator).LockKeyRange of LocalCoordinator.Coordinator.
+func (lc *LocalCoordinator) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, error) {
+	return lc.Coordinator.LockKeyRange(ctx, krid)
+}
+
+// RemoveBalancerTask implements meta.EntityMgr.
+func (lc *LocalCoordinator) RemoveBalancerTask(ctx context.Context) error {
 	return ErrNotCoordinator
 }
 
-// RemoveBalancerTask is disabled in LocalCoordinator
-func (lc *LocalCoordinator) RemoveBalancerTask(context.Context) error {
+// RemoveMoveTaskGroup implements meta.EntityMgr.
+// Subtle: this method shadows the method (Coordinator).RemoveMoveTaskGroup of LocalCoordinator.Coordinator.
+func (lc *LocalCoordinator) RemoveMoveTaskGroup(ctx context.Context) error {
+	return ErrNotCoordinator
+}
+
+// ShareKeyRange implements meta.EntityMgr.
+// Subtle: this method shadows the method (Coordinator).ShareKeyRange of LocalCoordinator.Coordinator.
+func (lc *LocalCoordinator) ShareKeyRange(id string) error {
+	return lc.Coordinator.ShareKeyRange(id)
+}
+
+// Split implements meta.EntityMgr.
+// Subtle: this method shadows the method (Coordinator).Split of LocalCoordinator.Coordinator.
+func (lc *LocalCoordinator) Split(ctx context.Context, split *kr.SplitKeyRange) error {
+	return lc.Coordinator.Split(ctx, split)
+}
+
+// Unite implements meta.EntityMgr.
+// Subtle: this method shadows the method (Coordinator).Unite of LocalCoordinator.Coordinator.
+func (lc *LocalCoordinator) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
+	return lc.Coordinator.Unite(ctx, unite)
+}
+
+// UnlockKeyRange implements meta.EntityMgr.
+// Subtle: this method shadows the method (Coordinator).UnlockKeyRange of LocalCoordinator.Coordinator.
+func (lc *LocalCoordinator) UnlockKeyRange(ctx context.Context, krid string) error {
+	return lc.Coordinator.UnlockKeyRange(ctx, krid)
+}
+
+// WriteBalancerTask implements meta.EntityMgr.
+func (lc *LocalCoordinator) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
+	return ErrNotCoordinator
+}
+
+// WriteMoveTaskGroup implements meta.EntityMgr.
+// Subtle: this method shadows the method (Coordinator).WriteMoveTaskGroup of LocalCoordinator.Coordinator.
+func (lc *LocalCoordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
 	return ErrNotCoordinator
 }
 
@@ -67,6 +171,14 @@ func (lc *LocalCoordinator) CreateDistribution(ctx context.Context, ds *distribu
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 	return lc.Coordinator.CreateDistribution(ctx, ds)
+}
+
+func (lc *LocalCoordinator) CreateReferenceRelation(ctx context.Context, rrl *rrelation.ReferenceRelation) error {
+	return ErrNotCoordinator
+}
+
+func (lc *LocalCoordinator) DropReferenceRelation(ctx context.Context, id string) error {
+	return ErrNotCoordinator
 }
 
 // TODO : unit tests

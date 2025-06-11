@@ -38,6 +38,7 @@ type EntityMgr interface {
 	distributions.DistributionMgr
 	tasks.TaskMgr
 	sequences.SequenceMgr
+	rrelation.ReferenceRelationMgr
 
 	ListSequences(ctx context.Context) ([]string, error)
 	NextVal(ctx context.Context, seqName string) (int64, error)
@@ -635,6 +636,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 		return cli.Distributions(ctx, dss)
+	case spqrparser.ReferenceRelationsStr:
+		rrs, err := mngr.ListReferenceRelations(ctx)
+		if err != nil {
+			return err
+		}
+		return cli.ReferenceRelations(rrs)
 	case spqrparser.RelationsStr:
 		dss, err := mngr.ListDistributions(ctx)
 		if err != nil {

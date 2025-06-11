@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -33,6 +34,21 @@ func NewAdapter(conn *grpc.ClientConn) *Adapter {
 	return &Adapter{
 		conn: conn,
 	}
+}
+
+// CreateReferenceRelation implements meta.EntityMgr.
+func (a *Adapter) CreateReferenceRelation(ctx context.Context, ds *rrelation.ReferenceRelation) error {
+	panic("unimplemented")
+}
+
+// DropReferenceRelation implements meta.EntityMgr.
+func (a *Adapter) DropReferenceRelation(ctx context.Context, id string) error {
+	panic("unimplemented")
+}
+
+// ListReferenceRelations implements meta.EntityMgr.
+func (a *Adapter) ListReferenceRelations(ctx context.Context) ([]*rrelation.ReferenceRelation, error) {
+	panic("unimplemented")
 }
 
 // QDB returns the QDB object associated with the Adapter.

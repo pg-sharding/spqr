@@ -27,6 +27,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -211,6 +212,57 @@ type QDBCoordinator struct {
 	db           qdb.XQDB
 	cache        *cache.SchemaCache
 	acquiredLock bool
+}
+
+// CreateReferenceRelation implements coordinator.Coordinator.
+func (qc *QDBCoordinator) CreateReferenceRelation(ctx context.Context, ds *rrelation.ReferenceRelation) error {
+	panic("unimplemented")
+}
+
+// DropReferenceRelation implements coordinator.Coordinator.
+func (qc *QDBCoordinator) DropReferenceRelation(ctx context.Context, id string) error {
+	panic("unimplemented")
+}
+
+// GetKeyRange implements coordinator.Coordinator.
+// Subtle: this method shadows the method (Coordinator).GetKeyRange of QDBCoordinator.Coordinator.
+func (qc *QDBCoordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
+	panic("unimplemented")
+}
+
+// GetMoveTaskGroup implements coordinator.Coordinator.
+// Subtle: this method shadows the method (Coordinator).GetMoveTaskGroup of QDBCoordinator.Coordinator.
+func (qc *QDBCoordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
+	panic("unimplemented")
+}
+
+// ListKeyRanges implements coordinator.Coordinator.
+// Subtle: this method shadows the method (Coordinator).ListKeyRanges of QDBCoordinator.Coordinator.
+func (qc *QDBCoordinator) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
+	panic("unimplemented")
+}
+
+// ListReferenceRelations implements coordinator.Coordinator.
+func (qc *QDBCoordinator) ListReferenceRelations(ctx context.Context) ([]*rrelation.ReferenceRelation, error) {
+	panic("unimplemented")
+}
+
+// RemoveMoveTaskGroup implements coordinator.Coordinator.
+// Subtle: this method shadows the method (Coordinator).RemoveMoveTaskGroup of QDBCoordinator.Coordinator.
+func (qc *QDBCoordinator) RemoveMoveTaskGroup(ctx context.Context) error {
+	panic("unimplemented")
+}
+
+// ShareKeyRange implements coordinator.Coordinator.
+// Subtle: this method shadows the method (Coordinator).ShareKeyRange of QDBCoordinator.Coordinator.
+func (qc *QDBCoordinator) ShareKeyRange(id string) error {
+	panic("unimplemented")
+}
+
+// WriteMoveTaskGroup implements coordinator.Coordinator.
+// Subtle: this method shadows the method (Coordinator).WriteMoveTaskGroup of QDBCoordinator.Coordinator.
+func (qc *QDBCoordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
+	panic("unimplemented")
 }
 
 func (qc *QDBCoordinator) QDB() qdb.QDB {

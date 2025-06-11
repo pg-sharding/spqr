@@ -15,6 +15,7 @@ import (
 
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
+	rrelation "github.com/pg-sharding/spqr/pkg/models/rrelation"
 	tasks "github.com/pg-sharding/spqr/pkg/models/tasks"
 	topology "github.com/pg-sharding/spqr/pkg/models/topology"
 	qdb "github.com/pg-sharding/spqr/qdb"
@@ -172,6 +173,20 @@ func (mr *MockEntityMgrMockRecorder) CreateKeyRange(ctx, arg1 any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).CreateKeyRange), ctx, arg1)
 }
 
+// CreateReferenceRelation mocks base method.
+func (m *MockEntityMgr) CreateReferenceRelation(ctx context.Context, ds *rrelation.ReferenceRelation) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateReferenceRelation", ctx, ds)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateReferenceRelation indicates an expected call of CreateReferenceRelation.
+func (mr *MockEntityMgrMockRecorder) CreateReferenceRelation(ctx, ds any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateReferenceRelation", reflect.TypeOf((*MockEntityMgr)(nil).CreateReferenceRelation), ctx, ds)
+}
+
 // DropDistribution mocks base method.
 func (m *MockEntityMgr) DropDistribution(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
@@ -212,6 +227,20 @@ func (m *MockEntityMgr) DropKeyRangeAll(ctx context.Context) error {
 func (mr *MockEntityMgrMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropKeyRangeAll", reflect.TypeOf((*MockEntityMgr)(nil).DropKeyRangeAll), ctx)
+}
+
+// DropReferenceRelation mocks base method.
+func (m *MockEntityMgr) DropReferenceRelation(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropReferenceRelation", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropReferenceRelation indicates an expected call of DropReferenceRelation.
+func (mr *MockEntityMgrMockRecorder) DropReferenceRelation(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropReferenceRelation", reflect.TypeOf((*MockEntityMgr)(nil).DropReferenceRelation), ctx, id)
 }
 
 // DropSequence mocks base method.
@@ -390,6 +419,21 @@ func (m *MockEntityMgr) ListKeyRanges(ctx context.Context, distribution string) 
 func (mr *MockEntityMgrMockRecorder) ListKeyRanges(ctx, distribution any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListKeyRanges", reflect.TypeOf((*MockEntityMgr)(nil).ListKeyRanges), ctx, distribution)
+}
+
+// ListReferenceRelations mocks base method.
+func (m *MockEntityMgr) ListReferenceRelations(ctx context.Context) ([]*rrelation.ReferenceRelation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListReferenceRelations", ctx)
+	ret0, _ := ret[0].([]*rrelation.ReferenceRelation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListReferenceRelations indicates an expected call of ListReferenceRelations.
+func (mr *MockEntityMgrMockRecorder) ListReferenceRelations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListReferenceRelations", reflect.TypeOf((*MockEntityMgr)(nil).ListReferenceRelations), ctx)
 }
 
 // ListRouters mocks base method.
