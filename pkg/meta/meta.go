@@ -39,9 +39,6 @@ type EntityMgr interface {
 	tasks.TaskMgr
 	sequences.SequenceMgr
 
-	ListSequences(ctx context.Context) ([]string, error)
-	NextVal(ctx context.Context, seqName string) (int64, error)
-
 	ShareKeyRange(id string) error
 
 	QDB() qdb.QDB
