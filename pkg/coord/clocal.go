@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type LocalCoordinator struct {
+type LocalInstanceMetadataMgr struct {
 	Coordinator
 
 	mu sync.Mutex
@@ -30,17 +30,17 @@ type LocalCoordinator struct {
 }
 
 // GetBalancerTask is disabled in LocalCoordinator
-func (lc *LocalCoordinator) GetBalancerTask(context.Context) (*tasks.BalancerTask, error) {
+func (lc *LocalInstanceMetadataMgr) GetBalancerTask(context.Context) (*tasks.BalancerTask, error) {
 	return nil, ErrNotCoordinator
 }
 
 // WriteBalancerTask is disabled in LocalCoordinator
-func (lc *LocalCoordinator) WriteBalancerTask(context.Context, *tasks.BalancerTask) error {
+func (lc *LocalInstanceMetadataMgr) WriteBalancerTask(context.Context, *tasks.BalancerTask) error {
 	return ErrNotCoordinator
 }
 
 // RemoveBalancerTask is disabled in LocalCoordinator
-func (lc *LocalCoordinator) RemoveBalancerTask(context.Context) error {
+func (lc *LocalInstanceMetadataMgr) RemoveBalancerTask(context.Context) error {
 	return ErrNotCoordinator
 }
 
@@ -55,7 +55,7 @@ func (lc *LocalCoordinator) RemoveBalancerTask(context.Context) error {
 //
 // Returns:
 // - error: an error if the alteration operation fails.
-func (lc *LocalCoordinator) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
+func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
@@ -98,7 +98,7 @@ func (lc *LocalCoordinator) AlterDistributedRelation(ctx context.Context, id str
 //
 // Returns:
 // - error: An error if the removal operation fails.
-func (lc *LocalCoordinator) DropDistribution(ctx context.Context, id string) error {
+func (lc *LocalInstanceMetadataMgr) DropDistribution(ctx context.Context, id string) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 	return lc.qdb.DropDistribution(ctx, id)
@@ -114,7 +114,7 @@ func (lc *LocalCoordinator) DropDistribution(ctx context.Context, id string) err
 // Returns:
 // - []*topology.DataShard: A slice of topology.DataShard objects representing the list of data shards.
 // - error: An error if the retrieval operation fails.
-func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
+func (lc *LocalInstanceMetadataMgr) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
 	return lc.Coordinator.ListShards(ctx)
 }
 
@@ -126,7 +126,7 @@ func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*topology.DataSha
 //
 // Returns:
 // - error: An error if the addition of the world shard fails.
-func (lc *LocalCoordinator) AddWorldShard(ctx context.Context, ds *topology.DataShard) error {
+func (lc *LocalInstanceMetadataMgr) AddWorldShard(ctx context.Context, ds *topology.DataShard) error {
 	spqrlog.Zero.Info().
 		Str("shard", ds.ID).
 		Msg("adding world datashard, noop")
@@ -142,7 +142,7 @@ func (lc *LocalCoordinator) AddWorldShard(ctx context.Context, ds *topology.Data
 //
 // Returns:
 // - error: An error if the dropping of the shard fails.
-func (lc *LocalCoordinator) DropShard(ctx context.Context, shardId string) error {
+func (lc *LocalInstanceMetadataMgr) DropShard(ctx context.Context, shardId string) error {
 	return lc.qdb.DropShard(ctx, shardId)
 }
 
@@ -156,7 +156,7 @@ func (lc *LocalCoordinator) DropShard(ctx context.Context, shardId string) error
 //
 // Returns:
 // - error: An error if the dropping of the key range fails.
-func (lc *LocalCoordinator) DropKeyRange(ctx context.Context, id string) error {
+func (lc *LocalInstanceMetadataMgr) DropKeyRange(ctx context.Context, id string) error {
 	return lc.qdb.DropKeyRange(ctx, id)
 }
 
@@ -169,7 +169,7 @@ func (lc *LocalCoordinator) DropKeyRange(ctx context.Context, id string) error {
 //
 // Returns:
 // - error: An error if the dropping of all key ranges fails.
-func (lc *LocalCoordinator) DropKeyRangeAll(ctx context.Context) error {
+func (lc *LocalInstanceMetadataMgr) DropKeyRangeAll(ctx context.Context) error {
 	return lc.qdb.DropKeyRangeAll(ctx)
 }
 
@@ -182,7 +182,7 @@ func (lc *LocalCoordinator) DropKeyRangeAll(ctx context.Context) error {
 //
 // Returns:
 // - []*routingstate.DataShardRoute: A slice of DataShardRoute objects representing the data shards routes.
-func (lc *LocalCoordinator) DataShardsRoutes() []*kr.ShardKey {
+func (lc *LocalInstanceMetadataMgr) DataShardsRoutes() []*kr.ShardKey {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
@@ -212,7 +212,7 @@ func (lc *LocalCoordinator) DataShardsRoutes() []*kr.ShardKey {
 //
 // Returns:
 // - []*routingstate.DataShardRoute: A slice of DataShardRoute objects representing the world shards routes after applying round-robin.
-func (lc *LocalCoordinator) WorldShardsRoutes() []*kr.ShardKey {
+func (lc *LocalInstanceMetadataMgr) WorldShardsRoutes() []*kr.ShardKey {
 	/*  XXX: world shard is not implemented */
 	return nil
 }
@@ -225,7 +225,7 @@ func (lc *LocalCoordinator) WorldShardsRoutes() []*kr.ShardKey {
 //
 // Returns:
 // - []string: a slice of strings containing the names of the world shards.
-func (lc *LocalCoordinator) WorldShards() []string {
+func (lc *LocalInstanceMetadataMgr) WorldShards() []string {
 	return nil
 }
 
@@ -240,7 +240,7 @@ func (lc *LocalCoordinator) WorldShards() []string {
 //
 // Returns:
 // - error: an error if the move operation encounters any issues.
-func (lc *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
+func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	var krmv *qdb.KeyRange
 	var err error
 	if krmv, err = lc.qdb.CheckLockedKeyRange(ctx, req.Krid); err != nil {
@@ -258,17 +258,17 @@ func (lc *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) erro
 }
 
 // BatchMoveKeyRange is disabled in LocalCoordinator
-func (lc *LocalCoordinator) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange) error {
+func (lc *LocalInstanceMetadataMgr) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange) error {
 	return ErrNotCoordinator
 }
 
 // RedistributeKeyRange is disabled in LocalCoordinator
-func (lc *LocalCoordinator) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange) error {
+func (lc *LocalInstanceMetadataMgr) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange) error {
 	return ErrNotCoordinator
 }
 
 // RenameKeyRange is disabled in LocalCoordinator
-func (lc *LocalCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
+func (lc *LocalInstanceMetadataMgr) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
 	return lc.qdb.RenameKeyRange(ctx, krId, krIdNew)
 }
 
@@ -282,7 +282,7 @@ func (lc *LocalCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew st
 //
 // Returns:
 // - error: an error if the operation encounters any issues.
-func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *topology.DataShard) error {
+func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topology.DataShard) error {
 	spqrlog.Zero.Info().
 		Str("node", ds.ID).
 		Msg("adding datashard node in local coordinator")
@@ -303,7 +303,7 @@ func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *topology.DataS
 // Returns:
 // - []*kr.KeyRange: a slice of KeyRange objects representing all key ranges.
 // - error: an error if the retrieval encounters any issues.
-func (lc *LocalCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+func (lc *LocalInstanceMetadataMgr) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	if krs, err := lc.qdb.ListAllKeyRanges(ctx); err != nil {
 		return nil, err
 	} else {
@@ -338,7 +338,7 @@ func (lc *LocalCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRang
 // Returns:
 // - []*topology.Router: a slice of Router objects representing all routers.
 // - error: an error if the retrieval encounters any issues.
-func (lc *LocalCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, error) {
+func (lc *LocalInstanceMetadataMgr) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 	return []*topology.Router{{
 		ID: "local",
 	}}, nil
@@ -348,7 +348,7 @@ func (lc *LocalCoordinator) ListRouters(ctx context.Context) ([]*topology.Router
 //
 // Returns:
 // - error: SPQR_INVALID_REQUEST error
-func (lc *LocalCoordinator) MoveKeyRange(_ context.Context, _ *kr.KeyRange) error {
+func (lc *LocalInstanceMetadataMgr) MoveKeyRange(_ context.Context, _ *kr.KeyRange) error {
 	return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "MoveKeyRange is not available in local coordinator")
 }
 
@@ -362,7 +362,7 @@ var ErrNotCoordinator = fmt.Errorf("request is unprocessable in router")
 //
 // Returns:
 // - error: An error indicating the registration status.
-func (lc *LocalCoordinator) RegisterRouter(ctx context.Context, r *topology.Router) error {
+func (lc *LocalInstanceMetadataMgr) RegisterRouter(ctx context.Context, r *topology.Router) error {
 	return ErrNotCoordinator
 }
 
@@ -374,7 +374,7 @@ func (lc *LocalCoordinator) RegisterRouter(ctx context.Context, r *topology.Rout
 //
 // Returns:
 // - error: An error indicating the unregistration status.
-func (lc *LocalCoordinator) UnregisterRouter(ctx context.Context, id string) error {
+func (lc *LocalInstanceMetadataMgr) UnregisterRouter(ctx context.Context, id string) error {
 	return ErrNotCoordinator
 }
 
@@ -386,7 +386,7 @@ func (lc *LocalCoordinator) UnregisterRouter(ctx context.Context, id string) err
 //
 // Returns:
 // - error: An error indicating the synchronization status. In this case, it returns ErrNotCoordinator.
-func (lc *LocalCoordinator) SyncRouterMetadata(ctx context.Context, router *topology.Router) error {
+func (lc *LocalInstanceMetadataMgr) SyncRouterMetadata(ctx context.Context, router *topology.Router) error {
 	return ErrNotCoordinator
 }
 
@@ -398,7 +398,7 @@ func (lc *LocalCoordinator) SyncRouterMetadata(ctx context.Context, router *topo
 //
 // Returns:
 // - error: An error indicating the update status.
-func (lc *LocalCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, router *topology.Router) error {
+func (lc *LocalInstanceMetadataMgr) SyncRouterCoordinatorAddress(ctx context.Context, router *topology.Router) error {
 	return ErrNotCoordinator
 }
 
@@ -410,7 +410,7 @@ func (lc *LocalCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, ro
 //
 // Returns:
 // - error: An error indicating the update status.
-func (lc *LocalCoordinator) UpdateCoordinator(ctx context.Context, addr string) error {
+func (lc *LocalInstanceMetadataMgr) UpdateCoordinator(ctx context.Context, addr string) error {
 	return lc.qdb.UpdateCoordinator(ctx, addr)
 }
 
@@ -422,7 +422,7 @@ func (lc *LocalCoordinator) UpdateCoordinator(ctx context.Context, addr string) 
 // Returns:
 // - string: The address of the coordinator.
 // - error: An error indicating the retrieval status.
-func (lc *LocalCoordinator) GetCoordinator(ctx context.Context) (string, error) {
+func (lc *LocalInstanceMetadataMgr) GetCoordinator(ctx context.Context) (string, error) {
 	addr, err := lc.qdb.GetCoordinator(ctx)
 	spqrlog.Zero.Debug().Str("address", addr).Msg("resp local coordinator: get coordinator")
 	return addr, err
@@ -437,7 +437,7 @@ func (lc *LocalCoordinator) GetCoordinator(ctx context.Context) (string, error) 
 // Returns:
 // - *topology.DataShard: The retrieved DataShard, or nil if it doesn't exist.
 // - error: An error indicating the retrieval status, or ErrNotCoordinator if the operation is not supported by the LocalCoordinator.
-func (lc *LocalCoordinator) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
+func (lc *LocalInstanceMetadataMgr) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
 	return nil, ErrNotCoordinator
 }
 
@@ -448,19 +448,19 @@ func (lc *LocalCoordinator) GetShard(ctx context.Context, shardID string) (*topo
 //
 // Returns:
 // - qdb.QDB: The QDB instance.
-func (lc *LocalCoordinator) QDB() qdb.QDB {
+func (lc *LocalInstanceMetadataMgr) QDB() qdb.QDB {
 	return lc.qdb
 }
 
-func (lc *LocalCoordinator) Cache() *cache.SchemaCache {
+func (lc *LocalInstanceMetadataMgr) Cache() *cache.SchemaCache {
 	return lc.cache
 }
 
-func (lc *LocalCoordinator) DropSequence(ctx context.Context, seqName string) error {
+func (lc *LocalInstanceMetadataMgr) DropSequence(ctx context.Context, seqName string) error {
 	return lc.qdb.DropSequence(ctx, seqName)
 }
 
-func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
+func (lc *LocalInstanceMetadataMgr) NextVal(ctx context.Context, seqName string) (int64, error) {
 	coordAddr, err := lc.GetCoordinator(ctx)
 	if err != nil {
 		return -1, err
@@ -481,7 +481,7 @@ func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64,
 	return mgr.NextVal(ctx, seqName)
 }
 
-func (lc *LocalCoordinator) CurrVal(ctx context.Context, seqName string) (int64, error) {
+func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string) (int64, error) {
 	coordAddr, err := lc.GetCoordinator(ctx)
 	if err != nil {
 		return -1, err
@@ -502,19 +502,19 @@ func (lc *LocalCoordinator) CurrVal(ctx context.Context, seqName string) (int64,
 	return mgr.CurrVal(ctx, seqName)
 }
 
-func (lc *LocalCoordinator) RetryMoveTaskGroup(_ context.Context) error {
+func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context) error {
 	return ErrNotCoordinator
 }
 
-// NewLocalCoordinator creates a new LocalCoordinator instance.
+// NewLocalInstanceMetadataMgr creates a new LocalCoordinator instance.
 //
 // Parameters:
 // - db (qdb.QDB): The QDB instance to associate with the LocalCoordinator.
 //
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
-func NewLocalCoordinator(db qdb.QDB, cache *cache.SchemaCache) meta.EntityMgr {
-	return &LocalCoordinator{
+func NewLocalInstanceMetadataMgr(db qdb.QDB, cache *cache.SchemaCache) meta.EntityMgr {
+	return &LocalInstanceMetadataMgr{
 		Coordinator: NewCoordinator(db),
 		qdb:         db,
 		cache:       cache,
