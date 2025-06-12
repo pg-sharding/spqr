@@ -52,7 +52,6 @@ func (lc *LocalInstanceMetadataMgr) RemoveBalancerTask(context.Context) error {
 // Returns:
 // - error: an error if the alteration operation fails.
 func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
-
 	ds, err := lc.qdb.GetDistribution(ctx, id)
 	if err != nil {
 		return err

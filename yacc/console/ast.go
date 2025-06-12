@@ -122,12 +122,12 @@ type ShardingRuleEntry struct {
 
 type ReferenceRelationDefinition struct {
 	TableName            string
-	AutoIncrementEntries []AutoIncrementEntry
+	AutoIncrementEntries []*AutoIncrementEntry
 }
 
 type AutoIncrementEntry struct {
 	Column string
-	Start  uint
+	Start  uint64
 }
 
 type KeyRangeBound struct {
@@ -273,7 +273,7 @@ type DistributedRelation struct {
 	SchemaName           string
 	DistributionKey      []DistributionKeyEntry
 	ReplicatedRelation   bool
-	AutoIncrementEntries []AutoIncrementEntry
+	AutoIncrementEntries []*AutoIncrementEntry
 }
 
 type AttachRelation struct {

@@ -174,17 +174,17 @@ func (mr *MockEntityMgrMockRecorder) CreateKeyRange(ctx, arg1 any) *gomock.Call 
 }
 
 // CreateReferenceRelation mocks base method.
-func (m *MockEntityMgr) CreateReferenceRelation(ctx context.Context, ds *rrelation.ReferenceRelation) error {
+func (m *MockEntityMgr) CreateReferenceRelation(ctx context.Context, id string, e []*rrelation.AutoIncrementEntry) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateReferenceRelation", ctx, ds)
+	ret := m.ctrl.Call(m, "CreateReferenceRelation", ctx, id, e)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateReferenceRelation indicates an expected call of CreateReferenceRelation.
-func (mr *MockEntityMgrMockRecorder) CreateReferenceRelation(ctx, ds any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) CreateReferenceRelation(ctx, id, e any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateReferenceRelation", reflect.TypeOf((*MockEntityMgr)(nil).CreateReferenceRelation), ctx, ds)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateReferenceRelation", reflect.TypeOf((*MockEntityMgr)(nil).CreateReferenceRelation), ctx, id, e)
 }
 
 // CurrVal mocks base method.

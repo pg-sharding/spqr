@@ -498,11 +498,6 @@ func (qc *ClusteredCoordinator) traverseRouters(ctx context.Context, cb func(cc 
 }
 
 // TODO : unit tests
-func (qc *ClusteredCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, error) {
-	return qc.Coordinator.ListRouters(ctx)
-}
-
-// TODO : unit tests
 func (qc *ClusteredCoordinator) AddRouter(ctx context.Context, router *topology.Router) error {
 	return qc.db.AddRouter(ctx, topology.RouterToDB(router))
 }
@@ -530,11 +525,6 @@ func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr
 			Msg("add key range response")
 		return err
 	})
-}
-
-// TODO : unit tests
-func (qc *ClusteredCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
-	return qc.Coordinator.ListAllKeyRanges(ctx)
 }
 
 // TODO : unit tests
@@ -623,7 +613,7 @@ func (qc *ClusteredCoordinator) DropKeyRangeAll(ctx context.Context) error {
 		return err
 	}
 
-	return qc.db.DropKeyRangeAll(ctx)
+	return qc.Coordinator.DropKeyRangeAll(ctx)
 }
 
 // TODO : unit tests
@@ -645,7 +635,7 @@ func (qc *ClusteredCoordinator) DropKeyRange(ctx context.Context, id string) err
 	}
 
 	// Drop key range from qdb.
-	return qc.db.DropKeyRange(ctx, id)
+	return qc.Coordinator.DropKeyRange(ctx, id)
 }
 
 // TODO : unit tests
@@ -1699,23 +1689,6 @@ func (qc *ClusteredCoordinator) RegisterRouter(ctx context.Context, r *topology.
 }
 
 // TODO : unit tests
-func (qc *ClusteredCoordinator) UnregisterRouter(ctx context.Context, rID string) error {
-	return qc.Coordinator.UnregisterRouter(ctx, rID)
-}
-
-func (qc *ClusteredCoordinator) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {
-	return qc.Coordinator.GetBalancerTask(ctx)
-}
-
-func (qc *ClusteredCoordinator) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
-	return qc.Coordinator.WriteBalancerTask(ctx, task)
-}
-
-func (qc *ClusteredCoordinator) RemoveBalancerTask(ctx context.Context) error {
-	return qc.Coordinator.RemoveBalancerTask(ctx)
-}
-
-// TODO : unit tests
 func (qc *ClusteredCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
 	cl := rclient.NewPsqlClient(nconn, pt, "", false, "")
 
@@ -1848,15 +1821,6 @@ func (qc *ClusteredCoordinator) AddWorldShard(_ context.Context, _ *topology.Dat
 	panic("ClusteredCoordinator.AddWorldShard not implemented")
 }
 
-func (qc *ClusteredCoordinator) DropShard(ctx context.Context, shardId string) error {
-	return qc.Coordinator.DropShard(ctx, shardId)
-}
-
-// TODO : unit tests
-func (qc *ClusteredCoordinator) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
-	return qc.Coordinator.ListShards(ctx)
-}
-
 // TODO : unit tests
 func (qc *ClusteredCoordinator) UpdateCoordinator(ctx context.Context, address string) error {
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -1867,20 +1831,6 @@ func (qc *ClusteredCoordinator) UpdateCoordinator(ctx context.Context, address s
 		})
 		return err
 	})
-}
-
-// TODO : unit tests
-func (qc *ClusteredCoordinator) GetCoordinator(ctx context.Context) (string, error) {
-	addr, err := qc.Coordinator.GetCoordinator(ctx)
-
-	spqrlog.Zero.Debug().Str("address", addr).Msg("resp qdb coordinator: get coordinator")
-	return addr, err
-}
-
-// ListDistributions returns all distributions from QDB
-// TODO: unit tests
-func (qc *ClusteredCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
-	return qc.Coordinator.ListDistributions(ctx)
 }
 
 // CreateDistribution creates distribution in QDB
@@ -1927,18 +1877,6 @@ func (qc *ClusteredCoordinator) DropDistribution(ctx context.Context, id string)
 			Msg("drop distribution response")
 		return nil
 	})
-}
-
-// GetDistribution retrieves info about distribution from QDB
-// TODO: unit tests
-func (qc *ClusteredCoordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
-	return qc.Coordinator.GetDistribution(ctx, id)
-}
-
-// GetRelationDistribution retrieves info about distribution attached to relation from QDB
-// TODO: unit tests
-func (qc *ClusteredCoordinator) GetRelationDistribution(ctx context.Context, relName string) (*distributions.Distribution, error) {
-	return qc.Coordinator.GetRelationDistribution(ctx, relName)
 }
 
 // AlterDistributionAttach attaches relation to distribution
@@ -1995,18 +1933,6 @@ func (qc *ClusteredCoordinator) AlterDistributedRelation(ctx context.Context, id
 	})
 }
 
-func (qc *ClusteredCoordinator) ListSequences(ctx context.Context) ([]string, error) {
-	return qc.Coordinator.ListSequences(ctx)
-}
-
-func (qc *ClusteredCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
-	return qc.Coordinator.NextVal(ctx, seqName)
-}
-
-func (qc *ClusteredCoordinator) CurrVal(ctx context.Context, seqName string) (int64, error) {
-	return qc.Coordinator.CurrVal(ctx, seqName)
-}
-
 func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string) error {
 	if err := qc.Coordinator.DropSequence(ctx, seqName); err != nil {
 		return err
@@ -2050,10 +1976,6 @@ func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id 
 			Msg("detach relation response")
 		return nil
 	})
-}
-
-func (qc *ClusteredCoordinator) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
-	return qc.Coordinator.GetShard(ctx, shardID)
 }
 
 func (qc *ClusteredCoordinator) finishRedistributeTasksInProgress(ctx context.Context) error {

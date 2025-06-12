@@ -70,8 +70,40 @@ func (lc *Coordinator) Cache() *cache.SchemaCache {
 }
 
 // CreateReferenceRelation implements meta.EntityMgr.
-func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, ds *rrelation.ReferenceRelation) error {
-	panic("unimplemented")
+func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, tableName string, ent []*rrelation.AutoIncrementEntry) error {
+	selectedDistribId := distributions.REPLICATED
+
+	if _, err := lc.GetDistribution(ctx, selectedDistribId); err != nil {
+		err := lc.CreateDistribution(ctx, &distributions.Distribution{
+			Id:       distributions.REPLICATED,
+			ColTypes: nil,
+		})
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
+			return err
+		}
+	}
+
+	ret := map[string]string{}
+	for _, entry := range ent {
+		ret[entry.Column] = distributions.SequenceName(tableName, entry.Column)
+
+		if err := lc.qdb.CreateSequence(ctx, ret[entry.Column], int64(entry.Start)); err != nil {
+			return err
+		}
+
+		if err := lc.qdb.AlterSequenceAttach(ctx, ret[entry.Column], tableName, entry.Column); err != nil {
+			return err
+		}
+	}
+
+	return lc.AlterDistributionAttach(ctx, selectedDistribId, []*distributions.DistributedRelation{
+		{
+			Name:                  tableName,
+			ReplicatedRelation:    true,
+			ColumnSequenceMapping: ret,
+		},
+	})
 }
 
 // CurrVal implements meta.EntityMgr.
@@ -85,18 +117,18 @@ func (lc *Coordinator) DropDistribution(ctx context.Context, id string) error {
 }
 
 // DropKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) DropKeyRange(ctx context.Context, krid string) error {
-	panic("unimplemented")
+func (lc *Coordinator) DropKeyRange(ctx context.Context, id string) error {
+	return lc.qdb.DropKeyRange(ctx, id)
 }
 
 // DropKeyRangeAll implements meta.EntityMgr.
 func (lc *Coordinator) DropKeyRangeAll(ctx context.Context) error {
-	panic("unimplemented")
+	return lc.qdb.DropKeyRangeAll(ctx)
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
 func (lc *Coordinator) DropReferenceRelation(ctx context.Context, id string) error {
-	panic("unimplemented")
+	return lc.AlterDistributionDetach(ctx, distributions.REPLICATED, id)
 }
 
 // DropSequence implements meta.EntityMgr.
@@ -187,7 +219,7 @@ func (lc *Coordinator) NextVal(ctx context.Context, seqName string) (int64, erro
 
 // QDB implements meta.EntityMgr.
 func (lc *Coordinator) QDB() qdb.QDB {
-	panic("unimplemented")
+	return lc.qdb
 }
 
 // RedistributeKeyRange implements meta.EntityMgr.
@@ -247,7 +279,7 @@ func (lc *Coordinator) UnregisterRouter(ctx context.Context, rID string) error {
 
 // UpdateCoordinator implements meta.EntityMgr.
 func (lc *Coordinator) UpdateCoordinator(ctx context.Context, address string) error {
-	panic("unimplemented")
+	return lc.qdb.UpdateCoordinator(ctx, address)
 }
 
 // WriteBalancerTask implements meta.EntityMgr.
@@ -618,17 +650,6 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 		return err
 	}
 
-	for _, r := range rels {
-		for colName, seqName := range r.ColumnSequenceMapping {
-			if err := lc.qdb.CreateSequence(ctx, seqName, 0); err != nil {
-				return err
-			}
-
-			if err := lc.qdb.AlterSequenceAttach(ctx, seqName, r.Name, colName); err != nil {
-				return err
-			}
-		}
-	}
 	return nil
 }
 

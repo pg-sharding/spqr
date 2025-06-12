@@ -66,7 +66,7 @@ func (a *Adapter) ShareKeyRange(id string) error {
 }
 
 // CreateReferenceRelation implements meta.EntityMgr.
-func (a *Adapter) CreateReferenceRelation(ctx context.Context, ds *rrelation.ReferenceRelation) error {
+func (a *Adapter) CreateReferenceRelation(ctx context.Context, tableName string, ent []*rrelation.AutoIncrementEntry) error {
 	panic("unimplemented")
 }
 
