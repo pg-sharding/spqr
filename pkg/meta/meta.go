@@ -682,7 +682,22 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
-		return cli.Sequences(ctx, seqs)
+
+		/* this is a bit ugly, but quick and dirty
+		* better approach is do it like for all other objects
+		 */
+
+		var sequenceVals []int64
+
+		for _, s := range seqs {
+			v, err := mngr.CurrVal(ctx, s)
+			if err != nil {
+				return err
+			}
+			sequenceVals = append(sequenceVals, v)
+		}
+
+		return cli.Sequences(ctx, seqs, sequenceVals)
 	case spqrparser.IsReadOnlyStr:
 		return cli.IsReadOnly(ctx, ro)
 	case spqrparser.MoveStatsStr:
