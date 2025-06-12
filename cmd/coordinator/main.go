@@ -74,7 +74,7 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("init frontend TLS: %w", err)
 		}
 
-		coordinator, err := coord.NewQDBCoordinator(frTLS, db)
+		coordinator, err := coord.NewClusteredCoordinator(frTLS, db)
 		if err != nil {
 			return err
 		}
