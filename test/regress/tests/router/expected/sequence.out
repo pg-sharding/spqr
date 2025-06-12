@@ -19,10 +19,10 @@ CREATE REFERENCE TABLE test2 AUTO INCREMENT id START 19;
 (1 row)
 
 SHOW sequences;
-   name   
-----------
- test2_id
- test_id
+   name   | value 
+----------+-------
+ test2_id | 0
+ test_id  | 0
 (2 rows)
 
 \c regress
@@ -71,6 +71,13 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ------------------------------------------------
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
+
+SHOW sequences;
+   name   | value 
+----------+-------
+ test2_id | 3
+ test_id  | 3
+(2 rows)
 
 DROP REFERENCE RELATION test;
  reference relation id 
