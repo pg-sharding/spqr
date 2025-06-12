@@ -11,6 +11,12 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
+CREATE DISTRIBUTION ds2 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds2
+(1 row)
+
 ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id;
       attach table      
 ------------------------
@@ -50,11 +56,26 @@ SHOW relations;
  a             | ds1             | ("another", identity) | schema_name
 (1 row)
 
+CREATE DISTRIBUTED RELATION aa DISTRIBUTION KEY another2 SCHEMA schema_name2 IN ds2;
+      attach table      
+------------------------
+ relation name   -> aa
+ distribution id -> ds2
+(2 rows)
+
+SHOW relations;
+ Relation name | Distribution ID |    Distribution key    | Schema name  
+---------------+-----------------+------------------------+--------------
+ a             | ds1             | ("another", identity)  | schema_name
+ aa            | ds2             | ("another2", identity) | schema_name2
+(2 rows)
+
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------
  distribution id -> ds1
-(1 row)
+ distribution id -> ds2
+(2 rows)
 
 DROP KEY RANGE ALL;
  drop key range 

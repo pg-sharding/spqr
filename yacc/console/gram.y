@@ -164,6 +164,7 @@ func randomHex(n int) (string, error) {
 %token <str> INVALIDATE CACHE
 %token <str> SYNC
 %token <str> RETRY
+%token <str> DISTRIBUTED IN
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -215,7 +216,7 @@ func randomHex(n int) (string, error) {
 %type<str> hash_function_name
 %type<str> distribution_membership
 
-%type<alter> alter_stmt
+%type<alter> alter_stmt create_distributed_relation_stmt
 %type<alter_distribution> distribution_alter_stmt
 
 %type<invalidate_cache> invalidate_cache_stmt
@@ -345,6 +346,10 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| sync_reference_tables_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| create_distributed_relation_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -679,6 +684,9 @@ relation_alter_stmt:
 		$$ = $2
 	}
 
+opt_distributed:
+	DISTRIBUTED | {} /* nothing */
+
 create_stmt:
 	CREATE distribution_define_stmt
 	{
@@ -706,6 +714,19 @@ create_stmt:
 			Element: &ReferenceRelationDefinition{
 				TableName: $4,
                 AutoIncrementEntries: $5,
+			},
+		}
+	}
+
+create_distributed_relation_stmt:
+	CREATE opt_distributed distributed_relation_def IN any_id
+	{
+		$$ = &Alter{
+			Element: &AlterDistribution{
+				Element: &AttachRelation{
+					Distribution: 	&DistributionSelector{ID: $5},
+					Relations:      []*DistributedRelation{$3},
+				},
 			},
 		}
 	}
