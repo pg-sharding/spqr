@@ -3,10 +3,8 @@ package coord
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sync"
 
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -24,13 +22,6 @@ type LocalCoordinator struct {
 	Coordinator
 
 	mu sync.Mutex
-
-	ColumnMapping map[string]struct{}
-	LocalTables   map[string]struct{}
-
-	// shards
-	DataShardCfgs  map[string]*config.Shard
-	WorldShardCfgs map[string]*config.Shard
 
 	// not extended QDB, since the router does not need to track the installation topology
 	qdb qdb.QDB
@@ -51,47 +42,6 @@ func (lc *LocalCoordinator) WriteBalancerTask(context.Context, *tasks.BalancerTa
 // RemoveBalancerTask is disabled in LocalCoordinator
 func (lc *LocalCoordinator) RemoveBalancerTask(context.Context) error {
 	return ErrNotCoordinator
-}
-
-// TODO : unit tests
-
-// CreateDistribution creates a distribution in the local coordinator's QDB.
-//
-// Parameters:
-// - ctx (context.Context): the context.Context object for managing the request's lifetime.
-// - ds (*distributions.Distribution): the distributions.Distribution object to be created.
-//
-// Returns:
-// - error: an error if the creation operation fails.
-func (lc *LocalCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-	return lc.Coordinator.CreateDistribution(ctx, ds)
-}
-
-// TODO : unit tests
-
-// AlterDistributionAttach alters the distribution by attaching additional distributed relations.
-//
-// Parameters:
-// - ctx (context.Context): the context.Context object for managing the request's lifetime.
-// - id (string): the ID of the distribution to be altered.
-// - rels ([]*distributions.DistributedRelation): the slice of distributions.DistributedRelation objects representing the relations to be attached.
-//
-// Returns:
-// - error: an error if the alteration operation fails.
-func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-	return lc.Coordinator.AlterDistributionAttach(ctx, id, rels)
-}
-
-// AlterDistributionDetach detaches relation from distribution
-func (lc *LocalCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-
-	return lc.Coordinator.AlterDistributionDetach(ctx, id, relName)
 }
 
 // TODO : unit tests
@@ -140,58 +90,6 @@ func (lc *LocalCoordinator) AlterDistributedRelation(ctx context.Context, id str
 
 // TODO : unit tests
 
-// GetDistribution retrieves a distribution from the local coordinator's QDB by its ID.
-//
-// Parameters:
-// - ctx (context.Context): the context.Context object for managing the request's lifetime.
-// - id (string): the ID of the distribution to retrieve.
-//
-// Returns:
-// - *distributions.Distribution: a pointer to the distributions.Distribution object representing the retrieved distribution.
-// - error: an error if the retrieval operation fails.
-func (lc *LocalCoordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-	return lc.Coordinator.GetDistribution(ctx, id)
-}
-
-// GetRelationDistribution retrieves a distribution based on the given relation from the local coordinator's QDB.
-//
-// Parameters:
-// - ctx (context.Context): The context.Context object for managing the request's lifetime.
-// - relation (string): The name of the relation for which to retrieve the distribution.
-//
-// Returns:
-// - *distributions.Distribution: A pointer to the distributions.Distribution object representing the retrieved distribution.
-// - error: An error if the retrieval operation fails.
-func (lc *LocalCoordinator) GetRelationDistribution(ctx context.Context, relation string) (*distributions.Distribution, error) {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-	return lc.Coordinator.GetRelationDistribution(ctx, relation)
-}
-
-// TODO : unit tests
-
-// ListDataShards retrieves a list of data shards from the local coordinator.
-//
-// Parameters:
-// - ctx (context.Context): The context.Context object for managing the request's lifetime.
-//
-// Returns:
-// - []*topology.DataShard: A slice of topology.DataShard objects representing the list of data shards.
-func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*topology.DataShard {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-
-	var ret []*topology.DataShard
-	for id, cfg := range lc.DataShardCfgs {
-		ret = append(ret, topology.NewDataShard(id, cfg))
-	}
-	return ret
-}
-
-// TODO : unit tests
-
 // DropDistribution removes a distribution with the specified ID from the local coordinator's QDB.
 //
 // Parameters:
@@ -229,13 +127,9 @@ func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*topology.DataSha
 // Returns:
 // - error: An error if the addition of the world shard fails.
 func (lc *LocalCoordinator) AddWorldShard(ctx context.Context, ds *topology.DataShard) error {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-
 	spqrlog.Zero.Info().
 		Str("shard", ds.ID).
-		Msg("adding world datashard")
-	lc.WorldShardCfgs[ds.ID] = ds.Cfg
+		Msg("adding world datashard, noop")
 
 	return nil
 }
@@ -249,12 +143,6 @@ func (lc *LocalCoordinator) AddWorldShard(ctx context.Context, ds *topology.Data
 // Returns:
 // - error: An error if the dropping of the shard fails.
 func (lc *LocalCoordinator) DropShard(ctx context.Context, shardId string) error {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-
-	delete(lc.DataShardCfgs, shardId)
-	delete(lc.WorldShardCfgs, shardId)
-
 	return lc.qdb.DropShard(ctx, shardId)
 }
 
@@ -269,12 +157,6 @@ func (lc *LocalCoordinator) DropShard(ctx context.Context, shardId string) error
 // Returns:
 // - error: An error if the dropping of the key range fails.
 func (lc *LocalCoordinator) DropKeyRange(ctx context.Context, id string) error {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-
-	spqrlog.Zero.Info().
-		Str("kr", id).
-		Msg("dropping key range")
 	return lc.qdb.DropKeyRange(ctx, id)
 }
 
@@ -288,10 +170,6 @@ func (lc *LocalCoordinator) DropKeyRange(ctx context.Context, id string) error {
 // Returns:
 // - error: An error if the dropping of all key ranges fails.
 func (lc *LocalCoordinator) DropKeyRangeAll(ctx context.Context) error {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-
-	spqrlog.Zero.Info().Msg("dropping all key ranges")
 	return lc.qdb.DropKeyRangeAll(ctx)
 }
 
@@ -310,11 +188,16 @@ func (lc *LocalCoordinator) DataShardsRoutes() []*kr.ShardKey {
 
 	var ret []*kr.ShardKey
 
-	for name := range lc.DataShardCfgs {
-		ret = append(ret, &kr.ShardKey{
-			Name: name,
-			RO:   false,
-		})
+	/* currently, all shards are data shards */
+	if shs, err := lc.qdb.ListShards(context.TODO()); err != nil {
+		for _, sh := range shs {
+			ret = append(ret, &kr.ShardKey{
+				Name: sh.ID,
+				RO:   false,
+			})
+		}
+	} else {
+		panic(err)
 	}
 
 	return ret
@@ -330,24 +213,8 @@ func (lc *LocalCoordinator) DataShardsRoutes() []*kr.ShardKey {
 // Returns:
 // - []*routingstate.DataShardRoute: A slice of DataShardRoute objects representing the world shards routes after applying round-robin.
 func (lc *LocalCoordinator) WorldShardsRoutes() []*kr.ShardKey {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-
-	var ret []*kr.ShardKey
-
-	for name := range lc.WorldShardCfgs {
-		ret = append(ret, &kr.ShardKey{
-			Name: name,
-			RO:   true,
-		})
-	}
-
-	// a sort of round robin
-
-	rand.Shuffle(len(ret), func(i, j int) {
-		ret[i], ret[j] = ret[j], ret[i]
-	})
-	return ret
+	/*  XXX: world shard is not implemented */
+	return nil
 }
 
 // WorldShards returns a slice of strings containing the names of the world shards
@@ -359,16 +226,7 @@ func (lc *LocalCoordinator) WorldShardsRoutes() []*kr.ShardKey {
 // Returns:
 // - []string: a slice of strings containing the names of the world shards.
 func (lc *LocalCoordinator) WorldShards() []string {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-
-	var ret []string
-
-	for name := range lc.WorldShardCfgs {
-		ret = append(ret, name)
-	}
-
-	return ret
+	return nil
 }
 
 // Caller should lock key range
@@ -429,31 +287,10 @@ func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *topology.DataS
 		Str("node", ds.ID).
 		Msg("adding datashard node in local coordinator")
 
-	lc.DataShardCfgs[ds.ID] = ds.Cfg
-
 	return lc.qdb.AddShard(ctx, &qdb.Shard{
 		ID:       ds.ID,
 		RawHosts: ds.Cfg.RawHosts,
 	})
-}
-
-// TODO : unit tests
-
-// Shards returns a slice of strings containing the names of the data shards stored in the LocalCoordinator.
-//
-// Parameters:
-// - None.
-//
-// Returns:
-// - []string: a slice of strings containing the names of the data shards.
-func (lc *LocalCoordinator) Shards() []string {
-	var ret []string
-
-	for name := range lc.DataShardCfgs {
-		ret = append(ret, name)
-	}
-
-	return ret
 }
 
 // TODO : unit tests
@@ -678,10 +515,8 @@ func (lc *LocalCoordinator) RetryMoveTaskGroup(_ context.Context) error {
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
 func NewLocalCoordinator(db qdb.QDB, cache *cache.SchemaCache) meta.EntityMgr {
 	return &LocalCoordinator{
-		Coordinator:    NewCoordinator(db),
-		DataShardCfgs:  map[string]*config.Shard{},
-		WorldShardCfgs: map[string]*config.Shard{},
-		qdb:            db,
-		cache:          cache,
+		Coordinator: NewCoordinator(db),
+		qdb:         db,
+		cache:       cache,
 	}
 }
