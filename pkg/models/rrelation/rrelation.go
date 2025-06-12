@@ -14,10 +14,10 @@ type AutoIncrementEntry struct {
 	Start  uint64
 }
 
-func ReferenceRelationEntriesFromDB(inentries []*spqrparser.AutoIncrementEntry) []*AutoIncrementEntry {
+func ReferenceRelationEntriesFromDB(inEntries []*spqrparser.AutoIncrementEntry) []*AutoIncrementEntry {
 	var ret []*AutoIncrementEntry
 
-	for _, e := range inentries {
+	for _, e := range inEntries {
 		ret = append(ret, &AutoIncrementEntry{
 			Column: e.Column,
 			Start:  e.Start,

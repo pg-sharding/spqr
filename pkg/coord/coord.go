@@ -70,7 +70,7 @@ func (lc *Coordinator) Cache() *cache.SchemaCache {
 }
 
 // CreateReferenceRelation implements meta.EntityMgr.
-func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, tableName string, ent []*rrelation.AutoIncrementEntry) error {
+func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, tableName string, entry []*rrelation.AutoIncrementEntry) error {
 	selectedDistribId := distributions.REPLICATED
 
 	if _, err := lc.GetDistribution(ctx, selectedDistribId); err != nil {
@@ -85,7 +85,7 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, tableName st
 	}
 
 	ret := map[string]string{}
-	for _, entry := range ent {
+	for _, entry := range entry {
 		ret[entry.Column] = distributions.SequenceName(tableName, entry.Column)
 
 		if err := lc.qdb.CreateSequence(ctx, ret[entry.Column], int64(entry.Start)); err != nil {
