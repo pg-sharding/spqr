@@ -527,7 +527,28 @@ func TestAlter(t *testing.T) {
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
-							&spqrparser.DistributedRelation{
+							{
+								Name: "t",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										Column: "id",
+									},
+								},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE DISTRIBUTED RELATION t DISTRIBUTION KEY id IN ds1;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
 								Name: "t",
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
