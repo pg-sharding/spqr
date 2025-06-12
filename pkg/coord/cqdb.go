@@ -46,7 +46,7 @@ import (
 )
 
 type grpcConnectionIterator struct {
-	*QDBCoordinator
+	*ClusteredCoordinator
 }
 
 // TODO implement it
@@ -70,7 +70,7 @@ func (ci grpcConnectionIterator) TotalTcpCount() int64 {
 // TODO : unit tests
 func (ci grpcConnectionIterator) IterRouter(cb func(cc *grpc.ClientConn, addr string) error) error {
 	ctx := context.TODO()
-	rtrs, err := ci.QDBCoordinator.QDB().ListRouters(ctx)
+	rtrs, err := ci.ClusteredCoordinator.QDB().ListRouters(ctx)
 
 	spqrlog.Zero.Log().Int("router counts", len(rtrs))
 
@@ -204,7 +204,11 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 const defaultWatchRouterTimeout = time.Second
 const defaultLockCoordinatorTimeout = time.Second
 
-type QDBCoordinator struct {
+/*
+* This is `global` coordinator, which manages spqr cluster as a whole.
+* Method calls for here results in cluster-wide changes
+ */
+type ClusteredCoordinator struct {
 	Coordinator
 	rmgr         rulemgr.RulesMgr
 	tlsconfig    *tls.Config
@@ -213,20 +217,20 @@ type QDBCoordinator struct {
 	acquiredLock bool
 }
 
-func (qc *QDBCoordinator) QDB() qdb.QDB {
+func (qc *ClusteredCoordinator) QDB() qdb.QDB {
 	return qc.db
 }
 
-func (qc *QDBCoordinator) Cache() *cache.SchemaCache {
+func (qc *ClusteredCoordinator) Cache() *cache.SchemaCache {
 	return qc.cache
 }
 
-var _ coordinator.Coordinator = &QDBCoordinator{}
+var _ coordinator.Coordinator = &ClusteredCoordinator{}
 
 // watchRouters traverse routers one check if they are opened
 // for clients. If not, initialize metadata and open router
 // TODO : unit tests
-func (qc *QDBCoordinator) watchRouters(ctx context.Context) {
+func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 	spqrlog.Zero.Debug().Msg("start routers watch iteration")
 	for {
 		// TODO check we are still coordinator
@@ -307,7 +311,7 @@ func (qc *QDBCoordinator) watchRouters(ctx context.Context) {
 	}
 }
 
-func NewQDBCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*QDBCoordinator, error) {
+func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*ClusteredCoordinator, error) {
 	if config.CoordinatorConfig().ShardDataCfg != "" {
 		shards, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
@@ -323,7 +327,7 @@ func NewQDBCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*QDBCoordinator, err
 		}
 	}
 
-	return &QDBCoordinator{
+	return &ClusteredCoordinator{
 		Coordinator:  NewCoordinator(db),
 		db:           db,
 		tlsconfig:    tlsconfig,
@@ -333,7 +337,7 @@ func NewQDBCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*QDBCoordinator, err
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) lockCoordinator(ctx context.Context, initialRouter bool) error {
+func (qc *ClusteredCoordinator) lockCoordinator(ctx context.Context, initialRouter bool) error {
 	updateCoordinator := func() error {
 		if !initialRouter {
 			return nil
@@ -388,7 +392,7 @@ func (qc *QDBCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 // that checks the availability of the SPQR router
 //
 // TODO: unit tests
-func (qc *QDBCoordinator) RunCoordinator(ctx context.Context, initialRouter bool) {
+func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRouter bool) {
 	for err := qc.lockCoordinator(ctx, initialRouter); err != nil; {
 		spqrlog.Zero.Error().Err(err).Msg("error getting qdb lock, retrying")
 
@@ -450,7 +454,7 @@ func (qc *QDBCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 // TODO : unit tests
 // traverseRouters traverse each route and run callback for each of them
 // cb receives grpc connection to router`s admin console
-func (qc *QDBCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.ClientConn) error) error {
+func (qc *ClusteredCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.ClientConn) error) error {
 	spqrlog.Zero.Debug().Msg("qdb coordinator traverse")
 	t := time.Now()
 
@@ -494,7 +498,7 @@ func (qc *QDBCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, error) {
+func (qc *ClusteredCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 	resp, err := qc.db.ListRouters(ctx)
 	if err != nil {
 		return nil, err
@@ -513,12 +517,12 @@ func (qc *QDBCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, 
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) AddRouter(ctx context.Context, router *topology.Router) error {
+func (qc *ClusteredCoordinator) AddRouter(ctx context.Context, router *topology.Router) error {
 	return qc.db.AddRouter(ctx, topology.RouterToDB(router))
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
+func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
 	// add key range to metadb
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.Raw()[0]).
@@ -543,7 +547,7 @@ func (qc *QDBCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRa
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+func (qc *ClusteredCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	keyRanges, err := qc.db.ListAllKeyRanges(ctx)
 	if err != nil {
 		return nil, err
@@ -562,12 +566,12 @@ func (qc *QDBCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange,
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) MoveKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
+func (qc *ClusteredCoordinator) MoveKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
 	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, keyRange)
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
+func (qc *ClusteredCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
 	keyRange, err := qc.Coordinator.LockKeyRange(ctx, keyRangeID)
 	if err != nil {
 		return nil, err
@@ -587,7 +591,7 @@ func (qc *QDBCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID string) error {
+func (qc *ClusteredCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID string) error {
 	if err := qc.Coordinator.UnlockKeyRange(ctx, keyRangeID); err != nil {
 		return err
 	}
@@ -607,7 +611,7 @@ func (qc *QDBCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID string)
 
 // Split splits key range by req.bound
 // TODO : unit tests
-func (qc *QDBCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
+func (qc *ClusteredCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	if err := qc.Coordinator.Split(ctx, req); err != nil {
 		return err
 	}
@@ -632,7 +636,7 @@ func (qc *QDBCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) DropKeyRangeAll(ctx context.Context) error {
+func (qc *ClusteredCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	// TODO: exclusive lock all routers
 	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all key ranges")
 
@@ -651,7 +655,7 @@ func (qc *QDBCoordinator) DropKeyRangeAll(ctx context.Context) error {
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) DropKeyRange(ctx context.Context, id string) error {
+func (qc *ClusteredCoordinator) DropKeyRange(ctx context.Context, id string) error {
 	// TODO: exclusive lock all routers
 	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all sharding keys")
 
@@ -673,7 +677,7 @@ func (qc *QDBCoordinator) DropKeyRange(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
+func (qc *ClusteredCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
 	if err := qc.Coordinator.Unite(ctx, uniteKeyRange); err != nil {
 		return err
 	}
@@ -697,7 +701,7 @@ func (qc *QDBCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKeyRange) (string, error) {
+func (qc *ClusteredCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKeyRange) (string, error) {
 	ls, err := qc.db.ListKeyRangeMoves(ctx)
 	if err != nil {
 		return "", err
@@ -719,7 +723,7 @@ func (qc *QDBCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKey
 	return m.MoveId, nil
 }
 
-func (qc *QDBCoordinator) GetKeyRangeMove(ctx context.Context, krId string) (*qdb.MoveKeyRange, error) {
+func (qc *ClusteredCoordinator) GetKeyRangeMove(ctx context.Context, krId string) (*qdb.MoveKeyRange, error) {
 	ls, err := qc.db.ListKeyRangeMoves(ctx)
 	if err != nil {
 		return nil, err
@@ -741,7 +745,7 @@ func (qc *QDBCoordinator) GetKeyRangeMove(ctx context.Context, krId string) (*qd
 // This function re-shards data by locking a portion of it,
 // making it unavailable for read and write access during the process.
 // TODO : unit tests
-func (qc *QDBCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
+func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	// First, we create a record in the qdb to track the data movement.
 	// If the coordinator crashes during the process, we need to rerun this function.
 
@@ -860,7 +864,7 @@ func (qc *QDBCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 //
 // Returns:
 //   - error: An error if any occurred.
-func (qc *QDBCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMoveKeyRange) error {
+func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMoveKeyRange) error {
 	keyRange, err := qc.GetKeyRange(ctx, req.KrId)
 	if err != nil {
 		return err
@@ -951,7 +955,7 @@ func (qc *QDBCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMo
 //
 // Returns:
 //   - error: Any error occurred during transfer.
-func (qc *QDBCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
+func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
 	if err := statistics.RecordMoveStart(time.Now()); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to record key range move start in statistics")
 	}
@@ -1063,7 +1067,7 @@ func (qc *QDBCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 //   - totalCount (int64): The total amount of keys in all relations.
 //   - relationCount (map[string]int64): The amount of keys by relation name.
 //   - err: An error if any occurred.
-func (*QDBCoordinator) getKeyStats(
+func (*ClusteredCoordinator) getKeyStats(
 	ctx context.Context,
 	conn *pgx.Conn,
 	relations map[string]*distributions.DistributedRelation,
@@ -1113,7 +1117,7 @@ func (*QDBCoordinator) getKeyStats(
 // Returns:
 //   - string: The relation with the largest number of keys.
 //   - float64: The ratio of keys between the biggest relation and the total amount.
-func (*QDBCoordinator) getBiggestRelation(relCount map[string]int64, totalCount int64) (string, float64) {
+func (*ClusteredCoordinator) getBiggestRelation(relCount map[string]int64, totalCount int64) (string, float64) {
 	maxCount := 0.0
 	maxRel := ""
 	for rel, count := range relCount {
@@ -1142,7 +1146,7 @@ func (*QDBCoordinator) getBiggestRelation(relCount map[string]int64, totalCount 
 // Returns:
 //   - *tasks.MoveTaskGroup: The group of data move tasks.
 //   - error: An error if any occurred.
-func (qc *QDBCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req *kr.BatchMoveKeyRange, rel *distributions.DistributedRelation, condition string, coeff float64, ds *distributions.Distribution) (*tasks.MoveTaskGroup, error) {
+func (qc *ClusteredCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req *kr.BatchMoveKeyRange, rel *distributions.DistributedRelation, condition string, coeff float64, ds *distributions.Distribution) (*tasks.MoveTaskGroup, error) {
 	taskList := make([]*tasks.MoveTask, 0)
 	step := int64(math.Ceil(float64(req.BatchSize)*coeff - 1e-3))
 
@@ -1321,7 +1325,7 @@ ORDER BY (%s) %s;
 // Returns:
 //   - *kr.KeyRange: The key range next to the given.
 //   - error: An error if any occurred.
-func (qc *QDBCoordinator) getNextKeyRange(ctx context.Context, keyRange *kr.KeyRange) (*kr.KeyRange, error) {
+func (qc *ClusteredCoordinator) getNextKeyRange(ctx context.Context, keyRange *kr.KeyRange) (*kr.KeyRange, error) {
 	krs, err := qc.ListKeyRanges(ctx, keyRange.Distribution)
 	if err != nil {
 		return nil, err
@@ -1350,7 +1354,7 @@ func (qc *QDBCoordinator) getNextKeyRange(ctx context.Context, keyRange *kr.KeyR
 //
 // Returns:
 //   - error: An error if any occurred.
-func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
+func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
 	for taskGroup.CurrentTaskIndex < len(taskGroup.Tasks) {
 		task := taskGroup.Tasks[taskGroup.CurrentTaskIndex]
 		switch task.State {
@@ -1411,7 +1415,7 @@ func (qc *QDBCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 	return qc.RemoveMoveTaskGroup(ctx)
 }
 
-func (qc *QDBCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
+func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
 	taskGroup, err := qc.GetMoveTaskGroup(ctx)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get move task group: %s", err)
@@ -1429,7 +1433,7 @@ func (qc *QDBCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
 //
 // Returns:
 //   - error: An error if any occurred during transfer.
-func (qc *QDBCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
 	keyRange, err := qc.GetKeyRange(ctx, req.KrId)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "key range \"%s\" not found", req.KrId)
@@ -1491,7 +1495,7 @@ func (qc *QDBCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.Redi
 //
 // Returns:
 //   - error: An error if any occurred.
-func (qc *QDBCoordinator) executeRedistributeTask(ctx context.Context, task *tasks.RedistributeTask) error {
+func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, task *tasks.RedistributeTask) error {
 	for {
 		switch task.State {
 		case tasks.RedistributeTaskPlanned:
@@ -1534,7 +1538,7 @@ func (qc *QDBCoordinator) executeRedistributeTask(ctx context.Context, task *tas
 //
 // Returns:
 // - error: An error if renaming key range was unsuccessful.
-func (qc *QDBCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
+func (qc *ClusteredCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
 	if _, err := qc.GetKeyRange(ctx, krId); err != nil {
 		return err
 	}
@@ -1556,7 +1560,7 @@ func (qc *QDBCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew stri
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topology.Router) error {
+func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topology.Router) error {
 	spqrlog.Zero.Debug().
 		Str("address", qRouter.Address).
 		Msg("qdb coordinator: sync router metadata")
@@ -1664,7 +1668,7 @@ func (qc *QDBCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, qRouter *topology.Router) error {
+func (qc *ClusteredCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, qRouter *topology.Router) error {
 	spqrlog.Zero.Debug().
 		Str("address", qRouter.Address).
 		Msg("qdb coordinator: sync coordinator address")
@@ -1705,7 +1709,7 @@ func (qc *QDBCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, qRou
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) RegisterRouter(ctx context.Context, r *topology.Router) error {
+func (qc *ClusteredCoordinator) RegisterRouter(ctx context.Context, r *topology.Router) error {
 	// TODO: list routers and deduplicate
 	spqrlog.Zero.Debug().
 		Str("address", r.Address).
@@ -1732,14 +1736,14 @@ func (qc *QDBCoordinator) RegisterRouter(ctx context.Context, r *topology.Router
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) UnregisterRouter(ctx context.Context, rID string) error {
+func (qc *ClusteredCoordinator) UnregisterRouter(ctx context.Context, rID string) error {
 	spqrlog.Zero.Debug().
 		Str("router", rID).
 		Msg("unregister router")
 	return qc.db.DeleteRouter(ctx, rID)
 }
 
-func (qc *QDBCoordinator) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {
+func (qc *ClusteredCoordinator) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {
 	taskDb, err := qc.db.GetBalancerTask(ctx)
 	if err != nil {
 		return nil, err
@@ -1747,16 +1751,16 @@ func (qc *QDBCoordinator) GetBalancerTask(ctx context.Context) (*tasks.BalancerT
 	return tasks.BalancerTaskFromDb(taskDb), nil
 }
 
-func (qc *QDBCoordinator) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
+func (qc *ClusteredCoordinator) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
 	return qc.db.WriteBalancerTask(ctx, tasks.BalancerTaskToDb(task))
 }
 
-func (qc *QDBCoordinator) RemoveBalancerTask(ctx context.Context) error {
+func (qc *ClusteredCoordinator) RemoveBalancerTask(ctx context.Context) error {
 	return qc.db.RemoveBalancerTask(ctx)
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
+func (qc *ClusteredCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
 	cl := rclient.NewPsqlClient(nconn, pt, "", false, "")
 
 	tlsconfig := qc.tlsconfig
@@ -1825,7 +1829,7 @@ func (qc *QDBCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) 
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt port.RouterPortType) error {
+func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt port.RouterPortType) error {
 	cl, err := qc.PrepareClient(nconn, pt)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -1837,7 +1841,7 @@ func (qc *QDBCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt por
 		return nil
 	}
 
-	ci := grpcConnectionIterator{QDBCoordinator: qc}
+	ci := grpcConnectionIterator{ClusteredCoordinator: qc}
 	cli := clientinteractor.NewPSQLInteractor(cl)
 	for {
 		// TODO: check leader status
@@ -1880,25 +1884,25 @@ func (qc *QDBCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt por
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
+func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
 	return qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.RawHosts))
 }
 
-func (qc *QDBCoordinator) AddWorldShard(_ context.Context, _ *topology.DataShard) error {
-	panic("QDBCoordinator.AddWorldShard not implemented")
+func (qc *ClusteredCoordinator) AddWorldShard(_ context.Context, _ *topology.DataShard) error {
+	panic("ClusteredCoordinator.AddWorldShard not implemented")
 }
 
-func (qc *QDBCoordinator) DropShard(ctx context.Context, shardId string) error {
+func (qc *ClusteredCoordinator) DropShard(ctx context.Context, shardId string) error {
 	return qc.db.DropShard(ctx, shardId)
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
+func (qc *ClusteredCoordinator) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
 	return qc.Coordinator.ListShards(ctx)
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) UpdateCoordinator(ctx context.Context, address string) error {
+func (qc *ClusteredCoordinator) UpdateCoordinator(ctx context.Context, address string) error {
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		c := routerproto.NewTopologyServiceClient(cc)
 		spqrlog.Zero.Debug().Str("address", address).Msg("updating coordinator address")
@@ -1910,7 +1914,7 @@ func (qc *QDBCoordinator) UpdateCoordinator(ctx context.Context, address string)
 }
 
 // TODO : unit tests
-func (qc *QDBCoordinator) GetCoordinator(ctx context.Context) (string, error) {
+func (qc *ClusteredCoordinator) GetCoordinator(ctx context.Context) (string, error) {
 	addr, err := qc.db.GetCoordinator(ctx)
 
 	spqrlog.Zero.Debug().Str("address", addr).Msg("resp qdb coordinator: get coordinator")
@@ -1919,13 +1923,13 @@ func (qc *QDBCoordinator) GetCoordinator(ctx context.Context) (string, error) {
 
 // ListDistributions returns all distributions from QDB
 // TODO: unit tests
-func (qc *QDBCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
+func (qc *ClusteredCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
 	return qc.Coordinator.ListDistributions(ctx)
 }
 
 // CreateDistribution creates distribution in QDB
 // TODO: unit tests
-func (qc *QDBCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
+func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
 	if err := qc.Coordinator.CreateDistribution(ctx, ds); err != nil {
 		return err
 	}
@@ -1948,7 +1952,7 @@ func (qc *QDBCoordinator) CreateDistribution(ctx context.Context, ds *distributi
 
 // DropDistribution deletes distribution from QDB
 // TODO: unit tests
-func (qc *QDBCoordinator) DropDistribution(ctx context.Context, id string) error {
+func (qc *ClusteredCoordinator) DropDistribution(ctx context.Context, id string) error {
 	if err := qc.db.DropDistribution(ctx, id); err != nil {
 		return err
 	}
@@ -1971,19 +1975,19 @@ func (qc *QDBCoordinator) DropDistribution(ctx context.Context, id string) error
 
 // GetDistribution retrieves info about distribution from QDB
 // TODO: unit tests
-func (qc *QDBCoordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
+func (qc *ClusteredCoordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
 	return qc.Coordinator.GetDistribution(ctx, id)
 }
 
 // GetRelationDistribution retrieves info about distribution attached to relation from QDB
 // TODO: unit tests
-func (qc *QDBCoordinator) GetRelationDistribution(ctx context.Context, relName string) (*distributions.Distribution, error) {
+func (qc *ClusteredCoordinator) GetRelationDistribution(ctx context.Context, relName string) (*distributions.Distribution, error) {
 	return qc.Coordinator.GetRelationDistribution(ctx, relName)
 }
 
 // AlterDistributionAttach attaches relation to distribution
 // TODO: unit tests
-func (qc *QDBCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
+func (qc *ClusteredCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
 	if err := qc.Coordinator.AlterDistributionAttach(ctx, id, rels); err != nil {
 		return err
 	}
@@ -2013,7 +2017,7 @@ func (qc *QDBCoordinator) AlterDistributionAttach(ctx context.Context, id string
 
 // AlterDistributedRelation changes relation attached to a distribution
 // TODO: unit tests
-func (qc *QDBCoordinator) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
+func (qc *ClusteredCoordinator) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
 	if !rel.ReplicatedRelation && len(rel.ColumnSequenceMapping) > 0 {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequences are supported for replicated relations only")
 	}
@@ -2045,19 +2049,19 @@ func (qc *QDBCoordinator) AlterDistributedRelation(ctx context.Context, id strin
 	})
 }
 
-func (qc *QDBCoordinator) ListSequences(ctx context.Context) ([]string, error) {
+func (qc *ClusteredCoordinator) ListSequences(ctx context.Context) ([]string, error) {
 	return qc.db.ListSequences(ctx)
 }
 
-func (qc *QDBCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
+func (qc *ClusteredCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
 	return qc.db.NextVal(ctx, seqName)
 }
 
-func (qc *QDBCoordinator) CurrVal(ctx context.Context, seqName string) (int64, error) {
+func (qc *ClusteredCoordinator) CurrVal(ctx context.Context, seqName string) (int64, error) {
 	return qc.db.CurrVal(ctx, seqName)
 }
 
-func (qc *QDBCoordinator) DropSequence(ctx context.Context, seqName string) error {
+func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string) error {
 	if err := qc.db.DropSequence(ctx, seqName); err != nil {
 		return err
 	}
@@ -2079,7 +2083,7 @@ func (qc *QDBCoordinator) DropSequence(ctx context.Context, seqName string) erro
 
 // AlterDistributionDetach detaches relation from distribution
 // TODO: unit tests
-func (qc *QDBCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
+func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
 	if err := qc.Coordinator.AlterDistributionDetach(ctx, id, relName); err != nil {
 		return err
 	}
@@ -2101,7 +2105,7 @@ func (qc *QDBCoordinator) AlterDistributionDetach(ctx context.Context, id string
 	})
 }
 
-func (qc *QDBCoordinator) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
+func (qc *ClusteredCoordinator) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
 	sh, err := qc.db.GetShard(ctx, shardID)
 	if err != nil {
 		return nil, err
@@ -2109,7 +2113,7 @@ func (qc *QDBCoordinator) GetShard(ctx context.Context, shardID string) (*topolo
 	return topology.DataShardFromDb(sh), nil
 }
 
-func (qc *QDBCoordinator) finishRedistributeTasksInProgress(ctx context.Context) error {
+func (qc *ClusteredCoordinator) finishRedistributeTasksInProgress(ctx context.Context) error {
 	task, err := qc.db.GetRedistributeTask(ctx)
 	if err != nil {
 		return err
@@ -2120,7 +2124,7 @@ func (qc *QDBCoordinator) finishRedistributeTasksInProgress(ctx context.Context)
 	return qc.executeRedistributeTask(ctx, tasks.RedistributeTaskFromDB(task))
 }
 
-func (qc *QDBCoordinator) finishMoveTasksInProgress(ctx context.Context) error {
+func (qc *ClusteredCoordinator) finishMoveTasksInProgress(ctx context.Context) error {
 	taskGroup, err := qc.GetMoveTaskGroup(ctx)
 	if err != nil {
 		return err
@@ -2143,6 +2147,6 @@ func (qc *QDBCoordinator) finishMoveTasksInProgress(ctx context.Context) error {
 	return qc.executeMoveTasks(ctx, taskGroup)
 }
 
-func (qc *QDBCoordinator) IsReadOnly() bool {
+func (qc *ClusteredCoordinator) IsReadOnly() bool {
 	return !qc.acquiredLock
 }
