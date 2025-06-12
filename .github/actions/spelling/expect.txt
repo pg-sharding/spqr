@@ -338,6 +338,7 @@ optval
 opvalue
 ordersdb
 outputdir
+seqmgr
 Patroni
 Percona
 PGAASINTERNALNETS
