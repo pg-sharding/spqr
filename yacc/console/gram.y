@@ -85,12 +85,12 @@ func randomHex(n int) (string, error) {
 	shruleEntry            ShardingRuleEntry
 
 	distrKeyEntry          DistributionKeyEntry
-	aiEntry                AutoIncrementEntry
+	aiEntry                *AutoIncrementEntry
 
 	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
 	distribution_selector  *DistributionSelector
-	aiEntrieslist          []AutoIncrementEntry
+	aiEntrieslist          []*AutoIncrementEntry
 
     colref                 ColumnRef
     where                  WhereClauseNode
@@ -638,7 +638,7 @@ auto_inc_argument_list:
     {
       $$ = append($1, $3)
     } | auto_increment_entry {
-      $$ = []AutoIncrementEntry {
+      $$ = []*AutoIncrementEntry {
 		  $1,
 	  }
     } 
@@ -646,9 +646,9 @@ auto_inc_argument_list:
 auto_increment_entry:
 	any_id opt_auto_increment_start_clause
 	{
-		$$ = AutoIncrementEntry {
+		$$ = &AutoIncrementEntry {
 			Column: $1,
-			Start: $2,
+			Start: uint64($2),
 		}
 	}
 

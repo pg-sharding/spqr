@@ -6,24 +6,285 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
+	"github.com/pg-sharding/spqr/router/cache"
 )
 
 type Coordinator struct {
-	qdb qdb.QDB
+	qdb qdb.XQDB
 }
 
-func NewCoordinator(qdb qdb.QDB) Coordinator {
+var _ meta.EntityMgr = &Coordinator{}
+
+func NewCoordinator(qdb qdb.XQDB) Coordinator {
 	return Coordinator{
 		qdb: qdb,
 	}
+}
+
+// AddDataShard implements meta.EntityMgr.
+func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
+	panic("unimplemented")
+}
+
+// AddWorldShard implements meta.EntityMgr.
+func (lc *Coordinator) AddWorldShard(ctx context.Context, shard *topology.DataShard) error {
+	panic("unimplemented")
+}
+
+// AlterDistributedRelation implements meta.EntityMgr.
+func (lc *Coordinator) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
+	if !rel.ReplicatedRelation && len(rel.ColumnSequenceMapping) > 0 {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequences are supported for replicated relations only")
+	}
+	qdbRel := distributions.DistributedRelationToDB(rel)
+	if err := lc.qdb.AlterDistributedRelation(ctx, id, qdbRel); err != nil {
+		return err
+	}
+
+	for colName, seqName := range rel.ColumnSequenceMapping {
+		if err := lc.qdb.AlterSequenceAttach(ctx, seqName, rel.Name, colName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// BatchMoveKeyRange implements meta.EntityMgr.
+func (lc *Coordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
+	panic("unimplemented")
+}
+
+// Cache implements meta.EntityMgr.
+func (lc *Coordinator) Cache() *cache.SchemaCache {
+	panic("unimplemented")
+}
+
+// CreateReferenceRelation implements meta.EntityMgr.
+func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, tableName string, entry []*rrelation.AutoIncrementEntry) error {
+	selectedDistribId := distributions.REPLICATED
+
+	if _, err := lc.GetDistribution(ctx, selectedDistribId); err != nil {
+		err := lc.CreateDistribution(ctx, &distributions.Distribution{
+			Id:       distributions.REPLICATED,
+			ColTypes: nil,
+		})
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
+			return err
+		}
+	}
+
+	ret := map[string]string{}
+	for _, entry := range entry {
+		ret[entry.Column] = distributions.SequenceName(tableName, entry.Column)
+
+		if err := lc.qdb.CreateSequence(ctx, ret[entry.Column], int64(entry.Start)); err != nil {
+			return err
+		}
+
+		if err := lc.qdb.AlterSequenceAttach(ctx, ret[entry.Column], tableName, entry.Column); err != nil {
+			return err
+		}
+	}
+
+	return lc.AlterDistributionAttach(ctx, selectedDistribId, []*distributions.DistributedRelation{
+		{
+			Name:                  tableName,
+			ReplicatedRelation:    true,
+			ColumnSequenceMapping: ret,
+		},
+	})
+}
+
+// CurrVal implements meta.EntityMgr.
+func (lc *Coordinator) CurrVal(ctx context.Context, seqName string) (int64, error) {
+	return lc.qdb.CurrVal(ctx, seqName)
+}
+
+// DropDistribution implements meta.EntityMgr.
+func (lc *Coordinator) DropDistribution(ctx context.Context, id string) error {
+	return lc.qdb.DropDistribution(ctx, id)
+}
+
+// DropKeyRange implements meta.EntityMgr.
+func (lc *Coordinator) DropKeyRange(ctx context.Context, id string) error {
+	return lc.qdb.DropKeyRange(ctx, id)
+}
+
+// DropKeyRangeAll implements meta.EntityMgr.
+func (lc *Coordinator) DropKeyRangeAll(ctx context.Context) error {
+	return lc.qdb.DropKeyRangeAll(ctx)
+}
+
+// DropReferenceRelation implements meta.EntityMgr.
+func (lc *Coordinator) DropReferenceRelation(ctx context.Context, id string) error {
+	return lc.AlterDistributionDetach(ctx, distributions.REPLICATED, id)
+}
+
+// DropSequence implements meta.EntityMgr.
+func (lc *Coordinator) DropSequence(ctx context.Context, name string) error {
+	return lc.qdb.DropSequence(ctx, name)
+}
+
+// DropShard implements meta.EntityMgr.
+func (lc *Coordinator) DropShard(ctx context.Context, shardId string) error {
+	return lc.qdb.DropShard(ctx, shardId)
+}
+
+// GetBalancerTask implements meta.EntityMgr.
+func (lc *Coordinator) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {
+	taskDb, err := lc.qdb.GetBalancerTask(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return tasks.BalancerTaskFromDb(taskDb), nil
+}
+
+// GetCoordinator implements meta.EntityMgr.
+func (lc *Coordinator) GetCoordinator(ctx context.Context) (string, error) {
+	return lc.qdb.GetCoordinator(ctx)
+}
+
+// GetShard implements meta.EntityMgr.
+func (lc *Coordinator) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
+	sh, err := lc.qdb.GetShard(ctx, shardID)
+	if err != nil {
+		return nil, err
+	}
+	return topology.DataShardFromDb(sh), nil
+}
+
+// ListAllKeyRanges implements meta.EntityMgr.
+func (lc *Coordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+	keyRanges, err := lc.qdb.ListAllKeyRanges(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	keyr := make([]*kr.KeyRange, 0, len(keyRanges))
+	for _, keyRange := range keyRanges {
+		ds, err := lc.qdb.GetDistribution(ctx, keyRange.DistributionId)
+		if err != nil {
+			return nil, err
+		}
+		keyr = append(keyr, kr.KeyRangeFromDB(keyRange, ds.ColTypes))
+	}
+
+	return keyr, nil
+}
+
+// ListReferenceRelations implements meta.EntityMgr.
+func (lc *Coordinator) ListReferenceRelations(ctx context.Context) ([]*rrelation.ReferenceRelation, error) {
+	panic("unimplemented")
+}
+
+// ListRouters implements meta.EntityMgr.
+func (lc *Coordinator) ListRouters(ctx context.Context) ([]*topology.Router, error) {
+	resp, err := lc.qdb.ListRouters(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var retRouters []*topology.Router
+
+	for _, v := range resp {
+		retRouters = append(retRouters, &topology.Router{
+			ID:      v.ID,
+			Address: v.Address,
+			State:   v.State,
+		})
+	}
+
+	return retRouters, nil
+}
+
+// Move implements meta.EntityMgr.
+func (lc *Coordinator) Move(ctx context.Context, move *kr.MoveKeyRange) error {
+	panic("unimplemented")
+}
+
+// NextVal implements meta.EntityMgr.
+func (lc *Coordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
+	return lc.qdb.NextVal(ctx, seqName)
+}
+
+// QDB implements meta.EntityMgr.
+func (lc *Coordinator) QDB() qdb.QDB {
+	return lc.qdb
+}
+
+// RedistributeKeyRange implements meta.EntityMgr.
+func (lc *Coordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+	panic("unimplemented")
+}
+
+// RegisterRouter implements meta.EntityMgr.
+func (lc *Coordinator) RegisterRouter(ctx context.Context, r *topology.Router) error {
+	panic("unimplemented")
+}
+
+// RemoveBalancerTask implements meta.EntityMgr.
+func (lc *Coordinator) RemoveBalancerTask(ctx context.Context) error {
+	return lc.qdb.RemoveBalancerTask(ctx)
+}
+
+// RenameKeyRange implements meta.EntityMgr.
+func (lc *Coordinator) RenameKeyRange(ctx context.Context, krId string, krIdNew string) error {
+	if _, err := lc.GetKeyRange(ctx, krId); err != nil {
+		return err
+	}
+	if _, err := lc.LockKeyRange(ctx, krId); err != nil {
+		return err
+	}
+	if _, err := lc.GetKeyRange(ctx, krIdNew); err == nil {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
+	}
+	if err := lc.qdb.RenameKeyRange(ctx, krId, krIdNew); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RetryMoveTaskGroup implements meta.EntityMgr.
+func (lc *Coordinator) RetryMoveTaskGroup(ctx context.Context) error {
+	panic("unimplemented")
+}
+
+// SyncRouterCoordinatorAddress implements meta.EntityMgr.
+func (lc *Coordinator) SyncRouterCoordinatorAddress(ctx context.Context, router *topology.Router) error {
+	panic("unimplemented")
+}
+
+// SyncRouterMetadata implements meta.EntityMgr.
+func (lc *Coordinator) SyncRouterMetadata(ctx context.Context, router *topology.Router) error {
+	panic("unimplemented")
+}
+
+// UnregisterRouter implements meta.EntityMgr.
+func (lc *Coordinator) UnregisterRouter(ctx context.Context, rID string) error {
+	spqrlog.Zero.Debug().
+		Str("router", rID).
+		Msg("unregister router")
+	return lc.qdb.DeleteRouter(ctx, rID)
+}
+
+// UpdateCoordinator implements meta.EntityMgr.
+func (lc *Coordinator) UpdateCoordinator(ctx context.Context, address string) error {
+	return lc.qdb.UpdateCoordinator(ctx, address)
+}
+
+// WriteBalancerTask implements meta.EntityMgr.
+func (lc *Coordinator) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
+	return lc.qdb.WriteBalancerTask(ctx, tasks.BalancerTaskToDb(task))
 }
 
 // GetMoveTaskGroup retrieves the MoveTask group from the local coordinator's QDB.
@@ -389,17 +650,6 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 		return err
 	}
 
-	for _, r := range rels {
-		for colName, seqName := range r.ColumnSequenceMapping {
-			if err := lc.qdb.CreateSequence(ctx, seqName, 0); err != nil {
-				return err
-			}
-
-			if err := lc.qdb.AlterSequenceAttach(ctx, seqName, r.Name, colName); err != nil {
-				return err
-			}
-		}
-	}
 	return nil
 }
 
@@ -413,24 +663,24 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 //
 // Returns:
 // - error: an error if the unite operation encounters any issues.
-func (qc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
-	krBaseDb, err := qc.qdb.LockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId)
+func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
+	krBaseDb, err := lc.qdb.LockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		if err := qc.qdb.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId); err != nil {
+		if err := lc.qdb.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}()
 
-	ds, err := qc.qdb.GetDistribution(ctx, krBaseDb.DistributionId)
+	ds, err := lc.qdb.GetDistribution(ctx, krBaseDb.DistributionId)
 	if err != nil {
 		return err
 	}
 
-	krAppendageDb, err := qc.qdb.GetKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId)
+	krAppendageDb, err := lc.qdb.GetKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId)
 	if err != nil {
 		return err
 	}
@@ -450,7 +700,7 @@ func (qc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		krLeft, krRight = krRight, krLeft
 	}
 
-	krs, err := qc.ListKeyRanges(ctx, ds.ID)
+	krs, err := lc.ListKeyRanges(ctx, ds.ID)
 	if err != nil {
 		return err
 	}
@@ -463,7 +713,7 @@ func (qc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		}
 	}
 
-	if err := qc.qdb.DropKeyRange(ctx, krAppendage.ID); err != nil {
+	if err := lc.qdb.DropKeyRange(ctx, krAppendage.ID); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s", err.Error())
 	}
 
@@ -471,7 +721,7 @@ func (qc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		krBase.LowerBound = krAppendage.LowerBound
 	}
 
-	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.qdb, krBase); err != nil {
+	if err := ops.ModifyKeyRangeWithChecks(ctx, lc.qdb, krBase); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err.Error())
 	}
 	return nil
@@ -576,6 +826,6 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	return nil
 }
 
-func (bc *Coordinator) ListSequences(ctx context.Context) ([]string, error) {
-	return bc.qdb.ListSequences(ctx)
+func (lc *Coordinator) ListSequences(ctx context.Context) ([]string, error) {
+	return lc.qdb.ListSequences(ctx)
 }

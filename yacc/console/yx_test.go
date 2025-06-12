@@ -682,7 +682,7 @@ func TestAlter(t *testing.T) {
 										Column: "id1",
 									},
 								},
-								AutoIncrementEntries: []spqrparser.AutoIncrementEntry{
+								AutoIncrementEntries: []*spqrparser.AutoIncrementEntry{
 									{
 										Column: "id1",
 									},
@@ -710,7 +710,7 @@ func TestAlter(t *testing.T) {
 										Column: "id1",
 									},
 								},
-								AutoIncrementEntries: []spqrparser.AutoIncrementEntry{
+								AutoIncrementEntries: []*spqrparser.AutoIncrementEntry{
 									{
 										Column: "id1",
 										Start:  123,
@@ -835,7 +835,7 @@ func TestDistribution(t *testing.T) {
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
 					TableName: "xtab",
-					AutoIncrementEntries: []spqrparser.AutoIncrementEntry{
+					AutoIncrementEntries: []*spqrparser.AutoIncrementEntry{
 						{
 							Column: "id",
 						},
@@ -849,7 +849,7 @@ func TestDistribution(t *testing.T) {
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
 					TableName: "xtab",
-					AutoIncrementEntries: []spqrparser.AutoIncrementEntry{
+					AutoIncrementEntries: []*spqrparser.AutoIncrementEntry{
 						{
 							Column: "id",
 							Start:  42,
@@ -864,7 +864,7 @@ func TestDistribution(t *testing.T) {
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
 					TableName: "xtab",
-					AutoIncrementEntries: []spqrparser.AutoIncrementEntry{
+					AutoIncrementEntries: []*spqrparser.AutoIncrementEntry{
 						{
 							Column: "id1",
 							Start:  42,

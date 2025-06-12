@@ -86,12 +86,12 @@ type yySymType struct {
 	shruleEntry ShardingRuleEntry
 
 	distrKeyEntry DistributionKeyEntry
-	aiEntry       AutoIncrementEntry
+	aiEntry       *AutoIncrementEntry
 
 	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
 	distribution_selector  *DistributionSelector
-	aiEntrieslist          []AutoIncrementEntry
+	aiEntrieslist          []*AutoIncrementEntry
 
 	colref ColumnRef
 	where  WhereClauseNode
@@ -1386,7 +1386,7 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line gram.y:640
 		{
-			yyVAL.aiEntrieslist = []AutoIncrementEntry{
+			yyVAL.aiEntrieslist = []*AutoIncrementEntry{
 				yyDollar[1].aiEntry,
 			}
 		}
@@ -1394,9 +1394,9 @@ yydefault:
 		yyDollar = yyS[yypt-2 : yypt+1]
 //line gram.y:648
 		{
-			yyVAL.aiEntry = AutoIncrementEntry{
+			yyVAL.aiEntry = &AutoIncrementEntry{
 				Column: yyDollar[1].str,
-				Start:  yyDollar[2].uinteger,
+				Start:  uint64(yyDollar[2].uinteger),
 			}
 		}
 	case 78:

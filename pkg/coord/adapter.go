@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -62,6 +63,21 @@ func (a *Adapter) Cache() *cache.SchemaCache {
 // - error: An error indicating if the key range sharing was successful or not.
 func (a *Adapter) ShareKeyRange(id string) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "ShareKeyRange not implemented")
+}
+
+// CreateReferenceRelation implements meta.EntityMgr.
+func (a *Adapter) CreateReferenceRelation(ctx context.Context, tableName string, entry []*rrelation.AutoIncrementEntry) error {
+	panic("unimplemented")
+}
+
+// DropReferenceRelation implements meta.EntityMgr.
+func (a *Adapter) DropReferenceRelation(ctx context.Context, id string) error {
+	panic("unimplemented")
+}
+
+// ListReferenceRelations implements meta.EntityMgr.
+func (a *Adapter) ListReferenceRelations(ctx context.Context) ([]*rrelation.ReferenceRelation, error) {
+	panic("unimplemented")
 }
 
 // GetKeyRange gets key range by id

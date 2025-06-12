@@ -38,6 +38,7 @@ type EntityMgr interface {
 	distributions.DistributionMgr
 	tasks.TaskMgr
 	sequences.SequenceMgr
+	rrelation.ReferenceRelationMgr
 
 	ShareKeyRange(id string) error
 
@@ -190,39 +191,12 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	switch stmt := astmt.(type) {
 	case *spqrparser.ReferenceRelationDefinition:
 
-		selectedDistribId := distributions.REPLICATED
-
-		if _, err := mngr.GetDistribution(ctx, selectedDistribId); err != nil {
-			err := mngr.CreateDistribution(ctx, &distributions.Distribution{
-				Id:       distributions.REPLICATED,
-				ColTypes: nil,
-			})
-			if err != nil {
-				spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
-				return cli.ReportError(err)
-			}
-		}
-
-		rels := []*distributions.DistributedRelation{
-			{
-				Name:               stmt.TableName,
-				ReplicatedRelation: true,
-				ColumnSequenceMapping: func() map[string]string {
-					ret := map[string]string{}
-					for _, entry := range stmt.AutoIncrementEntries {
-						ret[entry.Column] = distributions.SequenceName(stmt.TableName, entry.Column)
-					}
-					return ret
-				}(),
-			},
-		}
-
-		if err := mngr.AlterDistributionAttach(ctx, selectedDistribId, rels); err != nil {
+		if err := mngr.CreateReferenceRelation(ctx, stmt.TableName, rrelation.ReferenceRelationEntriesFromDB(stmt.AutoIncrementEntries)); err != nil {
 			return cli.ReportError(err)
 		}
 
 		return cli.CreateReferenceRelation(ctx, &rrelation.ReferenceRelation{
-			Name: rels[0].Name,
+			Name: stmt.TableName,
 		})
 
 	case *spqrparser.DistributionDefinition:

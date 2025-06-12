@@ -3,7 +3,6 @@ package coord
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -20,9 +19,6 @@ import (
 
 type LocalInstanceMetadataMgr struct {
 	Coordinator
-
-	mu sync.Mutex
-
 	// not extended QDB, since the router does not need to track the installation topology
 	qdb qdb.QDB
 
@@ -56,9 +52,6 @@ func (lc *LocalInstanceMetadataMgr) RemoveBalancerTask(context.Context) error {
 // Returns:
 // - error: an error if the alteration operation fails.
 func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-
 	ds, err := lc.qdb.GetDistribution(ctx, id)
 	if err != nil {
 		return err
@@ -99,8 +92,6 @@ func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context
 // Returns:
 // - error: An error if the removal operation fails.
 func (lc *LocalInstanceMetadataMgr) DropDistribution(ctx context.Context, id string) error {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
 	return lc.qdb.DropDistribution(ctx, id)
 }
 
@@ -183,9 +174,6 @@ func (lc *LocalInstanceMetadataMgr) DropKeyRangeAll(ctx context.Context) error {
 // Returns:
 // - []*routingstate.DataShardRoute: A slice of DataShardRoute objects representing the data shards routes.
 func (lc *LocalInstanceMetadataMgr) DataShardsRoutes() []*kr.ShardKey {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-
 	var ret []*kr.ShardKey
 
 	/* currently, all shards are data shards */
@@ -513,7 +501,7 @@ func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context) error 
 //
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
-func NewLocalInstanceMetadataMgr(db qdb.QDB, cache *cache.SchemaCache) meta.EntityMgr {
+func NewLocalInstanceMetadataMgr(db qdb.XQDB, cache *cache.SchemaCache) meta.EntityMgr {
 	return &LocalInstanceMetadataMgr{
 		Coordinator: NewCoordinator(db),
 		qdb:         db,
