@@ -16,7 +16,7 @@ func TestListKeyRangesCaches(t *testing.T) {
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
 
-	db := mock.NewMockQDB(ctrl)
+	db := mock.NewMockXQDB(ctrl)
 
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
 

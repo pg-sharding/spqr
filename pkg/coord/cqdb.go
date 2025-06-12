@@ -499,21 +499,7 @@ func (qc *ClusteredCoordinator) traverseRouters(ctx context.Context, cb func(cc 
 
 // TODO : unit tests
 func (qc *ClusteredCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, error) {
-	resp, err := qc.db.ListRouters(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var retRouters []*topology.Router
-
-	for _, v := range resp {
-		retRouters = append(retRouters, &topology.Router{
-			ID:      v.ID,
-			Address: v.Address,
-			State:   v.State,
-		})
-	}
-
-	return retRouters, nil
+	return qc.Coordinator.ListRouters(ctx)
 }
 
 // TODO : unit tests
@@ -548,21 +534,7 @@ func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr
 
 // TODO : unit tests
 func (qc *ClusteredCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
-	keyRanges, err := qc.db.ListAllKeyRanges(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	keyr := make([]*kr.KeyRange, 0, len(keyRanges))
-	for _, keyRange := range keyRanges {
-		ds, err := qc.db.GetDistribution(ctx, keyRange.DistributionId)
-		if err != nil {
-			return nil, err
-		}
-		keyr = append(keyr, kr.KeyRangeFromDB(keyRange, ds.ColTypes))
-	}
-
-	return keyr, nil
+	return qc.Coordinator.ListAllKeyRanges(ctx)
 }
 
 // TODO : unit tests
@@ -1539,16 +1511,7 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 // Returns:
 // - error: An error if renaming key range was unsuccessful.
 func (qc *ClusteredCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
-	if _, err := qc.GetKeyRange(ctx, krId); err != nil {
-		return err
-	}
-	if _, err := qc.LockKeyRange(ctx, krId); err != nil {
-		return err
-	}
-	if _, err := qc.GetKeyRange(ctx, krIdNew); err == nil {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
-	}
-	if err := qc.db.RenameKeyRange(ctx, krId, krIdNew); err != nil {
+	if err := qc.Coordinator.RenameKeyRange(ctx, krId, krIdNew); err != nil {
 		return err
 	}
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -1737,26 +1700,19 @@ func (qc *ClusteredCoordinator) RegisterRouter(ctx context.Context, r *topology.
 
 // TODO : unit tests
 func (qc *ClusteredCoordinator) UnregisterRouter(ctx context.Context, rID string) error {
-	spqrlog.Zero.Debug().
-		Str("router", rID).
-		Msg("unregister router")
-	return qc.db.DeleteRouter(ctx, rID)
+	return qc.Coordinator.UnregisterRouter(ctx, rID)
 }
 
 func (qc *ClusteredCoordinator) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {
-	taskDb, err := qc.db.GetBalancerTask(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return tasks.BalancerTaskFromDb(taskDb), nil
+	return qc.Coordinator.GetBalancerTask(ctx)
 }
 
 func (qc *ClusteredCoordinator) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
-	return qc.db.WriteBalancerTask(ctx, tasks.BalancerTaskToDb(task))
+	return qc.Coordinator.WriteBalancerTask(ctx, task)
 }
 
 func (qc *ClusteredCoordinator) RemoveBalancerTask(ctx context.Context) error {
-	return qc.db.RemoveBalancerTask(ctx)
+	return qc.Coordinator.RemoveBalancerTask(ctx)
 }
 
 // TODO : unit tests
@@ -1893,7 +1849,7 @@ func (qc *ClusteredCoordinator) AddWorldShard(_ context.Context, _ *topology.Dat
 }
 
 func (qc *ClusteredCoordinator) DropShard(ctx context.Context, shardId string) error {
-	return qc.db.DropShard(ctx, shardId)
+	return qc.Coordinator.DropShard(ctx, shardId)
 }
 
 // TODO : unit tests
@@ -1915,7 +1871,7 @@ func (qc *ClusteredCoordinator) UpdateCoordinator(ctx context.Context, address s
 
 // TODO : unit tests
 func (qc *ClusteredCoordinator) GetCoordinator(ctx context.Context) (string, error) {
-	addr, err := qc.db.GetCoordinator(ctx)
+	addr, err := qc.Coordinator.GetCoordinator(ctx)
 
 	spqrlog.Zero.Debug().Str("address", addr).Msg("resp qdb coordinator: get coordinator")
 	return addr, err
@@ -1953,7 +1909,7 @@ func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *dist
 // DropDistribution deletes distribution from QDB
 // TODO: unit tests
 func (qc *ClusteredCoordinator) DropDistribution(ctx context.Context, id string) error {
-	if err := qc.db.DropDistribution(ctx, id); err != nil {
+	if err := qc.Coordinator.DropDistribution(ctx, id); err != nil {
 		return err
 	}
 
@@ -2018,18 +1974,8 @@ func (qc *ClusteredCoordinator) AlterDistributionAttach(ctx context.Context, id 
 // AlterDistributedRelation changes relation attached to a distribution
 // TODO: unit tests
 func (qc *ClusteredCoordinator) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
-	if !rel.ReplicatedRelation && len(rel.ColumnSequenceMapping) > 0 {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequences are supported for replicated relations only")
-	}
-	qdbRel := distributions.DistributedRelationToDB(rel)
-	if err := qc.db.AlterDistributedRelation(ctx, id, qdbRel); err != nil {
+	if err := qc.Coordinator.AlterDistributedRelation(ctx, id, rel); err != nil {
 		return err
-	}
-
-	for colName, seqName := range rel.ColumnSequenceMapping {
-		if err := qc.db.AlterSequenceAttach(ctx, seqName, rel.Name, colName); err != nil {
-			return err
-		}
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -2050,19 +1996,19 @@ func (qc *ClusteredCoordinator) AlterDistributedRelation(ctx context.Context, id
 }
 
 func (qc *ClusteredCoordinator) ListSequences(ctx context.Context) ([]string, error) {
-	return qc.db.ListSequences(ctx)
+	return qc.Coordinator.ListSequences(ctx)
 }
 
 func (qc *ClusteredCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
-	return qc.db.NextVal(ctx, seqName)
+	return qc.Coordinator.NextVal(ctx, seqName)
 }
 
 func (qc *ClusteredCoordinator) CurrVal(ctx context.Context, seqName string) (int64, error) {
-	return qc.db.CurrVal(ctx, seqName)
+	return qc.Coordinator.CurrVal(ctx, seqName)
 }
 
 func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string) error {
-	if err := qc.db.DropSequence(ctx, seqName); err != nil {
+	if err := qc.Coordinator.DropSequence(ctx, seqName); err != nil {
 		return err
 	}
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -2084,6 +2030,7 @@ func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string
 // AlterDistributionDetach detaches relation from distribution
 // TODO: unit tests
 func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
+	/* Do what needs to be done in metadata */
 	if err := qc.Coordinator.AlterDistributionDetach(ctx, id, relName); err != nil {
 		return err
 	}
@@ -2106,11 +2053,7 @@ func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id 
 }
 
 func (qc *ClusteredCoordinator) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
-	sh, err := qc.db.GetShard(ctx, shardID)
-	if err != nil {
-		return nil, err
-	}
-	return topology.DataShardFromDb(sh), nil
+	return qc.Coordinator.GetShard(ctx, shardID)
 }
 
 func (qc *ClusteredCoordinator) finishRedistributeTasksInProgress(ctx context.Context) error {

@@ -38,6 +38,7 @@ type EntityMgr interface {
 	distributions.DistributionMgr
 	tasks.TaskMgr
 	sequences.SequenceMgr
+	rrelation.ReferenceRelationMgr
 
 	ShareKeyRange(id string) error
 
