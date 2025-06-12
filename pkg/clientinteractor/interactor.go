@@ -1566,14 +1566,14 @@ func (pi *PSQLInteractor) PreparedStatements(ctx context.Context, shs []shard.Pr
 	return pi.CompleteMsg(len(shs))
 }
 
-func (pi *PSQLInteractor) Sequences(ctx context.Context, seqs []string, svals []int64) error {
+func (pi *PSQLInteractor) Sequences(ctx context.Context, seqs []string, sequenceVals []int64) error {
 	if err := pi.WriteHeader("name", "value"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for i, seq := range seqs {
-		if err := pi.WriteDataRow(seq, fmt.Sprintf("%d", svals[i])); err != nil {
+		if err := pi.WriteDataRow(seq, fmt.Sprintf("%d", sequenceVals[i])); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}

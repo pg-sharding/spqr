@@ -18,10 +18,10 @@ CREATE REFERENCE TABLE t1 AUTO INCREMENT id;
 (1 row)
 
 SHOW SEQUENCES;
- name  
--------
- t1_id
- t_id
+ name  | value 
+-------+-------
+ t1_id | 0
+ t_id  | 0
 (2 rows)
 
 DROP SEQUENCE t1_id;
