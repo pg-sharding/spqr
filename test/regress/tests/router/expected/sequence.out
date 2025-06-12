@@ -12,8 +12,23 @@ CREATE REFERENCE TABLE test AUTO INCREMENT id;
  test
 (1 row)
 
+CREATE REFERENCE TABLE test2 AUTO INCREMENT id START 19;
+ add reference relation 
+------------------------
+ test2
+(1 row)
+
+SHOW sequences;
+   name   
+----------
+ test2_id
+ test_id
+(2 rows)
+
 \c regress
 CREATE TABLE test(id int, age int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE test2(id int, age int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test(age) VALUES (16) /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -21,7 +36,7 @@ INSERT INTO test(age) VALUES (17) /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test(age) VALUES (18) /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-SELECT * FROM test /* __spqr__execute_on: sh2 */;
+SELECT * FROM test /* __spqr__execute_on: sh2 */ ORDER BY id, age;
 NOTICE: send query to shard(s) : sh2
  id | age 
 ----+-----
@@ -30,6 +45,25 @@ NOTICE: send query to shard(s) : sh2
   3 |  18
 (3 rows)
 
+INSERT INTO test2(age) VALUES (16) /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO test2(age) VALUES (17) /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO test2(age) VALUES (18) /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM test2 /* __spqr__execute_on: sh2 */ ORDER BY id, age;
+NOTICE: send query to shard(s) : sh2
+ id | age 
+----+-----
+  1 |  16
+  2 |  17
+  3 |  18
+(3 rows)
+
+DROP TABLE test;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE test2;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console
@@ -42,6 +76,12 @@ DROP REFERENCE RELATION test;
  reference relation id 
 -----------------------
  test
+(1 row)
+
+DROP REFERENCE RELATION test2;
+ reference relation id 
+-----------------------
+ test2
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;
@@ -59,5 +99,11 @@ DROP SEQUENCE test_id;
     drop sequence    
 ---------------------
  sequence -> test_id
+(1 row)
+
+DROP SEQUENCE test2_id;
+    drop sequence     
+----------------------
+ sequence -> test2_id
 (1 row)
 

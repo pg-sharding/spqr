@@ -264,8 +264,13 @@ func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 		return fmt.Errorf("empty distributions are disallowed")
 	}
 	for _, rel := range ds.Relations {
-		for colName, seqName := range rel.ColumnSequenceMapping {
-			err := qc.qdb.AlterSequenceAttach(ctx, seqName, rel.Name, colName)
+		for colName, SeqName := range rel.ColumnSequenceMapping {
+
+			if err := qc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
+				return err
+			}
+
+			err := qc.qdb.AlterSequenceAttach(ctx, SeqName, rel.Name, colName)
 			if err != nil {
 				return err
 			}
@@ -386,6 +391,10 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 
 	for _, r := range rels {
 		for colName, seqName := range r.ColumnSequenceMapping {
+			if err := lc.qdb.CreateSequence(ctx, seqName, 0); err != nil {
+				return err
+			}
+
 			if err := lc.qdb.AlterSequenceAttach(ctx, seqName, r.Name, colName); err != nil {
 				return err
 			}

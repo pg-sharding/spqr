@@ -411,6 +411,35 @@ func (mr *MockQDBMockRecorder) CreateMoveTask(ctx, task any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMoveTask", reflect.TypeOf((*MockQDB)(nil).CreateMoveTask), ctx, task)
 }
 
+// CreateSequence mocks base method.
+func (m *MockQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSequence", ctx, seqName, initialValue)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateSequence indicates an expected call of CreateSequence.
+func (mr *MockQDBMockRecorder) CreateSequence(ctx, seqName, initialValue any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSequence", reflect.TypeOf((*MockQDB)(nil).CreateSequence), ctx, seqName, initialValue)
+}
+
+// CurrVal mocks base method.
+func (m *MockQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CurrVal", ctx, seqName)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CurrVal indicates an expected call of CurrVal.
+func (mr *MockQDBMockRecorder) CurrVal(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrVal", reflect.TypeOf((*MockQDB)(nil).CurrVal), ctx, seqName)
+}
+
 // DropDistribution mocks base method.
 func (m *MockQDB) DropDistribution(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
@@ -1139,6 +1168,35 @@ func (m *MockXQDB) CreateMoveTask(ctx context.Context, task *qdb.MoveTask) error
 func (mr *MockXQDBMockRecorder) CreateMoveTask(ctx, task any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMoveTask", reflect.TypeOf((*MockXQDB)(nil).CreateMoveTask), ctx, task)
+}
+
+// CreateSequence mocks base method.
+func (m *MockXQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSequence", ctx, seqName, initialValue)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateSequence indicates an expected call of CreateSequence.
+func (mr *MockXQDBMockRecorder) CreateSequence(ctx, seqName, initialValue any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSequence", reflect.TypeOf((*MockXQDB)(nil).CreateSequence), ctx, seqName, initialValue)
+}
+
+// CurrVal mocks base method.
+func (m *MockXQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CurrVal", ctx, seqName)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CurrVal indicates an expected call of CurrVal.
+func (mr *MockXQDBMockRecorder) CurrVal(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrVal", reflect.TypeOf((*MockXQDB)(nil).CurrVal), ctx, seqName)
 }
 
 // DeleteKeyRangeMove mocks base method.

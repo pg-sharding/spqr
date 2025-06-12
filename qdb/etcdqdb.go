@@ -1537,10 +1537,6 @@ func (q *EtcdQDB) AlterSequenceAttach(ctx context.Context, seqName string, relNa
 		Str("column", colName).
 		Msg("etcdqdb: attach column to sequence")
 
-	if err := q.createSequence(ctx, seqName); err != nil {
-		return err
-	}
-
 	resp, err := q.cli.Put(ctx, columnSequenceMappingNodePath(relName, colName), seqName)
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
@@ -1605,7 +1601,7 @@ func (q *EtcdQDB) getSequenceColumns(ctx context.Context, seqName string) ([]str
 	return cols, nil
 }
 
-func (q *EtcdQDB) createSequence(ctx context.Context, seqName string) error {
+func (q *EtcdQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) error {
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).
 		Msg("etcdqdb: add sequence")
@@ -1617,7 +1613,7 @@ func (q *EtcdQDB) createSequence(ctx context.Context, seqName string) error {
 	}
 
 	if len(resp.Kvs) == 0 {
-		_, err := q.cli.Put(ctx, key, "0")
+		_, err := q.cli.Put(ctx, key, fmt.Sprintf("%d", initialValue))
 		if err != nil {
 			return err
 		}
@@ -1697,6 +1693,35 @@ func (q *EtcdQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
 
 	nextval++
 	_, err = q.cli.Put(ctx, id, fmt.Sprintf("%d", nextval))
+
+	return nextval, err
+}
+
+func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: next val")
+
+	id := sequenceNodePath(seqName)
+	sess, err := concurrency.NewSession(q.cli)
+	if err != nil {
+		return -1, err
+	}
+	defer closeSession(sess)
+
+	resp, err := q.cli.Get(ctx, id)
+	if err != nil {
+		return -1, err
+	}
+
+	var nextval int64 = 0
+	switch resp.Count {
+	case 1:
+		var err error
+		nextval, err = strconv.ParseInt(string(resp.Kvs[0].Value), 10, 64)
+		if err != nil {
+			return -1, err
+		}
+	default:
+	}
 
 	return nextval, err
 }

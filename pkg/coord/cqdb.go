@@ -2053,6 +2053,10 @@ func (qc *QDBCoordinator) NextVal(ctx context.Context, seqName string) (int64, e
 	return qc.db.NextVal(ctx, seqName)
 }
 
+func (qc *QDBCoordinator) CurrVal(ctx context.Context, seqName string) (int64, error) {
+	return qc.db.CurrVal(ctx, seqName)
+}
+
 func (qc *QDBCoordinator) DropSequence(ctx context.Context, seqName string) error {
 	if err := qc.db.DropSequence(ctx, seqName); err != nil {
 		return err

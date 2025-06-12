@@ -110,10 +110,12 @@ type QDB interface {
 	ListRouters(ctx context.Context) ([]*Router, error)
 
 	/* Sequences for reference relation */
+	CreateSequence(ctx context.Context, seqName string, initialValue int64) error
 	ListSequences(ctx context.Context) ([]string, error)
 	AlterSequenceAttach(ctx context.Context, seqName string, relName, colName string) error
 	GetRelationSequence(ctx context.Context, relName string) (map[string]string, error)
 	NextVal(ctx context.Context, seqName string) (int64, error)
+	CurrVal(ctx context.Context, seqName string) (int64, error)
 	DropSequence(ctx context.Context, seqName string) error
 }
 

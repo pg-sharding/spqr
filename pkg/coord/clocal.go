@@ -126,8 +126,12 @@ func (lc *LocalCoordinator) AlterDistributedRelation(ctx context.Context, id str
 		return err
 	}
 
-	for colName, seqName := range rel.ColumnSequenceMapping {
-		if err := lc.qdb.AlterSequenceAttach(ctx, seqName, rel.Name, colName); err != nil {
+	for colName, SeqName := range rel.ColumnSequenceMapping {
+		if err := lc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
+			return err
+		}
+
+		if err := lc.qdb.AlterSequenceAttach(ctx, SeqName, rel.Name, colName); err != nil {
 			return err
 		}
 	}
@@ -638,6 +642,27 @@ func (lc *LocalCoordinator) NextVal(ctx context.Context, seqName string) (int64,
 	}()
 	mgr := NewAdapter(conn)
 	return mgr.NextVal(ctx, seqName)
+}
+
+func (lc *LocalCoordinator) CurrVal(ctx context.Context, seqName string) (int64, error) {
+	coordAddr, err := lc.GetCoordinator(ctx)
+	if err != nil {
+		return -1, err
+	}
+	if coordAddr == "" {
+		return lc.qdb.CurrVal(ctx, seqName)
+	}
+	conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all
+	if err != nil {
+		return -1, err
+	}
+	defer func() {
+		if err := conn.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+		}
+	}()
+	mgr := NewAdapter(conn)
+	return mgr.CurrVal(ctx, seqName)
 }
 
 func (lc *LocalCoordinator) RetryMoveTaskGroup(_ context.Context) error {
