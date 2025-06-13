@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/pg-sharding/spqr/coordinator/statistics"
@@ -28,7 +27,6 @@ import (
 
 type EtcdQDB struct {
 	cli *clientv3.Client
-	mu  sync.Mutex
 }
 
 var _ XQDB = &EtcdQDB{}
@@ -69,6 +67,7 @@ const (
 	balancerTaskPath               = "/balancer_task/"
 	transactionNamespace           = "/transfer_txs/"
 	sequenceNamespace              = "/sequences/"
+	referenceRelationsNamespace    = "/reference_relations"
 	columnSequenceMappingNamespace = "/column_sequence_mappings/"
 
 	CoordKeepAliveTtl = 3
@@ -97,16 +96,16 @@ func distributionNodePath(key string) string {
 	return path.Join(distributionNamespace, key)
 }
 
+func referenceRelationNodePath(key string) string {
+	return path.Join(referenceRelationsNamespace, key)
+}
+
 func relationMappingNodePath(key string) string {
 	return path.Join(relationMappingNamespace, key)
 }
 
 func keyRangeMovesNodePath(key string) string {
 	return path.Join(keyRangeMovesNamespace, key)
-}
-
-func (q *EtcdQDB) Client() *clientv3.Client {
-	return q.cli
 }
 
 func transferTxNodePath(key string) string {
@@ -126,6 +125,10 @@ func columnSequenceMappingNodePath(relName, colName string) string {
 
 func moveTaskNodePath(id string) string {
 	return path.Join(moveTasksNamespace, id)
+}
+
+func (q *EtcdQDB) Client() *clientv3.Client {
+	return q.cli
 }
 
 // ==============================================================================
@@ -340,9 +343,6 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 
 	t := time.Now()
 
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
 	if err := retry.Do(ctx, retry.WithMaxRetries(7, retry.NewFibonacci(500*time.Millisecond)), func(ctx context.Context) error {
 		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(id)), clientv3.WithCountOnly())
 		if err != nil {
@@ -376,8 +376,6 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 		Msg("etcdqdb: unlock key range")
 
 	t := time.Now()
-	q.mu.Lock()
-	defer q.mu.Unlock()
 
 	err := retry.Do(ctx, retry.NewFibonacci(500*time.Millisecond), func(ctx context.Context) error {
 		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(id)), clientv3.WithCountOnly())
@@ -442,8 +440,6 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 		Msg("etcdqdb: rename key range")
 
 	t := time.Now()
-	q.mu.Lock()
-	defer q.mu.Unlock()
 
 	kr, err := q.fetchKeyRange(ctx, keyRangeNodePath(krId))
 	if err != nil {
@@ -926,6 +922,77 @@ func (q *EtcdQDB) DropShard(ctx context.Context, id string) error {
 }
 
 // ==============================================================================
+//                               REFERENCE RELATIONS
+// ==============================================================================
+
+// CreateReferenceRelation implements XQDB.
+func (q *EtcdQDB) CreateReferenceRelation(ctx context.Context, r *ReferenceRelation) error {
+	spqrlog.Zero.Debug().
+		Str("tablename", r.TableName).
+		Msg("etcdqdb: create reference relation")
+
+	rrJson, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Put(ctx, distributionNodePath(r.TableName), string(rrJson))
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: create reference relation response")
+
+	return nil
+}
+
+// DropReferenceRelation implements XQDB.
+func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, tableName string) error {
+	spqrlog.Zero.Debug().
+		Str("tablename", tableName).
+		Msg("etcdqdb: drop reference relation")
+
+	nodePath := referenceRelationNodePath(tableName)
+
+	resp, err := q.cli.Get(ctx, nodePath, clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+
+	switch len(resp.Kvs) {
+	case 0:
+		return spqrerror.New(spqrerror.SPQR_SHARDING_RULE_ERROR, "no such reference relation present in qdb")
+	case 1:
+
+		var rrs *ReferenceRelation
+		if err := json.Unmarshal(resp.Kvs[0].Value, &rrs); err != nil {
+			return err
+		}
+
+		resp, err := q.cli.Delete(ctx, nodePath)
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("etcdqdb: drop reference relation")
+
+		if err != nil {
+			return err
+		}
+		/* Drop all related mappings */
+		_, err = q.cli.Delete(ctx, relationMappingNodePath(tableName))
+		return err
+	default:
+		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much distributions matched: %d", len(resp.Kvs))
+	}
+}
+
+// ListReferenceRelations implements XQDB.
+func (q *EtcdQDB) ListReferenceRelations(ctx context.Context) ([]*ReferenceRelation, error) {
+	panic("unimplemented")
+}
+
+// ==============================================================================
 //                                  DISTRIBUTIONS
 // ==============================================================================
 
@@ -960,7 +1027,7 @@ func (q *EtcdQDB) ListDistributions(ctx context.Context) ([]*Distribution, error
 		return nil, err
 	}
 
-	rules := make([]*Distribution, 0, len(resp.Kvs))
+	dds := make([]*Distribution, 0, len(resp.Kvs))
 
 	for _, kv := range resp.Kvs {
 		var rule *Distribution
@@ -969,17 +1036,17 @@ func (q *EtcdQDB) ListDistributions(ctx context.Context) ([]*Distribution, error
 			return nil, err
 		}
 
-		rules = append(rules, rule)
+		dds = append(dds, rule)
 	}
 
-	sort.Slice(rules, func(i, j int) bool {
-		return rules[i].ID < rules[j].ID
+	sort.Slice(dds, func(i, j int) bool {
+		return dds[i].ID < dds[j].ID
 	})
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: list distributions")
-	return rules, nil
+	return dds, nil
 }
 
 // TODO : unit tests

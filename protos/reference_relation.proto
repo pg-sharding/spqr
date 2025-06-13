@@ -9,12 +9,18 @@ import "google/protobuf/empty.proto";
 message ReferenceRelation {
   string name = 1;
   map<string, string> sequenceColumns = 2;
-  int64 schema_version = 3;
+  uint64 schema_version = 3;
   repeated string shardIds = 4;
 }
 
-message CreateReferenceRelationsRequest{
-  repeated ReferenceRelation relations = 1;
+message AutoIncrementEntry {
+  string ColName = 1;
+  uint64 StartValue = 2;
+}
+
+message CreateReferenceRelationsRequest {
+  ReferenceRelation relation = 1;
+  repeated AutoIncrementEntry entries = 2;
 }
 
 message DropReferenceRelationsRequest {

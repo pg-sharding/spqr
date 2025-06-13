@@ -96,6 +96,13 @@ type Distribution struct {
 	Relations map[string]*DistributedRelation `json:"relations"`
 }
 
+type ReferenceRelation struct {
+	TableName             string            `json:"table_name"`
+	SchemaVersion         uint64            `json:"schema_version"`
+	ColumnSequenceMapping map[string]string `json:"column_sequence_mapping"`
+	ShardIds              []string          `json:"shard_ids"`
+}
+
 func NewDistribution(id string, coltypes []string) *Distribution {
 	distr := &Distribution{
 		ID:        id,

@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type Adapter struct {
@@ -66,26 +67,38 @@ func (a *Adapter) ShareKeyRange(id string) error {
 }
 
 // CreateReferenceRelation implements meta.EntityMgr.
-func (a *Adapter) CreateReferenceRelation(ctx context.Context, tableName string, entry []*rrelation.AutoIncrementEntry) error {
+func (a *Adapter) CreateReferenceRelation(ctx context.Context, r *rrelation.ReferenceRelation, entry []*rrelation.AutoIncrementEntry) error {
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
 	_, err := c.CreateReferenceRelations(ctx, &proto.CreateReferenceRelationsRequest{
-		Relations: []*proto.ReferenceRelation{
-			{
-				Name: tableName,
-			},
-		},
+		Relation: rrelation.RefRelationToProto(r),
+		Entries:  rrelation.AutoIncrementEntriesToProto(entry),
 	})
 	return err
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
 func (a *Adapter) DropReferenceRelation(ctx context.Context, id string) error {
-	panic("unimplemented")
+	c := proto.NewReferenceRelationsServiceClient(a.conn)
+	_, err := c.DropReferenceRelations(ctx, &proto.DropReferenceRelationsRequest{
+		Ids: []string{id},
+	})
+	return err
 }
 
 // ListReferenceRelations implements meta.EntityMgr.
 func (a *Adapter) ListReferenceRelations(ctx context.Context) ([]*rrelation.ReferenceRelation, error) {
-	panic("unimplemented")
+	var res []*rrelation.ReferenceRelation
+	c := proto.NewReferenceRelationsServiceClient(a.conn)
+	ret, err := c.ListReferenceRelations(ctx, &emptypb.Empty{})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range ret.Relations {
+		res = append(res, rrelation.RefRelationFromProto(r))
+	}
+
+	return res, nil
 }
 
 // GetKeyRange gets key range by id

@@ -411,6 +411,20 @@ func (mr *MockQDBMockRecorder) CreateMoveTask(ctx, task any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMoveTask", reflect.TypeOf((*MockQDB)(nil).CreateMoveTask), ctx, task)
 }
 
+// CreateReferenceRelation mocks base method.
+func (m *MockQDB) CreateReferenceRelation(ctx context.Context, r *qdb.ReferenceRelation) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateReferenceRelation", ctx, r)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateReferenceRelation indicates an expected call of CreateReferenceRelation.
+func (mr *MockQDBMockRecorder) CreateReferenceRelation(ctx, r any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateReferenceRelation", reflect.TypeOf((*MockQDB)(nil).CreateReferenceRelation), ctx, r)
+}
+
 // CreateSequence mocks base method.
 func (m *MockQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) error {
 	m.ctrl.T.Helper()
@@ -480,6 +494,20 @@ func (m *MockQDB) DropKeyRangeAll(ctx context.Context) error {
 func (mr *MockQDBMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropKeyRangeAll", reflect.TypeOf((*MockQDB)(nil).DropKeyRangeAll), ctx)
+}
+
+// DropReferenceRelation mocks base method.
+func (m *MockQDB) DropReferenceRelation(ctx context.Context, tableName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropReferenceRelation", ctx, tableName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropReferenceRelation indicates an expected call of DropReferenceRelation.
+func (mr *MockQDBMockRecorder) DropReferenceRelation(ctx, tableName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropReferenceRelation", reflect.TypeOf((*MockQDB)(nil).DropReferenceRelation), ctx, tableName)
 }
 
 // DropSequence mocks base method.
@@ -718,6 +746,21 @@ func (m *MockQDB) ListKeyRanges(arg0 context.Context, distribution string) ([]*q
 func (mr *MockQDBMockRecorder) ListKeyRanges(arg0, distribution any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListKeyRanges", reflect.TypeOf((*MockQDB)(nil).ListKeyRanges), arg0, distribution)
+}
+
+// ListReferenceRelations mocks base method.
+func (m *MockQDB) ListReferenceRelations(ctx context.Context) ([]*qdb.ReferenceRelation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListReferenceRelations", ctx)
+	ret0, _ := ret[0].([]*qdb.ReferenceRelation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListReferenceRelations indicates an expected call of ListReferenceRelations.
+func (mr *MockQDBMockRecorder) ListReferenceRelations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListReferenceRelations", reflect.TypeOf((*MockQDB)(nil).ListReferenceRelations), ctx)
 }
 
 // ListRouters mocks base method.
@@ -1170,6 +1213,20 @@ func (mr *MockXQDBMockRecorder) CreateMoveTask(ctx, task any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMoveTask", reflect.TypeOf((*MockXQDB)(nil).CreateMoveTask), ctx, task)
 }
 
+// CreateReferenceRelation mocks base method.
+func (m *MockXQDB) CreateReferenceRelation(ctx context.Context, r *qdb.ReferenceRelation) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateReferenceRelation", ctx, r)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateReferenceRelation indicates an expected call of CreateReferenceRelation.
+func (mr *MockXQDBMockRecorder) CreateReferenceRelation(ctx, r any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateReferenceRelation", reflect.TypeOf((*MockXQDB)(nil).CreateReferenceRelation), ctx, r)
+}
+
 // CreateSequence mocks base method.
 func (m *MockXQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) error {
 	m.ctrl.T.Helper()
@@ -1267,6 +1324,20 @@ func (m *MockXQDB) DropKeyRangeAll(ctx context.Context) error {
 func (mr *MockXQDBMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropKeyRangeAll", reflect.TypeOf((*MockXQDB)(nil).DropKeyRangeAll), ctx)
+}
+
+// DropReferenceRelation mocks base method.
+func (m *MockXQDB) DropReferenceRelation(ctx context.Context, tableName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropReferenceRelation", ctx, tableName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropReferenceRelation indicates an expected call of DropReferenceRelation.
+func (mr *MockXQDBMockRecorder) DropReferenceRelation(ctx, tableName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropReferenceRelation", reflect.TypeOf((*MockXQDB)(nil).DropReferenceRelation), ctx, tableName)
 }
 
 // DropSequence mocks base method.
@@ -1535,6 +1606,21 @@ func (m *MockXQDB) ListKeyRanges(arg0 context.Context, distribution string) ([]*
 func (mr *MockXQDBMockRecorder) ListKeyRanges(arg0, distribution any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListKeyRanges", reflect.TypeOf((*MockXQDB)(nil).ListKeyRanges), arg0, distribution)
+}
+
+// ListReferenceRelations mocks base method.
+func (m *MockXQDB) ListReferenceRelations(ctx context.Context) ([]*qdb.ReferenceRelation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListReferenceRelations", ctx)
+	ret0, _ := ret[0].([]*qdb.ReferenceRelation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListReferenceRelations indicates an expected call of ListReferenceRelations.
+func (mr *MockXQDBMockRecorder) ListReferenceRelations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListReferenceRelations", reflect.TypeOf((*MockXQDB)(nil).ListReferenceRelations), ctx)
 }
 
 // ListRouters mocks base method.
