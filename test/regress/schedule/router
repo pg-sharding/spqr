@@ -24,6 +24,7 @@ test: distributed_relation_multishard_modify
 test: part_table
 test: target_list_routing
 test: reference_table
+test: sequence
 test: cte
 test: ddl
 test: engine_v2

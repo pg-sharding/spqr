@@ -67,7 +67,15 @@ func (a *Adapter) ShareKeyRange(id string) error {
 
 // CreateReferenceRelation implements meta.EntityMgr.
 func (a *Adapter) CreateReferenceRelation(ctx context.Context, tableName string, entry []*rrelation.AutoIncrementEntry) error {
-	panic("unimplemented")
+	c := proto.NewReferenceRelationsServiceClient(a.conn)
+	_, err := c.CreateReferenceRelations(ctx, &proto.CreateReferenceRelationsRequest{
+		Relations: []*proto.ReferenceRelation{
+			{
+				Name: tableName,
+			},
+		},
+	})
+	return err
 }
 
 // DropReferenceRelation implements meta.EntityMgr.

@@ -46,6 +46,12 @@ CREATE DISTRIBUTION ds COLUMN TYPES integer;
 
 ALTER DISTRIBUTION ds ATTACH RELATION t2 DISTRIBUTION KEY id AUTO INCREMENT id1;
 ERROR:  sequence are supported for replicated relations only
+DROP REFERENCE RELATION t;
+ reference relation id 
+-----------------------
+ t
+(1 row)
+
 DROP DISTRIBUTION ALL CASCADE;
        drop distribution       
 -------------------------------
@@ -57,4 +63,11 @@ DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
+
+--- XXX: fix this
+DROP SEQUENCE t_id;
+  drop sequence   
+------------------
+ sequence -> t_id
+(1 row)
 
