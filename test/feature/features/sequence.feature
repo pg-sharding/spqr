@@ -27,7 +27,8 @@ Feature: Sequence test
     """
     [
         {
-            "name": "t_id"
+            "name": "t_id",
+            "value": "0"
         }
     ]
     """
