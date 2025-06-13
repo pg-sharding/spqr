@@ -958,6 +958,7 @@ func (q *MemQDB) CreateSequence(_ context.Context, seqName string, initialValue 
 		Str("sequence", seqName).Msg("memqdb: alter sequence attach")
 
 	q.Sequences[seqName] = true
+	q.SequenceToValues[seqName] = initialValue
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Sequences, seqName, true))
 }
 

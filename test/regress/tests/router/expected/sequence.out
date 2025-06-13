@@ -21,7 +21,7 @@ CREATE REFERENCE TABLE test2 AUTO INCREMENT id START 19;
 SHOW sequences;
    name   | value 
 ----------+-------
- test2_id | 0
+ test2_id | 19
  test_id  | 0
 (2 rows)
 
@@ -55,9 +55,9 @@ SELECT * FROM test2 /* __spqr__execute_on: sh2 */ ORDER BY id, age;
 NOTICE: send query to shard(s) : sh2
  id | age 
 ----+-----
-  1 |  16
-  2 |  17
-  3 |  18
+ 20 |  16
+ 21 |  17
+ 22 |  18
 (3 rows)
 
 DROP TABLE test;
@@ -72,13 +72,6 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-SHOW sequences;
-   name   | value 
-----------+-------
- test2_id | 3
- test_id  | 3
-(2 rows)
-
 DROP REFERENCE RELATION test;
  reference relation id 
 -----------------------
@@ -90,6 +83,13 @@ DROP REFERENCE RELATION test2;
 -----------------------
  test2
 (1 row)
+
+SHOW sequences;
+   name   | value 
+----------+-------
+ test2_id | 22
+ test_id  | 3
+(2 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
        drop distribution       
