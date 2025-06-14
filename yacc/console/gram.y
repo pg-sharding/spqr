@@ -228,7 +228,7 @@ func randomHex(n int) (string, error) {
 %type<distributed_relation> relation_alter_stmt
 %type<distributed_relation> distributed_relation_def
 
-%type<strlist> col_types_list opt_col_types anyid_list opt_on_shards
+%type<strlist> col_types_list opt_col_types any_id_list opt_on_shards
 %type<str> col_types_elem
 %type<bool> opt_cascade
 
@@ -692,8 +692,8 @@ table_or_relation:
 
 
 opt_on_shards:
-	ON anyid_list { $$ = $2 } | 
-	ON SHARDS anyid_list { $$ = $3 } | /* nothing */ {}
+	ON any_id_list { $$ = $2 } | 
+	ON SHARDS any_id_list { $$ = $3 } | /* nothing */ {}
 
 create_stmt:
 	CREATE distribution_define_stmt
@@ -947,12 +947,12 @@ key_range_define_stmt:
 	}
 
 shard_define_stmt:
-	SHARD any_id WITH HOSTS anyid_list
+	SHARD any_id WITH HOSTS any_id_list
 	{
 		$$ = &ShardDefinition{Id: $2, Hosts: $5}
 	}
 	|
-	SHARD WITH HOSTS anyid_list
+	SHARD WITH HOSTS any_id_list
 	{
 		str, err := randomHex(6)
 		if err != nil {
@@ -961,13 +961,13 @@ shard_define_stmt:
 		$$ = &ShardDefinition{Id: "shard" + str, Hosts: $4}
 	}
 
-anyid_list:
+any_id_list:
 	any_val
 	{
 		$$ = []string{$1}
 	}
 	|
-	anyid_list TCOMMA any_val
+	any_id_list TCOMMA any_val
 	{
 		$$ = append($1, $3)
 	} 
