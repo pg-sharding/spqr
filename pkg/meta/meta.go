@@ -192,7 +192,8 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	case *spqrparser.ReferenceRelationDefinition:
 
 		r := &rrelation.ReferenceRelation{
-			TableName: stmt.TableName,
+			TableName:     stmt.TableName,
+			SchemaVersion: 1,
 		}
 
 		if err := mngr.CreateReferenceRelation(ctx, r, rrelation.ReferenceRelationEntriesFromDB(stmt.AutoIncrementEntries)); err != nil {
