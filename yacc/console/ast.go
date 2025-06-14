@@ -123,6 +123,7 @@ type ShardingRuleEntry struct {
 type ReferenceRelationDefinition struct {
 	TableName            string
 	AutoIncrementEntries []*AutoIncrementEntry
+	ShardIds             []string
 }
 
 type AutoIncrementEntry struct {

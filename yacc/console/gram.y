@@ -164,7 +164,7 @@ func randomHex(n int) (string, error) {
 %token <str> INVALIDATE CACHE
 %token <str> SYNC
 %token <str> RETRY
-%token <str> DISTRIBUTED IN
+%token <str> DISTRIBUTED IN ON
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -228,7 +228,7 @@ func randomHex(n int) (string, error) {
 %type<distributed_relation> relation_alter_stmt
 %type<distributed_relation> distributed_relation_def
 
-%type<strlist> col_types_list opt_col_types hosts_list
+%type<strlist> col_types_list opt_col_types any_id_list opt_on_shards
 %type<str> col_types_elem
 %type<bool> opt_cascade
 
@@ -494,7 +494,7 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &SequenceSelector{Name: $3}}
 	}
-	| DROP REFERENCE RELATION any_id
+	| DROP REFERENCE table_or_relation any_id
 	{
 		$$ = &Drop{
 			Element: &ReferenceRelationSelector{
@@ -687,6 +687,14 @@ relation_alter_stmt:
 opt_distributed:
 	DISTRIBUTED | {} /* nothing */
 
+table_or_relation:
+	TABLE {} | RELATION {}
+
+
+opt_on_shards:
+	ON any_id_list { $$ = $2 } | 
+	ON SHARDS any_id_list { $$ = $3 } | /* nothing */ {}
+
 create_stmt:
 	CREATE distribution_define_stmt
 	{
@@ -708,12 +716,13 @@ create_stmt:
 		$$ = &Create{Element: $2}
 	}
 	|
-	CREATE REFERENCE TABLE any_id opt_auto_increment
+	CREATE REFERENCE table_or_relation any_id opt_auto_increment opt_on_shards
 	{
 		$$ = &Create{
 			Element: &ReferenceRelationDefinition{
 				TableName: $4,
                 AutoIncrementEntries: $5,
+				ShardIds: $6,
 			},
 		}
 	}
@@ -756,6 +765,8 @@ show_stmt:
 	SHOW show_statement_type where_clause group_clause order_clause
 	{
 		$$ = &Show{Cmd: $2, Where: $3, GroupBy: $4, Order: $5}
+	} | SHOW SHARDS where_clause group_clause order_clause {
+		$$ = &Show{Cmd: ShardsStr, Where: $3, GroupBy: $4, Order: $5}
 	}
 lock_stmt:
 	LOCK key_range_stmt
@@ -936,12 +947,12 @@ key_range_define_stmt:
 	}
 
 shard_define_stmt:
-	SHARD any_id WITH HOSTS hosts_list
+	SHARD any_id WITH HOSTS any_id_list
 	{
 		$$ = &ShardDefinition{Id: $2, Hosts: $5}
 	}
 	|
-	SHARD WITH HOSTS hosts_list
+	SHARD WITH HOSTS any_id_list
 	{
 		str, err := randomHex(6)
 		if err != nil {
@@ -950,13 +961,13 @@ shard_define_stmt:
 		$$ = &ShardDefinition{Id: "shard" + str, Hosts: $4}
 	}
 
-hosts_list:
+any_id_list:
 	any_val
 	{
 		$$ = []string{$1}
 	}
 	|
-	hosts_list TCOMMA any_val
+	any_id_list TCOMMA any_val
 	{
 		$$ = append($1, $3)
 	} 

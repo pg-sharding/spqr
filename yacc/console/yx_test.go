@@ -822,10 +822,86 @@ func TestDistribution(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: "CREATE DISTRIBUTION db1 COLUMN TYPES varchar hash;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID: "db1",
+					ColTypes: []string{
+						"varchar hashed",
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE DISTRIBUTION db1 COLUMN TYPES varchar, varchar;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID: "db1",
+					ColTypes: []string{
+						"varchar",
+						"varchar",
+					},
+				},
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
+func TestReferenceRelation(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+
+		{
 			query: "CREATE REFERENCE TABLE xtab",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
 					TableName: "xtab",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE REFERENCE TABLE xtab",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ReferenceRelationDefinition{
+					TableName: "xtab",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE REFERENCE RELATION xtab ON sh1, sh2, sh3",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ReferenceRelationDefinition{
+					TableName: "xtab",
+					ShardIds:  []string{"sh1", "sh2", "sh3"},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE REFERENCE RELATION xtab ON SHARDS sh1, sh2, sh3",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ReferenceRelationDefinition{
+					TableName: "xtab",
+					ShardIds:  []string{"sh1", "sh2", "sh3"},
 				},
 			},
 			err: nil,
@@ -880,6 +956,14 @@ func TestDistribution(t *testing.T) {
 		},
 		{
 			query: `DROP REFERENCE RELATION r1`,
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.ReferenceRelationSelector{
+					ID: "r1",
+				},
+			},
+		},
+		{
+			query: `DROP REFERENCE TABLE r1`,
 			exp: &spqrparser.Drop{
 				Element: &spqrparser.ReferenceRelationSelector{
 					ID: "r1",
