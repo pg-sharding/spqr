@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -33,9 +34,57 @@ type LocalQrouterServer struct {
 	protos.UnimplementedMoveTasksServiceServer
 	protos.UnimplementedShardServiceServer
 	protos.UnimplementedBalancerTaskServiceServer
+	protos.UnimplementedReferenceRelationsServiceServer
+
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
 	rr  rulerouter.RuleRouter
+}
+
+// CreateReferenceRelations implements proto.ReferenceRelationsServiceServer.
+func (l *LocalQrouterServer) CreateReferenceRelations(ctx context.Context, request *protos.CreateReferenceRelationsRequest) (*emptypb.Empty, error) {
+
+	if err := l.mgr.CreateReferenceRelation(ctx,
+		rrelation.RefRelationFromProto(request.Relation),
+		rrelation.AutoIncrementEntriesFromProto(request.Entries)); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+// DropReferenceRelations implements proto.ReferenceRelationsServiceServer.
+func (l *LocalQrouterServer) DropReferenceRelations(ctx context.Context, r *protos.DropReferenceRelationsRequest) (*emptypb.Empty, error) {
+	for _, id := range r.GetIds() {
+		if err := l.mgr.DropReferenceRelation(ctx, id); err != nil {
+			return nil, err
+		}
+	}
+
+	return nil, nil
+}
+
+// ListReferenceRelations implements proto.ReferenceRelationsServiceServer.
+func (l *LocalQrouterServer) ListReferenceRelations(ctx context.Context, _ *emptypb.Empty) (*protos.ListReferenceRelationsReply, error) {
+	var ret []*protos.ReferenceRelation
+
+	res, err := l.mgr.ListReferenceRelations(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range res {
+		ret = append(ret, rrelation.RefRelationToProto(r))
+	}
+
+	return &protos.ListReferenceRelationsReply{
+		Relations: ret,
+	}, nil
+}
+
+// SyncReferenceRelations implements proto.ReferenceRelationsServiceServer.
+func (l *LocalQrouterServer) SyncReferenceRelations(context.Context, *protos.SyncReferenceRelationsRequest) (*emptypb.Empty, error) {
+	return nil, fmt.Errorf("local query router in unable to sync reference relation")
 }
 
 func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *emptypb.Empty) (*protos.ListShardsReply, error) {
@@ -515,6 +564,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterDistributionServiceServer(server, lqr)
 	protos.RegisterMoveTasksServiceServer(server, lqr)
 	protos.RegisterBalancerTaskServiceServer(server, lqr)
+	protos.RegisterReferenceRelationsServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
@@ -527,3 +577,4 @@ var _ protos.DistributionServiceServer = &LocalQrouterServer{}
 var _ protos.MoveTasksServiceServer = &LocalQrouterServer{}
 var _ protos.BalancerTaskServiceServer = &LocalQrouterServer{}
 var _ protos.ShardServiceServer = &LocalQrouterServer{}
+var _ protos.ReferenceRelationsServiceServer = &LocalQrouterServer{}

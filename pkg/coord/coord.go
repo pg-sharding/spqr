@@ -70,7 +70,7 @@ func (lc *Coordinator) Cache() *cache.SchemaCache {
 }
 
 // CreateReferenceRelation implements meta.EntityMgr.
-func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, tableName string, entry []*rrelation.AutoIncrementEntry) error {
+func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation.ReferenceRelation, entry []*rrelation.AutoIncrementEntry) error {
 	selectedDistribId := distributions.REPLICATED
 
 	if _, err := lc.GetDistribution(ctx, selectedDistribId); err != nil {
@@ -86,20 +86,20 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, tableName st
 
 	ret := map[string]string{}
 	for _, entry := range entry {
-		ret[entry.Column] = distributions.SequenceName(tableName, entry.Column)
+		ret[entry.Column] = distributions.SequenceName(r.TableName, entry.Column)
 
 		if err := lc.qdb.CreateSequence(ctx, ret[entry.Column], int64(entry.Start)); err != nil {
 			return err
 		}
 
-		if err := lc.qdb.AlterSequenceAttach(ctx, ret[entry.Column], tableName, entry.Column); err != nil {
+		if err := lc.qdb.AlterSequenceAttach(ctx, ret[entry.Column], r.TableName, entry.Column); err != nil {
 			return err
 		}
 	}
 
 	return lc.AlterDistributionAttach(ctx, selectedDistribId, []*distributions.DistributedRelation{
 		{
-			Name:                  tableName,
+			Name:                  r.TableName,
 			ReplicatedRelation:    true,
 			ColumnSequenceMapping: ret,
 		},

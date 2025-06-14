@@ -27,6 +27,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -1830,6 +1831,31 @@ func (qc *ClusteredCoordinator) UpdateCoordinator(ctx context.Context, address s
 			Address: address,
 		})
 		return err
+	})
+}
+
+// CreateDistribution creates distribution in QDB
+// TODO: unit tests
+func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context, r *rrelation.ReferenceRelation, entry []*rrelation.AutoIncrementEntry) error {
+	if err := qc.Coordinator.CreateReferenceRelation(ctx, r, entry); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewReferenceRelationsServiceClient(cc)
+		resp, err := cl.CreateReferenceRelations(context.TODO(),
+			&routerproto.CreateReferenceRelationsRequest{
+				Relation: rrelation.RefRelationToProto(r),
+				Entries:  rrelation.AutoIncrementEntriesToProto(entry),
+			})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("create reference relation response")
+		return nil
 	})
 }
 

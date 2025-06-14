@@ -29,8 +29,9 @@ type MemQDB struct {
 	Coordinator          string                              `json:"coordinator"`
 	MoveTaskGroup        *MoveTaskGroup                      `json:"taskGroup"`
 	MoveTasks            map[string]*MoveTask                `json:"moveTasks"`
-	RedistributeTask     *RedistributeTask                   `json:"redistributeTask"`
-	BalancerTask         *BalancerTask                       `json:"balancerTask"`
+	RedistributeTask     *RedistributeTask                   `json:"redistribute_ask"`
+	BalancerTask         *BalancerTask                       `json:"balancer_task"`
+	ReferenceRelations   map[string]*ReferenceRelation       `json:"reference_relations"`
 	Sequences            map[string]bool                     `json:"sequences"`
 	ColumnSequence       map[string]string                   `json:"column_sequence"`
 	SequenceToValues     map[string]int64                    `json:"sequence_to_values"`
@@ -624,6 +625,39 @@ func (q *MemQDB) DropShard(_ context.Context, id string) error {
 
 	delete(q.Shards, id)
 	return nil
+}
+
+// ==============================================================================
+//                              REFERENCE RELATIONS
+// ==============================================================================
+
+// CreateReferenceRelation implements XQDB.
+func (q *MemQDB) CreateReferenceRelation(ctx context.Context, r *ReferenceRelation) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.ReferenceRelations[r.TableName] = r
+	return nil
+}
+
+// DropReferenceRelation implements XQDB.
+func (q *MemQDB) DropReferenceRelation(ctx context.Context, tableName string) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	delete(q.ReferenceRelations, tableName)
+	return nil
+}
+
+// ListReferenceRelations implements XQDB.
+func (q *MemQDB) ListReferenceRelations(ctx context.Context) ([]*ReferenceRelation, error) {
+	var rrs []*ReferenceRelation
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	for _, r := range q.ReferenceRelations {
+		rrs = append(rrs, r)
+	}
+
+	return rrs, nil
 }
 
 // ==============================================================================

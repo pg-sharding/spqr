@@ -71,15 +71,19 @@ type QDB interface {
 	CreateDistribution(ctx context.Context, distr *Distribution) error
 	ListDistributions(ctx context.Context) ([]*Distribution, error)
 	DropDistribution(ctx context.Context, id string) error
+	GetDistribution(ctx context.Context, id string) (*Distribution, error)
+	// TODO: fix this by passing FQRN (fully qualified relation name (+schema))
+	GetRelationDistribution(ctx context.Context, relation string) (*Distribution, error)
+
+	/* Reference relations */
+	CreateReferenceRelation(ctx context.Context, r *ReferenceRelation) error
+	ListReferenceRelations(ctx context.Context) ([]*ReferenceRelation, error)
+	DropReferenceRelation(ctx context.Context, tableName string) error
 
 	/* Update distribution */
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
 	AlterDistributionDetach(ctx context.Context, id string, relName string) error
 	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
-
-	GetDistribution(ctx context.Context, id string) (*Distribution, error)
-	// TODO: fix this by passing FQRN (fully qualified relation name (+schema))
-	GetRelationDistribution(ctx context.Context, relation string) (*Distribution, error)
 
 	/* Task group */
 	GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error)

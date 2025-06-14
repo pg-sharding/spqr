@@ -191,13 +191,15 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	switch stmt := astmt.(type) {
 	case *spqrparser.ReferenceRelationDefinition:
 
-		if err := mngr.CreateReferenceRelation(ctx, stmt.TableName, rrelation.ReferenceRelationEntriesFromDB(stmt.AutoIncrementEntries)); err != nil {
+		r := &rrelation.ReferenceRelation{
+			TableName: stmt.TableName,
+		}
+
+		if err := mngr.CreateReferenceRelation(ctx, r, rrelation.ReferenceRelationEntriesFromDB(stmt.AutoIncrementEntries)); err != nil {
 			return cli.ReportError(err)
 		}
 
-		return cli.CreateReferenceRelation(ctx, &rrelation.ReferenceRelation{
-			Name: stmt.TableName,
-		})
+		return cli.CreateReferenceRelation(ctx, r)
 
 	case *spqrparser.DistributionDefinition:
 		if stmt.ID == "default" {

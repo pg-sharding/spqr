@@ -104,3 +104,11 @@ func (d *DistributionsServer) NextVal(ctx context.Context, req *protos.NextValRe
 	}
 	return &protos.NextValReply{Value: val}, nil
 }
+
+func (d *DistributionsServer) CurrVal(ctx context.Context, req *protos.CurrValRequest) (*protos.CurrValReply, error) {
+	val, err := d.impl.CurrVal(ctx, req.Seq)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.CurrValReply{Value: val}, nil
+}

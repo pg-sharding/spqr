@@ -468,7 +468,7 @@ func (pi *PSQLInteractor) CreateReferenceRelation(ctx context.Context, rrel *rre
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(rrel.Name)}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(rrel.TableName)}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
