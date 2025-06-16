@@ -1,0 +1,155 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE FROM 20 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 20
+(1 row)
+
+CREATE KEY RANGE FROM 10 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 10
+(1 row)
+
+CREATE KEY RANGE FROM -10 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> -10
+(1 row)
+
+CREATE KEY RANGE FROM -20 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> -20
+(1 row)
+
+CREATE DISTRIBUTED RELATION nr_table1 DISTRIBUTION KEY i IN ds1;
+         attach table         
+------------------------------
+ relation name   -> nr_table1
+ distribution id -> ds1
+(2 rows)
+
+\c regress
+CREATE TABLE nr_table1(i INT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO nr_table1(i) values(100);
+NOTICE: send query to shard(s) : sh4
+INSERT INTO nr_table1(i) values(21);
+NOTICE: send query to shard(s) : sh4
+INSERT INTO nr_table1(i) values(19);
+NOTICE: send query to shard(s) : sh3
+INSERT INTO nr_table1(i) values(10);
+NOTICE: send query to shard(s) : sh3
+INSERT INTO nr_table1(i) values(9); 
+NOTICE: send query to shard(s) : sh2
+INSERT INTO nr_table1(i) values(0); 
+NOTICE: send query to shard(s) : sh2
+INSERT INTO nr_table1(i) values(-1);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO nr_table1(i) values(-9);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO nr_table1(i) values(-10);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO nr_table1(i) values(-11);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO nr_table1(i) values(-19);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO nr_table1(i) values(-21);
+ERROR:  client processing error: error processing query 'INSERT INTO nr_table1(i) values(-21);': failed to match key with ranges, tx status IDLE
+INSERT INTO nr_table1(i) values(-100);
+ERROR:  client processing error: error processing query 'INSERT INTO nr_table1(i) values(-100);': failed to match key with ranges, tx status IDLE
+SELECT * FROM nr_table1 WHERE i = 100;
+NOTICE: send query to shard(s) : sh4
+  i  
+-----
+ 100
+(1 row)
+
+SELECT * FROM nr_table1 WHERE i = 21;
+NOTICE: send query to shard(s) : sh4
+ i  
+----
+ 21
+(1 row)
+
+SELECT * FROM nr_table1 WHERE i = 19;
+NOTICE: send query to shard(s) : sh3
+ i  
+----
+ 19
+(1 row)
+
+SELECT * FROM nr_table1 WHERE i = 10;
+NOTICE: send query to shard(s) : sh3
+ i  
+----
+ 10
+(1 row)
+
+SELECT * FROM nr_table1 WHERE i = 9;
+NOTICE: send query to shard(s) : sh2
+ i 
+---
+ 9
+(1 row)
+
+SELECT * FROM nr_table1 WHERE i = 0;
+NOTICE: send query to shard(s) : sh2
+ i 
+---
+ 0
+(1 row)
+
+SELECT * FROM nr_table1 WHERE i = -1;
+NOTICE: send query to shard(s) : sh2
+ i  
+----
+ -1
+(1 row)
+
+SELECT * FROM nr_table1 WHERE i = -9;
+NOTICE: send query to shard(s) : sh2
+ i  
+----
+ -9
+(1 row)
+
+SELECT * FROM nr_table1 WHERE i = -10;
+NOTICE: send query to shard(s) : sh2
+  i  
+-----
+ -10
+(1 row)
+
+SELECT * FROM nr_table1 WHERE i = -11;
+NOTICE: send query to shard(s) : sh1
+  i  
+-----
+ -11
+(1 row)
+
+SELECT * FROM nr_table1 WHERE i = -19;
+NOTICE: send query to shard(s) : sh1
+  i  
+-----
+ -19
+(1 row)
+
+SELECT * FROM nr_table1 WHERE i = -21;
+ERROR:  client processing error: error processing query 'SELECT * FROM nr_table1 WHERE i = -21;': failed to match key with ranges, tx status IDLE
+SELECT * FROM nr_table1 WHERE i = -100;
+ERROR:  client processing error: error processing query 'SELECT * FROM nr_table1 WHERE i = -100;': failed to match key with ranges, tx status IDLE
