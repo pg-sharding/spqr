@@ -156,13 +156,13 @@ CREATE DISTRIBUTION ds2 COLUMN TYPES uuid;
  distribution id -> ds2
 (1 row)
 
-CREATE KEY RANGE krid4 FROM 88888888-8888-8888-8888-888888888888 ROUTE TO sh2 FOR DISTRIBUTION ds2;
+CREATE KEY RANGE krid4 FROM '88888888-8888-8888-8888-888888888888' ROUTE TO sh2 FOR DISTRIBUTION ds2;
                   add key range                  
 -------------------------------------------------
  bound -> '88888888-8888-8888-8888-888888888888'
 (1 row)
 
-CREATE KEY RANGE krid3 FROM 00000000-0000-0000-0000-000000000000 ROUTE TO sh1 FOR DISTRIBUTION ds2;
+CREATE KEY RANGE krid3 FROM '00000000-0000-0000-0000-000000000000' ROUTE TO sh1 FOR DISTRIBUTION ds2;
                   add key range                  
 -------------------------------------------------
  bound -> '00000000-0000-0000-0000-000000000000'

@@ -153,3 +153,24 @@ SELECT * FROM nr_table1 WHERE i = -21;
 ERROR:  client processing error: error processing query 'SELECT * FROM nr_table1 WHERE i = -21;': failed to match key with ranges, tx status IDLE
 SELECT * FROM nr_table1 WHERE i = -100;
 ERROR:  client processing error: error processing query 'SELECT * FROM nr_table1 WHERE i = -100;': failed to match key with ranges, tx status IDLE
+DROP TABLE nr_table1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

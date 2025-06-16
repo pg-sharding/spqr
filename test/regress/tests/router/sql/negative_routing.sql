@@ -43,3 +43,9 @@ SELECT * FROM nr_table1 WHERE i = -11;
 SELECT * FROM nr_table1 WHERE i = -19;
 SELECT * FROM nr_table1 WHERE i = -21;
 SELECT * FROM nr_table1 WHERE i = -100;
+
+DROP TABLE nr_table1;
+
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
+DROP KEY RANGE ALL;
