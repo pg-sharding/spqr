@@ -128,7 +128,7 @@ func randomHex(n int) (string, error) {
 /* any const */
 %token<str> SCONST
 
-%token<uinteger> ICONST
+%token<integer> ICONST
 
 
 %type<bytes> key_range_bound_elem
@@ -137,6 +137,10 @@ func randomHex(n int) (string, error) {
 
 // ';'
 %token<str> TSEMICOLON
+// '-'
+%token<str> TMINUS
+// '+'
+%token<str> TPLUS
 
 // '(' & ')'
 %token<str> TOPENBR TCLOSEBR
@@ -148,6 +152,7 @@ func randomHex(n int) (string, error) {
 %type<str> any_val any_id
 
 %type<uinteger> any_uint
+%type<integer> SignedInt
 
 // CMDS
 %type <statement> command
@@ -352,6 +357,15 @@ command:
 	| create_distributed_relation_stmt
 	{
 		setParseTree(yylex, $1)
+	}
+
+SignedInt: 
+	ICONST {
+		$$ = $1
+	} | TMINUS ICONST {
+		$$ = -$2
+	} | TPLUS ICONST {
+		$$ = $2
 	}
 
 any_uint:
@@ -653,7 +667,7 @@ auto_increment_entry:
 	}
 
 opt_auto_increment_start_clause:
-	START ICONST
+	START any_uint
 	{
 		$$ = $2
 	} | /* EMPTY */ {
@@ -901,7 +915,7 @@ key_range_bound_elem:
 	any_val {
 		$$ = []byte($1)
 	}
-	| any_uint {
+	| SignedInt {
 		buf := make([]byte, binary.MaxVarintLen64)
 		binary.PutVarint(buf, int64($1))
 		$$ = buf
