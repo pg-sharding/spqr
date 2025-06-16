@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/binary"
 	"strings"
-	"strconv"
 )
 
 
@@ -381,7 +380,13 @@ any_val: SCONST
 	{
 		$$ = string($1)
 	} | ICONST {
-		$$ = strconv.Itoa(int($1))
+		buf := make([]byte, binary.MaxVarintLen64)
+		binary.PutVarint(buf, int64($1))
+		$$ = string(buf)
+	} | TMINUS ICONST {
+		buf := make([]byte, binary.MaxVarintLen64)
+		binary.PutVarint(buf, int64(-$2))
+		$$ = string(buf)
 	}
 
 any_id: IDENT
@@ -912,12 +917,20 @@ distribution_membership:
 	}
 
 key_range_bound_elem:
-	any_val {
+	SCONST
+	{
 		$$ = []byte($1)
-	}
-	| SignedInt {
+	} | 
+	IDENT
+	{
+		$$ = []byte($1)
+	} | ICONST {
 		buf := make([]byte, binary.MaxVarintLen64)
 		binary.PutVarint(buf, int64($1))
+		$$ = buf
+	} | TMINUS ICONST {
+		buf := make([]byte, binary.MaxVarintLen64)
+		binary.PutVarint(buf, int64(-$2))
 		$$ = buf
 	}
 

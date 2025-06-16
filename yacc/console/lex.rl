@@ -50,10 +50,11 @@ func (lex *Lexer) Lex(lval *yySymType) int {
 
     %%{
 
-        op_chars	=	( '~' | '!' | '@' | '#' | '^' | '&' | '|' | '`' | '?' | '+' | '*' | '\\' | '%' | '<' | '>' | '=' ) ;
+        op_chars	=	( '~' | '!' | '@' | '#' | '^' | '&' | '|' | '`' | '?' | '+' | '*' | '\\' | '%' | '<' | '>' | '=' | '-' ) ;
 
         sconst = '\'' (any-'\'')* '\'';
-        identifier	=	(print - space - op_chars-'\'' - ';' - ',' - '(' - ')')*;
+        # not equal, minus, brackers, etc
+        identifier	=	(print - space - op_chars - '\'' - ';' - ',' - '(' - ')')*;
 
         qidentifier	=	'"' identifier '"';
 

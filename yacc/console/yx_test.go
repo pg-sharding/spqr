@@ -359,6 +359,38 @@ func TestKeyRange(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: "CREATE KEY RANGE krid1 FROM -10 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangeDefinition{
+					ShardID:      "sh1",
+					KeyRangeID:   "krid1",
+					Distribution: "ds1",
+					LowerBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{
+							{0x13, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE KEY RANGE krid1 FROM -20 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangeDefinition{
+					ShardID:      "sh1",
+					KeyRangeID:   "krid1",
+					Distribution: "ds1",
+					LowerBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{
+							{0x27, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
 			query: "CREATE KEY RANGE krid2 FROM 4611686018427387904 ROUTE TO sh2 FOR DISTRIBUTION ds1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
@@ -375,7 +407,7 @@ func TestKeyRange(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "CREATE KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 ROUTE TO sh2 FOR DISTRIBUTION ds1;",
+			query: "CREATE KEY RANGE krid2 FROM '88888888-8888-8888-8888-888888888889' ROUTE TO sh2 FOR DISTRIBUTION ds1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
 					ShardID:      "sh2",
