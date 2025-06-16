@@ -39,7 +39,7 @@ func TestSimpleLex(t *testing.T) {
 		},
 		{
 			query: "kill client 1234567;",
-			exp:   []int{spqrparser.KILL, spqrparser.CLIENT, spqrparser.ICONST},
+			exp:   []int{spqrparser.KILL, spqrparser.CLIENT, spqrparser.ICONST, spqrparser.TSEMICOLON},
 			err:   nil,
 		},
 		{
@@ -53,24 +53,59 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.OR,
 				spqrparser.IDENT,
 				spqrparser.TEQ,
-				spqrparser.SCONST},
+				spqrparser.SCONST,
+				spqrparser.TSEMICOLON,
+			},
 			err: nil,
 		},
 
 		{
-			query: "ADD KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 TO FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF ROUTE TO sh2;",
+			query: "ADD KEY RANGE krid2 FROM '88888888-8888-8888-8888-888888888889' ROUTE TO sh2;",
 			exp: []int{
 				spqrparser.ADD,
 				spqrparser.KEY,
 				spqrparser.RANGE,
 				spqrparser.IDENT,
 				spqrparser.FROM,
-				spqrparser.IDENT,
-				spqrparser.TO,
-				spqrparser.IDENT,
+				spqrparser.SCONST,
 				spqrparser.ROUTE,
 				spqrparser.TO,
 				spqrparser.IDENT,
+				spqrparser.TSEMICOLON,
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE KEY RANGE krid2 FROM - 18 ROUTE TO sh2;",
+			exp: []int{
+				spqrparser.CREATE,
+				spqrparser.KEY,
+				spqrparser.RANGE,
+				spqrparser.IDENT,
+				spqrparser.FROM,
+				spqrparser.TMINUS,
+				spqrparser.ICONST,
+				spqrparser.ROUTE,
+				spqrparser.TO,
+				spqrparser.IDENT,
+				spqrparser.TSEMICOLON,
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE KEY RANGE krid2 FROM -18 ROUTE TO sh2;",
+			exp: []int{
+				spqrparser.CREATE,
+				spqrparser.KEY,
+				spqrparser.RANGE,
+				spqrparser.IDENT,
+				spqrparser.FROM,
+				spqrparser.TMINUS,
+				spqrparser.ICONST,
+				spqrparser.ROUTE,
+				spqrparser.TO,
+				spqrparser.IDENT,
+				spqrparser.TSEMICOLON,
 			},
 			err: nil,
 		},
@@ -83,6 +118,7 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.TO,
 				spqrparser.DISTRIBUTION,
 				spqrparser.IDENT,
+				spqrparser.TSEMICOLON,
 			},
 		},
 		{
@@ -223,6 +259,6 @@ func TestSimpleLex(t *testing.T) {
 
 		act := spqrparser.LexString(tmp)
 
-		assert.Equal(tt.exp, act)
+		assert.Equal(tt.exp, act, tt.query)
 	}
 }

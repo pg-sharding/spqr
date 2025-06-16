@@ -560,10 +560,12 @@ timeb
 tle
 tlsconfig
 tlt
+TMINUS
 tmpnum
 topbar
 TOPENBR
 tpcc
+TPLUS
 TRASCE
 tsa
 TSEMICOLON
