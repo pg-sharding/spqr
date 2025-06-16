@@ -1468,28 +1468,8 @@ func (pi *PSQLInteractor) KillClient(clientID uint) error {
 // Returns:
 // - error: An error if any occurred during the operation.
 func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.Shardinfo, stmt *spqrparser.Show) error {
-	/*headers := []string{"backend connection id", "router", "shard key name", "hostname", "pid", "user", "dbname", "sync", "tx_served", "tx status"}
-	getters := []func(sh shard.Shardinfo) string{
-		func(sh shard.Shardinfo) string { return fmt.Sprintf("%d", sh.ID()) },
-		func(sh shard.Shardinfo) string {
-			router := "no data"
-			s, ok := sh.(shard.CoordShardinfo)
-			if ok {
-				router = s.Router()
-			}
-			return router
-		},
-		func(sh shard.Shardinfo) string { return sh.ShardKeyName() },
-		func(sh shard.Shardinfo) string { return sh.InstanceHostname() },
-		func(sh shard.Shardinfo) string { return fmt.Sprintf("%d", sh.Pid()) },
-		func(sh shard.Shardinfo) string { return sh.Usr() },
-		func(sh shard.Shardinfo) string { return sh.DB() },
-		func(sh shard.Shardinfo) string { return strconv.FormatInt(sh.Sync(), 10) },
-		func(sh shard.Shardinfo) string { return strconv.FormatInt(sh.TxServed(), 10) },
-		func(sh shard.Shardinfo) string { return sh.TxStatus().String() },
-	}*/
 	headers := make([]string, 0, len(BackendConnectionsGetters))
-	for k, _ := range BackendConnectionsGetters {
+	for k := range BackendConnectionsGetters {
 		headers = append(headers, k)
 	}
 
@@ -1661,7 +1641,6 @@ func (pi *PSQLInteractor) MoveStats(ctx context.Context, stats map[string]time.D
 }
 
 func groupBy[T any](values []T, getters map[string]toString[T], groupByCol string, pi *PSQLInteractor) error {
-	//func groupBy[T any](headers []string, values []T, getters []func(s T) string, groupByCol string, pi *PSQLInteractor) error {
 	if getFun, ok := getters[groupByCol]; ok {
 		if err := pi.cl.Send(&pgproto3.RowDescription{
 			Fields: []pgproto3.FieldDescription{TextOidFD(groupByCol), IntOidFD("count")},
@@ -1681,36 +1660,6 @@ func groupBy[T any](values []T, getters map[string]toString[T], groupByCol strin
 		}
 		return pi.CompleteMsg(len(cnt))
 	} else {
-		return fmt.Errorf("Not found column '%s' for group by statement", groupByCol)
+		return fmt.Errorf("not found column '%s' for group by statement", groupByCol)
 	}
-	/*
-	   ind := -1
-
-	   	for i, header := range headers {
-	   		if header == groupByCol {
-	   			if err := pi.cl.Send(&pgproto3.RowDescription{
-	   				Fields: []pgproto3.FieldDescription{TextOidFD(groupByCol), IntOidFD("count")},
-	   			}); err != nil {
-	   				spqrlog.Zero.Error().Err(err).Msg("Could not write header for backend connections")
-	   				return err
-	   			}
-	   			ind = i
-	   			break
-	   		}
-	   	}
-
-	   cnt := make(map[string]int)
-
-	   	for _, value := range values {
-	   		cnt[getters[ind](value)]++
-	   	}
-
-	   	for k, v := range cnt {
-	   		if err := pi.WriteDataRow(k, fmt.Sprintf("%d", v)); err != nil {
-	   			return err
-	   		}
-	   	}
-
-	   return pi.CompleteMsg(len(cnt))
-	*/
 }

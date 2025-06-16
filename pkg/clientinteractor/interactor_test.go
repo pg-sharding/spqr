@@ -336,5 +336,5 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 		GroupBy: spqrparser.GroupBy{Col: spqrparser.ColumnRef{ColName: "someColumn"}},
 	}
 	err := interactor.BackendConnections(ctx, shards, cmd)
-	assert.ErrorContains(err, "Not found column 'someColumn' for group by statement")
+	assert.ErrorContains(err, "not found column 'someColumn' for group by statement")
 }
