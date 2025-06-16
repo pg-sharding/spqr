@@ -83,3 +83,12 @@ func RefRelationToDB(p *ReferenceRelation) *qdb.ReferenceRelation {
 		ShardIds:              p.ShardId,
 	}
 }
+
+func RefRelationFromDB(p *qdb.ReferenceRelation) *ReferenceRelation {
+	return &ReferenceRelation{
+		TableName:             p.TableName,
+		SchemaVersion:         p.SchemaVersion,
+		ColumnSequenceMapping: p.ColumnSequenceMapping,
+		ShardId:               p.ShardIds,
+	}
+}
