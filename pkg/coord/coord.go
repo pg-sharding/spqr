@@ -101,11 +101,11 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 
 	if r.ShardId == nil {
 		// default is all shards
-		shds, err := lc.ListShards(ctx)
+		shs, err := lc.ListShards(ctx)
 		if err != nil {
 			return err
 		}
-		for _, sh := range shds {
+		for _, sh := range shs {
 			r.ShardId = append(r.ShardId, sh.ID)
 		}
 	}
