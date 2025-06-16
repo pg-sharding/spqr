@@ -1549,7 +1549,7 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 	return pi.CompleteMsg(c)
 }
 
-func (pi *PSQLInteractor) ReferenceRelaions(rrs []*rrelation.ReferenceRelation) error {
+func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation) error {
 	if err := pi.WriteHeader("table name", "schema version", "shards"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err

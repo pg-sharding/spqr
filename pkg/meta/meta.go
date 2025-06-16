@@ -626,13 +626,13 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Relations(dsToRels, stmt.Where)
-	case spqrparser.ReferenceRelaionsStr:
+	case spqrparser.ReferenceRelationsStr:
 		rrs, err := mngr.ListReferenceRelations(ctx)
 		if err != nil {
 			return err
 		}
 
-		return cli.ReferenceRelaions(rrs)
+		return cli.ReferenceRelations(rrs)
 	case spqrparser.TaskGroupStr:
 		group, err := mngr.GetMoveTaskGroup(ctx)
 		if err != nil {
