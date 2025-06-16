@@ -196,7 +196,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			SchemaVersion: 1,
 		}
 
-		if err := mngr.CreateReferenceRelation(ctx, r, rrelation.ReferenceRelationEntriesFromDB(stmt.AutoIncrementEntries)); err != nil {
+		if err := mngr.CreateReferenceRelation(ctx, r, rrelation.ReferenceRelationEntriesFromSQL(stmt.AutoIncrementEntries)); err != nil {
 			return cli.ReportError(err)
 		}
 
