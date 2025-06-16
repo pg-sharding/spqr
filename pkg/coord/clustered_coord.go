@@ -1836,7 +1836,8 @@ func (qc *ClusteredCoordinator) UpdateCoordinator(ctx context.Context, address s
 
 // CreateDistribution creates distribution in QDB
 // TODO: unit tests
-func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context, r *rrelation.ReferenceRelation, entry []*rrelation.AutoIncrementEntry) error {
+func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context,
+	r *rrelation.ReferenceRelation, entry []*rrelation.AutoIncrementEntry) error {
 	if err := qc.Coordinator.CreateReferenceRelation(ctx, r, entry); err != nil {
 		return err
 	}

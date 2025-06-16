@@ -1549,6 +1549,20 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 	return pi.CompleteMsg(c)
 }
 
+func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation) error {
+	if err := pi.WriteHeader("table name", "schema version", "shards"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+	for _, r := range rrs {
+		if err := pi.WriteDataRow(r.TableName, fmt.Sprintf("%d", r.SchemaVersion), fmt.Sprintf("%+v", r.ShardId)); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+	return pi.CompleteMsg(len(rrs))
+}
+
 func (pi *PSQLInteractor) PreparedStatements(ctx context.Context, shs []shard.PreparedStatementsMgrDescriptor) error {
 	if err := pi.WriteHeader("name", "backend_id", "hash", "query"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -1560,7 +1574,6 @@ func (pi *PSQLInteractor) PreparedStatements(ctx context.Context, shs []shard.Pr
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
-
 	}
 
 	return pi.CompleteMsg(len(shs))

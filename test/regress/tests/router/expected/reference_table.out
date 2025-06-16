@@ -132,6 +132,11 @@ DROP DISTRIBUTION ALL CASCADE;
  distribution id -> REPLICATED
 (1 row)
 
+SHOW reference_relations;
+ table name | schema version | shards 
+------------+----------------+--------
+(0 rows)
+
 DROP KEY RANGE ALL;
  drop key range 
 ----------------

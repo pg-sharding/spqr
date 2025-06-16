@@ -99,6 +99,17 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 
 	r.ColumnSequenceMapping = ret
 
+	if r.ShardId == nil {
+		// default is all shards
+		shs, err := lc.ListShards(ctx)
+		if err != nil {
+			return err
+		}
+		for _, sh := range shs {
+			r.ShardId = append(r.ShardId, sh.ID)
+		}
+	}
+
 	if err := lc.qdb.CreateReferenceRelation(ctx, rrelation.RefRelationToDB(r)); err != nil {
 		return err
 	}
@@ -119,6 +130,17 @@ func (lc *Coordinator) CurrVal(ctx context.Context, seqName string) (int64, erro
 
 // DropDistribution implements meta.EntityMgr.
 func (lc *Coordinator) DropDistribution(ctx context.Context, id string) error {
+	if id == distributions.REPLICATED {
+		ds, err := lc.qdb.GetDistribution(ctx, id)
+		if err != nil {
+			return err
+		}
+		for _, r := range ds.Relations {
+			if err := lc.qdb.DropReferenceRelation(ctx, r.Name); err != nil {
+				return err
+			}
+		}
+	}
 	return lc.qdb.DropDistribution(ctx, id)
 }
 
@@ -134,6 +156,10 @@ func (lc *Coordinator) DropKeyRangeAll(ctx context.Context) error {
 
 // DropReferenceRelation implements meta.EntityMgr.
 func (lc *Coordinator) DropReferenceRelation(ctx context.Context, id string) error {
+	err := lc.qdb.DropReferenceRelation(ctx, id)
+	if err != nil {
+		return err
+	}
 	return lc.AlterDistributionDetach(ctx, distributions.REPLICATED, id)
 }
 
@@ -191,7 +217,17 @@ func (lc *Coordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, er
 
 // ListReferenceRelations implements meta.EntityMgr.
 func (lc *Coordinator) ListReferenceRelations(ctx context.Context) ([]*rrelation.ReferenceRelation, error) {
-	panic("unimplemented")
+	var ret []*rrelation.ReferenceRelation
+	rrs, err := lc.qdb.ListReferenceRelations(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range rrs {
+		ret = append(ret, rrelation.RefRelationFromDB(r))
+	}
+
+	return ret, nil
 }
 
 // ListRouters implements meta.EntityMgr.

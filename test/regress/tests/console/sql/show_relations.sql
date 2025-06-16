@@ -5,9 +5,13 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION b DISTRIBUTION KEY b_id HASH FUNCTION MUR
 ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id_1 HASH FUNCTION IDENT,
                                                           c_id_2 HASH FUNCTION CITY;
 
+CREATE REFERENCE RELATION z_rf;
+
 SHOW relations;
 SHOW relations WHERE distribution_id = 'ds1';
 SHOW relations WHERE unknown_param = 'ds1';
+
+SHOW reference_relations;
 
 DROP DISTRIBUTION ALL CASCADE;
 DROP KEY RANGE ALL;

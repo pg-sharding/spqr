@@ -331,6 +331,7 @@ const (
 	RelationsStr          = "relations"
 	TaskGroupStr          = "task_group"
 	PreparedStatementsStr = "prepared_statements"
+	ReferenceRelationsStr = "reference_relations"
 	UnsupportedStr        = "unsupported"
 	QuantilesStr          = "time_quantiles"
 	SequencesStr          = "sequences"

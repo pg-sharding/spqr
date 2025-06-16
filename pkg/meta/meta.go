@@ -81,7 +81,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 	case *spqrparser.ShardingRuleSelector:
 		return cli.ReportError(spqrerror.ShardingRulesRemoved)
 	case *spqrparser.ReferenceRelationSelector:
-		if err := mngr.AlterDistributionDetach(ctx, distributions.REPLICATED, stmt.ID); err != nil {
+		if err := mngr.DropReferenceRelation(ctx, stmt.ID); err != nil {
 			return err
 		}
 		return cli.DropReferenceRelation(ctx, stmt.ID)
@@ -626,6 +626,13 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Relations(dsToRels, stmt.Where)
+	case spqrparser.ReferenceRelationsStr:
+		rrs, err := mngr.ListReferenceRelations(ctx)
+		if err != nil {
+			return err
+		}
+
+		return cli.ReferenceRelations(rrs)
 	case spqrparser.TaskGroupStr:
 		group, err := mngr.GetMoveTaskGroup(ctx)
 		if err != nil {
