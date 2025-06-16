@@ -97,6 +97,12 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 		}
 	}
 
+	r.ColumnSequenceMapping = ret
+
+	if err := lc.qdb.CreateReferenceRelation(ctx, rrelation.RefRelationToDB(r)); err != nil {
+		return err
+	}
+
 	return lc.AlterDistributionAttach(ctx, selectedDistribId, []*distributions.DistributedRelation{
 		{
 			Name:                  r.TableName,

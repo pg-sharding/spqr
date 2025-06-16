@@ -2,6 +2,7 @@ package rrelation
 
 import (
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -17,7 +18,7 @@ type AutoIncrementEntry struct {
 	Start  uint64
 }
 
-func ReferenceRelationEntriesFromDB(inEntries []*spqrparser.AutoIncrementEntry) []*AutoIncrementEntry {
+func ReferenceRelationEntriesFromSQL(inEntries []*spqrparser.AutoIncrementEntry) []*AutoIncrementEntry {
 	var ret []*AutoIncrementEntry
 
 	for _, e := range inEntries {
@@ -71,5 +72,14 @@ func RefRelationToProto(p *ReferenceRelation) *protos.ReferenceRelation {
 		SchemaVersion:   p.SchemaVersion,
 		SequenceColumns: p.ColumnSequenceMapping,
 		ShardIds:        p.ShardId,
+	}
+}
+
+func RefRelationToDB(p *ReferenceRelation) *qdb.ReferenceRelation {
+	return &qdb.ReferenceRelation{
+		TableName:             p.TableName,
+		SchemaVersion:         p.SchemaVersion,
+		ColumnSequenceMapping: p.ColumnSequenceMapping,
+		ShardIds:              p.ShardId,
 	}
 }

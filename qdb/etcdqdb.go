@@ -935,7 +935,7 @@ func (q *EtcdQDB) CreateReferenceRelation(ctx context.Context, r *ReferenceRelat
 	if err != nil {
 		return err
 	}
-	resp, err := q.cli.Put(ctx, distributionNodePath(r.TableName), string(rrJson))
+	resp, err := q.cli.Put(ctx, referenceRelationNodePath(r.TableName), string(rrJson))
 	if err != nil {
 		return err
 	}
@@ -989,7 +989,33 @@ func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, tableName string) e
 
 // ListReferenceRelations implements XQDB.
 func (q *EtcdQDB) ListReferenceRelations(ctx context.Context) ([]*ReferenceRelation, error) {
-	panic("unimplemented")
+	spqrlog.Zero.Debug().Msg("etcdqdb: list reference relations")
+
+	resp, err := q.cli.Get(ctx, referenceRelationsNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	dds := make([]*ReferenceRelation, 0, len(resp.Kvs))
+
+	for _, kv := range resp.Kvs {
+		var refRelation *ReferenceRelation
+		err := json.Unmarshal(kv.Value, &refRelation)
+		if err != nil {
+			return nil, err
+		}
+
+		dds = append(dds, refRelation)
+	}
+
+	sort.Slice(dds, func(i, j int) bool {
+		return dds[i].TableName < dds[j].TableName
+	})
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: list reference relations")
+	return dds, nil
 }
 
 // ==============================================================================
@@ -1030,13 +1056,13 @@ func (q *EtcdQDB) ListDistributions(ctx context.Context) ([]*Distribution, error
 	dds := make([]*Distribution, 0, len(resp.Kvs))
 
 	for _, kv := range resp.Kvs {
-		var rule *Distribution
-		err := json.Unmarshal(kv.Value, &rule)
+		var distr *Distribution
+		err := json.Unmarshal(kv.Value, &distr)
 		if err != nil {
 			return nil, err
 		}
 
-		dds = append(dds, rule)
+		dds = append(dds, distr)
 	}
 
 	sort.Slice(dds, func(i, j int) bool {
