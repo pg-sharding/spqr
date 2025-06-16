@@ -7,6 +7,10 @@ import (
 
 	pkgclient "github.com/pg-sharding/spqr/pkg/client"
 	mock "github.com/pg-sharding/spqr/pkg/mock/clientinteractor"
+	mockinst "github.com/pg-sharding/spqr/pkg/mock/conn"
+	mockshard "github.com/pg-sharding/spqr/pkg/mock/shard"
+	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"go.uber.org/mock/gomock"
 
 	proto "github.com/pg-sharding/spqr/pkg/protos"
@@ -257,4 +261,80 @@ func TestClientsOrderBy(t *testing.T) {
 			Col: spqrparser.ColumnRef{ColName: "user"}},
 	})
 	assert.Nil(t, err)
+}
+
+func genShard(ctrl *gomock.Controller, host string, shardName string, shardId uint) shard.Shardinfo {
+	sh := mockshard.NewMockShard(ctrl)
+
+	ins1 := mockinst.NewMockDBInstance(ctrl)
+	ins1.EXPECT().Hostname().Return(host).AnyTimes()
+	ins1.EXPECT().AvailabilityZone().Return("").AnyTimes()
+	sh.EXPECT().Send(gomock.Any()).AnyTimes()
+	sh.EXPECT().Pid().Return(uint32(1)).AnyTimes()
+	sh.EXPECT().DB().Return("db1").AnyTimes()
+	sh.EXPECT().Usr().Return("usr1").AnyTimes()
+	sh.EXPECT().Sync().Return(int64(0)).AnyTimes()
+	sh.EXPECT().TxStatus().Return(txstatus.TXIDLE).AnyTimes()
+	sh.EXPECT().TxServed().Return(int64(10)).AnyTimes()
+	sh.EXPECT().ShardKeyName().Return(shardName).AnyTimes()
+	sh.EXPECT().InstanceHostname().Return(host).AnyTimes()
+	sh.EXPECT().ID().Return(shardId).AnyTimes()
+	sh.EXPECT().Instance().Return(ins1).AnyTimes()
+	return sh
+}
+
+func TestBackendConnections(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	ca := mockcl.NewMockRouterClient(ctrl)
+	ca.EXPECT().Send(gomock.Any()).AnyTimes()
+	interactor := clientinteractor.NewPSQLInteractor(ca)
+	ctx := context.Background()
+	shards := []shard.Shardinfo{
+		genShard(ctrl, "h1", "sh1", 1),
+		genShard(ctrl, "h2", "sh2", 2),
+		genShard(ctrl, "h1", "sh3", 3),
+	}
+	cmd := &spqrparser.Show{
+		Cmd:     spqrparser.BackendConnectionsStr,
+		GroupBy: spqrparser.GroupByClauseEmpty{},
+	}
+	err := interactor.BackendConnections(ctx, shards, cmd)
+	assert.Nil(t, err)
+}
+func TestBackendConnectionsGroupBySuccess(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	ca := mockcl.NewMockRouterClient(ctrl)
+	ca.EXPECT().Send(gomock.Any()).AnyTimes()
+	interactor := clientinteractor.NewPSQLInteractor(ca)
+	ctx := context.Background()
+	shards := []shard.Shardinfo{
+		genShard(ctrl, "h1", "sh1", 1),
+		genShard(ctrl, "h2", "sh2", 2),
+		genShard(ctrl, "h1", "sh3", 3),
+	}
+	cmd := &spqrparser.Show{
+		Cmd:     spqrparser.BackendConnectionsStr,
+		GroupBy: spqrparser.GroupBy{Col: spqrparser.ColumnRef{ColName: "hostname"}},
+	}
+	err := interactor.BackendConnections(ctx, shards, cmd)
+	assert.Nil(t, err)
+}
+func TestBackendConnectionsGroupByFail(t *testing.T) {
+	assert := assert.New(t)
+	ctrl := gomock.NewController(t)
+	ca := mockcl.NewMockRouterClient(ctrl)
+	ca.EXPECT().Send(gomock.Any()).AnyTimes()
+	interactor := clientinteractor.NewPSQLInteractor(ca)
+	ctx := context.Background()
+	shards := []shard.Shardinfo{
+		genShard(ctrl, "h1", "sh1", 1),
+		genShard(ctrl, "h2", "sh2", 2),
+		genShard(ctrl, "h1", "sh3", 3),
+	}
+	cmd := &spqrparser.Show{
+		Cmd:     spqrparser.BackendConnectionsStr,
+		GroupBy: spqrparser.GroupBy{Col: spqrparser.ColumnRef{ColName: "someColumn"}},
+	}
+	err := interactor.BackendConnections(ctx, shards, cmd)
+	assert.ErrorContains(err, "Not found column 'someColumn' for group by statement")
 }
