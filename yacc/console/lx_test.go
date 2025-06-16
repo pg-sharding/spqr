@@ -39,7 +39,7 @@ func TestSimpleLex(t *testing.T) {
 		},
 		{
 			query: "kill client 1234567;",
-			exp:   []int{spqrparser.KILL, spqrparser.CLIENT, spqrparser.ICONST},
+			exp:   []int{spqrparser.KILL, spqrparser.CLIENT, spqrparser.ICONST, spqrparser.TSEMICOLON},
 			err:   nil,
 		},
 		{
@@ -53,7 +53,9 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.OR,
 				spqrparser.IDENT,
 				spqrparser.TEQ,
-				spqrparser.SCONST},
+				spqrparser.SCONST,
+				spqrparser.TSEMICOLON,
+			},
 			err: nil,
 		},
 
@@ -71,6 +73,7 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.ROUTE,
 				spqrparser.TO,
 				spqrparser.IDENT,
+				spqrparser.TSEMICOLON,
 			},
 			err: nil,
 		},
@@ -83,6 +86,7 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.TO,
 				spqrparser.DISTRIBUTION,
 				spqrparser.IDENT,
+				spqrparser.TSEMICOLON,
 			},
 		},
 		{
@@ -223,6 +227,6 @@ func TestSimpleLex(t *testing.T) {
 
 		act := spqrparser.LexString(tmp)
 
-		assert.Equal(tt.exp, act)
+		assert.Equal(tt.exp, act, tt.query)
 	}
 }
