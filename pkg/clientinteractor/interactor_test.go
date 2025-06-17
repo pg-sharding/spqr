@@ -5,6 +5,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	pkgclient "github.com/pg-sharding/spqr/pkg/client"
 	mock "github.com/pg-sharding/spqr/pkg/mock/clientinteractor"
 	mockinst "github.com/pg-sharding/spqr/pkg/mock/conn"
@@ -286,13 +287,69 @@ func genShard(ctrl *gomock.Controller, host string, shardName string, shardId ui
 func TestBackendConnections(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
-	ca.EXPECT().Send(gomock.Any()).AnyTimes()
+	var desc []pgproto3.FieldDescription
+	for _, header := range clientinteractor.BackendConnectionsHeaders {
+		desc = append(desc, clientinteractor.TextOidFD(header))
+	}
+
+	firstRow := pgproto3.DataRow{
+		Values: [][]byte{
+			[]byte("5"),
+			[]byte("no data"),
+			[]byte("sh1"),
+			[]byte("h1"),
+			[]byte("1"),
+			[]byte("usr1"),
+			[]byte("db1"),
+			[]byte("0"),
+			[]byte("10"),
+			[]byte("IDLE"),
+		},
+	}
+	secondRow := pgproto3.DataRow{
+		Values: [][]byte{
+			[]byte("6"),
+			[]byte("no data"),
+			[]byte("sh2"),
+			[]byte("h2"),
+			[]byte("1"),
+			[]byte("usr1"),
+			[]byte("db1"),
+			[]byte("0"),
+			[]byte("10"),
+			[]byte("IDLE"),
+		},
+	}
+	thirdRow := pgproto3.DataRow{
+		Values: [][]byte{
+			[]byte("7"),
+			[]byte("no data"),
+			[]byte("sh3"),
+			[]byte("h1"),
+			[]byte("1"),
+			[]byte("usr1"),
+			[]byte("db1"),
+			[]byte("0"),
+			[]byte("10"),
+			[]byte("IDLE"),
+		},
+	}
+
+	gomock.InOrder(
+		ca.EXPECT().Send(&pgproto3.RowDescription{Fields: desc}),
+		ca.EXPECT().Send(&firstRow),
+		ca.EXPECT().Send(&secondRow),
+		ca.EXPECT().Send(&thirdRow),
+		ca.EXPECT().Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 3")}),
+		ca.EXPECT().Send(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}),
+	)
+
 	interactor := clientinteractor.NewPSQLInteractor(ca)
 	ctx := context.Background()
 	shards := []shard.Shardinfo{
-		genShard(ctrl, "h1", "sh1", 1),
-		genShard(ctrl, "h2", "sh2", 2),
-		genShard(ctrl, "h1", "sh3", 3),
+		genShard(ctrl, "h1", "sh1", 5),
+		genShard(ctrl, "h2", "sh2", 6),
+		genShard(ctrl, "h1", "sh3", 7),
 	}
 	cmd := &spqrparser.Show{
 		Cmd:     spqrparser.BackendConnectionsStr,
@@ -304,7 +361,29 @@ func TestBackendConnections(t *testing.T) {
 func TestBackendConnectionsGroupBySuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
-	ca.EXPECT().Send(gomock.Any()).AnyTimes()
+	var desc []pgproto3.FieldDescription
+	desc = append(desc, clientinteractor.TextOidFD("hostname"))
+	desc = append(desc, clientinteractor.IntOidFD("count"))
+	firstRow := pgproto3.DataRow{
+		Values: [][]byte{
+			[]byte("h1"),
+			[]byte("2"),
+		},
+	}
+	secondRow := pgproto3.DataRow{
+		Values: [][]byte{
+			[]byte("h2"),
+			[]byte("1"),
+		},
+	}
+	gomock.InOrder(
+		ca.EXPECT().Send(&pgproto3.RowDescription{Fields: desc}),
+		ca.EXPECT().Send(&firstRow),
+		ca.EXPECT().Send(&secondRow),
+		ca.EXPECT().Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 2")}),
+		ca.EXPECT().Send(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}),
+	)
+
 	interactor := clientinteractor.NewPSQLInteractor(ca)
 	ctx := context.Background()
 	shards := []shard.Shardinfo{
@@ -323,7 +402,6 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
-	ca.EXPECT().Send(gomock.Any()).AnyTimes()
 	interactor := clientinteractor.NewPSQLInteractor(ca)
 	ctx := context.Background()
 	shards := []shard.Shardinfo{
