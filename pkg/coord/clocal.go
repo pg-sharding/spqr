@@ -19,8 +19,6 @@ import (
 
 type LocalInstanceMetadataMgr struct {
 	Coordinator
-	// not extended QDB, since the router does not need to track the installation topology
-	qdb qdb.QDB
 
 	cache *cache.SchemaCache
 }
@@ -52,7 +50,7 @@ func (lc *LocalInstanceMetadataMgr) RemoveBalancerTask(context.Context) error {
 // Returns:
 // - error: an error if the alteration operation fails.
 func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
-	ds, err := lc.qdb.GetDistribution(ctx, id)
+	ds, err := lc.Coordinator.QDB().GetDistribution(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -92,21 +90,7 @@ func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context
 // Returns:
 // - error: An error if the removal operation fails.
 func (lc *LocalInstanceMetadataMgr) DropDistribution(ctx context.Context, id string) error {
-	return lc.qdb.DropDistribution(ctx, id)
-}
-
-// TODO : unit tests
-
-// ListShards retrieves a list of data shards from the local coordinator's QDB.
-//
-// Parameters:
-// - ctx (context.Context): The context.Context object for managing the request's lifetime.
-//
-// Returns:
-// - []*topology.DataShard: A slice of topology.DataShard objects representing the list of data shards.
-// - error: An error if the retrieval operation fails.
-func (lc *LocalInstanceMetadataMgr) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
-	return lc.Coordinator.ListShards(ctx)
+	return lc.Coordinator.DropDistribution(ctx, id)
 }
 
 // AddWorldShard adds a world shard to the LocalCoordinator.
@@ -123,45 +107,6 @@ func (lc *LocalInstanceMetadataMgr) AddWorldShard(ctx context.Context, ds *topol
 		Msg("adding world datashard, noop")
 
 	return nil
-}
-
-// DropShard drops a shard from the LocalCoordinator.
-//
-// Parameters:
-// - ctx (context.Context): The context.Context object for managing the request's lifetime.
-// - shardId (string): The ID of the shard to be dropped.
-//
-// Returns:
-// - error: An error if the dropping of the shard fails.
-func (lc *LocalInstanceMetadataMgr) DropShard(ctx context.Context, shardId string) error {
-	return lc.qdb.DropShard(ctx, shardId)
-}
-
-// TODO : unit tests
-
-// DropKeyRange drops a key range from the LocalCoordinator.
-//
-// Parameters:
-// - ctx (context.Context): The context.Context object for managing the request's lifetime.
-// - id (string): The ID of the key range to be dropped.
-//
-// Returns:
-// - error: An error if the dropping of the key range fails.
-func (lc *LocalInstanceMetadataMgr) DropKeyRange(ctx context.Context, id string) error {
-	return lc.qdb.DropKeyRange(ctx, id)
-}
-
-// TODO : unit tests
-
-// DropKeyRangeAll drops all key ranges from the LocalCoordinator.
-//
-// Parameters:
-// - ctx (context.Context): The context.Context object for managing the request's lifetime.
-//
-// Returns:
-// - error: An error if the dropping of all key ranges fails.
-func (lc *LocalInstanceMetadataMgr) DropKeyRangeAll(ctx context.Context) error {
-	return lc.qdb.DropKeyRangeAll(ctx)
 }
 
 // TODO : unit tests
@@ -253,11 +198,6 @@ func (lc *LocalInstanceMetadataMgr) BatchMoveKeyRange(_ context.Context, _ *kr.B
 // RedistributeKeyRange is disabled in LocalCoordinator
 func (lc *LocalInstanceMetadataMgr) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange) error {
 	return ErrNotCoordinator
-}
-
-// RenameKeyRange is disabled in LocalCoordinator
-func (lc *LocalInstanceMetadataMgr) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
-	return lc.qdb.RenameKeyRange(ctx, krId, krIdNew)
 }
 
 // TODO : unit tests
@@ -390,32 +330,6 @@ func (lc *LocalInstanceMetadataMgr) SyncRouterCoordinatorAddress(ctx context.Con
 	return ErrNotCoordinator
 }
 
-// UpdateCoordinator updates the coordinator address in the local coordinator.
-//
-// Parameters:
-// - ctx (context.Context): The context of the operation.
-// - addr (string): The new address of the coordinator.
-//
-// Returns:
-// - error: An error indicating the update status.
-func (lc *LocalInstanceMetadataMgr) UpdateCoordinator(ctx context.Context, addr string) error {
-	return lc.qdb.UpdateCoordinator(ctx, addr)
-}
-
-// GetCoordinator retrieves the coordinator address from the local coordinator.
-//
-// Parameters:
-// - ctx (context.Context): The context of the operation.
-//
-// Returns:
-// - string: The address of the coordinator.
-// - error: An error indicating the retrieval status.
-func (lc *LocalInstanceMetadataMgr) GetCoordinator(ctx context.Context) (string, error) {
-	addr, err := lc.qdb.GetCoordinator(ctx)
-	spqrlog.Zero.Debug().Str("address", addr).Msg("resp local coordinator: get coordinator")
-	return addr, err
-}
-
 // GetShard retrieves a DataShard by its ID from the LocalCoordinator.
 //
 // Parameters:
@@ -429,23 +343,8 @@ func (lc *LocalInstanceMetadataMgr) GetShard(ctx context.Context, shardID string
 	return nil, ErrNotCoordinator
 }
 
-// QDB returns the QDB instance associated with the LocalCoordinator.
-//
-// Parameters:
-// - None.
-//
-// Returns:
-// - qdb.QDB: The QDB instance.
-func (lc *LocalInstanceMetadataMgr) QDB() qdb.QDB {
-	return lc.qdb
-}
-
 func (lc *LocalInstanceMetadataMgr) Cache() *cache.SchemaCache {
 	return lc.cache
-}
-
-func (lc *LocalInstanceMetadataMgr) DropSequence(ctx context.Context, seqName string) error {
-	return lc.qdb.DropSequence(ctx, seqName)
 }
 
 func (lc *LocalInstanceMetadataMgr) NextVal(ctx context.Context, seqName string) (int64, error) {
@@ -454,7 +353,7 @@ func (lc *LocalInstanceMetadataMgr) NextVal(ctx context.Context, seqName string)
 		return -1, err
 	}
 	if coordAddr == "" {
-		return lc.qdb.NextVal(ctx, seqName)
+		return lc.Coordinator.QDB().NextVal(ctx, seqName)
 	}
 	conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all
 	if err != nil {
@@ -475,7 +374,7 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 		return -1, err
 	}
 	if coordAddr == "" {
-		return lc.qdb.CurrVal(ctx, seqName)
+		return lc.Coordinator.QDB().CurrVal(ctx, seqName)
 	}
 	conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all
 	if err != nil {
@@ -504,7 +403,6 @@ func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context) error 
 func NewLocalInstanceMetadataMgr(db qdb.XQDB, cache *cache.SchemaCache) meta.EntityMgr {
 	return &LocalInstanceMetadataMgr{
 		Coordinator: NewCoordinator(db),
-		qdb:         db,
 		cache:       cache,
 	}
 }

@@ -47,5 +47,6 @@ DROP TABLE test_ref_rel;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
+SHOW reference_relations;
 DROP KEY RANGE ALL;
 
