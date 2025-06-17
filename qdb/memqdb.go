@@ -56,6 +56,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		Sequences:            map[string]bool{},
 		ColumnSequence:       map[string]string{},
 		SequenceToValues:     map[string]int64{},
+		ReferenceRelations:   map[string]*ReferenceRelation{},
 
 		backupPath: backupPath,
 	}, nil

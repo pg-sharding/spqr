@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/binary"
 	"strings"
-	"strconv"
 )
 
 
@@ -128,7 +127,7 @@ func randomHex(n int) (string, error) {
 /* any const */
 %token<str> SCONST
 
-%token<uinteger> ICONST
+%token<integer> ICONST
 
 
 %type<bytes> key_range_bound_elem
@@ -137,6 +136,10 @@ func randomHex(n int) (string, error) {
 
 // ';'
 %token<str> TSEMICOLON
+// '-'
+%token<str> TMINUS
+// '+'
+%token<str> TPLUS
 
 // '(' & ')'
 %token<str> TOPENBR TCLOSEBR
@@ -148,6 +151,7 @@ func randomHex(n int) (string, error) {
 %type<str> any_val any_id
 
 %type<uinteger> any_uint
+%type<integer> SignedInt
 
 // CMDS
 %type <statement> command
@@ -354,6 +358,15 @@ command:
 		setParseTree(yylex, $1)
 	}
 
+SignedInt: 
+	ICONST {
+		$$ = $1
+	} | TMINUS ICONST {
+		$$ = -$2
+	} | TPLUS ICONST {
+		$$ = $2
+	}
+
 any_uint:
 	ICONST {
 		$$ = uint($1)
@@ -367,7 +380,13 @@ any_val: SCONST
 	{
 		$$ = string($1)
 	} | ICONST {
-		$$ = strconv.Itoa(int($1))
+		buf := make([]byte, binary.MaxVarintLen64)
+		binary.PutVarint(buf, int64($1))
+		$$ = string(buf)
+	} | TMINUS ICONST {
+		buf := make([]byte, binary.MaxVarintLen64)
+		binary.PutVarint(buf, int64(-$2))
+		$$ = string(buf)
 	}
 
 any_id: IDENT
@@ -436,7 +455,7 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr, RelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr, MoveStatsStr:
+		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr, RelationsStr, ReferenceRelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr, MoveStatsStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -653,7 +672,7 @@ auto_increment_entry:
 	}
 
 opt_auto_increment_start_clause:
-	START ICONST
+	START any_uint
 	{
 		$$ = $2
 	} | /* EMPTY */ {
@@ -898,12 +917,20 @@ distribution_membership:
 	}
 
 key_range_bound_elem:
-	any_val {
+	SCONST
+	{
 		$$ = []byte($1)
-	}
-	| any_uint {
+	} | 
+	IDENT
+	{
+		$$ = []byte($1)
+	} | ICONST {
 		buf := make([]byte, binary.MaxVarintLen64)
 		binary.PutVarint(buf, int64($1))
+		$$ = buf
+	} | TMINUS ICONST {
+		buf := make([]byte, binary.MaxVarintLen64)
+		binary.PutVarint(buf, int64(-$2))
 		$$ = buf
 	}
 
