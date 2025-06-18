@@ -87,7 +87,7 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	} else if ds.Id != distributions.REPLICATED {
 		if allowDistr {
 			if subquery == nil {
-				return &plan.ScatterPlan{
+				return plan.ScatterPlan{
 					SubPlan: plan.ModifyTable{
 						ExecTargets: nil,
 					},
@@ -129,7 +129,7 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	}
 
 	if subquery == nil {
-		return &plan.ScatterPlan{
+		return plan.ScatterPlan{
 			SubPlan: plan.ModifyTable{
 				ExecTargets: shs,
 			},
