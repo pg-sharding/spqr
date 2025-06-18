@@ -1286,13 +1286,19 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 		if err != nil {
 			return nil, err
 		} else if ds.Id == distributions.REPLICATED {
-			r, err := rm.Mgr.GetReferenceRelation(ctx, rfqn.RelationName)
-			if err != nil {
-				return nil, err
+			var shs []*kr.ShardKey
+			if rmeta.IsRelationCatalog(rfqn) {
+				shs = nil
+			} else {
+				r, err := rm.Mgr.GetReferenceRelation(ctx, rfqn.RelationName)
+				if err != nil {
+					return nil, err
+				}
+				shs = r.ListStorageRoutes()
 			}
 
 			route = plan.Combine(route, plan.ReferenceRelationState{
-				ExecTargets: r.ListStorageRoutes(),
+				ExecTargets: shs,
 			})
 			continue
 		}
