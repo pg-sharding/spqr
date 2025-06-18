@@ -18,7 +18,7 @@ type QueryRouter interface {
 
 	WorldShardsRoutes() []*kr.ShardKey
 	DataShardsRoutes() []*kr.ShardKey
-	SelectRandomRoute() (plan.Plan, error)
+	SelectRandomRoute(routes []*kr.ShardKey) (plan.Plan, error)
 
 	Initialized() bool
 	Initialize() bool

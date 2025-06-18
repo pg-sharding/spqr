@@ -68,12 +68,16 @@ var CatalogDistribution = distributions.Distribution{
 	ColTypes:  nil,
 }
 
+func IsRelationCatalog(resolvedRelation rfqn.RelationFQN) bool {
+	return len(resolvedRelation.RelationName) >= 3 && resolvedRelation.RelationName[0:3] == "pg_"
+}
+
 func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, resolvedRelation rfqn.RelationFQN) (*distributions.Distribution, error) {
 	if res, ok := rm.Distributions[resolvedRelation]; ok {
 		return res, nil
 	}
 
-	if len(resolvedRelation.RelationName) >= 3 && resolvedRelation.RelationName[0:3] == "pg_" {
+	if IsRelationCatalog(resolvedRelation) {
 		return &CatalogDistribution, nil
 	}
 
