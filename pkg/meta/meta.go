@@ -3,6 +3,7 @@ package meta
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/pg-sharding/spqr/coordinator/statistics"
 	"github.com/pg-sharding/spqr/pkg/catalog"
@@ -632,6 +633,16 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
+
+		slices.SortFunc(rrs, func(a *rrelation.ReferenceRelation, b *rrelation.ReferenceRelation) int {
+			if a.TableName == b.TableName {
+				return 0
+			}
+			if a.TableName < b.TableName {
+				return -1
+			}
+			return 1
+		})
 
 		return cli.ReferenceRelations(rrs)
 	case spqrparser.TaskGroupStr:
