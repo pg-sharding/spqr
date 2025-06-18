@@ -11,6 +11,14 @@ CREATE REFERENCE TABLE zz;
  zz
 (1 row)
 
+CREATE REFERENCE TABLE zz2 ON sh3, sh4;
+ add reference relation 
+------------------------
+ zz2
+(1 row)
+
+CREATE REFERENCE RELATION zz2;
+ERROR:  reference relation zz2 already exists
 SYNC REFERENCE TABLES sh1;
 ERROR:  sync reference table cmd not implemented
 DROP DISTRIBUTION ALL CASCADE;

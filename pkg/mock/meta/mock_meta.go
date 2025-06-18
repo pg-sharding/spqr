@@ -361,6 +361,21 @@ func (mr *MockEntityMgrMockRecorder) GetMoveTaskGroup(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).GetMoveTaskGroup), ctx)
 }
 
+// GetReferenceRelation mocks base method.
+func (m *MockEntityMgr) GetReferenceRelation(ctx context.Context, tableName string) (*rrelation.ReferenceRelation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetReferenceRelation", ctx, tableName)
+	ret0, _ := ret[0].(*rrelation.ReferenceRelation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetReferenceRelation indicates an expected call of GetReferenceRelation.
+func (mr *MockEntityMgrMockRecorder) GetReferenceRelation(ctx, tableName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReferenceRelation", reflect.TypeOf((*MockEntityMgr)(nil).GetReferenceRelation), ctx, tableName)
+}
+
 // GetRelationDistribution mocks base method.
 func (m *MockEntityMgr) GetRelationDistribution(ctx context.Context, relation_name string) (*distributions.Distribution, error) {
 	m.ctrl.T.Helper()

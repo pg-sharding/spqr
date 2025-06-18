@@ -165,6 +165,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 			case plan.ScatterPlan:
 				return plan.ScatterPlan{
 					SubPlan: plan.ModifyTable{},
+					// ExecTargets: ,
 				}, nil
 			default:
 				return nil, rerrors.ErrComplexQuery

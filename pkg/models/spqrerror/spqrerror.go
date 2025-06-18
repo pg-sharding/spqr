@@ -16,7 +16,7 @@ const (
 	SPQR_KEYRANGE_ERROR      = "SPQRK"
 	SPQR_SHARDING_RULE_ERROR = "SPQRH"
 	SPQR_TRANSFER_ERROR      = "SPQRT"
-	SPQR_NO_DISTRIBUTION     = "SPQRN"
+	SPQR_OBJECT_NOT_EXIST    = "SPQRN"
 	SPQR_NOT_IMPLEMENTED     = "SPQRI"
 	SPQR_ROUTER_ERROR        = "SPQRL"
 	SPQR_METADATA_CORRUPTION = "SPQRZ"
@@ -39,7 +39,7 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_KEYRANGE_ERROR:      "Keyrange error",
 	SPQR_SHARDING_RULE_ERROR: "Sharding rule error",
 	SPQR_TRANSFER_ERROR:      "Transfer error",
-	SPQR_NO_DISTRIBUTION:     "No distribution",
+	SPQR_OBJECT_NOT_EXIST:    "No object",
 	SPQR_NOT_IMPLEMENTED:     "Not implemented",
 	SPQR_ROUTER_ERROR:        "Router error",
 	SPQR_METADATA_CORRUPTION: "routing metadata corrupted",

@@ -190,7 +190,7 @@ func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) error {
 
 	if len(keyRange.DistributionId) > 0 && keyRange.DistributionId != "default" {
 		if _, ok := q.Distributions[keyRange.DistributionId]; !ok {
-			return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, fmt.Sprintf("no such distribution %s", keyRange.DistributionId))
+			return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, fmt.Sprintf("no such distribution %s", keyRange.DistributionId))
 		}
 	}
 
@@ -640,6 +640,19 @@ func (q *MemQDB) CreateReferenceRelation(ctx context.Context, r *ReferenceRelati
 	return nil
 }
 
+// GetReferenceRelation implements XQDB.
+func (q *MemQDB) GetReferenceRelation(_ context.Context, tableName string) (*ReferenceRelation, error) {
+	spqrlog.Zero.Debug().Str("id", tableName).Msg("memqdb: get reference relation")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	if ds, ok := q.ReferenceRelations[tableName]; !ok {
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
+	} else {
+		return ds, nil
+	}
+}
+
 // DropReferenceRelation implements XQDB.
 func (q *MemQDB) DropReferenceRelation(ctx context.Context, tableName string) error {
 	q.mu.Lock()
@@ -703,7 +716,7 @@ func (q *MemQDB) DropDistribution(_ context.Context, id string) error {
 	defer q.mu.Unlock()
 
 	if _, ok := q.Distributions[id]; !ok {
-		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "no such distribution")
+		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	}
 
 	for t, ds := range q.RelationDistribution {
@@ -724,7 +737,7 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 	defer q.mu.Unlock()
 
 	if ds, ok := q.Distributions[id]; !ok {
-		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "no such distribution")
+		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	} else {
 		for _, r := range rels {
 			if _, ok := q.RelationDistribution[r.Name]; ok {
@@ -750,7 +763,7 @@ func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relName
 
 	ds, ok := q.Distributions[id]
 	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution \"%s\" not found", id)
+		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
 	}
 
 	if err := q.AlterSequenceDetachRelation(ctx, relName); err != nil {
@@ -774,7 +787,7 @@ func (q *MemQDB) AlterDistributedRelation(ctx context.Context, id string, rel *D
 
 	ds, ok := q.Distributions[id]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "no such distribution")
+		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	}
 	if dsID, ok := q.RelationDistribution[rel.Name]; !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
@@ -798,7 +811,7 @@ func (q *MemQDB) GetDistribution(_ context.Context, id string) (*Distribution, e
 
 	if ds, ok := q.Distributions[id]; !ok {
 		// DEPRECATE this
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution \"%s\" not found", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
 	} else {
 		return ds, nil
 	}
@@ -810,7 +823,7 @@ func (q *MemQDB) GetRelationDistribution(_ context.Context, relation string) (*D
 	defer q.mu.RUnlock()
 
 	if ds, ok := q.RelationDistribution[relation]; !ok {
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution for relation \"%s\" not found", relation)
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution for relation \"%s\" not found", relation)
 	} else {
 		// if there is no distr by key ds
 		// then we have corruption

@@ -71,6 +71,11 @@ func (lc *Coordinator) Cache() *cache.SchemaCache {
 
 // CreateReferenceRelation implements meta.EntityMgr.
 func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation.ReferenceRelation, entry []*rrelation.AutoIncrementEntry) error {
+
+	if _, err := lc.qdb.GetReferenceRelation(ctx, r.TableName); err == nil {
+		return fmt.Errorf("reference relation %+v already exists", r.TableName)
+	}
+
 	selectedDistribId := distributions.REPLICATED
 
 	if _, err := lc.GetDistribution(ctx, selectedDistribId); err != nil {
@@ -386,6 +391,16 @@ func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distrib
 		ds.Relations[relName].ColumnSequenceMapping = mapping
 	}
 	return ds, nil
+}
+
+// GetReference relations retrieves info about ref relation from QDB
+// TODO: unit tests
+func (lc *Coordinator) GetReferenceRelation(ctx context.Context, tableName string) (*rrelation.ReferenceRelation, error) {
+	ret, err := lc.qdb.GetReferenceRelation(ctx, tableName)
+	if err != nil {
+		return nil, err
+	}
+	return rrelation.RefRelationFromDB(ret), nil
 }
 
 // GetRelationDistribution retrieves info about distribution attached to relation from QDB

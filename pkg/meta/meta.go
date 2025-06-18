@@ -3,6 +3,7 @@ package meta
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/pg-sharding/spqr/coordinator/statistics"
 	"github.com/pg-sharding/spqr/pkg/catalog"
@@ -194,6 +195,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		r := &rrelation.ReferenceRelation{
 			TableName:     stmt.TableName,
 			SchemaVersion: 1,
+			ShardId:       stmt.ShardIds,
 		}
 
 		if err := mngr.CreateReferenceRelation(ctx, r, rrelation.ReferenceRelationEntriesFromSQL(stmt.AutoIncrementEntries)); err != nil {
@@ -248,13 +250,13 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		if stmt.Distribution == "default" {
 			list, err := mngr.ListDistributions(ctx)
 			if err != nil {
-				return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "error while selecting list of distributions")
+				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "error while selecting list of distributions")
 			}
 			if len(list) == 0 {
-				return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "you don't have any distributions")
+				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "you don't have any distributions")
 			}
 			if len(list) > 1 {
-				return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "distributions count not equal one, use FOR DISTRIBUTION syntax")
+				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "distributions count not equal one, use FOR DISTRIBUTION syntax")
 			}
 			stmt.Distribution = list[0].Id
 		}
@@ -631,6 +633,16 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
+
+		slices.SortFunc(rrs, func(a *rrelation.ReferenceRelation, b *rrelation.ReferenceRelation) int {
+			if a.TableName == b.TableName {
+				return 0
+			}
+			if a.TableName < b.TableName {
+				return -1
+			}
+			return 1
+		})
 
 		return cli.ReferenceRelations(rrs)
 	case spqrparser.TaskGroupStr:

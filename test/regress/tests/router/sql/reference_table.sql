@@ -3,11 +3,23 @@
 -- test both ways of ref relation crete syntax
 CREATE REFERENCE TABLE test_ref_rel;
 
+-- partial ref relation test
+CREATE REFERENCE RELATION test_ref_rel_part ON sh1, sh3;
+
 \c regress
 
 CREATE TABLE test_ref_rel(i int, j int);
 
+CREATE TABLE test_ref_rel_part(i int, j int);
+
 COPY test_ref_rel FROM STDIN;
+1	2
+2	3
+3	4
+4	5
+\.
+
+COPY test_ref_rel_part FROM STDIN;
 1	2
 2	3
 3	4
@@ -18,7 +30,6 @@ COPY test_ref_rel FROM STDIN;
 set __spqr__default_route_behaviour to allow;
 
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
-
 
 set __spqr__default_route_behaviour to block;
 
@@ -43,10 +54,18 @@ DELETE FROM test_ref_rel WHERE i = 2 /* __spqr__engine_v2: true */;
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
 
+-- check data on partially distributed reference relation
+SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh1 */;
+SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh2 */;
+SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh3 */;
+SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh4 */;
+
 DROP TABLE test_ref_rel;
+DROP TABLE test_ref_rel_part;
+
 
 \c spqr-console
-DROP DISTRIBUTION ALL CASCADE;
 SHOW reference_relations;
+DROP DISTRIBUTION ALL CASCADE;
 DROP KEY RANGE ALL;
 

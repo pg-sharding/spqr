@@ -658,6 +658,21 @@ func (mr *MockQDBMockRecorder) GetRedistributeTask(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRedistributeTask", reflect.TypeOf((*MockQDB)(nil).GetRedistributeTask), ctx)
 }
 
+// GetReferenceRelation mocks base method.
+func (m *MockQDB) GetReferenceRelation(ctx context.Context, tableName string) (*qdb.ReferenceRelation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetReferenceRelation", ctx, tableName)
+	ret0, _ := ret[0].(*qdb.ReferenceRelation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetReferenceRelation indicates an expected call of GetReferenceRelation.
+func (mr *MockQDBMockRecorder) GetReferenceRelation(ctx, tableName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReferenceRelation", reflect.TypeOf((*MockQDB)(nil).GetReferenceRelation), ctx, tableName)
+}
+
 // GetRelationDistribution mocks base method.
 func (m *MockQDB) GetRelationDistribution(ctx context.Context, relation string) (*qdb.Distribution, error) {
 	m.ctrl.T.Helper()
@@ -1486,6 +1501,21 @@ func (m *MockXQDB) GetRedistributeTask(ctx context.Context) (*qdb.RedistributeTa
 func (mr *MockXQDBMockRecorder) GetRedistributeTask(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRedistributeTask", reflect.TypeOf((*MockXQDB)(nil).GetRedistributeTask), ctx)
+}
+
+// GetReferenceRelation mocks base method.
+func (m *MockXQDB) GetReferenceRelation(ctx context.Context, tableName string) (*qdb.ReferenceRelation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetReferenceRelation", ctx, tableName)
+	ret0, _ := ret[0].(*qdb.ReferenceRelation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetReferenceRelation indicates an expected call of GetReferenceRelation.
+func (mr *MockXQDBMockRecorder) GetReferenceRelation(ctx, tableName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReferenceRelation", reflect.TypeOf((*MockXQDB)(nil).GetReferenceRelation), ctx, tableName)
 }
 
 // GetRelationDistribution mocks base method.
