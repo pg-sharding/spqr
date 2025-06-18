@@ -647,8 +647,7 @@ func (q *MemQDB) GetReferenceRelation(_ context.Context, tableName string) (*Ref
 	defer q.mu.RUnlock()
 
 	if ds, ok := q.ReferenceRelations[tableName]; !ok {
-		// DEPRECATE this
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relaion \"%s\" not found", tableName)
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
 	} else {
 		return ds, nil
 	}
