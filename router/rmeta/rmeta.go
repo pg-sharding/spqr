@@ -192,7 +192,7 @@ func (rm *RoutingMetadataContext) ResolveRouteHint() (routehint.RouteHint, error
 
 		dsId := rm.SPH.Distribution()
 		if dsId == "" {
-			return nil, spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "sharding key in comment without distribution")
+			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "sharding key in comment without distribution")
 		}
 
 		ctx := context.TODO()

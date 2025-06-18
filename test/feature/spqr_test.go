@@ -917,7 +917,7 @@ func (tctx *testContext) stepQDBShouldNotContainRelation(key string) error {
 	_, err := tctx.qdb.GetRelationDistribution(context.TODO(), key)
 	switch t := err.(type) {
 	case *spqrerror.SpqrError:
-		if t.ErrorCode == spqrerror.SPQR_NO_DISTRIBUTION {
+		if t.ErrorCode == spqrerror.SPQR_OBJECT_NOT_EXIST {
 			return nil
 		}
 		return err

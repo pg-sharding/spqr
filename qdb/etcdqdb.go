@@ -947,6 +947,29 @@ func (q *EtcdQDB) CreateReferenceRelation(ctx context.Context, r *ReferenceRelat
 	return nil
 }
 
+// GetReferenceRelation implements XQDB.
+func (q *EtcdQDB) GetReferenceRelation(ctx context.Context, tableName string) (*ReferenceRelation, error) {
+	spqrlog.Zero.Debug().
+		Str("tablename", tableName).
+		Msg("etcdqdb: get reference relation")
+
+	resp, err := q.cli.Get(ctx, referenceRelationNodePath(tableName))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resp.Kvs) == 0 {
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", tableName)
+	}
+
+	var refRel *ReferenceRelation
+	if err := json.Unmarshal(resp.Kvs[0].Value, &refRel); err != nil {
+		return nil, err
+	}
+
+	return refRel, nil
+}
+
 // DropReferenceRelation implements XQDB.
 func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, tableName string) error {
 	spqrlog.Zero.Debug().
@@ -1139,7 +1162,7 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 		_, err := q.GetRelationDistribution(ctx, rel.Name)
 		switch e := err.(type) {
 		case *spqrerror.SpqrError:
-			if e.ErrorCode != spqrerror.SPQR_NO_DISTRIBUTION {
+			if e.ErrorCode != spqrerror.SPQR_OBJECT_NOT_EXIST {
 				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.Name)
 			}
 		default:
@@ -1223,7 +1246,7 @@ func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution
 	}
 
 	if len(resp.Kvs) == 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution \"%s\" not found", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", id)
 	}
 
 	var distrib *Distribution
@@ -1246,7 +1269,7 @@ func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName string) (
 	}
 	switch len(resp.Kvs) {
 	case 0:
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution for relation \"%s\" not found", relName)
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution for relation \"%s\" not found", relName)
 
 	case 1:
 		id := string(resp.Kvs[0].Value)

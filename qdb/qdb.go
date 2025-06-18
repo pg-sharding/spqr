@@ -77,6 +77,7 @@ type QDB interface {
 
 	/* Reference relations */
 	CreateReferenceRelation(ctx context.Context, r *ReferenceRelation) error
+	GetReferenceRelation(ctx context.Context, tableName string) (*ReferenceRelation, error)
 	ListReferenceRelations(ctx context.Context) ([]*ReferenceRelation, error)
 	DropReferenceRelation(ctx context.Context, tableName string) error
 

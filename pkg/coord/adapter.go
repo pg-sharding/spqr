@@ -66,6 +66,11 @@ func (a *Adapter) ShareKeyRange(id string) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "ShareKeyRange not implemented")
 }
 
+// GetReferenceRelation implements meta.EntityMgr.
+func (a *Adapter) GetReferenceRelation(ctx context.Context, tableName string) (*rrelation.ReferenceRelation, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetReferenceRelation not implemented")
+}
+
 // CreateReferenceRelation implements meta.EntityMgr.
 func (a *Adapter) CreateReferenceRelation(ctx context.Context, r *rrelation.ReferenceRelation, entry []*rrelation.AutoIncrementEntry) error {
 	c := proto.NewReferenceRelationsServiceClient(a.conn)

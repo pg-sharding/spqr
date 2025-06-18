@@ -13,10 +13,21 @@ CREATE REFERENCE TABLE test_ref_rel;
  test_ref_rel
 (1 row)
 
+-- partial ref relation test
+CREATE REFERENCE RELATION test_ref_rel_part ON sh1, sh3;
+ add reference relation 
+------------------------
+ test_ref_rel_part
+(1 row)
+
 \c regress
 CREATE TABLE test_ref_rel(i int, j int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE test_ref_rel_part(i int, j int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY test_ref_rel FROM STDIN;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+COPY test_ref_rel_part FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 set __spqr__default_route_behaviour to allow;
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
@@ -116,7 +127,50 @@ NOTICE: send query to shard(s) : sh2
   5 | 5
 (3 rows)
 
+-- check data on partially distributed reference relation
+SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ i | j 
+---+---
+ 1 | 2
+ 2 | 3
+ 3 | 4
+ 4 | 5
+(4 rows)
+
+SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ i | j 
+---+---
+ 1 | 2
+ 2 | 3
+ 3 | 4
+ 4 | 5
+(4 rows)
+
+SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ i | j 
+---+---
+ 1 | 2
+ 2 | 3
+ 3 | 4
+ 4 | 5
+(4 rows)
+
+SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+ i | j 
+---+---
+ 1 | 2
+ 2 | 3
+ 3 | 4
+ 4 | 5
+(4 rows)
+
 DROP TABLE test_ref_rel;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE test_ref_rel_part;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
@@ -126,16 +180,18 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
+SHOW reference_relations;
+    table name     | schema version |      shards       
+-------------------+----------------+-------------------
+ test_ref_rel      | 1              | [sh1 sh2 sh3 sh4]
+ test_ref_rel_part | 1              | [sh1 sh3]
+(2 rows)
+
 DROP DISTRIBUTION ALL CASCADE;
        drop distribution       
 -------------------------------
  distribution id -> REPLICATED
 (1 row)
-
-SHOW reference_relations;
- table name | schema version | shards 
-------------+----------------+--------
-(0 rows)
 
 DROP KEY RANGE ALL;
  drop key range 
