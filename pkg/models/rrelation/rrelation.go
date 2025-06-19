@@ -1,6 +1,7 @@
 package rrelation
 
 import (
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -16,6 +17,18 @@ type ReferenceRelation struct {
 type AutoIncrementEntry struct {
 	Column string
 	Start  uint64
+}
+
+func (r *ReferenceRelation) ListStorageRoutes() []*kr.ShardKey {
+	var ret []*kr.ShardKey
+
+	for _, id := range r.ShardId {
+		ret = append(ret, &kr.ShardKey{
+			Name: id,
+		})
+	}
+
+	return ret
 }
 
 func ReferenceRelationEntriesFromSQL(inEntries []*spqrparser.AutoIncrementEntry) []*AutoIncrementEntry {

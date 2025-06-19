@@ -285,6 +285,10 @@ func TestReferenceRelationRouting(t *testing.T) {
 		},
 	})
 
+	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
+		TableName: "test_ref_rel",
+	})
+
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{

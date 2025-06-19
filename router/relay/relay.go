@@ -690,7 +690,7 @@ func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 		Uint("client", rst.Client().ID()).
 		Msg("rerouting the client connection to random shard, resolving shard")
 
-	r, err := rst.QueryRouter().SelectRandomRoute()
+	r, err := rst.QueryRouter().SelectRandomRoute(rst.QueryRouter().DataShardsRoutes())
 	if err != nil {
 		return err
 	}

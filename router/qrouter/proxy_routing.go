@@ -1286,7 +1286,20 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 		if err != nil {
 			return nil, err
 		} else if ds.Id == distributions.REPLICATED {
-			route = plan.Combine(route, plan.ReferenceRelationState{})
+			var shs []*kr.ShardKey
+			if rmeta.IsRelationCatalog(rfqn) {
+				shs = nil
+			} else {
+				r, err := rm.Mgr.GetReferenceRelation(ctx, rfqn.RelationName)
+				if err != nil {
+					return nil, err
+				}
+				shs = r.ListStorageRoutes()
+			}
+
+			route = plan.Combine(route, plan.ReferenceRelationState{
+				ExecTargets: shs,
+			})
 			continue
 		}
 
@@ -1511,8 +1524,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	return route, ro, nil
 }
 
-func (qr *ProxyQrouter) SelectRandomRoute() (plan.Plan, error) {
-	routes := qr.DataShardsRoutes()
+func (qr *ProxyQrouter) SelectRandomRoute(routes []*kr.ShardKey) (plan.Plan, error) {
 	if len(routes) == 0 {
 		return nil, fmt.Errorf("no routes configured")
 	}
@@ -1671,11 +1683,11 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	case plan.VirtualPlan:
 		return v, nil
 	case plan.RandomDispatchPlan:
-		return qr.SelectRandomRoute()
+		return qr.SelectRandomRoute(qr.DataShardsRoutes())
 	case plan.ReferenceRelationState:
 		/* check for unroutable here - TODO */
 
-		return qr.SelectRandomRoute()
+		return qr.SelectRandomRoute(qr.DataShardsRoutes())
 	case plan.DDLState:
 		v.ExecTargets = qr.DataShardsRoutes()
 		return v, nil

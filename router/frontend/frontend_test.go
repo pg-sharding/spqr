@@ -186,7 +186,7 @@ func TestFrontendXProto(t *testing.T) {
 	beRule := &config.BackendRule{}
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
-	qr.EXPECT().SelectRandomRoute().AnyTimes().Return(plan.ShardDispatchPlan{
+	qr.EXPECT().SelectRandomRoute(gomock.Any()).AnyTimes().Return(plan.ShardDispatchPlan{
 		ExecTarget: &kr.ShardKey{
 			Name: "sh1",
 		},

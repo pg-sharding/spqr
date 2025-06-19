@@ -5,6 +5,8 @@ import (
 
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/plan"
@@ -25,31 +27,38 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 			spqrlog.Zero.Debug().Str("relation", q.RelationName).Str("distribution", val).Msg("attaching relation")
 
 			if val == distributions.REPLICATED {
-				if _, err := rm.Mgr.GetDistribution(ctx, distributions.REPLICATED); err != nil {
-					err := rm.Mgr.CreateDistribution(ctx, &distributions.Distribution{
-						Id:       distributions.REPLICATED,
-						ColTypes: nil,
-					})
-					if err != nil {
-						spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
-						return nil, err
-					}
-				}
-			}
 
-			if err := rm.Mgr.AlterDistributionAttach(ctx, val, []*distributions.DistributedRelation{
-				{
-					Name:               q.RelationName,
-					ReplicatedRelation: val == distributions.REPLICATED,
-					DistributionKey: []distributions.DistributionKeyEntry{
-						{
-							Column: rm.SPH.DistributionKey(),
-							/* support hash function here */
+				shs, err := rm.Mgr.ListShards(ctx)
+				if err != nil {
+					return nil, err
+				}
+				shardIds := []string{}
+				for _, sh := range shs {
+					shardIds = append(shardIds, sh.ID)
+				}
+				err = rm.Mgr.CreateReferenceRelation(ctx, &rrelation.ReferenceRelation{
+					TableName:     q.RelationName,
+					SchemaVersion: 1,
+					ShardId:       shardIds,
+				}, nil)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				if err := rm.Mgr.AlterDistributionAttach(ctx, val, []*distributions.DistributedRelation{
+					{
+						Name:               q.RelationName,
+						ReplicatedRelation: val == distributions.REPLICATED,
+						DistributionKey: []distributions.DistributionKeyEntry{
+							{
+								Column: rm.SPH.DistributionKey(),
+								/* support hash function here */
+							},
 						},
 					},
-				},
-			}); err != nil {
-				return nil, err
+				}); err != nil {
+					return nil, err
+				}
 			}
 		}
 	}
@@ -61,6 +70,88 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 	// 	return nil, false, err
 	// }
 	return plan.DDLState{}, nil
+}
+
+func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	q *lyx.RangeVar, subquery lyx.Node,
+	allowDistr bool) (plan.Plan, error) {
+
+	rfqn := rfqn.RelationFQN{
+		RelationName: q.RelationName,
+		SchemaName:   q.SchemaName,
+	}
+
+	if ds, err := rm.GetRelationDistribution(ctx, rfqn); err != nil {
+		return nil, rerrors.ErrComplexQuery
+	} else if ds.Id != distributions.REPLICATED {
+		if allowDistr {
+			if subquery == nil {
+				return plan.ScatterPlan{
+					SubPlan: plan.ModifyTable{
+						ExecTargets: nil,
+					},
+					ExecTargets: nil,
+				}, nil
+			} else {
+				subPlan, err := PlanDistributedQuery(ctx, rm, subquery)
+				if err != nil {
+					return nil, err
+				}
+				/* XXX: fix that */
+				switch subPlan.(type) {
+				case plan.ScatterPlan:
+					return plan.ScatterPlan{
+						SubPlan: plan.ModifyTable{
+							ExecTargets: nil,
+						},
+						ExecTargets: nil,
+					}, nil
+				default:
+					return nil, rerrors.ErrComplexQuery
+				}
+			}
+		} else {
+			return nil, rerrors.ErrComplexQuery
+		}
+	}
+
+	var shs []*kr.ShardKey
+
+	if rmeta.IsRelationCatalog(rfqn) {
+		shs = nil
+	} else {
+		r, err := rm.Mgr.GetReferenceRelation(ctx, rfqn.RelationName)
+		if err != nil {
+			return nil, err
+		}
+		shs = r.ListStorageRoutes()
+	}
+
+	if subquery == nil {
+		return plan.ScatterPlan{
+			SubPlan: plan.ModifyTable{
+				ExecTargets: shs,
+			},
+			ExecTargets: shs,
+		}, nil
+	}
+	/* Plan sub-select here. TODO: check that modified relation is a ref relation */
+	subPlan, err := PlanDistributedQuery(ctx, rm, subquery)
+	if err != nil {
+		return nil, err
+	}
+	switch subPlan.(type) {
+	case plan.ScatterPlan:
+		return plan.ScatterPlan{
+			SubPlan: plan.ModifyTable{
+				ExecTargets: shs,
+			},
+			ExecTargets: shs,
+		}, nil
+	default:
+		return nil, rerrors.ErrComplexQuery
+	}
 }
 
 func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {
@@ -143,46 +234,28 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 			SubPlan: s,
 		}, nil
 	case *lyx.Insert:
-
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			rfqn := rfqn.RelationFQN{
-				RelationName: q.RelationName,
-				SchemaName:   q.SchemaName,
-			}
-
-			if ds, err := rm.GetRelationDistribution(ctx, rfqn); err != nil {
-				return nil, rerrors.ErrComplexQuery
-			} else if ds.Id != distributions.REPLICATED {
-				return nil, rerrors.ErrComplexQuery
-			}
-			/* Plan sub-select here. TODO: check that modified relation is a ref relation */
-			subPlan, err := PlanDistributedQuery(ctx, rm, v.SubSelect)
-			if err != nil {
-				return nil, err
-			}
-			switch subPlan.(type) {
-			case plan.ScatterPlan:
-				return plan.ScatterPlan{
-					SubPlan: plan.ModifyTable{},
-					// ExecTargets: ,
-				}, nil
-			default:
-				return nil, rerrors.ErrComplexQuery
-			}
+			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, v.SubSelect, false)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
+
 	case *lyx.Update:
-		/* Plan sub-select here. TODO: check that modified relation is a ref relation */
-		return plan.ScatterPlan{
-			SubPlan: plan.ModifyTable{},
-		}, nil
+		switch q := v.TableRef.(type) {
+		case *lyx.RangeVar:
+			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true)
+		default:
+			return nil, rerrors.ErrComplexQuery
+		}
+
 	case *lyx.Delete:
-		/* Plan sub-select here. TODO: check that modified relation is a ref relation */
-		return plan.ScatterPlan{
-			SubPlan: plan.ModifyTable{},
-		}, nil
+		switch q := v.TableRef.(type) {
+		case *lyx.RangeVar:
+			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true)
+		default:
+			return nil, rerrors.ErrComplexQuery
+		}
 	default:
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
