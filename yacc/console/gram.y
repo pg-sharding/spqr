@@ -130,7 +130,7 @@ func randomHex(n int) (string, error) {
 %token<str> SCONST
 
 %token<uinteger> ICONST
-%token<uinteger> IVALID_ICONST
+%token<uinteger> INVALID_ICONST
 
 
 %type<bytes> key_range_bound_elem

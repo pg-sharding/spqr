@@ -211,7 +211,7 @@ tr27:
                 vl, err := strconv.ParseUint(string(lex.data[lex.ts:lex.te]), 10, 64)
                 if err != nil {
                     vl = 0
-                    lval.uinteger = uint(vl); tok = IVALID_ICONST; {( lex.p)++;  lex.cs = 4; goto _out }    
+                    lval.uinteger = uint(vl); tok = INVALID_ICONST; {( lex.p)++;  lex.cs = 4; goto _out }    
                 } else {
                     lval.uinteger = uint(vl); tok = ICONST; {( lex.p)++;  lex.cs = 4; goto _out }
                 }     

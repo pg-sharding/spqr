@@ -280,7 +280,7 @@ func TestIncorrectNumbers(t *testing.T) {
 		},
 		{
 			query: "SHOW 18446744073709551616 222",
-			exp:   []int{spqrparser.SHOW, spqrparser.IVALID_ICONST, spqrparser.ICONST},
+			exp:   []int{spqrparser.SHOW, spqrparser.INVALID_ICONST, spqrparser.ICONST},
 			err:   nil,
 		},
 		{
@@ -292,7 +292,7 @@ func TestIncorrectNumbers(t *testing.T) {
 			query: "SHOW -18446744073709551616 -222",
 			exp: []int{spqrparser.SHOW,
 				spqrparser.TMINUS,
-				spqrparser.IVALID_ICONST,
+				spqrparser.INVALID_ICONST,
 				spqrparser.TMINUS,
 				spqrparser.ICONST},
 			err: nil,

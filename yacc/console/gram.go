@@ -119,7 +119,7 @@ const TEQ = 57353
 const TCOMMA = 57354
 const SCONST = 57355
 const ICONST = 57356
-const IVALID_ICONST = 57357
+const INVALID_ICONST = 57357
 const TSEMICOLON = 57358
 const TMINUS = 57359
 const TPLUS = 57360
@@ -228,7 +228,7 @@ var yyToknames = [...]string{
 	"TCOMMA",
 	"SCONST",
 	"ICONST",
-	"IVALID_ICONST",
+	"INVALID_ICONST",
 	"TSEMICOLON",
 	"TMINUS",
 	"TPLUS",

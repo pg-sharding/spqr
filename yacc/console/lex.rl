@@ -82,7 +82,7 @@ func (lex *Lexer) Lex(lval *yySymType) int {
                 vl, err := strconv.ParseUint(string(lex.data[lex.ts:lex.te]), 10, 64)
                 if err != nil {
                     vl = 0
-                    lval.uinteger = uint(vl); tok = IVALID_ICONST; fbreak;    
+                    lval.uinteger = uint(vl); tok = INVALID_ICONST; fbreak;    
                 } else {
                     lval.uinteger = uint(vl); tok = ICONST; fbreak;
                 }     
