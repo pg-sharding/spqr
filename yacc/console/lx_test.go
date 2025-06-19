@@ -262,3 +262,46 @@ func TestSimpleLex(t *testing.T) {
 		assert.Equal(tt.exp, act, tt.query)
 	}
 }
+
+func TestIncorrectNumbers(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   []int
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "SHOW -9223372036854775807",
+			exp:   []int{spqrparser.SHOW, spqrparser.TMINUS, spqrparser.ICONST},
+			err:   nil,
+		},
+		{
+			query: "SHOW 18446744073709551616 222",
+			exp:   []int{spqrparser.SHOW, spqrparser.IVALID_ICONST, spqrparser.ICONST},
+			err:   nil,
+		},
+		{
+			query: "SHOW 9223372036854775807 222",
+			exp:   []int{spqrparser.SHOW, spqrparser.ICONST, spqrparser.ICONST},
+			err:   nil,
+		},
+		{
+			query: "SHOW -18446744073709551616 -222",
+			exp: []int{spqrparser.SHOW,
+				spqrparser.TMINUS,
+				spqrparser.IVALID_ICONST,
+				spqrparser.TMINUS,
+				spqrparser.ICONST},
+			err: nil,
+		},
+	} {
+		tmp := spqrparser.NewStringTokenizer(tt.query)
+
+		act := spqrparser.LexString(tmp)
+
+		assert.Equal(tt.exp, act, tt.query)
+	}
+}
