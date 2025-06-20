@@ -7,8 +7,10 @@ import (
 	"encoding/hex"
 	"encoding/binary"
 	"strings"
+	"math"
 )
 
+const SIGNED_INT_RANGE_ERROR string = "the Signed Value should be at the range of [-9223372036854775808, 9223372036854775807]."
 
 func randomHex(n int) (string, error) {
 	bytes := make([]byte, n)
@@ -127,7 +129,8 @@ func randomHex(n int) (string, error) {
 /* any const */
 %token<str> SCONST
 
-%token<integer> ICONST
+%token<uinteger> ICONST
+%token<uinteger> INVALID_ICONST
 
 
 %type<bytes> key_range_bound_elem
@@ -360,11 +363,26 @@ command:
 
 SignedInt: 
 	ICONST {
-		$$ = $1
+		if $1 > uint(math.MaxInt64) {
+			yylex.Error(SIGNED_INT_RANGE_ERROR)
+			return 1
+		} else {
+			$$ = int($1)
+		}
 	} | TMINUS ICONST {
-		$$ = -$2
+		if $2 > uint(-math.MinInt64) {
+			yylex.Error(SIGNED_INT_RANGE_ERROR)
+			return 1
+		} else {
+			$$ = int(-$2)
+		}
 	} | TPLUS ICONST {
-		$$ = $2
+		if $2 > uint(math.MaxInt64) {
+			yylex.Error(SIGNED_INT_RANGE_ERROR)
+			return 1
+		} else {
+			$$ = int($2)
+		}
 	}
 
 any_uint:
@@ -380,13 +398,23 @@ any_val: SCONST
 	{
 		$$ = string($1)
 	} | ICONST {
-		buf := make([]byte, binary.MaxVarintLen64)
-		binary.PutVarint(buf, int64($1))
-		$$ = string(buf)
+		if $1 > uint(math.MaxInt64) {
+			yylex.Error(SIGNED_INT_RANGE_ERROR)
+			return 1
+		} else {
+			buf := make([]byte, binary.MaxVarintLen64)
+			binary.PutVarint(buf, int64($1))
+			$$ = string(buf)
+		}
 	} | TMINUS ICONST {
-		buf := make([]byte, binary.MaxVarintLen64)
-		binary.PutVarint(buf, int64(-$2))
-		$$ = string(buf)
+		if $2 > uint(-math.MinInt64) {
+			yylex.Error(SIGNED_INT_RANGE_ERROR)
+			return 1
+		} else {
+			buf := make([]byte, binary.MaxVarintLen64)
+			binary.PutVarint(buf, int64(-$2))
+			$$ = string(buf)
+		}
 	}
 
 any_id: IDENT
@@ -925,13 +953,23 @@ key_range_bound_elem:
 	{
 		$$ = []byte($1)
 	} | ICONST {
-		buf := make([]byte, binary.MaxVarintLen64)
-		binary.PutVarint(buf, int64($1))
-		$$ = buf
+		if $1 > uint(math.MaxInt64) {
+			yylex.Error(SIGNED_INT_RANGE_ERROR)
+			return 1
+		} else {
+			buf := make([]byte, binary.MaxVarintLen64)
+			binary.PutVarint(buf, int64($1))
+			$$ = buf
+		}
 	} | TMINUS ICONST {
-		buf := make([]byte, binary.MaxVarintLen64)
-		binary.PutVarint(buf, int64(-$2))
-		$$ = buf
+		if $2 > uint(-math.MinInt64) {
+			yylex.Error(SIGNED_INT_RANGE_ERROR)
+			return 1
+		} else {
+			buf := make([]byte, binary.MaxVarintLen64)
+			binary.PutVarint(buf, int64(-$2))
+			$$ = buf
+		}
 	}
 
 key_range_bound:

@@ -462,6 +462,107 @@ func TestKeyRange(t *testing.T) {
 	}
 }
 
+func TestKeyRangeBordersSuccess(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "CREATE KEY RANGE krid1 FROM 9223372036854775807 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangeDefinition{
+					ShardID:      "sh1",
+					KeyRangeID:   "krid1",
+					Distribution: "ds1",
+					LowerBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{
+							{254, 255, 255, 255, 255, 255, 255, 255, 255, 1},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE KEY RANGE krid1 FROM -9223372036854775808 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangeDefinition{
+					ShardID:      "sh1",
+					KeyRangeID:   "krid1",
+					Distribution: "ds1",
+					LowerBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{
+							{255, 255, 255, 255, 255, 255, 255, 255, 255, 1},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+		} else {
+			assert.Error(err, "query %s", tt.query)
+		}
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
+func TestKeyRangeBordersFail(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "CREATE KEY RANGE krid1 FROM 9223372036854775809 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+			exp:   nil,
+			err:   fmt.Errorf(spqrparser.SIGNED_INT_RANGE_ERROR),
+		},
+		{
+			query: "CREATE KEY RANGE krid1 FROM -9223372036854775809 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+			exp:   nil,
+			err:   fmt.Errorf(spqrparser.SIGNED_INT_RANGE_ERROR),
+		},
+		{
+			query: "CREATE KEY RANGE krid1 FROM 92233720368547758099999999 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
+		{
+			query: "CREATE KEY RANGE krid1 FROM -9223372036854775809999999 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+		} else {
+			assert.Error(err, "query %s", tt.query)
+		}
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
 func TestShardingRule(t *testing.T) {
 
 	assert := assert.New(t)
