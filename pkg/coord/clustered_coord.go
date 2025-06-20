@@ -206,8 +206,8 @@ const defaultWatchRouterTimeout = time.Second
 const defaultLockCoordinatorTimeout = time.Second
 
 /*
-* This is `global` coordinator, which manages spqr cluster as a whole.
-* Method calls for here results in cluster-wide changes
+* This is the global coordinator, which manages the spqr cluster as a whole.
+* Its method calls result in cluster-wide changes.
  */
 type ClusteredCoordinator struct {
 	Coordinator

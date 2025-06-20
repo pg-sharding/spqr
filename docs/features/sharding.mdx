@@ -2,7 +2,7 @@
 title: 'Sharding'
 ---
 
-If possible, the router tries to determine on the first transaction statement to which shard this transaction should be sent.
+The router knows that some tables have been [split into shards](/sharding/sharded_tables). If possible, the router tries to determine on the first transaction statement to which shard this transaction should be sent.
 
 ```sql
 -- This query should works with properly sharding rules
