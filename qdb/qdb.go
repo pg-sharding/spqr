@@ -8,29 +8,26 @@ import (
 )
 
 type ShardingSchemaKeeper interface {
-	/* persist start of key range move in distributed storage */
+	// RecordKeyRangeMove persists start of key range movement in distributed storage
 	RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error
-	/* list all key-range moves in progress */
+	// ListKeyRangeMoves lists all key-range moves that are in progress
 	ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error)
-	/* mark key range move as completed */
+	// UpdateKeyRangeMoveStatus marks the key range move as complete
 	UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error
-	// DeleteKeyRangeMove deletes info about key range move
+	// DeleteKeyRangeMove removes information about key range moves
 	DeleteKeyRangeMove(ctx context.Context, moveId string) error
 }
 
 type TopologyKeeper interface {
+	// AddRouter adds a new router to the cluster
 	AddRouter(ctx context.Context, r *Router) error
+	// DeleteRouter removes the router from the cluster
 	DeleteRouter(ctx context.Context, rID string) error
+	//ListRouters lists the routers of the cluster
 	ListRouters(ctx context.Context) ([]*Router, error)
-
-	// OpenRouter: change state of router to online
-	// Making it usable to use for query execution.
-	// "Online" mode.
+	// OpenRouter changes the state of the router to online, making it usable for query execution.
 	OpenRouter(ctx context.Context, rID string) error
-
-	// CloseRouter: change state of router to offline
-	// Making it unusable to use for query execution.
-	// "Offline" mode.
+	// CloseRouter changes the state of the router to offline, making it unavailable for query execution.
 	CloseRouter(ctx context.Context, rID string) error
 }
 
@@ -41,13 +38,11 @@ type DistributedXactKepper interface {
 	RemoveTransferTx(ctx context.Context, key string) error
 }
 
-/* This is a generic interface to be used by both the coordinator and the router.
-* The router should use a memory-based version of this interface to cache
-* the state of the routing schema, while the coordinator should use an etcd-based
-* implementation to keep the distributed state in sync.
- */
+// QDB is a generic interface used by both the coordinator and the router.
+// The router uses a memory-based version of this interface to cache routing schema state
+// while the coordinator uses etcd-based implementation to synchronize distributed state.
 type QDB interface {
-	/* Key ranges */
+	// Key ranges
 	CreateKeyRange(ctx context.Context, keyRange *KeyRange) error
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
@@ -61,13 +56,13 @@ type QDB interface {
 	ShareKeyRange(id string) error
 	RenameKeyRange(ctx context.Context, krId, ktIdNew string) error
 
-	/* Shards */
+	// Shards
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShard(ctx context.Context, shardID string) (*Shard, error)
 	DropShard(ctx context.Context, shardID string) error
 
-	/* Distribution management */
+	// Distribution management
 	CreateDistribution(ctx context.Context, distr *Distribution) error
 	ListDistributions(ctx context.Context) ([]*Distribution, error)
 	DropDistribution(ctx context.Context, id string) error
@@ -75,46 +70,46 @@ type QDB interface {
 	// TODO: fix this by passing FQRN (fully qualified relation name (+schema))
 	GetRelationDistribution(ctx context.Context, relation string) (*Distribution, error)
 
-	/* Reference relations */
+	// Reference relations
 	CreateReferenceRelation(ctx context.Context, r *ReferenceRelation) error
 	GetReferenceRelation(ctx context.Context, tableName string) (*ReferenceRelation, error)
 	ListReferenceRelations(ctx context.Context) ([]*ReferenceRelation, error)
 	DropReferenceRelation(ctx context.Context, tableName string) error
 
-	/* Update distribution */
+	// Update distribution
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
 	AlterDistributionDetach(ctx context.Context, id string, relName string) error
 	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
 
-	/* Task group */
+	// Task group
 	GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error)
 	WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup) error
 	UpdateMoveTaskGroupSetCurrentTask(ctx context.Context, taskIndex int) error
 	GetCurrentMoveTaskIndex(ctx context.Context) (int, error)
 	RemoveMoveTaskGroup(ctx context.Context) error
 
-	/* MOVE tasks */
+	// MOVE tasks
 	CreateMoveTask(ctx context.Context, task *MoveTask) error
 	GetMoveTask(ctx context.Context, id string) (*MoveTask, error)
 	UpdateMoveTask(ctx context.Context, task *MoveTask) error
 	RemoveMoveTask(ctx context.Context, id string) error
 
-	/* Redistribute tasks */
+	// Redistribute tasks
 	GetRedistributeTask(ctx context.Context) (*RedistributeTask, error)
 	WriteRedistributeTask(ctx context.Context, task *RedistributeTask) error
 	RemoveRedistributeTask(ctx context.Context) error
 
-	/* Balancer interaction */
+	// Balancer interaction
 	GetBalancerTask(ctx context.Context) (*BalancerTask, error)
 	WriteBalancerTask(ctx context.Context, task *BalancerTask) error
 	RemoveBalancerTask(ctx context.Context) error
 
-	/* Coordinator interaction */
+	// Coordinator interaction
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)
 	ListRouters(ctx context.Context) ([]*Router, error)
 
-	/* Sequences for reference relation */
+	// Sequences for reference relation
 	CreateSequence(ctx context.Context, seqName string, initialValue int64) error
 	ListSequences(ctx context.Context) ([]string, error)
 	AlterSequenceAttach(ctx context.Context, seqName string, relName, colName string) error

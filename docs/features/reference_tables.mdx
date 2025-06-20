@@ -1,0 +1,18 @@
+---
+title: 'Reference tables'
+---
+
+Sometimes, it can be useful to have one or more tables on each shard with the same data. 
+
+SPQR supports what are known as [reference table](/sharding/reference_tables). A reference table is replicated across all shards and is not split into separate partitions. Every shard has **a local copy of the table**, which reduces network overhead and allows for fast access to frequently used data.
+
+
+```sql
+\c spqr-console
+CREATE REFERENCE TABLE tax_rates;
+         attach table          
+-------------------------------
+ relation name   -> tax_rates
+ distribution id -> REPLICATED
+(2 rows)
+```

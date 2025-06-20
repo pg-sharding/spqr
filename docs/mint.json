@@ -61,6 +61,7 @@
                     "group": "Features",
                     "pages": [
                         "features/sharding",
+                        "features/reference_tables",
                         "features/pooling",
                         "features/fault_tolerance",
                         "features/data_balancing",

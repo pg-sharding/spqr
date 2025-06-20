@@ -679,8 +679,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 
-		/* this is a bit ugly, but quick and dirty
-		* better approach is do it like for all other objects
+		/* this is a bit ugly, but it's quick and dirty.
+		* a better approach would be to do it like we do for all other objects.
 		 */
 
 		var sequenceVals []int64
