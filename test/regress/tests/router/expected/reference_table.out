@@ -8,17 +8,19 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 
 -- test both ways of ref relation crete syntax
 CREATE REFERENCE TABLE test_ref_rel;
- add reference relation 
-------------------------
- test_ref_rel
-(1 row)
+   create reference table    
+-----------------------------
+ table    -> test_ref_rel
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
 
 -- partial ref relation test
 CREATE REFERENCE RELATION test_ref_rel_part ON sh1, sh3;
- add reference relation 
-------------------------
- test_ref_rel_part
-(1 row)
+    create reference table     
+-------------------------------
+ table    -> test_ref_rel_part
+ shard id -> sh1,sh3
+(2 rows)
 
 \c regress
 CREATE TABLE test_ref_rel(i int, j int);

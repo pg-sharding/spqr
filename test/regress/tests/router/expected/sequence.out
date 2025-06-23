@@ -7,16 +7,18 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE REFERENCE TABLE test AUTO INCREMENT id;
- add reference relation 
-------------------------
- test
-(1 row)
+   create reference table    
+-----------------------------
+ table    -> test
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
 
 CREATE REFERENCE TABLE test2 AUTO INCREMENT id START 19;
- add reference relation 
-------------------------
- test2
-(1 row)
+   create reference table    
+-----------------------------
+ table    -> test2
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
 
 SHOW sequences;
    name   | value 
@@ -73,15 +75,15 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP REFERENCE RELATION test;
- reference relation id 
------------------------
- test
+ drop reference table 
+----------------------
+ table -> test
 (1 row)
 
 DROP REFERENCE RELATION test2;
- reference relation id 
------------------------
- test2
+ drop reference table 
+----------------------
+ table -> test2
 (1 row)
 
 SHOW sequences;

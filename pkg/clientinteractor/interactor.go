@@ -499,13 +499,14 @@ func (pi *PSQLInteractor) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRa
 // Returns:
 //   - error: An error if sending the messages fails, otherwise nil.
 func (pi *PSQLInteractor) CreateReferenceRelation(ctx context.Context, rrel *rrelation.ReferenceRelation) error {
-	if err := pi.WriteHeader("add reference relation"); err != nil {
+	if err := pi.WriteHeader("create reference table"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(rrel.TableName)}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("table    -> %s", rrel.TableName))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("shard id -> %s", strings.Join(rrel.ShardId, ",")))}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -1319,12 +1320,12 @@ func (pi *PSQLInteractor) DropDistribution(ctx context.Context, ids []string) er
 }
 
 func (pi *PSQLInteractor) DropReferenceRelation(ctx context.Context, id string) error {
-	if err := pi.WriteHeader("reference relation id"); err != nil {
+	if err := pi.WriteHeader("drop reference table"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
-	if err := pi.WriteDataRow(id); err != nil {
+	if err := pi.WriteDataRow(fmt.Sprintf("table -> %s", id)); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}

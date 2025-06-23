@@ -40,10 +40,11 @@ ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id_1 HASH FUNCTION I
 (2 rows)
 
 CREATE REFERENCE RELATION z_rf;
- add reference relation 
-------------------------
- z_rf
-(1 row)
+   create reference table    
+-----------------------------
+ table    -> z_rf
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
 
 SHOW relations;
  Relation name | Distribution ID |           Distribution key            | Schema name  
