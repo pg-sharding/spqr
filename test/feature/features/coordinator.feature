@@ -457,10 +457,12 @@ Feature: Coordinator test
     """
     [
       {
-        "listing data shards": "shard id -\u003e sh1"
+        "host":"spqr_shard_1:6432",
+        "shard":"sh1"
       },
       {
-        "listing data shards": "shard id -\u003e sh2"
+        "host":"spqr_shard_2:6432",
+        "shard":"sh2"
       }
     ]
     """
@@ -478,7 +480,8 @@ Feature: Coordinator test
     """
     [
       {
-        "listing data shards": "shard id -\u003e sh2"
+        "host":"spqr_shard_2:6432",
+        "shard":"sh2"
       }
     ]
     """
