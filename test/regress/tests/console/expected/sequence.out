@@ -6,16 +6,18 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE REFERENCE TABLE t AUTO INCREMENT id;
- add reference relation 
-------------------------
- t
-(1 row)
+   create reference table    
+-----------------------------
+ table    -> t
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
 
 CREATE REFERENCE TABLE t1 AUTO INCREMENT id;
- add reference relation 
-------------------------
- t1
-(1 row)
+   create reference table    
+-----------------------------
+ table    -> t1
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
 
 SHOW SEQUENCES;
  name  | value 
@@ -27,9 +29,9 @@ SHOW SEQUENCES;
 DROP SEQUENCE t1_id;
 ERROR:  column "t1.id" is attached to sequence
 DROP REFERENCE RELATION t1;
- reference relation id 
------------------------
- t1
+ drop reference table 
+----------------------
+ table -> t1
 (1 row)
 
 DROP SEQUENCE t1_id;
@@ -47,9 +49,9 @@ CREATE DISTRIBUTION ds COLUMN TYPES integer;
 ALTER DISTRIBUTION ds ATTACH RELATION t2 DISTRIBUTION KEY id AUTO INCREMENT id1;
 ERROR:  sequence are supported for replicated relations only
 DROP REFERENCE RELATION t;
- reference relation id 
------------------------
- t
+ drop reference table 
+----------------------
+ table -> t
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;

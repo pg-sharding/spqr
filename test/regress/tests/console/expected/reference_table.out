@@ -6,16 +6,18 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE REFERENCE TABLE zz;
- add reference relation 
-------------------------
- zz
-(1 row)
+   create reference table    
+-----------------------------
+ table    -> zz
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
 
 CREATE REFERENCE TABLE zz2 ON sh3, sh4;
- add reference relation 
+ create reference table 
 ------------------------
- zz2
-(1 row)
+ table    -> zz2
+ shard id -> sh3,sh4
+(2 rows)
 
 CREATE REFERENCE RELATION zz2;
 ERROR:  reference relation zz2 already exists

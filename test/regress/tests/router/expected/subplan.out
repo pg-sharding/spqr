@@ -37,10 +37,11 @@ CREATE KEY RANGE FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 (1 row)
 
 CREATE REFERENCE TABLE ref_rel_1;
- add reference relation 
-------------------------
- ref_rel_1
-(1 row)
+   create reference table    
+-----------------------------
+ table    -> ref_rel_1
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY i;
        attach table        
