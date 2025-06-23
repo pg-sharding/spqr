@@ -81,6 +81,30 @@ NOTICE: send query to shard(s) : sh2
  4 | 5
 (6 rows)
 
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ i | j 
+---+---
+ 1 | 2
+ 1 |  
+ 1 |  
+ 2 | 3
+ 3 | 4
+ 4 | 5
+(6 rows)
+
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+ i | j 
+---+---
+ 1 | 2
+ 1 |  
+ 1 |  
+ 2 | 3
+ 3 | 4
+ 4 | 5
+(6 rows)
+
 UPDATE test_ref_rel SET i = i + 1 /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 UPDATE test_ref_rel SET i = - i WHERE i IN (3, 4) /* __spqr__engine_v2: true */;
@@ -109,8 +133,33 @@ NOTICE: send query to shard(s) : sh2
   5 | 5
 (6 rows)
 
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ i  | j 
+----+---
+ -4 | 4
+ -3 | 3
+  2 | 2
+  2 |  
+  2 |  
+  5 | 5
+(6 rows)
+
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+ i  | j 
+----+---
+ -4 | 4
+ -3 | 3
+  2 | 2
+  2 |  
+  2 |  
+  5 | 5
+(6 rows)
+
 DELETE FROM test_ref_rel WHERE i = 2 /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- check data
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  i  | j 
@@ -129,46 +178,64 @@ NOTICE: send query to shard(s) : sh2
   5 | 5
 (3 rows)
 
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ i  | j 
+----+---
+ -4 | 4
+ -3 | 3
+  5 | 5
+(3 rows)
+
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+ i  | j 
+----+---
+ -4 | 4
+ -3 | 3
+  5 | 5
+(3 rows)
+
+INSERT INTO test_ref_rel_part VALUES(1) /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh3
+INSERT INTO test_ref_rel_part SELECT 1 /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh3
 -- check data on partially distributed reference relation
 SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  i | j 
 ---+---
  1 | 2
+ 1 |  
+ 1 |  
  2 | 3
  3 | 4
  4 | 5
-(4 rows)
+(6 rows)
 
 SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2
  i | j 
 ---+---
- 1 | 2
- 2 | 3
- 3 | 4
- 4 | 5
-(4 rows)
+(0 rows)
 
 SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh3 */;
 NOTICE: send query to shard(s) : sh3
  i | j 
 ---+---
  1 | 2
+ 1 |  
+ 1 |  
  2 | 3
  3 | 4
  4 | 5
-(4 rows)
+(6 rows)
 
 SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh4 */;
 NOTICE: send query to shard(s) : sh4
  i | j 
 ---+---
- 1 | 2
- 2 | 3
- 3 | 4
- 4 | 5
-(4 rows)
+(0 rows)
 
 DROP TABLE test_ref_rel;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

@@ -14,7 +14,8 @@ type CopyState struct {
 	Ds        *distributions.Distribution
 
 	/* For replicated relations */
-	Scatter bool
+	Scatter          bool
+	ExecutionTargets []*kr.ShardKey
 
 	/* execute on/in explicit tx */
 	Attached bool
