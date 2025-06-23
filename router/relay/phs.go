@@ -289,8 +289,14 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		return nil, err
 	}
 	if ds.Id == distributions.REPLICATED {
+		rr, err := mgr.GetReferenceRelation(ctx, relname)
+		if err != nil {
+			return nil, err
+		}
+
 		return &pgcopy.CopyState{
-			Scatter: true,
+			Scatter:          true,
+			ExecutionTargets: rr.ListStorageRoutes(),
 		}, nil
 	}
 
@@ -345,7 +351,12 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 
 	/* We dont really need to parse and route tuples for DISTRIBUTED relations */
 	if cps.Scatter {
-		return nil, s.cl.Server().Send(data)
+		for _, et := range cps.ExecutionTargets {
+			if err := s.cl.Server().SendShard(data, et); err != nil {
+				return nil, err
+			}
+		}
+		return nil, nil
 	}
 
 	var leftoverMsgData []byte = nil
@@ -353,7 +364,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 	rowsMp := map[string][]byte{}
 
 	/* like hashfunction array */
-	values := make([]interface{}, len(cps.HashFunc))
+	values := make([]any, len(cps.HashFunc))
 
 	backMap := map[int]int{}
 
