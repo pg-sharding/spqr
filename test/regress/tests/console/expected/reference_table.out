@@ -16,7 +16,7 @@ CREATE REFERENCE TABLE zz2 ON sh3, sh4;
    create reference table    
 -----------------------------
  table    -> zz2
- shard id -> sh1,sh2,sh3,sh4
+ shard id -> sh3,sh4
 (2 rows)
 
 CREATE REFERENCE RELATION zz2;

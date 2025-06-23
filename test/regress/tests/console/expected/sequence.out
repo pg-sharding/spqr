@@ -17,7 +17,7 @@ CREATE REFERENCE TABLE t1 AUTO INCREMENT id;
 -----------------------------
  table    -> t1
  shard id -> sh1,sh2,sh3,sh4
-(1 row)
+(2 rows)
 
 SHOW SEQUENCES;
  name  | value 
