@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/protos"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 )
 
@@ -67,7 +67,7 @@ func DataShardFromProto(shard *proto.Shard) *DataShard {
 	})
 }
 
-// DataShardFromDb creates a new DataShard instance from the given qdb.Shard.
+// DataShardFromDB creates a new DataShard instance from the given qdb.Shard.
 // It initializes the DataShard with the shard ID and hosts from the qdb.Shard,
 // and sets the shard type to config.DataShard.
 //
@@ -76,9 +76,16 @@ func DataShardFromProto(shard *proto.Shard) *DataShard {
 //
 // Returns:
 //   - *DataShard: The created DataShard instance.
-func DataShardFromDb(shard *qdb.Shard) *DataShard {
+func DataShardFromDB(shard *qdb.Shard) *DataShard {
 	return NewDataShard(shard.ID, &config.Shard{
 		RawHosts: shard.RawHosts,
 		Type:     config.DataShard,
 	})
+}
+
+func DataShardToDB(shard *DataShard) *qdb.Shard {
+	return &qdb.Shard{
+		ID:       shard.ID,
+		RawHosts: shard.Cfg.RawHosts,
+	}
 }

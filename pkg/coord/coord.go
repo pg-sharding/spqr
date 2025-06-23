@@ -33,7 +33,7 @@ func NewCoordinator(qdb qdb.XQDB) Coordinator {
 
 // AddDataShard implements meta.EntityMgr.
 func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
-	panic("unimplemented")
+	return lc.qdb.AddShard(ctx, topology.DataShardToDB(shard))
 }
 
 // AddWorldShard implements meta.EntityMgr.
@@ -198,7 +198,7 @@ func (lc *Coordinator) GetShard(ctx context.Context, shardID string) (*topology.
 	if err != nil {
 		return nil, err
 	}
-	return topology.DataShardFromDb(sh), nil
+	return topology.DataShardFromDB(sh), nil
 }
 
 // ListAllKeyRanges implements meta.EntityMgr.
@@ -276,7 +276,7 @@ func (lc *Coordinator) RedistributeKeyRange(ctx context.Context, req *kr.Redistr
 
 // RegisterRouter implements meta.EntityMgr.
 func (lc *Coordinator) RegisterRouter(ctx context.Context, r *topology.Router) error {
-	panic("unimplemented")
+	return lc.qdb.AddRouter(ctx, qdb.NewRouter(r.Address, r.ID, qdb.OPENED))
 }
 
 // RemoveBalancerTask implements meta.EntityMgr.
