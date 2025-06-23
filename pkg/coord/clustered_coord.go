@@ -1686,7 +1686,7 @@ func (qc *ClusteredCoordinator) RegisterRouter(ctx context.Context, r *topology.
 		return spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to ping router: %s", err)
 	}
 
-	return qc.db.AddRouter(ctx, qdb.NewRouter(r.Address, r.ID, qdb.OPENED))
+	return qc.Coordinator.RegisterRouter(ctx, r)
 }
 
 // TODO : unit tests
