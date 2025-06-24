@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"strings"
 	"math"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 const SIGNED_INT_RANGE_ERROR string = "the Signed Value should be at the range of [-9223372036854775808, 9223372036854775807]."
@@ -77,6 +78,7 @@ func randomHex(n int) (string, error) {
 	alter                  *Alter
 	alter_distribution     *AlterDistribution
 	distributed_relation   *DistributedRelation
+	alter_default_shard     *AlterDefaultShard
 	
 	relations              []*DistributedRelation
 	relation               *DistributedRelation
@@ -172,6 +174,7 @@ func randomHex(n int) (string, error) {
 %token <str> SYNC
 %token <str> RETRY
 %token <str> DISTRIBUTED IN ON
+%token <str> DEFAULT
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -238,6 +241,7 @@ func randomHex(n int) (string, error) {
 %type<strlist> col_types_list opt_col_types any_id_list opt_on_shards
 %type<str> col_types_elem
 %type<bool> opt_cascade
+%type<str> opt_default_shard
 
 
 %token <str> ASC DESC ORDER
@@ -629,6 +633,21 @@ distribution_alter_stmt:
 				Relation: $2,
 			},
 		}
+	} |
+	distribution_select_stmt DEFAULT SHARD any_id
+	{
+		$$ = &AlterDistribution{
+			Element: &AlterDefaultShard{
+				Distribution: $1,
+				Shard: $4,
+			},
+		}
+	} |
+	distribution_select_stmt DROP DEFAULT SHARD
+	{
+		$$ = &AlterDistribution{
+			Element: &DropDefaultShard{ Distribution: $1 },
+		}
 	}
 
 
@@ -824,11 +843,12 @@ lock_stmt:
 
 
 distribution_define_stmt:
-	DISTRIBUTION any_id opt_col_types
+	DISTRIBUTION any_id opt_col_types opt_default_shard
 	{
 		$$ = &DistributionDefinition{
 			ID: $2,
 			ColTypes: $3,
+			DefaultShard: $4,
 		}
 	}
 
@@ -851,19 +871,26 @@ col_types_list:
 
 col_types_elem:
 	VARCHAR {
-		$$ = "varchar"
+		$$ = qdb.ColumnTypeVarchar
 	} | VARCHAR HASH {
-		$$ = "varchar hashed"
+		$$ = qdb.ColumnTypeVarcharHashed
 	} | INTEGER {
-		$$ = "integer"
+		$$ = qdb.ColumnTypeInteger
 	} | INT {
-		$$ = "integer"
+		$$ = qdb.ColumnTypeInteger
 	} | INTEGER HASH {
-		$$ = "uinteger"
+		$$ = qdb.ColumnTypeUinteger
 	} | INT HASH {
-		$$ = "uinteger"
+		$$ = qdb.ColumnTypeUinteger
 	} | UUID {
-		$$ = "uuid"
+		$$ = qdb.ColumnTypeUUID
+	}
+
+opt_default_shard:
+	DEFAULT SHARD any_id {
+		$$ = $3
+	} | /* EMPTY */ {
+		$$ = ""
 	}
 
 sharding_rule_define_stmt:

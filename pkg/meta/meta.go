@@ -2,6 +2,7 @@ package meta
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -175,6 +176,63 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 	}
 }
 
+func createReplicatedDistribution(ctx context.Context, mngr EntityMgr) (*distributions.Distribution, error) {
+	if _, err := mngr.GetDistribution(ctx, distributions.REPLICATED); err != nil {
+		distribution := &distributions.Distribution{
+			Id:       distributions.REPLICATED,
+			ColTypes: nil,
+		}
+		err := mngr.CreateDistribution(ctx, distribution)
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
+			return nil, err
+		}
+		return distribution, nil
+	} else {
+		return nil, fmt.Errorf("REPLICATED distribution already exist")
+	}
+}
+
+func createNonReplicatedDistribution(ctx context.Context,
+	stmt spqrparser.DistributionDefinition,
+	mngr EntityMgr) (*distributions.Distribution, error) {
+	distribution := distributions.NewDistribution(stmt.ID, stmt.ColTypes)
+
+	dds, err := mngr.ListDistributions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var defaultShard *topology.DataShard
+	if stmt.DefaultShard != "" {
+		if ds, err := mngr.GetShard(ctx, stmt.DefaultShard); err != nil {
+			return nil, fmt.Errorf("Shard '%s' for default is not exists", stmt.DefaultShard)
+		} else {
+			defaultShard = ds
+		}
+	}
+
+	for _, ds := range dds {
+		if ds.Id == distribution.Id {
+			spqrlog.Zero.Debug().Msg("Attempt to create existing distribution")
+			return nil, fmt.Errorf("attempt to create existing distribution")
+		}
+	}
+
+	err = mngr.CreateDistribution(ctx, distribution)
+	if err != nil {
+		return nil, err
+	}
+	if defaultShard != nil {
+		defaultShardManager := NewDefaultShardManager(*distribution, mngr)
+		if defshardRes := defaultShardManager.CreateDefaultShardNoCheck(ctx, defaultShard); defshardRes != nil {
+			return nil, fmt.Errorf("Distribution %s created, but keyrange not. Error: %s",
+				distribution.Id, defshardRes.Error())
+		}
+	}
+
+	return distribution, nil
+}
+
 // TODO : unit tests
 
 // processCreate processes the given astmt statement of type spqrparser.Statement by creating a new distribution,
@@ -208,42 +266,20 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		if stmt.ID == "default" {
 			return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "You cannot create a \"default\" distribution, \"default\" is a reserved word")
 		}
-		var distribution *distributions.Distribution
-
 		if stmt.Replicated {
-			if _, err := mngr.GetDistribution(ctx, distributions.REPLICATED); err != nil {
-				distribution = &distributions.Distribution{
-					Id:       distributions.REPLICATED,
-					ColTypes: nil,
-				}
-				err := mngr.CreateDistribution(ctx, distribution)
-				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
-					return cli.ReportError(err)
-				}
+			if distribution, err := createReplicatedDistribution(ctx, mngr); err != nil {
+				return cli.ReportError(err)
 			} else {
-				return fmt.Errorf("REPLICATED distribution already exist")
+				return cli.AddDistribution(ctx, distribution)
 			}
 		} else {
-			distribution = distributions.NewDistribution(stmt.ID, stmt.ColTypes)
-
-			dds, err := mngr.ListDistributions(ctx)
-			if err != nil {
-				return err
-			}
-			for _, ds := range dds {
-				if ds.Id == distribution.Id {
-					spqrlog.Zero.Debug().Msg("Attempt to create existing distribution")
-					return fmt.Errorf("attempt to create existing distribution")
-				}
-			}
-
-			err = mngr.CreateDistribution(ctx, distribution)
-			if err != nil {
-				return err
+			distribution, createError := createNonReplicatedDistribution(ctx, *stmt, mngr)
+			if createError != nil {
+				return cli.ReportError(createError)
+			} else {
+				return cli.AddDistribution(ctx, distribution)
 			}
 		}
-		return cli.AddDistribution(ctx, distribution)
 	case *spqrparser.ShardingRuleDefinition:
 		return cli.ReportError(spqrerror.ShardingRulesRemoved)
 	case *spqrparser.KeyRangeDefinition:
@@ -264,6 +300,12 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 			return cli.ReportError(err)
+		}
+		defaultShardManager := NewDefaultShardManager(*ds, mngr)
+		if defaultKr := defaultShardManager.DefaultKeyRangeId(); stmt.KeyRangeID == defaultKr {
+			errorStr := fmt.Sprintf("Error kay range %s is reserved", defaultKr)
+			spqrlog.Zero.Error().Err(err).Msg(errorStr)
+			return cli.ReportError(errors.New(errorStr))
 		}
 		req, err := kr.KeyRangeFromSQL(stmt, ds.ColTypes)
 		if err != nil {
@@ -346,6 +388,26 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			return err
 		}
 		return cli.AlterDistributedRelation(ctx, stmt.Distribution.ID, stmt.Relation.Name)
+	case *spqrparser.DropDefaultShard:
+		if dsm, err := TryNewDefaultShardManager(ctx, stmt.Distribution.ID, mngr); err != nil {
+			return err
+		} else {
+			if defaultShard, err := dsm.DropDefaultShard(ctx); err != nil {
+				return err
+			} else {
+				return cli.MakeSimpleResponce(ctx, dsm.SuccessDropResponce(*defaultShard))
+			}
+		}
+	case *spqrparser.AlterDefaultShard:
+		if dsm, err := TryNewDefaultShardManager(ctx, stmt.Distribution.ID, mngr); err != nil {
+			return err
+		} else {
+			if err := dsm.CreateDefaultShard(ctx, stmt.Shard); err != nil {
+				return err
+			} else {
+				return cli.MakeSimpleResponce(ctx, dsm.SuccessCreateResponce(stmt.Shard))
+			}
+		}
 	default:
 		return ErrUnknownCoordinatorCommand
 	}

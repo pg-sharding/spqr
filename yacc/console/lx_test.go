@@ -254,12 +254,63 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.IDENT,
 			},
 		},
+		{
+			query: "CREATE DISTRIBUTION db1 DEFAULT shard1",
+			exp: []int{
+				spqrparser.CREATE,
+				spqrparser.DISTRIBUTION,
+				spqrparser.IDENT,
+				spqrparser.DEFAULT,
+				spqrparser.IDENT,
+			},
+		},
 	} {
 		tmp := spqrparser.NewStringTokenizer(tt.query)
 
 		act := spqrparser.LexString(tmp)
 
 		assert.Equal(tt.exp, act, tt.query)
+	}
+}
+
+
+func TestDefaultShard(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   []int
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "CREATE DISTRIBUTION db1 DEFAULT shard1",
+			exp: []int{
+				spqrparser.CREATE,
+				spqrparser.DISTRIBUTION,
+				spqrparser.IDENT,
+				spqrparser.DEFAULT,
+				spqrparser.IDENT,
+			},
+		},
+		{
+			query: "ALTER DISTRIBUTION distr1 DROP DEFAULT SHARD",
+			exp: []int{
+				spqrparser.ALTER,
+				spqrparser.DISTRIBUTION,
+				spqrparser.IDENT,
+				spqrparser.DROP,
+				spqrparser.DEFAULT,
+				spqrparser.SHARD,
+			},
+		},
+	} {
+		tmp := spqrparser.NewStringTokenizer(tt.query)
+
+		act := spqrparser.LexString(tmp)
+
+		assert.Equal(tt.exp, act)
 	}
 }
 
