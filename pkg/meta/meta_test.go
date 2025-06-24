@@ -64,7 +64,7 @@ func TestNoManualCreateDefaultShardKeyRange(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	var mngr meta.EntityMgr = coord.NewLocalInstanceMetadataMgr(memqdb, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil)
 	gomock.InOrder(
 		ca.EXPECT().Send(&pgproto3.ErrorResponse{Severity: "ERROR",
 			Message: "Error kay range ds1.DEFAULT is reserved",
@@ -84,7 +84,7 @@ func TestCreteDistrWithDefaultShardSuccess(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	var mngr meta.EntityMgr = coord.NewLocalInstanceMetadataMgr(memqdb, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil)
 
 	expectedDistribution := distributions.NewDistribution("dbTestDefault", []string{"integer"})
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
@@ -110,7 +110,7 @@ func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	var mngr meta.EntityMgr = coord.NewLocalInstanceMetadataMgr(memqdb, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil)
 
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
 	assert.Nil(t, actualDistribution)

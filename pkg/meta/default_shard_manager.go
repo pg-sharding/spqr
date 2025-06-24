@@ -19,7 +19,8 @@ type DefaultShardManager struct {
 	mngr         EntityMgr
 }
 
-func NewDefaultShardManager(distribution distributions.Distribution, mngr EntityMgr) *DefaultShardManager {
+func NewDefaultShardManager(distribution distributions.Distribution,
+	mngr EntityMgr) *DefaultShardManager {
 	return &DefaultShardManager{
 		distribution: distribution,
 		mngr:         mngr,
@@ -38,8 +39,8 @@ func TryNewDefaultShardManager(ctx context.Context,
 	}
 }
 
-func (dsm *DefaultShardManager) DefaultKeyRangeId() string {
-	return dsm.distribution.Id + "." + spqrparser.DEFAULT_KEY_RANGE_SUFFIX
+func (manager *DefaultShardManager) DefaultKeyRangeId() string {
+	return manager.distribution.Id + "." + spqrparser.DEFAULT_KEY_RANGE_SUFFIX
 }
 
 func DefaultRangeLowerBound(colTypes []string) (kr.KeyRangeBound, error) {
@@ -51,19 +52,19 @@ func DefaultRangeLowerBound(colTypes []string) (kr.KeyRangeBound, error) {
 		case qdb.ColumnTypeInteger:
 			lowerBound[i] = int64(math.MinInt64)
 		default:
-			return nil, fmt.Errorf("unsuported type '%v' for default key range", colType)
+			return nil, fmt.Errorf("unsupported type '%v' for default key range", colType)
 		}
 	}
 	return lowerBound, nil
 }
 
-func (dsm *DefaultShardManager) keyRangeDefault(DefaultShardId string) (*kr.KeyRange, error) {
-	if lowerBound, err := DefaultRangeLowerBound(dsm.distribution.ColTypes); err == nil {
+func (manager *DefaultShardManager) keyRangeDefault(DefaultShardId string) (*kr.KeyRange, error) {
+	if lowerBound, err := DefaultRangeLowerBound(manager.distribution.ColTypes); err == nil {
 		keyRange := &kr.KeyRange{
 			ShardID:      DefaultShardId,
-			ID:           dsm.DefaultKeyRangeId(),
-			Distribution: dsm.distribution.Id,
-			ColumnTypes:  dsm.distribution.ColTypes,
+			ID:           manager.DefaultKeyRangeId(),
+			Distribution: manager.distribution.Id,
+			ColumnTypes:  manager.distribution.ColTypes,
 			LowerBound:   lowerBound,
 		}
 
@@ -73,22 +74,25 @@ func (dsm *DefaultShardManager) keyRangeDefault(DefaultShardId string) (*kr.KeyR
 	}
 }
 
-func (dsm *DefaultShardManager) CreateDefaultShard(ctx context.Context, defaultShardId string) error {
-	if defaultShard, err := dsm.mngr.GetShard(ctx, defaultShardId); err != nil {
-		return fmt.Errorf("Shard '%s' for default is not exists", defaultShard.ID)
+func (manager *DefaultShardManager) CreateDefaultShard(ctx context.Context, defaultShardId string) error {
+	if defaultShard, err := manager.mngr.GetShard(ctx, defaultShardId); err != nil {
+		return fmt.Errorf("shard '%s' for default is not exists", defaultShard.ID)
 	} else {
-		return dsm.CreateDefaultShardNoCheck(ctx, defaultShard)
+		return manager.CreateDefaultShardNoCheck(ctx, defaultShard)
 	}
 }
 
-func (dsm *DefaultShardManager) CreateDefaultShardNoCheck(ctx context.Context, defaultShard *topology.DataShard) error {
-	req, err := dsm.keyRangeDefault(defaultShard.ID)
+func (manager *DefaultShardManager) CreateDefaultShardNoCheck(ctx context.Context,
+	defaultShard *topology.DataShard) error {
+	req, err := manager.keyRangeDefault(defaultShard.ID)
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Error (1) when adding default key range for: " + dsm.distribution.Id)
+		spqrlog.Zero.Error().Err(err).Msg("error (1) when adding default key range for: " +
+			manager.distribution.Id)
 		return err
 	}
-	if err := dsm.mngr.CreateKeyRange(ctx, req); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Error (2) when adding default key range for: " + dsm.distribution.Id)
+	if err := manager.mngr.CreateKeyRange(ctx, req); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error (2) when adding default key range for: " +
+			manager.distribution.Id)
 		return err
 	}
 	return nil

@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
 func TestDefaultRangeLowerBound(t *testing.T) {
 
 	type tcase struct {
@@ -31,7 +30,7 @@ func TestDefaultRangeLowerBound(t *testing.T) {
 				"uuid",
 			},
 			expected:    nil,
-			expectedErr: fmt.Errorf("unsuported type '%v' for default key range", "uuid"),
+			expectedErr: fmt.Errorf("unsupported type '%v' for default key range", "uuid"),
 		},
 	} {
 		actual, actualErr := meta.DefaultRangeLowerBound(test.colTypes)
@@ -95,16 +94,16 @@ func TestCmpRangesLess_Default(t *testing.T) {
 			expect:     false,
 		},
 		{
-			testName:   "tttttt1",
+			testName:   "test1",
 			leftBound:  defaultString,
-			checkBound: kr.KeyRangeBound{"tttttt1"},
+			checkBound: kr.KeyRangeBound{"test1"},
 			types:      []string{"varchar"},
 			expect:     true,
 		},
 		{
 			testName:   "minInt, tt",
 			leftBound:  defaultMix1,
-			checkBound: kr.KeyRangeBound{int64(math.MinInt64), "tttttt1"},
+			checkBound: kr.KeyRangeBound{int64(math.MinInt64), "test1"},
 			types:      []string{"integer", "varchar"},
 			expect:     true,
 		},

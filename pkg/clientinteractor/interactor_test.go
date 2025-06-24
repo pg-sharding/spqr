@@ -424,17 +424,17 @@ func TestMakeSimpleResponceWithData(t *testing.T) {
 	ca := mockcl.NewMockRouterClient(ctrl)
 	interactor := clientinteractor.NewPSQLInteractor(ca)
 	info := []clientinteractor.SimpleResultRow{
-		clientinteractor.SimpleResultRow{Name: "ttt1", Value: "ddd1"},
-		clientinteractor.SimpleResultRow{Name: "ttt2", Value: "ddd2"},
+		clientinteractor.SimpleResultRow{Name: "test1", Value: "data1"},
+		clientinteractor.SimpleResultRow{Name: "test2", Value: "data2"},
 	}
 	data := clientinteractor.SimpleResultMsg{Header: "test header", Rows: info}
 
 	desc := []pgproto3.FieldDescription{clientinteractor.TextOidFD("test header")}
 	firstRow := pgproto3.DataRow{
-		Values: [][]byte{[]byte(fmt.Sprintf("%s	-> %s", "ttt1", "ddd1"))},
+		Values: [][]byte{[]byte(fmt.Sprintf("%s	-> %s", "test1", "data1"))},
 	}
 	secondRow := pgproto3.DataRow{
-		Values: [][]byte{[]byte(fmt.Sprintf("%s	-> %s", "ttt2", "ddd2"))},
+		Values: [][]byte{[]byte(fmt.Sprintf("%s	-> %s", "test2", "data2"))},
 	}
 	gomock.InOrder(
 		ca.EXPECT().Send(&pgproto3.RowDescription{Fields: desc}),
@@ -443,11 +443,11 @@ func TestMakeSimpleResponceWithData(t *testing.T) {
 		ca.EXPECT().Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 2")}),
 		ca.EXPECT().Send(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}),
 	)
-	err := interactor.MakeSimpleResponce(ctx, data)
+	err := interactor.MakeSimpleResponse(ctx, data)
 	assert.Nil(t, err)
 }
 
-func TestMakeSimpleResponceEmpty(t *testing.T) {
+func TestMakeSimpleResponseEmpty(t *testing.T) {
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
@@ -461,6 +461,6 @@ func TestMakeSimpleResponceEmpty(t *testing.T) {
 		ca.EXPECT().Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 0")}),
 		ca.EXPECT().Send(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}),
 	)
-	err := interactor.MakeSimpleResponce(ctx, data)
+	err := interactor.MakeSimpleResponse(ctx, data)
 	assert.Nil(t, err)
 }

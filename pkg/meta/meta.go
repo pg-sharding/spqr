@@ -224,9 +224,9 @@ func createNonReplicatedDistribution(ctx context.Context,
 	}
 	if defaultShard != nil {
 		defaultShardManager := NewDefaultShardManager(*distribution, mngr)
-		if defshardRes := defaultShardManager.CreateDefaultShardNoCheck(ctx, defaultShard); defshardRes != nil {
-			return nil, fmt.Errorf("Distribution %s created, but keyrange not. Error: %s",
-				distribution.Id, defshardRes.Error())
+		if defShardRes := defaultShardManager.CreateDefaultShardNoCheck(ctx, defaultShard); defShardRes != nil {
+			return nil, fmt.Errorf("distribution %s created, but keyrange not. Error: %s",
+				distribution.Id, defShardRes.Error())
 		}
 	}
 
@@ -389,23 +389,23 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		}
 		return cli.AlterDistributedRelation(ctx, stmt.Distribution.ID, stmt.Relation.Name)
 	case *spqrparser.DropDefaultShard:
-		if dsm, err := TryNewDefaultShardManager(ctx, stmt.Distribution.ID, mngr); err != nil {
+		if manager, err := TryNewDefaultShardManager(ctx, stmt.Distribution.ID, mngr); err != nil {
 			return err
 		} else {
-			if defaultShard, err := dsm.DropDefaultShard(ctx); err != nil {
+			if defaultShard, err := manager.DropDefaultShard(ctx); err != nil {
 				return err
 			} else {
-				return cli.MakeSimpleResponce(ctx, dsm.SuccessDropResponce(*defaultShard))
+				return cli.MakeSimpleResponse(ctx, manager.SuccessDropResponce(*defaultShard))
 			}
 		}
 	case *spqrparser.AlterDefaultShard:
-		if dsm, err := TryNewDefaultShardManager(ctx, stmt.Distribution.ID, mngr); err != nil {
+		if manager, err := TryNewDefaultShardManager(ctx, stmt.Distribution.ID, mngr); err != nil {
 			return err
 		} else {
-			if err := dsm.CreateDefaultShard(ctx, stmt.Shard); err != nil {
+			if err := manager.CreateDefaultShard(ctx, stmt.Shard); err != nil {
 				return err
 			} else {
-				return cli.MakeSimpleResponce(ctx, dsm.SuccessCreateResponce(stmt.Shard))
+				return cli.MakeSimpleResponse(ctx, manager.SuccessCreateResponce(stmt.Shard))
 			}
 		}
 	default:
