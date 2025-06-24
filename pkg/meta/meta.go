@@ -395,7 +395,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			if defaultShard, err := manager.DropDefaultShard(ctx); err != nil {
 				return err
 			} else {
-				return cli.MakeSimpleResponse(ctx, manager.SuccessDropResponce(*defaultShard))
+				return cli.MakeSimpleResponse(ctx, manager.SuccessDropResponse(*defaultShard))
 			}
 		}
 	case *spqrparser.AlterDefaultShard:
@@ -405,7 +405,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			if err := manager.CreateDefaultShard(ctx, stmt.Shard); err != nil {
 				return err
 			} else {
-				return cli.MakeSimpleResponse(ctx, manager.SuccessCreateResponce(stmt.Shard))
+				return cli.MakeSimpleResponse(ctx, manager.SuccessCreateResponse(stmt.Shard))
 			}
 		}
 	default:

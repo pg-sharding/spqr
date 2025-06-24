@@ -418,7 +418,7 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 	assert.ErrorContains(err, "not found column 'someColumn' for group by statement")
 }
 
-func TestMakeSimpleResponceWithData(t *testing.T) {
+func TestMakeSimpleResponseWithData(t *testing.T) {
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)

@@ -98,26 +98,26 @@ func (manager *DefaultShardManager) CreateDefaultShardNoCheck(ctx context.Contex
 	return nil
 }
 
-func (dsm *DefaultShardManager) DropDefaultShard(ctx context.Context) (*string, error) {
-	if defaultKeyRange, err := dsm.mngr.GetKeyRange(ctx, dsm.DefaultKeyRangeId()); err != nil {
-		return nil, fmt.Errorf("distribution id=%s have not default shard", dsm.distribution.Id)
+func (manager *DefaultShardManager) DropDefaultShard(ctx context.Context) (*string, error) {
+	if defaultKeyRange, err := manager.mngr.GetKeyRange(ctx, manager.DefaultKeyRangeId()); err != nil {
+		return nil, fmt.Errorf("distribution id=%s have not default shard", manager.distribution.Id)
 	} else {
 		spqrlog.Zero.Debug().Str("default key range", defaultKeyRange.ID).Msg("parsed drop")
-		return &(defaultKeyRange.ShardID), dsm.mngr.DropKeyRange(ctx, defaultKeyRange.ID)
+		return &(defaultKeyRange.ShardID), manager.mngr.DropKeyRange(ctx, defaultKeyRange.ID)
 	}
 }
 
-func (dsm *DefaultShardManager) SuccessDropResponce(defaultShard string) clientinteractor.SimpleResultMsg {
+func (manager *DefaultShardManager) SuccessDropResponse(defaultShard string) clientinteractor.SimpleResultMsg {
 	info := []clientinteractor.SimpleResultRow{
-		clientinteractor.SimpleResultRow{Name: "distribution id", Value: dsm.distribution.Id},
+		clientinteractor.SimpleResultRow{Name: "distribution id", Value: manager.distribution.Id},
 		clientinteractor.SimpleResultRow{Name: "shard id", Value: defaultShard},
 	}
 	return clientinteractor.SimpleResultMsg{Header: "drop default shard", Rows: info}
 }
 
-func (dsm *DefaultShardManager) SuccessCreateResponce(defaultShard string) clientinteractor.SimpleResultMsg {
+func (manager *DefaultShardManager) SuccessCreateResponse(defaultShard string) clientinteractor.SimpleResultMsg {
 	info := []clientinteractor.SimpleResultRow{
-		clientinteractor.SimpleResultRow{Name: "distribution id", Value: dsm.distribution.Id},
+		clientinteractor.SimpleResultRow{Name: "distribution id", Value: manager.distribution.Id},
 		clientinteractor.SimpleResultRow{Name: "shard id", Value: defaultShard},
 	}
 	return clientinteractor.SimpleResultMsg{Header: "create default shard", Rows: info}
