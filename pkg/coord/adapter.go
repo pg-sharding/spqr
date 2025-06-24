@@ -71,6 +71,11 @@ func (a *Adapter) GetReferenceRelation(ctx context.Context, tableName string) (*
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetReferenceRelation not implemented")
 }
 
+// SyncReferenceRelations implements meta.EntityMgr.
+func (a *Adapter) SyncReferenceRelations(ctx context.Context, ids []string, destShard string) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "SyncReferenceRelations not implemented")
+}
+
 // CreateReferenceRelation implements meta.EntityMgr.
 func (a *Adapter) CreateReferenceRelation(ctx context.Context, r *rrelation.ReferenceRelation, entry []*rrelation.AutoIncrementEntry) error {
 	c := proto.NewReferenceRelationsServiceClient(a.conn)

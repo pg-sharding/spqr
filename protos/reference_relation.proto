@@ -34,6 +34,7 @@ message ListReferenceRelationsReply {
 
 message SyncReferenceRelationsRequest {
     string shard_id = 1;
+    repeated string ids = 2;
 }
 
 service ReferenceRelationsService {
