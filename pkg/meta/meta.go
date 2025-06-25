@@ -177,6 +177,67 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 
 // TODO : unit tests
 
+// createReplicatedDistribution creates replicated distribution
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - mngr (EntityMgr): The entity manager used to manage the entities.
+// Returns:
+// - dictribution: created distribution.
+// - error: An error if the creation encounters any issues.
+func createReplicatedDistribution(ctx context.Context, mngr EntityMgr) (*distributions.Distribution, error) {
+	if _, err := mngr.GetDistribution(ctx, distributions.REPLICATED); err != nil {
+		distribution := &distributions.Distribution{
+			Id:       distributions.REPLICATED,
+			ColTypes: nil,
+		}
+		err := mngr.CreateDistribution(ctx, distribution)
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
+			return nil, err
+		}
+		return distribution, nil
+	} else {
+		return nil, fmt.Errorf("REPLICATED distribution already exist")
+	}
+}
+
+// TODO : unit tests
+
+// createNonReplicatedDistribution creates non replicated distribution
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - stmt (spqrparser.DistributionDefinition): The create distribution statement to be processed.
+// - mngr (EntityMgr): The entity manager used to manage the entities.
+// Returns:
+// - dictribution: created distribution.
+// - error: An error if the creation encounters any issues.
+func createNonReplicatedDistribution(ctx context.Context,
+	stmt spqrparser.DistributionDefinition,
+	mngr EntityMgr) (*distributions.Distribution, error) {
+	distribution := distributions.NewDistribution(stmt.ID, stmt.ColTypes)
+
+	dds, err := mngr.ListDistributions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, ds := range dds {
+		if ds.Id == distribution.Id {
+			spqrlog.Zero.Debug().Msg("Attempt to create existing distribution")
+			return nil, fmt.Errorf("attempt to create existing distribution")
+		}
+	}
+
+	err = mngr.CreateDistribution(ctx, distribution)
+	if err != nil {
+		return nil, err
+	}
+	return distribution, nil
+}
+
+// TODO : unit tests
+
 // processCreate processes the given astmt statement of type spqrparser.Statement by creating a new distribution,
 // sharding rule, key range, or data shard depending on the type of the statement.
 //
@@ -208,42 +269,20 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		if stmt.ID == "default" {
 			return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "You cannot create a \"default\" distribution, \"default\" is a reserved word")
 		}
-		var distribution *distributions.Distribution
-
 		if stmt.Replicated {
-			if _, err := mngr.GetDistribution(ctx, distributions.REPLICATED); err != nil {
-				distribution = &distributions.Distribution{
-					Id:       distributions.REPLICATED,
-					ColTypes: nil,
-				}
-				err := mngr.CreateDistribution(ctx, distribution)
-				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
-					return cli.ReportError(err)
-				}
+			if distribution, err := createReplicatedDistribution(ctx, mngr); err != nil {
+				return cli.ReportError(err)
 			} else {
-				return fmt.Errorf("REPLICATED distribution already exist")
+				return cli.AddDistribution(ctx, distribution)
 			}
 		} else {
-			distribution = distributions.NewDistribution(stmt.ID, stmt.ColTypes)
-
-			dds, err := mngr.ListDistributions(ctx)
-			if err != nil {
-				return err
-			}
-			for _, ds := range dds {
-				if ds.Id == distribution.Id {
-					spqrlog.Zero.Debug().Msg("Attempt to create existing distribution")
-					return fmt.Errorf("attempt to create existing distribution")
-				}
-			}
-
-			err = mngr.CreateDistribution(ctx, distribution)
-			if err != nil {
-				return err
+			distribution, createError := createNonReplicatedDistribution(ctx, *stmt, mngr)
+			if createError != nil {
+				return cli.ReportError(createError)
+			} else {
+				return cli.AddDistribution(ctx, distribution)
 			}
 		}
-		return cli.AddDistribution(ctx, distribution)
 	case *spqrparser.ShardingRuleDefinition:
 		return cli.ReportError(spqrerror.ShardingRulesRemoved)
 	case *spqrparser.KeyRangeDefinition:
