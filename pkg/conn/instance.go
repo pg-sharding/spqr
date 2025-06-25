@@ -186,9 +186,10 @@ func setTCPUserTimeout(d time.Duration) func(string, string, syscall.RawConn) er
 		var err = c.Control(func(fd uintptr) {
 			/*
 				#define TCP_USER_TIMEOUT	 18 // How long for loss retry before timeout
+    				https://pkg.go.dev/syscall: syscall.SOL_TCP = 0x6
 			*/
 			if runtime.GOOS == "linux" {
-				sysErr = syscall.SetsockoptInt(int(fd), syscall.SOL_TCP, 0x12, int(d.Milliseconds()))
+				sysErr = syscall.SetsockoptInt(int(fd), 0x6, 0x12, int(d.Milliseconds()))
 			}
 		})
 		if sysErr != nil {
