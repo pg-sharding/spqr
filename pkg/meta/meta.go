@@ -235,6 +235,67 @@ func createNonReplicatedDistribution(ctx context.Context,
 
 // TODO : unit tests
 
+// createReplicatedDistribution creates replicated distribution
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - mngr (EntityMgr): The entity manager used to manage the entities.
+// Returns:
+// - distribution: created distribution.
+// - error: An error if the creation encounters any issues.
+func createReplicatedDistribution(ctx context.Context, mngr EntityMgr) (*distributions.Distribution, error) {
+	if _, err := mngr.GetDistribution(ctx, distributions.REPLICATED); err != nil {
+		distribution := &distributions.Distribution{
+			Id:       distributions.REPLICATED,
+			ColTypes: nil,
+		}
+		err := mngr.CreateDistribution(ctx, distribution)
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
+			return nil, err
+		}
+		return distribution, nil
+	} else {
+		return nil, fmt.Errorf("REPLICATED distribution already exist")
+	}
+}
+
+// TODO : unit tests
+
+// createNonReplicatedDistribution creates non replicated distribution
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - stmt (spqrparser.DistributionDefinition): The create distribution statement to be processed.
+// - mngr (EntityMgr): The entity manager used to manage the entities.
+// Returns:
+// - distribution: created distribution.
+// - error: An error if the creation encounters any issues.
+func createNonReplicatedDistribution(ctx context.Context,
+	stmt spqrparser.DistributionDefinition,
+	mngr EntityMgr) (*distributions.Distribution, error) {
+	distribution := distributions.NewDistribution(stmt.ID, stmt.ColTypes)
+
+	dds, err := mngr.ListDistributions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, ds := range dds {
+		if ds.Id == distribution.Id {
+			spqrlog.Zero.Debug().Msg("Attempt to create existing distribution")
+			return nil, fmt.Errorf("attempt to create existing distribution")
+		}
+	}
+
+	err = mngr.CreateDistribution(ctx, distribution)
+	if err != nil {
+		return nil, err
+	}
+	return distribution, nil
+}
+
+// TODO : unit tests
+
 // processCreate processes the given astmt statement of type spqrparser.Statement by creating a new distribution,
 // sharding rule, key range, or data shard depending on the type of the statement.
 //
