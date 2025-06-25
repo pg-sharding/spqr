@@ -176,63 +176,6 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 	}
 }
 
-func createReplicatedDistribution(ctx context.Context, mngr EntityMgr) (*distributions.Distribution, error) {
-	if _, err := mngr.GetDistribution(ctx, distributions.REPLICATED); err != nil {
-		distribution := &distributions.Distribution{
-			Id:       distributions.REPLICATED,
-			ColTypes: nil,
-		}
-		err := mngr.CreateDistribution(ctx, distribution)
-		if err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
-			return nil, err
-		}
-		return distribution, nil
-	} else {
-		return nil, fmt.Errorf("REPLICATED distribution already exist")
-	}
-}
-
-func createNonReplicatedDistribution(ctx context.Context,
-	stmt spqrparser.DistributionDefinition,
-	mngr EntityMgr) (*distributions.Distribution, error) {
-	distribution := distributions.NewDistribution(stmt.ID, stmt.ColTypes)
-
-	dds, err := mngr.ListDistributions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var defaultShard *topology.DataShard
-	if stmt.DefaultShard != "" {
-		if ds, err := mngr.GetShard(ctx, stmt.DefaultShard); err != nil {
-			return nil, fmt.Errorf("shard '%s' for default is not exists", stmt.DefaultShard)
-		} else {
-			defaultShard = ds
-		}
-	}
-
-	for _, ds := range dds {
-		if ds.Id == distribution.Id {
-			spqrlog.Zero.Debug().Msg("Attempt to create existing distribution")
-			return nil, fmt.Errorf("attempt to create existing distribution")
-		}
-	}
-
-	err = mngr.CreateDistribution(ctx, distribution)
-	if err != nil {
-		return nil, err
-	}
-	if defaultShard != nil {
-		defaultShardManager := NewDefaultShardManager(*distribution, mngr)
-		if defShardRes := defaultShardManager.CreateDefaultShardNoCheck(ctx, defaultShard); defShardRes != nil {
-			return nil, fmt.Errorf("distribution %s created, but keyrange not. Error: %s",
-				distribution.Id, defShardRes.Error())
-		}
-	}
-
-	return distribution, nil
-}
-
 // TODO : unit tests
 
 // createReplicatedDistribution creates replicated distribution
@@ -280,6 +223,15 @@ func createNonReplicatedDistribution(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	var defaultShard *topology.DataShard
+	if stmt.DefaultShard != "" {
+		if ds, err := mngr.GetShard(ctx, stmt.DefaultShard); err != nil {
+			return nil, fmt.Errorf("shard '%s' for default is not exists", stmt.DefaultShard)
+		} else {
+			defaultShard = ds
+		}
+	}
+
 	for _, ds := range dds {
 		if ds.Id == distribution.Id {
 			spqrlog.Zero.Debug().Msg("Attempt to create existing distribution")
@@ -291,6 +243,14 @@ func createNonReplicatedDistribution(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	if defaultShard != nil {
+		defaultShardManager := NewDefaultShardManager(*distribution, mngr)
+		if defShardRes := defaultShardManager.CreateDefaultShardNoCheck(ctx, defaultShard); defShardRes != nil {
+			return nil, fmt.Errorf("distribution %s created, but keyrange not. Error: %s",
+				distribution.Id, defShardRes.Error())
+		}
+	}
+
 	return distribution, nil
 }
 
