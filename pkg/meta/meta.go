@@ -183,7 +183,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 // - ctx (context.Context): The context of the operation.
 // - mngr (EntityMgr): The entity manager used to manage the entities.
 // Returns:
-// - dictribution: created distribution.
+// - distribution: created distribution.
 // - error: An error if the creation encounters any issues.
 func createReplicatedDistribution(ctx context.Context, mngr EntityMgr) (*distributions.Distribution, error) {
 	if _, err := mngr.GetDistribution(ctx, distributions.REPLICATED); err != nil {
@@ -211,7 +211,7 @@ func createReplicatedDistribution(ctx context.Context, mngr EntityMgr) (*distrib
 // - stmt (spqrparser.DistributionDefinition): The create distribution statement to be processed.
 // - mngr (EntityMgr): The entity manager used to manage the entities.
 // Returns:
-// - dictribution: created distribution.
+// - distribution: created distribution.
 // - error: An error if the creation encounters any issues.
 func createNonReplicatedDistribution(ctx context.Context,
 	stmt spqrparser.DistributionDefinition,
