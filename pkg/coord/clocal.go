@@ -346,9 +346,9 @@ func (lc *LocalInstanceMetadataMgr) GetShard(ctx context.Context, shardID string
 			return nil, err
 		}
 		return topology.DataShardFromDB(sh), nil
-	} else {
-		return nil, ErrNotCoordinator
 	}
+	return nil, ErrNotCoordinator
+
 }
 
 func (lc *LocalInstanceMetadataMgr) Cache() *cache.SchemaCache {

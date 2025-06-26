@@ -410,9 +410,10 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		}
 		return cli.AlterDistributedRelation(ctx, stmt.Distribution.ID, stmt.Relation.Name)
 	case *spqrparser.DropDefaultShard:
-		if manager, err := TryNewDefaultShardManager(ctx, stmt.Distribution.ID, mngr); err != nil {
+		if distribution, err := mngr.GetDistribution(ctx, stmt.Distribution.ID); err != nil {
 			return err
 		} else {
+			manager := NewDefaultShardManager(*distribution, mngr)
 			if defaultShard, err := manager.DropDefaultShard(ctx); err != nil {
 				return err
 			} else {
@@ -420,14 +421,14 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			}
 		}
 	case *spqrparser.AlterDefaultShard:
-		if manager, err := TryNewDefaultShardManager(ctx, stmt.Distribution.ID, mngr); err != nil {
+		if distribution, err := mngr.GetDistribution(ctx, stmt.Distribution.ID); err != nil {
 			return err
 		} else {
+			manager := NewDefaultShardManager(*distribution, mngr)
 			if err := manager.CreateDefaultShard(ctx, stmt.Shard); err != nil {
 				return err
-			} else {
-				return cli.MakeSimpleResponse(ctx, manager.SuccessCreateResponse(stmt.Shard))
 			}
+			return cli.MakeSimpleResponse(ctx, manager.SuccessCreateResponse(stmt.Shard))
 		}
 	default:
 		return ErrUnknownCoordinatorCommand

@@ -27,18 +27,6 @@ func NewDefaultShardManager(distribution distributions.Distribution,
 	}
 }
 
-func TryNewDefaultShardManager(ctx context.Context,
-	distributionId string, mngr EntityMgr) (*DefaultShardManager, error) {
-	if distribution, err := mngr.GetDistribution(ctx, distributionId); err != nil {
-		return nil, fmt.Errorf("distribution id=%s not exists", distributionId)
-	} else {
-		return &DefaultShardManager{
-			distribution: *distribution,
-			mngr:         mngr,
-		}, nil
-	}
-}
-
 func (manager *DefaultShardManager) DefaultKeyRangeId() string {
 	return manager.distribution.Id + "." + spqrparser.DEFAULT_KEY_RANGE_SUFFIX
 }
