@@ -16,4 +16,4 @@ But you can explicitly specify a shard or a sharding key in a comment request
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30*/;
 ```
 
-You can set [default shard](/sharding/default_shard) for distribution. If a default shard exists, route the query to the default shard for existsing route.
+You can set [default shard](/sharding/default_shard) for distribution. If a default shard exists router routs the query to the default shard for existing route.
