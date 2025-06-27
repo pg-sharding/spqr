@@ -1278,7 +1278,7 @@ func TestDistributionDefaultShard(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "CREATE DISTRIBUTION db1 DEFAULT SHARD shard1;",
+			query: "CREATE DISTRIBUTION ds1 DEFAULT SHARD shard1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.DistributionDefinition{
 					ID:           "db1",
@@ -1288,7 +1288,7 @@ func TestDistributionDefaultShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "CREATE DISTRIBUTION db1 COLUMN TYPES integer DEFAULT SHARD shard1;",
+			query: "CREATE DISTRIBUTION ds1 COLUMN TYPES integer DEFAULT SHARD shard1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.DistributionDefinition{
 					ID: "db1",

@@ -255,11 +255,24 @@ func TestSimpleLex(t *testing.T) {
 			},
 		},
 		{
-			query: "CREATE DISTRIBUTION db1 DEFAULT shard1",
+			query: "CREATE DISTRIBUTION ds1 DEFAULT shard1",
 			exp: []int{
 				spqrparser.CREATE,
 				spqrparser.DISTRIBUTION,
 				spqrparser.IDENT,
+				spqrparser.DEFAULT,
+				spqrparser.IDENT,
+			},
+		},
+		{
+			query: "CREATE DISTRIBUTION ds1 COLUMN TYPES integer DEFAULT shard1",
+			exp: []int{
+				spqrparser.CREATE,
+				spqrparser.DISTRIBUTION,
+				spqrparser.IDENT,
+				spqrparser.COLUMN,
+				spqrparser.TYPES,
+				spqrparser.INTEGER,
 				spqrparser.DEFAULT,
 				spqrparser.IDENT,
 			},
@@ -272,7 +285,6 @@ func TestSimpleLex(t *testing.T) {
 		assert.Equal(tt.exp, act, tt.query)
 	}
 }
-
 
 func TestDefaultShard(t *testing.T) {
 	assert := assert.New(t)
