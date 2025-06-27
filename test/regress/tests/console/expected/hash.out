@@ -40,9 +40,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION r4 DISTRIBUTION KEY col1 HASH FUNCTION CI
 (2 rows)
 
 SHOW DISTRIBUTIONS;
- Distribution ID | Column types 
------------------+--------------
- ds1             | integer
+ Distribution ID | Column types | Default shard 
+-----------------+--------------+---------------
+ ds1             | integer      | not exists
 (1 row)
 
 SHOW RELATIONS;

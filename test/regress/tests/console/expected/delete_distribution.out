@@ -73,9 +73,9 @@ DROP DISTRIBUTION ds1 CASCADE;
 (1 row)
 
 SHOW distributions;
- Distribution ID | Column types 
------------------+--------------
- ds2             | integer
+ Distribution ID | Column types | Default shard 
+-----------------+--------------+---------------
+ ds2             | integer      | not exists
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;
@@ -85,8 +85,8 @@ DROP DISTRIBUTION ALL CASCADE;
 (1 row)
 
 SHOW distributions;
- Distribution ID | Column types 
------------------+--------------
+ Distribution ID | Column types | Default shard 
+-----------------+--------------+---------------
 (0 rows)
 
 SHOW key_ranges;
