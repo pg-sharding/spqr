@@ -82,4 +82,5 @@ var reservedWords = map[string]int{
 	"schema":       SCHEMA,
 	"retry":        RETRY,
 	"sync":         SYNC,
+	"default":      DEFAULT,
 }

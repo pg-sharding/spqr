@@ -71,6 +71,15 @@ type Interactor interface {
 	ProcClient(ctx context.Context, nconn net.Conn, pt port.RouterPortType) error
 }
 
+type SimpleResultRow struct {
+	Name  string
+	Value string
+}
+type SimpleResultMsg struct {
+	Header string
+	Rows   []SimpleResultRow
+}
+
 type PSQLInteractor struct {
 	cl client.Client
 }
@@ -1428,6 +1437,28 @@ func (pi *PSQLInteractor) AlterDistributedRelation(_ context.Context, id string,
 	}
 
 	return pi.CompleteMsg(0)
+}
+
+// MakeSimpleResponse generic function to return to client result as list of key-value.
+//
+// Parameters:
+// - _ (context.Context): The context for the operation. (Unused)
+// - msg (SimpleResultMsg): header and key-value rows
+//
+// Returns:
+// - error: An error if any occurred during the operation.
+func (pi *PSQLInteractor) MakeSimpleResponse(_ context.Context, msg SimpleResultMsg) error {
+	if err := pi.WriteHeader(msg.Header); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+	for _, info := range msg.Rows {
+		if err := pi.WriteDataRow(fmt.Sprintf("%s	-> %s", info.Name, info.Value)); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+	return pi.CompleteMsg(len(msg.Rows))
 }
 
 // TODO : unit tests

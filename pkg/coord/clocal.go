@@ -340,7 +340,15 @@ func (lc *LocalInstanceMetadataMgr) SyncRouterCoordinatorAddress(ctx context.Con
 // - *topology.DataShard: The retrieved DataShard, or nil if it doesn't exist.
 // - error: An error indicating the retrieval status, or ErrNotCoordinator if the operation is not supported by the LocalCoordinator.
 func (lc *LocalInstanceMetadataMgr) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
+	if lc.qdb != nil {
+		sh, err := lc.qdb.GetShard(ctx, shardID)
+		if err != nil {
+			return nil, err
+		}
+		return topology.DataShardFromDB(sh), nil
+	}
 	return nil, ErrNotCoordinator
+
 }
 
 func (lc *LocalInstanceMetadataMgr) Cache() *cache.SchemaCache {
