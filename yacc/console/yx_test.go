@@ -1281,7 +1281,7 @@ func TestDistributionDefaultShard(t *testing.T) {
 			query: "CREATE DISTRIBUTION ds1 DEFAULT SHARD shard1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.DistributionDefinition{
-					ID:           "db1",
+					ID:           "ds1",
 					DefaultShard: "shard1",
 				},
 			},
@@ -1291,7 +1291,7 @@ func TestDistributionDefaultShard(t *testing.T) {
 			query: "CREATE DISTRIBUTION ds1 COLUMN TYPES integer DEFAULT SHARD shard1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.DistributionDefinition{
-					ID: "db1",
+					ID: "ds1",
 					ColTypes: []string{
 						"integer",
 					},
