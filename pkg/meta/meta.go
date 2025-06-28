@@ -2,6 +2,7 @@ package meta
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -222,6 +223,15 @@ func createNonReplicatedDistribution(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	var defaultShard *topology.DataShard
+	if stmt.DefaultShard != "" {
+		if ds, err := mngr.GetShard(ctx, stmt.DefaultShard); err != nil {
+			return nil, fmt.Errorf("shard '%s' for default is not exists", stmt.DefaultShard)
+		} else {
+			defaultShard = ds
+		}
+	}
+
 	for _, ds := range dds {
 		if ds.Id == distribution.Id {
 			spqrlog.Zero.Debug().Msg("Attempt to create existing distribution")
@@ -233,6 +243,14 @@ func createNonReplicatedDistribution(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	if defaultShard != nil {
+		defaultShardManager := NewDefaultShardManager(*distribution, mngr)
+		if defShardRes := defaultShardManager.CreateDefaultShardNoCheck(ctx, defaultShard); defShardRes != nil {
+			return nil, fmt.Errorf("distribution %s created, but keyrange not. Error: %s",
+				distribution.Id, defShardRes.Error())
+		}
+	}
+
 	return distribution, nil
 }
 
@@ -303,6 +321,12 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 			return cli.ReportError(err)
+		}
+		defaultShardManager := NewDefaultShardManager(*ds, mngr)
+		if defaultKr := defaultShardManager.DefaultKeyRangeId(); stmt.KeyRangeID == defaultKr {
+			errorStr := fmt.Sprintf("Error kay range %s is reserved", defaultKr)
+			spqrlog.Zero.Error().Err(err).Msg(errorStr)
+			return cli.ReportError(errors.New(errorStr))
 		}
 		req, err := kr.KeyRangeFromSQL(stmt, ds.ColTypes)
 		if err != nil {
@@ -385,6 +409,27 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			return err
 		}
 		return cli.AlterDistributedRelation(ctx, stmt.Distribution.ID, stmt.Relation.Name)
+	case *spqrparser.DropDefaultShard:
+		if distribution, err := mngr.GetDistribution(ctx, stmt.Distribution.ID); err != nil {
+			return err
+		} else {
+			manager := NewDefaultShardManager(*distribution, mngr)
+			if defaultShard, err := manager.DropDefaultShard(ctx); err != nil {
+				return err
+			} else {
+				return cli.MakeSimpleResponse(ctx, manager.SuccessDropResponse(*defaultShard))
+			}
+		}
+	case *spqrparser.AlterDefaultShard:
+		if distribution, err := mngr.GetDistribution(ctx, stmt.Distribution.ID); err != nil {
+			return err
+		} else {
+			manager := NewDefaultShardManager(*distribution, mngr)
+			if err := manager.CreateDefaultShard(ctx, stmt.Shard); err != nil {
+				return err
+			}
+			return cli.MakeSimpleResponse(ctx, manager.SuccessCreateResponse(stmt.Shard))
+		}
 	default:
 		return ErrUnknownCoordinatorCommand
 	}

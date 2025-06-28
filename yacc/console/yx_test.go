@@ -1265,6 +1265,74 @@ func TestRetryMoveTaskGroup(t *testing.T) {
 		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
+
+func TestDistributionDefaultShard(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "CREATE DISTRIBUTION ds1 DEFAULT SHARD shard1;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID:           "ds1",
+					DefaultShard: "shard1",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE DISTRIBUTION ds1 COLUMN TYPES integer DEFAULT SHARD shard1;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID: "ds1",
+					ColTypes: []string{
+						"integer",
+					},
+					DefaultShard: "shard1",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER DISTRIBUTION distr1 DEFAULT SHARD sh1;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AlterDefaultShard{
+						Shard:        "sh1",
+						Distribution: &spqrparser.DistributionSelector{ID: "distr1"},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER DISTRIBUTION distr1 DROP DEFAULT SHARD;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.DropDefaultShard{
+						Distribution: &spqrparser.DistributionSelector{ID: "distr1"},
+					},
+				},
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
 func TestRelationQualifiedName(t *testing.T) {
 
 	assert := assert.New(t)

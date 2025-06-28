@@ -111,6 +111,7 @@ type DistributionDefinition struct {
 	ColTypes             []string
 	Replicated           bool
 	AutoIncrementEntries []AutoIncrementEntry
+	DefaultShard         string
 }
 
 type ShardingRuleDefinition struct {
@@ -309,6 +310,23 @@ func (*DetachRelation) iStatement()         {}
 func (*DetachRelation) iAlter()             {}
 func (*DetachRelation) iAlterDistribution() {}
 
+type AlterDefaultShard struct {
+	Distribution *DistributionSelector
+	Shard        string
+}
+
+func (*AlterDefaultShard) iStatement()         {}
+func (*AlterDefaultShard) iAlter()             {}
+func (*AlterDefaultShard) iAlterDistribution() {}
+
+type DropDefaultShard struct {
+	Distribution *DistributionSelector
+}
+
+func (*DropDefaultShard) iStatement()         {}
+func (*DropDefaultShard) iAlter()             {}
+func (*DropDefaultShard) iAlterDistribution() {}
+
 type SequenceSelector struct {
 	Name string
 }
@@ -346,6 +364,11 @@ const (
 
 const (
 	ClientStr = "client"
+)
+
+const (
+	//key range for default shard
+	DEFAULT_KEY_RANGE_SUFFIX = "DEFAULT"
 )
 
 // Statement represents a statement.
