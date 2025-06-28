@@ -101,6 +101,11 @@ type DropStmt interface {
 	iDrop()
 }
 
+type QualifiedName struct {
+	Name       string
+	SchemaName string
+}
+
 type DistributionDefinition struct {
 	ID                   string
 	ColTypes             []string

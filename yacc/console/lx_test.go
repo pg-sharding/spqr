@@ -151,6 +151,22 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.IDENT,
 			},
 		},
+		  		{
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION sch1.t DISTRIBUTION KEY id",
+			exp: []int{
+				spqrparser.ALTER,
+				spqrparser.DISTRIBUTION,
+				spqrparser.IDENT,
+				spqrparser.ATTACH,
+				spqrparser.RELATION,
+				spqrparser.IDENT,
+				spqrparser.TDOT,
+				spqrparser.IDENT,
+				spqrparser.DISTRIBUTION,
+				spqrparser.KEY,
+				spqrparser.IDENT,
+			},
+		},
 		{
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1, id2",
 			exp: []int{
