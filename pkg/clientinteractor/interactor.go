@@ -1696,7 +1696,7 @@ func (pi *PSQLInteractor) MoveStats(ctx context.Context, stats map[string]time.D
 }
 
 // Outputs groupBy get list values and counts its 'groupByCol' property.
-// 'groupByCol' sorted in groupped result by string key ASC mode
+// 'groupByCol' sorted in grouped result by string key ASC mode
 //
 // Parameters:
 // - values []T: list of objects for grouping
@@ -1721,7 +1721,7 @@ func groupBy[T any](values []T, getters map[string]toString[T], groupByCol strin
 		for k := range cnt {
 			keys = append(keys, k)
 		}
-		sort.Sort(sort.StringSlice(keys))
+		sort.Strings(keys)
 
 		for _, key := range keys {
 			if err := pi.WriteDataRow(key, fmt.Sprintf("%d", cnt[key])); err != nil {
