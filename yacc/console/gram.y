@@ -48,7 +48,7 @@ func randomHex(n int) (string, error) {
 
 	krbound                *KeyRangeBound
 
-
+	qname		   		   *QualifiedName
 	ds                     *DistributionDefinition
 	kr                     *KeyRangeDefinition
 	shard                  *ShardDefinition
@@ -125,6 +125,8 @@ func randomHex(n int) (string, error) {
 %token<str> TEQ
 // ','
 %token<str> TCOMMA
+// '.'
+%token<str> TDOT
 
 /* any const */
 %token<str> SCONST
@@ -201,6 +203,7 @@ func randomHex(n int) (string, error) {
 %type <trace> trace_stmt
 %type <stoptrace> stoptrace_stmt
 
+%type<qname> qualified_name
 %type <ds> distribution_define_stmt
 %type <sharding_rule> sharding_rule_define_stmt
 %type <kr> key_range_define_stmt
@@ -420,6 +423,16 @@ any_val: SCONST
 any_id: IDENT
 	{
 		$$ = string($1)
+	}
+
+qualified_name:
+	IDENT
+	{
+		$$ = &QualifiedName{Name: $1}
+	} |
+	IDENT TDOT IDENT
+	{
+		$$ = &QualifiedName{Name: $3, SchemaName: $1}
 	}
 
 
@@ -654,22 +667,46 @@ distribution_key_entry:
 	}
 
 distributed_relation_def:
-	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment opt_schema_name
+	RELATION qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment opt_schema_name
 	{
-		$$ = &DistributedRelation{
-			Name: 	 $2,
-			DistributionKey: $5,
-			AutoIncrementEntries: $6,
-			SchemaName: $7,
+		if 	len($2.SchemaName)>0 && len($7)>0 {
+			yylex.Error("it is forbidden to use both a qualified relation name and the keyword SCHEMA")
+			return 1
+		} else if len($2.SchemaName)>0 {
+			$$ = &DistributedRelation{
+				Name: 	 $2.Name,
+				DistributionKey: $5,
+				AutoIncrementEntries: $6,
+				SchemaName: $2.SchemaName,
+			}
+		} else {
+			$$ = &DistributedRelation{
+				Name: 	 $2.Name,
+				DistributionKey: $5,
+				AutoIncrementEntries: $6,
+				SchemaName: $7,
+			}
 		}
 	} | 
-	RELATION any_id opt_auto_increment opt_schema_name
+	RELATION qualified_name opt_auto_increment opt_schema_name
 	{
-		$$ = &DistributedRelation{
-			Name: 	 $2,
-			ReplicatedRelation: true,
-			AutoIncrementEntries: $3,
-			SchemaName: $4,
+		if 	len($2.SchemaName)>0 && len($4)>0 {
+			yylex.Error("it is forbidden to use both a qualified relation name and the keyword SCHEMA")
+			return 1
+		}  else if len($2.SchemaName)>0 {
+			$$ = &DistributedRelation{
+				Name: 	 $2.Name,
+				ReplicatedRelation: true,
+				AutoIncrementEntries: $3,
+				SchemaName: $2.SchemaName,
+			}
+		} else {
+			$$ = &DistributedRelation{
+				Name: 	 $2.Name,
+				ReplicatedRelation: true,
+				AutoIncrementEntries: $3,
+				SchemaName: $4,
+			}
 		}
 	}
 

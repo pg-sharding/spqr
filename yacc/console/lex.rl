@@ -54,7 +54,7 @@ func (lex *Lexer) Lex(lval *yySymType) int {
 
         sconst = '\'' (any-'\'')* '\'';
         # not equal, minus, brackers, etc
-        identifier	=	(print - space - op_chars - '\'' - ';' - ',' - '(' - ')')*;
+        identifier	=	(print - space - op_chars - '\'' - ';' - ',' - '(' - ')' - '.')*;
 
         qidentifier	=	'"' identifier '"';
 
@@ -109,6 +109,7 @@ func (lex *Lexer) Lex(lval *yySymType) int {
             ';' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TSEMICOLON; fbreak;};
             '-' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TMINUS; fbreak;};
             '+' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TPLUS; fbreak;};
+            '.' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TDOT; fbreak;};
 
             operator => {
                 lval.str = string(lex.data[lex.ts:lex.te]); tok = int(OP);    

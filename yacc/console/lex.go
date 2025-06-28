@@ -142,7 +142,7 @@ tr2:
 	case 13:
 	{( lex.p) = ( lex.te) - 1
  lval.str = string(lex.data[lex.ts:lex.te]); tok = TPLUS; {( lex.p)++;  lex.cs = 4; goto _out }}
-	case 14:
+	case 15:
 	{( lex.p) = ( lex.te) - 1
 
                 lval.str = string(lex.data[lex.ts:lex.te]); tok = int(OP);    
@@ -166,18 +166,23 @@ tr14:
  lex.te = ( lex.p)+1
 { lval.str = string(lex.data[lex.ts:lex.te]); tok = TCOMMA; {( lex.p)++;  lex.cs = 4; goto _out }}
 	goto st4
-tr18:
+tr16:
+//line lex.rl:112
+ lex.te = ( lex.p)+1
+{ lval.str = string(lex.data[lex.ts:lex.te]); tok = TDOT; {( lex.p)++;  lex.cs = 4; goto _out }}
+	goto st4
+tr19:
 //line lex.rl:109
  lex.te = ( lex.p)+1
 { lval.str = string(lex.data[lex.ts:lex.te]); tok = TSEMICOLON; {( lex.p)++;  lex.cs = 4; goto _out }}
 	goto st4
-tr20:
+tr21:
 //line lex.rl:78
  lex.te = ( lex.p)
 ( lex.p)--
 { /* do nothing */ }
 	goto st4
-tr22:
+tr23:
 //line lex.rl:93
  lex.te = ( lex.p)
 ( lex.p)--
@@ -191,19 +196,19 @@ tr22:
                 {( lex.p)++;  lex.cs = 4; goto _out }
             }
 	goto st4
-tr23:
+tr24:
 //line lex.rl:110
  lex.te = ( lex.p)
 ( lex.p)--
 { lval.str = string(lex.data[lex.ts:lex.te]); tok = TMINUS; {( lex.p)++;  lex.cs = 4; goto _out }}
 	goto st4
-tr25:
+tr26:
 //line lex.rl:80
  lex.te = ( lex.p)
 ( lex.p)--
 {/* nothing */}
 	goto st4
-tr27:
+tr28:
 //line lex.rl:81
  lex.te = ( lex.p)
 ( lex.p)--
@@ -228,7 +233,7 @@ tr27:
 //line NONE:1
  lex.ts = ( lex.p)
 
-//line lex.go:224
+//line lex.go:229
 		switch  lex.data[( lex.p)] {
 		case 32:
 			goto st5
@@ -249,15 +254,15 @@ tr27:
 		case 45:
 			goto st9
 		case 46:
-			goto st8
-		case 47:
 			goto tr16
+		case 47:
+			goto tr17
 		case 58:
 			goto st8
 		case 59:
-			goto tr18
-		case 61:
 			goto tr19
+		case 61:
+			goto tr20
 		case 92:
 			goto tr8
 		case 94:
@@ -307,13 +312,13 @@ st_case_0:
 		if 9 <=  lex.data[( lex.p)] &&  lex.data[( lex.p)] <= 13 {
 			goto st5
 		}
-		goto tr20
+		goto tr21
 tr8:
 //line NONE:1
  lex.te = ( lex.p)+1
 
-//line lex.rl:113
- lex.act = 14;
+//line lex.rl:114
+ lex.act = 15;
 	goto st6
 tr13:
 //line NONE:1
@@ -322,7 +327,7 @@ tr13:
 //line lex.rl:111
  lex.act = 13;
 	goto st6
-tr19:
+tr20:
 //line NONE:1
  lex.te = ( lex.p)+1
 
@@ -334,7 +339,7 @@ tr19:
 			goto _test_eof6
 		}
 	st_case_6:
-//line lex.go:330
+//line lex.go:335
 		switch  lex.data[( lex.p)] {
 		case 33:
 			goto tr8
@@ -373,7 +378,7 @@ tr9:
 //line lex.rl:93
  lex.act = 5;
 	goto st7
-tr21:
+tr22:
 //line NONE:1
  lex.te = ( lex.p)+1
 
@@ -385,10 +390,10 @@ tr21:
 			goto _test_eof7
 		}
 	st_case_7:
-//line lex.go:381
+//line lex.go:386
 		switch  lex.data[( lex.p)] {
 		case 34:
-			goto tr21
+			goto tr22
 		case 36:
 			goto tr9
 		case 93:
@@ -400,7 +405,7 @@ tr21:
 		}
 		switch {
 		case  lex.data[( lex.p)] < 65:
-			if 46 <=  lex.data[( lex.p)] &&  lex.data[( lex.p)] <= 58 {
+			if 47 <=  lex.data[( lex.p)] &&  lex.data[( lex.p)] <= 58 {
 				goto tr9
 			}
 		case  lex.data[( lex.p)] > 91:
@@ -430,7 +435,7 @@ tr21:
 		}
 		switch {
 		case  lex.data[( lex.p)] < 65:
-			if 46 <=  lex.data[( lex.p)] &&  lex.data[( lex.p)] <= 58 {
+			if 47 <=  lex.data[( lex.p)] &&  lex.data[( lex.p)] <= 58 {
 				goto st8
 			}
 		case  lex.data[( lex.p)] > 91:
@@ -440,7 +445,7 @@ tr21:
 		default:
 			goto st8
 		}
-		goto tr22
+		goto tr23
 	st1:
 		if ( lex.p)++; ( lex.p) == ( lex.pe) {
 			goto _test_eof1
@@ -485,7 +490,7 @@ tr21:
 		default:
 			goto tr8
 		}
-		goto tr23
+		goto tr24
 	st10:
 		if ( lex.p)++; ( lex.p) == ( lex.pe) {
 			goto _test_eof10
@@ -493,9 +498,9 @@ tr21:
 	st_case_10:
 		switch  lex.data[( lex.p)] {
 		case 10:
-			goto tr25
+			goto tr26
 		case 13:
-			goto tr25
+			goto tr26
 		case 33:
 			goto st10
 		case 35:
@@ -533,12 +538,12 @@ tr21:
 	st_case_11:
 		switch  lex.data[( lex.p)] {
 		case 10:
-			goto tr25
+			goto tr26
 		case 13:
-			goto tr25
+			goto tr26
 		}
 		goto st11
-tr16:
+tr17:
 //line NONE:1
  lex.te = ( lex.p)+1
 
@@ -550,7 +555,7 @@ tr16:
 			goto _test_eof12
 		}
 	st_case_12:
-//line lex.go:546
+//line lex.go:551
 		switch  lex.data[( lex.p)] {
 		case 34:
 			goto st8
@@ -567,7 +572,7 @@ tr16:
 		}
 		switch {
 		case  lex.data[( lex.p)] < 65:
-			if 46 <=  lex.data[( lex.p)] &&  lex.data[( lex.p)] <= 58 {
+			if 47 <=  lex.data[( lex.p)] &&  lex.data[( lex.p)] <= 58 {
 				goto st8
 			}
 		case  lex.data[( lex.p)] > 91:
@@ -577,7 +582,7 @@ tr16:
 		default:
 			goto st8
 		}
-		goto tr22
+		goto tr23
 	st2:
 		if ( lex.p)++; ( lex.p) == ( lex.pe) {
 			goto _test_eof2
@@ -611,7 +616,7 @@ tr5:
 			goto _test_eof13
 		}
 	st_case_13:
-//line lex.go:607
+//line lex.go:612
 		if  lex.data[( lex.p)] == 42 {
 			goto st3
 		}
@@ -626,6 +631,8 @@ tr5:
 			goto st8
 		case 36:
 			goto st8
+		case 47:
+			goto st8
 		case 58:
 			goto st8
 		case 93:
@@ -636,23 +643,18 @@ tr5:
 			goto st8
 		}
 		switch {
-		case  lex.data[( lex.p)] < 48:
-			if 46 <=  lex.data[( lex.p)] &&  lex.data[( lex.p)] <= 47 {
-				goto st8
+		case  lex.data[( lex.p)] < 65:
+			if 48 <=  lex.data[( lex.p)] &&  lex.data[( lex.p)] <= 57 {
+				goto st14
 			}
-		case  lex.data[( lex.p)] > 57:
-			switch {
-			case  lex.data[( lex.p)] > 91:
-				if 97 <=  lex.data[( lex.p)] &&  lex.data[( lex.p)] <= 123 {
-					goto st8
-				}
-			case  lex.data[( lex.p)] >= 65:
+		case  lex.data[( lex.p)] > 91:
+			if 97 <=  lex.data[( lex.p)] &&  lex.data[( lex.p)] <= 123 {
 				goto st8
 			}
 		default:
-			goto st14
+			goto st8
 		}
-		goto tr27
+		goto tr28
 	st_out:
 	_test_eof4:  lex.cs = 4; goto _test_eof
 	_test_eof5:  lex.cs = 5; goto _test_eof
@@ -673,36 +675,36 @@ tr5:
 	if ( lex.p) == eof {
 		switch  lex.cs {
 		case 5:
-			goto tr20
+			goto tr21
 		case 6:
 			goto tr2
 		case 7:
 			goto tr2
 		case 8:
-			goto tr22
-		case 9:
 			goto tr23
+		case 9:
+			goto tr24
 		case 10:
-			goto tr25
+			goto tr26
 		case 11:
-			goto tr25
+			goto tr26
 		case 12:
-			goto tr22
+			goto tr23
 		case 2:
 			goto tr2
 		case 3:
 			goto tr2
 		case 13:
-			goto tr25
+			goto tr26
 		case 14:
-			goto tr27
+			goto tr28
 		}
 	}
 
 	_out: {}
 	}
 
-//line lex.rl:120
+//line lex.rl:121
 
 
     return int(tok);
