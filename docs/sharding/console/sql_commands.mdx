@@ -5,14 +5,16 @@ description: 'Create distributions, key ranges and tables and see cluster info'
 
 ### CREATE DISTRIBUTION
 
-This command is used to create a new distribution with the specified name. Optionally, you can specify the column types for the distribution using the COLUMN TYPES clause.
+This command is used to create a new distribution with the specified name. Optionally, you can specify the column types for the distribution using the COLUMN TYPES clause. Optionally, you can specify a default shard for distribution using the "DEFAULT SHARD" clause.
 
 ```sql
-CREATE DISTRIBUTION <distributionID> COLUMN TYPES <types>
+CREATE DISTRIBUTION <distributionID> COLUMN TYPES <types> DEFAULT SHARD <shardId>
 
 where types is a comma-separated list of column types
 
 where type is one of: VARCHAR, INTEGER, INT, UUID
+
+where <shardId> is a default shard identifier. The <shardId> must exist.
 ```
 
 ### DROP DISTRIBUTION
@@ -40,6 +42,21 @@ This command is used to alter an existing distribution. You can detach a relatio
 
 ```sql
 ALTER DISTRIBUTION <distribution_name> DETACH RELATION <relation_name>
+```
+
+### ALTER DISTRIBUTION DROP DEFAULT SHARD
+This command is used to add default shard to an existing distribution.
+
+```sql
+ALTER DISTRIBUTION <distributionID> DROP DEFAULT SHARD
+```
+
+### ALTER DISTRIBUTION DROP DEFAULT SHARD
+This command is used to add default shard to an existing distribution.
+
+```sql
+ALTER DISTRIBUTION <distributionID> DEFAULT SHARD <shardId>
+where <shardId> is a default shard identifier. <shardId> must be exist 
 ```
 
 ### CREATE REFERENCE TABLE

@@ -1,0 +1,31 @@
+---
+title: 'Default shards'
+---
+
+Distribution can have a default shard. It means that if router matches query to distribution with default shard it definitely find route. It route will be to this shard. 
+Default shard is realized as "key range" with minimal value of column set. This key range have reserved id `<DistributionId>`.DEFAULT.
+For example: 
+Column set for distribution is [varchar, integer]. Lower bound of default key range is ["",-9223372036854775808]
+
+
+## How to use it?
+We have the distribution with key range kr18b713215 "From 0". Try alter distribution with default shard command:
+```sql
+ALTER DISTRIBUTION testWithDefault DEFAULT SHARD sh2;
+        create default shard        
+------------------------------------
+ distribution id -> testWithDefault
+ shard id        -> sh2
+(2 rows)
+```
+result:
+```sql
+show key_ranges;
+      Key range ID       | Shard ID | Distribution ID |     Lower bound      
+-------------------------+----------+-----------------+----------------------
+ kr18b713215             | sh1      | ds1             | 0
+ testWithDefault.DEFAULT | sh2      | testWithDefault | -9223372036854775808
+(2 rows)
+
+```
+Default shards are supporting only `integer` and `varchar` types now.
