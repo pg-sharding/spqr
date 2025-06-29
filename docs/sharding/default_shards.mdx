@@ -11,7 +11,7 @@ Column set for distribution is [varchar, integer]. Lower bound of default key ra
 ## How to use it?
 We have the distribution with key range kr18b713215 "From 0". Try alter distribution with default shard command:
 ```sql
-ALTER DISTRIBUTION testWithDefault DEFAULT SHARD sh2;
+ALTER DISTRIBUTION testWithDefault ADD DEFAULT SHARD sh2;
         create default shard        
 ------------------------------------
  distribution id -> testWithDefault

@@ -114,6 +114,6 @@ func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
 	assert.Nil(t, actualDistribution)
-	assert.Equal(t, err, fmt.Errorf("shard '%s' for default is not exists", "notExistShard"))
+	assert.Equal(t, err, fmt.Errorf("shard '%s' does not exists", "notExistShard"))
 
 }

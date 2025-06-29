@@ -35,10 +35,14 @@ func DefaultRangeLowerBound(colTypes []string) (kr.KeyRangeBound, error) {
 	lowerBound := make(kr.KeyRangeBound, len(colTypes))
 	for i, colType := range colTypes {
 		switch colType {
-		case qdb.ColumnTypeVarchar:
+		case qdb.ColumnTypeVarchar, qdb.ColumnTypeVarcharDeprecated:
+			lowerBound[i] = ""
+		case qdb.ColumnTypeUUID:
 			lowerBound[i] = ""
 		case qdb.ColumnTypeInteger:
 			lowerBound[i] = int64(math.MinInt64)
+		case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed:
+			lowerBound[i] = uint64(0)
 		default:
 			return nil, fmt.Errorf("unsupported type '%v' for default key range", colType)
 		}
@@ -64,7 +68,7 @@ func (manager *DefaultShardManager) keyRangeDefault(DefaultShardId string) (*kr.
 
 func (manager *DefaultShardManager) CreateDefaultShard(ctx context.Context, defaultShardId string) error {
 	if defaultShard, err := manager.mngr.GetShard(ctx, defaultShardId); err != nil {
-		return fmt.Errorf("shard '%s' for default is not exists", defaultShard.ID)
+		return fmt.Errorf("shard '%s' does not exists", defaultShardId)
 	} else {
 		return manager.CreateDefaultShardNoCheck(ctx, defaultShard)
 	}

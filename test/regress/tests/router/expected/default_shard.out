@@ -1,0 +1,81 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+-- check that numeric type works
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE FROM -20 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> -20
+(1 row)
+
+CREATE KEY RANGE FROM -10 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ERROR:  key range kr2f48e1e7e4ad intersects with key range krf98e312869ed in QDB
+CREATE KEY RANGE FROM 0 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ERROR:  key range kr6103287a2888 intersects with key range krf98e312869ed in QDB
+ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;
+  create default shard  
+------------------------
+ distribution id -> ds1
+ shard id        -> sh1
+(2 rows)
+
+CREATE DISTRIBUTED RELATION def_sh_xx DISTRIBUTION KEY id IN ds1;
+         attach table         
+------------------------------
+ relation name   -> def_sh_xx
+ distribution id -> ds1
+(2 rows)
+
+\c regress
+CREATE TABLE def_sh_xx(id INT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO def_sh_xx (id) VALUES (-30);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO def_sh_xx (id) VALUES (-21);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO def_sh_xx (id) VALUES (-20);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO def_sh_xx (id) VALUES (-19);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO def_sh_xx (id) VALUES (-11);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO def_sh_xx (id) VALUES (-10);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO def_sh_xx (id) VALUES (-9);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO def_sh_xx (id) VALUES (0);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO def_sh_xx (id) VALUES (1);
+NOTICE: send query to shard(s) : sh2
+DROP TABLE def_sh_xx;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

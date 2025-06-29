@@ -226,7 +226,7 @@ func createNonReplicatedDistribution(ctx context.Context,
 	var defaultShard *topology.DataShard
 	if stmt.DefaultShard != "" {
 		if ds, err := mngr.GetShard(ctx, stmt.DefaultShard); err != nil {
-			return nil, fmt.Errorf("shard '%s' for default is not exists", stmt.DefaultShard)
+			return nil, fmt.Errorf("shard '%s' does not exists", stmt.DefaultShard)
 		} else {
 			defaultShard = ds
 		}
