@@ -359,7 +359,47 @@ func TestBackendConnections(t *testing.T) {
 	err := interactor.BackendConnections(ctx, shards, cmd)
 	assert.Nil(t, err)
 }
-func TestBackendConnectionsGroupBySuccess(t *testing.T) {
+func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	ca := mockcl.NewMockRouterClient(ctrl)
+	var desc []pgproto3.FieldDescription
+	desc = append(desc, clientinteractor.TextOidFD("hostname"))
+	desc = append(desc, clientinteractor.IntOidFD("count"))
+	firstRow := pgproto3.DataRow{
+		Values: [][]byte{
+			[]byte("h1"),
+			[]byte("2"),
+		},
+	}
+	secondRow := pgproto3.DataRow{
+		Values: [][]byte{
+			[]byte("h2"),
+			[]byte("1"),
+		},
+	}
+	gomock.InOrder(
+		ca.EXPECT().Send(&pgproto3.RowDescription{Fields: desc}),
+		ca.EXPECT().Send(&firstRow),
+		ca.EXPECT().Send(&secondRow),
+		ca.EXPECT().Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 2")}),
+		ca.EXPECT().Send(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}),
+	)
+
+	interactor := clientinteractor.NewPSQLInteractor(ca)
+	ctx := context.Background()
+	shards := []shard.Shardinfo{
+		genShard(ctrl, "h2", "sh2", 1),
+		genShard(ctrl, "h1", "sh1", 2),
+		genShard(ctrl, "h1", "sh3", 3),
+	}
+	cmd := &spqrparser.Show{
+		Cmd:     spqrparser.BackendConnectionsStr,
+		GroupBy: spqrparser.GroupBy{Col: spqrparser.ColumnRef{ColName: "hostname"}},
+	}
+	err := interactor.BackendConnections(ctx, shards, cmd)
+	assert.Nil(t, err)
+}
+func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
 	var desc []pgproto3.FieldDescription
@@ -389,8 +429,8 @@ func TestBackendConnectionsGroupBySuccess(t *testing.T) {
 	ctx := context.Background()
 	shards := []shard.Shardinfo{
 		genShard(ctrl, "h1", "sh1", 1),
-		genShard(ctrl, "h2", "sh2", 2),
-		genShard(ctrl, "h1", "sh3", 3),
+		genShard(ctrl, "h1", "sh3", 2),
+		genShard(ctrl, "h2", "sh2", 3),
 	}
 	cmd := &spqrparser.Show{
 		Cmd:     spqrparser.BackendConnectionsStr,
@@ -399,6 +439,7 @@ func TestBackendConnectionsGroupBySuccess(t *testing.T) {
 	err := interactor.BackendConnections(ctx, shards, cmd)
 	assert.Nil(t, err)
 }
+
 func TestBackendConnectionsGroupByFail(t *testing.T) {
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)

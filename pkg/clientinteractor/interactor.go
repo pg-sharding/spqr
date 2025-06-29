@@ -1695,6 +1695,16 @@ func (pi *PSQLInteractor) MoveStats(ctx context.Context, stats map[string]time.D
 	return pi.CompleteMsg(len(stats))
 }
 
+// Outputs groupBy get list values and counts its 'groupByCol' property.
+// 'groupByCol' sorted in grouped result by string key ASC mode
+//
+// Parameters:
+// - values []T: list of objects for grouping
+// - getters (map[string]toString[T]): getters which gets object property as string
+// - groupByCol string: property names for counting
+// - pi *PSQLInteractor:  output object
+// Returns:
+// - error: An error if there was a problem dropping the sequence.
 func groupBy[T any](values []T, getters map[string]toString[T], groupByCol string, pi *PSQLInteractor) error {
 	if getFun, ok := getters[groupByCol]; ok {
 		if err := pi.cl.Send(&pgproto3.RowDescription{
@@ -1707,9 +1717,14 @@ func groupBy[T any](values []T, getters map[string]toString[T], groupByCol strin
 		for _, value := range values {
 			cnt[getFun(value)]++
 		}
+		keys := make([]string, 0, len(cnt))
+		for k := range cnt {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
 
-		for k, v := range cnt {
-			if err := pi.WriteDataRow(k, fmt.Sprintf("%d", v)); err != nil {
+		for _, key := range keys {
+			if err := pi.WriteDataRow(key, fmt.Sprintf("%d", cnt[key])); err != nil {
 				return err
 			}
 		}
