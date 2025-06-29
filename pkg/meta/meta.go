@@ -244,7 +244,7 @@ func createNonReplicatedDistribution(ctx context.Context,
 		return nil, err
 	}
 	if defaultShard != nil {
-		defaultShardManager := NewDefaultShardManager(*distribution, mngr)
+		defaultShardManager := NewDefaultShardManager(distribution, mngr)
 		if defShardRes := defaultShardManager.CreateDefaultShardNoCheck(ctx, defaultShard); defShardRes != nil {
 			return nil, fmt.Errorf("distribution %s created, but keyrange not. Error: %s",
 				distribution.Id, defShardRes.Error())
@@ -322,8 +322,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 			return cli.ReportError(err)
 		}
-		defaultShardManager := NewDefaultShardManager(*ds, mngr)
-		if defaultKr := defaultShardManager.DefaultKeyRangeId(); stmt.KeyRangeID == defaultKr {
+		if defaultKr := DefaultKeyRangeId(ds); stmt.KeyRangeID == defaultKr {
 			errorStr := fmt.Sprintf("Error kay range %s is reserved", defaultKr)
 			spqrlog.Zero.Error().Err(err).Msg(errorStr)
 			return cli.ReportError(errors.New(errorStr))
@@ -413,7 +412,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		if distribution, err := mngr.GetDistribution(ctx, stmt.Distribution.ID); err != nil {
 			return err
 		} else {
-			manager := NewDefaultShardManager(*distribution, mngr)
+			manager := NewDefaultShardManager(distribution, mngr)
 			if defaultShard, err := manager.DropDefaultShard(ctx); err != nil {
 				return err
 			} else {
@@ -424,7 +423,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		if distribution, err := mngr.GetDistribution(ctx, stmt.Distribution.ID); err != nil {
 			return err
 		} else {
-			manager := NewDefaultShardManager(*distribution, mngr)
+			manager := NewDefaultShardManager(distribution, mngr)
 			if err := manager.CreateDefaultShard(ctx, stmt.Shard); err != nil {
 				return err
 			}
@@ -688,7 +687,24 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
-		return cli.Distributions(ctx, dss)
+		var defShardIDs []string
+		for _, d := range dss {
+			krs, err := mngr.ListKeyRanges(ctx, d.Id)
+			if err != nil {
+				return err
+			}
+
+			shID := "not exists"
+			/* XXX: yes, this is O(n), but "show distributions" is not high rpc either */
+			for _, kr := range krs {
+				if kr.ID == DefaultKeyRangeId(d) {
+					shID = kr.ShardID
+				}
+			}
+
+			defShardIDs = append(defShardIDs, shID)
+		}
+		return cli.Distributions(ctx, dss, defShardIDs)
 	case spqrparser.RelationsStr:
 		dss, err := mngr.ListDistributions(ctx)
 		if err != nil {
