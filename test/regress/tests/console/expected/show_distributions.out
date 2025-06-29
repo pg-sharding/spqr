@@ -18,10 +18,10 @@ CREATE DISTRIBUTION ds2 COLUMN TYPES varchar, integer;
 (1 row)
 
 SHOW distributions;
- Distribution ID |  Column types   
------------------+-----------------
- ds1             | integer
- ds2             | varchar,integer
+ Distribution ID |  Column types   | Default shard 
+-----------------+-----------------+---------------
+ ds1             | integer         | not exists
+ ds2             | varchar,integer | not exists
 (2 rows)
 
 DROP DISTRIBUTION ALL CASCADE;

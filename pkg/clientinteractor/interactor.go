@@ -985,11 +985,12 @@ func (a SortableWithContext) Less(i, j int) bool {
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) Distributions(_ context.Context, distributions []*distributions.Distribution) error {
+func (pi *PSQLInteractor) Distributions(_ context.Context, distributions []*distributions.Distribution, defShardIDs []string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			TextOidFD("Distribution ID"),
 			TextOidFD("Column types"),
+			TextOidFD("Default shard"),
 		}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
@@ -997,11 +998,12 @@ func (pi *PSQLInteractor) Distributions(_ context.Context, distributions []*dist
 			return err
 		}
 	}
-	for _, distribution := range distributions {
+	for id, distribution := range distributions {
 		if err := pi.cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
 				[]byte(distribution.Id),
 				[]byte(strings.Join(distribution.ColTypes, ",")),
+				[]byte(defShardIDs[id]),
 			},
 		}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")

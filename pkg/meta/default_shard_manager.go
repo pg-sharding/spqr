@@ -15,11 +15,11 @@ import (
 )
 
 type DefaultShardManager struct {
-	distribution distributions.Distribution
+	distribution *distributions.Distribution
 	mngr         EntityMgr
 }
 
-func NewDefaultShardManager(distribution distributions.Distribution,
+func NewDefaultShardManager(distribution *distributions.Distribution,
 	mngr EntityMgr) *DefaultShardManager {
 	return &DefaultShardManager{
 		distribution: distribution,
@@ -27,8 +27,8 @@ func NewDefaultShardManager(distribution distributions.Distribution,
 	}
 }
 
-func (manager *DefaultShardManager) DefaultKeyRangeId() string {
-	return manager.distribution.Id + "." + spqrparser.DEFAULT_KEY_RANGE_SUFFIX
+func DefaultKeyRangeId(distrib *distributions.Distribution) string {
+	return distrib.Id + "." + spqrparser.DEFAULT_KEY_RANGE_SUFFIX
 }
 
 func DefaultRangeLowerBound(colTypes []string) (kr.KeyRangeBound, error) {
@@ -50,7 +50,7 @@ func (manager *DefaultShardManager) keyRangeDefault(DefaultShardId string) (*kr.
 	if lowerBound, err := DefaultRangeLowerBound(manager.distribution.ColTypes); err == nil {
 		keyRange := &kr.KeyRange{
 			ShardID:      DefaultShardId,
-			ID:           manager.DefaultKeyRangeId(),
+			ID:           DefaultKeyRangeId(manager.distribution),
 			Distribution: manager.distribution.Id,
 			ColumnTypes:  manager.distribution.ColTypes,
 			LowerBound:   lowerBound,
@@ -87,7 +87,7 @@ func (manager *DefaultShardManager) CreateDefaultShardNoCheck(ctx context.Contex
 }
 
 func (manager *DefaultShardManager) DropDefaultShard(ctx context.Context) (*string, error) {
-	if defaultKeyRange, err := manager.mngr.GetKeyRange(ctx, manager.DefaultKeyRangeId()); err != nil {
+	if defaultKeyRange, err := manager.mngr.GetKeyRange(ctx, DefaultKeyRangeId(manager.distribution)); err != nil {
 		return nil, fmt.Errorf("distribution id=%s have not default shard", manager.distribution.Id)
 	} else {
 		spqrlog.Zero.Debug().Str("default key range", defaultKeyRange.ID).Msg("parsed drop")
@@ -97,16 +97,16 @@ func (manager *DefaultShardManager) DropDefaultShard(ctx context.Context) (*stri
 
 func (manager *DefaultShardManager) SuccessDropResponse(defaultShard string) clientinteractor.SimpleResultMsg {
 	info := []clientinteractor.SimpleResultRow{
-		clientinteractor.SimpleResultRow{Name: "distribution id", Value: manager.distribution.Id},
-		clientinteractor.SimpleResultRow{Name: "shard id", Value: defaultShard},
+		{Name: "distribution id", Value: manager.distribution.Id},
+		{Name: "shard id", Value: defaultShard},
 	}
 	return clientinteractor.SimpleResultMsg{Header: "drop default shard", Rows: info}
 }
 
 func (manager *DefaultShardManager) SuccessCreateResponse(defaultShard string) clientinteractor.SimpleResultMsg {
 	info := []clientinteractor.SimpleResultRow{
-		clientinteractor.SimpleResultRow{Name: "distribution id", Value: manager.distribution.Id},
-		clientinteractor.SimpleResultRow{Name: "shard id", Value: defaultShard},
+		{Name: "distribution id", Value: manager.distribution.Id},
+		{Name: "shard id", Value: defaultShard},
 	}
 	return clientinteractor.SimpleResultMsg{Header: "create default shard", Rows: info}
 }
