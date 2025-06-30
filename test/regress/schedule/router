@@ -12,6 +12,7 @@ test: multishard
 test: multicolumn
 test: error
 test: error2
+test: error3
 test: routing_hint
 test: begin
 test: alter_distribution
