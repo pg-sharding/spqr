@@ -34,3 +34,4 @@ test: virtual_show
 test: auto_distribution
 test: spqrguard
 test: negative_routing
+test: default_shard
