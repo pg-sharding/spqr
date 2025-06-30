@@ -31,6 +31,11 @@ func NewCoordinator(qdb qdb.XQDB) Coordinator {
 	}
 }
 
+// SyncReferenceRelations implements meta.EntityMgr.
+func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, ids []string, destShard string) error {
+	panic("unimplemented")
+}
+
 // AddDataShard implements meta.EntityMgr.
 func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
 	return lc.qdb.AddShard(ctx, topology.DataShardToDB(shard))

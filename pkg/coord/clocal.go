@@ -401,6 +401,11 @@ func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context) error 
 	return ErrNotCoordinator
 }
 
+// SyncReferenceRelations implements meta.EntityMgr.
+func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(ctx context.Context, ids []string, destShard string) error {
+	return ErrNotCoordinator
+}
+
 // NewLocalInstanceMetadataMgr creates a new LocalCoordinator instance.
 //
 // Parameters:
