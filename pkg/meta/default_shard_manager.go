@@ -37,8 +37,6 @@ func DefaultRangeLowerBound(colTypes []string) (kr.KeyRangeBound, error) {
 		switch colType {
 		case qdb.ColumnTypeVarchar, qdb.ColumnTypeVarcharDeprecated:
 			lowerBound[i] = ""
-		case qdb.ColumnTypeUUID:
-			lowerBound[i] = ""
 		case qdb.ColumnTypeInteger:
 			lowerBound[i] = int64(math.MinInt64)
 		case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed:
