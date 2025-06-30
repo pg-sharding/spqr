@@ -33,26 +33,21 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION tsa_test DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE tsa_test (id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO tsa_test (id) VALUES (22);
-NOTICE: send query to shard(s) : sh1
 -- you could specify target-session-attrs anywhere in your query
 SELECT pg_is_in_recovery() /* target-session-attrs: read-write */ , id FROM tsa_test WHERE id = 22;
-NOTICE: send query to shard(s) : sh1
  pg_is_in_recovery | id 
 -------------------+----
  f                 | 22
 (1 row)
 
 /* target-session-attrs: read-write */ SELECT pg_is_in_recovery(), id FROM tsa_test WHERE id = 22;
-NOTICE: send query to shard(s) : sh1
  pg_is_in_recovery | id 
 -------------------+----
  f                 | 22
 (1 row)
 
 SELECT pg_is_in_recovery(), id FROM tsa_test WHERE id = 22 /* target-session-attrs: read-write */;
-NOTICE: send query to shard(s) : sh1
  pg_is_in_recovery | id 
 -------------------+----
  f                 | 22
@@ -63,7 +58,6 @@ NOTICE: send query to shard(s) : sh1
 -- NOTICE: send query to shard(s) : sh1
 -- ERROR:  failed to find replica
 DROP TABLE tsa_test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

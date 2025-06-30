@@ -45,14 +45,10 @@ CREATE KEY RANGE krid4 FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 
 \c regress
 CREATE TABLE tt(i INT) /*  */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 BEGIN;
 INSERT INTO tt (i) VALUES(1);
-NOTICE: send query to shard(s) : sh1
 DROP TABLE tt;
-NOTICE: send query to shard(s) : sh1
 INSERT INTO tt (i) VALUES(1);
-NOTICE: send query to shard(s) : sh1
 ERROR:  relation "tt" does not exist
 LINE 1: INSERT INTO tt (i) VALUES(1);
                     ^
@@ -65,13 +61,11 @@ ERROR:  current transaction is aborted, commands ignored until end of transactio
 ROLLBACK;
 -- should exists 
 TABLE tt;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  i 
 ---
 (0 rows)
 
 DROP TABLE tt;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

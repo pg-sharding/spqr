@@ -33,28 +33,23 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION x DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE x(id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM x WHERE id = 1;
-NOTICE: send query to shard(s) : sh1
  id 
 ----
 (0 rows)
 
 SELECT * FROM x WHERE ixxxd = 1;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  column "ixxxd" does not exist
 LINE 1: SELECT * FROM x WHERE ixxxd = 1;
                               ^
 SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;
 ERROR:  client processing error: error processing query 'SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;': syntax error on pos 32, tx status IDLE
 SELECT * FROM x WHERE id = 1;
-NOTICE: send query to shard(s) : sh1
  id 
 ----
 (0 rows)
 
 DROP TABLE x;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

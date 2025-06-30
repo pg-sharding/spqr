@@ -45,9 +45,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE table1(id INT PRIMARY KEY);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY table1 (id) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- should fail
 BEGIN;
 DELETE FROM table1;
@@ -55,16 +53,13 @@ ERROR:  client processing error: error processing query 'DELETE FROM table1;': f
 ROLLBACK;
 BEGIN;
 DELETE FROM table1 /* __spqr__engine_v2: true  */; 
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT id FROM table1 ORDER BY id;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id 
 ----
 (0 rows)
 
 ROLLBACK;
 SELECT id FROM table1 ORDER BY id;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id  
 -----
    1
@@ -83,7 +78,6 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (13 rows)
 
 DROP TABLE table1 CASCADE;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

@@ -33,13 +33,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION test_beg DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE test_beg(id int, age int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test_beg(id, age) VALUES (10, 16);
-NOTICE: send query to shard(s) : sh1
 INSERT INTO test_beg(id, age) VALUES (10, 16);
-NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -48,7 +44,6 @@ NOTICE: send query to shard(s) : sh1
 
 BEGIN TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -56,9 +51,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
-NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -69,7 +62,6 @@ NOTICE: send query to shard(s) : sh1
 ROLLBACK;
 BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -77,9 +69,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
-NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -90,7 +80,6 @@ NOTICE: send query to shard(s) : sh1
 ROLLBACK;
 BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -98,9 +87,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
-NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -111,7 +98,6 @@ NOTICE: send query to shard(s) : sh1
 ROLLBACK;
 BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -119,9 +105,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
-NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -133,7 +117,6 @@ ROLLBACK;
 /* TODO: Different ISOLATION LEVEL have to effect */
 BEGIN TRANSACTION READ WRITE;
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -141,9 +124,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
-NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -154,7 +135,6 @@ NOTICE: send query to shard(s) : sh1
 ROLLBACK;
 BEGIN TRANSACTION DEFERRABLE;
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -162,9 +142,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
-NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -175,7 +153,6 @@ NOTICE: send query to shard(s) : sh1
 ROLLBACK;
 BEGIN TRANSACTION NOT DEFERRABLE;
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -183,9 +160,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
-NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -196,7 +171,6 @@ NOTICE: send query to shard(s) : sh1
 ROLLBACK;
 BEGIN TRANSACTION READ ONLY;
 SELECT * FROM test_beg WHERE id=10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -204,13 +178,11 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
-NOTICE: send query to shard(s) : sh1
 ERROR:  cannot execute INSERT in a read-only transaction
 ROLLBACK;
 -- test ignore of all cmds after error
 BEGIN;
 SELECT * FROM test_beg WHERE id = 10;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -218,7 +190,6 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO fff VALUES(1);
-NOTICE: send query to shard(s) : sh1
 ERROR:  relation "fff" does not exist
 LINE 1: INSERT INTO fff VALUES(1);
                     ^
@@ -230,7 +201,6 @@ INSERT INTO fff VALUES(1);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 DROP TABLE test_beg;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

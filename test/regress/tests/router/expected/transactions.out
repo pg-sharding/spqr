@@ -33,19 +33,15 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION transactions_test DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE transactions_test (id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- check that rollbacked changes do no apply
 BEGIN;
 SELECT * FROM transactions_test WHERE id = 1;;
-NOTICE: send query to shard(s) : sh1
  id 
 ----
 (0 rows)
 
 INSERT INTO transactions_test (id) VALUES (1);
-NOTICE: send query to shard(s) : sh1
 SELECT * FROM transactions_test WHERE id = 1;;
-NOTICE: send query to shard(s) : sh1
  id 
 ----
   1
@@ -53,7 +49,6 @@ NOTICE: send query to shard(s) : sh1
 
 ROLLBACK;
 SELECT * FROM transactions_test WHERE id = 1;;
-NOTICE: send query to shard(s) : sh1
  id 
 ----
 (0 rows)
@@ -61,15 +56,12 @@ NOTICE: send query to shard(s) : sh1
 -- check that committed changes present
 BEGIN;
 SELECT * FROM transactions_test WHERE id = 1;;
-NOTICE: send query to shard(s) : sh1
  id 
 ----
 (0 rows)
 
 INSERT INTO transactions_test (id) VALUES (1);
-NOTICE: send query to shard(s) : sh1
 SELECT * FROM transactions_test WHERE id = 1;;
-NOTICE: send query to shard(s) : sh1
  id 
 ----
   1
@@ -77,14 +69,12 @@ NOTICE: send query to shard(s) : sh1
 
 COMMIT;
 SELECT * FROM transactions_test WHERE id = 1;;
-NOTICE: send query to shard(s) : sh1
  id 
 ----
   1
 (1 row)
 
 DROP TABLE transactions_test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

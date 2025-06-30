@@ -33,15 +33,10 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION sshjt1 DISTRIBUTION KEY i;
 
 \c regress
 CREATE TABLE sshjt1(i int, j int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO sshjt1 (i, j) VALUES(1, 12);
-NOTICE: send query to shard(s) : sh1
 INSERT INTO sshjt1 (i, j) VALUES(12, 12);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO sshjt1 (i, j) VALUES(12, 13);
-NOTICE: send query to shard(s) : sh2
 SELECT * FROM sshjt1 WHERE i = 12;
-NOTICE: send query to shard(s) : sh2
  i  | j  
 ----+----
  12 | 12
@@ -49,7 +44,6 @@ NOTICE: send query to shard(s) : sh2
 (2 rows)
 
 SELECT * FROM sshjt1 WHERE i = 12 AND j = 1;
-NOTICE: send query to shard(s) : sh2
  i | j 
 ---+---
 (0 rows)
@@ -57,7 +51,6 @@ NOTICE: send query to shard(s) : sh2
 SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;
 ERROR:  client processing error: error processing query 'SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;': syntax error on pos 37, tx status IDLE
 SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12;
-NOTICE: send query to shard(s) : sh2
  i  | j  | i  | j  
 ----+----+----+----
  12 | 12 | 12 | 12
@@ -67,7 +60,6 @@ NOTICE: send query to shard(s) : sh2
 (4 rows)
 
 SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12 AND b.j = a.j;
-NOTICE: send query to shard(s) : sh2
  i  | j  | i  | j  
 ----+----+----+----
  12 | 12 | 12 | 12
@@ -75,7 +67,6 @@ NOTICE: send query to shard(s) : sh2
 (2 rows)
 
 DROP TABLE sshjt1;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

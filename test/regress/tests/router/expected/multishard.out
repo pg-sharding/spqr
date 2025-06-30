@@ -34,33 +34,19 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxmixed DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE xxmixed(id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xxmixed (id) VALUES(1);
-NOTICE: send query to shard(s) : sh1
 INSERT INTO xxmixed (id) VALUES(10);
-NOTICE: send query to shard(s) : sh1
 INSERT INTO xxmixed (id) VALUES(11);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xxmixed (id) VALUES(20);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xxmixed (id) VALUES(21);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xxmixed (id) VALUES(22);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xxmixed (id) VALUES(29);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xxmixed (id) VALUES(30);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xxmixed (id) VALUES(30);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xxmixed (id) VALUES(30);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xxmixed (id) VALUES(30);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xxmixed (id) VALUES(30);
-NOTICE: send query to shard(s) : sh2
 SELECT * FROM xxmixed ORDER BY id;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id 
 ----
   1
@@ -78,11 +64,8 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (12 rows)
 
 UPDATE xxmixed SET id = -1 /* __spqr__engine_v2: true */;;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DELETE FROM xxmixed /* __spqr__engine_v2: true */;;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE xxmixed;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

@@ -36,19 +36,12 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxhash DISTRIBUTION KEY col1 HASH FUNCTIO
 -- TEST
 \c regress
 CREATE TABLE xxhash (col1 varchar);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xxhash (col1) VALUES ('Hello, world!');
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xxhash (col1) VALUES ('test');
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xxhash (col1) VALUES ('0');
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xxhash (col1) VALUES ('The quick brown fox jumps over the lazy dog');
-NOTICE: send query to shard(s) : sh1
 INSERT INTO xxhash (col1) VALUES ('Армия — не просто доброе слово, а очень быстрое дело. Так мы выигрывали все войны. Пока противник рисует карты наступления, мы меняем ландшафты, причём вручную. Когда приходит время атаки, противник теряется на незнакомой местности и приходит в полную небоеготовность. В этом смысл, в этом наша стратегия.');
-NOTICE: send query to shard(s) : sh1
 SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh1 */;
-NOTICE: send query to shard(s) : sh1
                                                                                                                                                        col1                                                                                                                                                        
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  The quick brown fox jumps over the lazy dog
@@ -56,7 +49,6 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
      col1      
 ---------------
  0
@@ -65,9 +57,7 @@ NOTICE: send query to shard(s) : sh2
 (3 rows)
 
 COPY xxhash (col1) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh1 */;
-NOTICE: send query to shard(s) : sh1
                                                                                                                                                        col1                                                                                                                                                        
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  The quick brown fox jumps over the lazy dog
@@ -77,7 +67,6 @@ NOTICE: send query to shard(s) : sh1
 (4 rows)
 
 SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
      col1      
 ---------------
  0
@@ -90,7 +79,6 @@ NOTICE: send query to shard(s) : sh2
 
 --TEARDOWN
 DROP TABLE xxhash;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

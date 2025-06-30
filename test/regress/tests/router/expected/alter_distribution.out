@@ -7,11 +7,7 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES int;
-    add distribution    
-------------------------
- distribution id -> ds1
-(1 row)
-
+ERROR:  attempt to create existing distribution
 CREATE DISTRIBUTION ds2 COLUMN TYPES int;
     add distribution    
 ------------------------
@@ -62,24 +58,17 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
 ERROR:  relation "xx" is already attached.
 \c regress
 DROP TABLE IF EXISTS xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE xx (w_id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xx(w_id) VALUES(5);
-NOTICE: send query to shard(s) : sh1
 INSERT INTO xx(w_id) VALUES(20);
-NOTICE: send query to shard(s) : sh2
 SELECT * FROM xx WHERE w_id=5;
-NOTICE: send query to shard(s) : sh1
  w_id 
 ------
     5
 (1 row)
 
 CREATE TABLE yy (w_id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM yy WHERE w_id=5;
-NOTICE: send query to shard(s) : sh2
  w_id 
 ------
 (0 rows)
@@ -117,15 +106,12 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION yy DISTRIBUTION KEY w_id;
 
 \c regress
 SELECT * FROM yy WHERE w_id=5;
-NOTICE: send query to shard(s) : sh1
  w_id 
 ------
 (0 rows)
 
 DROP TABLE xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE yy;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

@@ -33,14 +33,10 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE test(id int, age int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- TODO: specify distribution as well as sharding_key
 INSERT INTO test(id, age) VALUES (1210, 16) /*__spqr__sharding_key: 1, __spqr__distribution: ds1  */;
-NOTICE: send query to shard(s) : sh1
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30, __spqr__distribution: ds1  */;
-NOTICE: send query to shard(s) : sh2
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000, __spqr__distribution: ds1  */;
-NOTICE: send query to shard(s) : sh2
 -- test transaction support for route-local variables;
 SET __spqr__distribution = 'ds1';
 SHOW __spqr__distribution;
@@ -53,7 +49,6 @@ SHOW __spqr__sharding_key;
 (1 row)
 
 SELECT * FROM test;
-NOTICE: send query to shard(s) : sh1
   id  | age 
 ------+-----
  1210 |  16
@@ -61,7 +56,6 @@ NOTICE: send query to shard(s) : sh1
 
 SET __spqr__sharding_key = 12;
 SELECT * FROM test;
-NOTICE: send query to shard(s) : sh2
  id | age 
 ----+-----
  10 |  16
@@ -71,7 +65,6 @@ NOTICE: send query to shard(s) : sh2
 BEGIN;
 SET __spqr__sharding_key = 1;
 SELECT * FROM test;
-NOTICE: send query to shard(s) : sh1
   id  | age 
 ------+-----
  1210 |  16
@@ -80,7 +73,6 @@ NOTICE: send query to shard(s) : sh1
 ROLLBACK;
 -- should return to previous value, so select from second shard
 SELECT * FROM test;
-NOTICE: send query to shard(s) : sh2
  id | age 
 ----+-----
  10 |  16
@@ -91,12 +83,9 @@ RESET __spqr__sharding_key;
 \c regress
 -- cleanup test relation to avoid confusion
 TRUNCATE test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY test (id, age) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- SELECT here with order to avoid flaps
 SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh1 */;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
   1 |   1
@@ -105,7 +94,6 @@ NOTICE: send query to shard(s) : sh1
 (3 rows)
 
 SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
  id | age 
 ----+-----
  15 |  15
@@ -121,7 +109,6 @@ SHOW __spqr__execute_on;
 (1 row)
 
 SELECT * FROM test ORDER BY id;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
   1 |   1
@@ -137,7 +124,6 @@ SHOW __spqr__execute_on;
 (1 row)
 
 SELECT * FROM test ORDER BY id;
-NOTICE: send query to shard(s) : sh2
  id | age 
 ----+-----
  15 |  15
@@ -148,7 +134,6 @@ NOTICE: send query to shard(s) : sh2
 SET __spqr__execute_on TO sh1;
 -- overrides prev set
 SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
  id | age 
 ----+-----
  15 |  15
@@ -158,7 +143,6 @@ NOTICE: send query to shard(s) : sh2
 
 -- After stmt select from sh1, not sh2
 SELECT * FROM test ORDER BY id;
-NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
   1 |   1
@@ -183,7 +167,6 @@ SHOW __spqr__execute_on;
 
 SET __spqr__default_route_behaviour to 'BLOCK';
 SELECT 1 FROM test WHERE id IN (5, 25) /* __spqr__scatter_query: true, __spqr__default_route_behaviour: allow */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  ?column? 
 ----------
         1
@@ -198,7 +181,6 @@ SHOW __spqr__default_route_behaviour;
 (1 row)
 
 SELECT 1 FROM test WHERE id IN (5, 25) /* __spqr__scatter_query: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  ?column? 
 ----------
         1
@@ -208,7 +190,6 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- restart session, reset all params
 \c regress
 DROP TABLE test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

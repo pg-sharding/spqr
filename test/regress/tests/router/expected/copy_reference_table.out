@@ -26,9 +26,7 @@ CREATE REFERENCE TABLE test_ref_rel_2;
 CREATE TABLE test_ref_rel(i int, j int);
 ERROR:  client processing error: error processing query 'CREATE TABLE test_ref_rel(i int, j int);': distribution for relation "test_ref_rel" not found., tx status IDLE
 CREATE TABLE test_ref_rel_2(i int, j int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY test_ref_rel FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  relation "test_ref_rel" does not exist
 1	2
 2	3
@@ -55,27 +53,22 @@ ERROR:  client processing error: error processing query '1	2
 4	5
 TABLE test_ref_rel /* __spqr__execute_on: sh1 */;': syntax error on pos 0, tx status IDLE
 TABLE test_ref_rel /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
 ERROR:  relation "test_ref_rel" does not exist
 LINE 1: TABLE test_ref_rel /* __spqr__execute_on: sh2 */;
               ^
 TABLE test_ref_rel_2 /* __spqr__execute_on: sh1 */;
-NOTICE: send query to shard(s) : sh1
  i | j 
 ---+---
 (0 rows)
 
 TABLE test_ref_rel_2 /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
  i | j 
 ---+---
 (0 rows)
 
 DROP TABLE test_ref_rel;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  table "test_ref_rel" does not exist
 DROP TABLE test_ref_rel_2;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

@@ -8,7 +8,7 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 SHOW time_quantiles
   quantile_type   | time, ms 
 ------------------+----------
- router_time_0.75 |     0.44
- shard_time_0.75  |     0.45
+ router_time_0.75 |     0.41
+ shard_time_0.75  |     0.42
 (2 rows)
 

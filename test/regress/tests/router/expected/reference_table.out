@@ -16,12 +16,9 @@ CREATE REFERENCE TABLE test_ref_rel;
 
 \c regress
 CREATE TABLE test_ref_rel(i int, j int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY test_ref_rel FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 set __spqr__default_route_behaviour to allow;
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
-NOTICE: send query to shard(s) : sh1
  i | j 
 ---+---
  1 | 2
@@ -32,7 +29,6 @@ NOTICE: send query to shard(s) : sh1
 
 set __spqr__default_route_behaviour to block;
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
  i | j 
 ---+---
  1 | 2
@@ -42,11 +38,8 @@ NOTICE: send query to shard(s) : sh2
 (4 rows)
 
 INSERT INTO test_ref_rel VALUES(1) /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test_ref_rel SELECT 1 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
-NOTICE: send query to shard(s) : sh1
  i | j 
 ---+---
  1 | 2
@@ -58,7 +51,6 @@ NOTICE: send query to shard(s) : sh1
 (6 rows)
 
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
  i | j 
 ---+---
  1 | 2
@@ -70,11 +62,8 @@ NOTICE: send query to shard(s) : sh2
 (6 rows)
 
 UPDATE test_ref_rel SET i = i + 1 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 UPDATE test_ref_rel SET i = - i WHERE i IN (3, 4) /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
-NOTICE: send query to shard(s) : sh1
  i  | j 
 ----+---
  -4 | 4
@@ -86,7 +75,6 @@ NOTICE: send query to shard(s) : sh1
 (6 rows)
 
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
  i  | j 
 ----+---
  -4 | 4
@@ -98,9 +86,7 @@ NOTICE: send query to shard(s) : sh2
 (6 rows)
 
 DELETE FROM test_ref_rel WHERE i = 2 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
-NOTICE: send query to shard(s) : sh1
  i  | j 
 ----+---
  -4 | 4
@@ -109,7 +95,6 @@ NOTICE: send query to shard(s) : sh1
 (3 rows)
 
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
  i  | j 
 ----+---
  -4 | 4
@@ -118,7 +103,6 @@ NOTICE: send query to shard(s) : sh2
 (3 rows)
 
 DROP TABLE test_ref_rel;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

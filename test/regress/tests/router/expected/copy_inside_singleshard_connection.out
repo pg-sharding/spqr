@@ -1,20 +1,15 @@
 \c regress
 CREATE TABLE copy_test (id int)  /* __spqr__scatter_query: true, __spqr__default_route_behaviour: allow */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__execute_on TO sh1;
 INSERT INTO copy_test VALUES(1);
-NOTICE: send query to shard(s) : sh1
 SELECT id FROM copy_test ORDER BY id;
-NOTICE: send query to shard(s) : sh1
  id 
 ----
   1
 (1 row)
 
 COPY copy_test(id) FROM STDIN WHERE id <= 10;
-NOTICE: send query to shard(s) : sh1
 SELECT id FROM copy_test ORDER BY id;
-NOTICE: send query to shard(s) : sh1
  id 
 ----
   1
@@ -62,15 +57,12 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test DISTRIBUTION KEY id;
 \c regress
 BEGIN;
 SELECT FROM copy_test WHERE id = 29;
-NOTICE: send query to shard(s) : sh1
 --
 (0 rows)
 
 COPY copy_test(id) FROM STDIN;
-NOTICE: send query to shard(s) : sh1
 COMMIT;
 SELECT id FROM copy_test ORDER BY id /* __spqr__execute_on: sh1 */;
-NOTICE: send query to shard(s) : sh1
  id  
 -----
    1
@@ -87,13 +79,11 @@ NOTICE: send query to shard(s) : sh1
 (11 rows)
 
 SELECT id FROM copy_test ORDER BY id /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
  id 
 ----
 (0 rows)
 
 DROP TABLE IF EXISTS copy_test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

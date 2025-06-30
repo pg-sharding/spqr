@@ -46,38 +46,26 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxm_expd DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE xxm_expd(id int, j INT);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY xxm_expd (id, j) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 BEGIN;
 UPDATE xxm_expd SET j = j + 1 WHERE id = 1 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1
 UPDATE xxm_expd SET j = j + 1 WHERE id = 101 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh2
 UPDATE xxm_expd SET j = j + 1 WHERE id = 299 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh3
 UPDATE xxm_expd SET j = j + 1 WHERE id = 399 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh4
 COMMIT;
 BEGIN;
 INSERT INTO xxm_expd (id, j) VALUES(55, 55) /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1
 INSERT INTO xxm_expd (id, j) VALUES(155, 155) /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xxm_expd (id, j) VALUES(355, 355) /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh4
 ROLLBACK;
 BEGIN;
 DELETE FROM xxm_expd /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM xxm_expd WHERE id = 12 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1
  id | j 
 ----+---
 (0 rows)
 
 SELECT * FROM xxm_expd WHERE id = 212 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh3
  id | j 
 ----+---
 (0 rows)
@@ -85,22 +73,18 @@ NOTICE: send query to shard(s) : sh3
 ROLLBACK;
 BEGIN;
 SELECT * FROM xxm_expd WHERE id = 12 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1
  id | j 
 ----+---
 (0 rows)
 
 SELECT * FROM xxm_expd WHERE id = 212 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh3
  id | j 
 ----+---
 (0 rows)
 
 DELETE FROM xxm_expd /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ROLLBACK;
 SELECT * FROM xxm_expd ORDER BY id;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id  |  j  
 -----+-----
    1 |   2
@@ -122,11 +106,8 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (16 rows)
 
 UPDATE xxm_expd SET id = -1 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DELETE FROM xxm_expd /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE xxm_expd;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

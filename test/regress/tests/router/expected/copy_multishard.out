@@ -36,31 +36,18 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY i HASH FUNCTION MURMU
 -- TEST
 \c regress
 CREATE TABLE xx (i int, j int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xx (i, j) VALUES(1,1);
-NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (i, j) VALUES(2,2);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xx (i, j) VALUES(3,3);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xx (i, j) VALUES(4,4);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xx (i, j) VALUES(5,5);
-NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (i, j) VALUES(6,6);
-NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (i, j) VALUES(7,7);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xx (i, j) VALUES(8,8);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xx (i, j) VALUES(9,9);
-NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (i, j) VALUES(10,10);
-NOTICE: send query to shard(s) : sh2
 TABLE xx /* __spqr__execute_on: sh1 */;
-NOTICE: send query to shard(s) : sh1
  i | j 
 ---+---
  1 | 1
@@ -74,7 +61,6 @@ NOTICE: send query to shard(s) : sh1
 (8 rows)
 
 TABLE xx /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
  i  | j  
 ----+----
   2 |  2
@@ -92,7 +78,6 @@ NOTICE: send query to shard(s) : sh2
 (12 rows)
 
 DROP TABLE xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

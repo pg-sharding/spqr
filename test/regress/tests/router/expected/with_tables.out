@@ -40,36 +40,27 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION delivery DISTRIBUTION KEY order_id;
 
 \c regress
 CREATE TABLE orders(id INT PRIMARY KEY);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE delivery(id INT PRIMARY KEY, order_id INT, FOREIGN KEY(order_id) REFERENCES orders(id));
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO orders(id) VALUES (5);
-NOTICE: send query to shard(s) : sh1
 INSERT INTO delivery(id,order_id) VALUES (10, 5);
-NOTICE: send query to shard(s) : sh1
 SELECT * FROM delivery;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id | order_id 
 ----+----------
  10 |        5
 (1 row)
 
 SELECT * FROM delivery JOIN orders ON order_id = id;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  column reference "id" is ambiguous
 LINE 1: SELECT * FROM delivery JOIN orders ON order_id = id;
                                                          ^
 SELECT * FROM delivery JOIN orders ON delivery.order_id = orders.id;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id | order_id | id 
 ----+----------+----
  10 |        5 |  5
 (1 row)
 
 DROP TABLE orders CASCADE;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE delivery;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

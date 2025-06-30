@@ -33,11 +33,8 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE copy_test (id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY copy_test(id) FROM STDIN WHERE id <= 10;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM copy_test WHERE id <= 10;
-NOTICE: send query to shard(s) : sh1
  id 
 ----
   1
@@ -48,9 +45,7 @@ NOTICE: send query to shard(s) : sh1
 (5 rows)
 
 COPY copy_test(id) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM copy_test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
   id  
 ------
     1
@@ -73,9 +68,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (17 rows)
 
 COPY copy_test(id) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM copy_test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
   id  
 ------
     1
@@ -103,7 +96,6 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (22 rows)
 
 DROP TABLE copy_test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

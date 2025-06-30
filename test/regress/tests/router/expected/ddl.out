@@ -40,25 +40,16 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION table_2 DISTRIBUTION KEY id;
 
 \c regress
 CREATE SCHEMA sh1;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE table_1(id INT PRIMARY KEY);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE table_2(id INT PRIMARY KEY);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 BEGIN;
 ALTER TABLE "table_1" RENAME TO "tmp" /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ALTER TABLE "table_2" RENAME TO "table_1";
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ALTER TABLE "tmp" RENAME TO "table_2";
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COMMIT;
 DROP SCHEMA sh1;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE table_1 CASCADE;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE table_2;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

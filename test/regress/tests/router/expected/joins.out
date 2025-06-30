@@ -40,27 +40,16 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION yjoin DISTRIBUTION KEY w_id;
 
 \c regress
 CREATE TABLE xjoin(id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE yjoin(w_id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xjoin (id) values(1);
-NOTICE: send query to shard(s) : sh1
 INSERT INTO xjoin (id) values(10);
-NOTICE: send query to shard(s) : sh1
 INSERT INTO xjoin (id) values(15);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO xjoin (id) values(25);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO yjoin (w_id) values(1);
-NOTICE: send query to shard(s) : sh1
 INSERT INTO yjoin (w_id) values(10);
-NOTICE: send query to shard(s) : sh1
 INSERT INTO yjoin (w_id) values(15);
-NOTICE: send query to shard(s) : sh2
 INSERT INTO yjoin (w_id) values(25);
-NOTICE: send query to shard(s) : sh2
 SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id | w_id 
 ----+------
   1 |    1
@@ -72,23 +61,19 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- result is not full
 --SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
 SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 ORDER BY id;
-NOTICE: send query to shard(s) : sh2
  id | w_id 
 ----+------
  15 |   15
 (1 row)
 
 SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id | w_id 
 ----+------
  15 |   15
 (1 row)
 
 DROP TABLE xjoin;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE yjoin;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

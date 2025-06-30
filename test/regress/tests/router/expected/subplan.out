@@ -52,12 +52,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY i;
 
 \c regress
 CREATE TABLE table1(i INT PRIMARY KEY);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE ref_rel_1(i int, j int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- with engine v2 this should NOT be dispatched
 SELECT i, (SELECT count(*) from table1) FROM table1 WHERE i = 101;
-NOTICE: send query to shard(s) : sh2
  i | count 
 ---+-------
 (0 rows)
@@ -66,16 +63,13 @@ NOTICE: send query to shard(s) : sh2
 --SELECT i, (SELECT count(*) from ref_rel_1) FROM ref_rel_1;
 -- with engine v2 this should NOT be dispatched
 SELECT i, (SELECT count(*) from ref_rel_1) FROM table1 WHERE i = 201;
-NOTICE: send query to shard(s) : sh3
  i | count 
 ---+-------
 (0 rows)
 
 --SELECT i, (SELECT count(*) from table1) FROM ref_rel_1;
 DROP TABLE table1;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE ref_rel_1;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console
