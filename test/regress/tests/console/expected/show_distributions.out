@@ -17,19 +17,27 @@ CREATE DISTRIBUTION ds2 COLUMN TYPES varchar, integer;
  distribution id -> ds2
 (1 row)
 
+CREATE DISTRIBUTION ds3 COLUMN TYPES integer hash DEFAULT SHARD sh1;
+    add distribution    
+------------------------
+ distribution id -> ds3
+(1 row)
+
 SHOW distributions;
  Distribution ID |  Column types   | Default shard 
 -----------------+-----------------+---------------
  ds1             | integer         | not exists
  ds2             | varchar,integer | not exists
-(2 rows)
+ ds3             | uinteger        | sh1
+(3 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------
  distribution id -> ds1
  distribution id -> ds2
-(2 rows)
+ distribution id -> ds3
+(3 rows)
 
 DROP KEY RANGE ALL;
  drop key range 

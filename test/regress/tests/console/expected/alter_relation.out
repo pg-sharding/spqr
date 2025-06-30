@@ -56,6 +56,22 @@ SHOW relations;
  a             | ds1             | ("another", identity) | schema_name
 (1 row)
 
+ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh_no_exist;
+ERROR:  shard 'sh_no_exist' does not exist
+ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;
+  create default shard  
+------------------------
+ distribution id -> ds1
+ shard id        -> sh1
+(2 rows)
+
+SHOW distributions;
+ Distribution ID | Column types | Default shard 
+-----------------+--------------+---------------
+ ds1             | integer      | sh1
+ ds2             | integer      | not exists
+(2 rows)
+
 CREATE DISTRIBUTED RELATION aa DISTRIBUTION KEY another2 SCHEMA schema_name2 IN ds2;
       attach table      
 ------------------------

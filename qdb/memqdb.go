@@ -1017,7 +1017,7 @@ func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName, relName, colNam
 		Str("column", colName).Msg("memqdb: alter sequence attach")
 
 	if _, ok := q.Sequences[seqName]; !ok {
-		return fmt.Errorf("sequence %s does not exists", seqName)
+		return fmt.Errorf("sequence %s does not exist", seqName)
 	}
 
 	key := fmt.Sprintf("%s_%s", relName, colName)

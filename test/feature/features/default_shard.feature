@@ -21,7 +21,7 @@ Feature: default shards test
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    ALTER DISTRIBUTION ds1 DEFAULT SHARD sh1;
+    ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;
     """
     Then command return code should be "0"
 
@@ -72,7 +72,7 @@ Feature: default shards test
 
     When I run SQL on host "coordinator"
     """
-    ALTER DISTRIBUTION ds1 DEFAULT SHARD sh1;
+    ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;
     """
     Then command return code should be "0"
 

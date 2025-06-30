@@ -1301,7 +1301,7 @@ func TestDistributionDefaultShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "ALTER DISTRIBUTION distr1 DEFAULT SHARD sh1;",
+			query: "ALTER DISTRIBUTION distr1 ADD DEFAULT SHARD sh1;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.AlterDefaultShard{

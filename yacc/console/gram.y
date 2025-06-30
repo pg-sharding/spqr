@@ -647,12 +647,12 @@ distribution_alter_stmt:
 			},
 		}
 	} |
-	distribution_select_stmt DEFAULT SHARD any_id
+	distribution_select_stmt ADD DEFAULT SHARD any_id
 	{
 		$$ = &AlterDistribution{
 			Element: &AlterDefaultShard{
 				Distribution: $1,
-				Shard: $4,
+				Shard: $5,
 			},
 		}
 	} |
