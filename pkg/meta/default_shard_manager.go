@@ -68,7 +68,7 @@ func (manager *DefaultShardManager) keyRangeDefault(DefaultShardId string) (*kr.
 
 func (manager *DefaultShardManager) CreateDefaultShard(ctx context.Context, defaultShardId string) error {
 	if defaultShard, err := manager.mngr.GetShard(ctx, defaultShardId); err != nil {
-		return fmt.Errorf("shard '%s' does not exists", defaultShardId)
+		return fmt.Errorf("shard '%s' does not exist", defaultShardId)
 	} else {
 		return manager.CreateDefaultShardNoCheck(ctx, defaultShard)
 	}
