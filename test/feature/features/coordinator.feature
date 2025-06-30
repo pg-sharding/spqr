@@ -600,7 +600,8 @@ Feature: Coordinator test
     [
       {
         "Distribution ID": "ds1",
-        "Column types": "integer"
+        "Column types": "integer",
+        "Default shard": "not exists"
       }
     ]
     """
