@@ -14,6 +14,7 @@ import (
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -816,16 +817,16 @@ func (a *Adapter) AlterDistributedRelation(ctx context.Context, id string, rel *
 // Parameters:
 // - ctx (context.Context): The context for the request.
 // - id (string): The ID of the distribution to detach from.
-// - relName (string): The name of the relation to detach.
+// - relName (*spqrparser.QualifiedName): The qualified name of the relation to detach.
 //
 // Returns:
 // - error: An error if the detachment fails, otherwise nil.
-func (a *Adapter) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
+func (a *Adapter) AlterDistributionDetach(ctx context.Context, id string, relName *spqrparser.QualifiedName) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 
 	_, err := c.AlterDistributionDetach(ctx, &proto.AlterDistributionDetachRequest{
 		Id:       id,
-		RelNames: []string{relName},
+		RelNames: []string{relName.Name},
 	})
 
 	return err

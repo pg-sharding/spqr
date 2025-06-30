@@ -629,7 +629,7 @@ distribution_alter_stmt:
 			},
 		}
 	} |
-	distribution_select_stmt DETACH RELATION any_id
+	distribution_select_stmt DETACH RELATION qualified_name
 	{
 		$$ = &AlterDistribution{
 			Element: &DetachRelation{

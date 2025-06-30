@@ -1982,7 +1982,7 @@ func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string
 
 // AlterDistributionDetach detaches relation from distribution
 // TODO: unit tests
-func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
+func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName *spqrparser.QualifiedName) error {
 	/* Do what needs to be done in metadata */
 	if err := qc.Coordinator.AlterDistributionDetach(ctx, id, relName); err != nil {
 		return err
@@ -1992,7 +1992,7 @@ func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id 
 		cl := routerproto.NewDistributionServiceClient(cc)
 		resp, err := cl.AlterDistributionDetach(context.TODO(), &routerproto.AlterDistributionDetachRequest{
 			Id:       id,
-			RelNames: []string{relName},
+			RelNames: []string{relName.Name},
 		})
 		if err != nil {
 			return err

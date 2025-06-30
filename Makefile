@@ -204,6 +204,8 @@ generate: build_images
 	docker cp spqr-generator-1:/spqr/yacc/console/. yacc/console
 	docker cp spqr-generator-1:/spqr/pkg/mock/. pkg/mock
 	docker cp spqr-generator-1:/spqr/router/mock/. router/mock
+	docker cp spqr-generator-1:/spqr/coordinator/mock/. coordinator/mock
+	docker cp spqr-generator-1:/spqr/qdb/mock/. qdb/mock
 	docker container rm spqr-generator-1
 
 version = $(shell git describe --tags --abbrev=0)
