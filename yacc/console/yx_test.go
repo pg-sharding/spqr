@@ -1240,9 +1240,18 @@ func TestSyncReferenceTable(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "SYNC REFERENCE TABLES sh1",
+			query: "SYNC REFERENCE TABLES ON sh1",
 			exp: &spqrparser.SyncReferenceTables{
-				ShardID: "sh1",
+				ShardID:          "sh1",
+				RelationSelector: "*",
+			},
+			err: nil,
+		},
+		{
+			query: "SYNC REFERENCE TABLE ref_tt ON sh1",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "ref_tt",
 			},
 			err: nil,
 		},

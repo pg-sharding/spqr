@@ -682,6 +682,20 @@ func (mr *MockEntityMgrMockRecorder) Split(ctx, split any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Split", reflect.TypeOf((*MockEntityMgr)(nil).Split), ctx, split)
 }
 
+// SyncReferenceRelations mocks base method.
+func (m *MockEntityMgr) SyncReferenceRelations(ctx context.Context, ids []string, destShard string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SyncReferenceRelations", ctx, ids, destShard)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SyncReferenceRelations indicates an expected call of SyncReferenceRelations.
+func (mr *MockEntityMgrMockRecorder) SyncReferenceRelations(ctx, ids, destShard any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncReferenceRelations", reflect.TypeOf((*MockEntityMgr)(nil).SyncReferenceRelations), ctx, ids, destShard)
+}
+
 // SyncRouterCoordinatorAddress mocks base method.
 func (m *MockEntityMgr) SyncRouterCoordinatorAddress(ctx context.Context, router *topology.Router) error {
 	m.ctrl.T.Helper()

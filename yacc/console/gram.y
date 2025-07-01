@@ -1184,9 +1184,18 @@ invalidate_cache_stmt:
 	}
 
 sync_reference_tables_stmt:
-	SYNC REFERENCE TABLES any_id
+	SYNC REFERENCE TABLES ON any_id
 	{
-		$$ = &SyncReferenceTables{ShardID: $4}
+		$$ = &SyncReferenceTables {
+			ShardID: $5,
+			RelationSelector: "*",
+		}
+	} | SYNC REFERENCE TABLE any_id ON any_id
+	{
+		$$ = &SyncReferenceTables {
+			ShardID: $6,
+			RelationSelector: $4,
+		}
 	}
 
 // coordinator

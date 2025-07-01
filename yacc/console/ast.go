@@ -240,7 +240,8 @@ type Kill struct {
 type InvalidateCache struct{}
 
 type SyncReferenceTables struct {
-	ShardID string
+	ShardID          string
+	RelationSelector string
 }
 
 // coordinator
