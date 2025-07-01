@@ -23,6 +23,10 @@ type DistributedRelation struct {
 	ColumnSequenceMapping map[string]string
 }
 
+func (r *DistributedRelation) QualifiedName() spqrparser.QualifiedName {
+	return spqrparser.QualifiedName{Name: r.Name, SchemaName: r.SchemaName}
+}
+
 const (
 	REPLICATED = "REPLICATED"
 )
