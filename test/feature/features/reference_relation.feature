@@ -1,5 +1,5 @@
-Feature: Sequence test
-  Scenario: Auto increment column
+Feature: Reference relation test
+  Scenario: Basic ref relation DML
     #
     # Make host "coordinator" take control
     #
@@ -54,7 +54,7 @@ Feature: Sequence test
         }
     ]
     """
-        When I run SQL on host "router"
+    When I run SQL on host "router"
     """
     SELECT id, name FROM t ORDER BY id /* __spqr__execute_on: shard4 */;
     """
