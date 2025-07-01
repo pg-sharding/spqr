@@ -107,6 +107,9 @@ type QualifiedName struct {
 }
 
 func (n QualifiedName) String() string {
+	if len(n.SchemaName) < 1 {
+		return n.Name
+	}
 	return n.SchemaName + "." + n.Name
 }
 
