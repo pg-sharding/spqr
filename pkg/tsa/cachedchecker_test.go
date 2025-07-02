@@ -59,7 +59,7 @@ func TestTSA_RW(t *testing.T) {
 	cr, err := checker.CheckTSA(sh)
 	assert.NoError(err)
 	assert.True(cr.Alive)
-	assert.True(!cr.RO)
+	assert.False(cr.RO)
 	assert.Equal("primary", cr.Reason)
 }
 
@@ -139,7 +139,7 @@ func TestTSA_CacheExpiry(t *testing.T) {
 
 	// Second check should trigger a new TSA check ()
 	cr2, err2 := checker.CheckTSA(sh)
-	assert.Error(fmt.Errorf("network timeout"), err2)
+	assert.EqualError(err2, "network timeout")
 	assert.False(cr2.Alive)
 	assert.False(cr2.RO)
 }
