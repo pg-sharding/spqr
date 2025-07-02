@@ -151,7 +151,7 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.IDENT,
 			},
 		},
-		  		{
+		{
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION sch1.t DISTRIBUTION KEY id",
 			exp: []int{
 				spqrparser.ALTER,
@@ -374,6 +374,37 @@ func TestIncorrectNumbers(t *testing.T) {
 				spqrparser.INVALID_ICONST,
 				spqrparser.TMINUS,
 				spqrparser.ICONST},
+			err: nil,
+		},
+	} {
+		tmp := spqrparser.NewStringTokenizer(tt.query)
+
+		act := spqrparser.LexString(tmp)
+
+		assert.Equal(tt.exp, act, tt.query)
+	}
+}
+func TestQualifiedNames(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   []int
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "ALTER DISTRIBUTION ds1 DETACH RELATION schema1.t",
+			exp: []int{spqrparser.ALTER,
+				spqrparser.DISTRIBUTION,
+				spqrparser.IDENT,
+				spqrparser.DETACH,
+				spqrparser.RELATION,
+				spqrparser.IDENT,
+				spqrparser.TDOT,
+				spqrparser.IDENT,
+			},
 			err: nil,
 		},
 	} {

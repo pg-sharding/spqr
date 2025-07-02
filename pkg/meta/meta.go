@@ -126,7 +126,8 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			}
 
 			for _, rel := range ds.Relations {
-				if err := mngr.AlterDistributionDetach(ctx, ds.Id, rel.Name); err != nil {
+				qualifiedName := &spqrparser.QualifiedName{Name: rel.Name, SchemaName: rel.SchemaName}
+				if err := mngr.AlterDistributionDetach(ctx, ds.Id, qualifiedName); err != nil {
 					return err
 				}
 			}
@@ -402,12 +403,13 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		if err := mngr.AlterDistributionDetach(ctx, stmt.Distribution.ID, stmt.RelationName); err != nil {
 			return err
 		}
-		return cli.AlterDistributionDetach(ctx, stmt.Distribution.ID, stmt.RelationName)
+		return cli.AlterDistributionDetach(ctx, stmt.Distribution.ID, stmt.RelationName.String())
 	case *spqrparser.AlterRelation:
 		if err := mngr.AlterDistributedRelation(ctx, stmt.Distribution.ID, distributions.DistributedRelationFromSQL(stmt.Relation)); err != nil {
 			return err
 		}
-		return cli.AlterDistributedRelation(ctx, stmt.Distribution.ID, stmt.Relation.Name)
+		qName := spqrparser.QualifiedName{Name: stmt.Relation.Name, SchemaName: stmt.Relation.SchemaName}
+		return cli.AlterDistributedRelation(ctx, stmt.Distribution.ID, qName.String())
 	case *spqrparser.DropDefaultShard:
 		if distribution, err := mngr.GetDistribution(ctx, stmt.Distribution.ID); err != nil {
 			return err

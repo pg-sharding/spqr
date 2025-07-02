@@ -1367,7 +1367,7 @@ func (pi *PSQLInteractor) AlterDistributionAttach(ctx context.Context, id string
 	}
 
 	for _, r := range ds {
-		if err := pi.WriteDataRow(fmt.Sprintf("relation name   -> %s", r.Name)); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("relation name   -> %s", r.QualifiedName().String())); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}

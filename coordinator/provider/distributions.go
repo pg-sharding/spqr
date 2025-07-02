@@ -6,6 +6,7 @@ import (
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -69,7 +70,8 @@ func (d *DistributionsServer) AlterDistributionAttach(ctx context.Context, req *
 
 func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *protos.AlterDistributionDetachRequest) (*emptypb.Empty, error) {
 	for _, rel := range req.GetRelNames() {
-		if err := d.impl.AlterDistributionDetach(ctx, req.GetId(), rel); err != nil {
+		qualifiedName := &spqrparser.QualifiedName{Name: rel}
+		if err := d.impl.AlterDistributionDetach(ctx, req.GetId(), qualifiedName); err != nil {
 			return nil, err
 		}
 	}

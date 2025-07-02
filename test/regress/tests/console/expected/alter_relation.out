@@ -44,9 +44,9 @@ SHOW relations;
 (1 row)
 
 ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;
-     alter relation     
-------------------------
- relation name   -> a
+          alter relation          
+----------------------------------
+ relation name   -> schema_name.a
  distribution id -> ds1
 (2 rows)
 
@@ -73,9 +73,9 @@ SHOW distributions;
 (2 rows)
 
 CREATE DISTRIBUTED RELATION aa DISTRIBUTION KEY another2 SCHEMA schema_name2 IN ds2;
-      attach table      
-------------------------
- relation name   -> aa
+            attach table            
+------------------------------------
+ relation name   -> schema_name2.aa
  distribution id -> ds2
 (2 rows)
 

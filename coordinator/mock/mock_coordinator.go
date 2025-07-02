@@ -22,6 +22,7 @@ import (
 	qdb "github.com/pg-sharding/spqr/qdb"
 	cache "github.com/pg-sharding/spqr/router/cache"
 	port "github.com/pg-sharding/spqr/router/port"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -106,7 +107,7 @@ func (mr *MockCoordinatorMockRecorder) AlterDistributionAttach(ctx, id, rels any
 }
 
 // AlterDistributionDetach mocks base method.
-func (m *MockCoordinator) AlterDistributionDetach(ctx context.Context, id, relName string) error {
+func (m *MockCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName *spqrparser.QualifiedName) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AlterDistributionDetach", ctx, id, relName)
 	ret0, _ := ret[0].(error)

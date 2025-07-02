@@ -17,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
 	"github.com/pg-sharding/spqr/router/cache"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
 type Coordinator struct {
@@ -170,7 +171,8 @@ func (lc *Coordinator) DropReferenceRelation(ctx context.Context, id string) err
 	if err != nil {
 		return err
 	}
-	return lc.AlterDistributionDetach(ctx, distributions.REPLICATED, id)
+	qualifiedName := &spqrparser.QualifiedName{Name: id}
+	return lc.AlterDistributionDetach(ctx, distributions.REPLICATED, qualifiedName)
 }
 
 // DropSequence implements meta.EntityMgr.
@@ -613,8 +615,8 @@ func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 //
 // Returns:
 // - error: an error if the alteration operation fails.
-func (qc *Coordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
-	return qc.qdb.AlterDistributionDetach(ctx, id, relName)
+func (qc *Coordinator) AlterDistributionDetach(ctx context.Context, id string, relName *spqrparser.QualifiedName) error {
+	return qc.qdb.AlterDistributionDetach(ctx, id, relName.Name)
 }
 
 // ShareKeyRange shares a key range with the LocalCoordinator.

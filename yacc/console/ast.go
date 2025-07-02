@@ -106,6 +106,13 @@ type QualifiedName struct {
 	SchemaName string
 }
 
+func (n QualifiedName) String() string {
+	if len(n.SchemaName) < 1 {
+		return n.Name
+	}
+	return n.SchemaName + "." + n.Name
+}
+
 type DistributionDefinition struct {
 	ID                   string
 	ColTypes             []string
@@ -304,7 +311,7 @@ func (*AlterRelation) iAlterDistribution() {}
 
 type DetachRelation struct {
 	Distribution *DistributionSelector
-	RelationName string
+	RelationName *QualifiedName
 }
 
 func (*DetachRelation) iStatement()         {}
