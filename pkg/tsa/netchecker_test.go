@@ -29,8 +29,8 @@ func TestChecker_CheckTSA(t *testing.T) {
 
 		result, err := checker.CheckTSA(mockShard)
 		assert.NoError(t, err)
-		assert.True(t, result.Alive) // done
-		assert.False(t, result.RO)   // done
+		assert.True(t, result.Alive)
+		assert.False(t, result.RO)
 		assert.Equal(t, "primary", result.Reason)
 	})
 
@@ -43,8 +43,8 @@ func TestChecker_CheckTSA(t *testing.T) {
 
 		result, err := checker.CheckTSA(mockShard)
 		assert.NoError(t, err)
-		assert.True(t, result.Alive) // done
-		assert.True(t, result.RO)    // done
+		assert.True(t, result.Alive)
+		assert.True(t, result.RO)
 		assert.Equal(t, "replica", result.Reason)
 	})
 
@@ -53,8 +53,8 @@ func TestChecker_CheckTSA(t *testing.T) {
 
 		result, err := checker.CheckTSA(mockShard)
 		assert.Error(t, err)
-		assert.False(t, result.Alive) // done
-		assert.False(t, result.RO)    // done
+		assert.False(t, result.Alive)
+		assert.False(t, result.RO)
 		assert.Equal(t, "failed to send transaction_read_only", result.Reason)
 	})
 
@@ -64,8 +64,8 @@ func TestChecker_CheckTSA(t *testing.T) {
 
 		result, err := checker.CheckTSA(mockShard)
 		assert.Error(t, err)
-		assert.False(t, result.Alive) // done
-		assert.True(t, result.RO)     // done
+		assert.False(t, result.Alive)
+		assert.True(t, result.RO)
 		assert.Equal(t, "received an error while receiving the next message", result.Reason)
 	})
 
@@ -75,8 +75,8 @@ func TestChecker_CheckTSA(t *testing.T) {
 
 		result, err := checker.CheckTSA(mockShard)
 		assert.Error(t, err)
-		assert.False(t, result.Alive) // done
-		assert.True(t, result.RO)     // done
+		assert.False(t, result.Alive)
+		assert.True(t, result.RO)
 		assert.Equal(t, "the connection was unsynced while acquiring it", result.Reason)
 	})
 }

@@ -49,7 +49,7 @@ func (NetChecker) CheckTSA(sh shard.Shard) (CheckResult, error) {
 				Msg("netchecker: received an error while receiving the next message")
 			return CheckResult{
 				Alive:  false,
-				RO:     readOnly, // done
+				RO:     readOnly,
 				Reason: "received an error while receiving the next message",
 			}, err
 		}
@@ -73,7 +73,7 @@ func (NetChecker) CheckTSA(sh shard.Shard) (CheckResult, error) {
 					Msg("netchecker: got unexpected datarow while calculating")
 				return CheckResult{
 					Alive:  false,
-					RO:     readOnly, // done
+					RO:     readOnly,
 					Reason: fmt.Sprintf("unexpected datarow received: %v", qt.Values),
 				}, fmt.Errorf("unexpected datarow received: %v", qt.Values)
 			}
@@ -85,7 +85,7 @@ func (NetChecker) CheckTSA(sh shard.Shard) (CheckResult, error) {
 					Msg("netchecker: got unsync connection while calculating")
 				return CheckResult{
 					Alive:  false,
-					RO:     readOnly, // done
+					RO:     readOnly,
 					Reason: "the connection was unsynced while acquiring it",
 				}, fmt.Errorf("the connection was unsynced while acquiring it")
 			}
@@ -97,7 +97,7 @@ func (NetChecker) CheckTSA(sh shard.Shard) (CheckResult, error) {
 				Msg("netchecker: finished")
 			return CheckResult{
 				Alive:  true,
-				RO:     readOnly, // done
+				RO:     readOnly,
 				Reason: reason,
 			}, nil
 		}
