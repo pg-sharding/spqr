@@ -5,7 +5,7 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES int hash;
 -- MURMUR hash reduces input to one uint32 integer
 -- so we route on the set of all unsigned 32-bit integers (0 to 4294967295)
 CREATE KEY RANGE krid2 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid1 FROM 2 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY i HASH FUNCTION MURMUR;
 
@@ -15,6 +15,14 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY i HASH FUNCTION MURMU
 SET __spqr__engine_v2 TO true;
 
 CREATE TABLE xx (i bigint, j bigint CHECK(j != 11));
+
+COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
+\.
+
+-- error
+COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
+0|0
+\.
 
 COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
 1|1
@@ -79,6 +87,13 @@ COPY xx (i, j) FROM STDIN WITH DELIMITER '|' /*__spqr__engine_v2: true*/;
 
 ROLLBACK;
 
+BEGIN;
+
+COPY xx (i, j) FROM STDIN WITH DELIMITER '|' /*__spqr__engine_v2: true*/;
+\.
+
+COMMIT;
+
 TABLE xx;
 
 BEGIN;
@@ -88,7 +103,7 @@ COPY xx (i, j) FROM STDIN WITH DELIMITER '|' /*__spqr__engine_v2: true*/;
 9223372036854775807|9223372036854775807
 \.
 
-ROLLBACK;
+COMMIT;
 
 TABLE xx;
 
