@@ -19,7 +19,7 @@ Feature: Reference relation test
 
     When I run SQL on host "coordinator"
     """
-    CREATE REFERENCE TABLE t ON shard1, shard2, shard3;
+    CREATE REFERENCE TABLE t ON sh1, sh2;
     """
     Then command return code should be "0"
 
@@ -34,7 +34,7 @@ Feature: Reference relation test
     
     When I run SQL on host "router"
     """
-    SELECT id, name FROM t ORDER BY id /* __spqr__execute_on: shard2 */;
+    SELECT id, name FROM t ORDER BY id /* __spqr__execute_on: sh1 */;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -54,16 +54,6 @@ Feature: Reference relation test
         }
     ]
     """
-    When I run SQL on host "router"
-    """
-    SELECT id, name FROM t ORDER BY id /* __spqr__execute_on: shard4 */;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-    ]
-    """
     When I execute SQL on host "router"
     """
     UPDATE t SET id = id+1;
@@ -72,7 +62,7 @@ Feature: Reference relation test
     
     When I run SQL on host "router"
     """
-    SELECT id, name FROM t2 ORDER BY id /* __spqr__execute_on: shard3 */;
+    SELECT id, name FROM t2 ORDER BY id /* __spqr__execute_on: sh2 */;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
