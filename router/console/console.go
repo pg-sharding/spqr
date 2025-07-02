@@ -78,7 +78,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 	if err != nil {
 		return err
 	}
-	if !config.RouterConfig().WithCoordinator && coordAddr == "" {
+	if !config.RouterConfig().UseCoordinatorInit && !config.RouterConfig().WithCoordinator {
 		return meta.ProcMetadataCommand(ctx, tstmt, l.entityMgr, l.rrouter, rc, l.writer, false)
 	}
 
