@@ -20,7 +20,7 @@ func TestChecker_CheckTSA(t *testing.T) {
 	mockShard.EXPECT().ID().Return(uint(42)).AnyTimes() // Add expectation for ID method
 	checker := tsa.NetChecker{}
 
-	t.Run("RW test", func(t *testing.T) {
+	t.Run("RW_test", func(t *testing.T) {
 		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)
 		mockShard.EXPECT().Receive().Return(&pgproto3.DataRow{
 			Values: [][]byte{[]byte("off")},
@@ -34,7 +34,7 @@ func TestChecker_CheckTSA(t *testing.T) {
 		assert.Equal(t, "primary", result.Reason)
 	})
 
-	t.Run("RO test", func(t *testing.T) {
+	t.Run("RO_test", func(t *testing.T) {
 		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)
 		mockShard.EXPECT().Receive().Return(&pgproto3.DataRow{
 			Values: [][]byte{[]byte("on")},
@@ -48,7 +48,7 @@ func TestChecker_CheckTSA(t *testing.T) {
 		assert.Equal(t, "replica", result.Reason)
 	})
 
-	t.Run("Error sending query test", func(t *testing.T) {
+	t.Run("Error_sending_query_test", func(t *testing.T) {
 		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(errors.New("send error"))
 
 		result, err := checker.CheckTSA(mockShard)
@@ -58,25 +58,77 @@ func TestChecker_CheckTSA(t *testing.T) {
 		assert.Equal(t, "failed to send transaction_read_only", result.Reason)
 	})
 
-	t.Run("Error receiving message test", func(t *testing.T) {
+	t.Run("Error_receiving_message_test", func(t *testing.T) {
 		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)
 		mockShard.EXPECT().Receive().Return(nil, errors.New("receive an error"))
 
 		result, err := checker.CheckTSA(mockShard)
 		assert.Error(t, err)
 		assert.False(t, result.Alive)
-		assert.True(t, result.RO)
+		assert.False(t, result.RO)
 		assert.Equal(t, "received an error while receiving the next message", result.Reason)
 	})
 
-	t.Run("Unsync Connection", func(t *testing.T) {
+	t.Run("Unsync_connection", func(t *testing.T) {
 		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)
 		mockShard.EXPECT().Receive().Return(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)}, nil)
 
 		result, err := checker.CheckTSA(mockShard)
 		assert.Error(t, err)
 		assert.False(t, result.Alive)
-		assert.True(t, result.RO)
+		assert.False(t, result.RO)
 		assert.Equal(t, "the connection was unsynced while acquiring it", result.Reason)
 	})
+	t.Run("Unexpected_DataRow_values", func(t *testing.T) {
+		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)
+		mockShard.EXPECT().Receive().Return(&pgproto3.DataRow{
+			Values: [][]byte{[]byte("maybe")},
+		}, nil)
+
+		result, err := checker.CheckTSA(mockShard)
+		assert.Error(t, err)
+		assert.False(t, result.Alive)
+		assert.False(t, result.RO)
+		assert.Contains(t, result.Reason, "unexpected datarow received")
+	})
+
+	t.Run("Empty_DataRow_values", func(t *testing.T) {
+		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)
+		mockShard.EXPECT().Receive().Return(&pgproto3.DataRow{
+			Values: [][]byte{},
+		}, nil)
+
+		result, err := checker.CheckTSA(mockShard)
+		assert.Error(t, err)
+		assert.False(t, result.Alive)
+		assert.False(t, result.RO)
+		assert.Contains(t, result.Reason, "unexpected datarow received")
+	})
+
+	t.Run("Multiple_DataRow_values", func(t *testing.T) {
+		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)
+		mockShard.EXPECT().Receive().Return(&pgproto3.DataRow{
+			Values: [][]byte{[]byte("off"), []byte("extra")},
+		}, nil)
+
+		result, err := checker.CheckTSA(mockShard)
+		assert.Error(t, err)
+		assert.False(t, result.Alive)
+		assert.False(t, result.RO)
+		assert.Contains(t, result.Reason, "unexpected datarow received")
+	})
+
+	t.Run("Empty_byte_array_DataRow", func(t *testing.T) {
+		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)
+		mockShard.EXPECT().Receive().Return(&pgproto3.DataRow{
+			Values: [][]byte{[]byte("")},
+		}, nil)
+
+		result, err := checker.CheckTSA(mockShard)
+		assert.Error(t, err)
+		assert.False(t, result.Alive)
+		assert.False(t, result.RO)
+		assert.Contains(t, result.Reason, "unexpected datarow received")
+	})
+
 }
