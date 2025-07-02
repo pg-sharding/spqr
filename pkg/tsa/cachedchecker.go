@@ -8,8 +8,7 @@ import (
 )
 
 type cacheEntry struct {
-	result    bool
-	comment   string
+	result    CheckResult
 	lastCheck int64
 }
 
@@ -61,10 +60,7 @@ func (ctsa *CachedTSAChecker) CheckTSA(sh shard.Shard) (CheckResult, error) {
 
 	n := time.Now().UnixNano()
 	if e, ok := ctsa.cache[sh.Instance().Hostname()]; ok && n-e.lastCheck < ctsa.recheckPeriod.Nanoseconds() {
-		return CheckResult{
-			RW:     e.result,
-			Reason: e.comment,
-		}, nil
+		return e.result, nil
 	}
 
 	cr, err := ctsa.innerChecker.CheckTSA(sh)
@@ -73,8 +69,7 @@ func (ctsa *CachedTSAChecker) CheckTSA(sh shard.Shard) (CheckResult, error) {
 	}
 	ctsa.cache[sh.Instance().Hostname()] = cacheEntry{
 		lastCheck: n,
-		comment:   cr.Reason,
-		result:    cr.RW,
+		result:    cr,
 	}
 	return cr, nil
 }

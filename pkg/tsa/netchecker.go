@@ -30,15 +30,15 @@ func (NetChecker) CheckTSA(sh shard.Shard) (CheckResult, error) {
 		spqrlog.Zero.Debug().
 			Uint("shard", sh.ID()).
 			Err(err).
-			Msg("encounter error while sending read-write check")
+			Msg("netchecker: failed to send transaction_read_only")
 		return CheckResult{
-			RW:     false,
-			Reason: "error while sending read-write check",
+			Alive:  false,
+			Reason: "failed to send transaction_read_only",
 		}, err
 	}
 
-	res := false
-	reason := "zero datarow received"
+	readOnly := true
+	reason := "empty"
 
 	for {
 		msg, err := sh.Receive()
@@ -46,47 +46,58 @@ func (NetChecker) CheckTSA(sh shard.Shard) (CheckResult, error) {
 			spqrlog.Zero.Debug().
 				Uint("shard", sh.ID()).
 				Err(err).
-				Msg("shard received error during check rw")
+				Msg("netchecker: received an error while receiving the next message")
 			return CheckResult{
-				RW:     res,
-				Reason: reason,
+				Alive:  false,
+				RO:     readOnly, // done
+				Reason: "received an error while receiving the next message",
 			}, err
 		}
 
 		spqrlog.Zero.Debug().
 			Uint("shard", sh.ID()).
+			Str("type", fmt.Sprintf("%T", msg)).
 			Interface("message", msg).
-			Msg("shard received msg during check rw")
+			Msg("netchecker: shard has received the next message")
 		switch qt := msg.(type) {
 		case *pgproto3.DataRow:
-			spqrlog.Zero.Debug().
-				Uint("shard", sh.ID()).
-				Interface("datarow", qt).
-				Msg("shard checking read-write")
 			if len(qt.Values) == 1 && len(qt.Values[0]) == 3 && qt.Values[0][0] == 'o' && qt.Values[0][1] == 'f' && qt.Values[0][2] == 'f' {
-				res = true
-				reason = "is primary"
+				readOnly = false
+				reason = "primary"
+			} else if len(qt.Values) == 1 && len(qt.Values[0]) == 2 && qt.Values[0][0] == 'o' && qt.Values[0][1] == 'n' {
+				readOnly = true
+				reason = "replica"
 			} else {
-				reason = fmt.Sprintf("transaction_read_only is %+v", qt.Values)
+				spqrlog.Zero.Debug().
+					Uint("shard", sh.ID()).
+					Msg("netchecker: got unexpected datarow while calculating")
+				return CheckResult{
+					Alive:  false,
+					RO:     readOnly, // done
+					Reason: fmt.Sprintf("unexpected datarow received: %v", qt.Values),
+				}, fmt.Errorf("unexpected datarow received: %v", qt.Values)
 			}
 
 		case *pgproto3.ReadyForQuery:
 			if txstatus.TXStatus(qt.TxStatus) != txstatus.TXIDLE {
 				spqrlog.Zero.Debug().
 					Uint("shard", sh.ID()).
-					Msg("shard got unsync connection while calculating RW")
+					Msg("netchecker: got unsync connection while calculating")
 				return CheckResult{
-					RW:     false,
-					Reason: reason,
-				}, fmt.Errorf("connection unsync while acquiring it")
+					Alive:  false,
+					RO:     readOnly, // done
+					Reason: "the connection was unsynced while acquiring it",
+				}, fmt.Errorf("the connection was unsynced while acquiring it")
 			}
 
 			spqrlog.Zero.Debug().
 				Uint("shard", sh.ID()).
-				Bool("result", res).
-				Msg("shard calculated RW result")
+				Bool("read_only", readOnly).
+				Bool("alive", true).
+				Msg("netchecker: finished")
 			return CheckResult{
-				RW:     res,
+				Alive:  true,
+				RO:     readOnly, // done
 				Reason: reason,
 			}, nil
 		}

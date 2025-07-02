@@ -8,7 +8,8 @@ import (
 type TSA string
 
 type CheckResult struct {
-	RW     bool
+	Alive  bool
+	RO     bool
 	Reason string
 }
 

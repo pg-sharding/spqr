@@ -56,8 +56,9 @@ func TestTSA_RW(t *testing.T) {
 
 	cr, err := checker.CheckTSA(sh)
 	assert.NoError(err)
-	assert.Equal(true, cr.RW)
-	assert.Equal("is primary", cr.Reason)
+	assert.True(cr.Alive) // done
+	assert.False(cr.RO)   // done
+	assert.Equal("primary", cr.Reason)
 }
 
 // TestTSA_RO is a unit test function that tests the CheckTSA function of the TSA checker.
@@ -102,6 +103,10 @@ func TestTSA_RO(t *testing.T) {
 	cr, err := checker.CheckTSA(sh)
 
 	assert.NoError(err)
-	assert.Equal(false, cr.RW)
-	assert.Equal("transaction_read_only is [[111 110]]", cr.Reason)
+	assert.True(cr.Alive) // done
+	assert.True(cr.RO)    // done
+	assert.Equal("replica", cr.Reason)
 }
+
+// add test when host is not alive
+// add test when more than one seconds passed since last check

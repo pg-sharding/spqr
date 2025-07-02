@@ -29,7 +29,7 @@ type TsaKey struct {
 type DBPool struct {
 	pool           MultiShardPool
 	shardMapping   map[string]*config.Shard
-	cacheTSAChecks sync.Map
+	cacheTSAChecks sync.Map // tsaKey -> read-only
 	checker        tsa.TSAChecker
 
 	ShuffleHosts bool
@@ -70,7 +70,7 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 				Tsa:  tsa,
 				Host: host.Address,
 				AZ:   host.AZ,
-			}, false)
+			}, true)
 
 			spqrlog.Zero.Error().
 				Err(err).
@@ -113,7 +113,8 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 		cr, err := s.checker.CheckTSA(shard)
 		spqrlog.Zero.Debug().
 			Uint("id", shard.ID()).
-			Bool("result", cr.RW).
+			Bool("alive", cr.Alive).
+			Bool("transaction_read_only", cr.RO).
 			Msg("checking for read-only")
 
 		if err != nil {
@@ -124,7 +125,7 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 				Tsa:  tsa,
 				Host: shard.Instance().Hostname(),
 				AZ:   shard.Instance().AvailabilityZone(),
-			}, false)
+			}, true)
 
 			return false
 		}
@@ -133,9 +134,9 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 			Tsa:  tsa,
 			Host: shard.Instance().Hostname(),
 			AZ:   shard.Instance().AvailabilityZone(),
-		}, !cr.RW)
+		}, cr.RO)
 
-		if cr.RW {
+		if !cr.RO { // TODO message is wrong, because shard may be alive, but not read-only. it is not a failure
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), cr.Reason))
 			_ = s.Put(shard)
 			return false
@@ -178,7 +179,7 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 				Tsa:  tsa,
 				Host: shard.Instance().Hostname(),
 				AZ:   shard.Instance().AvailabilityZone(),
-			}, false)
+			}, true)
 
 			return false
 		}
@@ -186,9 +187,9 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 			Tsa:  tsa,
 			Host: shard.Instance().Hostname(),
 			AZ:   shard.Instance().AvailabilityZone(),
-		}, cr.RW)
+		}, !cr.RO)
 
-		if !cr.RW {
+		if cr.RO { // TODO message is wrong, because shard may be alive, but not read-only. it is not a failure
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), cr.Reason))
 			_ = s.Put(shard)
 			return false
@@ -259,7 +260,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 					Tsa:  config.TargetSessionAttrsAny,
 					Host: host.Address,
 					AZ:   host.AZ,
-				}, false)
+				}, true)
 
 				spqrlog.Zero.Error().
 					Err(err).
@@ -273,7 +274,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 				Tsa:  config.TargetSessionAttrsAny,
 				Host: host.Address,
 				AZ:   host.AZ,
-			}, true)
+			}, false)
 
 			return shard, nil
 		}

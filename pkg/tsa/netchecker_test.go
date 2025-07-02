@@ -29,8 +29,9 @@ func TestChecker_CheckTSA(t *testing.T) {
 
 		result, err := checker.CheckTSA(mockShard)
 		assert.NoError(t, err)
-		assert.True(t, result.RW)
-		assert.Equal(t, "is primary", result.Reason)
+		assert.True(t, result.Alive) // done
+		assert.False(t, result.RO)   // done
+		assert.Equal(t, "primary", result.Reason)
 	})
 
 	t.Run("RO test", func(t *testing.T) {
@@ -42,8 +43,9 @@ func TestChecker_CheckTSA(t *testing.T) {
 
 		result, err := checker.CheckTSA(mockShard)
 		assert.NoError(t, err)
-		assert.False(t, result.RW)
-		assert.Equal(t, "transaction_read_only is [[111 110]]", result.Reason)
+		assert.True(t, result.Alive) // done
+		assert.True(t, result.RO)    // done
+		assert.Equal(t, "replica", result.Reason)
 	})
 
 	t.Run("Error sending query test", func(t *testing.T) {
@@ -51,18 +53,20 @@ func TestChecker_CheckTSA(t *testing.T) {
 
 		result, err := checker.CheckTSA(mockShard)
 		assert.Error(t, err)
-		assert.False(t, result.RW)
-		assert.Equal(t, "error while sending read-write check", result.Reason)
+		assert.False(t, result.Alive) // done
+		assert.False(t, result.RO)    // done
+		assert.Equal(t, "failed to send transaction_read_only", result.Reason)
 	})
 
 	t.Run("Error receiving message test", func(t *testing.T) {
 		mockShard.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Return(nil)
-		mockShard.EXPECT().Receive().Return(nil, errors.New("receive error"))
+		mockShard.EXPECT().Receive().Return(nil, errors.New("receive an error"))
 
 		result, err := checker.CheckTSA(mockShard)
 		assert.Error(t, err)
-		assert.False(t, result.RW)
-		assert.Equal(t, "zero datarow received", result.Reason)
+		assert.False(t, result.Alive) // done
+		assert.True(t, result.RO)     // done
+		assert.Equal(t, "received an error while receiving the next message", result.Reason)
 	})
 
 	t.Run("Unsync Connection", func(t *testing.T) {
@@ -71,7 +75,8 @@ func TestChecker_CheckTSA(t *testing.T) {
 
 		result, err := checker.CheckTSA(mockShard)
 		assert.Error(t, err)
-		assert.False(t, result.RW)
-		assert.Equal(t, "zero datarow received", result.Reason)
+		assert.False(t, result.Alive) // done
+		assert.True(t, result.RO)     // done
+		assert.Equal(t, "the connection was unsynced while acquiring it", result.Reason)
 	})
 }
