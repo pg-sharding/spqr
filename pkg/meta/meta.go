@@ -684,6 +684,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.Instance(ctx, ci)
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
+	case spqrparser.CoordinatorAddrStr:
+		addr, err := mngr.GetCoordinator(ctx)
+		if err != nil {
+			return err
+		}
+		return cli.CoordinatorAddr(ctx, addr)
 	case spqrparser.DistributionsStr:
 		dss, err := mngr.ListDistributions(ctx)
 		if err != nil {
