@@ -30,3 +30,12 @@ func (rr *ReferenceRelationServer) CreateReferenceRelations(ctx context.Context,
 	}
 	return nil, nil
 }
+
+func (rr *ReferenceRelationServer) DropReferenceRelations(ctx context.Context, req *protos.DropReferenceRelationsRequest) (*emptypb.Empty, error) {
+	for _, id := range req.GetIds() {
+		if err := rr.impl.DropReferenceRelation(ctx, id); err != nil {
+			return nil, err
+		}
+	}
+	return nil, nil
+}

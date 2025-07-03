@@ -1860,6 +1860,30 @@ func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context,
 	})
 }
 
+// TODO: unit tests
+func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
+	id string) error {
+	if err := qc.Coordinator.DropReferenceRelation(ctx, id); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewReferenceRelationsServiceClient(cc)
+		resp, err := cl.DropReferenceRelations(context.TODO(),
+			&routerproto.DropReferenceRelationsRequest{
+				Ids: []string{id},
+			})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("create reference relation response")
+		return nil
+	})
+}
+
 // CreateDistribution creates distribution in QDB
 // TODO: unit tests
 func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
