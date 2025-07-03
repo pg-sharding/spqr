@@ -6,6 +6,7 @@ test: target_session_attrs
 test: transactions
 test: hash_routing
 test: hash_routing_int
+test: hash_multicolumn_1
 test: with_tables
 test: single_shard_joins
 test: multishard
