@@ -1044,7 +1044,19 @@ func (qr *ProxyQrouter) planQueryV1(
 		return p, nil
 
 	case *lyx.Insert:
+
 		var p plan.Plan = nil
+
+		if stmt.WithClause != nil {
+			for _, cte := range stmt.WithClause {
+				if tmp, err := qr.planQueryV1(ctx, cte.SubQuery, rm); err != nil {
+					return nil, err
+				} else {
+					p = plan.Combine(p, tmp)
+				}
+			}
+		}
+
 		if selectStmt := stmt.SubSelect; selectStmt != nil {
 
 			insertCols := stmt.Columns
@@ -1161,6 +1173,17 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		return p, nil
 	case *lyx.Update:
+		var p plan.Plan = nil
+		if stmt.WithClause != nil {
+			for _, cte := range stmt.WithClause {
+				if tmp, err := qr.planQueryV1(ctx, cte.SubQuery, rm); err != nil {
+					return nil, err
+				} else {
+					p = plan.Combine(p, tmp)
+				}
+			}
+		}
+
 		clause := stmt.Where
 		if clause == nil {
 			return nil, nil
@@ -1175,7 +1198,12 @@ func (qr *ProxyQrouter) planQueryV1(
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
-					return planner.PlanDistributedQuery(ctx, rm, stmt)
+					tmp, err := planner.PlanDistributedQuery(ctx, rm, stmt)
+					if err != nil {
+						return nil, err
+					}
+					p = plan.Combine(p, tmp)
+					return p, nil
 				}
 				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 			}
@@ -1183,8 +1211,25 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		return qr.planByWhereClause(ctx, clause, rm)
+		tmp, err := qr.planByWhereClause(ctx, clause, rm)
+		if err != nil {
+			return nil, err
+		}
+		p = plan.Combine(p, tmp)
+		return p, nil
 	case *lyx.Delete:
+		var p plan.Plan = nil
+
+		if stmt.WithClause != nil {
+			for _, cte := range stmt.WithClause {
+				if tmp, err := qr.planQueryV1(ctx, cte.SubQuery, rm); err != nil {
+					return nil, err
+				} else {
+					p = plan.Combine(p, tmp)
+				}
+			}
+		}
+
 		clause := stmt.Where
 		if clause == nil {
 			return nil, nil
@@ -1199,7 +1244,12 @@ func (qr *ProxyQrouter) planQueryV1(
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
-					return planner.PlanDistributedQuery(ctx, rm, stmt)
+					tmp, err := planner.PlanDistributedQuery(ctx, rm, stmt)
+					if err != nil {
+						return nil, err
+					}
+					p = plan.Combine(p, tmp)
+					return p, nil
 				}
 				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 			}
@@ -1207,7 +1257,12 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		return qr.planByWhereClause(ctx, clause, rm)
+		tmp, err := qr.planByWhereClause(ctx, clause, rm)
+		if err != nil {
+			return nil, err
+		}
+		p = plan.Combine(p, tmp)
+		return p, nil
 	}
 
 	return nil, nil

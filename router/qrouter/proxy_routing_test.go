@@ -528,6 +528,22 @@ func TestCTE(t *testing.T) {
 	for _, tt := range []tcase{
 
 		{
+			query: `
+			WITH vv AS 
+				(SELECT i + 1 FROM t WHERE i = 11)
+			INSERT INTO t (i) TABLE vv;
+			`,
+
+			err: nil,
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
+					Name: "sh2",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+		},
+
+		{
 			query: `WITH qqq AS (
 				
 			  DELETE FROM t
