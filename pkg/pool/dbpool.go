@@ -26,6 +26,12 @@ type TsaKey struct {
 	AZ   string
 }
 
+type LocalCheckResult struct {
+	Alive  bool
+	Status ReadWriteStatus
+	Reason string
+}
+
 type ReadWriteStatus int
 
 const (
@@ -35,6 +41,22 @@ const (
 	ReadWriteStatusAny
 )
 
+// funcTsaIsSuitable checks if the cached status is suitable for the target session attributes
+func (status ReadWriteStatus) IsSuitableFor(targetSessionAttrs tsa.TSA) bool {
+	switch targetSessionAttrs {
+	case config.TargetSessionAttrsAny:
+		return true
+	case config.TargetSessionAttrsRW:
+		return status == ReadWriteStatusRW
+	case config.TargetSessionAttrsRO:
+		return status == ReadWriteStatusRO
+	case config.TargetSessionAttrsPS: // TODO recheck this
+		return status == ReadWriteStatusRO || status == ReadWriteStatusRW
+	default:
+		return false
+	}
+}
+
 // NewReadWriteStatus creates a ReadWriteStatus from a boolean value.
 // If rw is true, it returns ReadWriteStatusRW, otherwise ReadWriteStatusRO.
 func NewReadWriteStatus(rw bool) ReadWriteStatus {
@@ -42,12 +64,6 @@ func NewReadWriteStatus(rw bool) ReadWriteStatus {
 		return ReadWriteStatusRW
 	}
 	return ReadWriteStatusRO
-}
-
-type LocalCheckResult struct {
-	Alive  bool
-	Status ReadWriteStatus
-	Reason string
 }
 
 type DBPool struct {
@@ -363,8 +379,9 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 
 func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]config.Host, error) {
 	var hostOrder []config.Host
-	var posCache []config.Host
+	var posCache []config.Host // distinguish between ro and rw hosts, prefer standby is broken
 	var negCache []config.Host
+	var deadCache []config.Host
 
 	if _, ok := s.shardMapping[key.Name]; !ok {
 		return nil, fmt.Errorf("shard with name %q not found", key.Name)
@@ -381,7 +398,9 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 		res, ok := s.cacheTSAChecks[tsaKey]
 		s.cacheMutex.RUnlock()
 		if ok {
-			if res.Alive {
+			if !res.Alive {
+				deadCache = append(deadCache, host)
+			} else if res.Status.IsSuitableFor(targetSessionAttrs) {
 				posCache = append(posCache, host)
 			} else {
 				negCache = append(negCache, host)
@@ -398,6 +417,9 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 		rand.Shuffle(len(negCache), func(i, j int) {
 			negCache[i], negCache[j] = negCache[j], negCache[i]
 		})
+		rand.Shuffle(len(deadCache), func(i, j int) {
+			deadCache[i], deadCache[j] = deadCache[j], deadCache[i]
+		})
 	}
 
 	if len(s.PreferAZ) > 0 {
@@ -407,9 +429,13 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 		sort.Slice(negCache, func(i, j int) bool {
 			return negCache[i].AZ == s.PreferAZ
 		})
+		sort.Slice(deadCache, func(i, j int) bool {
+			return deadCache[i].AZ == s.PreferAZ
+		})
 	}
 
 	hostOrder = append(posCache, negCache...)
+	hostOrder = append(hostOrder, deadCache...)
 	return hostOrder, nil
 }
 
@@ -533,7 +559,7 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 		shardMapping:   mapping,
 		ShuffleHosts:   true,
 		PreferAZ:       preferAZ,
-		cacheTSAChecks: make(map[TsaKey]bool),
+		cacheTSAChecks: make(map[TsaKey]LocalCheckResult),
 		cacheMutex:     sync.RWMutex{},
 		checker:        tsa.NewTSAChecker(),
 	}
@@ -544,7 +570,7 @@ func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.Startu
 	return &DBPool{
 		pool:           mp,
 		shardMapping:   mapping,
-		cacheTSAChecks: make(map[TsaKey]bool),
+		cacheTSAChecks: make(map[TsaKey]LocalCheckResult),
 		cacheMutex:     sync.RWMutex{},
 		checker:        tsa.NewTSACheckerWithDuration(tsaRecheckDuration),
 	}
@@ -555,7 +581,7 @@ func NewDBPoolWithAllocator(mapping map[string]*config.Shard, startupParams *sta
 	return &DBPool{
 		pool:           NewPool(allocator),
 		shardMapping:   mapping,
-		cacheTSAChecks: make(map[TsaKey]bool),
+		cacheTSAChecks: make(map[TsaKey]LocalCheckResult),
 		cacheMutex:     sync.RWMutex{},
 		checker:        tsa.NewTSAChecker(),
 	}
