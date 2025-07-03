@@ -13,6 +13,15 @@ type CheckResult struct {
 	Reason string
 }
 
+type CachedCheckResult struct {
+	Hostname string
+	Result   CheckResult
+}
+
 type TSAChecker interface {
 	CheckTSA(sh shard.Shard) (CheckResult, error)
+}
+
+type CachedResultsGetter interface {
+	GetCachedResults() map[string]CachedCheckResult
 }

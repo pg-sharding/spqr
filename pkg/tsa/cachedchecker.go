@@ -20,13 +20,14 @@ type CachedTSAChecker struct {
 }
 
 var _ TSAChecker = (*CachedTSAChecker)(nil)
+var _ CachedResultsGetter = (*CachedTSAChecker)(nil)
 
 // NewTSAChecker creates a new instance of TSAChecker.
 // It returns a TSAChecker interface that can be used to perform TSA checks.
 //
 // Returns:
 //   - TSAChecker: A new instance of TSAChecker.
-func NewTSAChecker() TSAChecker {
+func NewTSAChecker() *CachedTSAChecker {
 	return &CachedTSAChecker{
 		mu:            sync.Mutex{},
 		recheckPeriod: time.Second,
@@ -35,7 +36,7 @@ func NewTSAChecker() TSAChecker {
 	}
 }
 
-func NewTSACheckerWithDuration(tsaRecheckDuration time.Duration) TSAChecker {
+func NewTSACheckerWithDuration(tsaRecheckDuration time.Duration) *CachedTSAChecker {
 	return &CachedTSAChecker{
 		mu:            sync.Mutex{},
 		recheckPeriod: tsaRecheckDuration,
@@ -72,4 +73,22 @@ func (ctsa *CachedTSAChecker) CheckTSA(sh shard.Shard) (CheckResult, error) {
 		result:    cr,
 	}
 	return cr, nil
+}
+
+// GetCachedResults returns all cached check results for shards.
+//
+// Returns:
+//   - map[string]CheckResult: A map of hostname to CheckResult for all cached entries.
+func (ctsa *CachedTSAChecker) GetCachedResults() map[string]CachedCheckResult {
+	ctsa.mu.Lock()
+	defer ctsa.mu.Unlock()
+
+	results := make(map[string]CachedCheckResult)
+	for hostname, entry := range ctsa.cache {
+		results[hostname] = CachedCheckResult{
+			Hostname: hostname,
+			Result:   entry.result,
+		}
+	}
+	return results
 }

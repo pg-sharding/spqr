@@ -6,7 +6,6 @@ import (
 	"net"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -27,10 +26,9 @@ type TsaKey struct {
 }
 
 type DBPool struct {
-	pool           MultiShardPool
-	shardMapping   map[string]*config.Shard
-	cacheTSAChecks sync.Map
-	checker        tsa.TSAChecker
+	pool         MultiShardPool
+	shardMapping map[string]*config.Shard
+	checker      *tsa.CachedTSAChecker
 
 	ShuffleHosts bool
 	PreferAZ     string
@@ -47,161 +45,47 @@ func (s *DBPool) View() Statistics {
 	panic("DBPool.View not implemented")
 }
 
-// traverseHostsMatchCB traverses the list of hosts and invokes the provided callback function
-// for each host until the callback returns true. It returns the shard that satisfies the callback
-// condition. If no shard satisfies the condition, it returns nil.
-//
-// Parameters:
-//   - clid: The client ID.
-//   - key: The shard key.
-//   - hosts: The list of hosts to traverse.
-//   - cb: The callback function that takes a shard and returns a boolean value.
-//
-// Returns:
-//   - shard.Shard: The shard that satisfies the callback condition, or nil if no shard satisfies the condition.
-//
-// TODO : unit tests
-func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config.Host, cb func(shard.Shard) bool, tsa tsa.TSA) shard.Shard {
+func (s *DBPool) selectShardHost(clid uint, key kr.ShardKey, hosts []config.Host, rw bool) (shard.Shard, error) {
+	totalMsg := make([]string, 0)
 	for _, host := range hosts {
 		sh, err := s.pool.ConnectionHost(clid, key, host)
 		if err != nil {
-
-			s.cacheTSAChecks.Store(TsaKey{
-				Tsa:  tsa,
-				Host: host.Address,
-				AZ:   host.AZ,
-			}, false)
-
 			spqrlog.Zero.Error().
 				Err(err).
 				Str("host", host.Address).
 				Str("az", host.AZ).
 				Uint("client", clid).
 				Msg("failed to get connection to host for client")
+
+			totalMsg = append(totalMsg, fmt.Sprintf("host %s: %s", host.Address, err.Error()))
+			continue
+		}
+		cr, err := s.checker.CheckTSA(sh)
+		if err != nil {
+			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", sh.Instance().Hostname())+err.Error())
+			_ = s.pool.Discard(sh)
 			continue
 		}
 
-		// callback should Discard/Put connection to Pool properly here
-		if !cb(sh) {
+		if !cr.Alive || cr.RW != rw {
+			// TODO make shorter
+			totalMsg = append(totalMsg, fmt.Sprintf("host %s is not suitable: alive=%t, rw=%t(need %t), reason: %s", sh.Instance().Hostname(), cr.Alive, cr.RW, rw, cr.Reason))
+			_ = s.Put(sh)
 			continue
 		}
 
-		return sh
+		return sh, nil
 	}
 
-	return nil
+	return nil, fmt.Errorf("shard %s: failed to find alive RW=%t host: %s", key.Name, rw, strings.Join(totalMsg, ";"))
 }
 
-// selectReadOnlyShardHost selects a read-only shard host from the given list of hosts based on the provided client ID and shard key.
-// It traverses the hosts and performs checks to ensure the selected shard host is suitable for read-only operations.
-// If a suitable shard host is found, it is returned along with a nil error.
-// If no suitable shard host is found, an error is returned with a message indicating the reason for failure.
-//
-// Parameters:
-//   - clid: The client ID.
-//   - key: The shard key.
-//   - hosts: The list of hosts to traverse.
-//
-// Returns:
-//   - shard.Shard: The selected read-only shard host.
-//   - error: An error if no suitable shard host is found.
-//
-// TODO : unit tests
 func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
-	totalMsg := make([]string, 0)
-	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
-		cr, err := s.checker.CheckTSA(shard)
-		spqrlog.Zero.Debug().
-			Uint("id", shard.ID()).
-			Bool("result", cr.RW).
-			Msg("checking for read-only")
-
-		if err != nil {
-			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
-			_ = s.pool.Discard(shard)
-
-			s.cacheTSAChecks.Store(TsaKey{
-				Tsa:  tsa,
-				Host: shard.Instance().Hostname(),
-				AZ:   shard.Instance().AvailabilityZone(),
-			}, false)
-
-			return false
-		}
-
-		s.cacheTSAChecks.Store(TsaKey{
-			Tsa:  tsa,
-			Host: shard.Instance().Hostname(),
-			AZ:   shard.Instance().AvailabilityZone(),
-		}, !cr.RW)
-
-		if cr.RW {
-			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), cr.Reason))
-			_ = s.Put(shard)
-			return false
-		}
-
-		return true
-	}, tsa)
-	if sh != nil {
-		return sh, nil
-	}
-
-	return nil, fmt.Errorf("shard %s failed to find replica within %s", key.Name, strings.Join(totalMsg, ";"))
+	return s.selectShardHost(clid, key, hosts, false)
 }
 
-// selectReadWriteShardHost selects a read-write shard host from the given list of hosts based on the provided client ID and shard key.
-// It traverses the hosts and checks if each shard is available and suitable for read-write operations.
-// If a suitable shard is found, it is returned along with no error.
-// If no suitable shard is found, an error is returned indicating the failure reason.
-//
-// Parameters:
-//   - clid: The client ID.
-//   - key: The shard key.
-//   - hosts: The list of hosts to traverse.
-//
-// Returns:
-//   - shard.Shard: The selected read-write shard host.
-//   - error: An error if no suitable shard host is found.
-//
-// TODO : unit tests
 func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
-	totalMsg := make([]string, 0)
-	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
-		cr, err := s.checker.CheckTSA(shard)
-
-		if err != nil {
-			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
-			_ = s.pool.Discard(shard)
-
-			s.cacheTSAChecks.Store(TsaKey{
-				Tsa:  tsa,
-				Host: shard.Instance().Hostname(),
-				AZ:   shard.Instance().AvailabilityZone(),
-			}, false)
-
-			return false
-		}
-		s.cacheTSAChecks.Store(TsaKey{
-			Tsa:  tsa,
-			Host: shard.Instance().Hostname(),
-			AZ:   shard.Instance().AvailabilityZone(),
-		}, cr.RW)
-
-		if !cr.RW {
-			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), cr.Reason))
-			_ = s.Put(shard)
-			return false
-		}
-
-		return true
-
-	}, tsa)
-	if sh != nil {
-		return sh, nil
-	}
-
-	return nil, fmt.Errorf("shard %s failed to find primary within %s", key.Name, strings.Join(totalMsg, ";"))
+	return s.selectShardHost(clid, key, hosts, true)
 }
 
 // Connection acquires a new instance connection for a client to a shard with target session attributes.
@@ -249,35 +133,16 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 	case "":
 		fallthrough
 	case config.TargetSessionAttrsAny:
-		total_msg := make([]string, 0)
+		totalMsg := make([]string, 0)
 		for _, host := range hostOrder {
 			shard, err := s.pool.ConnectionHost(clid, key, host)
 			if err != nil {
-				total_msg = append(total_msg, fmt.Sprintf("host %s: %s", host, err.Error()))
-
-				s.cacheTSAChecks.Store(TsaKey{
-					Tsa:  config.TargetSessionAttrsAny,
-					Host: host.Address,
-					AZ:   host.AZ,
-				}, false)
-
-				spqrlog.Zero.Error().
-					Err(err).
-					Str("host", host.Address).
-					Str("availability-zone", host.AZ).
-					Uint("client", clid).
-					Msg("failed to get connection to host for client")
+				totalMsg = append(totalMsg, fmt.Sprintf("host %s: %s", host, err.Error()))
 				continue
 			}
-			s.cacheTSAChecks.Store(TsaKey{
-				Tsa:  config.TargetSessionAttrsAny,
-				Host: host.Address,
-				AZ:   host.AZ,
-			}, true)
-
 			return shard, nil
 		}
-		return nil, fmt.Errorf("failed to get connection to any shard host within: %s", strings.Join(total_msg, ", "))
+		return nil, fmt.Errorf("failed to get connection to any shard host within: %s", strings.Join(totalMsg, ", "))
 	case config.TargetSessionAttrsRO:
 		return s.selectReadOnlyShardHost(clid, key, hostOrder, effectiveTargetSessionAttrs)
 	case config.TargetSessionAttrsPS:
@@ -293,7 +158,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 	}
 }
 
-func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]config.Host, error) {
+func (s *DBPool) BuildHostOrder(key kr.ShardKey, rw bool) ([]config.Host, error) {
 	var hostOrder []config.Host
 	var posCache []config.Host
 	var negCache []config.Host
@@ -309,15 +174,21 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 			AZ:   host.AZ,
 		}
 
-		if res, ok := s.cacheTSAChecks.Load(tsaKey); ok {
-			if res.(bool) {
+		result := s.checker.GetCachedResults()
+
+		// Check if we have cached results for this TSA key
+		if cachedResult, exists := result[tsaKey]; exists {
+			// Sort by preference: Alive first, then RW matching requirement
+			if cachedResult.Alive && cachedResult.RW == rw {
 				posCache = append(posCache, host)
 			} else {
 				negCache = append(negCache, host)
 			}
 		} else {
-			posCache = append(posCache, host)
+			// No cached result, add to negative cache
+			negCache = append(negCache, host)
 		}
+
 	}
 
 	if s.ShuffleHosts {
@@ -458,31 +329,28 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 	}
 
 	return &DBPool{
-		pool:           NewPool(allocator),
-		shardMapping:   mapping,
-		ShuffleHosts:   true,
-		PreferAZ:       preferAZ,
-		cacheTSAChecks: sync.Map{},
-		checker:        tsa.NewTSAChecker(),
+		pool:         NewPool(allocator),
+		shardMapping: mapping,
+		ShuffleHosts: true,
+		PreferAZ:     preferAZ,
+		checker:      tsa.NewTSAChecker(),
 	}
 }
 
 // TODO: add shuffle host support here
 func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, tsaRecheckDuration time.Duration) *DBPool {
 	return &DBPool{
-		pool:           mp,
-		shardMapping:   mapping,
-		cacheTSAChecks: sync.Map{},
-		checker:        tsa.NewTSACheckerWithDuration(tsaRecheckDuration),
+		pool:         mp,
+		shardMapping: mapping,
+		checker:      tsa.NewTSACheckerWithDuration(tsaRecheckDuration),
 	}
 }
 
 // TODO: add shuffle host support here
 func NewDBPoolWithAllocator(mapping map[string]*config.Shard, startupParams *startup.StartupParams, allocator ConnectionAllocFn) *DBPool {
 	return &DBPool{
-		pool:           NewPool(allocator),
-		shardMapping:   mapping,
-		cacheTSAChecks: sync.Map{},
-		checker:        tsa.NewTSAChecker(),
+		pool:         NewPool(allocator),
+		shardMapping: mapping,
+		checker:      tsa.NewTSAChecker(),
 	}
 }
