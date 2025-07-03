@@ -744,6 +744,16 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 		}
 		return nil
 	case *lyx.Insert:
+
+		if stmt.WithClause != nil {
+			for _, cte := range stmt.WithClause {
+				rm.CteNames[cte.Name] = struct{}{}
+				if err := qr.AnalyzeQueryV1(ctx, cte.SubQuery, rm); err != nil {
+					return err
+				}
+			}
+		}
+
 		if err := analyseHelper(stmt.TableRef); err != nil {
 			return err
 		}
@@ -759,6 +769,16 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 
 		return nil
 	case *lyx.Update:
+
+		if stmt.WithClause != nil {
+			for _, cte := range stmt.WithClause {
+				rm.CteNames[cte.Name] = struct{}{}
+				if err := qr.AnalyzeQueryV1(ctx, cte.SubQuery, rm); err != nil {
+					return err
+				}
+			}
+		}
+
 		if err := analyseHelper(stmt.TableRef); err != nil {
 			return err
 		}
@@ -771,6 +791,16 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 		return qr.AnalyzeQueryV1(ctx, clause, rm)
 
 	case *lyx.Delete:
+
+		if stmt.WithClause != nil {
+			for _, cte := range stmt.WithClause {
+				rm.CteNames[cte.Name] = struct{}{}
+				if err := qr.AnalyzeQueryV1(ctx, cte.SubQuery, rm); err != nil {
+					return err
+				}
+			}
+		}
+
 		if err := analyseHelper(stmt.TableRef); err != nil {
 			return err
 		}
