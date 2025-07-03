@@ -28,6 +28,28 @@ INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'dejwiewdewo');
 INSERT INTO hash_multi_xx (col1, col2) VALUES(1, '232892');
 INSERT INTO hash_multi_xx (col1, col2) VALUES(0, '232892');
 
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh2 */;
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh3 */;
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh4 */;
+
+TRUNCATE hash_multi_xx;
+
+COPY hash_multi_xx (col1, col2)  FROM STDIN DELIMITER '|';
+1|abwqqwqabba
+0|abwqqwqabba
+0|ababba
+0|ababdfba
+1|abawqqqwbba
+1|ababxaxasba
+1|ababxxxxba
+1|ababbxxxa
+0|ababbxxxa
+1|dejwio
+1|dejwiewdewo
+1|232892
+0|232892
+\.
 
 SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
 SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh2 */;

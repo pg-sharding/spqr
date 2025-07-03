@@ -110,6 +110,47 @@ NOTICE: send query to shard(s) : sh4
     1 | dejwiewdewo
 (4 rows)
 
+TRUNCATE hash_multi_xx;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+COPY hash_multi_xx (col1, col2)  FROM STDIN DELIMITER '|';
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ col1 |  col2  
+------+--------
+    0 | ababba
+    0 | 232892
+(2 rows)
+
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ col1 |    col2     
+------+-------------
+    0 | abwqqwqabba
+    0 | ababdfba
+    0 | ababbxxxa
+(3 rows)
+
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ col1 |    col2     
+------+-------------
+    1 | ababxaxasba
+    1 | ababxxxxba
+    1 | dejwio
+    1 | 232892
+(4 rows)
+
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+ col1 |    col2     
+------+-------------
+    1 | abwqqwqabba
+    1 | abawqqqwbba
+    1 | ababbxxxa
+    1 | dejwiewdewo
+(4 rows)
+
 DROP TABLE hash_multi_xx;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
