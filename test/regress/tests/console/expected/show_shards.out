@@ -6,16 +6,25 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 SHOW shards;
- shard |           host            
--------+---------------------------
- sh1   | spqr_shard_1:6432
- sh1   | spqr_shard_1_replica:6432
- sh2   | spqr_shard_2:6432
- sh2   | spqr_shard_2_replica:6432
- sh3   | spqr_shard_3:6432
- sh3   | spqr_shard_3_replica:6432
- sh4   | spqr_shard_4:6432
- sh4   | spqr_shard_4_replica:6432
+ shard 
+-------
+ sh1
+ sh2
+ sh3
+ sh4
+(4 rows)
+
+SHOW hosts;
+ shard |      host      
+-------+----------------
+ sh1   | localhost:5550
+ sh1   | localhost:5650
+ sh2   | localhost:5551
+ sh2   | localhost:5651
+ sh3   | localhost:5552
+ sh3   | localhost:5652
+ sh4   | localhost:5553
+ sh4   | localhost:5653
 (8 rows)
 
 CREATE SHARD sh1 WITH HOSTS localhost:6432;
@@ -27,16 +36,26 @@ CREATE SHARD sh5 WITH HOSTS localhost:6432;
 (1 row)
 
 SHOW shards;
- shard |           host            
--------+---------------------------
- sh1   | spqr_shard_1:6432
- sh1   | spqr_shard_1_replica:6432
- sh2   | spqr_shard_2:6432
- sh2   | spqr_shard_2_replica:6432
- sh3   | spqr_shard_3:6432
- sh3   | spqr_shard_3_replica:6432
- sh4   | spqr_shard_4:6432
- sh4   | spqr_shard_4_replica:6432
+ shard 
+-------
+ sh1
+ sh2
+ sh3
+ sh4
+ sh5
+(5 rows)
+
+SHOW hosts;
+ shard |      host      
+-------+----------------
+ sh1   | localhost:5550
+ sh1   | localhost:5650
+ sh2   | localhost:5551
+ sh2   | localhost:5651
+ sh3   | localhost:5552
+ sh3   | localhost:5652
+ sh4   | localhost:5553
+ sh4   | localhost:5653
  sh5   | localhost:6432
 (9 rows)
 
@@ -47,15 +66,24 @@ DROP SHARD sh5;
 (1 row)
 
 SHOW shards;
- shard |           host            
--------+---------------------------
- sh1   | spqr_shard_1:6432
- sh1   | spqr_shard_1_replica:6432
- sh2   | spqr_shard_2:6432
- sh2   | spqr_shard_2_replica:6432
- sh3   | spqr_shard_3:6432
- sh3   | spqr_shard_3_replica:6432
- sh4   | spqr_shard_4:6432
- sh4   | spqr_shard_4_replica:6432
+ shard 
+-------
+ sh1
+ sh2
+ sh3
+ sh4
+(4 rows)
+
+SHOW hosts;
+ shard |      host      
+-------+----------------
+ sh1   | localhost:5550
+ sh1   | localhost:5650
+ sh2   | localhost:5551
+ sh2   | localhost:5651
+ sh3   | localhost:5552
+ sh3   | localhost:5652
+ sh4   | localhost:5553
+ sh4   | localhost:5653
 (8 rows)
 
