@@ -36,11 +36,16 @@ WITH s AS (
 --), s2 AS (SELECT * FROM table1 WHERE i = 288) INSERT INTO table1 (select * from s2 union all select * from s);
 
 INSERT INTO table1 (i) VALUES(10);
+WITH vv AS (SELECT 1) INSERT INTO table1 (i) VALUES(11);
 
-INSERT INTO table1 WITH s AS (SELECT i + 1 FROM table1 WHERE i = 10) TABLE s;
+WITH vv AS (SELECT i + 1 FROM table1 WHERE i = 11) INSERT INTO table1 (i) TABLE vv;
 
+INSERT INTO table1 WITH s AS (SELECT i + 1 FROM table1 WHERE i = 12) TABLE s;
 
-TABLE table1 /* __spqr__engine_v2: true */;
+SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh1 */;
+SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh2 */;
+SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh3 */;
+SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh4 */;
 
 DROP TABLE table1;
 DROP TABLE ref_rel_1;
