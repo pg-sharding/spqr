@@ -26,9 +26,9 @@ Feature: Reference relation test
     When I execute SQL on host "router"
     """
     CREATE TABLE t(id int, name text);
-    INSERT INTO t (name) VALUES(1, 'test1') /* __spqr__engine_v2: true */;
-    INSERT INTO t (name) VALUES(2, 'test2') /* __spqr__engine_v2: true */;
-    INSERT INTO t (name) VALUES(3, 'test3') /* __spqr__engine_v2: true */;
+    INSERT INTO t (id, name) VALUES(1, 'test1') /* __spqr__engine_v2: true */;
+    INSERT INTO t (id, name) VALUES(2, 'test2') /* __spqr__engine_v2: true */;
+    INSERT INTO t (id, name) VALUES(3, 'test3') /* __spqr__engine_v2: true */;
     """
     Then command return code should be "0"
     
