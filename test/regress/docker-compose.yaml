@@ -188,4 +188,4 @@ services:
             - router
             - coordinator
             - pooler
-            - regress-mdb-image
+            # - regress-mdb-image
