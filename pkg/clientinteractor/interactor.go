@@ -732,12 +732,34 @@ func (pi *PSQLInteractor) DropTaskGroup(_ context.Context) error {
 // Returns:
 // - error: An error if there was a problem listing the data shards.
 func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*topology.DataShard) error {
-	if err := pi.WriteHeader("shard", "host"); err != nil {
+	if err := pi.WriteHeader("shard"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	spqrlog.Zero.Debug().Msg("listing shards")
+
+	for _, shard := range shards {
+		if err := pi.cl.Send(&pgproto3.DataRow{
+			Values: [][]byte{
+				[]byte(shard.ID),
+			},
+		}); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
+	return pi.CompleteMsg(0)
+}
+
+func (pi *PSQLInteractor) Hosts(ctx context.Context, shards []*topology.DataShard) error {
+	if err := pi.WriteHeader("shard", "host"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	spqrlog.Zero.Debug().Msg("listing hosts and statuses")
 
 	for _, shard := range shards {
 		for _, h := range shard.Cfg.Hosts() {

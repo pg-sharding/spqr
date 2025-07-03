@@ -879,7 +879,10 @@ show_stmt:
 		$$ = &Show{Cmd: $2, Where: $3, GroupBy: $4, Order: $5}
 	} | SHOW SHARDS where_clause group_clause order_clause {
 		$$ = &Show{Cmd: ShardsStr, Where: $3, GroupBy: $4, Order: $5}
+	} | SHOW HOSTS where_clause group_clause order_clause {
+		$$ = &Show{Cmd: HostsStr, Where: $3, GroupBy: $4, Order: $5}
 	}
+	
 lock_stmt:
 	LOCK key_range_stmt
 	{
