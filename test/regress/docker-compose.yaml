@@ -5,18 +5,18 @@ services:
             context: https://github.com/pg-sharding/cpg.git#${MDB_BRANCH:-MDB_16_6_no_aqo}
             dockerfile: docker/regress/Dockerfile
 
-    shard-image-mdb:
-        build:
-            context: ../..
-            dockerfile: docker/shard/Dockerfile.mdb
-        depends_on:
-            - regress-mdb-image
+    # shard-image-mdb:
+    #     build:
+    #         context: ../..
+    #         dockerfile: docker/shard/Dockerfile.mdb
+    #     depends_on:
+    #         - regress-mdb-image
     
     x-shard-common:
         &shard-common
         image: ${SHARD_IMAGE:-spqr-shard-image}
-        depends_on:
-            - shard-image-mdb
+        # depends_on:
+            # - shard-image-mdb
 
     shard1:
         <<: *shard-common
