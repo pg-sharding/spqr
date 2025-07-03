@@ -26,10 +26,34 @@ type TsaKey struct {
 	AZ   string
 }
 
+type ReadWriteStatus int
+
+const (
+	ReadWriteStatusUnknown ReadWriteStatus = iota
+	ReadWriteStatusRW
+	ReadWriteStatusRO
+	ReadWriteStatusAny
+)
+
+// NewReadWriteStatus creates a ReadWriteStatus from a boolean value.
+// If rw is true, it returns ReadWriteStatusRW, otherwise ReadWriteStatusRO.
+func NewReadWriteStatus(rw bool) ReadWriteStatus {
+	if rw {
+		return ReadWriteStatusRW
+	}
+	return ReadWriteStatusRO
+}
+
+type LocalCheckResult struct {
+	Alive  bool
+	Status ReadWriteStatus
+	Reason string
+}
+
 type DBPool struct {
 	pool           MultiShardPool
 	shardMapping   map[string]*config.Shard
-	cacheTSAChecks map[TsaKey]bool
+	cacheTSAChecks map[TsaKey]LocalCheckResult
 	cacheMutex     sync.RWMutex
 	checker        tsa.TSAChecker
 
@@ -72,7 +96,11 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 				Tsa:  tsa,
 				Host: host.Address,
 				AZ:   host.AZ,
-			}] = false
+			}] = LocalCheckResult{
+				Alive:  false,
+				Status: ReadWriteStatusUnknown,
+				Reason: err.Error(),
+			}
 			s.cacheMutex.Unlock()
 
 			spqrlog.Zero.Error().
@@ -128,7 +156,11 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 				Tsa:  tsa,
 				Host: shard.Instance().Hostname(),
 				AZ:   shard.Instance().AvailabilityZone(),
-			}] = false
+			}] = LocalCheckResult{
+				Alive:  cr.Alive,
+				Status: ReadWriteStatusUnknown,
+				Reason: err.Error(),
+			}
 			s.cacheMutex.Unlock()
 
 			return false
@@ -139,7 +171,11 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 			Tsa:  tsa,
 			Host: shard.Instance().Hostname(),
 			AZ:   shard.Instance().AvailabilityZone(),
-		}] = !cr.RW
+		}] = LocalCheckResult{
+			Alive:  cr.Alive,
+			Status: NewReadWriteStatus(cr.RW),
+			Reason: cr.Reason,
+		}
 		s.cacheMutex.Unlock()
 
 		if cr.RW {
@@ -186,7 +222,11 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 				Tsa:  tsa,
 				Host: shard.Instance().Hostname(),
 				AZ:   shard.Instance().AvailabilityZone(),
-			}] = false
+			}] = LocalCheckResult{
+				Alive:  cr.Alive,
+				Status: ReadWriteStatusUnknown,
+				Reason: err.Error(),
+			}
 			s.cacheMutex.Unlock()
 
 			return false
@@ -196,7 +236,11 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 			Tsa:  tsa,
 			Host: shard.Instance().Hostname(),
 			AZ:   shard.Instance().AvailabilityZone(),
-		}] = cr.RW
+		}] = LocalCheckResult{
+			Alive:  cr.Alive,
+			Status: NewReadWriteStatus(cr.RW),
+			Reason: cr.Reason,
+		}
 		s.cacheMutex.Unlock()
 
 		if !cr.RW {
@@ -271,7 +315,11 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 					Tsa:  config.TargetSessionAttrsAny,
 					Host: host.Address,
 					AZ:   host.AZ,
-				}] = false
+				}] = LocalCheckResult{
+					Alive:  false,
+					Status: ReadWriteStatusUnknown,
+					Reason: err.Error(),
+				}
 				s.cacheMutex.Unlock()
 
 				spqrlog.Zero.Error().
@@ -288,7 +336,11 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 				Tsa:  config.TargetSessionAttrsAny,
 				Host: host.Address,
 				AZ:   host.AZ,
-			}] = true
+			}] = LocalCheckResult{
+				Alive:  true,
+				Status: ReadWriteStatusAny,
+				Reason: "target session attrs any",
+			}
 			s.cacheMutex.Unlock()
 
 			return shard, nil
@@ -329,7 +381,7 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 		res, ok := s.cacheTSAChecks[tsaKey]
 		s.cacheMutex.RUnlock()
 		if ok {
-			if res {
+			if res.Alive {
 				posCache = append(posCache, host)
 			} else {
 				negCache = append(negCache, host)
