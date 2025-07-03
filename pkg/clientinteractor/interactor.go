@@ -84,6 +84,20 @@ type PSQLInteractor struct {
 	cl client.Client
 }
 
+func (pi *PSQLInteractor) CoordinatorAddr(ctx context.Context, addr string) error {
+	if err := pi.WriteHeader("coordinator address"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+	if err := pi.WriteDataRow(
+		fmt.Sprintf("%v", addr)); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	return pi.CompleteMsg(1)
+}
+
 // TODO refactor it to make more user-friendly
 func (pi *PSQLInteractor) Instance(ctx context.Context, ci connectiterator.ConnectIterator) error {
 	if err := pi.WriteHeader(

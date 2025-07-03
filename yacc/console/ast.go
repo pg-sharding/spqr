@@ -349,6 +349,7 @@ func (*RetryMoveTaskGroup) iStatement() {}
 const (
 	DatabasesStr          = "databases"
 	DistributionsStr      = "distributions"
+	CoordinatorAddrStr    = "coordinator_address"
 	RoutersStr            = "routers"
 	ShardsStr             = "shards"
 	ShardingRules         = "sharding_rules"
