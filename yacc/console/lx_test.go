@@ -93,6 +93,25 @@ func TestSimpleLex(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: `CREATE KEY RANGE krid1 FROM 1 ROUTE TO 'sh-1' FOR DISTRIBUTION ds1;`,
+			exp: []int{
+				spqrparser.CREATE,
+				spqrparser.KEY,
+				spqrparser.RANGE,
+				spqrparser.IDENT,
+				spqrparser.FROM,
+				spqrparser.ICONST,
+				spqrparser.ROUTE,
+				spqrparser.TO,
+				spqrparser.SCONST,
+				spqrparser.FOR,
+				spqrparser.DISTRIBUTION,
+				spqrparser.IDENT,
+				spqrparser.TSEMICOLON,
+			},
+			err: nil,
+		},
+		{
 			query: "CREATE KEY RANGE krid2 FROM -18 ROUTE TO sh2;",
 			exp: []int{
 				spqrparser.CREATE,
