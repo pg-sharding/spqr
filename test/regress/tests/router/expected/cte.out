@@ -85,15 +85,39 @@ NOTICE: send query to shard(s) : sh3
 --), s2 AS (SELECT * FROM table1 WHERE i = 288) INSERT INTO table1 (select * from s2 union all select * from s);
 INSERT INTO table1 (i) VALUES(10);
 NOTICE: send query to shard(s) : sh1
-INSERT INTO table1 WITH s AS (SELECT i + 1 FROM table1 WHERE i = 10) TABLE s;
+WITH vv AS (SELECT 1) INSERT INTO table1 (i) VALUES(11);
 NOTICE: send query to shard(s) : sh1
-TABLE table1 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+WITH vv AS (SELECT i + 1 FROM table1 WHERE i = 11) INSERT INTO table1 (i) TABLE vv;
+NOTICE: send query to shard(s) : sh1
+INSERT INTO table1 WITH s AS (SELECT i + 1 FROM table1 WHERE i = 12) TABLE s;
+NOTICE: send query to shard(s) : sh1
+SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
  i  
 ----
  10
  11
-(2 rows)
+ 12
+ 13
+(4 rows)
+
+SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ i 
+---
+(0 rows)
+
+SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ i 
+---
+(0 rows)
+
+SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+ i 
+---
+(0 rows)
 
 DROP TABLE table1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
