@@ -352,6 +352,7 @@ const (
 	CoordinatorAddrStr    = "coordinator_address"
 	RoutersStr            = "routers"
 	ShardsStr             = "shards"
+	HostsStr              = "hosts"
 	ShardingRules         = "sharding_rules"
 	KeyRangesStr          = "key_ranges"
 	ClientsStr            = "clients"
