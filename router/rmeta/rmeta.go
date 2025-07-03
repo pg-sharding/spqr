@@ -20,6 +20,11 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 )
 
+type AuxValuesKey struct {
+	CTEname   string
+	ValueName string
+}
+
 type RoutingMetadataContext struct {
 	// this maps table names to its query-defined restrictions
 	// All columns in query should be considered in context of its table,
@@ -46,7 +51,19 @@ type RoutingMetadataContext struct {
 
 	Mgr meta.EntityMgr
 
+	AuxValues map[AuxValuesKey][]lyx.Node
+
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
+}
+
+func (rm *RoutingMetadataContext) RecordAuxExpr(name string, value string, v lyx.Node) {
+	k := AuxValuesKey{
+		CTEname:   name,
+		ValueName: value,
+	}
+	vals, _ := rm.AuxValues[k]
+	vals = append(vals, v)
+	rm.AuxValues[k] = vals
 }
 
 func NewRoutingMetadataContext(sph session.SessionParamsHolder, mgr meta.EntityMgr) *RoutingMetadataContext {

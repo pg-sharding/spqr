@@ -815,6 +815,30 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 	return nil
 }
 
+func (qr *ProxyQrouter) planWithClauseV1(ctx context.Context, rm *rmeta.RoutingMetadataContext, WithClause []*lyx.CommonTableExpr) (plan.Plan, error) {
+	var p plan.Plan
+	for _, cte := range WithClause {
+		switch qq := cte.SubQuery.(type) {
+		case *lyx.ValueClause:
+			/* special case */
+			for i, v := range qq.Values {
+				if i < len(cte.NameList) && len(v) != 0 {
+					/* XXX: currently only one-tuple aux values supported */
+					rm.RecordAuxExpr(cte.Name, cte.NameList[i], v[0])
+				}
+			}
+		default:
+			if tmp, err := qr.planQueryV1(ctx, cte.SubQuery, rm); err != nil {
+				return nil, err
+			} else {
+				p = plan.Combine(p, tmp)
+			}
+		}
+	}
+
+	return p, nil
+}
+
 // TODO : unit tests
 // May return nil routing state here - thats ok
 func (qr *ProxyQrouter) planQueryV1(
@@ -1011,15 +1035,12 @@ func (qr *ProxyQrouter) planQueryV1(
 			}
 		}
 
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				if tmp, err := qr.planQueryV1(ctx, cte.SubQuery, rm); err != nil {
-					return nil, err
-				} else {
-					p = plan.Combine(p, tmp)
-				}
-			}
+		tmp, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
+		if err != nil {
+			return nil, err
 		}
+
+		p = plan.Combine(p, tmp)
 
 		if stmt.FromClause != nil {
 			// collect table alias names, if any
@@ -1047,14 +1068,9 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		var p plan.Plan = nil
 
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				if tmp, err := qr.planQueryV1(ctx, cte.SubQuery, rm); err != nil {
-					return nil, err
-				} else {
-					p = plan.Combine(p, tmp)
-				}
-			}
+		p, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
+		if err != nil {
+			return nil, err
 		}
 
 		if selectStmt := stmt.SubSelect; selectStmt != nil {
@@ -1173,15 +1189,10 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		return p, nil
 	case *lyx.Update:
-		var p plan.Plan = nil
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				if tmp, err := qr.planQueryV1(ctx, cte.SubQuery, rm); err != nil {
-					return nil, err
-				} else {
-					p = plan.Combine(p, tmp)
-				}
-			}
+
+		p, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
+		if err != nil {
+			return nil, err
 		}
 
 		clause := stmt.Where
@@ -1218,16 +1229,10 @@ func (qr *ProxyQrouter) planQueryV1(
 		p = plan.Combine(p, tmp)
 		return p, nil
 	case *lyx.Delete:
-		var p plan.Plan = nil
 
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				if tmp, err := qr.planQueryV1(ctx, cte.SubQuery, rm); err != nil {
-					return nil, err
-				} else {
-					p = plan.Combine(p, tmp)
-				}
-			}
+		p, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
+		if err != nil {
+			return nil, err
 		}
 
 		clause := stmt.Where
