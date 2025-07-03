@@ -155,7 +155,7 @@ func randomHex(n int) (string, error) {
 
 %type<colref> ColRef
 
-%type<str> any_val any_id
+%type<str> any_val any_id shard_id
 
 %type<uinteger> any_uint
 %type<integer> SignedInt
@@ -425,6 +425,15 @@ any_val: SCONST
 	}
 
 any_id: IDENT
+	{
+		$$ = string($1)
+	}
+
+
+shard_id: IDENT
+	{
+		$$ = string($1)
+	} | SCONST
 	{
 		$$ = string($1)
 	}
@@ -1052,7 +1061,7 @@ key_range_bound:
 
 
 key_range_define_stmt:
-	KEY RANGE any_id FROM key_range_bound ROUTE TO any_id distribution_membership
+	KEY RANGE any_id FROM key_range_bound ROUTE TO shard_id distribution_membership
 	{
 		$$ = &KeyRangeDefinition{
 			KeyRangeID: $3,

@@ -359,6 +359,22 @@ func TestKeyRange(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: "CREATE KEY RANGE krid1 FROM 1 ROUTE TO 'sh-1' FOR DISTRIBUTION ds1;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangeDefinition{
+					ShardID:      "sh-1",
+					KeyRangeID:   "krid1",
+					Distribution: "ds1",
+					LowerBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{
+							{2, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
 			query: "CREATE KEY RANGE krid1 FROM -10 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
