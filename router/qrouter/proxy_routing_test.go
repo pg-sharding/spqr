@@ -529,6 +529,30 @@ func TestCTE(t *testing.T) {
 
 		{
 			query: `
+			WITH vals (x, y, z) AS (
+				VALUES (
+					1,
+					2,
+					4
+				)
+			)
+			SELECT 
+				*
+			FROM t r
+			JOIN vals 
+				ON r.a = vals.x;
+			`,
+			err: nil,
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+		},
+
+		{
+			query: `
 			WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM t t, vv v  WHERE t.i = v.x;`,
 			err: nil,
 			exp: plan.ShardDispatchPlan{

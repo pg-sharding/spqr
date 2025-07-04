@@ -51,8 +51,40 @@ SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh4 */;
 
 INSERT INTO table2 (a,b,c) VALUES (1, 22, 33);
 
-WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv  WHERE t.a = vv.x;
-WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv v  WHERE t.a = v.x;
+WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv WHERE t.a = vv.x;
+WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv v WHERE t.a = v.x;
+
+
+WITH vals (x, y, z) AS (
+    VALUES (
+		1,
+		2,
+		4
+    )
+)
+SELECT 
+	*
+FROM table2 r
+JOIN vals 
+	ON r.a = vals.x;
+
+WITH vals (x, y, z) AS (
+    VALUES (
+		1,
+		2,
+		4
+    )
+),
+tttdf AS (
+    SELECT 
+		*
+    FROM table2 r
+    JOIN vals 
+        ON r.a = vals.x
+)
+UPDATE table2 SET b = b + 1;
+
+SELECT * FROM table2 ORDER BY a /* __spqr__execute_on: sh1 */;
 
 DROP TABLE table1;
 DROP TABLE table2;
