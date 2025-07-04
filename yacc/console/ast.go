@@ -1,5 +1,7 @@
 package spqrparser
 
+import "github.com/pg-sharding/spqr/router/rfqn"
+
 type ColumnRef struct {
 	TableAlias string
 	ColName    string
@@ -101,18 +103,19 @@ type DropStmt interface {
 	iDrop()
 }
 
-type QualifiedName struct {
-	Name       string
-	SchemaName string
-}
-
-func (n QualifiedName) String() string {
-	if len(n.SchemaName) < 1 {
-		return n.Name
+/*
+	type QualifiedName struct {
+		Name       string
+		SchemaName string
 	}
-	return n.SchemaName + "." + n.Name
-}
 
+	func (n QualifiedName) String() string {
+		if len(n.SchemaName) < 1 {
+			return n.Name
+		}
+		return n.SchemaName + "." + n.Name
+	}
+*/
 type DistributionDefinition struct {
 	ID                   string
 	ColTypes             []string
@@ -311,7 +314,7 @@ func (*AlterRelation) iAlterDistribution() {}
 
 type DetachRelation struct {
 	Distribution *DistributionSelector
-	RelationName *QualifiedName
+	RelationName *rfqn.RelationFQN
 }
 
 func (*DetachRelation) iStatement()         {}

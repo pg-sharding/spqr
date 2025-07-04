@@ -22,7 +22,7 @@ import (
 	qdb "github.com/pg-sharding/spqr/qdb"
 	cache "github.com/pg-sharding/spqr/router/cache"
 	port "github.com/pg-sharding/spqr/router/port"
-	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	rfqn "github.com/pg-sharding/spqr/router/rfqn"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -107,7 +107,7 @@ func (mr *MockCoordinatorMockRecorder) AlterDistributionAttach(ctx, id, rels any
 }
 
 // AlterDistributionDetach mocks base method.
-func (m *MockCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName *spqrparser.QualifiedName) error {
+func (m *MockCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AlterDistributionDetach", ctx, id, relName)
 	ret0, _ := ret[0].(error)
@@ -380,7 +380,7 @@ func (mr *MockCoordinatorMockRecorder) GetReferenceRelation(ctx, tableName any) 
 }
 
 // GetRelationDistribution mocks base method.
-func (m *MockCoordinator) GetRelationDistribution(ctx context.Context, relation_name string) (*distributions.Distribution, error) {
+func (m *MockCoordinator) GetRelationDistribution(ctx context.Context, relation_name *rfqn.RelationFQN) (*distributions.Distribution, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRelationDistribution", ctx, relation_name)
 	ret0, _ := ret[0].(*distributions.Distribution)

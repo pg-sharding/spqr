@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
 type ShardingSchemaKeeper interface {
@@ -68,7 +69,7 @@ type QDB interface {
 	DropDistribution(ctx context.Context, id string) error
 	GetDistribution(ctx context.Context, id string) (*Distribution, error)
 	// TODO: fix this by passing FQRN (fully qualified relation name (+schema))
-	GetRelationDistribution(ctx context.Context, relation string) (*Distribution, error)
+	GetRelationDistribution(ctx context.Context, relation *rfqn.RelationFQN) (*Distribution, error)
 
 	// Reference relations
 	CreateReferenceRelation(ctx context.Context, r *ReferenceRelation) error
@@ -78,7 +79,7 @@ type QDB interface {
 
 	// Update distribution
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
-	AlterDistributionDetach(ctx context.Context, id string, relName string) error
+	AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error
 	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
 
 	// Task group
@@ -112,8 +113,8 @@ type QDB interface {
 	// Sequences for reference relation
 	CreateSequence(ctx context.Context, seqName string, initialValue int64) error
 	ListSequences(ctx context.Context) ([]string, error)
-	AlterSequenceAttach(ctx context.Context, seqName string, relName, colName string) error
-	GetRelationSequence(ctx context.Context, relName string) (map[string]string, error)
+	AlterSequenceAttach(ctx context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error
+	GetRelationSequence(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error)
 	NextVal(ctx context.Context, seqName string) (int64, error)
 	CurrVal(ctx context.Context, seqName string) (int64, error)
 	DropSequence(ctx context.Context, seqName string) error

@@ -17,7 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
 	"github.com/pg-sharding/spqr/router/cache"
-	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
 type Coordinator struct {
@@ -58,7 +58,8 @@ func (lc *Coordinator) AlterDistributedRelation(ctx context.Context, id string, 
 	}
 
 	for colName, seqName := range rel.ColumnSequenceMapping {
-		if err := lc.qdb.AlterSequenceAttach(ctx, seqName, rel.Name, colName); err != nil {
+		qualifiedName := rel.ToRFQN()
+		if err := lc.qdb.AlterSequenceAttach(ctx, seqName, &qualifiedName, colName); err != nil {
 			return err
 		}
 	}
@@ -102,8 +103,8 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 		if err := lc.qdb.CreateSequence(ctx, ret[entry.Column], int64(entry.Start)); err != nil {
 			return err
 		}
-
-		if err := lc.qdb.AlterSequenceAttach(ctx, ret[entry.Column], r.TableName, entry.Column); err != nil {
+		qualifiedName := rfqn.RelationFQN{RelationName: r.TableName}
+		if err := lc.qdb.AlterSequenceAttach(ctx, ret[entry.Column], &qualifiedName, entry.Column); err != nil {
 			return err
 		}
 	}
@@ -171,7 +172,7 @@ func (lc *Coordinator) DropReferenceRelation(ctx context.Context, id string) err
 	if err != nil {
 		return err
 	}
-	qualifiedName := &spqrparser.QualifiedName{Name: id}
+	qualifiedName := &rfqn.RelationFQN{RelationName: id}
 	return lc.AlterDistributionDetach(ctx, distributions.REPLICATED, qualifiedName)
 }
 
@@ -391,7 +392,11 @@ func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distrib
 	}
 	ds := distributions.DistributionFromDB(ret)
 	for relName := range ds.Relations {
-		mapping, err := lc.qdb.GetRelationSequence(ctx, relName)
+		qualifiedName, err := rfqn.ParseFQN(relName)
+		if err != nil {
+			return nil, err
+		}
+		mapping, err := lc.qdb.GetRelationSequence(ctx, qualifiedName)
 		if err != nil {
 			return nil, err
 		}
@@ -412,14 +417,18 @@ func (lc *Coordinator) GetReferenceRelation(ctx context.Context, tableName strin
 
 // GetRelationDistribution retrieves info about distribution attached to relation from QDB
 // TODO: unit tests
-func (lc *Coordinator) GetRelationDistribution(ctx context.Context, relation string) (*distributions.Distribution, error) {
+func (lc *Coordinator) GetRelationDistribution(ctx context.Context, relation *rfqn.RelationFQN) (*distributions.Distribution, error) {
 	ret, err := lc.qdb.GetRelationDistribution(ctx, relation)
 	if err != nil {
 		return nil, err
 	}
 	ds := distributions.DistributionFromDB(ret)
 	for relName := range ds.Relations {
-		mapping, err := lc.qdb.GetRelationSequence(ctx, relName)
+		qualifiedName, err := rfqn.ParseFQN(relName)
+		if err != nil {
+			return nil, err
+		}
+		mapping, err := lc.qdb.GetRelationSequence(ctx, qualifiedName)
 		if err != nil {
 			return nil, err
 		}
@@ -573,7 +582,11 @@ func (qc *Coordinator) ListDistributions(ctx context.Context) ([]*distributions.
 	for _, ds := range distrs {
 		ret := distributions.DistributionFromDB(ds)
 		for relName := range ds.Relations {
-			mapping, err := qc.qdb.GetRelationSequence(ctx, relName)
+			qualifiedName, err := rfqn.ParseFQN(relName)
+			if err != nil {
+				return nil, err
+			}
+			mapping, err := qc.qdb.GetRelationSequence(ctx, qualifiedName)
 			if err != nil {
 				return nil, err
 			}
@@ -594,8 +607,8 @@ func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 			if err := qc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
 				return err
 			}
-
-			err := qc.qdb.AlterSequenceAttach(ctx, SeqName, rel.Name, colName)
+			qualifiedName := rel.ToRFQN()
+			err := qc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName)
 			if err != nil {
 				return err
 			}
@@ -615,8 +628,8 @@ func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 //
 // Returns:
 // - error: an error if the alteration operation fails.
-func (qc *Coordinator) AlterDistributionDetach(ctx context.Context, id string, relName *spqrparser.QualifiedName) error {
-	return qc.qdb.AlterDistributionDetach(ctx, id, relName.Name)
+func (qc *Coordinator) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
+	return qc.qdb.AlterDistributionDetach(ctx, id, relName)
 }
 
 // ShareKeyRange shares a key range with the LocalCoordinator.

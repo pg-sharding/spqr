@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -23,8 +24,11 @@ type DistributedRelation struct {
 	ColumnSequenceMapping map[string]string
 }
 
-func (r *DistributedRelation) QualifiedName() spqrparser.QualifiedName {
-	return spqrparser.QualifiedName{Name: r.Name, SchemaName: r.SchemaName}
+func (r *DistributedRelation) QualifiedName() rfqn.RelationFQN {
+	return rfqn.RelationFQN{RelationName: r.Name, SchemaName: r.SchemaName}
+}
+func (r *DistributedRelation) ToRFQN() rfqn.RelationFQN {
+	return rfqn.RelationFQN{RelationName: r.Name, SchemaName: r.SchemaName}
 }
 
 const (

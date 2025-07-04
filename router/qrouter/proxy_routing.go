@@ -1188,13 +1188,13 @@ func (qr *ProxyQrouter) planQueryV1(
 func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.CreateTable) error {
 	var err error
 	var ds *distributions.Distribution
-	var relname string
+	var relname rfqn.RelationFQN
 
 	if node.PartitionOf != nil {
 		switch q := node.PartitionOf.(type) {
 		case *lyx.RangeVar:
-			relname = q.RelationName
-			_, err = qr.mgr.GetRelationDistribution(ctx, relname)
+			relname := rfqn.RelationFQNFromRangeRangeVar(q)
+			_, err = qr.mgr.GetRelationDistribution(ctx, &relname)
 			return err
 		default:
 			return fmt.Errorf("partition of is not a range var")
@@ -1203,8 +1203,8 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 
 	switch q := node.TableRv.(type) {
 	case *lyx.RangeVar:
-		relname = q.RelationName
-		ds, err = qr.mgr.GetRelationDistribution(ctx, relname)
+		relname = rfqn.RelationFQNFromRangeRangeVar(q)
+		ds, err = qr.mgr.GetRelationDistribution(ctx, &relname)
 		if err != nil {
 			return err
 		}
@@ -1224,8 +1224,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 			entries[q.ColName] = struct{}{}
 		}
 	}
-
-	rel, ok := ds.Relations[relname]
+	rel, ok := ds.Relations[relname.String()]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" not present in distribution \"%s\" it's attached to", relname, ds.Id)
 	}

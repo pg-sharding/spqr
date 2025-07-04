@@ -3,7 +3,7 @@ package distributions
 import (
 	"context"
 
-	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
 type DistributionMgr interface {
@@ -12,9 +12,9 @@ type DistributionMgr interface {
 	DropDistribution(ctx context.Context, id string) error
 	GetDistribution(ctx context.Context, id string) (*Distribution, error)
 
-	GetRelationDistribution(ctx context.Context, relation_name string) (*Distribution, error)
+	GetRelationDistribution(ctx context.Context, relation_name *rfqn.RelationFQN) (*Distribution, error)
 
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
-	AlterDistributionDetach(ctx context.Context, id string, relName *spqrparser.QualifiedName) error
+	AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error
 	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
 }

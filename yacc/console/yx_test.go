@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pg-sharding/spqr/router/rfqn"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -795,7 +796,7 @@ func TestAlter(t *testing.T) {
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.DetachRelation{
-						RelationName: &spqrparser.QualifiedName{Name: "t"},
+						RelationName: &rfqn.RelationFQN{RelationName: "t"},
 						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
@@ -807,7 +808,7 @@ func TestAlter(t *testing.T) {
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.DetachRelation{
-						RelationName: &spqrparser.QualifiedName{Name: "t", SchemaName: "schema1"},
+						RelationName: &rfqn.RelationFQN{RelationName: "t", SchemaName: "schema1"},
 
 						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},

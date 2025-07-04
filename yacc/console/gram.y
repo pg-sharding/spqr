@@ -9,6 +9,7 @@ import (
 	"strings"
 	"math"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
 const SIGNED_INT_RANGE_ERROR string = "the Signed Value should be at the range of [-9223372036854775808, 9223372036854775807]."
@@ -49,7 +50,7 @@ func randomHex(n int) (string, error) {
 
 	krbound                *KeyRangeBound
 
-	qname		   		   *QualifiedName
+	qname		   		   *rfqn.RelationFQN
 	ds                     *DistributionDefinition
 	kr                     *KeyRangeDefinition
 	shard                  *ShardDefinition
@@ -432,11 +433,11 @@ any_id: IDENT
 qualified_name:
 	IDENT
 	{
-		$$ = &QualifiedName{Name: $1}
+		$$ = &rfqn.RelationFQN{RelationName: $1}
 	} |
 	IDENT TDOT IDENT
 	{
-		$$ = &QualifiedName{Name: $3, SchemaName: $1}
+		$$ = &rfqn.RelationFQN{RelationName: $3, SchemaName: $1}
 	}
 
 
@@ -693,14 +694,14 @@ distributed_relation_def:
 			return 1
 		} else if len($2.SchemaName)>0 {
 			$$ = &DistributedRelation{
-				Name: 	 $2.Name,
+				Name: 	 $2.RelationName,
 				DistributionKey: $5,
 				AutoIncrementEntries: $6,
 				SchemaName: $2.SchemaName,
 			}
 		} else {
 			$$ = &DistributedRelation{
-				Name: 	 $2.Name,
+				Name: 	 $2.RelationName,
 				DistributionKey: $5,
 				AutoIncrementEntries: $6,
 				SchemaName: $7,
@@ -714,14 +715,14 @@ distributed_relation_def:
 			return 1
 		}  else if len($2.SchemaName)>0 {
 			$$ = &DistributedRelation{
-				Name: 	 $2.Name,
+				Name: 	 $2.RelationName,
 				ReplicatedRelation: true,
 				AutoIncrementEntries: $3,
 				SchemaName: $2.SchemaName,
 			}
 		} else {
 			$$ = &DistributedRelation{
-				Name: 	 $2.Name,
+				Name: 	 $2.RelationName,
 				ReplicatedRelation: true,
 				AutoIncrementEntries: $3,
 				SchemaName: $4,

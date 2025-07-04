@@ -85,7 +85,7 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, r
 		return &CatalogDistribution, nil
 	}
 
-	ds, err := rm.Mgr.GetRelationDistribution(ctx, resolvedRelation.RelationName)
+	ds, err := rm.Mgr.GetRelationDistribution(ctx, &resolvedRelation)
 
 	if err != nil {
 		return nil, err

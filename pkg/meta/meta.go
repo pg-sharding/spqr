@@ -26,6 +26,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
 	rclient "github.com/pg-sharding/spqr/router/client"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -126,7 +127,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			}
 
 			for _, rel := range ds.Relations {
-				qualifiedName := &spqrparser.QualifiedName{Name: rel.Name, SchemaName: rel.SchemaName}
+				qualifiedName := &rfqn.RelationFQN{RelationName: rel.Name, SchemaName: rel.SchemaName}
 				if err := mngr.AlterDistributionDetach(ctx, ds.Id, qualifiedName); err != nil {
 					return err
 				}
@@ -408,7 +409,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		if err := mngr.AlterDistributedRelation(ctx, stmt.Distribution.ID, distributions.DistributedRelationFromSQL(stmt.Relation)); err != nil {
 			return err
 		}
-		qName := spqrparser.QualifiedName{Name: stmt.Relation.Name, SchemaName: stmt.Relation.SchemaName}
+		qName := rfqn.RelationFQN{RelationName: stmt.Relation.Name, SchemaName: stmt.Relation.SchemaName}
 		return cli.AlterDistributedRelation(ctx, stmt.Distribution.ID, qName.String())
 	case *spqrparser.DropDefaultShard:
 		if distribution, err := mngr.GetDistribution(ctx, stmt.Distribution.ID); err != nil {
