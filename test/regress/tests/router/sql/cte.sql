@@ -75,7 +75,7 @@ WITH vals (x, y, z) AS (
 		4
     )
 ),
-tttdf AS (
+ttttt AS (
     SELECT 
 		*
     FROM table2 r
