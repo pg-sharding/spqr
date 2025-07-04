@@ -87,7 +87,7 @@ func (rm *RoutingMetadataContext) RecordAuxExpr(name string, value string, v lyx
 		CTEName:   name,
 		ValueName: value,
 	}
-	vals, _ := rm.AuxValues[k]
+	vals := rm.AuxValues[k]
 	vals = append(vals, v)
 	rm.AuxValues[k] = vals
 }

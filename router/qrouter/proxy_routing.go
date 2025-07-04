@@ -1070,9 +1070,6 @@ func (qr *ProxyQrouter) planQueryV1(
 		return p, nil
 
 	case *lyx.Insert:
-
-		var p plan.Plan = nil
-
 		p, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
 		if err != nil {
 			return nil, err
