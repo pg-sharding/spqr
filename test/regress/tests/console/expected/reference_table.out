@@ -22,7 +22,7 @@ CREATE REFERENCE TABLE zz2 ON sh3, sh4;
 CREATE REFERENCE RELATION zz2;
 ERROR:  reference relation zz2 already exists
 SYNC REFERENCE TABLES ON sh1;
-ERROR:  sync reference table cmd not implemented
+ERROR:  request is unprocessable in router
 DROP DISTRIBUTION ALL CASCADE;
        drop distribution       
 -------------------------------

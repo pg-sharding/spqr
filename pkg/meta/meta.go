@@ -576,7 +576,11 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}
 		return cli.MoveTaskGroup(ctx, taskGroup, colTypes)
 	case *spqrparser.SyncReferenceTables:
-		return cli.ReportError(fmt.Errorf("sync reference table cmd not implemented"))
+		/* TODO: fix RelationSelector logic */
+		if err := mgr.SyncReferenceRelations(ctx, []string{stmt.RelationSelector}, stmt.ShardID); err != nil {
+			return err
+		}
+		return cli.SyncReferenceRelations([]string{stmt.RelationSelector}, stmt.ShardID)
 	default:
 		return ErrUnknownCoordinatorCommand
 	}
