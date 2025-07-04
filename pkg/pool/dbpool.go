@@ -37,11 +37,9 @@ type DBPool struct {
 	shardMapping map[string]*config.Shard
 	checker      tsa.TSAChecker
 
-	CacheTSAChecks map[TsaKey]LocalCheckResult
-	cacheMutex     sync.RWMutex
-
-	ShuffleHosts bool
-	PreferAZ     string
+	CacheTSAChecks *sync.Map
+	ShuffleHosts   bool
+	PreferAZ       string
 }
 
 // ConnectionHost implements DBPool.
@@ -74,17 +72,15 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 		sh, err := s.pool.ConnectionHost(clid, key, host)
 		if err != nil {
 
-			s.cacheMutex.Lock()
-			s.CacheTSAChecks[TsaKey{
+			s.CacheTSAChecks.Store(TsaKey{
 				Tsa:  tsa,
 				Host: host.Address,
 				AZ:   host.AZ,
-			}] = LocalCheckResult{
+			}, LocalCheckResult{
 				Alive:  false,
 				Good:   false,
 				Reason: err.Error(),
-			}
-			s.cacheMutex.Unlock()
+			})
 
 			spqrlog.Zero.Error().
 				Err(err).
@@ -130,32 +126,28 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 			hostToReason[shard.Instance().Hostname()] = err.Error()
 			_ = s.pool.Discard(shard)
 
-			s.cacheMutex.Lock()
-			s.CacheTSAChecks[TsaKey{
+			s.CacheTSAChecks.Store(TsaKey{
 				Tsa:  tsa,
 				Host: shard.Instance().Hostname(),
 				AZ:   shard.Instance().AvailabilityZone(),
-			}] = LocalCheckResult{
+			}, LocalCheckResult{
 				Alive:  cr.Alive,
 				Good:   false,
 				Reason: err.Error(),
-			}
-			s.cacheMutex.Unlock()
+			})
 
 			return false
 		}
 
-		s.cacheMutex.Lock()
-		s.CacheTSAChecks[TsaKey{
+		s.CacheTSAChecks.Store(TsaKey{
 			Tsa:  tsa,
 			Host: shard.Instance().Hostname(),
 			AZ:   shard.Instance().AvailabilityZone(),
-		}] = LocalCheckResult{
+		}, LocalCheckResult{
 			Alive:  cr.Alive,
 			Good:   !cr.RW,
 			Reason: cr.Reason,
-		}
-		s.cacheMutex.Unlock()
+		})
 
 		if cr.Alive && !cr.RW {
 			return true
@@ -202,32 +194,28 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 			hostToReason[shard.Instance().Hostname()] = err.Error()
 			_ = s.pool.Discard(shard)
 
-			s.cacheMutex.Lock()
-			s.CacheTSAChecks[TsaKey{
+			s.CacheTSAChecks.Store(TsaKey{
 				Tsa:  tsa,
 				Host: shard.Instance().Hostname(),
 				AZ:   shard.Instance().AvailabilityZone(),
-			}] = LocalCheckResult{
+			}, LocalCheckResult{
 				Alive:  cr.Alive,
 				Good:   false,
 				Reason: err.Error(),
-			}
-			s.cacheMutex.Unlock()
+			})
 
 			return false
 		}
 
-		s.cacheMutex.Lock()
-		s.CacheTSAChecks[TsaKey{
+		s.CacheTSAChecks.Store(TsaKey{
 			Tsa:  tsa,
 			Host: shard.Instance().Hostname(),
 			AZ:   shard.Instance().AvailabilityZone(),
-		}] = LocalCheckResult{
+		}, LocalCheckResult{
 			Alive:  cr.Alive,
 			Good:   cr.RW,
 			Reason: cr.Reason,
-		}
-		s.cacheMutex.Unlock()
+		})
 
 		if cr.Alive && cr.RW {
 			return true
@@ -248,7 +236,7 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 		messages = append(messages, fmt.Sprintf("host %s: %s", host, reason))
 	}
 
-	return nil, fmt.Errorf("shard %s failed to find replica within %s", key.Name, strings.Join(messages, ";"))
+	return nil, fmt.Errorf("shard %s failed to find primary within %s", key.Name, strings.Join(messages, ";"))
 }
 
 // Connection acquires a new instance connection for a client to a shard with target session attributes.
@@ -302,17 +290,15 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 			if err != nil {
 				total_msg = append(total_msg, fmt.Sprintf("host %s: %s", host, err.Error()))
 
-				s.cacheMutex.Lock()
-				s.CacheTSAChecks[TsaKey{
+				s.CacheTSAChecks.Store(TsaKey{
 					Tsa:  config.TargetSessionAttrsAny,
 					Host: host.Address,
 					AZ:   host.AZ,
-				}] = LocalCheckResult{
+				}, LocalCheckResult{
 					Alive:  false,
 					Good:   false,
 					Reason: err.Error(),
-				}
-				s.cacheMutex.Unlock()
+				})
 
 				spqrlog.Zero.Error().
 					Err(err).
@@ -323,17 +309,15 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 				continue
 			}
 
-			s.cacheMutex.Lock()
-			s.CacheTSAChecks[TsaKey{
+			s.CacheTSAChecks.Store(TsaKey{
 				Tsa:  config.TargetSessionAttrsAny,
 				Host: host.Address,
 				AZ:   host.AZ,
-			}] = LocalCheckResult{
+			}, LocalCheckResult{
 				Alive:  true,
 				Good:   true,
 				Reason: "target session attrs any",
-			}
-			s.cacheMutex.Unlock()
+			})
 
 			return shard, nil
 		}
@@ -370,13 +354,12 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 			AZ:   host.AZ,
 		}
 
-		s.cacheMutex.RLock()
-		res, ok := s.CacheTSAChecks[tsaKey]
-		s.cacheMutex.RUnlock()
+		res, ok := s.CacheTSAChecks.Load(tsaKey)
 		if ok {
-			if !res.Alive {
+			cr := res.(LocalCheckResult)
+			if !cr.Alive {
 				deadCache = append(deadCache, host)
-			} else if res.Good {
+			} else if cr.Good {
 				posCache = append(posCache, host)
 			} else {
 				negCache = append(negCache, host)
@@ -535,8 +518,7 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 		shardMapping:   mapping,
 		ShuffleHosts:   true,
 		PreferAZ:       preferAZ,
-		CacheTSAChecks: make(map[TsaKey]LocalCheckResult),
-		cacheMutex:     sync.RWMutex{},
+		CacheTSAChecks: &sync.Map{},
 		checker:        tsa.NewTSAChecker(),
 	}
 }
@@ -546,8 +528,7 @@ func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.Startu
 	return &DBPool{
 		pool:           mp,
 		shardMapping:   mapping,
-		CacheTSAChecks: make(map[TsaKey]LocalCheckResult),
-		cacheMutex:     sync.RWMutex{},
+		CacheTSAChecks: &sync.Map{},
 		checker:        tsa.NewTSACheckerWithDuration(tsaRecheckDuration),
 	}
 }
@@ -557,8 +538,7 @@ func NewDBPoolWithAllocator(mapping map[string]*config.Shard, startupParams *sta
 	return &DBPool{
 		pool:           NewPool(allocator),
 		shardMapping:   mapping,
-		CacheTSAChecks: make(map[TsaKey]LocalCheckResult),
-		cacheMutex:     sync.RWMutex{},
+		CacheTSAChecks: &sync.Map{},
 		checker:        tsa.NewTSAChecker(),
 	}
 }
