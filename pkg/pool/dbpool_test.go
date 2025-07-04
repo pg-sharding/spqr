@@ -493,3 +493,187 @@ func TestBuildHostOrder(t *testing.T) {
 		})
 	}
 }
+func TestBuildHostOrderWithCache(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	underyling_pool := mockpool.NewMockMultiShardPool(ctrl)
+
+	key := kr.ShardKey{
+		Name: "sh1",
+	}
+
+	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
+		key.Name: {
+			RawHosts: []string{
+				"h1:6432:sas",
+				"h2:6432:sas",
+				"h3:6432:vla",
+				"h4:6432:vla",
+				"h5:6432:klg",
+			},
+		},
+	}, &startup.StartupParams{}, underyling_pool, time.Hour)
+
+	tests := []struct {
+		name          string
+		cacheState    map[pool.TsaKey]pool.LocalCheckResult
+		tsa           tsa.TSA
+		shuffleHosts  bool
+		preferAZ      string
+		expectedOrder []string
+		checkCacheHit bool
+	}{
+		{
+			name: "Mix of alive good, alive bad, and dead hosts",
+			cacheState: map[pool.TsaKey]pool.LocalCheckResult{
+				{Tsa: config.TargetSessionAttrsRO, Host: "h1:6432", AZ: "sas"}: {
+					Alive: true, Good: true, Reason: "read-only available",
+				},
+				{Tsa: config.TargetSessionAttrsRO, Host: "h2:6432", AZ: "sas"}: {
+					Alive: false, Good: false, Reason: "connection refused",
+				},
+				{Tsa: config.TargetSessionAttrsRO, Host: "h3:6432", AZ: "vla"}: {
+					Alive: true, Good: false, Reason: "read-write only",
+				},
+			},
+			tsa:          config.TargetSessionAttrsRO,
+			shuffleHosts: false,
+			expectedOrder: []string{
+				"h1:6432", // alive and good
+				"h4:6432", // no cache, treated as good
+				"h5:6432", // no cache, treated as good
+				"h3:6432", // alive but not good
+				"h2:6432", // dead
+			},
+		},
+		{
+			name: "All hosts dead",
+			cacheState: map[pool.TsaKey]pool.LocalCheckResult{
+				{Tsa: config.TargetSessionAttrsRW, Host: "h1:6432", AZ: "sas"}: {
+					Alive: false, Good: false, Reason: "connection timeout",
+				},
+				{Tsa: config.TargetSessionAttrsRW, Host: "h2:6432", AZ: "sas"}: {
+					Alive: false, Good: false, Reason: "connection refused",
+				},
+				{Tsa: config.TargetSessionAttrsRW, Host: "h3:6432", AZ: "vla"}: {
+					Alive: false, Good: false, Reason: "network unreachable",
+				},
+			},
+			tsa:          config.TargetSessionAttrsRW,
+			shuffleHosts: false,
+			expectedOrder: []string{
+				"h4:6432", // no cache, treated as good
+				"h5:6432", // no cache, treated as good
+				"h1:6432", // dead
+				"h2:6432", // dead
+				"h3:6432", // dead
+			},
+		},
+		{
+			name: "Prefer AZ with mixed cache states",
+			cacheState: map[pool.TsaKey]pool.LocalCheckResult{
+				{Tsa: config.TargetSessionAttrsAny, Host: "h1:6432", AZ: "sas"}: {
+					Alive: true, Good: true, Reason: "available",
+				},
+				{Tsa: config.TargetSessionAttrsAny, Host: "h3:6432", AZ: "vla"}: {
+					Alive: true, Good: true, Reason: "available",
+				},
+				{Tsa: config.TargetSessionAttrsAny, Host: "h5:6432", AZ: "klg"}: {
+					Alive: false, Good: false, Reason: "connection failed",
+				},
+			},
+			tsa:          config.TargetSessionAttrsAny,
+			shuffleHosts: false,
+			preferAZ:     "klg",
+			expectedOrder: []string{
+				"h1:6432", // alive and good, not preferred AZ
+				"h2:6432", // no cache, treated as good, not preferred AZ
+				"h3:6432", // alive and good, not preferred AZ
+				"h4:6432", // no cache, treated as good, but not preferred AZ
+				"h5:6432", // dead, but preferred AZ comes first in dead cache
+			},
+		},
+		{
+			name: "All hosts alive but some not good",
+			cacheState: map[pool.TsaKey]pool.LocalCheckResult{
+				{Tsa: config.TargetSessionAttrsRO, Host: "h1:6432", AZ: "sas"}: {
+					Alive: true, Good: true, Reason: "standby available",
+				},
+				{Tsa: config.TargetSessionAttrsRO, Host: "h2:6432", AZ: "sas"}: {
+					Alive: true, Good: false, Reason: "primary not suitable for RO",
+				},
+				{Tsa: config.TargetSessionAttrsRO, Host: "h3:6432", AZ: "vla"}: {
+					Alive: true, Good: false, Reason: "primary not suitable for RO",
+				},
+				{Tsa: config.TargetSessionAttrsRO, Host: "h4:6432", AZ: "vla"}: {
+					Alive: true, Good: true, Reason: "standby available",
+				},
+			},
+			tsa:          config.TargetSessionAttrsRO,
+			shuffleHosts: false,
+			expectedOrder: []string{
+				"h1:6432", // alive and good
+				"h4:6432", // alive and good
+				"h5:6432", // no cache, treated as good
+				"h2:6432", // alive but not good
+				"h3:6432", // alive but not good
+			},
+		},
+		{
+			name:       "Empty cache - all hosts treated as good",
+			cacheState: map[pool.TsaKey]pool.LocalCheckResult{},
+			tsa:        config.TargetSessionAttrsRW,
+			expectedOrder: []string{
+				"h1:6432",
+				"h2:6432",
+				"h3:6432",
+				"h4:6432",
+				"h5:6432",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Reset and populate cache
+			dbpool.CacheTSAChecks = tt.cacheState
+			dbpool.ShuffleHosts = tt.shuffleHosts
+			dbpool.PreferAZ = tt.preferAZ
+
+			hostOrder, err := dbpool.BuildHostOrder(key, tt.tsa)
+			assert.NoError(t, err)
+
+			var hostAddresses []string
+			for _, host := range hostOrder {
+				hostAddresses = append(hostAddresses, host.Address)
+			}
+
+			if tt.shuffleHosts {
+				// For shuffled tests, we can only check that all expected hosts are present
+				assert.ElementsMatch(t, tt.expectedOrder, hostAddresses)
+			} else {
+				assert.Equal(t, tt.expectedOrder, hostAddresses)
+			}
+		})
+	}
+}
+
+func TestBuildHostOrderNonExistentShard(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	underyling_pool := mockpool.NewMockMultiShardPool(ctrl)
+
+	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
+		"existing_shard": {
+			RawHosts: []string{"h1:6432:sas"},
+		},
+	}, &startup.StartupParams{}, underyling_pool, time.Hour)
+
+	key := kr.ShardKey{
+		Name: "non_existent_shard",
+	}
+
+	_, err := dbpool.BuildHostOrder(key, config.TargetSessionAttrsAny)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "shard with name \"non_existent_shard\" not found")
+}
