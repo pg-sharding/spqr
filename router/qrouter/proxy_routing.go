@@ -281,7 +281,7 @@ func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, m
 
 // routeByClause de-parses sharding column-value pair from Where clause of the query
 // TODO : unit tests
-func (qr *ProxyQrouter) planByWhereClause(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingMetadataContext) (plan.Plan, error) {
+func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
 	spqrlog.Zero.Debug().
 		Interface("clause", expr).
@@ -365,14 +365,14 @@ func (qr *ProxyQrouter) planByWhereClause(ctx context.Context, expr lyx.Node, me
 
 			default:
 				if texpr.Left != nil {
-					if tmp, err := qr.planByWhereClause(ctx, texpr.Left, meta); err != nil {
+					if tmp, err := qr.planByQualExpr(ctx, texpr.Left, meta); err != nil {
 						return nil, err
 					} else {
 						p = plan.Combine(p, tmp)
 					}
 				}
 				if texpr.Right != nil {
-					if tmp, err := qr.planByWhereClause(ctx, texpr.Right, meta); err != nil {
+					if tmp, err := qr.planByQualExpr(ctx, texpr.Right, meta); err != nil {
 						return nil, err
 					} else {
 						p = plan.Combine(p, tmp)
@@ -383,14 +383,14 @@ func (qr *ProxyQrouter) planByWhereClause(ctx context.Context, expr lyx.Node, me
 			return qr.planQueryV1(ctx, lft, meta)
 		default:
 			if texpr.Left != nil {
-				if tmp, err := qr.planByWhereClause(ctx, texpr.Left, meta); err != nil {
+				if tmp, err := qr.planByQualExpr(ctx, texpr.Left, meta); err != nil {
 					return nil, err
 				} else {
 					p = plan.Combine(p, tmp)
 				}
 			}
 			if texpr.Right != nil {
-				if tmp, err := qr.planByWhereClause(ctx, texpr.Right, meta); err != nil {
+				if tmp, err := qr.planByQualExpr(ctx, texpr.Right, meta); err != nil {
 					return nil, err
 				} else {
 					p = plan.Combine(p, tmp)
@@ -545,6 +545,14 @@ func (qr *ProxyQrouter) planFromNode(ctx context.Context, node lyx.FromClauseNod
 			return nil, err
 		} else {
 			p = plan.Combine(p, tmp)
+		}
+
+		if q.JoinQual != nil {
+			if tmp, err := qr.planByQualExpr(ctx, q.JoinQual, meta); err != nil {
+				return nil, err
+			} else {
+				p = plan.Combine(p, tmp)
+			}
 		}
 	case *lyx.SubSelect:
 		return qr.planQueryV1(ctx, q.Arg, meta)
@@ -1060,7 +1068,7 @@ func (qr *ProxyQrouter) planQueryV1(
 		if stmt.Where != nil {
 			/* return plan from where clause and route on it */
 			/*  SELECT stmts, which would be routed with their WHERE clause */
-			tmp, err := qr.planByWhereClause(ctx, stmt.Where, rm)
+			tmp, err := qr.planByQualExpr(ctx, stmt.Where, rm)
 			if err != nil {
 				return nil, err
 			}
@@ -1224,7 +1232,7 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		tmp, err := qr.planByWhereClause(ctx, clause, rm)
+		tmp, err := qr.planByQualExpr(ctx, clause, rm)
 		if err != nil {
 			return nil, err
 		}
@@ -1264,7 +1272,7 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		tmp, err := qr.planByWhereClause(ctx, clause, rm)
+		tmp, err := qr.planByQualExpr(ctx, clause, rm)
 		if err != nil {
 			return nil, err
 		}
