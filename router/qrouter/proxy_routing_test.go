@@ -540,7 +540,7 @@ func TestCTE(t *testing.T) {
 				*
 			FROM t r
 			JOIN vals 
-				ON r.a = vals.x;
+				ON r.i = vals.x;
 			`,
 			err: nil,
 			exp: plan.ShardDispatchPlan{
