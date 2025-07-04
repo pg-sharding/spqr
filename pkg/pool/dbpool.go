@@ -156,13 +156,14 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 		}
 		s.cacheMutex.Unlock()
 
-		if cr.RW {
-			hostToReason[shard.Instance().Hostname()] = cr.Reason
-			_ = s.Put(shard)
-			return false
+		if cr.Alive && !cr.RW {
+			return true
 		}
 
-		return true
+		// Host is not suitable
+		hostToReason[shard.Instance().Hostname()] = cr.Reason
+		_ = s.Put(shard)
+		return false
 	}, tsa)
 	if sh != nil {
 		return sh, nil
@@ -226,13 +227,14 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 		}
 		s.cacheMutex.Unlock()
 
-		if !cr.RW {
-			hostToReason[shard.Instance().Hostname()] = cr.Reason
-			_ = s.Put(shard)
-			return false
+		if cr.Alive && cr.RW {
+			return true
 		}
 
-		return true
+		// Host is not suitable
+		hostToReason[shard.Instance().Hostname()] = cr.Reason
+		_ = s.Put(shard)
+		return false
 
 	}, tsa)
 	if sh != nil {
