@@ -156,7 +156,7 @@ func randomHex(n int) (string, error) {
 
 %type<colref> ColRef
 
-%type<str> any_val any_id
+%type<str> any_val any_id shard_id
 
 %type<uinteger> any_uint
 %type<integer> SignedInt
@@ -430,6 +430,15 @@ any_id: IDENT
 		$$ = string($1)
 	}
 
+
+shard_id: IDENT
+	{
+		$$ = string($1)
+	} | SCONST
+	{
+		$$ = string($1)
+	}
+
 qualified_name:
 	IDENT
 	{
@@ -501,7 +510,7 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr, RelationsStr, ReferenceRelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr, MoveStatsStr:
+		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, CoordinatorAddrStr, VersionStr, RelationsStr, ReferenceRelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr, MoveStatsStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -1053,7 +1062,7 @@ key_range_bound:
 
 
 key_range_define_stmt:
-	KEY RANGE any_id FROM key_range_bound ROUTE TO any_id distribution_membership
+	KEY RANGE any_id FROM key_range_bound ROUTE TO shard_id distribution_membership
 	{
 		$$ = &KeyRangeDefinition{
 			KeyRangeID: $3,
@@ -1191,7 +1200,7 @@ sync_reference_tables_stmt:
 			ShardID: $5,
 			RelationSelector: "*",
 		}
-	} | SYNC REFERENCE TABLE any_id ON any_id
+	} | SYNC REFERENCE table_or_relation any_id ON any_id
 	{
 		$$ = &SyncReferenceTables {
 			ShardID: $6,

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -34,7 +35,24 @@ func NewCoordinator(qdb qdb.XQDB) Coordinator {
 
 // SyncReferenceRelations implements meta.EntityMgr.
 func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, ids []string, destShard string) error {
-	panic("unimplemented")
+	for _, id := range ids {
+		rel, err := lc.GetReferenceRelation(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		if len(rel.ShardId) == 0 {
+			// XXX: should we error-our here?
+			return fmt.Errorf("failed to sync reference relation with no storage shards: %v", id)
+		}
+		fromShard := rel.ShardId[0]
+
+		if err = datatransfers.SyncReferenceRelation(ctx, fromShard, destShard, rel, lc.qdb); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // AddDataShard implements meta.EntityMgr.

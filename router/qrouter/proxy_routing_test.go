@@ -528,6 +528,93 @@ func TestCTE(t *testing.T) {
 	for _, tt := range []tcase{
 
 		{
+			query: `
+			WITH vals (y, z, x) AS (
+				VALUES (
+					2,
+					4,
+					1
+				)
+			)
+			SELECT 
+				*
+			FROM t r
+			JOIN vals 
+				ON r.i = vals.x;
+			`,
+			err: nil,
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+		},
+
+		{
+			query: `
+			WITH vals (x, y, z) AS (
+				VALUES (
+					1,
+					2,
+					4
+				)
+			)
+			SELECT 
+				*
+			FROM t r
+			JOIN vals 
+				ON r.i = vals.x;
+			`,
+			err: nil,
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+		},
+
+		{
+			query: `
+			WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM t t, vv v  WHERE t.i = v.x;`,
+			err: nil,
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+		},
+		{
+			query: `
+			WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM t t, vv  WHERE t.i = vv.x;`,
+			err: nil,
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+		},
+
+		{
+			query: `
+			WITH vv AS 
+				(SELECT i + 1 FROM t WHERE i = 11)
+			INSERT INTO t (i) TABLE vv;
+			`,
+
+			err: nil,
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
+					Name: "sh2",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+		},
+
+		{
 			query: `WITH qqq AS (
 				
 			  DELETE FROM t

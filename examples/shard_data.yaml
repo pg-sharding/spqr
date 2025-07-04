@@ -11,3 +11,15 @@ shards:
     pwd: 12345678
     hosts: 
     - 'localhost:5551'
+  sh3:
+    db: db1
+    usr: user1
+    pwd: 12345678
+    hosts: 
+    - 'localhost:5552'
+  sh4:
+    db: db1
+    usr: user1
+    pwd: 12345678
+    hosts: 
+    - 'localhost:5553'

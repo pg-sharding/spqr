@@ -1,0 +1,174 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+-- low-cardinality for first column is expected
+CREATE DISTRIBUTION ds1 COLUMN TYPES INT, VARCHAR hash;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE krid4 FROM 1, 2147483648 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
+(1 row)
+
+CREATE KEY RANGE krid3 FROM 1, 0 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
+(1 row)
+
+CREATE KEY RANGE krid2 FROM 0, 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 0, 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE DISTRIBUTED RELATION hash_multi_xx DISTRIBUTION KEY col1, col2 HASH FUNCTION MURMUR IN ds1;
+           attach table           
+----------------------------------
+ relation name   -> hash_multi_xx
+ distribution id -> ds1
+(2 rows)
+
+\c regress
+CREATE TABLE hash_multi_xx(col1 INT, col2 TEXT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'abwqqwqabba');
+NOTICE: send query to shard(s) : sh4
+INSERT INTO hash_multi_xx (col1, col2) VALUES(0, 'abwqqwqabba');
+NOTICE: send query to shard(s) : sh2
+INSERT INTO hash_multi_xx (col1, col2) VALUES(0, 'ababba');
+NOTICE: send query to shard(s) : sh1
+INSERT INTO hash_multi_xx (col1, col2) VALUES(0, 'ababdfba');
+NOTICE: send query to shard(s) : sh2
+INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'abawqqqwbba');
+NOTICE: send query to shard(s) : sh4
+INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'ababxaxasba');
+NOTICE: send query to shard(s) : sh3
+INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'ababxxxxba');
+NOTICE: send query to shard(s) : sh3
+INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'ababbxxxa');
+NOTICE: send query to shard(s) : sh4
+INSERT INTO hash_multi_xx (col1, col2) VALUES(0, 'ababbxxxa');
+NOTICE: send query to shard(s) : sh2
+INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'dejwio');
+NOTICE: send query to shard(s) : sh3
+INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'dejwiewdewo');
+NOTICE: send query to shard(s) : sh4
+INSERT INTO hash_multi_xx (col1, col2) VALUES(1, '232892');
+NOTICE: send query to shard(s) : sh3
+INSERT INTO hash_multi_xx (col1, col2) VALUES(0, '232892');
+NOTICE: send query to shard(s) : sh1
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ col1 |  col2  
+------+--------
+    0 | ababba
+    0 | 232892
+(2 rows)
+
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ col1 |    col2     
+------+-------------
+    0 | abwqqwqabba
+    0 | ababdfba
+    0 | ababbxxxa
+(3 rows)
+
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ col1 |    col2     
+------+-------------
+    1 | ababxaxasba
+    1 | ababxxxxba
+    1 | dejwio
+    1 | 232892
+(4 rows)
+
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+ col1 |    col2     
+------+-------------
+    1 | abwqqwqabba
+    1 | abawqqqwbba
+    1 | ababbxxxa
+    1 | dejwiewdewo
+(4 rows)
+
+TRUNCATE hash_multi_xx;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+COPY hash_multi_xx (col1, col2)  FROM STDIN DELIMITER '|';
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ col1 |  col2  
+------+--------
+    0 | ababba
+    0 | 232892
+(2 rows)
+
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ col1 |    col2     
+------+-------------
+    0 | abwqqwqabba
+    0 | ababdfba
+    0 | ababbxxxa
+(3 rows)
+
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+ col1 |    col2     
+------+-------------
+    1 | ababxaxasba
+    1 | ababxxxxba
+    1 | dejwio
+    1 | 232892
+(4 rows)
+
+SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+ col1 |    col2     
+------+-------------
+    1 | abwqqwqabba
+    1 | abawqqqwbba
+    1 | ababbxxxa
+    1 | dejwiewdewo
+(4 rows)
+
+DROP TABLE hash_multi_xx;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

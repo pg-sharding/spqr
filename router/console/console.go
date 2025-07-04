@@ -72,7 +72,13 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 		Type("type", tstmt).
 		Msg("processQueryInternal: parsed query with type")
 
-	if !config.RouterConfig().WithCoordinator {
+		/* Should we proxy this request to coordinator? */
+
+	coordAddr, err := l.entityMgr.GetCoordinator(ctx)
+	if err != nil {
+		return err
+	}
+	if !config.RouterConfig().UseCoordinatorInit && !config.RouterConfig().WithCoordinator {
 		return meta.ProcMetadataCommand(ctx, tstmt, l.entityMgr, l.rrouter, rc, l.writer, false)
 	}
 
@@ -84,10 +90,6 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 		}
 		switch tstmt.Cmd {
 		case spqrparser.RoutersStr:
-			coordAddr, err := l.entityMgr.GetCoordinator(ctx)
-			if err != nil {
-				return err
-			}
 			conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all
 			if err != nil {
 				return err
@@ -101,10 +103,6 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 		}
 	default:
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
-			return err
-		}
-		coordAddr, err := l.entityMgr.GetCoordinator(ctx)
-		if err != nil {
 			return err
 		}
 		conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all

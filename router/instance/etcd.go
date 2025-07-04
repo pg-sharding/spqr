@@ -7,6 +7,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 )
@@ -34,6 +35,9 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 	}
 
 	for _, d := range ds {
+		if d.ID == distributions.REPLICATED {
+			continue
+		}
 		if err := r.Console().Mgr().CreateDistribution(ctx, distributions.DistributionFromDB(d)); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
 			return err
@@ -56,6 +60,19 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
 				return err
 			}
+		}
+	}
+
+	rrels, err := etcdConn.ListReferenceRelations(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, rr := range rrels {
+		/* XXX: nil for auto inc entry is OK? */
+		if err := r.Console().Mgr().CreateReferenceRelation(ctx, rrelation.RefRelationFromDB(rr), nil); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
+			return err
 		}
 	}
 
