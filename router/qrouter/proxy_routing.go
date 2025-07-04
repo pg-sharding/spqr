@@ -834,10 +834,12 @@ func (qr *ProxyQrouter) planWithClauseV1(ctx context.Context, rm *rmeta.RoutingM
 		switch qq := cte.SubQuery.(type) {
 		case *lyx.ValueClause:
 			/* special case */
-			for i, v := range qq.Values {
-				if i < len(cte.NameList) && len(v) != 0 {
-					/* XXX: currently only one-tuple aux values supported */
-					rm.RecordAuxExpr(cte.Name, cte.NameList[i], v[0])
+			if len(qq.Values) > 0 {
+				for i, name := range cte.NameList {
+					if i < len(cte.NameList) && i < len(qq.Values[0]) {
+						/* XXX: currently only one-tuple aux values supported */
+						rm.RecordAuxExpr(cte.Name, name, qq.Values[0][i])
+					}
 				}
 			}
 		default:

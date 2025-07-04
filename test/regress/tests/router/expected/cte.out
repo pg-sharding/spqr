@@ -162,6 +162,24 @@ NOTICE: send query to shard(s) : sh1
  1 | 22 | 33 | 1 | 2 | 4
 (1 row)
 
+WITH vals (y, z, x) AS (
+    VALUES (
+		2,
+		4,
+		1
+    )
+)
+SELECT 
+	*
+FROM table2 r
+JOIN vals 
+	ON r.a = vals.x;
+NOTICE: send query to shard(s) : sh1
+ a | b  | c  | y | z | x 
+---+----+----+---+---+---
+ 1 | 22 | 33 | 2 | 4 | 1
+(1 row)
+
 WITH vals (x, y, z) AS (
     VALUES (
 		1,

@@ -68,6 +68,21 @@ FROM table2 r
 JOIN vals 
 	ON r.a = vals.x;
 
+
+
+WITH vals (y, z, x) AS (
+    VALUES (
+		2,
+		4,
+		1
+    )
+)
+SELECT 
+	*
+FROM table2 r
+JOIN vals 
+	ON r.a = vals.x;
+
 WITH vals (x, y, z) AS (
     VALUES (
 		1,
