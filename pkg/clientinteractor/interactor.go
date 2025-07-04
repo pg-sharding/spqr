@@ -84,6 +84,24 @@ type PSQLInteractor struct {
 	cl client.Client
 }
 
+func (pi *PSQLInteractor) SyncReferenceRelations(s []string, d string) error {
+	if err := pi.WriteHeader("relation", "shard"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+	for _, id := range s {
+		if err := pi.WriteDataRow(
+			fmt.Sprintf("%v", id),
+
+			fmt.Sprintf("%v", d)); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
+	return pi.CompleteMsg(len(s))
+}
+
 func (pi *PSQLInteractor) CoordinatorAddr(ctx context.Context, addr string) error {
 	if err := pi.WriteHeader("coordinator address"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")

@@ -8,12 +8,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	pgx "github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
-	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -125,7 +126,7 @@ Steps:
 //
 // Returns:
 //   - error: an error if the move fails.
-func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, cr coordinator.Coordinator) error {
+func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, mgr meta.EntityMgr) error {
 	tx, err := db.GetTransferTx(ctx, krg.ID)
 	if err != nil {
 		return err
@@ -166,7 +167,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 		return err
 	}
 
-	upperBound, err := resolveNextBound(ctx, krg, cr)
+	upperBound, err := resolveNextBound(ctx, krg, mgr)
 	if err != nil {
 		return err
 	}
@@ -215,6 +216,76 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	return nil
 }
 
+func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelation.ReferenceRelation, db qdb.XQDB) error {
+	tx, err := db.GetTransferTx(ctx, rel.TableName)
+	if err != nil {
+		return err
+	}
+
+	transferKey := rel.GetFullName()
+
+	if tx == nil {
+		// No transaction in progress
+		tx = &qdb.DataTransferTransaction{
+			ToShardId:   toId,
+			FromShardId: fromId,
+			Status:      qdb.Planned,
+		}
+		if err = db.RecordTransferTx(ctx, transferKey, tx); err != nil {
+			return err
+		}
+	}
+	if shards == nil {
+		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error loading config")
+		}
+	}
+	fromCfg, ok := shards.ShardsData[fromId]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", fromId)
+	}
+	from, err := GetMasterConnection(ctx, fromCfg)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
+		return err
+	}
+	toCfg, ok := shards.ShardsData[toId]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", toId)
+	}
+	to, err := GetMasterConnection(ctx, toCfg)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
+		return err
+	}
+
+	for tx != nil {
+		switch tx.Status {
+		case qdb.Planned:
+			// copy data of key range to receiving shard
+			if err = copyReferenceRelationData(ctx, from, to, fromId, toId, rel); err != nil {
+				return err
+			}
+			tx.Status = qdb.DataCopied
+			err = db.RecordTransferTx(ctx, transferKey, tx)
+			if err != nil {
+				return err
+			}
+		case qdb.DataCopied:
+			// drop data from sending shard
+			if err = db.RemoveTransferTx(ctx, transferKey); err != nil {
+				return err
+			}
+			tx = nil
+		default:
+			return fmt.Errorf("incorrect data transfer transaction status: %s", tx.Status)
+		}
+	}
+
+	return nil
+}
+
 // resolveNextBound finds the next lower bound key range from the given key range list that is greater than the lower bound of the given key range.
 //
 // Parameters:
@@ -225,7 +296,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 // Returns:
 // - kr.KeyRangeBound: the next lower bound key range found, or nil if no such key range exists.
 // - error: an error if the key range list cannot be retrieved or if there is an error in the function execution.
-func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr coordinator.Coordinator) (kr.KeyRangeBound, error) {
+func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr meta.EntityMgr) (kr.KeyRangeBound, error) {
 	krs, err := cr.ListKeyRanges(ctx, krg.Distribution)
 	if err != nil {
 		return nil, err
@@ -243,7 +314,7 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr coordinator.Coor
 	return bound, nil
 }
 
-func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromId, toId string, schemas map[string]struct{}) error {
+func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId string, schemas map[string]struct{}) error {
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
@@ -252,8 +323,8 @@ func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromId, toId string, sche
 		}
 	}
 
-	fromShard := shards.ShardsData[fromId]
-	toShard := shards.ShardsData[toId]
+	fromShard := shards.ShardsData[fromShardId]
+	toShard := shards.ShardsData[toShardId]
 	dbName := fromShard.DB
 	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
 	serverName := fmt.Sprintf("%s_%s_%s", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
@@ -305,16 +376,16 @@ func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromId, toId string, sche
 //
 // Returns:
 // - error: an error if the move fails.
-func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
+func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
 	schemas := make(map[string]struct{})
 	for _, rel := range ds.Relations {
 		schemas[rel.GetSchema()] = struct{}{}
 	}
-	if err := SetupFDW(ctx, from, to, fromId, toId, schemas); err != nil {
+	if err := SetupFDW(ctx, from, to, fromShardId, toShardId, schemas); err != nil {
 		return err
 	}
-	fromShard := shards.ShardsData[fromId]
-	toShard := shards.ShardsData[toId]
+	fromShard := shards.ShardsData[fromShardId]
+	toShard := shards.ShardsData[toShardId]
 	dbName := fromShard.DB
 	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
 	schemaName := fmt.Sprintf("%s_%s_%s_schema", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
@@ -368,6 +439,69 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
 		}
 	}
+	return nil
+}
+
+func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, rel *rrelation.ReferenceRelation) error {
+
+	schemas := make(map[string]struct{})
+	schemas[rel.GetSchema()] = struct{}{}
+
+	if err := SetupFDW(ctx, from, to, fromId, toId, schemas); err != nil {
+		return err
+	}
+	fromShard := shards.ShardsData[fromId]
+	toShard := shards.ShardsData[toId]
+	dbName := fromShard.DB
+	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
+	schemaName := fmt.Sprintf("%s_%s_%s_schema", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
+
+	/* TODO: lock reference relation in spqrguard everywhere */
+
+	// check that relation exists on sending shard and there is data to copy. If not, skip the relation
+	// TODO get actual schema
+	relSchemaName := rel.GetSchema()
+	fromTableExists, err := CheckTableExists(ctx, from, strings.ToLower(rel.TableName), relSchemaName)
+	if err != nil {
+		return err
+	}
+	if !fromTableExists {
+		return nil
+	}
+	relFullName := rel.GetFullName()
+	fromCount, err := getEntriesCount(ctx, from, relFullName, "true")
+	if err != nil {
+		return err
+	}
+	// check that relation exists on receiving shard. If not, exit
+	toTableExists, err := CheckTableExists(ctx, to, strings.ToLower(rel.TableName), relSchemaName)
+	if err != nil {
+		return err
+	}
+	if !toTableExists {
+		return fmt.Errorf("relation %s does not exist on receiving shard", rel.TableName)
+	}
+	toCount, err := getEntriesCount(ctx, to, relFullName, "true")
+	if err != nil {
+		return err
+	}
+	// if data is already copied, skip
+	if toCount == fromCount {
+		return nil
+	}
+	// if data is inconsistent, fail
+	if toCount > 0 && fromCount != 0 {
+		return fmt.Errorf("key count on sender & receiver mismatch")
+	}
+	query := fmt.Sprintf(`
+					INSERT INTO %s
+					SELECT * FROM %s
+`, relFullName, fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.TableName)))
+	_, err = to.Exec(ctx, query)
+	if err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
+	}
+
 	return nil
 }
 

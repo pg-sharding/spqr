@@ -1199,7 +1199,7 @@ sync_reference_tables_stmt:
 			ShardID: $5,
 			RelationSelector: "*",
 		}
-	} | SYNC REFERENCE TABLE any_id ON any_id
+	} | SYNC REFERENCE table_or_relation any_id ON any_id
 	{
 		$$ = &SyncReferenceTables {
 			ShardID: $6,

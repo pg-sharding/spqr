@@ -1,6 +1,9 @@
 package rrelation
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
@@ -8,6 +11,7 @@ import (
 )
 
 type ReferenceRelation struct {
+	SchemaName            string
 	TableName             string
 	SchemaVersion         uint64
 	ColumnSequenceMapping map[string]string
@@ -29,6 +33,17 @@ func (r *ReferenceRelation) ListStorageRoutes() []*kr.ShardKey {
 	}
 
 	return ret
+}
+
+func (r *ReferenceRelation) GetSchema() string {
+	if r.SchemaName == "" {
+		return "public"
+	}
+	return r.SchemaName
+}
+
+func (r *ReferenceRelation) GetFullName() string {
+	return fmt.Sprintf("%s.%s", r.GetSchema(), strings.ToLower(r.TableName))
 }
 
 func ReferenceRelationEntriesFromSQL(inEntries []*spqrparser.AutoIncrementEntry) []*AutoIncrementEntry {
