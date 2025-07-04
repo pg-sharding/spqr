@@ -11,10 +11,12 @@ CREATE KEY RANGE FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 CREATE REFERENCE TABLE ref_rel_1;
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY i;
+CREATE DISTRIBUTED RELATION table2 DISTRIBUTION KEY a IN ds1;
 
 \c regress
 
 CREATE TABLE table1(i INT PRIMARY KEY);
+CREATE TABLE table2(a INT, b INT, c INT);
 CREATE TABLE ref_rel_1(i int, j int);
 
 WITH s AS (
@@ -47,7 +49,13 @@ SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh2 */;
 SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh3 */;
 SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh4 */;
 
+INSERT INTO table2 (a,b,c) VALUES (1, 22, 33);
+
+WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv  WHERE t.a = vv.x;
+WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv v  WHERE t.a = v.x;
+
 DROP TABLE table1;
+DROP TABLE table2;
 DROP TABLE ref_rel_1;
 
 \c spqr-console

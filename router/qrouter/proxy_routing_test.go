@@ -529,6 +529,29 @@ func TestCTE(t *testing.T) {
 
 		{
 			query: `
+			WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM t t, vv v  WHERE t.i = v.x;`,
+			err: nil,
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+		},
+		{
+			query: `
+			WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM t t, vv  WHERE t.i = vv.x;`,
+			err: nil,
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+		},
+
+		{
+			query: `
 			WITH vv AS 
 				(SELECT i + 1 FROM t WHERE i = 11)
 			INSERT INTO t (i) TABLE vv;

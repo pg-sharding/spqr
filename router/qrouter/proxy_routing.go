@@ -330,6 +330,14 @@ func (qr *ProxyQrouter) planByWhereClause(ctx context.Context, expr lyx.Node, me
 					return nil, err
 				}
 
+			case *lyx.ColumnRef:
+				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
+				for _, v := range meta.AuxExprByColref(right) {
+					if err := qr.processConstExpr(alias, colname, v, meta); err != nil {
+						return nil, err
+					}
+				}
+
 			case *lyx.AExprList:
 				for _, expr := range right.List {
 					if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
@@ -468,24 +476,10 @@ func (qr *ProxyQrouter) analyzeFromNode(ctx context.Context, node lyx.FromClause
 		Msg("analyzing from node")
 	switch q := node.(type) {
 	case *lyx.RangeVar:
-		rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
-
-		// CTE, skip
-		if meta.RFQNIsCTE(rqdn) {
-			return nil
-		}
-
-		if _, err := meta.GetRelationDistribution(ctx, rqdn); err != nil {
+		if err := qr.processRangeNode(ctx, meta, q); err != nil {
 			return err
 		}
 
-		if _, ok := meta.Rels[rqdn]; !ok {
-			meta.Rels[rqdn] = struct{}{}
-		}
-		if q.Alias != "" {
-			/* remember table alias */
-			meta.TableAliases[q.Alias] = rfqn.RelationFQNFromRangeRangeVar(q)
-		}
 	case *lyx.JoinExpr:
 		if err := qr.analyzeFromNode(ctx, q.Rarg, meta); err != nil {
 			return err
@@ -503,6 +497,30 @@ func (qr *ProxyQrouter) analyzeFromNode(ctx context.Context, node lyx.FromClause
 	return nil
 }
 
+func (qr *ProxyQrouter) processRangeNode(ctx context.Context, meta *rmeta.RoutingMetadataContext, q *lyx.RangeVar) error {
+	rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
+
+	// CTE, skip
+	if meta.RFQNIsCTE(rqdn) {
+		/* remember cte alias */
+		meta.CTEAliases[q.Alias] = rqdn.RelationName
+		return nil
+	}
+
+	if _, err := meta.GetRelationDistribution(ctx, rqdn); err != nil {
+		return err
+	}
+
+	if _, ok := meta.Rels[rqdn]; !ok {
+		meta.Rels[rqdn] = struct{}{}
+	}
+	if q.Alias != "" {
+		/* remember table alias */
+		meta.TableAliases[q.Alias] = rfqn.RelationFQNFromRangeRangeVar(q)
+	}
+	return nil
+}
+
 func (qr *ProxyQrouter) planFromNode(ctx context.Context, node lyx.FromClauseNode, meta *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 	spqrlog.Zero.Debug().
 		Type("node-type", node).
@@ -512,24 +530,11 @@ func (qr *ProxyQrouter) planFromNode(ctx context.Context, node lyx.FromClauseNod
 
 	switch q := node.(type) {
 	case *lyx.RangeVar:
-		rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
 
-		// CTE, skip
-		if meta.RFQNIsCTE(rqdn) {
-			return nil, nil
-		}
-
-		if _, err := meta.GetRelationDistribution(ctx, rqdn); err != nil {
+		if err := qr.processRangeNode(ctx, meta, q); err != nil {
 			return nil, err
 		}
 
-		if _, ok := meta.Rels[rqdn]; !ok {
-			meta.Rels[rqdn] = struct{}{}
-		}
-		if q.Alias != "" {
-			/* remember table alias */
-			meta.TableAliases[q.Alias] = rfqn.RelationFQNFromRangeRangeVar(q)
-		}
 	case *lyx.JoinExpr:
 		if tmp, err := qr.planFromNode(ctx, q.Rarg, meta); err != nil {
 			return nil, err
@@ -815,6 +820,30 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 	return nil
 }
 
+func (qr *ProxyQrouter) planWithClauseV1(ctx context.Context, rm *rmeta.RoutingMetadataContext, WithClause []*lyx.CommonTableExpr) (plan.Plan, error) {
+	var p plan.Plan
+	for _, cte := range WithClause {
+		switch qq := cte.SubQuery.(type) {
+		case *lyx.ValueClause:
+			/* special case */
+			for i, v := range qq.Values {
+				if i < len(cte.NameList) && len(v) != 0 {
+					/* XXX: currently only one-tuple aux values supported */
+					rm.RecordAuxExpr(cte.Name, cte.NameList[i], v[0])
+				}
+			}
+		default:
+			if tmp, err := qr.planQueryV1(ctx, cte.SubQuery, rm); err != nil {
+				return nil, err
+			} else {
+				p = plan.Combine(p, tmp)
+			}
+		}
+	}
+
+	return p, nil
+}
+
 // TODO : unit tests
 // May return nil routing state here - thats ok
 func (qr *ProxyQrouter) planQueryV1(
@@ -1011,15 +1040,12 @@ func (qr *ProxyQrouter) planQueryV1(
 			}
 		}
 
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				if tmp, err := qr.planQueryV1(ctx, cte.SubQuery, rm); err != nil {
-					return nil, err
-				} else {
-					p = plan.Combine(p, tmp)
-				}
-			}
+		tmp, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
+		if err != nil {
+			return nil, err
 		}
+
+		p = plan.Combine(p, tmp)
 
 		if stmt.FromClause != nil {
 			// collect table alias names, if any
@@ -1044,17 +1070,9 @@ func (qr *ProxyQrouter) planQueryV1(
 		return p, nil
 
 	case *lyx.Insert:
-
-		var p plan.Plan = nil
-
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				if tmp, err := qr.planQueryV1(ctx, cte.SubQuery, rm); err != nil {
-					return nil, err
-				} else {
-					p = plan.Combine(p, tmp)
-				}
-			}
+		p, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
+		if err != nil {
+			return nil, err
 		}
 
 		if selectStmt := stmt.SubSelect; selectStmt != nil {
@@ -1125,7 +1143,7 @@ func (qr *ProxyQrouter) planQueryV1(
 
 				for i := range routingList {
 
-					tup := make([]interface{}, len(ds.ColTypes))
+					tup := make([]any, len(ds.ColTypes))
 					tupUsable := true
 					for j := range offsets {
 						off, tp := rm.GetDistributionKeyOffsetType(rfqn, insertCols[offsets[j]])
@@ -1173,15 +1191,10 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		return p, nil
 	case *lyx.Update:
-		var p plan.Plan = nil
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				if tmp, err := qr.planQueryV1(ctx, cte.SubQuery, rm); err != nil {
-					return nil, err
-				} else {
-					p = plan.Combine(p, tmp)
-				}
-			}
+
+		p, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
+		if err != nil {
+			return nil, err
 		}
 
 		clause := stmt.Where
@@ -1218,16 +1231,10 @@ func (qr *ProxyQrouter) planQueryV1(
 		p = plan.Combine(p, tmp)
 		return p, nil
 	case *lyx.Delete:
-		var p plan.Plan = nil
 
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				if tmp, err := qr.planQueryV1(ctx, cte.SubQuery, rm); err != nil {
-					return nil, err
-				} else {
-					p = plan.Combine(p, tmp)
-				}
-			}
+		p, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
+		if err != nil {
+			return nil, err
 		}
 
 		clause := stmt.Where

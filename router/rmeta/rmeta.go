@@ -20,6 +20,11 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 )
 
+type AuxValuesKey struct {
+	CTEName   string
+	ValueName string
+}
+
 type RoutingMetadataContext struct {
 	// this maps table names to its query-defined restrictions
 	// All columns in query should be considered in context of its table,
@@ -41,10 +46,13 @@ type RoutingMetadataContext struct {
 	// SELECT * FROM t1 a where a.i = 1
 	// rarg:{range_var:{relname:"t2" inh:true relpersistence:"p" alias:{aliasname:"b"}
 	TableAliases map[string]rfqn.RelationFQN
+	CTEAliases   map[string]string
 
 	SPH session.SessionParamsHolder
 
 	Mgr meta.EntityMgr
+
+	AuxValues map[AuxValuesKey][]lyx.Node
 
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
 }
@@ -54,9 +62,11 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder, mgr meta.EntityM
 		Rels:          map[rfqn.RelationFQN]struct{}{},
 		CteNames:      map[string]struct{}{},
 		TableAliases:  map[string]rfqn.RelationFQN{},
-		Exprs:         map[rfqn.RelationFQN]map[string][]interface{}{},
+		CTEAliases:    map[string]string{},
+		Exprs:         map[rfqn.RelationFQN]map[string][]any{},
 		ParamRefs:     map[rfqn.RelationFQN]map[string][]int{},
 		Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		AuxValues:     map[AuxValuesKey][]lyx.Node{},
 		SPH:           sph,
 		Mgr:           mgr,
 	}
@@ -70,6 +80,29 @@ var CatalogDistribution = distributions.Distribution{
 
 func IsRelationCatalog(resolvedRelation rfqn.RelationFQN) bool {
 	return len(resolvedRelation.RelationName) >= 3 && resolvedRelation.RelationName[0:3] == "pg_"
+}
+
+func (rm *RoutingMetadataContext) RecordAuxExpr(name string, value string, v lyx.Node) {
+	k := AuxValuesKey{
+		CTEName:   name,
+		ValueName: value,
+	}
+	vals := rm.AuxValues[k]
+	vals = append(vals, v)
+	rm.AuxValues[k] = vals
+}
+
+func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node {
+	searchKey := cf.TableAlias
+	if fullName, ok := rm.CTEAliases[cf.TableAlias]; ok {
+		searchKey = fullName
+	}
+
+	k := AuxValuesKey{
+		CTEName:   searchKey,
+		ValueName: cf.ColName,
+	}
+	return rm.AuxValues[k]
 }
 
 func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, resolvedRelation rfqn.RelationFQN) (*distributions.Distribution, error) {
