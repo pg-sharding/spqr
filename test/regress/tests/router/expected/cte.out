@@ -50,8 +50,17 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY i;
  distribution id -> ds1
 (2 rows)
 
+CREATE DISTRIBUTED RELATION table2 DISTRIBUTION KEY a IN ds1;
+       attach table        
+---------------------------
+ relation name   -> table2
+ distribution id -> ds1
+(2 rows)
+
 \c regress
 CREATE TABLE table1(i INT PRIMARY KEY);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE table2(a INT, b INT, c INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE ref_rel_1(i int, j int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -119,7 +128,25 @@ NOTICE: send query to shard(s) : sh4
 ---
 (0 rows)
 
+INSERT INTO table2 (a,b,c) VALUES (1, 22, 33);
+NOTICE: send query to shard(s) : sh1
+WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv  WHERE t.a = vv.x;
+NOTICE: send query to shard(s) : sh1
+ a | b  | c  | x | y | z 
+---+----+----+---+---+---
+ 1 | 22 | 33 | 1 | 2 | 3
+(1 row)
+
+WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv v  WHERE t.a = v.x;
+NOTICE: send query to shard(s) : sh1
+ a | b  | c  | x | y | z 
+---+----+----+---+---+---
+ 1 | 22 | 33 | 1 | 2 | 3
+(1 row)
+
 DROP TABLE table1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE table2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE ref_rel_1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

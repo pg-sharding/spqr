@@ -330,6 +330,14 @@ func (qr *ProxyQrouter) planByWhereClause(ctx context.Context, expr lyx.Node, me
 					return nil, err
 				}
 
+			case *lyx.ColumnRef:
+				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
+				for _, v := range meta.AuxExprByColref(right) {
+					if err := qr.processConstExpr(alias, colname, v, meta); err != nil {
+						return nil, err
+					}
+				}
+
 			case *lyx.AExprList:
 				for _, expr := range right.List {
 					if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
@@ -468,24 +476,10 @@ func (qr *ProxyQrouter) analyzeFromNode(ctx context.Context, node lyx.FromClause
 		Msg("analyzing from node")
 	switch q := node.(type) {
 	case *lyx.RangeVar:
-		rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
-
-		// CTE, skip
-		if meta.RFQNIsCTE(rqdn) {
-			return nil
-		}
-
-		if _, err := meta.GetRelationDistribution(ctx, rqdn); err != nil {
+		if err := qr.processRangeNode(ctx, meta, q); err != nil {
 			return err
 		}
 
-		if _, ok := meta.Rels[rqdn]; !ok {
-			meta.Rels[rqdn] = struct{}{}
-		}
-		if q.Alias != "" {
-			/* remember table alias */
-			meta.TableAliases[q.Alias] = rfqn.RelationFQNFromRangeRangeVar(q)
-		}
 	case *lyx.JoinExpr:
 		if err := qr.analyzeFromNode(ctx, q.Rarg, meta); err != nil {
 			return err
@@ -503,6 +497,30 @@ func (qr *ProxyQrouter) analyzeFromNode(ctx context.Context, node lyx.FromClause
 	return nil
 }
 
+func (qr *ProxyQrouter) processRangeNode(ctx context.Context, meta *rmeta.RoutingMetadataContext, q *lyx.RangeVar) error {
+	rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
+
+	// CTE, skip
+	if meta.RFQNIsCTE(rqdn) {
+		/* remember cte alias */
+		meta.CTEAliases[q.Alias] = rqdn.RelationName
+		return nil
+	}
+
+	if _, err := meta.GetRelationDistribution(ctx, rqdn); err != nil {
+		return err
+	}
+
+	if _, ok := meta.Rels[rqdn]; !ok {
+		meta.Rels[rqdn] = struct{}{}
+	}
+	if q.Alias != "" {
+		/* remember table alias */
+		meta.TableAliases[q.Alias] = rfqn.RelationFQNFromRangeRangeVar(q)
+	}
+	return nil
+}
+
 func (qr *ProxyQrouter) planFromNode(ctx context.Context, node lyx.FromClauseNode, meta *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 	spqrlog.Zero.Debug().
 		Type("node-type", node).
@@ -512,24 +530,11 @@ func (qr *ProxyQrouter) planFromNode(ctx context.Context, node lyx.FromClauseNod
 
 	switch q := node.(type) {
 	case *lyx.RangeVar:
-		rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
 
-		// CTE, skip
-		if meta.RFQNIsCTE(rqdn) {
-			return nil, nil
-		}
-
-		if _, err := meta.GetRelationDistribution(ctx, rqdn); err != nil {
+		if err := qr.processRangeNode(ctx, meta, q); err != nil {
 			return nil, err
 		}
 
-		if _, ok := meta.Rels[rqdn]; !ok {
-			meta.Rels[rqdn] = struct{}{}
-		}
-		if q.Alias != "" {
-			/* remember table alias */
-			meta.TableAliases[q.Alias] = rfqn.RelationFQNFromRangeRangeVar(q)
-		}
 	case *lyx.JoinExpr:
 		if tmp, err := qr.planFromNode(ctx, q.Rarg, meta); err != nil {
 			return nil, err
@@ -1141,7 +1146,7 @@ func (qr *ProxyQrouter) planQueryV1(
 
 				for i := range routingList {
 
-					tup := make([]interface{}, len(ds.ColTypes))
+					tup := make([]any, len(ds.ColTypes))
 					tupUsable := true
 					for j := range offsets {
 						off, tp := rm.GetDistributionKeyOffsetType(rfqn, insertCols[offsets[j]])

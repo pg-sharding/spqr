@@ -21,7 +21,7 @@ import (
 )
 
 type AuxValuesKey struct {
-	CTEname   string
+	CTEName   string
 	ValueName string
 }
 
@@ -46,6 +46,7 @@ type RoutingMetadataContext struct {
 	// SELECT * FROM t1 a where a.i = 1
 	// rarg:{range_var:{relname:"t2" inh:true relpersistence:"p" alias:{aliasname:"b"}
 	TableAliases map[string]rfqn.RelationFQN
+	CTEAliases   map[string]string
 
 	SPH session.SessionParamsHolder
 
@@ -56,24 +57,16 @@ type RoutingMetadataContext struct {
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
 }
 
-func (rm *RoutingMetadataContext) RecordAuxExpr(name string, value string, v lyx.Node) {
-	k := AuxValuesKey{
-		CTEname:   name,
-		ValueName: value,
-	}
-	vals, _ := rm.AuxValues[k]
-	vals = append(vals, v)
-	rm.AuxValues[k] = vals
-}
-
 func NewRoutingMetadataContext(sph session.SessionParamsHolder, mgr meta.EntityMgr) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
 		Rels:          map[rfqn.RelationFQN]struct{}{},
 		CteNames:      map[string]struct{}{},
 		TableAliases:  map[string]rfqn.RelationFQN{},
-		Exprs:         map[rfqn.RelationFQN]map[string][]interface{}{},
+		CTEAliases:    map[string]string{},
+		Exprs:         map[rfqn.RelationFQN]map[string][]any{},
 		ParamRefs:     map[rfqn.RelationFQN]map[string][]int{},
 		Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
+		AuxValues:     map[AuxValuesKey][]lyx.Node{},
 		SPH:           sph,
 		Mgr:           mgr,
 	}
@@ -87,6 +80,29 @@ var CatalogDistribution = distributions.Distribution{
 
 func IsRelationCatalog(resolvedRelation rfqn.RelationFQN) bool {
 	return len(resolvedRelation.RelationName) >= 3 && resolvedRelation.RelationName[0:3] == "pg_"
+}
+
+func (rm *RoutingMetadataContext) RecordAuxExpr(name string, value string, v lyx.Node) {
+	k := AuxValuesKey{
+		CTEName:   name,
+		ValueName: value,
+	}
+	vals, _ := rm.AuxValues[k]
+	vals = append(vals, v)
+	rm.AuxValues[k] = vals
+}
+
+func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node {
+	searchKey := cf.TableAlias
+	if fullName, ok := rm.CTEAliases[cf.TableAlias]; ok {
+		searchKey = fullName
+	}
+
+	k := AuxValuesKey{
+		CTEName:   searchKey,
+		ValueName: cf.ColName,
+	}
+	return rm.AuxValues[k]
 }
 
 func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, resolvedRelation rfqn.RelationFQN) (*distributions.Distribution, error) {
