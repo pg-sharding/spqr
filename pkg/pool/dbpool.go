@@ -121,16 +121,12 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 //
 // TODO : unit tests
 func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
-	totalMsg := make([]string, 0)
+	hostToReason := map[string]string{}
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
 		cr, err := s.checker.CheckTSA(shard)
-		spqrlog.Zero.Debug().
-			Uint("id", shard.ID()).
-			Bool("result", cr.RW).
-			Msg("checking for read-only")
 
 		if err != nil {
-			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
+			hostToReason[shard.Instance().Hostname()] = err.Error()
 			_ = s.pool.Discard(shard)
 
 			s.cacheMutex.Lock()
@@ -161,7 +157,7 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 		s.cacheMutex.Unlock()
 
 		if cr.RW {
-			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), cr.Reason))
+			hostToReason[shard.Instance().Hostname()] = cr.Reason
 			_ = s.Put(shard)
 			return false
 		}
@@ -172,7 +168,12 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 		return sh, nil
 	}
 
-	return nil, fmt.Errorf("shard %s failed to find replica within %s", key.Name, strings.Join(totalMsg, ";"))
+	messages := make([]string, 0, len(hostToReason))
+	for host, reason := range hostToReason {
+		messages = append(messages, fmt.Sprintf("host %s: %s", host, reason))
+	}
+
+	return nil, fmt.Errorf("shard %s: failed to find replica: %s", key.Name, strings.Join(messages, ";"))
 }
 
 // selectReadWriteShardHost selects a read-write shard host from the given list of hosts based on the provided client ID and shard key.
@@ -191,12 +192,12 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 //
 // TODO : unit tests
 func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
-	totalMsg := make([]string, 0)
+	hostToReason := map[string]string{}
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
 		cr, err := s.checker.CheckTSA(shard)
 
 		if err != nil {
-			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
+			hostToReason[shard.Instance().Hostname()] = err.Error()
 			_ = s.pool.Discard(shard)
 
 			s.cacheMutex.Lock()
@@ -226,7 +227,7 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 		s.cacheMutex.Unlock()
 
 		if !cr.RW {
-			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), cr.Reason))
+			hostToReason[shard.Instance().Hostname()] = cr.Reason
 			_ = s.Put(shard)
 			return false
 		}
@@ -238,7 +239,12 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 		return sh, nil
 	}
 
-	return nil, fmt.Errorf("shard %s failed to find primary within %s", key.Name, strings.Join(totalMsg, ";"))
+	messages := make([]string, 0, len(hostToReason))
+	for host, reason := range hostToReason {
+		messages = append(messages, fmt.Sprintf("host %s: %s", host, reason))
+	}
+
+	return nil, fmt.Errorf("shard %s failed to find replica within %s", key.Name, strings.Join(messages, ";"))
 }
 
 // Connection acquires a new instance connection for a client to a shard with target session attributes.
@@ -345,7 +351,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 
 func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]config.Host, error) {
 	var hostOrder []config.Host
-	var posCache []config.Host // distinguish between ro and rw hosts, prefer standby is broken
+	var posCache []config.Host
 	var negCache []config.Host
 	var deadCache []config.Host
 
