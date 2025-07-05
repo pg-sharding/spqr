@@ -86,38 +86,6 @@ type DistributionKeyEntry struct {
 	HashFunction string `json:"hash"`
 }
 
-/*
-	type QualifiedName struct {
-		Name       string
-		SchemaName string
-	}
-
-	func (n QualifiedName) String() string {
-		if len(n.SchemaName) < 1 {
-			return n.Name
-		}
-		return n.SchemaName + "." + n.Name
-	}
-
-	func ParseQualifiedName(str string) (*QualifiedName, error) {
-		parts := strings.Split(str, ".")
-		if len(str) == 0 || len(strings.TrimSpace(str)) == 0 {
-			return nil, fmt.Errorf("invalid qualified name='%v' (case0)", str)
-		}
-		if len(parts) == 1 {
-			return &QualifiedName{Name: parts[0]}, nil
-		} else if len(parts) == 2 {
-			schema := parts[0]
-			table := parts[1]
-			if len(schema) == 0 || len(table) == 0 ||
-				strings.TrimSpace(schema) != schema || strings.TrimSpace(table) != table {
-				return nil, fmt.Errorf("invalid qualified name='%v'  (case2)", str)
-			}
-			return &QualifiedName{SchemaName: schema, Name: table}, nil
-		}
-		return nil, fmt.Errorf("invalid qualified name='%v' (case1)", str)
-	}
-*/
 type DistributedRelation struct {
 	Name               string                 `json:"name"`
 	SchemaName         string                 `json:"schema_name,omitempty"`

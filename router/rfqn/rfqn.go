@@ -36,7 +36,7 @@ func ParseFQN(str string) (*RelationFQN, error) {
 		table := parts[1]
 		if len(schema) == 0 || len(table) == 0 ||
 			strings.TrimSpace(schema) != schema || strings.TrimSpace(table) != table {
-			return nil, fmt.Errorf("invalid qualified name='%v'  (case2)", str)
+			return nil, fmt.Errorf("invalid qualified name='%v' (case2)", str)
 		}
 		return &RelationFQN{SchemaName: schema, RelationName: table}, nil
 	}

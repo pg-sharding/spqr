@@ -103,19 +103,6 @@ type DropStmt interface {
 	iDrop()
 }
 
-/*
-	type QualifiedName struct {
-		Name       string
-		SchemaName string
-	}
-
-	func (n QualifiedName) String() string {
-		if len(n.SchemaName) < 1 {
-			return n.Name
-		}
-		return n.SchemaName + "." + n.Name
-	}
-*/
 type DistributionDefinition struct {
 	ID                   string
 	ColTypes             []string
