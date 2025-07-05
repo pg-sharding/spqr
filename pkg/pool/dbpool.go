@@ -102,93 +102,39 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 	return nil
 }
 
-// selectReadOnlyShardHost selects a read-only shard host from the given list of hosts based on the provided client ID and shard key.
-// It traverses the hosts and performs checks to ensure the selected shard host is suitable for read-only operations.
-// If a suitable shard host is found, it is returned along with a nil error.
-// If no suitable shard host is found, an error is returned with a message indicating the reason for failure.
-//
-// Parameters:
-//   - clid: The client ID.
-//   - key: The shard key.
-//   - hosts: The list of hosts to traverse.
-//
-// Returns:
-//   - shard.Shard: The selected read-only shard host.
-//   - error: An error if no suitable shard host is found.
-//
-// TODO : unit tests
+// selectReadOnlyShardHost wraps the selectShardHost method to specifically select a read-only shard host.
 func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
-	hostToReason := map[string]string{}
-	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
-		cr, err := s.checker.CheckTSA(shard)
-
-		if err != nil {
-			hostToReason[shard.Instance().Hostname()] = err.Error()
-			_ = s.pool.Discard(shard)
-
-			s.CacheTSAChecks.Store(TsaKey{
-				Tsa:  tsa,
-				Host: shard.Instance().Hostname(),
-				AZ:   shard.Instance().AvailabilityZone(),
-			}, LocalCheckResult{
-				Alive:  cr.Alive,
-				Good:   false,
-				Reason: err.Error(),
-			})
-
-			return false
-		}
-
-		s.CacheTSAChecks.Store(TsaKey{
-			Tsa:  tsa,
-			Host: shard.Instance().Hostname(),
-			AZ:   shard.Instance().AvailabilityZone(),
-		}, LocalCheckResult{
-			Alive:  cr.Alive,
-			Good:   !cr.RW,
-			Reason: cr.Reason,
-		})
-
-		if cr.Alive && !cr.RW {
-			return true
-		}
-
-		// Host is not suitable
-		hostToReason[shard.Instance().Hostname()] = cr.Reason
-		_ = s.Put(shard)
-		return false
-	}, tsa)
-	if sh != nil {
-		return sh, nil
-	}
-
-	messages := make([]string, 0, len(hostToReason))
-	for host, reason := range hostToReason {
-		messages = append(messages, fmt.Sprintf("host %s: %s", host, reason))
-	}
-
-	return nil, fmt.Errorf("shard %s: failed to find replica: %s", key.Name, strings.Join(messages, ";"))
+	return s.selectShardHost(clid, key, hosts, tsa, false)
 }
 
-// selectReadWriteShardHost selects a read-write shard host from the given list of hosts based on the provided client ID and shard key.
-// It traverses the hosts and checks if each shard is available and suitable for read-write operations.
-// If a suitable shard is found, it is returned along with no error.
-// If no suitable shard is found, an error is returned indicating the failure reason.
+// selectReadWriteShardHost wraps the selectShardHost method to specifically select a read-write shard host.
+func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
+	return s.selectShardHost(clid, key, hosts, tsa, true)
+}
+
+// selectShardHost selects a shard host based on the provided client ID, shard key, list of hosts,
+// target session attributes, and whether the host should be a primary or not.
+// It traverses the hosts and checks if they are suitable for the given shard key and target
+// session attributes. If a suitable host is found, it returns the shard; otherwise, it returns an error.
 //
 // Parameters:
 //   - clid: The client ID.
 //   - key: The shard key.
 //   - hosts: The list of hosts to traverse.
+//   - tsa: The target session attributes.
+//   - primary: A boolean indicating whether the host should be a primary or not.
 //
 // Returns:
-//   - shard.Shard: The selected read-write shard host.
-//   - error: An error if no suitable shard host is found.
+//   - shard.Shard: The selected shard host.
+//   - error: An error if no suitable host is found or if there is an issue
+//     during the selection process.
 //
-// TODO : unit tests
-func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
+// // TODO : unit tests
+func (s *DBPool) selectShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA, primary bool) (shard.Shard, error) {
 	hostToReason := map[string]string{}
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
 		cr, err := s.checker.CheckTSA(shard)
+		good := cr.RW == primary
 
 		if err != nil {
 			hostToReason[shard.Instance().Hostname()] = err.Error()
@@ -213,11 +159,11 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 			AZ:   shard.Instance().AvailabilityZone(),
 		}, LocalCheckResult{
 			Alive:  cr.Alive,
-			Good:   cr.RW,
+			Good:   good,
 			Reason: cr.Reason,
 		})
 
-		if cr.Alive && cr.RW {
+		if cr.Alive && good {
 			return true
 		}
 
@@ -236,7 +182,11 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 		messages = append(messages, fmt.Sprintf("host %s: %s", host, reason))
 	}
 
-	return nil, fmt.Errorf("shard %s failed to find primary within %s", key.Name, strings.Join(messages, ";"))
+	roleType := "replica"
+	if primary {
+		roleType = "primary"
+	}
+	return nil, fmt.Errorf("shard %s: failed to find %s within %s", key.Name, roleType, strings.Join(messages, ";"))
 }
 
 // Connection acquires a new instance connection for a client to a shard with target session attributes.
