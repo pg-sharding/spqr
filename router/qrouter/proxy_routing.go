@@ -1326,7 +1326,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 			entries[q.ColName] = struct{}{}
 		}
 	}
-	rel, ok := ds.Relations[relname.String()]
+	rel, ok := ds.Relations[relname.RelationName]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" not present in distribution \"%s\" it's attached to", relname, ds.Id)
 	}

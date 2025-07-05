@@ -2,6 +2,7 @@ package qrouter_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -2162,4 +2163,98 @@ func BenchmarkModifyQuery(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _ = qr.ModifyQuery(query, colname, nextval)
 	}
+}
+
+func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error) {
+	db, _ := qdb.NewMemQDB(MemQDBPath)
+	distribution := "dd"
+
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID:       distribution,
+		ColTypes: []string{qdb.ColumnTypeInteger},
+		Relations: map[string]*qdb.DistributedRelation{
+			"table1": {
+				Name: "table1",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "id",
+					},
+				},
+			},
+			"table2": {
+				Name:       "table2",
+				SchemaName: "schema2",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "id",
+					},
+				},
+			},
+		},
+	})
+
+	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh1",
+		Distribution: distribution,
+		ID:           "krid1",
+		LowerBound:   []interface{}{int64(11)},
+		ColumnTypes:  []string{qdb.ColumnTypeInteger},
+	}).ToDB())
+	if err != nil {
+		return nil, err
+	}
+
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+
+	router, err := qrouter.NewProxyRouter(map[string]*config.Shard{
+		"sh1": {},
+		"sh2": {},
+	}, lc, &config.QRouter{}, nil)
+
+	return router, err
+}
+
+func TestCheckTableIsRoutable(t *testing.T) {
+	type tcase struct {
+		query string
+		err   error
+	}
+	assert := assert.New(t)
+	router, err := prepareTestCheckTableIsRoutable(t)
+	assert.NoError(err)
+
+	ctx := context.Background()
+	for nn, tt := range []tcase{
+		{
+			query: "create table table1 (id int)",
+			err:   nil,
+		},
+		{
+			query: "create table table1 (id1 int)",
+			err:   fmt.Errorf("create table stmt ignored: no sharding rule columns found"),
+		},
+		{
+			query: "create table schema2.table2 (id int, dat varchar)",
+			err:   nil,
+		},
+		{
+			query: "create table schema2.table2Err (id int, dat varchar)",
+			err:   fmt.Errorf("distribution for relation \"schema2.table2Err\" not found"),
+		},
+	} {
+		stmt, err := lyx.Parse(tt.query)
+		assert.NoError(err)
+		switch node := stmt.(type) {
+		case *lyx.CreateTable:
+			actualErr := router.CheckTableIsRoutable(ctx, node)
+			if tt.err == nil {
+				assert.NoError(actualErr, "case #%d", nn)
+			} else {
+				assert.Error(actualErr, "case #%d", nn)
+			}
+		default:
+			assert.NoError(fmt.Errorf("no create statement"))
+		}
+	}
+
 }
