@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/router/rfqn"
 
 	"github.com/cucumber/godog"
 	"github.com/jackc/pgx/v5"
@@ -914,7 +915,8 @@ func (tctx *testContext) stepRecordQDBTx(key string, body *godog.DocString) erro
 }
 
 func (tctx *testContext) stepQDBShouldNotContainRelation(key string) error {
-	_, err := tctx.qdb.GetRelationDistribution(context.TODO(), key)
+	qname := rfqn.RelationFQN{RelationName: key}
+	_, err := tctx.qdb.GetRelationDistribution(context.TODO(), &qname)
 	switch t := err.(type) {
 	case *spqrerror.SpqrError:
 		if t.ErrorCode == spqrerror.SPQR_OBJECT_NOT_EXIST {

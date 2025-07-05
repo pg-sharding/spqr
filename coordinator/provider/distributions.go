@@ -6,7 +6,7 @@ import (
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
-	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -70,7 +70,7 @@ func (d *DistributionsServer) AlterDistributionAttach(ctx context.Context, req *
 
 func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *protos.AlterDistributionDetachRequest) (*emptypb.Empty, error) {
 	for _, rel := range req.GetRelNames() {
-		qualifiedName := &spqrparser.QualifiedName{Name: rel}
+		qualifiedName := &rfqn.RelationFQN{RelationName: rel.RelationName, SchemaName: rel.SchemaName}
 		if err := d.impl.AlterDistributionDetach(ctx, req.GetId(), qualifiedName); err != nil {
 			return nil, err
 		}
@@ -92,7 +92,8 @@ func (d *DistributionsServer) GetDistribution(ctx context.Context, req *protos.G
 }
 
 func (d *DistributionsServer) GetRelationDistribution(ctx context.Context, req *protos.GetRelationDistributionRequest) (*protos.GetRelationDistributionReply, error) {
-	ds, err := d.impl.GetRelationDistribution(ctx, req.GetId())
+	qualifiedName := rfqn.RelationFQN{RelationName: req.Name, SchemaName: req.SchemaName}
+	ds, err := d.impl.GetRelationDistribution(ctx, &qualifiedName)
 	if err != nil {
 		return nil, err
 	}

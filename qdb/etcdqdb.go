@@ -13,6 +13,7 @@ import (
 
 	"github.com/pg-sharding/spqr/coordinator/statistics"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/router/rfqn"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/clientv3util"
@@ -1158,8 +1159,8 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.Name)
 		}
 		distribution.Relations[rel.Name] = rel
-
-		_, err := q.GetRelationDistribution(ctx, rel.Name)
+		qname := rel.QualifiedName()
+		_, err := q.GetRelationDistribution(ctx, &qname)
 		switch e := err.(type) {
 		case *spqrerror.SpqrError:
 			if e.ErrorCode != spqrerror.SPQR_OBJECT_NOT_EXIST {
@@ -1184,7 +1185,7 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
+func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: detach table from distribution")
@@ -1198,12 +1199,12 @@ func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relNam
 		return err
 	}
 
-	delete(distribution.Relations, relName)
+	delete(distribution.Relations, relName.RelationName)
 	if err = q.CreateDistribution(ctx, distribution); err != nil {
 		return err
 	}
 
-	_, err = q.cli.Delete(ctx, relationMappingNodePath(relName))
+	_, err = q.cli.Delete(ctx, relationMappingNodePath(relName.RelationName))
 	return err
 }
 
@@ -1222,8 +1223,8 @@ func (q *EtcdQDB) AlterDistributedRelation(ctx context.Context, id string, rel *
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
 	}
 	distribution.Relations[rel.Name] = rel
-
-	if ds, err := q.GetRelationDistribution(ctx, rel.Name); err != nil {
+	qname := rel.QualifiedName()
+	if ds, err := q.GetRelationDistribution(ctx, &qname); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
 	} else if ds.ID != id {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", rel.Name, ds.ID, id)
@@ -1258,12 +1259,12 @@ func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName string) (*Distribution, error) {
+func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName *rfqn.RelationFQN) (*Distribution, error) {
 	spqrlog.Zero.Debug().
-		Str("relation", relName).
+		Str("relation", relName.RelationName).
 		Msg("etcdqdb: get distribution for relation")
 
-	resp, err := q.cli.Get(ctx, relationMappingNodePath(relName))
+	resp, err := q.cli.Get(ctx, relationMappingNodePath(relName.RelationName))
 	if err != nil {
 		return nil, err
 	}
@@ -1648,36 +1649,36 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 	return err
 }
 
-func (q *EtcdQDB) AlterSequenceAttach(ctx context.Context, seqName string, relName, colName string) error {
+func (q *EtcdQDB) AlterSequenceAttach(ctx context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error {
 	spqrlog.Zero.Debug().
 		Str("column", colName).
 		Msg("etcdqdb: attach column to sequence")
 
-	resp, err := q.cli.Put(ctx, columnSequenceMappingNodePath(relName, colName), seqName)
+	resp, err := q.cli.Put(ctx, columnSequenceMappingNodePath(relName.RelationName, colName), seqName)
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: attach column to sequence")
 	return err
 }
 
-func (q *EtcdQDB) AlterSequenceDetachRelation(ctx context.Context, relName string) error {
+func (q *EtcdQDB) AlterSequenceDetachRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
 	spqrlog.Zero.Debug().
-		Str("relation", relName).
+		Str("relation", relName.RelationName).
 		Msg("etcdqdb: detach relation from sequence")
 
-	resp, err := q.cli.Delete(ctx, relationSequenceMappingNodePath(relName), clientv3.WithPrefix())
+	resp, err := q.cli.Delete(ctx, relationSequenceMappingNodePath(relName.RelationName), clientv3.WithPrefix())
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: detach relation from sequence")
 	return err
 }
 
-func (q *EtcdQDB) GetRelationSequence(ctx context.Context, relName string) (map[string]string, error) {
+func (q *EtcdQDB) GetRelationSequence(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error) {
 	spqrlog.Zero.Debug().
-		Str("relName", relName).
+		Str("relName", relName.RelationName).
 		Msg("etcdqdb: get column sequence")
 
-	key := relationSequenceMappingNodePath(relName)
+	key := relationSequenceMappingNodePath(relName.RelationName)
 	resp, err := q.cli.Get(ctx, key, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err

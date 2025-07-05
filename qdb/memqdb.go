@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/router/rfqn"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
@@ -756,7 +757,7 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 }
 
 // TODO: unit tests
-func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
+func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: attach table to distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -770,12 +771,12 @@ func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relName
 		return err
 	}
 
-	delete(ds.Relations, relName)
+	delete(ds.Relations, relName.RelationName)
 	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds)); err != nil {
 		return err
 	}
 
-	err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.RelationDistribution, relName))
+	err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.RelationDistribution, relName.RelationName))
 	return err
 }
 
@@ -817,12 +818,12 @@ func (q *MemQDB) GetDistribution(_ context.Context, id string) (*Distribution, e
 	}
 }
 
-func (q *MemQDB) GetRelationDistribution(_ context.Context, relation string) (*Distribution, error) {
-	spqrlog.Zero.Debug().Str("relation", relation).Msg("memqdb: get distribution for table")
+func (q *MemQDB) GetRelationDistribution(_ context.Context, relation *rfqn.RelationFQN) (*Distribution, error) {
+	spqrlog.Zero.Debug().Str("relation", relation.RelationName).Msg("memqdb: get distribution for table")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	if ds, ok := q.RelationDistribution[relation]; !ok {
+	if ds, ok := q.RelationDistribution[relation.RelationName]; !ok {
 		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution for relation \"%s\" not found", relation)
 	} else {
 		// if there is no distr by key ds
@@ -1010,10 +1011,10 @@ func (q *MemQDB) CreateSequence(_ context.Context, seqName string, initialValue 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Sequences, seqName, true))
 }
 
-func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName, relName, colName string) error {
+func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error {
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).
-		Str("relation", relName).
+		Str("relation", relName.RelationName).
 		Str("column", colName).Msg("memqdb: alter sequence attach")
 
 	if _, ok := q.Sequences[seqName]; !ok {
@@ -1025,14 +1026,14 @@ func (q *MemQDB) AlterSequenceAttach(_ context.Context, seqName, relName, colNam
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.ColumnSequence, key, seqName))
 }
 
-func (q *MemQDB) AlterSequenceDetachRelation(_ context.Context, relName string) error {
+func (q *MemQDB) AlterSequenceDetachRelation(_ context.Context, relName *rfqn.RelationFQN) error {
 	spqrlog.Zero.Debug().
-		Str("relation", relName).
+		Str("relation", relName.RelationName).
 		Msg("memqdb: detach relation from sequence")
 
 	for col := range q.ColumnSequence {
 		rel := strings.Split(col, "_")[0]
-		if rel == relName {
+		if rel == relName.RelationName {
 			if err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.ColumnSequence, col)); err != nil {
 				return err
 			}
@@ -1059,9 +1060,9 @@ func (q *MemQDB) DropSequence(ctx context.Context, seqName string) error {
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Sequences, seqName))
 }
 
-func (q *MemQDB) GetRelationSequence(_ context.Context, relName string) (map[string]string, error) {
+func (q *MemQDB) GetRelationSequence(_ context.Context, relName *rfqn.RelationFQN) (map[string]string, error) {
 	spqrlog.Zero.Debug().
-		Str("relation", relName).
+		Str("relation", relName.RelationName).
 		Interface("mapping", q.ColumnSequence).Msg("memqdb: get relation sequence")
 
 	mapping := map[string]string{}
@@ -1070,7 +1071,7 @@ func (q *MemQDB) GetRelationSequence(_ context.Context, relName string) (map[str
 		seqRelName := data[0]
 		colName := data[1]
 
-		if seqRelName == relName {
+		if seqRelName == relName.RelationName {
 			mapping[colName] = seqName
 		}
 	}

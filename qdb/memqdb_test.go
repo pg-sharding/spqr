@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -113,8 +114,8 @@ func TestDistributions(t *testing.T) {
 	assert.NoError(memqdb.AlterDistributionAttach(ctx, "ds1", []*qdb.DistributedRelation{
 		relation,
 	}))
-
-	ds, err := memqdb.GetRelationDistribution(ctx, relation.Name)
+	qualifiedName := relation.QualifiedName()
+	ds, err := memqdb.GetRelationDistribution(ctx, &qualifiedName)
 	assert.NoError(err)
 	assert.Equal(ds.ID, "ds1")
 	assert.Contains(ds.Relations, relation.Name)
@@ -124,8 +125,8 @@ func TestDistributions(t *testing.T) {
 		relation,
 	}))
 
-	assert.NoError(memqdb.AlterDistributionDetach(ctx, "ds1", "r1"))
-	_, err = memqdb.GetRelationDistribution(ctx, relation.Name)
+	assert.NoError(memqdb.AlterDistributionDetach(ctx, "ds1", &rfqn.RelationFQN{RelationName: "r1"}))
+	_, err = memqdb.GetRelationDistribution(ctx, &qualifiedName)
 	assert.Error(err)
 
 	ds, err = memqdb.GetDistribution(ctx, "ds1")
@@ -136,7 +137,7 @@ func TestDistributions(t *testing.T) {
 		relation,
 	}))
 
-	ds, err = memqdb.GetRelationDistribution(ctx, relation.Name)
+	ds, err = memqdb.GetRelationDistribution(ctx, &qualifiedName)
 	assert.NoError(err)
 	assert.Equal(ds.ID, "ds2")
 	assert.Contains(ds.Relations, relation.Name)
@@ -157,7 +158,7 @@ func TestMemQDB_GetNotAttachedRelationDistribution(t *testing.T) {
 
 	assert.NoError(memQDB.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil)))
 
-	_, err = memQDB.GetRelationDistribution(ctx, "rel")
+	_, err = memQDB.GetRelationDistribution(ctx, &rfqn.RelationFQN{RelationName: "rel"})
 	assert.Error(err)
 }
 
@@ -258,7 +259,7 @@ func TestMemQDB_NextVal(t *testing.T) {
 	err = memqdb.CreateSequence(ctx, "seq", 0)
 	assert.NoError(err)
 
-	err = memqdb.AlterSequenceAttach(ctx, "seq", "test", "id")
+	err = memqdb.AlterSequenceAttach(ctx, "seq", &rfqn.RelationFQN{RelationName: "test"}, "id")
 	assert.NoError(err)
 
 	// Test concurrency

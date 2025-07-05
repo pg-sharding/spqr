@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	qdb "github.com/pg-sharding/spqr/qdb"
+	rfqn "github.com/pg-sharding/spqr/router/rfqn"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -327,7 +328,7 @@ func (mr *MockQDBMockRecorder) AlterDistributionAttach(ctx, id, rels any) *gomoc
 }
 
 // AlterDistributionDetach mocks base method.
-func (m *MockQDB) AlterDistributionDetach(ctx context.Context, id, relName string) error {
+func (m *MockQDB) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AlterDistributionDetach", ctx, id, relName)
 	ret0, _ := ret[0].(error)
@@ -341,7 +342,7 @@ func (mr *MockQDBMockRecorder) AlterDistributionDetach(ctx, id, relName any) *go
 }
 
 // AlterSequenceAttach mocks base method.
-func (m *MockQDB) AlterSequenceAttach(ctx context.Context, seqName, relName, colName string) error {
+func (m *MockQDB) AlterSequenceAttach(ctx context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AlterSequenceAttach", ctx, seqName, relName, colName)
 	ret0, _ := ret[0].(error)
@@ -674,7 +675,7 @@ func (mr *MockQDBMockRecorder) GetReferenceRelation(ctx, tableName any) *gomock.
 }
 
 // GetRelationDistribution mocks base method.
-func (m *MockQDB) GetRelationDistribution(ctx context.Context, relation string) (*qdb.Distribution, error) {
+func (m *MockQDB) GetRelationDistribution(ctx context.Context, relation *rfqn.RelationFQN) (*qdb.Distribution, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRelationDistribution", ctx, relation)
 	ret0, _ := ret[0].(*qdb.Distribution)
@@ -689,7 +690,7 @@ func (mr *MockQDBMockRecorder) GetRelationDistribution(ctx, relation any) *gomoc
 }
 
 // GetRelationSequence mocks base method.
-func (m *MockQDB) GetRelationSequence(ctx context.Context, relName string) (map[string]string, error) {
+func (m *MockQDB) GetRelationSequence(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRelationSequence", ctx, relName)
 	ret0, _ := ret[0].(map[string]string)
@@ -1130,7 +1131,7 @@ func (mr *MockXQDBMockRecorder) AlterDistributionAttach(ctx, id, rels any) *gomo
 }
 
 // AlterDistributionDetach mocks base method.
-func (m *MockXQDB) AlterDistributionDetach(ctx context.Context, id, relName string) error {
+func (m *MockXQDB) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AlterDistributionDetach", ctx, id, relName)
 	ret0, _ := ret[0].(error)
@@ -1144,7 +1145,7 @@ func (mr *MockXQDBMockRecorder) AlterDistributionDetach(ctx, id, relName any) *g
 }
 
 // AlterSequenceAttach mocks base method.
-func (m *MockXQDB) AlterSequenceAttach(ctx context.Context, seqName, relName, colName string) error {
+func (m *MockXQDB) AlterSequenceAttach(ctx context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AlterSequenceAttach", ctx, seqName, relName, colName)
 	ret0, _ := ret[0].(error)
@@ -1519,7 +1520,7 @@ func (mr *MockXQDBMockRecorder) GetReferenceRelation(ctx, tableName any) *gomock
 }
 
 // GetRelationDistribution mocks base method.
-func (m *MockXQDB) GetRelationDistribution(ctx context.Context, relation string) (*qdb.Distribution, error) {
+func (m *MockXQDB) GetRelationDistribution(ctx context.Context, relation *rfqn.RelationFQN) (*qdb.Distribution, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRelationDistribution", ctx, relation)
 	ret0, _ := ret[0].(*qdb.Distribution)
@@ -1534,7 +1535,7 @@ func (mr *MockXQDBMockRecorder) GetRelationDistribution(ctx, relation any) *gomo
 }
 
 // GetRelationSequence mocks base method.
-func (m *MockXQDB) GetRelationSequence(ctx context.Context, relName string) (map[string]string, error) {
+func (m *MockXQDB) GetRelationSequence(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRelationSequence", ctx, relName)
 	ret0, _ := ret[0].(map[string]string)

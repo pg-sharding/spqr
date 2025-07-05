@@ -11,6 +11,11 @@ message DistributionKeyEntry {
   string hashFunction = 2;
 }
 
+message QualifiedName {
+  string relationName = 1;
+  string schema_name = 2;
+}
+
 message DistributedRelation {
   string name = 1;
   repeated DistributionKeyEntry distributionKey = 2;
@@ -45,7 +50,7 @@ message AlterDistributionAttachRequest{
 
 message AlterDistributionDetachRequest{
   string id = 1;
-  repeated string relNames = 2;
+  repeated QualifiedName relNames = 2;
 }
 
 message AlterDistributedRelationRequest{
@@ -62,7 +67,8 @@ message GetDistributionReply {
 }
 
 message GetRelationDistributionRequest {
-  string id = 1;
+  string name = 1;
+  string schemaName = 2;
 }
 
 message GetRelationDistributionReply {

@@ -14,7 +14,7 @@ import (
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
-	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -822,16 +822,16 @@ func (a *Adapter) AlterDistributedRelation(ctx context.Context, id string, rel *
 // Parameters:
 // - ctx (context.Context): The context for the request.
 // - id (string): The ID of the distribution to detach from.
-// - relName (*spqrparser.QualifiedName): The qualified name of the relation to detach.
+// - relName (*rfqn.RelationFQN): The qualified name of the relation to detach.
 //
 // Returns:
 // - error: An error if the detachment fails, otherwise nil.
-func (a *Adapter) AlterDistributionDetach(ctx context.Context, id string, relName *spqrparser.QualifiedName) error {
+func (a *Adapter) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
 	c := proto.NewDistributionServiceClient(a.conn)
-
+	protoRelationName := proto.QualifiedName{RelationName: relName.RelationName, SchemaName: relName.SchemaName}
 	_, err := c.AlterDistributionDetach(ctx, &proto.AlterDistributionDetachRequest{
 		Id:       id,
-		RelNames: []string{relName.Name},
+		RelNames: []*proto.QualifiedName{&protoRelationName},
 	})
 
 	return err
@@ -865,16 +865,16 @@ func (a *Adapter) GetDistribution(ctx context.Context, id string) (*distribution
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - id (string): The ID of the relation (type: string).
+// - relationName (string): The ID of the relation (type: string).
 //
 // Returns:
 // - *distributions.Distribution: The retrieved distribution related to the relation.
 // - error: An error if the retrieval of the distribution fails, otherwise nil.
-func (a *Adapter) GetRelationDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
+func (a *Adapter) GetRelationDistribution(ctx context.Context, relationName *rfqn.RelationFQN) (*distributions.Distribution, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
-
 	resp, err := c.GetRelationDistribution(ctx, &proto.GetRelationDistributionRequest{
-		Id: id,
+		Name:       relationName.RelationName,
+		SchemaName: relationName.SchemaName,
 	})
 	if err != nil {
 		return nil, err
