@@ -34,7 +34,8 @@ Feature: Reference relation test
     
     When I run SQL on host "router"
     """
-    SELECT id, name FROM t ORDER BY id /* __spqr__execute_on: sh1 */;
+    SET __spqr__execute_on TO sh1;
+    SELECT id, name FROM t ORDER BY id;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -62,7 +63,8 @@ Feature: Reference relation test
     
     When I run SQL on host "router"
     """
-    SELECT id, name FROM t2 ORDER BY id /* __spqr__execute_on: sh2 */;
+    SET __spqr__execute_on TO sh2;
+    SELECT id, name FROM t2 ORDER BY id ;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
