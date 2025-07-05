@@ -57,7 +57,7 @@ Feature: Reference relation test
     """
     When I execute SQL on host "router"
     """
-    UPDATE t SET id = id+1;
+    UPDATE t SET id = id+1 /* __spqr__engine_v2: true */;
     """
     Then command return code should be "0"
     
