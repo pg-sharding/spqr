@@ -26,7 +26,7 @@ Feature: Config reloading works
     Then command return code should be "1"
     And SQL error on host "router" should match regexp
     """
-    shard sh1 failed to find primary
+    shard sh1: failed to find primary
     """
     # Edit config and reload spqr-router
     When I run command on host "router"
