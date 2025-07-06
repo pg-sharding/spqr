@@ -17,8 +17,8 @@ const (
 )
 
 type ConnectionKepper interface {
-	Put(host shard.Shard) error
-	Discard(sh shard.Shard) error
+	Put(host shard.ShardHostInstance) error
+	Discard(sh shard.ShardHostInstance) error
 	View() Statistics
 }
 
@@ -37,7 +37,7 @@ type Pool interface {
 	ConnectionKepper
 	shard.ShardIterator
 
-	Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, error)
+	Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error)
 }
 
 /* Host  */
@@ -48,7 +48,7 @@ type MultiShardPool interface {
 
 	ID() uint
 
-	ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.Shard, error)
+	ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error)
 
 	SetRule(rule *config.BackendRule)
 }
@@ -57,4 +57,4 @@ type PoolIterator interface {
 	ForEachPool(cb func(p Pool) error) error
 }
 
-type ConnectionAllocFn func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error)
+type ConnectionAllocFn func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error)

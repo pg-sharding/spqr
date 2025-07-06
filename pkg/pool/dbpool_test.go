@@ -144,7 +144,7 @@ func TestDbPoolRaces(t *testing.T) {
 
 	sz := 50
 
-	mp := map[string]map[string][]shard.Shard{}
+	mp := map[string]map[string][]shard.ShardHostInstance{}
 	var mu sync.Mutex
 
 	hosts := []string{
@@ -160,7 +160,7 @@ func TestDbPoolRaces(t *testing.T) {
 	}
 
 	for i, shname := range shards {
-		mp[shname] = map[string][]shard.Shard{}
+		mp[shname] = map[string][]shard.ShardHostInstance{}
 
 		for hi, hst := range hosts {
 
@@ -218,14 +218,14 @@ func TestDbPoolRaces(t *testing.T) {
 		}
 	}
 
-	dbpool := pool.NewDBPoolWithAllocator(cfg, &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
+	dbpool := pool.NewDBPoolWithAllocator(cfg, &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		mu.Lock()
 		defer mu.Unlock()
 
 		if len(mp[shardKey.Name][host.Address]) == 0 {
 			panic("exceeded!")
 		}
-		var sh shard.Shard
+		var sh shard.ShardHostInstance
 		sh, mp[shardKey.Name][host.Address] = mp[shardKey.Name][host.Address][0], mp[shardKey.Name][host.Address][1:]
 
 		spqrlog.Zero.Debug().Str("shard", shardKey.Name).Str("host", host.Address).Uint("id", sh.ID()).Msg("test allocation")

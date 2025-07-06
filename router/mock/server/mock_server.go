@@ -90,10 +90,10 @@ func (mr *MockServerMockRecorder) DataPending() *gomock.Call {
 }
 
 // Datashards mocks base method.
-func (m *MockServer) Datashards() []shard.Shard {
+func (m *MockServer) Datashards() []shard.ShardHostInstance {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Datashards")
-	ret0, _ := ret[0].([]shard.Shard)
+	ret0, _ := ret[0].([]shard.ShardHostInstance)
 	return ret0
 }
 

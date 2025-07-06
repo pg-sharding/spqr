@@ -69,7 +69,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 
-	srv.EXPECT().Datashards().AnyTimes().Return([]shard.Shard{})
+	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{})
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 
 	srv.EXPECT().AddDataShard(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
@@ -197,7 +197,7 @@ func TestFrontendXProto(t *testing.T) {
 	sh.EXPECT().Receive().AnyTimes()
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
-	srv.EXPECT().Datashards().AnyTimes().Return([]shard.Shard{
+	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{
 		sh,
 	})
 

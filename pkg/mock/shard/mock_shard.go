@@ -22,32 +22,32 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-// MockShardinfo is a mock of Shardinfo interface.
-type MockShardinfo struct {
+// MockShardHostInfo is a mock of ShardHostInfo interface.
+type MockShardHostInfo struct {
 	ctrl     *gomock.Controller
-	recorder *MockShardinfoMockRecorder
+	recorder *MockShardHostInfoMockRecorder
 	isgomock struct{}
 }
 
-// MockShardinfoMockRecorder is the mock recorder for MockShardinfo.
-type MockShardinfoMockRecorder struct {
-	mock *MockShardinfo
+// MockShardHostInfoMockRecorder is the mock recorder for MockShardHostInfo.
+type MockShardHostInfoMockRecorder struct {
+	mock *MockShardHostInfo
 }
 
-// NewMockShardinfo creates a new mock instance.
-func NewMockShardinfo(ctrl *gomock.Controller) *MockShardinfo {
-	mock := &MockShardinfo{ctrl: ctrl}
-	mock.recorder = &MockShardinfoMockRecorder{mock}
+// NewMockShardHostInfo creates a new mock instance.
+func NewMockShardHostInfo(ctrl *gomock.Controller) *MockShardHostInfo {
+	mock := &MockShardHostInfo{ctrl: ctrl}
+	mock.recorder = &MockShardHostInfoMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockShardinfo) EXPECT() *MockShardinfoMockRecorder {
+func (m *MockShardHostInfo) EXPECT() *MockShardHostInfoMockRecorder {
 	return m.recorder
 }
 
 // DB mocks base method.
-func (m *MockShardinfo) DB() string {
+func (m *MockShardHostInfo) DB() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DB")
 	ret0, _ := ret[0].(string)
@@ -55,13 +55,13 @@ func (m *MockShardinfo) DB() string {
 }
 
 // DB indicates an expected call of DB.
-func (mr *MockShardinfoMockRecorder) DB() *gomock.Call {
+func (mr *MockShardHostInfoMockRecorder) DB() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DB", reflect.TypeOf((*MockShardinfo)(nil).DB))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DB", reflect.TypeOf((*MockShardHostInfo)(nil).DB))
 }
 
 // DataPending mocks base method.
-func (m *MockShardinfo) DataPending() bool {
+func (m *MockShardHostInfo) DataPending() bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DataPending")
 	ret0, _ := ret[0].(bool)
@@ -69,13 +69,13 @@ func (m *MockShardinfo) DataPending() bool {
 }
 
 // DataPending indicates an expected call of DataPending.
-func (mr *MockShardinfoMockRecorder) DataPending() *gomock.Call {
+func (mr *MockShardHostInfoMockRecorder) DataPending() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockShardinfo)(nil).DataPending))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockShardHostInfo)(nil).DataPending))
 }
 
 // ID mocks base method.
-func (m *MockShardinfo) ID() uint {
+func (m *MockShardHostInfo) ID() uint {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ID")
 	ret0, _ := ret[0].(uint)
@@ -83,13 +83,13 @@ func (m *MockShardinfo) ID() uint {
 }
 
 // ID indicates an expected call of ID.
-func (mr *MockShardinfoMockRecorder) ID() *gomock.Call {
+func (mr *MockShardHostInfoMockRecorder) ID() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockShardinfo)(nil).ID))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockShardHostInfo)(nil).ID))
 }
 
 // InstanceHostname mocks base method.
-func (m *MockShardinfo) InstanceHostname() string {
+func (m *MockShardHostInfo) InstanceHostname() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InstanceHostname")
 	ret0, _ := ret[0].(string)
@@ -97,13 +97,13 @@ func (m *MockShardinfo) InstanceHostname() string {
 }
 
 // InstanceHostname indicates an expected call of InstanceHostname.
-func (mr *MockShardinfoMockRecorder) InstanceHostname() *gomock.Call {
+func (mr *MockShardHostInfoMockRecorder) InstanceHostname() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceHostname", reflect.TypeOf((*MockShardinfo)(nil).InstanceHostname))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceHostname", reflect.TypeOf((*MockShardHostInfo)(nil).InstanceHostname))
 }
 
 // ListPreparedStatements mocks base method.
-func (m *MockShardinfo) ListPreparedStatements() []shard.PreparedStatementsMgrDescriptor {
+func (m *MockShardHostInfo) ListPreparedStatements() []shard.PreparedStatementsMgrDescriptor {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListPreparedStatements")
 	ret0, _ := ret[0].([]shard.PreparedStatementsMgrDescriptor)
@@ -111,13 +111,13 @@ func (m *MockShardinfo) ListPreparedStatements() []shard.PreparedStatementsMgrDe
 }
 
 // ListPreparedStatements indicates an expected call of ListPreparedStatements.
-func (mr *MockShardinfoMockRecorder) ListPreparedStatements() *gomock.Call {
+func (mr *MockShardHostInfoMockRecorder) ListPreparedStatements() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPreparedStatements", reflect.TypeOf((*MockShardinfo)(nil).ListPreparedStatements))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPreparedStatements", reflect.TypeOf((*MockShardHostInfo)(nil).ListPreparedStatements))
 }
 
 // Pid mocks base method.
-func (m *MockShardinfo) Pid() uint32 {
+func (m *MockShardHostInfo) Pid() uint32 {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Pid")
 	ret0, _ := ret[0].(uint32)
@@ -125,13 +125,13 @@ func (m *MockShardinfo) Pid() uint32 {
 }
 
 // Pid indicates an expected call of Pid.
-func (mr *MockShardinfoMockRecorder) Pid() *gomock.Call {
+func (mr *MockShardHostInfoMockRecorder) Pid() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pid", reflect.TypeOf((*MockShardinfo)(nil).Pid))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pid", reflect.TypeOf((*MockShardHostInfo)(nil).Pid))
 }
 
 // ShardKeyName mocks base method.
-func (m *MockShardinfo) ShardKeyName() string {
+func (m *MockShardHostInfo) ShardKeyName() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShardKeyName")
 	ret0, _ := ret[0].(string)
@@ -139,13 +139,13 @@ func (m *MockShardinfo) ShardKeyName() string {
 }
 
 // ShardKeyName indicates an expected call of ShardKeyName.
-func (mr *MockShardinfoMockRecorder) ShardKeyName() *gomock.Call {
+func (mr *MockShardHostInfoMockRecorder) ShardKeyName() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShardKeyName", reflect.TypeOf((*MockShardinfo)(nil).ShardKeyName))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShardKeyName", reflect.TypeOf((*MockShardHostInfo)(nil).ShardKeyName))
 }
 
 // Sync mocks base method.
-func (m *MockShardinfo) Sync() int64 {
+func (m *MockShardHostInfo) Sync() int64 {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Sync")
 	ret0, _ := ret[0].(int64)
@@ -153,13 +153,13 @@ func (m *MockShardinfo) Sync() int64 {
 }
 
 // Sync indicates an expected call of Sync.
-func (mr *MockShardinfoMockRecorder) Sync() *gomock.Call {
+func (mr *MockShardHostInfoMockRecorder) Sync() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Sync", reflect.TypeOf((*MockShardinfo)(nil).Sync))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Sync", reflect.TypeOf((*MockShardHostInfo)(nil).Sync))
 }
 
 // TxServed mocks base method.
-func (m *MockShardinfo) TxServed() int64 {
+func (m *MockShardHostInfo) TxServed() int64 {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TxServed")
 	ret0, _ := ret[0].(int64)
@@ -167,13 +167,13 @@ func (m *MockShardinfo) TxServed() int64 {
 }
 
 // TxServed indicates an expected call of TxServed.
-func (mr *MockShardinfoMockRecorder) TxServed() *gomock.Call {
+func (mr *MockShardHostInfoMockRecorder) TxServed() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TxServed", reflect.TypeOf((*MockShardinfo)(nil).TxServed))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TxServed", reflect.TypeOf((*MockShardHostInfo)(nil).TxServed))
 }
 
 // TxStatus mocks base method.
-func (m *MockShardinfo) TxStatus() txstatus.TXStatus {
+func (m *MockShardHostInfo) TxStatus() txstatus.TXStatus {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TxStatus")
 	ret0, _ := ret[0].(txstatus.TXStatus)
@@ -181,13 +181,13 @@ func (m *MockShardinfo) TxStatus() txstatus.TXStatus {
 }
 
 // TxStatus indicates an expected call of TxStatus.
-func (mr *MockShardinfoMockRecorder) TxStatus() *gomock.Call {
+func (mr *MockShardHostInfoMockRecorder) TxStatus() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TxStatus", reflect.TypeOf((*MockShardinfo)(nil).TxStatus))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TxStatus", reflect.TypeOf((*MockShardHostInfo)(nil).TxStatus))
 }
 
 // Usr mocks base method.
-func (m *MockShardinfo) Usr() string {
+func (m *MockShardHostInfo) Usr() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Usr")
 	ret0, _ := ret[0].(string)
@@ -195,9 +195,9 @@ func (m *MockShardinfo) Usr() string {
 }
 
 // Usr indicates an expected call of Usr.
-func (mr *MockShardinfoMockRecorder) Usr() *gomock.Call {
+func (mr *MockShardHostInfoMockRecorder) Usr() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Usr", reflect.TypeOf((*MockShardinfo)(nil).Usr))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Usr", reflect.TypeOf((*MockShardHostInfo)(nil).Usr))
 }
 
 // MockCoordShardinfo is a mock of CoordShardinfo interface.
@@ -392,32 +392,32 @@ func (mr *MockCoordShardinfoMockRecorder) Usr() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Usr", reflect.TypeOf((*MockCoordShardinfo)(nil).Usr))
 }
 
-// MockShard is a mock of Shard interface.
-type MockShard struct {
+// MockShardHostInstance is a mock of ShardHostInstance interface.
+type MockShardHostInstance struct {
 	ctrl     *gomock.Controller
-	recorder *MockShardMockRecorder
+	recorder *MockShardHostInstanceMockRecorder
 	isgomock struct{}
 }
 
-// MockShardMockRecorder is the mock recorder for MockShard.
-type MockShardMockRecorder struct {
-	mock *MockShard
+// MockShardHostInstanceMockRecorder is the mock recorder for MockShardHostInstance.
+type MockShardHostInstanceMockRecorder struct {
+	mock *MockShardHostInstance
 }
 
-// NewMockShard creates a new mock instance.
-func NewMockShard(ctrl *gomock.Controller) *MockShard {
-	mock := &MockShard{ctrl: ctrl}
-	mock.recorder = &MockShardMockRecorder{mock}
+// NewMockShardHostInstance creates a new mock instance.
+func NewMockShardHostInstance(ctrl *gomock.Controller) *MockShardHostInstance {
+	mock := &MockShardHostInstance{ctrl: ctrl}
+	mock.recorder = &MockShardHostInstanceMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockShard) EXPECT() *MockShardMockRecorder {
+func (m *MockShardHostInstance) EXPECT() *MockShardHostInstanceMockRecorder {
 	return m.recorder
 }
 
 // Cancel mocks base method.
-func (m *MockShard) Cancel() error {
+func (m *MockShardHostInstance) Cancel() error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Cancel")
 	ret0, _ := ret[0].(error)
@@ -425,13 +425,13 @@ func (m *MockShard) Cancel() error {
 }
 
 // Cancel indicates an expected call of Cancel.
-func (mr *MockShardMockRecorder) Cancel() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) Cancel() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockShard)(nil).Cancel))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockShardHostInstance)(nil).Cancel))
 }
 
 // Cleanup mocks base method.
-func (m *MockShard) Cleanup(rule *config.FrontendRule) error {
+func (m *MockShardHostInstance) Cleanup(rule *config.FrontendRule) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Cleanup", rule)
 	ret0, _ := ret[0].(error)
@@ -439,13 +439,13 @@ func (m *MockShard) Cleanup(rule *config.FrontendRule) error {
 }
 
 // Cleanup indicates an expected call of Cleanup.
-func (mr *MockShardMockRecorder) Cleanup(rule any) *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) Cleanup(rule any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockShard)(nil).Cleanup), rule)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockShardHostInstance)(nil).Cleanup), rule)
 }
 
 // Close mocks base method.
-func (m *MockShard) Close() error {
+func (m *MockShardHostInstance) Close() error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Close")
 	ret0, _ := ret[0].(error)
@@ -453,13 +453,13 @@ func (m *MockShard) Close() error {
 }
 
 // Close indicates an expected call of Close.
-func (mr *MockShardMockRecorder) Close() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) Close() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockShard)(nil).Close))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockShardHostInstance)(nil).Close))
 }
 
 // DB mocks base method.
-func (m *MockShard) DB() string {
+func (m *MockShardHostInstance) DB() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DB")
 	ret0, _ := ret[0].(string)
@@ -467,13 +467,13 @@ func (m *MockShard) DB() string {
 }
 
 // DB indicates an expected call of DB.
-func (mr *MockShardMockRecorder) DB() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) DB() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DB", reflect.TypeOf((*MockShard)(nil).DB))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DB", reflect.TypeOf((*MockShardHostInstance)(nil).DB))
 }
 
 // DataPending mocks base method.
-func (m *MockShard) DataPending() bool {
+func (m *MockShardHostInstance) DataPending() bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DataPending")
 	ret0, _ := ret[0].(bool)
@@ -481,13 +481,13 @@ func (m *MockShard) DataPending() bool {
 }
 
 // DataPending indicates an expected call of DataPending.
-func (mr *MockShardMockRecorder) DataPending() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) DataPending() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockShard)(nil).DataPending))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockShardHostInstance)(nil).DataPending))
 }
 
 // HasPrepareStatement mocks base method.
-func (m *MockShard) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
+func (m *MockShardHostInstance) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HasPrepareStatement", hash, shardId)
 	ret0, _ := ret[0].(bool)
@@ -496,13 +496,13 @@ func (m *MockShard) HasPrepareStatement(hash uint64, shardId uint) (bool, *preps
 }
 
 // HasPrepareStatement indicates an expected call of HasPrepareStatement.
-func (mr *MockShardMockRecorder) HasPrepareStatement(hash, shardId any) *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) HasPrepareStatement(hash, shardId any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasPrepareStatement", reflect.TypeOf((*MockShard)(nil).HasPrepareStatement), hash, shardId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasPrepareStatement", reflect.TypeOf((*MockShardHostInstance)(nil).HasPrepareStatement), hash, shardId)
 }
 
 // ID mocks base method.
-func (m *MockShard) ID() uint {
+func (m *MockShardHostInstance) ID() uint {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ID")
 	ret0, _ := ret[0].(uint)
@@ -510,13 +510,13 @@ func (m *MockShard) ID() uint {
 }
 
 // ID indicates an expected call of ID.
-func (mr *MockShardMockRecorder) ID() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) ID() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockShard)(nil).ID))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockShardHostInstance)(nil).ID))
 }
 
 // Instance mocks base method.
-func (m *MockShard) Instance() conn.DBInstance {
+func (m *MockShardHostInstance) Instance() conn.DBInstance {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Instance")
 	ret0, _ := ret[0].(conn.DBInstance)
@@ -524,13 +524,13 @@ func (m *MockShard) Instance() conn.DBInstance {
 }
 
 // Instance indicates an expected call of Instance.
-func (mr *MockShardMockRecorder) Instance() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) Instance() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Instance", reflect.TypeOf((*MockShard)(nil).Instance))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Instance", reflect.TypeOf((*MockShardHostInstance)(nil).Instance))
 }
 
 // InstanceHostname mocks base method.
-func (m *MockShard) InstanceHostname() string {
+func (m *MockShardHostInstance) InstanceHostname() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InstanceHostname")
 	ret0, _ := ret[0].(string)
@@ -538,13 +538,13 @@ func (m *MockShard) InstanceHostname() string {
 }
 
 // InstanceHostname indicates an expected call of InstanceHostname.
-func (mr *MockShardMockRecorder) InstanceHostname() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) InstanceHostname() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceHostname", reflect.TypeOf((*MockShard)(nil).InstanceHostname))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceHostname", reflect.TypeOf((*MockShardHostInstance)(nil).InstanceHostname))
 }
 
 // ListPreparedStatements mocks base method.
-func (m *MockShard) ListPreparedStatements() []shard.PreparedStatementsMgrDescriptor {
+func (m *MockShardHostInstance) ListPreparedStatements() []shard.PreparedStatementsMgrDescriptor {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListPreparedStatements")
 	ret0, _ := ret[0].([]shard.PreparedStatementsMgrDescriptor)
@@ -552,13 +552,13 @@ func (m *MockShard) ListPreparedStatements() []shard.PreparedStatementsMgrDescri
 }
 
 // ListPreparedStatements indicates an expected call of ListPreparedStatements.
-func (mr *MockShardMockRecorder) ListPreparedStatements() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) ListPreparedStatements() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPreparedStatements", reflect.TypeOf((*MockShard)(nil).ListPreparedStatements))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPreparedStatements", reflect.TypeOf((*MockShardHostInstance)(nil).ListPreparedStatements))
 }
 
 // Name mocks base method.
-func (m *MockShard) Name() string {
+func (m *MockShardHostInstance) Name() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Name")
 	ret0, _ := ret[0].(string)
@@ -566,13 +566,13 @@ func (m *MockShard) Name() string {
 }
 
 // Name indicates an expected call of Name.
-func (mr *MockShardMockRecorder) Name() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockShard)(nil).Name))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockShardHostInstance)(nil).Name))
 }
 
 // Params mocks base method.
-func (m *MockShard) Params() shard.ParameterSet {
+func (m *MockShardHostInstance) Params() shard.ParameterSet {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Params")
 	ret0, _ := ret[0].(shard.ParameterSet)
@@ -580,13 +580,13 @@ func (m *MockShard) Params() shard.ParameterSet {
 }
 
 // Params indicates an expected call of Params.
-func (mr *MockShardMockRecorder) Params() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) Params() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Params", reflect.TypeOf((*MockShard)(nil).Params))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Params", reflect.TypeOf((*MockShardHostInstance)(nil).Params))
 }
 
 // Pid mocks base method.
-func (m *MockShard) Pid() uint32 {
+func (m *MockShardHostInstance) Pid() uint32 {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Pid")
 	ret0, _ := ret[0].(uint32)
@@ -594,13 +594,13 @@ func (m *MockShard) Pid() uint32 {
 }
 
 // Pid indicates an expected call of Pid.
-func (mr *MockShardMockRecorder) Pid() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) Pid() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pid", reflect.TypeOf((*MockShard)(nil).Pid))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pid", reflect.TypeOf((*MockShardHostInstance)(nil).Pid))
 }
 
 // Receive mocks base method.
-func (m *MockShard) Receive() (pgproto3.BackendMessage, error) {
+func (m *MockShardHostInstance) Receive() (pgproto3.BackendMessage, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Receive")
 	ret0, _ := ret[0].(pgproto3.BackendMessage)
@@ -609,13 +609,13 @@ func (m *MockShard) Receive() (pgproto3.BackendMessage, error) {
 }
 
 // Receive indicates an expected call of Receive.
-func (mr *MockShardMockRecorder) Receive() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) Receive() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockShard)(nil).Receive))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockShardHostInstance)(nil).Receive))
 }
 
 // SHKey mocks base method.
-func (m *MockShard) SHKey() kr.ShardKey {
+func (m *MockShardHostInstance) SHKey() kr.ShardKey {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SHKey")
 	ret0, _ := ret[0].(kr.ShardKey)
@@ -623,13 +623,13 @@ func (m *MockShard) SHKey() kr.ShardKey {
 }
 
 // SHKey indicates an expected call of SHKey.
-func (mr *MockShardMockRecorder) SHKey() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) SHKey() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SHKey", reflect.TypeOf((*MockShard)(nil).SHKey))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SHKey", reflect.TypeOf((*MockShardHostInstance)(nil).SHKey))
 }
 
 // Send mocks base method.
-func (m *MockShard) Send(query pgproto3.FrontendMessage) error {
+func (m *MockShardHostInstance) Send(query pgproto3.FrontendMessage) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Send", query)
 	ret0, _ := ret[0].(error)
@@ -637,25 +637,25 @@ func (m *MockShard) Send(query pgproto3.FrontendMessage) error {
 }
 
 // Send indicates an expected call of Send.
-func (mr *MockShardMockRecorder) Send(query any) *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) Send(query any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockShard)(nil).Send), query)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockShardHostInstance)(nil).Send), query)
 }
 
 // SetTxStatus mocks base method.
-func (m *MockShard) SetTxStatus(status txstatus.TXStatus) {
+func (m *MockShardHostInstance) SetTxStatus(status txstatus.TXStatus) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetTxStatus", status)
 }
 
 // SetTxStatus indicates an expected call of SetTxStatus.
-func (mr *MockShardMockRecorder) SetTxStatus(status any) *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) SetTxStatus(status any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTxStatus", reflect.TypeOf((*MockShard)(nil).SetTxStatus), status)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTxStatus", reflect.TypeOf((*MockShardHostInstance)(nil).SetTxStatus), status)
 }
 
 // ShardKeyName mocks base method.
-func (m *MockShard) ShardKeyName() string {
+func (m *MockShardHostInstance) ShardKeyName() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShardKeyName")
 	ret0, _ := ret[0].(string)
@@ -663,13 +663,13 @@ func (m *MockShard) ShardKeyName() string {
 }
 
 // ShardKeyName indicates an expected call of ShardKeyName.
-func (mr *MockShardMockRecorder) ShardKeyName() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) ShardKeyName() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShardKeyName", reflect.TypeOf((*MockShard)(nil).ShardKeyName))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShardKeyName", reflect.TypeOf((*MockShardHostInstance)(nil).ShardKeyName))
 }
 
 // StorePrepareStatement mocks base method.
-func (m *MockShard) StorePrepareStatement(hash uint64, shardId uint, d *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
+func (m *MockShardHostInstance) StorePrepareStatement(hash uint64, shardId uint, d *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StorePrepareStatement", hash, shardId, d, rd)
 	ret0, _ := ret[0].(error)
@@ -677,13 +677,13 @@ func (m *MockShard) StorePrepareStatement(hash uint64, shardId uint, d *prepstat
 }
 
 // StorePrepareStatement indicates an expected call of StorePrepareStatement.
-func (mr *MockShardMockRecorder) StorePrepareStatement(hash, shardId, d, rd any) *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) StorePrepareStatement(hash, shardId, d, rd any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorePrepareStatement", reflect.TypeOf((*MockShard)(nil).StorePrepareStatement), hash, shardId, d, rd)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorePrepareStatement", reflect.TypeOf((*MockShardHostInstance)(nil).StorePrepareStatement), hash, shardId, d, rd)
 }
 
 // Sync mocks base method.
-func (m *MockShard) Sync() int64 {
+func (m *MockShardHostInstance) Sync() int64 {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Sync")
 	ret0, _ := ret[0].(int64)
@@ -691,13 +691,13 @@ func (m *MockShard) Sync() int64 {
 }
 
 // Sync indicates an expected call of Sync.
-func (mr *MockShardMockRecorder) Sync() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) Sync() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Sync", reflect.TypeOf((*MockShard)(nil).Sync))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Sync", reflect.TypeOf((*MockShardHostInstance)(nil).Sync))
 }
 
 // TxServed mocks base method.
-func (m *MockShard) TxServed() int64 {
+func (m *MockShardHostInstance) TxServed() int64 {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TxServed")
 	ret0, _ := ret[0].(int64)
@@ -705,13 +705,13 @@ func (m *MockShard) TxServed() int64 {
 }
 
 // TxServed indicates an expected call of TxServed.
-func (mr *MockShardMockRecorder) TxServed() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) TxServed() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TxServed", reflect.TypeOf((*MockShard)(nil).TxServed))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TxServed", reflect.TypeOf((*MockShardHostInstance)(nil).TxServed))
 }
 
 // TxStatus mocks base method.
-func (m *MockShard) TxStatus() txstatus.TXStatus {
+func (m *MockShardHostInstance) TxStatus() txstatus.TXStatus {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TxStatus")
 	ret0, _ := ret[0].(txstatus.TXStatus)
@@ -719,13 +719,13 @@ func (m *MockShard) TxStatus() txstatus.TXStatus {
 }
 
 // TxStatus indicates an expected call of TxStatus.
-func (mr *MockShardMockRecorder) TxStatus() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) TxStatus() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TxStatus", reflect.TypeOf((*MockShard)(nil).TxStatus))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TxStatus", reflect.TypeOf((*MockShardHostInstance)(nil).TxStatus))
 }
 
 // Usr mocks base method.
-func (m *MockShard) Usr() string {
+func (m *MockShardHostInstance) Usr() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Usr")
 	ret0, _ := ret[0].(string)
@@ -733,9 +733,9 @@ func (m *MockShard) Usr() string {
 }
 
 // Usr indicates an expected call of Usr.
-func (mr *MockShardMockRecorder) Usr() *gomock.Call {
+func (mr *MockShardHostInstanceMockRecorder) Usr() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Usr", reflect.TypeOf((*MockShard)(nil).Usr))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Usr", reflect.TypeOf((*MockShardHostInstance)(nil).Usr))
 }
 
 // MockShardIterator is a mock of ShardIterator interface.
@@ -763,7 +763,7 @@ func (m *MockShardIterator) EXPECT() *MockShardIteratorMockRecorder {
 }
 
 // ForEach mocks base method.
-func (m *MockShardIterator) ForEach(cb func(shard.Shardinfo) error) error {
+func (m *MockShardIterator) ForEach(cb func(shard.ShardHostInfo) error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForEach", cb)
 	ret0, _ := ret[0].(error)

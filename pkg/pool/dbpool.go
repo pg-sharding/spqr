@@ -43,7 +43,7 @@ type DBPool struct {
 }
 
 // ConnectionHost implements DBPool.
-func (s *DBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.Shard, error) {
+func (s *DBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
 	return s.pool.ConnectionHost(clid, shardKey, host)
 }
 
@@ -61,7 +61,7 @@ func (s *DBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Hos
 //   - shard.Shard: The shard that satisfies the callback condition, or nil if no shard satisfies the condition.
 //
 // TODO : unit tests
-func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config.Host, cb func(shard.Shard) bool, tsa tsa.TSA) shard.Shard {
+func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config.Host, cb func(shard.ShardHostInstance) bool, tsa tsa.TSA) shard.ShardHostInstance {
 	for _, host := range hosts {
 		sh, err := s.pool.ConnectionHost(clid, key, host)
 		if err != nil {
@@ -97,12 +97,12 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 }
 
 // selectReadOnlyShardHost wraps the selectShardHost method to specifically select a read-only shard host.
-func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
+func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.ShardHostInstance, error) {
 	return s.selectShardHost(clid, key, hosts, tsa, false)
 }
 
 // selectReadWriteShardHost wraps the selectShardHost method to specifically select a read-write shard host.
-func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
+func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.ShardHostInstance, error) {
 	return s.selectShardHost(clid, key, hosts, tsa, true)
 }
 
@@ -124,9 +124,9 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 //     during the selection process.
 //
 // // TODO : unit tests
-func (s *DBPool) selectShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA, primary bool) (shard.Shard, error) {
+func (s *DBPool) selectShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA, primary bool) (shard.ShardHostInstance, error) {
 	hostToReason := map[string]string{}
-	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
+	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.ShardHostInstance) bool {
 		cr, err := s.checker.CheckTSA(shard)
 		good := cr.RW == primary
 
@@ -197,7 +197,7 @@ func (s *DBPool) selectShardHost(clid uint, key kr.ShardKey, hosts []config.Host
 //   - error: An error if the connection cannot be established.
 //
 // TODO : unit tests
-func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.Shard, error) {
+func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error) {
 
 	var effectiveTargetSessionAttrs tsa.TSA
 	if targetSessionAttrs == config.TargetSessionAttrsSmartRW {
@@ -367,7 +367,7 @@ func (s *DBPool) ShardMapping() map[string]*config.Shard {
 //
 // Returns:
 // - error: An error if the callback function returns an error.
-func (s *DBPool) ForEach(cb func(sh shard.Shardinfo) error) error {
+func (s *DBPool) ForEach(cb func(sh shard.ShardHostInfo) error) error {
 	return s.pool.ForEach(cb)
 }
 
@@ -382,7 +382,7 @@ func (s *DBPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 // - error: An error if the shard is discarded or if there is an error putting the shard into the pool.
 //
 // TODO : unit tests
-func (s *DBPool) Put(sh shard.Shard) error {
+func (s *DBPool) Put(sh shard.ShardHostInstance) error {
 	if sh.Sync() != 0 {
 		spqrlog.Zero.Error().
 			Uint("shard", spqrlog.GetPointer(sh)).
@@ -420,7 +420,7 @@ func (s *DBPool) ForEachPool(cb func(pool Pool) error) error {
 //
 // Returns:
 // - error: An error if the removal fails, nil otherwise.
-func (s *DBPool) Discard(sh shard.Shard) error {
+func (s *DBPool) Discard(sh shard.ShardHostInstance) error {
 	return s.pool.Discard(sh)
 }
 
@@ -437,7 +437,7 @@ func (s *DBPool) Discard(sh shard.Shard) error {
 // Returns:
 //   - DBPool: A DBPool interface that represents the created pool.
 func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams, preferAZ string) *DBPool {
-	allocator := func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
+	allocator := func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		shardConfig := mapping[shardKey.Name]
 		hostname, _, _ := net.SplitHostPort(host.Address) // TODO try to remove this
 		tlsconfig, err := shardConfig.TLS.Init(hostname)

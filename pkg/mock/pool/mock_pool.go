@@ -44,7 +44,7 @@ func (m *MockConnectionKepper) EXPECT() *MockConnectionKepperMockRecorder {
 }
 
 // Discard mocks base method.
-func (m *MockConnectionKepper) Discard(sh shard.Shard) error {
+func (m *MockConnectionKepper) Discard(sh shard.ShardHostInstance) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Discard", sh)
 	ret0, _ := ret[0].(error)
@@ -58,7 +58,7 @@ func (mr *MockConnectionKepperMockRecorder) Discard(sh any) *gomock.Call {
 }
 
 // Put mocks base method.
-func (m *MockConnectionKepper) Put(host shard.Shard) error {
+func (m *MockConnectionKepper) Put(host shard.ShardHostInstance) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Put", host)
 	ret0, _ := ret[0].(error)
@@ -110,10 +110,10 @@ func (m *MockPool) EXPECT() *MockPoolMockRecorder {
 }
 
 // Connection mocks base method.
-func (m *MockPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, error) {
+func (m *MockPool) Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Connection", clid, shardKey)
-	ret0, _ := ret[0].(shard.Shard)
+	ret0, _ := ret[0].(shard.ShardHostInstance)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -125,7 +125,7 @@ func (mr *MockPoolMockRecorder) Connection(clid, shardKey any) *gomock.Call {
 }
 
 // Discard mocks base method.
-func (m *MockPool) Discard(sh shard.Shard) error {
+func (m *MockPool) Discard(sh shard.ShardHostInstance) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Discard", sh)
 	ret0, _ := ret[0].(error)
@@ -139,7 +139,7 @@ func (mr *MockPoolMockRecorder) Discard(sh any) *gomock.Call {
 }
 
 // ForEach mocks base method.
-func (m *MockPool) ForEach(cb func(shard.Shardinfo) error) error {
+func (m *MockPool) ForEach(cb func(shard.ShardHostInfo) error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForEach", cb)
 	ret0, _ := ret[0].(error)
@@ -153,7 +153,7 @@ func (mr *MockPoolMockRecorder) ForEach(cb any) *gomock.Call {
 }
 
 // Put mocks base method.
-func (m *MockPool) Put(host shard.Shard) error {
+func (m *MockPool) Put(host shard.ShardHostInstance) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Put", host)
 	ret0, _ := ret[0].(error)
@@ -205,10 +205,10 @@ func (m *MockMultiShardPool) EXPECT() *MockMultiShardPoolMockRecorder {
 }
 
 // ConnectionHost mocks base method.
-func (m *MockMultiShardPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.Shard, error) {
+func (m *MockMultiShardPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConnectionHost", clid, shardKey, host)
-	ret0, _ := ret[0].(shard.Shard)
+	ret0, _ := ret[0].(shard.ShardHostInstance)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -220,7 +220,7 @@ func (mr *MockMultiShardPoolMockRecorder) ConnectionHost(clid, shardKey, host an
 }
 
 // Discard mocks base method.
-func (m *MockMultiShardPool) Discard(sh shard.Shard) error {
+func (m *MockMultiShardPool) Discard(sh shard.ShardHostInstance) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Discard", sh)
 	ret0, _ := ret[0].(error)
@@ -234,7 +234,7 @@ func (mr *MockMultiShardPoolMockRecorder) Discard(sh any) *gomock.Call {
 }
 
 // ForEach mocks base method.
-func (m *MockMultiShardPool) ForEach(cb func(shard.Shardinfo) error) error {
+func (m *MockMultiShardPool) ForEach(cb func(shard.ShardHostInfo) error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForEach", cb)
 	ret0, _ := ret[0].(error)
@@ -276,7 +276,7 @@ func (mr *MockMultiShardPoolMockRecorder) ID() *gomock.Call {
 }
 
 // Put mocks base method.
-func (m *MockMultiShardPool) Put(host shard.Shard) error {
+func (m *MockMultiShardPool) Put(host shard.ShardHostInstance) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Put", host)
 	ret0, _ := ret[0].(error)

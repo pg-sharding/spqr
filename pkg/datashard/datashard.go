@@ -278,7 +278,7 @@ func (sh *Conn) ShardKeyName() string {
 	return sh.SHKey().Name
 }
 
-var _ shard.Shard = &Conn{}
+var _ shard.ShardHostInstance = &Conn{}
 
 // SHKey returns the ShardKey associated with the Conn struct.
 //
@@ -361,7 +361,7 @@ func NewShard(
 	pgi conn.DBInstance,
 	cfg *config.Shard,
 	beRule *config.BackendRule,
-	sp *startup.StartupParams) (shard.Shard, error) {
+	sp *startup.StartupParams) (shard.ShardHostInstance, error) {
 
 	dtSh := &Conn{
 		cfg:       cfg,
