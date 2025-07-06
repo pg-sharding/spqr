@@ -30,7 +30,7 @@ func TestShardPoolConnectionAcquirePut(t *testing.T) {
 	ins := mockinst.NewMockDBInstance(ctrl)
 	ins.EXPECT().Hostname().AnyTimes().Return("h1")
 
-	shardconn := mockshard.NewMockShard(ctrl)
+	shardconn := mockshard.NewMockShardHostInstance(ctrl)
 	shardconn.EXPECT().Instance().AnyTimes().Return(ins)
 	shardconn.EXPECT().ID().AnyTimes().Return(uint(1234))
 	shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
@@ -75,7 +75,7 @@ func TestShardPoolConnectionAcquireDiscard(t *testing.T) {
 	ins := mockinst.NewMockDBInstance(ctrl)
 	ins.EXPECT().Hostname().AnyTimes().Return("h1")
 
-	shardconn := mockshard.NewMockShard(ctrl)
+	shardconn := mockshard.NewMockShardHostInstance(ctrl)
 	shardconn.EXPECT().Instance().AnyTimes().Return(ins)
 	shardconn.EXPECT().ID().AnyTimes().Return(uint(1234))
 	shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
@@ -162,7 +162,7 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 	used := make(map[uint]bool, connLimit)
 
 	for i := range connLimit {
-		shardconn := mockshard.NewMockShard(ctrl)
+		shardconn := mockshard.NewMockShardHostInstance(ctrl)
 
 		ins := mockinst.NewMockDBInstance(ctrl)
 		ins.EXPECT().Hostname().AnyTimes().Return(fmt.Sprintf("h%d", i))

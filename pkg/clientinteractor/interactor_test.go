@@ -266,7 +266,7 @@ func TestClientsOrderBy(t *testing.T) {
 }
 
 func genShard(ctrl *gomock.Controller, host string, shardName string, shardId uint) shard.ShardHostInfo {
-	sh := mockshard.NewMockShard(ctrl)
+	sh := mockshard.NewMockShardHostInstance(ctrl)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
 	ins1.EXPECT().Hostname().Return(host).AnyTimes()

@@ -169,7 +169,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	cl := mockcl.NewMockRouterClient(ctrl)
 	srv := mocksrv.NewMockServer(ctrl)
-	sh := mocksh.NewMockShard(ctrl)
+	sh := mocksh.NewMockShardHostInstance(ctrl)
 	qr := mockqr.NewMockQueryRouter(ctrl)
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
 

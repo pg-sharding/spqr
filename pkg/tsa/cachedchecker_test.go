@@ -28,7 +28,7 @@ func TestTSA_RW(t *testing.T) {
 	checker := tsa.NewTSAChecker()
 	instance := mockinst.NewMockDBInstance(ctrl)
 
-	sh := mocksh.NewMockShard(ctrl)
+	sh := mocksh.NewMockShardHostInstance(ctrl)
 
 	sh.EXPECT().ID().AnyTimes()
 
@@ -73,7 +73,7 @@ func TestTSA_HostNotAlive(t *testing.T) {
 	checker := tsa.NewTSAChecker()
 	instance := mockinst.NewMockDBInstance(ctrl)
 
-	sh := mocksh.NewMockShard(ctrl)
+	sh := mocksh.NewMockShardHostInstance(ctrl)
 
 	sh.EXPECT().ID().AnyTimes()
 	sh.EXPECT().Instance().AnyTimes().Return(instance)
@@ -97,7 +97,7 @@ func TestTSA_CacheExpiry(t *testing.T) {
 	checker := tsa.NewTSACheckerWithDuration(time.Millisecond * 10)
 	instance := mockinst.NewMockDBInstance(ctrl)
 
-	sh := mocksh.NewMockShard(ctrl)
+	sh := mocksh.NewMockShardHostInstance(ctrl)
 
 	sh.EXPECT().ID().AnyTimes()
 	sh.EXPECT().Instance().AnyTimes().Return(instance)
@@ -144,7 +144,7 @@ func TestTSA_CacheHit(t *testing.T) {
 	checker := tsa.NewTSACheckerWithDuration(time.Second * 10)
 	instance := mockinst.NewMockDBInstance(ctrl)
 
-	sh := mocksh.NewMockShard(ctrl)
+	sh := mocksh.NewMockShardHostInstance(ctrl)
 
 	sh.EXPECT().ID().AnyTimes()
 	sh.EXPECT().Instance().AnyTimes().Return(instance)
