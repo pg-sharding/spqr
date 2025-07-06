@@ -47,12 +47,6 @@ func (s *DBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Hos
 	return s.pool.ConnectionHost(clid, shardKey, host)
 }
 
-// View implements DBPool.
-// Subtle: this method shadows the method (Pool).View of InstancePoolImpl.Pool.
-func (s *DBPool) View() Statistics {
-	panic("DBPool.View not implemented")
-}
-
 // traverseHostsMatchCB traverses the list of hosts and invokes the provided callback function
 // for each host until the callback returns true. It returns the shard that satisfies the callback
 // condition. If no shard satisfies the condition, it returns nil.
