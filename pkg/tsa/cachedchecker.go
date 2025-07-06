@@ -54,7 +54,7 @@ func NewTSACheckerWithDuration(tsaRecheckDuration time.Duration) TSAChecker {
 // Returns:
 //   - CheckResult: A struct containing the result of the TSA check.
 //   - error: An error if any occurred during the process.
-func (ctsa *CachedTSAChecker) CheckTSA(sh shard.Shard) (CheckResult, error) {
+func (ctsa *CachedTSAChecker) CheckTSA(sh shard.ShardHostInstance) (CheckResult, error) {
 	ctsa.mu.Lock()
 	defer ctsa.mu.Unlock()
 

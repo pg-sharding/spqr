@@ -91,7 +91,7 @@ func (r *RuleRouterImpl) Shutdown() error {
 	return r.routePool.Shutdown()
 }
 
-func (r *RuleRouterImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
+func (r *RuleRouterImpl) ForEach(cb func(sh shard.ShardHostInfo) error) error {
 	return r.routePool.ForEach(cb)
 }
 

@@ -634,8 +634,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	switch stmt.Cmd {
 	case spqrparser.BackendConnectionsStr:
 
-		var resp []shard.Shardinfo
-		if err := ci.ForEach(func(sh shard.Shardinfo) error {
+		var resp []shard.ShardHostInfo
+		if err := ci.ForEach(func(sh shard.ShardHostInfo) error {
 			resp = append(resp, sh)
 			return nil
 		}); err != nil {
@@ -775,7 +775,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	case spqrparser.PreparedStatementsStr:
 
 		var resp []shard.PreparedStatementsMgrDescriptor
-		if err := ci.ForEach(func(sh shard.Shardinfo) error {
+		if err := ci.ForEach(func(sh shard.ShardHostInfo) error {
 			resp = append(resp, sh.ListPreparedStatements()...)
 			return nil
 		}); err != nil {

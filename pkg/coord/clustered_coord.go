@@ -147,7 +147,7 @@ func (ci grpcConnectionIterator) Shutdown() error {
 }
 
 // TODO : unit tests
-func (ci grpcConnectionIterator) ForEach(cb func(sh shard.Shardinfo) error) error {
+func (ci grpcConnectionIterator) ForEach(cb func(sh shard.ShardHostInfo) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
 		ctx := context.TODO()
 		rrBackConn := routerproto.NewBackendConnectionsServiceClient(cc)

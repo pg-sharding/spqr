@@ -29,7 +29,7 @@ func NewMultiDBPool(mapping map[string]*config.Shard, be *config.BackendRule, po
 	}
 }
 
-func (p *MultiDBPool) Put(conn shard.Shard) error {
+func (p *MultiDBPool) Put(conn shard.ShardHostInstance) error {
 	spqrlog.Zero.Debug().
 		Uint("shard", conn.ID()).
 		Str("host", conn.Instance().Hostname()).
@@ -43,7 +43,7 @@ func (p *MultiDBPool) Put(conn shard.Shard) error {
 	return pool.(*DBPool).Put(conn)
 }
 
-func (p *MultiDBPool) Discard(conn shard.Shard) error {
+func (p *MultiDBPool) Discard(conn shard.ShardHostInstance) error {
 	spqrlog.Zero.Debug().
 		Uint("shard", conn.ID()).
 		Str("host", conn.Instance().Hostname()).
@@ -57,7 +57,7 @@ func (p *MultiDBPool) Discard(conn shard.Shard) error {
 	return pool.(*DBPool).Discard(conn)
 }
 
-func (p *MultiDBPool) Connection(db string) (shard.Shard, error) {
+func (p *MultiDBPool) Connection(db string) (shard.ShardHostInstance, error) {
 	var pool *DBPool
 	poolElement, exist := p.dbs.Load(db)
 

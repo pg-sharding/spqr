@@ -14,5 +14,5 @@ type CheckResult struct {
 }
 
 type TSAChecker interface {
-	CheckTSA(sh shard.Shard) (CheckResult, error)
+	CheckTSA(sh shard.ShardHostInstance) (CheckResult, error)
 }

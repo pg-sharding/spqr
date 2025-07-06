@@ -20,7 +20,7 @@ var ErrShardUnavailable = fmt.Errorf("shard is unavailable, try again later")
 
 type ShardServer struct {
 	pool  *pool.DBPool
-	shard atomic.Pointer[shard.Shard]
+	shard atomic.Pointer[shard.ShardHostInstance]
 }
 
 // ToMultishard implements Server.
@@ -41,7 +41,7 @@ func (srv *ShardServer) DataPending() bool {
 func NewShardServer(spool *pool.DBPool) *ShardServer {
 	return &ShardServer{
 		pool:  spool,
-		shard: atomic.Pointer[shard.Shard]{},
+		shard: atomic.Pointer[shard.ShardHostInstance]{},
 	}
 }
 
@@ -188,7 +188,7 @@ func (srv *ShardServer) Cleanup(rule *config.FrontendRule) error {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) cleanupLockFree(v shard.Shard, rule *config.FrontendRule) error {
+func (srv *ShardServer) cleanupLockFree(v shard.ShardHostInstance, rule *config.FrontendRule) error {
 	if v == nil {
 		return ErrShardUnavailable
 	}
@@ -222,12 +222,12 @@ func (srv *ShardServer) TxStatus() txstatus.TXStatus {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) Datashards() []shard.Shard {
-	var rv []shard.Shard = nil
+func (srv *ShardServer) Datashards() []shard.ShardHostInstance {
+	var rv []shard.ShardHostInstance = nil
 	v := srv.shard.Load()
 
 	if v != nil {
-		rv = []shard.Shard{*v}
+		rv = []shard.ShardHostInstance{*v}
 	}
 
 	return rv

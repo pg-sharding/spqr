@@ -16,7 +16,7 @@ func TestChecker_CheckTSA(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockShard := mockshard.NewMockShard(ctrl)
+	mockShard := mockshard.NewMockShardHostInstance(ctrl)
 	mockShard.EXPECT().ID().Return(uint(42)).AnyTimes() // Add expectation for ID method
 	checker := tsa.NetChecker{}
 

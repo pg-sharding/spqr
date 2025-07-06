@@ -31,9 +31,9 @@ import (
 )
 
 type toString[T any] func(s T) string
-type BackendGetter func(sh shard.Shardinfo) string
+type BackendGetter func(sh shard.ShardHostInfo) string
 
-func GetRouter(sh shard.Shardinfo) string {
+func GetRouter(sh shard.ShardHostInfo) string {
 	router := "no data"
 	s, ok := sh.(shard.CoordShardinfo)
 	if ok {
@@ -54,17 +54,17 @@ var BackendConnectionsHeaders = []string{
 	"tx_served",
 	"tx status",
 }
-var BackendConnectionsGetters = map[string]toString[shard.Shardinfo]{
-	BackendConnectionsHeaders[0]: func(sh shard.Shardinfo) string { return fmt.Sprintf("%d", sh.ID()) },
+var BackendConnectionsGetters = map[string]toString[shard.ShardHostInfo]{
+	BackendConnectionsHeaders[0]: func(sh shard.ShardHostInfo) string { return fmt.Sprintf("%d", sh.ID()) },
 	BackendConnectionsHeaders[1]: GetRouter,
-	BackendConnectionsHeaders[2]: func(sh shard.Shardinfo) string { return sh.ShardKeyName() },
-	BackendConnectionsHeaders[3]: func(sh shard.Shardinfo) string { return sh.InstanceHostname() },
-	BackendConnectionsHeaders[4]: func(sh shard.Shardinfo) string { return fmt.Sprintf("%d", sh.Pid()) },
-	BackendConnectionsHeaders[5]: func(sh shard.Shardinfo) string { return sh.Usr() },
-	BackendConnectionsHeaders[6]: func(sh shard.Shardinfo) string { return sh.DB() },
-	BackendConnectionsHeaders[7]: func(sh shard.Shardinfo) string { return strconv.FormatInt(sh.Sync(), 10) },
-	BackendConnectionsHeaders[8]: func(sh shard.Shardinfo) string { return strconv.FormatInt(sh.TxServed(), 10) },
-	BackendConnectionsHeaders[9]: func(sh shard.Shardinfo) string { return sh.TxStatus().String() },
+	BackendConnectionsHeaders[2]: func(sh shard.ShardHostInfo) string { return sh.ShardKeyName() },
+	BackendConnectionsHeaders[3]: func(sh shard.ShardHostInfo) string { return sh.InstanceHostname() },
+	BackendConnectionsHeaders[4]: func(sh shard.ShardHostInfo) string { return fmt.Sprintf("%d", sh.Pid()) },
+	BackendConnectionsHeaders[5]: func(sh shard.ShardHostInfo) string { return sh.Usr() },
+	BackendConnectionsHeaders[6]: func(sh shard.ShardHostInfo) string { return sh.DB() },
+	BackendConnectionsHeaders[7]: func(sh shard.ShardHostInfo) string { return strconv.FormatInt(sh.Sync(), 10) },
+	BackendConnectionsHeaders[8]: func(sh shard.ShardHostInfo) string { return strconv.FormatInt(sh.TxServed(), 10) },
+	BackendConnectionsHeaders[9]: func(sh shard.ShardHostInfo) string { return sh.TxStatus().String() },
 }
 
 type Interactor interface {
@@ -1570,7 +1570,7 @@ func (pi *PSQLInteractor) KillClient(clientID uint) error {
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.Shardinfo, stmt *spqrparser.Show) error {
+func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.ShardHostInfo, stmt *spqrparser.Show) error {
 	switch gb := stmt.GroupBy.(type) {
 	case spqrparser.GroupBy:
 		return groupBy(shs, BackendConnectionsGetters, gb.Col.ColName, pi)
