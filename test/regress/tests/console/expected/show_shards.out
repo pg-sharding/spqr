@@ -6,6 +6,15 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 SHOW shards;
+ shard 
+-------
+ sh1
+ sh2
+ sh3
+ sh4
+(4 rows)
+
+SHOW hosts;
  shard |           host            
 -------+---------------------------
  sh1   | spqr_shard_1:6432
@@ -27,6 +36,16 @@ CREATE SHARD sh5 WITH HOSTS localhost:6432;
 (1 row)
 
 SHOW shards;
+ shard 
+-------
+ sh1
+ sh2
+ sh3
+ sh4
+ sh5
+(5 rows)
+
+SHOW hosts;
  shard |           host            
 -------+---------------------------
  sh1   | spqr_shard_1:6432
@@ -47,6 +66,15 @@ DROP SHARD sh5;
 (1 row)
 
 SHOW shards;
+ shard 
+-------
+ sh1
+ sh2
+ sh3
+ sh4
+(4 rows)
+
+SHOW hosts;
  shard |           host            
 -------+---------------------------
  sh1   | spqr_shard_1:6432
