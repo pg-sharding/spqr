@@ -8,7 +8,7 @@ import (
 type ConnectionStatsMgr interface {
 	ConnectionIterator
 
-	InstanceHealhChecks() map[config.Host]tsa.TimedCheckResult
+	InstanceHealthChecks() map[config.Host]tsa.TimedCheckResult
 
 	/*
 		user-facing connection stat callbacks.

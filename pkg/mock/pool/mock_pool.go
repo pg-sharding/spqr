@@ -426,18 +426,18 @@ func (mr *MockMultiShardTSAPoolMockRecorder) ID() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockMultiShardTSAPool)(nil).ID))
 }
 
-// InstanceHealhChecks mocks base method.
-func (m *MockMultiShardTSAPool) InstanceHealhChecks() map[config.Host]tsa.TimedCheckResult {
+// InstanceHealthChecks mocks base method.
+func (m *MockMultiShardTSAPool) InstanceHealthChecks() map[config.Host]tsa.TimedCheckResult {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InstanceHealhChecks")
+	ret := m.ctrl.Call(m, "InstanceHealthChecks")
 	ret0, _ := ret[0].(map[config.Host]tsa.TimedCheckResult)
 	return ret0
 }
 
-// InstanceHealhChecks indicates an expected call of InstanceHealhChecks.
-func (mr *MockMultiShardTSAPoolMockRecorder) InstanceHealhChecks() *gomock.Call {
+// InstanceHealthChecks indicates an expected call of InstanceHealthChecks.
+func (mr *MockMultiShardTSAPoolMockRecorder) InstanceHealthChecks() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceHealhChecks", reflect.TypeOf((*MockMultiShardTSAPool)(nil).InstanceHealhChecks))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceHealthChecks", reflect.TypeOf((*MockMultiShardTSAPool)(nil).InstanceHealthChecks))
 }
 
 // Put mocks base method.

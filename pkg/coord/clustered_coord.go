@@ -51,8 +51,8 @@ type grpcConnMgr struct {
 	*ClusteredCoordinator
 }
 
-// InstanceHealhChecks implements connmgr.ConnectionStatsMgr.
-func (ci grpcConnMgr) InstanceHealhChecks() map[config.Host]tsa.TimedCheckResult {
+// InstanceHealthChecks implements connmgr.ConnectionStatsMgr.
+func (ci grpcConnMgr) InstanceHealthChecks() map[config.Host]tsa.TimedCheckResult {
 	return map[config.Host]tsa.TimedCheckResult{}
 }
 

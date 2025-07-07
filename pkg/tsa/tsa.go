@@ -16,8 +16,8 @@ type CheckResult struct {
 }
 
 type TimedCheckResult struct {
-	CR CheckResult
-	T  time.Time
+	CR            CheckResult
+	LastCheckTime time.Time
 }
 
 type TSAChecker interface {

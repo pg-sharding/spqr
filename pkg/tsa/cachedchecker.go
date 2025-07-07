@@ -54,7 +54,7 @@ func (ctsa *CachedTSAChecker) CheckTSA(sh shard.ShardHostInstance) (TimedCheckRe
 	defer ctsa.mu.Unlock()
 
 	n := time.Now()
-	if e, ok := ctsa.cache[sh.Instance().Hostname()]; ok && n.UnixNano()-e.T.UnixNano() < ctsa.recheckPeriod.Nanoseconds() {
+	if e, ok := ctsa.cache[sh.Instance().Hostname()]; ok && n.UnixNano()-e.LastCheckTime.UnixNano() < ctsa.recheckPeriod.Nanoseconds() {
 		return e, nil
 	}
 
@@ -63,8 +63,8 @@ func (ctsa *CachedTSAChecker) CheckTSA(sh shard.ShardHostInstance) (TimedCheckRe
 		return TimedCheckResult{}, err
 	}
 	tcr := TimedCheckResult{
-		T:  n,
-		CR: cr,
+		LastCheckTime: n,
+		CR:            cr,
 	}
 	ctsa.cache[sh.Instance().Hostname()] = tcr
 	return tcr, nil

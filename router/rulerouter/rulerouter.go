@@ -66,14 +66,14 @@ type RuleRouterImpl struct {
 	cancelConnCount atomic.Int64
 }
 
-// InstanceHealhChecks implements RuleRouter.
-func (r *RuleRouterImpl) InstanceHealhChecks() map[config.Host]tsa.TimedCheckResult {
+// InstanceHealthChecks implements RuleRouter.
+func (r *RuleRouterImpl) InstanceHealthChecks() map[config.Host]tsa.TimedCheckResult {
 	var rt map[config.Host]tsa.TimedCheckResult
 	r.RoutePool.NotifyRoutes(func(r *route.Route) (bool, error) {
-		m := r.ServPool().InstanceHealhChecks()
+		m := r.ServPool().InstanceHealthChecks()
 		for k, v := range m {
 			// we are interested in most recent check
-			if v2, ok := rt[k]; !ok || v2.T.UnixNano() > v.T.UnixNano() {
+			if v2, ok := rt[k]; !ok || v2.LastCheckTime.UnixNano() > v.LastCheckTime.UnixNano() {
 				rt[k] = v
 			}
 		}

@@ -42,8 +42,8 @@ type DBPool struct {
 	PreferAZ       string
 }
 
-// InstanceHealhChecks implements MultiShardTSAPool.
-func (s *DBPool) InstanceHealhChecks() map[config.Host]tsa.TimedCheckResult {
+// InstanceHealthChecks implements MultiShardTSAPool.
+func (s *DBPool) InstanceHealthChecks() map[config.Host]tsa.TimedCheckResult {
 	var ret map[config.Host]tsa.TimedCheckResult
 
 	s.CacheTSAChecks.Range(func(k, v any) bool {

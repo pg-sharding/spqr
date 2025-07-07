@@ -59,7 +59,7 @@ type MultiShardTSAPool interface {
 
 	ShardMapping() map[string]*config.Shard
 	ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error)
-	InstanceHealhChecks() map[config.Host]tsa.TimedCheckResult
+	InstanceHealthChecks() map[config.Host]tsa.TimedCheckResult
 }
 
 type PoolIterator interface {

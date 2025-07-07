@@ -61,7 +61,7 @@ colref
 coltypes
 connectiterator
 connstring
-cooment
+connmgr
 coorctl
 coordctl
 copymap
@@ -545,6 +545,7 @@ tcase
 TCLOSEBR
 TCOMMA
 tcs
+tcr
 tctx
 tdb
 tdigest
