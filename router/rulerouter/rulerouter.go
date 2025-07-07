@@ -9,7 +9,9 @@ import (
 	"sync/atomic"
 
 	"github.com/pg-sharding/spqr/pkg/catalog"
+	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"golang.org/x/sync/semaphore"
 
@@ -17,7 +19,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/auth"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/rulemgr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	rclient "github.com/pg-sharding/spqr/router/client"
@@ -32,7 +33,7 @@ const (
 )
 
 type RuleRouter interface {
-	connectiterator.ConnectIterator
+	connmgr.ConnectionStatsMgr
 
 	Shutdown() error
 	Reload(configPath string) error
@@ -63,6 +64,22 @@ type RuleRouterImpl struct {
 	tcpConnCount    atomic.Int64
 	activeTcpCount  atomic.Int64
 	cancelConnCount atomic.Int64
+}
+
+// InstanceHealthChecks implements RuleRouter.
+func (r *RuleRouterImpl) InstanceHealthChecks() map[config.Host]tsa.CachedCheckResult {
+	var rt map[config.Host]tsa.CachedCheckResult
+	_ = r.NotifyRoutes(func(r *route.Route) (bool, error) {
+		m := r.ServPool().InstanceHealthChecks()
+		for k, v := range m {
+			// we are interested in most recent check
+			if v2, ok := rt[k]; !ok || v2.LastCheckTime.UnixNano() > v.LastCheckTime.UnixNano() {
+				rt[k] = v
+			}
+		}
+		return true, nil
+	})
+	return rt
 }
 
 // ReleaseConnection implements RuleRouter.

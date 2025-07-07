@@ -426,6 +426,20 @@ func (mr *MockMultiShardTSAPoolMockRecorder) ID() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockMultiShardTSAPool)(nil).ID))
 }
 
+// InstanceHealthChecks mocks base method.
+func (m *MockMultiShardTSAPool) InstanceHealthChecks() map[config.Host]tsa.CachedCheckResult {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InstanceHealthChecks")
+	ret0, _ := ret[0].(map[config.Host]tsa.CachedCheckResult)
+	return ret0
+}
+
+// InstanceHealthChecks indicates an expected call of InstanceHealthChecks.
+func (mr *MockMultiShardTSAPoolMockRecorder) InstanceHealthChecks() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceHealthChecks", reflect.TypeOf((*MockMultiShardTSAPool)(nil).InstanceHealthChecks))
+}
+
 // Put mocks base method.
 func (m *MockMultiShardTSAPool) Put(host shard.ShardHostInstance) error {
 	m.ctrl.T.Helper()
