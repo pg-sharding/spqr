@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -25,7 +26,6 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
 	rclient "github.com/pg-sharding/spqr/router/client"
-	"github.com/pg-sharding/spqr/router/rulerouter"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -450,7 +450,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, rr rulerouter.RuleRouter, rc rclient.RouterClient, writer workloadlog.WorkloadLog, ro bool) error {
+func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, rc rclient.RouterClient, writer workloadlog.WorkloadLog, ro bool) error {
 	cli := clientinteractor.NewPSQLInteractor(rc)
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 
@@ -458,7 +458,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		if err := catalog.GC.CheckGrants(catalog.RoleReader, rc.Rule()); err != nil {
 			return err
 		}
-		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, rr, cli, ro)
+		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, cli, ro)
 	}
 
 	if ro {
@@ -531,7 +531,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}
 		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID)
 	case *spqrparser.Kill:
-		return ProcessKill(ctx, stmt, mgr, rr, cli)
+		return ProcessKill(ctx, stmt, mgr, ci, cli)
 	case *spqrparser.SplitKeyRange:
 		splitKeyRange := &kr.SplitKeyRange{
 			Bound:    stmt.Border.Pivots,
@@ -629,13 +629,13 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, clP
 //
 // Returns:
 // - error: An error if the operation encounters any issues.
-func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, rr rulerouter.RuleRouter, cli *clientinteractor.PSQLInteractor, ro bool) error {
+func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor, ro bool) error {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
 	switch stmt.Cmd {
 	case spqrparser.BackendConnectionsStr:
 
 		var resp []shard.ShardHostInfo
-		if err := rr.ForEach(func(sh shard.ShardHostInfo) error {
+		if err := ci.ForEach(func(sh shard.ShardHostInfo) error {
 			resp = append(resp, sh)
 			return nil
 		}); err != nil {
@@ -673,7 +673,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, rr 
 		return cli.ReportError(spqrerror.ShardingRulesRemoved)
 	case spqrparser.ClientsStr:
 		var resp []client.ClientInfo
-		if err := rr.ClientPoolForeach(func(client client.ClientInfo) error {
+		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
 			resp = append(resp, client)
 			return nil
 		}); err != nil {
@@ -683,7 +683,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, rr 
 		return cli.Clients(ctx, resp, stmt)
 	case spqrparser.PoolsStr:
 		var respPools []pool.Pool
-		if err := rr.ForEachPool(func(p pool.Pool) error {
+		if err := ci.ForEachPool(func(p pool.Pool) error {
 			respPools = append(respPools, p)
 			return nil
 		}); err != nil {
@@ -692,7 +692,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, rr 
 
 		return cli.Pools(ctx, respPools)
 	case spqrparser.InstanceStr:
-		return cli.Instance(ctx, rr)
+		return cli.Instance(ctx, ci)
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
 	case spqrparser.CoordinatorAddrStr:
@@ -776,7 +776,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, rr 
 	case spqrparser.PreparedStatementsStr:
 
 		var resp []shard.PreparedStatementsMgrDescriptor
-		if err := rr.ForEach(func(sh shard.ShardHostInfo) error {
+		if err := ci.ForEach(func(sh shard.ShardHostInfo) error {
 			resp = append(resp, sh.ListPreparedStatements()...)
 			return nil
 		}); err != nil {
