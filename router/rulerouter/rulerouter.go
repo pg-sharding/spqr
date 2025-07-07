@@ -315,7 +315,7 @@ func (rr *RuleRouterImpl) Pop(clientID uint) (bool, error) {
 	err := rr.NotifyRoutes(func(route *route.Route) (bool, error) {
 		ok, nestedErr := route.ReleaseClient(clientID)
 		popped = popped || ok
-		return true, nestedErr
+		return !popped, nestedErr
 	})
 
 	return popped, err
