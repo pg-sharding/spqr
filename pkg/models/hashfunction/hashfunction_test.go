@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -62,5 +63,60 @@ func TestEncodeUInt64(t *testing.T) {
 			result := hashfunction.EncodeUInt64(tt.input)
 			assert.Equal(t, tt.expected, result, "Test '%s': EncodeUInt64 should produce the expected result", tt.name)
 		})
+	}
+}
+
+func TestApplyHashFunction(t *testing.T) {
+	hfMur, _ := hashfunction.HashFunctionByName("murmur")
+	hfCity, _ := hashfunction.HashFunctionByName("city")
+	assert := assert.New(t)
+
+	type tcase struct {
+		input        int64
+		expected     uint64
+		hashfunction hashfunction.HashFunctionType
+		columnType   string
+		err          error
+	}
+
+	for _, tt := range []tcase{
+		{
+			input:        9223372036854775807,
+			expected:     2412692792,
+			hashfunction: hfMur,
+			columnType:   qdb.ColumnTypeInteger,
+			err:          nil,
+		},
+		{
+			input:        9223372036854775807,
+			expected:     750247223,
+			hashfunction: hfCity,
+			columnType:   qdb.ColumnTypeInteger,
+			err:          nil,
+		},
+		{
+			input:        -9223372036854775808,
+			expected:     1021405426,
+			hashfunction: hfMur,
+			columnType:   qdb.ColumnTypeInteger,
+			err:          nil,
+		},
+		{
+			input:        -9223372036854775808,
+			expected:     1774419245,
+			hashfunction: hfCity,
+			columnType:   qdb.ColumnTypeInteger,
+			err:          nil,
+		},
+	} {
+		result, err := hashfunction.ApplyHashFunction(tt.input, tt.columnType, tt.hashfunction)
+
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.input)
+		} else {
+			assert.Error(err, "query %s", tt.input)
+		}
+
+		assert.Equal(tt.expected, result, "query %s", tt.input)
 	}
 }

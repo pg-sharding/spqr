@@ -26,6 +26,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -1242,8 +1243,7 @@ ORDER BY (%s) %s;
 				if err != nil {
 					return nil, err
 				}
-				bound[i] = make([]byte, binary.MaxVarintLen64)
-				binary.PutUvarint(bound[i], number)
+				bound[i] = hashfunction.EncodeUInt64(number)
 			case qdb.ColumnTypeInteger:
 				number, err := strconv.ParseInt(values[i], 10, 64)
 				if err != nil {
