@@ -14,6 +14,13 @@ type CachedTSACheckerImpl struct {
 	innerChecker  TSAChecker
 }
 
+// InstanceHealthChecks implements CachedTSAChecker.
+func (ctsa *CachedTSACheckerImpl) InstanceHealthChecks() map[string]CachedCheckResult {
+	ctsa.mu.Lock()
+	defer ctsa.mu.Unlock()
+	return ctsa.cache
+}
+
 var _ CachedTSAChecker = (*CachedTSACheckerImpl)(nil)
 
 // NewTSAChecker creates a new instance of TSAChecker.
