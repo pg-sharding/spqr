@@ -42,6 +42,16 @@ type DBPool struct {
 	PreferAZ       string
 }
 
+// View implements MultiShardPool.
+func (s *DBPool) View() Statistics {
+	return s.pool.View()
+}
+
+// ID implements MultiShardPool.
+func (s *DBPool) ID() uint {
+	return spqrlog.GetPointer(s)
+}
+
 // ConnectionHost implements DBPool.
 func (s *DBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
 	return s.pool.ConnectionHost(clid, shardKey, host)
@@ -436,7 +446,7 @@ func (s *DBPool) Discard(sh shard.ShardHostInstance) error {
 //
 // Returns:
 //   - DBPool: A DBPool interface that represents the created pool.
-func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams, preferAZ string) *DBPool {
+func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams, preferAZ string) MultiShardTSAPool {
 	allocator := func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		shardConfig := mapping[shardKey.Name]
 		hostname, _, _ := net.SplitHostPort(host.Address) // TODO try to remove this

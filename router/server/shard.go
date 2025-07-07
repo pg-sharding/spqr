@@ -19,7 +19,7 @@ import (
 var ErrShardUnavailable = fmt.Errorf("shard is unavailable, try again later")
 
 type ShardServer struct {
-	pool  *pool.DBPool
+	pool  pool.MultiShardTSAPool
 	shard atomic.Pointer[shard.ShardHostInstance]
 }
 
@@ -38,7 +38,7 @@ func (srv *ShardServer) DataPending() bool {
 	return (*srv.shard.Load()).DataPending()
 }
 
-func NewShardServer(spool *pool.DBPool) *ShardServer {
+func NewShardServer(spool pool.MultiShardTSAPool) *ShardServer {
 	return &ShardServer{
 		pool:  spool,
 		shard: atomic.Pointer[shard.ShardHostInstance]{},

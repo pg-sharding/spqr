@@ -16,6 +16,7 @@ import (
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	pool "github.com/pg-sharding/spqr/pkg/pool"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
+	tsa "github.com/pg-sharding/spqr/pkg/tsa"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -313,6 +314,170 @@ func (m *MockMultiShardPool) View() pool.Statistics {
 func (mr *MockMultiShardPoolMockRecorder) View() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "View", reflect.TypeOf((*MockMultiShardPool)(nil).View))
+}
+
+// MockMultiShardTSAPool is a mock of MultiShardTSAPool interface.
+type MockMultiShardTSAPool struct {
+	ctrl     *gomock.Controller
+	recorder *MockMultiShardTSAPoolMockRecorder
+	isgomock struct{}
+}
+
+// MockMultiShardTSAPoolMockRecorder is the mock recorder for MockMultiShardTSAPool.
+type MockMultiShardTSAPoolMockRecorder struct {
+	mock *MockMultiShardTSAPool
+}
+
+// NewMockMultiShardTSAPool creates a new mock instance.
+func NewMockMultiShardTSAPool(ctrl *gomock.Controller) *MockMultiShardTSAPool {
+	mock := &MockMultiShardTSAPool{ctrl: ctrl}
+	mock.recorder = &MockMultiShardTSAPoolMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockMultiShardTSAPool) EXPECT() *MockMultiShardTSAPoolMockRecorder {
+	return m.recorder
+}
+
+// ConnectionHost mocks base method.
+func (m *MockMultiShardTSAPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConnectionHost", clid, shardKey, host)
+	ret0, _ := ret[0].(shard.ShardHostInstance)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConnectionHost indicates an expected call of ConnectionHost.
+func (mr *MockMultiShardTSAPoolMockRecorder) ConnectionHost(clid, shardKey, host any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionHost", reflect.TypeOf((*MockMultiShardTSAPool)(nil).ConnectionHost), clid, shardKey, host)
+}
+
+// ConnectionWithTSA mocks base method.
+func (m *MockMultiShardTSAPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConnectionWithTSA", clid, key, targetSessionAttrs)
+	ret0, _ := ret[0].(shard.ShardHostInstance)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConnectionWithTSA indicates an expected call of ConnectionWithTSA.
+func (mr *MockMultiShardTSAPoolMockRecorder) ConnectionWithTSA(clid, key, targetSessionAttrs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionWithTSA", reflect.TypeOf((*MockMultiShardTSAPool)(nil).ConnectionWithTSA), clid, key, targetSessionAttrs)
+}
+
+// Discard mocks base method.
+func (m *MockMultiShardTSAPool) Discard(sh shard.ShardHostInstance) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Discard", sh)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Discard indicates an expected call of Discard.
+func (mr *MockMultiShardTSAPoolMockRecorder) Discard(sh any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discard", reflect.TypeOf((*MockMultiShardTSAPool)(nil).Discard), sh)
+}
+
+// ForEach mocks base method.
+func (m *MockMultiShardTSAPool) ForEach(cb func(shard.ShardHostInfo) error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ForEach", cb)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ForEach indicates an expected call of ForEach.
+func (mr *MockMultiShardTSAPoolMockRecorder) ForEach(cb any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForEach", reflect.TypeOf((*MockMultiShardTSAPool)(nil).ForEach), cb)
+}
+
+// ForEachPool mocks base method.
+func (m *MockMultiShardTSAPool) ForEachPool(cb func(pool.Pool) error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ForEachPool", cb)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ForEachPool indicates an expected call of ForEachPool.
+func (mr *MockMultiShardTSAPoolMockRecorder) ForEachPool(cb any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForEachPool", reflect.TypeOf((*MockMultiShardTSAPool)(nil).ForEachPool), cb)
+}
+
+// ID mocks base method.
+func (m *MockMultiShardTSAPool) ID() uint {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ID")
+	ret0, _ := ret[0].(uint)
+	return ret0
+}
+
+// ID indicates an expected call of ID.
+func (mr *MockMultiShardTSAPoolMockRecorder) ID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockMultiShardTSAPool)(nil).ID))
+}
+
+// Put mocks base method.
+func (m *MockMultiShardTSAPool) Put(host shard.ShardHostInstance) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Put", host)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Put indicates an expected call of Put.
+func (mr *MockMultiShardTSAPoolMockRecorder) Put(host any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockMultiShardTSAPool)(nil).Put), host)
+}
+
+// SetRule mocks base method.
+func (m *MockMultiShardTSAPool) SetRule(rule *config.BackendRule) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetRule", rule)
+}
+
+// SetRule indicates an expected call of SetRule.
+func (mr *MockMultiShardTSAPoolMockRecorder) SetRule(rule any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRule", reflect.TypeOf((*MockMultiShardTSAPool)(nil).SetRule), rule)
+}
+
+// ShardMapping mocks base method.
+func (m *MockMultiShardTSAPool) ShardMapping() map[string]*config.Shard {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ShardMapping")
+	ret0, _ := ret[0].(map[string]*config.Shard)
+	return ret0
+}
+
+// ShardMapping indicates an expected call of ShardMapping.
+func (mr *MockMultiShardTSAPoolMockRecorder) ShardMapping() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShardMapping", reflect.TypeOf((*MockMultiShardTSAPool)(nil).ShardMapping))
+}
+
+// View mocks base method.
+func (m *MockMultiShardTSAPool) View() pool.Statistics {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "View")
+	ret0, _ := ret[0].(pool.Statistics)
+	return ret0
+}
+
+// View indicates an expected call of View.
+func (mr *MockMultiShardTSAPoolMockRecorder) View() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "View", reflect.TypeOf((*MockMultiShardTSAPool)(nil).View))
 }
 
 // MockPoolIterator is a mock of PoolIterator interface.

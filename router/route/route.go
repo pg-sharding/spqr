@@ -44,7 +44,7 @@ type Route struct {
 	frRule *config.FrontendRule
 
 	clPool   client.Pool
-	servPool *pool.DBPool
+	servPool pool.MultiShardTSAPool
 
 	mu sync.Mutex
 	// protects this
@@ -114,7 +114,7 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 	return r.params, nil
 }
 
-func (r *Route) ServPool() *pool.DBPool {
+func (r *Route) ServPool() pool.MultiShardTSAPool {
 	return r.servPool
 }
 

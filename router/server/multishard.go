@@ -44,7 +44,7 @@ type MultiShardServer struct {
 
 	multistate MultishardState
 
-	pool *pool.DBPool
+	pool pool.MultiShardTSAPool
 
 	status txstatus.TXStatus
 
@@ -56,7 +56,7 @@ func (m *MultiShardServer) ToMultishard() Server {
 	return m
 }
 
-func NewMultiShardServer(pool *pool.DBPool) (Server, error) {
+func NewMultiShardServer(pool pool.MultiShardTSAPool) (Server, error) {
 	ret := &MultiShardServer{
 		pool:         pool,
 		activeShards: []shard.ShardHostInstance{},
@@ -65,7 +65,7 @@ func NewMultiShardServer(pool *pool.DBPool) (Server, error) {
 	return ret, nil
 }
 
-func NewMultiShardServerFromShard(pool *pool.DBPool, sh shard.ShardHostInstance) Server {
+func NewMultiShardServerFromShard(pool pool.MultiShardTSAPool, sh shard.ShardHostInstance) Server {
 	return &MultiShardServer{
 		pool: pool,
 		activeShards: []shard.ShardHostInstance{
