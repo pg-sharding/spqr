@@ -655,7 +655,9 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 
-		return cli.Hosts(ctx, shards)
+		ihc := ci.InstanceHealthChecks()
+
+		return cli.Hosts(ctx, shards, ihc)
 	case spqrparser.KeyRangesStr:
 		ranges, err := mngr.ListAllKeyRanges(ctx)
 		if err != nil {

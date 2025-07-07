@@ -25,5 +25,6 @@ type TSAChecker interface {
 }
 
 type CachedTSAChecker interface {
+	InstanceHealthChecks() map[string]CachedCheckResult
 	CheckTSA(sh shard.ShardHostInstance) (CachedCheckResult, error)
 }

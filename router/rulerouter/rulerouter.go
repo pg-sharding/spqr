@@ -67,8 +67,8 @@ type RuleRouterImpl struct {
 }
 
 // InstanceHealthChecks implements RuleRouter.
-func (r *RuleRouterImpl) InstanceHealthChecks() map[config.Host]tsa.CachedCheckResult {
-	var rt map[config.Host]tsa.CachedCheckResult
+func (r *RuleRouterImpl) InstanceHealthChecks() map[string]tsa.CachedCheckResult {
+	rt := map[string]tsa.CachedCheckResult{}
 	_ = r.NotifyRoutes(func(r *route.Route) (bool, error) {
 		m := r.ServPool().InstanceHealthChecks()
 		for k, v := range m {
