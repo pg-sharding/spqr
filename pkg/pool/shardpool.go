@@ -15,7 +15,7 @@ import (
 
 /* pool for single host */
 
-type shardPool struct {
+type shardHostPool struct {
 	mu   sync.Mutex
 	pool []shard.ShardHostInstance
 
@@ -37,9 +37,9 @@ type shardPool struct {
 	connectionRetryRandomSleep int
 }
 
-var _ Pool = &shardPool{}
+var _ Pool = &shardHostPool{}
 
-// NewShardPool creates a new instance of shardPool based on the provided ConnectionAllocFn, host, and BackendRule.
+// NewShardHostPool creates a new instance of shardPool based on the provided ConnectionAllocFn, host, and BackendRule.
 // It initializes the fields of shardPool with the corresponding values from the ConnectionAllocFn and BackendRule.
 // It also initializes the queue with the ConnectionLimit.
 //
@@ -50,11 +50,11 @@ var _ Pool = &shardPool{}
 //
 // Returns:
 //   - Pool: The created instance of shardPool.
-func NewShardPool(allocFn ConnectionAllocFn, host config.Host, beRule *config.BackendRule) Pool {
+func NewShardHostPool(allocFn ConnectionAllocFn, host config.Host, beRule *config.BackendRule) Pool {
 	connLimit := config.ValueOrDefaultInt(beRule.ConnectionLimit, defaultInstanceConnectionLimit)
 	connRetries := config.ValueOrDefaultInt(beRule.ConnectionRetries, defaultInstanceConnectionRetries)
 
-	ret := &shardPool{
+	ret := &shardHostPool{
 		mu:     sync.Mutex{},
 		pool:   nil,
 		active: make(map[uint]shard.ShardHostInstance),
@@ -82,7 +82,7 @@ func NewShardPool(allocFn ConnectionAllocFn, host config.Host, beRule *config.Ba
 	return ret
 }
 
-func (h *shardPool) View() Statistics {
+func (h *shardHostPool) View() Statistics {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -115,7 +115,7 @@ func (h *shardPool) View() Statistics {
 //   - error: The error that occurred during the connection process.
 //
 // TODO : unit tests
-func (h *shardPool) Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error) {
+func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error) {
 	if err := func() error {
 		// TODO refactor
 		for range h.connectionRetries {
@@ -194,7 +194,7 @@ func (h *shardPool) Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHost
 //   - error: The error that occurred during the removal of the shard.
 //
 // TODO : unit tests
-func (h *shardPool) Discard(sh shard.ShardHostInstance) error {
+func (h *shardHostPool) Discard(sh shard.ShardHostInstance) error {
 	spqrlog.Zero.Debug().Uint("pool", spqrlog.GetPointer(h)).
 		Uint("shard", sh.ID()).
 		Str("host", sh.Instance().Hostname()).
@@ -231,7 +231,7 @@ func (h *shardPool) Discard(sh shard.ShardHostInstance) error {
 //   - error: The error that occurred during the put operation.
 //
 // TODO : unit tests
-func (h *shardPool) Put(sh shard.ShardHostInstance) error {
+func (h *shardHostPool) Put(sh shard.ShardHostInstance) error {
 	spqrlog.Zero.Debug().Uint("pool", spqrlog.GetPointer(h)).
 		Uint("shard", sh.ID()).
 		Str("host", sh.Instance().Hostname()).
@@ -267,7 +267,7 @@ func (h *shardPool) Put(sh shard.ShardHostInstance) error {
 //   - error: The error that occurred during the iteration.
 //
 // TODO : unit tests
-func (h *shardPool) ForEach(cb func(sh shard.ShardHostInfo) error) error {
+func (h *shardHostPool) ForEach(cb func(sh shard.ShardHostInfo) error) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -381,7 +381,7 @@ func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
 	var pool Pool
 	if val, ok := c.pools.Load(host.Address); !ok {
-		pool = NewShardPool(c.alloc, host, c.beRule)
+		pool = NewShardHostPool(c.alloc, host, c.beRule)
 		v, _ := c.pools.LoadOrStore(host.Address, pool)
 
 		pool = v.(Pool)
