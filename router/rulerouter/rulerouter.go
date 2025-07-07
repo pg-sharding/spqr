@@ -224,7 +224,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 
 	_ = cl.AssignRule(frRule)
 
-	rt, err := r.RoutePool.MatchRoute(key, beRule, frRule)
+	rt, err := r.MatchRoute(key, beRule, frRule)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +232,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	if err := cl.Auth(rt); err != nil {
 		_ = cl.ReplyErr(err)
 		if !config.RouterConfig().DisableObsoleteClient {
-			r.RoutePool.Obsolete(key)
+			r.Obsolete(key)
 		}
 		return cl, err
 	}
@@ -304,7 +304,7 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 
 // TODO : unit tests
 func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
-	return rr.RoutePool.NotifyRoutes(func(route *route.Route) (bool, error) {
+	return rr.NotifyRoutes(func(route *route.Route) (bool, error) {
 		return true, route.NofityClients(cb)
 	})
 }
@@ -312,7 +312,7 @@ func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.ClientInfo) er
 // TODO : unit tests
 func (rr *RuleRouterImpl) Pop(clientID uint) (bool, error) {
 	var popped = false
-	err := rr.RoutePool.NotifyRoutes(func(route *route.Route) (bool, error) {
+	err := rr.NotifyRoutes(func(route *route.Route) (bool, error) {
 		ok, nestedErr := route.ReleaseClient(clientID)
 		popped = popped || ok
 		return true, nestedErr
