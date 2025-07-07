@@ -69,7 +69,7 @@ type RuleRouterImpl struct {
 // InstanceHealthChecks implements RuleRouter.
 func (r *RuleRouterImpl) InstanceHealthChecks() map[config.Host]tsa.TimedCheckResult {
 	var rt map[config.Host]tsa.TimedCheckResult
-	_ = r.RoutePool.NotifyRoutes(func(r *route.Route) (bool, error) {
+	_ = r.NotifyRoutes(func(r *route.Route) (bool, error) {
 		m := r.ServPool().InstanceHealthChecks()
 		for k, v := range m {
 			// we are interested in most recent check
