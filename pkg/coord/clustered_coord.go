@@ -52,8 +52,8 @@ type grpcConnMgr struct {
 }
 
 // InstanceHealthChecks implements connmgr.ConnectionStatsMgr.
-func (ci grpcConnMgr) InstanceHealthChecks() map[config.Host]tsa.CachedCheckResult {
-	return map[config.Host]tsa.CachedCheckResult{}
+func (ci grpcConnMgr) InstanceHealthChecks() map[string]tsa.CachedCheckResult {
+	return map[string]tsa.CachedCheckResult{}
 }
 
 // TODO implement it

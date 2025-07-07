@@ -24,6 +24,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/statistics"
@@ -753,8 +754,8 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*topology.DataSha
 	return pi.CompleteMsg(0)
 }
 
-func (pi *PSQLInteractor) Hosts(ctx context.Context, shards []*topology.DataShard) error {
-	if err := pi.WriteHeader("shard", "host"); err != nil {
+func (pi *PSQLInteractor) Hosts(ctx context.Context, shards []*topology.DataShard, ihc map[string]tsa.CachedCheckResult) error {
+	if err := pi.WriteHeader("shard", "host", "alive", "rw", "time"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
@@ -763,14 +764,33 @@ func (pi *PSQLInteractor) Hosts(ctx context.Context, shards []*topology.DataShar
 
 	for _, shard := range shards {
 		for _, h := range shard.Cfg.Hosts() {
-			if err := pi.cl.Send(&pgproto3.DataRow{
-				Values: [][]byte{
-					[]byte(shard.ID),
-					[]byte(h),
-				},
-			}); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
-				return err
+			hc, ok := ihc[h]
+			if !ok {
+				if err := pi.cl.Send(&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte(shard.ID),
+						[]byte(h),
+						[]byte("unknown"),
+						[]byte("unknown"),
+						[]byte("unknown"),
+					},
+				}); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("")
+					return err
+				}
+			} else {
+				if err := pi.cl.Send(&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte(shard.ID),
+						[]byte(h),
+						fmt.Appendf(nil, "%v", hc.CR.Alive),
+						fmt.Appendf(nil, "%v", hc.CR.RW),
+						fmt.Appendf(nil, "%v", hc.LastCheckTime),
+					},
+				}); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("")
+					return err
+				}
 			}
 		}
 	}

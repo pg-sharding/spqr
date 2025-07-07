@@ -43,15 +43,11 @@ type DBPool struct {
 }
 
 // InstanceHealthChecks implements MultiShardTSAPool.
-func (s *DBPool) InstanceHealthChecks() map[config.Host]tsa.CachedCheckResult {
-	var ret map[config.Host]tsa.CachedCheckResult
+func (s *DBPool) InstanceHealthChecks() map[string]tsa.CachedCheckResult {
+	ret := map[string]tsa.CachedCheckResult{}
 
 	s.CacheTSAChecks.Range(func(k, v any) bool {
-		key := config.Host{
-			Address: k.(TsaKey).Host,
-			AZ:      k.(TsaKey).AZ,
-		}
-		ret[key] = v.(tsa.CachedCheckResult)
+		ret[k.(TsaKey).Host] = v.(tsa.CachedCheckResult)
 		return true
 	})
 
