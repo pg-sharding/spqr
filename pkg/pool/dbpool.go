@@ -154,7 +154,7 @@ func (s *DBPool) selectShardHost(clid uint, key kr.ShardKey, hosts []config.Host
 	hostToReason := map[string]string{}
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.ShardHostInstance) bool {
 		tcr, err := s.checker.CheckTSA(shard)
-		good := tcr.CR.Alive == primary
+		good := tcr.CR.RW == primary
 
 		if err != nil {
 			hostToReason[shard.Instance().Hostname()] = err.Error()
