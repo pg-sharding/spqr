@@ -1,6 +1,7 @@
 package tsa
 
 import (
+	"maps"
 	"sync"
 	"time"
 
@@ -20,9 +21,7 @@ func (ctsa *CachedTSAChecker) InstanceHealthChecks() map[string]CachedCheckResul
 	defer ctsa.mu.Unlock()
 
 	cp := map[string]CachedCheckResult{}
-	for k, v := range ctsa.cache {
-		cp[k] = v
-	}
+	maps.Copy(cp, ctsa.cache)
 
 	return cp
 }
