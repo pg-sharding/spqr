@@ -77,15 +77,15 @@ func (ci grpcConnMgr) TotalTcpCount() int64 {
 // TODO : unit tests
 func (ci grpcConnMgr) IterRouter(cb func(cc *grpc.ClientConn, addr string) error) error {
 	ctx := context.TODO()
-	rtrs, err := ci.ClusteredCoordinator.QDB().ListRouters(ctx)
+	routers, err := ci.ClusteredCoordinator.QDB().ListRouters(ctx)
 
-	spqrlog.Zero.Log().Int("router counts", len(rtrs))
+	spqrlog.Zero.Log().Int("router counts", len(routers))
 
 	if err != nil {
 		return err
 	}
 
-	for _, r := range rtrs {
+	for _, r := range routers {
 		internalR := &topology.Router{
 			ID:      r.ID,
 			Address: r.Address,
@@ -243,7 +243,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 		// TODO check we are still coordinator
 
 		// TODO: lock router
-		rtrs, err := qc.db.ListRouters(ctx)
+		routers, err := qc.db.ListRouters(ctx)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			time.Sleep(time.Second)
@@ -253,7 +253,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 		// TODO we have to rewrite this code
 		// instead of opening new connections to each router
 		// we have to open it ones, keep and update before the iteration
-		for _, r := range rtrs {
+		for _, r := range routers {
 			if err := func() error {
 				internalR := &topology.Router{
 					ID:      r.ID,
@@ -465,12 +465,12 @@ func (qc *ClusteredCoordinator) traverseRouters(ctx context.Context, cb func(cc 
 	spqrlog.Zero.Debug().Msg("qdb coordinator traverse")
 	t := time.Now()
 
-	rtrs, err := qc.db.ListRouters(ctx)
+	routers, err := qc.db.ListRouters(ctx)
 	if err != nil {
 		return err
 	}
 
-	for _, rtr := range rtrs {
+	for _, rtr := range routers {
 		if err := func() error {
 			if rtr.State != qdb.OPENED {
 				return spqrerror.New(spqrerror.SPQR_ROUTER_ERROR, "router is closed")
