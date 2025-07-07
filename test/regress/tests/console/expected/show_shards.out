@@ -35,19 +35,19 @@ CREATE SHARD sh1 WITH HOSTS spqr_shard_1:6432,spqr_shard_1_replica:6432;
  shard id -> sh1
 (1 row)
 
-CREATE SHARD sh2 WITH HOSTS spqr_shard_1:6432,spqr_shard_1_replica:6432;
+CREATE SHARD sh2 WITH HOSTS spqr_shard_2:6432,spqr_shard_2_replica:6432;
     add shard    
 -----------------
  shard id -> sh2
 (1 row)
 
-CREATE SHARD sh3 WITH HOSTS spqr_shard_1:6432,spqr_shard_1_replica:6432;
+CREATE SHARD sh3 WITH HOSTS spqr_shard_3:6432,spqr_shard_3_replica:6432;
     add shard    
 -----------------
  shard id -> sh3
 (1 row)
 
-CREATE SHARD sh4 WITH HOSTS spqr_shard_1:6432,spqr_shard_1_replica:6432;
+CREATE SHARD sh4 WITH HOSTS spqr_shard_4:6432,spqr_shard_4_replica:6432;
     add shard    
 -----------------
  shard id -> sh4
@@ -69,12 +69,12 @@ SHOW hosts;
 -------+---------------------------+---------+---------+---------
  sh1   | spqr_shard_1:6432         | unknown | unknown | unknown
  sh1   | spqr_shard_1_replica:6432 | unknown | unknown | unknown
- sh2   | spqr_shard_1:6432         | unknown | unknown | unknown
- sh2   | spqr_shard_1_replica:6432 | unknown | unknown | unknown
- sh3   | spqr_shard_1:6432         | unknown | unknown | unknown
- sh3   | spqr_shard_1_replica:6432 | unknown | unknown | unknown
- sh4   | spqr_shard_1:6432         | unknown | unknown | unknown
- sh4   | spqr_shard_1_replica:6432 | unknown | unknown | unknown
+ sh2   | spqr_shard_2:6432         | unknown | unknown | unknown
+ sh2   | spqr_shard_2_replica:6432 | unknown | unknown | unknown
+ sh3   | spqr_shard_3:6432         | unknown | unknown | unknown
+ sh3   | spqr_shard_3_replica:6432 | unknown | unknown | unknown
+ sh4   | spqr_shard_4:6432         | unknown | unknown | unknown
+ sh4   | spqr_shard_4_replica:6432 | unknown | unknown | unknown
 (8 rows)
 
 CREATE SHARD sh5 WITH HOSTS e:6432;
@@ -98,12 +98,12 @@ SHOW hosts;
 -------+---------------------------+---------+---------+---------
  sh1   | spqr_shard_1:6432         | unknown | unknown | unknown
  sh1   | spqr_shard_1_replica:6432 | unknown | unknown | unknown
- sh2   | spqr_shard_1:6432         | unknown | unknown | unknown
- sh2   | spqr_shard_1_replica:6432 | unknown | unknown | unknown
- sh3   | spqr_shard_1:6432         | unknown | unknown | unknown
- sh3   | spqr_shard_1_replica:6432 | unknown | unknown | unknown
- sh4   | spqr_shard_1:6432         | unknown | unknown | unknown
- sh4   | spqr_shard_1_replica:6432 | unknown | unknown | unknown
+ sh2   | spqr_shard_2:6432         | unknown | unknown | unknown
+ sh2   | spqr_shard_2_replica:6432 | unknown | unknown | unknown
+ sh3   | spqr_shard_3:6432         | unknown | unknown | unknown
+ sh3   | spqr_shard_3_replica:6432 | unknown | unknown | unknown
+ sh4   | spqr_shard_4:6432         | unknown | unknown | unknown
+ sh4   | spqr_shard_4_replica:6432 | unknown | unknown | unknown
  sh5   | e:6432                    | unknown | unknown | unknown
 (9 rows)
 
@@ -127,11 +127,11 @@ SHOW hosts;
 -------+---------------------------+---------+---------+---------
  sh1   | spqr_shard_1:6432         | unknown | unknown | unknown
  sh1   | spqr_shard_1_replica:6432 | unknown | unknown | unknown
- sh2   | spqr_shard_1:6432         | unknown | unknown | unknown
- sh2   | spqr_shard_1_replica:6432 | unknown | unknown | unknown
- sh3   | spqr_shard_1:6432         | unknown | unknown | unknown
- sh3   | spqr_shard_1_replica:6432 | unknown | unknown | unknown
- sh4   | spqr_shard_1:6432         | unknown | unknown | unknown
- sh4   | spqr_shard_1_replica:6432 | unknown | unknown | unknown
+ sh2   | spqr_shard_2:6432         | unknown | unknown | unknown
+ sh2   | spqr_shard_2_replica:6432 | unknown | unknown | unknown
+ sh3   | spqr_shard_3:6432         | unknown | unknown | unknown
+ sh3   | spqr_shard_3_replica:6432 | unknown | unknown | unknown
+ sh4   | spqr_shard_4:6432         | unknown | unknown | unknown
+ sh4   | spqr_shard_4_replica:6432 | unknown | unknown | unknown
 (8 rows)
 
