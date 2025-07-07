@@ -18,7 +18,13 @@ type CachedTSACheckerImpl struct {
 func (ctsa *CachedTSACheckerImpl) InstanceHealthChecks() map[string]CachedCheckResult {
 	ctsa.mu.Lock()
 	defer ctsa.mu.Unlock()
-	return ctsa.cache
+
+	cp := map[string]CachedCheckResult{}
+	for k, v := range ctsa.cache {
+		cp[k] = v
+	}
+
+	return cp
 }
 
 var _ CachedTSAChecker = (*CachedTSACheckerImpl)(nil)
