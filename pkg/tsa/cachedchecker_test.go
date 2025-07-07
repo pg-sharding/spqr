@@ -25,7 +25,7 @@ func TestTSA_RW(t *testing.T) {
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
 
-	checker := tsa.NewTSAChecker()
+	checker := tsa.NewCachedTSAChecker()
 	instance := mockinst.NewMockDBInstance(ctrl)
 
 	sh := mocksh.NewMockShardHostInstance(ctrl)
@@ -70,7 +70,7 @@ func TestTSA_HostNotAlive(t *testing.T) {
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
 
-	checker := tsa.NewTSAChecker()
+	checker := tsa.NewCachedTSAChecker()
 	instance := mockinst.NewMockDBInstance(ctrl)
 
 	sh := mocksh.NewMockShardHostInstance(ctrl)
@@ -94,7 +94,7 @@ func TestTSA_CacheExpiry(t *testing.T) {
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
 
-	checker := tsa.NewTSACheckerWithDuration(time.Millisecond * 10)
+	checker := tsa.NewCachedTSACheckerWithDuration(time.Millisecond * 10)
 	instance := mockinst.NewMockDBInstance(ctrl)
 
 	sh := mocksh.NewMockShardHostInstance(ctrl)
@@ -141,7 +141,7 @@ func TestTSA_CacheHit(t *testing.T) {
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
 
-	checker := tsa.NewTSACheckerWithDuration(time.Second * 10)
+	checker := tsa.NewCachedTSACheckerWithDuration(time.Second * 10)
 	instance := mockinst.NewMockDBInstance(ctrl)
 
 	sh := mocksh.NewMockShardHostInstance(ctrl)
