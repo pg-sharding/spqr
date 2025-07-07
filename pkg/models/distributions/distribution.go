@@ -337,7 +337,7 @@ func (r *DistributedRelation) GetFullName() string {
 //
 // Parameters:
 //   - ds: The Distribution
-//   - rel: The relation whitch we need attach to ds
+//   - rel: The relation which we need attach to ds
 //
 // Returns:
 //   - error: error if a mismatch found.
@@ -351,7 +351,7 @@ func CheckRelationKeys(ds *qdb.Distribution, rel *DistributedRelation) error {
 			fallthrough
 		case qdb.ColumnTypeUinteger:
 			if len(rel.DistributionKey[i].HashFunction) < 1 {
-				return fmt.Errorf("hashed type %s of distributon %s needs hashfunction to attach %s", colType, ds.ID, rel.GetFullName())
+				return fmt.Errorf("hashed type %s of distribution %s needs hashfunction to attach %s", colType, ds.ID, rel.GetFullName())
 			}
 		case qdb.ColumnTypeInteger:
 			fallthrough
@@ -361,10 +361,10 @@ func CheckRelationKeys(ds *qdb.Distribution, rel *DistributedRelation) error {
 			fallthrough
 		case qdb.ColumnTypeUUID:
 			if len(rel.DistributionKey[i].HashFunction) > 0 {
-				return fmt.Errorf("type %s of distributon %s does not support hashfunction to attach relation %s", colType, ds.ID, rel.GetFullName())
+				return fmt.Errorf("type %s of distribution %s does not support hashfunction to attach relation %s", colType, ds.ID, rel.GetFullName())
 			}
 		default:
-			return fmt.Errorf("unknown type %s of distributon %s", colType, ds.ID)
+			return fmt.Errorf("unknown type %s of distribution %s", colType, ds.ID)
 		}
 	}
 	return nil

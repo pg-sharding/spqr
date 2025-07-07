@@ -167,7 +167,7 @@ func TestHashableKeyChecks(t *testing.T) {
 					{Column: "a"},
 				},
 			},
-			err: fmt.Errorf("hashed type uinteger of distributon ds1 needs hashfunction to attach public.r1"),
+			err: fmt.Errorf("hashed type uinteger of distribution ds1 needs hashfunction to attach public.r1"),
 		},
 		{
 			distribution: distribution2Hashed,
@@ -189,7 +189,7 @@ func TestHashableKeyChecks(t *testing.T) {
 					{Column: "a"},
 				},
 			},
-			err: fmt.Errorf("type varchar of distributon ds1 does not support hashfunction to attach relation public.r1"),
+			err: fmt.Errorf("type varchar of distribution ds1 does not support hashfunction to attach relation public.r1"),
 		},
 	} {
 		actual := distributions.CheckRelationKeys(tt.distribution, tt.rel)
