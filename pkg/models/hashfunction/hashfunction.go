@@ -41,45 +41,45 @@ var (
 //   - []interface: The hashed byte slice.
 //   - error: An error if any error occurs during the process.
 
-func EncodeUInt64(inp uint64) []byte {
+func EncodeUInt64(input uint64) []byte {
 	const ENCODING_BYTES_BIG = binary.MaxVarintLen64
 	const ENCODING_BYTES = 8
 	const BOUND = 1 << 56 /* 72057594037927936 */
 
 	sz := ENCODING_BYTES
-	if inp >= BOUND {
+	if input >= BOUND {
 		sz = ENCODING_BYTES_BIG
 	}
 
 	buf := make([]byte, sz)
-	binary.PutUvarint(buf, inp)
+	binary.PutUvarint(buf, input)
 	return buf
 }
 
-func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (interface{}, error) {
+func ApplyHashFunction(input interface{}, ctype string, hf HashFunctionType) (interface{}, error) {
 
 	switch hf {
 	case HashFunctionIdent:
 		if ctype == qdb.ColumnTypeUUID {
-			if err := uuid.Validate(strings.ToLower(inp.(string))); err != nil {
+			if err := uuid.Validate(strings.ToLower(input.(string))); err != nil {
 				return nil, err
 			}
 		}
-		return inp, nil
+		return input, nil
 	case HashFunctionMurmur:
 		switch ctype {
 		case qdb.ColumnTypeInteger:
 			buf := make([]byte, 8)
-			binary.PutVarint(buf, inp.(int64))
+			binary.PutVarint(buf, input.(int64))
 			h := murmur3.Sum32(buf)
 			return uint64(h), nil
 
 		case qdb.ColumnTypeUinteger:
-			buf := EncodeUInt64(inp.(uint64))
+			buf := EncodeUInt64(input.(uint64))
 			h := murmur3.Sum32(buf)
 			return uint64(h), nil
 		case qdb.ColumnTypeVarcharHashed:
-			switch v := inp.(type) {
+			switch v := input.(type) {
 			case []byte:
 				h := murmur3.Sum32(v)
 
@@ -89,7 +89,7 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 
 				return uint64(h), nil
 			default:
-				return nil, errUnknownValueType(inp, hf)
+				return nil, errUnknownValueType(input, hf)
 			}
 		default:
 			return nil, errUnknownColumnType(ctype, hf)
@@ -98,16 +98,16 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 		switch ctype {
 		case qdb.ColumnTypeInteger:
 			buf := make([]byte, 8)
-			binary.PutVarint(buf, inp.(int64))
+			binary.PutVarint(buf, input.(int64))
 			h := city.Hash32(buf)
 			return uint64(h), nil
 
 		case qdb.ColumnTypeUinteger:
-			buf := EncodeUInt64(inp.(uint64))
+			buf := EncodeUInt64(input.(uint64))
 			h := city.Hash32(buf)
 			return uint64(h), nil
 		case qdb.ColumnTypeVarcharHashed:
-			switch v := inp.(type) {
+			switch v := input.(type) {
 			case []byte:
 				h := city.Hash32(v)
 
@@ -117,7 +117,7 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 
 				return uint64(h), nil
 			default:
-				return nil, errUnknownValueType(inp, hf)
+				return nil, errUnknownValueType(input, hf)
 			}
 		default:
 			return nil, errUnknownColumnType(ctype, hf)
@@ -130,9 +130,9 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 /*
 * Apply routing hash function on bytes received in their string representation (from COPY).
  */
-func ApplyHashFunctionOnStringRepr(inp []byte, ctype string, hf HashFunctionType) (interface{}, error) {
+func ApplyHashFunctionOnStringRepr(input []byte, ctype string, hf HashFunctionType) (interface{}, error) {
 
-	var parsedInp interface{}
+	var parsedInput interface{}
 
 	/*
 	* We need to convert raw bytes to appropriate interface
@@ -140,29 +140,29 @@ func ApplyHashFunctionOnStringRepr(inp []byte, ctype string, hf HashFunctionType
 	 */
 	switch ctype {
 	case qdb.ColumnTypeInteger:
-		n, err := strconv.ParseInt(string(inp), 10, 64)
+		n, err := strconv.ParseInt(string(input), 10, 64)
 		if err != nil {
 			return nil, err
 		}
-		parsedInp = n
+		parsedInput = n
 	case qdb.ColumnTypeUinteger:
-		n, err := strconv.ParseUint(string(inp), 10, 64)
+		n, err := strconv.ParseUint(string(input), 10, 64)
 		if err != nil {
 			return nil, err
 		}
-		parsedInp = n
+		parsedInput = n
 
 	case qdb.ColumnTypeUUID:
-		parsedInp = string(inp)
+		parsedInput = string(input)
 	case qdb.ColumnTypeVarchar:
 		fallthrough
 	case qdb.ColumnTypeVarcharHashed:
 		fallthrough
 	case qdb.ColumnTypeVarcharDeprecated:
-		parsedInp = string(inp)
+		parsedInput = string(input)
 	}
 
-	return ApplyHashFunction(parsedInp, ctype, hf)
+	return ApplyHashFunction(parsedInput, ctype, hf)
 }
 
 // HashFunctionByName returns the corresponding HashFunctionType based on the given hash function name.
