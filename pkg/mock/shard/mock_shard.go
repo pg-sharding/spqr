@@ -738,32 +738,32 @@ func (mr *MockShardHostInstanceMockRecorder) Usr() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Usr", reflect.TypeOf((*MockShardHostInstance)(nil).Usr))
 }
 
-// MockShardIterator is a mock of ShardIterator interface.
-type MockShardIterator struct {
+// MockShardHostIterator is a mock of ShardHostIterator interface.
+type MockShardHostIterator struct {
 	ctrl     *gomock.Controller
-	recorder *MockShardIteratorMockRecorder
+	recorder *MockShardHostIteratorMockRecorder
 	isgomock struct{}
 }
 
-// MockShardIteratorMockRecorder is the mock recorder for MockShardIterator.
-type MockShardIteratorMockRecorder struct {
-	mock *MockShardIterator
+// MockShardHostIteratorMockRecorder is the mock recorder for MockShardHostIterator.
+type MockShardHostIteratorMockRecorder struct {
+	mock *MockShardHostIterator
 }
 
-// NewMockShardIterator creates a new mock instance.
-func NewMockShardIterator(ctrl *gomock.Controller) *MockShardIterator {
-	mock := &MockShardIterator{ctrl: ctrl}
-	mock.recorder = &MockShardIteratorMockRecorder{mock}
+// NewMockShardHostIterator creates a new mock instance.
+func NewMockShardHostIterator(ctrl *gomock.Controller) *MockShardHostIterator {
+	mock := &MockShardHostIterator{ctrl: ctrl}
+	mock.recorder = &MockShardHostIteratorMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockShardIterator) EXPECT() *MockShardIteratorMockRecorder {
+func (m *MockShardHostIterator) EXPECT() *MockShardHostIteratorMockRecorder {
 	return m.recorder
 }
 
 // ForEach mocks base method.
-func (m *MockShardIterator) ForEach(cb func(shard.ShardHostInfo) error) error {
+func (m *MockShardHostIterator) ForEach(cb func(shard.ShardHostInfo) error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForEach", cb)
 	ret0, _ := ret[0].(error)
@@ -771,7 +771,7 @@ func (m *MockShardIterator) ForEach(cb func(shard.ShardHostInfo) error) error {
 }
 
 // ForEach indicates an expected call of ForEach.
-func (mr *MockShardIteratorMockRecorder) ForEach(cb any) *gomock.Call {
+func (mr *MockShardHostIteratorMockRecorder) ForEach(cb any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForEach", reflect.TypeOf((*MockShardIterator)(nil).ForEach), cb)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForEach", reflect.TypeOf((*MockShardHostIterator)(nil).ForEach), cb)
 }

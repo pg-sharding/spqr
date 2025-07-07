@@ -6,6 +6,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
 const (
@@ -35,7 +36,7 @@ type Statistics struct {
 /* dedicated host connection pool */
 type Pool interface {
 	ConnectionKepper
-	shard.ShardIterator
+	shard.ShardHostIterator
 
 	Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error)
 }
@@ -43,7 +44,7 @@ type Pool interface {
 /* Host  */
 type MultiShardPool interface {
 	ConnectionKepper
-	shard.ShardIterator
+	shard.ShardHostIterator
 	PoolIterator
 
 	ID() uint
@@ -51,6 +52,12 @@ type MultiShardPool interface {
 	ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error)
 
 	SetRule(rule *config.BackendRule)
+}
+
+type MultiShardTSAPool interface {
+	MultiShardPool
+	ShardMapping() map[string]*config.Shard
+	ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error)
 }
 
 type PoolIterator interface {

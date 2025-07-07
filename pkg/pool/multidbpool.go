@@ -58,7 +58,7 @@ func (p *MultiDBPool) Discard(conn shard.ShardHostInstance) error {
 }
 
 func (p *MultiDBPool) Connection(db string) (shard.ShardHostInstance, error) {
-	var pool *DBPool
+	var pool MultiShardPool
 	poolElement, exist := p.dbs.Load(db)
 
 	// get or create db pool
@@ -87,7 +87,7 @@ func (p *MultiDBPool) Connection(db string) (shard.ShardHostInstance, error) {
 }
 
 func (p *MultiDBPool) View() Statistics {
-	panic("DBPool.View not implemented")
+	panic("MultiDBPool.View not implemented")
 }
 
 func getRandomShard(mapping map[string]*config.Shard) (string, *config.Shard) {

@@ -8,7 +8,7 @@ import (
 
 type ConnectIterator interface {
 	client.Pool
-	shard.ShardIterator
+	shard.ShardHostIterator
 	pool.PoolIterator
 
 	/*

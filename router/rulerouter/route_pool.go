@@ -12,7 +12,7 @@ import (
 )
 
 type RoutePool interface {
-	shard.ShardIterator
+	shard.ShardHostIterator
 	pool.PoolIterator
 
 	MatchRoute(key route.Key,

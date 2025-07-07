@@ -80,7 +80,7 @@ type ShardHostInstance interface {
 	Close() error
 }
 
-type ShardIterator interface {
+type ShardHostIterator interface {
 	ForEach(cb func(sh ShardHostInfo) error) error
 }
 
