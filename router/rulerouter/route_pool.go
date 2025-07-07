@@ -22,7 +22,7 @@ type RoutePool interface {
 
 	Obsolete(key route.Key) *route.Route
 	Shutdown() error
-	NotifyRoutes(func(route *route.Route) error) error
+	NotifyRoutes(func(route *route.Route) (bool, error)) error
 }
 
 type RoutePoolImpl struct {
@@ -42,25 +42,26 @@ func NewRouterPoolImpl(shardMapping map[string]*config.Shard) *RoutePoolImpl {
 
 // TODO : unit tests
 func (r *RoutePoolImpl) ForEach(cb func(sh shard.ShardHostInfo) error) error {
-	return r.NotifyRoutes(func(route *route.Route) error {
-		return route.ServPool().ForEach(cb)
+	return r.NotifyRoutes(func(route *route.Route) (bool, error) {
+		return true, route.ServPool().ForEach(cb)
 	})
 }
 
 // TODO : unit tests
-func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) error) error {
+func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) (bool, error)) error {
 	var err error
 
 	r.pool.Range(func(key, value any) bool {
 		rt := value.(*route.Route)
 
-		if err = cb(rt); err != nil {
+		if cont, err := cb(rt); err != nil {
 			spqrlog.Zero.Info().
 				Err(err).
 				Msg("error while notifying route")
 			return false
+		} else {
+			return cont
 		}
-		return true
 	})
 
 	return err

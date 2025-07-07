@@ -599,11 +599,11 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 //
 // Returns:
 // - error: An error if the operation encounters any issues.
-func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, pool client.Pool, cli *clientinteractor.PSQLInteractor) error {
+func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, clPool client.Pool, cli *clientinteractor.PSQLInteractor) error {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process kill")
 	switch stmt.Cmd {
 	case spqrparser.ClientStr:
-		ok, err := pool.Pop(stmt.Target)
+		ok, err := clPool.Pop(stmt.Target)
 		if err != nil {
 			return err
 		}
@@ -654,6 +654,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
+
 		return cli.Hosts(ctx, shards)
 	case spqrparser.KeyRangesStr:
 		ranges, err := mngr.ListAllKeyRanges(ctx)
