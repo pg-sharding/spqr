@@ -13,7 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
-	"github.com/pg-sharding/spqr/pkg/connectiterator"
+	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -117,7 +117,7 @@ func (pi *PSQLInteractor) CoordinatorAddr(ctx context.Context, addr string) erro
 }
 
 // TODO refactor it to make more user-friendly
-func (pi *PSQLInteractor) Instance(ctx context.Context, ci connectiterator.ConnectIterator) error {
+func (pi *PSQLInteractor) Instance(ctx context.Context, ci connmgr.ConnectionStatsMgr) error {
 	if err := pi.WriteHeader(
 		"total tcp connection count",
 		"total cancel requests",

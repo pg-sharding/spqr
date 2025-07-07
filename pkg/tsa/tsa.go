@@ -1,6 +1,8 @@
 package tsa
 
 import (
+	"time"
+
 	"github.com/pg-sharding/spqr/pkg/shard"
 )
 
@@ -13,6 +15,15 @@ type CheckResult struct {
 	Reason string
 }
 
+type TimedCheckResult struct {
+	CR CheckResult
+	T  time.Time
+}
+
 type TSAChecker interface {
 	CheckTSA(sh shard.ShardHostInstance) (CheckResult, error)
+}
+
+type TimedTSAChecker interface {
+	CheckTSA(sh shard.ShardHostInstance) (TimedCheckResult, error)
 }

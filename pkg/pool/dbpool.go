@@ -35,11 +35,27 @@ type LocalCheckResult struct {
 type DBPool struct {
 	pool         MultiShardPool
 	shardMapping map[string]*config.Shard
-	checker      tsa.TSAChecker
+	checker      tsa.TimedTSAChecker
 
 	CacheTSAChecks *sync.Map
 	ShuffleHosts   bool
 	PreferAZ       string
+}
+
+// InstanceHealhChecks implements MultiShardTSAPool.
+func (s *DBPool) InstanceHealhChecks() map[config.Host]tsa.TimedCheckResult {
+	var ret map[config.Host]tsa.TimedCheckResult
+
+	s.CacheTSAChecks.Range(func(k, v any) bool {
+		key := config.Host{
+			Address: k.(TsaKey).Host,
+			AZ:      k.(TsaKey).AZ,
+		}
+		ret[key] = v.(tsa.TimedCheckResult)
+		return true
+	})
+
+	return ret
 }
 
 // View implements MultiShardPool.
@@ -137,8 +153,8 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 func (s *DBPool) selectShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA, primary bool) (shard.ShardHostInstance, error) {
 	hostToReason := map[string]string{}
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.ShardHostInstance) bool {
-		cr, err := s.checker.CheckTSA(shard)
-		good := cr.RW == primary
+		tcr, err := s.checker.CheckTSA(shard)
+		good := tcr.CR.Alive == primary
 
 		if err != nil {
 			hostToReason[shard.Instance().Hostname()] = err.Error()
@@ -149,7 +165,7 @@ func (s *DBPool) selectShardHost(clid uint, key kr.ShardKey, hosts []config.Host
 				Host: shard.Instance().Hostname(),
 				AZ:   shard.Instance().AvailabilityZone(),
 			}, LocalCheckResult{
-				Alive:  cr.Alive,
+				Alive:  tcr.CR.Alive,
 				Good:   false,
 				Reason: err.Error(),
 			})
@@ -162,17 +178,17 @@ func (s *DBPool) selectShardHost(clid uint, key kr.ShardKey, hosts []config.Host
 			Host: shard.Instance().Hostname(),
 			AZ:   shard.Instance().AvailabilityZone(),
 		}, LocalCheckResult{
-			Alive:  cr.Alive,
+			Alive:  tcr.CR.Alive,
 			Good:   good,
-			Reason: cr.Reason,
+			Reason: tcr.CR.Reason,
 		})
 
-		if cr.Alive && good {
+		if tcr.CR.Alive && good {
 			return true
 		}
 
 		// Host is not suitable
-		hostToReason[shard.Instance().Hostname()] = cr.Reason
+		hostToReason[shard.Instance().Hostname()] = tcr.CR.Reason
 		_ = s.Put(shard)
 		return false
 

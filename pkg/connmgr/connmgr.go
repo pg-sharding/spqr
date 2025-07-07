@@ -1,15 +1,14 @@
-package connectiterator
+package connmgr
 
 import (
-	"github.com/pg-sharding/spqr/pkg/client"
-	"github.com/pg-sharding/spqr/pkg/pool"
-	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
-type ConnectIterator interface {
-	client.Pool
-	shard.ShardHostIterator
-	pool.PoolIterator
+type ConnectionStatsMgr interface {
+	ConnectionIterator
+
+	InstanceHealhChecks() map[config.Host]tsa.TimedCheckResult
 
 	/*
 		user-facing connection stat callbacks.

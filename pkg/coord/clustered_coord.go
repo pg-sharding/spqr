@@ -22,7 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/connectiterator"
+	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -36,6 +36,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/rulemgr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
 	"github.com/pg-sharding/spqr/router/cache"
@@ -46,30 +47,35 @@ import (
 	"google.golang.org/grpc"
 )
 
-type grpcConnectionIterator struct {
+type grpcConnMgr struct {
 	*ClusteredCoordinator
+}
+
+// InstanceHealhChecks implements connmgr.ConnectionStatsMgr.
+func (ci grpcConnMgr) InstanceHealhChecks() map[config.Host]tsa.TimedCheckResult {
+	return map[config.Host]tsa.TimedCheckResult{}
 }
 
 // TODO implement it
 // ActiveTcpCount implements connectiterator.ConnectIterator.
-func (ci grpcConnectionIterator) ActiveTcpCount() int64 {
+func (ci grpcConnMgr) ActiveTcpCount() int64 {
 	return 0
 }
 
 // TODO implement it
 // TotalCancelCount implements connectiterator.ConnectIterator.
-func (ci grpcConnectionIterator) TotalCancelCount() int64 {
+func (ci grpcConnMgr) TotalCancelCount() int64 {
 	return 0
 }
 
 // TODO implement it
 // TotalTcpCount implements connectiterator.ConnectIterator.
-func (ci grpcConnectionIterator) TotalTcpCount() int64 {
+func (ci grpcConnMgr) TotalTcpCount() int64 {
 	return 0
 }
 
 // TODO : unit tests
-func (ci grpcConnectionIterator) IterRouter(cb func(cc *grpc.ClientConn, addr string) error) error {
+func (ci grpcConnMgr) IterRouter(cb func(cc *grpc.ClientConn, addr string) error) error {
 	ctx := context.TODO()
 	rtrs, err := ci.ClusteredCoordinator.QDB().ListRouters(ctx)
 
@@ -106,7 +112,7 @@ func (ci grpcConnectionIterator) IterRouter(cb func(cc *grpc.ClientConn, addr st
 }
 
 // TODO : unit tests
-func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
+func (ci grpcConnMgr) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
 		ctx := context.TODO()
 		rrClient := routerproto.NewClientInfoServiceClient(cc)
@@ -130,24 +136,24 @@ func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientI
 
 // TODO : implement
 // TODO : unit tests
-func (ci grpcConnectionIterator) Put(client client.Client) error {
+func (ci grpcConnMgr) Put(client client.Client) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator put not implemented")
 }
 
 // TODO : implement
 // TODO : unit tests
-func (ci grpcConnectionIterator) Pop(id uint) (bool, error) {
+func (ci grpcConnMgr) Pop(id uint) (bool, error) {
 	return true, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator pop not implemented")
 }
 
 // TODO : implement
 // TODO : unit tests
-func (ci grpcConnectionIterator) Shutdown() error {
+func (ci grpcConnMgr) Shutdown() error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator shutdown not implemented")
 }
 
 // TODO : unit tests
-func (ci grpcConnectionIterator) ForEach(cb func(sh shard.ShardHostInfo) error) error {
+func (ci grpcConnMgr) ForEach(cb func(sh shard.ShardHostInfo) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
 		ctx := context.TODO()
 		rrBackConn := routerproto.NewBackendConnectionsServiceClient(cc)
@@ -170,7 +176,7 @@ func (ci grpcConnectionIterator) ForEach(cb func(sh shard.ShardHostInfo) error) 
 }
 
 // TODO : unit tests
-func (ci grpcConnectionIterator) ForEachPool(cb func(p pool.Pool) error) error {
+func (ci grpcConnMgr) ForEachPool(cb func(p pool.Pool) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
 		ctx := context.TODO()
 		rrBackConn := routerproto.NewPoolServiceClient(cc)
@@ -192,7 +198,7 @@ func (ci grpcConnectionIterator) ForEachPool(cb func(p pool.Pool) error) error {
 	})
 }
 
-var _ connectiterator.ConnectIterator = &grpcConnectionIterator{}
+var _ connmgr.ConnectionStatsMgr = &grpcConnMgr{}
 
 func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 	spqrlog.Zero.Debug().
@@ -1771,7 +1777,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 		return nil
 	}
 
-	ci := grpcConnectionIterator{ClusteredCoordinator: qc}
+	ci := grpcConnMgr{ClusteredCoordinator: qc}
 	cli := clientinteractor.NewPSQLInteractor(cl)
 	for {
 		// TODO: check leader status
