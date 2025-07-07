@@ -35,7 +35,7 @@ type LocalCheckResult struct {
 type DBPool struct {
 	pool         MultiShardPool
 	shardMapping map[string]*config.Shard
-	checker      tsa.TimedTSAChecker
+	checker      tsa.CachedTSAChecker
 
 	CacheTSAChecks *sync.Map
 	ShuffleHosts   bool
@@ -43,15 +43,15 @@ type DBPool struct {
 }
 
 // InstanceHealthChecks implements MultiShardTSAPool.
-func (s *DBPool) InstanceHealthChecks() map[config.Host]tsa.TimedCheckResult {
-	var ret map[config.Host]tsa.TimedCheckResult
+func (s *DBPool) InstanceHealthChecks() map[config.Host]tsa.CachedCheckResult {
+	var ret map[config.Host]tsa.CachedCheckResult
 
 	s.CacheTSAChecks.Range(func(k, v any) bool {
 		key := config.Host{
 			Address: k.(TsaKey).Host,
 			AZ:      k.(TsaKey).AZ,
 		}
-		ret[key] = v.(tsa.TimedCheckResult)
+		ret[key] = v.(tsa.CachedCheckResult)
 		return true
 	})
 

@@ -15,7 +15,7 @@ type CheckResult struct {
 	Reason string
 }
 
-type TimedCheckResult struct {
+type CachedCheckResult struct {
 	CR            CheckResult
 	LastCheckTime time.Time
 }
@@ -24,6 +24,6 @@ type TSAChecker interface {
 	CheckTSA(sh shard.ShardHostInstance) (CheckResult, error)
 }
 
-type TimedTSAChecker interface {
-	CheckTSA(sh shard.ShardHostInstance) (TimedCheckResult, error)
+type CachedTSAChecker interface {
+	CheckTSA(sh shard.ShardHostInstance) (CachedCheckResult, error)
 }

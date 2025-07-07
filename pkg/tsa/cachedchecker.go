@@ -7,34 +7,34 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 )
 
-type CachedTSAChecker struct {
+type CachedTSACheckerImpl struct {
 	mu            sync.Mutex
 	recheckPeriod time.Duration
-	cache         map[string]TimedCheckResult
+	cache         map[string]CachedCheckResult
 	innerChecker  TSAChecker
 }
 
-var _ TimedTSAChecker = (*CachedTSAChecker)(nil)
+var _ CachedTSAChecker = (*CachedTSACheckerImpl)(nil)
 
 // NewTSAChecker creates a new instance of TSAChecker.
 // It returns a TSAChecker interface that can be used to perform TSA checks.
 //
 // Returns:
 //   - TSAChecker: A new instance of TSAChecker.
-func NewTSAChecker() TimedTSAChecker {
-	return &CachedTSAChecker{
+func NewTSAChecker() CachedTSAChecker {
+	return &CachedTSACheckerImpl{
 		mu:            sync.Mutex{},
 		recheckPeriod: time.Second,
-		cache:         map[string]TimedCheckResult{},
+		cache:         map[string]CachedCheckResult{},
 		innerChecker:  &NetChecker{},
 	}
 }
 
-func NewTSACheckerWithDuration(tsaRecheckDuration time.Duration) TimedTSAChecker {
-	return &CachedTSAChecker{
+func NewTSACheckerWithDuration(tsaRecheckDuration time.Duration) CachedTSAChecker {
+	return &CachedTSACheckerImpl{
 		mu:            sync.Mutex{},
 		recheckPeriod: tsaRecheckDuration,
-		cache:         map[string]TimedCheckResult{},
+		cache:         map[string]CachedCheckResult{},
 		innerChecker:  &NetChecker{},
 	}
 }
@@ -49,7 +49,7 @@ func NewTSACheckerWithDuration(tsaRecheckDuration time.Duration) TimedTSAChecker
 // Returns:
 //   - CheckResult: A struct containing the result of the TSA check.
 //   - error: An error if any occurred during the process.
-func (ctsa *CachedTSAChecker) CheckTSA(sh shard.ShardHostInstance) (TimedCheckResult, error) {
+func (ctsa *CachedTSACheckerImpl) CheckTSA(sh shard.ShardHostInstance) (CachedCheckResult, error) {
 	ctsa.mu.Lock()
 	defer ctsa.mu.Unlock()
 
@@ -60,9 +60,9 @@ func (ctsa *CachedTSAChecker) CheckTSA(sh shard.ShardHostInstance) (TimedCheckRe
 
 	cr, err := ctsa.innerChecker.CheckTSA(sh)
 	if err != nil {
-		return TimedCheckResult{}, err
+		return CachedCheckResult{}, err
 	}
-	tcr := TimedCheckResult{
+	tcr := CachedCheckResult{
 		LastCheckTime: n,
 		CR:            cr,
 	}

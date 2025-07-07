@@ -427,10 +427,10 @@ func (mr *MockMultiShardTSAPoolMockRecorder) ID() *gomock.Call {
 }
 
 // InstanceHealthChecks mocks base method.
-func (m *MockMultiShardTSAPool) InstanceHealthChecks() map[config.Host]tsa.TimedCheckResult {
+func (m *MockMultiShardTSAPool) InstanceHealthChecks() map[config.Host]tsa.CachedCheckResult {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InstanceHealthChecks")
-	ret0, _ := ret[0].(map[config.Host]tsa.TimedCheckResult)
+	ret0, _ := ret[0].(map[config.Host]tsa.CachedCheckResult)
 	return ret0
 }
 
