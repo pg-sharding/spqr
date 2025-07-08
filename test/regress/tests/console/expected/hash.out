@@ -5,7 +5,7 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer hash;
     add distribution    
 ------------------------
  distribution id -> ds1
