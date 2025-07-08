@@ -1,12 +1,10 @@
-
-SPQR router support runtime hint and behaviour configuration parameters.
-Parameter names are usually prefixed with `__spqr__` string with expection of target_session_attrs.
-
 ---
 title: 'Routing hints'
 ---
 
-For every query, you may specify special hints in different ways:
+## Routing hints aka virtual parameters
+
+The SPQR router supports runtime hints and behavior configuration parameters. They behave differently depending on how users apply them in their work. There are two main ways to work with virtual parameters:
 
 - **Comment in the SQL statement**:
     ```sql
@@ -24,32 +22,35 @@ For every query, you may specify special hints in different ways:
     RESET __spqr__default_route_behaviour;
     ```
 
-The context of virtual parameters and hint effects varies based on the user's usage.
-In general, virtual parameters support the savepoint feature and respect transaction blocks and bounds.
-Therefore, utilizing a SQL comment to define a virtual parameter in the query text will only affect the statement level.
+When you define a virtual parameter using an SQL comment inside a query, its effect is limited to that specific query only.
+
 Using the SET statement to define a virtual parameter will take effect when the transaction block is bound. The value of the virtual parameter will be session-wide if no explicit transaction is initiated.
 
+To put it simply:
 
-Example:
+- SQL comment = affects only one query
+- SET statement = affects the whole session (unless a transaction is active)
 
-```
-db1=# show __spqr__commit_strategy;
+## Example
+
+```sql
+db1=# SHOW __spqr__commit_strategy;
  __spqr__commit_strategy
 -------------------------
  best-effort
 (1 row)
 
-db1=# set __spqr__commit_strategy to '2pc';
+db1=# SET __spqr__commit_strategy TO '2pc';
 SET
-db1=# show __spqr__commit_strategy;
+db1=# SHOW __spqr__commit_strategy;
  __spqr__commit_strategy
 -------------------------
  2pc
 (1 row)
 
-db1=# begin;
+db1=# BEGIN;
 BEGIN
-db1=*# set __spqr__commit_strategy to '1pc';
+db1=*# SET __spqr__commit_strategy TO '1pc';
 SET
 db1=*# show __spqr__commit_strategy;
  __spqr__commit_strategy
@@ -57,15 +58,16 @@ db1=*# show __spqr__commit_strategy;
  1pc
 (1 row)
 
-db1=*# rollback ;
+db1=*# ROLLBACK;
 ROLLBACK
-db1=# show __spqr__commit_strategy;
+db1=# SHOW __spqr__commit_strategy;
  __spqr__commit_strategy
 -------------------------
  2pc
 (1 row)
 ```
 
+## List of hints
 
 ### __spqr__target_session_attrs
 
