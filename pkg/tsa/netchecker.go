@@ -12,8 +12,6 @@ import (
 type NetChecker struct {
 }
 
-var _ TSAChecker = (*NetChecker)(nil)
-
 // CheckTSA checks the TSA for a given shard and returns the result, comment, and error.
 // CheckTSA do not use the cache, it always check the TSA.
 //

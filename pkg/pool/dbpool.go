@@ -35,7 +35,7 @@ type LocalCheckResult struct {
 type DBPool struct {
 	pool         MultiShardPool
 	shardMapping map[string]*config.Shard
-	checker      tsa.CachedTSAChecker
+	checker      *tsa.CachedTSAChecker
 
 	CacheTSAChecks *sync.Map
 	ShuffleHosts   bool
@@ -478,7 +478,7 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 		ShuffleHosts:   true,
 		PreferAZ:       preferAZ,
 		CacheTSAChecks: &sync.Map{},
-		checker:        tsa.NewTSAChecker(),
+		checker:        tsa.NewCachedTSAChecker(),
 	}
 }
 
@@ -488,7 +488,7 @@ func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.Startu
 		pool:           mp,
 		shardMapping:   mapping,
 		CacheTSAChecks: &sync.Map{},
-		checker:        tsa.NewTSACheckerWithDuration(tsaRecheckDuration),
+		checker:        tsa.NewCachedTSACheckerWithDuration(tsaRecheckDuration),
 	}
 }
 
@@ -498,6 +498,6 @@ func NewDBPoolWithAllocator(mapping map[string]*config.Shard, startupParams *sta
 		pool:           NewPool(allocator),
 		shardMapping:   mapping,
 		CacheTSAChecks: &sync.Map{},
-		checker:        tsa.NewTSAChecker(),
+		checker:        tsa.NewCachedTSAChecker(),
 	}
 }

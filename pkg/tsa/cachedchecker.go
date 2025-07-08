@@ -8,15 +8,15 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 )
 
-type CachedTSACheckerImpl struct {
+type CachedTSAChecker struct {
 	mu            sync.Mutex
 	recheckPeriod time.Duration
 	cache         map[string]CachedCheckResult
-	innerChecker  TSAChecker
+	innerChecker  *NetChecker
 }
 
 // InstanceHealthChecks implements CachedTSAChecker.
-func (ctsa *CachedTSACheckerImpl) InstanceHealthChecks() map[string]CachedCheckResult {
+func (ctsa *CachedTSAChecker) InstanceHealthChecks() map[string]CachedCheckResult {
 	ctsa.mu.Lock()
 	defer ctsa.mu.Unlock()
 
@@ -26,15 +26,13 @@ func (ctsa *CachedTSACheckerImpl) InstanceHealthChecks() map[string]CachedCheckR
 	return cp
 }
 
-var _ CachedTSAChecker = (*CachedTSACheckerImpl)(nil)
-
 // NewTSAChecker creates a new instance of TSAChecker.
 // It returns a TSAChecker interface that can be used to perform TSA checks.
 //
 // Returns:
 //   - TSAChecker: A new instance of TSAChecker.
-func NewTSAChecker() CachedTSAChecker {
-	return &CachedTSACheckerImpl{
+func NewCachedTSAChecker() *CachedTSAChecker {
+	return &CachedTSAChecker{
 		mu:            sync.Mutex{},
 		recheckPeriod: time.Second,
 		cache:         map[string]CachedCheckResult{},
@@ -42,8 +40,8 @@ func NewTSAChecker() CachedTSAChecker {
 	}
 }
 
-func NewTSACheckerWithDuration(tsaRecheckDuration time.Duration) CachedTSAChecker {
-	return &CachedTSACheckerImpl{
+func NewCachedTSACheckerWithDuration(tsaRecheckDuration time.Duration) *CachedTSAChecker {
+	return &CachedTSAChecker{
 		mu:            sync.Mutex{},
 		recheckPeriod: tsaRecheckDuration,
 		cache:         map[string]CachedCheckResult{},
@@ -61,7 +59,7 @@ func NewTSACheckerWithDuration(tsaRecheckDuration time.Duration) CachedTSAChecke
 // Returns:
 //   - CheckResult: A struct containing the result of the TSA check.
 //   - error: An error if any occurred during the process.
-func (ctsa *CachedTSACheckerImpl) CheckTSA(sh shard.ShardHostInstance) (CachedCheckResult, error) {
+func (ctsa *CachedTSAChecker) CheckTSA(sh shard.ShardHostInstance) (CachedCheckResult, error) {
 	ctsa.mu.Lock()
 	defer ctsa.mu.Unlock()
 

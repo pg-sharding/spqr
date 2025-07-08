@@ -1,10 +1,12 @@
 package distributions_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -135,5 +137,66 @@ func TestGetDistributionKeyColumns(t *testing.T) {
 			c.expected,
 			"test case %d", i,
 		)
+	}
+}
+
+func TestHashableKeyChecks(t *testing.T) {
+	assert := assert.New(t)
+	distribution1Hashed := qdb.NewDistribution("ds1", []string{qdb.ColumnTypeUinteger})
+	distribution2Hashed := qdb.NewDistribution("ds1", []string{qdb.ColumnTypeVarchar, qdb.ColumnTypeUinteger})
+	for i, tt := range []struct {
+		distribution *qdb.Distribution
+		rel          *distributions.DistributedRelation
+		err          error
+	}{
+		{
+			distribution: distribution1Hashed,
+			rel: &distributions.DistributedRelation{
+				Name: "r1",
+				DistributionKey: []distributions.DistributionKeyEntry{
+					{Column: "a", HashFunction: "ident"},
+				},
+			},
+			err: nil,
+		},
+		{
+			distribution: distribution1Hashed,
+			rel: &distributions.DistributedRelation{
+				Name: "r1",
+				DistributionKey: []distributions.DistributionKeyEntry{
+					{Column: "a"},
+				},
+			},
+			err: fmt.Errorf("hashed type uinteger of distribution ds1 needs hashfunction to attach public.r1"),
+		},
+		{
+			distribution: distribution2Hashed,
+			rel: &distributions.DistributedRelation{
+				Name: "r1",
+				DistributionKey: []distributions.DistributionKeyEntry{
+					{Column: "b"},
+					{Column: "a", HashFunction: "ident"},
+				},
+			},
+			err: nil,
+		},
+		{
+			distribution: distribution2Hashed,
+			rel: &distributions.DistributedRelation{
+				Name: "r1",
+				DistributionKey: []distributions.DistributionKeyEntry{
+					{Column: "b", HashFunction: "ident"},
+					{Column: "a"},
+				},
+			},
+			err: fmt.Errorf("type varchar of distribution ds1 does not support hashfunction to attach relation public.r1"),
+		},
+	} {
+		actual := distributions.CheckRelationKeys(tt.distribution, tt.rel)
+		if tt.err != nil {
+			assert.EqualError(actual, tt.err.Error(), fmt.Sprintf("case: %d", i))
+		} else {
+			assert.NoError(actual)
+		}
 	}
 }
