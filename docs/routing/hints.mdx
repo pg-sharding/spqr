@@ -1,3 +1,7 @@
+
+SPQR router support runtime hint and behaviour configuration parameters.
+Parameter names are usually prefixed with `__spqr__` string with expection of target_session_attrs.
+
 ---
 title: 'Routing hints'
 ---
@@ -19,6 +23,13 @@ For every query, you may specify special hints in different ways:
     (1 row)
     RESET __spqr__default_route_behaviour;
     ```
+
+Virtual parameters and hint effect context differes depending on how user use them.
+Generally, virtual parameters honors transaction blocks and bound, and also support savepoint feature.
+So, defining virtual parameter using sql comment in query text will take effect only on statement level.
+Defining virtual parameter using SET statement will take effect in transaction block bound. If no explicit transaction started, 
+virtual parameter value will be session-wide.
+
 
 ### __spqr__target_session_attrs
 
