@@ -62,7 +62,7 @@ Feature: spqr-dump test
   Scenario: dump via GRPC works with hashed distribution key
     When I run SQL on host "coordinator"
     """
-    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer hash;
     CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id HASH FUNCTION murmur;
@@ -76,7 +76,7 @@ Feature: spqr-dump test
     Then command return code should be "0"
     And command output should match regexp
     """
-    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES uinteger;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id HASH FUNCTION murmur;
     CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
