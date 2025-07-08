@@ -11,10 +11,16 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
-CREATE DISTRIBUTION ds2 COLUMN TYPES varchar, integer;
+CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash, integer hash;
     add distribution    
 ------------------------
  distribution id -> ds2
+(1 row)
+
+CREATE DISTRIBUTION ds3 COLUMN TYPES integer hash;
+    add distribution    
+------------------------
+ distribution id -> ds3
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id;
@@ -24,11 +30,11 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id;
  distribution id -> ds1
 (2 rows)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION b DISTRIBUTION KEY b_id HASH FUNCTION MURMUR;
+ALTER DISTRIBUTION ds3 ATTACH RELATION b DISTRIBUTION KEY b_id HASH FUNCTION MURMUR;
       attach table      
 ------------------------
  relation name   -> b
- distribution id -> ds1
+ distribution id -> ds3
 (2 rows)
 
 ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id_1 HASH FUNCTION IDENT,
@@ -37,6 +43,13 @@ ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id_1 HASH FUNCTION I
 ------------------------
  relation name   -> c
  distribution id -> ds2
+(2 rows)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION d DISTRIBUTION KEY d_id;
+      attach table      
+------------------------
+ relation name   -> d
+ distribution id -> ds1
 (2 rows)
 
 CREATE REFERENCE RELATION z_rf;
@@ -51,15 +64,16 @@ SHOW relations;
 ---------------+-----------------+---------------------------------------+--------------
  z_rf          | REPLICATED      |                                       | $search_path
  a             | ds1             | ("a_id", identity)                    | $search_path
- b             | ds1             | ("b_id", murmur)                      | $search_path
+ d             | ds1             | ("d_id", identity)                    | $search_path
  c             | ds2             | ("c_id_1", identity),("c_id_2", city) | $search_path
-(4 rows)
+ b             | ds1             | ("b_id", murmur)                      | $search_path
+(5 rows)
 
 SHOW relations WHERE distribution_id = 'ds1';
  Relation name | Distribution ID |  Distribution key  | Schema name  
 ---------------+-----------------+--------------------+--------------
  a             | ds1             | ("a_id", identity) | $search_path
- b             | ds1             | ("b_id", murmur)   | $search_path
+ d             | ds1             | ("d_id", identity) | $search_path
 (2 rows)
 
 SHOW relations WHERE unknown_param = 'ds1';
@@ -76,7 +90,8 @@ DROP DISTRIBUTION ALL CASCADE;
  distribution id -> REPLICATED
  distribution id -> ds1
  distribution id -> ds2
-(3 rows)
+ distribution id -> ds3
+(4 rows)
 
 DROP KEY RANGE ALL;
  drop key range 
