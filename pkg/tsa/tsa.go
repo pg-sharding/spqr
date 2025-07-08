@@ -1,7 +1,7 @@
 package tsa
 
 import (
-	"github.com/pg-sharding/spqr/pkg/shard"
+	"time"
 )
 
 // TSA is stands for target_session_attrs,
@@ -13,6 +13,7 @@ type CheckResult struct {
 	Reason string
 }
 
-type TSAChecker interface {
-	CheckTSA(sh shard.Shard) (CheckResult, error)
+type CachedCheckResult struct {
+	CR            CheckResult
+	LastCheckTime time.Time
 }

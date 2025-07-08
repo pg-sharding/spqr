@@ -43,10 +43,10 @@ Feature: MemQDB save state into a file
     Given cluster is up and running
     When I execute SQL on host "router-admin"
     """
-    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer hash;
     CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
     ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id HASH FUNCTION MURMUR;
-    ALTER DISTRIBUTION ds1 ATTACH RELATION b DISTRIBUTION KEY b_id;
+    ALTER DISTRIBUTION ds2 ATTACH RELATION b DISTRIBUTION KEY b_id;
     ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id;
     """
     Then command return code should be "0"
@@ -68,7 +68,7 @@ Feature: MemQDB save state into a file
       },
       {
         "Relation name": "b",
-        "Distribution ID": "ds1",
+        "Distribution ID": "ds2",
         "Distribution key": "(\"b_id\", identity)",
         "Schema name": "$search_path"
       },

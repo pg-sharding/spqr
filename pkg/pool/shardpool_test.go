@@ -30,12 +30,12 @@ func TestShardPoolConnectionAcquirePut(t *testing.T) {
 	ins := mockinst.NewMockDBInstance(ctrl)
 	ins.EXPECT().Hostname().AnyTimes().Return("h1")
 
-	shardconn := mockshard.NewMockShard(ctrl)
+	shardconn := mockshard.NewMockShardHostInstance(ctrl)
 	shardconn.EXPECT().Instance().AnyTimes().Return(ins)
 	shardconn.EXPECT().ID().AnyTimes().Return(uint(1234))
 	shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
 
-	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
+	shp := pool.NewShardHostPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		return shardconn, nil
 	}, config.Host{Address: "h1"}, &config.BackendRule{
 		ConnectionLimit: 1,
@@ -75,14 +75,14 @@ func TestShardPoolConnectionAcquireDiscard(t *testing.T) {
 	ins := mockinst.NewMockDBInstance(ctrl)
 	ins.EXPECT().Hostname().AnyTimes().Return("h1")
 
-	shardconn := mockshard.NewMockShard(ctrl)
+	shardconn := mockshard.NewMockShardHostInstance(ctrl)
 	shardconn.EXPECT().Instance().AnyTimes().Return(ins)
 	shardconn.EXPECT().ID().AnyTimes().Return(uint(1234))
 	shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
 
 	shardconn.EXPECT().Close().Times(1)
 
-	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
+	shp := pool.NewShardHostPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		return shardconn, nil
 	}, config.Host{Address: "h1"}, &config.BackendRule{
 		ConnectionLimit: 1,
@@ -121,7 +121,7 @@ func TestShardPoolAllocFnError(t *testing.T) {
 	ins := mockinst.NewMockDBInstance(ctrl)
 	ins.EXPECT().Hostname().AnyTimes().Return("h1")
 
-	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
+	shp := pool.NewShardHostPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		return nil, errors.New("bad")
 	}, config.Host{Address: "h1"}, &config.BackendRule{
 		ConnectionLimit: 1,
@@ -157,12 +157,12 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
 
-	conns := make(map[uint]shard.Shard, connLimit)
+	conns := make(map[uint]shard.ShardHostInstance, connLimit)
 
 	used := make(map[uint]bool, connLimit)
 
 	for i := range connLimit {
-		shardconn := mockshard.NewMockShard(ctrl)
+		shardconn := mockshard.NewMockShardHostInstance(ctrl)
 
 		ins := mockinst.NewMockDBInstance(ctrl)
 		ins.EXPECT().Hostname().AnyTimes().Return(fmt.Sprintf("h%d", i))
@@ -177,7 +177,7 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 
 	var mu sync.Mutex
 
-	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
+	shp := pool.NewShardHostPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		mu.Lock()
 		defer mu.Unlock()
 

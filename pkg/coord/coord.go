@@ -734,6 +734,9 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 		if !r.ReplicatedRelation && len(r.DistributionKey) != len(ds.ColTypes) {
 			return fmt.Errorf("cannot attach relation %v to distribution %v: number of column mismatch", r.Name, ds.ID)
 		}
+		if err := distributions.CheckRelationKeys(ds, r); err != nil {
+			return err
+		}
 		if !r.ReplicatedRelation && len(r.ColumnSequenceMapping) > 0 {
 			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequence are supported for replicated relations only")
 		}

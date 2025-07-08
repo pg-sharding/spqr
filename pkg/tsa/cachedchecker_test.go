@@ -25,10 +25,10 @@ func TestTSA_RW(t *testing.T) {
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
 
-	checker := tsa.NewTSAChecker()
+	checker := tsa.NewCachedTSAChecker()
 	instance := mockinst.NewMockDBInstance(ctrl)
 
-	sh := mocksh.NewMockShard(ctrl)
+	sh := mocksh.NewMockShardHostInstance(ctrl)
 
 	sh.EXPECT().ID().AnyTimes()
 
@@ -58,9 +58,9 @@ func TestTSA_RW(t *testing.T) {
 
 	cr, err := checker.CheckTSA(sh)
 	assert.NoError(err)
-	assert.True(cr.Alive)
-	assert.True(cr.RW)
-	assert.Equal("primary", cr.Reason)
+	assert.True(cr.CR.Alive)
+	assert.True(cr.CR.RW)
+	assert.Equal("primary", cr.CR.Reason)
 }
 
 // TestTSA_HostNotAlive tests the CheckTSA function when the host is not alive.
@@ -70,10 +70,10 @@ func TestTSA_HostNotAlive(t *testing.T) {
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
 
-	checker := tsa.NewTSAChecker()
+	checker := tsa.NewCachedTSAChecker()
 	instance := mockinst.NewMockDBInstance(ctrl)
 
-	sh := mocksh.NewMockShard(ctrl)
+	sh := mocksh.NewMockShardHostInstance(ctrl)
 
 	sh.EXPECT().ID().AnyTimes()
 	sh.EXPECT().Instance().AnyTimes().Return(instance)
@@ -85,7 +85,7 @@ func TestTSA_HostNotAlive(t *testing.T) {
 
 	cr, err := checker.CheckTSA(sh)
 	assert.Error(err)
-	assert.False(cr.Alive)
+	assert.False(cr.CR.Alive)
 }
 
 // TestTSA_CacheExpiry tests the CheckTSA function when more than recheck period has passed.
@@ -94,10 +94,10 @@ func TestTSA_CacheExpiry(t *testing.T) {
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
 
-	checker := tsa.NewTSACheckerWithDuration(time.Millisecond * 10)
+	checker := tsa.NewCachedTSACheckerWithDuration(time.Millisecond * 10)
 	instance := mockinst.NewMockDBInstance(ctrl)
 
-	sh := mocksh.NewMockShard(ctrl)
+	sh := mocksh.NewMockShardHostInstance(ctrl)
 
 	sh.EXPECT().ID().AnyTimes()
 	sh.EXPECT().Instance().AnyTimes().Return(instance)
@@ -122,8 +122,8 @@ func TestTSA_CacheExpiry(t *testing.T) {
 	// First check
 	cr1, err1 := checker.CheckTSA(sh)
 	assert.NoError(err1)
-	assert.True(cr1.Alive)
-	assert.True(cr1.RW)
+	assert.True(cr1.CR.Alive)
+	assert.True(cr1.CR.RW)
 
 	// Wait for cache to expire
 	time.Sleep(time.Second + time.Millisecond)
@@ -131,8 +131,8 @@ func TestTSA_CacheExpiry(t *testing.T) {
 	// Second check should trigger a new TSA check ()
 	cr2, err2 := checker.CheckTSA(sh)
 	assert.EqualError(err2, "network timeout")
-	assert.False(cr2.Alive)
-	assert.False(cr2.RW)
+	assert.False(cr2.CR.Alive)
+	assert.False(cr2.CR.RW)
 }
 
 // TestTSA_CacheHit tests the CheckTSA function when the cache is still valid.
@@ -141,10 +141,10 @@ func TestTSA_CacheHit(t *testing.T) {
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
 
-	checker := tsa.NewTSACheckerWithDuration(time.Second * 10)
+	checker := tsa.NewCachedTSACheckerWithDuration(time.Second * 10)
 	instance := mockinst.NewMockDBInstance(ctrl)
 
-	sh := mocksh.NewMockShard(ctrl)
+	sh := mocksh.NewMockShardHostInstance(ctrl)
 
 	sh.EXPECT().ID().AnyTimes()
 	sh.EXPECT().Instance().AnyTimes().Return(instance)
@@ -166,13 +166,13 @@ func TestTSA_CacheHit(t *testing.T) {
 	// First check
 	cr1, err1 := checker.CheckTSA(sh)
 	assert.NoError(err1)
-	assert.True(cr1.Alive)
-	assert.False(cr1.RW)
+	assert.True(cr1.CR.Alive)
+	assert.False(cr1.CR.RW)
 
 	// Second check should hit cache
 	cr2, err2 := checker.CheckTSA(sh)
 	assert.NoError(err2)
-	assert.True(cr2.Alive)
-	assert.False(cr2.RW)
+	assert.True(cr2.CR.Alive)
+	assert.False(cr2.CR.RW)
 	assert.Equal(cr1, cr2)
 }

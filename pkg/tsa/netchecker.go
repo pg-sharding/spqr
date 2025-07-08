@@ -12,8 +12,6 @@ import (
 type NetChecker struct {
 }
 
-var _ TSAChecker = (*NetChecker)(nil)
-
 // CheckTSA checks the TSA for a given shard and returns the result, comment, and error.
 // CheckTSA do not use the cache, it always check the TSA.
 //
@@ -23,7 +21,7 @@ var _ TSAChecker = (*NetChecker)(nil)
 // Returns:
 //   - CheckResult: A struct containing the result of the TSA check.
 //   - error: An error if any occurred during the process.
-func (NetChecker) CheckTSA(sh shard.Shard) (CheckResult, error) {
+func (NetChecker) CheckTSA(sh shard.ShardHostInstance) (CheckResult, error) {
 	if err := sh.Send(&pgproto3.Query{
 		String: "SHOW transaction_read_only",
 	}); err != nil {

@@ -9,7 +9,9 @@ import (
 	"sync/atomic"
 
 	"github.com/pg-sharding/spqr/pkg/catalog"
+	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"golang.org/x/sync/semaphore"
 
@@ -17,10 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/auth"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/connectiterator"
-	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/rulemgr"
-	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	rclient "github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/port"
@@ -34,7 +33,7 @@ const (
 )
 
 type RuleRouter interface {
-	connectiterator.ConnectIterator
+	connmgr.ConnectionStatsMgr
 
 	Shutdown() error
 	Reload(configPath string) error
@@ -48,8 +47,8 @@ type RuleRouter interface {
 }
 
 type RuleRouterImpl struct {
-	routePool RoutePool
-	rmgr      rulemgr.RulesMgr
+	RoutePool
+	rmgr rulemgr.RulesMgr
 
 	tlsconfig *tls.Config
 
@@ -65,6 +64,22 @@ type RuleRouterImpl struct {
 	tcpConnCount    atomic.Int64
 	activeTcpCount  atomic.Int64
 	cancelConnCount atomic.Int64
+}
+
+// InstanceHealthChecks implements RuleRouter.
+func (r *RuleRouterImpl) InstanceHealthChecks() map[string]tsa.CachedCheckResult {
+	rt := map[string]tsa.CachedCheckResult{}
+	_ = r.NotifyRoutes(func(r *route.Route) (bool, error) {
+		m := r.ServPool().InstanceHealthChecks()
+		for k, v := range m {
+			// we are interested in most recent check
+			if v2, ok := rt[k]; !ok || v2.LastCheckTime.UnixNano() > v.LastCheckTime.UnixNano() {
+				rt[k] = v
+			}
+		}
+		return true, nil
+	})
+	return rt
 }
 
 // ReleaseConnection implements RuleRouter.
@@ -85,14 +100,6 @@ func (r *RuleRouterImpl) TotalCancelCount() int64 {
 // TotalTcpCount implements RuleRouter.
 func (r *RuleRouterImpl) TotalTcpCount() int64 {
 	return r.tcpConnCount.Load()
-}
-
-func (r *RuleRouterImpl) Shutdown() error {
-	return r.routePool.Shutdown()
-}
-
-func (r *RuleRouterImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
-	return r.routePool.ForEach(cb)
 }
 
 // TODO : unit tests
@@ -146,7 +153,7 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 
 func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.Notifier) *RuleRouterImpl {
 	return &RuleRouterImpl{
-		routePool: NewRouterPoolImpl(rcfg.ShardMapping),
+		RoutePool: NewRouterPoolImpl(rcfg.ShardMapping),
 		rcfg:      rcfg,
 		rmgr:      rulemgr.NewMgr(rcfg.FrontendRules, rcfg.BackendRules),
 		tlsconfig: tlsconfig,
@@ -234,7 +241,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 
 	_ = cl.AssignRule(frRule)
 
-	rt, err := r.routePool.MatchRoute(key, beRule, frRule)
+	rt, err := r.MatchRoute(key, beRule, frRule)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +249,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	if err := cl.Auth(rt); err != nil {
 		_ = cl.ReplyErr(err)
 		if !config.RouterConfig().DisableObsoleteClient {
-			r.routePool.Obsolete(key)
+			r.Obsolete(key)
 		}
 		return cl, err
 	}
@@ -314,18 +321,18 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 
 // TODO : unit tests
 func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
-	return rr.routePool.NotifyRoutes(func(route *route.Route) error {
-		return route.NofityClients(cb)
+	return rr.NotifyRoutes(func(route *route.Route) (bool, error) {
+		return true, route.NofityClients(cb)
 	})
 }
 
 // TODO : unit tests
 func (rr *RuleRouterImpl) Pop(clientID uint) (bool, error) {
 	var popped = false
-	err := rr.routePool.NotifyRoutes(func(route *route.Route) error {
+	err := rr.NotifyRoutes(func(route *route.Route) (bool, error) {
 		ok, nestedErr := route.ReleaseClient(clientID)
 		popped = popped || ok
-		return nestedErr
+		return !popped, nestedErr
 	})
 
 	return popped, err
@@ -333,10 +340,6 @@ func (rr *RuleRouterImpl) Pop(clientID uint) (bool, error) {
 
 func (rr *RuleRouterImpl) Put(id client.Client) error {
 	return nil
-}
-
-func (rr *RuleRouterImpl) ForEachPool(cb func(pool.Pool) error) error {
-	return rr.routePool.ForEachPool(cb)
 }
 
 var _ RuleRouter = &RuleRouterImpl{}

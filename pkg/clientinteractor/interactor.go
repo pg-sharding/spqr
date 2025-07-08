@@ -13,7 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
-	"github.com/pg-sharding/spqr/pkg/connectiterator"
+	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -24,6 +24,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/statistics"
@@ -31,9 +32,9 @@ import (
 )
 
 type toString[T any] func(s T) string
-type BackendGetter func(sh shard.Shardinfo) string
+type BackendGetter func(sh shard.ShardHostInfo) string
 
-func GetRouter(sh shard.Shardinfo) string {
+func GetRouter(sh shard.ShardHostInfo) string {
 	router := "no data"
 	s, ok := sh.(shard.CoordShardinfo)
 	if ok {
@@ -54,17 +55,17 @@ var BackendConnectionsHeaders = []string{
 	"tx_served",
 	"tx status",
 }
-var BackendConnectionsGetters = map[string]toString[shard.Shardinfo]{
-	BackendConnectionsHeaders[0]: func(sh shard.Shardinfo) string { return fmt.Sprintf("%d", sh.ID()) },
+var BackendConnectionsGetters = map[string]toString[shard.ShardHostInfo]{
+	BackendConnectionsHeaders[0]: func(sh shard.ShardHostInfo) string { return fmt.Sprintf("%d", sh.ID()) },
 	BackendConnectionsHeaders[1]: GetRouter,
-	BackendConnectionsHeaders[2]: func(sh shard.Shardinfo) string { return sh.ShardKeyName() },
-	BackendConnectionsHeaders[3]: func(sh shard.Shardinfo) string { return sh.InstanceHostname() },
-	BackendConnectionsHeaders[4]: func(sh shard.Shardinfo) string { return fmt.Sprintf("%d", sh.Pid()) },
-	BackendConnectionsHeaders[5]: func(sh shard.Shardinfo) string { return sh.Usr() },
-	BackendConnectionsHeaders[6]: func(sh shard.Shardinfo) string { return sh.DB() },
-	BackendConnectionsHeaders[7]: func(sh shard.Shardinfo) string { return strconv.FormatInt(sh.Sync(), 10) },
-	BackendConnectionsHeaders[8]: func(sh shard.Shardinfo) string { return strconv.FormatInt(sh.TxServed(), 10) },
-	BackendConnectionsHeaders[9]: func(sh shard.Shardinfo) string { return sh.TxStatus().String() },
+	BackendConnectionsHeaders[2]: func(sh shard.ShardHostInfo) string { return sh.ShardKeyName() },
+	BackendConnectionsHeaders[3]: func(sh shard.ShardHostInfo) string { return sh.InstanceHostname() },
+	BackendConnectionsHeaders[4]: func(sh shard.ShardHostInfo) string { return fmt.Sprintf("%d", sh.Pid()) },
+	BackendConnectionsHeaders[5]: func(sh shard.ShardHostInfo) string { return sh.Usr() },
+	BackendConnectionsHeaders[6]: func(sh shard.ShardHostInfo) string { return sh.DB() },
+	BackendConnectionsHeaders[7]: func(sh shard.ShardHostInfo) string { return strconv.FormatInt(sh.Sync(), 10) },
+	BackendConnectionsHeaders[8]: func(sh shard.ShardHostInfo) string { return strconv.FormatInt(sh.TxServed(), 10) },
+	BackendConnectionsHeaders[9]: func(sh shard.ShardHostInfo) string { return sh.TxStatus().String() },
 }
 
 type Interactor interface {
@@ -117,7 +118,7 @@ func (pi *PSQLInteractor) CoordinatorAddr(ctx context.Context, addr string) erro
 }
 
 // TODO refactor it to make more user-friendly
-func (pi *PSQLInteractor) Instance(ctx context.Context, ci connectiterator.ConnectIterator) error {
+func (pi *PSQLInteractor) Instance(ctx context.Context, ci connmgr.ConnectionStatsMgr) error {
 	if err := pi.WriteHeader(
 		"total tcp connection count",
 		"total cancel requests",
@@ -732,7 +733,7 @@ func (pi *PSQLInteractor) DropTaskGroup(_ context.Context) error {
 // Returns:
 // - error: An error if there was a problem listing the data shards.
 func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*topology.DataShard) error {
-	if err := pi.WriteHeader("shard", "host"); err != nil {
+	if err := pi.WriteHeader("shard"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
@@ -740,15 +741,56 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*topology.DataSha
 	spqrlog.Zero.Debug().Msg("listing shards")
 
 	for _, shard := range shards {
+		if err := pi.cl.Send(&pgproto3.DataRow{
+			Values: [][]byte{
+				[]byte(shard.ID),
+			},
+		}); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
+	return pi.CompleteMsg(0)
+}
+
+func (pi *PSQLInteractor) Hosts(ctx context.Context, shards []*topology.DataShard, ihc map[string]tsa.CachedCheckResult) error {
+	if err := pi.WriteHeader("shard", "host", "alive", "rw", "time"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	spqrlog.Zero.Debug().Msg("listing hosts and statuses")
+
+	for _, shard := range shards {
 		for _, h := range shard.Cfg.Hosts() {
-			if err := pi.cl.Send(&pgproto3.DataRow{
-				Values: [][]byte{
-					[]byte(shard.ID),
-					[]byte(h),
-				},
-			}); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
-				return err
+			hc, ok := ihc[h]
+			if !ok {
+				if err := pi.cl.Send(&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte(shard.ID),
+						[]byte(h),
+						[]byte("unknown"),
+						[]byte("unknown"),
+						[]byte("unknown"),
+					},
+				}); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("")
+					return err
+				}
+			} else {
+				if err := pi.cl.Send(&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte(shard.ID),
+						[]byte(h),
+						fmt.Appendf(nil, "%v", hc.CR.Alive),
+						fmt.Appendf(nil, "%v", hc.CR.RW),
+						fmt.Appendf(nil, "%v", hc.LastCheckTime),
+					},
+				}); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("")
+					return err
+				}
 			}
 		}
 	}
@@ -1548,7 +1590,7 @@ func (pi *PSQLInteractor) KillClient(clientID uint) error {
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.Shardinfo, stmt *spqrparser.Show) error {
+func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.ShardHostInfo, stmt *spqrparser.Show) error {
 	switch gb := stmt.GroupBy.(type) {
 	case spqrparser.GroupBy:
 		return groupBy(shs, BackendConnectionsGetters, gb.Col.ColName, pi)

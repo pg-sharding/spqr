@@ -626,7 +626,7 @@ func (cl *PsqlClient) ID() uint {
 	return cl.id
 }
 
-func (cl *PsqlClient) Shards() []shard.Shard {
+func (cl *PsqlClient) Shards() []shard.ShardHostInstance {
 
 	serv := cl.serverP.Load()
 
@@ -1206,7 +1206,7 @@ func NewNoopClient(clientInfo *routerproto.ClientInfo, rAddr string) NoopClient 
 		dbname: clientInfo.Dbname,
 		dsname: clientInfo.Dsname,
 		rAddr:  rAddr,
-		shards: make([]shard.Shard, len(clientInfo.Shards)),
+		shards: make([]shard.ShardHostInstance, len(clientInfo.Shards)),
 	}
 	for _, shardInfo := range clientInfo.Shards {
 		client.shards = append(client.shards, MockShard{instance: MockDBInstance{hostname: shardInfo.Instance.Hostname}})
@@ -1220,7 +1220,7 @@ type NoopClient struct {
 	user   string
 	dbname string
 	dsname string
-	shards []shard.Shard
+	shards []shard.ShardHostInstance
 	rAddr  string
 }
 
@@ -1240,12 +1240,12 @@ func (c NoopClient) RAddr() string {
 	return c.rAddr
 }
 
-func (c NoopClient) Shards() []shard.Shard {
+func (c NoopClient) Shards() []shard.ShardHostInstance {
 	return c.shards
 }
 
 type MockShard struct {
-	shard.Shard
+	shard.ShardHostInstance
 
 	instance MockDBInstance
 }
@@ -1265,5 +1265,5 @@ func (dbi MockDBInstance) Hostname() string {
 }
 
 var _ client.ClientInfo = &NoopClient{}
-var _ shard.Shard = &MockShard{}
+var _ shard.ShardHostInstance = &MockShard{}
 var _ conn.DBInstance = &MockDBInstance{}

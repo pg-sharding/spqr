@@ -8,7 +8,7 @@ package shard
 //
 // Returns:
 //   - []uint: A slice of shard IDs.
-func ShardIDs(shards []Shard) []uint {
+func ShardIDs(shards []ShardHostInstance) []uint {
 	ret := []uint{}
 	for _, shard := range shards {
 		ret = append(ret, shard.ID())

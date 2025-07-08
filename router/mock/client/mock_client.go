@@ -1124,10 +1124,10 @@ func (mr *MockRouterClientMockRecorder) ShardingKey() *gomock.Call {
 }
 
 // Shards mocks base method.
-func (m *MockRouterClient) Shards() []shard.Shard {
+func (m *MockRouterClient) Shards() []shard.ShardHostInstance {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Shards")
-	ret0, _ := ret[0].([]shard.Shard)
+	ret0, _ := ret[0].([]shard.ShardHostInstance)
 	return ret0
 }
 

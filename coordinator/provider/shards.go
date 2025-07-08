@@ -90,7 +90,7 @@ func (c *CoordShardInfo) ListPreparedStatements() []shard.PreparedStatementsMgrD
 	return nil
 }
 
-func NewCoordShardInfo(conn *protos.BackendConnectionsInfo, router string) shard.Shardinfo {
+func NewCoordShardInfo(conn *protos.BackendConnectionsInfo, router string) shard.ShardHostInfo {
 	return &CoordShardInfo{
 		underlying: conn,
 		router:     router,

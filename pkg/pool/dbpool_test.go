@@ -59,13 +59,13 @@ func TestDbPoolOrderCaching(t *testing.T) {
 	ins3.EXPECT().Hostname().AnyTimes().Return("h3")
 	ins3.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
-	h1 := mockshard.NewMockShard(ctrl)
+	h1 := mockshard.NewMockShardHostInstance(ctrl)
 	h1.EXPECT().Instance().AnyTimes().Return(ins1)
 
-	h2 := mockshard.NewMockShard(ctrl)
+	h2 := mockshard.NewMockShardHostInstance(ctrl)
 	h2.EXPECT().Instance().AnyTimes().Return(ins2)
 
-	h3 := mockshard.NewMockShard(ctrl)
+	h3 := mockshard.NewMockShardHostInstance(ctrl)
 	h3.EXPECT().Instance().AnyTimes().Return(ins3)
 
 	h1.EXPECT().ID().AnyTimes().Return(uint(1))
@@ -74,7 +74,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	h3.EXPECT().ID().AnyTimes().Return(uint(3))
 
-	hs := []*mockshard.MockShard{
+	hs := []*mockshard.MockShardHostInstance{
 		h1, h2, h3,
 	}
 
@@ -144,7 +144,7 @@ func TestDbPoolRaces(t *testing.T) {
 
 	sz := 50
 
-	mp := map[string]map[string][]shard.Shard{}
+	mp := map[string]map[string][]shard.ShardHostInstance{}
 	var mu sync.Mutex
 
 	hosts := []string{
@@ -160,12 +160,12 @@ func TestDbPoolRaces(t *testing.T) {
 	}
 
 	for i, shname := range shards {
-		mp[shname] = map[string][]shard.Shard{}
+		mp[shname] = map[string][]shard.ShardHostInstance{}
 
 		for hi, hst := range hosts {
 
 			for j := 0; j < sz; j++ {
-				sh := mockshard.NewMockShard(ctrl)
+				sh := mockshard.NewMockShardHostInstance(ctrl)
 
 				ins1 := mockinst.NewMockDBInstance(ctrl)
 				ins1.EXPECT().Hostname().Return(hst).AnyTimes()
@@ -218,14 +218,14 @@ func TestDbPoolRaces(t *testing.T) {
 		}
 	}
 
-	dbpool := pool.NewDBPoolWithAllocator(cfg, &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
+	dbpool := pool.NewDBPoolWithAllocator(cfg, &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		mu.Lock()
 		defer mu.Unlock()
 
 		if len(mp[shardKey.Name][host.Address]) == 0 {
 			panic("exceeded!")
 		}
-		var sh shard.Shard
+		var sh shard.ShardHostInstance
 		sh, mp[shardKey.Name][host.Address] = mp[shardKey.Name][host.Address][0], mp[shardKey.Name][host.Address][1:]
 
 		spqrlog.Zero.Debug().Str("shard", shardKey.Name).Str("host", host.Address).Uint("id", sh.ID()).Msg("test allocation")
@@ -291,13 +291,13 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 	ins3.EXPECT().Hostname().AnyTimes().Return("h3")
 	ins3.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
-	h1 := mockshard.NewMockShard(ctrl)
+	h1 := mockshard.NewMockShardHostInstance(ctrl)
 	h1.EXPECT().Instance().AnyTimes().Return(ins1)
 
-	h2 := mockshard.NewMockShard(ctrl)
+	h2 := mockshard.NewMockShardHostInstance(ctrl)
 	h2.EXPECT().Instance().AnyTimes().Return(ins2)
 
-	h3 := mockshard.NewMockShard(ctrl)
+	h3 := mockshard.NewMockShardHostInstance(ctrl)
 	h3.EXPECT().Instance().AnyTimes().Return(ins3)
 
 	h1.EXPECT().ID().AnyTimes().Return(uint(1))
@@ -306,7 +306,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	h3.EXPECT().ID().AnyTimes().Return(uint(3))
 
-	hs := []*mockshard.MockShard{
+	hs := []*mockshard.MockShardHostInstance{
 		h1, h2, h3,
 	}
 

@@ -29,7 +29,7 @@ func NewMultiDBPool(mapping map[string]*config.Shard, be *config.BackendRule, po
 	}
 }
 
-func (p *MultiDBPool) Put(conn shard.Shard) error {
+func (p *MultiDBPool) Put(conn shard.ShardHostInstance) error {
 	spqrlog.Zero.Debug().
 		Uint("shard", conn.ID()).
 		Str("host", conn.Instance().Hostname()).
@@ -43,7 +43,7 @@ func (p *MultiDBPool) Put(conn shard.Shard) error {
 	return pool.(*DBPool).Put(conn)
 }
 
-func (p *MultiDBPool) Discard(conn shard.Shard) error {
+func (p *MultiDBPool) Discard(conn shard.ShardHostInstance) error {
 	spqrlog.Zero.Debug().
 		Uint("shard", conn.ID()).
 		Str("host", conn.Instance().Hostname()).
@@ -57,8 +57,8 @@ func (p *MultiDBPool) Discard(conn shard.Shard) error {
 	return pool.(*DBPool).Discard(conn)
 }
 
-func (p *MultiDBPool) Connection(db string) (shard.Shard, error) {
-	var pool *DBPool
+func (p *MultiDBPool) Connection(db string) (shard.ShardHostInstance, error) {
+	var pool MultiShardPool
 	poolElement, exist := p.dbs.Load(db)
 
 	// get or create db pool
@@ -87,7 +87,7 @@ func (p *MultiDBPool) Connection(db string) (shard.Shard, error) {
 }
 
 func (p *MultiDBPool) View() Statistics {
-	panic("DBPool.View not implemented")
+	panic("MultiDBPool.View not implemented")
 }
 
 func getRandomShard(mapping map[string]*config.Shard) (string, *config.Shard) {

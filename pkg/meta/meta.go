@@ -11,7 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/connectiterator"
+	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -451,7 +451,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, rc rclient.RouterClient, writer workloadlog.WorkloadLog, ro bool) error {
+func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connmgr.ConnectionStatsMgr, rc rclient.RouterClient, writer workloadlog.WorkloadLog, ro bool) error {
 	cli := clientinteractor.NewPSQLInteractor(rc)
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 
@@ -600,11 +600,11 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 //
 // Returns:
 // - error: An error if the operation encounters any issues.
-func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, pool client.Pool, cli *clientinteractor.PSQLInteractor) error {
+func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, clPool client.Pool, cli *clientinteractor.PSQLInteractor) error {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process kill")
 	switch stmt.Cmd {
 	case spqrparser.ClientStr:
-		ok, err := pool.Pop(stmt.Target)
+		ok, err := clPool.Pop(stmt.Target)
 		if err != nil {
 			return err
 		}
@@ -630,13 +630,13 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, poo
 //
 // Returns:
 // - error: An error if the operation encounters any issues.
-func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor, ro bool) error {
+func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connmgr.ConnectionStatsMgr, cli *clientinteractor.PSQLInteractor, ro bool) error {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
 	switch stmt.Cmd {
 	case spqrparser.BackendConnectionsStr:
 
-		var resp []shard.Shardinfo
-		if err := ci.ForEach(func(sh shard.Shardinfo) error {
+		var resp []shard.ShardHostInfo
+		if err := ci.ForEach(func(sh shard.ShardHostInfo) error {
 			resp = append(resp, sh)
 			return nil
 		}); err != nil {
@@ -650,6 +650,15 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 		return cli.Shards(ctx, shards)
+	case spqrparser.HostsStr:
+		shards, err := mngr.ListShards(ctx)
+		if err != nil {
+			return err
+		}
+
+		ihc := ci.InstanceHealthChecks()
+
+		return cli.Hosts(ctx, shards, ihc)
 	case spqrparser.KeyRangesStr:
 		ranges, err := mngr.ListAllKeyRanges(ctx)
 		if err != nil {
@@ -770,7 +779,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	case spqrparser.PreparedStatementsStr:
 
 		var resp []shard.PreparedStatementsMgrDescriptor
-		if err := ci.ForEach(func(sh shard.Shardinfo) error {
+		if err := ci.ForEach(func(sh shard.ShardHostInfo) error {
 			resp = append(resp, sh.ListPreparedStatements()...)
 			return nil
 		}); err != nil {
