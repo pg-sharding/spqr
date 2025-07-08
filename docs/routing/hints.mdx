@@ -24,11 +24,47 @@ For every query, you may specify special hints in different ways:
     RESET __spqr__default_route_behaviour;
     ```
 
-Virtual parameters and hint effect context differes depending on how user use them.
-Generally, virtual parameters honors transaction blocks and bound, and also support savepoint feature.
-So, defining virtual parameter using sql comment in query text will take effect only on statement level.
-Defining virtual parameter using SET statement will take effect in transaction block bound. If no explicit transaction started, 
-virtual parameter value will be session-wide.
+The context of virtual parameters and hint effects varies based on the user's usage.
+In general, virtual parameters support the savepoint feature and respect transaction blocks and bounds.
+Therefore, utilizing a SQL comment to define a virtual parameter in the query text will only affect the statement level.
+Using the SET statement to define a virtual parameter will take effect when the transaction block is bound. The value of the virtual parameter will be session-wide if no explicit transaction is initiated.
+
+
+Example:
+
+```
+db1=# show __spqr__commit_strategy;
+ __spqr__commit_strategy
+-------------------------
+ best-effort
+(1 row)
+
+db1=# set __spqr__commit_strategy to '2pc';
+SET
+db1=# show __spqr__commit_strategy;
+ __spqr__commit_strategy
+-------------------------
+ 2pc
+(1 row)
+
+db1=# begin;
+BEGIN
+db1=*# set __spqr__commit_strategy to '1pc';
+SET
+db1=*# show __spqr__commit_strategy;
+ __spqr__commit_strategy
+-------------------------
+ 1pc
+(1 row)
+
+db1=*# rollback ;
+ROLLBACK
+db1=# show __spqr__commit_strategy;
+ __spqr__commit_strategy
+-------------------------
+ 2pc
+(1 row)
+```
 
 
 ### __spqr__target_session_attrs
