@@ -5,7 +5,7 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer hash;
     add distribution    
 ------------------------
  distribution id -> ds1
@@ -42,7 +42,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION r4 DISTRIBUTION KEY col1 HASH FUNCTION CI
 SHOW DISTRIBUTIONS;
  Distribution ID | Column types | Default shard 
 -----------------+--------------+---------------
- ds1             | integer      | not exists
+ ds1             | uinteger     | not exists
 (1 row)
 
 SHOW RELATIONS;
