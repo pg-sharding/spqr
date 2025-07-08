@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -89,8 +90,7 @@ func (kr *KeyRange) OutFunc(attribInd int) []byte {
 	case qdb.ColumnTypeVarcharHashed:
 		fallthrough
 	case qdb.ColumnTypeUinteger:
-		raw := make([]byte, binary.MaxVarintLen64)
-		_ = binary.PutUvarint(raw, kr.LowerBound[attribInd].(uint64))
+		raw := hashfunction.EncodeUInt64(kr.LowerBound[attribInd].(uint64))
 		return raw
 	case qdb.ColumnTypeVarcharDeprecated:
 		fallthrough

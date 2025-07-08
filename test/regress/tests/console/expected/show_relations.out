@@ -66,7 +66,7 @@ SHOW relations;
  a             | ds1             | ("a_id", identity)                    | $search_path
  d             | ds1             | ("d_id", identity)                    | $search_path
  c             | ds2             | ("c_id_1", identity),("c_id_2", city) | $search_path
- b             | ds1             | ("b_id", murmur)                      | $search_path
+ b             | ds3             | ("b_id", murmur)                      | $search_path
 (5 rows)
 
 SHOW relations WHERE distribution_id = 'ds1';
