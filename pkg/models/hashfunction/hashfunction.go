@@ -69,8 +69,7 @@ func ApplyHashFunction(input interface{}, ctype string, hf HashFunctionType) (in
 	case HashFunctionMurmur:
 		switch ctype {
 		case qdb.ColumnTypeInteger:
-			buf := make([]byte, binary.MaxVarintLen64)
-			binary.PutVarint(buf, input.(int64))
+			buf := EncodeUInt64(uint64(input.(int64)))
 			h := murmur3.Sum32(buf)
 			return uint64(h), nil
 
@@ -97,8 +96,7 @@ func ApplyHashFunction(input interface{}, ctype string, hf HashFunctionType) (in
 	case HashFunctionCity:
 		switch ctype {
 		case qdb.ColumnTypeInteger:
-			buf := make([]byte, binary.MaxVarintLen64)
-			binary.PutVarint(buf, input.(int64))
+			buf := EncodeUInt64(uint64(input.(int64)))
 			h := city.Hash32(buf)
 			return uint64(h), nil
 

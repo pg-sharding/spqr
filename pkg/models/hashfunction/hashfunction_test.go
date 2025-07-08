@@ -82,28 +82,28 @@ func TestApplyHashFunction(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			input:        9223372036854775807,
-			expected:     2412692792,
+			expected:     3119878097,
 			hashfunction: hfMur,
 			columnType:   qdb.ColumnTypeInteger,
 			err:          nil,
 		},
 		{
 			input:        9223372036854775807,
-			expected:     750247223,
+			expected:     2380995212,
 			hashfunction: hfCity,
 			columnType:   qdb.ColumnTypeInteger,
 			err:          nil,
 		},
 		{
 			input:        -9223372036854775808,
-			expected:     1021405426,
+			expected:     1367477491,
 			hashfunction: hfMur,
 			columnType:   qdb.ColumnTypeInteger,
 			err:          nil,
 		},
 		{
 			input:        -9223372036854775808,
-			expected:     1774419245,
+			expected:     1856670072,
 			hashfunction: hfCity,
 			columnType:   qdb.ColumnTypeInteger,
 			err:          nil,
