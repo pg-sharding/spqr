@@ -6,6 +6,9 @@ CREATE KEY RANGE FROM 0 ROUTE TO sh1;
 
 \c regress
 
+-- should fail
+CREATE TABLE zz(i int, j int, k int);
+
 CREATE TABLE zz(i int, j int, k int) /* __spqr__auto_distribution: REPLICATED */;
 
 INSERT INTO zz (i,j,k) VALUES(1,2,3);
@@ -18,6 +21,8 @@ TABLE zz /* __spqr__execute_on: sh2 */;
 TABLE zz /* __spqr__execute_on: sh3 */;
 TABLE zz /* __spqr__execute_on: sh4 */;
 
+-- should fail
+CREATE TABLE d_zz (i int, j int);
 
 CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 
