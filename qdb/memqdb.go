@@ -656,6 +656,18 @@ func (q *MemQDB) GetReferenceRelation(_ context.Context, relName *rfqn.RelationF
 	}
 }
 
+// AlterReferenceRelationStorage implements XQDB.
+func (q *MemQDB) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	tableName := relName.RelationName
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if _, ok := q.ReferenceRelations[tableName]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
+	}
+	q.ReferenceRelations[tableName].ShardIds = shs
+	return nil
+}
+
 // DropReferenceRelation implements XQDB.
 func (q *MemQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
 	tableName := relName.RelationName

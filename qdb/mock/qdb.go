@@ -341,6 +341,20 @@ func (mr *MockQDBMockRecorder) AlterDistributionDetach(ctx, id, relName any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributionDetach", reflect.TypeOf((*MockQDB)(nil).AlterDistributionDetach), ctx, id, relName)
 }
 
+// AlterReferenceRelationStorage mocks base method.
+func (m *MockQDB) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterReferenceRelationStorage", ctx, relName, shs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterReferenceRelationStorage indicates an expected call of AlterReferenceRelationStorage.
+func (mr *MockQDBMockRecorder) AlterReferenceRelationStorage(ctx, relName, shs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorage", reflect.TypeOf((*MockQDB)(nil).AlterReferenceRelationStorage), ctx, relName, shs)
+}
+
 // AlterSequenceAttach mocks base method.
 func (m *MockQDB) AlterSequenceAttach(ctx context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error {
 	m.ctrl.T.Helper()
@@ -1142,6 +1156,20 @@ func (m *MockXQDB) AlterDistributionDetach(ctx context.Context, id string, relNa
 func (mr *MockXQDBMockRecorder) AlterDistributionDetach(ctx, id, relName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributionDetach", reflect.TypeOf((*MockXQDB)(nil).AlterDistributionDetach), ctx, id, relName)
+}
+
+// AlterReferenceRelationStorage mocks base method.
+func (m *MockXQDB) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterReferenceRelationStorage", ctx, relName, shs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterReferenceRelationStorage indicates an expected call of AlterReferenceRelationStorage.
+func (mr *MockXQDBMockRecorder) AlterReferenceRelationStorage(ctx, relName, shs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorage", reflect.TypeOf((*MockXQDB)(nil).AlterReferenceRelationStorage), ctx, relName, shs)
 }
 
 // AlterSequenceAttach mocks base method.

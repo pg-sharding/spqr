@@ -23,6 +23,15 @@ CREATE REFERENCE RELATION zz2;
 ERROR:  reference relation zz2 already exists
 SYNC REFERENCE TABLES ON sh1;
 ERROR:  request is unprocessable in router
+DROP REFERENCE RELATION zz2;
+ drop reference table 
+----------------------
+ table -> zz2
+(1 row)
+
+--should fail
+DROP REFERENCE RELATION zz2;
+ERROR:  reference relation "zz2" not found
 DROP DISTRIBUTION ALL CASCADE;
        drop distribution       
 -------------------------------

@@ -583,7 +583,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 	case *spqrparser.SyncReferenceTables:
 		/* TODO: fix RelationSelector logic */
 		if err := mgr.SyncReferenceRelations(ctx, []*rfqn.RelationFQN{
-			&rfqn.RelationFQN{
+			{
 				RelationName: stmt.RelationSelector},
 		}, stmt.ShardID); err != nil {
 			return err
