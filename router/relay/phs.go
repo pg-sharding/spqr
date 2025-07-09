@@ -17,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
 	"github.com/pg-sharding/spqr/router/plan"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/twopc"
@@ -255,11 +256,11 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		Uint("client", s.cl.ID()).
 		Msg("client pre-process copy")
 
-	var relname string
+	var relname rfqn.RelationFQN
 
 	switch q := stmt.TableRef.(type) {
 	case *lyx.RangeVar:
-		relname = q.RelationName
+		relname = rfqn.RelationFQNFromRangeRangeVar(q)
 	}
 	// Read delimiter from COPY options
 	delimiter := byte('\t')
@@ -284,12 +285,12 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 	}
 
 	// TODO: check by whole RFQN
-	ds, err := mgr.GetRelationDistribution(ctx, relname)
+	ds, err := mgr.GetRelationDistribution(ctx, &relname)
 	if err != nil {
 		return nil, err
 	}
 	if ds.Id == distributions.REPLICATED {
-		rr, err := mgr.GetReferenceRelation(ctx, relname)
+		rr, err := mgr.GetReferenceRelation(ctx, relname.RelationName)
 		if err != nil {
 			return nil, err
 		}
@@ -300,17 +301,17 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		}, nil
 	}
 
-	hashFunc := make([]hashfunction.HashFunctionType, len(ds.Relations[relname].DistributionKey))
+	hashFunc := make([]hashfunction.HashFunctionType, len(ds.Relations[relname.String()].DistributionKey))
 
 	krs, err := mgr.ListKeyRanges(ctx, ds.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	co := make([]int, len(ds.Relations[relname].DistributionKey))
-	for dKey := range ds.Relations[relname].DistributionKey {
+	co := make([]int, len(ds.Relations[relname.String()].DistributionKey))
+	for dKey := range ds.Relations[relname.String()].DistributionKey {
 
-		if v, err := hashfunction.HashFunctionByName(ds.Relations[relname].DistributionKey[dKey].HashFunction); err != nil {
+		if v, err := hashfunction.HashFunctionByName(ds.Relations[relname.String()].DistributionKey[dKey].HashFunction); err != nil {
 			return nil, err
 		} else {
 			hashFunc[dKey] = v
@@ -318,7 +319,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 
 		colOffset := -1
 		for indx, c := range stmt.Columns {
-			if c == ds.Relations[relname].DistributionKey[dKey].Column {
+			if c == ds.Relations[relname.String()].DistributionKey[dKey].Column {
 				colOffset = indx
 				break
 			}

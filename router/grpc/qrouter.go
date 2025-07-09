@@ -17,8 +17,8 @@ import (
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rulerouter"
-	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -185,7 +185,7 @@ func (l *LocalQrouterServer) AlterDistributionAttach(ctx context.Context, reques
 // TODO: unit tests
 func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, request *protos.AlterDistributionDetachRequest) (*emptypb.Empty, error) {
 	for _, relName := range request.GetRelNames() {
-		qualifiedName := &spqrparser.QualifiedName{Name: relName}
+		qualifiedName := &rfqn.RelationFQN{RelationName: relName.RelationName, SchemaName: relName.SchemaName}
 		if err := l.mgr.AlterDistributionDetach(ctx, request.GetId(), qualifiedName); err != nil {
 			return nil, err
 		}
@@ -212,7 +212,8 @@ func (l *LocalQrouterServer) GetDistribution(ctx context.Context, request *proto
 // GetRelationDistribution retrieves info about distribution attached to relation from QDB
 // TODO: unit tests
 func (l *LocalQrouterServer) GetRelationDistribution(ctx context.Context, request *protos.GetRelationDistributionRequest) (*protos.GetRelationDistributionReply, error) {
-	ds, err := l.mgr.GetRelationDistribution(ctx, request.GetId())
+	qualifiedName := rfqn.RelationFQN{RelationName: request.Name, SchemaName: request.SchemaName}
+	ds, err := l.mgr.GetRelationDistribution(ctx, &qualifiedName)
 	if err != nil {
 		return nil, err
 	}

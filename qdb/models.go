@@ -1,5 +1,9 @@
 package qdb
 
+import (
+	"github.com/pg-sharding/spqr/router/rfqn"
+)
+
 type ShardKey struct {
 	Name string
 	RW   bool
@@ -87,6 +91,10 @@ type DistributedRelation struct {
 	SchemaName         string                 `json:"schema_name,omitempty"`
 	DistributionKey    []DistributionKeyEntry `json:"column_names"`
 	ReplicatedRelation bool                   `json:"replicated_relation,omitempty"`
+}
+
+func (r *DistributedRelation) QualifiedName() rfqn.RelationFQN {
+	return rfqn.RelationFQN{RelationName: r.Name, SchemaName: r.SchemaName}
 }
 
 type Distribution struct {

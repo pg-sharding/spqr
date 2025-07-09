@@ -43,6 +43,7 @@ import (
 	"github.com/pg-sharding/spqr/router/cache"
 	rclient "github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/port"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/route"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"google.golang.org/grpc"
@@ -2012,7 +2013,7 @@ func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string
 
 // AlterDistributionDetach detaches relation from distribution
 // TODO: unit tests
-func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName *spqrparser.QualifiedName) error {
+func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
 	/* Do what needs to be done in metadata */
 	if err := qc.Coordinator.AlterDistributionDetach(ctx, id, relName); err != nil {
 		return err
@@ -2020,9 +2021,10 @@ func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id 
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewDistributionServiceClient(cc)
+		protoRelation := routerproto.QualifiedName{RelationName: relName.RelationName, SchemaName: relName.SchemaName}
 		resp, err := cl.AlterDistributionDetach(context.TODO(), &routerproto.AlterDistributionDetachRequest{
 			Id:       id,
-			RelNames: []string{relName.Name},
+			RelNames: []*routerproto.QualifiedName{&protoRelation},
 		})
 		if err != nil {
 			return err
