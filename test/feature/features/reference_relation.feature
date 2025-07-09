@@ -155,7 +155,7 @@ Feature: Reference relation test
     # Step 3: Add a new shard (sh3)
     When I run SQL on host "coordinator"
     """
-    ADD SHARD sh3;
+    ADD SHARD sh3 WITH HOSTS 'postgresql://regress@spqr_shard_3:6432/regress';
     """
     Then command return code should be "0"
 
