@@ -1879,6 +1879,10 @@ func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relN
 
 			rel, err := qc.Coordinator.GetReferenceRelation(ctx, relName)
 
+			if err != nil {
+				return err
+			}
+
 			resp, err := cl.AlterReferenceRelationStorage(context.TODO(),
 				&proto.AlterReferenceRelationStorageRequest{
 					Relation: &proto.QualifiedName{
