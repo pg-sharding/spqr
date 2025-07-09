@@ -92,7 +92,12 @@ func (a *Adapter) DropReferenceRelation(ctx context.Context, relName *rfqn.Relat
 	/* XXX: fix protos to new schema */
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
 	_, err := c.DropReferenceRelations(ctx, &proto.DropReferenceRelationsRequest{
-		Ids: []string{relName.RelationName},
+		Relations: []*proto.QualifiedName{
+			{
+				RelationName: relName.RelationName,
+				SchemaName:   relName.SchemaName,
+			},
+		},
 	})
 	return err
 }

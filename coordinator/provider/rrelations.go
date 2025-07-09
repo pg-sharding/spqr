@@ -33,9 +33,10 @@ func (rr *ReferenceRelationServer) CreateReferenceRelations(ctx context.Context,
 }
 
 func (rr *ReferenceRelationServer) DropReferenceRelations(ctx context.Context, req *protos.DropReferenceRelationsRequest) (*emptypb.Empty, error) {
-	for _, id := range req.GetIds() {
+	for _, qualName := range req.GetRelations() {
 		if err := rr.impl.DropReferenceRelation(ctx, &rfqn.RelationFQN{
-			RelationName: id,
+			RelationName: qualName.RelationName,
+			SchemaName:   qualName.SchemaName,
 		}); err != nil {
 			return nil, err
 		}

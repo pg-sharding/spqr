@@ -5,6 +5,7 @@ package spqr;
 option go_package = "spqr/proto";
 
 import "google/protobuf/empty.proto";
+import "protos/qualified_name.proto";
 
 message ReferenceRelation {
   string name = 1;
@@ -24,7 +25,7 @@ message CreateReferenceRelationsRequest {
 }
 
 message DropReferenceRelationsRequest {
-  repeated string ids = 1;
+  repeated QualifiedName relations = 1;
 }
 
 
@@ -34,7 +35,7 @@ message ListReferenceRelationsReply {
 
 message SyncReferenceRelationsRequest {
     string shard_id = 1;
-    repeated string ids = 2;
+    repeated QualifiedName relations = 2;
 }
 
 service ReferenceRelationsService {

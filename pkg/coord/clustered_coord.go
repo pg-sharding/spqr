@@ -33,6 +33,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/rulemgr"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -1878,7 +1879,10 @@ func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 		cl := routerproto.NewReferenceRelationsServiceClient(cc)
 		resp, err := cl.DropReferenceRelations(context.TODO(),
 			&routerproto.DropReferenceRelationsRequest{
-				Ids: []string{relName.RelationName},
+				Relations: []*proto.QualifiedName{{
+					RelationName: relName.RelationName,
+					SchemaName:   relName.SchemaName,
+				}},
 			})
 		if err != nil {
 			return err
