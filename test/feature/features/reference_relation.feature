@@ -114,9 +114,9 @@ Feature: Reference relation test
     When I execute SQL on host "router"
     """
     CREATE TABLE sync_test(id int, data text);
-    INSERT INTO sync_test (id, data) VALUES(1, 'data1');
-    INSERT INTO sync_test (id, data) VALUES(2, 'data2');
-    INSERT INTO sync_test (id, data) VALUES(3, 'data3');
+    INSERT INTO sync_test (id, data) VALUES(1, 'data1')  /* __spqr__engine_v2: true */;
+    INSERT INTO sync_test (id, data) VALUES(2, 'data2')  /* __spqr__engine_v2: true */;
+    INSERT INTO sync_test (id, data) VALUES(3, 'data3')  /* __spqr__engine_v2: true */;
     """
     Then command return code should be "0"
 
