@@ -5,15 +5,11 @@ package spqr;
 option go_package = "spqr/proto";
 
 import "google/protobuf/empty.proto";
+import "protos/qualified_name.proto";
 
 message DistributionKeyEntry {
   string column = 1;
   string hashFunction = 2;
-}
-
-message QualifiedName {
-  string relationName = 1;
-  string schema_name = 2;
 }
 
 message DistributedRelation {
@@ -44,7 +40,6 @@ message DropDistributionRequest {
 
 message AlterDistributionAttachRequest{
   string id = 1;
-  repeated string ColumnNames = 2;
   repeated DistributedRelation relations = 3;
 }
 

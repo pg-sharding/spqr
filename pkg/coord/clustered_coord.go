@@ -33,7 +33,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
-	routerproto "github.com/pg-sharding/spqr/pkg/protos"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/rulemgr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -117,7 +117,7 @@ func (ci grpcConnMgr) IterRouter(cb func(cc *grpc.ClientConn, addr string) error
 func (ci grpcConnMgr) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
 		ctx := context.TODO()
-		rrClient := routerproto.NewClientInfoServiceClient(cc)
+		rrClient := proto.NewClientInfoServiceClient(cc)
 
 		spqrlog.Zero.Debug().Msg("fetch clients with grpc")
 		resp, err := rrClient.ListClients(ctx, nil)
@@ -158,7 +158,7 @@ func (ci grpcConnMgr) Shutdown() error {
 func (ci grpcConnMgr) ForEach(cb func(sh shard.ShardHostInfo) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
 		ctx := context.TODO()
-		rrBackConn := routerproto.NewBackendConnectionsServiceClient(cc)
+		rrBackConn := proto.NewBackendConnectionsServiceClient(cc)
 
 		spqrlog.Zero.Debug().Msg("fetch clients with grpc")
 		resp, err := rrBackConn.ListBackendConnections(ctx, nil)
@@ -181,7 +181,7 @@ func (ci grpcConnMgr) ForEach(cb func(sh shard.ShardHostInfo) error) error {
 func (ci grpcConnMgr) ForEachPool(cb func(p pool.Pool) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
 		ctx := context.TODO()
-		rrBackConn := routerproto.NewPoolServiceClient(cc)
+		rrBackConn := proto.NewPoolServiceClient(cc)
 
 		spqrlog.Zero.Debug().Msg("fetch pools with grpc")
 		resp, err := rrBackConn.ListPools(ctx, nil)
@@ -273,7 +273,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 					}
 				}()
 
-				rrClient := routerproto.NewTopologyServiceClient(cc)
+				rrClient := proto.NewTopologyServiceClient(cc)
 
 				resp, err := rrClient.GetRouterStatus(ctx, nil)
 				if err != nil {
@@ -281,7 +281,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 				}
 
 				switch resp.Status {
-				case routerproto.RouterStatus_CLOSED:
+				case proto.RouterStatus_CLOSED:
 					spqrlog.Zero.Debug().Msg("router is closed")
 					if err := qc.SyncRouterCoordinatorAddress(ctx, internalR); err != nil {
 						return err
@@ -293,7 +293,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 						return err
 					}
 
-				case routerproto.RouterStatus_OPENED:
+				case proto.RouterStatus_OPENED:
 					spqrlog.Zero.Debug().Msg("router is opened")
 
 					/* TODO: check router metadata consistency */
@@ -525,8 +525,8 @@ func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewKeyRangeServiceClient(cc)
-		resp, err := cl.CreateKeyRange(ctx, &routerproto.CreateKeyRangeRequest{
+		cl := proto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{
 			KeyRangeInfo: keyRange.ToProto(),
 		})
 		spqrlog.Zero.Debug().Err(err).
@@ -549,8 +549,8 @@ func (qc *ClusteredCoordinator) LockKeyRange(ctx context.Context, keyRangeID str
 	}
 
 	return keyRange, qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewKeyRangeServiceClient(cc)
-		resp, err := cl.LockKeyRange(ctx, &routerproto.LockKeyRangeRequest{
+		cl := proto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.LockKeyRange(ctx, &proto.LockKeyRangeRequest{
 			Id: []string{keyRangeID},
 		})
 
@@ -567,8 +567,8 @@ func (qc *ClusteredCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID s
 		return err
 	}
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewKeyRangeServiceClient(cc)
-		resp, err := cl.UnlockKeyRange(ctx, &routerproto.UnlockKeyRangeRequest{
+		cl := proto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.UnlockKeyRange(ctx, &proto.UnlockKeyRangeRequest{
 			Id: []string{keyRangeID},
 		})
 
@@ -588,8 +588,8 @@ func (qc *ClusteredCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewKeyRangeServiceClient(cc)
-		resp, err := cl.SplitKeyRange(ctx, &routerproto.SplitKeyRangeRequest{
+		cl := proto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.SplitKeyRange(ctx, &proto.SplitKeyRangeRequest{
 			Bound:     req.Bound[0], // fix multidim case
 			SourceId:  req.SourceID,
 			NewId:     req.Krid,
@@ -612,7 +612,7 @@ func (qc *ClusteredCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all key ranges")
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewKeyRangeServiceClient(cc)
+		cl := proto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.DropAllKeyRanges(ctx, nil)
 		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
@@ -631,8 +631,8 @@ func (qc *ClusteredCoordinator) DropKeyRange(ctx context.Context, id string) err
 	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all sharding keys")
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewKeyRangeServiceClient(cc)
-		resp, err := cl.DropKeyRange(ctx, &routerproto.DropKeyRangeRequest{
+		cl := proto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.DropKeyRange(ctx, &proto.DropKeyRangeRequest{
 			Id: []string{id},
 		})
 		spqrlog.Zero.Debug().Err(err).
@@ -654,8 +654,8 @@ func (qc *ClusteredCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.Uni
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewKeyRangeServiceClient(cc)
-		resp, err := cl.MergeKeyRange(ctx, &routerproto.MergeKeyRangeRequest{
+		cl := proto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
 			BaseId:      uniteKeyRange.BaseKeyRangeId,
 			AppendageId: uniteKeyRange.AppendageKeyRangeId,
 		})
@@ -794,8 +794,8 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 
 			// Notify all routers about scheme changes.
 			if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-				cl := routerproto.NewKeyRangeServiceClient(cc)
-				moveResp, err := cl.MoveKeyRange(ctx, &routerproto.MoveKeyRangeRequest{
+				cl := proto.NewKeyRangeServiceClient(cc)
+				moveResp, err := cl.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
 					Id:        krg.ID,
 					ToShardId: krg.ShardID,
 				})
@@ -1513,8 +1513,8 @@ func (qc *ClusteredCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNe
 		return err
 	}
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewKeyRangeServiceClient(cc)
-		_, err := cl.RenameKeyRange(ctx, &routerproto.RenameKeyRangeRequest{KeyRangeId: krId, NewKeyRangeId: krIdNew})
+		cl := proto.NewKeyRangeServiceClient(cc)
+		_, err := cl.RenameKeyRange(ctx, &proto.RenameKeyRangeRequest{KeyRangeId: krId, NewKeyRangeId: krIdNew})
 
 		return err
 	})
@@ -1537,7 +1537,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 	}()
 
 	// Configure distributions
-	dsCl := routerproto.NewDistributionServiceClient(cc)
+	dsCl := proto.NewDistributionServiceClient(cc)
 	spqrlog.Zero.Debug().Msg("qdb coordinator: configure distributions")
 	dss, err := qc.ListDistributions(ctx)
 	if err != nil {
@@ -1547,7 +1547,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 	if err != nil {
 		return err
 	}
-	if _, err = dsCl.DropDistribution(ctx, &routerproto.DropDistributionRequest{
+	if _, err = dsCl.DropDistribution(ctx, &proto.DropDistributionRequest{
 		Ids: func() []string {
 			res := make([]string, len(resp.Distributions))
 			for i, ds := range resp.Distributions {
@@ -1558,9 +1558,9 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 	}); err != nil {
 		return err
 	}
-	if _, err = dsCl.CreateDistribution(ctx, &routerproto.CreateDistributionRequest{
-		Distributions: func() []*routerproto.Distribution {
-			res := make([]*routerproto.Distribution, len(dss))
+	if _, err = dsCl.CreateDistribution(ctx, &proto.CreateDistributionRequest{
+		Distributions: func() []*proto.Distribution {
+			res := make([]*proto.Distribution, len(dss))
 			for i, ds := range dss {
 				res[i] = distributions.DistributionToProto(ds)
 			}
@@ -1571,7 +1571,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 	}
 
 	// Configure key ranges.
-	krClient := routerproto.NewKeyRangeServiceClient(cc)
+	krClient := proto.NewKeyRangeServiceClient(cc)
 	spqrlog.Zero.Debug().Msg("qdb coordinator: configure key ranges")
 	if _, err = krClient.DropAllKeyRanges(ctx, nil); err != nil {
 		return err
@@ -1590,7 +1590,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		})
 
 		for _, keyrange := range krs {
-			resp, err := krClient.CreateKeyRange(ctx, &routerproto.CreateKeyRangeRequest{
+			resp, err := krClient.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{
 				KeyRangeInfo: kr.KeyRangeFromDB(keyrange, ds.ColTypes).ToProto(),
 			})
 
@@ -1610,8 +1610,8 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 	if err != nil {
 		return err
 	}
-	rCl := routerproto.NewTopologyServiceClient(cc)
-	if _, err := rCl.UpdateCoordinator(ctx, &routerproto.UpdateCoordinatorRequest{
+	rCl := proto.NewTopologyServiceClient(cc)
+	if _, err := rCl.UpdateCoordinator(ctx, &proto.UpdateCoordinatorRequest{
 		Address: net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort),
 	}); err != nil {
 		return err
@@ -1651,8 +1651,8 @@ func (qc *ClusteredCoordinator) SyncRouterCoordinatorAddress(ctx context.Context
 	if err != nil {
 		return err
 	}
-	rCl := routerproto.NewTopologyServiceClient(cc)
-	if _, err := rCl.UpdateCoordinator(ctx, &routerproto.UpdateCoordinatorRequest{
+	rCl := proto.NewTopologyServiceClient(cc)
+	if _, err := rCl.UpdateCoordinator(ctx, &proto.UpdateCoordinatorRequest{
 		Address: net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort),
 	}); err != nil {
 		return err
@@ -1687,7 +1687,7 @@ func (qc *ClusteredCoordinator) RegisterRouter(ctx context.Context, r *topology.
 			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
 		}
 	}()
-	cl := routerproto.NewTopologyServiceClient(conn)
+	cl := proto.NewTopologyServiceClient(conn)
 	_, err = cl.GetRouterStatus(ctx, nil)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to ping router: %s", err)
@@ -1832,9 +1832,9 @@ func (qc *ClusteredCoordinator) AddWorldShard(_ context.Context, _ *topology.Dat
 // TODO : unit tests
 func (qc *ClusteredCoordinator) UpdateCoordinator(ctx context.Context, address string) error {
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		c := routerproto.NewTopologyServiceClient(cc)
+		c := proto.NewTopologyServiceClient(cc)
 		spqrlog.Zero.Debug().Str("address", address).Msg("updating coordinator address")
-		_, err := c.UpdateCoordinator(ctx, &routerproto.UpdateCoordinatorRequest{
+		_, err := c.UpdateCoordinator(ctx, &proto.UpdateCoordinatorRequest{
 			Address: address,
 		})
 		return err
@@ -1850,9 +1850,9 @@ func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context,
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewReferenceRelationsServiceClient(cc)
+		cl := proto.NewReferenceRelationsServiceClient(cc)
 		resp, err := cl.CreateReferenceRelations(context.TODO(),
-			&routerproto.CreateReferenceRelationsRequest{
+			&proto.CreateReferenceRelationsRequest{
 				Relation: rrelation.RefRelationToProto(r),
 				Entries:  rrelation.AutoIncrementEntriesToProto(entry),
 			})
@@ -1875,10 +1875,13 @@ func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewReferenceRelationsServiceClient(cc)
+		cl := proto.NewReferenceRelationsServiceClient(cc)
 		resp, err := cl.DropReferenceRelations(context.TODO(),
-			&routerproto.DropReferenceRelationsRequest{
-				Ids: []string{relName.RelationName},
+			&proto.DropReferenceRelationsRequest{
+				Relations: []*proto.QualifiedName{{
+					RelationName: relName.RelationName,
+					SchemaName:   relName.SchemaName,
+				}},
 			})
 		if err != nil {
 			return err
@@ -1899,9 +1902,9 @@ func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *dist
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewDistributionServiceClient(cc)
-		resp, err := cl.CreateDistribution(context.TODO(), &routerproto.CreateDistributionRequest{
-			Distributions: []*routerproto.Distribution{distributions.DistributionToProto(ds)},
+		cl := proto.NewDistributionServiceClient(cc)
+		resp, err := cl.CreateDistribution(context.TODO(), &proto.CreateDistributionRequest{
+			Distributions: []*proto.Distribution{distributions.DistributionToProto(ds)},
 		})
 		if err != nil {
 			return err
@@ -1922,8 +1925,8 @@ func (qc *ClusteredCoordinator) DropDistribution(ctx context.Context, id string)
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewDistributionServiceClient(cc)
-		resp, err := cl.DropDistribution(context.TODO(), &routerproto.DropDistributionRequest{
+		cl := proto.NewDistributionServiceClient(cc)
+		resp, err := cl.DropDistribution(context.TODO(), &proto.DropDistributionRequest{
 			Ids: []string{id},
 		})
 		if err != nil {
@@ -1945,11 +1948,11 @@ func (qc *ClusteredCoordinator) AlterDistributionAttach(ctx context.Context, id 
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewDistributionServiceClient(cc)
-		resp, err := cl.AlterDistributionAttach(context.TODO(), &routerproto.AlterDistributionAttachRequest{
+		cl := proto.NewDistributionServiceClient(cc)
+		resp, err := cl.AlterDistributionAttach(context.TODO(), &proto.AlterDistributionAttachRequest{
 			Id: id,
-			Relations: func() []*routerproto.DistributedRelation {
-				res := make([]*routerproto.DistributedRelation, len(rels))
+			Relations: func() []*proto.DistributedRelation {
+				res := make([]*proto.DistributedRelation, len(rels))
 				for i, rel := range rels {
 					res[i] = distributions.DistributedRelationToProto(rel)
 				}
@@ -1975,8 +1978,8 @@ func (qc *ClusteredCoordinator) AlterDistributedRelation(ctx context.Context, id
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewDistributionServiceClient(cc)
-		resp, err := cl.AlterDistributedRelation(context.TODO(), &routerproto.AlterDistributedRelationRequest{
+		cl := proto.NewDistributionServiceClient(cc)
+		resp, err := cl.AlterDistributedRelation(context.TODO(), &proto.AlterDistributedRelationRequest{
 			Id:       id,
 			Relation: distributions.DistributedRelationToProto(rel),
 		})
@@ -1996,8 +1999,8 @@ func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string
 		return err
 	}
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewDistributionServiceClient(cc)
-		resp, err := cl.DropSequence(context.TODO(), &routerproto.DropSequenceRequest{
+		cl := proto.NewDistributionServiceClient(cc)
+		resp, err := cl.DropSequence(context.TODO(), &proto.DropSequenceRequest{
 			Name: seqName,
 		})
 		if err != nil {
@@ -2020,11 +2023,11 @@ func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id 
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewDistributionServiceClient(cc)
-		protoRelation := routerproto.QualifiedName{RelationName: relName.RelationName, SchemaName: relName.SchemaName}
-		resp, err := cl.AlterDistributionDetach(context.TODO(), &routerproto.AlterDistributionDetachRequest{
+		cl := proto.NewDistributionServiceClient(cc)
+		protoRelation := proto.QualifiedName{RelationName: relName.RelationName, SchemaName: relName.SchemaName}
+		resp, err := cl.AlterDistributionDetach(context.TODO(), &proto.AlterDistributionDetachRequest{
 			Id:       id,
-			RelNames: []*routerproto.QualifiedName{&protoRelation},
+			RelNames: []*proto.QualifiedName{&protoRelation},
 		})
 		if err != nil {
 			return err
