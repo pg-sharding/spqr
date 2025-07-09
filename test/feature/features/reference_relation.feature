@@ -106,13 +106,7 @@ Feature: Reference relation test
     # Step 1: Create reference table on initial shards (sh1, sh2)
     When I run SQL on host "coordinator"
     """
-    CREATE REFERENCE TABLE sync_test ON sh1;
-    """
-    Then command return code should be "0"
-
-    When I run SQL on host "coordinator"
-    """
-    CREATE REFERENCE TABLE sync_test ON sh2;
+    CREATE REFERENCE TABLE sync_test ON sh1, sh2;
     """
     Then command return code should be "0"
 
