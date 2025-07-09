@@ -1867,6 +1867,40 @@ func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context,
 	})
 }
 
+func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relNames []*rfqn.RelationFQN, destShard string) error {
+	if err := qc.Coordinator.SyncReferenceRelations(ctx, relNames, destShard); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := proto.NewReferenceRelationsServiceClient(cc)
+
+		for _, relName := range relNames {
+
+			rel, err := qc.Coordinator.GetReferenceRelation(ctx, relName)
+
+			resp, err := cl.AlterReferenceRelationStorage(context.TODO(),
+				&proto.AlterReferenceRelationStorageRequest{
+					Relation: &proto.QualifiedName{
+						RelationName: relName.RelationName,
+						SchemaName:   relName.SchemaName,
+					},
+					ShardIds: rel.ShardIds,
+				})
+			if err != nil {
+				return err
+			}
+
+			spqrlog.Zero.Debug().
+				Interface("response", resp).
+				Strs("shards", rel.ShardIds).
+				Msg("sync reference relation response")
+		}
+
+		return nil
+	})
+}
+
 // TODO: unit tests
 func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 	relName *rfqn.RelationFQN) error {

@@ -2,6 +2,7 @@ package coord
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -74,7 +75,26 @@ func (a *Adapter) GetReferenceRelation(ctx context.Context, relName *rfqn.Relati
 
 // SyncReferenceRelations implements meta.EntityMgr.
 func (a *Adapter) SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "SyncReferenceRelations not implemented")
+	c := proto.NewReferenceRelationsServiceClient(a.conn)
+
+	qRels := []*proto.QualifiedName{}
+	for _, r := range ids {
+		qRels = append(qRels, &proto.QualifiedName{
+			RelationName: r.RelationName,
+			SchemaName:   r.SchemaName,
+		})
+	}
+
+	_, err := c.SyncReferenceRelations(ctx, &proto.SyncReferenceRelationsRequest{
+		Relations: qRels,
+		ShardId:   destShard,
+	})
+	return err
+}
+
+// AlterReferenceRelationStorage implements meta.EntityMgr.
+func (a *Adapter) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	return fmt.Errorf("AlterReferenceRelationStorage should not be used in proxy adapter")
 }
 
 // CreateReferenceRelation implements meta.EntityMgr.

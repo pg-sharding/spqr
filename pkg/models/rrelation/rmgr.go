@@ -12,5 +12,9 @@ type ReferenceRelationMgr interface {
 	GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*ReferenceRelation, error)
 	DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error
 
+	/* Method for managing routers metadata */
+	AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error
+
+	/* Method for cluster-wide reference relation data replication */
 	SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error
 }

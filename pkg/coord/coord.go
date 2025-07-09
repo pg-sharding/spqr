@@ -33,6 +33,11 @@ func NewCoordinator(qdb qdb.XQDB) Coordinator {
 	}
 }
 
+// AlterReferenceRelationStorage implements meta.EntityMgr.
+func (lc *Coordinator) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	return lc.qdb.AlterReferenceRelationStorage(ctx, relName, shs)
+}
+
 // SyncReferenceRelations implements meta.EntityMgr.
 func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*rfqn.RelationFQN, destShard string) error {
 	for _, qualName := range relNames {
@@ -41,13 +46,13 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*r
 			return err
 		}
 
-		if len(rel.ShardId) == 0 {
+		if len(rel.ShardIds) == 0 {
 			// XXX: should we error-our here?
 			return fmt.Errorf("failed to sync reference relation with no storage shards: %v", qualName)
 		}
-		fromShard := rel.ShardId[0]
+		fromShard := rel.ShardIds[0]
 
-		destShards := append(rel.ShardId, destShard)
+		destShards := append(rel.ShardIds, destShard)
 
 		if err = datatransfers.SyncReferenceRelation(ctx, fromShard, destShard, rel, lc.qdb); err != nil {
 			return err
@@ -140,14 +145,14 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 
 	r.ColumnSequenceMapping = ret
 
-	if r.ShardId == nil {
+	if r.ShardIds == nil {
 		// default is all shards
 		shs, err := lc.ListShards(ctx)
 		if err != nil {
 			return err
 		}
 		for _, sh := range shs {
-			r.ShardId = append(r.ShardId, sh.ID)
+			r.ShardIds = append(r.ShardIds, sh.ID)
 		}
 	}
 

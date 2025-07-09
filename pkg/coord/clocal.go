@@ -402,6 +402,11 @@ func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context) error 
 	return ErrNotCoordinator
 }
 
+// AlterReferenceRelationStorage implements meta.EntityMgr.
+func (lc *LocalInstanceMetadataMgr) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	return lc.qdb.AlterReferenceRelationStorage(ctx, relName, shs)
+}
+
 // SyncReferenceRelations implements meta.EntityMgr.
 func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error {
 	return ErrNotCoordinator
