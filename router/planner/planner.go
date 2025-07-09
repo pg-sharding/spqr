@@ -39,7 +39,7 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 				err = rm.Mgr.CreateReferenceRelation(ctx, &rrelation.ReferenceRelation{
 					TableName:     q.RelationName,
 					SchemaVersion: 1,
-					ShardId:       shardIds,
+					ShardIds:      shardIds,
 				}, nil)
 				if err != nil {
 					return nil, err

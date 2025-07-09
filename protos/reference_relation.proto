@@ -38,10 +38,17 @@ message SyncReferenceRelationsRequest {
     repeated QualifiedName relations = 2;
 }
 
+message AlterReferenceRelationStorageRequest {
+  QualifiedName relation = 1;
+  repeated string shard_ids = 2;
+}
+
 service ReferenceRelationsService {
   rpc CreateReferenceRelations(CreateReferenceRelationsRequest) returns (google.protobuf.Empty) {}
   rpc DropReferenceRelations(DropReferenceRelationsRequest) returns (google.protobuf.Empty) {}
   rpc ListReferenceRelations(google.protobuf.Empty) returns (ListReferenceRelationsReply) {}
+
+  rpc AlterReferenceRelationStorage(AlterReferenceRelationStorageRequest) returns (google.protobuf.Empty) {}
 
   rpc SyncReferenceRelations(SyncReferenceRelationsRequest) returns (google.protobuf.Empty) {} 
 }
