@@ -53,7 +53,9 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*r
 			return err
 		}
 
-		lc.qdb.AlterReferenceRelationStorage(ctx, qualName, destShards)
+		if err := lc.qdb.AlterReferenceRelationStorage(ctx, qualName, destShards); err != nil {
+			return err
+		}
 	}
 
 	return nil
