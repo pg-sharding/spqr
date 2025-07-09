@@ -63,6 +63,7 @@ var reservedWords = map[string]int{
 	"uuid":         UUID,
 	"alter":        ALTER,
 	"relation":     RELATION,
+	"RELATIONS":    RELATIONS,
 	"detach":       DETACH,
 	"hosts":        HOSTS,
 	"task":         TASK,
