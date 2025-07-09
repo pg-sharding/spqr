@@ -576,14 +576,6 @@ drop_stmt:
 			},
 		}
 	}
-	| DROP REFERENCE TABLE any_id
-	{
-		$$ = &Drop{
-			Element: &ReferenceRelationSelector{
-				ID: $4,
-			},
-		}
-	}
 
 add_stmt:
 	// TODO: drop
@@ -1197,7 +1189,7 @@ invalidate_cache_stmt:
 	}
 
 sync_reference_tables_stmt:
-	SYNC REFERENCE TABLES ON any_id
+	SYNC REFERENCE table_or_relation ON any_id
 	{
 		$$ = &SyncReferenceTables {
 			ShardID: $5,
