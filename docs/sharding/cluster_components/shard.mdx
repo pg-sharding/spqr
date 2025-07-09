@@ -2,8 +2,32 @@
 title: 'Shard'
 ---
 
-A **shard** contains a subset of sharded data for a sharded cluster. Together, the cluster's shards hold the entire data set for the cluster.
+A **shard** is a portion of data stored within a cluster. A cluster is made up of multiple shards, each containing a unique subset of the overall dataset. Together, these shards form the complete data store.
 
-A PostgreSQL cluster can be based on Patroni, Stolon, Managed PostgreSQL, or any other HA solution over vanilla Postgres. Physical quorum-based PostgreSQL HA solutions are battle-proven, and we reuse all their benefits.
+**Shard management** includes tasks like:
 
-SPQR has no control over the operation of shards. All the router needs to know about a shard is how to connect to it and the range of data it contains.
+- Replication
+- Backup
+- Failover/switchover configuration
+- Monitoring
+
+These tasks are the responsibility of the **user**, not SPQR.
+
+SPQR was originally designed to enable PostgreSQL sharding on top of managed cloud database services. While it simplifies query routing across shards, it does not aim to be a complete shard management system. There are **no current plans** to release a fully open-source shard management solution as part of SPQR.
+
+Instead, users are encouraged to build PostgreSQL clusters using established high-availability (HA) tools such as:
+
+- **Patroni**
+- **PgConsul**
+- **Stolon**
+- **Managed PostgreSQL offerings**
+
+These tools rely on physical quorum-based HA mechanisms, which are proven to be reliable and compatible with SPQR.
+
+Importantly, **SPQR does not manage or control the individual shards**. It only requires:
+
+- Connection information for each shard
+- The data range assigned to each shard
+
+That's all SPQR needs to route queries correctly.
+
