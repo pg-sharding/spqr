@@ -168,7 +168,7 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY
-%token <str> SHARDING COLUMN TABLE TABLES HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA
+%token <str> SHARDING COLUMN TABLE TABLES RELATIONS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
@@ -576,14 +576,6 @@ drop_stmt:
 			},
 		}
 	}
-	| DROP REFERENCE TABLE any_id
-	{
-		$$ = &Drop{
-			Element: &ReferenceRelationSelector{
-				ID: $4,
-			},
-		}
-	}
 
 add_stmt:
 	// TODO: drop
@@ -802,6 +794,9 @@ opt_distributed:
 
 table_or_relation:
 	TABLE {} | RELATION {}
+
+tables_or_relations:
+	TABLES {} | RELATIONS {}
 
 
 opt_on_shards:
@@ -1197,7 +1192,7 @@ invalidate_cache_stmt:
 	}
 
 sync_reference_tables_stmt:
-	SYNC REFERENCE TABLES ON any_id
+	SYNC REFERENCE tables_or_relations ON any_id
 	{
 		$$ = &SyncReferenceTables {
 			ShardID: $5,
