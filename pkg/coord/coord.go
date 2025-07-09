@@ -35,21 +35,25 @@ func NewCoordinator(qdb qdb.XQDB) Coordinator {
 
 // SyncReferenceRelations implements meta.EntityMgr.
 func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*rfqn.RelationFQN, destShard string) error {
-	for _, id := range relNames {
-		rel, err := lc.GetReferenceRelation(ctx, id)
+	for _, qualName := range relNames {
+		rel, err := lc.GetReferenceRelation(ctx, qualName)
 		if err != nil {
 			return err
 		}
 
 		if len(rel.ShardId) == 0 {
 			// XXX: should we error-our here?
-			return fmt.Errorf("failed to sync reference relation with no storage shards: %v", id)
+			return fmt.Errorf("failed to sync reference relation with no storage shards: %v", qualName)
 		}
 		fromShard := rel.ShardId[0]
+
+		destShards := append(rel.ShardId, destShard)
 
 		if err = datatransfers.SyncReferenceRelation(ctx, fromShard, destShard, rel, lc.qdb); err != nil {
 			return err
 		}
+
+		lc.qdb.AlterReferenceRelationStorage(ctx, qualName, destShards)
 	}
 
 	return nil

@@ -972,6 +972,49 @@ func (q *EtcdQDB) GetReferenceRelation(ctx context.Context, relName *rfqn.Relati
 	return refRel, nil
 }
 
+// AlterReferenceRelationStorage implements XQDB.
+func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	tableName := relName.RelationName
+	spqrlog.Zero.Debug().
+		Str("tablename", tableName).
+		Strs("shards", shs).
+		Msg("etcdqdb: alter reference relation shards")
+
+	nodePath := referenceRelationNodePath(tableName)
+
+	resp, err := q.cli.Get(ctx, nodePath, clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+
+	switch len(resp.Kvs) {
+	case 0:
+		return spqrerror.New(spqrerror.SPQR_SHARDING_RULE_ERROR, "no such reference relation present in qdb")
+	case 1:
+
+		var rrs *ReferenceRelation
+		if err := json.Unmarshal(resp.Kvs[0].Value, &rrs); err != nil {
+			return err
+		}
+		rrs.ShardIds = shs
+
+		rrJson, err := json.Marshal(rrs)
+		if err != nil {
+			return err
+		}
+
+		resp, err := q.cli.Put(ctx, nodePath, string(rrJson))
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("etcdqdb: AlterReferenceRelationStorage done")
+
+		return err
+	default:
+		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much reference relations matched: %d", len(resp.Kvs))
+	}
+}
+
 // DropReferenceRelation implements XQDB.
 func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
 	tableName := relName.RelationName
@@ -1009,7 +1052,7 @@ func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.Relat
 		_, err = q.cli.Delete(ctx, relationMappingNodePath(tableName))
 		return err
 	default:
-		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much distributions matched: %d", len(resp.Kvs))
+		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much reference relations matched: %d", len(resp.Kvs))
 	}
 }
 
