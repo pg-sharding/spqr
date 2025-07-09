@@ -256,7 +256,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		Uint("client", s.cl.ID()).
 		Msg("client pre-process copy")
 
-	var relname rfqn.RelationFQN
+	var relname *rfqn.RelationFQN
 
 	switch q := stmt.TableRef.(type) {
 	case *lyx.RangeVar:
@@ -285,12 +285,12 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 	}
 
 	// TODO: check by whole RFQN
-	ds, err := mgr.GetRelationDistribution(ctx, &relname)
+	ds, err := mgr.GetRelationDistribution(ctx, relname)
 	if err != nil {
 		return nil, err
 	}
 	if ds.Id == distributions.REPLICATED {
-		rr, err := mgr.GetReferenceRelation(ctx, relname.RelationName)
+		rr, err := mgr.GetReferenceRelation(ctx, relname)
 		if err != nil {
 			return nil, err
 		}

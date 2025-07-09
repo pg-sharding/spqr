@@ -1869,8 +1869,8 @@ func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context,
 
 // TODO: unit tests
 func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
-	id string) error {
-	if err := qc.Coordinator.DropReferenceRelation(ctx, id); err != nil {
+	relName *rfqn.RelationFQN) error {
+	if err := qc.Coordinator.DropReferenceRelation(ctx, relName); err != nil {
 		return err
 	}
 
@@ -1878,7 +1878,7 @@ func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 		cl := routerproto.NewReferenceRelationsServiceClient(cc)
 		resp, err := cl.DropReferenceRelations(context.TODO(),
 			&routerproto.DropReferenceRelationsRequest{
-				Ids: []string{id},
+				Ids: []string{relName.RelationName},
 			})
 		if err != nil {
 			return err

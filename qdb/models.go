@@ -93,8 +93,8 @@ type DistributedRelation struct {
 	ReplicatedRelation bool                   `json:"replicated_relation,omitempty"`
 }
 
-func (r *DistributedRelation) QualifiedName() rfqn.RelationFQN {
-	return rfqn.RelationFQN{RelationName: r.Name, SchemaName: r.SchemaName}
+func (r *DistributedRelation) QualifiedName() *rfqn.RelationFQN {
+	return &rfqn.RelationFQN{RelationName: r.Name, SchemaName: r.SchemaName}
 }
 
 type Distribution struct {

@@ -84,7 +84,11 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 	case *spqrparser.ShardingRuleSelector:
 		return cli.ReportError(spqrerror.ShardingRulesRemoved)
 	case *spqrparser.ReferenceRelationSelector:
-		if err := mngr.DropReferenceRelation(ctx, stmt.ID); err != nil {
+		/* XXX: fix refernce relation selector to support schema-qualified names */
+		relName := &rfqn.RelationFQN{
+			RelationName: stmt.ID,
+		}
+		if err := mngr.DropReferenceRelation(ctx, relName); err != nil {
 			return err
 		}
 		return cli.DropReferenceRelation(ctx, stmt.ID)
@@ -578,7 +582,10 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		return cli.MoveTaskGroup(ctx, taskGroup, colTypes)
 	case *spqrparser.SyncReferenceTables:
 		/* TODO: fix RelationSelector logic */
-		if err := mgr.SyncReferenceRelations(ctx, []string{stmt.RelationSelector}, stmt.ShardID); err != nil {
+		if err := mgr.SyncReferenceRelations(ctx, []*rfqn.RelationFQN{
+			&rfqn.RelationFQN{
+				RelationName: stmt.RelationSelector},
+		}, stmt.ShardID); err != nil {
 			return err
 		}
 		return cli.SyncReferenceRelations([]string{stmt.RelationSelector}, stmt.ShardID)

@@ -57,7 +57,8 @@ func (l *LocalQrouterServer) CreateReferenceRelations(ctx context.Context, reque
 // DropReferenceRelations implements proto.ReferenceRelationsServiceServer.
 func (l *LocalQrouterServer) DropReferenceRelations(ctx context.Context, r *protos.DropReferenceRelationsRequest) (*emptypb.Empty, error) {
 	for _, id := range r.GetIds() {
-		if err := l.mgr.DropReferenceRelation(ctx, id); err != nil {
+		/* XXX: fix this to support schema */
+		if err := l.mgr.DropReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: id}); err != nil {
 			return nil, err
 		}
 	}

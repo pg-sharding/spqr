@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
 	"github.com/pg-sharding/spqr/router/cache"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"google.golang.org/grpc"
 )
 
@@ -402,7 +403,7 @@ func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context) error 
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.
-func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(ctx context.Context, ids []string, destShard string) error {
+func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error {
 	return ErrNotCoordinator
 }
 

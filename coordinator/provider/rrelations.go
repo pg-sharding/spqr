@@ -5,6 +5,7 @@ import (
 
 	"github.com/pg-sharding/spqr/coordinator"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	rrelations "github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -33,7 +34,9 @@ func (rr *ReferenceRelationServer) CreateReferenceRelations(ctx context.Context,
 
 func (rr *ReferenceRelationServer) DropReferenceRelations(ctx context.Context, req *protos.DropReferenceRelationsRequest) (*emptypb.Empty, error) {
 	for _, id := range req.GetIds() {
-		if err := rr.impl.DropReferenceRelation(ctx, id); err != nil {
+		if err := rr.impl.DropReferenceRelation(ctx, &rfqn.RelationFQN{
+			RelationName: id,
+		}); err != nil {
 			return nil, err
 		}
 	}

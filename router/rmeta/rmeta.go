@@ -78,7 +78,7 @@ var CatalogDistribution = distributions.Distribution{
 	ColTypes:  nil,
 }
 
-func IsRelationCatalog(resolvedRelation rfqn.RelationFQN) bool {
+func IsRelationCatalog(resolvedRelation *rfqn.RelationFQN) bool {
 	return len(resolvedRelation.RelationName) >= 3 && resolvedRelation.RelationName[0:3] == "pg_"
 }
 
@@ -105,8 +105,8 @@ func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node 
 	return rm.AuxValues[k]
 }
 
-func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, resolvedRelation rfqn.RelationFQN) (*distributions.Distribution, error) {
-	if res, ok := rm.Distributions[resolvedRelation]; ok {
+func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, resolvedRelation *rfqn.RelationFQN) (*distributions.Distribution, error) {
+	if res, ok := rm.Distributions[*resolvedRelation]; ok {
 		return res, nil
 	}
 
@@ -118,78 +118,78 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, r
 		return &CatalogDistribution, nil
 	}
 
-	ds, err := rm.Mgr.GetRelationDistribution(ctx, &resolvedRelation)
+	ds, err := rm.Mgr.GetRelationDistribution(ctx, resolvedRelation)
 
 	if err != nil {
 		return nil, err
 	}
 
-	rm.Distributions[resolvedRelation] = ds
+	rm.Distributions[*resolvedRelation] = ds
 	return ds, nil
 }
 
-func (rm *RoutingMetadataContext) RFQNIsCTE(resolvedRelation rfqn.RelationFQN) bool {
+func (rm *RoutingMetadataContext) RFQNIsCTE(resolvedRelation *rfqn.RelationFQN) bool {
 	_, ok := rm.CteNames[resolvedRelation.RelationName]
 	return len(resolvedRelation.SchemaName) == 0 && ok
 }
 
 // TODO : unit tests
-func (rm *RoutingMetadataContext) RecordConstExpr(resolvedRelation rfqn.RelationFQN, colname string, expr interface{}) error {
+func (rm *RoutingMetadataContext) RecordConstExpr(resolvedRelation *rfqn.RelationFQN, colname string, expr interface{}) error {
 	if rm.RFQNIsCTE(resolvedRelation) {
 		// CTE, skip
 		return nil
 	}
-	rm.Rels[resolvedRelation] = struct{}{}
-	if _, ok := rm.Exprs[resolvedRelation]; !ok {
-		rm.Exprs[resolvedRelation] = map[string][]interface{}{}
+	rm.Rels[*resolvedRelation] = struct{}{}
+	if _, ok := rm.Exprs[*resolvedRelation]; !ok {
+		rm.Exprs[*resolvedRelation] = map[string][]interface{}{}
 	}
-	if _, ok := rm.Exprs[resolvedRelation][colname]; !ok {
-		rm.Exprs[resolvedRelation][colname] = make([]interface{}, 0)
+	if _, ok := rm.Exprs[*resolvedRelation][colname]; !ok {
+		rm.Exprs[*resolvedRelation][colname] = make([]interface{}, 0)
 	}
-	rm.Exprs[resolvedRelation][colname] = append(rm.Exprs[resolvedRelation][colname], expr)
+	rm.Exprs[*resolvedRelation][colname] = append(rm.Exprs[*resolvedRelation][colname], expr)
 	return nil
 }
 
-func (routingMeta *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation rfqn.RelationFQN, colname string, ind int) error {
+func (routingMeta *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation *rfqn.RelationFQN, colname string, ind int) error {
 	if routingMeta.RFQNIsCTE(resolvedRelation) {
 		// CTE, skip
 		return nil
 	}
 
-	if routingMeta.Distributions[resolvedRelation].Id == distributions.REPLICATED {
+	if routingMeta.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
 		// reference relation, skip
 		return nil
 	}
 
-	routingMeta.Rels[resolvedRelation] = struct{}{}
-	if _, ok := routingMeta.ParamRefs[resolvedRelation]; !ok {
-		routingMeta.ParamRefs[resolvedRelation] = map[string][]int{}
+	routingMeta.Rels[*resolvedRelation] = struct{}{}
+	if _, ok := routingMeta.ParamRefs[*resolvedRelation]; !ok {
+		routingMeta.ParamRefs[*resolvedRelation] = map[string][]int{}
 	}
-	if _, ok := routingMeta.ParamRefs[resolvedRelation][colname]; !ok {
-		routingMeta.ParamRefs[resolvedRelation][colname] = make([]int, 0)
+	if _, ok := routingMeta.ParamRefs[*resolvedRelation][colname]; !ok {
+		routingMeta.ParamRefs[*resolvedRelation][colname] = make([]int, 0)
 	}
-	routingMeta.ParamRefs[resolvedRelation][colname] = append(routingMeta.ParamRefs[resolvedRelation][colname], ind)
+	routingMeta.ParamRefs[*resolvedRelation][colname] = append(routingMeta.ParamRefs[*resolvedRelation][colname], ind)
 	return nil
 }
 
 // TODO : unit tests
-func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias string) (rfqn.RelationFQN, error) {
+func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias string) (*rfqn.RelationFQN, error) {
 	if _, ok := rm.Rels[rfqn.RelationFQN{RelationName: alias}]; ok {
-		return rfqn.RelationFQN{RelationName: alias}, nil
+		return &rfqn.RelationFQN{RelationName: alias}, nil
 	}
 	if resolvedRelation, ok := rm.TableAliases[alias]; ok {
 		// TBD: postpone routing from here to root of parsing tree
-		return resolvedRelation, nil
+		return &resolvedRelation, nil
 	} else {
 		// TBD: postpone routing from here to root of parsing tree
 		if len(rm.Rels) != 1 {
 			// ambiguity in column aliasing
-			return rfqn.RelationFQN{}, rerrors.ErrComplexQuery
+			return nil, rerrors.ErrComplexQuery
 		}
 		for tbl := range rm.Rels {
 			resolvedRelation = tbl
 		}
-		return resolvedRelation, nil
+		return &resolvedRelation, nil
 	}
 }
 
@@ -264,7 +264,7 @@ func (rm *RoutingMetadataContext) ResolveRouteHint() (routehint.RouteHint, error
 	return &routehint.EmptyRouteHint{}, nil
 }
 
-func (rm *RoutingMetadataContext) GetDistributionKeyOffsetType(resolvedRelation rfqn.RelationFQN, colname string) (int, string) {
+func (rm *RoutingMetadataContext) GetDistributionKeyOffsetType(resolvedRelation *rfqn.RelationFQN, colname string) (int, string) {
 	/* do not process non-distributed relations or columns not from relation distribution key */
 
 	ds, err := rm.GetRelationDistribution(context.TODO(), resolvedRelation)
@@ -286,7 +286,7 @@ func (rm *RoutingMetadataContext) GetDistributionKeyOffsetType(resolvedRelation 
 	return -1, ""
 }
 
-func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation rfqn.RelationFQN, tp string, colname string, expr lyx.Node) error {
+func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation *rfqn.RelationFQN, tp string, colname string, expr lyx.Node) error {
 	switch right := expr.(type) {
 	case *lyx.ParamRef:
 		return rm.RecordParamRefExpr(resolvedRelation, colname, right.Number-1)
