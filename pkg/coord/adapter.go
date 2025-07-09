@@ -68,12 +68,12 @@ func (a *Adapter) ShareKeyRange(id string) error {
 }
 
 // GetReferenceRelation implements meta.EntityMgr.
-func (a *Adapter) GetReferenceRelation(ctx context.Context, tableName string) (*rrelation.ReferenceRelation, error) {
+func (a *Adapter) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetReferenceRelation not implemented")
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.
-func (a *Adapter) SyncReferenceRelations(ctx context.Context, ids []string, destShard string) error {
+func (a *Adapter) SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "SyncReferenceRelations not implemented")
 }
 
@@ -88,10 +88,11 @@ func (a *Adapter) CreateReferenceRelation(ctx context.Context, r *rrelation.Refe
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
-func (a *Adapter) DropReferenceRelation(ctx context.Context, id string) error {
+func (a *Adapter) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
+	/* XXX: fix protos to new schema */
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
 	_, err := c.DropReferenceRelations(ctx, &proto.DropReferenceRelationsRequest{
-		Ids: []string{id},
+		Ids: []string{relName.RelationName},
 	})
 	return err
 }

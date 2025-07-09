@@ -115,7 +115,7 @@ func TestDistributions(t *testing.T) {
 		relation,
 	}))
 	qualifiedName := relation.QualifiedName()
-	ds, err := memqdb.GetRelationDistribution(ctx, &qualifiedName)
+	ds, err := memqdb.GetRelationDistribution(ctx, qualifiedName)
 	assert.NoError(err)
 	assert.Equal(ds.ID, "ds1")
 	assert.Contains(ds.Relations, relation.Name)
@@ -126,7 +126,7 @@ func TestDistributions(t *testing.T) {
 	}))
 
 	assert.NoError(memqdb.AlterDistributionDetach(ctx, "ds1", &rfqn.RelationFQN{RelationName: "r1"}))
-	_, err = memqdb.GetRelationDistribution(ctx, &qualifiedName)
+	_, err = memqdb.GetRelationDistribution(ctx, qualifiedName)
 	assert.Error(err)
 
 	ds, err = memqdb.GetDistribution(ctx, "ds1")
@@ -137,7 +137,7 @@ func TestDistributions(t *testing.T) {
 		relation,
 	}))
 
-	ds, err = memqdb.GetRelationDistribution(ctx, &qualifiedName)
+	ds, err = memqdb.GetRelationDistribution(ctx, qualifiedName)
 	assert.NoError(err)
 	assert.Equal(ds.ID, "ds2")
 	assert.Contains(ds.Relations, relation.Name)

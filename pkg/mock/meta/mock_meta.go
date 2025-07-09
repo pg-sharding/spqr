@@ -246,17 +246,17 @@ func (mr *MockEntityMgrMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 }
 
 // DropReferenceRelation mocks base method.
-func (m *MockEntityMgr) DropReferenceRelation(ctx context.Context, id string) error {
+func (m *MockEntityMgr) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DropReferenceRelation", ctx, id)
+	ret := m.ctrl.Call(m, "DropReferenceRelation", ctx, relName)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DropReferenceRelation indicates an expected call of DropReferenceRelation.
-func (mr *MockEntityMgrMockRecorder) DropReferenceRelation(ctx, id any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) DropReferenceRelation(ctx, relName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropReferenceRelation", reflect.TypeOf((*MockEntityMgr)(nil).DropReferenceRelation), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropReferenceRelation", reflect.TypeOf((*MockEntityMgr)(nil).DropReferenceRelation), ctx, relName)
 }
 
 // DropSequence mocks base method.
@@ -363,18 +363,18 @@ func (mr *MockEntityMgrMockRecorder) GetMoveTaskGroup(ctx any) *gomock.Call {
 }
 
 // GetReferenceRelation mocks base method.
-func (m *MockEntityMgr) GetReferenceRelation(ctx context.Context, tableName string) (*rrelation.ReferenceRelation, error) {
+func (m *MockEntityMgr) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetReferenceRelation", ctx, tableName)
+	ret := m.ctrl.Call(m, "GetReferenceRelation", ctx, relName)
 	ret0, _ := ret[0].(*rrelation.ReferenceRelation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetReferenceRelation indicates an expected call of GetReferenceRelation.
-func (mr *MockEntityMgrMockRecorder) GetReferenceRelation(ctx, tableName any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) GetReferenceRelation(ctx, relName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReferenceRelation", reflect.TypeOf((*MockEntityMgr)(nil).GetReferenceRelation), ctx, tableName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReferenceRelation", reflect.TypeOf((*MockEntityMgr)(nil).GetReferenceRelation), ctx, relName)
 }
 
 // GetRelationDistribution mocks base method.
@@ -683,7 +683,7 @@ func (mr *MockEntityMgrMockRecorder) Split(ctx, split any) *gomock.Call {
 }
 
 // SyncReferenceRelations mocks base method.
-func (m *MockEntityMgr) SyncReferenceRelations(ctx context.Context, ids []string, destShard string) error {
+func (m *MockEntityMgr) SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SyncReferenceRelations", ctx, ids, destShard)
 	ret0, _ := ret[0].(error)

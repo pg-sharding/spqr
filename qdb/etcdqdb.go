@@ -949,7 +949,8 @@ func (q *EtcdQDB) CreateReferenceRelation(ctx context.Context, r *ReferenceRelat
 }
 
 // GetReferenceRelation implements XQDB.
-func (q *EtcdQDB) GetReferenceRelation(ctx context.Context, tableName string) (*ReferenceRelation, error) {
+func (q *EtcdQDB) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*ReferenceRelation, error) {
+	tableName := relName.RelationName
 	spqrlog.Zero.Debug().
 		Str("tablename", tableName).
 		Msg("etcdqdb: get reference relation")
@@ -972,7 +973,8 @@ func (q *EtcdQDB) GetReferenceRelation(ctx context.Context, tableName string) (*
 }
 
 // DropReferenceRelation implements XQDB.
-func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, tableName string) error {
+func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
+	tableName := relName.RelationName
 	spqrlog.Zero.Debug().
 		Str("tablename", tableName).
 		Msg("etcdqdb: drop reference relation")
@@ -1160,7 +1162,7 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 		}
 		distribution.Relations[rel.Name] = rel
 		qname := rel.QualifiedName()
-		_, err := q.GetRelationDistribution(ctx, &qname)
+		_, err := q.GetRelationDistribution(ctx, qname)
 		switch e := err.(type) {
 		case *spqrerror.SpqrError:
 			if e.ErrorCode != spqrerror.SPQR_OBJECT_NOT_EXIST {
@@ -1224,7 +1226,7 @@ func (q *EtcdQDB) AlterDistributedRelation(ctx context.Context, id string, rel *
 	}
 	distribution.Relations[rel.Name] = rel
 	qname := rel.QualifiedName()
-	if ds, err := q.GetRelationDistribution(ctx, &qname); err != nil {
+	if ds, err := q.GetRelationDistribution(ctx, qname); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
 	} else if ds.ID != id {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", rel.Name, ds.ID, id)

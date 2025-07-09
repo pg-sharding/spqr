@@ -642,22 +642,28 @@ func (q *MemQDB) CreateReferenceRelation(ctx context.Context, r *ReferenceRelati
 }
 
 // GetReferenceRelation implements XQDB.
-func (q *MemQDB) GetReferenceRelation(_ context.Context, tableName string) (*ReferenceRelation, error) {
+func (q *MemQDB) GetReferenceRelation(_ context.Context, relName *rfqn.RelationFQN) (*ReferenceRelation, error) {
+	tableName := relName.RelationName
+
 	spqrlog.Zero.Debug().Str("id", tableName).Msg("memqdb: get reference relation")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	if ds, ok := q.ReferenceRelations[tableName]; !ok {
+	if rr, ok := q.ReferenceRelations[tableName]; !ok {
 		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
 	} else {
-		return ds, nil
+		return rr, nil
 	}
 }
 
 // DropReferenceRelation implements XQDB.
-func (q *MemQDB) DropReferenceRelation(ctx context.Context, tableName string) error {
+func (q *MemQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
+	tableName := relName.RelationName
 	q.mu.Lock()
 	defer q.mu.Unlock()
+	if _, ok := q.ReferenceRelations[tableName]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", tableName)
+	}
 	delete(q.ReferenceRelations, tableName)
 	return nil
 }

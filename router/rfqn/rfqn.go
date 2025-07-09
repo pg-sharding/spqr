@@ -12,8 +12,8 @@ type RelationFQN struct {
 	SchemaName   string
 }
 
-func RelationFQNFromRangeRangeVar(rv *lyx.RangeVar) RelationFQN {
-	return RelationFQN{
+func RelationFQNFromRangeRangeVar(rv *lyx.RangeVar) *RelationFQN {
+	return &RelationFQN{
 		RelationName: rv.RelationName,
 		SchemaName:   rv.SchemaName,
 	}

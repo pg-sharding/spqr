@@ -77,12 +77,12 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	q *lyx.RangeVar, subquery lyx.Node,
 	allowDistr bool) (plan.Plan, error) {
 
-	rfqn := rfqn.RelationFQN{
+	qualName := &rfqn.RelationFQN{
 		RelationName: q.RelationName,
 		SchemaName:   q.SchemaName,
 	}
 
-	if ds, err := rm.GetRelationDistribution(ctx, rfqn); err != nil {
+	if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 		return nil, rerrors.ErrComplexQuery
 	} else if ds.Id != distributions.REPLICATED {
 		if allowDistr {
@@ -118,10 +118,10 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 
 	var shs []*kr.ShardKey
 
-	if rmeta.IsRelationCatalog(rfqn) {
+	if rmeta.IsRelationCatalog(qualName) {
 		shs = nil
 	} else {
-		r, err := rm.Mgr.GetReferenceRelation(ctx, rfqn.RelationName)
+		r, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
 		if err != nil {
 			return nil, err
 		}

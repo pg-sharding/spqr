@@ -73,9 +73,9 @@ type QDB interface {
 
 	// Reference relations
 	CreateReferenceRelation(ctx context.Context, r *ReferenceRelation) error
-	GetReferenceRelation(ctx context.Context, tableName string) (*ReferenceRelation, error)
+	GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*ReferenceRelation, error)
 	ListReferenceRelations(ctx context.Context) ([]*ReferenceRelation, error)
-	DropReferenceRelation(ctx context.Context, tableName string) error
+	DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error
 
 	// Update distribution
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error

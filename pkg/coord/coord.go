@@ -34,8 +34,8 @@ func NewCoordinator(qdb qdb.XQDB) Coordinator {
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.
-func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, ids []string, destShard string) error {
-	for _, id := range ids {
+func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*rfqn.RelationFQN, destShard string) error {
+	for _, id := range relNames {
 		rel, err := lc.GetReferenceRelation(ctx, id)
 		if err != nil {
 			return err
@@ -96,8 +96,13 @@ func (lc *Coordinator) Cache() *cache.SchemaCache {
 
 // CreateReferenceRelation implements meta.EntityMgr.
 func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation.ReferenceRelation, entry []*rrelation.AutoIncrementEntry) error {
+	/* XXX: fix this */
 
-	if _, err := lc.qdb.GetReferenceRelation(ctx, r.TableName); err == nil {
+	relName := &rfqn.RelationFQN{
+		RelationName: r.TableName,
+	}
+
+	if _, err := lc.qdb.GetReferenceRelation(ctx, relName); err == nil {
 		return fmt.Errorf("reference relation %+v already exists", r.TableName)
 	}
 
@@ -166,7 +171,7 @@ func (lc *Coordinator) DropDistribution(ctx context.Context, id string) error {
 			return err
 		}
 		for _, r := range ds.Relations {
-			if err := lc.qdb.DropReferenceRelation(ctx, r.Name); err != nil {
+			if err := lc.qdb.DropReferenceRelation(ctx, r.QualifiedName()); err != nil {
 				return err
 			}
 		}
@@ -185,13 +190,12 @@ func (lc *Coordinator) DropKeyRangeAll(ctx context.Context) error {
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
-func (lc *Coordinator) DropReferenceRelation(ctx context.Context, id string) error {
-	err := lc.qdb.DropReferenceRelation(ctx, id)
+func (lc *Coordinator) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
+	err := lc.qdb.DropReferenceRelation(ctx, relName)
 	if err != nil {
 		return err
 	}
-	qualifiedName := &rfqn.RelationFQN{RelationName: id}
-	return lc.AlterDistributionDetach(ctx, distributions.REPLICATED, qualifiedName)
+	return lc.AlterDistributionDetach(ctx, distributions.REPLICATED, relName)
 }
 
 // DropSequence implements meta.EntityMgr.
@@ -425,8 +429,8 @@ func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distrib
 
 // GetReference relations retrieves info about ref relation from QDB
 // TODO: unit tests
-func (lc *Coordinator) GetReferenceRelation(ctx context.Context, tableName string) (*rrelation.ReferenceRelation, error) {
-	ret, err := lc.qdb.GetReferenceRelation(ctx, tableName)
+func (lc *Coordinator) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
+	ret, err := lc.qdb.GetReferenceRelation(ctx, relName)
 	if err != nil {
 		return nil, err
 	}

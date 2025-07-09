@@ -498,17 +498,17 @@ func (mr *MockQDBMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 }
 
 // DropReferenceRelation mocks base method.
-func (m *MockQDB) DropReferenceRelation(ctx context.Context, tableName string) error {
+func (m *MockQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DropReferenceRelation", ctx, tableName)
+	ret := m.ctrl.Call(m, "DropReferenceRelation", ctx, relName)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DropReferenceRelation indicates an expected call of DropReferenceRelation.
-func (mr *MockQDBMockRecorder) DropReferenceRelation(ctx, tableName any) *gomock.Call {
+func (mr *MockQDBMockRecorder) DropReferenceRelation(ctx, relName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropReferenceRelation", reflect.TypeOf((*MockQDB)(nil).DropReferenceRelation), ctx, tableName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropReferenceRelation", reflect.TypeOf((*MockQDB)(nil).DropReferenceRelation), ctx, relName)
 }
 
 // DropSequence mocks base method.
@@ -660,18 +660,18 @@ func (mr *MockQDBMockRecorder) GetRedistributeTask(ctx any) *gomock.Call {
 }
 
 // GetReferenceRelation mocks base method.
-func (m *MockQDB) GetReferenceRelation(ctx context.Context, tableName string) (*qdb.ReferenceRelation, error) {
+func (m *MockQDB) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*qdb.ReferenceRelation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetReferenceRelation", ctx, tableName)
+	ret := m.ctrl.Call(m, "GetReferenceRelation", ctx, relName)
 	ret0, _ := ret[0].(*qdb.ReferenceRelation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetReferenceRelation indicates an expected call of GetReferenceRelation.
-func (mr *MockQDBMockRecorder) GetReferenceRelation(ctx, tableName any) *gomock.Call {
+func (mr *MockQDBMockRecorder) GetReferenceRelation(ctx, relName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReferenceRelation", reflect.TypeOf((*MockQDB)(nil).GetReferenceRelation), ctx, tableName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReferenceRelation", reflect.TypeOf((*MockQDB)(nil).GetReferenceRelation), ctx, relName)
 }
 
 // GetRelationDistribution mocks base method.
@@ -1343,17 +1343,17 @@ func (mr *MockXQDBMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 }
 
 // DropReferenceRelation mocks base method.
-func (m *MockXQDB) DropReferenceRelation(ctx context.Context, tableName string) error {
+func (m *MockXQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DropReferenceRelation", ctx, tableName)
+	ret := m.ctrl.Call(m, "DropReferenceRelation", ctx, relName)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DropReferenceRelation indicates an expected call of DropReferenceRelation.
-func (mr *MockXQDBMockRecorder) DropReferenceRelation(ctx, tableName any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) DropReferenceRelation(ctx, relName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropReferenceRelation", reflect.TypeOf((*MockXQDB)(nil).DropReferenceRelation), ctx, tableName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropReferenceRelation", reflect.TypeOf((*MockXQDB)(nil).DropReferenceRelation), ctx, relName)
 }
 
 // DropSequence mocks base method.
@@ -1505,18 +1505,18 @@ func (mr *MockXQDBMockRecorder) GetRedistributeTask(ctx any) *gomock.Call {
 }
 
 // GetReferenceRelation mocks base method.
-func (m *MockXQDB) GetReferenceRelation(ctx context.Context, tableName string) (*qdb.ReferenceRelation, error) {
+func (m *MockXQDB) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*qdb.ReferenceRelation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetReferenceRelation", ctx, tableName)
+	ret := m.ctrl.Call(m, "GetReferenceRelation", ctx, relName)
 	ret0, _ := ret[0].(*qdb.ReferenceRelation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetReferenceRelation indicates an expected call of GetReferenceRelation.
-func (mr *MockXQDBMockRecorder) GetReferenceRelation(ctx, tableName any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) GetReferenceRelation(ctx, relName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReferenceRelation", reflect.TypeOf((*MockXQDB)(nil).GetReferenceRelation), ctx, tableName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReferenceRelation", reflect.TypeOf((*MockXQDB)(nil).GetReferenceRelation), ctx, relName)
 }
 
 // GetRelationDistribution mocks base method.
