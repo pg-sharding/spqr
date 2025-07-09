@@ -1877,7 +1877,7 @@ func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relN
 
 		for _, relName := range relNames {
 
-			rel, err := qc.Coordinator.GetReferenceRelation(ctx, relName)
+			rel, err := qc.GetReferenceRelation(ctx, relName)
 
 			if err != nil {
 				return err
