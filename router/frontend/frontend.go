@@ -58,6 +58,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			// copy interface
 			cpQ := *q
 			q = &cpQ
+			qr.SetQuery(&q.String)
 			_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
 				rst.AddQuery(q)
 				return rst.ProcessMessageBuf(true, true)

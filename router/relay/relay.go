@@ -936,7 +936,10 @@ func (rst *RelayStateImpl) DeployPrepStmt(qname string) (*prepstatement.Prepared
 
 	if len(server.Datashards()) != 1 {
 		return nil, nil,
-			spqrerror.NewWithHint(spqrerror.SPQR_NOT_IMPLEMENTED, "multishard prepared statement deploy is not supported", "try to use simple protocol instead")
+			spqrerror.NewWithHint(
+				spqrerror.SPQR_NOT_IMPLEMENTED,
+				"multishard prepared statement deploy is not supported",
+				"try to use simple protocol instead")
 	}
 
 	spqrlog.Zero.Debug().

@@ -21,6 +21,9 @@ INSERT INTO test2(age) VALUES (16) /* __spqr__engine_v2: true */;
 INSERT INTO test2(age) VALUES (17) /* __spqr__engine_v2: true */;
 INSERT INTO test2(age) VALUES (18) /* __spqr__engine_v2: true */;
 
+-- asserting error
+INSERT INTO test2 SELECT 1 /* __spqr__engine_v2: true */;
+
 SELECT * FROM test2 /* __spqr__execute_on: sh2 */ ORDER BY id, age;
 
 DROP TABLE test;
