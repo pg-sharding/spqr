@@ -400,6 +400,11 @@ func (s *DBPool) Cache() *DbpoolCache {
 	return s.cache
 }
 
+// StopCacheCleanup stops the cache cleanup goroutine
+func (s *DBPool) StopCacheCleanup() {
+	s.cache.StopCleanup()
+}
+
 // NewDBPool creates a new DBPool instance with the given shard mapping.
 // It uses the provided mapping to allocate shards based on the shard key,
 // and initializes the necessary connections and configurations for each shard.
@@ -433,32 +438,44 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 		return datashard.NewShard(shardKey, pgi, mapping[shardKey.Name], rule, startupParams)
 	}
 
-	return &DBPool{
+	dbPool := &DBPool{
 		pool:         NewPool(allocator),
 		shardMapping: mapping,
 		ShuffleHosts: true,
 		PreferAZ:     preferAZ,
-		cache:        NewDbpoolCache(),
 		checker:      tsa.NewCachedTSAChecker(),
 	}
+
+	// Create cache with cleanup functionality (5 minute max age)
+	dbPool.cache = NewDbpoolCacheWithCleanup(5 * time.Minute)
+
+	return dbPool
 }
 
 // TODO: add shuffle host support here
 func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, tsaRecheckDuration time.Duration) *DBPool {
-	return &DBPool{
+	dbPool := &DBPool{
 		pool:         mp,
 		shardMapping: mapping,
-		cache:        NewDbpoolCache(),
 		checker:      tsa.NewCachedTSACheckerWithDuration(tsaRecheckDuration),
 	}
+
+	// Create cache with cleanup functionality (5 minute max age)
+	dbPool.cache = NewDbpoolCacheWithCleanup(5 * time.Minute)
+
+	return dbPool
 }
 
 // TODO: add shuffle host support here
 func NewDBPoolWithAllocator(mapping map[string]*config.Shard, startupParams *startup.StartupParams, allocator ConnectionAllocFn) *DBPool {
-	return &DBPool{
+	dbPool := &DBPool{
 		pool:         NewPool(allocator),
 		shardMapping: mapping,
-		cache:        NewDbpoolCache(),
 		checker:      tsa.NewCachedTSAChecker(),
 	}
+
+	// Create cache with cleanup functionality (5 minute max age)
+	dbPool.cache = NewDbpoolCacheWithCleanup(5 * time.Minute)
+
+	return dbPool
 }
