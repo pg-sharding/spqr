@@ -82,6 +82,16 @@ func IsRelationCatalog(resolvedRelation *rfqn.RelationFQN) bool {
 	return len(resolvedRelation.RelationName) >= 3 && resolvedRelation.RelationName[0:3] == "pg_"
 }
 
+func (rm *RoutingMetadataContext) IsReferenceRelation(ctx context.Context, q *lyx.RangeVar) (bool, error) {
+	qualName := rfqn.RelationFQNFromRangeRangeVar(q)
+
+	ds, err := rm.GetRelationDistribution(ctx, qualName)
+	if err != nil {
+		return false, err
+	}
+	return ds.Id == distributions.REPLICATED, nil
+}
+
 func (rm *RoutingMetadataContext) RecordAuxExpr(name string, value string, v lyx.Node) {
 	k := AuxValuesKey{
 		CTEName:   name,

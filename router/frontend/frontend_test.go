@@ -68,6 +68,7 @@ func TestFrontendSimple(t *testing.T) {
 	beRule := &config.BackendRule{}
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
+	qr.EXPECT().SetQuery(gomock.Any()).AnyTimes()
 
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{})
 	srv.EXPECT().Name().AnyTimes().Return("serv1")

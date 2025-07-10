@@ -112,33 +112,6 @@ func (lc *LocalInstanceMetadataMgr) AddWorldShard(ctx context.Context, ds *topol
 
 // TODO : unit tests
 
-// DataShardsRoutes returns a slice of DataShardRoute objects representing the data shards routes.
-//
-// Parameters:
-// - None
-//
-// Returns:
-// - []*routingstate.DataShardRoute: A slice of DataShardRoute objects representing the data shards routes.
-func (lc *LocalInstanceMetadataMgr) DataShardsRoutes() []*kr.ShardKey {
-	var ret []*kr.ShardKey
-
-	/* currently, all shards are data shards */
-	if shs, err := lc.qdb.ListShards(context.TODO()); err != nil {
-		for _, sh := range shs {
-			ret = append(ret, &kr.ShardKey{
-				Name: sh.ID,
-				RO:   false,
-			})
-		}
-	} else {
-		panic(err)
-	}
-
-	return ret
-}
-
-// TODO : unit tests
-
 // WorldShardsRoutes returns a slice of DataShardRoute objects representing the world shards routes in a round-robin fashion.
 //
 // Parameters:
@@ -400,6 +373,11 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 
 func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context) error {
 	return ErrNotCoordinator
+}
+
+// AlterReferenceRelationStorage implements meta.EntityMgr.
+func (lc *LocalInstanceMetadataMgr) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	return lc.qdb.AlterReferenceRelationStorage(ctx, relName, shs)
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.

@@ -58,6 +58,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			// copy interface
 			cpQ := *q
 			q = &cpQ
+			qr.SetQuery(&q.String)
 			_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
 				rst.AddQuery(q)
 				return rst.ProcessMessageBuf(true, true)
@@ -193,9 +194,11 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 			switch err.(type) {
 			case *spqrerror.SpqrError:
 				if rerr := rst.Client().ReplyErr(err); rerr != nil {
-					return err
+					return rerr
 				}
 			default:
+				/* try to report error to user  */
+				_ = rst.Client().ReplyErr(err)
 				return err
 			}
 		}

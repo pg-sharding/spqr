@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -626,8 +625,8 @@ func (qr *ProxyQrouter) processInsertFromSelectOffsets(
 
 		/* Omit distributed relations */
 		if ds.Id == distributions.REPLICATED {
-			err := qr.insertSequenceValue(ctx, ds, curr_rfqn)
-			return nil, curr_rfqn, ds, err
+			/* should not happen */
+			return nil, nil, nil, rerrors.ErrComplexQuery
 		}
 
 		insertColsPos := map[string]int{}
@@ -1099,15 +1098,58 @@ func (qr *ProxyQrouter) planQueryV1(
 				p, _ = qr.planQueryV1(ctx, subS, rm)
 
 				/* try target list */
-				spqrlog.Zero.Debug().Msg("routing insert stmt on target list")
+				spqrlog.Zero.Debug().Msgf("routing insert stmt on target list:%T", p)
 				/* this target list for some insert (...) sharding column */
 
 				routingList = [][]lyx.Node{subS.TargetList}
 				/* record all values from tl */
 
+				switch rf := stmt.TableRef.(type) {
+				case *lyx.RangeVar:
+
+					qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
+
+					if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
+						return nil, err
+					} else if rs {
+						rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
+						if err != nil {
+							return nil, err
+						}
+						if len(rel.ColumnSequenceMapping) == 0 {
+							// ok
+							// XXX: todo - check that sub select is not doing anything insane
+							switch p.(type) {
+							case plan.VirtualPlan, plan.ScatterPlan, plan.RandomDispatchPlan:
+								return plan.ScatterPlan{
+									ExecTargets: rel.ListStorageRoutes(),
+								}, nil
+							default:
+								return nil, rerrors.ErrComplexQuery
+							}
+						}
+						return nil, rerrors.ErrComplexQuery
+					}
+				default:
+					return nil, rerrors.ErrComplexQuery
+				}
+
 			case *lyx.ValueClause:
 				/* record all values from values scan */
 				routingList = subS.Values
+
+				switch rf := stmt.TableRef.(type) {
+				case *lyx.RangeVar:
+					if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
+						return nil, err
+					} else if rs {
+						/* If reference relation, use planner v2 */
+						return planner.PlanReferenceRelationInsertValues(ctx, qr.query, rm, stmt.Columns, rf, subS)
+					}
+				default:
+					return nil, rerrors.ErrComplexQuery
+				}
+
 			default:
 				return p, nil
 			}
@@ -1115,13 +1157,6 @@ func (qr *ProxyQrouter) planQueryV1(
 			offsets, qualName, ds, err := qr.processInsertFromSelectOffsets(ctx, stmt, rm)
 			if err != nil {
 				return nil, err
-			}
-
-			if ds.Id == distributions.REPLICATED {
-				if rm.SPH.EnhancedMultiShardProcessing() {
-					return planner.PlanDistributedQuery(ctx, rm, stmt)
-				}
-				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 			}
 
 			tlUsable := len(offsets) == len(ds.ColTypes)
@@ -1830,66 +1865,4 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		}
 	}
 	return nil, rerrors.ErrComplexQuery
-}
-
-func (qr *ProxyQrouter) insertSequenceValue(ctx context.Context, ds *distributions.Distribution, qualName *rfqn.RelationFQN) error {
-	if qr.query == nil {
-		return nil
-	}
-
-	query := *qr.query
-	/*  XXX: use interface call here */
-	rel := ds.Relations[*qualName]
-	for colName, seqName := range rel.ColumnSequenceMapping {
-		nextval, err := qr.mgr.NextVal(ctx, seqName)
-		if err != nil {
-			return err
-		}
-		newQuery, err := qr.ModifyQuery(query, colName, nextval)
-		if err != nil {
-			return err
-		}
-		query = newQuery
-
-	}
-	*qr.query = query
-	return nil
-}
-
-func (qr *ProxyQrouter) ModifyQuery(query string, colname string, nextval int64) (string, error) {
-	nextvalStr := strconv.FormatInt(nextval, 10)
-
-	// Find the position of the opening parenthesis for the column list
-	colsOpenInd := strings.Index(query, "(")
-	if colsOpenInd == -1 {
-		return "", fmt.Errorf("invalid query: missing column list")
-	}
-
-	// Find the position of the closing parenthesis for the column list
-	colsCloseInd := strings.Index(query[colsOpenInd:], ")")
-	if colsCloseInd == -1 {
-		return "", fmt.Errorf("invalid query: missing closing parenthesis in column list")
-	}
-	colsCloseInd += colsOpenInd
-
-	// Find the position of the opening parenthesis for the values list
-	valuesOpenInd := strings.Index(query[colsCloseInd:], "(")
-	if valuesOpenInd == -1 {
-		return "", fmt.Errorf("invalid query: missing values list")
-	}
-	valuesOpenInd += colsCloseInd
-
-	// Find the position of the closing parenthesis for the values list
-	valuesCloseInd := strings.Index(query[valuesOpenInd:], ")")
-	if valuesCloseInd == -1 {
-		return "", fmt.Errorf("invalid query: missing closing parenthesis in values list")
-	}
-	valuesCloseInd += valuesOpenInd
-
-	// Construct the modified query
-	newQuery := query[:colsOpenInd+1] + colname + ", " + query[colsOpenInd+1:colsCloseInd] +
-		query[colsCloseInd:valuesOpenInd+1] + nextvalStr + ", " + query[valuesOpenInd+1:valuesCloseInd] +
-		query[valuesCloseInd:]
-
-	return newQuery, nil
 }

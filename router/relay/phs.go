@@ -265,6 +265,10 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 	// Read delimiter from COPY options
 	delimiter := byte('\t')
 	for _, opt := range stmt.Options {
+		if opt == nil {
+			/* ???? */
+			continue
+		}
 		o := opt.(*lyx.Option)
 		if strings.ToLower(o.Name) == "delimiter" {
 			delimiter = o.Arg.(*lyx.AExprSConst).Value[0]

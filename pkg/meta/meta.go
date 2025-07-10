@@ -280,7 +280,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		r := &rrelation.ReferenceRelation{
 			TableName:     stmt.TableName,
 			SchemaVersion: 1,
-			ShardId:       stmt.ShardIds,
+			ShardIds:      stmt.ShardIds,
 		}
 
 		if err := mngr.CreateReferenceRelation(ctx, r, rrelation.ReferenceRelationEntriesFromSQL(stmt.AutoIncrementEntries)); err != nil {

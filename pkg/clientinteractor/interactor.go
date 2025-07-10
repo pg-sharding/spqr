@@ -548,7 +548,7 @@ func (pi *PSQLInteractor) CreateReferenceRelation(ctx context.Context, rrel *rre
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("table    -> %s", rrel.TableName))}},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("shard id -> %s", strings.Join(rrel.ShardId, ",")))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("shard id -> %s", strings.Join(rrel.ShardIds, ",")))}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -1682,7 +1682,7 @@ func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation)
 		return err
 	}
 	for _, r := range rrs {
-		if err := pi.WriteDataRow(r.TableName, fmt.Sprintf("%d", r.SchemaVersion), fmt.Sprintf("%+v", r.ShardId)); err != nil {
+		if err := pi.WriteDataRow(r.TableName, fmt.Sprintf("%d", r.SchemaVersion), fmt.Sprintf("%+v", r.ShardIds)); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}

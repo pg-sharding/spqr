@@ -39,7 +39,7 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 				err = rm.Mgr.CreateReferenceRelation(ctx, &rrelation.ReferenceRelation{
 					TableName:     q.RelationName,
 					SchemaVersion: 1,
-					ShardId:       shardIds,
+					ShardIds:      shardIds,
 				}, nil)
 				if err != nil {
 					return nil, err
@@ -152,6 +152,45 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	default:
 		return nil, rerrors.ErrComplexQuery
 	}
+}
+
+func insertSequenceValue(ctx context.Context, meta *rmeta.RoutingMetadataContext, qrouter_query *string, rel *rrelation.ReferenceRelation) error {
+
+	query := *qrouter_query
+
+	for colName, seqName := range rel.ColumnSequenceMapping {
+		nextval, err := meta.Mgr.NextVal(ctx, seqName)
+		if err != nil {
+			return err
+		}
+		newQuery, err := ModifyQuery(query, colName, nextval)
+		if err != nil {
+			return err
+		}
+		query = newQuery
+	}
+
+	*qrouter_query = query
+	return nil
+}
+
+func PlanReferenceRelationInsertValues(ctx context.Context, qrouter_query *string, rm *rmeta.RoutingMetadataContext, columns []string, rv *lyx.RangeVar, values *lyx.ValueClause) (plan.Plan, error) {
+
+	/*  XXX: use interface call here */
+	qualName := rfqn.RelationFQNFromRangeRangeVar(rv)
+
+	rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := insertSequenceValue(ctx, rm, qrouter_query, rel); err != nil {
+		return nil, err
+	}
+
+	return plan.ScatterPlan{
+		ExecTargets: rel.ListStorageRoutes(),
+	}, nil
 }
 
 func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {
