@@ -28,10 +28,6 @@ func (r *DistributedRelation) QualifiedName() rfqn.RelationFQN {
 	return rfqn.RelationFQN{RelationName: r.Name, SchemaName: r.SchemaName}
 }
 
-/*func (r *DistributedRelation) ToRFQN() rfqn.RelationFQN {
-	return rfqn.RelationFQN{RelationName: r.Name, SchemaName: r.SchemaName}
-}*/
-
 const (
 	REPLICATED = "REPLICATED"
 )
