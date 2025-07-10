@@ -154,9 +154,9 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	}
 }
 
-func insertSequenceValue(ctx context.Context, meta *rmeta.RoutingMetadataContext, qrquery *string, ds *distributions.Distribution, qualName *rfqn.RelationFQN) error {
+func insertSequenceValue(ctx context.Context, meta *rmeta.RoutingMetadataContext, qrouter_query *string, ds *distributions.Distribution, qualName *rfqn.RelationFQN) error {
 
-	query := *qrquery
+	query := *qrouter_query
 	/*  XXX: use interface call here */
 	rel := ds.Relations[qualName.RelationName]
 	for colName, seqName := range rel.ColumnSequenceMapping {
@@ -171,12 +171,12 @@ func insertSequenceValue(ctx context.Context, meta *rmeta.RoutingMetadataContext
 		query = newQuery
 	}
 
-	*qrquery = query
+	*qrouter_query = query
 	return nil
 }
 
 func processInsertFromSelectOffsets(
-	ctx context.Context, qrquery *string, insertCols []string, rv *lyx.RangeVar, meta *rmeta.RoutingMetadataContext) error {
+	ctx context.Context, qrouter_query *string, insertCols []string, rv *lyx.RangeVar, meta *rmeta.RoutingMetadataContext) error {
 
 	spqrlog.Zero.Debug().
 		Strs("insert columns", insertCols).
@@ -198,12 +198,12 @@ func processInsertFromSelectOffsets(
 		return err
 	}
 
-	return insertSequenceValue(ctx, meta, qrquery, ds, curr_rfqn)
+	return insertSequenceValue(ctx, meta, qrouter_query, ds, curr_rfqn)
 }
 
-func PlanReferenceRelationInsertValues(ctx context.Context, qrquery *string, rm *rmeta.RoutingMetadataContext, columns []string, rv *lyx.RangeVar, values *lyx.ValueClause) (plan.Plan, error) {
+func PlanReferenceRelationInsertValues(ctx context.Context, qrouter_query *string, rm *rmeta.RoutingMetadataContext, columns []string, rv *lyx.RangeVar, values *lyx.ValueClause) (plan.Plan, error) {
 
-	err := processInsertFromSelectOffsets(ctx, qrquery, columns, rv, rm)
+	err := processInsertFromSelectOffsets(ctx, qrouter_query, columns, rv, rm)
 	if err != nil {
 		return nil, err
 	}
