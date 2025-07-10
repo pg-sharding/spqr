@@ -635,7 +635,7 @@ func (qr *ProxyQrouter) processInsertFromSelectOffsets(
 			insertColsPos[c] = i
 		}
 
-		distributionKey := ds.Relations[curr_rfqn.RelationName].DistributionKey
+		distributionKey := ds.Relations[*curr_rfqn].DistributionKey
 		// TODO: check mapping by rules with multiple columns
 		for _, col := range distributionKey {
 			if val, ok := insertColsPos[col.Column]; !ok {
@@ -1326,7 +1326,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 			entries[q.ColName] = struct{}{}
 		}
 	}
-	rel, ok := ds.Relations[relname.RelationName]
+	rel, ok := ds.Relations[*relname]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" not present in distribution \"%s\" it's attached to", relname, ds.Id)
 	}
@@ -1404,7 +1404,7 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 			continue
 		}
 
-		relation, exists := ds.Relations[qualName.RelationName]
+		relation, exists := ds.Relations[qualName]
 		if !exists {
 			return nil, fmt.Errorf("relation %s not found in distribution %s", qualName.RelationName, ds.Id)
 		}
@@ -1839,7 +1839,7 @@ func (qr *ProxyQrouter) insertSequenceValue(ctx context.Context, ds *distributio
 
 	query := *qr.query
 	/*  XXX: use interface call here */
-	rel := ds.Relations[qualName.RelationName]
+	rel := ds.Relations[*qualName]
 	for colName, seqName := range rel.ColumnSequenceMapping {
 		nextval, err := qr.mgr.NextVal(ctx, seqName)
 		if err != nil {

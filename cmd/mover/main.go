@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/router/rfqn"
 
 	"github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
@@ -38,7 +39,7 @@ func (p *ProxyW) Write(bt []byte) (int, error) {
 }
 
 // TODO : unit tests
-func moveData(ctx context.Context, from, to *pgx.Conn, keyRange, nextKeyRange *kr.KeyRange, rels map[string]*distributions.DistributedRelation) error {
+func moveData(ctx context.Context, from, to *pgx.Conn, keyRange, nextKeyRange *kr.KeyRange, rels map[rfqn.RelationFQN]*distributions.DistributedRelation) error {
 	txFrom, err := from.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err

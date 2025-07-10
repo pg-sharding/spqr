@@ -27,9 +27,10 @@ type DistributedRelation struct {
 func (r *DistributedRelation) QualifiedName() rfqn.RelationFQN {
 	return rfqn.RelationFQN{RelationName: r.Name, SchemaName: r.SchemaName}
 }
-func (r *DistributedRelation) ToRFQN() rfqn.RelationFQN {
+
+/*func (r *DistributedRelation) ToRFQN() rfqn.RelationFQN {
 	return rfqn.RelationFQN{RelationName: r.Name, SchemaName: r.SchemaName}
-}
+}*/
 
 const (
 	REPLICATED = "REPLICATED"
@@ -173,7 +174,7 @@ type Distribution struct {
 	// column types to be used
 	// REPLICATED distribution has an empty array here.
 	ColTypes  []string
-	Relations map[string]*DistributedRelation
+	Relations map[rfqn.RelationFQN]*DistributedRelation
 }
 
 // local table sharding distr -> route to world
@@ -190,7 +191,7 @@ func NewDistribution(id string, coltypes []string) *Distribution {
 	return &Distribution{
 		Id:        id,
 		ColTypes:  coltypes,
-		Relations: map[string]*DistributedRelation{},
+		Relations: map[rfqn.RelationFQN]*DistributedRelation{},
 	}
 }
 
@@ -210,8 +211,9 @@ func (s *Distribution) ID() string {
 //   - *Distribution: The created Distribution object.
 func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 	ret := NewDistribution(distr.ID, distr.ColTypes)
-	for name, val := range distr.Relations {
-		ret.Relations[name] = DistributedRelationFromDB(val)
+	for _, val := range distr.Relations {
+		relation := DistributedRelationFromDB(val)
+		ret.Relations[relation.QualifiedName()] = relation
 	}
 
 	return ret
@@ -228,10 +230,11 @@ func DistributionFromProto(ds *proto.Distribution) *Distribution {
 	return &Distribution{
 		Id:       ds.Id,
 		ColTypes: ds.ColumnTypes,
-		Relations: func() map[string]*DistributedRelation {
-			res := make(map[string]*DistributedRelation)
+		Relations: func() map[rfqn.RelationFQN]*DistributedRelation {
+			res := make(map[rfqn.RelationFQN]*DistributedRelation)
 			for _, rel := range ds.Relations {
-				res[rel.Name] = DistributedRelationFromProto(rel)
+				relFromProto := DistributedRelationFromProto(rel)
+				res[relFromProto.QualifiedName()] = relFromProto
 			}
 			return res
 		}(),

@@ -301,17 +301,17 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		}, nil
 	}
 
-	hashFunc := make([]hashfunction.HashFunctionType, len(ds.Relations[relname.String()].DistributionKey))
+	hashFunc := make([]hashfunction.HashFunctionType, len(ds.Relations[*relname].DistributionKey))
 
 	krs, err := mgr.ListKeyRanges(ctx, ds.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	co := make([]int, len(ds.Relations[relname.String()].DistributionKey))
-	for dKey := range ds.Relations[relname.String()].DistributionKey {
+	co := make([]int, len(ds.Relations[*relname].DistributionKey))
+	for dKey := range ds.Relations[*relname].DistributionKey {
 
-		if v, err := hashfunction.HashFunctionByName(ds.Relations[relname.String()].DistributionKey[dKey].HashFunction); err != nil {
+		if v, err := hashfunction.HashFunctionByName(ds.Relations[*relname].DistributionKey[dKey].HashFunction); err != nil {
 			return nil, err
 		} else {
 			hashFunc[dKey] = v
@@ -319,7 +319,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 
 		colOffset := -1
 		for indx, c := range stmt.Columns {
-			if c == ds.Relations[relname.String()].DistributionKey[dKey].Column {
+			if c == ds.Relations[*relname].DistributionKey[dKey].Column {
 				colOffset = indx
 				break
 			}

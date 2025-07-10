@@ -82,7 +82,7 @@ func (lc *Coordinator) AlterDistributedRelation(ctx context.Context, id string, 
 	}
 
 	for colName, seqName := range rel.ColumnSequenceMapping {
-		qualifiedName := rel.ToRFQN()
+		qualifiedName := rel.QualifiedName()
 		if err := lc.qdb.AlterSequenceAttach(ctx, seqName, &qualifiedName, colName); err != nil {
 			return err
 		}
@@ -420,11 +420,7 @@ func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distrib
 	}
 	ds := distributions.DistributionFromDB(ret)
 	for relName := range ds.Relations {
-		qualifiedName, err := rfqn.ParseFQN(relName)
-		if err != nil {
-			return nil, err
-		}
-		mapping, err := lc.qdb.GetRelationSequence(ctx, qualifiedName)
+		mapping, err := lc.qdb.GetRelationSequence(ctx, &relName)
 		if err != nil {
 			return nil, err
 		}
@@ -452,11 +448,7 @@ func (lc *Coordinator) GetRelationDistribution(ctx context.Context, relation *rf
 	}
 	ds := distributions.DistributionFromDB(ret)
 	for relName := range ds.Relations {
-		qualifiedName, err := rfqn.ParseFQN(relName)
-		if err != nil {
-			return nil, err
-		}
-		mapping, err := lc.qdb.GetRelationSequence(ctx, qualifiedName)
+		mapping, err := lc.qdb.GetRelationSequence(ctx, &relName)
 		if err != nil {
 			return nil, err
 		}
@@ -618,7 +610,7 @@ func (qc *Coordinator) ListDistributions(ctx context.Context) ([]*distributions.
 			if err != nil {
 				return nil, err
 			}
-			ret.Relations[relName].ColumnSequenceMapping = mapping
+			ret.Relations[*qualifiedName].ColumnSequenceMapping = mapping
 		}
 		res = append(res, ret)
 	}
@@ -635,7 +627,7 @@ func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 			if err := qc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
 				return err
 			}
-			qualifiedName := rel.ToRFQN()
+			qualifiedName := rel.QualifiedName()
 			err := qc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName)
 			if err != nil {
 				return err

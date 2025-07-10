@@ -973,8 +973,11 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 	}
 	var taskGroup *tasks.MoveTaskGroup
 	if totalCount != 0 {
-		biggestRelName, coeff := qc.getBiggestRelation(relCount, totalCount)
-		biggestRel := ds.Relations[biggestRelName]
+		biggestRelName, coeff, err := qc.getBiggestRelation(relCount, totalCount)
+		if err != nil {
+			return err
+		}
+		biggestRel := ds.Relations[*biggestRelName]
 		cond, err := kr.GetKRCondition(biggestRel, keyRange, nextBound, "")
 		if err != nil {
 			return err
@@ -1030,7 +1033,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 // Parameters:
 //   - ctx (context.Context): The context for queries to the database.
 //   - conn (*pgx.Conn): The connection to the database.
-//   - relations (map[string]*distributions.DistributedRelation): The relations to collect the information about.
+//   - relations (map[rfqn.RelationFQN]*distributions.DistributedRelation): The relations to collect the information about.
 //   - keyRange (*kr.KeyRange): The key range to collect the information about.
 //   - nextBound (kr.KeyRangeBound): THe bound of the next key range. If there's no next key range, must be nil.
 //
@@ -1041,12 +1044,12 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 func (*ClusteredCoordinator) getKeyStats(
 	ctx context.Context,
 	conn *pgx.Conn,
-	relations map[string]*distributions.DistributedRelation,
+	relations map[rfqn.RelationFQN]*distributions.DistributedRelation,
 	keyRange *kr.KeyRange,
 	nextBound kr.KeyRangeBound,
-) (totalCount int64, relationCount map[string]int64, err error) {
+) (totalCount int64, relationCount map[rfqn.RelationFQN]int64, err error) {
 	t := time.Now()
-	relationCount = make(map[string]int64)
+	relationCount = make(map[rfqn.RelationFQN]int64)
 	for _, rel := range relations {
 		relExists, err := datatransfers.CheckTableExists(ctx, conn, strings.ToLower(rel.Name), rel.GetSchema())
 		if err != nil {
@@ -1070,7 +1073,7 @@ func (*ClusteredCoordinator) getKeyStats(
 		if err = row.Scan(&count); err != nil {
 			return 0, nil, err
 		}
-		relationCount[rel.Name] = count
+		relationCount[rel.QualifiedName()] = count
 		totalCount += count
 	}
 	statistics.RecordShardOperation(time.Since(t))
@@ -1088,16 +1091,20 @@ func (*ClusteredCoordinator) getKeyStats(
 // Returns:
 //   - string: The relation with the largest number of keys.
 //   - float64: The ratio of keys between the biggest relation and the total amount.
-func (*ClusteredCoordinator) getBiggestRelation(relCount map[string]int64, totalCount int64) (string, float64) {
+//   - error:
+func (*ClusteredCoordinator) getBiggestRelation(relCount map[rfqn.RelationFQN]int64, totalCount int64) (*rfqn.RelationFQN, float64, error) {
 	maxCount := 0.0
-	maxRel := ""
+	if len(relCount) == 0 {
+		return nil, maxCount, fmt.Errorf("count map is empty")
+	}
+	var maxRel *rfqn.RelationFQN
 	for rel, count := range relCount {
 		if float64(count) > maxCount {
 			maxCount = float64(count)
-			maxRel = rel
+			maxRel = &rel
 		}
 	}
-	return maxRel, maxCount / float64(totalCount)
+	return maxRel, maxCount / float64(totalCount), nil
 }
 
 // TODO: unit tests
