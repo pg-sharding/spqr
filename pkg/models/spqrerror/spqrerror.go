@@ -71,6 +71,7 @@ type SpqrError struct {
 	Err error
 
 	ErrorCode string
+	ErrHint   string
 }
 
 // New creates a new SpqrError with the given error code and error message.
@@ -86,6 +87,15 @@ func New(errorCode string, errorMsg string) *SpqrError {
 	err := &SpqrError{
 		Err:       fmt.Errorf("%s", errorMsg),
 		ErrorCode: errorCode,
+	}
+	return err
+}
+
+func NewWithHint(errorCode string, errorMsg string, errhint string) *SpqrError {
+	err := &SpqrError{
+		Err:       fmt.Errorf("%s", errorMsg),
+		ErrorCode: errorCode,
+		ErrHint:   errhint,
 	}
 	return err
 }

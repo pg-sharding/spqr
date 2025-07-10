@@ -1050,7 +1050,7 @@ func (cl *PsqlClient) Params() map[string]string {
 	return cl.activeParamSet
 }
 
-func (cl *PsqlClient) ReplyErrMsg(msg string, code string, s txstatus.TXStatus) error {
+func (cl *PsqlClient) replyErrMsgHint(msg string, code string, hint string, s txstatus.TXStatus) error {
 	var clErrMsg string
 
 	if cl.ReplyClientId {
@@ -1064,6 +1064,7 @@ func (cl *PsqlClient) ReplyErrMsg(msg string, code string, s txstatus.TXStatus) 
 			Message:  clErrMsg,
 			Severity: "ERROR",
 			Code:     code,
+			Hint:     hint,
 		},
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(s),
@@ -1074,6 +1075,10 @@ func (cl *PsqlClient) ReplyErrMsg(msg string, code string, s txstatus.TXStatus) 
 		}
 	}
 	return nil
+}
+
+func (cl *PsqlClient) ReplyErrMsg(msg string, code string, s txstatus.TXStatus) error {
+	return cl.replyErrMsgHint(msg, code, "", s)
 }
 
 func (cl *PsqlClient) ReplyErrWithTxStatus(e error, s txstatus.TXStatus) error {
@@ -1088,7 +1093,7 @@ func (cl *PsqlClient) ReplyErrWithTxStatus(e error, s txstatus.TXStatus) error {
 func (cl *PsqlClient) ReplyErr(e error) error {
 	switch er := e.(type) {
 	case *spqrerror.SpqrError:
-		return cl.ReplyErrMsg(er.Error(), er.ErrorCode, txstatus.TXIDLE)
+		return cl.replyErrMsgHint(er.Error(), er.ErrorCode, er.ErrHint, txstatus.TXIDLE)
 	default:
 		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, txstatus.TXIDLE)
 	}
