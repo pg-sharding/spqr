@@ -125,6 +125,7 @@ emptypb
 entrieslist
 eph
 errdefs
+errhint
 eshkere
 etcdctl
 etcdqdb
