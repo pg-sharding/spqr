@@ -645,7 +645,7 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset and populate cache
-			dbpool.CacheTSAChecks = tt.cacheState
+			dbpool.Cache().ReplaceCache(tt.cacheState)
 			dbpool.ShuffleHosts = tt.shuffleHosts
 			dbpool.PreferAZ = tt.preferAZ
 
