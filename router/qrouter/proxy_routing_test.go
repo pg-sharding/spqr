@@ -1020,7 +1020,7 @@ func TestSingleShard(t *testing.T) {
 	}
 }
 
-func TestSingleShardSchemafull(t *testing.T) {
+func TestSingleShardRFQN(t *testing.T) {
 	assert := assert.New(t)
 
 	type tcase struct {
