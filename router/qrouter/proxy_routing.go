@@ -1121,7 +1121,9 @@ func (qr *ProxyQrouter) planQueryV1(
 							// XXX: todo - check that sub select is not doing anything insane
 							switch p.(type) {
 							case plan.VirtualPlan, plan.ScatterPlan, plan.RandomDispatchPlan:
-								return plan.ScatterPlan{}, nil
+								return plan.ScatterPlan{
+									ExecTargets: rel.ListStorageRoutes(),
+								}, nil
 							default:
 								return nil, rerrors.ErrComplexQuery
 							}
