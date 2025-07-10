@@ -154,11 +154,10 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	}
 }
 
-func insertSequenceValue(ctx context.Context, meta *rmeta.RoutingMetadataContext, qrouter_query *string, ds *distributions.Distribution, qualName *rfqn.RelationFQN) error {
+func insertSequenceValue(ctx context.Context, meta *rmeta.RoutingMetadataContext, qrouter_query *string, rel *rrelation.ReferenceRelation) error {
 
 	query := *qrouter_query
-	/*  XXX: use interface call here */
-	rel := ds.Relations[qualName.RelationName]
+
 	for colName, seqName := range rel.ColumnSequenceMapping {
 		nextval, err := meta.Mgr.NextVal(ctx, seqName)
 		if err != nil {
@@ -175,40 +174,23 @@ func insertSequenceValue(ctx context.Context, meta *rmeta.RoutingMetadataContext
 	return nil
 }
 
-func processInsertFromSelectOffsets(
-	ctx context.Context, qrouter_query *string, insertCols []string, rv *lyx.RangeVar, meta *rmeta.RoutingMetadataContext) error {
-
-	spqrlog.Zero.Debug().
-		Strs("insert columns", insertCols).
-		Msg("deparsed insert statement columns")
-
-	var curr_rfqn *rfqn.RelationFQN
-
-	spqrlog.Zero.Debug().
-		Str("relname", rv.RelationName).
-		Str("schemaname", rv.SchemaName).
-		Msg("deparsed insert statement for reference relation")
-
-	curr_rfqn = rfqn.RelationFQNFromRangeRangeVar(rv)
-
-	var ds *distributions.Distribution
-	var err error
-
-	if ds, err = meta.GetRelationDistribution(ctx, curr_rfqn); err != nil {
-		return err
-	}
-
-	return insertSequenceValue(ctx, meta, qrouter_query, ds, curr_rfqn)
-}
-
 func PlanReferenceRelationInsertValues(ctx context.Context, qrouter_query *string, rm *rmeta.RoutingMetadataContext, columns []string, rv *lyx.RangeVar, values *lyx.ValueClause) (plan.Plan, error) {
 
-	err := processInsertFromSelectOffsets(ctx, qrouter_query, columns, rv, rm)
+	/*  XXX: use interface call here */
+	qualName := rfqn.RelationFQNFromRangeRangeVar(rv)
+
+	rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
 	if err != nil {
 		return nil, err
 	}
 
-	return plan.ScatterPlan{}, nil
+	if err := insertSequenceValue(ctx, rm, qrouter_query, rel); err != nil {
+		return nil, err
+	}
+
+	return plan.ScatterPlan{
+		ExecTargets: rel.ListStorageRoutes(),
+	}, nil
 }
 
 func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {

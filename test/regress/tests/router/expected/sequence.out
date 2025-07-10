@@ -53,6 +53,9 @@ INSERT INTO test2(age) VALUES (17) /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test2(age) VALUES (18) /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- asserting error
+INSERT INTO test2 SELECT 1 /* __spqr__engine_v2: true */;
+ERROR:  client processing error: error processing query 'INSERT INTO test2 SELECT 1 /* __spqr__engine_v2: true */;': too complex query to route, tx status IDLE
 SELECT * FROM test2 /* __spqr__execute_on: sh2 */ ORDER BY id, age;
 NOTICE: send query to shard(s) : sh2
  id | age 

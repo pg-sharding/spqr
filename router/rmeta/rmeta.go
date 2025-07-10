@@ -83,10 +83,7 @@ func IsRelationCatalog(resolvedRelation *rfqn.RelationFQN) bool {
 }
 
 func (rm *RoutingMetadataContext) IsReferenceRelation(ctx context.Context, q *lyx.RangeVar) (bool, error) {
-	qualName := &rfqn.RelationFQN{
-		RelationName: q.RelationName,
-		SchemaName:   q.SchemaName,
-	}
+	qualName := rfqn.RelationFQNFromRangeRangeVar(q)
 
 	ds, err := rm.GetRelationDistribution(ctx, qualName)
 	if err != nil {

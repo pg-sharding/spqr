@@ -1098,11 +1098,39 @@ func (qr *ProxyQrouter) planQueryV1(
 				p, _ = qr.planQueryV1(ctx, subS, rm)
 
 				/* try target list */
-				spqrlog.Zero.Debug().Msg("routing insert stmt on target list")
+				spqrlog.Zero.Debug().Msgf("routing insert stmt on target list:%T", p)
 				/* this target list for some insert (...) sharding column */
 
 				routingList = [][]lyx.Node{subS.TargetList}
 				/* record all values from tl */
+
+				switch rf := stmt.TableRef.(type) {
+				case *lyx.RangeVar:
+
+					qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
+
+					if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
+						return nil, err
+					} else if rs {
+						rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
+						if err != nil {
+							return nil, err
+						}
+						if len(rel.ColumnSequenceMapping) == 0 {
+							// ok
+							// XXX: todo - check that sub select is not doing anything insane
+							switch p.(type) {
+							case plan.VirtualPlan, plan.ScatterPlan, plan.RandomDispatchPlan:
+								return plan.ScatterPlan{}, nil
+							default:
+								return nil, rerrors.ErrComplexQuery
+							}
+						}
+						return nil, rerrors.ErrComplexQuery
+					}
+				default:
+					return nil, rerrors.ErrComplexQuery
+				}
 
 			case *lyx.ValueClause:
 				/* record all values from values scan */
