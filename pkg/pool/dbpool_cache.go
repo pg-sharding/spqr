@@ -125,7 +125,7 @@ func (c *DbpoolCache) Match(targetSessionAttrs tsa.TSA, host, az string) (LocalC
 
 	// Check if entry is stale
 	if time.Since(entry.LastCheckTime) > c.maxAge {
-		// This is a stale entry, return dummy responce
+		// This is a stale entry, return dummy response
 		return LocalCheckResult{}, false
 	}
 
