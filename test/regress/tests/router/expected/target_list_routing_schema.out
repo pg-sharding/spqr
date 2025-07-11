@@ -24,58 +24,58 @@ CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
  bound -> 0
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION tlt1 DISTRIBUTION KEY i;
-      attach table       
--------------------------
- relation name   -> tlt1
+ALTER DISTRIBUTION ds1 ATTACH RELATION sh2.tlt1 DISTRIBUTION KEY i;
+        attach table       
+-----------------------------
+ relation name   -> sh2.tlt2
  distribution id -> ds1
 (2 rows)
 
 \c regress
 CREATE SCHEMA sh2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-CREATE TABLE tlt1(i int, j int);
+CREATE TABLE sh2.tlt1(i int, j int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-INSERT INTO tlt1 (i, j) VALUES(1, 12);
+INSERT INTO sh2.tlt1 (i, j) VALUES(1, 12);
 NOTICE: send query to shard(s) : sh1
-INSERT INTO tlt1 (i, j) VALUES(1, 12);
+INSERT INTO sh2.tlt1 (i, j) VALUES(1, 12);
 NOTICE: send query to shard(s) : sh1
-INSERT INTO tlt1 (i, j) VALUES(2, 13);
+INSERT INTO sh2.tlt1 (i, j) VALUES(2, 13);
 NOTICE: send query to shard(s) : sh1
-INSERT INTO tlt1 (i, j) VALUES(2, 13);
+INSERT INTO sh2.tlt1 (i, j) VALUES(2, 13);
 NOTICE: send query to shard(s) : sh1
-INSERT INTO tlt1 (i, j) VALUES(12, 12);
+INSERT INTO sh2.tlt1 (i, j) VALUES(12, 12);
 NOTICE: send query to shard(s) : sh2
-INSERT INTO tlt1 (i, j) VALUES(12, 14);
+INSERT INTO sh2.tlt1 (i, j) VALUES(12, 14);
 NOTICE: send query to shard(s) : sh2
-INSERT INTO tlt1 (i, j) VALUES(122, 124);
+INSERT INTO sh2.tlt1 (i, j) VALUES(122, 124);
 NOTICE: send query to shard(s) : sh2
-INSERT INTO tlt1 (i, j) VALUES(112, 124);
+INSERT INTO sh2.tlt1 (i, j) VALUES(112, 124);
 NOTICE: send query to shard(s) : sh2
-INSERT INTO tlt1 (i, j) VALUES(113, 125);
+INSERT INTO sh2.tlt1 (i, j) VALUES(113, 125);
 NOTICE: send query to shard(s) : sh2
-select (select sum(j) from tlt1 where i = 112);
+select (select sum(j) from sh2.tlt1 where i = 112);
 NOTICE: send query to shard(s) : sh2
  sum 
 -----
  124
 (1 row)
 
-select (select sum(j) as xyx from tlt1 where i = 112) as aboba;
+select (select sum(j) as xyx from sh2.tlt1 where i = 112) as aboba;
 NOTICE: send query to shard(s) : sh2
  aboba 
 -------
    124
 (1 row)
 
-select (select sum(j) from tlt1 where i = 112), (select sum(j) from tlt1 where tlt1.i = 113);
+select (select sum(j) from sh2.tlt1 where i = 112), (select sum(j) from sh2.tlt1 where sh2.tlt1.i = 113);
 NOTICE: send query to shard(s) : sh2
  sum | sum 
 -----+-----
  124 | 125
 (1 row)
 
-select  coalesce((select sum(j) from tlt1 where i = 1), 0), coalesce((select sum(j) from tlt1 where i = 2 and j not in (select 12)), 0);
+select  coalesce((select sum(j) from sh2.tlt1 where i = 1), 0), coalesce((select sum(j) from sh2.tlt1 where i = 2 and j not in (select 12)), 0);
 NOTICE: send query to shard(s) : sh1
  coalesce | coalesce 
 ----------+----------

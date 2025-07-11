@@ -8,22 +8,22 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION tlt1 DISTRIBUTION KEY i;
 \c regress
 
 CREATE SCHEMA sh2;
-CREATE TABLE sh2.tlt1(i int, j int);
+CREATE TABLE tlt1(i int, j int);
 
-INSERT INTO sh2.tlt1 (i, j) VALUES(1, 12);
-INSERT INTO sh2.tlt1 (i, j) VALUES(1, 12);
-INSERT INTO sh2.tlt1 (i, j) VALUES(2, 13);
-INSERT INTO sh2.tlt1 (i, j) VALUES(2, 13);
-INSERT INTO sh2.tlt1 (i, j) VALUES(12, 12);
-INSERT INTO sh2.tlt1 (i, j) VALUES(12, 14);
-INSERT INTO sh2.tlt1 (i, j) VALUES(122, 124);
-INSERT INTO sh2.tlt1 (i, j) VALUES(112, 124);
-INSERT INTO sh2.tlt1 (i, j) VALUES(113, 125);
+INSERT INTO tlt1 (i, j) VALUES(1, 12);
+INSERT INTO tlt1 (i, j) VALUES(1, 12);
+INSERT INTO tlt1 (i, j) VALUES(2, 13);
+INSERT INTO tlt1 (i, j) VALUES(2, 13);
+INSERT INTO tlt1 (i, j) VALUES(12, 12);
+INSERT INTO tlt1 (i, j) VALUES(12, 14);
+INSERT INTO tlt1 (i, j) VALUES(122, 124);
+INSERT INTO tlt1 (i, j) VALUES(112, 124);
+INSERT INTO tlt1 (i, j) VALUES(113, 125);
 
-select (select sum(j) from sh2.tlt1 where i = 112);
-select (select sum(j) as xyx from sh2.tlt1 where i = 112) as aboba;
-select (select sum(j) from sh2.tlt1 where i = 112), (select sum(j) from sh2.tlt1 where sh2.tlt1.i = 113);
-select  coalesce((select sum(j) from sh2.tlt1 where i = 1), 0), coalesce((select sum(j) from sh2.tlt1 where i = 2 and j not in (select 12)), 0);
+select (select sum(j) from tlt1 where i = 112);
+select (select sum(j) as xyx from tlt1 where i = 112) as aboba;
+select (select sum(j) from tlt1 where i = 112), (select sum(j) from tlt1 where tlt1.i = 113);
+select  coalesce((select sum(j) from tlt1 where i = 1), 0), coalesce((select sum(j) from tlt1 where i = 2 and j not in (select 12)), 0);
 
 DROP SCHEMA sh2 CASCADE;
 
