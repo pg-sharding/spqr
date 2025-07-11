@@ -604,10 +604,10 @@ func (qc *Coordinator) ListDistributions(ctx context.Context) ([]*distributions.
 		return nil, err
 	}
 	res := make([]*distributions.Distribution, 0)
-	for _, ds := range distrs {
-		ret := distributions.DistributionFromDB(ds)
-		for relName := range ds.Relations {
-			qualifiedName, err := rfqn.ParseFQN(relName)
+	for _, dsDb := range distrs {
+		distribution := distributions.DistributionFromDB(dsDb)
+		for _, relName := range dsDb.Relations {
+			qualifiedName := relName.QualifiedName()
 			if err != nil {
 				return nil, err
 			}
@@ -615,9 +615,14 @@ func (qc *Coordinator) ListDistributions(ctx context.Context) ([]*distributions.
 			if err != nil {
 				return nil, err
 			}
-			ret.Relations[*qualifiedName].ColumnSequenceMapping = mapping
+			if distrRel, ok := distribution.Relations[*qualifiedName]; !ok {
+				return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION,
+					"corrupted list relations of distribution \"%s\" ", distribution.Id)
+			} else {
+				distrRel.ColumnSequenceMapping = mapping
+			}
 		}
-		res = append(res, ret)
+		res = append(res, distribution)
 	}
 	return res, nil
 }
