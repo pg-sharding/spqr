@@ -181,7 +181,7 @@ func (c *DbpoolCache) cleanupStaleEntries() {
 				removedCount++
 
 				if tsaKey, ok := key.(TsaKey); ok {
-					spqrlog.Zero.Debug().
+					spqrlog.Zero.Info().
 						Str("host", tsaKey.Host).
 						Str("az", tsaKey.AZ).
 						Str("tsa", string(tsaKey.Tsa)).
