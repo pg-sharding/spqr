@@ -52,7 +52,7 @@ func NewDbpoolCacheWithCleanup(maxAge time.Duration) *DbpoolCache {
 	}
 
 	// Start the cleanup goroutine
-	cache.startCacheCleanup()
+	cache.startCacheCleanup(30 * time.Second)
 
 	return cache
 }
@@ -126,39 +126,12 @@ func (c *DbpoolCache) Match(targetSessionAttrs tsa.TSA, host, az string) (LocalC
 	return entry.Result, true
 }
 
-// Bad checks if a host is marked as bad for the given TSA
-// This is essentially the inverse of Match, but provided for clarity, currecntly used only
-// for testsing purposes
-func (c *DbpoolCache) Bad(targetSessionAttrs tsa.TSA, host, az string) (LocalCheckResult, bool) {
-	result, exists := c.Match(targetSessionAttrs, host, az)
-	if !exists {
-		return LocalCheckResult{}, false
-	}
-
-	return result, !result.Match
-}
-
 // Clear removes all cached entries
 func (c *DbpoolCache) Clear() {
 	c.cache.Range(func(key, value any) bool {
 		c.cache.Delete(key)
 		return true
 	})
-}
-
-// Remove removes a specific cached entry
-func (c *DbpoolCache) Remove(targetSessionAttrs tsa.TSA, host, az string) {
-	key := TsaKey{
-		Tsa:  targetSessionAttrs,
-		Host: host,
-		AZ:   az,
-	}
-	c.cache.Delete(key)
-}
-
-// ReplaceCache replaces the internal cache with a new sync.Map for testing purposes
-func (c *DbpoolCache) ReplaceCache(newCache *sync.Map) {
-	c.cache = newCache
 }
 
 // GetAllEntries returns all cache entries for validation purposes
@@ -175,15 +148,10 @@ func (c *DbpoolCache) GetAllEntries() map[TsaKey]LocalCheckResult {
 	return entries
 }
 
-// RemoveByKey removes a specific cache entry by TsaKey
-func (c *DbpoolCache) RemoveByKey(key TsaKey) {
-	c.cache.Delete(key)
-}
-
 // startCacheCleanup starts a background goroutine that cleans up stale cache entries every 30 seconds
-func (c *DbpoolCache) startCacheCleanup() {
+func (c *DbpoolCache) startCacheCleanup(d time.Duration) {
 	go func() {
-		ticker := time.NewTicker(30 * time.Second)
+		ticker := time.NewTicker(d)
 		defer ticker.Stop()
 
 		for {

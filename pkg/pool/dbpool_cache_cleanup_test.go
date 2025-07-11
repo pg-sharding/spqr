@@ -86,19 +86,6 @@ func TestCacheCleanupIntegration(t *testing.T) {
 	if len(entries) != 2 {
 		t.Errorf("Expected 2 entries, got %d", len(entries))
 	}
-
-	// Test RemoveByKey method
-	key := TsaKey{
-		Tsa:  config.TargetSessionAttrsRW,
-		Host: "host1:5432",
-		AZ:   "sas",
-	}
-
-	cache.RemoveByKey(key)
-	entries = cache.GetAllEntries()
-	if len(entries) != 1 {
-		t.Errorf("Expected 1 entry after removal, got %d", len(entries))
-	}
 }
 
 // emptyMultiShardPool is a minimal implementation for testing
