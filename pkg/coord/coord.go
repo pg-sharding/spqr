@@ -87,7 +87,7 @@ func (lc *Coordinator) AlterDistributedRelation(ctx context.Context, id string, 
 	}
 
 	for colName, seqName := range rel.ColumnSequenceMapping {
-		qualifiedName := rel.ToRFQN()
+		qualifiedName := rel.QualifiedName()
 		if err := lc.qdb.AlterSequenceAttach(ctx, seqName, &qualifiedName, colName); err != nil {
 			return err
 		}
@@ -425,11 +425,7 @@ func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distrib
 	}
 	ds := distributions.DistributionFromDB(ret)
 	for relName := range ds.Relations {
-		qualifiedName, err := rfqn.ParseFQN(relName)
-		if err != nil {
-			return nil, err
-		}
-		mapping, err := lc.qdb.GetRelationSequence(ctx, qualifiedName)
+		mapping, err := lc.qdb.GetRelationSequence(ctx, &relName)
 		if err != nil {
 			return nil, err
 		}
@@ -457,11 +453,7 @@ func (lc *Coordinator) GetRelationDistribution(ctx context.Context, relation *rf
 	}
 	ds := distributions.DistributionFromDB(ret)
 	for relName := range ds.Relations {
-		qualifiedName, err := rfqn.ParseFQN(relName)
-		if err != nil {
-			return nil, err
-		}
-		mapping, err := lc.qdb.GetRelationSequence(ctx, qualifiedName)
+		mapping, err := lc.qdb.GetRelationSequence(ctx, &relName)
 		if err != nil {
 			return nil, err
 		}
@@ -612,10 +604,10 @@ func (qc *Coordinator) ListDistributions(ctx context.Context) ([]*distributions.
 		return nil, err
 	}
 	res := make([]*distributions.Distribution, 0)
-	for _, ds := range distrs {
-		ret := distributions.DistributionFromDB(ds)
-		for relName := range ds.Relations {
-			qualifiedName, err := rfqn.ParseFQN(relName)
+	for _, dsDb := range distrs {
+		distribution := distributions.DistributionFromDB(dsDb)
+		for _, relName := range dsDb.Relations {
+			qualifiedName := relName.QualifiedName()
 			if err != nil {
 				return nil, err
 			}
@@ -623,9 +615,14 @@ func (qc *Coordinator) ListDistributions(ctx context.Context) ([]*distributions.
 			if err != nil {
 				return nil, err
 			}
-			ret.Relations[relName].ColumnSequenceMapping = mapping
+			if distrRel, ok := distribution.Relations[*qualifiedName]; !ok {
+				return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION,
+					"corrupted list relations of distribution \"%s\" ", distribution.Id)
+			} else {
+				distrRel.ColumnSequenceMapping = mapping
+			}
 		}
-		res = append(res, ret)
+		res = append(res, distribution)
 	}
 	return res, nil
 }
@@ -640,7 +637,7 @@ func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 			if err := qc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
 				return err
 			}
-			qualifiedName := rel.ToRFQN()
+			qualifiedName := rel.QualifiedName()
 			err := qc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName)
 			if err != nil {
 				return err

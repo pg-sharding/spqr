@@ -61,7 +61,6 @@ func ReplayLogs(host string, port string, user string, db string, file string) e
 			sessionsMessageBuffer[msg.Session] = make(chan workloadlog.TimedMessage)
 			go startNewSession(host, port, user, db, sessionsMessageBuffer[msg.Session], &wg)
 		}
-
 		//send to session
 		sessionsMessageBuffer[msg.Session] <- msg
 	}
@@ -125,7 +124,6 @@ func startNewSession(host string, port string, user string, db string,
 			prevMsgTime = tm.Timestamp
 			<-timer.C
 
-			spqrlog.Zero.Info().Any("msg %+v", tm.Msg).Msg("read query")
 			frontend.Send(tm.Msg)
 			if err := frontend.Flush(); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to send msg to bd")

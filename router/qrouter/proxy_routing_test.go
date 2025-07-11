@@ -859,17 +859,6 @@ func TestSingleShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "SELECT * FROM sh1.xxtt1 WHERE sh1.xxtt1.i = 21;",
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh2",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-			err: nil,
-		},
-
-		{
 			query: "SELECT * FROM xxtt1 a WHERE a.i = 21 and w_idj + w_idi != 0;",
 			exp: plan.ShardDispatchPlan{
 				ExecTarget: &kr.ShardKey{
@@ -1008,6 +997,149 @@ func TestSingleShard(t *testing.T) {
 		/* TODO: fix aliasing here  */
 		{
 			query: "SELECT * FROM t t WHERE t.i = 12 UNION ALL SELECT * FROM xxmixed x WHERE x.i = 22;",
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
+					Name: "sh2",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+			err: nil,
+		},
+	} {
+		parserRes, err := lyx.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		dh := session.NewDummyHandler(distribution)
+		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
+		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, tt.query)
+	}
+}
+
+func TestSingleShardRFQN(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   plan.Plan
+		err   error
+	}
+	/* TODO: fix by adding configurable setting */
+	db, _ := qdb.NewMemQDB(MemQDBPath)
+	distribution := "dd"
+
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID: distribution,
+		ColTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
+		Relations: map[string]*qdb.DistributedRelation{
+			"t": {
+				Name: "t",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
+			},
+			"tt": {
+				Name: "tt",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "id",
+					},
+				},
+			},
+			"tt2": {
+				Name: "tt2",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "id",
+					},
+				},
+			},
+			"yy": {
+				Name: "yy",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
+			},
+			"xxtt1": {
+				Name:       "xxtt1",
+				SchemaName: "sh1",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
+			},
+			"xx": {
+				Name: "xx",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
+			},
+			"xxmixed": {
+				Name: "xxmixed",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
+			},
+		},
+	})
+
+	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh1",
+		Distribution: distribution,
+		ID:           "id1",
+		LowerBound: kr.KeyRangeBound{
+			int64(1),
+		},
+		ColumnTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
+	}).ToDB())
+
+	assert.NoError(err)
+
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh2",
+		Distribution: distribution,
+		ID:           "id2",
+		LowerBound: kr.KeyRangeBound{
+			int64(11),
+		},
+		ColumnTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
+	}).ToDB())
+
+	assert.NoError(err)
+
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+
+	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
+		"sh1": {},
+		"sh2": {},
+	}, lc, &config.QRouter{
+		DefaultRouteBehaviour: "BLOCK",
+	}, nil)
+
+	assert.NoError(err)
+
+	for _, tt := range []tcase{
+		{
+			query: "SELECT * FROM sh1.xxtt1 WHERE sh1.xxtt1.i = 21;",
 			exp: plan.ShardDispatchPlan{
 				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
