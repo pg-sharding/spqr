@@ -6,7 +6,6 @@ import (
 	"net"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -28,7 +27,7 @@ type TsaKey struct {
 
 type LocalCheckResult struct {
 	Alive  bool
-	Good   bool
+	Match  bool
 	Reason string
 }
 
@@ -37,9 +36,9 @@ type DBPool struct {
 	shardMapping map[string]*config.Shard
 	checker      *tsa.CachedTSAChecker
 
-	CacheTSAChecks *sync.Map
-	ShuffleHosts   bool
-	PreferAZ       string
+	cache        *DbpoolCache
+	ShuffleHosts bool
+	PreferAZ     string
 }
 
 // InstanceHealthChecks implements MultiShardTSAPool.
@@ -81,15 +80,7 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 		sh, err := s.pool.ConnectionHost(clid, key, host)
 		if err != nil {
 
-			s.CacheTSAChecks.Store(TsaKey{
-				Tsa:  tsa,
-				Host: host.Address,
-				AZ:   host.AZ,
-			}, LocalCheckResult{
-				Alive:  false,
-				Good:   false,
-				Reason: err.Error(),
-			})
+			s.cache.MarkUnmatched(tsa, host.Address, host.AZ, false, err.Error())
 
 			spqrlog.Zero.Error().
 				Err(err).
@@ -149,28 +140,16 @@ func (s *DBPool) selectShardHost(clid uint, key kr.ShardKey, hosts []config.Host
 			hostToReason[shard.Instance().Hostname()] = err.Error()
 			_ = s.pool.Discard(shard)
 
-			s.CacheTSAChecks.Store(TsaKey{
-				Tsa:  tsa,
-				Host: shard.Instance().Hostname(),
-				AZ:   shard.Instance().AvailabilityZone(),
-			}, LocalCheckResult{
-				Alive:  tcr.CR.Alive,
-				Good:   false,
-				Reason: err.Error(),
-			})
+			s.cache.MarkUnmatched(tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, err.Error())
 
 			return false
 		}
 
-		s.CacheTSAChecks.Store(TsaKey{
-			Tsa:  tsa,
-			Host: shard.Instance().Hostname(),
-			AZ:   shard.Instance().AvailabilityZone(),
-		}, LocalCheckResult{
-			Alive:  tcr.CR.Alive,
-			Good:   good,
-			Reason: tcr.CR.Reason,
-		})
+		if good {
+			s.cache.MarkMatched(tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, tcr.CR.Reason)
+		} else {
+			s.cache.MarkUnmatched(tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, tcr.CR.Reason)
+		}
 
 		if tcr.CR.Alive && good {
 			return true
@@ -249,15 +228,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 			if err != nil {
 				total_msg = append(total_msg, fmt.Sprintf("host %s: %s", host, err.Error()))
 
-				s.CacheTSAChecks.Store(TsaKey{
-					Tsa:  config.TargetSessionAttrsAny,
-					Host: host.Address,
-					AZ:   host.AZ,
-				}, LocalCheckResult{
-					Alive:  false,
-					Good:   false,
-					Reason: err.Error(),
-				})
+				s.cache.MarkUnmatched(config.TargetSessionAttrsAny, host.Address, host.AZ, false, err.Error())
 
 				spqrlog.Zero.Error().
 					Err(err).
@@ -268,15 +239,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 				continue
 			}
 
-			s.CacheTSAChecks.Store(TsaKey{
-				Tsa:  config.TargetSessionAttrsAny,
-				Host: host.Address,
-				AZ:   host.AZ,
-			}, LocalCheckResult{
-				Alive:  true,
-				Good:   true,
-				Reason: "target session attrs any",
-			})
+			s.cache.MarkMatched(config.TargetSessionAttrsAny, host.Address, host.AZ, true, "target session attrs any")
 
 			return shard, nil
 		}
@@ -307,18 +270,11 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 	}
 
 	for _, host := range s.shardMapping[key.Name].HostsAZ() {
-		tsaKey := TsaKey{
-			Tsa:  targetSessionAttrs,
-			Host: host.Address,
-			AZ:   host.AZ,
-		}
-
-		res, ok := s.CacheTSAChecks.Load(tsaKey)
+		cr, ok := s.cache.Match(targetSessionAttrs, host.Address, host.AZ)
 		if ok {
-			cr := res.(LocalCheckResult)
 			if !cr.Alive {
 				deadCache = append(deadCache, host)
-			} else if cr.Good {
+			} else if cr.Match {
 				posCache = append(posCache, host)
 			} else {
 				negCache = append(negCache, host)
@@ -439,6 +395,16 @@ func (s *DBPool) Discard(sh shard.ShardHostInstance) error {
 	return s.pool.Discard(sh)
 }
 
+// Cache returns the cache instance for testing purposes
+func (s *DBPool) Cache() *DbpoolCache {
+	return s.cache
+}
+
+// StopCacheWatchdog stops the cache cleanup goroutine
+func (s *DBPool) StopCacheWatchdog() {
+	s.cache.StopWatchdog()
+}
+
 // NewDBPool creates a new DBPool instance with the given shard mapping.
 // It uses the provided mapping to allocate shards based on the shard key,
 // and initializes the necessary connections and configurations for each shard.
@@ -451,7 +417,7 @@ func (s *DBPool) Discard(sh shard.ShardHostInstance) error {
 //
 // Returns:
 //   - DBPool: A DBPool interface that represents the created pool.
-func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams, preferAZ string) MultiShardTSAPool {
+func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams, preferAZ string, recheckInterval time.Duration) MultiShardTSAPool {
 	allocator := func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		shardConfig := mapping[shardKey.Name]
 		hostname, _, _ := net.SplitHostPort(host.Address) // TODO try to remove this
@@ -472,32 +438,17 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 		return datashard.NewShard(shardKey, pgi, mapping[shardKey.Name], rule, startupParams)
 	}
 
-	return &DBPool{
-		pool:           NewPool(allocator),
-		shardMapping:   mapping,
-		ShuffleHosts:   true,
-		PreferAZ:       preferAZ,
-		CacheTSAChecks: &sync.Map{},
-		checker:        tsa.NewCachedTSAChecker(),
+	dbPool := &DBPool{
+		pool:         NewPool(allocator),
+		shardMapping: mapping,
+		ShuffleHosts: true,
+		PreferAZ:     preferAZ,
+		checker:      tsa.NewCachedTSAChecker(),
 	}
-}
 
-// TODO: add shuffle host support here
-func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, tsaRecheckDuration time.Duration) *DBPool {
-	return &DBPool{
-		pool:           mp,
-		shardMapping:   mapping,
-		CacheTSAChecks: &sync.Map{},
-		checker:        tsa.NewCachedTSACheckerWithDuration(tsaRecheckDuration),
-	}
-}
+	// Create cache with cleanup functionality (5 minute max age)
+	/* XXX: take defaultMaxCheckAge from config */
+	dbPool.cache = NewDbpoolCacheWithCleanup(defaultMaxCheckAge, recheckInterval)
 
-// TODO: add shuffle host support here
-func NewDBPoolWithAllocator(mapping map[string]*config.Shard, startupParams *startup.StartupParams, allocator ConnectionAllocFn) *DBPool {
-	return &DBPool{
-		pool:           NewPool(allocator),
-		shardMapping:   mapping,
-		CacheTSAChecks: &sync.Map{},
-		checker:        tsa.NewCachedTSAChecker(),
-	}
+	return dbPool
 }
