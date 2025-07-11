@@ -20,11 +20,11 @@ func TestDBPool_CacheCleanupBasic(t *testing.T) {
 
 	// Create DBPool with short cache age for testing
 	dbPool := NewDBPoolFromMultiPool(mapping, nil, &emptyMultiShardPool{}, time.Hour)
-	defer dbPool.StopCacheCleanup()
+	defer dbPool.StopCacheWatchdog()
 
 	// Create a cache with a short max age for testing
-	shortCache := NewDbpoolCacheWithCleanup(100 * time.Millisecond)
-	defer shortCache.StopCleanup()
+	shortCache := NewDbpoolCacheWithCleanup(100*time.Millisecond, defaultRecheckInterval)
+	defer shortCache.StopWatchdog()
 
 	// Add some entries to cache
 	shortCache.MarkMatched(config.TargetSessionAttrsRW, "host1:5432", "sas", true, "good")
@@ -67,7 +67,7 @@ func TestDBPool_CacheCleanupGoroutine(t *testing.T) {
 	}
 
 	// Stop cleanup
-	dbPool.StopCacheCleanup()
+	dbPool.StopCacheWatchdog()
 
 	// Give it a moment to process the cancellation
 	time.Sleep(50 * time.Millisecond)

@@ -29,7 +29,9 @@ type DbpoolCache struct {
 }
 
 const (
-	defaultMaxCheckAge = 5 * time.Minute
+	defaultMaxCheckAge      = 5 * time.Minute
+	defaultRecheckInterval  = 30 * time.Second
+	DisableAlivenessRecheck = 0 * time.Second
 )
 
 // NewDbpoolCache creates a new cache instance
@@ -41,18 +43,22 @@ func NewDbpoolCache() *DbpoolCache {
 }
 
 // NewDbpoolCacheWithCleanup creates a new cache instance with automatic cleanup
-func NewDbpoolCacheWithCleanup(maxAge time.Duration) *DbpoolCache {
-	ctx, cancel := context.WithCancel(context.Background())
+func NewDbpoolCacheWithCleanup(maxAge time.Duration, recheckInternal time.Duration) *DbpoolCache {
 
 	cache := &DbpoolCache{
-		cache:         &sync.Map{},
-		cleanupCtx:    ctx,
-		cleanupCancel: cancel,
-		maxAge:        maxAge,
+		cache:  &sync.Map{},
+		maxAge: maxAge,
 	}
 
-	// Start the cleanup goroutine
-	cache.startCacheCleanup(30 * time.Second)
+	if recheckInternal > DisableAlivenessRecheck {
+		// Start the cleanup goroutine
+		ctx, cancel := context.WithCancel(context.Background())
+
+		cache.cleanupCancel = cancel
+		cache.cleanupCtx = ctx
+
+		cache.startCacheCleanup(recheckInternal)
+	}
 
 	return cache
 }
@@ -160,6 +166,7 @@ func (c *DbpoolCache) startCacheCleanup(d time.Duration) {
 				spqrlog.Zero.Info().Msg("cache cleanup goroutine stopped")
 				return
 			case <-ticker.C:
+				/* do real work */
 				c.cleanupStaleEntries()
 			}
 		}
@@ -201,8 +208,8 @@ func (c *DbpoolCache) cleanupStaleEntries() {
 		Msg("cache cleanup completed")
 }
 
-// StopCleanup stops the cache cleanup goroutine
-func (c *DbpoolCache) StopCleanup() {
+// StopWatchdog stops the cache cleanup goroutine
+func (c *DbpoolCache) StopWatchdog() {
 	if c.cleanupCancel != nil {
 		c.cleanupCancel()
 	}

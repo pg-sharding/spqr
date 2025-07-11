@@ -10,7 +10,7 @@ import (
 
 // Bad checks if a host is marked as bad for the given TSA
 // This is essentially the inverse of Match, but provided for clarity, currecntly used only
-// for testsing purposes
+// for testing purposes
 func (c *DbpoolCache) Bad(targetSessionAttrs tsa.TSA, host, az string) (LocalCheckResult, bool) {
 	result, exists := c.Match(targetSessionAttrs, host, az)
 	if !exists {

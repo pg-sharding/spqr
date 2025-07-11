@@ -65,7 +65,7 @@ func (p *MultiDBPool) Connection(db string) (shard.ShardHostInstance, error) {
 	if !exist {
 		beRule := *p.be
 		beRule.DB = db
-		pool = NewDBPool(p.mapping, &startup.StartupParams{}, "")
+		pool = NewDBPool(p.mapping, &startup.StartupParams{}, "", DisableAlivenessRecheck)
 		pool.SetRule(&beRule)
 		p.dbs.Store(db, pool)
 	} else {

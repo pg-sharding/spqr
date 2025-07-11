@@ -58,6 +58,12 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 		sp.SearchPath = frRule.SearchPath
 	}
 
+	recheckInterval := pool.DisableAlivenessRecheck
+
+	if beRule != nil {
+		recheckInterval = beRule.AlivenessRecheckInterval
+	}
+
 	var preferAZ string
 	if config.RouterConfig().PreferSameAvailabilityZone {
 		preferAZ = config.RouterConfig().AvailabilityZone
@@ -66,7 +72,7 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 	route := &Route{
 		beRule:   beRule,
 		frRule:   frRule,
-		servPool: pool.NewDBPool(mapping, sp, preferAZ),
+		servPool: pool.NewDBPool(mapping, sp, preferAZ, recheckInterval),
 		clPool:   client.NewClientPool(),
 		params:   shard.ParameterSet{},
 	}

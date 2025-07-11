@@ -14,6 +14,8 @@ type BackendRule struct {
 	ConnectionTimeout time.Duration `json:"connection_timeout" yaml:"connection_timeout" toml:"connection_timeout"`
 	KeepAlive         time.Duration `json:"keep_alive" yaml:"keep_alive" toml:"keep_alive"`
 	TcpUserTimeout    time.Duration `json:"tcp_user_timeout" yaml:"tcp_user_timeout" toml:"tcp_user_timeout"`
+
+	AlivenessRecheckInterval time.Duration `json:"aliveness_recheck_interval" yaml:"aliveness_recheck_interval" toml:"aliveness_recheck_interval"`
 }
 
 type FrontendRule struct {

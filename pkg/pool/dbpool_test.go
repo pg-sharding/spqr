@@ -24,11 +24,6 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-// ReplaceCache replaces the internal cache with a new sync.Map for testing purposes
-func (c *DbpoolCache) ReplaceCache(newCache *sync.Map) {
-	c.cache = newCache
-}
-
 func TestDbPoolOrderCaching(t *testing.T) {
 	assert := assert.New(t)
 

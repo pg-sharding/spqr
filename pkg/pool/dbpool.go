@@ -400,9 +400,9 @@ func (s *DBPool) Cache() *DbpoolCache {
 	return s.cache
 }
 
-// StopCacheCleanup stops the cache cleanup goroutine
-func (s *DBPool) StopCacheCleanup() {
-	s.cache.StopCleanup()
+// StopCacheWatchdog stops the cache cleanup goroutine
+func (s *DBPool) StopCacheWatchdog() {
+	s.cache.StopWatchdog()
 }
 
 // NewDBPool creates a new DBPool instance with the given shard mapping.
@@ -417,7 +417,7 @@ func (s *DBPool) StopCacheCleanup() {
 //
 // Returns:
 //   - DBPool: A DBPool interface that represents the created pool.
-func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams, preferAZ string) MultiShardTSAPool {
+func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams, preferAZ string, recheckInterval time.Duration) MultiShardTSAPool {
 	allocator := func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		shardConfig := mapping[shardKey.Name]
 		hostname, _, _ := net.SplitHostPort(host.Address) // TODO try to remove this
@@ -447,35 +447,8 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 	}
 
 	// Create cache with cleanup functionality (5 minute max age)
-	dbPool.cache = NewDbpoolCacheWithCleanup(5 * time.Minute)
-
-	return dbPool
-}
-
-// TODO: add shuffle host support here
-func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, tsaRecheckDuration time.Duration) *DBPool {
-	dbPool := &DBPool{
-		pool:         mp,
-		shardMapping: mapping,
-		checker:      tsa.NewCachedTSACheckerWithDuration(tsaRecheckDuration),
-	}
-
-	// Create cache with cleanup functionality (5 minute max age)
-	dbPool.cache = NewDbpoolCacheWithCleanup(5 * time.Minute)
-
-	return dbPool
-}
-
-// TODO: add shuffle host support here
-func NewDBPoolWithAllocator(mapping map[string]*config.Shard, startupParams *startup.StartupParams, allocator ConnectionAllocFn) *DBPool {
-	dbPool := &DBPool{
-		pool:         NewPool(allocator),
-		shardMapping: mapping,
-		checker:      tsa.NewCachedTSAChecker(),
-	}
-
-	// Create cache with cleanup functionality (5 minute max age)
-	dbPool.cache = NewDbpoolCacheWithCleanup(5 * time.Minute)
+	/* XXX: take defaultMaxCheckAge from config */
+	dbPool.cache = NewDbpoolCacheWithCleanup(defaultMaxCheckAge, recheckInterval)
 
 	return dbPool
 }
