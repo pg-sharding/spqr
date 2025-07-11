@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -43,27 +44,28 @@ func ReplayLogs(host string, port string, user string, db string, file string) e
 	}()
 
 	sessionsMessageBuffer := map[int](chan workloadlog.TimedMessage){}
-
+	var wg sync.WaitGroup
 	for {
 		//read next
 		msg, err := parseFile(f)
 		if err != nil {
 			if err == io.EOF {
-				return nil
+				break
 			}
 			return err
 		}
-
+		wg.Add(1)
 		spqrlog.Zero.Info().Int("session", msg.Session).Msg("session num")
 		// if session not exist, create
 		if _, ok := sessionsMessageBuffer[msg.Session]; !ok {
 			sessionsMessageBuffer[msg.Session] = make(chan workloadlog.TimedMessage)
-			go startNewSession(host, port, user, db, sessionsMessageBuffer[msg.Session])
+			go startNewSession(host, port, user, db, sessionsMessageBuffer[msg.Session], &wg)
 		}
-
 		//send to session
 		sessionsMessageBuffer[msg.Session] <- msg
 	}
+	wg.Wait()
+	return nil
 }
 
 // startNewSession establishes a connection to a PostgreSQL server and starts a new session.
@@ -82,7 +84,8 @@ func ReplayLogs(host string, port string, user string, db string, file string) e
 // - ch: a channel to receive timed messages
 //
 // TODO : unit tests
-func startNewSession(host string, port string, user string, db string, ch chan workloadlog.TimedMessage) {
+func startNewSession(host string, port string, user string, db string,
+	ch chan workloadlog.TimedMessage, wg *sync.WaitGroup) {
 	ctx := context.Background()
 
 	startupMessage := &pgproto3.StartupMessage{
@@ -121,16 +124,17 @@ func startNewSession(host string, port string, user string, db string, ch chan w
 			prevMsgTime = tm.Timestamp
 			<-timer.C
 
-			spqrlog.Zero.Info().Any("msg %+v", tm.Msg).Msg("read query")
 			frontend.Send(tm.Msg)
 			if err := frontend.Flush(); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to send msg to bd")
 			}
 			switch tm.Msg.(type) {
 			case *pgproto3.Terminate:
+				wg.Done()
 				return
 			default:
 				err = receiveBackend(frontend)
+				wg.Done()
 				if err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("error while receiving reply")
 				}
