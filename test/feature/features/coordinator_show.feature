@@ -313,7 +313,7 @@ Feature: Coordinator show clients, pools and backend_connections
         ]
         """
 
-    Scenario: 'show backend_connections group by hostname' works 
+    Scenario: 'show backend_connections group by' works 
         When I run SQL on host "coordinator"
         """
         SHOW backend_connections group by hostname
@@ -362,6 +362,22 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         [
             {
+                "dbname":"regress",
+                "count": ".*"
+            }
+        ]
+        """
+
+        When I run SQL on host "coordinator"
+        """
+        SHOW backend_connections group by user, dbname
+        """
+        Then command return code should be "0"
+        And SQL result should match json_regexp
+        """
+        [
+            {
+                "user": "regress",
                 "dbname":"regress",
                 "count": ".*"
             }

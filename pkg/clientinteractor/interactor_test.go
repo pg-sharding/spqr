@@ -394,7 +394,7 @@ func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
 	}
 	cmd := &spqrparser.Show{
 		Cmd:     spqrparser.BackendConnectionsStr,
-		GroupBy: spqrparser.GroupBy{Col: spqrparser.ColumnRef{ColName: "hostname"}},
+		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
 	}
 	err := interactor.BackendConnections(ctx, shards, cmd)
 	assert.Nil(t, err)
@@ -434,7 +434,7 @@ func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 	}
 	cmd := &spqrparser.Show{
 		Cmd:     spqrparser.BackendConnectionsStr,
-		GroupBy: spqrparser.GroupBy{Col: spqrparser.ColumnRef{ColName: "hostname"}},
+		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
 	}
 	err := interactor.BackendConnections(ctx, shards, cmd)
 	assert.Nil(t, err)
@@ -453,7 +453,7 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 	}
 	cmd := &spqrparser.Show{
 		Cmd:     spqrparser.BackendConnectionsStr,
-		GroupBy: spqrparser.GroupBy{Col: spqrparser.ColumnRef{ColName: "someColumn"}},
+		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "someColumn"}}},
 	}
 	err := interactor.BackendConnections(ctx, shards, cmd)
 	assert.ErrorContains(err, "not found column 'someColumn' for group by statement")

@@ -33,7 +33,7 @@ type GroupByClauseEmpty struct {
 
 type GroupBy struct {
 	GroupByClause
-	Col ColumnRef
+	Col []ColumnRef
 }
 
 type WhereClauseNode interface {
