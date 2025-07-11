@@ -1593,7 +1593,11 @@ func (pi *PSQLInteractor) KillClient(clientID uint) error {
 func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.ShardHostInfo, stmt *spqrparser.Show) error {
 	switch gb := stmt.GroupBy.(type) {
 	case spqrparser.GroupBy:
-		return groupBy(shs, BackendConnectionsGetters, gb.Col.ColName, pi)
+		groupByCols := []string{}
+		for _, col := range gb.Col {
+			groupByCols = append(groupByCols, col.ColName)
+		}
+		return groupBy(shs, BackendConnectionsGetters, groupByCols, pi)
 	case spqrparser.GroupByClauseEmpty:
 		if err := pi.WriteHeader(BackendConnectionsHeaders...); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -1781,31 +1785,36 @@ func (pi *PSQLInteractor) MoveStats(ctx context.Context, stats map[string]time.D
 // - pi *PSQLInteractor:  output object
 // Returns:
 // - error: An error if there was a problem dropping the sequence.
-func groupBy[T any](values []T, getters map[string]toString[T], groupByCol string, pi *PSQLInteractor) error {
-	if getFun, ok := getters[groupByCol]; ok {
-		if err := pi.cl.Send(&pgproto3.RowDescription{
-			Fields: []pgproto3.FieldDescription{TextOidFD(groupByCol), IntOidFD("count")},
-		}); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("Could not write header for backend connections")
-			return err
-		}
-		cnt := make(map[string]int)
-		for _, value := range values {
-			cnt[getFun(value)]++
-		}
-		keys := make([]string, 0, len(cnt))
-		for k := range cnt {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-
-		for _, key := range keys {
-			if err := pi.WriteDataRow(key, fmt.Sprintf("%d", cnt[key])); err != nil {
-				return err
+func groupBy[T any](values []T, getters map[string]toString[T], groupByCols []string, pi *PSQLInteractor) error {
+	groups := make(map[string][]T)
+	for _, value := range values {
+		key := ""
+		for _, groupByCol := range groupByCols {
+			if getFun, ok := getters[groupByCol]; ok {
+				key = fmt.Sprintf("%s:-:%s", key, getFun(value))
+			} else {
+				return fmt.Errorf("not found column '%s' for group by statement", groupByCol)
 			}
 		}
-		return pi.CompleteMsg(len(cnt))
-	} else {
-		return fmt.Errorf("not found column '%s' for group by statement", groupByCol)
+		groups[key] = append(groups[key], value)
 	}
+
+	colDescs := make([]pgproto3.FieldDescription, 0, len(groupByCols)+1)
+	for _, groupByCol := range groupByCols {
+		colDescs = append(colDescs, TextOidFD(groupByCol))
+	}
+	if err := pi.cl.Send(&pgproto3.RowDescription{
+		Fields: append(colDescs, IntOidFD("count")),
+	}); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Could not write header for backend connections")
+		return err
+	}
+
+	for key, group := range groups {
+		cols := strings.Split(key, ":-:")[1:]
+		if err := pi.WriteDataRow(append(cols, fmt.Sprintf("%d", len(group)))...); err != nil {
+			return err
+		}
+	}
+	return pi.CompleteMsg(len(groups))
 }
