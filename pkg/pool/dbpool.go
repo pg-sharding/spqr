@@ -27,7 +27,7 @@ type TsaKey struct {
 
 type LocalCheckResult struct {
 	Alive  bool
-	Good   bool
+	Match  bool
 	Reason string
 }
 
@@ -80,7 +80,7 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 		sh, err := s.pool.ConnectionHost(clid, key, host)
 		if err != nil {
 
-			s.cache.MarkBad(tsa, host.Address, host.AZ, false, err.Error())
+			s.cache.MarkUnmatched(tsa, host.Address, host.AZ, false, err.Error())
 
 			spqrlog.Zero.Error().
 				Err(err).
@@ -140,15 +140,15 @@ func (s *DBPool) selectShardHost(clid uint, key kr.ShardKey, hosts []config.Host
 			hostToReason[shard.Instance().Hostname()] = err.Error()
 			_ = s.pool.Discard(shard)
 
-			s.cache.MarkBad(tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, err.Error())
+			s.cache.MarkUnmatched(tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, err.Error())
 
 			return false
 		}
 
 		if good {
-			s.cache.MarkGood(tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, tcr.CR.Reason)
+			s.cache.MarkMatched(tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, tcr.CR.Reason)
 		} else {
-			s.cache.MarkBad(tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, tcr.CR.Reason)
+			s.cache.MarkUnmatched(tsa, shard.Instance().Hostname(), shard.Instance().AvailabilityZone(), tcr.CR.Alive, tcr.CR.Reason)
 		}
 
 		if tcr.CR.Alive && good {
@@ -228,7 +228,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 			if err != nil {
 				total_msg = append(total_msg, fmt.Sprintf("host %s: %s", host, err.Error()))
 
-				s.cache.MarkBad(config.TargetSessionAttrsAny, host.Address, host.AZ, false, err.Error())
+				s.cache.MarkUnmatched(config.TargetSessionAttrsAny, host.Address, host.AZ, false, err.Error())
 
 				spqrlog.Zero.Error().
 					Err(err).
@@ -239,7 +239,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 				continue
 			}
 
-			s.cache.MarkGood(config.TargetSessionAttrsAny, host.Address, host.AZ, true, "target session attrs any")
+			s.cache.MarkMatched(config.TargetSessionAttrsAny, host.Address, host.AZ, true, "target session attrs any")
 
 			return shard, nil
 		}
@@ -270,11 +270,11 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 	}
 
 	for _, host := range s.shardMapping[key.Name].HostsAZ() {
-		cr, ok := s.cache.Good(targetSessionAttrs, host.Address, host.AZ)
+		cr, ok := s.cache.Match(targetSessionAttrs, host.Address, host.AZ)
 		if ok {
 			if !cr.Alive {
 				deadCache = append(deadCache, host)
-			} else if cr.Good {
+			} else if cr.Match {
 				posCache = append(posCache, host)
 			} else {
 				negCache = append(negCache, host)

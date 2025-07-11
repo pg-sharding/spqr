@@ -27,10 +27,10 @@ func TestDBPool_CacheCleanupBasic(t *testing.T) {
 	defer shortCache.StopCleanup()
 
 	// Add some entries to cache
-	shortCache.MarkGood(config.TargetSessionAttrsRW, "host1:5432", "sas", true, "good")
-	shortCache.MarkGood(config.TargetSessionAttrsRO, "host2:5432", "klg", true, "good")
-	shortCache.MarkBad(config.TargetSessionAttrsRW, "host3:5432", "vla", false, "bad")
-	shortCache.MarkGood(config.TargetSessionAttrsAny, "host4:5432", "sas", true, "good")
+	shortCache.MarkMatched(config.TargetSessionAttrsRW, "host1:5432", "sas", true, "good")
+	shortCache.MarkMatched(config.TargetSessionAttrsRO, "host2:5432", "klg", true, "good")
+	shortCache.MarkUnmatched(config.TargetSessionAttrsRW, "host3:5432", "vla", false, "bad")
+	shortCache.MarkMatched(config.TargetSessionAttrsAny, "host4:5432", "sas", true, "good")
 
 	// Verify initial state
 	entries := shortCache.GetAllEntries()
@@ -79,8 +79,8 @@ func TestCacheCleanupIntegration(t *testing.T) {
 	cache := NewDbpoolCache()
 
 	// Test GetAllEntries method
-	cache.MarkGood(config.TargetSessionAttrsRW, "host1:5432", "sas", true, "good")
-	cache.MarkBad(config.TargetSessionAttrsRO, "host2:5432", "klg", false, "bad")
+	cache.MarkMatched(config.TargetSessionAttrsRW, "host1:5432", "sas", true, "good")
+	cache.MarkUnmatched(config.TargetSessionAttrsRO, "host2:5432", "klg", false, "bad")
 
 	entries := cache.GetAllEntries()
 	if len(entries) != 2 {

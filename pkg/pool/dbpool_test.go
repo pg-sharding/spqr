@@ -530,19 +530,19 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 				cache := &sync.Map{}
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsRO, Host: "h1:6432", AZ: "sas"}, pool.CachedEntry{
 					Result: pool.LocalCheckResult{
-						Alive: true, Good: true, Reason: "read-only available",
+						Alive: true, Match: true, Reason: "read-only available",
 					},
 					LastCheckTime: time.Now(),
 				})
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsRO, Host: "h2:6432", AZ: "sas"}, pool.CachedEntry{
 					Result: pool.LocalCheckResult{
-						Alive: false, Good: false, Reason: "connection refused",
+						Alive: false, Match: false, Reason: "connection refused",
 					},
 					LastCheckTime: time.Now(),
 				})
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsRO, Host: "h3:6432", AZ: "vla"}, pool.CachedEntry{
 					Result: pool.LocalCheckResult{
-						Alive: true, Good: false, Reason: "read-write only",
+						Alive: true, Match: false, Reason: "read-write only",
 					},
 					LastCheckTime: time.Now(),
 				})
@@ -564,19 +564,19 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 				cache := &sync.Map{}
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsRW, Host: "h1:6432", AZ: "sas"}, pool.CachedEntry{
 					Result: pool.LocalCheckResult{
-						Alive: false, Good: false, Reason: "connection timeout",
+						Alive: false, Match: false, Reason: "connection timeout",
 					},
 					LastCheckTime: time.Now(),
 				})
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsRW, Host: "h2:6432", AZ: "sas"}, pool.CachedEntry{
 					Result: pool.LocalCheckResult{
-						Alive: false, Good: false, Reason: "connection refused",
+						Alive: false, Match: false, Reason: "connection refused",
 					},
 					LastCheckTime: time.Now(),
 				})
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsRW, Host: "h3:6432", AZ: "vla"}, pool.CachedEntry{
 					Result: pool.LocalCheckResult{
-						Alive: false, Good: false, Reason: "network unreachable",
+						Alive: false, Match: false, Reason: "network unreachable",
 					},
 					LastCheckTime: time.Now(),
 				})
@@ -598,19 +598,19 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 				cache := &sync.Map{}
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsAny, Host: "h1:6432", AZ: "sas"}, pool.CachedEntry{
 					Result: pool.LocalCheckResult{
-						Alive: true, Good: true, Reason: "available",
+						Alive: true, Match: true, Reason: "available",
 					},
 					LastCheckTime: time.Now(),
 				})
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsAny, Host: "h3:6432", AZ: "vla"}, pool.CachedEntry{
 					Result: pool.LocalCheckResult{
-						Alive: true, Good: true, Reason: "available",
+						Alive: true, Match: true, Reason: "available",
 					},
 					LastCheckTime: time.Now(),
 				})
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsAny, Host: "h5:6432", AZ: "klg"}, pool.CachedEntry{
 					Result: pool.LocalCheckResult{
-						Alive: false, Good: false, Reason: "connection failed",
+						Alive: false, Match: false, Reason: "connection failed",
 					},
 					LastCheckTime: time.Now(),
 				})
@@ -633,25 +633,25 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 				cache := &sync.Map{}
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsRO, Host: "h1:6432", AZ: "sas"}, pool.CachedEntry{
 					Result: pool.LocalCheckResult{
-						Alive: true, Good: true, Reason: "standby available",
+						Alive: true, Match: true, Reason: "standby available",
 					},
 					LastCheckTime: time.Now(),
 				})
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsRO, Host: "h2:6432", AZ: "sas"}, pool.CachedEntry{
 					Result: pool.LocalCheckResult{
-						Alive: true, Good: false, Reason: "primary not suitable for RO",
+						Alive: true, Match: false, Reason: "primary not suitable for RO",
 					},
 					LastCheckTime: time.Now(),
 				})
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsRO, Host: "h3:6432", AZ: "vla"}, pool.CachedEntry{
 					Result: pool.LocalCheckResult{
-						Alive: true, Good: false, Reason: "primary not suitable for RO",
+						Alive: true, Match: false, Reason: "primary not suitable for RO",
 					},
 					LastCheckTime: time.Now(),
 				})
 				cache.Store(pool.TsaKey{Tsa: config.TargetSessionAttrsRO, Host: "h4:6432", AZ: "vla"}, pool.CachedEntry{
 					Result: pool.LocalCheckResult{
-						Alive: true, Good: true, Reason: "standby available",
+						Alive: true, Match: true, Reason: "standby available",
 					},
 					LastCheckTime: time.Now(),
 				})

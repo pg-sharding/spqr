@@ -28,11 +28,15 @@ type DbpoolCache struct {
 	maxAge time.Duration // Maximum age for cache entries before they're considered stale
 }
 
+const (
+	defaultMaxCheckAge = 5 * time.Minute
+)
+
 // NewDbpoolCache creates a new cache instance
 func NewDbpoolCache() *DbpoolCache {
 	return &DbpoolCache{
 		cache:  &sync.Map{},
-		maxAge: 5 * time.Minute, // Default max age for cache entries
+		maxAge: defaultMaxCheckAge, // Default max age for cache entries
 	}
 }
 
@@ -53,8 +57,8 @@ func NewDbpoolCacheWithCleanup(maxAge time.Duration) *DbpoolCache {
 	return cache
 }
 
-// MarkGood marks a host as good (alive and suitable for the requested TSA)
-func (c *DbpoolCache) MarkGood(targetSessionAttrs tsa.TSA, host, az string, alive bool, reason string) {
+// MarkMatched marks a host as good (alive and suitable for the requested TSA)
+func (c *DbpoolCache) MarkMatched(targetSessionAttrs tsa.TSA, host, az string, alive bool, reason string) {
 	key := TsaKey{
 		Tsa:  targetSessionAttrs,
 		Host: host,
@@ -63,7 +67,7 @@ func (c *DbpoolCache) MarkGood(targetSessionAttrs tsa.TSA, host, az string, aliv
 
 	result := LocalCheckResult{
 		Alive:  alive,
-		Good:   true,
+		Match:  true,
 		Reason: reason,
 	}
 
@@ -75,8 +79,8 @@ func (c *DbpoolCache) MarkGood(targetSessionAttrs tsa.TSA, host, az string, aliv
 	c.cache.Store(key, entry)
 }
 
-// MarkBad marks a host as bad (alive but not suitable, or not alive)
-func (c *DbpoolCache) MarkBad(targetSessionAttrs tsa.TSA, host, az string, alive bool, reason string) {
+// MarkUnmatched marks a host as bad (alive but not suitable, or not alive)
+func (c *DbpoolCache) MarkUnmatched(targetSessionAttrs tsa.TSA, host, az string, alive bool, reason string) {
 	key := TsaKey{
 		Tsa:  targetSessionAttrs,
 		Host: host,
@@ -85,7 +89,7 @@ func (c *DbpoolCache) MarkBad(targetSessionAttrs tsa.TSA, host, az string, alive
 
 	result := LocalCheckResult{
 		Alive:  alive,
-		Good:   false,
+		Match:  false,
 		Reason: reason,
 	}
 
@@ -97,9 +101,9 @@ func (c *DbpoolCache) MarkBad(targetSessionAttrs tsa.TSA, host, az string, alive
 	c.cache.Store(key, entry)
 }
 
-// Good checks if a host is marked as good for the given TSA
+// Match checks if a host is marked as matched for the given TSA
 // Returns the check result and whether the entry exists in cache and is not stale
-func (c *DbpoolCache) Good(targetSessionAttrs tsa.TSA, host, az string) (LocalCheckResult, bool) {
+func (c *DbpoolCache) Match(targetSessionAttrs tsa.TSA, host, az string) (LocalCheckResult, bool) {
 	key := TsaKey{
 		Tsa:  targetSessionAttrs,
 		Host: host,
@@ -115,7 +119,7 @@ func (c *DbpoolCache) Good(targetSessionAttrs tsa.TSA, host, az string) (LocalCh
 
 	// Check if entry is stale
 	if time.Since(entry.LastCheckTime) > c.maxAge {
-		c.cache.Delete(key) // Remove stale entry
+		// This is a stale entry, return dummy responce
 		return LocalCheckResult{}, false
 	}
 
@@ -123,19 +127,20 @@ func (c *DbpoolCache) Good(targetSessionAttrs tsa.TSA, host, az string) (LocalCh
 }
 
 // Bad checks if a host is marked as bad for the given TSA
-// This is essentially the inverse of Good, but provided for clarity
+// This is essentially the inverse of Match, but provided for clarity, currecntly used only
+// for testsing purposes
 func (c *DbpoolCache) Bad(targetSessionAttrs tsa.TSA, host, az string) (LocalCheckResult, bool) {
-	result, exists := c.Good(targetSessionAttrs, host, az)
+	result, exists := c.Match(targetSessionAttrs, host, az)
 	if !exists {
 		return LocalCheckResult{}, false
 	}
 
-	return result, !result.Good
+	return result, !result.Match
 }
 
 // Clear removes all cached entries
 func (c *DbpoolCache) Clear() {
-	c.cache.Range(func(key, value interface{}) bool {
+	c.cache.Range(func(key, value any) bool {
 		c.cache.Delete(key)
 		return true
 	})
@@ -159,7 +164,7 @@ func (c *DbpoolCache) ReplaceCache(newCache *sync.Map) {
 // GetAllEntries returns all cache entries for validation purposes
 func (c *DbpoolCache) GetAllEntries() map[TsaKey]LocalCheckResult {
 	entries := make(map[TsaKey]LocalCheckResult)
-	c.cache.Range(func(key, value interface{}) bool {
+	c.cache.Range(func(key, value any) bool {
 		if tsaKey, ok := key.(TsaKey); ok {
 			if entry, ok := value.(CachedEntry); ok {
 				entries[tsaKey] = entry.Result
@@ -199,7 +204,7 @@ func (c *DbpoolCache) cleanupStaleEntries() {
 	removedCount := 0
 	totalCount := 0
 
-	c.cache.Range(func(key, value interface{}) bool {
+	c.cache.Range(func(key, value any) bool {
 		totalCount++
 
 		if entry, ok := value.(CachedEntry); ok {

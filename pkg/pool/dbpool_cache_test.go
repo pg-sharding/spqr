@@ -10,13 +10,13 @@ func TestDbpoolCache_MarkGoodAndBad(t *testing.T) {
 	cache := NewDbpoolCache()
 
 	// Test marking a host as good
-	cache.MarkGood(config.TargetSessionAttrsRW, "localhost:5432", "sas", true, "connection successful")
+	cache.MarkMatched(config.TargetSessionAttrsRW, "localhost:5432", "sas", true, "connection successful")
 
-	result, exists := cache.Good(config.TargetSessionAttrsRW, "localhost:5432", "sas")
+	result, exists := cache.Match(config.TargetSessionAttrsRW, "localhost:5432", "sas")
 	if !exists {
 		t.Error("Expected cache entry to exist")
 	}
-	if !result.Good {
+	if !result.Match {
 		t.Error("Expected host to be marked as good")
 	}
 	if !result.Alive {
@@ -27,13 +27,13 @@ func TestDbpoolCache_MarkGoodAndBad(t *testing.T) {
 	}
 
 	// Test marking a host as bad
-	cache.MarkBad(config.TargetSessionAttrsRO, "localhost:5433", "klg", false, "connection failed")
+	cache.MarkUnmatched(config.TargetSessionAttrsRO, "localhost:5433", "klg", false, "connection failed")
 
-	result, exists = cache.Good(config.TargetSessionAttrsRO, "localhost:5433", "klg")
+	result, exists = cache.Match(config.TargetSessionAttrsRO, "localhost:5433", "klg")
 	if !exists {
 		t.Error("Expected cache entry to exist")
 	}
-	if result.Good {
+	if result.Match {
 		t.Error("Expected host to be marked as bad")
 	}
 	if result.Alive {
@@ -48,7 +48,7 @@ func TestDbpoolCache_MarkGoodAndBad(t *testing.T) {
 	if !isBad {
 		t.Error("Expected host to be bad")
 	}
-	if badResult.Good {
+	if badResult.Match {
 		t.Error("Expected bad result to have Good=false")
 	}
 }
@@ -57,7 +57,7 @@ func TestDbpoolCache_NonExistentEntry(t *testing.T) {
 	cache := NewDbpoolCache()
 
 	// Test querying non-existent entry
-	_, exists := cache.Good(config.TargetSessionAttrsAny, "nonexistent:5432", "unknown")
+	_, exists := cache.Match(config.TargetSessionAttrsAny, "nonexistent:5432", "unknown")
 	if exists {
 		t.Error("Expected cache entry to not exist")
 	}
@@ -72,15 +72,15 @@ func TestDbpoolCache_Clear(t *testing.T) {
 	cache := NewDbpoolCache()
 
 	// Add some entries
-	cache.MarkGood(config.TargetSessionAttrsRW, "host1:5432", "sas", true, "good")
-	cache.MarkBad(config.TargetSessionAttrsRO, "host2:5432", "vla", false, "bad")
+	cache.MarkMatched(config.TargetSessionAttrsRW, "host1:5432", "sas", true, "good")
+	cache.MarkUnmatched(config.TargetSessionAttrsRO, "host2:5432", "vla", false, "bad")
 
 	// Clear cache
 	cache.Clear()
 
 	// Verify entries are gone
-	_, exists1 := cache.Good(config.TargetSessionAttrsRW, "host1:5432", "sas")
-	_, exists2 := cache.Good(config.TargetSessionAttrsRO, "host2:5432", "vla")
+	_, exists1 := cache.Match(config.TargetSessionAttrsRW, "host1:5432", "sas")
+	_, exists2 := cache.Match(config.TargetSessionAttrsRO, "host2:5432", "vla")
 	if exists1 || exists2 {
 		t.Error("Expected cache entries to not exist after clear")
 	}
@@ -90,15 +90,15 @@ func TestDbpoolCache_Remove(t *testing.T) {
 	cache := NewDbpoolCache()
 
 	// Add entries
-	cache.MarkGood(config.TargetSessionAttrsRW, "host1:5432", "sas", true, "good")
-	cache.MarkBad(config.TargetSessionAttrsRO, "host2:5432", "klg", false, "bad")
+	cache.MarkMatched(config.TargetSessionAttrsRW, "host1:5432", "sas", true, "good")
+	cache.MarkUnmatched(config.TargetSessionAttrsRO, "host2:5432", "klg", false, "bad")
 
 	// Remove one entry
 	cache.Remove(config.TargetSessionAttrsRW, "host1:5432", "sas")
 
 	// Verify first entry is gone, second still exists
-	_, exists1 := cache.Good(config.TargetSessionAttrsRW, "host1:5432", "sas")
-	_, exists2 := cache.Good(config.TargetSessionAttrsRO, "host2:5432", "klg")
+	_, exists1 := cache.Match(config.TargetSessionAttrsRW, "host1:5432", "sas")
+	_, exists2 := cache.Match(config.TargetSessionAttrsRO, "host2:5432", "klg")
 
 	if exists1 {
 		t.Error("Expected removed entry to not exist")
