@@ -1810,7 +1810,14 @@ func groupBy[T any](values []T, getters map[string]toString[T], groupByCols []st
 		return err
 	}
 
-	for key, group := range groups {
+	keys := make([]string, 0, len(groups))
+	for groupKey := range groups {
+		keys = append(keys, groupKey)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		group := groups[key]
 		cols := strings.Split(key, ":-:")[1:]
 		if err := pi.WriteDataRow(append(cols, fmt.Sprintf("%d", len(group)))...); err != nil {
 			return err
