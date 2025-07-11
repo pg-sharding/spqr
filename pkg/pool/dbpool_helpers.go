@@ -21,7 +21,7 @@ func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.Startu
 	}
 
 	// Create cache with cleanup functionality (5 minute max age)
-	dbPool.cache = NewDbpoolCacheWithCleanup(defaultMaxCheckAge, defaultRecheckInterval)
+	dbPool.cache = NewDbpoolCacheWithCleanup(defaultMaxCheckAge, DefaultRecheckInterval)
 
 	return dbPool
 }
@@ -35,7 +35,7 @@ func NewDBPoolWithAllocator(mapping map[string]*config.Shard, startupParams *sta
 	}
 
 	// Create cache with cleanup functionality (5 minute max age)
-	dbPool.cache = NewDbpoolCacheWithCleanup(defaultMaxCheckAge, defaultRecheckInterval)
+	dbPool.cache = NewDbpoolCacheWithCleanup(defaultMaxCheckAge, DefaultRecheckInterval)
 
 	return dbPool
 }

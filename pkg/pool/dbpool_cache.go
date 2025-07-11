@@ -30,7 +30,7 @@ type DbpoolCache struct {
 
 const (
 	defaultMaxCheckAge      = 5 * time.Minute
-	defaultRecheckInterval  = 30 * time.Second
+	DefaultRecheckInterval  = 30 * time.Second
 	DisableAlivenessRecheck = 0 * time.Second
 )
 

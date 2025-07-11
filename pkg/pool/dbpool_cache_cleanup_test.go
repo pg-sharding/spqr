@@ -23,7 +23,7 @@ func TestDBPool_CacheCleanupBasic(t *testing.T) {
 	defer dbPool.StopCacheWatchdog()
 
 	// Create a cache with a short max age for testing
-	shortCache := NewDbpoolCacheWithCleanup(100*time.Millisecond, defaultRecheckInterval)
+	shortCache := NewDbpoolCacheWithCleanup(100*time.Millisecond, DefaultRecheckInterval)
 	defer shortCache.StopWatchdog()
 
 	// Add some entries to cache

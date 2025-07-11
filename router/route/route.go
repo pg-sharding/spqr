@@ -58,7 +58,7 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 		sp.SearchPath = frRule.SearchPath
 	}
 
-	recheckInterval := pool.DisableAlivenessRecheck
+	recheckInterval := pool.DefaultRecheckInterval
 
 	if beRule != nil {
 		recheckInterval = beRule.AlivenessRecheckInterval
