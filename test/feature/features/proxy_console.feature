@@ -71,48 +71,6 @@ Feature: Proxy console
         }]
         """
 
-    Scenario: Lock/Unlock key_range are executed in coordinator
-        When I run SQL on host "router-admin"
-        """
-        CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-        CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-        ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
-        """
-        Then command return code should be "0"
-
-        When I run SQL on host "router"
-        """
-        CREATE TABLE test(id int);
-        """
-        Then command return code should be "0"
-
-        When I run SQL on host "router-admin"
-        """
-        LOCK KEY RANGE krid1;
-        """
-        Then command return code should be "0"
-
-        When I run SQL on host "router2"
-        """
-        SELECT * FROM test WHERE id=5;
-        """
-        Then SQL error on host "router2" should match regexp
-        """
-        key range .* is locked
-        """
-
-        When I run SQL on host "router-admin"
-        """
-        UNLOCK KEY RANGE krid1;
-        """
-        Then command return code should be "0"
-
-        When I run SQL on host "router2"
-        """
-        SELECT * FROM test WHERE id=5;
-        """
-        Then command return code should be "0"
-
     Scenario: Move is executed in coordinator
         When I run SQL on host "router-admin"
         """

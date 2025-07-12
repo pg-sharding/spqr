@@ -464,6 +464,9 @@ func (tctx *testContext) doPostgresqlQuery(db *sqlx.DB, query string, args inter
 	rows, err := db.NamedQueryContext(ctx, query, args)
 	if err != nil {
 		log.Printf("query error %#v\n", err)
+		log.Printf("FAILED query %s\n", query)
+		pingRes := db.Ping()
+		log.Printf("ping result after error: %#v\n", pingRes)
 		return nil, err
 	}
 	defer func() {
