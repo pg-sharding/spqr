@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	mocksh "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -65,7 +66,9 @@ func TestFrontendSimple(t *testing.T) {
 		Usr: "user1",
 	}
 
-	beRule := &config.BackendRule{}
+	beRule := &config.BackendRule{
+		AlivenessRecheckInterval: pool.DisableAlivenessRecheck,
+	}
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 	qr.EXPECT().SetQuery(gomock.Any()).AnyTimes()
@@ -184,7 +187,9 @@ func TestFrontendXProto(t *testing.T) {
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 
-	beRule := &config.BackendRule{}
+	beRule := &config.BackendRule{
+		AlivenessRecheckInterval: pool.DisableAlivenessRecheck,
+	}
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 	qr.EXPECT().SelectRandomRoute(gomock.Any()).AnyTimes().Return(plan.ShardDispatchPlan{
