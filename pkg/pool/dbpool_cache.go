@@ -182,7 +182,7 @@ func (c *DbpoolCache) cleanupStaleEntries() {
 		totalCount++
 
 		if entry, ok := value.(CachedEntry); ok {
-			if now.Sub(entry.LastCheckTime) > c.cacheTTL {
+			if time.Since(entry.LastCheckTime) > c.cacheTTL {
 				c.cache.Delete(key)
 				removedCount++
 
@@ -203,7 +203,7 @@ func (c *DbpoolCache) cleanupStaleEntries() {
 		Int("removed_entries", removedCount).
 		Int("total_entries", totalCount).
 		Int("remaining_entries", totalCount-removedCount).
-		Dur("max_age", c.cacheTTL).
+		Dur("cache_ttl", c.cacheTTL).
 		Msg("cache cleanup completed")
 }
 
