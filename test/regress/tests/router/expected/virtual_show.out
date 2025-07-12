@@ -59,13 +59,13 @@ SHOW __spqr__commit_strategy;
 SHOW __spqr__target_session_attrs;
  target session attrs 
 ----------------------
- read-write
+ smart-read-write
 (1 row)
 
 SHOW target_session_attrs;
  target session attrs 
 ----------------------
- read-write
+ smart-read-write
 (1 row)
 
 SET __spqr__engine_v2 TO false;
