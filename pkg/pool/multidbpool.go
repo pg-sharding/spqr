@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -65,7 +66,13 @@ func (p *MultiDBPool) Connection(db string) (shard.ShardHostInstance, error) {
 	if !exist {
 		beRule := *p.be
 		beRule.DB = db
-		pool = NewDBPool(p.mapping, &startup.StartupParams{}, "", DisableAlivenessRecheck)
+
+		/* Create a new DBPool with the given mapping and backend rule
+		 * PreferAZ is set to "", so it will not prefer any AZ
+		 * HostCheckInterval is set to 0, so it will not check host aliveness
+		 */
+
+		pool = NewDBPool(p.mapping, &startup.StartupParams{}, "", time.Duration(0))
 		pool.SetRule(&beRule)
 		p.dbs.Store(db, pool)
 	} else {

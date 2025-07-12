@@ -1746,9 +1746,7 @@ func (qc *ClusteredCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPort
 		return nil, err
 	}
 
-	r := route.NewRoute(&config.BackendRule{
-		AlivenessRecheckInterval: pool.DisableAlivenessRecheck,
-	}, nil, nil)
+	r := route.NewRoute(nil, nil, nil)
 
 	params := map[string]string{
 		"client_encoding": "UTF8",

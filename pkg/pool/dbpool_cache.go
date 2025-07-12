@@ -25,39 +25,38 @@ type DbpoolCache struct {
 	cleanupCancel context.CancelFunc
 
 	// Configuration
-	maxAge time.Duration // Maximum age for cache entries before they're considered stale
+	cacheTTL time.Duration // Maximum age for cache entries before they're considered stale
 }
 
 const (
-	defaultMaxCheckAge      = 5 * time.Minute
-	DefaultRecheckInterval  = 30 * time.Second
-	DisableAlivenessRecheck = 0 * time.Second
+	defaultCacheTTL      = 5 * time.Minute
+	DefaultCheckInterval = 30 * time.Second
 )
 
 // NewDbpoolCache creates a new cache instance
 func NewDbpoolCache() *DbpoolCache {
 	return &DbpoolCache{
-		cache:  &sync.Map{},
-		maxAge: defaultMaxCheckAge, // Default max age for cache entries
+		cache:    &sync.Map{},
+		cacheTTL: defaultCacheTTL, // Default max age for cache entries
 	}
 }
 
 // NewDbpoolCacheWithCleanup creates a new cache instance with automatic cleanup
-func NewDbpoolCacheWithCleanup(maxAge time.Duration, recheckInternal time.Duration) *DbpoolCache {
+func NewDbpoolCacheWithCleanup(cacheTTL time.Duration, healthCheckInterval time.Duration) *DbpoolCache {
 
 	cache := &DbpoolCache{
-		cache:  &sync.Map{},
-		maxAge: maxAge,
+		cache:    &sync.Map{},
+		cacheTTL: cacheTTL,
 	}
 
-	if recheckInternal > DisableAlivenessRecheck {
+	if healthCheckInterval > time.Duration(0) {
 		// Start the cleanup goroutine
 		ctx, cancel := context.WithCancel(context.Background())
 
 		cache.cleanupCancel = cancel
 		cache.cleanupCtx = ctx
 
-		cache.startCacheCleanup(recheckInternal)
+		cache.startCacheCleanup(healthCheckInterval)
 	}
 
 	return cache
@@ -124,7 +123,7 @@ func (c *DbpoolCache) Match(targetSessionAttrs tsa.TSA, host, az string) (LocalC
 	entry := value.(CachedEntry)
 
 	// Check if entry is stale
-	if time.Since(entry.LastCheckTime) > c.maxAge {
+	if time.Since(entry.LastCheckTime) > c.cacheTTL {
 		// This is a stale entry, return dummy response
 		return LocalCheckResult{}, false
 	}
@@ -183,7 +182,7 @@ func (c *DbpoolCache) cleanupStaleEntries() {
 		totalCount++
 
 		if entry, ok := value.(CachedEntry); ok {
-			if now.Sub(entry.LastCheckTime) > c.maxAge {
+			if now.Sub(entry.LastCheckTime) > c.cacheTTL {
 				c.cache.Delete(key)
 				removedCount++
 
@@ -204,7 +203,7 @@ func (c *DbpoolCache) cleanupStaleEntries() {
 		Int("removed_entries", removedCount).
 		Int("total_entries", totalCount).
 		Int("remaining_entries", totalCount-removedCount).
-		Dur("max_age", c.maxAge).
+		Dur("max_age", c.cacheTTL).
 		Msg("cache cleanup completed")
 }
 

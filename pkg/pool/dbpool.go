@@ -417,7 +417,7 @@ func (s *DBPool) StopCacheWatchdog() {
 //
 // Returns:
 //   - DBPool: A DBPool interface that represents the created pool.
-func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams, preferAZ string, recheckInterval time.Duration) MultiShardTSAPool {
+func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams, preferAZ string, hostCheckInterval time.Duration) MultiShardTSAPool {
 	allocator := func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		shardConfig := mapping[shardKey.Name]
 		hostname, _, _ := net.SplitHostPort(host.Address) // TODO try to remove this
@@ -447,8 +447,8 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 	}
 
 	// Create cache with cleanup functionality (5 minute max age)
-	/* XXX: take defaultMaxCheckAge from config */
-	dbPool.cache = NewDbpoolCacheWithCleanup(defaultMaxCheckAge, recheckInterval)
+	/* XXX: take HealthCheckInterval from config */
+	dbPool.cache = NewDbpoolCacheWithCleanup(defaultCacheTTL, hostCheckInterval)
 
 	return dbPool
 }

@@ -66,10 +66,6 @@ func TestFrontendSimple(t *testing.T) {
 		Usr: "user1",
 	}
 
-	beRule := &config.BackendRule{
-		AlivenessRecheckInterval: pool.DisableAlivenessRecheck,
-	}
-
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 	qr.EXPECT().SetQuery(gomock.Any()).AnyTimes()
 
@@ -127,7 +123,7 @@ func TestFrontendSimple(t *testing.T) {
 		},
 	}, nil).Times(1)
 
-	route := route.NewRoute(beRule, frrule, map[string]*config.Shard{
+	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*config.Shard{
 		"sh1": {},
 	})
 
@@ -187,10 +183,6 @@ func TestFrontendXProto(t *testing.T) {
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 
-	beRule := &config.BackendRule{
-		AlivenessRecheckInterval: pool.DisableAlivenessRecheck,
-	}
-
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 	qr.EXPECT().SelectRandomRoute(gomock.Any()).AnyTimes().Return(plan.ShardDispatchPlan{
 		ExecTarget: &kr.ShardKey{
@@ -246,7 +238,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 
-	route := route.NewRoute(beRule, frrule, map[string]*config.Shard{
+	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*config.Shard{
 		"sh1": {},
 	})
 
