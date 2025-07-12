@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -96,9 +95,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		return err
 	}
 
-	r := route.NewRoute(&config.BackendRule{
-		AlivenessRecheckInterval: pool.DisableAlivenessRecheck,
-	}, nil, nil)
+	r := route.NewRoute(nil, nil, nil)
 	r.SetParams(shard.ParameterSet{})
 	if err := cl.Auth(r); err != nil {
 		return err

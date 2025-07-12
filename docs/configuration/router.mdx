@@ -56,17 +56,21 @@ Refer to the `FrontendRule` struct in the [pkg/config/rules.go](https://github.c
 
 Backend Rule is a global setting that determines how the router connects to every shard.
 
-Refer to the `BackendRule` struct in the [pkg/config/router.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/router.go) and [pkg/config/auth_backend.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/auth_backend.go) file for the most up-to-date configuration options.
+Refer to the `BackendRule` struct in the [pkg/config/rules.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/rules.go)  and [pkg/config/auth_backend.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/auth_backend.go) file for the most up-to-date configuration options.
 
-| Setting              | Description                                                       | Possible Values            |
-|----------------------|-------------------------------------------------------------------|----------------------------|
-| `db`                 | The database name to connect to.                                  | Any valid database name    |
-| `usr`                | The username for database authentication.                         | Any valid username         |
-| `auth_rules`         | A map of authentication rules for backend connections.            | Map of string keys to `AuthBackendCfg` objects. |
-| `auth_rule`          | The default auth rule. On object with `usr` and `password` fields | An `AuthBackendCfg` object |
-| `pool_default`       | Indicates if the connection should use the default pool settings. | `true` or `false`          |
-| `connection_limit`   | The maximum number of connections allowed to the backend.         | Any integer value          |
-| `connection_retries` | The number of retries for a failed connection attempt.            | Any integer value          |
+| Setting                  | Description                                                            | Possible Values                        |
+|--------------------------|------------------------------------------------------------------------|----------------------------------------|
+| `db`                     | The database name to connect to.                                       | Any valid database name                |
+| `usr`                    | The username for database authentication.                              | Any valid username                     |
+| `auth_rules`             | A map of authentication rules for backend connections.                 | Map of string keys to `AuthBackendCfg` objects |
+| `auth_rule`              | The default auth rule. An object with `usr` and `password` fields      | An `AuthBackendCfg` object             |
+| `pool_default`           | Indicates if the connection should use the default pool settings.      | `true`, `false`                        |
+| `connection_limit`       | The maximum number of connections allowed to the backend (host shard). | Any integer value                      |
+| `connection_retries`     | The number of retries for a failed connection attempt.                 | Any integer value                      |
+| `connection_timeout`     | The timeout duration for establishing connections to the backend.      | Any valid duration (e.g., `30s`, `1m`) |
+| `keep_alive`             | The duration for keeping connections alive.                            | Any valid duration (e.g., `30s`, `1m`) |
+| `tcp_user_timeout`       | The TCP user timeout for backend connections.                          | Any valid duration (e.g., `30s`, `1m`) |
+| `health_check_interval`  | The interval between health checks for backend connections.            | Any valid duration (e.g., `30s`, `1m`) |
 
 ## Shards
 
