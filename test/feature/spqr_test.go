@@ -623,7 +623,11 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		_, err = client.ListRouters(ctx, nil)
-		return err == nil
+		res := err == nil
+		if res {
+			log.Printf("got list routers from %s: successfully", addr)
+		}
+		return res
 	}, time.Minute, time.Second)
 
 	return nil
@@ -1114,6 +1118,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 }
 
 func TestSpqr(t *testing.T) {
+
 	paths := make([]string, 0)
 	featureDir := "features"
 	if feauterDirEnv, ok := os.LookupEnv("GODOG_FEATURE_DIR"); ok {

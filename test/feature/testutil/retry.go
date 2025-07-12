@@ -1,6 +1,9 @@
 package testutil
 
-import "time"
+import (
+	"log"
+	"time"
+)
 
 // nolint: unparam
 func Retry(code func() bool, timeout, sleep time.Duration) {
@@ -16,6 +19,7 @@ func Retry(code func() bool, timeout, sleep time.Duration) {
 				return
 			}
 		case <-timer.C:
+			log.Printf("Exit from Retry() with timeout %v", timeout)
 			return
 		}
 	}
