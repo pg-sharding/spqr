@@ -94,8 +94,8 @@ SHOW backend_connections GROUP BY user, hostname;
  regress | spqr_shard_4_replica:6432 |     1
 (8 rows)
 
-SHOW backend_connections GROUP BY user, unknonwn;
-ERROR:  not found column 'unknonwn' for group by statement
+SHOW backend_connections GROUP BY user, unknown;
+ERROR:  not found column 'unknown' for group by statement
 SHOW backend_connections GROUP BY ;
 ERROR:  syntax error
 \c regress

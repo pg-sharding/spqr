@@ -22,7 +22,7 @@ SHOW backend_connections GROUP BY unknown;
 
 SHOW backend_connections GROUP BY user, hostname;
 
-SHOW backend_connections GROUP BY user, unknonwn;
+SHOW backend_connections GROUP BY user, unknown;
 
 SHOW backend_connections GROUP BY ;
 
