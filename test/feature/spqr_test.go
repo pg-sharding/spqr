@@ -1138,7 +1138,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 
 func TestSpqr(t *testing.T) {
 
-	err := os.Setenv("GODOG_FEATURE_DIR", "generatedFeatures")
+	/*err := os.Setenv("GODOG_FEATURE_DIR", "generatedFeatures")
 	if err != nil {
 		fmt.Println("Error setting environment variable GODOG_FEATURE_DIR:", err)
 		return
@@ -1158,7 +1158,7 @@ func TestSpqr(t *testing.T) {
 	if err3 != nil {
 		fmt.Println("Error setting environment variable FEATURE_DEBUG:", err3)
 		return
-	}
+	}*/
 
 	paths := make([]string, 0)
 	featureDir := "features"
