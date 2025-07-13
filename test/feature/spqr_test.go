@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -590,6 +591,9 @@ func (tctx *testContext) stepClusterIsUpAndRunning() error {
 }
 
 func (tctx *testContext) stepHostIsStopped(service string) error {
+	if tctx.debug {
+		log.Printf("begin stop %s", service)
+	}
 	for _, dbs := range tctx.userDbs {
 		if db, ok := dbs[service]; ok {
 			if err := db.Close(); err != nil {
@@ -621,7 +625,16 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		defer func() {
 			_ = conn.Close()
 		}()
-
+		if tctx.debug {
+			log.Printf("try send command ListRouters to %s", addr)
+		}
+		addrWithoutPort := strings.Replace(addr, ":7003", "", -1)
+		ips, err := net.LookupIP(addrWithoutPort)
+		if err != nil {
+			log.Printf("Error: %#v", err)
+		} else {
+			log.Printf("IP:%#v", ips)
+		}
 		client := protos.NewRouterServiceClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
@@ -629,14 +642,21 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		res := err == nil
 		if res {
 			log.Printf("got list routers from %s: successfully", addr)
+		} else {
+			log.Printf("error: %#v", err)
 		}
 		return res
 	}, time.Minute, time.Second)
-
+	if tctx.debug {
+		log.Printf("end stop %s", service)
+	}
 	return nil
 }
 
 func (tctx *testContext) stepHostIsStarted(service string) error {
+	if tctx.debug {
+		log.Printf("begin start host %s", service)
+	}
 	err := tctx.composer.Start(service)
 	if err != nil {
 		return fmt.Errorf("failed to start service %s: %s", service, err)
@@ -657,6 +677,9 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 			return fmt.Errorf("failed to connect to postgresql %s: %s", service, err)
 		}
 		tctx.userDbs[shardUser][service] = db
+		if tctx.debug {
+			log.Printf("successful start host %s as db at %s", service, addr)
+		}
 		return nil
 	}
 
@@ -683,7 +706,9 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 		}
 		service = fmt.Sprintf("%s-admin", service)
 		tctx.userDbs[shardUser][service] = db
-
+		if tctx.debug {
+			log.Printf("successful start host %s as router at %s", service, addr)
+		}
 		return nil
 	}
 
@@ -698,6 +723,9 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 			log.Printf("failed to connect to SPQR coordinator %s: %s", service, err)
 		} else {
 			tctx.userDbs[shardUser][service] = db
+		}
+		if tctx.debug {
+			log.Printf("successful start host %s as coordinator at %s", service, addr)
 		}
 		return nil
 	}
@@ -714,6 +742,9 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 			return fmt.Errorf("failed to connect to SPQR QDB %s: %s", service, err)
 		}
 		tctx.qdb = db
+		if tctx.debug {
+			log.Printf("successful start host %s as qdb at %s", service, addr)
+		}
 		return nil
 	}
 
@@ -1121,6 +1152,28 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 }
 
 func TestSpqr(t *testing.T) {
+	/*
+		err := os.Setenv("GODOG_FEATURE_DIR", "generatedFeatures")
+		if err != nil {
+			fmt.Println("Error setting environment variable GODOG_FEATURE_DIR:", err)
+			return
+		}
+		err1 := os.Setenv("GODOG_FEATURE", "proxy_console_simple.feature")
+		if err1 != nil {
+			fmt.Println("Error setting environment variable GODOG_FEATURE:", err1)
+			return
+		}
+		err2 := os.Setenv("DOCKER_API_VERSION", "1.47")
+		if err2 != nil {
+			fmt.Println("Error setting environment variable DOCKER_API_VERSION:", err2)
+			return
+		}
+	*/
+	err3 := os.Setenv("FEATURE_DEBUG", "true")
+	if err3 != nil {
+		fmt.Println("Error setting environment variable FEATURE_DEBUG:", err3)
+		return
+	}
 
 	paths := make([]string, 0)
 	featureDir := "features"
