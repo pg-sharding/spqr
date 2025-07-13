@@ -1,0 +1,122 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+create distribution ds1 column types integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+alter distribution ds1 attach relation test distribution key id;
+      attach table       
+-------------------------
+ relation name   -> test
+ distribution id -> ds1
+(2 rows)
+
+create key range from 1000 route to sh4 for distribution ds1;
+ add key range 
+---------------
+ bound -> 1000
+(1 row)
+
+create key range from 100 route to sh3 for distribution ds1;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
+
+create key range from 10 route to sh2 for distribution ds1;
+ add key range 
+---------------
+ bound -> 10
+(1 row)
+
+create key range from 0 route to sh1 for distribution ds1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+\c regress
+create table test(id int) /* target-session-attrs: read-write */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+select * from test /* target-session-attrs: read-only */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ id 
+----
+(0 rows)
+
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+SHOW backend_connections GROUP BY user;
+  user   | count 
+---------+-------
+ regress |     8
+(1 row)
+
+SHOW backend_connections GROUP BY hostname;
+         hostname          | count 
+---------------------------+-------
+ spqr_shard_1:6432         |     1
+ spqr_shard_1_replica:6432 |     1
+ spqr_shard_2:6432         |     1
+ spqr_shard_2_replica:6432 |     1
+ spqr_shard_3:6432         |     1
+ spqr_shard_3_replica:6432 |     1
+ spqr_shard_4:6432         |     1
+ spqr_shard_4_replica:6432 |     1
+(8 rows)
+
+SHOW backend_connections GROUP BY unknown;
+ERROR:  not found column 'unknown' for group by statement
+SHOW backend_connections GROUP BY user, hostname;
+  user   |         hostname          | count 
+---------+---------------------------+-------
+ regress | spqr_shard_1:6432         |     1
+ regress | spqr_shard_1_replica:6432 |     1
+ regress | spqr_shard_2:6432         |     1
+ regress | spqr_shard_2_replica:6432 |     1
+ regress | spqr_shard_3:6432         |     1
+ regress | spqr_shard_3_replica:6432 |     1
+ regress | spqr_shard_4:6432         |     1
+ regress | spqr_shard_4_replica:6432 |     1
+(8 rows)
+
+SHOW backend_connections GROUP BY user, unknonwn;
+ERROR:  not found column 'unknonwn' for group by statement
+SHOW backend_connections GROUP BY ;
+ERROR:  syntax error
+\c regress
+drop table test;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+
