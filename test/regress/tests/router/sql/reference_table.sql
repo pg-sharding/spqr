@@ -68,7 +68,7 @@ SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh2 */;
 SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh3 */;
 SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh4 */;
 
-/* Check exeсution for returning clause */
+/* Check execution for returning clause */
 
 TRUNCATE test_ref_rel;
 
