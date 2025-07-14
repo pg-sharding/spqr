@@ -73,6 +73,16 @@ func (vp VirtualPlan) ExecutionTargets() []*kr.ShardKey {
 	return nil
 }
 
+type DataRowFilter struct {
+	Plan
+	FilterIndex uint
+	SubPlan     Plan
+}
+
+func (rf DataRowFilter) ExecutionTargets() []*kr.ShardKey {
+	return rf.SubPlan.ExecutionTargets()
+}
+
 type CopyState struct {
 	Plan
 	ExecTargets []*kr.ShardKey
@@ -136,10 +146,21 @@ func Combine(p1, p2 Plan) Plan {
 		Interface("plan2", p2).
 		Msg("combine two plans")
 
-	switch p2.(type) {
+	switch v := p1.(type) {
+	case DataRowFilter:
+		return DataRowFilter{
+			SubPlan: Combine(v.SubPlan, p2),
+		}
+	}
+
+	switch v := p2.(type) {
 	// let p2 be always non-virtual, except for p1 & p2 both virtual
 	case VirtualPlan:
 		p1, p2 = p2, p1
+	case DataRowFilter:
+		return DataRowFilter{
+			SubPlan: Combine(p1, v.SubPlan),
+		}
 	}
 
 	switch shq1 := p1.(type) {

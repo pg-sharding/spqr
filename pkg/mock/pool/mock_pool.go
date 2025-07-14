@@ -480,6 +480,18 @@ func (mr *MockMultiShardTSAPoolMockRecorder) ShardMapping() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShardMapping", reflect.TypeOf((*MockMultiShardTSAPool)(nil).ShardMapping))
 }
 
+// StopCacheWatchdog mocks base method.
+func (m *MockMultiShardTSAPool) StopCacheWatchdog() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "StopCacheWatchdog")
+}
+
+// StopCacheWatchdog indicates an expected call of StopCacheWatchdog.
+func (mr *MockMultiShardTSAPoolMockRecorder) StopCacheWatchdog() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopCacheWatchdog", reflect.TypeOf((*MockMultiShardTSAPool)(nil).StopCacheWatchdog))
+}
+
 // View mocks base method.
 func (m *MockMultiShardTSAPool) View() pool.Statistics {
 	m.ctrl.T.Helper()

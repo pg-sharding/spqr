@@ -147,12 +147,13 @@ func (mr *MockServerMockRecorder) Name() *gomock.Call {
 }
 
 // Receive mocks base method.
-func (m *MockServer) Receive() (pgproto3.BackendMessage, error) {
+func (m *MockServer) Receive() (pgproto3.BackendMessage, uint, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Receive")
 	ret0, _ := ret[0].(pgproto3.BackendMessage)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(uint)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // Receive indicates an expected call of Receive.
@@ -162,12 +163,13 @@ func (mr *MockServerMockRecorder) Receive() *gomock.Call {
 }
 
 // ReceiveShard mocks base method.
-func (m *MockServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, error) {
+func (m *MockServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, uint, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReceiveShard", shardId)
 	ret0, _ := ret[0].(pgproto3.BackendMessage)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(uint)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // ReceiveShard indicates an expected call of ReceiveShard.

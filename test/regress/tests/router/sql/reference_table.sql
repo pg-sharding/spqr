@@ -68,6 +68,21 @@ SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh2 */;
 SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh3 */;
 SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh4 */;
 
+/* Check execution for returning clause */
+
+TRUNCATE test_ref_rel;
+
+
+INSERT INTO test_ref_rel VALUES(1,3),(2,4),(3,-1) RETURNING *;
+
+
+-- check data on partially distributed reference relation
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh3 */;
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
+
+
 DROP TABLE test_ref_rel;
 DROP TABLE test_ref_rel_part;
 
