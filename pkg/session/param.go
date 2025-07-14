@@ -6,6 +6,10 @@ type SessionParamsHolder interface {
 	GetTsa() tsa.TSA
 	SetTsa(bool, string)
 
+	Usr() string
+	/* XXX: also maybe ROLE support is meaningful? */
+	DB() string
+
 	// Get current session DRB
 	DefaultRouteBehaviour() string
 	SetDefaultRouteBehaviour(local bool, val string)
