@@ -7,7 +7,7 @@ type SessionParamsHolder interface {
 	SetTsa(bool, string)
 
 	Usr() string
-	/* XXX: also maybe ROLE support is meaningfull? */
+	/* XXX: also maybe ROLE support is meaningful? */
 	DB() string
 
 	// Get current session DRB
