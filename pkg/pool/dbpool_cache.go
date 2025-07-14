@@ -42,21 +42,21 @@ func NewDbpoolCache() *DbpoolCache {
 }
 
 // NewDbpoolCacheWithCleanup creates a new cache instance with automatic cleanup
-func NewDbpoolCacheWithCleanup(cacheTTL time.Duration, healthCheckInterval time.Duration) *DbpoolCache {
+func NewDbpoolCacheWithCleanup(cacheTTL time.Duration, pulseCheckInterval time.Duration) *DbpoolCache {
 
 	cache := &DbpoolCache{
 		cache:    &sync.Map{},
 		cacheTTL: cacheTTL,
 	}
 
-	if healthCheckInterval > time.Duration(0) {
+	if pulseCheckInterval > time.Duration(0) {
 		// Start the cleanup goroutine
 		ctx, cancel := context.WithCancel(context.Background())
 
 		cache.cleanupCancel = cancel
 		cache.cleanupCtx = ctx
 
-		cache.startCacheCleanup(healthCheckInterval)
+		cache.startCacheCleanup(pulseCheckInterval)
 	}
 
 	return cache

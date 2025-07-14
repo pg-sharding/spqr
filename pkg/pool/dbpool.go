@@ -447,7 +447,7 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 	}
 
 	// Create cache with cleanup functionality (5 minute max age)
-	/* XXX: take HealthCheckInterval from config */
+	/* XXX: take PulseCheckInterval from config */
 	dbPool.cache = NewDbpoolCacheWithCleanup(defaultCacheTTL, hostCheckInterval)
 
 	return dbPool

@@ -9,12 +9,12 @@ type BackendRule struct {
 	DefaultAuthRule *AuthBackendCfg            `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
 	PoolDefault     bool                       `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
 
-	ConnectionLimit     int           `json:"connection_limit" yaml:"connection_limit" toml:"connection_limit"`
-	ConnectionRetries   int           `json:"connection_retries" yaml:"connection_retries" toml:"connection_retries"`
-	ConnectionTimeout   time.Duration `json:"connection_timeout" yaml:"connection_timeout" toml:"connection_timeout"`
-	KeepAlive           time.Duration `json:"keep_alive" yaml:"keep_alive" toml:"keep_alive"`
-	TcpUserTimeout      time.Duration `json:"tcp_user_timeout" yaml:"tcp_user_timeout" toml:"tcp_user_timeout"`
-	HealthCheckInterval time.Duration `json:"health_check_interval" yaml:"health_check_interval" toml:"health_check_interval"`
+	ConnectionLimit    int           `json:"connection_limit" yaml:"connection_limit" toml:"connection_limit"`
+	ConnectionRetries  int           `json:"connection_retries" yaml:"connection_retries" toml:"connection_retries"`
+	ConnectionTimeout  time.Duration `json:"connection_timeout" yaml:"connection_timeout" toml:"connection_timeout"`
+	KeepAlive          time.Duration `json:"keep_alive" yaml:"keep_alive" toml:"keep_alive"`
+	TcpUserTimeout     time.Duration `json:"tcp_user_timeout" yaml:"tcp_user_timeout" toml:"tcp_user_timeout"`
+	PulseCheckInterval time.Duration `json:"pulse_check_interval" yaml:"pulse_check_interval" toml:"pulse_check_interval"`
 }
 
 type FrontendRule struct {
