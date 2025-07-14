@@ -72,9 +72,6 @@ type Router struct {
 	ExitOnInitSQLError bool   `json:"exit_on_init_sql" toml:"exit_on_init_sql" yaml:"exit_on_init_sql"`
 	UseCoordinatorInit bool   `json:"use_coordinator_init" toml:"use_coordinator_init" yaml:"use_coordinator_init"`
 
-	/* default  */
-	DefaultTSA string `json:"default_target_session_attrs" toml:"default_target_session_attrs" yaml:"default_target_session_attrs"`
-
 	MemqdbBackupPath       string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
 	RouterMode             string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
 	JaegerUrl              string            `json:"jaeger_url" toml:"jaeger_url" yaml:"jaeger_url"`
@@ -107,6 +104,7 @@ type Router struct {
 
 type QRouter struct {
 	DefaultRouteBehaviour        DefaultRouteBehaviour `json:"default_route_behaviour" toml:"default_route_behaviour" yaml:"default_route_behaviour"`
+	DefaultTSA                   string                `json:"default_target_session_attrs" toml:"default_target_session_attrs" yaml:"default_target_session_attrs"`
 	EnhancedMultiShardProcessing bool                  `json:"enhanced_multishard_processing" toml:"enhanced_multishard_processing" yaml:"enhanced_multishard_processing"`
 	AlwaysCheckRules             bool                  `json:"always_check_rules" toml:"always_check_rules" yaml:"always_check_rules"`
 
@@ -226,8 +224,8 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 
 	statistics.InitStatistics(rcfg.TimeQuantiles)
 	/* init default_target_session_attrs as read-write if nothing else specified */
-	if rcfg.DefaultTSA == "" {
-		rcfg.DefaultTSA = TargetSessionAttrsRW
+	if rcfg.Qr.DefaultTSA == "" {
+		rcfg.Qr.DefaultTSA = TargetSessionAttrsSmartRW
 	}
 
 	configBytes, err := json.MarshalIndent(rcfg, "", "  ")
