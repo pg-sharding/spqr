@@ -34,6 +34,12 @@ SELECT pg_is_in_recovery(), 1, 'kek';
  f                 |        1 | kek
 (1 row)
 
+SELECT CURRENT_USER;
+ ?column? 
+----------
+ regress
+(1 row)
+
 -- XXX:support
 --SHOW transaction_read_only;
 -- XXX: support ignore patterns to test this

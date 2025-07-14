@@ -878,6 +878,21 @@ func (qr *ProxyQrouter) planQueryV1(
 				}
 
 				switch e := actualExpr.(type) {
+				case *lyx.SVFOP_CURRENT_USER:
+					p = plan.Combine(p, plan.VirtualPlan{})
+					virtualRowCols = append(virtualRowCols,
+						pgproto3.FieldDescription{
+							Name:                 []byte(colname),
+							DataTypeOID:          catalog.TEXTOID,
+							TypeModifier:         -1,
+							DataTypeSize:         -1,
+							TableAttributeNumber: 0,
+							TableOID:             0,
+							Format:               0,
+						})
+
+					virtualRowVals = append(virtualRowVals, []byte(rm.SPH.Usr()))
+
 				case *lyx.AExprNot:
 					/* inspect our arg. If this is pg_is_in_recovery, apply NOT */
 					switch arg := e.Arg.(type) {
