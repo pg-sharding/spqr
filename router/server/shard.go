@@ -160,7 +160,7 @@ func (srv *ShardServer) SendShard(query pgproto3.FrontendMessage, shkey *kr.Shar
 }
 
 // TODO : unit tests
-func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
+func (srv *ShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 
 	msg, err := (*srv.shard.Load()).Receive()
 	spqrlog.Zero.Debug().
@@ -171,13 +171,13 @@ func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 		Err(err).
 		Msg("single-shard receiving msg from server")
 
-	return msg, err
+	return msg, 0, err
 }
 
 // TODO : unit tests
-func (srv *ShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, error) {
+func (srv *ShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, uint, error) {
 	if (*srv.shard.Load()).ID() != shardId {
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+		return nil, 0, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 	}
 	return srv.Receive()
 }
