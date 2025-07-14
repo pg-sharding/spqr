@@ -9,6 +9,10 @@ time_quantiles:
 world_shard_fallback: true
 show_notice_messages: false
 maintain_params: true
+
+query_routing:
+  default_target_session_attrs: read-write
+
 frontend_rules:
   - db: regress
     usr: regress
