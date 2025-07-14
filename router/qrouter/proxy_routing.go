@@ -458,6 +458,9 @@ func (qr *ProxyQrouter) analyzeSelectStmt(ctx context.Context, selectStmt lyx.No
 		}
 
 		return nil
+		/* functional table expressions */
+	case *lyx.FuncApplication:
+		return nil
 	/* SELECT * FROM VALUES() ... */
 	case *lyx.ValueClause:
 		/* random route */
