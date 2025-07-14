@@ -136,21 +136,21 @@ func TestFrontendSimple(t *testing.T) {
 
 	srv.EXPECT().SendShard(query, gomock.Any()).Times(1).Return(nil)
 
-	srv.EXPECT().Receive().Times(1).Return(&pgproto3.RowDescription{}, nil)
+	srv.EXPECT().Receive().Times(1).Return(&pgproto3.RowDescription{}, uint(0), nil)
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.DataRow{
 		Values: [][]byte{
 			[]byte(
 				"1",
 			),
 		},
-	}, nil)
+	}, uint(0), nil)
 
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.CommandComplete{
 		CommandTag: []byte("SELECT"),
-	}, nil)
+	}, uint(0), nil)
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ReadyForQuery{
 		TxStatus: byte(txstatus.TXIDLE),
-	}, nil)
+	}, uint(0), nil)
 
 	// receive this 4 msgs
 	cl.EXPECT().Send(gomock.Any()).Times(4).Return(nil)
@@ -304,10 +304,10 @@ func TestFrontendXProto(t *testing.T) {
 
 	srv.EXPECT().SendShard(&pgproto3.Sync{}, gomock.Any()).AnyTimes().Return(nil)
 
-	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ParseComplete{}, nil)
+	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ParseComplete{}, uint(0), nil)
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ParameterDescription{
 		ParameterOIDs: nil,
-	}, nil)
+	}, uint(0), nil)
 
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.RowDescription{
 		Fields: []pgproto3.FieldDescription{
@@ -321,11 +321,11 @@ func TestFrontendXProto(t *testing.T) {
 				Format:               0,
 			},
 		},
-	}, nil)
+	}, uint(0), nil)
 
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ReadyForQuery{
 		TxStatus: byte(txstatus.TXIDLE),
-	}, nil)
+	}, uint(0), nil)
 
 	// receive this 4 msgs
 	cl.EXPECT().Send(gomock.Any()).Times(4).Return(nil)
