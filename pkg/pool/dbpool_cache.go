@@ -31,6 +31,7 @@ type DbpoolCache struct {
 const (
 	defaultCacheTTL      = 5 * time.Minute
 	DefaultCheckInterval = 30 * time.Second
+	DisableCheckInterval = 0 * time.Second
 )
 
 // NewDbpoolCache creates a new cache instance
@@ -49,6 +50,7 @@ func NewDbpoolCacheWithCleanup(cacheTTL time.Duration, pulseCheckInterval time.D
 		cacheTTL: cacheTTL,
 	}
 
+	// pulseCheckInterval is equal to 0 disables the cleanup
 	if pulseCheckInterval > time.Duration(0) {
 		// Start the cleanup goroutine
 		ctx, cancel := context.WithCancel(context.Background())
