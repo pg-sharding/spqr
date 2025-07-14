@@ -9,7 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	mocksh "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -64,10 +63,6 @@ func TestFrontendSimple(t *testing.T) {
 	frrule := &config.FrontendRule{
 		DB:  "db1",
 		Usr: "user1",
-	}
-
-	beRule := &config.BackendRule{
-		AlivenessRecheckInterval: pool.DisableAlivenessRecheck,
 	}
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
@@ -127,7 +122,7 @@ func TestFrontendSimple(t *testing.T) {
 		},
 	}, nil).Times(1)
 
-	route := route.NewRoute(beRule, frrule, map[string]*config.Shard{
+	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*config.Shard{
 		"sh1": {},
 	})
 
@@ -187,10 +182,6 @@ func TestFrontendXProto(t *testing.T) {
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 
-	beRule := &config.BackendRule{
-		AlivenessRecheckInterval: pool.DisableAlivenessRecheck,
-	}
-
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 	qr.EXPECT().SelectRandomRoute(gomock.Any()).AnyTimes().Return(plan.ShardDispatchPlan{
 		ExecTarget: &kr.ShardKey{
@@ -246,7 +237,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 
-	route := route.NewRoute(beRule, frrule, map[string]*config.Shard{
+	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*config.Shard{
 		"sh1": {},
 	})
 
