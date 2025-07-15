@@ -1088,9 +1088,9 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I run SQL on host "([^"]*)" as user "([^"]*)"$`, tctx.stepIRunSQLOnHostAsUser)
 	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSql)
 	s.Step(`^SQL result should match (\w+)$`, tctx.stepSQLResultShouldMatch)
-	s.Step(`^sleep$`, func() error {
+	s.Step(`^we wait for "(\d+)" seconds$`, func(sleepFor int) error {
 
-		time.Sleep(time.Hour * 10)
+		time.Sleep(time.Duration(sleepFor) * time.Second)
 
 		return nil
 	})
