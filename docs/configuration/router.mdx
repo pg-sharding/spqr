@@ -56,17 +56,21 @@ Refer to the `FrontendRule` struct in the [pkg/config/rules.go](https://github.c
 
 Backend Rule is a global setting that determines how the router connects to every shard.
 
-Refer to the `BackendRule` struct in the [pkg/config/router.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/router.go) and [pkg/config/auth_backend.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/auth_backend.go) file for the most up-to-date configuration options.
+Refer to the `BackendRule` struct in the [pkg/config/rules.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/rules.go)  and [pkg/config/auth_backend.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/auth_backend.go) file for the most up-to-date configuration options.
 
-| Setting              | Description                                                       | Possible Values            |
-|----------------------|-------------------------------------------------------------------|----------------------------|
-| `db`                 | The database name to connect to.                                  | Any valid database name    |
-| `usr`                | The username for database authentication.                         | Any valid username         |
-| `auth_rules`         | A map of authentication rules for backend connections.            | Map of string keys to `AuthBackendCfg` objects. |
-| `auth_rule`          | The default auth rule. On object with `usr` and `password` fields | An `AuthBackendCfg` object |
-| `pool_default`       | Indicates if the connection should use the default pool settings. | `true` or `false`          |
-| `connection_limit`   | The maximum number of connections allowed to the backend.         | Any integer value          |
-| `connection_retries` | The number of retries for a failed connection attempt.            | Any integer value          |
+| Setting                | Description                                                            | Possible Values                                |
+|------------------------|------------------------------------------------------------------------|------------------------------------------------|
+| `db`                   | The database name to connect to.                                       | Any valid database name                        |
+| `usr`                  | The username for database authentication.                              | Any valid username                             |
+| `auth_rules`           | A map of authentication rules for backend connections.                 | Map of string keys to `AuthBackendCfg` objects |
+| `auth_rule`            | The default auth rule. An object with `usr` and `password` fields      | An `AuthBackendCfg` object                     |
+| `pool_default`         | Indicates if the connection should use the default pool settings.      | `true`, `false`                                |
+| `connection_limit`     | The maximum number of connections allowed to the backend (host shard). | Any integer value                              |
+| `connection_retries`   | The number of retries for a failed connection attempt.                 | Any integer value                              |
+| `connection_timeout`   | The timeout duration for establishing connections to the backend.      | Any valid duration (e.g., `30s`, `1m`)         |
+| `keep_alive`           | The duration for keeping connections alive.                            | Any valid duration (e.g., `30s`, `1m`)         |
+| `tcp_user_timeout`     | The TCP user timeout for backend connections.                          | Any valid duration (e.g., `30s`, `1m`)         |
+| `pulse_check_interval` | The interval between health checks for backend connections.            | Any valid duration (e.g., `30s`, `1m`)         |
 
 ## Shards
 
@@ -86,13 +90,25 @@ Map of string to Shard objects. Refer to the `Shard` struct in the [pkg/config/r
 
 ## Feature Flags
 
-| Setting                                 | Description                                     |  Possible Values |
-|-----------------------------------------|-------------------------------------------------|------------------|
-| `maintain_params`                       | Whether to maintain parameters flag.            | `true`, `false`  |
-| `query_routing.default_route_behaviour` | Whether to explicitly block multishard queries. | `BLOCK`, `ALLOW` |
-| `with_jaeger`                           | Whether to integrate with Jaeger for tracing.   | `true`, `false`  |
-| `world_shard_fallback`                  | Whether to enable fallback to world shard.      | `true`, `false`  |
+| Setting                  | Description                                     |  Possible Values |
+|--------------------------|------------------------------------------------|------------------|
+| `maintain_params`        | Whether to maintain parameters flag.            | `true`, `false`  |
+| `with_jaeger`            | Whether to integrate with Jaeger for tracing.   | `true`, `false`  |
+| `world_shard_fallback`   | Whether to enable fallback to world shard.      | `true`, `false`  |
 
+## Query Routing Settings
+
+Query routing settings are nested under the `query_routing` configuration key and control how queries are routed across shards.
+
+Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/router.go) file for the most up-to-date configuration options.
+
+| Setting                                        | Description                                                                                                              | Possible Values  |
+|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|------------------|
+| `query_routing.default_route_behaviour`        | Whether to explicitly block multishard queries.                                                                          | `BLOCK`, `ALLOW` |
+| `query_routing.default_target_session_attrs`   | Default [target_session_attrs](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-TARGET-SESSION-ATTRS) for connections. | `read-write`, `smart-read-write`, `read-only`, `prefer-standby`, `any` |
+| `query_routing.enhanced_multishard_processing` | Whether to enable enhanced processing for multishard queries.                                                            | `true`, `false`  |
+| `query_routing.always_check_rules`             | Whether to always check the routing rules for every query. This only makes sense in a single-shard deployment.           | `true`, `false`  |
+| `query_routing.auto_route_ro_on_standby`       | Whether to automatically route read-only queries to standby servers. Currently only supported for single-shard topology. | `true`, `false`  |
 
 ## Mode Settings
 

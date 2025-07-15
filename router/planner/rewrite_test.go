@@ -52,6 +52,22 @@ func TestModifyQuery(t *testing.T) {
 			wantErr:  false,
 		},
 		{
+			name:     "InsertSingleColumn",
+			query:    "INSERT INTO test_table (col1) VALUES (1),(2);",
+			colname:  "col2",
+			nextval:  99,
+			expected: "INSERT INTO test_table (col2, col1) VALUES (99, 1), (100, 2);",
+			wantErr:  false,
+		},
+		{
+			name:     "InsertSingleColumn",
+			query:    "INSERT INTO test_table (col1,col3) VALUES (1,19),(2,20);",
+			colname:  "col2",
+			nextval:  99,
+			expected: "INSERT INTO test_table (col2, col1,col3) VALUES (99, 1,19), (100, 2,20);",
+			wantErr:  false,
+		},
+		{
 			name:     "NotAnInsertStatement",
 			query:    "SELECT 1",
 			colname:  "col2",
@@ -84,11 +100,16 @@ func TestModifyQuery(t *testing.T) {
 			wantErr:  false,
 		},
 	} {
+		startV := tt.nextval
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ModifyQuery(tt.query, tt.colname, tt.nextval)
+			result, err := ModifyQuery(tt.query, tt.colname, func() (int64, error) {
+				ret := startV
+				startV++
+
+				return ret, nil
+			})
 
 			if tt.wantErr && err == nil {
-
 				t.Errorf("ModifyQuery/%s expected error, got nil. Query: %s", tt.name, result)
 				return
 			}
@@ -110,7 +131,9 @@ func BenchmarkModifyQuery(b *testing.B) {
 	colname := "col2"
 	nextval := int64(42)
 
-	for i := 0; i < b.N; i++ {
-		_, _ = ModifyQuery(query, colname, nextval)
+	for b.Loop() {
+		_, _ = ModifyQuery(query, colname, func() (int64, error) {
+			return nextval, nil
+		})
 	}
 }

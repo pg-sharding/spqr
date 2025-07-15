@@ -347,7 +347,7 @@ func (rst *RelayStateImpl) multishardPrepareDDL(hash uint64, d *prepstatement.Pr
 		parsed := false
 		finished := false
 		for !finished {
-			msg, err := serv.ReceiveShard(shardId)
+			msg, _, err := serv.ReceiveShard(shardId)
 			if err != nil {
 				return err
 			}
@@ -430,7 +430,7 @@ func (rst *RelayStateImpl) multishardDescribePortal(bind *pgproto3.Bind) (*preps
 	var saveCloseComplete *pgproto3.CloseComplete
 	finished := false
 	for !finished {
-		msg, err := serv.ReceiveShard(shardId)
+		msg, _, err := serv.ReceiveShard(shardId)
 		if err != nil {
 			return nil, err
 		}
@@ -668,7 +668,7 @@ func (rst *RelayStateImpl) Reroute() (plan.Plan, error) {
 	}
 
 	switch v := queryPlan.(type) {
-	case plan.VirtualPlan, plan.ScatterPlan, plan.DDLState, plan.ShardDispatchPlan:
+	case plan.VirtualPlan, plan.ScatterPlan, plan.DDLState, plan.ShardDispatchPlan, plan.DataRowFilter:
 		return queryPlan, nil
 	default:
 		return nil, fmt.Errorf("unexpected query plan %T", v)

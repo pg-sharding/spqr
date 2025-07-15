@@ -97,6 +97,7 @@ func randomHex(n int) (string, error) {
 	aiEntrieslist          []*AutoIncrementEntry
 
     colref                 ColumnRef
+	colreflist			   []ColumnRef
     where                  WhereClauseNode
 
 	order_clause 		   OrderClause
@@ -155,6 +156,7 @@ func randomHex(n int) (string, error) {
 %type<str> operator where_operator
 
 %type<colref> ColRef
+%type<colreflist> ColRef_list
 
 %type<str> any_val any_id shard_id
 
@@ -473,6 +475,16 @@ ColRef:
             ColName: $1,
         }
     }
+
+ColRef_list: 
+    ColRef_list TCOMMA ColRef
+    {
+      $$ = append($1, $3)
+    } | ColRef {
+      $$ = []ColumnRef {
+		  $1,
+	  }
+    } 
 
 
 where_clause_seq:
@@ -862,7 +874,7 @@ order_clause:
 
 
 group_clause:
-	GROUP BY ColRef
+	GROUP BY ColRef_list
 	{
 		$$ = GroupBy{Col: $3}
 	}

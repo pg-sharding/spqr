@@ -20,17 +20,27 @@ CREATE REFERENCE TABLE test2 AUTO INCREMENT id START 19;
  shard id -> sh1,sh2,sh3,sh4
 (2 rows)
 
+CREATE REFERENCE TABLE test3 AUTO INCREMENT a START 101;
+   create reference table    
+-----------------------------
+ table    -> test3
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
 SHOW sequences;
    name   | value 
 ----------+-------
  test2_id | 19
+ test3_a  | 101
  test_id  | 0
-(2 rows)
+(3 rows)
 
 \c regress
 CREATE TABLE test(id int, age int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE test2(id int, age int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE test3(a INT, b INT, c INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test(age) VALUES (16) /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -65,9 +75,22 @@ NOTICE: send query to shard(s) : sh2
  22 |  18
 (3 rows)
 
+INSERT INTO test3(b,c) VALUES (1001, 1002),(101, 102), (999, 998) /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM test3 /* __spqr__execute_on: sh4 */ ORDER BY 1,2,3;
+NOTICE: send query to shard(s) : sh4
+  a  |  b   |  c   
+-----+------+------
+ 102 | 1001 | 1002
+ 103 |  101 |  102
+ 104 |  999 |  998
+(3 rows)
+
 DROP TABLE test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE test2;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE test3;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
@@ -89,12 +112,19 @@ DROP REFERENCE RELATION test2;
  table -> test2
 (1 row)
 
+DROP REFERENCE RELATION test3;
+ drop reference table 
+----------------------
+ table -> test3
+(1 row)
+
 SHOW sequences;
    name   | value 
 ----------+-------
  test2_id | 22
+ test3_a  | 104
  test_id  | 3
-(2 rows)
+(3 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
        drop distribution       

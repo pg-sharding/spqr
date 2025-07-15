@@ -19,8 +19,9 @@ type Server interface {
 
 	SendShard(query pgproto3.FrontendMessage, shKey *kr.ShardKey) error
 
-	Receive() (pgproto3.BackendMessage, error)
-	ReceiveShard(shardId uint) (pgproto3.BackendMessage, error)
+	/* message, gang source index, error */
+	Receive() (pgproto3.BackendMessage, uint, error)
+	ReceiveShard(shardId uint) (pgproto3.BackendMessage, uint, error)
 
 	AddDataShard(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) error
 	ExpandDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error

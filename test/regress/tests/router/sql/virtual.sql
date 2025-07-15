@@ -11,6 +11,8 @@ SELECT current_setting('transaction_read_only');
 
 SELECT pg_is_in_recovery(), 1, 'kek';
 
+SELECT CURRENT_USER;
+
 -- XXX:support
 --SHOW transaction_read_only;
 

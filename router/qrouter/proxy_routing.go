@@ -458,6 +458,9 @@ func (qr *ProxyQrouter) analyzeSelectStmt(ctx context.Context, selectStmt lyx.No
 		}
 
 		return nil
+	/* functional table expressions */
+	case *lyx.FuncApplication:
+		return nil
 	/* SELECT * FROM VALUES() ... */
 	case *lyx.ValueClause:
 		/* random route */
@@ -881,6 +884,21 @@ func (qr *ProxyQrouter) planQueryV1(
 				}
 
 				switch e := actualExpr.(type) {
+				case *lyx.SVFOP_CURRENT_USER:
+					p = plan.Combine(p, plan.VirtualPlan{})
+					virtualRowCols = append(virtualRowCols,
+						pgproto3.FieldDescription{
+							Name:                 []byte(colname),
+							DataTypeOID:          catalog.TEXTOID,
+							TypeModifier:         -1,
+							DataTypeSize:         -1,
+							TableAttributeNumber: 0,
+							TableOID:             0,
+							Format:               0,
+						})
+
+					virtualRowVals = append(virtualRowVals, []byte(rm.SPH.Usr()))
+
 				case *lyx.AExprNot:
 					/* inspect our arg. If this is pg_is_in_recovery, apply NOT */
 					switch arg := e.Arg.(type) {
@@ -1124,6 +1142,14 @@ func (qr *ProxyQrouter) planQueryV1(
 							// XXX: todo - check that sub select is not doing anything insane
 							switch p.(type) {
 							case plan.VirtualPlan, plan.ScatterPlan, plan.RandomDispatchPlan:
+								if stmt.Returning != nil {
+									return plan.DataRowFilter{
+										SubPlan: plan.ScatterPlan{
+											ExecTargets: rel.ListStorageRoutes(),
+										},
+										FilterIndex: 0,
+									}, nil
+								}
 								return plan.ScatterPlan{
 									ExecTargets: rel.ListStorageRoutes(),
 								}, nil
@@ -1147,7 +1173,17 @@ func (qr *ProxyQrouter) planQueryV1(
 						return nil, err
 					} else if rs {
 						/* If reference relation, use planner v2 */
-						return planner.PlanReferenceRelationInsertValues(ctx, qr.query, rm, stmt.Columns, rf, subS)
+						p, err := planner.PlanReferenceRelationInsertValues(ctx, qr.query, rm, stmt.Columns, rf, subS)
+						if err != nil {
+							return nil, err
+						}
+						if stmt.Returning != nil {
+							return plan.DataRowFilter{
+								SubPlan:     p,
+								FilterIndex: 0,
+							}, nil
+						}
+						return p, nil
 					}
 				default:
 					return nil, rerrors.ErrComplexQuery
@@ -1491,8 +1527,8 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 
 	/* TODO: delay this until step 2. */
 
-	var route plan.Plan
-	route = nil
+	var pl plan.Plan
+	pl = nil
 
 	/*
 	 * Step 1: traverse query tree and deparse mapping from
@@ -1580,7 +1616,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 
 		ro = false
 
-		route = plan.Combine(route, rs)
+		pl = plan.Combine(pl, rs)
 	case *lyx.Select:
 
 		err := qr.AnalyzeQueryV1(ctx, stmt, rm)
@@ -1626,7 +1662,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 			return nil, false, err
 		}
 
-		route = plan.Combine(route, p)
+		pl = plan.Combine(pl, p)
 
 	case *lyx.Delete, *lyx.Update:
 		if err := qr.AnalyzeQueryV1(ctx, stmt, rm); err != nil {
@@ -1639,7 +1675,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 			return nil, false, err
 		}
 		ro = false
-		route = plan.Combine(route, rs)
+		pl = plan.Combine(pl, rs)
 	case *lyx.Copy:
 		return plan.CopyState{}, false, nil
 	default:
@@ -1651,16 +1687,16 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		return nil, false, err
 	}
 
-	route = plan.Combine(route, tmp)
+	pl = plan.Combine(pl, tmp)
 
 	// set up this variable if not yet
-	if route == nil {
-		route = plan.ScatterPlan{
+	if pl == nil {
+		pl = plan.ScatterPlan{
 			ExecTargets: qr.DataShardsRoutes(),
 		}
 	}
 
-	return route, ro, nil
+	return pl, ro, nil
 }
 
 func (qr *ProxyQrouter) SelectRandomRoute(routes []*kr.ShardKey) (plan.Plan, error) {
@@ -1785,38 +1821,21 @@ func CheckRoOnlyQuery(stmt lyx.Node) bool {
 	}
 }
 
-// TODO : unit tests
-func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
+func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, p plan.Plan, ro bool, sph session.SessionParamsHolder) (plan.Plan, error) {
 
-	if !config.RouterConfig().Qr.AlwaysCheckRules {
-		if len(config.RouterConfig().ShardMapping) == 1 {
-			firstShard := ""
-			for s := range config.RouterConfig().ShardMapping {
-				firstShard = s
-			}
-
-			ro := true
-
-			if config.RouterConfig().Qr.AutoRouteRoOnStandby {
-				ro = CheckRoOnlyQuery(stmt)
-			}
-
-			return plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: firstShard,
-					RO:   ro,
-				},
-			}, nil
+	switch v := p.(type) {
+	case plan.DataRowFilter:
+		sp, err := qr.InitExecutionTargets(ctx, rm, stmt, v.SubPlan, ro, sph)
+		if err != nil {
+			return nil, err
 		}
-	}
 
-	meta := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
-	route, ro, err := qr.RouteWithRules(ctx, meta, stmt, sph.GetTsa())
-	if err != nil {
-		return nil, err
-	}
+		/* XXX: Can we do better? */
 
-	switch v := route.(type) {
+		return plan.DataRowFilter{
+			SubPlan:     sp,
+			FilterIndex: 0,
+		}, err
 	case plan.ShardDispatchPlan:
 		return v, nil
 	case plan.VirtualPlan:
@@ -1838,8 +1857,9 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	case plan.ScatterPlan:
 
 		if sph.EnhancedMultiShardProcessing() {
+			var err error
 			if v.SubPlan == nil {
-				v.SubPlan, err = planner.PlanDistributedQuery(ctx, meta, stmt)
+				v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, stmt)
 				if err != nil {
 					return nil, err
 				}
@@ -1866,6 +1886,41 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 			}
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 		}
+	default:
+		return nil, rerrors.ErrComplexQuery
 	}
-	return nil, rerrors.ErrComplexQuery
+}
+
+// TODO : unit tests
+func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
+
+	if !config.RouterConfig().Qr.AlwaysCheckRules {
+		if len(config.RouterConfig().ShardMapping) == 1 {
+			firstShard := ""
+			for s := range config.RouterConfig().ShardMapping {
+				firstShard = s
+			}
+
+			ro := true
+
+			if config.RouterConfig().Qr.AutoRouteRoOnStandby {
+				ro = CheckRoOnlyQuery(stmt)
+			}
+
+			return plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
+					Name: firstShard,
+					RO:   ro,
+				},
+			}, nil
+		}
+	}
+
+	meta := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
+	p, ro, err := qr.RouteWithRules(ctx, meta, stmt, sph.GetTsa())
+	if err != nil {
+		return nil, err
+	}
+
+	return qr.InitExecutionTargets(ctx, meta, stmt, p, ro, sph)
 }

@@ -18,6 +18,16 @@ type DummySessionParamHandler struct {
 	eo       string
 }
 
+// DB implements SessionParamsHolder.
+func (t *DummySessionParamHandler) DB() string {
+	return "dummy"
+}
+
+// Usr implements SessionParamsHolder.
+func (t *DummySessionParamHandler) Usr() string {
+	return "dummy"
+}
+
 // GetTsa implements SessionParamsHolder.
 func (t *DummySessionParamHandler) GetTsa() tsa.TSA {
 	return config.TargetSessionAttrsRW

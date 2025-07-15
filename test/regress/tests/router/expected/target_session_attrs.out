@@ -76,7 +76,7 @@ NOTICE: send query to shard(s) : sh1
 SHOW __spqr__target_session_attrs;
  target session attrs 
 ----------------------
- read-write
+ smart-read-write
 (1 row)
 
 SET __spqr__target_session_attrs TO 'prefer-standby';

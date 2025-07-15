@@ -65,7 +65,13 @@ func (p *MultiDBPool) Connection(db string) (shard.ShardHostInstance, error) {
 	if !exist {
 		beRule := *p.be
 		beRule.DB = db
-		pool = NewDBPool(p.mapping, &startup.StartupParams{}, "", DisableAlivenessRecheck)
+
+		/* Create a new DBPool with the given mapping and backend rule
+		 * PreferAZ is set to "", so it will not prefer any AZ
+		 * DisableCheckInterval because we do not want to check the health of the connection
+		 */
+
+		pool = NewDBPool(p.mapping, &startup.StartupParams{}, "", DisableCheckInterval)
 		pool.SetRule(&beRule)
 		p.dbs.Store(db, pool)
 	} else {

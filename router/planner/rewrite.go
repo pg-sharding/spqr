@@ -6,8 +6,7 @@ import (
 	"strings"
 )
 
-func ModifyQuery(query string, colname string, nextval int64) (string, error) {
-	nextvalStr := strconv.FormatInt(nextval, 10)
+func ModifyQuery(query string, colname string, nextvalGen func() (int64, error)) (string, error) {
 
 	// Find the position of the opening parenthesis for the column list
 	colsOpenInd := strings.Index(query, "(")
@@ -22,24 +21,53 @@ func ModifyQuery(query string, colname string, nextval int64) (string, error) {
 	}
 	colsCloseInd += colsOpenInd
 
-	// Find the position of the opening parenthesis for the values list
-	valuesOpenInd := strings.Index(query[colsCloseInd:], "(")
-	if valuesOpenInd == -1 {
-		return "", fmt.Errorf("invalid query: missing values list")
-	}
-	valuesOpenInd += colsCloseInd
+	newQuery := query[:colsOpenInd+1] + colname + ", " + query[colsOpenInd+1:colsCloseInd]
 
-	// Find the position of the closing parenthesis for the values list
-	valuesCloseInd := strings.Index(query[valuesOpenInd:], ")")
-	if valuesCloseInd == -1 {
-		return "", fmt.Errorf("invalid query: missing closing parenthesis in values list")
-	}
-	valuesCloseInd += valuesOpenInd
+	first := true
 
-	// Construct the modified query
-	newQuery := query[:colsOpenInd+1] + colname + ", " + query[colsOpenInd+1:colsCloseInd] +
-		query[colsCloseInd:valuesOpenInd+1] + nextvalStr + ", " + query[valuesOpenInd+1:valuesCloseInd] +
-		query[valuesCloseInd:]
+	var valuesCloseInd int
+
+	lookupStart := colsCloseInd
+
+	for {
+		// Find the position of the opening parenthesis for the values list
+		valuesOpenInd := strings.Index(query[lookupStart:], "(")
+		if valuesOpenInd == -1 {
+			if !first {
+				break
+			}
+			return "", fmt.Errorf("invalid query: missing values list")
+		}
+
+		valuesOpenInd += lookupStart
+
+		// Find the position of the closing parenthesis for the values list
+		valuesCloseInd = strings.Index(query[valuesOpenInd:], ")")
+		if valuesCloseInd == -1 {
+			return "", fmt.Errorf("invalid query: missing closing parenthesis in values list")
+		}
+		valuesCloseInd += valuesOpenInd
+
+		lookupStart = valuesCloseInd + 1
+
+		nextval, err := nextvalGen()
+		if err != nil {
+			return "", err
+		}
+		nextvalStr := strconv.FormatInt(nextval, 10)
+
+		// Construct the modified query
+		if first {
+			newQuery += query[colsCloseInd:valuesOpenInd+1] +
+				nextvalStr + ", " + query[valuesOpenInd+1:valuesCloseInd] + ")"
+		} else {
+			newQuery += ", (" + nextvalStr + ", " + query[valuesOpenInd+1:valuesCloseInd] + ")"
+		}
+
+		first = false
+	}
+
+	newQuery += query[lookupStart:]
 
 	return newQuery, nil
 }

@@ -569,7 +569,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 
 	spqrlog.Zero.Debug().
 		Uints("shards", shard.ShardIDs(serv.Datashards())).
-		Type("query-type", qd.Msg).
+		Type("query-type", qd.Msg).Type("plan-type", qd.P).
 		Msg("relay process query")
 
 	doFinalizeTx := false
@@ -638,7 +638,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 	unreplied := make([]pgproto3.BackendMessage, 0)
 
 	for {
-		msg, err := serv.Receive()
+		msg, recvIndex, err := serv.Receive()
 		if err != nil {
 			return nil, err
 		}
@@ -696,6 +696,28 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 					}
 				}
 			}()
+		case *pgproto3.DataRow:
+			spqrlog.Zero.Debug().
+				Str("server", serv.Name()).
+				Msg("received datarow message from server")
+			if replyCl {
+				switch v := qd.P.(type) {
+				case plan.DataRowFilter:
+					if v.FilterIndex == recvIndex {
+						err = s.Client().Send(msg)
+						if err != nil {
+							return nil, err
+						}
+					}
+				default:
+					err = s.Client().Send(msg)
+					if err != nil {
+						return nil, err
+					}
+				}
+			} else {
+				unreplied = append(unreplied, msg)
+			}
 		case *pgproto3.ReadyForQuery:
 			s.SetTxStatus(txstatus.TXStatus(v.TxStatus))
 			return unreplied, nil

@@ -220,7 +220,7 @@ func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shkey *kr.Sha
 
 var ErrMultiShardSyncBroken = fmt.Errorf("multishard state is out of sync")
 
-func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
+func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 	rollback := func() {
 		for i := range m.activeShards {
 			spqrlog.Zero.Debug().
@@ -259,7 +259,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 		m.multistate = InitialState
 		return &pgproto3.ReadyForQuery{
 			TxStatus: byte(txstatus.TXIDLE), // XXX : fix this
-		}, nil
+		}, 0, nil
 	case InitialState:
 		m.copyBuf = nil
 		var saveRd *pgproto3.RowDescription = nil
@@ -282,7 +282,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 						Msg("multishard server: encountered error while reading from shard")
 					m.states[i] = ErrorState
 					rollback()
-					return nil, err
+					return nil, uint(i), err
 				}
 
 				spqrlog.Zero.Debug().
@@ -299,14 +299,14 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					continue
 				case *pgproto3.CopyOutResponse:
 					if m.multistate != InitialState && m.multistate != CopyOutState {
-						return nil, ErrMultiShardSyncBroken
+						return nil, 0, ErrMultiShardSyncBroken
 					}
 					m.states[i] = ShardCopyState
 					m.multistate = CopyOutState
 					m.copyBuf = append(m.copyBuf, retMsg)
 				case *pgproto3.CopyInResponse:
 					if m.multistate != InitialState && m.multistate != CopyInState {
-						return nil, ErrMultiShardSyncBroken
+						return nil, 0, ErrMultiShardSyncBroken
 					}
 					m.states[i] = ShardCopyState
 					m.multistate = CopyInState
@@ -319,7 +319,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					saveRd = retMsg // all should be same
 				case *pgproto3.ReadyForQuery:
 					if m.multistate != InitialState {
-						return nil, ErrMultiShardSyncBroken
+						return nil, 0, ErrMultiShardSyncBroken
 					}
 					m.states[i] = ShardRFQState
 					saveRFQ = retMsg
@@ -333,7 +333,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					continue
 				case *pgproto3.ErrorResponse:
 					if m.multistate != InitialState {
-						return nil, ErrMultiShardSyncBroken
+						return nil, 0, ErrMultiShardSyncBroken
 					}
 					spqrlog.Zero.Error().
 						Uint("client", spqrlog.GetPointer(m)).
@@ -342,13 +342,13 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					m.states[i] = ErrorState
 					m.multistate = ServerErrorState
 					rollback()
-					return msg, nil
+					return msg, uint(i), nil
 				default:
 
 					m.states[i] = ErrorState
 					rollback()
 					// sync is broken
-					return nil, ErrMultiShardSyncBroken
+					return nil, 0, ErrMultiShardSyncBroken
 				}
 				break
 			}
@@ -356,11 +356,11 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 
 		if saveCC != nil {
 			m.multistate = InitialState
-			return saveCC, nil
+			return saveCC, 0, nil
 		}
 		if saveRFQ != nil {
 			m.multistate = InitialState
-			return saveRFQ, nil
+			return saveRFQ, 0, nil
 		}
 		if m.multistate == CopyOutState {
 			n := len(m.copyBuf)
@@ -370,22 +370,22 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 			spqrlog.Zero.Debug().
 				Int("new-buff-len", len(m.copyBuf)).
 				Msg("miltishard server: flush copy buff")
-			return currMsg, nil
+			return currMsg, 0, nil
 		}
 		if m.multistate == CopyInState {
 			m.multistate = RunningState
-			return saveCIn, nil
+			return saveCIn, 0, nil
 		}
 
 		m.multistate = RunningState
-		return saveRd, nil
+		return saveRd, 0, nil
 	case CopyOutState:
 		if len(m.copyBuf) > 0 {
 			spqrlog.Zero.Debug().Msg("miltishard server: flush copy buff")
 			n := len(m.copyBuf)
 			var currMsg *pgproto3.CopyOutResponse
 			m.copyBuf, currMsg = m.copyBuf[n-2:], m.copyBuf[n-1]
-			return currMsg, nil
+			return currMsg, 0, nil
 		}
 		/* Step two: fetch all copy out resp */
 		for i := range m.activeShards {
@@ -395,7 +395,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 				continue
 			}
 			if m.states[i] != ShardCopyState {
-				return nil, ErrMultiShardSyncBroken
+				return nil, 0, ErrMultiShardSyncBroken
 			}
 
 			msg, err := m.activeShards[i].Receive()
@@ -406,7 +406,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					Msg("multishard server: encountered error while reading from shard")
 				m.states[i] = ErrorState
 				rollback()
-				return nil, err
+				return nil, 0, err
 			}
 			spqrlog.Zero.Info().
 				Uint("shard", m.activeShards[i].ID()).
@@ -421,20 +421,20 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 				m.states[i] = ErrorState
 				rollback()
 				// sync is broken
-				return nil, ErrMultiShardSyncBroken
+				return nil, 0, ErrMultiShardSyncBroken
 			default:
-				return msg, nil
+				return msg, 0, nil
 			}
 		}
 		// all shard are in RFQ state
 		m.multistate = CommandCompleteState
 		return &pgproto3.CommandComplete{
 			CommandTag: []byte{}, // XXX : fix this
-		}, nil
+		}, 0, nil
 	case CopyInState:
 		return &pgproto3.CommandComplete{
 			CommandTag: []byte{},
-		}, nil
+		}, 0, nil
 	case RunningState:
 		/* Step two: fetch all datarow messages */
 		for i := range m.activeShards {
@@ -455,7 +455,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					Msg("multishard server: encountered error while reading from shard")
 				m.states[i] = ErrorState
 				rollback()
-				return nil, err
+				return nil, 0, err
 			}
 
 			switch msg.(type) {
@@ -466,16 +466,16 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 				m.states[i] = ErrorState
 				rollback()
 				// sync is broken
-				return nil, ErrMultiShardSyncBroken
+				return nil, 0, ErrMultiShardSyncBroken
 			default:
-				return msg, nil
+				return msg, uint(i), nil
 			}
 		}
 		// all shard are in RFQ state
 		m.multistate = CommandCompleteState
 		return &pgproto3.CommandComplete{
 			CommandTag: []byte{}, // XXX : fix this
-		}, nil
+		}, 0, nil
 	case CommandCompleteState:
 		spqrlog.Zero.Info().Msg("multishard server: enter rfq await mode")
 		cntTXAct := 0
@@ -493,7 +493,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 			cntUnSync++
 
 			if m.states[i] != ShardCCState {
-				return nil, ErrMultiShardSyncBroken
+				return nil, 0, ErrMultiShardSyncBroken
 			}
 
 			if err := func() error {
@@ -522,7 +522,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					Msg("multishard server: encountered error while reading from shard")
 				m.states[i] = ErrorState
 				rollback()
-				return nil, err
+				return nil, 0, err
 			}
 		}
 
@@ -532,27 +532,28 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 		case 0:
 			return &pgproto3.ReadyForQuery{
 				TxStatus: byte(txstatus.TXIDLE), // XXX : fix this
-			}, nil
+			}, 0, nil
 		case cntUnSync:
 			return &pgproto3.ReadyForQuery{
 				TxStatus: byte(txstatus.TXACT), // XXX : fix this
-			}, nil
+			}, 0, nil
 		default:
 			rollback()
-			return nil, fmt.Errorf("multishard server: unsync in tx status among shard connections")
+			return nil, 0, fmt.Errorf("multishard server: unsync in tx status among shard connections")
 		}
 	}
 
-	return nil, nil
+	return nil, 0, nil
 }
 
-func (m *MultiShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, error) {
+func (m *MultiShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, uint, error) {
 	for _, shard := range m.activeShards {
 		if shard.ID() == shardId {
-			return shard.Receive()
+			m, err := shard.Receive()
+			return m, shardId, err
 		}
 	}
-	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "cannot find shard \"%d\"", shardId)
+	return nil, 0, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "cannot find shard \"%d\"", shardId)
 }
 
 func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {
