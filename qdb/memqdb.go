@@ -483,7 +483,7 @@ func (q *MemQDB) RemoveTransferTx(_ context.Context, key string) error {
 //	                           COORDINATOR LOCK
 // ==============================================================================
 
-func (q *MemQDB) TryCoordinatorLock(_ context.Context) error {
+func (q *MemQDB) TryCoordinatorLock(_ context.Context, _ string) error {
 	return nil
 }
 

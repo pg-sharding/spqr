@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"path"
 	"sort"
 	"strconv"
@@ -20,7 +19,6 @@ import (
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"google.golang.org/grpc"
 
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	retry "github.com/sethvargo/go-retry"
@@ -536,14 +534,9 @@ func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
-	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
-	if err != nil {
-		return err
-	}
-
+func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context, addr string) error {
 	spqrlog.Zero.Debug().
-		Str("address", host).
+		Str("address", addr).
 		Msg("etcdqdb: try coordinator lock")
 
 	leaseGrantResp, err := q.cli.Grant(ctx, CoordKeepAliveTtl)
@@ -557,13 +550,13 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	// client will continue sending keep alive requests to the etcd server, but will drop responses
 	// until there is capacity on the channel to send more responses.
 
-	keepAliveCh, err := q.cli.KeepAlive(ctx, leaseGrantResp.ID)
+	keepAliveCh, err := q.cli.KeepAlive(context.Background(), leaseGrantResp.ID)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease keep alive failed")
 		return err
 	}
 
-	op := clientv3.OpPut(coordLockKey, net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort), clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID)))
+	op := clientv3.OpPut(coordLockKey, addr, clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID)))
 	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(coordLockKey)).Then(op)
 	stat, err := tx.Commit()
 	if err != nil {
