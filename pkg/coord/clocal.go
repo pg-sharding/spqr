@@ -72,7 +72,7 @@ func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context
 		if err := lc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
 			return err
 		}
-		qualifiedName := rel.ToRFQN()
+		qualifiedName := rel.QualifiedName()
 		if err := lc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName); err != nil {
 			return err
 		}

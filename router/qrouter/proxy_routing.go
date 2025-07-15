@@ -636,20 +636,23 @@ func (qr *ProxyQrouter) processInsertFromSelectOffsets(
 		for i, c := range insertCols {
 			insertColsPos[c] = i
 		}
-
-		distributionKey := ds.Relations[curr_rfqn.RelationName].DistributionKey
-		// TODO: check mapping by rules with multiple columns
-		for _, col := range distributionKey {
-			if val, ok := insertColsPos[col.Column]; !ok {
-				/* Do not return err here.
-				* This particular insert stmt is un-routable, but still, give it a try
-				* and continue parsing.
-				* Example: INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
-				* we have no insert cols specified, but still able to route on select
-				 */
-				return nil, curr_rfqn, ds, nil
-			} else {
-				offsets = append(offsets, val)
+		if relation, ok := ds.Relations[*curr_rfqn]; !ok {
+			return nil, nil, nil, fmt.Errorf("not found relation %s to route", curr_rfqn.String())
+		} else {
+			distributionKey := relation.DistributionKey
+			// TODO: check mapping by rules with multiple columns
+			for _, col := range distributionKey {
+				if val, ok := insertColsPos[col.Column]; !ok {
+					/* Do not return err here.
+					* This particular insert stmt is un-routable, but still, give it a try
+					* and continue parsing.
+					* Example: INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
+					* we have no insert cols specified, but still able to route on select
+					 */
+					return nil, curr_rfqn, ds, nil
+				} else {
+					offsets = append(offsets, val)
+				}
 			}
 		}
 
@@ -1397,7 +1400,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 			entries[q.ColName] = struct{}{}
 		}
 	}
-	rel, ok := ds.Relations[relname.RelationName]
+	rel, ok := ds.Relations[*relname]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" not present in distribution \"%s\" it's attached to", relname, ds.Id)
 	}
@@ -1475,7 +1478,7 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 			continue
 		}
 
-		relation, exists := ds.Relations[qualName.RelationName]
+		relation, exists := ds.Relations[qualName]
 		if !exists {
 			return nil, fmt.Errorf("relation %s not found in distribution %s", qualName.RelationName, ds.Id)
 		}
