@@ -60,6 +60,14 @@ func TestModifyQuery(t *testing.T) {
 			wantErr:  false,
 		},
 		{
+			name:     "InsertSingleColumn",
+			query:    "INSERT INTO test_table (col1,col3) VALUES (1,19),(2,20);",
+			colname:  "col2",
+			nextval:  99,
+			expected: "INSERT INTO test_table (col2, col1,col3) VALUES (99, 1,19), (100, 2,20);",
+			wantErr:  false,
+		},
+		{
 			name:     "NotAnInsertStatement",
 			query:    "SELECT 1",
 			colname:  "col2",
