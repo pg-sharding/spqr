@@ -1898,17 +1898,17 @@ func (mr *MockXQDBMockRecorder) ShareKeyRange(id any) *gomock.Call {
 }
 
 // TryCoordinatorLock mocks base method.
-func (m *MockXQDB) TryCoordinatorLock(ctx context.Context) error {
+func (m *MockXQDB) TryCoordinatorLock(ctx context.Context, addr string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TryCoordinatorLock", ctx)
+	ret := m.ctrl.Call(m, "TryCoordinatorLock", ctx, addr)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TryCoordinatorLock indicates an expected call of TryCoordinatorLock.
-func (mr *MockXQDBMockRecorder) TryCoordinatorLock(ctx any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) TryCoordinatorLock(ctx, addr any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryCoordinatorLock", reflect.TypeOf((*MockXQDB)(nil).TryCoordinatorLock), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryCoordinatorLock", reflect.TypeOf((*MockXQDB)(nil).TryCoordinatorLock), ctx, addr)
 }
 
 // UnlockKeyRange mocks base method.
