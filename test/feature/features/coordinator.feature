@@ -457,10 +457,10 @@ Feature: Coordinator test
     """
     [
       {
-        "shard":"sh1"
+        "listing data shards": "shard id -\u003e sh1"
       },
       {
-        "shard":"sh2"
+        "listing data shards": "shard id -\u003e sh2"
       }
     ]
     """
@@ -478,7 +478,7 @@ Feature: Coordinator test
     """
     [
       {
-        "shard":"sh2"
+        "listing data shards": "shard id -\u003e sh2"
       }
     ]
     """

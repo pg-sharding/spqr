@@ -742,9 +742,7 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*topology.DataSha
 
 	for _, shard := range shards {
 		if err := pi.cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{
-				[]byte(shard.ID),
-			},
+			Values: [][]byte{[]byte(fmt.Sprintf("shard id -> %s", shard.ID))},
 		}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err

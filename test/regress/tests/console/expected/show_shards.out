@@ -56,12 +56,12 @@ CREATE SHARD sh4 WITH HOSTS spqr_shard_4:6432,spqr_shard_4_replica:6432;
 CREATE SHARD sh1 WITH HOSTS localhost:6432;
 ERROR:  shard with id sh1 already exists
 SHOW shards;
- shard 
--------
- sh1
- sh2
- sh3
- sh4
+ listing data shards 
+---------------------
+ shard id -> sh1
+ shard id -> sh2
+ shard id -> sh3
+ shard id -> sh4
 (4 rows)
 
 SHOW hosts;
@@ -84,13 +84,13 @@ CREATE SHARD sh5 WITH HOSTS e:6432;
 (1 row)
 
 SHOW shards;
- shard 
--------
- sh1
- sh2
- sh3
- sh4
- sh5
+ listing data shards 
+---------------------
+ shard id -> sh1
+ shard id -> sh2
+ shard id -> sh3
+ shard id -> sh4
+ shard id -> sh5
 (5 rows)
 
 SHOW hosts;
@@ -114,12 +114,12 @@ DROP SHARD sh5;
 (1 row)
 
 SHOW shards;
- shard 
--------
- sh1
- sh2
- sh3
- sh4
+ listing data shards 
+---------------------
+ shard id -> sh1
+ shard id -> sh2
+ shard id -> sh3
+ shard id -> sh4
 (4 rows)
 
 SHOW hosts;
