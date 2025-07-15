@@ -161,7 +161,6 @@ func randomHex(n int) (string, error) {
 %type<str> any_val any_id shard_id
 
 %type<uinteger> any_uint
-%type<integer> SignedInt
 
 // CMDS
 %type <statement> command
@@ -371,30 +370,6 @@ command:
 		setParseTree(yylex, $1)
 	}
 
-SignedInt: 
-	ICONST {
-		if $1 > uint(math.MaxInt64) {
-			yylex.Error(SIGNED_INT_RANGE_ERROR)
-			return 1
-		} else {
-			$$ = int($1)
-		}
-	} | TMINUS ICONST {
-		if $2 > uint(-math.MinInt64) {
-			yylex.Error(SIGNED_INT_RANGE_ERROR)
-			return 1
-		} else {
-			$$ = int(-$2)
-		}
-	} | TPLUS ICONST {
-		if $2 > uint(math.MaxInt64) {
-			yylex.Error(SIGNED_INT_RANGE_ERROR)
-			return 1
-		} else {
-			$$ = int($2)
-		}
-	}
-
 any_uint:
 	ICONST {
 		$$ = uint($1)
@@ -453,7 +428,7 @@ qualified_name:
 
 
 operator:
-    IDENT {
+    OP {
         $$ = $1
     } | AND {
         $$ = "AND"
@@ -462,7 +437,7 @@ operator:
     }
 
 where_operator:
-    IDENT {
+    OP {
         $$ = $1
     } | TEQ {
         $$ = "="
