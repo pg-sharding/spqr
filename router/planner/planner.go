@@ -159,11 +159,10 @@ func insertSequenceValue(ctx context.Context, meta *rmeta.RoutingMetadataContext
 	query := *qrouter_query
 
 	for colName, seqName := range rel.ColumnSequenceMapping {
-		nextval, err := meta.Mgr.NextVal(ctx, seqName)
-		if err != nil {
-			return err
-		}
-		newQuery, err := ModifyQuery(query, colName, nextval)
+
+		newQuery, err := ModifyQuery(query, colName, func() (int64, error) {
+			return meta.Mgr.NextVal(ctx, seqName)
+		})
 		if err != nil {
 			return err
 		}
