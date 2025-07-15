@@ -405,6 +405,9 @@ any_val: SCONST
 any_id: IDENT
 	{
 		$$ = string($1)
+	} | SCONST
+	{
+		$$ = string($1)
 	}
 
 

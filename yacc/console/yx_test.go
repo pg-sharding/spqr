@@ -488,6 +488,52 @@ func TestKeyRange(t *testing.T) {
 	}
 }
 
+func TestRegisterRouter(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: `REGISTER ROUTER r1 ADDRESS hhhost:1234`,
+			exp: &spqrparser.RegisterRouter{
+				ID:   "r1",
+				Addr: "hhhost:1234",
+			},
+		},
+		{
+			query: `REGISTER ROUTER 'r-1' ADDRESS hhhost:1234`,
+			exp: &spqrparser.RegisterRouter{
+				ID:   "r-1",
+				Addr: "hhhost:1234",
+			},
+		},
+		{
+			query: `REGISTER ROUTER r1 ADDRESS 'az-host:1234'`,
+			exp: &spqrparser.RegisterRouter{
+				ID:   "r1",
+				Addr: "az-host:1234",
+			},
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+		} else {
+			assert.Error(err, "query %s", tt.query)
+		}
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+
+}
+
 func TestKeyRangeBordersSuccess(t *testing.T) {
 
 	assert := assert.New(t)
