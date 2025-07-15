@@ -86,6 +86,8 @@ SHOW relations;
  aa            | ds2             | ("another2", identity) | schema_name2
 (2 rows)
 
+CREATE DISTRIBUTED RELATION sh12.aa12 DISTRIBUTION KEY another2 SCHEMA schema_name3 IN ds2;
+ERROR:  it is forbidden to use both a qualified relation name and the keyword SCHEMA
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------
