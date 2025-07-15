@@ -499,17 +499,17 @@ func TestRegisterRouter(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: `REGISTER ROUTER r1 ADDRESS hhhost:1234`,
+			query: `REGISTER ROUTER r1 ADDRESS someRandomHost:1234`,
 			exp: &spqrparser.RegisterRouter{
 				ID:   "r1",
-				Addr: "hhhost:1234",
+				Addr: "someRandomHost:1234",
 			},
 		},
 		{
-			query: `REGISTER ROUTER 'r-1' ADDRESS hhhost:1234`,
+			query: `REGISTER ROUTER 'r-1' ADDRESS someRandomHost:1234`,
 			exp: &spqrparser.RegisterRouter{
 				ID:   "r-1",
-				Addr: "hhhost:1234",
+				Addr: "someRandomHost:1234",
 			},
 		},
 		{
