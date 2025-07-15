@@ -695,28 +695,7 @@ distributed_relation_def:
 				SchemaName: $7,
 			}
 		}
-	} | 
-	RELATION qualified_name opt_auto_increment opt_schema_name
-	{
-		if 	len($2.SchemaName)>0 && len($4)>0 {
-			yylex.Error("it is forbidden to use both a qualified relation name and the keyword SCHEMA")
-			return 1
-		}  else if len($2.SchemaName)>0 {
-			$$ = &DistributedRelation{
-				Name: 	 $2.RelationName,
-				ReplicatedRelation: true,
-				AutoIncrementEntries: $3,
-				SchemaName: $2.SchemaName,
-			}
-		} else {
-			$$ = &DistributedRelation{
-				Name: 	 $2.RelationName,
-				ReplicatedRelation: true,
-				AutoIncrementEntries: $3,
-				SchemaName: $4,
-			}
-		}
-	}
+	} 
 
 opt_auto_increment:
     AUTO INCREMENT auto_inc_argument_list {
