@@ -245,7 +245,16 @@ func TestGroupBy(t *testing.T) {
 			exp: &spqrparser.Show{
 				Cmd:     spqrparser.BackendConnectionsStr,
 				Where:   spqrparser.WhereClauseEmpty{},
-				GroupBy: spqrparser.GroupBy{Col: spqrparser.ColumnRef{ColName: "hostname"}},
+				GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
+			},
+			err: nil,
+		},
+		{
+			query: "SHOW backend_connections GROUP BY user, dbname",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.BackendConnectionsStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "user"}, {ColName: "dbname"}}},
 			},
 			err: nil,
 		},
