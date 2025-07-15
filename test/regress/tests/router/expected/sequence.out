@@ -75,11 +75,7 @@ NOTICE: send query to shard(s) : sh2
  22 |  18
 (3 rows)
 
-INSERT INTO test3(b,c) VALUES (1001, 1002) /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-INSERT INTO test3(b,c) VALUES (101, 102) /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-INSERT INTO test3(b,c) VALUES (999, 998) /* __spqr__engine_v2: true */;
+INSERT INTO test3(b,c) VALUES (1001, 1002),(101, 102), (999, 998) /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM test3 /* __spqr__execute_on: sh4 */ ORDER BY 1,2,3;
 NOTICE: send query to shard(s) : sh4

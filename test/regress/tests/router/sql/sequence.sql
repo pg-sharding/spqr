@@ -29,10 +29,7 @@ INSERT INTO test2 SELECT 1 /* __spqr__engine_v2: true */;
 SELECT * FROM test2 /* __spqr__execute_on: sh2 */ ORDER BY id, age;
 
 
-INSERT INTO test3(b,c) VALUES (1001, 1002) /* __spqr__engine_v2: true */;
-INSERT INTO test3(b,c) VALUES (101, 102) /* __spqr__engine_v2: true */;
-INSERT INTO test3(b,c) VALUES (999, 998) /* __spqr__engine_v2: true */;
-
+INSERT INTO test3(b,c) VALUES (1001, 1002),(101, 102), (999, 998) /* __spqr__engine_v2: true */;
 
 SELECT * FROM test3 /* __spqr__execute_on: sh4 */ ORDER BY 1,2,3;
 
