@@ -526,6 +526,16 @@ Feature: Coordinator test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
+    console is in read only mode
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    SHOW ROUTERS
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
     context deadline exceeded
     """
 
