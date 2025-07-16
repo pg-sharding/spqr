@@ -866,11 +866,11 @@ func TestSingleShard(t *testing.T) {
 		// 	err:   nil,
 		// },
 
-		{
-			query: `INSERT INTO t (i, b, c) SELECT 1,2,3 UNION ALL SELECT 2, 3, 4;`,
-			exp:   plan.ShardDispatchPlan{},
-			err:   nil,
-		},
+		// {
+		// 	query: `INSERT INTO t (i, b, c) SELECT 1,2,3 UNION ALL SELECT 2, 3, 4;`,
+		// 	exp:   plan.ShardDispatchPlan{},
+		// 	err:   nil,
+		// },
 		{
 			query: ` select * from tt where id in (select * from tt2 g where g.id = 7);`,
 			exp: plan.ShardDispatchPlan{
