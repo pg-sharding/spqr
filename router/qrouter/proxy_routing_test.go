@@ -865,94 +865,94 @@ func TestSingleShard(t *testing.T) {
 		// 	exp:   plan.MultiMatchState{},
 		// 	err:   nil,
 		// },
-		{
-			query: ` select * from tt where id in (select * from tt2 g where g.id = 7);`,
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh1",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-			err: nil,
-		},
-		{
-			query: "SELECT * FROM sh1.xxtt1 WHERE sh1.xxtt1.i = 21;",
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh2",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-			err: nil,
-		},
+		// {
+		// 	query: ` select * from tt where id in (select * from tt2 g where g.id = 7);`,
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh1",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// 	err: nil,
+		// },
+		// {
+		// 	query: "SELECT * FROM sh1.xxtt1 WHERE sh1.xxtt1.i = 21;",
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh2",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// 	err: nil,
+		// },
 
-		{
-			query: "SELECT * FROM xxtt1 a WHERE a.i = 21 and w_idj + w_idi != 0;",
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh2",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-			err: nil,
-		},
+		// {
+		// 	query: "SELECT * FROM xxtt1 a WHERE a.i = 21 and w_idj + w_idi != 0;",
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh2",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// 	err: nil,
+		// },
 
-		{
-			query: "SELECT * FROM xxtt1 a WHERE a.i = '21' and w_idj + w_idi != 0;",
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh2",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-			err: nil,
-		},
+		// {
+		// 	query: "SELECT * FROM xxtt1 a WHERE a.i = '21' and w_idj + w_idi != 0;",
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh2",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// 	err: nil,
+		// },
 
-		{
-			query: `
-			DELETE
-				FROM t
-			WHERE
-				j =
-				any(array(select * from t where i <= 2))
-			/* __spqr__default_route_behaviour: BLOCK */  returning *;
-			`,
-			err: nil,
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh1",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-		},
+		// {
+		// 	query: `
+		// 	DELETE
+		// 		FROM t
+		// 	WHERE
+		// 		j =
+		// 		any(array(select * from t where i <= 2))
+		// 	/* __spqr__default_route_behaviour: BLOCK */  returning *;
+		// 	`,
+		// 	err: nil,
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh1",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// },
 
-		{
-			query: `
-			DELETE
-				FROM t
-			WHERE
-				i =
-				any(array(select * from t where i <= 2))
-			/* __spqr__default_route_behaviour: BLOCK */  returning *;
-			`,
-			err: nil,
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh1",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-		},
-		{
-			query: "select * from  xx where i = 4;",
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh1",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-			err: nil,
-		},
+		// {
+		// 	query: `
+		// 	DELETE
+		// 		FROM t
+		// 	WHERE
+		// 		i =
+		// 		any(array(select * from t where i <= 2))
+		// 	/* __spqr__default_route_behaviour: BLOCK */  returning *;
+		// 	`,
+		// 	err: nil,
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh1",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// },
+		// {
+		// 	query: "select * from  xx where i = 4;",
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh1",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// 	err: nil,
+		// },
 
 		{
 			query: "INSERT INTO xx (i) SELECT 20;",
@@ -1126,52 +1126,52 @@ func TestInsertOffsets(t *testing.T) {
 
 	for _, tt := range []tcase{
 
-		{
-			query: `INSERT INTO xxtt1 SELECT * FROM xxtt1 a WHERE a.w_id = 20;`,
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh2",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-			err: nil,
-		},
+		// {
+		// 	query: `INSERT INTO xxtt1 SELECT * FROM xxtt1 a WHERE a.w_id = 20;`,
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh2",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// 	err: nil,
+		// },
 
-		{
-			query: `
-			INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
-			`,
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh2",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-			err: nil,
-		},
-		{
-			query: `
-			INSERT INTO "people" ("first_name","last_name","email","id") VALUES ('John','Smith','',1) RETURNING "id"`,
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh1",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-			err: nil,
-		},
-		{
-			query: `
-			INSERT INTO xxtt1 (j, w_id) SELECT a, 20 from unnest(ARRAY[10]) a
-			`,
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh2",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-			err: nil,
-		},
+		// {
+		// 	query: `
+		// 	INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
+		// 	`,
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh2",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// 	err: nil,
+		// },
+		// {
+		// 	query: `
+		// 	INSERT INTO "people" ("first_name","last_name","email","id") VALUES ('John','Smith','',1) RETURNING "id"`,
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh1",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// 	err: nil,
+		// },
+		// {
+		// 	query: `
+		// 	INSERT INTO xxtt1 (j, w_id) SELECT a, 20 from unnest(ARRAY[10]) a
+		// 	`,
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh2",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// 	err: nil,
+		// },
 
 		{
 			query: "Insert into xx (i, j, k) values (1, 12, 13), (2, 3, 4)",

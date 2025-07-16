@@ -1077,9 +1077,12 @@ func (qr *ProxyQrouter) planQueryV1(
 							return nil, rerrors.ErrComplexQuery
 						}
 					}
-					p = plan.Combine(p, &plan.ShardDispatchPlan{
-						ExecTarget: shs[0],
-					})
+					if len(shs) > 0 {
+						p = plan.Combine(p, plan.ShardDispatchPlan{
+							ExecTarget:         shs[0],
+							TargetSessionAttrs: config.TargetSessionAttrsRW,
+						})
+					}
 					return p, nil
 				}
 			default:
@@ -1118,9 +1121,13 @@ func (qr *ProxyQrouter) planQueryV1(
 							return nil, rerrors.ErrComplexQuery
 						}
 					}
-					p = plan.Combine(p, &plan.ShardDispatchPlan{
-						ExecTarget: shs[0],
-					})
+
+					if len(shs) > 0 {
+						p = plan.Combine(p, plan.ShardDispatchPlan{
+							ExecTarget:         shs[0],
+							TargetSessionAttrs: config.TargetSessionAttrsRW,
+						})
+					}
 					return p, nil
 				}
 			default:
