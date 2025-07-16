@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func ModifyQuery(query string, colname string, nextvalGen func() (int64, error)) (string, error) {
+func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextvalGen func() (int64, error)) (string, error) {
 
 	// Find the position of the opening parenthesis for the column list
 	colsOpenInd := strings.Index(query, "(")

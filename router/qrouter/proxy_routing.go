@@ -597,68 +597,6 @@ func (qr *ProxyQrouter) planFromClauseList(
 	return p, nil
 }
 
-func (qr *ProxyQrouter) processInsertFromSelectOffsets(
-	ctx context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) ([]int, *rfqn.RelationFQN, *distributions.Distribution, error) {
-	insertCols := stmt.Columns
-
-	spqrlog.Zero.Debug().
-		Strs("insert columns", insertCols).
-		Msg("deparsed insert statement columns")
-
-	// compute matched sharding rule offsets
-	offsets := make([]int, 0)
-	var curr_rfqn *rfqn.RelationFQN
-
-	switch q := stmt.TableRef.(type) {
-	case *lyx.RangeVar:
-
-		spqrlog.Zero.Debug().
-			Str("relname", q.RelationName).
-			Str("schemaname", q.SchemaName).
-			Msg("deparsed insert statement table ref")
-
-		curr_rfqn = rfqn.RelationFQNFromRangeRangeVar(q)
-
-		var ds *distributions.Distribution
-		var err error
-
-		if ds, err = meta.GetRelationDistribution(ctx, curr_rfqn); err != nil {
-			return nil, nil, nil, err
-		}
-
-		/* Omit distributed relations */
-		if ds.Id == distributions.REPLICATED {
-			/* should not happen */
-			return nil, nil, nil, rerrors.ErrComplexQuery
-		}
-
-		insertColsPos := map[string]int{}
-		for i, c := range insertCols {
-			insertColsPos[c] = i
-		}
-
-		distributionKey := ds.Relations[curr_rfqn.RelationName].DistributionKey
-		// TODO: check mapping by rules with multiple columns
-		for _, col := range distributionKey {
-			if val, ok := insertColsPos[col.Column]; !ok {
-				/* Do not return err here.
-				* This particular insert stmt is un-routable, but still, give it a try
-				* and continue parsing.
-				* Example: INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
-				* we have no insert cols specified, but still able to route on select
-				 */
-				return nil, curr_rfqn, ds, nil
-			} else {
-				offsets = append(offsets, val)
-			}
-		}
-
-		return offsets, curr_rfqn, ds, nil
-	default:
-		return nil, nil, nil, rerrors.ErrComplexQuery
-	}
-}
-
 func (qr *ProxyQrouter) AnalyzeQueryV1(
 	ctx context.Context,
 	qstmt lyx.Node,
@@ -1097,6 +1035,7 @@ func (qr *ProxyQrouter) planQueryV1(
 		return p, nil
 
 	case *lyx.Insert:
+
 		p, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
 		if err != nil {
 			return nil, err
@@ -1155,7 +1094,7 @@ func (qr *ProxyQrouter) planQueryV1(
 							}
 						}
 						return nil, rerrors.ErrComplexQuery
-					}
+					} /* else is distributed relationm and handled below */
 				default:
 					return nil, rerrors.ErrComplexQuery
 				}
@@ -1190,7 +1129,7 @@ func (qr *ProxyQrouter) planQueryV1(
 				return p, nil
 			}
 
-			offsets, qualName, ds, err := qr.processInsertFromSelectOffsets(ctx, stmt, rm)
+			offsets, qualName, ds, err := planner.ProcessInsertFromSelectOffsets(ctx, stmt, rm)
 			if err != nil {
 				return nil, err
 			}
