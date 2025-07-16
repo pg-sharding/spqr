@@ -1566,8 +1566,8 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 			shs := rst.routingDecisionPlan.ExecutionTargets()
 			/* XXX: fix this insanity  */
 			shsTransform := make([]kr.ShardKey, len(shs))
-			for _, sh := range shs {
-				shsTransform = append(shsTransform, *sh)
+			for i, sh := range shs {
+				shsTransform[i] = *sh
 			}
 			return rst.Unroute(shsTransform)
 		}, nil
