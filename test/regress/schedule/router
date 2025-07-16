@@ -25,6 +25,7 @@ test: distributed_relation_multishard_modify
 test: part_table
 test: target_list_routing
 test: reference_table
+test: insert_processing
 test: sequence
 test: cte
 test: ddl
