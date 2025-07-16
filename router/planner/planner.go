@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/pg-sharding/lyx/lyx"
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -194,7 +193,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context, qrouter_query *strin
 	}, nil
 }
 
-func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node, rm *rmeta.RoutingMetadataContext, stmt *lyx.Insert) (plan.Plan, error) {
+func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node, rm *rmeta.RoutingMetadataContext, stmt *lyx.Insert) ([]*kr.ShardKey, error) {
 
 	offsets, qualName, ds, err := ProcessInsertFromSelectOffsets(ctx, stmt, rm)
 	if err != nil {
@@ -232,9 +231,7 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 	}
 
 	queryParamsFormatCodes := GetParams(rm)
-	var p plan.Plan = nil
-
-	var prevOntupPlan *kr.ShardKey
+	tupleShards := make([]*kr.ShardKey, len(routingList))
 
 	for i := range routingList {
 
@@ -273,34 +270,23 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 		}
 
 		if !tupUsable {
-			continue
+			return nil, rerrors.ErrComplexQuery
 		}
 
-		ontupPlan, err := rm.DeparseKeyWithRangesInternal(ctx, tup, krs)
+		tupleShard, err := rm.DeparseKeyWithRangesInternal(ctx, tup, krs)
 		if err != nil {
 			spqrlog.Zero.Debug().Interface("composite key", tup).Err(err).Msg("encountered the route error")
 			return nil, err
 		}
 
 		spqrlog.Zero.Debug().
-			Interface("single tuple plan", ontupPlan).
-			Msg("calculated route for table/cols")
+			Interface("tuple shard", tupleShard).
+			Msg("calculated route for single insert tuple")
 
 			/* this is modify stmt */
-
-		if prevOntupPlan != nil {
-			if prevOntupPlan.Name != ontupPlan.Name {
-				return nil, rerrors.ErrComplexQuery
-			}
-		}
-		prevOntupPlan = ontupPlan
+		tupleShards[i] = tupleShard
 	}
-
-	p = plan.Combine(p, plan.ShardDispatchPlan{
-		ExecTarget:         prevOntupPlan,
-		TargetSessionAttrs: config.TargetSessionAttrsRW,
-	})
-	return p, nil
+	return tupleShards, nil
 }
 
 func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {

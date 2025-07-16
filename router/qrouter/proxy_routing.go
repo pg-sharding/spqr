@@ -1067,7 +1067,21 @@ func (qr *ProxyQrouter) planQueryV1(
 						}
 					}
 					return nil, rerrors.ErrComplexQuery
-				} /* else is distributed relation and handled below */
+				} else {
+					shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, stmt)
+					if err != nil {
+						return nil, err
+					}
+					for _, sh := range shs {
+						if sh.Name != shs[0].Name {
+							return nil, rerrors.ErrComplexQuery
+						}
+					}
+					p = plan.Combine(p, &plan.ShardDispatchPlan{
+						ExecTarget: shs[0],
+					})
+					return p, nil
+				}
 			default:
 				return nil, rerrors.ErrComplexQuery
 			}
@@ -1093,6 +1107,21 @@ func (qr *ProxyQrouter) planQueryV1(
 						}, nil
 					}
 					return p, nil
+				} else {
+					shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, stmt)
+					if err != nil {
+						return nil, err
+					}
+					/* XXX: give change for engine v2 to rewrite queries */
+					for _, sh := range shs {
+						if sh.Name != shs[0].Name {
+							return nil, rerrors.ErrComplexQuery
+						}
+					}
+					p = plan.Combine(p, &plan.ShardDispatchPlan{
+						ExecTarget: shs[0],
+					})
+					return p, nil
 				}
 			default:
 				return nil, rerrors.ErrComplexQuery
@@ -1102,7 +1131,6 @@ func (qr *ProxyQrouter) planQueryV1(
 			return p, nil
 		}
 
-		return planner.PlanDistributedRelationInsert(ctx, routingList, rm, stmt)
 	case *lyx.Update:
 
 		p, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
