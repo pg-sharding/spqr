@@ -57,9 +57,6 @@ type RelayStateMgr interface {
 	PrepareRelayStepOnAnyRoute() (func() error, error)
 	PrepareRelayStepOnHintRoute(route *kr.ShardKey) error
 
-	HoldRouting()
-	UnholdRouting()
-
 	/* process extended proto */
 	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool) error
 	ProcessMessageBuf(waitForResp, replyCl bool) error
@@ -126,8 +123,6 @@ type RelayStateImpl struct {
 	msgBuf      []pgproto3.FrontendMessage
 	msgBufReply []bool
 
-	holdRouting bool
-
 	bindRoute    *kr.ShardKey
 	lastBindName string
 
@@ -150,16 +145,6 @@ func (rst *RelayStateImpl) SetTxStatus(status txstatus.TXStatus) {
 // TxStatus implements poolmgr.ConnectionKeeper.
 func (rst *RelayStateImpl) TxStatus() txstatus.TXStatus {
 	return rst.qse.TxStatus()
-}
-
-// HoldRouting implements RelayStateMgr.
-func (rst *RelayStateImpl) HoldRouting() {
-	rst.holdRouting = true
-}
-
-// UnholdRouting implements RelayStateMgr.
-func (rst *RelayStateImpl) UnholdRouting() {
-	rst.holdRouting = false
 }
 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr) RelayStateMgr {
@@ -981,24 +966,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 		rst.bindRoute = nil
 	}()
 
-	holdRoute := true
-
-	anyPrepStmt := ""
-	for _, msg := range rst.xBuf {
-		switch q := msg.(type) {
-		case *pgproto3.Bind:
-			if anyPrepStmt == "" {
-				anyPrepStmt = q.PreparedStatement
-			} else if anyPrepStmt != q.PreparedStatement {
-				holdRoute = false
-			}
-		}
-	}
-
-	if holdRoute {
-		defer rst.UnholdRouting()
-	}
-
 	for _, msg := range rst.xBuf {
 
 	singleMsgLoop:
@@ -1097,12 +1064,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 				if err != nil {
 					return err
-				}
-
-				// hold route if appropriate
-
-				if holdRoute {
-					rst.HoldRouting()
 				}
 
 				switch rst.routingState.(type) {
@@ -1457,10 +1418,6 @@ func (rst *RelayStateImpl) PrepareRelayStep() (plan.Plan, error) {
 		Str("db", rst.Client().DB()).
 		Msg("preparing relay step for client")
 
-	if rst.holdRouting {
-		return nil, nil
-	}
-
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateReRoute(rst) {
 		spqrlog.Zero.Debug().Bool("engine v2", rst.Client().EnhancedMultiShardProcessing()).Msg("checking transaction expand possibility")
@@ -1526,10 +1483,6 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(route *kr.ShardKey) error
 		Interface("route", route).
 		Msg("preparing relay step for client on target route")
 
-	if rst.holdRouting {
-		return nil
-	}
-
 	// txactive == 0 || activeSh == nil
 	// already has route, no need for any hint
 	if !rst.poolMgr.ValidateReRoute(rst) {
@@ -1564,10 +1517,6 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
 		Msg("preparing relay step for client on any route")
-
-	if rst.holdRouting {
-		return noopCloseRouteFunc, nil
-	}
 
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateReRoute(rst) {
