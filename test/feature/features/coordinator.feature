@@ -526,8 +526,30 @@ Feature: Coordinator test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
+    console is in read only mode
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    SHOW ROUTERS
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
     context deadline exceeded
     """
+
+  Scenario: QDB is restarted
+    Given host "coordinator2" is stopped
+    And host "qdb01" is stopped
+    And we wait for "5" seconds
+    And host "qdb01" is started
+    And we wait for "5" seconds
+    When I run SQL on host "coordinator"
+    """
+    CREATE KEY RANGE krid3 FROM 31 ROUTE to sh1 FOR DISTRIBUTION ds1
+    """
+    Then command return code should be "0"
 
   Scenario: Coordinator can restart
     #

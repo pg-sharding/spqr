@@ -243,6 +243,9 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 	spqrlog.Zero.Debug().Msg("start routers watch iteration")
 	for {
 		// TODO check we are still coordinator
+		if !qc.acquiredLock {
+			continue
+		}
 
 		// TODO: lock router
 		routers, err := qc.db.ListRouters(ctx)
@@ -374,27 +377,46 @@ func (qc *ClusteredCoordinator) lockCoordinator(ctx context.Context, initialRout
 		}
 		return nil
 	}
-	defer func() {
-		qc.acquiredLock = true
-	}()
 
-	if qc.db.TryCoordinatorLock(context.TODO()) != nil {
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-time.After(time.Second):
-				if err := qc.db.TryCoordinatorLock(context.TODO()); err == nil {
-					return updateCoordinator()
-				} else {
-					spqrlog.Zero.Error().Err(err).Msg("qdb already taken, waiting for connection")
-					/* retry lock attempt */
-				}
-			}
+	lock := func(ctx context.Context) error {
+		currentCoord, _ := qc.GetCoordinator(ctx)
+		host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
+		if err != nil {
+			return err
 		}
+		addr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
+		if currentCoord == addr {
+			return nil
+		}
+
+		if err := qc.db.TryCoordinatorLock(ctx, addr); err != nil {
+			return err
+		}
+
+		return updateCoordinator()
 	}
 
-	return updateCoordinator()
+	err := lock(ctx)
+	qc.acquiredLock = err == nil
+	if err != nil {
+		return err
+	}
+	go func() {
+		tryLockTimeout := config.ValueOrDefaultDuration(config.CoordinatorConfig().LockIterationTimeout, defaultLockCoordinatorTimeout)
+		t := time.NewTicker(time.Second)
+		for {
+			<-t.C
+
+			ctx, cancel := context.WithTimeout(context.Background(), tryLockTimeout)
+			err := lock(ctx)
+			if err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to retake coordinator lock")
+			}
+			qc.acquiredLock = err == nil
+			cancel()
+		}
+	}()
+	return nil
 }
 
 // RunCoordinator side effect: it runs an asynchronous goroutine
@@ -402,11 +424,14 @@ func (qc *ClusteredCoordinator) lockCoordinator(ctx context.Context, initialRout
 //
 // TODO: unit tests
 func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRouter bool) {
-	for err := qc.lockCoordinator(ctx, initialRouter); err != nil; {
+	for {
+		err := qc.lockCoordinator(ctx, initialRouter)
+		if err == nil {
+			break
+		}
 		spqrlog.Zero.Error().Err(err).Msg("error getting qdb lock, retrying")
 
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().LockIterationTimeout, defaultLockCoordinatorTimeout))
-		continue
 	}
 
 	if err := qc.finishRedistributeTasksInProgress(ctx); err != nil {
