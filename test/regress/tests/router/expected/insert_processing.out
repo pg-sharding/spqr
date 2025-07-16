@@ -1,0 +1,111 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+-- check that numeric type works
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE FROM 300 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 300
+(1 row)
+
+CREATE KEY RANGE FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 200
+(1 row)
+
+CREATE KEY RANGE FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
+
+CREATE KEY RANGE FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE DISTRIBUTED RELATION xx_insert_rel DISTRIBUTION KEY a IN ds1;
+           attach table           
+----------------------------------
+ relation name   -> xx_insert_rel
+ distribution id -> ds1
+(2 rows)
+
+\c regress
+CREATE TABLE xx_insert_rel(a INT, b INT, c INT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO xx_insert_rel (a, b, c) VALUES(1,2,3),(2,3,4), (3,4,5);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx_insert_rel (a, b, c) VALUES(1,2,3),(2,3,4), (300,4,5);
+ERROR:  client processing error: error processing query 'INSERT INTO xx_insert_rel (a, b, c) VALUES(1,2,3),(2,3,4), (300,4,5);': too complex query to route, tx status IDLE
+INSERT INTO xx_insert_rel (a, b, c) SELECT 1,2,3;
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx_insert_rel (a, b, c) SELECT 101,201,301;
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx_insert_rel (a, b, c) SELECT 201,a,301 FROM unnest(ARRAY[110]) a;;
+NOTICE: send query to shard(s) : sh3
+--INSERT INTO xx_insert_rel (a, b, c) SELECT 1,2,3 UNION ALL SELECT 2,3,4;
+SELECT * FROM xx_insert_rel ORDER BY 1,2,3 /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ a | b | c 
+---+---+---
+ 1 | 2 | 3
+ 1 | 2 | 3
+ 2 | 3 | 4
+ 3 | 4 | 5
+(4 rows)
+
+SELECT * FROM xx_insert_rel ORDER BY 1,2,3 /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+  a  |  b  |  c  
+-----+-----+-----
+ 101 | 201 | 301
+(1 row)
+
+SELECT * FROM xx_insert_rel ORDER BY 1,2,3 /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+  a  |  b  |  c  
+-----+-----+-----
+ 201 | 110 | 301
+(1 row)
+
+SELECT * FROM xx_insert_rel ORDER BY 1,2,3 /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+ a | b | c 
+---+---+---
+(0 rows)
+
+DROP TABLE xx_insert_rel;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

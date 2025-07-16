@@ -13,6 +13,9 @@ SELECT pg_is_in_recovery(), 1, 'kek';
 
 SELECT CURRENT_USER;
 
+--- XXX: support
+--- SELECT 1,2,3 UNION ALL SELECT 2,3,4;
+
 -- XXX:support
 --SHOW transaction_read_only;
 

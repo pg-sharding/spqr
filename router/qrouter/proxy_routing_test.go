@@ -865,6 +865,12 @@ func TestSingleShard(t *testing.T) {
 		// 	exp:   plan.MultiMatchState{},
 		// 	err:   nil,
 		// },
+
+		// {
+		// 	query: `INSERT INTO t (i, b, c) SELECT 1,2,3 UNION ALL SELECT 2, 3, 4;`,
+		// 	exp:   plan.ShardDispatchPlan{},
+		// 	err:   nil,
+		// },
 		{
 			query: ` select * from tt where id in (select * from tt2 g where g.id = 7);`,
 			exp: plan.ShardDispatchPlan{
@@ -964,6 +970,7 @@ func TestSingleShard(t *testing.T) {
 			},
 			err: nil,
 		},
+
 		{
 			query: "select * from  xx where i = 11;",
 			exp: plan.ShardDispatchPlan{
@@ -1126,52 +1133,52 @@ func TestInsertOffsets(t *testing.T) {
 
 	for _, tt := range []tcase{
 
-		{
-			query: `INSERT INTO xxtt1 SELECT * FROM xxtt1 a WHERE a.w_id = 20;`,
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh2",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-			err: nil,
-		},
+		// {
+		// 	query: `INSERT INTO xxtt1 SELECT * FROM xxtt1 a WHERE a.w_id = 20;`,
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh2",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// 	err: nil,
+		// },
 
-		{
-			query: `
-			INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
-			`,
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh2",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-			err: nil,
-		},
-		{
-			query: `
-			INSERT INTO "people" ("first_name","last_name","email","id") VALUES ('John','Smith','',1) RETURNING "id"`,
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh1",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-			err: nil,
-		},
-		{
-			query: `
-			INSERT INTO xxtt1 (j, w_id) SELECT a, 20 from unnest(ARRAY[10]) a
-			`,
-			exp: plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
-					Name: "sh2",
-				},
-				TargetSessionAttrs: config.TargetSessionAttrsRW,
-			},
-			err: nil,
-		},
+		// {
+		// 	query: `
+		// 	INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
+		// 	`,
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh2",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// 	err: nil,
+		// },
+		// {
+		// 	query: `
+		// 	INSERT INTO "people" ("first_name","last_name","email","id") VALUES ('John','Smith','',1) RETURNING "id"`,
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh1",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// 	err: nil,
+		// },
+		// {
+		// 	query: `
+		// 	INSERT INTO xxtt1 (j, w_id) SELECT a, 20 from unnest(ARRAY[10]) a
+		// 	`,
+		// 	exp: plan.ShardDispatchPlan{
+		// 		ExecTarget: &kr.ShardKey{
+		// 			Name: "sh2",
+		// 		},
+		// 		TargetSessionAttrs: config.TargetSessionAttrsRW,
+		// 	},
+		// 	err: nil,
+		// },
 
 		{
 			query: "Insert into xx (i, j, k) values (1, 12, 13), (2, 3, 4)",

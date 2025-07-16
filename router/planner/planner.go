@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/pg-sharding/lyx/lyx"
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -194,7 +193,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context, qrouter_query *strin
 	}, nil
 }
 
-func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node, rm *rmeta.RoutingMetadataContext, stmt *lyx.Insert) (plan.Plan, error) {
+func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node, rm *rmeta.RoutingMetadataContext, stmt *lyx.Insert) ([]*kr.ShardKey, error) {
 
 	offsets, qualName, ds, err := ProcessInsertFromSelectOffsets(ctx, stmt, rm)
 	if err != nil {
@@ -232,14 +231,10 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 	}
 
 	queryParamsFormatCodes := GetParams(rm)
-	var p plan.Plan = nil
-
-	var prevOntupPlan *kr.ShardKey
+	tupleShards := make([]*kr.ShardKey, len(routingList))
 
 	for i := range routingList {
 
-		tup := make([]any, len(ds.ColTypes))
-		tupUsable := true
 		for j := range offsets {
 			off, tp := rm.GetDistributionKeyOffsetType(qualName, insertCols[offsets[j]])
 			if off == -1 {
@@ -250,57 +245,58 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 			if err := rm.ProcessSingleExpr(qualName, tp, insertCols[offsets[j]], routingList[i][offsets[j]]); err != nil {
 				return nil, err
 			}
-			vvs, _ := rm.ResolveValue(qualName, insertCols[offsets[j]], queryParamsFormatCodes)
-			if len(vvs) == 1 {
-				/* XXX: what else ? */
+		}
+	}
 
-				hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[j].HashFunction)
-				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
-					return nil, err
-				}
+	vvs_resolved := make([][]any, len(offsets))
 
-				tup[j], err = hashfunction.ApplyHashFunction(vvs[0], ds.ColTypes[j], hf)
+	for j := range offsets {
+		vvs, _ := rm.ResolveValue(qualName, insertCols[offsets[j]], queryParamsFormatCodes)
 
-				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-					return nil, err
-				}
+		vvs_resolved[j] = vvs
+		if len(vvs) != len(routingList) {
+			return nil, rerrors.ErrComplexQuery
+		}
+	}
 
-			} else {
-				tupUsable = false
+	for i := range routingList {
+		tup := make([]any, len(ds.ColTypes))
+
+		for j := range offsets {
+			off, _ := rm.GetDistributionKeyOffsetType(qualName, insertCols[offsets[j]])
+			if off == -1 {
+				// column not from distr key
+				continue
+			}
+
+			hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[j].HashFunction)
+			if err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
+				return nil, err
+			}
+
+			tup[j], err = hashfunction.ApplyHashFunction(vvs_resolved[j][i], ds.ColTypes[j], hf)
+
+			if err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+				return nil, err
 			}
 		}
 
-		if !tupUsable {
-			continue
-		}
-
-		ontupPlan, err := rm.DeparseKeyWithRangesInternal(ctx, tup, krs)
+		tupleShard, err := rm.DeparseKeyWithRangesInternal(ctx, tup, krs)
 		if err != nil {
 			spqrlog.Zero.Debug().Interface("composite key", tup).Err(err).Msg("encountered the route error")
 			return nil, err
 		}
 
 		spqrlog.Zero.Debug().
-			Interface("single tuple plan", ontupPlan).
-			Msg("calculated route for table/cols")
+			Interface("tuple shard", tupleShard).
+			Msg("calculated route for single insert tuple")
 
 			/* this is modify stmt */
-
-		if prevOntupPlan != nil {
-			if prevOntupPlan.Name != ontupPlan.Name {
-				return nil, rerrors.ErrComplexQuery
-			}
-		}
-		prevOntupPlan = ontupPlan
+		tupleShards[i] = tupleShard
 	}
-
-	p = plan.Combine(p, plan.ShardDispatchPlan{
-		ExecTarget:         prevOntupPlan,
-		TargetSessionAttrs: config.TargetSessionAttrsRW,
-	})
-	return p, nil
+	return tupleShards, nil
 }
 
 func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {

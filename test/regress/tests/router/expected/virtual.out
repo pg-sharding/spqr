@@ -40,6 +40,8 @@ SELECT CURRENT_USER;
  regress
 (1 row)
 
+--- XXX: support
+--- SELECT 1,2,3 UNION ALL SELECT 2,3,4;
 -- XXX:support
 --SHOW transaction_read_only;
 -- XXX: support ignore patterns to test this

@@ -91,7 +91,7 @@ INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx') /* __spqr__engine_v2: tru
 NOTICE: send query to shard(s) : sh1
 -- This insert should fail even with engine V2
 INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx')/* __spqr__engine_v2: false */;
-ERROR:  client processing error: error processing query 'INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx')/* __spqr__engine_v2: false */;': failed to match any datashard, tx status IDLE
+ERROR:  client processing error: error processing query 'INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx')/* __spqr__engine_v2: false */;': too complex query to route, tx status IDLE
 INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx') /* __spqr__engine_v2: true */;
 ERROR:  client processing error: error processing query 'INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx') /* __spqr__engine_v2: true */;': too complex query to route, tx status IDLE
 DROP TABLE distrr_mm_test;
