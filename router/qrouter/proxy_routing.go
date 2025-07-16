@@ -23,7 +23,6 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/routehint"
-	"github.com/pg-sharding/spqr/router/xproto"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -67,36 +66,10 @@ func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation *rfqn.RelationFQ
 	return nil
 }
 
-func getparams(rm *rmeta.RoutingMetadataContext) []int16 {
-	paramsFormatCodes := rm.SPH.BindParamFormatCodes()
-	var queryParamsFormatCodes []int16
-	paramsLen := len(rm.SPH.BindParams())
-
-	/* https://github.com/postgres/postgres/blob/c65bc2e1d14a2d4daed7c1921ac518f2c5ac3d17/src/backend/tcop/pquery.c#L664-L691 */ /* #no-spell-check-line */
-	if len(paramsFormatCodes) > 1 {
-		queryParamsFormatCodes = paramsFormatCodes
-	} else if len(paramsFormatCodes) == 1 {
-
-		/* single format specified, use for all columns */
-		queryParamsFormatCodes = make([]int16, paramsLen)
-
-		for i := range paramsLen {
-			queryParamsFormatCodes[i] = paramsFormatCodes[0]
-		}
-	} else {
-		/* use default format for all columns */
-		queryParamsFormatCodes = make([]int16, paramsLen)
-		for i := range paramsLen {
-			queryParamsFormatCodes[i] = xproto.FormatCodeText
-		}
-	}
-	return queryParamsFormatCodes
-}
-
 func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 	ds *distributions.Distribution, qualName *rfqn.RelationFQN, relation *distributions.DistributedRelation, tsa tsa.TSA) (plan.Plan, error) {
 
-	queryParamsFormatCodes := getparams(rm)
+	queryParamsFormatCodes := planner.GetParams(rm)
 
 	krs, err := qr.mgr.ListKeyRanges(ctx, ds.Id)
 	if err != nil {
@@ -106,7 +79,7 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 	var rec func(lvl int) error
 	var p plan.Plan = nil
 
-	compositeKey := make([]interface{}, len(relation.DistributionKey))
+	compositeKey := make([]any, len(relation.DistributionKey))
 
 	rec = func(lvl int) error {
 
@@ -118,7 +91,7 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 
 		col := relation.DistributionKey[lvl].Column
 
-		vals, valOk := qr.resolveValue(rm, qualName, col, rm.SPH.BindParams(), queryParamsFormatCodes)
+		vals, valOk := rm.ResolveValue(qualName, col, queryParamsFormatCodes)
 
 		if !valOk {
 			return nil
@@ -1040,176 +1013,96 @@ func (qr *ProxyQrouter) planQueryV1(
 		if err != nil {
 			return nil, err
 		}
-
-		if selectStmt := stmt.SubSelect; selectStmt != nil {
-
-			insertCols := stmt.Columns
-
-			var routingList [][]lyx.Node
-
-			switch subS := selectStmt.(type) {
-			case *lyx.Select:
-				spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
-				_ = qr.analyzeSelectStmt(ctx, subS, rm)
-
-				p, _ = qr.planQueryV1(ctx, subS, rm)
-
-				/* try target list */
-				spqrlog.Zero.Debug().Msgf("routing insert stmt on target list:%T", p)
-				/* this target list for some insert (...) sharding column */
-
-				routingList = [][]lyx.Node{subS.TargetList}
-				/* record all values from tl */
-
-				switch rf := stmt.TableRef.(type) {
-				case *lyx.RangeVar:
-
-					qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
-
-					if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
-						return nil, err
-					} else if rs {
-						rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
-						if err != nil {
-							return nil, err
-						}
-						if len(rel.ColumnSequenceMapping) == 0 {
-							// ok
-							// XXX: todo - check that sub select is not doing anything insane
-							switch p.(type) {
-							case plan.VirtualPlan, plan.ScatterPlan, plan.RandomDispatchPlan:
-								if stmt.Returning != nil {
-									return plan.DataRowFilter{
-										SubPlan: plan.ScatterPlan{
-											ExecTargets: rel.ListStorageRoutes(),
-										},
-										FilterIndex: 0,
-									}, nil
-								}
-								return plan.ScatterPlan{
-									ExecTargets: rel.ListStorageRoutes(),
-								}, nil
-							default:
-								return nil, rerrors.ErrComplexQuery
-							}
-						}
-						return nil, rerrors.ErrComplexQuery
-					} /* else is distributed relation and handled below */
-				default:
-					return nil, rerrors.ErrComplexQuery
-				}
-
-			case *lyx.ValueClause:
-				/* record all values from values scan */
-				routingList = subS.Values
-
-				switch rf := stmt.TableRef.(type) {
-				case *lyx.RangeVar:
-					if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
-						return nil, err
-					} else if rs {
-						/* If reference relation, use planner v2 */
-						p, err := planner.PlanReferenceRelationInsertValues(ctx, qr.query, rm, stmt.Columns, rf, subS)
-						if err != nil {
-							return nil, err
-						}
-						if stmt.Returning != nil {
-							return plan.DataRowFilter{
-								SubPlan:     p,
-								FilterIndex: 0,
-							}, nil
-						}
-						return p, nil
-					}
-				default:
-					return nil, rerrors.ErrComplexQuery
-				}
-
-			default:
-				return p, nil
-			}
-
-			offsets, qualName, ds, err := planner.ProcessInsertFromSelectOffsets(ctx, stmt, rm)
-			if err != nil {
-				return nil, err
-			}
-
-			tlUsable := len(offsets) == len(ds.ColTypes)
-			if len(routingList) > 0 {
-				/* check first tuple only */
-				for i := range offsets {
-					if offsets[i] >= len(routingList[0]) {
-						tlUsable = false
-						break
-					} else {
-						switch routingList[0][offsets[i]].(type) {
-						case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
-						default:
-							tlUsable = false
-						}
-					}
-				}
-			}
-
-			if tlUsable {
-
-				krs, err := qr.mgr.ListKeyRanges(ctx, ds.Id)
-				if err != nil {
-					return nil, err
-				}
-
-				queryParamsFormatCodes := getparams(rm)
-				var p plan.Plan = nil
-
-				for i := range routingList {
-
-					tup := make([]any, len(ds.ColTypes))
-					tupUsable := true
-					for j := range offsets {
-						off, tp := rm.GetDistributionKeyOffsetType(qualName, insertCols[offsets[j]])
-						if off == -1 {
-							// column not from distr key
-							continue
-						}
-
-						if err := rm.ProcessSingleExpr(qualName, tp, insertCols[offsets[j]], routingList[i][offsets[j]]); err != nil {
-							return nil, err
-						}
-						vvs, _ := qr.resolveValue(rm, qualName, insertCols[offsets[j]], rm.SPH.BindParams(), queryParamsFormatCodes)
-						if len(vvs) == 0 {
-							/* XXX: what else ? */
-							tup[j] = vvs[0]
-						} else {
-							tupUsable = false
-						}
-					}
-
-					if !tupUsable {
-						continue
-					}
-
-					ontupPlan, err := rm.DeparseKeyWithRangesInternal(ctx, tup, krs)
-					if err != nil {
-						spqrlog.Zero.Debug().Interface("composite key", tup).Err(err).Msg("encountered the route error")
-						return nil, err
-					}
-
-					spqrlog.Zero.Debug().
-						Interface("single tuple plan", ontupPlan).
-						Msg("calculated route for table/cols")
-
-						/* this is modify stmt */
-					p = plan.Combine(p, plan.ShardDispatchPlan{
-						ExecTarget:         ontupPlan,
-						TargetSessionAttrs: config.TargetSessionAttrsRW,
-					})
-				}
-				return p, nil
-			}
-
+		selectStmt := stmt.SubSelect
+		if selectStmt == nil {
+			return p, nil
 		}
 
-		return p, nil
+		var routingList [][]lyx.Node
+
+		switch subS := selectStmt.(type) {
+		case *lyx.Select:
+			spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
+			_ = qr.analyzeSelectStmt(ctx, subS, rm)
+
+			p, _ = qr.planQueryV1(ctx, subS, rm)
+
+			/* try target list */
+			spqrlog.Zero.Debug().Msgf("routing insert stmt on target list:%T", p)
+			/* this target list for some insert (...) sharding column */
+
+			routingList = [][]lyx.Node{subS.TargetList}
+			/* record all values from tl */
+
+			switch rf := stmt.TableRef.(type) {
+			case *lyx.RangeVar:
+
+				qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
+
+				if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
+					return nil, err
+				} else if rs {
+					rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
+					if err != nil {
+						return nil, err
+					}
+					if len(rel.ColumnSequenceMapping) == 0 {
+						// ok
+						// XXX: todo - check that sub select is not doing anything insane
+						switch p.(type) {
+						case plan.VirtualPlan, plan.ScatterPlan, plan.RandomDispatchPlan:
+							if stmt.Returning != nil {
+								return plan.DataRowFilter{
+									SubPlan: plan.ScatterPlan{
+										ExecTargets: rel.ListStorageRoutes(),
+									},
+									FilterIndex: 0,
+								}, nil
+							}
+							return plan.ScatterPlan{
+								ExecTargets: rel.ListStorageRoutes(),
+							}, nil
+						default:
+							return nil, rerrors.ErrComplexQuery
+						}
+					}
+					return nil, rerrors.ErrComplexQuery
+				} /* else is distributed relation and handled below */
+			default:
+				return nil, rerrors.ErrComplexQuery
+			}
+
+		case *lyx.ValueClause:
+			/* record all values from values scan */
+			routingList = subS.Values
+
+			switch rf := stmt.TableRef.(type) {
+			case *lyx.RangeVar:
+				if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
+					return nil, err
+				} else if rs {
+					/* If reference relation, use planner v2 */
+					p, err := planner.PlanReferenceRelationInsertValues(ctx, qr.query, rm, stmt.Columns, rf, subS)
+					if err != nil {
+						return nil, err
+					}
+					if stmt.Returning != nil {
+						return plan.DataRowFilter{
+							SubPlan:     p,
+							FilterIndex: 0,
+						}, nil
+					}
+					return p, nil
+				}
+			default:
+				return nil, rerrors.ErrComplexQuery
+			}
+
+		default:
+			return p, nil
+		}
+
+		return planner.PlanDistributedRelationInsert(ctx, routingList, rm, stmt)
 	case *lyx.Update:
 
 		p, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
@@ -1352,36 +1245,6 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 	}
 
 	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
-}
-
-func (qr *ProxyQrouter) resolveValue(meta *rmeta.RoutingMetadataContext, rfqn *rfqn.RelationFQN, col string, bindParams [][]byte, paramResCodes []int16) ([]interface{}, bool) {
-
-	if vals, ok := meta.Exprs[*rfqn][col]; ok {
-		return vals, true
-	}
-
-	inds, ok := meta.ParamRefs[*rfqn][col]
-	if !ok {
-		return nil, false
-	}
-
-	off, tp := meta.GetDistributionKeyOffsetType(rfqn, col)
-	if off == -1 {
-		// column not from distr key
-		return nil, false
-	}
-
-	// TODO: switch column type here
-	// only works for one value
-	ind := inds[0]
-	if len(paramResCodes) < ind {
-		return nil, false
-	}
-	fc := paramResCodes[ind]
-
-	singleVal, res := plan.ParseResolveParamValue(fc, ind, tp, bindParams)
-
-	return []any{singleVal}, res
 }
 
 func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext, tsa tsa.TSA) (plan.Plan, error) {

@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -190,6 +192,115 @@ func PlanReferenceRelationInsertValues(ctx context.Context, qrouter_query *strin
 	return plan.ScatterPlan{
 		ExecTargets: rel.ListStorageRoutes(),
 	}, nil
+}
+
+func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node, rm *rmeta.RoutingMetadataContext, stmt *lyx.Insert) (plan.Plan, error) {
+
+	offsets, qualName, ds, err := ProcessInsertFromSelectOffsets(ctx, stmt, rm)
+	if err != nil {
+		return nil, err
+	}
+
+	insertCols := stmt.Columns
+
+	relation := ds.Relations[qualName.RelationName]
+
+	tlUsable := len(offsets) == len(ds.ColTypes)
+	if len(routingList) > 0 {
+		/* check first tuple only */
+		for i := range offsets {
+			if offsets[i] >= len(routingList[0]) {
+				tlUsable = false
+				break
+			} else {
+				switch routingList[0][offsets[i]].(type) {
+				case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
+				default:
+					tlUsable = false
+				}
+			}
+		}
+	}
+
+	if !tlUsable {
+		return nil, nil
+	}
+
+	krs, err := rm.Mgr.ListKeyRanges(ctx, ds.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	queryParamsFormatCodes := GetParams(rm)
+	var p plan.Plan = nil
+
+	var prevOntupPlan *kr.ShardKey
+
+	for i := range routingList {
+
+		tup := make([]any, len(ds.ColTypes))
+		tupUsable := true
+		for j := range offsets {
+			off, tp := rm.GetDistributionKeyOffsetType(qualName, insertCols[offsets[j]])
+			if off == -1 {
+				// column not from distr key
+				continue
+			}
+
+			if err := rm.ProcessSingleExpr(qualName, tp, insertCols[offsets[j]], routingList[i][offsets[j]]); err != nil {
+				return nil, err
+			}
+			vvs, _ := rm.ResolveValue(qualName, insertCols[offsets[j]], queryParamsFormatCodes)
+			if len(vvs) == 1 {
+				/* XXX: what else ? */
+
+				hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[j].HashFunction)
+				if err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
+					return nil, err
+				}
+
+				tup[j], err = hashfunction.ApplyHashFunction(vvs[0], ds.ColTypes[j], hf)
+
+				if err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+					return nil, err
+				}
+
+			} else {
+				tupUsable = false
+			}
+		}
+
+		if !tupUsable {
+			continue
+		}
+
+		ontupPlan, err := rm.DeparseKeyWithRangesInternal(ctx, tup, krs)
+		if err != nil {
+			spqrlog.Zero.Debug().Interface("composite key", tup).Err(err).Msg("encountered the route error")
+			return nil, err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("single tuple plan", ontupPlan).
+			Msg("calculated route for table/cols")
+
+			/* this is modify stmt */
+
+		if prevOntupPlan != nil {
+			if prevOntupPlan.Name != ontupPlan.Name {
+				return nil, rerrors.ErrComplexQuery
+			}
+		}
+		prevOntupPlan = ontupPlan
+	}
+
+	p = plan.Combine(p, plan.ShardDispatchPlan{
+		ExecTarget:         prevOntupPlan,
+		TargetSessionAttrs: config.TargetSessionAttrsRW,
+	})
+	return p, nil
 }
 
 func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {

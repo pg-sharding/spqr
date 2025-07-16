@@ -11,7 +11,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/plan"
@@ -238,12 +237,12 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		{
 			query: "INSERT INTO distrr_mm_test VALUES (3), (34) /* __spqr__engine_v2: true */;",
 			exp:   nil,
-			err:   spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD),
+			err:   rerrors.ErrComplexQuery,
 		},
 		{
 			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: true */;",
 			exp:   nil,
-			err:   spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD),
+			err:   rerrors.ErrComplexQuery,
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
@@ -256,7 +255,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		tmp, err := pr.Route(context.TODO(), parserRes, dh)
 
 		if tt.err != nil {
-			assert.Error(err)
+			assert.Equal(tt.err, err, tt.query)
 		} else {
 
 			assert.NoError(err, "query %s", tt.query)
