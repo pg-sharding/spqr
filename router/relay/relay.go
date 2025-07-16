@@ -31,7 +31,7 @@ import (
 
 type RelayStateMgr interface {
 	poolmgr.ConnectionKeeper
-	route.RouteMgr
+	route.ExecutionSliceMgr
 
 	QueryExecutor() QueryStateExecutor
 	QueryRouter() qrouter.QueryRouter
@@ -55,7 +55,7 @@ type RelayStateMgr interface {
 
 	PrepareRelayStep() (plan.Plan, error)
 	PrepareRelayStepOnAnyRoute() (func() error, error)
-	PrepareRelayStepOnHintRoute(route *kr.ShardKey) error
+	PrepareRelayStepOnHintRoute(hintPlan plan.Plan) error
 
 	HoldRouting()
 	UnholdRouting()
@@ -113,7 +113,7 @@ type ParseCacheEntry struct {
 type RelayStateImpl struct {
 	activeShards []kr.ShardKey
 
-	routingState plan.Plan
+	routingDecisionPlan plan.Plan
 
 	Qr      qrouter.QueryRouter
 	qse     QueryStateExecutor
@@ -127,8 +127,8 @@ type RelayStateImpl struct {
 
 	holdRouting bool
 
-	bindRoute    *kr.ShardKey
-	lastBindName string
+	bindQueryPlan plan.Plan
+	lastBindName  string
 
 	execute func() error
 
@@ -648,7 +648,7 @@ func (rst *RelayStateImpl) Reroute() (plan.Plan, error) {
 		}
 	}
 
-	rst.routingState = queryPlan
+	rst.routingDecisionPlan = queryPlan
 
 	if rst.Client().Rule().PoolMode == config.PoolModeVirtual {
 		/* never try to get connection */
@@ -669,7 +669,7 @@ func (rst *RelayStateImpl) Reroute() (plan.Plan, error) {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) RerouteToRandomRoute() error {
+func (rst *RelayStateImpl) PrepareRandomRoute() error {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
 	if config.RouterConfig().WithJaeger {
@@ -687,12 +687,12 @@ func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 	if err != nil {
 		return err
 	}
-	rst.routingState = r
+	rst.routingDecisionPlan = r
 	return rst.procRoutes(r.ExecutionTargets())
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) RerouteToTargetRoute(route *kr.ShardKey) error {
+func (rst *RelayStateImpl) PrepareTargetRoute(p plan.Plan) error {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
 	if config.RouterConfig().WithJaeger {
@@ -707,21 +707,9 @@ func (rst *RelayStateImpl) RerouteToTargetRoute(route *kr.ShardKey) error {
 		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting the client connection to target shard, resolving shard")
 
-	rst.routingState = plan.ShardDispatchPlan{
-		ExecTarget: route,
-	}
+	rst.routingDecisionPlan = p
 
-	return rst.procRoutes([]*kr.ShardKey{route})
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) CurrentRoutes() []kr.ShardKey {
-	switch q := rst.routingState.(type) {
-	case plan.ShardDispatchPlan:
-		return []kr.ShardKey{*q.ExecTarget}
-	default:
-		return nil
-	}
+	return rst.procRoutes(p.ExecutionTargets())
 }
 
 // TODO : unit tests
@@ -782,7 +770,7 @@ func (rst *RelayStateImpl) flusher(waitForResp, replyCl bool) ([]pgproto3.Backen
 			Uint("client-id", rst.Client().ID()).
 			Bool("waitForResp", waitForResp).
 			Bool("replyCl", replyCl).
-			Interface("plan", rst.routingState).
+			Interface("plan", rst.routingDecisionPlan).
 			Msg("flushing")
 
 		resolvedReplyCl := replyCl && rst.msgBufReply[i]
@@ -791,7 +779,7 @@ func (rst *RelayStateImpl) flusher(waitForResp, replyCl bool) ([]pgproto3.Backen
 			&QueryDesc{
 				Msg:  v,
 				Stmt: rst.qp.Stmt(),
-				P:    rst.routingState, /*  ugh... fix this someday */
+				P:    rst.routingDecisionPlan, /*  ugh... fix this someday */
 			}, rst.Qr.Mgr(), waitForResp, resolvedReplyCl); err != nil {
 			spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Err(err).Msg("error executing query")
 			return nil, err
@@ -971,7 +959,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 	defer func() {
 		// cleanup
 		rst.xBuf = nil
-		rst.bindRoute = nil
+		rst.bindQueryPlan = nil
 	}()
 
 	holdRoute := true
@@ -1098,7 +1086,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.HoldRouting()
 				}
 
-				switch rst.routingState.(type) {
+				switch rst.routingDecisionPlan.(type) {
 				case plan.DDLState:
 					routes := rst.Qr.DataShardsRoutes()
 					if err := rst.procRoutes(routes); err != nil {
@@ -1139,10 +1127,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				}
 
 				// TODO: multi-shard statements
-				if rst.bindRoute == nil {
-					routes := rst.CurrentRoutes()
-					if len(routes) == 1 {
-						rst.bindRoute = &routes[0]
+				if rst.bindQueryPlan == nil {
+					if len(rst.routingDecisionPlan.ExecutionTargets()) == 1 {
+						rst.bindQueryPlan = rst.routingDecisionPlan
 					} else {
 						err := fmt.Errorf("failed to deploy prepared statement")
 
@@ -1153,7 +1140,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				}
 
 				rst.execute = func() error {
-					err := rst.PrepareRelayStepOnHintRoute(rst.bindRoute)
+					err := rst.PrepareRelayStepOnHintRoute(rst.bindQueryPlan)
 					if err != nil {
 						return err
 					}
@@ -1213,12 +1200,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				} else {
 					cachedPd = &PortalDesc{}
 
-					err := rst.PrepareRelayStepOnHintRoute(rst.bindRoute)
+					err := rst.PrepareRelayStepOnHintRoute(rst.bindQueryPlan)
 					if err != nil {
 						return err
 					}
 
-					switch q := rst.routingState.(type) {
+					switch q := rst.routingDecisionPlan.(type) {
 					case plan.DDLState:
 						pstmt := rst.Client().PreparedStatementDefinitionByName(rst.lastBindName)
 						hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
@@ -1376,7 +1363,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				Msg("Execute prepared statement, reset saved bind")
 			err := rst.execute()
 			rst.execute = nil
-			rst.bindRoute = nil
+			rst.bindQueryPlan = nil
 			if rst.lastBindName == "" {
 				delete(rst.savedPortalDesc, rst.lastBindName)
 			}
@@ -1510,13 +1497,12 @@ var noopCloseRouteFunc = func() error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(route *kr.ShardKey) error {
+func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(hintPlan plan.Plan) error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
 		Int("curr routes len", len(rst.activeShards)).
-		Interface("route", route).
 		Msg("preparing relay step for client on target route")
 
 	if rst.holdRouting {
@@ -1529,11 +1515,11 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(route *kr.ShardKey) error
 		return nil
 	}
 
-	if route == nil {
+	if hintPlan == nil {
 		return fmt.Errorf("failed to use hint route")
 	}
 
-	switch err := rst.RerouteToTargetRoute(route); err {
+	switch err := rst.PrepareTargetRoute(hintPlan); err {
 	case nil:
 		return nil
 	case ErrSkipQuery:
@@ -1567,11 +1553,16 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 		return noopCloseRouteFunc, nil
 	}
 
-	switch err := rst.RerouteToRandomRoute(); err {
+	switch err := rst.PrepareRandomRoute(); err {
 	case nil:
-		routes := rst.CurrentRoutes()
 		return func() error {
-			return rst.Unroute(routes)
+			shs := rst.routingDecisionPlan.ExecutionTargets()
+			/* XXX: fix this insanity  */
+			shsTransform := make([]kr.ShardKey, len(shs))
+			for i, sh := range shs {
+				shsTransform[i] = *sh
+			}
+			return rst.Unroute(shsTransform)
 		}, nil
 	case ErrSkipQuery:
 		if err := rst.Client().ReplyErr(err); err != nil {
