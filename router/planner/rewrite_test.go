@@ -102,7 +102,7 @@ func TestModifyQuery(t *testing.T) {
 	} {
 		startV := tt.nextval
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ModifyQuery(tt.query, tt.colname, func() (int64, error) {
+			result, err := RewriteReferenceRelationAutoIncInsert(tt.query, tt.colname, func() (int64, error) {
 				ret := startV
 				startV++
 
@@ -132,7 +132,7 @@ func BenchmarkModifyQuery(b *testing.B) {
 	nextval := int64(42)
 
 	for b.Loop() {
-		_, _ = ModifyQuery(query, colname, func() (int64, error) {
+		_, _ = RewriteReferenceRelationAutoIncInsert(query, colname, func() (int64, error) {
 			return nextval, nil
 		})
 	}

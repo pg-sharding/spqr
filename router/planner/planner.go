@@ -160,7 +160,7 @@ func insertSequenceValue(ctx context.Context, meta *rmeta.RoutingMetadataContext
 
 	for colName, seqName := range rel.ColumnSequenceMapping {
 
-		newQuery, err := ModifyQuery(query, colName, func() (int64, error) {
+		newQuery, err := RewriteReferenceRelationAutoIncInsert(query, colName, func() (int64, error) {
 			return meta.Mgr.NextVal(ctx, seqName)
 		})
 		if err != nil {
