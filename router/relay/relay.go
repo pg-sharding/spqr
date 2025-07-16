@@ -114,7 +114,7 @@ type RelayStateImpl struct {
 	traceMsgs    bool
 	activeShards []kr.ShardKey
 
-	routingDesigionPlan plan.Plan
+	routingDecisionPlan plan.Plan
 
 	Qr      qrouter.QueryRouter
 	qse     QueryStateExecutor
@@ -655,7 +655,7 @@ func (rst *RelayStateImpl) Reroute() (plan.Plan, error) {
 		}
 	}
 
-	rst.routingDesigionPlan = queryPlan
+	rst.routingDecisionPlan = queryPlan
 
 	if rst.Client().Rule().PoolMode == config.PoolModeVirtual {
 		/* never try to get connection */
@@ -694,7 +694,7 @@ func (rst *RelayStateImpl) PrepareRandomRoute() error {
 	if err != nil {
 		return err
 	}
-	rst.routingDesigionPlan = r
+	rst.routingDecisionPlan = r
 	return rst.procRoutes(r.ExecutionTargets())
 }
 
@@ -714,7 +714,7 @@ func (rst *RelayStateImpl) PrepareTargetRoute(p plan.Plan) error {
 		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting the client connection to target shard, resolving shard")
 
-	rst.routingDesigionPlan = p
+	rst.routingDecisionPlan = p
 
 	return rst.procRoutes(p.ExecutionTargets())
 }
@@ -777,7 +777,7 @@ func (rst *RelayStateImpl) flusher(waitForResp, replyCl bool) ([]pgproto3.Backen
 			Uint("client-id", rst.Client().ID()).
 			Bool("waitForResp", waitForResp).
 			Bool("replyCl", replyCl).
-			Interface("plan", rst.routingDesigionPlan).
+			Interface("plan", rst.routingDecisionPlan).
 			Msg("flushing")
 
 		resolvedReplyCl := replyCl && rst.msgBufReply[i]
@@ -786,7 +786,7 @@ func (rst *RelayStateImpl) flusher(waitForResp, replyCl bool) ([]pgproto3.Backen
 			&QueryDesc{
 				Msg:  v,
 				Stmt: rst.qp.Stmt(),
-				P:    rst.routingDesigionPlan, /*  ugh... fix this someday */
+				P:    rst.routingDecisionPlan, /*  ugh... fix this someday */
 			}, rst.Qr.Mgr(), waitForResp, resolvedReplyCl); err != nil {
 			spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Err(err).Msg("error executing query")
 			return nil, err
@@ -1093,7 +1093,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.HoldRouting()
 				}
 
-				switch rst.routingDesigionPlan.(type) {
+				switch rst.routingDecisionPlan.(type) {
 				case plan.DDLState:
 					routes := rst.Qr.DataShardsRoutes()
 					if err := rst.procRoutes(routes); err != nil {
@@ -1135,8 +1135,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 				// TODO: multi-shard statements
 				if rst.bindQueryPlan == nil {
-					if len(rst.routingDesigionPlan.ExecutionTargets()) == 1 {
-						rst.bindQueryPlan = rst.routingDesigionPlan
+					if len(rst.routingDecisionPlan.ExecutionTargets()) == 1 {
+						rst.bindQueryPlan = rst.routingDecisionPlan
 					} else {
 						err := fmt.Errorf("failed to deploy prepared statement")
 
@@ -1212,7 +1212,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						return err
 					}
 
-					switch q := rst.routingDesigionPlan.(type) {
+					switch q := rst.routingDecisionPlan.(type) {
 					case plan.DDLState:
 						pstmt := rst.Client().PreparedStatementDefinitionByName(rst.lastBindName)
 						hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
@@ -1563,7 +1563,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 	switch err := rst.PrepareRandomRoute(); err {
 	case nil:
 		return func() error {
-			shs := rst.routingDesigionPlan.ExecutionTargets()
+			shs := rst.routingDecisionPlan.ExecutionTargets()
 			/* XXX: fix this insanity  */
 			shsTransform := make([]kr.ShardKey, len(shs))
 			for _, sh := range shs {
