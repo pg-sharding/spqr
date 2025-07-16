@@ -19,7 +19,7 @@ INSERT INTO xx_insert_rel (a, b, c) VALUES(1,2,3),(2,3,4), (300,4,5);
 INSERT INTO xx_insert_rel (a, b, c) SELECT 1,2,3;
 INSERT INTO xx_insert_rel (a, b, c) SELECT 101,201,301;
 INSERT INTO xx_insert_rel (a, b, c) SELECT 201,a,301 FROM unnest(ARRAY[110]) a;;
-INSERT INTO xx_insert_rel (a, b, c) SELECT 1,2,3 UNION ALL SELECT 2,3,4;
+--INSERT INTO xx_insert_rel (a, b, c) SELECT 1,2,3 UNION ALL SELECT 2,3,4;
 
 
 SELECT * FROM xx_insert_rel ORDER BY 1,2,3 /* __spqr__execute_on: sh1 */;

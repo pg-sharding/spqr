@@ -1023,7 +1023,6 @@ func (qr *ProxyQrouter) planQueryV1(
 		switch subS := selectStmt.(type) {
 		case *lyx.Select:
 			spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
-			_ = qr.analyzeSelectStmt(ctx, subS, rm)
 
 			p, _ = qr.planQueryV1(ctx, subS, rm)
 
