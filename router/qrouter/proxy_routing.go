@@ -1094,7 +1094,7 @@ func (qr *ProxyQrouter) planQueryV1(
 							}
 						}
 						return nil, rerrors.ErrComplexQuery
-					} /* else is distributed relationm and handled below */
+					} /* else is distributed relation and handled below */
 				default:
 					return nil, rerrors.ErrComplexQuery
 				}
