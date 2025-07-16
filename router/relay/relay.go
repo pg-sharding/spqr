@@ -111,7 +111,6 @@ type ParseCacheEntry struct {
 }
 
 type RelayStateImpl struct {
-	traceMsgs    bool
 	activeShards []kr.ShardKey
 
 	routingState plan.Plan
@@ -166,7 +165,6 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 	return &RelayStateImpl{
 		activeShards:    nil,
 		msgBuf:          nil,
-		traceMsgs:       false,
 		qse:             NewQueryStateExecutor(client),
 		Qr:              qr,
 		Cl:              client,
@@ -500,14 +498,9 @@ func (rst *RelayStateImpl) Reset() error {
 	return rst.Cl.Unroute()
 }
 
-func (rst *RelayStateImpl) StartTrace() {
-	rst.traceMsgs = true
-}
-
 // TODO : unit tests
 func (rst *RelayStateImpl) Flush() {
 	rst.msgBuf = nil
-	rst.traceMsgs = false
 }
 
 var ErrSkipQuery = fmt.Errorf("wait for a next query")
