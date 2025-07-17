@@ -25,7 +25,9 @@ services:
             context: ../../
         ports:
             - "6432:6432"
-        command: ["--config", "/spqr/test/stress/router.yaml"]
+        environment:
+            - ROUTER_CONFIG=/spqr/test/stress/router.yaml
+            - ROUTER_LOG=/var/log/spqr-router.log
         hostname: stress_router
         container_name: stress_router
         depends_on:

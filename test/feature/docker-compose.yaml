@@ -74,7 +74,10 @@ services:
       - "6432:6432"
       - "7432:7432"
       - "7012:7002"
-    command: ["--config", $ROUTER_CONFIG, "--coordinator-config", $ROUTER_COORDINATOR_CONFIG]
+    environment:
+      - ROUTER_CONFIG=${ROUTER_CONFIG}
+      - ROUTER_LOG=/var/log/spqr-router.log
+      - COORDINATOR_CONFIG=${ROUTER_COORDINATOR_CONFIG}
     hostname: regress_router
     container_name: regress_router
     depends_on:
@@ -108,7 +111,10 @@ services:
       - "6433:6432"
       - "7433:7432"
       - "7022:7002"
-    command: ["--config", $ROUTER_CONFIG, "--coordinator-config", $ROUTER_2_COORDINATOR_CONFIG]
+    environment:
+      - ROUTER_CONFIG=${ROUTER_CONFIG}
+      - ROUTER_LOG=/var/log/spqr-router.log
+      - COORDINATOR_CONFIG=${ROUTER_2_COORDINATOR_CONFIG}
     hostname: regress_router_2
     container_name: regress_router_2
     depends_on:
@@ -137,7 +143,8 @@ services:
     ports:
       - "7002:7002"
       - "7003:7003"
-    command: [ "-c", $COORDINATOR_CONFIG ]
+    environment:
+      - COORDINATOR_CONFIG=${COORDINATOR_CONFIG}
     hostname: regress_coordinator
     container_name: regress_coordinator
     depends_on:
@@ -152,7 +159,8 @@ services:
     ports:
       - "7032:7002"
       - "7033:7003"
-    command: [ "-c", /spqr/test/feature/conf/coordinator2.yaml ]
+    environment:
+      - COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator2.yaml
     hostname: regress_coordinator_2
     container_name: regress_coordinator_2
     depends_on:
