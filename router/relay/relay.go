@@ -521,10 +521,7 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 		return err
 	}
 
-	rst.activeShards = nil
-	for _, shr := range routes {
-		rst.activeShards = append(rst.activeShards, shr)
-	}
+	rst.activeShards = routes
 
 	if config.RouterConfig().PgprotoDebug {
 		if err := rst.Cl.ReplyDebugNoticef("matched datashard routes %+v", routes); err != nil {
