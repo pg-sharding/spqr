@@ -265,7 +265,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 		if strings.HasPrefix(st.Name, "__spqr__") {
 			name := virtualParamTransformName(st.Name)
-			st.Value = strings.ToLower(st.Value)
+			value = strings.ToLower(st.Value)
 
 			switch name {
 			case session.SPQR_DISTRIBUTION:
@@ -275,13 +275,13 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			case session.SPQR_SHARDING_KEY:
 				rst.Client().SetShardingKey(false, st.Value)
 			case session.SPQR_REPLY_NOTICE:
-				if st.Value == "on" || st.Value == "true" {
+				if value == "on" || value == "true" {
 					rst.Client().SetShowNoticeMsg(true)
 				} else {
 					rst.Client().SetShowNoticeMsg(false)
 				}
 			case session.SPQR_MAINTAIN_PARAMS:
-				if st.Value == "on" || st.Value == "true" {
+				if value == "on" || value == "true" {
 					rst.Client().SetMaintainParams(true)
 				} else {
 					rst.Client().SetMaintainParams(false)
@@ -295,7 +295,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
 				rst.Client().SetTsa(false, st.Value)
 			case session.SPQR_ENGINE_V2:
-				switch st.Value {
+				switch value {
 				case "true", "on", "ok":
 					rst.Client().SetEnhancedMultiShardProcessing(false, true)
 				case "false", "off", "no":
