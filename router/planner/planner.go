@@ -72,7 +72,9 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 	// }
 
 	/*XXX: fix this */
-	return plan.DDLState{}, nil
+	return plan.ScatterPlan{
+		IsDDL: true,
+	}, nil
 }
 
 func PlanReferenceRelationModifyWithSubquery(ctx context.Context,

@@ -34,7 +34,6 @@ const (
 	CommandCompleteState
 	CopyOutState
 	CopyInState
-	DDLState
 )
 
 type MultiShardServer struct {
