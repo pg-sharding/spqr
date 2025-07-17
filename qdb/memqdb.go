@@ -1114,7 +1114,11 @@ func (q *MemQDB) NextVal(_ context.Context, seqName string) (int64, error) {
 
 	next := q.SequenceToValues[seqName] + 1
 	q.SequenceToValues[seqName] = next
-	return next, nil
+	if errDB := ExecuteCommands(q.DumpState, NewUpdateCommand(q.SequenceToValues, seqName, next)); errDB != nil {
+		return next, errDB
+	} else {
+		return next, nil
+	}
 }
 
 func (q *MemQDB) CurrVal(_ context.Context, seqName string) (int64, error) {
