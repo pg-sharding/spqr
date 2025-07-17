@@ -1312,7 +1312,7 @@ func TestPrepStmtSimple(t *testing.T) {
 	}
 }
 
-func TestPrepStmtSimpleProtoVialation(t *testing.T) {
+func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
