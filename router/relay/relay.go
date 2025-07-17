@@ -660,7 +660,7 @@ func (rst *RelayStateImpl) Reroute() (plan.Plan, error) {
 	}
 
 	switch v := queryPlan.(type) {
-	case plan.VirtualPlan, plan.ScatterPlan, plan.DDLState, plan.ShardDispatchPlan, plan.DataRowFilter:
+	case plan.VirtualPlan, plan.ScatterPlan, plan.ShardDispatchPlan, plan.DataRowFilter:
 		return queryPlan, nil
 	default:
 		return nil, fmt.Errorf("unexpected query plan %T", v)
@@ -1087,7 +1087,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				}
 
 				switch rst.routingDecisionPlan.(type) {
-				case plan.DDLState:
+				case plan.ScatterPlan:
 					routes := rst.Qr.DataShardsRoutes()
 					if err := rst.procRoutes(routes); err != nil {
 						return err
@@ -1209,7 +1209,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					}
 
 					switch q := rst.routingDecisionPlan.(type) {
-					case plan.DDLState:
+					case plan.ScatterPlan:
 						pstmt := rst.Client().PreparedStatementDefinitionByName(rst.lastBindName)
 						hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
 						pstmt.Name = fmt.Sprintf("%d", hash)

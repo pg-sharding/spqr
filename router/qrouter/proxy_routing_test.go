@@ -132,7 +132,7 @@ func TestMultiShardRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp)
+		assert.Equal(tt.exp, tmp, tt.query)
 	}
 }
 

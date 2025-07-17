@@ -1466,6 +1466,152 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 	}
 }
 
+func TestPrepStmtMultishardXproto(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "xproto_ddl_multishard",
+					Query: "CREATE SCHEMA test_schema;",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "xproto_ddl_multishard",
+				},
+				&pgproto3.Describe{
+					Name:       "",
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Name:  "xproto_ddl_multishard_2",
+					Query: "DROP SCHEMA test_schema;",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "xproto_ddl_multishard_2",
+				},
+				&pgproto3.Describe{
+					Name:       "",
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("CREATE SCHEMA"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{
+
+					CommandTag: []byte("DROP SCHEMA"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+
+				&pgproto3.Parse{
+					Name:  "xproto_ddl_multishard_t_s",
+					Query: "SELECT FROM t /* __spqr__engine_v2: true */;",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "xproto_ddl_multishard_t_s",
+				},
+				&pgproto3.Describe{
+					Name:       "",
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.RowDescription{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 0"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for i, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.ErrorResponse:
+				retMsgType.Routine = ""
+				retMsgType.Line = 0
+				retMsgType.File = ""
+				retMsgType.SeverityUnlocalized = ""
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg, "iter %d", i)
+		}
+	}
+}
+
 func TestPrepStmtDescribeAndBind(t *testing.T) {
 	conn, err := getC()
 	if err != nil {
