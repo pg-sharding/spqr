@@ -127,12 +127,13 @@ type RelayStateImpl struct {
 
 	holdRouting bool
 
-	bindQueryPlan plan.Plan
-	lastBindName  string
+	bindQueryPlan       plan.Plan
+	lastBindName        string
+	unnamedPortalExists bool
 
 	execute func() error
 
-	saveBind        *pgproto3.Bind
+	saveBind        pgproto3.Bind
 	savedPortalDesc map[string]*PortalDesc
 
 	parseCache map[string]ParseCacheEntry
@@ -163,16 +164,17 @@ func (rst *RelayStateImpl) UnholdRouting() {
 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr) RelayStateMgr {
 	return &RelayStateImpl{
-		activeShards:    nil,
-		msgBuf:          nil,
-		qse:             NewQueryStateExecutor(client),
-		Qr:              qr,
-		Cl:              client,
-		poolMgr:         manager,
-		execute:         nil,
-		saveBind:        &pgproto3.Bind{},
-		savedPortalDesc: map[string]*PortalDesc{},
-		parseCache:      map[string]ParseCacheEntry{},
+		activeShards:        nil,
+		msgBuf:              nil,
+		qse:                 NewQueryStateExecutor(client),
+		Qr:                  qr,
+		Cl:                  client,
+		poolMgr:             manager,
+		execute:             nil,
+		saveBind:            pgproto3.Bind{},
+		savedPortalDesc:     map[string]*PortalDesc{},
+		parseCache:          map[string]ParseCacheEntry{},
+		unnamedPortalExists: false,
 	}
 }
 
@@ -812,6 +814,8 @@ func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp b
 func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	statistics.RecordFinishedTransaction(time.Now(), rst.Client().ID())
 
+	rst.unnamedPortalExists = false
+
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Str("txstatus", rst.qse.TxStatus().String()).
@@ -1030,7 +1034,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			if err := fin(); err != nil {
 				return err
 			}
-
 		case *pgproto3.Bind:
 			spqrlog.Zero.Debug().
 				Str("name", q.PreparedStatement).
@@ -1055,7 +1058,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			}
 
 			rst.lastBindName = q.PreparedStatement
-
+			rst.unnamedPortalExists = true
 			rst.execute = emptyExecFunc
 
 			pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
@@ -1148,10 +1151,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					}
 
 					/* Case when no describe stmt was issued before Execute+Sync*/
-					if rst.saveBind != nil {
-						rst.AddSilentQuery(rst.saveBind)
-						// do not send saved bind twice
-					}
+					rst.AddSilentQuery(&rst.saveBind)
+					// do not send saved bind twice
 
 					rst.AddQuery(pgexec)
 					rst.AddQuery(pgsync)
@@ -1176,6 +1177,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			saveTxStat := rst.qse.TxStatus()
 
 			if q.ObjectType == 'P' {
+
+				if !rst.unnamedPortalExists {
+					return spqrerror.New(spqrerror.PG_PORTAl_DOES_NOT_EXISTS, "portal \"\" does not exist")
+				}
+
 				spqrlog.Zero.Debug().
 					Uint("client", rst.Client().ID()).
 					Str("last-bind-name", rst.lastBindName).
@@ -1208,7 +1214,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
 						pstmt.Name = fmt.Sprintf("%d", hash)
 
-						pd, err := rst.multishardDescribePortal(rst.saveBind)
+						pd, err := rst.multishardDescribePortal(&rst.saveBind)
 						if err != nil {
 							return err
 						}
@@ -1247,13 +1253,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						}
 					}
 
-					// do not send saved bind twice
-					if rst.saveBind == nil {
-						// wtf?
-						return fmt.Errorf("failed to describe statement, stmt was never deployed")
-					}
-
-					_, err = rst.RelayStep(rst.saveBind, false, false)
+					_, err = rst.RelayStep(&rst.saveBind, false, false)
 					if err != nil {
 						return err
 					}
@@ -1313,6 +1313,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.savedPortalDesc[rst.lastBindName] = cachedPd
 				}
 			} else {
+
 				/* q.ObjectType == 'S' */
 				spqrlog.Zero.Debug().
 					Uint("client", rst.Client().ID()).

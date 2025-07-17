@@ -25,6 +25,7 @@ const (
 	SPQR_SEQUENCE_ERROR      = "SPQRQ"
 
 	PG_PREPARED_STATEMENT_DOES_NOT_EXISTS = "26000"
+	PG_PORTAl_DOES_NOT_EXISTS             = "34000"
 )
 
 var existingErrorCodeMap = map[string]string{
