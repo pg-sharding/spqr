@@ -16,6 +16,9 @@ type Plan interface {
 type ScatterPlan struct {
 	Plan
 	SubPlan Plan
+
+	/* To decide if query is OK even in DRH = BLOCK */
+	IsDDL bool
 	/* Empty means execute everywhere */
 	ExecTargets []kr.ShardKey
 }
@@ -42,15 +45,6 @@ type ShardDispatchPlan struct {
 
 func (sms ShardDispatchPlan) ExecutionTargets() []kr.ShardKey {
 	return []kr.ShardKey{sms.ExecTarget}
-}
-
-type DDLState struct {
-	Plan
-	ExecTargets []kr.ShardKey
-}
-
-func (ddl DDLState) ExecutionTargets() []kr.ShardKey {
-	return ddl.ExecTargets
 }
 
 type RandomDispatchPlan struct {

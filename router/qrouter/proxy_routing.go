@@ -1392,11 +1392,17 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 
 	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateSchema:
-		return plan.DDLState{}, false, nil
+		return plan.ScatterPlan{
+			IsDDL: true,
+		}, false, nil
 	case *lyx.CreateExtension:
-		return plan.DDLState{}, false, nil
+		return plan.ScatterPlan{
+			IsDDL: true,
+		}, false, nil
 	case *lyx.Grant:
-		return plan.DDLState{}, false, nil
+		return plan.ScatterPlan{
+			IsDDL: true,
+		}, false, nil
 	case *lyx.CreateTable:
 		ds, err := planner.PlanCreateTable(ctx, rm, node)
 		if err != nil {
@@ -1410,25 +1416,32 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		}
 		return ds, false, nil
 	case *lyx.Vacuum:
-		/* Send vacuum to each shard */
-		return plan.DDLState{}, false, nil
+		/* Send vacuum to each shard */ return plan.ScatterPlan{
+			IsDDL: true,
+		}, false, nil
 	case *lyx.Analyze:
-		/* Send vacuum to each shard */
-		return plan.DDLState{}, false, nil
+		/* Send vacuum to each shard */ return plan.ScatterPlan{
+			IsDDL: true,
+		}, false, nil
 	case *lyx.Cluster:
-		/* Send vacuum to each shard */
-		return plan.DDLState{}, false, nil
+		/* Send vacuum to each shard */ return plan.ScatterPlan{
+			IsDDL: true,
+		}, false, nil
 	case *lyx.Index:
 		/*
 		 * Disallow to index on table which does not contain any sharding column
 		 */
 		// XXX: do it
-		return plan.DDLState{}, false, nil
+		return plan.ScatterPlan{
+			IsDDL: true,
+		}, false, nil
 
 	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
-		return plan.DDLState{}, false, nil
+		return plan.ScatterPlan{
+			IsDDL: true,
+		}, false, nil
 		/*
 			 case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
 				 // forbid under separate setting
@@ -1436,7 +1449,9 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		*/
 	case *lyx.CreateRole, *lyx.CreateDatabase:
 		// forbid under separate setting
-		return plan.DDLState{}, false, nil
+		return plan.ScatterPlan{
+			IsDDL: true,
+		}, false, nil
 	case *lyx.Insert:
 		if err := qr.AnalyzeQueryV1(ctx, stmt, rm); err != nil {
 			return nil, false, err
@@ -1681,16 +1696,16 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 			return qr.SelectRandomRoute(v.ExecTargets)
 		}
 
-	case plan.DDLState:
-		return plan.ScatterPlan{
-			ExecTargets: qr.DataShardsRoutes(),
-		}, nil
 	case plan.CopyPlan:
 		/* temporary */
 		return plan.ScatterPlan{
 			ExecTargets: qr.DataShardsRoutes(),
 		}, nil
 	case plan.ScatterPlan:
+		if v.IsDDL {
+			v.ExecTargets = qr.DataShardsRoutes()
+			return v, nil
+		}
 
 		if sph.EnhancedMultiShardProcessing() {
 			var err error

@@ -63,13 +63,17 @@ func TestMultiShardRouting(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "create table xx (i int);",
-			exp:   plan.DDLState{},
-			err:   nil,
+			exp: plan.ScatterPlan{
+				IsDDL: true,
+			},
+			err: nil,
 		},
 		{
 			query: "DROP TABLE copy_test;",
-			exp:   plan.DDLState{},
-			err:   nil,
+			exp: plan.ScatterPlan{
+				IsDDL: true,
+			},
+			err: nil,
 		},
 		{
 			query: "select current_schema;",
@@ -83,28 +87,38 @@ func TestMultiShardRouting(t *testing.T) {
 		},
 		{
 			query: "alter table xx  add column i int;",
-			exp:   plan.DDLState{},
-			err:   nil,
+			exp: plan.ScatterPlan{
+				IsDDL: true,
+			},
+			err: nil,
 		},
 		{
 			query: "vacuum xx;",
-			exp:   plan.DDLState{},
-			err:   nil,
+			exp: plan.ScatterPlan{
+				IsDDL: true,
+			},
+			err: nil,
 		},
 		{
 			query: "analyze xx;",
-			exp:   plan.DDLState{},
-			err:   nil,
+			exp: plan.ScatterPlan{
+				IsDDL: true,
+			},
+			err: nil,
 		},
 		{
 			query: "cluster xx;",
-			exp:   plan.DDLState{},
-			err:   nil,
+			exp: plan.ScatterPlan{
+				IsDDL: true,
+			},
+			err: nil,
 		},
 		{
 			query: "GRANT SELECT ON TABLE odssd.'eee' TO pp2;			",
-			exp:   plan.DDLState{},
-			err:   nil,
+			exp: plan.ScatterPlan{
+				IsDDL: true,
+			},
+			err: nil,
 		},
 		{
 			query: "SELECT * FROM pg_catalog.pg_type",
