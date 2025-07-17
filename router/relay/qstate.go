@@ -264,7 +264,10 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			Msg("applying parsed set stmt")
 
 		if strings.HasPrefix(st.Name, "__spqr__") {
-			switch st.Name {
+			name := virtualParamTransformName(st.Name)
+			st.Value = strings.ToLower(st.Value)
+
+			switch name {
 			case session.SPQR_DISTRIBUTION:
 				rst.Client().SetDistribution(false, st.Value)
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
@@ -299,7 +302,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 					rst.Client().SetEnhancedMultiShardProcessing(false, false)
 				}
 			default:
-				rst.Client().SetParam(st.Name, st.Value)
+				rst.Client().SetParam(name, st.Value)
 			}
 
 			return noDataPd, rst.Client().ReplyCommandComplete("SET")
@@ -307,7 +310,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 		return noDataPd, rst.QueryExecutor().ExecSet(rst, query, st.Name, st.Value)
 	case parser.ParseStateShowStmt:
-		param := st.Name
+
+		param := virtualParamTransformName(st.Name)
+
 		// manually create router response
 		// here we just reply single row with single column value
 
@@ -372,7 +377,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			ReplyVirtualParamState(rst.Client(), "target session attrs", []byte(rst.Client().GetTsa()))
 		default:
 
-			if strings.HasPrefix(st.Name, "__spqr__") {
+			if strings.HasPrefix(param, "__spqr__") {
 				ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
 			} else {
 				/* If router does dot have any info about param, fire query to random shard. */
@@ -385,15 +390,16 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		}
 		return pd, rst.Client().ReplyCommandComplete("SHOW")
 	case parser.ParseStateResetStmt:
-		switch st.Name {
+		param := virtualParamTransformName(st.Name)
+		switch param {
 		case session.SPQR_TARGET_SESSION_ATTRS:
 			fallthrough
 		case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
 			rst.Client().ResetTsa()
 		default:
-			rst.Client().ResetParam(st.Name)
+			rst.Client().ResetParam(param)
 
-			if err := rst.QueryExecutor().ExecReset(rst, query, st.Name); err != nil {
+			if err := rst.QueryExecutor().ExecReset(rst, query, param); err != nil {
 				return nil, err
 			}
 		}

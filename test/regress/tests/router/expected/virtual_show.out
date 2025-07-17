@@ -82,8 +82,14 @@ SHOW __spqr__engine_v2;
  ok
 (1 row)
 
+SHOW __spqr__.engine_v2;
+ __spqr__engine_v2 
+-------------------
+ ok
+(1 row)
+
 BEGIN;
-SET __spqr__engine_v2 TO off;
+SET __spqr__.engine_v2 TO off;
 SHOW __spqr__engine_v2;
  __spqr__engine_v2 
 -------------------
@@ -95,5 +101,19 @@ SHOW __spqr__engine_v2;
  __spqr__engine_v2 
 -------------------
  ok
+(1 row)
+
+SET __spqr__.engine_v2 TO OFF;
+SHOW __spqr__.engine_v2;
+ __spqr__engine_v2 
+-------------------
+ no
+(1 row)
+
+RESET __spqr__.engine_v2;
+SHOW __spqr__engine_v2;
+ __spqr__engine_v2 
+-------------------
+ 
 (1 row)
 
