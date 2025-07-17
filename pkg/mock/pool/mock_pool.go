@@ -111,7 +111,7 @@ func (m *MockPool) EXPECT() *MockPoolMockRecorder {
 }
 
 // Connection mocks base method.
-func (m *MockPool) Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error) {
+func (m *MockPool) Connection(clid uint, shardKey *kr.ShardKey) (shard.ShardHostInstance, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Connection", clid, shardKey)
 	ret0, _ := ret[0].(shard.ShardHostInstance)
@@ -206,7 +206,7 @@ func (m *MockMultiShardPool) EXPECT() *MockMultiShardPoolMockRecorder {
 }
 
 // ConnectionHost mocks base method.
-func (m *MockMultiShardPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
+func (m *MockMultiShardPool) ConnectionHost(clid uint, shardKey *kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConnectionHost", clid, shardKey, host)
 	ret0, _ := ret[0].(shard.ShardHostInstance)
@@ -341,7 +341,7 @@ func (m *MockMultiShardTSAPool) EXPECT() *MockMultiShardTSAPoolMockRecorder {
 }
 
 // ConnectionHost mocks base method.
-func (m *MockMultiShardTSAPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
+func (m *MockMultiShardTSAPool) ConnectionHost(clid uint, shardKey *kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConnectionHost", clid, shardKey, host)
 	ret0, _ := ret[0].(shard.ShardHostInstance)
@@ -356,7 +356,7 @@ func (mr *MockMultiShardTSAPoolMockRecorder) ConnectionHost(clid, shardKey, host
 }
 
 // ConnectionWithTSA mocks base method.
-func (m *MockMultiShardTSAPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error) {
+func (m *MockMultiShardTSAPool) ConnectionWithTSA(clid uint, key *kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConnectionWithTSA", clid, key, targetSessionAttrs)
 	ret0, _ := ret[0].(shard.ShardHostInstance)

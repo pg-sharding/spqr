@@ -357,7 +357,7 @@ func (sh *Conn) Params() shard.ParameterSet {
 // - shard.Shard: The newly created shard.
 // - error: An error, if any.
 func NewShard(
-	key kr.ShardKey,
+	key *kr.ShardKey,
 	pgi conn.DBInstance,
 	cfg *config.Shard,
 	beRule *config.BackendRule,

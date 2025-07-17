@@ -31,7 +31,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	underyling_pool := mockpool.NewMockMultiShardPool(ctrl)
 
-	key := kr.ShardKey{
+	key := &kr.ShardKey{
 		Name: "sh1",
 	}
 
@@ -218,7 +218,7 @@ func TestDbPoolRaces(t *testing.T) {
 		}
 	}
 
-	dbpool := pool.NewDBPoolWithAllocator(cfg, &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
+	dbpool := pool.NewDBPoolWithAllocator(cfg, &startup.StartupParams{}, func(shardKey *kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		mu.Lock()
 		defer mu.Unlock()
 
@@ -246,7 +246,9 @@ func TestDbPoolRaces(t *testing.T) {
 			go func() {
 				defer sem.Release(1)
 
-				sh, err := dbpool.ConnectionWithTSA(uint(i), kr.ShardKey{Name: shards[i%3]}, config.TargetSessionAttrsPS)
+				shK := &kr.ShardKey{Name: shards[i%3]}
+
+				sh, err := dbpool.ConnectionWithTSA(uint(i), shK, config.TargetSessionAttrsPS)
 				assert.NoError(err)
 				err = dbpool.Put(sh)
 				assert.NoError(err)
@@ -263,7 +265,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	underyling_pool := mockpool.NewMockMultiShardPool(ctrl)
 
-	key := kr.ShardKey{
+	key := &kr.ShardKey{
 		Name: "sh1",
 	}
 
@@ -477,7 +479,7 @@ func TestBuildHostOrder(t *testing.T) {
 			dbpool.ShuffleHosts = tt.shuffleHosts
 			dbpool.PreferAZ = tt.preferAZ
 
-			hostOrder, err := dbpool.BuildHostOrder(tt.shardKey, tt.targetSessionAttrs)
+			hostOrder, err := dbpool.BuildHostOrder(&tt.shardKey, tt.targetSessionAttrs)
 			assert.NoError(t, err)
 
 			var hostAddresses []string
@@ -688,7 +690,7 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 			dbpool.ShuffleHosts = tt.shuffleHosts
 			dbpool.PreferAZ = tt.preferAZ
 
-			hostOrder, err := dbpool.BuildHostOrder(key, tt.tsa)
+			hostOrder, err := dbpool.BuildHostOrder(&key, tt.tsa)
 			assert.NoError(t, err)
 
 			var hostAddresses []string
@@ -721,7 +723,7 @@ func TestBuildHostOrderNonExistentShard(t *testing.T) {
 		Name: "non_existent_shard",
 	}
 
-	_, err := dbpool.BuildHostOrder(key, config.TargetSessionAttrsAny)
+	_, err := dbpool.BuildHostOrder(&key, config.TargetSessionAttrsAny)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "shard with name \"non_existent_shard\" not found")
 }
