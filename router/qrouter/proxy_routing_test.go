@@ -63,9 +63,8 @@ func TestMultiShardRouting(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "create table xx (i int);",
-			/* not DDLstate becuase of separate create table logic */
-			exp: plan.ScatterPlan{},
-			err: nil,
+			exp:   plan.DDLState{},
+			err:   nil,
 		},
 		{
 			query: "DROP TABLE copy_test;",

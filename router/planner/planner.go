@@ -70,7 +70,9 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 	// if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
 	// 	return nil, false, err
 	// }
-	return plan.ScatterPlan{}, nil
+
+	/*XXX: fix this */
+	return plan.DDLState{}, nil
 }
 
 func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
