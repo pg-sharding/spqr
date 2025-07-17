@@ -1680,8 +1680,9 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 
 		return qr.SelectRandomRoute(qr.DataShardsRoutes())
 	case plan.DDLState:
-		v.ExecTargets = qr.DataShardsRoutes()
-		return v, nil
+		return plan.ScatterPlan{
+			ExecTargets: qr.DataShardsRoutes(),
+		}, nil
 	case plan.CopyState:
 		/* temporary */
 		return plan.ScatterPlan{

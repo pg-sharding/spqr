@@ -1544,6 +1544,36 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+
+				&pgproto3.Parse{
+					Name:  "xproto_ddl_multishard_t_s",
+					Query: "SELECT FROM t /* __spqr__engine_v2: true */;",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "xproto_ddl_multishard_t_s",
+				},
+				&pgproto3.Describe{
+					Name:       "",
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.RowDescription{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 0"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	} {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)

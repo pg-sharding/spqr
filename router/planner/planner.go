@@ -70,7 +70,7 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 	// if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
 	// 	return nil, false, err
 	// }
-	return plan.DDLState{}, nil
+	return plan.ScatterPlan{}, nil
 }
 
 func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
@@ -319,36 +319,36 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		return plan.RandomDispatchPlan{}, nil
 
 	case *lyx.CreateSchema:
-		return plan.DDLState{}, nil
+		return plan.ScatterPlan{}, nil
 
 	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateTable:
 		return PlanCreateTable(ctx, rm, v)
 	case *lyx.Vacuum:
 		/* Send vacuum to each shard */
-		return plan.DDLState{}, nil
+		return plan.ScatterPlan{}, nil
 	case *lyx.Analyze:
 		/* Send analyze to each shard */
-		return plan.DDLState{}, nil
+		return plan.ScatterPlan{}, nil
 	case *lyx.Cluster:
 		/* Send cluster to each shard */
-		return plan.DDLState{}, nil
+		return plan.ScatterPlan{}, nil
 	case *lyx.Index:
 		/*
 		 * Disallow to index on table which does not contain any sharding column
 		 */
 		// XXX: do it
-		return plan.DDLState{}, nil
+		return plan.ScatterPlan{}, nil
 	case *lyx.CreateExtension:
-		return plan.DDLState{}, nil
+		return plan.ScatterPlan{}, nil
 	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
-		return plan.DDLState{}, nil
+		return plan.ScatterPlan{}, nil
 
 	case *lyx.CreateRole, *lyx.CreateDatabase:
 		/* XXX: should we forbid under separate setting?  */
-		return plan.DDLState{}, nil
+		return plan.ScatterPlan{}, nil
 	case *lyx.Copy:
 		return plan.CopyState{}, nil
 
