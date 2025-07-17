@@ -207,10 +207,10 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 					SubPlan: plan.ModifyTable{},
 				},
 				ExecTargets: []kr.ShardKey{
-					kr.ShardKey{
+					{
 						Name: "sh1",
 					},
-					kr.ShardKey{
+					{
 						Name: "sh2",
 					},
 				},
@@ -224,10 +224,10 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 					SubPlan: plan.ModifyTable{},
 				},
 				ExecTargets: []kr.ShardKey{
-					kr.ShardKey{
+					{
 						Name: "sh1",
 					},
-					kr.ShardKey{
+					{
 						Name: "sh2",
 					},
 				},
@@ -1782,11 +1782,23 @@ func TestRouteWithRules_Select(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query:        "SELECT * FROM pg_class a JOIN users b ON true WHERE b.id = '00000000-0000-1111-0000-000000000000';",
+			distribution: distribution.ID,
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+			err: nil,
+		},
+
+		{
 			query:        "SELECT NOT pg_is_in_recovery();",
 			distribution: distribution.ID,
 			exp: plan.VirtualPlan{
 				VirtualRowCols: []pgproto3.FieldDescription{
-					pgproto3.FieldDescription{
+					{
 						Name:         []byte("pg_is_in_recovery"),
 						DataTypeOID:  catalog.ARRAYOID,
 						TypeModifier: -1,
@@ -1851,14 +1863,14 @@ func TestRouteWithRules_Select(t *testing.T) {
 			distribution: distribution.ID,
 			exp: plan.VirtualPlan{
 				VirtualRowCols: []pgproto3.FieldDescription{
-					pgproto3.FieldDescription{
+					{
 						Name:         []byte("pg_is_in_recovery"),
 						DataTypeOID:  catalog.ARRAYOID,
 						TypeModifier: -1,
 						DataTypeSize: 1,
 					},
 				},
-				VirtualRowVals: [][]byte{[]byte{byte('f')}},
+				VirtualRowVals: [][]byte{{byte('f')}},
 			},
 			err: nil,
 		},
@@ -1879,7 +1891,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 			distribution: distribution.ID,
 			exp: plan.VirtualPlan{
 				VirtualRowCols: []pgproto3.FieldDescription{
-					pgproto3.FieldDescription{
+					{
 						Name:         []byte("?column?"),
 						DataTypeOID:  catalog.INT4OID,
 						TypeModifier: -1,
