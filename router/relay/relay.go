@@ -112,7 +112,7 @@ type ParseCacheEntry struct {
 
 type RelayStateImpl struct {
 	traceMsgs    bool
-	activeShards []kr.ShardKey
+	activeShards []*kr.ShardKey
 
 	routingDecisionPlan plan.Plan
 
@@ -486,7 +486,7 @@ func (rst *RelayStateImpl) ActiveShardsReset() {
 	rst.activeShards = nil
 }
 
-func (rst *RelayStateImpl) ActiveShards() []kr.ShardKey {
+func (rst *RelayStateImpl) ActiveShards() []*kr.ShardKey {
 	return rst.activeShards
 }
 
@@ -530,7 +530,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 
 	rst.activeShards = nil
 	for _, shr := range routes {
-		rst.activeShards = append(rst.activeShards, *shr)
+		rst.activeShards = append(rst.activeShards, shr)
 	}
 
 	if config.RouterConfig().PgprotoDebug {
@@ -589,20 +589,20 @@ func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
 	beforeTx := rst.Client().Server().TxStatus()
 
 	for _, shkey := range routes {
-		if slices.ContainsFunc(rst.activeShards, func(c kr.ShardKey) bool {
-			return *shkey == c
+		if slices.ContainsFunc(rst.activeShards, func(c *kr.ShardKey) bool {
+			return shkey == c
 		}) {
 			continue
 		}
 
-		rst.activeShards = append(rst.activeShards, *shkey)
+		rst.activeShards = append(rst.activeShards, shkey)
 
 		spqrlog.Zero.Debug().
 			Str("client tsa", string(rst.Client().GetTsa())).
 			Str("deploying tx", beforeTx.String()).
 			Msg("expanding shard with tsa")
 
-		if err := rst.Client().Server().ExpandDataShard(rst.Client().ID(), *shkey, rst.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
+		if err := rst.Client().Server().ExpandDataShard(rst.Client().ID(), shkey, rst.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
 			return err
 		}
 	}
@@ -858,10 +858,10 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Unroute(shkey []kr.ShardKey) error {
-	newActiveShards := make([]kr.ShardKey, 0)
+func (rst *RelayStateImpl) Unroute(shkey []*kr.ShardKey) error {
+	newActiveShards := make([]*kr.ShardKey, 0)
 	for _, el := range rst.activeShards {
-		if slices.IndexFunc(shkey, func(k kr.ShardKey) bool {
+		if slices.IndexFunc(shkey, func(k *kr.ShardKey) bool {
 			return k == el
 		}) == -1 {
 			newActiveShards = append(newActiveShards, el)
@@ -880,7 +880,7 @@ func (rst *RelayStateImpl) Unroute(shkey []kr.ShardKey) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) error {
+func (rst *RelayStateImpl) UnRouteWithError(shkey []*kr.ShardKey, errmsg error) error {
 	_ = rst.poolMgr.UnRouteWithError(rst.Cl, shkey, errmsg)
 	return rst.Reset()
 }
@@ -1564,12 +1564,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 	case nil:
 		return func() error {
 			shs := rst.routingDecisionPlan.ExecutionTargets()
-			/* XXX: fix this insanity  */
-			shsTransform := make([]kr.ShardKey, len(shs))
-			for i, sh := range shs {
-				shsTransform[i] = *sh
-			}
-			return rst.Unroute(shsTransform)
+			return rst.Unroute(shs)
 		}, nil
 	case ErrSkipQuery:
 		if err := rst.Client().ReplyErr(err); err != nil {

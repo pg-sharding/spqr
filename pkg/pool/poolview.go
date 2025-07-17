@@ -48,7 +48,7 @@ func (r *PoolView) Discard(sh shard.ShardHostInstance) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "PoolView.Discard not implemented")
 }
 
-func (r *PoolView) Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error) {
+func (r *PoolView) Connection(clid uint, shardKey *kr.ShardKey) (shard.ShardHostInstance, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "PoolView.Connection method not implemented")
 }
 

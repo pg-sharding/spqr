@@ -115,7 +115,7 @@ func (h *shardHostPool) View() Statistics {
 //   - error: The error that occurred during the connection process.
 //
 // TODO : unit tests
-func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error) {
+func (h *shardHostPool) Connection(clid uint, shardKey *kr.ShardKey) (shard.ShardHostInstance, error) {
 	if err := func() error {
 		// TODO refactor
 		for range h.connectionRetries {
@@ -378,7 +378,7 @@ func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 //   - error: The error that occurred during the connection process.
 //
 // TODO : unit tests
-func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
+func (c *cPool) ConnectionHost(clid uint, shardKey *kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
 	var pool Pool
 	if val, ok := c.pools.Load(host.Address); !ok {
 		pool = NewShardHostPool(c.alloc, host, c.beRule)

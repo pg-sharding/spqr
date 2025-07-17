@@ -38,7 +38,7 @@ type Pool interface {
 	ConnectionKepper
 	shard.ShardHostIterator
 
-	Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error)
+	Connection(clid uint, shardKey *kr.ShardKey) (shard.ShardHostInstance, error)
 }
 
 /* Host  */
@@ -49,7 +49,7 @@ type MultiShardPool interface {
 
 	ID() uint
 
-	ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error)
+	ConnectionHost(clid uint, shardKey *kr.ShardKey, host config.Host) (shard.ShardHostInstance, error)
 
 	SetRule(rule *config.BackendRule)
 }
@@ -58,7 +58,7 @@ type MultiShardTSAPool interface {
 	MultiShardPool
 
 	ShardMapping() map[string]*config.Shard
-	ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error)
+	ConnectionWithTSA(clid uint, key *kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error)
 	InstanceHealthChecks() map[string]tsa.CachedCheckResult
 
 	StopCacheWatchdog()
@@ -68,4 +68,4 @@ type PoolIterator interface {
 	ForEachPool(cb func(p Pool) error) error
 }
 
-type ConnectionAllocFn func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error)
+type ConnectionAllocFn func(shardKey *kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error)

@@ -91,7 +91,7 @@ func TestCacheCleanupIntegration(t *testing.T) {
 // emptyMultiShardPool is a minimal implementation for testing
 type emptyMultiShardPool struct{}
 
-func (e *emptyMultiShardPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
+func (e *emptyMultiShardPool) ConnectionHost(clid uint, shardKey *kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
 	return nil, fmt.Errorf("test pool - no connections available")
 }
 func (e *emptyMultiShardPool) SetRule(rule *config.BackendRule)                    {}

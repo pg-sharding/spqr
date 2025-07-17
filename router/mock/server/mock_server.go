@@ -48,7 +48,7 @@ func (m *MockServer) EXPECT() *MockServerMockRecorder {
 }
 
 // AddDataShard mocks base method.
-func (m *MockServer) AddDataShard(clid uint, shardKey kr.ShardKey, arg2 tsa.TSA) error {
+func (m *MockServer) AddDataShard(clid uint, shardKey *kr.ShardKey, arg2 tsa.TSA) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddDataShard", clid, shardKey, arg2)
 	ret0, _ := ret[0].(error)
@@ -104,7 +104,7 @@ func (mr *MockServerMockRecorder) Datashards() *gomock.Call {
 }
 
 // ExpandDataShard mocks base method.
-func (m *MockServer) ExpandDataShard(clid uint, shkey kr.ShardKey, arg2 tsa.TSA, deployTX bool) error {
+func (m *MockServer) ExpandDataShard(clid uint, shkey *kr.ShardKey, arg2 tsa.TSA, deployTX bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExpandDataShard", clid, shkey, arg2, deployTX)
 	ret0, _ := ret[0].(error)
@@ -289,7 +289,7 @@ func (mr *MockServerMockRecorder) TxStatus() *gomock.Call {
 }
 
 // UnRouteShard mocks base method.
-func (m *MockServer) UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error {
+func (m *MockServer) UnRouteShard(sh *kr.ShardKey, rule *config.FrontendRule) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UnRouteShard", sh, rule)
 	ret0, _ := ret[0].(error)

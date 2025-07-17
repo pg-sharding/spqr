@@ -14,7 +14,7 @@ import (
 
 type ConnectionKeeper interface {
 	txstatus.TxStatusMgr
-	ActiveShards() []kr.ShardKey
+	ActiveShards() []*kr.ShardKey
 	ActiveShardsReset()
 
 	SyncCount() int64
@@ -27,20 +27,20 @@ type ConnectionKeeper interface {
 type PoolMgr interface {
 	TXEndCB(rst ConnectionKeeper) error
 
-	UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error
-	UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error
+	UnRouteCB(client client.RouterClient, sh []*kr.ShardKey) error
+	UnRouteWithError(client client.RouterClient, sh []*kr.ShardKey, errmsg error) error
 
 	ValidateReRoute(rst ConnectionKeeper) bool
 	ConnectionActive(rst ConnectionKeeper) bool
 }
 
 // TODO : unit tests
-func unRouteWithError(cmngr PoolMgr, client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
+func unRouteWithError(cmngr PoolMgr, client client.RouterClient, sh []*kr.ShardKey, errmsg error) error {
 	_ = cmngr.UnRouteCB(client, sh)
 	return client.ReplyErr(errmsg)
 }
 
-func unRouteShardsCommon(cl client.RouterClient, sh []kr.ShardKey) error {
+func unRouteShardsCommon(cl client.RouterClient, sh []*kr.ShardKey) error {
 	var anyerr error
 	anyerr = nil
 
@@ -79,12 +79,12 @@ type TxConnManager struct {
 }
 
 // TODO : unit tests
-func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
+func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []*kr.ShardKey, errmsg error) error {
 	return unRouteWithError(t, client, sh, errmsg)
 }
 
 // TODO : unit tests
-func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
+func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []*kr.ShardKey) error {
 	return unRouteShardsCommon(cl, sh)
 }
 
@@ -128,12 +128,12 @@ type SessConnManager struct {
 }
 
 // TODO : unit tests
-func (s *SessConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
+func (s *SessConnManager) UnRouteWithError(client client.RouterClient, sh []*kr.ShardKey, errmsg error) error {
 	return unRouteWithError(s, client, sh, errmsg)
 }
 
 // TODO : unit tests
-func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
+func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []*kr.ShardKey) error {
 	return unRouteShardsCommon(cl, sh)
 }
 
@@ -169,12 +169,12 @@ func (v *VirtualConnManager) TXEndCB(rst ConnectionKeeper) error {
 }
 
 // UnRouteCB implements PoolMgr.
-func (v *VirtualConnManager) UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error {
+func (v *VirtualConnManager) UnRouteCB(client client.RouterClient, sh []*kr.ShardKey) error {
 	return nil
 }
 
 // UnRouteWithError implements PoolMgr.
-func (v *VirtualConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
+func (v *VirtualConnManager) UnRouteWithError(client client.RouterClient, sh []*kr.ShardKey, errmsg error) error {
 	return unRouteWithError(v, client, sh, errmsg)
 }
 

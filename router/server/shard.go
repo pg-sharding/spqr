@@ -29,7 +29,7 @@ func (srv *ShardServer) ToMultishard() Server {
 }
 
 // ExpandDataShard implements Server.
-func (srv *ShardServer) ExpandDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
+func (srv *ShardServer) ExpandDataShard(clid uint, shkey *kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
 	return fmt.Errorf("expanding transaction on single shard server in unsupported")
 }
 
@@ -90,7 +90,7 @@ func (srv *ShardServer) Reset() error {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRule) error {
+func (srv *ShardServer) UnRouteShard(shkey *kr.ShardKey, rule *config.FrontendRule) error {
 	v := srv.shard.Load()
 	if v == nil {
 		return nil
@@ -120,7 +120,7 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 }
 
 // TODO : unit tests
-func (srv *ShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA) error {
+func (srv *ShardServer) AddDataShard(clid uint, shkey *kr.ShardKey, tsa tsa.TSA) error {
 	v := srv.shard.Load()
 	if v != nil {
 		return fmt.Errorf("single datashard " +

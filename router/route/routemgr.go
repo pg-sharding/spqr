@@ -15,6 +15,6 @@ type ExecutionSliceMgr interface {
 	PrepareTargetRoute(p plan.Plan) error
 
 	/* Unroute Routines */
-	UnRouteWithError(shkey []kr.ShardKey, errmsg error) error
-	Unroute(shkey []kr.ShardKey) error
+	UnRouteWithError(shkey []*kr.ShardKey, errmsg error) error
+	Unroute(shkey []*kr.ShardKey) error
 }
