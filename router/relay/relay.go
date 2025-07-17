@@ -1082,6 +1082,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.routingDecisionPlan = queryPlan
 				}
 
+				rst.bindQueryPlan = rst.routingDecisionPlan
+
 				// hold route if appropriate
 
 				if holdRoute {
@@ -1126,19 +1128,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						return err
 					}
 					return nil
-				}
-
-				// TODO: multi-shard statements
-				if rst.bindQueryPlan == nil {
-					if len(queryPlan.ExecutionTargets()) == 1 {
-						rst.bindQueryPlan = queryPlan
-					} else {
-						err := fmt.Errorf("failed to deploy prepared statement")
-
-						spqrlog.Zero.Error().Uint("client", rst.Client().ID()).Err(err).Msg("query adv callback")
-
-						return err
-					}
 				}
 
 				rst.execute = func() error {
