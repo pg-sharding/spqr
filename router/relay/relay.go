@@ -304,7 +304,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 	return rd, retMsg, nil
 }
 
-func (rst *RelayStateImpl) multishardPrepareDDL(hash uint64, d *prepstatement.PreparedStatementDefinition) error {
+func (rst *RelayStateImpl) multishardPrepareScatter(hash uint64, d *prepstatement.PreparedStatementDefinition) error {
 	serv := rst.Client().Server()
 
 	shards := serv.Datashards()
@@ -646,8 +646,6 @@ func (rst *RelayStateImpl) Reroute() (plan.Plan, error) {
 			return nil, fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 		}
 	}
-
-	rst.routingDecisionPlan = queryPlan
 
 	if rst.Client().Rule().PoolMode == config.PoolModeVirtual {
 		/* never try to get connection */
@@ -1074,7 +1072,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				rst.saveBind.Parameters = q.Parameters
 
 				// Do not respond with BindComplete, as the relay step should take care of itself.
-				_, err := rst.PrepareRelayStep()
+				queryPlan, err := rst.PrepareRelayStep()
+
+				rst.routingDecisionPlan = queryPlan
 
 				if err != nil {
 					return err
@@ -1097,7 +1097,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
 					pstmt.Name = fmt.Sprintf("%d", hash)
 					q.PreparedStatement = pstmt.Name
-					err := rst.multishardPrepareDDL(hash, pstmt)
+					err := rst.multishardPrepareScatter(hash, pstmt)
 					if err != nil {
 						return err
 					}
@@ -1578,16 +1578,18 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool) error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("relay step: process message buf for client")
-	if _, err := rst.PrepareRelayStep(); err != nil {
+	queryPlan, err := rst.PrepareRelayStep()
+	if err != nil {
 		/* some critical connection issue, client processing cannot be competed.
 		* empty our msg buf */
 		rst.msgBuf = nil
 		return err
 	}
+	rst.routingDecisionPlan = queryPlan
 
 	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
 
-	_, err := rst.RelayFlush(waitForResp, replyCl)
+	_, err = rst.RelayFlush(waitForResp, replyCl)
 	return err
 }
 
@@ -1598,13 +1600,15 @@ func (rst *RelayStateImpl) ProcessMessage(
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("relay step: process message for client")
-	if _, err := rst.PrepareRelayStep(); err != nil {
+	queryPlan, err := rst.PrepareRelayStep()
+	if err != nil {
 		if err := rst.CompleteRelay(replyCl); err != nil {
 			spqrlog.Zero.Error().Err(err).Uint("client", rst.Client().ID()).Msg("failed to complete relay")
 			return err
 		}
 		return err
 	}
+	rst.routingDecisionPlan = queryPlan
 
 	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
 
