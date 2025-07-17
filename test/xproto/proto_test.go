@@ -1574,6 +1574,52 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+
+				&pgproto3.Parse{
+					Name:  "xproto_ddl_multishard_t_s_1",
+					Query: "UPDATE t SET id = id + 1 /* __spqr__engine_v2: true */;",
+				},
+				&pgproto3.Parse{
+					Name:  "xproto_ddl_multishard_t_s_2",
+					Query: "SELECT FROM t /* __spqr__engine_v2: true */;",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "xproto_ddl_multishard_t_s_2",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "xproto_ddl_multishard_t_s_1",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 0"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 0"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	} {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
