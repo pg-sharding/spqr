@@ -1340,7 +1340,7 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
-					Name:  "stmtcache_1",
+					Name:  "stmtcache_v_1",
 					Query: "select 'Hello, world!';",
 				},
 				&pgproto3.Describe{
@@ -1352,10 +1352,57 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.ParseComplete{},
 				&pgproto3.ErrorResponse{
-					Severity:            "ERROR",
-					SeverityUnlocalized: "ERROR",
-					Code:                "34000",
-					Message:             "portal \"\" does not exist",
+					Severity: "ERROR",
+					Code:     "34000",
+					Message:  "portal \"\" does not exist",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "stmtcache_v_2",
+					Query: "select 'Hello, world!';",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_v_2",
+				},
+				&pgproto3.Describe{
+					Name:       "",
+					ObjectType: 'P',
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Describe{
+					Name:       "",
+					ObjectType: 'P',
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("?column?"),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "34000",
+					Message:  "portal \"\" does not exist",
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -1372,10 +1419,9 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 			},
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.ErrorResponse{
-					Severity:            "ERROR",
-					SeverityUnlocalized: "ERROR",
-					Code:                "26000",
-					Message:             "prepared statement \"out-of-nowhere\" does not exist",
+					Severity: "ERROR",
+					Code:     "26000",
+					Message:  "prepared statement \"out-of-nowhere\" does not exist",
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
@@ -1399,6 +1445,7 @@ func TestPrepStmtSimpleProtoViolation(t *testing.T) {
 				retMsgType.Routine = ""
 				retMsgType.Line = 0
 				retMsgType.File = ""
+				retMsgType.SeverityUnlocalized = ""
 			case *pgproto3.RowDescription:
 				for i := range retMsgType.Fields {
 					// We don't want to check table OID

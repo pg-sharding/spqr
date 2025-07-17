@@ -127,8 +127,9 @@ type RelayStateImpl struct {
 
 	holdRouting bool
 
-	bindQueryPlan plan.Plan
-	lastBindName  string
+	bindQueryPlan       plan.Plan
+	lastBindName        string
+	unnamedPortalExists bool
 
 	execute func() error
 
@@ -163,16 +164,17 @@ func (rst *RelayStateImpl) UnholdRouting() {
 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr) RelayStateMgr {
 	return &RelayStateImpl{
-		activeShards:    nil,
-		msgBuf:          nil,
-		qse:             NewQueryStateExecutor(client),
-		Qr:              qr,
-		Cl:              client,
-		poolMgr:         manager,
-		execute:         nil,
-		saveBind:        pgproto3.Bind{},
-		savedPortalDesc: map[string]*PortalDesc{},
-		parseCache:      map[string]ParseCacheEntry{},
+		activeShards:        nil,
+		msgBuf:              nil,
+		qse:                 NewQueryStateExecutor(client),
+		Qr:                  qr,
+		Cl:                  client,
+		poolMgr:             manager,
+		execute:             nil,
+		saveBind:            pgproto3.Bind{},
+		savedPortalDesc:     map[string]*PortalDesc{},
+		parseCache:          map[string]ParseCacheEntry{},
+		unnamedPortalExists: false,
 	}
 }
 
@@ -812,6 +814,8 @@ func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp b
 func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	statistics.RecordFinishedTransaction(time.Now(), rst.Client().ID())
 
+	rst.unnamedPortalExists = false
+
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Str("txstatus", rst.qse.TxStatus().String()).
@@ -1055,7 +1059,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			}
 
 			rst.lastBindName = q.PreparedStatement
-
+			rst.unnamedPortalExists = true
 			rst.execute = emptyExecFunc
 
 			pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
@@ -1170,6 +1174,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			}
 
 		case *pgproto3.Describe:
+			if !rst.unnamedPortalExists {
+				return spqrerror.New(spqrerror.PG_PORTAl_DOES_NOT_EXISTS, "portal \"\" does not exist")
+			}
 			// save txstatus because it may be overwritten if we have no backend connection
 			saveTxStat := rst.qse.TxStatus()
 
