@@ -17,7 +17,7 @@ type ScatterPlan struct {
 	Plan
 	SubPlan Plan
 
-	/* To deside if query is OK even in DRH = BLOCK */
+	/* To decide if query is OK even in DRH = BLOCK */
 	IsDDL bool
 	/* Empty means execute everywhere */
 	ExecTargets []kr.ShardKey
