@@ -1524,7 +1524,7 @@ func TestCopySingleShard(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "COPY xx FROM STDIN WHERE i = 1;",
-			exp:   plan.CopyState{},
+			exp:   plan.CopyPlan{},
 			err:   nil,
 		},
 	} {
@@ -1608,7 +1608,7 @@ func TestCopyMultiShard(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "COPY xx FROM STDIN",
-			exp:   plan.CopyState{},
+			exp:   plan.CopyPlan{},
 			err:   nil,
 		},
 	} {
@@ -1825,7 +1825,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM pg_class JOIN users ON true;",
 			distribution: distribution.ID,
-			exp:          plan.ReferenceRelationState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
