@@ -19,12 +19,19 @@ SET __spqr__engine_v2 TO false;
 SHOW __spqr__engine_v2;
 SET __spqr__engine_v2 TO ok;
 SHOW __spqr__engine_v2;
+SHOW __spqr__.engine_v2;
 
 BEGIN;
 
-SET __spqr__engine_v2 TO off;
+SET __spqr__.engine_v2 TO off;
 SHOW __spqr__engine_v2;
 
 ROLLBACK;
 
+SHOW __spqr__engine_v2;
+
+SET __spqr__.engine_v2 TO OFF;
+SHOW __spqr__.engine_v2;
+
+RESET __spqr__.engine_v2;
 SHOW __spqr__engine_v2;
