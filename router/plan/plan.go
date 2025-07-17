@@ -165,6 +165,8 @@ func Combine(p1, p2 Plan) Plan {
 		return p2
 	case ShardDispatchPlan:
 		switch shq2 := p2.(type) {
+		case RandomDispatchPlan:
+			return p1
 		case ScatterPlan:
 			return ScatterPlan{
 				ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
