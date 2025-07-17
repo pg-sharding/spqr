@@ -265,7 +265,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 		if strings.HasPrefix(st.Name, "__spqr__") {
 			name := virtualParamTransformName(st.Name)
-			value = strings.ToLower(st.Value)
+			value := strings.ToLower(st.Value)
 
 			switch name {
 			case session.SPQR_DISTRIBUTION:
