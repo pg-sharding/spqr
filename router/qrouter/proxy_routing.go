@@ -1294,7 +1294,7 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 		if err != nil {
 			return nil, err
 		} else if ds.Id == distributions.REPLICATED {
-			var shs []*kr.ShardKey
+			var shs []kr.ShardKey
 			if rmeta.IsRelationCatalog(&qualName) {
 				shs = nil
 			} else {
@@ -1532,7 +1532,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	return pl, ro, nil
 }
 
-func (qr *ProxyQrouter) SelectRandomRoute(routes []*kr.ShardKey) (plan.Plan, error) {
+func (qr *ProxyQrouter) SelectRandomRoute(routes []kr.ShardKey) (plan.Plan, error) {
 	if len(routes) == 0 {
 		return nil, fmt.Errorf("no routes configured")
 	}
@@ -1741,7 +1741,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 			}
 
 			return plan.ShardDispatchPlan{
-				ExecTarget: &kr.ShardKey{
+				ExecTarget: kr.ShardKey{
 					Name: firstShard,
 					RO:   ro,
 				},

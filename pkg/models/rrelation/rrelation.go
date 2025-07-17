@@ -23,11 +23,11 @@ type AutoIncrementEntry struct {
 	Start  uint64
 }
 
-func (r *ReferenceRelation) ListStorageRoutes() []*kr.ShardKey {
-	var ret []*kr.ShardKey
+func (r *ReferenceRelation) ListStorageRoutes() []kr.ShardKey {
+	var ret []kr.ShardKey
 
 	for _, id := range r.ShardIds {
-		ret = append(ret, &kr.ShardKey{
+		ret = append(ret, kr.ShardKey{
 			Name: id,
 		})
 	}

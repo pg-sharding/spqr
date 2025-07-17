@@ -66,14 +66,10 @@ func (l *LocalQrouter) AddDataShard(_ context.Context, ds *topology.DataShard) e
 // TODO : unit tests
 func (l *LocalQrouter) Route(_ context.Context, _ lyx.Node, _ session.SessionParamsHolder) (plan.Plan, error) {
 	return plan.ShardDispatchPlan{
-		ExecTarget: &kr.ShardKey{
+		ExecTarget: kr.ShardKey{
 			Name: l.ds.ID,
 		},
 	}, nil
-}
-
-func (l *LocalQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
-	return nil, nil
 }
 
 func (l *LocalQrouter) SchemaCache() *cache.SchemaCache {
@@ -81,8 +77,8 @@ func (l *LocalQrouter) SchemaCache() *cache.SchemaCache {
 }
 
 // TODO : unit tests
-func (l *LocalQrouter) DataShardsRoutes() []*kr.ShardKey {
-	return []*kr.ShardKey{
+func (l *LocalQrouter) DataShardsRoutes() []kr.ShardKey {
+	return []kr.ShardKey{
 		{
 			Name: l.ds.ID,
 			RO:   false,

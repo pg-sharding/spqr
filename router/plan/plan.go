@@ -10,55 +10,55 @@ import (
 
 type Plan interface {
 	iPlan()
-	ExecutionTargets() []*kr.ShardKey
+	ExecutionTargets() []kr.ShardKey
 }
 
 type ScatterPlan struct {
 	Plan
 	SubPlan Plan
 	/* Empty means execute everywhere */
-	ExecTargets []*kr.ShardKey
+	ExecTargets []kr.ShardKey
 }
 
-func (sp ScatterPlan) ExecutionTargets() []*kr.ShardKey {
+func (sp ScatterPlan) ExecutionTargets() []kr.ShardKey {
 	return sp.ExecTargets
 }
 
 type ModifyTable struct {
 	Plan
-	ExecTargets []*kr.ShardKey
+	ExecTargets []kr.ShardKey
 }
 
-func (mt ModifyTable) ExecutionTargets() []*kr.ShardKey {
+func (mt ModifyTable) ExecutionTargets() []kr.ShardKey {
 	return mt.ExecTargets
 }
 
 type ShardDispatchPlan struct {
 	Plan
 
-	ExecTarget         *kr.ShardKey
+	ExecTarget         kr.ShardKey
 	TargetSessionAttrs tsa.TSA
 }
 
-func (sms ShardDispatchPlan) ExecutionTargets() []*kr.ShardKey {
-	return []*kr.ShardKey{sms.ExecTarget}
+func (sms ShardDispatchPlan) ExecutionTargets() []kr.ShardKey {
+	return []kr.ShardKey{sms.ExecTarget}
 }
 
 type DDLState struct {
 	Plan
-	ExecTargets []*kr.ShardKey
+	ExecTargets []kr.ShardKey
 }
 
-func (ddl DDLState) ExecutionTargets() []*kr.ShardKey {
+func (ddl DDLState) ExecutionTargets() []kr.ShardKey {
 	return ddl.ExecTargets
 }
 
 type RandomDispatchPlan struct {
 	Plan
-	ExecTargets []*kr.ShardKey
+	ExecTargets []kr.ShardKey
 }
 
-func (rdp RandomDispatchPlan) ExecutionTargets() []*kr.ShardKey {
+func (rdp RandomDispatchPlan) ExecutionTargets() []kr.ShardKey {
 	return rdp.ExecTargets
 }
 
@@ -69,7 +69,7 @@ type VirtualPlan struct {
 	SubPlan        Plan
 }
 
-func (vp VirtualPlan) ExecutionTargets() []*kr.ShardKey {
+func (vp VirtualPlan) ExecutionTargets() []kr.ShardKey {
 	return nil
 }
 
@@ -79,31 +79,31 @@ type DataRowFilter struct {
 	SubPlan     Plan
 }
 
-func (rf DataRowFilter) ExecutionTargets() []*kr.ShardKey {
+func (rf DataRowFilter) ExecutionTargets() []kr.ShardKey {
 	return rf.SubPlan.ExecutionTargets()
 }
 
 type CopyState struct {
 	Plan
-	ExecTargets []*kr.ShardKey
+	ExecTargets []kr.ShardKey
 }
 
-func (cs CopyState) ExecutionTargets() []*kr.ShardKey {
+func (cs CopyState) ExecutionTargets() []kr.ShardKey {
 	return cs.ExecTargets
 }
 
 type ReferenceRelationState struct {
 	Plan
-	ExecTargets []*kr.ShardKey
+	ExecTargets []kr.ShardKey
 }
 
-func (rrs ReferenceRelationState) ExecutionTargets() []*kr.ShardKey {
+func (rrs ReferenceRelationState) ExecutionTargets() []kr.ShardKey {
 	return rrs.ExecTargets
 }
 
 const NOSHARD = ""
 
-func mergeExecTargets(l, r []*kr.ShardKey) []*kr.ShardKey {
+func mergeExecTargets(l, r []kr.ShardKey) []kr.ShardKey {
 	/* XXX: nil means all */
 	if l == nil {
 		return nil

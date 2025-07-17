@@ -152,7 +152,7 @@ func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) SendShard(query pgproto3.FrontendMessage, shkey *kr.ShardKey) error {
+func (srv *ShardServer) SendShard(query pgproto3.FrontendMessage, shkey kr.ShardKey) error {
 	if (*srv.shard.Load()).SHKey().Name != shkey.Name {
 		return spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 	}

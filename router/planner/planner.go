@@ -117,7 +117,7 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 		}
 	}
 
-	var shs []*kr.ShardKey
+	var shs []kr.ShardKey
 
 	if rmeta.IsRelationCatalog(qualName) {
 		shs = nil
@@ -193,7 +193,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context, qrouter_query *strin
 	}, nil
 }
 
-func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node, rm *rmeta.RoutingMetadataContext, stmt *lyx.Insert) ([]*kr.ShardKey, error) {
+func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node, rm *rmeta.RoutingMetadataContext, stmt *lyx.Insert) ([]kr.ShardKey, error) {
 
 	offsets, qualName, ds, err := ProcessInsertFromSelectOffsets(ctx, stmt, rm)
 	if err != nil {
@@ -231,7 +231,7 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 	}
 
 	queryParamsFormatCodes := GetParams(rm)
-	tupleShards := make([]*kr.ShardKey, len(routingList))
+	tupleShards := make([]kr.ShardKey, len(routingList))
 
 	for i := range routingList {
 
