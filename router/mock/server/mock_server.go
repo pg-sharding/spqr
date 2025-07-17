@@ -207,7 +207,7 @@ func (mr *MockServerMockRecorder) Send(query any) *gomock.Call {
 }
 
 // SendShard mocks base method.
-func (m *MockServer) SendShard(query pgproto3.FrontendMessage, shKey *kr.ShardKey) error {
+func (m *MockServer) SendShard(query pgproto3.FrontendMessage, shKey kr.ShardKey) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendShard", query, shKey)
 	ret0, _ := ret[0].(error)

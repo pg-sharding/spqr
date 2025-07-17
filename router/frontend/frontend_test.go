@@ -117,7 +117,7 @@ func TestFrontendSimple(t *testing.T) {
 		},
 		Where: &lyx.AExprEmpty{},
 	}, gomock.Any()).Return(plan.ShardDispatchPlan{
-		ExecTarget: &kr.ShardKey{
+		ExecTarget: kr.ShardKey{
 			Name: "sh1",
 		},
 	}, nil).Times(1)
@@ -184,7 +184,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 	qr.EXPECT().SelectRandomRoute(gomock.Any()).AnyTimes().Return(plan.ShardDispatchPlan{
-		ExecTarget: &kr.ShardKey{
+		ExecTarget: kr.ShardKey{
 			Name: "sh1",
 		},
 	}, nil)
@@ -202,7 +202,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	/* query Router */
 
-	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*kr.ShardKey{{Name: "sh1"}})
+	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]kr.ShardKey{{Name: "sh1"}})
 
 	cl.EXPECT().ShowNoticeMsg().AnyTimes()
 	cl.EXPECT().GetTsa().AnyTimes()

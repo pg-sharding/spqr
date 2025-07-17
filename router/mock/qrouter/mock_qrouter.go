@@ -47,10 +47,10 @@ func (m *MockQueryRouter) EXPECT() *MockQueryRouterMockRecorder {
 }
 
 // DataShardsRoutes mocks base method.
-func (m *MockQueryRouter) DataShardsRoutes() []*kr.ShardKey {
+func (m *MockQueryRouter) DataShardsRoutes() []kr.ShardKey {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DataShardsRoutes")
-	ret0, _ := ret[0].([]*kr.ShardKey)
+	ret0, _ := ret[0].([]kr.ShardKey)
 	return ret0
 }
 
@@ -146,7 +146,7 @@ func (mr *MockQueryRouterMockRecorder) SchemaCache() *gomock.Call {
 }
 
 // SelectRandomRoute mocks base method.
-func (m *MockQueryRouter) SelectRandomRoute(routes []*kr.ShardKey) (plan.Plan, error) {
+func (m *MockQueryRouter) SelectRandomRoute(routes []kr.ShardKey) (plan.Plan, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectRandomRoute", routes)
 	ret0, _ := ret[0].(plan.Plan)
@@ -173,10 +173,10 @@ func (mr *MockQueryRouterMockRecorder) SetQuery(q any) *gomock.Call {
 }
 
 // WorldShardsRoutes mocks base method.
-func (m *MockQueryRouter) WorldShardsRoutes() []*kr.ShardKey {
+func (m *MockQueryRouter) WorldShardsRoutes() []kr.ShardKey {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WorldShardsRoutes")
-	ret0, _ := ret[0].([]*kr.ShardKey)
+	ret0, _ := ret[0].([]kr.ShardKey)
 	return ret0
 }
 

@@ -413,10 +413,6 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 			return nil, err
 		}
 
-		if currroute == nil {
-			return nil, fmt.Errorf("multishard copy is not supported: %+v at line number %d %d %v", values[0], prevLine, i, b)
-		}
-
 		/* reset values  */
 		values = make([]interface{}, len(cps.HashFunc))
 

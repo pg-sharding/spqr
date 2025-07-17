@@ -195,7 +195,7 @@ func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 	return nil
 }
 
-func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shkey *kr.ShardKey) error {
+func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shkey kr.ShardKey) error {
 	anyShard := false
 	for _, shard := range m.activeShards {
 		if shard.SHKey().Name != shkey.Name {

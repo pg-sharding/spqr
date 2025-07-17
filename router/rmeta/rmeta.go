@@ -236,7 +236,7 @@ func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias string) (*rfqn.Re
 }
 
 // TODO : unit tests
-func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context, key []interface{}, krs []*kr.KeyRange) (*kr.ShardKey, error) {
+func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context, key []interface{}, krs []*kr.KeyRange) (kr.ShardKey, error) {
 	spqrlog.Zero.Debug().
 		Interface("key", key[0]).
 		Int("key-ranges-count", len(krs)).
@@ -253,13 +253,13 @@ func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context
 
 	if matchedKrkey != nil {
 		if err := rm.Mgr.ShareKeyRange(matchedKrkey.ID); err != nil {
-			return nil, err
+			return kr.ShardKey{}, err
 		}
-		return &kr.ShardKey{Name: matchedKrkey.ShardID}, nil
+		return kr.ShardKey{Name: matchedKrkey.ShardID}, nil
 	}
 	spqrlog.Zero.Debug().Msg("failed to match key with ranges")
 
-	return nil, fmt.Errorf("failed to match key with ranges")
+	return kr.ShardKey{}, fmt.Errorf("failed to match key with ranges")
 }
 
 func (rm *RoutingMetadataContext) ResolveRouteHint() (routehint.RouteHint, error) {
