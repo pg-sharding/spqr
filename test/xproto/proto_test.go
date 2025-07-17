@@ -1495,7 +1495,7 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
 					Name:  "xproto_ddl_multishard",
-					Query: "CREATE SCHEMA testch;",
+					Query: "CREATE SCHEMA test_schema;",
 				},
 				&pgproto3.Bind{
 					PreparedStatement: "xproto_ddl_multishard",
@@ -1509,7 +1509,7 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 
 				&pgproto3.Parse{
 					Name:  "xproto_ddl_multishard_2",
-					Query: "DROP SCHEMA testch;",
+					Query: "DROP SCHEMA test_schema;",
 				},
 				&pgproto3.Bind{
 					PreparedStatement: "xproto_ddl_multishard_2",
