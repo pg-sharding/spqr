@@ -132,7 +132,7 @@ type RelayStateImpl struct {
 
 	execute func() error
 
-	saveBind        *pgproto3.Bind
+	saveBind        pgproto3.Bind
 	savedPortalDesc map[string]*PortalDesc
 
 	parseCache map[string]ParseCacheEntry
@@ -170,7 +170,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		Cl:              client,
 		poolMgr:         manager,
 		execute:         nil,
-		saveBind:        &pgproto3.Bind{},
+		saveBind:        pgproto3.Bind{},
 		savedPortalDesc: map[string]*PortalDesc{},
 		parseCache:      map[string]ParseCacheEntry{},
 	}
@@ -1148,10 +1148,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					}
 
 					/* Case when no describe stmt was issued before Execute+Sync*/
-					if rst.saveBind != nil {
-						rst.AddSilentQuery(rst.saveBind)
-						// do not send saved bind twice
-					}
+					rst.AddSilentQuery(&rst.saveBind)
+					// do not send saved bind twice
 
 					rst.AddQuery(pgexec)
 					rst.AddQuery(pgsync)
@@ -1208,7 +1206,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
 						pstmt.Name = fmt.Sprintf("%d", hash)
 
-						pd, err := rst.multishardDescribePortal(rst.saveBind)
+						pd, err := rst.multishardDescribePortal(&rst.saveBind)
 						if err != nil {
 							return err
 						}
@@ -1247,13 +1245,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						}
 					}
 
-					// do not send saved bind twice
-					if rst.saveBind == nil {
-						// wtf?
-						return fmt.Errorf("failed to describe statement, stmt was never deployed")
-					}
-
-					_, err = rst.RelayStep(rst.saveBind, false, false)
+					_, err = rst.RelayStep(&rst.saveBind, false, false)
 					if err != nil {
 						return err
 					}
