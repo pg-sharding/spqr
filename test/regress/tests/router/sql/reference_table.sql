@@ -1,14 +1,24 @@
 \c spqr-console
 
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+
 -- test both ways of ref relation crete syntax
 CREATE REFERENCE TABLE test_ref_rel;
 
 -- partial ref relation test
 CREATE REFERENCE RELATION test_ref_rel_part ON sh1, sh3;
 
+CREATE DISTRIBUTED RELATION test_distr_ref_rel DISTRIBUTION KEY id IN ds1;
+CREATE KEY RANGE kr4 FROM 300 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE kr3 FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE kr2 FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+
 \c regress
 
 CREATE TABLE test_ref_rel(i int, j int);
+
+CREATE TABLE test_distr_ref_rel(id int, val int);
 
 CREATE TABLE test_ref_rel_part(i int, j int);
 
@@ -24,6 +34,23 @@ COPY test_ref_rel_part FROM STDIN;
 2	3
 3	4
 4	5
+\.
+
+COPY test_distr_ref_rel(id, val) FROM STDIN WITH DELIMITER '|';
+1|2
+2|3
+4|5
+50|51
+100|101
+101|102
+150|151
+199|200
+200|201
+201|202
+250|251
+299|300
+300|301
+350|351
 \.
 
 set __spqr__default_route_behaviour to allow;
@@ -83,8 +110,18 @@ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh3 */;
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
 
 
+-- Check routing for reference relation JOIN distributed relation
+SELECT FROM test_distr_ref_rel a JOIN test_ref_rel b ON TRUE WHERE a.id = 333;
+SELECT FROM test_distr_ref_rel a, test_ref_rel b WHERE a.id = 133;
+
+
+SELECT FROM test_distr_ref_rel a, test_ref_rel_part b WHERE a.id = 33;
+SELECT FROM test_distr_ref_rel a, test_ref_rel_part b WHERE a.id = 233;
+
+
 DROP TABLE test_ref_rel;
 DROP TABLE test_ref_rel_part;
+DROP TABLE test_distr_ref_rel;
 
 
 \c spqr-console

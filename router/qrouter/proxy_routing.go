@@ -1283,7 +1283,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 
 func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext, tsa tsa.TSA) (plan.Plan, error) {
 
-	var route plan.Plan
+	var queryPlan plan.Plan
 	/*
 	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
 	 */
@@ -1305,7 +1305,7 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 				shs = r.ListStorageRoutes()
 			}
 
-			route = plan.Combine(route, plan.RandomDispatchPlan{
+			queryPlan = plan.Combine(queryPlan, plan.RandomDispatchPlan{
 				ExecTargets: shs,
 			})
 			continue
@@ -1321,10 +1321,10 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 			return nil, err
 		}
 
-		route = plan.Combine(route, tmp)
+		queryPlan = plan.Combine(queryPlan, tmp)
 	}
 
-	return route, nil
+	return queryPlan, nil
 }
 
 // Returns state, is read-only flag and err if any
