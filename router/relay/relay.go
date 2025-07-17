@@ -1074,10 +1074,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				// Do not respond with BindComplete, as the relay step should take care of itself.
 				queryPlan, err := rst.PrepareRelayStep()
 
-				rst.routingDecisionPlan = queryPlan
-
 				if err != nil {
 					return err
+				}
+
+				if queryPlan != nil {
+					rst.routingDecisionPlan = queryPlan
 				}
 
 				// hold route if appropriate
@@ -1086,7 +1088,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.HoldRouting()
 				}
 
-				switch rst.routingDecisionPlan.(type) {
+				switch queryPlan.(type) {
 				case plan.ScatterPlan:
 					routes := rst.Qr.DataShardsRoutes()
 					if err := rst.procRoutes(routes); err != nil {
@@ -1128,8 +1130,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 				// TODO: multi-shard statements
 				if rst.bindQueryPlan == nil {
-					if len(rst.routingDecisionPlan.ExecutionTargets()) == 1 {
-						rst.bindQueryPlan = rst.routingDecisionPlan
+					if len(queryPlan.ExecutionTargets()) == 1 {
+						rst.bindQueryPlan = queryPlan
 					} else {
 						err := fmt.Errorf("failed to deploy prepared statement")
 
@@ -1208,7 +1210,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						return err
 					}
 
-					switch q := rst.routingDecisionPlan.(type) {
+					switch q := rst.bindQueryPlan.(type) {
 					case plan.ScatterPlan:
 						pstmt := rst.Client().PreparedStatementDefinitionByName(rst.lastBindName)
 						hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
@@ -1585,7 +1587,9 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool) error {
 		rst.msgBuf = nil
 		return err
 	}
-	rst.routingDecisionPlan = queryPlan
+	if queryPlan != nil {
+		rst.routingDecisionPlan = queryPlan
+	}
 
 	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
 
@@ -1608,8 +1612,9 @@ func (rst *RelayStateImpl) ProcessMessage(
 		}
 		return err
 	}
-	rst.routingDecisionPlan = queryPlan
-
+	if queryPlan != nil {
+		rst.routingDecisionPlan = queryPlan
+	}
 	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
 
 	if _, err := rst.RelayStep(msg, waitForResp, replyCl); err != nil {
