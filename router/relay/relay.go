@@ -1034,7 +1034,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			if err := fin(); err != nil {
 				return err
 			}
-
 		case *pgproto3.Bind:
 			spqrlog.Zero.Debug().
 				Str("name", q.PreparedStatement).
@@ -1174,13 +1173,15 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			}
 
 		case *pgproto3.Describe:
-			if !rst.unnamedPortalExists {
-				return spqrerror.New(spqrerror.PG_PORTAl_DOES_NOT_EXISTS, "portal \"\" does not exist")
-			}
 			// save txstatus because it may be overwritten if we have no backend connection
 			saveTxStat := rst.qse.TxStatus()
 
 			if q.ObjectType == 'P' {
+
+				if !rst.unnamedPortalExists {
+					return spqrerror.New(spqrerror.PG_PORTAl_DOES_NOT_EXISTS, "portal \"\" does not exist")
+				}
+
 				spqrlog.Zero.Debug().
 					Uint("client", rst.Client().ID()).
 					Str("last-bind-name", rst.lastBindName).
@@ -1312,6 +1313,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.savedPortalDesc[rst.lastBindName] = cachedPd
 				}
 			} else {
+
 				/* q.ObjectType == 'S' */
 				spqrlog.Zero.Debug().
 					Uint("client", rst.Client().ID()).
