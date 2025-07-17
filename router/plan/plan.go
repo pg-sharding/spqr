@@ -83,21 +83,21 @@ func (rf DataRowFilter) ExecutionTargets() []kr.ShardKey {
 	return rf.SubPlan.ExecutionTargets()
 }
 
-type CopyState struct {
+type CopyPlan struct {
 	Plan
 	ExecTargets []kr.ShardKey
 }
 
-func (cs CopyState) ExecutionTargets() []kr.ShardKey {
+func (cs CopyPlan) ExecutionTargets() []kr.ShardKey {
 	return cs.ExecTargets
 }
 
-type ReferenceRelationState struct {
+type ReferenceRelationScanPlan struct {
 	Plan
 	ExecTargets []kr.ShardKey
 }
 
-func (rrs ReferenceRelationState) ExecutionTargets() []kr.ShardKey {
+func (rrs ReferenceRelationScanPlan) ExecutionTargets() []kr.ShardKey {
 	return rrs.ExecTargets
 }
 
@@ -172,7 +172,7 @@ func Combine(p1, p2 Plan) Plan {
 		}
 	case RandomDispatchPlan:
 		return p2
-	case ReferenceRelationState:
+	case ReferenceRelationScanPlan:
 		return p2
 	case ShardDispatchPlan:
 		switch shq2 := p2.(type) {
@@ -180,7 +180,7 @@ func Combine(p1, p2 Plan) Plan {
 			return ScatterPlan{
 				ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
 			}
-		case ReferenceRelationState:
+		case ReferenceRelationScanPlan:
 			return p1
 		case ShardDispatchPlan:
 			if shq2.ExecTarget.Name == shq1.ExecTarget.Name {

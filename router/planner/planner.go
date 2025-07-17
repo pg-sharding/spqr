@@ -352,7 +352,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		/* XXX: should we forbid under separate setting?  */
 		return plan.ScatterPlan{}, nil
 	case *lyx.Copy:
-		return plan.CopyState{}, nil
+		return plan.CopyPlan{}, nil
 
 	case *lyx.ValueClause:
 		return plan.ScatterPlan{}, nil

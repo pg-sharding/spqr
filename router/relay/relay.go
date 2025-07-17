@@ -1128,31 +1128,33 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						return err
 					}
 					return nil
-				}
+				default:
 
-				rst.execute = func() error {
-					err := rst.PrepareRelayStepOnHintRoute(rst.bindQueryPlan)
-					if err != nil {
+					rst.execute = func() error {
+						err := rst.PrepareRelayStepOnHintRoute(rst.bindQueryPlan)
+						if err != nil {
+							return err
+						}
+
+						_, _, err = rst.DeployPrepStmt(q.PreparedStatement)
+						if err != nil {
+							return err
+						}
+
+						/* Case when no describe stmt was issued before Execute+Sync*/
+						rst.AddSilentQuery(&rst.saveBind)
+						// do not send saved bind twice
+
+						rst.AddQuery(pgexec)
+						rst.AddQuery(pgsync)
+						// do not complete relay here yet
+						_, err = rst.RelayFlush(true, true)
 						return err
 					}
 
-					_, _, err = rst.DeployPrepStmt(q.PreparedStatement)
-					if err != nil {
-						return err
-					}
-
-					/* Case when no describe stmt was issued before Execute+Sync*/
-					rst.AddSilentQuery(&rst.saveBind)
-					// do not send saved bind twice
-
-					rst.AddQuery(pgexec)
-					rst.AddQuery(pgsync)
-					// do not complete relay here yet
-					_, err = rst.RelayFlush(true, true)
-					return err
+					return nil
 				}
 
-				return nil
 			}, true /* cache parsing for prep statement */, false /* do not completeRelay*/)
 
 			if err != nil {

@@ -1305,7 +1305,7 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 				shs = r.ListStorageRoutes()
 			}
 
-			route = plan.Combine(route, plan.ReferenceRelationState{
+			route = plan.Combine(route, plan.ReferenceRelationScanPlan{
 				ExecTargets: shs,
 			})
 			continue
@@ -1510,7 +1510,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		ro = false
 		pl = plan.Combine(pl, rs)
 	case *lyx.Copy:
-		return plan.CopyState{}, false, nil
+		return plan.CopyPlan{}, false, nil
 	default:
 		return nil, false, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
@@ -1675,7 +1675,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 		return v, nil
 	case plan.RandomDispatchPlan:
 		return qr.SelectRandomRoute(qr.DataShardsRoutes())
-	case plan.ReferenceRelationState:
+	case plan.ReferenceRelationScanPlan:
 		/* check for unroutable here - TODO */
 
 		return qr.SelectRandomRoute(qr.DataShardsRoutes())
@@ -1683,7 +1683,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 		return plan.ScatterPlan{
 			ExecTargets: qr.DataShardsRoutes(),
 		}, nil
-	case plan.CopyState:
+	case plan.CopyPlan:
 		/* temporary */
 		return plan.ScatterPlan{
 			ExecTargets: qr.DataShardsRoutes(),
