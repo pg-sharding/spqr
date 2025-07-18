@@ -14,7 +14,7 @@ import (
 )
 
 type QueryRouter interface {
-	Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error)
+	PlanQuery(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error)
 
 	WorldShardsRoutes() []kr.ShardKey
 	DataShardsRoutes() []kr.ShardKey

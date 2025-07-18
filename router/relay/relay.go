@@ -561,9 +561,14 @@ func (rst *RelayStateImpl) Reroute() (plan.Plan, error) {
 		}
 	} else {
 		var err error
-		queryPlan, err = rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl)
+		queryPlan, err = rst.Qr.PlanQuery(context.TODO(), rst.qp.Stmt(), rst.Cl)
 		if err != nil {
 			return nil, fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
+		}
+		if rst.Client().ShowNoticeMsg() {
+			if err := rst.Client().ReplyNotice(fmt.Sprintf("selected query plan %T %+v", queryPlan, queryPlan)); err != nil {
+				return nil, err
+			}
 		}
 	}
 

@@ -1743,7 +1743,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 }
 
 // TODO : unit tests
-func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
+func (qr *ProxyQrouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
 
 	if !config.RouterConfig().Qr.AlwaysCheckRules {
 		if len(config.RouterConfig().ShardMapping) == 1 {
