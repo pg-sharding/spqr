@@ -206,7 +206,7 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 
 	insertCols := stmt.Columns
 
-	relation := ds.Relations[qualName.RelationName]
+	relation := ds.GetRelation(qualName)
 
 	tlUsable := len(offsets) == len(ds.ColTypes)
 	if len(routingList) > 0 {

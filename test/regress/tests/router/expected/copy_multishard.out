@@ -41,6 +41,9 @@ CREATE TABLE xx (i bigint, j bigint CHECK(j != 11));
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- check schema-qualified name
+COPY public.xx (i, j) FROM STDIN WITH DELIMITER '|';
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xx (i, j) VALUES(1,1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (i, j) VALUES(2,2);
