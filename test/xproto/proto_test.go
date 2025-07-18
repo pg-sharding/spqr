@@ -137,6 +137,10 @@ func SetupSharding() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
+	_, err = conn.Exec(context.Background(), "CREATE REFERENCE RELATION xproto_ref;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
 }
 
 func CreateTables() {
@@ -175,6 +179,11 @@ func CreateTables() {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
 	}
 	_, err = conn.Exec(context.Background(), "CREATE TABLE text_table (id text)")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
+	}
+
+	_, err = conn.Exec(context.Background(), "CREATE TABLE xproto_ref (a int, b int, c int)")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
 	}
@@ -1538,6 +1547,74 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 				&pgproto3.CommandComplete{
 
 					CommandTag: []byte("DROP SCHEMA"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+
+				&pgproto3.Parse{
+					Name:  "xproto_ddl_multishard_ref_rel_b",
+					Query: "BEGIN;",
+				},
+
+				&pgproto3.Parse{
+					Name:  "xproto_ddl_multishard_ref_rel_r",
+					Query: "ROLLBACK;",
+				},
+
+				&pgproto3.Parse{
+					Name:  "xproto_ddl_multishard_ref_rel_i",
+					Query: "INSERT INTO xproto_ref VALUES(1,2,3);",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "xproto_ddl_multishard_ref_rel_b",
+				},
+				&pgproto3.Describe{
+					Name:       "",
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{
+					PreparedStatement: "xproto_ddl_multishard_ref_rel_i",
+				},
+				&pgproto3.Describe{
+					Name:       "",
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{
+					PreparedStatement: "xproto_ddl_multishard_ref_rel_r",
+				},
+				&pgproto3.Describe{
+					Name:       "",
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
