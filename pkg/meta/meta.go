@@ -822,6 +822,9 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	case spqrparser.MoveStatsStr:
 		stats := statistics.GetMoveStats()
 		return cli.MoveStats(ctx, stats)
+	case spqrparser.Users:
+		return cli.Users(ctx)
+
 	default:
 		return ErrUnknownCoordinatorCommand
 	}
