@@ -360,6 +360,7 @@ const (
 	SequencesStr          = "sequences"
 	IsReadOnlyStr         = "is_read_only"
 	MoveStatsStr          = "move_stats"
+	Users                 = "users"
 )
 
 const (

@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -1773,6 +1774,38 @@ func (pi *PSQLInteractor) MoveStats(ctx context.Context, stats map[string]time.D
 	}
 
 	return pi.CompleteMsg(len(stats))
+}
+
+func (pi *PSQLInteractor) Users(ctx context.Context) error {
+	berules := config.RouterConfig().BackendRules
+	if err := pi.WriteHeader(
+		"user",
+		"dbname",
+		"connection_limit",
+		"connection_retries",
+		"connection_timeout",
+		"keep_alive",
+		"tcp_user_timeout",
+		"pulse_check_interval",
+	); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+	for _, berule := range berules {
+		if err := pi.WriteDataRow(
+			berule.Usr,
+			berule.DB,
+			fmt.Sprintf("%d", berule.ConnectionLimit),
+			fmt.Sprintf("%d", berule.ConnectionRetries),
+			berule.ConnectionTimeout.String(),
+			berule.KeepAlive.String(),
+			berule.TcpUserTimeout.String(),
+			berule.PulseCheckInterval.String(),
+		); err != nil {
+			return err
+		}
+	}
+	return pi.CompleteMsg(len(berules))
 }
 
 // Outputs groupBy get list values and counts its 'groupByCol' property.

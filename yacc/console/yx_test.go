@@ -144,6 +144,14 @@ func TestSimpleShow(t *testing.T) {
 				GroupBy: spqrparser.GroupByClauseEmpty{},
 			},
 		},
+		{
+			query: "SHOW users",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.Users,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
