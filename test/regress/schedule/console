@@ -18,3 +18,4 @@ test: default_distribution
 test: sequence
 test: alter_relation
 test: reference_table
+test: show_users
