@@ -863,10 +863,6 @@ var (
 	pgsync   = &pgproto3.Sync{}
 	pgNoData = &pgproto3.NoData{}
 
-	unnamedPortalDesc = &pgproto3.Describe{
-		ObjectType: 'P',
-	}
-
 	portalClose = &pgproto3.Close{
 		ObjectType: 'P',
 	}
