@@ -102,6 +102,21 @@ func (mr *MockQueryRouterMockRecorder) Mgr() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Mgr", reflect.TypeOf((*MockQueryRouter)(nil).Mgr))
 }
 
+// PlanQuery mocks base method.
+func (m *MockQueryRouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PlanQuery", ctx, stmt, sph)
+	ret0, _ := ret[0].(plan.Plan)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PlanQuery indicates an expected call of PlanQuery.
+func (mr *MockQueryRouterMockRecorder) PlanQuery(ctx, stmt, sph any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PlanQuery", reflect.TypeOf((*MockQueryRouter)(nil).PlanQuery), ctx, stmt, sph)
+}
+
 // Query mocks base method.
 func (m *MockQueryRouter) Query() *string {
 	m.ctrl.T.Helper()
@@ -114,21 +129,6 @@ func (m *MockQueryRouter) Query() *string {
 func (mr *MockQueryRouterMockRecorder) Query() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockQueryRouter)(nil).Query))
-}
-
-// Route mocks base method.
-func (m *MockQueryRouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Route", ctx, stmt, sph)
-	ret0, _ := ret[0].(plan.Plan)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Route indicates an expected call of Route.
-func (mr *MockQueryRouterMockRecorder) Route(ctx, stmt, sph any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Route", reflect.TypeOf((*MockQueryRouter)(nil).Route), ctx, stmt, sph)
 }
 
 // SchemaCache mocks base method.

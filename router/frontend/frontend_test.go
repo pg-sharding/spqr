@@ -111,7 +111,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 
-	qr.EXPECT().Route(gomock.Any(), &lyx.Select{
+	qr.EXPECT().PlanQuery(gomock.Any(), &lyx.Select{
 		TargetList: []lyx.Node{
 			&lyx.AExprIConst{Value: 1},
 		},
