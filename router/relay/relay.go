@@ -859,8 +859,9 @@ func (rst *RelayStateImpl) DeployPrepStmt(qname string) (*prepstatement.Prepared
 }
 
 var (
-	pgexec = &pgproto3.Execute{}
-	pgsync = &pgproto3.Sync{}
+	pgexec   = &pgproto3.Execute{}
+	pgsync   = &pgproto3.Sync{}
+	pgNoData = &pgproto3.NoData{}
 
 	unnamedPortalDesc = &pgproto3.Describe{
 		ObjectType: 'P',
@@ -1106,21 +1107,20 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					Str("last-bind-name", rst.lastBindName).
 					Msg("Describe portal")
 
-				if cachedPd, ok := rst.savedPortalDesc[rst.lastBindName]; ok {
-					if cachedPd.rd != nil {
+				if portDesc, ok := rst.savedPortalDesc[rst.lastBindName]; ok {
+					if portDesc.rd != nil {
 						// send to the client
-						if err := rst.Client().Send(cachedPd.rd); err != nil {
+						if err := rst.Client().Send(portDesc.rd); err != nil {
 							return err
 						}
 					}
-					if cachedPd.nodata != nil {
+					if portDesc.nodata != nil {
 						// send to the client
-						if err := rst.Client().Send(cachedPd.nodata); err != nil {
+						if err := rst.Client().Send(portDesc.nodata); err != nil {
 							return err
 						}
 					}
 				} else {
-					cachedPd = &PortalDesc{}
 
 					switch q := rst.bindQueryPlan.(type) {
 					case plan.ScatterPlan:
@@ -1128,37 +1128,34 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						/* XXX: shall we deploy prepared statement? */
 						/* XXX: only use prepared proto for plain scatter slice */
 
-						pd, err := sliceDescribePortal(rst.Client().Server(), currentMsg, &rst.saveBind)
+						cachedPd, err := sliceDescribePortal(rst.Client().Server(), currentMsg, &rst.saveBind)
 						if err != nil {
 							return err
 						}
-						if pd.RowDesc != nil {
+						if cachedPd.rd != nil {
 							// send to the client
-							if err := rst.Client().Send(pd.RowDesc); err != nil {
+							if err := rst.Client().Send(cachedPd.rd); err != nil {
 								return err
 							}
 						}
-						if pd.NoData {
+						if cachedPd.nodata != nil {
 							// send to the client
-							if err := rst.Client().Send(&pgproto3.NoData{}); err != nil {
+							if err := rst.Client().Send(cachedPd.nodata); err != nil {
 								return err
 							}
 						}
+
+						rst.savedPortalDesc[rst.lastBindName] = cachedPd
 					case plan.VirtualPlan:
 						// skip deploy
 
-						cachedPd.rd = &pgproto3.RowDescription{
-							Fields: q.VirtualRowCols,
-						}
-
 						// send to the client
-						if err := rst.Client().Send(cachedPd.rd); err != nil {
+						if err := rst.Client().Send(&pgproto3.RowDescription{
+							Fields: q.VirtualRowCols,
+						}); err != nil {
 							return err
 						}
 
-						cachedPd.nodata = nil
-
-						rst.savedPortalDesc[rst.lastBindName] = cachedPd
 					default:
 						/* SingleShard or random shard plans */
 
@@ -1171,19 +1168,19 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 							return err
 						}
 
-						pd, err := sliceDescribePortal(rst.Client().Server(), currentMsg, &rst.saveBind)
+						cachedPd, err := sliceDescribePortal(rst.Client().Server(), currentMsg, &rst.saveBind)
 						if err != nil {
 							return err
 						}
-						if pd.RowDesc != nil {
+						if cachedPd.rd != nil {
 							// send to the client
-							if err := rst.Client().Send(pd.RowDesc); err != nil {
+							if err := rst.Client().Send(cachedPd.rd); err != nil {
 								return err
 							}
 						}
-						if pd.NoData {
+						if cachedPd.nodata != nil {
 							// send to the client
-							if err := rst.Client().Send(&pgproto3.NoData{}); err != nil {
+							if err := rst.Client().Send(cachedPd.nodata); err != nil {
 								return err
 							}
 						}

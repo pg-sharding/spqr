@@ -5,11 +5,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/router/server"
 )
 
-func sliceDescribePortal(serv server.Server, portalDesc *pgproto3.Describe, bind *pgproto3.Bind) (*prepstatement.PreparedStatementDescriptor, error) {
+func sliceDescribePortal(serv server.Server, portalDesc *pgproto3.Describe, bind *pgproto3.Bind) (*PortalDesc, error) {
 
 	shards := serv.Datashards()
 	if len(shards) == 0 {
@@ -32,15 +31,11 @@ func sliceDescribePortal(serv server.Server, portalDesc *pgproto3.Describe, bind
 		return nil, err
 	}
 
-	if err := serv.SendShard(&pgproto3.Sync{}, shkey); err != nil {
+	if err := serv.SendShard(pgsync, shkey); err != nil {
 		return nil, err
 	}
 
-	rd := &prepstatement.PreparedStatementDescriptor{
-		NoData:    false,
-		RowDesc:   nil,
-		ParamDesc: nil,
-	}
+	rd := &PortalDesc{}
 	var saveCloseComplete *pgproto3.CloseComplete
 
 recvLoop:
@@ -59,22 +54,22 @@ recvLoop:
 		case *pgproto3.ErrorResponse:
 			return nil, fmt.Errorf("error describing slice portal: \"%s\"", q.Message)
 		case *pgproto3.NoData:
-			rd.NoData = true
+			rd.nodata = pgNoData
 		case *pgproto3.CloseComplete:
 			saveCloseComplete = q
 
 		case *pgproto3.RowDescription:
 			// copy
-			rd.RowDesc = &pgproto3.RowDescription{}
+			rd.rd = &pgproto3.RowDescription{}
 
-			rd.RowDesc.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
+			rd.rd.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
 
 			for i := range len(q.Fields) {
 				s := make([]byte, len(q.Fields[i].Name))
 				copy(s, q.Fields[i].Name)
 
-				rd.RowDesc.Fields[i] = q.Fields[i]
-				rd.RowDesc.Fields[i].Name = s
+				rd.rd.Fields[i] = q.Fields[i]
+				rd.rd.Fields[i].Name = s
 			}
 		default:
 			return nil, fmt.Errorf("received unexpected message type %T", msg)
