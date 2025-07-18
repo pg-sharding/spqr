@@ -3,6 +3,7 @@
 ^\Q.github/actions/spelling/
 ^\Q.github/actions/spelling/expect.txt\E$
 ^\Q.github/actions/workflows/spelling.yaml\E?$
+^\Qdocker/router/init.sql\E$
 ^\Qgo.sum\E$
 ^docker/router/ssl/
 ^yacc/console/gram.go$

@@ -45,11 +45,12 @@ services:
         container_name: spqr_shard_2_replica
     router:
         build:
-            dockerfile: docker/router/Dockerfile
+            dockerfile: ./test/xproto/router/Dockerfile
             context: ../../
         ports:
             - "6432:6432"
-        command: ["--config", "/spqr/test/xproto/conf/router.yaml"]
+        environment:
+            - ROUTER_CONFIG=/spqr/test/xproto/conf/router.yaml
         hostname: regress_router
         container_name: regress_router
         depends_on:
@@ -69,7 +70,8 @@ services:
         ports:
             - "7002:7002"
             - "7003:7003"
-        command: [ "-c", "/spqr/test/regress/conf/coordinator.yaml" ]
+        environment:
+            - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
         hostname: regress_coordinator
         container_name: regress_coordinator
         depends_on:

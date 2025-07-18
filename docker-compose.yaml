@@ -126,7 +126,10 @@ services:
             - "7013:7000"
         hostname: spqr_router_1_1
         container_name: spqr_router_1_1
-        command: ["--config", "/spqr/docker/router/cfg.yaml", "--coordinator-config", "/spqr/docker/coordinator/cfg.yaml"]
+        environment:
+            - ROUTER_CONFIG=/spqr/docker/router/cfg.yaml
+            - COORDINATOR_CONFIG=/spqr/docker/coordinator/cfg.yaml
+            - ROUTER_LOG=/var/log/spqr-router.log 
     router2:
         build:
             dockerfile: ./docker/router/Dockerfile
@@ -136,7 +139,10 @@ services:
             - "7023:7003"
         hostname: spqr_router_1_2
         container_name: spqr_router_1_2
-        command: ["--config", "/spqr/docker/router/cfg2.yaml", "--coordinator-config", "/spqr/docker/coordinator/cfg.yaml"]
+        environment:
+            - ROUTER_CONFIG=/spqr/docker/router/cfg2.yaml
+            - COORDINATOR_CONFIG=/spqr/docker/coordinator/cfg2.yaml
+            - ROUTER_LOG=/var/log/spqr-router.log 
     slicer:
         build:
             dockerfile: ./docker/slicer/Dockerfile
