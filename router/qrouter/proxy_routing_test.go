@@ -266,7 +266,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		dh := session.NewDummyHandler(distribution)
 		dh.SetEnhancedMultiShardProcessing(false, true)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, dh)
+		tmp, err := pr.PlanQuery(context.TODO(), parserRes, dh)
 
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
@@ -387,7 +387,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		dh.SetEnhancedMultiShardProcessing(false, true)
 		pr.SetQuery(&tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, dh)
+		tmp, err := pr.PlanQuery(context.TODO(), parserRes, dh)
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
 
