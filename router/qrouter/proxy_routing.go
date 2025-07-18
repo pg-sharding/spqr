@@ -1263,7 +1263,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 			entries[q.ColName] = struct{}{}
 		}
 	}
-	rel, ok := ds.Relations[relname.RelationName]
+	rel, ok := ds.TryGetRelation(relname)
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" not present in distribution \"%s\" it's attached to", relname, ds.Id)
 	}
@@ -1311,7 +1311,7 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 			continue
 		}
 
-		relation, exists := ds.Relations[qualName.RelationName]
+		relation, exists := ds.TryGetRelation(&qualName)
 		if !exists {
 			return nil, fmt.Errorf("relation %s not found in distribution %s", qualName.RelationName, ds.Id)
 		}

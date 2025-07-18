@@ -38,6 +38,10 @@ COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
 9223372036854775806|9223372036854775806
 \.
 
+-- check schema-qualified name
+COPY public.xx (i, j) FROM STDIN WITH DELIMITER '|';
+\.
+
 INSERT INTO xx (i, j) VALUES(1,1);
 INSERT INTO xx (i, j) VALUES(2,2);
 INSERT INTO xx (i, j) VALUES(3,3);

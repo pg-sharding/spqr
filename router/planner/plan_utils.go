@@ -78,7 +78,7 @@ func ProcessInsertFromSelectOffsets(
 			insertColsPos[c] = i
 		}
 
-		distributionKey := ds.Relations[curr_rfqn.RelationName].DistributionKey
+		distributionKey := ds.GetRelation(curr_rfqn).DistributionKey
 		// TODO: check mapping by rules with multiple columns
 		for _, col := range distributionKey {
 			if val, ok := insertColsPos[col.Column]; !ok {

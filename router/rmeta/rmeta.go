@@ -316,7 +316,7 @@ func (rm *RoutingMetadataContext) GetDistributionKeyOffsetType(resolvedRelation 
 		return -1, ""
 	}
 	// TODO: optimize
-	relation, exists := ds.Relations[resolvedRelation.RelationName]
+	relation, exists := ds.TryGetRelation(resolvedRelation)
 	if !exists {
 		return -1, ""
 	}

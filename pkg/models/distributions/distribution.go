@@ -176,6 +176,15 @@ type Distribution struct {
 	Relations map[string]*DistributedRelation
 }
 
+func (s *Distribution) GetRelation(relname *rfqn.RelationFQN) *DistributedRelation {
+	return s.Relations[relname.RelationName]
+}
+
+func (s *Distribution) TryGetRelation(relname *rfqn.RelationFQN) (*DistributedRelation, bool) {
+	r, ok := s.Relations[relname.RelationName]
+	return r, ok
+}
+
 // local table sharding distr -> route to world
 
 // NewDistribution creates a new Distribution with the specified ID and column types.
