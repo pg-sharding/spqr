@@ -1022,26 +1022,28 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 				switch queryPlan.(type) {
 				case plan.ScatterPlan:
-					routes := rst.Qr.DataShardsRoutes()
-					if err := rst.procRoutes(routes); err != nil {
-						return err
-					}
-
-					pstmt := rst.Client().PreparedStatementDefinitionByName(currentMsg.PreparedStatement)
-					hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
-					pstmt.Name = fmt.Sprintf("%d", hash)
-					currentMsg.PreparedStatement = pstmt.Name
-					err := rst.multishardPrepareScatter(hash, pstmt)
-					if err != nil {
-						return err
-					}
 
 					rst.execute = func() error {
+
+						routes := queryPlan.ExecutionTargets()
+						if err := rst.procRoutes(routes); err != nil {
+							return err
+						}
+
+						pstmt := rst.Client().PreparedStatementDefinitionByName(currentMsg.PreparedStatement)
+						hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
+						pstmt.Name = fmt.Sprintf("%d", hash)
+						currentMsg.PreparedStatement = pstmt.Name
+						err := rst.multishardPrepareScatter(hash, pstmt)
+						if err != nil {
+							return err
+						}
+
 						rst.AddQuery(msg)
 						rst.AddQuery(pgexec)
 						rst.AddQuery(pgsync)
 
-						_, err := rst.RelayFlush(true, true)
+						_, err = rst.RelayFlush(true, true)
 						// do not complete relay here yet
 						return err
 					}
@@ -1130,6 +1132,19 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 						/* XXX: shall we deploy prepared statement? */
 						/* XXX: only use prepared proto for plain scatter slice */
+
+						routes := rst.bindQueryPlan.ExecutionTargets()
+						if err := rst.procRoutes(routes); err != nil {
+							return err
+						}
+
+						pstmt := rst.Client().PreparedStatementDefinitionByName(rst.lastBindName)
+						hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
+
+						err := rst.multishardPrepareScatter(hash, pstmt)
+						if err != nil {
+							return err
+						}
 
 						cachedPd, err := sliceDescribePortal(rst.Client().Server(), currentMsg, &rst.saveBind)
 						if err != nil {

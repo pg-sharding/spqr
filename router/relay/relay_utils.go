@@ -35,7 +35,7 @@ func sliceDescribePortal(serv server.Server, portalDesc *pgproto3.Describe, bind
 		return nil, err
 	}
 
-	rd := &PortalDesc{}
+	pd := &PortalDesc{}
 	var saveCloseComplete *pgproto3.CloseComplete
 
 recvLoop:
@@ -54,22 +54,22 @@ recvLoop:
 		case *pgproto3.ErrorResponse:
 			return nil, fmt.Errorf("error describing slice portal: \"%s\"", q.Message)
 		case *pgproto3.NoData:
-			rd.nodata = pgNoData
+			pd.nodata = pgNoData
 		case *pgproto3.CloseComplete:
 			saveCloseComplete = q
 
 		case *pgproto3.RowDescription:
 			// copy
-			rd.rd = &pgproto3.RowDescription{}
+			pd.rd = &pgproto3.RowDescription{}
 
-			rd.rd.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
+			pd.rd.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
 
 			for i := range len(q.Fields) {
 				s := make([]byte, len(q.Fields[i].Name))
 				copy(s, q.Fields[i].Name)
 
-				rd.rd.Fields[i] = q.Fields[i]
-				rd.rd.Fields[i].Name = s
+				pd.rd.Fields[i] = q.Fields[i]
+				pd.rd.Fields[i].Name = s
 			}
 		default:
 			return nil, fmt.Errorf("received unexpected message type %T", msg)
@@ -80,5 +80,5 @@ recvLoop:
 		return nil, fmt.Errorf("portal was not closed after describe")
 	}
 
-	return rd, nil
+	return pd, nil
 }
