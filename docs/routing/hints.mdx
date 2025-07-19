@@ -144,6 +144,16 @@ DELETE FROM users WHERE name = 'denchick'
 /* __spqr__distribution: ds1,__spqr__sharding_key: 123 */;
 ```
 
+### __spqr__distributed_relation
+
+The `__spqr__distributed_relation` is name of distributed relation in context of which query meant to be executed. Is takes effect when distribution contains both CITY and MURMUR hash based sharding
+
+```sql
+DELETE FROM users WHERE name = 'denchick'
+/* __spqr__distribution: ds1,__spqr__distributed_relation: users,__spqr__sharding_key: 123 */;
+```
+
+
 ### __spqr__auto_distribution
 
 The `__spqr__auto_distribution` parameter is used to automatically adding new table in SPQR metadata without going into the spqr-console.

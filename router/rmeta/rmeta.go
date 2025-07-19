@@ -298,23 +298,40 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (routehi
 
 		dRel := rm.SPH.DistributedRelation()
 
-		if dRel == "" {
+		hf := hashfunction.HashFunctionIdent
+
+		if dRel != "" {
 			relName, err := rfqn.ParseFQN(dRel)
 			if err != nil {
 				return nil, err
 			}
 			r, ok := distrib.TryGetRelation(relName)
 			if ok {
-				hf, err := hashfunction.HashFunctionByName(r.DistributionKey[0].HashFunction)
-				if err != nil {
-					return nil, err
-				}
-
-				compositeKey[0], err = hashfunction.ApplyHashFunction(compositeKey[0], distrib.ColTypes[0], hf)
+				hf, err = hashfunction.HashFunctionByName(r.DistributionKey[0].HashFunction)
 				if err != nil {
 					return nil, err
 				}
 			}
+		} else {
+			first := true
+			for _, dr := range distrib.Relations {
+				hfLocal, err := hashfunction.HashFunctionByName(dr.DistributionKey[0].HashFunction)
+				if err != nil {
+					return nil, err
+				}
+				if first {
+					hf = hfLocal
+				} else {
+					if hf != hfLocal {
+						return nil, fmt.Errorf("failed to resolve hint hash function")
+					}
+				}
+			}
+		}
+
+		compositeKey[0], err = hashfunction.ApplyHashFunction(compositeKey[0], distrib.ColTypes[0], hf)
+		if err != nil {
+			return nil, err
 		}
 
 		ds, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
