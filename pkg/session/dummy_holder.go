@@ -18,6 +18,16 @@ type DummySessionParamHandler struct {
 	eo       string
 }
 
+// DistributedRelation implements SessionParamsHolder.
+func (t *DummySessionParamHandler) DistributedRelation() string {
+	return "dummy"
+}
+
+// SetDistributedRelation implements SessionParamsHolder.
+func (t *DummySessionParamHandler) SetDistributedRelation(local bool, val string) {
+
+}
+
 // DB implements SessionParamsHolder.
 func (t *DummySessionParamHandler) DB() string {
 	return "dummy"

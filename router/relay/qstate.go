@@ -145,6 +145,9 @@ func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error
 			case session.SPQR_DISTRIBUTION:
 				spqrlog.Zero.Debug().Str("distribution", val).Msg("parse distribution from comment")
 				rst.Client().SetDistribution(true, val)
+			case session.SPQR_DISTRIBUTED_RELATION:
+				spqrlog.Zero.Debug().Str("distributed relation", val).Msg("parse distributed relation from comment")
+				rst.Client().SetDistributedRelation(true, val)
 			case session.SPQR_SCATTER_QUERY:
 				/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
 				spqrlog.Zero.Debug().Str("scatter query", val).Msg("parse scatter query from comment")
@@ -270,6 +273,8 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			switch name {
 			case session.SPQR_DISTRIBUTION:
 				rst.Client().SetDistribution(false, st.Value)
+			case session.SPQR_DISTRIBUTED_RELATION:
+				rst.Client().SetDistributedRelation(false, st.Value)
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
 				rst.Client().SetDefaultRouteBehaviour(false, st.Value)
 			case session.SPQR_SHARDING_KEY:
@@ -335,6 +340,14 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				&pgproto3.ErrorResponse{
 					Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
 						session.SPQR_DISTRIBUTION),
+					Severity: "ERROR",
+					Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
+				})
+		case session.SPQR_DISTRIBUTED_RELATION:
+			return pd, rst.Client().Send(
+				&pgproto3.ErrorResponse{
+					Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
+						session.SPQR_DISTRIBUTED_RELATION),
 					Severity: "ERROR",
 					Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
 				})

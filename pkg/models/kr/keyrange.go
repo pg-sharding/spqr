@@ -106,7 +106,7 @@ func (kr *KeyRange) SendFunc(attribInd int) string {
 	switch kr.ColumnTypes[attribInd] {
 	case qdb.ColumnTypeInteger:
 		fallthrough
-		/* Is uint */
+	/* Is uint */
 	case qdb.ColumnTypeVarcharHashed:
 		fallthrough
 	case qdb.ColumnTypeUinteger:
@@ -121,10 +121,11 @@ func (kr *KeyRange) RecvFunc(attribInd int, val string) error {
 	switch kr.ColumnTypes[attribInd] {
 	case qdb.ColumnTypeVarcharDeprecated:
 		fallthrough
+		/* XXX: check if this is actually sane */
+	case qdb.ColumnTypeVarcharHashed: /* is varchar */
+		fallthrough
 	case qdb.ColumnTypeVarchar:
 		kr.LowerBound[attribInd] = val
-	case qdb.ColumnTypeVarcharHashed: /* is uint */
-		fallthrough
 	case qdb.ColumnTypeUinteger:
 		kr.LowerBound[attribInd], err = strconv.ParseUint(val, 10, 64)
 		if err != nil {
@@ -163,7 +164,7 @@ func (kr *KeyRange) SendRaw() []string {
 }
 
 func (kr *KeyRange) RecvRaw(vals []string) error {
-	kr.LowerBound = make([]interface{}, len(kr.ColumnTypes))
+	kr.LowerBound = make([]any, len(kr.ColumnTypes))
 
 	for i := range len(kr.ColumnTypes) {
 		err := kr.RecvFunc(i, vals[i])
@@ -175,7 +176,7 @@ func (kr *KeyRange) RecvRaw(vals []string) error {
 	return nil
 }
 
-func KeyRangeBoundFromStrings(colTypes []string, vals []string) ([]interface{}, error) {
+func KeyRangeBoundFromStrings(colTypes []string, vals []string) ([]any, error) {
 	kr := &KeyRange{
 		ColumnTypes: colTypes,
 	}
