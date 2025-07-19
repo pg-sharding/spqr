@@ -7,6 +7,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/session"
@@ -262,7 +263,7 @@ func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context
 	return kr.ShardKey{}, fmt.Errorf("failed to match key with ranges")
 }
 
-func (rm *RoutingMetadataContext) ResolveRouteHint() (routehint.RouteHint, error) {
+func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (routehint.RouteHint, error) {
 	if rm.SPH.ScatterQuery() {
 		return &routehint.ScatterRouteHint{}, nil
 	}
@@ -274,7 +275,6 @@ func (rm *RoutingMetadataContext) ResolveRouteHint() (routehint.RouteHint, error
 			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "sharding key in comment without distribution")
 		}
 
-		ctx := context.TODO()
 		krs, err := rm.Mgr.ListKeyRanges(ctx, dsId)
 		if err != nil {
 			return nil, err
@@ -285,11 +285,36 @@ func (rm *RoutingMetadataContext) ResolveRouteHint() (routehint.RouteHint, error
 			return nil, err
 		}
 
+		if len(distrib.ColTypes) > 1 {
+			return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "multi-column sharding key in comment no supported yet")
+		}
+
 		// TODO: fix this
 		compositeKey, err := kr.KeyRangeBoundFromStrings(distrib.ColTypes, []string{val})
 
 		if err != nil {
 			return nil, err
+		}
+
+		dRel := rm.SPH.DistributedRelation()
+
+		if dRel == "" {
+			relName, err := rfqn.ParseFQN(dRel)
+			if err != nil {
+				return nil, err
+			}
+			r, ok := distrib.TryGetRelation(relName)
+			if ok {
+				hf, err := hashfunction.HashFunctionByName(r.DistributionKey[0].HashFunction)
+				if err != nil {
+					return nil, err
+				}
+
+				compositeKey[0], err = hashfunction.ApplyHashFunction(compositeKey[0], distrib.ColTypes[0], hf)
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
 
 		ds, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)

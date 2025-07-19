@@ -40,5 +40,6 @@ func ParseFQN(str string) (*RelationFQN, error) {
 		}
 		return &RelationFQN{SchemaName: schema, RelationName: table}, nil
 	}
+	/* TODO: support 3 dots: db.schema.relation */
 	return nil, fmt.Errorf("invalid qualified name='%v' (case1)", str)
 }

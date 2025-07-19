@@ -175,7 +175,7 @@ func (kr *KeyRange) RecvRaw(vals []string) error {
 	return nil
 }
 
-func KeyRangeBoundFromStrings(colTypes []string, vals []string) ([]interface{}, error) {
+func KeyRangeBoundFromStrings(colTypes []string, vals []string) ([]any, error) {
 	kr := &KeyRange{
 		ColumnTypes: colTypes,
 	}

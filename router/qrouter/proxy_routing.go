@@ -1334,7 +1334,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		return plan.RandomDispatchPlan{}, false, nil
 	}
 
-	rh, err := rm.ResolveRouteHint()
+	rh, err := rm.ResolveRouteHint(ctx)
 
 	if err != nil {
 		return nil, false, err

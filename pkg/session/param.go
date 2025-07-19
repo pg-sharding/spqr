@@ -21,8 +21,12 @@ type SessionParamsHolder interface {
 	DistributionKey() string
 
 	// Get current session distribution
+
 	SetDistribution(local bool, val string)
 	Distribution() string
+
+	SetDistributedRelation(local bool, val string)
+	DistributedRelation() string
 
 	SetExecuteOn(local bool, val string)
 	ExecuteOn() string
@@ -57,6 +61,7 @@ type SessionParamsHolder interface {
 
 const (
 	SPQR_DISTRIBUTION            = "__spqr__distribution"
+	SPQR_DISTRIBUTED_RELATION    = "__spqr__distributed_relation"
 	SPQR_DEFAULT_ROUTE_BEHAVIOUR = "__spqr__default_route_behaviour"
 	SPQR_AUTO_DISTRIBUTION       = "__spqr__auto_distribution"
 	SPQR_DISTRIBUTION_KEY        = "__spqr__distribution_key"

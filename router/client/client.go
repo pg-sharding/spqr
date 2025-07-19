@@ -148,6 +148,16 @@ func (cl *PsqlClient) Distribution() string {
 	return cl.resolveVirtualStringParam(session.SPQR_DISTRIBUTION)
 }
 
+// SetDistributedRelation implements RouterClient.
+func (cl *PsqlClient) SetDistributedRelation(local bool, val string) {
+	cl.recordVirtualParam(local, session.SPQR_DISTRIBUTED_RELATION, val)
+}
+
+// DistributedRelation implements RouterClient.
+func (cl *PsqlClient) DistributedRelation() string {
+	return cl.resolveVirtualStringParam(session.SPQR_DISTRIBUTED_RELATION)
+}
+
 // SetExecuteOn implements RouterClient.
 func (cl *PsqlClient) SetExecuteOn(local bool, val string) {
 	cl.recordVirtualParam(local, session.SPQR_EXECUTE_ON, val)

@@ -56,7 +56,7 @@ func EncodeUInt64(input uint64) []byte {
 	return buf
 }
 
-func ApplyHashFunction(input interface{}, ctype string, hf HashFunctionType) (interface{}, error) {
+func ApplyHashFunction(input any, ctype string, hf HashFunctionType) (any, error) {
 
 	switch hf {
 	case HashFunctionIdent:
