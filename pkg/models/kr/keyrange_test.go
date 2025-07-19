@@ -114,8 +114,8 @@ func TestGetKRCondition(t *testing.T) {
 					{Column: "col1", HashFunction: "murmur"},
 				},
 			},
-			krg:        &kr.KeyRange{ID: "kr1", LowerBound: []interface{}{0}, ColumnTypes: []string{"varchar hashed"}},
-			upperBound: []interface{}{1000},
+			krg:        &kr.KeyRange{ID: "kr1", LowerBound: []any{0}, ColumnTypes: []string{"varchar hashed"}},
+			upperBound: []any{1000},
 			prefix:     "",
 			expected:   "(hash_string(col1, 'murmur3') + 2147483648) >= 0 AND (hash_string(col1, 'murmur3') + 2147483648) < 1000",
 			err:        nil,
@@ -143,8 +143,8 @@ func TestGetKRCondition(t *testing.T) {
 			assert.NoError(err)
 		}
 		assert.Equal(
-			cond,
 			c.expected,
+			cond,
 			"test case %d", i,
 		)
 	}

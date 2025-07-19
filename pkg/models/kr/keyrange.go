@@ -106,6 +106,9 @@ func (kr *KeyRange) SendFunc(attribInd int) string {
 	switch kr.ColumnTypes[attribInd] {
 	case qdb.ColumnTypeInteger:
 		fallthrough
+	/* Is uint */
+	case qdb.ColumnTypeVarcharHashed:
+		fallthrough
 	case qdb.ColumnTypeUinteger:
 		return fmt.Sprintf("%v", kr.LowerBound[attribInd])
 	default:
@@ -118,6 +121,7 @@ func (kr *KeyRange) RecvFunc(attribInd int, val string) error {
 	switch kr.ColumnTypes[attribInd] {
 	case qdb.ColumnTypeVarcharDeprecated:
 		fallthrough
+		/* XXX: check if this is actually sane */
 	case qdb.ColumnTypeVarcharHashed: /* is varchar */
 		fallthrough
 	case qdb.ColumnTypeVarchar:
