@@ -106,9 +106,6 @@ func (kr *KeyRange) SendFunc(attribInd int) string {
 	switch kr.ColumnTypes[attribInd] {
 	case qdb.ColumnTypeInteger:
 		fallthrough
-		/* Is uint */
-	case qdb.ColumnTypeVarcharHashed:
-		fallthrough
 	case qdb.ColumnTypeUinteger:
 		return fmt.Sprintf("%v", kr.LowerBound[attribInd])
 	default:
@@ -163,7 +160,7 @@ func (kr *KeyRange) SendRaw() []string {
 }
 
 func (kr *KeyRange) RecvRaw(vals []string) error {
-	kr.LowerBound = make([]interface{}, len(kr.ColumnTypes))
+	kr.LowerBound = make([]any, len(kr.ColumnTypes))
 
 	for i := range len(kr.ColumnTypes) {
 		err := kr.RecvFunc(i, vals[i])

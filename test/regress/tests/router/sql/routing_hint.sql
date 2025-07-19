@@ -19,14 +19,14 @@ INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30, __spqr__di
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000, __spqr__distribution: ds1  */;
 
 CREATE TABLE test_h(id TEXT, age int);
-INSERT INTO test_h(id, age) VALUES ('a1210', 16) /*__spqr__sharding_key: a1210, __spqr__distribution: ds1  */;
-SELECT * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds1  */;
+INSERT INTO test_h(id, age) VALUES ('a1210', 16) /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
+SELECT * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
 
-INSERT INTO test_h(id, age) VALUES ('a12101', 16) /*__spqr__sharding_key: a12101, __spqr__distribution: ds1  */;
-SELECT * FROM test_h /*__spqr__sharding_key: a12101, __spqr__distribution: ds1  */;
+INSERT INTO test_h(id, age) VALUES ('a12101', 16) /*__spqr__sharding_key: a12101, __spqr__distribution: ds2  */;
+SELECT * FROM test_h /*__spqr__sharding_key: a12101, __spqr__distribution: ds2  */;
 
-INSERT INTO test_h(id, age) VALUES ('a121012', 16) /*__spqr__sharding_key: a121012, __spqr__distribution: ds1  */;
-SELECT * FROM test_h /*__spqr__sharding_key: a121012, __spqr__distribution: ds1  */;
+INSERT INTO test_h(id, age) VALUES ('a121012', 16) /*__spqr__sharding_key: a121012, __spqr__distribution: ds2  */;
+SELECT * FROM test_h /*__spqr__sharding_key: a121012, __spqr__distribution: ds2  */;
 
 
 -- test transaction support for route-local variables;
