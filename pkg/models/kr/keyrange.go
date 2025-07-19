@@ -121,10 +121,10 @@ func (kr *KeyRange) RecvFunc(attribInd int, val string) error {
 	switch kr.ColumnTypes[attribInd] {
 	case qdb.ColumnTypeVarcharDeprecated:
 		fallthrough
+	case qdb.ColumnTypeVarcharHashed: /* is varchar */
+		fallthrough
 	case qdb.ColumnTypeVarchar:
 		kr.LowerBound[attribInd] = val
-	case qdb.ColumnTypeVarcharHashed: /* is uint */
-		fallthrough
 	case qdb.ColumnTypeUinteger:
 		kr.LowerBound[attribInd], err = strconv.ParseUint(val, 10, 64)
 		if err != nil {

@@ -6,9 +6,9 @@ CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
 
 CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;
-CREATE KEY RANGE krid2 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds2;
-CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds2;
-CREATE DISTRIBUTED RELATION test_h DISTRIBUTION KEY id IN ds2;
+CREATE KEY RANGE krid22 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds2;
+CREATE KEY RANGE krid11 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds2;
+CREATE DISTRIBUTED RELATION test_h DISTRIBUTION KEY id HASH FUNCTION MURMUR IN ds2;
 
 \c regress
 
@@ -19,14 +19,14 @@ INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30, __spqr__di
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000, __spqr__distribution: ds1  */;
 
 CREATE TABLE test_h(id TEXT, age int);
-INSERT INTO test_h(id, age) VALUES ('1210', 16) /*__spqr__sharding_key: '1210', __spqr__distribution: ds1  */;
-SELECT * FROM test_h /*__spqr__sharding_key: '1210', __spqr__distribution: ds1  */;
+INSERT INTO test_h(id, age) VALUES ('a1210', 16) /*__spqr__sharding_key: a1210, __spqr__distribution: ds1  */;
+SELECT * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds1  */;
 
-INSERT INTO test_h(id, age) VALUES ('12101', 16) /*__spqr__sharding_key: '12101', __spqr__distribution: ds1  */;
-SELECT * FROM test_h /*__spqr__sharding_key: '12101', __spqr__distribution: ds1  */;
+INSERT INTO test_h(id, age) VALUES ('a12101', 16) /*__spqr__sharding_key: a12101, __spqr__distribution: ds1  */;
+SELECT * FROM test_h /*__spqr__sharding_key: a12101, __spqr__distribution: ds1  */;
 
-INSERT INTO test_h(id, age) VALUES ('121012', 16) /*__spqr__sharding_key: '121012', __spqr__distribution: ds1  */;
-SELECT * FROM test_h /*__spqr__sharding_key: '121012', __spqr__distribution: ds1  */;
+INSERT INTO test_h(id, age) VALUES ('a121012', 16) /*__spqr__sharding_key: a121012, __spqr__distribution: ds1  */;
+SELECT * FROM test_h /*__spqr__sharding_key: a121012, __spqr__distribution: ds1  */;
 
 
 -- test transaction support for route-local variables;
@@ -114,6 +114,7 @@ SELECT 1 FROM test WHERE id IN (5, 25) /* __spqr__scatter_query: true */;
 \c regress
 
 DROP TABLE test;
+DROP TABLE test_h;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
