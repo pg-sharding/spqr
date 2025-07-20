@@ -41,7 +41,7 @@ func NewRouterPoolImpl(shardMapping map[string]*config.Shard) *RoutePoolImpl {
 }
 
 // TODO : unit tests
-func (r *RoutePoolImpl) ForEach(cb func(sh shard.ShardHostInfo) error) error {
+func (r *RoutePoolImpl) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 	return r.NotifyRoutes(func(route *route.Route) (bool, error) {
 		return true, route.ServPool().ForEach(cb)
 	})

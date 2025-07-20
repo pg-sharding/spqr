@@ -267,7 +267,7 @@ func (h *shardHostPool) Put(sh shard.ShardHostInstance) error {
 //   - error: The error that occurred during the iteration.
 //
 // TODO : unit tests
-func (h *shardHostPool) ForEach(cb func(sh shard.ShardHostInfo) error) error {
+func (h *shardHostPool) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -314,7 +314,7 @@ func (c *cPool) ID() uint {
 //
 // Returns:
 //   - MultiShardPool: The created MultiShardPool.
-func NewPool(allocFn ConnectionAllocFn) MultiShardPool {
+func NewPool(allocFn ConnectionAllocFn) ShardHostsPool {
 	rt := &cPool{
 		pools: sync.Map{},
 		alloc: allocFn,
@@ -334,7 +334,7 @@ func NewPool(allocFn ConnectionAllocFn) MultiShardPool {
 //   - error: The error that occurred during the iteration.
 //
 // TODO : unit tests
-func (c *cPool) ForEach(cb func(sh shard.ShardHostInfo) error) error {
+func (c *cPool) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 	c.pools.Range(func(key, value any) bool {
 		_ = value.(Pool).ForEach(cb)
 		return true
@@ -440,4 +440,4 @@ func (c *cPool) SetRule(rule *config.BackendRule) {
 	c.beRule = rule
 }
 
-var _ MultiShardPool = &cPool{}
+var _ ShardHostsPool = &cPool{}

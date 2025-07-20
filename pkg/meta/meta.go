@@ -560,8 +560,21 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		return processAlter(ctx, stmt.Element, mgr, cli)
 	case *spqrparser.RedistributeKeyRange:
 		return processRedistribute(ctx, stmt, mgr, cli)
-	case *spqrparser.InvalidateCache:
-		mgr.Cache().Reset()
+	case *spqrparser.Invalidate:
+		switch stmt.Target {
+		case spqrparser.SchemaCacheInvalTarget:
+			mgr.Cache().Reset()
+
+		case spqrparser.BackendConnectionsInvalTarget:
+			if err := ci.ForEachPool(func(p pool.Pool) error {
+				return p.ForEach(func(sh shard.ShardHostCtl) error {
+					sh.MarkStale() /* request backend invalidation */
+					return nil
+				})
+			}); err != nil {
+				return err
+			}
+		}
 		return cli.CompleteMsg(0)
 	case *spqrparser.RetryMoveTaskGroup:
 		taskGroup, err := mgr.GetMoveTaskGroup(ctx)
@@ -642,8 +655,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	switch stmt.Cmd {
 	case spqrparser.BackendConnectionsStr:
 
-		var resp []shard.ShardHostInfo
-		if err := ci.ForEach(func(sh shard.ShardHostInfo) error {
+		var resp []shard.ShardHostCtl
+		if err := ci.ForEach(func(sh shard.ShardHostCtl) error {
 			resp = append(resp, sh)
 			return nil
 		}); err != nil {
@@ -786,7 +799,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	case spqrparser.PreparedStatementsStr:
 
 		var resp []shard.PreparedStatementsMgrDescriptor
-		if err := ci.ForEach(func(sh shard.ShardHostInfo) error {
+		if err := ci.ForEach(func(sh shard.ShardHostCtl) error {
 			resp = append(resp, sh.ListPreparedStatements()...)
 			return nil
 		}); err != nil {

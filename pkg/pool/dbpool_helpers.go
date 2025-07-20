@@ -13,7 +13,7 @@ import (
  */
 
 // TODO: add shuffle host support here
-func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, tsaRecheckDuration time.Duration) *DBPool {
+func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp ShardHostsPool, tsaRecheckDuration time.Duration) *DBPool {
 	dbPool := &DBPool{
 		pool:         mp,
 		shardMapping: mapping,

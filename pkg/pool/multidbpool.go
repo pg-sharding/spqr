@@ -58,7 +58,7 @@ func (p *MultiDBPool) Discard(conn shard.ShardHostInstance) error {
 }
 
 func (p *MultiDBPool) Connection(db string) (shard.ShardHostInstance, error) {
-	var pool MultiShardPool
+	var pool ShardHostsPool
 	poolElement, exist := p.dbs.Load(db)
 
 	// get or create db pool

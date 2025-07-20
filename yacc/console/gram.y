@@ -65,7 +65,7 @@ func randomHex(n int) (string, error) {
 	
 	redistribute           *RedistributeKeyRange
 
-	invalidate_cache       *InvalidateCache
+	invalidate             *Invalidate
 	sync_reference_tables  *SyncReferenceTables
 
 	shutdown               *Shutdown
@@ -169,7 +169,7 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY
-%token <str> SHARDING COLUMN TABLE TABLES RELATIONS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA
+%token <str> SHARDING COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
@@ -234,7 +234,7 @@ func randomHex(n int) (string, error) {
 %type<alter> alter_stmt create_distributed_relation_stmt
 %type<alter_distribution> distribution_alter_stmt
 
-%type<invalidate_cache> invalidate_cache_stmt
+%type<invalidate> invalidate_stmt
 %type<sync_reference_tables> sync_reference_tables_stmt
 
 %type<relations> relation_attach_stmt
@@ -353,7 +353,7 @@ command:
 	{
 		setParseTree(yylex, $1)
 	}
-	| invalidate_cache_stmt
+	| invalidate_stmt
 	{
 		setParseTree(yylex, $1)
 	} 
@@ -1154,10 +1154,22 @@ shutdown_stmt:
 		$$ = &Shutdown{}
 	}
 
-invalidate_cache_stmt:
+invalidate_stmt:
 	INVALIDATE CACHE
 	{
-		$$ = &InvalidateCache{}
+		$$ = &Invalidate{
+			Target: SchemaCacheInvalTarget,
+		}
+	} | INVALIDATE SCHEMA CACHE
+	{
+		$$ =  &Invalidate{
+			Target: SchemaCacheInvalTarget,
+		}
+	} | INVALIDATE BACKENDS
+	{
+		$$ = &Invalidate{
+			Target: BackendConnectionsInvalTarget,
+		}
 	}
 
 sync_reference_tables_stmt:

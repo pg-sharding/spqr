@@ -227,7 +227,16 @@ type Kill struct {
 	Target uint
 }
 
-type InvalidateCache struct{}
+type InvalidateCacheTarget string
+
+const (
+	BackendConnectionsInvalTarget = InvalidateCacheTarget("BACKENDS")
+	SchemaCacheInvalTarget        = InvalidateCacheTarget("SCHEMA CACHE")
+)
+
+type Invalidate struct {
+	Target InvalidateCacheTarget
+}
 
 type SyncReferenceTables struct {
 	ShardID          string
@@ -403,7 +412,7 @@ func (*Kill) iStatement()                        {}
 func (*WhereClauseLeaf) iStatement()             {}
 func (*WhereClauseEmpty) iStatement()            {}
 func (*WhereClauseOp) iStatement()               {}
-func (*InvalidateCache) iStatement()             {}
+func (*Invalidate) iStatement()                  {}
 func (*SyncReferenceTables) iStatement()         {}
 
 func (*RegisterRouter) iStatement()   {}

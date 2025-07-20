@@ -2,6 +2,7 @@ package datashard
 
 import (
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -30,6 +31,8 @@ type Conn struct {
 	sync_in  int64
 	sync_out int64
 
+	stale atomic.Bool
+
 	dataPending bool
 
 	tx_served int64
@@ -40,6 +43,11 @@ type Conn struct {
 
 	stmtDef  map[uint64]*prepstatement.PreparedStatementDefinition
 	stmtDesc map[uint64]*prepstatement.PreparedStatementDescriptor
+}
+
+// MarkStale implements shard.ShardHostInstance.
+func (sh *Conn) MarkStale() {
+	sh.stale.Store(true)
 }
 
 // ListPreparedStatements implements shard.Shard.
@@ -91,7 +99,12 @@ func (sh *Conn) Instance() conn.DBInstance {
 //
 // Returns:
 // - int64: The difference between sync_out and sync_in.
+// All callers are just comparing this to zero, except for SHOW utilities
 func (sh *Conn) Sync() int64 {
+	if sh.stale.Load() {
+		/* report as not sync */
+		return -1e18
+	}
 	return sh.sync_out - sh.sync_in
 }
 
@@ -345,7 +358,7 @@ func (sh *Conn) Params() shard.ParameterSet {
 	return sh.ps
 }
 
-// NewShard creates a new shard with the provided key, database instance, configuration, and backend rule.
+// NewShardHostInstance creates a new shard with the provided key, database instance, configuration, and backend rule.
 //
 // Parameters:
 // - key (kr.ShardKey): The shard key.
@@ -356,7 +369,7 @@ func (sh *Conn) Params() shard.ParameterSet {
 // Returns:
 // - shard.Shard: The newly created shard.
 // - error: An error, if any.
-func NewShard(
+func NewShardHostInstance(
 	key kr.ShardKey,
 	pgi conn.DBInstance,
 	cfg *config.Shard,
@@ -370,6 +383,7 @@ func NewShard(
 		ps:        shard.ParameterSet{},
 		sync_in:   1, /* +1 for startup message */
 		sync_out:  0,
+		stale:     atomic.Bool{},
 		stmtDef:   map[uint64]*prepstatement.PreparedStatementDefinition{},
 		stmtDesc:  map[uint64]*prepstatement.PreparedStatementDescriptor{},
 		dedicated: pgi,

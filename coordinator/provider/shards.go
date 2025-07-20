@@ -75,6 +75,11 @@ type CoordShardInfo struct {
 	router     string
 }
 
+// MarkStale implements shard.ShardHostCtl.
+func (c *CoordShardInfo) MarkStale() {
+	/* noop */
+}
+
 // DataPending implements shard.Shardinfo.
 func (c *CoordShardInfo) DataPending() bool {
 	panic("CoordShardInfo.DataPending not implemented")
@@ -90,7 +95,7 @@ func (c *CoordShardInfo) ListPreparedStatements() []shard.PreparedStatementsMgrD
 	return nil
 }
 
-func NewCoordShardInfo(conn *protos.BackendConnectionsInfo, router string) shard.ShardHostInfo {
+func NewCoordShardInfo(conn *protos.BackendConnectionsInfo, router string) shard.ShardHostCtl {
 	return &CoordShardInfo{
 		underlying: conn,
 		router:     router,
