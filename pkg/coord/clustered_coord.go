@@ -155,7 +155,7 @@ func (ci grpcConnMgr) Shutdown() error {
 }
 
 // TODO : unit tests
-func (ci grpcConnMgr) ForEach(cb func(sh shard.ShardHostInfo) error) error {
+func (ci grpcConnMgr) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
 		ctx := context.TODO()
 		rrBackConn := proto.NewBackendConnectionsServiceClient(cc)

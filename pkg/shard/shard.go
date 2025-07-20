@@ -43,7 +43,7 @@ type PreparedStatementsMgrDescriptor struct {
 	ServerId uint
 }
 
-type ShardHostInfo interface {
+type ShardHostCtl interface {
 	ID() uint
 	ShardKeyName() string
 	InstanceHostname() string
@@ -56,18 +56,21 @@ type ShardHostInfo interface {
 	TxServed() int64
 	TxStatus() txstatus.TXStatus
 
+	MarkStale()
+	IsStale() bool
+
 	ListPreparedStatements() []PreparedStatementsMgrDescriptor
 }
 
 type CoordShardinfo interface {
-	ShardHostInfo
+	ShardHostCtl
 	Router() string
 }
 
 type ShardHostInstance interface {
 	txstatus.TxStatusMgr
 	prepstatement.PreparedStatementHolder
-	ShardHostInfo
+	ShardHostCtl
 
 	Name() string
 	SHKey() kr.ShardKey
@@ -81,7 +84,7 @@ type ShardHostInstance interface {
 }
 
 type ShardHostIterator interface {
-	ForEach(cb func(sh ShardHostInfo) error) error
+	ForEach(cb func(sh ShardHostCtl) error) error
 }
 
 /* util function to deploy begin on shard. Used by executor and tx expand and 2pc commit. */

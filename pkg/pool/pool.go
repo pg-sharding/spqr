@@ -42,7 +42,7 @@ type Pool interface {
 }
 
 /* Host  */
-type MultiShardPool interface {
+type ShardHostsPool interface {
 	ConnectionKepper
 	shard.ShardHostIterator
 	PoolIterator
@@ -55,7 +55,7 @@ type MultiShardPool interface {
 }
 
 type MultiShardTSAPool interface {
-	MultiShardPool
+	ShardHostsPool
 
 	ShardMapping() map[string]*config.Shard
 	ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.ShardHostInstance, error)

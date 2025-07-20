@@ -97,6 +97,10 @@ func (h *shardHostPool) View() Statistics {
 	}
 }
 
+var (
+	ConnLimitToken = struct{}{}
+)
+
 // Connection retrieves a connection to a shard based on the provided client ID and shard key.
 // It first attempts to retrieve a connection from the connection pool. If a connection is available,
 // it is reused. If no connection is available, it waits for a connection to become available or
@@ -139,26 +143,35 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 	var sh shard.ShardHostInstance
 
 	/* reuse cached connection, if any */
-	{
+	for {
+		/* try to get non-stale (not invalidated connection) */
 		/* TDB: per-bucket lock */
 		h.mu.Lock()
 
-		if len(h.pool) > 0 {
-			sh, h.pool = h.pool[0], h.pool[1:]
-			h.active[sh.ID()] = sh
+		if len(h.pool) == 0 {
 			h.mu.Unlock()
-
-			spqrlog.Zero.Debug().
-				Uint("pool", spqrlog.GetPointer(h)).
-				Uint("client", clid).
-				Uint("shard", sh.ID()).
-				Str("host", sh.Instance().Hostname()).
-				Uint("id", sh.ID()).
-				Msg("connection pool for client: reuse cached shard connection to instance")
-			return sh, nil
+			break
 		}
 
+		sh, h.pool = h.pool[0], h.pool[1:]
+
+		if sh.IsStale() {
+			h.mu.Unlock()
+			_ = sh.Close()
+			continue
+		}
+
+		h.active[sh.ID()] = sh
 		h.mu.Unlock()
+
+		spqrlog.Zero.Debug().
+			Uint("pool", spqrlog.GetPointer(h)).
+			Uint("client", clid).
+			Uint("shard", sh.ID()).
+			Str("host", sh.Instance().Hostname()).
+			Uint("id", sh.ID()).
+			Msg("connection pool for client: reuse cached shard connection to instance")
+		return sh, nil
 	}
 
 	// do not hold lock on poolRW while allocate new connection
@@ -166,7 +179,7 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 	sh, err = h.alloc(shardKey, config.Host{Address: h.host, AZ: h.az}, h.beRule)
 	if err != nil {
 		// return acquired token
-		h.queue <- struct{}{}
+		h.queue <- ConnLimitToken
 		return nil, err
 	}
 
@@ -267,7 +280,7 @@ func (h *shardHostPool) Put(sh shard.ShardHostInstance) error {
 //   - error: The error that occurred during the iteration.
 //
 // TODO : unit tests
-func (h *shardHostPool) ForEach(cb func(sh shard.ShardHostInfo) error) error {
+func (h *shardHostPool) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -314,7 +327,7 @@ func (c *cPool) ID() uint {
 //
 // Returns:
 //   - MultiShardPool: The created MultiShardPool.
-func NewPool(allocFn ConnectionAllocFn) MultiShardPool {
+func NewPool(allocFn ConnectionAllocFn) ShardHostsPool {
 	rt := &cPool{
 		pools: sync.Map{},
 		alloc: allocFn,
@@ -334,7 +347,7 @@ func NewPool(allocFn ConnectionAllocFn) MultiShardPool {
 //   - error: The error that occurred during the iteration.
 //
 // TODO : unit tests
-func (c *cPool) ForEach(cb func(sh shard.ShardHostInfo) error) error {
+func (c *cPool) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 	c.pools.Range(func(key, value any) bool {
 		_ = value.(Pool).ForEach(cb)
 		return true
@@ -440,4 +453,4 @@ func (c *cPool) SetRule(rule *config.BackendRule) {
 	c.beRule = rule
 }
 
-var _ MultiShardPool = &cPool{}
+var _ ShardHostsPool = &cPool{}

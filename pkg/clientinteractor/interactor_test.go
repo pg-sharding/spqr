@@ -265,7 +265,7 @@ func TestClientsOrderBy(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func genShard(ctrl *gomock.Controller, host string, shardName string, shardId uint) shard.ShardHostInfo {
+func genShard(ctrl *gomock.Controller, host string, shardName string, shardId uint) shard.ShardHostCtl {
 	sh := mockshard.NewMockShardHostInstance(ctrl)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
@@ -282,6 +282,7 @@ func genShard(ctrl *gomock.Controller, host string, shardName string, shardId ui
 	sh.EXPECT().InstanceHostname().Return(host).AnyTimes()
 	sh.EXPECT().ID().Return(shardId).AnyTimes()
 	sh.EXPECT().Instance().Return(ins1).AnyTimes()
+	sh.EXPECT().IsStale().AnyTimes().Return(false)
 	return sh
 }
 
@@ -305,6 +306,7 @@ func TestBackendConnections(t *testing.T) {
 			[]byte("0"),
 			[]byte("10"),
 			[]byte("IDLE"),
+			[]byte("false"),
 		},
 	}
 	secondRow := pgproto3.DataRow{
@@ -319,6 +321,7 @@ func TestBackendConnections(t *testing.T) {
 			[]byte("0"),
 			[]byte("10"),
 			[]byte("IDLE"),
+			[]byte("false"),
 		},
 	}
 	thirdRow := pgproto3.DataRow{
@@ -333,6 +336,7 @@ func TestBackendConnections(t *testing.T) {
 			[]byte("0"),
 			[]byte("10"),
 			[]byte("IDLE"),
+			[]byte("false"),
 		},
 	}
 
@@ -347,7 +351,7 @@ func TestBackendConnections(t *testing.T) {
 
 	interactor := clientinteractor.NewPSQLInteractor(ca)
 	ctx := context.Background()
-	shards := []shard.ShardHostInfo{
+	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h1", "sh1", 5),
 		genShard(ctrl, "h2", "sh2", 6),
 		genShard(ctrl, "h1", "sh3", 7),
@@ -359,6 +363,7 @@ func TestBackendConnections(t *testing.T) {
 	err := interactor.BackendConnections(ctx, shards, cmd)
 	assert.Nil(t, err)
 }
+
 func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
@@ -387,7 +392,7 @@ func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
 
 	interactor := clientinteractor.NewPSQLInteractor(ca)
 	ctx := context.Background()
-	shards := []shard.ShardHostInfo{
+	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h2", "sh2", 1),
 		genShard(ctrl, "h1", "sh1", 2),
 		genShard(ctrl, "h1", "sh3", 3),
@@ -427,7 +432,7 @@ func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 
 	interactor := clientinteractor.NewPSQLInteractor(ca)
 	ctx := context.Background()
-	shards := []shard.ShardHostInfo{
+	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h1", "sh1", 1),
 		genShard(ctrl, "h1", "sh3", 2),
 		genShard(ctrl, "h2", "sh2", 3),
@@ -446,7 +451,7 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 	ca := mockcl.NewMockRouterClient(ctrl)
 	interactor := clientinteractor.NewPSQLInteractor(ca)
 	ctx := context.Background()
-	shards := []shard.ShardHostInfo{
+	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h1", "sh1", 1),
 		genShard(ctrl, "h2", "sh2", 2),
 		genShard(ctrl, "h1", "sh3", 3),

@@ -94,10 +94,10 @@ type emptyMultiShardPool struct{}
 func (e *emptyMultiShardPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
 	return nil, fmt.Errorf("test pool - no connections available")
 }
-func (e *emptyMultiShardPool) SetRule(rule *config.BackendRule)                    {}
-func (e *emptyMultiShardPool) ForEach(cb func(sh shard.ShardHostInfo) error) error { return nil }
-func (e *emptyMultiShardPool) Put(sh shard.ShardHostInstance) error                { return nil }
-func (e *emptyMultiShardPool) Discard(sh shard.ShardHostInstance) error            { return nil }
-func (e *emptyMultiShardPool) ForEachPool(cb func(pool Pool) error) error          { return nil }
-func (e *emptyMultiShardPool) View() Statistics                                    { return Statistics{} }
-func (e *emptyMultiShardPool) ID() uint                                            { return 0 }
+func (e *emptyMultiShardPool) SetRule(rule *config.BackendRule)                   {}
+func (e *emptyMultiShardPool) ForEach(cb func(sh shard.ShardHostCtl) error) error { return nil }
+func (e *emptyMultiShardPool) Put(sh shard.ShardHostInstance) error               { return nil }
+func (e *emptyMultiShardPool) Discard(sh shard.ShardHostInstance) error           { return nil }
+func (e *emptyMultiShardPool) ForEachPool(cb func(pool Pool) error) error         { return nil }
+func (e *emptyMultiShardPool) View() Statistics                                   { return Statistics{} }
+func (e *emptyMultiShardPool) ID() uint                                           { return 0 }

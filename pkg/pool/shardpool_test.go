@@ -34,6 +34,7 @@ func TestShardPoolConnectionAcquirePut(t *testing.T) {
 	shardconn.EXPECT().Instance().AnyTimes().Return(ins)
 	shardconn.EXPECT().ID().AnyTimes().Return(uint(1234))
 	shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
+	shardconn.EXPECT().IsStale().AnyTimes().Return(false)
 
 	shp := pool.NewShardHostPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		return shardconn, nil
@@ -79,6 +80,7 @@ func TestShardPoolConnectionAcquireDiscard(t *testing.T) {
 	shardconn.EXPECT().Instance().AnyTimes().Return(ins)
 	shardconn.EXPECT().ID().AnyTimes().Return(uint(1234))
 	shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
+	shardconn.EXPECT().IsStale().AnyTimes().Return(false)
 
 	shardconn.EXPECT().Close().Times(1)
 
@@ -170,6 +172,7 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 		shardconn.EXPECT().Instance().AnyTimes().Return(ins)
 		shardconn.EXPECT().ID().AnyTimes().Return(uint(1234*100 + i))
 		shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
+		shardconn.EXPECT().IsStale().AnyTimes().Return(false)
 
 		conns[shardconn.ID()] = shardconn
 		used[shardconn.ID()] = false

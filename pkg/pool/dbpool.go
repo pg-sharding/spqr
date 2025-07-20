@@ -32,7 +32,7 @@ type LocalCheckResult struct {
 }
 
 type DBPool struct {
-	pool         MultiShardPool
+	pool         ShardHostsPool
 	shardMapping map[string]*config.Shard
 	checker      *tsa.CachedTSAChecker
 
@@ -338,7 +338,7 @@ func (s *DBPool) ShardMapping() map[string]*config.Shard {
 //
 // Returns:
 // - error: An error if the callback function returns an error.
-func (s *DBPool) ForEach(cb func(sh shard.ShardHostInfo) error) error {
+func (s *DBPool) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 	return s.pool.ForEach(cb)
 }
 
@@ -354,7 +354,7 @@ func (s *DBPool) ForEach(cb func(sh shard.ShardHostInfo) error) error {
 //
 // TODO : unit tests
 func (s *DBPool) Put(sh shard.ShardHostInstance) error {
-	if sh.Sync() != 0 {
+	if sh.Sync() != 0 || sh.IsStale() {
 		spqrlog.Zero.Error().
 			Uint("shard", spqrlog.GetPointer(sh)).
 			Int64("sync", sh.Sync()).
@@ -435,7 +435,7 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 			return nil, err
 		}
 
-		return datashard.NewShard(shardKey, pgi, mapping[shardKey.Name], rule, startupParams)
+		return datashard.NewShardHostInstance(shardKey, pgi, mapping[shardKey.Name], rule, startupParams)
 	}
 
 	dbPool := &DBPool{

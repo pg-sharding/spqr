@@ -1297,8 +1297,24 @@ func TestRefresh(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "INVALIDATE CACHE",
-			exp:   &spqrparser.InvalidateCache{},
-			err:   nil,
+			exp: &spqrparser.Invalidate{
+				Target: spqrparser.SchemaCacheInvalidateTarget,
+			},
+			err: nil,
+		},
+		{
+			query: "INVALIDATE SCHEMA CACHE",
+			exp: &spqrparser.Invalidate{
+				Target: spqrparser.SchemaCacheInvalidateTarget,
+			},
+			err: nil,
+		},
+		{
+			query: "INVALIDATE BACKENDS",
+			exp: &spqrparser.Invalidate{
+				Target: spqrparser.BackendConnectionsInvalidateTarget,
+			},
+			err: nil,
 		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)

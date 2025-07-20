@@ -140,7 +140,7 @@ func (mr *MockPoolMockRecorder) Discard(sh any) *gomock.Call {
 }
 
 // ForEach mocks base method.
-func (m *MockPool) ForEach(cb func(shard.ShardHostInfo) error) error {
+func (m *MockPool) ForEach(cb func(shard.ShardHostCtl) error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForEach", cb)
 	ret0, _ := ret[0].(error)
@@ -181,32 +181,32 @@ func (mr *MockPoolMockRecorder) View() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "View", reflect.TypeOf((*MockPool)(nil).View))
 }
 
-// MockMultiShardPool is a mock of MultiShardPool interface.
-type MockMultiShardPool struct {
+// MockShardHostsPool is a mock of ShardHostsPool interface.
+type MockShardHostsPool struct {
 	ctrl     *gomock.Controller
-	recorder *MockMultiShardPoolMockRecorder
+	recorder *MockShardHostsPoolMockRecorder
 	isgomock struct{}
 }
 
-// MockMultiShardPoolMockRecorder is the mock recorder for MockMultiShardPool.
-type MockMultiShardPoolMockRecorder struct {
-	mock *MockMultiShardPool
+// MockShardHostsPoolMockRecorder is the mock recorder for MockShardHostsPool.
+type MockShardHostsPoolMockRecorder struct {
+	mock *MockShardHostsPool
 }
 
-// NewMockMultiShardPool creates a new mock instance.
-func NewMockMultiShardPool(ctrl *gomock.Controller) *MockMultiShardPool {
-	mock := &MockMultiShardPool{ctrl: ctrl}
-	mock.recorder = &MockMultiShardPoolMockRecorder{mock}
+// NewMockShardHostsPool creates a new mock instance.
+func NewMockShardHostsPool(ctrl *gomock.Controller) *MockShardHostsPool {
+	mock := &MockShardHostsPool{ctrl: ctrl}
+	mock.recorder = &MockShardHostsPoolMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockMultiShardPool) EXPECT() *MockMultiShardPoolMockRecorder {
+func (m *MockShardHostsPool) EXPECT() *MockShardHostsPoolMockRecorder {
 	return m.recorder
 }
 
 // ConnectionHost mocks base method.
-func (m *MockMultiShardPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
+func (m *MockShardHostsPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.ShardHostInstance, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConnectionHost", clid, shardKey, host)
 	ret0, _ := ret[0].(shard.ShardHostInstance)
@@ -215,13 +215,13 @@ func (m *MockMultiShardPool) ConnectionHost(clid uint, shardKey kr.ShardKey, hos
 }
 
 // ConnectionHost indicates an expected call of ConnectionHost.
-func (mr *MockMultiShardPoolMockRecorder) ConnectionHost(clid, shardKey, host any) *gomock.Call {
+func (mr *MockShardHostsPoolMockRecorder) ConnectionHost(clid, shardKey, host any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionHost", reflect.TypeOf((*MockMultiShardPool)(nil).ConnectionHost), clid, shardKey, host)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionHost", reflect.TypeOf((*MockShardHostsPool)(nil).ConnectionHost), clid, shardKey, host)
 }
 
 // Discard mocks base method.
-func (m *MockMultiShardPool) Discard(sh shard.ShardHostInstance) error {
+func (m *MockShardHostsPool) Discard(sh shard.ShardHostInstance) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Discard", sh)
 	ret0, _ := ret[0].(error)
@@ -229,13 +229,13 @@ func (m *MockMultiShardPool) Discard(sh shard.ShardHostInstance) error {
 }
 
 // Discard indicates an expected call of Discard.
-func (mr *MockMultiShardPoolMockRecorder) Discard(sh any) *gomock.Call {
+func (mr *MockShardHostsPoolMockRecorder) Discard(sh any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discard", reflect.TypeOf((*MockMultiShardPool)(nil).Discard), sh)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discard", reflect.TypeOf((*MockShardHostsPool)(nil).Discard), sh)
 }
 
 // ForEach mocks base method.
-func (m *MockMultiShardPool) ForEach(cb func(shard.ShardHostInfo) error) error {
+func (m *MockShardHostsPool) ForEach(cb func(shard.ShardHostCtl) error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForEach", cb)
 	ret0, _ := ret[0].(error)
@@ -243,13 +243,13 @@ func (m *MockMultiShardPool) ForEach(cb func(shard.ShardHostInfo) error) error {
 }
 
 // ForEach indicates an expected call of ForEach.
-func (mr *MockMultiShardPoolMockRecorder) ForEach(cb any) *gomock.Call {
+func (mr *MockShardHostsPoolMockRecorder) ForEach(cb any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForEach", reflect.TypeOf((*MockMultiShardPool)(nil).ForEach), cb)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForEach", reflect.TypeOf((*MockShardHostsPool)(nil).ForEach), cb)
 }
 
 // ForEachPool mocks base method.
-func (m *MockMultiShardPool) ForEachPool(cb func(pool.Pool) error) error {
+func (m *MockShardHostsPool) ForEachPool(cb func(pool.Pool) error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForEachPool", cb)
 	ret0, _ := ret[0].(error)
@@ -257,13 +257,13 @@ func (m *MockMultiShardPool) ForEachPool(cb func(pool.Pool) error) error {
 }
 
 // ForEachPool indicates an expected call of ForEachPool.
-func (mr *MockMultiShardPoolMockRecorder) ForEachPool(cb any) *gomock.Call {
+func (mr *MockShardHostsPoolMockRecorder) ForEachPool(cb any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForEachPool", reflect.TypeOf((*MockMultiShardPool)(nil).ForEachPool), cb)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForEachPool", reflect.TypeOf((*MockShardHostsPool)(nil).ForEachPool), cb)
 }
 
 // ID mocks base method.
-func (m *MockMultiShardPool) ID() uint {
+func (m *MockShardHostsPool) ID() uint {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ID")
 	ret0, _ := ret[0].(uint)
@@ -271,13 +271,13 @@ func (m *MockMultiShardPool) ID() uint {
 }
 
 // ID indicates an expected call of ID.
-func (mr *MockMultiShardPoolMockRecorder) ID() *gomock.Call {
+func (mr *MockShardHostsPoolMockRecorder) ID() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockMultiShardPool)(nil).ID))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockShardHostsPool)(nil).ID))
 }
 
 // Put mocks base method.
-func (m *MockMultiShardPool) Put(host shard.ShardHostInstance) error {
+func (m *MockShardHostsPool) Put(host shard.ShardHostInstance) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Put", host)
 	ret0, _ := ret[0].(error)
@@ -285,25 +285,25 @@ func (m *MockMultiShardPool) Put(host shard.ShardHostInstance) error {
 }
 
 // Put indicates an expected call of Put.
-func (mr *MockMultiShardPoolMockRecorder) Put(host any) *gomock.Call {
+func (mr *MockShardHostsPoolMockRecorder) Put(host any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockMultiShardPool)(nil).Put), host)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockShardHostsPool)(nil).Put), host)
 }
 
 // SetRule mocks base method.
-func (m *MockMultiShardPool) SetRule(rule *config.BackendRule) {
+func (m *MockShardHostsPool) SetRule(rule *config.BackendRule) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetRule", rule)
 }
 
 // SetRule indicates an expected call of SetRule.
-func (mr *MockMultiShardPoolMockRecorder) SetRule(rule any) *gomock.Call {
+func (mr *MockShardHostsPoolMockRecorder) SetRule(rule any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRule", reflect.TypeOf((*MockMultiShardPool)(nil).SetRule), rule)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRule", reflect.TypeOf((*MockShardHostsPool)(nil).SetRule), rule)
 }
 
 // View mocks base method.
-func (m *MockMultiShardPool) View() pool.Statistics {
+func (m *MockShardHostsPool) View() pool.Statistics {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "View")
 	ret0, _ := ret[0].(pool.Statistics)
@@ -311,9 +311,9 @@ func (m *MockMultiShardPool) View() pool.Statistics {
 }
 
 // View indicates an expected call of View.
-func (mr *MockMultiShardPoolMockRecorder) View() *gomock.Call {
+func (mr *MockShardHostsPoolMockRecorder) View() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "View", reflect.TypeOf((*MockMultiShardPool)(nil).View))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "View", reflect.TypeOf((*MockShardHostsPool)(nil).View))
 }
 
 // MockMultiShardTSAPool is a mock of MultiShardTSAPool interface.
@@ -385,7 +385,7 @@ func (mr *MockMultiShardTSAPoolMockRecorder) Discard(sh any) *gomock.Call {
 }
 
 // ForEach mocks base method.
-func (m *MockMultiShardTSAPool) ForEach(cb func(shard.ShardHostInfo) error) error {
+func (m *MockMultiShardTSAPool) ForEach(cb func(shard.ShardHostCtl) error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForEach", cb)
 	ret0, _ := ret[0].(error)

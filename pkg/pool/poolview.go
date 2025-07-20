@@ -52,7 +52,7 @@ func (r *PoolView) Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostI
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "PoolView.Connection method not implemented")
 }
 
-func (r *PoolView) ForEach(cb func(p shard.ShardHostInfo) error) error {
+func (r *PoolView) ForEach(cb func(p shard.ShardHostCtl) error) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "PoolView.ForEach method not implemented")
 }
 
