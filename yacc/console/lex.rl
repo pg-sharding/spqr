@@ -91,8 +91,9 @@ func (lex *Lexer) Lex(lval *yySymType) int {
 
             qidentifier      => { lval.str = string(lex.data[lex.ts + 1:lex.te - 1]); tok = IDENT; fbreak;};
             identifier      => { 
-                lval.str = strings.ToLower(string(lex.data[lex.ts:lex.te]));
-                if ttype, ok := reservedWords[lval.str]; ok {
+                lval.str = string(lex.data[lex.ts:lex.te]);
+                if ttype, ok := reservedWords[strings.ToLower(lval.str)]; ok {
+                    lval.str = strings.ToLower(lval.str);
                     tok = ttype;
                 } else {
                     tok = IDENT; 
