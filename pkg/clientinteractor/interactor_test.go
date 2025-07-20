@@ -282,6 +282,7 @@ func genShard(ctrl *gomock.Controller, host string, shardName string, shardId ui
 	sh.EXPECT().InstanceHostname().Return(host).AnyTimes()
 	sh.EXPECT().ID().Return(shardId).AnyTimes()
 	sh.EXPECT().Instance().Return(ins1).AnyTimes()
+	sh.EXPECT().IsStale().AnyTimes().Return(false)
 	return sh
 }
 
@@ -305,6 +306,7 @@ func TestBackendConnections(t *testing.T) {
 			[]byte("0"),
 			[]byte("10"),
 			[]byte("IDLE"),
+			[]byte("false"),
 		},
 	}
 	secondRow := pgproto3.DataRow{
@@ -319,6 +321,7 @@ func TestBackendConnections(t *testing.T) {
 			[]byte("0"),
 			[]byte("10"),
 			[]byte("IDLE"),
+			[]byte("false"),
 		},
 	}
 	thirdRow := pgproto3.DataRow{
@@ -333,6 +336,7 @@ func TestBackendConnections(t *testing.T) {
 			[]byte("0"),
 			[]byte("10"),
 			[]byte("IDLE"),
+			[]byte("false"),
 		},
 	}
 
@@ -359,6 +363,7 @@ func TestBackendConnections(t *testing.T) {
 	err := interactor.BackendConnections(ctx, shards, cmd)
 	assert.Nil(t, err)
 }
+
 func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
