@@ -249,7 +249,8 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 
 	spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Msg("syncing connection")
 
-	unreplied, err := rst.RelayStep(pgsync, true, false)
+	err = serv.SendShard(&pgproto3.Sync{}, shardKey)
+
 	if err != nil {
 		return nil, nil, err
 	}
@@ -264,7 +265,13 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 
 	deployed := false
 
-	for _, msg := range unreplied {
+recvLoop:
+	for {
+		msg, err := serv.ReceiveShard(shardId)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Interface("type", msg).Msg("unreplied msg in prepare")
 		switch q := msg.(type) {
 		case *pgproto3.ParseComplete:
@@ -292,6 +299,8 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 				rd.RowDesc.Fields[i] = q.Fields[i]
 				rd.RowDesc.Fields[i].Name = s
 			}
+		case *pgproto3.ReadyForQuery:
+			break recvLoop
 		default:
 		}
 	}
@@ -348,7 +357,7 @@ func (rst *RelayStateImpl) multishardPrepareScatter(hash uint64, d *prepstatemen
 		parsed := false
 		finished := false
 		for !finished {
-			msg, _, err := serv.ReceiveShard(shardId)
+			msg, err := serv.ReceiveShard(shardId)
 			if err != nil {
 				return err
 			}
@@ -1339,7 +1348,7 @@ var noopCloseRouteFunc = func() error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(hintPlan plan.Plan) error {
+func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Plan) error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Str("user", rst.Client().Usr()).
@@ -1357,7 +1366,7 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(hintPlan plan.Pla
 		return nil
 	}
 
-	if hintPlan == nil {
+	if bindPlan == nil {
 		return fmt.Errorf("failed to use hint route")
 	}
 
@@ -1370,7 +1379,7 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(hintPlan plan.Pla
 		span.SetTag("db", rst.Cl.DB())
 	}
 
-	err := rst.procRoutes(hintPlan.ExecutionTargets())
+	err := rst.procRoutes(bindPlan.ExecutionTargets())
 
 	switch err {
 	case nil:

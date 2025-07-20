@@ -545,14 +545,14 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 	return nil, 0, nil
 }
 
-func (m *MultiShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, uint, error) {
+func (m *MultiShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, error) {
 	for _, shard := range m.activeShards {
 		if shard.ID() == shardId {
 			m, err := shard.Receive()
-			return m, shardId, err
+			return m, err
 		}
 	}
-	return nil, 0, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "cannot find shard \"%d\"", shardId)
+	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "cannot find shard \"%d\"", shardId)
 }
 
 func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {
