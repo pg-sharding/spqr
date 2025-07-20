@@ -29,7 +29,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 
-	underyling_pool := mockpool.NewMockMultiShardPool(ctrl)
+	underyling_pool := mockpool.NewMockShardHostsPool(ctrl)
 
 	key := kr.ShardKey{
 		Name: "sh1",
@@ -261,7 +261,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 
-	underyling_pool := mockpool.NewMockMultiShardPool(ctrl)
+	underyling_pool := mockpool.NewMockShardHostsPool(ctrl)
 
 	key := kr.ShardKey{
 		Name: "sh1",
@@ -398,7 +398,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 func TestBuildHostOrder(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	underyling_pool := mockpool.NewMockMultiShardPool(ctrl)
+	underyling_pool := mockpool.NewMockShardHostsPool(ctrl)
 
 	key := kr.ShardKey{
 		Name: "sh1",
@@ -497,7 +497,7 @@ func TestBuildHostOrder(t *testing.T) {
 func TestBuildHostOrderWithCache(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	underyling_pool := mockpool.NewMockMultiShardPool(ctrl)
+	underyling_pool := mockpool.NewMockShardHostsPool(ctrl)
 
 	key := kr.ShardKey{
 		Name: "sh1",
@@ -709,7 +709,7 @@ func TestBuildHostOrderWithCache(t *testing.T) {
 func TestBuildHostOrderNonExistentShard(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	underyling_pool := mockpool.NewMockMultiShardPool(ctrl)
+	underyling_pool := mockpool.NewMockShardHostsPool(ctrl)
 
 	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
 		"existing_shard": {
