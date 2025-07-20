@@ -145,21 +145,6 @@ func (mr *MockQueryRouterMockRecorder) SchemaCache() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SchemaCache", reflect.TypeOf((*MockQueryRouter)(nil).SchemaCache))
 }
 
-// SelectRandomRoute mocks base method.
-func (m *MockQueryRouter) SelectRandomRoute(routes []kr.ShardKey) (plan.Plan, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectRandomRoute", routes)
-	ret0, _ := ret[0].(plan.Plan)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SelectRandomRoute indicates an expected call of SelectRandomRoute.
-func (mr *MockQueryRouterMockRecorder) SelectRandomRoute(routes any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectRandomRoute", reflect.TypeOf((*MockQueryRouter)(nil).SelectRandomRoute), routes)
-}
-
 // SetQuery mocks base method.
 func (m *MockQueryRouter) SetQuery(q *string) {
 	m.ctrl.T.Helper()

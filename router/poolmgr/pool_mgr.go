@@ -30,7 +30,7 @@ type PoolMgr interface {
 	UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error
 	UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error
 
-	ValidateReRoute(rst ConnectionKeeper) bool
+	ValidateSliceChange(rst ConnectionKeeper) bool
 	ConnectionActive(rst ConnectionKeeper) bool
 }
 
@@ -98,7 +98,7 @@ func (t *TxConnManager) ConnectionActive(rst ConnectionKeeper) bool {
 }
 
 // TODO : unit tests
-func (t *TxConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
+func (t *TxConnManager) ValidateSliceChange(rst ConnectionKeeper) bool {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Int("shards", len(rst.ActiveShards())).
@@ -147,7 +147,7 @@ func (t *SessConnManager) ConnectionActive(rst ConnectionKeeper) bool {
 }
 
 // TODO : unit tests
-func (s *SessConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
+func (s *SessConnManager) ValidateSliceChange(rst ConnectionKeeper) bool {
 	return rst.ActiveShards() == nil
 }
 
@@ -178,8 +178,8 @@ func (v *VirtualConnManager) UnRouteWithError(client client.RouterClient, sh []k
 	return unRouteWithError(v, client, sh, errmsg)
 }
 
-// ValidateReRoute implements PoolMgr.
-func (v *VirtualConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
+// ValidateSliceChange implements PoolMgr.
+func (v *VirtualConnManager) ValidateSliceChange(rst ConnectionKeeper) bool {
 	return false
 }
 

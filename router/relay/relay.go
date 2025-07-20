@@ -21,6 +21,7 @@ import (
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/plan"
+	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/route"
@@ -54,8 +55,8 @@ type RelayStateMgr interface {
 	PrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error)
 
 	PrepareExecutionSlice() (plan.Plan, error)
-	PrepareRelayStepOnAnyRoute() (func() error, error)
-	PrepareRelayStepOnHintRoute(hintPlan plan.Plan) error
+	PrepareRandomDispatchExecutionSlice(plan.Plan) (plan.Plan, func() error, error)
+	PrepareTargetDispatchExecutionSlice(hintPlan plan.Plan) error
 
 	HoldRouting()
 	UnholdRouting()
@@ -535,7 +536,7 @@ func (rst *RelayStateImpl) expandRoutes(routes []kr.ShardKey) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Reroute() (plan.Plan, error) {
+func (rst *RelayStateImpl) CreateExecutionSlice() (plan.Plan, error) {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
 	if config.RouterConfig().WithJaeger {
@@ -590,50 +591,6 @@ func (rst *RelayStateImpl) Reroute() (plan.Plan, error) {
 	default:
 		return nil, fmt.Errorf("unexpected query plan %T", v)
 	}
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) PrepareRandomRoute() error {
-	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
-
-	if config.RouterConfig().WithJaeger {
-		span := opentracing.StartSpan("reroute")
-		defer span.Finish()
-		span.SetTag("user", rst.Cl.Usr())
-		span.SetTag("db", rst.Cl.DB())
-	}
-
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Msg("rerouting the client connection to random shard, resolving shard")
-
-	r, err := rst.QueryRouter().SelectRandomRoute(rst.QueryRouter().DataShardsRoutes())
-	if err != nil {
-		return err
-	}
-	rst.routingDecisionPlan = r
-	return rst.procRoutes(r.ExecutionTargets())
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) PrepareTargetRoute(p plan.Plan) error {
-	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
-
-	if config.RouterConfig().WithJaeger {
-		span := opentracing.StartSpan("reroute")
-		defer span.Finish()
-		span.SetTag("user", rst.Cl.Usr())
-		span.SetTag("db", rst.Cl.DB())
-	}
-
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Interface("statement", rst.qp.Stmt()).
-		Msg("rerouting the client connection to target shard, resolving shard")
-
-	rst.routingDecisionPlan = p
-
-	return rst.procRoutes(p.ExecutionTargets())
 }
 
 // TODO : unit tests
@@ -937,10 +894,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				}
 			}
 
-			fin, err := rst.PrepareRelayStepOnAnyRoute()
+			p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
 			if err != nil {
 				return err
 			}
+
+			rst.routingDecisionPlan = p
 
 			/* TODO: refactor code to make this less ugly */
 			saveTxStatus := rst.qse.TxStatus()
@@ -1061,10 +1020,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				default:
 
 					rst.execute = func() error {
-						err := rst.PrepareRelayStepOnHintRoute(rst.bindQueryPlan)
+						err := rst.PrepareTargetDispatchExecutionSlice(rst.bindQueryPlan)
 						if err != nil {
 							return err
 						}
+
+						rst.routingDecisionPlan = rst.bindQueryPlan
 
 						_, _, err = rst.DeployPrepStmt(currentMsg.PreparedStatement)
 						if err != nil {
@@ -1162,10 +1123,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					default:
 						/* SingleShard or random shard plans */
 
-						err := rst.PrepareRelayStepOnHintRoute(rst.bindQueryPlan)
+						err := rst.PrepareTargetDispatchExecutionSlice(rst.bindQueryPlan)
 						if err != nil {
 							return err
 						}
+
+						rst.routingDecisionPlan = rst.bindQueryPlan
 
 						if _, _, err := rst.DeployPrepStmt(rst.lastBindName); err != nil {
 							return err
@@ -1199,10 +1162,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					Str("stmt-name", currentMsg.Name).
 					Msg("Describe prep statement")
 
-				fin, err := rst.PrepareRelayStepOnAnyRoute()
+				p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
 				if err != nil {
 					return err
 				}
+
+				rst.routingDecisionPlan = p
 
 				rd, _, err := rst.DeployPrepStmt(currentMsg.Name)
 				if err != nil {
@@ -1319,14 +1284,14 @@ func (rst *RelayStateImpl) PrepareExecutionSlice() (plan.Plan, error) {
 	}
 
 	// txactive == 0 || activeSh == nil
-	if !rst.poolMgr.ValidateReRoute(rst) {
+	if !rst.poolMgr.ValidateSliceChange(rst) {
 		spqrlog.Zero.Debug().Bool("engine v2", rst.Client().EnhancedMultiShardProcessing()).Msg("checking transaction expand possibility")
 
 		if rst.Client().EnhancedMultiShardProcessing() {
 			/* With engine v2 we can expand transaction on more targets */
 			/* TODO: XXX */
 
-			q, err := rst.Reroute()
+			q, err := rst.CreateExecutionSlice()
 			if err != nil {
 				return nil, err
 			}
@@ -1345,7 +1310,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice() (plan.Plan, error) {
 		return nil, nil
 	}
 
-	q, err := rst.Reroute()
+	q, err := rst.CreateExecutionSlice()
 
 	switch err {
 	case nil:
@@ -1374,7 +1339,7 @@ var noopCloseRouteFunc = func() error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(hintPlan plan.Plan) error {
+func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(hintPlan plan.Plan) error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Str("user", rst.Client().Usr()).
@@ -1388,7 +1353,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(hintPlan plan.Plan) error
 
 	// txactive == 0 || activeSh == nil
 	// already has route, no need for any hint
-	if !rst.poolMgr.ValidateReRoute(rst) {
+	if !rst.poolMgr.ValidateSliceChange(rst) {
 		return nil
 	}
 
@@ -1396,7 +1361,18 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(hintPlan plan.Plan) error
 		return fmt.Errorf("failed to use hint route")
 	}
 
-	switch err := rst.PrepareTargetRoute(hintPlan); err {
+	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
+
+	if config.RouterConfig().WithJaeger {
+		span := opentracing.StartSpan("reroute")
+		defer span.Finish()
+		span.SetTag("user", rst.Cl.Usr())
+		span.SetTag("db", rst.Cl.DB())
+	}
+
+	err := rst.procRoutes(hintPlan.ExecutionTargets())
+
+	switch err {
 	case nil:
 		return nil
 	case ErrSkipQuery:
@@ -1414,7 +1390,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(hintPlan plan.Plan) error
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
+func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.Plan) (plan.Plan, func() error, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Str("user", rst.Client().Usr()).
@@ -1422,30 +1398,45 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 		Msg("preparing relay step for client on any route")
 
 	if rst.holdRouting {
-		return noopCloseRouteFunc, nil
+		return currentPlan, noopCloseRouteFunc, nil
 	}
 
 	// txactive == 0 || activeSh == nil
-	if !rst.poolMgr.ValidateReRoute(rst) {
-		return noopCloseRouteFunc, nil
+	if !rst.poolMgr.ValidateSliceChange(rst) {
+		return currentPlan, noopCloseRouteFunc, nil
 	}
 
-	switch err := rst.PrepareRandomRoute(); err {
+	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
+
+	if config.RouterConfig().WithJaeger {
+		span := opentracing.StartSpan("reroute")
+		defer span.Finish()
+		span.SetTag("user", rst.Cl.Usr())
+		span.SetTag("db", rst.Cl.DB())
+	}
+
+	p, err := planner.SelectRandomDispatchPlan(rst.QueryRouter().DataShardsRoutes())
+	if err != nil {
+		return nil, noopCloseRouteFunc, err
+	}
+	err = rst.procRoutes(p.ExecutionTargets())
+
+	switch err {
 	case nil:
-		return func() error {
-			return rst.Unroute(rst.routingDecisionPlan.ExecutionTargets())
+		return p, func() error {
+			return rst.Unroute(p.ExecutionTargets())
 		}, nil
 	case ErrSkipQuery:
 		if err := rst.Client().ReplyErr(err); err != nil {
-			return noopCloseRouteFunc, err
+			return currentPlan, noopCloseRouteFunc, err
 		}
-		return noopCloseRouteFunc, ErrSkipQuery
+		return currentPlan, noopCloseRouteFunc, ErrSkipQuery
 	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
-		return noopCloseRouteFunc, ErrSkipQuery
+		return currentPlan, noopCloseRouteFunc, ErrSkipQuery
 	default:
 		rst.msgBuf = nil
-		return noopCloseRouteFunc, err
+		return currentPlan, noopCloseRouteFunc, err
 	}
 }
 
