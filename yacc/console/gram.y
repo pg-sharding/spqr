@@ -1160,17 +1160,17 @@ invalidate_stmt:
 	INVALIDATE CACHE
 	{
 		$$ = &Invalidate{
-			Target: SchemaCacheInvalTarget,
+			Target: SchemaCacheInvalidateTarget,
 		}
 	} | INVALIDATE SCHEMA CACHE
 	{
 		$$ =  &Invalidate{
-			Target: SchemaCacheInvalTarget,
+			Target: SchemaCacheInvalidateTarget,
 		}
 	} | INVALIDATE BACKENDS
 	{
 		$$ = &Invalidate{
-			Target: BackendConnectionsInvalTarget,
+			Target: BackendConnectionsInvalidateTarget,
 		}
 	}
 

@@ -1298,21 +1298,21 @@ func TestRefresh(t *testing.T) {
 		{
 			query: "INVALIDATE CACHE",
 			exp: &spqrparser.Invalidate{
-				Target: spqrparser.SchemaCacheInvalTarget,
+				Target: spqrparser.SchemaCacheInvalidateTarget,
 			},
 			err: nil,
 		},
 		{
 			query: "INVALIDATE SCHEMA CACHE",
 			exp: &spqrparser.Invalidate{
-				Target: spqrparser.SchemaCacheInvalTarget,
+				Target: spqrparser.SchemaCacheInvalidateTarget,
 			},
 			err: nil,
 		},
 		{
 			query: "INVALIDATE BACKENDS",
 			exp: &spqrparser.Invalidate{
-				Target: spqrparser.BackendConnectionsInvalTarget,
+				Target: spqrparser.BackendConnectionsInvalidateTarget,
 			},
 			err: nil,
 		},

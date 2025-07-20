@@ -562,10 +562,10 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		return processRedistribute(ctx, stmt, mgr, cli)
 	case *spqrparser.Invalidate:
 		switch stmt.Target {
-		case spqrparser.SchemaCacheInvalTarget:
+		case spqrparser.SchemaCacheInvalidateTarget:
 			mgr.Cache().Reset()
 
-		case spqrparser.BackendConnectionsInvalTarget:
+		case spqrparser.BackendConnectionsInvalidateTarget:
 			if err := ci.ForEachPool(func(p pool.Pool) error {
 				return p.ForEach(func(sh shard.ShardHostCtl) error {
 					sh.MarkStale() /* request backend invalidation */

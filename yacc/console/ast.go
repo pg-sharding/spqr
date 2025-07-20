@@ -230,8 +230,8 @@ type Kill struct {
 type InvalidateCacheTarget string
 
 const (
-	BackendConnectionsInvalTarget = InvalidateCacheTarget("BACKENDS")
-	SchemaCacheInvalTarget        = InvalidateCacheTarget("SCHEMA CACHE")
+	BackendConnectionsInvalidateTarget = InvalidateCacheTarget("BACKENDS")
+	SchemaCacheInvalidateTarget        = InvalidateCacheTarget("SCHEMA CACHE")
 )
 
 type Invalidate struct {

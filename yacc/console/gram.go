@@ -3,19 +3,19 @@
 //line gram.y:3
 package spqrparser
 
-import __yyfmt__ "fmt"
-
-//line gram.y:3
-
 import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
-	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/router/rfqn"
+	__yyfmt__ "fmt"
 	"math"
 	"strings"
+
+	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/rfqn"
 )
+
+//line gram.y:3
 
 const SIGNED_INT_RANGE_ERROR string = "the Signed Value should be at the range of [-9223372036854775808, 9223372036854775807]."
 
@@ -2135,7 +2135,7 @@ yydefault:
 //line gram.y:1161
 		{
 			yyVAL.invalidate = &Invalidate{
-				Target: SchemaCacheInvalTarget,
+				Target: SchemaCacheInvalidateTarget,
 			}
 		}
 	case 180:
@@ -2143,7 +2143,7 @@ yydefault:
 //line gram.y:1166
 		{
 			yyVAL.invalidate = &Invalidate{
-				Target: SchemaCacheInvalTarget,
+				Target: SchemaCacheInvalidateTarget,
 			}
 		}
 	case 181:
@@ -2151,7 +2151,7 @@ yydefault:
 //line gram.y:1171
 		{
 			yyVAL.invalidate = &Invalidate{
-				Target: BackendConnectionsInvalTarget,
+				Target: BackendConnectionsInvalidateTarget,
 			}
 		}
 	case 182:
