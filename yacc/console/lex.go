@@ -128,8 +128,8 @@ tr2:
 	case 5:
 	{( lex.p) = ( lex.te) - 1
  
-                lval.str = string(lex.data[lex.ts:lex.te]);
-                if ttype, ok := reservedWords[strings.ToLower(lval.str)]; ok {
+                lval.str = strings.ToLower(string(lex.data[lex.ts:lex.te]));
+                if ttype, ok := reservedWords[lval.str]; ok {
                     tok = ttype;
                 } else {
                     tok = IDENT; 
@@ -187,8 +187,8 @@ tr23:
  lex.te = ( lex.p)
 ( lex.p)--
 { 
-                lval.str = string(lex.data[lex.ts:lex.te]);
-                if ttype, ok := reservedWords[strings.ToLower(lval.str)]; ok {
+                lval.str = strings.ToLower(string(lex.data[lex.ts:lex.te]));
+                if ttype, ok := reservedWords[lval.str]; ok {
                     tok = ttype;
                 } else {
                     tok = IDENT; 
