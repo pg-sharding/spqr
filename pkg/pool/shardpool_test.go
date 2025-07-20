@@ -170,6 +170,7 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 		shardconn.EXPECT().Instance().AnyTimes().Return(ins)
 		shardconn.EXPECT().ID().AnyTimes().Return(uint(1234*100 + i))
 		shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
+		shardconn.EXPECT().IsStale().AnyTimes().Return(false)
 
 		conns[shardconn.ID()] = shardconn
 		used[shardconn.ID()] = false
