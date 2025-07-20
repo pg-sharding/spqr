@@ -57,6 +57,7 @@ type ShardHostCtl interface {
 	TxStatus() txstatus.TXStatus
 
 	MarkStale()
+	IsStale() bool
 
 	ListPreparedStatements() []PreparedStatementsMgrDescriptor
 }

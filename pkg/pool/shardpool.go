@@ -97,6 +97,10 @@ func (h *shardHostPool) View() Statistics {
 	}
 }
 
+var (
+	ConnLimitToken = struct{}{}
+)
+
 // Connection retrieves a connection to a shard based on the provided client ID and shard key.
 // It first attempts to retrieve a connection from the connection pool. If a connection is available,
 // it is reused. If no connection is available, it waits for a connection to become available or
@@ -139,7 +143,8 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 	var sh shard.ShardHostInstance
 
 	/* reuse cached connection, if any */
-	{
+	for {
+		/* try to get non-stale (not invalidated connection) */
 		/* TDB: per-bucket lock */
 		h.mu.Lock()
 
@@ -147,6 +152,10 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 			sh, h.pool = h.pool[0], h.pool[1:]
 			h.active[sh.ID()] = sh
 			h.mu.Unlock()
+
+			if sh.IsStale() {
+				continue
+			}
 
 			spqrlog.Zero.Debug().
 				Uint("pool", spqrlog.GetPointer(h)).
@@ -159,6 +168,7 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 		}
 
 		h.mu.Unlock()
+		break
 	}
 
 	// do not hold lock on poolRW while allocate new connection
@@ -166,7 +176,7 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 	sh, err = h.alloc(shardKey, config.Host{Address: h.host, AZ: h.az}, h.beRule)
 	if err != nil {
 		// return acquired token
-		h.queue <- struct{}{}
+		h.queue <- ConnLimitToken
 		return nil, err
 	}
 
