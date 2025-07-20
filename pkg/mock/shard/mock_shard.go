@@ -102,6 +102,20 @@ func (mr *MockShardHostCtlMockRecorder) InstanceHostname() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceHostname", reflect.TypeOf((*MockShardHostCtl)(nil).InstanceHostname))
 }
 
+// IsStale mocks base method.
+func (m *MockShardHostCtl) IsStale() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsStale")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsStale indicates an expected call of IsStale.
+func (mr *MockShardHostCtlMockRecorder) IsStale() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsStale", reflect.TypeOf((*MockShardHostCtl)(nil).IsStale))
+}
+
 // ListPreparedStatements mocks base method.
 func (m *MockShardHostCtl) ListPreparedStatements() []shard.PreparedStatementsMgrDescriptor {
 	m.ctrl.T.Helper()
@@ -290,6 +304,20 @@ func (m *MockCoordShardinfo) InstanceHostname() string {
 func (mr *MockCoordShardinfoMockRecorder) InstanceHostname() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceHostname", reflect.TypeOf((*MockCoordShardinfo)(nil).InstanceHostname))
+}
+
+// IsStale mocks base method.
+func (m *MockCoordShardinfo) IsStale() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsStale")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsStale indicates an expected call of IsStale.
+func (mr *MockCoordShardinfoMockRecorder) IsStale() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsStale", reflect.TypeOf((*MockCoordShardinfo)(nil).IsStale))
 }
 
 // ListPreparedStatements mocks base method.
@@ -565,6 +593,20 @@ func (m *MockShardHostInstance) InstanceHostname() string {
 func (mr *MockShardHostInstanceMockRecorder) InstanceHostname() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceHostname", reflect.TypeOf((*MockShardHostInstance)(nil).InstanceHostname))
+}
+
+// IsStale mocks base method.
+func (m *MockShardHostInstance) IsStale() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsStale")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsStale indicates an expected call of IsStale.
+func (mr *MockShardHostInstanceMockRecorder) IsStale() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsStale", reflect.TypeOf((*MockShardHostInstance)(nil).IsStale))
 }
 
 // ListPreparedStatements mocks base method.

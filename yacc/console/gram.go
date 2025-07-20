@@ -3,19 +3,19 @@
 //line gram.y:3
 package spqrparser
 
+import __yyfmt__ "fmt"
+
+//line gram.y:3
+
 import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
-	__yyfmt__ "fmt"
-	"math"
-	"strings"
-
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"math"
+	"strings"
 )
-
-//line gram.y:3
 
 const SIGNED_INT_RANGE_ERROR string = "the Signed Value should be at the range of [-9223372036854775808, 9223372036854775807]."
 

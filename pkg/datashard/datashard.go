@@ -104,10 +104,6 @@ func (sh *Conn) Instance() conn.DBInstance {
 // - int64: The difference between sync_out and sync_in.
 // All callers are just comparing this to zero, except for SHOW utilities
 func (sh *Conn) Sync() int64 {
-	if sh.stale.Load() {
-		/* report as not sync */
-		return -1e18
-	}
 	return sh.sync_out - sh.sync_in
 }
 

@@ -150,12 +150,15 @@ func (h *shardHostPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard
 
 		if len(h.pool) > 0 {
 			sh, h.pool = h.pool[0], h.pool[1:]
-			h.active[sh.ID()] = sh
-			h.mu.Unlock()
 
 			if sh.IsStale() {
+				h.mu.Unlock()
+				_ = sh.Close()
 				continue
 			}
+
+			h.active[sh.ID()] = sh
+			h.mu.Unlock()
 
 			spqrlog.Zero.Debug().
 				Uint("pool", spqrlog.GetPointer(h)).

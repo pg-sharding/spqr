@@ -79,6 +79,9 @@ type CoordShardInfo struct {
 func (c *CoordShardInfo) MarkStale() {
 	/* noop */
 }
+func (c *CoordShardInfo) IsStale() bool {
+	return false
+}
 
 // DataPending implements shard.Shardinfo.
 func (c *CoordShardInfo) DataPending() bool {

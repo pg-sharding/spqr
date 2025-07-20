@@ -55,18 +55,21 @@ var BackendConnectionsHeaders = []string{
 	"sync",
 	"tx_served",
 	"tx status",
+	"is stale",
 }
+
 var BackendConnectionsGetters = map[string]toString[shard.ShardHostCtl]{
-	BackendConnectionsHeaders[0]: func(sh shard.ShardHostCtl) string { return fmt.Sprintf("%d", sh.ID()) },
-	BackendConnectionsHeaders[1]: GetRouter,
-	BackendConnectionsHeaders[2]: func(sh shard.ShardHostCtl) string { return sh.ShardKeyName() },
-	BackendConnectionsHeaders[3]: func(sh shard.ShardHostCtl) string { return sh.InstanceHostname() },
-	BackendConnectionsHeaders[4]: func(sh shard.ShardHostCtl) string { return fmt.Sprintf("%d", sh.Pid()) },
-	BackendConnectionsHeaders[5]: func(sh shard.ShardHostCtl) string { return sh.Usr() },
-	BackendConnectionsHeaders[6]: func(sh shard.ShardHostCtl) string { return sh.DB() },
-	BackendConnectionsHeaders[7]: func(sh shard.ShardHostCtl) string { return strconv.FormatInt(sh.Sync(), 10) },
-	BackendConnectionsHeaders[8]: func(sh shard.ShardHostCtl) string { return strconv.FormatInt(sh.TxServed(), 10) },
-	BackendConnectionsHeaders[9]: func(sh shard.ShardHostCtl) string { return sh.TxStatus().String() },
+	BackendConnectionsHeaders[0]:  func(sh shard.ShardHostCtl) string { return fmt.Sprintf("%d", sh.ID()) },
+	BackendConnectionsHeaders[1]:  GetRouter,
+	BackendConnectionsHeaders[2]:  func(sh shard.ShardHostCtl) string { return sh.ShardKeyName() },
+	BackendConnectionsHeaders[3]:  func(sh shard.ShardHostCtl) string { return sh.InstanceHostname() },
+	BackendConnectionsHeaders[4]:  func(sh shard.ShardHostCtl) string { return fmt.Sprintf("%d", sh.Pid()) },
+	BackendConnectionsHeaders[5]:  func(sh shard.ShardHostCtl) string { return sh.Usr() },
+	BackendConnectionsHeaders[6]:  func(sh shard.ShardHostCtl) string { return sh.DB() },
+	BackendConnectionsHeaders[7]:  func(sh shard.ShardHostCtl) string { return strconv.FormatInt(sh.Sync(), 10) },
+	BackendConnectionsHeaders[8]:  func(sh shard.ShardHostCtl) string { return strconv.FormatInt(sh.TxServed(), 10) },
+	BackendConnectionsHeaders[9]:  func(sh shard.ShardHostCtl) string { return sh.TxStatus().String() },
+	BackendConnectionsHeaders[10]: func(sh shard.ShardHostCtl) string { return strconv.FormatBool(sh.IsStale()) },
 }
 
 type Interactor interface {
