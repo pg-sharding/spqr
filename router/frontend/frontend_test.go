@@ -105,7 +105,7 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().DefaultRouteBehaviour().Return("ALLOW").AnyTimes()
 
 	// reroute on first query in this case
-	cmngr.EXPECT().ValidateReRoute(gomock.Any()).AnyTimes().Return(true)
+	cmngr.EXPECT().ValidateSliceChange(gomock.Any()).AnyTimes().Return(true)
 
 	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).AnyTimes()
 
@@ -183,11 +183,6 @@ func TestFrontendXProto(t *testing.T) {
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
-	qr.EXPECT().SelectRandomRoute(gomock.Any()).AnyTimes().Return(plan.ShardDispatchPlan{
-		ExecTarget: kr.ShardKey{
-			Name: "sh1",
-		},
-	}, nil)
 
 	sh.EXPECT().ID().AnyTimes()
 	sh.EXPECT().Send(gomock.Any()).AnyTimes().Return(nil)
@@ -231,7 +226,7 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().AssignServerConn(gomock.Any()).AnyTimes().Return(nil)
 
 	// reroute on first query in this case
-	cmngr.EXPECT().ValidateReRoute(gomock.Any()).AnyTimes().Return(true)
+	cmngr.EXPECT().ValidateSliceChange(gomock.Any()).AnyTimes().Return(true)
 
 	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).AnyTimes()
 

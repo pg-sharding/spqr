@@ -217,16 +217,16 @@ func (mr *MockPoolMgrMockRecorder) UnRouteWithError(arg0, sh, errmsg any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnRouteWithError", reflect.TypeOf((*MockPoolMgr)(nil).UnRouteWithError), arg0, sh, errmsg)
 }
 
-// ValidateReRoute mocks base method.
-func (m *MockPoolMgr) ValidateReRoute(rst poolmgr.ConnectionKeeper) bool {
+// ValidateSliceChange mocks base method.
+func (m *MockPoolMgr) ValidateSliceChange(rst poolmgr.ConnectionKeeper) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateReRoute", rst)
+	ret := m.ctrl.Call(m, "ValidateSliceChange", rst)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
-// ValidateReRoute indicates an expected call of ValidateReRoute.
-func (mr *MockPoolMgrMockRecorder) ValidateReRoute(rst any) *gomock.Call {
+// ValidateSliceChange indicates an expected call of ValidateSliceChange.
+func (mr *MockPoolMgrMockRecorder) ValidateSliceChange(rst any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateReRoute", reflect.TypeOf((*MockPoolMgr)(nil).ValidateReRoute), rst)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateSliceChange", reflect.TypeOf((*MockPoolMgr)(nil).ValidateSliceChange), rst)
 }

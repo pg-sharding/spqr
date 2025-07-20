@@ -3,7 +3,6 @@ package qrouter
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -1547,17 +1546,6 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	return pl, ro, nil
 }
 
-func (qr *ProxyQrouter) SelectRandomRoute(routes []kr.ShardKey) (plan.Plan, error) {
-	if len(routes) == 0 {
-		return nil, fmt.Errorf("no routes configured")
-	}
-
-	r := routes[rand.Int()%len(routes)]
-	return plan.ShardDispatchPlan{
-		ExecTarget: r,
-	}, nil
-}
-
 /*
 * This function assumes that INSTEAD OF rules on selects in PostgreSQL are only RIR
  */
@@ -1690,10 +1678,10 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 		return v, nil
 	case plan.RandomDispatchPlan:
 		if v.ExecTargets == nil {
-			return qr.SelectRandomRoute(qr.DataShardsRoutes())
+			return planner.SelectRandomDispatchPlan(qr.DataShardsRoutes())
 		} else {
 			/* reference relation case */
-			return qr.SelectRandomRoute(v.ExecTargets)
+			return planner.SelectRandomDispatchPlan(v.ExecTargets)
 		}
 
 	case plan.CopyPlan:

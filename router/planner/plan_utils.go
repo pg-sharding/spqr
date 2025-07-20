@@ -2,10 +2,14 @@ package planner
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
@@ -98,4 +102,15 @@ func ProcessInsertFromSelectOffsets(
 	default:
 		return nil, nil, nil, rerrors.ErrComplexQuery
 	}
+}
+
+func SelectRandomDispatchPlan(routes []kr.ShardKey) (plan.Plan, error) {
+	if len(routes) == 0 {
+		return nil, fmt.Errorf("no routes configured")
+	}
+
+	r := routes[rand.Int()%len(routes)]
+	return plan.ShardDispatchPlan{
+		ExecTarget: r,
+	}, nil
 }
