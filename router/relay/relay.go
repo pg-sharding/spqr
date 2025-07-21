@@ -962,25 +962,13 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					}
 
 					rst.execute = func() error {
-						rst.AddQuery(&rst.saveBind)
-						rst.AddQuery(pgexec)
-						rst.AddQuery(pgsync)
-
-						_, err := rst.RelayFlush(true, true)
-						// do not complete relay here yet
-						return err
+						return BindAndReadSliceResult(rst, &rst.saveBind)
 					}
 
 					return nil
 				case plan.VirtualPlan:
 					rst.execute = func() error {
-						rst.AddQuery(&rst.saveBind)
-
-						rst.AddQuery(pgexec)
-						rst.AddQuery(pgsync)
-						// do not complete relay here yet
-						_, err = rst.RelayFlush(true, true)
-						return err
+						return BindAndReadSliceResult(rst, &rst.saveBind)
 					}
 					return nil
 				default:
@@ -998,15 +986,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 							return err
 						}
 
-						/* Case when no describe stmt was issued before Execute+Sync*/
-						rst.AddQuery(&rst.saveBind)
-						// do not send saved bind twice
-
-						rst.AddQuery(pgexec)
-						rst.AddQuery(pgsync)
-						// do not complete relay here yet
-						_, err = rst.RelayFlush(true, true)
-						return err
+						return BindAndReadSliceResult(rst, &rst.saveBind)
 					}
 
 					return nil

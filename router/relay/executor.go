@@ -510,6 +510,49 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	return txt, nil
 }
 
+func (s *QueryStateExecutorImpl) copyExecutor(mgr meta.EntityMgr, q *lyx.Copy, doFinalizeTx, attachedCopy bool) error {
+
+	var leftoverMsgData []byte
+	ctx := context.TODO()
+
+	cps, err := s.ProcCopyPrepare(ctx, mgr, q, attachedCopy)
+	if err != nil {
+		return err
+	}
+
+	for {
+		cpMsg, err := s.Client().Receive()
+		if err != nil {
+			return err
+		}
+
+		switch newMsg := cpMsg.(type) {
+		case *pgproto3.CopyData:
+			leftoverMsgData = append(leftoverMsgData, newMsg.Data...)
+
+			if leftoverMsgData, err = s.ProcCopy(ctx, &pgproto3.CopyData{Data: leftoverMsgData}, cps); err != nil {
+				/* complete relay if copy failed here */
+				return err
+			}
+		case *pgproto3.CopyDone, *pgproto3.CopyFail:
+			if txt, err := s.ProcCopyComplete(cpMsg); err != nil {
+				return err
+			} else {
+				if doFinalizeTx {
+					if txt == txstatus.TXACT {
+						return s.ExecCommitTx("COMMIT")
+					}
+					return s.ExecRollbackServer()
+				}
+			}
+
+			return nil
+		default:
+			/* panic? */
+		}
+	}
+}
+
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
 
@@ -565,11 +608,6 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 		return nil, fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 	}
 
-	spqrlog.Zero.Debug().
-		Uints("shards", shard.ShardIDs(serv.Datashards())).
-		Type("query-type", qd.Msg).Type("plan-type", qd.P).
-		Msg("relay process query")
-
 	doFinalizeTx := false
 	attachedCopy := s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
 
@@ -585,36 +623,13 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 		}
 	}
 
-	if qd.P == nil {
-		if err := serv.Send(qd.Msg); err != nil {
-			return nil, err
-		}
+	spqrlog.Zero.Debug().
+		Uints("shards", shard.ShardIDs(serv.Datashards())).
+		Type("query-type", qd.Msg).Type("plan-type", qd.P).
+		Msg("relay process plan")
 
-		if s.Client().ShowNoticeMsg() && replyCl {
-			_ = replyShardMatches(s.Client(), server.ServerShkeys(serv))
-		}
-	} else {
-		et := qd.P.ExecutionTargets()
-
-		if len(et) == 0 {
-			if err := serv.Send(qd.Msg); err != nil {
-				return nil, err
-			}
-
-			if s.Client().ShowNoticeMsg() && replyCl {
-				_ = replyShardMatches(s.Client(), server.ServerShkeys(serv))
-			}
-		} else {
-			for _, targ := range et {
-				if err := serv.SendShard(qd.Msg, targ); err != nil {
-					return nil, err
-				}
-			}
-
-			if s.Client().ShowNoticeMsg() && replyCl {
-				_ = replyShardMatches(s.Client(), et)
-			}
-		}
+	if err := DispatchPlan(qd, serv, s.Client(), replyCl); err != nil {
+		return nil, err
 	}
 
 	waitForRespLocal := waitForResp
@@ -632,7 +647,6 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 		/* we do not alter txstatus here */
 		return nil, nil
 	}
-
 	unreplied := make([]pgproto3.BackendMessage, 0)
 
 	for {
@@ -651,49 +665,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 
 			q := qd.Stmt.(*lyx.Copy)
 
-			return nil, func() error {
-				var leftoverMsgData []byte
-				ctx := context.TODO()
-
-				cps, err := s.ProcCopyPrepare(ctx, mgr, q, attachedCopy)
-				if err != nil {
-					return err
-				}
-
-				for {
-					cpMsg, err := s.Client().Receive()
-					if err != nil {
-						return err
-					}
-
-					switch newMsg := cpMsg.(type) {
-					case *pgproto3.CopyData:
-						leftoverMsgData = append(leftoverMsgData, newMsg.Data...)
-
-						if leftoverMsgData, err = s.ProcCopy(ctx, &pgproto3.CopyData{Data: leftoverMsgData}, cps); err != nil {
-							/* complete relay if copy failed here */
-							return err
-						}
-					case *pgproto3.CopyDone, *pgproto3.CopyFail:
-						if txt, err := s.ProcCopyComplete(cpMsg); err != nil {
-							return err
-						} else {
-							if doFinalizeTx {
-								if txt == txstatus.TXACT {
-									return s.ExecCommitTx("COMMIT")
-								} else {
-									return s.ExecRollbackServer()
-								}
-							}
-
-						}
-
-						return nil
-					default:
-						/* panic? */
-					}
-				}
-			}()
+			return nil, s.copyExecutor(mgr, q, doFinalizeTx, attachedCopy)
 		case *pgproto3.DataRow:
 			spqrlog.Zero.Debug().
 				Str("server", serv.Name()).
