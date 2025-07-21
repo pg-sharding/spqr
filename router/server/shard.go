@@ -175,11 +175,12 @@ func (srv *ShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, uint, error) {
+func (srv *ShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, error) {
 	if (*srv.shard.Load()).ID() != shardId {
-		return nil, 0, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 	}
-	return srv.Receive()
+	msg, _, err := srv.Receive()
+	return msg, err
 }
 
 // TODO : unit tests

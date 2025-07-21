@@ -42,7 +42,7 @@ recvLoop:
 	for {
 		// https://www.postgresql.org/docs/current/protocol-flow.html
 
-		msg, _, err := serv.ReceiveShard(shardId)
+		msg, err := serv.ReceiveShard(shardId)
 		if err != nil {
 			return nil, err
 		}
