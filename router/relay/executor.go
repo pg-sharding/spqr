@@ -510,6 +510,64 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	return txt, nil
 }
 
+func (s *QueryStateExecutorImpl) copyExecutor(qd *QueryDesc, serv server.Server, mgr meta.EntityMgr, q *lyx.Copy) error {
+
+	doFinalizeTx := false
+	attachedCopy := s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
+
+	switch qd.Stmt.(type) {
+	case *lyx.Copy:
+		spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
+
+		if serv.TxStatus() == txstatus.TXIDLE {
+			if err := s.DeployTx(serv, "BEGIN"); err != nil {
+				return err
+			}
+			doFinalizeTx = true
+		}
+	}
+
+	var leftoverMsgData []byte
+	ctx := context.TODO()
+
+	cps, err := s.ProcCopyPrepare(ctx, mgr, q, attachedCopy)
+	if err != nil {
+		return err
+	}
+
+	for {
+		cpMsg, err := s.Client().Receive()
+		if err != nil {
+			return err
+		}
+
+		switch newMsg := cpMsg.(type) {
+		case *pgproto3.CopyData:
+			leftoverMsgData = append(leftoverMsgData, newMsg.Data...)
+
+			if leftoverMsgData, err = s.ProcCopy(ctx, &pgproto3.CopyData{Data: leftoverMsgData}, cps); err != nil {
+				/* complete relay if copy failed here */
+				return err
+			}
+		case *pgproto3.CopyDone, *pgproto3.CopyFail:
+			if txt, err := s.ProcCopyComplete(cpMsg); err != nil {
+				return err
+			} else {
+				if doFinalizeTx {
+					if txt == txstatus.TXACT {
+						return s.ExecCommitTx("COMMIT")
+					}
+					return s.ExecRollbackServer()
+				}
+			}
+
+			return nil
+		default:
+			/* panic? */
+		}
+	}
+}
+
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
 
@@ -570,21 +628,6 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 		Type("query-type", qd.Msg).Type("plan-type", qd.P).
 		Msg("relay process query")
 
-	doFinalizeTx := false
-	attachedCopy := s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
-
-	switch qd.Stmt.(type) {
-	case *lyx.Copy:
-		spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
-
-		if serv.TxStatus() == txstatus.TXIDLE {
-			if err := s.DeployTx(serv, "BEGIN"); err != nil {
-				return nil, err
-			}
-			doFinalizeTx = true
-		}
-	}
-
 	if err := DispatchPlan(qd, serv, s.Client(), replyCl); err != nil {
 		return nil, err
 	}
@@ -623,49 +666,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 
 			q := qd.Stmt.(*lyx.Copy)
 
-			return nil, func() error {
-				var leftoverMsgData []byte
-				ctx := context.TODO()
-
-				cps, err := s.ProcCopyPrepare(ctx, mgr, q, attachedCopy)
-				if err != nil {
-					return err
-				}
-
-				for {
-					cpMsg, err := s.Client().Receive()
-					if err != nil {
-						return err
-					}
-
-					switch newMsg := cpMsg.(type) {
-					case *pgproto3.CopyData:
-						leftoverMsgData = append(leftoverMsgData, newMsg.Data...)
-
-						if leftoverMsgData, err = s.ProcCopy(ctx, &pgproto3.CopyData{Data: leftoverMsgData}, cps); err != nil {
-							/* complete relay if copy failed here */
-							return err
-						}
-					case *pgproto3.CopyDone, *pgproto3.CopyFail:
-						if txt, err := s.ProcCopyComplete(cpMsg); err != nil {
-							return err
-						} else {
-							if doFinalizeTx {
-								if txt == txstatus.TXACT {
-									return s.ExecCommitTx("COMMIT")
-								} else {
-									return s.ExecRollbackServer()
-								}
-							}
-
-						}
-
-						return nil
-					default:
-						/* panic? */
-					}
-				}
-			}()
+			return nil, s.copyExecutor(qd, serv, mgr, q)
 		case *pgproto3.DataRow:
 			spqrlog.Zero.Debug().
 				Str("server", serv.Name()).
