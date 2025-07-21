@@ -44,7 +44,6 @@ type RelayStateMgr interface {
 	Parse(query string, doCaching bool) (parser.ParseState, string, error)
 
 	AddQuery(q pgproto3.FrontendMessage)
-	AddSilentQuery(q pgproto3.FrontendMessage)
 
 	RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error)
 
@@ -73,31 +72,10 @@ type RelayStateMgr interface {
 
 type BufferedMessageType int
 
-const (
-	// Message from client
-	BufferedMessageRegular = BufferedMessageType(0)
-	// Message produced by spqr
-	BufferedMessageInternal = BufferedMessageType(1)
-)
-
 type BufferedMessage struct {
 	msg pgproto3.FrontendMessage
 
 	tp BufferedMessageType
-}
-
-func RegularBufferedMessage(q pgproto3.FrontendMessage) BufferedMessage {
-	return BufferedMessage{
-		msg: q,
-		tp:  BufferedMessageRegular,
-	}
-}
-
-func InternalBufferedMessage(q pgproto3.FrontendMessage) BufferedMessage {
-	return BufferedMessage{
-		msg: q,
-		tp:  BufferedMessageInternal,
-	}
 }
 
 type PortalDesc struct {
@@ -123,8 +101,7 @@ type RelayStateImpl struct {
 	Cl      client.RouterClient
 	poolMgr poolmgr.PoolMgr
 
-	msgBuf      []pgproto3.FrontendMessage
-	msgBufReply []bool
+	msgBuf []pgproto3.FrontendMessage
 
 	holdRouting bool
 
@@ -655,7 +632,7 @@ func (rst *RelayStateImpl) flusher(waitForResp, replyCl bool) ([]pgproto3.Backen
 
 	var unreplied []pgproto3.BackendMessage
 
-	for i, v := range rst.msgBuf {
+	for _, v := range rst.msgBuf {
 		spqrlog.Zero.Debug().
 			Uint("client-id", rst.Client().ID()).
 			Bool("waitForResp", waitForResp).
@@ -663,7 +640,7 @@ func (rst *RelayStateImpl) flusher(waitForResp, replyCl bool) ([]pgproto3.Backen
 			Interface("plan", rst.routingDecisionPlan).
 			Msg("flushing")
 
-		resolvedReplyCl := replyCl && rst.msgBufReply[i]
+		resolvedReplyCl := replyCl
 
 		if unrep_local, err := rst.qse.ProcQuery(
 			&QueryDesc{
@@ -691,7 +668,6 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) ([]pgproto
 	msgs, err := rst.flusher(waitForResp, replyCl)
 
 	rst.msgBuf = rst.msgBuf[:0]
-	rst.msgBufReply = rst.msgBufReply[:0]
 
 	return msgs, err
 }
@@ -777,16 +753,6 @@ func (rst *RelayStateImpl) AddQuery(q pgproto3.FrontendMessage) {
 		Type("message-type", q).
 		Msg("client relay: adding message to message buffer")
 	rst.msgBuf = append(rst.msgBuf, q)
-	rst.msgBufReply = append(rst.msgBufReply, true)
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) AddSilentQuery(q pgproto3.FrontendMessage) {
-	spqrlog.Zero.Debug().
-		Interface("query", q).
-		Msg("adding silent query")
-	rst.msgBuf = append(rst.msgBuf, q)
-	rst.msgBufReply = append(rst.msgBufReply, false)
 }
 
 // TODO : unit tests
@@ -998,14 +964,13 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					pstmt := rst.Client().PreparedStatementDefinitionByName(currentMsg.PreparedStatement)
 					hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
 					pstmt.Name = fmt.Sprintf("%d", hash)
-					currentMsg.PreparedStatement = pstmt.Name
 					err := rst.multishardPrepareScatter(hash, pstmt)
 					if err != nil {
 						return err
 					}
 
 					rst.execute = func() error {
-						rst.AddQuery(msg)
+						rst.AddQuery(&rst.saveBind)
 						rst.AddQuery(pgexec)
 						rst.AddQuery(pgsync)
 
@@ -1017,7 +982,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					return nil
 				case plan.VirtualPlan:
 					rst.execute = func() error {
-						rst.AddQuery(msg)
+						rst.AddQuery(&rst.saveBind)
 
 						rst.AddQuery(pgexec)
 						rst.AddQuery(pgsync)
@@ -1042,7 +1007,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						}
 
 						/* Case when no describe stmt was issued before Execute+Sync*/
-						rst.AddSilentQuery(&rst.saveBind)
+						rst.AddQuery(&rst.saveBind)
 						// do not send saved bind twice
 
 						rst.AddQuery(pgexec)
