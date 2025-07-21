@@ -70,14 +70,6 @@ type RelayStateMgr interface {
 	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching, completeRelay bool) (*PortalDesc, error)
 }
 
-type BufferedMessageType int
-
-type BufferedMessage struct {
-	msg pgproto3.FrontendMessage
-
-	tp BufferedMessageType
-}
-
 type PortalDesc struct {
 	rd     *pgproto3.RowDescription
 	nodata *pgproto3.NoData
