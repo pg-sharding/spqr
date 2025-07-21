@@ -585,36 +585,8 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 		}
 	}
 
-	if qd.P == nil {
-		if err := serv.Send(qd.Msg); err != nil {
-			return nil, err
-		}
-
-		if s.Client().ShowNoticeMsg() && replyCl {
-			_ = replyShardMatches(s.Client(), server.ServerShkeys(serv))
-		}
-	} else {
-		et := qd.P.ExecutionTargets()
-
-		if len(et) == 0 {
-			if err := serv.Send(qd.Msg); err != nil {
-				return nil, err
-			}
-
-			if s.Client().ShowNoticeMsg() && replyCl {
-				_ = replyShardMatches(s.Client(), server.ServerShkeys(serv))
-			}
-		} else {
-			for _, targ := range et {
-				if err := serv.SendShard(qd.Msg, targ); err != nil {
-					return nil, err
-				}
-			}
-
-			if s.Client().ShowNoticeMsg() && replyCl {
-				_ = replyShardMatches(s.Client(), et)
-			}
-		}
+	if err := DispatchPlan(qd, serv, s.Client(), replyCl); err != nil {
+		return nil, err
 	}
 
 	waitForRespLocal := waitForResp
