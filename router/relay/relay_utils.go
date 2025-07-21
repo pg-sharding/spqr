@@ -8,6 +8,19 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 )
 
+func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
+
+	/* Case when no describe stmt was issued before Execute+Sync*/
+	rst.AddQuery(bind)
+	// do not send saved bind twice
+
+	rst.AddQuery(pgexec)
+	rst.AddQuery(pgsync)
+	// do not complete relay here yet
+	_, err := rst.RelayFlush(true, true)
+	return err
+}
+
 func sliceDescribePortal(serv server.Server, portalDesc *pgproto3.Describe, bind *pgproto3.Bind) (*PortalDesc, error) {
 
 	shards := serv.Datashards()
