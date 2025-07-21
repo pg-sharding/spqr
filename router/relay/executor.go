@@ -510,7 +510,7 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	return txt, nil
 }
 
-func (s *QueryStateExecutorImpl) copyExecutor(qd *QueryDesc, serv server.Server, mgr meta.EntityMgr, q *lyx.Copy, doFinalizeTx, attachedCopy bool) error {
+func (s *QueryStateExecutorImpl) copyExecutor(mgr meta.EntityMgr, q *lyx.Copy, doFinalizeTx, attachedCopy bool) error {
 
 	var leftoverMsgData []byte
 	ctx := context.TODO()
@@ -608,10 +608,25 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 		return nil, fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 	}
 
+	doFinalizeTx := false
+	attachedCopy := s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
+
+	switch qd.Stmt.(type) {
+	case *lyx.Copy:
+		spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
+
+		if serv.TxStatus() == txstatus.TXIDLE {
+			if err := s.DeployTx(serv, "BEGIN"); err != nil {
+				return nil, err
+			}
+			doFinalizeTx = true
+		}
+	}
+
 	spqrlog.Zero.Debug().
 		Uints("shards", shard.ShardIDs(serv.Datashards())).
 		Type("query-type", qd.Msg).Type("plan-type", qd.P).
-		Msg("relay process query")
+		Msg("relay process plan")
 
 	if err := DispatchPlan(qd, serv, s.Client(), replyCl); err != nil {
 		return nil, err
@@ -632,22 +647,6 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 		/* we do not alter txstatus here */
 		return nil, nil
 	}
-
-	doFinalizeTx := false
-	attachedCopy := s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
-
-	switch qd.Stmt.(type) {
-	case *lyx.Copy:
-		spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
-
-		if serv.TxStatus() == txstatus.TXIDLE {
-			if err := s.DeployTx(serv, "BEGIN"); err != nil {
-				return nil, err
-			}
-			doFinalizeTx = true
-		}
-	}
-
 	unreplied := make([]pgproto3.BackendMessage, 0)
 
 	for {
@@ -666,7 +665,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 
 			q := qd.Stmt.(*lyx.Copy)
 
-			return nil, s.copyExecutor(qd, serv, mgr, q, doFinalizeTx, attachedCopy)
+			return nil, s.copyExecutor(mgr, q, doFinalizeTx, attachedCopy)
 		case *pgproto3.DataRow:
 			spqrlog.Zero.Debug().
 				Str("server", serv.Name()).
