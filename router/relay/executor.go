@@ -17,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
 	"github.com/pg-sharding/spqr/router/plan"
+	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
@@ -596,6 +597,8 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 			}
 
 			return nil, nil
+		} else {
+			return nil, rerrors.ErrComplexQuery
 		}
 	}
 

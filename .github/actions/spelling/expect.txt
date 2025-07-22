@@ -28,7 +28,6 @@ IPrepare
 Preparex
 Queryx
 KFS
-Kepper
 Kirill
 Kvs
 LDAPS

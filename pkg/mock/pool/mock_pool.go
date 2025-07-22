@@ -20,32 +20,32 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-// MockConnectionKepper is a mock of ConnectionKepper interface.
-type MockConnectionKepper struct {
+// MockConnectionKeeper is a mock of ConnectionKeeper interface.
+type MockConnectionKeeper struct {
 	ctrl     *gomock.Controller
-	recorder *MockConnectionKepperMockRecorder
+	recorder *MockConnectionKeeperMockRecorder
 	isgomock struct{}
 }
 
-// MockConnectionKepperMockRecorder is the mock recorder for MockConnectionKepper.
-type MockConnectionKepperMockRecorder struct {
-	mock *MockConnectionKepper
+// MockConnectionKeeperMockRecorder is the mock recorder for MockConnectionKeeper.
+type MockConnectionKeeperMockRecorder struct {
+	mock *MockConnectionKeeper
 }
 
-// NewMockConnectionKepper creates a new mock instance.
-func NewMockConnectionKepper(ctrl *gomock.Controller) *MockConnectionKepper {
-	mock := &MockConnectionKepper{ctrl: ctrl}
-	mock.recorder = &MockConnectionKepperMockRecorder{mock}
+// NewMockConnectionKeeper creates a new mock instance.
+func NewMockConnectionKeeper(ctrl *gomock.Controller) *MockConnectionKeeper {
+	mock := &MockConnectionKeeper{ctrl: ctrl}
+	mock.recorder = &MockConnectionKeeperMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockConnectionKepper) EXPECT() *MockConnectionKepperMockRecorder {
+func (m *MockConnectionKeeper) EXPECT() *MockConnectionKeeperMockRecorder {
 	return m.recorder
 }
 
 // Discard mocks base method.
-func (m *MockConnectionKepper) Discard(sh shard.ShardHostInstance) error {
+func (m *MockConnectionKeeper) Discard(sh shard.ShardHostInstance) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Discard", sh)
 	ret0, _ := ret[0].(error)
@@ -53,13 +53,13 @@ func (m *MockConnectionKepper) Discard(sh shard.ShardHostInstance) error {
 }
 
 // Discard indicates an expected call of Discard.
-func (mr *MockConnectionKepperMockRecorder) Discard(sh any) *gomock.Call {
+func (mr *MockConnectionKeeperMockRecorder) Discard(sh any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discard", reflect.TypeOf((*MockConnectionKepper)(nil).Discard), sh)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discard", reflect.TypeOf((*MockConnectionKeeper)(nil).Discard), sh)
 }
 
 // Put mocks base method.
-func (m *MockConnectionKepper) Put(host shard.ShardHostInstance) error {
+func (m *MockConnectionKeeper) Put(host shard.ShardHostInstance) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Put", host)
 	ret0, _ := ret[0].(error)
@@ -67,13 +67,13 @@ func (m *MockConnectionKepper) Put(host shard.ShardHostInstance) error {
 }
 
 // Put indicates an expected call of Put.
-func (mr *MockConnectionKepperMockRecorder) Put(host any) *gomock.Call {
+func (mr *MockConnectionKeeperMockRecorder) Put(host any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockConnectionKepper)(nil).Put), host)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockConnectionKeeper)(nil).Put), host)
 }
 
 // View mocks base method.
-func (m *MockConnectionKepper) View() pool.Statistics {
+func (m *MockConnectionKeeper) View() pool.Statistics {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "View")
 	ret0, _ := ret[0].(pool.Statistics)
@@ -81,9 +81,9 @@ func (m *MockConnectionKepper) View() pool.Statistics {
 }
 
 // View indicates an expected call of View.
-func (mr *MockConnectionKepperMockRecorder) View() *gomock.Call {
+func (mr *MockConnectionKeeperMockRecorder) View() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "View", reflect.TypeOf((*MockConnectionKepper)(nil).View))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "View", reflect.TypeOf((*MockConnectionKeeper)(nil).View))
 }
 
 // MockPool is a mock of Pool interface.

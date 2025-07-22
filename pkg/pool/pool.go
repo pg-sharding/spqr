@@ -17,7 +17,7 @@ const (
 	defaultTcpUserTimeout            = time.Millisecond * 9500
 )
 
-type ConnectionKepper interface {
+type ConnectionKeeper interface {
 	Put(host shard.ShardHostInstance) error
 	Discard(sh shard.ShardHostInstance) error
 	View() Statistics
@@ -35,7 +35,7 @@ type Statistics struct {
 
 /* dedicated host connection pool */
 type Pool interface {
-	ConnectionKepper
+	ConnectionKeeper
 	shard.ShardHostIterator
 
 	Connection(clid uint, shardKey kr.ShardKey) (shard.ShardHostInstance, error)
@@ -43,7 +43,7 @@ type Pool interface {
 
 /* Host  */
 type ShardHostsPool interface {
-	ConnectionKepper
+	ConnectionKeeper
 	shard.ShardHostIterator
 	PoolIterator
 
