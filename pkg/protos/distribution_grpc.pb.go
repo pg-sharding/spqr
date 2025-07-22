@@ -31,6 +31,7 @@ const (
 	DistributionService_NextVal_FullMethodName                  = "/spqr.DistributionService/NextVal"
 	DistributionService_CurrVal_FullMethodName                  = "/spqr.DistributionService/CurrVal"
 	DistributionService_ListSequences_FullMethodName            = "/spqr.DistributionService/ListSequences"
+	DistributionService_ListRelationSequences_FullMethodName    = "/spqr.DistributionService/ListRelationSequences"
 	DistributionService_DropSequence_FullMethodName             = "/spqr.DistributionService/DropSequence"
 )
 
@@ -49,6 +50,7 @@ type DistributionServiceClient interface {
 	NextVal(ctx context.Context, in *NextValRequest, opts ...grpc.CallOption) (*NextValReply, error)
 	CurrVal(ctx context.Context, in *CurrValRequest, opts ...grpc.CallOption) (*CurrValReply, error)
 	ListSequences(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListSequencesReply, error)
+	ListRelationSequences(ctx context.Context, in *ListRelationSequencesRequest, opts ...grpc.CallOption) (*ListRelationSequencesReply, error)
 	DropSequence(ctx context.Context, in *DropSequenceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -159,6 +161,15 @@ func (c *distributionServiceClient) ListSequences(ctx context.Context, in *empty
 	return out, nil
 }
 
+func (c *distributionServiceClient) ListRelationSequences(ctx context.Context, in *ListRelationSequencesRequest, opts ...grpc.CallOption) (*ListRelationSequencesReply, error) {
+	out := new(ListRelationSequencesReply)
+	err := c.cc.Invoke(ctx, DistributionService_ListRelationSequences_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *distributionServiceClient) DropSequence(ctx context.Context, in *DropSequenceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, DistributionService_DropSequence_FullMethodName, in, out, opts...)
@@ -183,6 +194,7 @@ type DistributionServiceServer interface {
 	NextVal(context.Context, *NextValRequest) (*NextValReply, error)
 	CurrVal(context.Context, *CurrValRequest) (*CurrValReply, error)
 	ListSequences(context.Context, *emptypb.Empty) (*ListSequencesReply, error)
+	ListRelationSequences(context.Context, *ListRelationSequencesRequest) (*ListRelationSequencesReply, error)
 	DropSequence(context.Context, *DropSequenceRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedDistributionServiceServer()
 }
@@ -223,6 +235,9 @@ func (UnimplementedDistributionServiceServer) CurrVal(context.Context, *CurrValR
 }
 func (UnimplementedDistributionServiceServer) ListSequences(context.Context, *emptypb.Empty) (*ListSequencesReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSequences not implemented")
+}
+func (UnimplementedDistributionServiceServer) ListRelationSequences(context.Context, *ListRelationSequencesRequest) (*ListRelationSequencesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRelationSequences not implemented")
 }
 func (UnimplementedDistributionServiceServer) DropSequence(context.Context, *DropSequenceRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropSequence not implemented")
@@ -438,6 +453,24 @@ func _DistributionService_ListSequences_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DistributionService_ListRelationSequences_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRelationSequencesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistributionServiceServer).ListRelationSequences(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistributionService_ListRelationSequences_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistributionServiceServer).ListRelationSequences(ctx, req.(*ListRelationSequencesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _DistributionService_DropSequence_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DropSequenceRequest)
 	if err := dec(in); err != nil {
@@ -506,6 +539,10 @@ var DistributionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSequences",
 			Handler:    _DistributionService_ListSequences_Handler,
+		},
+		{
+			MethodName: "ListRelationSequences",
+			Handler:    _DistributionService_ListRelationSequences_Handler,
 		},
 		{
 			MethodName: "DropSequence",
