@@ -94,6 +94,15 @@ message DropSequenceRequest {
   string name = 1;
 }
 
+message ListRelationSequencesRequest {
+  string name = 1;
+  string schemaName = 2;
+}
+
+message ListRelationSequencesReply {
+  map<string, string> columnSequences = 1;
+}
+
 service DistributionService {
   rpc CreateDistribution(CreateDistributionRequest) returns (google.protobuf.Empty) {}
   rpc DropDistribution(DropDistributionRequest) returns (google.protobuf.Empty) {}
@@ -111,5 +120,6 @@ service DistributionService {
   rpc CurrVal(CurrValRequest) returns (CurrValReply) {}
 
   rpc ListSequences(google.protobuf.Empty) returns (ListSequencesReply) {}
+  rpc ListRelationSequences(ListRelationSequencesRequest) returns (ListRelationSequencesReply) {}
   rpc DropSequence(DropSequenceRequest) returns (google.protobuf.Empty) {}
 }

@@ -1075,3 +1075,16 @@ func (a *Adapter) CurrVal(ctx context.Context, seqName string) (int64, error) {
 	}
 	return resp.Value, err
 }
+
+func (a *Adapter) ListRelationSequences(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
+	resp, err := c.ListRelationSequences(ctx, &proto.ListRelationSequencesRequest{
+		Name:       relName.RelationName,
+		SchemaName: relName.SchemaName,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.ColumnSequences, nil
+}

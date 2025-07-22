@@ -88,6 +88,17 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		relName := &rfqn.RelationFQN{
 			RelationName: stmt.ID,
 		}
+
+		seqs, err := mngr.ListRelationSequences(ctx, relName)
+		if err != nil {
+			return err
+		}
+		for _, seq := range seqs {
+			if err := mngr.DropSequence(ctx, seq); err != nil {
+				return err
+			}
+		}
+
 		if err := mngr.DropReferenceRelation(ctx, relName); err != nil {
 			return err
 		}

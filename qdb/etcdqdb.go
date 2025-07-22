@@ -1853,7 +1853,7 @@ func (q *EtcdQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
 }
 
 func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
-	spqrlog.Zero.Debug().Msg("etcdqdb: next val")
+	spqrlog.Zero.Debug().Msg("etcdqdb: curr val")
 
 	id := sequenceNodePath(seqName)
 	sess, err := concurrency.NewSession(q.cli)

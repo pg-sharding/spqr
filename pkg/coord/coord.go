@@ -942,3 +942,7 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 func (lc *Coordinator) ListSequences(ctx context.Context) ([]string, error) {
 	return lc.qdb.ListSequences(ctx)
 }
+
+func (lc *Coordinator) ListRelationSequences(ctx context.Context, rel *rfqn.RelationFQN) (map[string]string, error) {
+	return lc.qdb.GetRelationSequence(ctx, rel)
+}
