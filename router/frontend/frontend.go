@@ -60,8 +60,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			q = &cpQ
 			qr.SetQuery(&q.String)
 			_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
-				rst.AddQuery(q)
-				return rst.ProcessMessageBuf(true, true)
+				return rst.ProcessSimpleQuery(q)
 			}, false, true)
 			return err
 		default:
@@ -123,9 +122,8 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		q = &cpQ
 		qr.SetQuery(&q.String)
 		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
-			rst.AddQuery(q)
 			// this call completes relay, sends RFQ
-			return rst.ProcessMessageBuf(true, true)
+			return rst.ProcessSimpleQuery(q)
 		}, false, true)
 
 		return err
