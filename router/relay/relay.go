@@ -15,7 +15,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
@@ -48,8 +47,6 @@ type RelayStateMgr interface {
 	CompleteRelay(replyCl bool) error
 	Close() error
 	Client() client.RouterClient
-
-	PrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error)
 
 	PrepareExecutionSlice() (plan.Plan, error)
 	PrepareRandomDispatchExecutionSlice(plan.Plan) (plan.Plan, func() error, error)
@@ -179,23 +176,7 @@ func (rst *RelayStateImpl) Client() client.RouterClient {
 	return rst.Cl
 }
 
-// TODO : unit tests
-func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
-	serv := rst.Client().Server()
-
-	shards := serv.Datashards()
-	if len(shards) == 0 {
-		return nil, nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
-	}
-
-	rd, retMsg, err := gangMemberDeployPreparedStatement(shards[0], hash, d)
-	if err != nil {
-		return nil, nil, err
-	}
-	return rd, retMsg, err
-}
-
-func (rst *RelayStateImpl) multishardPrepareScatter(hash uint64, d *prepstatement.PreparedStatementDefinition) error {
+func (rst *RelayStateImpl) gangDeployPrepStmt(hash uint64, d *prepstatement.PreparedStatementDefinition) error {
 	serv := rst.Client().Server()
 
 	shards := serv.Datashards()
@@ -591,9 +572,33 @@ func (rst *RelayStateImpl) AddExtendedProtocMessage(q pgproto3.FrontendMessage) 
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) DeployPrepStmt(qname string) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
+func (rst *RelayStateImpl) gangDeployPrepStmtByName(qname string) error {
+
+	server := rst.Client().Server()
+	if server == nil {
+		return fmt.Errorf("relay is not attached to deploy")
+	}
+
 	def := rst.Client().PreparedStatementDefinitionByName(qname)
 	hash := rst.Client().PreparedStatementQueryHashByName(qname)
+	name := fmt.Sprintf("%d", hash)
+
+	spqrlog.Zero.Debug().
+		Str("name", qname).
+		Str("query", def.Query).
+		Uint64("hash", hash).
+		Uint("client", rst.Client().ID()).
+		Msg("deploy prepared statement")
+
+	return rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
+		Name:          name,
+		Query:         def.Query,
+		ParameterOIDs: def.ParameterOIDs,
+	})
+}
+
+// TODO : unit tests
+func (rst *RelayStateImpl) DeployPrepStmt(qname string) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 
 	server := rst.Client().Server()
 	if server == nil {
@@ -608,16 +613,21 @@ func (rst *RelayStateImpl) DeployPrepStmt(qname string) (*prepstatement.Prepared
 				"try to use simple protocol instead")
 	}
 
+	shard := server.Datashards()[0]
+
+	def := rst.Client().PreparedStatementDefinitionByName(qname)
+	hash := rst.Client().PreparedStatementQueryHashByName(qname)
+	name := fmt.Sprintf("%d", hash)
+
 	spqrlog.Zero.Debug().
 		Str("name", qname).
 		Str("query", def.Query).
 		Uint64("hash", hash).
 		Uint("client", rst.Client().ID()).
-		Uints("shards", shard.ShardIDs(rst.Client().Server().Datashards())).
+		Uint("shard", shard.ID()).
 		Msg("deploy prepared statement")
 
-	name := fmt.Sprintf("%d", hash)
-	return rst.PrepareStatement(hash, &prepstatement.PreparedStatementDefinition{
+	return gangMemberDeployPreparedStatement(shard, hash, &prepstatement.PreparedStatementDefinition{
 		Name:          name,
 		Query:         def.Query,
 		ParameterOIDs: def.ParameterOIDs,
@@ -786,41 +796,29 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				}
 
 				switch rst.bindQueryPlan.(type) {
-				case plan.ScatterPlan:
-					routes := rst.Qr.DataShardsRoutes()
-					if err := rst.procRoutes(routes); err != nil {
-						return err
-					}
-
-					pstmt := rst.Client().PreparedStatementDefinitionByName(currentMsg.PreparedStatement)
-					hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
-					pstmt.Name = fmt.Sprintf("%d", hash)
-					err := rst.multishardPrepareScatter(hash, pstmt)
-					if err != nil {
-						return err
-					}
-
-					rst.execute = func() error {
-						return BindAndReadSliceResult(rst, &rst.saveBind)
-					}
-
-					return nil
 				case plan.VirtualPlan:
 					rst.execute = func() error {
 						return BindAndReadSliceResult(rst, &rst.saveBind)
 					}
 					return nil
 				default:
-
 					rst.execute = func() error {
+
 						err := rst.PrepareTargetDispatchExecutionSlice(rst.bindQueryPlan)
 						if err != nil {
 							return err
 						}
 
-						rst.routingDecisionPlan = rst.bindQueryPlan
+						def := rst.Client().PreparedStatementDefinitionByName(currentMsg.PreparedStatement)
+						hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.PreparedStatement)
+						name := fmt.Sprintf("%d", hash)
 
-						_, _, err = rst.DeployPrepStmt(currentMsg.PreparedStatement)
+						err = rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
+							Name:          name,
+							Query:         def.Query,
+							ParameterOIDs: def.ParameterOIDs,
+						})
+
 						if err != nil {
 							return err
 						}
@@ -829,6 +827,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					}
 
 					return nil
+
 				}
 
 			}, true /* cache parsing for prep statement */, false /* do not completeRelay*/)
@@ -872,29 +871,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				} else {
 
 					switch q := rst.bindQueryPlan.(type) {
-					case plan.ScatterPlan:
-
-						/* XXX: shall we deploy prepared statement? */
-						/* XXX: only use prepared proto for plain scatter slice */
-
-						cachedPd, err := sliceDescribePortal(rst.Client().Server(), currentMsg, &rst.saveBind)
-						if err != nil {
-							return err
-						}
-						if cachedPd.rd != nil {
-							// send to the client
-							if err := rst.Client().Send(cachedPd.rd); err != nil {
-								return err
-							}
-						}
-						if cachedPd.nodata != nil {
-							// send to the client
-							if err := rst.Client().Send(cachedPd.nodata); err != nil {
-								return err
-							}
-						}
-
-						rst.savedPortalDesc[rst.lastBindName] = cachedPd
 					case plan.VirtualPlan:
 						// skip deploy
 
@@ -915,7 +891,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 						rst.routingDecisionPlan = rst.bindQueryPlan
 
-						if _, _, err := rst.DeployPrepStmt(rst.lastBindName); err != nil {
+						if err := rst.gangDeployPrepStmtByName(rst.lastBindName); err != nil {
 							return err
 						}
 
@@ -966,7 +942,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				}
 
 				if rd.NoData {
-					if err := rst.Client().Send(&pgproto3.NoData{}); err != nil {
+					if err := rst.Client().Send(pgNoData); err != nil {
 						return err
 					}
 				} else {
