@@ -466,7 +466,7 @@ Feature: Coordinator test
     """
     When I run SQL on host "coordinator"
     """
-    DROP SHARD sh1;
+    DROP SHARD sh1 CASCADE;
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator"
