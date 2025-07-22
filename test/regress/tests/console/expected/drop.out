@@ -11,7 +11,7 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
  bound -> 11
@@ -27,8 +27,29 @@ SHOW key_ranges;
  Key range ID | Shard ID | Distribution ID | Lower bound 
 --------------+----------+-----------------+-------------
  krid1        | sh1      | ds1             | 1
- krid2        | sh1      | ds1             | 11
+ krid2        | sh2      | ds1             | 11
 (2 rows)
+
+DROP SHARD sh1;
+ERROR:  cannot drop shard sh1 because other objects depend on it
+HINT: Use DROP ... CASCADE to drop the dependent objects too.
+DROP SHARD sh1 CASCADE;
+   drop shard    
+-----------------
+ shard id -> sh1
+(1 row)
+
+CREATE SHARD sh1 WITH HOSTS spqr_shard_1:6432,spqr_shard_1_replica:6432;
+    add shard    
+-----------------
+ shard id -> sh1
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
+(1 row)
 
 DROP KEY RANGE ALL;
  drop key range 

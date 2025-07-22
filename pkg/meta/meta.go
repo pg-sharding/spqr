@@ -85,6 +85,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		return cli.ReportError(spqrerror.ShardingRulesRemoved)
 	case *spqrparser.ReferenceRelationSelector:
 		/* XXX: fix reference relation selector to support schema-qualified names */
+
 		relName := &rfqn.RelationFQN{
 			RelationName: stmt.ID,
 		}
@@ -163,6 +164,25 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 
 		return cli.DropDistribution(ctx, ret)
 	case *spqrparser.ShardSelector:
+		krs, err := mngr.ListAllKeyRanges(ctx)
+		if err != nil {
+			return err
+		}
+		shardKrs := make([]*kr.KeyRange, 0, len(krs))
+		for _, kr := range krs {
+			if kr.ShardID == stmt.ID {
+				shardKrs = append(shardKrs, kr)
+			}
+		}
+		if len(shardKrs) != 0 && !isCascade {
+			return fmt.Errorf("cannot drop shard %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID) //nolint:staticcheck
+		}
+		for _, kr := range shardKrs {
+			if err := mngr.DropKeyRange(ctx, kr.ID); err != nil {
+				return err
+			}
+		}
+
 		if err := mngr.DropShard(ctx, stmt.ID); err != nil {
 			return err
 		}
