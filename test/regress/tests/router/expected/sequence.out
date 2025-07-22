@@ -121,10 +121,7 @@ DROP REFERENCE RELATION test3;
 SHOW sequences;
    name   | value 
 ----------+-------
- test2_id | 22
- test3_a  | 104
- test_id  | 3
-(3 rows)
+(0 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
        drop distribution       
@@ -136,16 +133,4 @@ DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
-
-DROP SEQUENCE test_id;
-    drop sequence    
----------------------
- sequence -> test_id
-(1 row)
-
-DROP SEQUENCE test2_id;
-    drop sequence     
-----------------------
- sequence -> test2_id
-(1 row)
 
