@@ -60,7 +60,7 @@ func gangMemberDeployPreparedStatement(shard shard.ShardHostInstance, hash uint6
 
 	var retMsg pgproto3.BackendMessage
 
-	deployed := false
+	deploResultReceived := false
 
 recvLoop:
 	for {
@@ -73,9 +73,10 @@ recvLoop:
 		case *pgproto3.ParseComplete:
 			// skip
 			retMsg = msg
-			deployed = true
+			deploResultReceived = true
 		case *pgproto3.ErrorResponse:
 			retMsg = msg
+			deploResultReceived = true
 		case *pgproto3.NoData:
 			rd.NoData = true
 		case *pgproto3.ParameterDescription:
@@ -100,7 +101,7 @@ recvLoop:
 		default:
 		}
 	}
-	if !deployed {
+	if !deploResultReceived {
 		return nil, nil, fmt.Errorf("error syncing connection on shard: %v", shardId)
 	}
 
