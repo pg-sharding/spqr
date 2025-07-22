@@ -16,58 +16,6 @@ import (
 
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
-	if rst.Client().Rule().PoolMode != config.PoolModeTransaction {
-		switch q := msg.(type) {
-		case *pgproto3.Terminate:
-			return nil
-		case *pgproto3.Sync:
-			// copy interface
-			cpQ := *q
-			q = &cpQ
-			return rst.ProcessMessage(q, true, true)
-		case *pgproto3.FunctionCall:
-			// copy interface
-			cpQ := *q
-			q = &cpQ
-			return rst.ProcessMessage(q, true, true)
-		case *pgproto3.Parse:
-			// copy interface
-			cpQ := *q
-			q = &cpQ
-			_, err := rst.ProcQueryAdvancedTx(q.Query, func() error {
-				rst.AddQuery(q)
-				return rst.ProcessMessageBuf(true, true)
-			}, true, true)
-			return err
-		case *pgproto3.Execute:
-			// copy interface
-			cpQ := *q
-			q = &cpQ
-			return rst.ProcessMessage(q, false, true)
-		case *pgproto3.Bind:
-			// copy interface
-			cpQ := *q
-			q = &cpQ
-			return rst.ProcessMessage(q, false, true)
-		case *pgproto3.Describe:
-			// copy interface
-			cpQ := *q
-			q = &cpQ
-			return rst.ProcessMessage(q, false, true)
-		case *pgproto3.Query:
-			// copy interface
-			cpQ := *q
-			q = &cpQ
-			qr.SetQuery(&q.String)
-			_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
-				return rst.ProcessSimpleQuery(q)
-			}, false, true)
-			return err
-		default:
-			return nil
-		}
-	}
-
 	switch q := msg.(type) {
 	case *pgproto3.Terminate:
 		return nil
@@ -101,7 +49,9 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Msg("client function call: simply fire parse stmt to connection")
-		return rst.ProcessMessage(q, false, true)
+
+		rst.AddExtendedProtocMessage(q)
+		return nil
 	case *pgproto3.Execute:
 		// copy interface
 		cpQ := *q
@@ -123,7 +73,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		qr.SetQuery(&q.String)
 		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
 			// this call completes relay, sends RFQ
-			return rst.ProcessSimpleQuery(q)
+			return rst.ProcessSimpleQuery(q, true)
 		}, false, true)
 
 		return err
