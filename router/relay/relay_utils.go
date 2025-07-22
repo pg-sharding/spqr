@@ -108,7 +108,9 @@ recvLoop:
 	}
 
 	if deployed {
-		shard.StorePrepareStatement(hash, shardId, d, rd)
+		if err := shard.StorePrepareStatement(hash, shardId, d, rd); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	return rd, retMsg, nil

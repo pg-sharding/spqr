@@ -271,7 +271,7 @@ func TestFrontendXProto(t *testing.T) {
 		return res, rd
 	}).AnyTimes()
 
-	srv.EXPECT().StorePrepareStatement(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do(func(any, any, any, any) {
+	sh.EXPECT().StorePrepareStatement(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do(func(any, any, any, any) {
 		res = true
 		rd.ParamDesc = &pgproto3.ParameterDescription{}
 		rd.RowDesc = &pgproto3.RowDescription{}
