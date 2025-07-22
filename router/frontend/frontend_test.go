@@ -185,8 +185,6 @@ func TestFrontendXProto(t *testing.T) {
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 
 	sh.EXPECT().ID().AnyTimes()
-	sh.EXPECT().Send(gomock.Any()).AnyTimes().Return(nil)
-	sh.EXPECT().Receive().AnyTimes()
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{
@@ -269,13 +267,11 @@ func TestFrontendXProto(t *testing.T) {
 	res := false
 	rd := &prepstatement.PreparedStatementDescriptor{}
 
-	srv.EXPECT().Send(gomock.Any()).AnyTimes().Return(nil)
-
-	srv.EXPECT().HasPrepareStatement(gomock.Any(), gomock.Any()).DoAndReturn(func(interface{}, interface{}) (interface{}, interface{}) {
+	sh.EXPECT().HasPrepareStatement(gomock.Any(), gomock.Any()).DoAndReturn(func(any, any) (any, any) {
 		return res, rd
 	}).AnyTimes()
 
-	srv.EXPECT().StorePrepareStatement(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do(func(interface{}, interface{}, interface{}, interface{}) {
+	sh.EXPECT().StorePrepareStatement(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do(func(any, any, any, any) {
 		res = true
 		rd.ParamDesc = &pgproto3.ParameterDescription{}
 		rd.RowDesc = &pgproto3.RowDescription{}
@@ -286,25 +282,25 @@ func TestFrontendXProto(t *testing.T) {
 		Name: "sh1",
 	})
 
-	srv.EXPECT().SendShard(&pgproto3.Parse{
+	sh.EXPECT().Send(&pgproto3.Parse{
 		Name:          "17731273590378676854",
 		Query:         "select 'Hello, world!'",
 		ParameterOIDs: nil,
-	}, gomock.Any()).Times(1).Return(nil)
+	}).Times(1).Return(nil)
 
-	srv.EXPECT().SendShard(&pgproto3.Describe{
+	sh.EXPECT().Send(&pgproto3.Describe{
 		Name:       "17731273590378676854",
 		ObjectType: 'S',
-	}, gomock.Any()).Times(1).Return(nil)
+	}).Times(1).Return(nil)
 
-	srv.EXPECT().SendShard(&pgproto3.Sync{}, gomock.Any()).AnyTimes().Return(nil)
+	sh.EXPECT().Send(&pgproto3.Sync{}).AnyTimes().Return(nil)
 
-	srv.EXPECT().ReceiveShard(uint(0)).Times(1).Return(&pgproto3.ParseComplete{}, nil)
-	srv.EXPECT().ReceiveShard(uint(0)).Times(1).Return(&pgproto3.ParameterDescription{
+	sh.EXPECT().Receive().Times(1).Return(&pgproto3.ParseComplete{}, nil)
+	sh.EXPECT().Receive().Times(1).Return(&pgproto3.ParameterDescription{
 		ParameterOIDs: nil,
 	}, nil)
 
-	srv.EXPECT().ReceiveShard(uint(0)).Times(1).Return(&pgproto3.RowDescription{
+	sh.EXPECT().Receive().Times(1).Return(&pgproto3.RowDescription{
 		Fields: []pgproto3.FieldDescription{
 			{
 				Name:                 []byte("?column?"),
@@ -318,7 +314,7 @@ func TestFrontendXProto(t *testing.T) {
 		},
 	}, nil)
 
-	srv.EXPECT().ReceiveShard(uint(0)).Times(1).Return(&pgproto3.ReadyForQuery{
+	sh.EXPECT().Receive().Times(1).Return(&pgproto3.ReadyForQuery{
 		TxStatus: byte(txstatus.TXIDLE),
 	}, nil)
 

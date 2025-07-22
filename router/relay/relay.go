@@ -187,97 +187,12 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 	if len(shards) == 0 {
 		return nil, nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
 	}
-	shardId := shards[0].ID()
-	shardKey := shards[0].SHKey()
 
-	if ok, rd := serv.HasPrepareStatement(hash, shardId); ok {
-		return rd, &pgproto3.ParseComplete{}, nil
-	}
-
-	// Do not wait for result
-	// simply fire backend msg
-	if err := serv.SendShard(&pgproto3.Parse{
-		Name:          d.Name,
-		Query:         d.Query,
-		ParameterOIDs: d.ParameterOIDs,
-	}, shardKey); err != nil {
-		return nil, nil, err
-	}
-
-	err := serv.SendShard(&pgproto3.Describe{
-		ObjectType: 'S',
-		Name:       d.Name,
-	}, shardKey)
-
+	rd, retMsg, err := gangMemberDeployPreparedStatement(shards[0], hash, d)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Msg("syncing connection")
-
-	err = serv.SendShard(&pgproto3.Sync{}, shardKey)
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	rd := &prepstatement.PreparedStatementDescriptor{
-		NoData:    false,
-		RowDesc:   nil,
-		ParamDesc: nil,
-	}
-
-	var retMsg pgproto3.BackendMessage
-
-	deployed := false
-
-recvLoop:
-	for {
-		msg, err := serv.ReceiveShard(shardId)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Interface("type", msg).Msg("unreplied msg in prepare")
-		switch q := msg.(type) {
-		case *pgproto3.ParseComplete:
-			// skip
-			retMsg = msg
-			deployed = true
-		case *pgproto3.ErrorResponse:
-			retMsg = msg
-		case *pgproto3.NoData:
-			rd.NoData = true
-		case *pgproto3.ParameterDescription:
-			// copy
-			cp := *q
-			rd.ParamDesc = &cp
-		case *pgproto3.RowDescription:
-			// copy
-			rd.RowDesc = &pgproto3.RowDescription{}
-
-			rd.RowDesc.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
-
-			for i := range len(q.Fields) {
-				s := make([]byte, len(q.Fields[i].Name))
-				copy(s, q.Fields[i].Name)
-
-				rd.RowDesc.Fields[i] = q.Fields[i]
-				rd.RowDesc.Fields[i].Name = s
-			}
-		case *pgproto3.ReadyForQuery:
-			break recvLoop
-		default:
-		}
-	}
-
-	if deployed {
-		// don't need to complete relay because tx state didn't change
-		if err := rst.Cl.Server().StorePrepareStatement(hash, shardId, d, rd); err != nil {
-			return nil, nil, err
-		}
-	}
-	return rd, retMsg, nil
+	return rd, retMsg, err
 }
 
 func (rst *RelayStateImpl) multishardPrepareScatter(hash uint64, d *prepstatement.PreparedStatementDefinition) error {
@@ -289,79 +204,8 @@ func (rst *RelayStateImpl) multishardPrepareScatter(hash uint64, d *prepstatemen
 	}
 
 	for _, shard := range shards {
-		shardId := shard.ID()
-		shKey := shard.SHKey()
-
-		if ok, _ := serv.HasPrepareStatement(hash, shardId); ok {
-			continue
-		}
-
-		if err := serv.SendShard(&pgproto3.Parse{
-			Name:          d.Name,
-			Query:         d.Query,
-			ParameterOIDs: d.ParameterOIDs,
-		}, shKey); err != nil {
-			return err
-		}
-
-		if err := serv.SendShard(&pgproto3.Describe{
-			ObjectType: byte('S'),
-			Name:       d.Name,
-		}, shKey); err != nil {
-			return err
-		}
-
-		if err := serv.SendShard(&pgproto3.Sync{}, shKey); err != nil {
-			return err
-		}
-
-		rd := &prepstatement.PreparedStatementDescriptor{
-			NoData:    false,
-			RowDesc:   nil,
-			ParamDesc: nil,
-		}
-		parsed := false
-		finished := false
-		for !finished {
-			msg, err := serv.ReceiveShard(shardId)
-			if err != nil {
-				return err
-			}
-			switch q := msg.(type) {
-			case *pgproto3.ParseComplete:
-				parsed = true
-			case *pgproto3.ReadyForQuery:
-				finished = true
-			case *pgproto3.ErrorResponse:
-				return fmt.Errorf("error preparing DDL statement: \"%s\"", q.Message)
-			case *pgproto3.NoData:
-				rd.NoData = true
-			case *pgproto3.ParameterDescription:
-				// copy
-				cp := *q
-				rd.ParamDesc = &cp
-			case *pgproto3.RowDescription:
-				// copy
-				rd.RowDesc = &pgproto3.RowDescription{}
-
-				rd.RowDesc.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
-
-				for i := range len(q.Fields) {
-					s := make([]byte, len(q.Fields[i].Name))
-					copy(s, q.Fields[i].Name)
-
-					rd.RowDesc.Fields[i] = q.Fields[i]
-					rd.RowDesc.Fields[i].Name = s
-				}
-			default:
-				return fmt.Errorf("received unexpected message type %T", msg)
-			}
-		}
-
-		if !parsed {
-			return fmt.Errorf("statement parsing not finished")
-		}
-		if err := serv.StorePrepareStatement(hash, shardId, d, rd); err != nil {
+		_, _, err := gangMemberDeployPreparedStatement(shard, hash, d)
+		if err != nil {
 			return err
 		}
 	}
@@ -937,7 +781,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.HoldRouting()
 				}
 
-				switch queryPlan.(type) {
+				switch rst.routingDecisionPlan.(type) {
 				case plan.ScatterPlan:
 					routes := rst.Qr.DataShardsRoutes()
 					if err := rst.procRoutes(routes); err != nil {
