@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -64,6 +65,7 @@ type testContext struct {
 	qdb               qdb.XQDB
 	t                 *testing.T
 	debug             bool
+	preparedQueries   map[string]map[string]*sqlx.Stmt
 }
 
 func newTestContext(t *testing.T) (*testContext, error) {
@@ -75,6 +77,7 @@ func newTestContext(t *testing.T) (*testContext, error) {
 		return nil, err
 	}
 	tctx.userDbs = make(map[string]map[string]*sqlx.DB)
+	tctx.preparedQueries = make(map[string]map[string]*sqlx.Stmt)
 	return tctx, nil
 }
 
@@ -219,6 +222,7 @@ func (tctx *testContext) cleanup() {
 	tctx.sqlUserQueryError = sync.Map{}
 	tctx.commandRetcode = 0
 	tctx.commandOutput = ""
+	tctx.closePreparedPostgresql()
 }
 
 // nolint: unparam
@@ -402,12 +406,97 @@ func (tctx *testContext) getPostgresqlConnection(user, host string) (*sqlx.DB, e
 	return db, nil
 }
 
+func (tctx *testContext) prepareQueryPostgresql(host, user, query string) error {
+	db, err := tctx.getPostgresqlConnection(user, host)
+	if err != nil {
+		return err
+	}
+	stmt, err := db.Preparex(query)
+	if pqHst, ok := tctx.preparedQueries[host]; !ok {
+		hstDat := map[string]*sqlx.Stmt{query: stmt}
+		tctx.preparedQueries[host] = hstDat
+	} else {
+		pqHst[query] = stmt
+		tctx.preparedQueries[host] = pqHst
+	}
+	tctx.sqlQueryResult = nil
+	tctx.commandRetcode = 0
+	if err != nil {
+		tctx.commandRetcode = 1
+		tctx.commandOutput = err.Error()
+		tctx.sqlUserQueryError.Store(host, err.Error())
+	}
+	return nil
+}
+
+func (tctx *testContext) queryPreparedPostgresql(host, user, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
+	tctx.sqlQueryResult = nil
+	result, err := tctx.doPrepQueryPostgresql(host, user, query, args, timeout)
+	tctx.commandRetcode = 0
+	if err != nil {
+		tctx.commandRetcode = 1
+		tctx.commandOutput = err.Error()
+		tctx.sqlUserQueryError.Store(host, err.Error())
+	}
+	tctx.sqlQueryResult = result
+	return result, nil
+}
+
+func (tctx *testContext) closePreparedPostgresql() {
+	for host, hostPrepared := range tctx.preparedQueries {
+		for query, preparedQuery := range hostPrepared {
+			if err := preparedQuery.Close(); err != nil {
+				log.Printf("On host %s close prepared query '%s' error %#v\n", host, query, err)
+			}
+		}
+	}
+}
+
+func (tctx *testContext) doPrepQueryPostgresql(host, user, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
+	if stmts, ok := tctx.preparedQueries[host]; !ok {
+		return nil, fmt.Errorf("Query '%s' is not prepared", query)
+	} else {
+		if stmt, ok := stmts[query]; !ok {
+			return nil, fmt.Errorf("Query '%s' is not prepared", query)
+		} else {
+			var rows *sqlx.Rows
+			var err error
+			if reflect.DeepEqual(args, struct{}{}) {
+				rows, err = stmt.Queryx()
+			} else {
+				rows, err = stmt.Queryx(args)
+			}
+			if err != nil {
+				log.Printf("query error %#v\n", err)
+				return nil, err
+			}
+			defer func() {
+				_ = rows.Close()
+			}()
+			result := make([]map[string]interface{}, 0)
+			for rows.Next() {
+				rowmap := make(map[string]interface{})
+				err = rows.MapScan(rowmap)
+				if err != nil {
+					return nil, err
+				}
+				for k, v := range rowmap {
+					if v2, ok := v.([]byte); ok {
+						rowmap[k] = string(v2)
+					}
+				}
+				result = append(result, rowmap)
+			}
+			return result, nil
+		}
+	}
+}
+
 func (tctx *testContext) queryPostgresql(host, user, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
 	db, err := tctx.getPostgresqlConnection(user, host)
 	if err != nil {
 		return nil, err
 	}
-
 	// sqlx can't execute requests with semicolon
 	// we will execute them in single connection
 	queries := strings.Split(query, ";")
@@ -801,6 +890,18 @@ func (tctx *testContext) stepIRunSQLOnHostAsUser(host string, user string, body 
 	return err
 }
 
+func (tctx *testContext) stepIPrepareSQLOnHost(host string, body *godog.DocString) error {
+	query := strings.TrimSpace(body.Content)
+	err := tctx.prepareQueryPostgresql(host, shardUser, query)
+	return err
+}
+
+func (tctx *testContext) stepIRunPreparedSQLOnHost(host string, body *godog.DocString) error {
+	query := strings.TrimSpace(body.Content)
+	_, err := tctx.queryPreparedPostgresql(host, shardUser, query, struct{}{}, postgresqlQueryTimeout)
+	return err
+}
+
 func (tctx *testContext) stepSQLResultShouldNotMatch(matcher string, body *godog.DocString) error {
 	m, err := matchers.GetMatcher(matcher)
 	if err != nil {
@@ -1087,6 +1188,8 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I run SQL on host "([^"]*)" with timeout "(\d+)" seconds$`, tctx.stepIRunSQLOnHostWithTimeout)
 	s.Step(`^I run SQL on host "([^"]*)" as user "([^"]*)"$`, tctx.stepIRunSQLOnHostAsUser)
 	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSql)
+	s.Step(`^I prepare SQL on host "([^"]*)"$`, tctx.stepIPrepareSQLOnHost)
+	s.Step(`^I run prepared SQL on host "([^"]*)"$`, tctx.stepIRunPreparedSQLOnHost)
 	s.Step(`^SQL result should match (\w+)$`, tctx.stepSQLResultShouldMatch)
 	s.Step(`^we wait for "(\d+)" seconds$`, func(sleepFor int) error {
 

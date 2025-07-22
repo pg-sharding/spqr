@@ -761,7 +761,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				rst.Client().SetParamFormatCodes(currentMsg.ParameterFormatCodes)
 				rst.saveBind.ResultFormatCodes = currentMsg.ResultFormatCodes
 				rst.saveBind.Parameters = currentMsg.Parameters
-
+				rst.Qr.SetQuery(&def.Query)
 				// Do not respond with BindComplete, as the relay step should take care of itself.
 				queryPlan, err := rst.PrepareExecutionSlice()
 
