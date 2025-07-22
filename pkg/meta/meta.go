@@ -85,7 +85,6 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		return cli.ReportError(spqrerror.ShardingRulesRemoved)
 	case *spqrparser.ReferenceRelationSelector:
 		/* XXX: fix reference relation selector to support schema-qualified names */
-
 		relName := &rfqn.RelationFQN{
 			RelationName: stmt.ID,
 		}
