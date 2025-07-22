@@ -781,7 +781,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.HoldRouting()
 				}
 
-				switch rst.routingDecisionPlan.(type) {
+				if rst.bindQueryPlan == nil {
+					return fmt.Errorf("extended xproto state out of sync")
+				}
+
+				switch rst.bindQueryPlan.(type) {
 				case plan.ScatterPlan:
 					routes := rst.Qr.DataShardsRoutes()
 					if err := rst.procRoutes(routes); err != nil {
