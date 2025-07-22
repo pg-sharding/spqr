@@ -209,8 +209,13 @@ func (rst *RelayStateImpl) multishardPrepareScatter(hash uint64, d *prepstatemen
 	}
 
 	for _, shard := range shards {
-		_, _, err := gangMemberDeployPreparedStatement(shard, hash, d)
+		rd, _, err := gangMemberDeployPreparedStatement(shard, hash, d)
 		if err != nil {
+			return err
+		}
+
+		// don't need to complete relay because tx state didn't change
+		if err := rst.Cl.Server().StorePrepareStatement(hash, shard.ID(), d, rd); err != nil {
 			return err
 		}
 	}
