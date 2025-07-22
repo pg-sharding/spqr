@@ -46,6 +46,7 @@ SHOW shards;
  sh3
  sh4
 (3 rows)
+
 SHOW key_ranges;
  Key range ID | Shard ID | Distribution ID | Lower bound 
 --------------+----------+-----------------+-------------
