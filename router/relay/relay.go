@@ -63,7 +63,7 @@ type RelayStateMgr interface {
 	/* process extended proto */
 	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool) error
 	ProcessMessageBuf(waitForResp, replyCl bool) error
-	ProcessSimpleQuery(q *pgproto3.Query) error
+	ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error
 
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 	ProcessExtendedBuffer() error
@@ -1387,7 +1387,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	}
 }
 
-func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query) error {
+func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error {
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -1408,7 +1408,7 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query) error {
 			Msg:  q,
 			Stmt: rst.qp.Stmt(),
 			P:    rst.routingDecisionPlan, /*  ugh... fix this someday */
-		}, rst.Qr.Mgr(), true, true)
+		}, rst.Qr.Mgr(), true, replyCl)
 
 	return err
 }
