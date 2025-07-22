@@ -119,8 +119,8 @@ DROP REFERENCE RELATION test3;
 (1 row)
 
 SHOW sequences;
-   name   | value 
-----------+-------
+ name | value 
+------+-------
 (0 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
