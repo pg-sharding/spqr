@@ -208,8 +208,7 @@ func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, 
 		return rst.Client().ReplyCommandComplete("SET")
 	}
 	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
-	rst.AddQuery(&pgproto3.Query{String: query})
-	if err := rst.ProcessMessageBuf(true, true); err != nil {
+	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}); err != nil {
 		return err
 	}
 	rst.Client().SetParam(name, value)
@@ -228,9 +227,8 @@ func (s *QueryStateExecutorImpl) ExecResetMetadata(rst RelayStateMgr, query stri
 	if !rst.PoolMgr().ConnectionActive(rst) {
 		return nil
 	}
-	rst.AddQuery(&pgproto3.Query{String: query})
 
-	if err := rst.ProcessMessageBuf(true, true); err != nil {
+	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}); err != nil {
 		return err
 	}
 
@@ -243,9 +241,7 @@ func (s *QueryStateExecutorImpl) ExecResetMetadata(rst RelayStateMgr, query stri
 
 func (s *QueryStateExecutorImpl) ExecSetLocal(rst RelayStateMgr, query, name, value string) error {
 	if rst.PoolMgr().ConnectionActive(rst) {
-		rst.AddQuery(&pgproto3.Query{String: query})
-		return rst.ProcessMessageBuf(true, true)
-
+		return rst.ProcessSimpleQuery(&pgproto3.Query{String: query})
 	}
 	return nil
 }

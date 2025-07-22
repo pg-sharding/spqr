@@ -8,7 +8,7 @@ import (
 type ExecutionSliceMgr interface {
 	// Parse and analyze user query, and decide which shard routes
 	// will participate in query execution
-	CreateExecutionSlice() (plan.Plan, error)
+	CreateSlicePlan() (plan.Plan, error)
 
 	/* Unroute Routines */
 	UnRouteWithError(shkey []kr.ShardKey, errmsg error) error

@@ -21,7 +21,7 @@ func (qp *QParser) SetStmt(stmt lyx.Node) {
 	qp.stmt = stmt
 }
 
-type ParseState interface{}
+type ParseState any
 
 type ParseStateTXBegin struct {
 	ParseState

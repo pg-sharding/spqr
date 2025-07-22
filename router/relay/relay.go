@@ -63,6 +63,7 @@ type RelayStateMgr interface {
 	/* process extended proto */
 	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool) error
 	ProcessMessageBuf(waitForResp, replyCl bool) error
+	ProcessSimpleQuery(q *pgproto3.Query) error
 
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 	ProcessExtendedBuffer() error
@@ -514,7 +515,7 @@ func (rst *RelayStateImpl) expandRoutes(routes []kr.ShardKey) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) CreateExecutionSlice() (plan.Plan, error) {
+func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
 	if config.RouterConfig().WithJaeger {
@@ -1237,7 +1238,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice() (plan.Plan, error) {
 			/* With engine v2 we can expand transaction on more targets */
 			/* TODO: XXX */
 
-			q, err := rst.CreateExecutionSlice()
+			q, err := rst.CreateSlicePlan()
 			if err != nil {
 				return nil, err
 			}
@@ -1256,7 +1257,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice() (plan.Plan, error) {
 		return nil, nil
 	}
 
-	q, err := rst.CreateExecutionSlice()
+	q, err := rst.CreateSlicePlan()
 
 	switch err {
 	case nil:
@@ -1384,6 +1385,32 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 		rst.msgBuf = nil
 		return currentPlan, noopCloseRouteFunc, err
 	}
+}
+
+func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query) error {
+
+	spqrlog.Zero.Debug().
+		Uint("client", rst.Client().ID()).
+		Msg("relay step: process message buf for client")
+	queryPlan, err := rst.PrepareExecutionSlice()
+	if err != nil {
+		/* some critical connection issue, client processing cannot be competed.
+		* empty our msg buf */
+		rst.msgBuf = nil
+		return err
+	}
+	if queryPlan != nil {
+		rst.routingDecisionPlan = queryPlan
+	}
+
+	_, err = rst.qse.ProcQuery(
+		&QueryDesc{
+			Msg:  q,
+			Stmt: rst.qp.Stmt(),
+			P:    rst.routingDecisionPlan, /*  ugh... fix this someday */
+		}, rst.Qr.Mgr(), true, true)
+
+	return err
 }
 
 // TODO : unit tests
