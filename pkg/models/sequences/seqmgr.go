@@ -12,5 +12,5 @@ type SequenceMgr interface {
 	NextVal(ctx context.Context, seqName string) (int64, error)
 	CurrVal(ctx context.Context, seqName string) (int64, error)
 
-	DropSequence(ctx context.Context, name string) error
+	DropSequence(ctx context.Context, name string, force bool) error
 }

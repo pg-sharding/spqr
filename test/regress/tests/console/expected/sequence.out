@@ -34,6 +34,10 @@ DROP REFERENCE RELATION t1;
  table -> t1
 (1 row)
 SHOW sequences;
+ name  | value 
+-------+-------
+ t_id  | 0
+(2 rows)
 
 DROP SEQUENCE t1_id;
    drop sequence   
@@ -66,11 +70,4 @@ DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
-
---- XXX: fix this
-DROP SEQUENCE t_id;
-  drop sequence   
-------------------
- sequence -> t_id
-(1 row)
 

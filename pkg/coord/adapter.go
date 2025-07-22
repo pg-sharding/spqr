@@ -1046,7 +1046,7 @@ func (a *Adapter) ListSequences(ctx context.Context) ([]string, error) {
 	return resp.Names, nil
 }
 
-func (a *Adapter) DropSequence(ctx context.Context, seqName string) error {
+func (a *Adapter) DropSequence(ctx context.Context, seqName string, force bool) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.DropSequence(ctx, &proto.DropSequenceRequest{
 		Name: seqName,

@@ -92,6 +92,7 @@ message ListSequencesReply {
 
 message DropSequenceRequest {
   string name = 1;
+  bool force = 2;
 }
 
 message ListRelationSequencesRequest {

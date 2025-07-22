@@ -210,8 +210,8 @@ func (lc *Coordinator) DropReferenceRelation(ctx context.Context, relName *rfqn.
 }
 
 // DropSequence implements meta.EntityMgr.
-func (lc *Coordinator) DropSequence(ctx context.Context, name string) error {
-	return lc.qdb.DropSequence(ctx, name)
+func (lc *Coordinator) DropSequence(ctx context.Context, name string, force bool) error {
+	return lc.qdb.DropSequence(ctx, name, force)
 }
 
 // DropShard implements meta.EntityMgr.

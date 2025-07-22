@@ -1777,12 +1777,12 @@ func (q *EtcdQDB) CreateSequence(ctx context.Context, seqName string, initialVal
 	return nil
 }
 
-func (q *EtcdQDB) DropSequence(ctx context.Context, seqName string) error {
+func (q *EtcdQDB) DropSequence(ctx context.Context, seqName string, force bool) error {
 	depends, err := q.getSequenceColumns(ctx, seqName)
 	if err != nil {
 		return err
 	}
-	if len(depends) != 0 {
+	if len(depends) != 0 && !force {
 		return spqrerror.Newf(spqrerror.SPQR_SEQUENCE_ERROR, "column %q is attached to sequence", depends[0])
 	}
 

@@ -118,7 +118,7 @@ type QDB interface {
 	GetRelationSequence(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error)
 	NextVal(ctx context.Context, seqName string) (int64, error)
 	CurrVal(ctx context.Context, seqName string) (int64, error)
-	DropSequence(ctx context.Context, seqName string) error
+	DropSequence(ctx context.Context, seqName string, force bool) error
 }
 
 // XQDB means extended QDB
