@@ -391,6 +391,8 @@ func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 			return nil, fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 		}
 
+		spqrlog.Zero.Debug().Msgf("planned query %T %v", queryPlan, queryPlan)
+
 		/* XXX: fix this. This behaviour break regression tests */
 		// if rst.Client().ShowNoticeMsg() {
 		// 	if err := rst.Client().ReplyNotice(fmt.Sprintf("selected query plan %T %+v", queryPlan, queryPlan)); err != nil {
@@ -786,7 +788,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.HoldRouting()
 				}
 
-				switch queryPlan.(type) {
+				switch rst.routingDecisionPlan.(type) {
 				case plan.ScatterPlan:
 					routes := rst.Qr.DataShardsRoutes()
 					if err := rst.procRoutes(routes); err != nil {

@@ -104,7 +104,7 @@ recvLoop:
 		default:
 		}
 	}
-	if deployed {
+	if !deployed {
 		return nil, nil, fmt.Errorf("error syncing connection on shard: %v", shardId)
 	}
 
