@@ -16,67 +16,6 @@ import (
 
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
-	if rst.Client().Rule().PoolMode != config.PoolModeTransaction {
-		switch q := msg.(type) {
-		case *pgproto3.Terminate:
-			return nil
-		case *pgproto3.FunctionCall:
-			// copy interface
-			cpQ := *q
-			q = &cpQ
-			rst.AddExtendedProtocMessage(q)
-			return nil
-		case *pgproto3.Parse:
-			// copy interface
-			cpQ := *q
-			q = &cpQ
-			rst.AddExtendedProtocMessage(q)
-			return nil
-		case *pgproto3.Execute:
-			// copy interface
-			cpQ := *q
-			q = &cpQ
-			rst.AddExtendedProtocMessage(q)
-			return nil
-		case *pgproto3.Bind:
-			// copy interface
-			cpQ := *q
-			q = &cpQ
-			rst.AddExtendedProtocMessage(q)
-			return nil
-		case *pgproto3.Describe:
-			// copy interface
-			cpQ := *q
-			q = &cpQ
-			rst.AddExtendedProtocMessage(q)
-			return nil
-		case *pgproto3.Query:
-			// copy interface
-			cpQ := *q
-			q = &cpQ
-			qr.SetQuery(&q.String)
-			_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
-				return rst.ProcessSimpleQuery(q, true)
-			}, false, true)
-			return err
-		case *pgproto3.Sync:
-			// copy interface
-			cpQ := *q
-			q = &cpQ
-
-			if err := rst.ProcessExtendedBuffer(); err != nil {
-				return err
-			}
-
-			spqrlog.Zero.Debug().
-				Uint("client", rst.Client().ID()).
-				Msg("client connection synced")
-			return nil
-		default:
-			return nil
-		}
-	}
-
 	switch q := msg.(type) {
 	case *pgproto3.Terminate:
 		return nil

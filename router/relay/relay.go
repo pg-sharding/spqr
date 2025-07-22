@@ -45,8 +45,6 @@ type RelayStateMgr interface {
 
 	AddQuery(q pgproto3.FrontendMessage)
 
-	RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error)
-
 	CompleteRelay(replyCl bool) error
 	Close() error
 	Client() client.RouterClient
@@ -61,8 +59,6 @@ type RelayStateMgr interface {
 	UnholdRouting()
 
 	/* process extended proto */
-	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool) error
-	ProcessMessageBuf(waitForResp, replyCl bool) error
 	ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error
 
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
@@ -663,12 +659,6 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) ([]pgproto
 	rst.msgBuf = rst.msgBuf[:0]
 
 	return msgs, err
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
-	rst.AddQuery(msg)
-	return rst.RelayFlush(waitForResp, replyCl)
 }
 
 func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
@@ -1411,60 +1401,4 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		}, rst.Qr.Mgr(), true, replyCl)
 
 	return err
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool) error {
-
-	/* XXX: tx management is handled outside this call, so do not complete relay here */
-
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Msg("relay step: process message buf for client")
-	queryPlan, err := rst.PrepareExecutionSlice()
-	if err != nil {
-		/* some critical connection issue, client processing cannot be competed.
-		* empty our msg buf */
-		rst.msgBuf = nil
-		return err
-	}
-	if queryPlan != nil {
-		rst.routingDecisionPlan = queryPlan
-	}
-
-	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
-
-	_, err = rst.RelayFlush(waitForResp, replyCl)
-	return err
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) ProcessMessage(
-	msg pgproto3.FrontendMessage,
-	waitForResp, replyCl bool) error {
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Msg("relay step: process message for client")
-	queryPlan, err := rst.PrepareExecutionSlice()
-	if err != nil {
-		if err := rst.CompleteRelay(replyCl); err != nil {
-			spqrlog.Zero.Error().Err(err).Uint("client", rst.Client().ID()).Msg("failed to complete relay")
-			return err
-		}
-		return err
-	}
-	if queryPlan != nil {
-		rst.routingDecisionPlan = queryPlan
-	}
-	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
-
-	if _, err := rst.RelayStep(msg, waitForResp, replyCl); err != nil {
-		if err := rst.CompleteRelay(replyCl); err != nil {
-			spqrlog.Zero.Error().Err(err).Uint("client", rst.Client().ID()).Msg("failed to complete relay")
-			return err
-		}
-		return err
-	}
-
-	return rst.CompleteRelay(replyCl)
 }
