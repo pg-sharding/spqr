@@ -5,6 +5,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/router/server"
 )
 
@@ -19,6 +21,94 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
 	// do not complete relay here yet
 	_, err := rst.RelayFlush(true, true)
 	return err
+}
+
+func gangMemberDeployPreparedStatement(shard shard.ShardHostInstance, hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
+
+	shardId := shard.ID()
+
+	if ok, rd := shard.HasPrepareStatement(hash, shardId); ok {
+		return rd, &pgproto3.ParseComplete{}, nil
+	}
+
+	// Do not wait for result
+	// simply fire backend msg
+	if err := shard.Send(&pgproto3.Parse{
+		Name:          d.Name,
+		Query:         d.Query,
+		ParameterOIDs: d.ParameterOIDs,
+	}); err != nil {
+		return nil, nil, err
+	}
+
+	err := shard.Send(&pgproto3.Describe{
+		ObjectType: 'S',
+		Name:       d.Name,
+	})
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = shard.Send(&pgproto3.Sync{})
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rd := &prepstatement.PreparedStatementDescriptor{
+		NoData:    false,
+		RowDesc:   nil,
+		ParamDesc: nil,
+	}
+
+	var retMsg pgproto3.BackendMessage
+
+	deployed := false
+
+recvLoop:
+	for {
+		msg, err := shard.Receive()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		switch q := msg.(type) {
+		case *pgproto3.ParseComplete:
+			// skip
+			retMsg = msg
+			deployed = true
+		case *pgproto3.ErrorResponse:
+			retMsg = msg
+		case *pgproto3.NoData:
+			rd.NoData = true
+		case *pgproto3.ParameterDescription:
+			// copy
+			cp := *q
+			rd.ParamDesc = &cp
+		case *pgproto3.RowDescription:
+			// copy
+			rd.RowDesc = &pgproto3.RowDescription{}
+
+			rd.RowDesc.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
+
+			for i := range len(q.Fields) {
+				s := make([]byte, len(q.Fields[i].Name))
+				copy(s, q.Fields[i].Name)
+
+				rd.RowDesc.Fields[i] = q.Fields[i]
+				rd.RowDesc.Fields[i].Name = s
+			}
+		case *pgproto3.ReadyForQuery:
+			break recvLoop
+		default:
+		}
+	}
+	if deployed {
+		return nil, nil, fmt.Errorf("error syncing connection on shard: %v", shardId)
+	}
+
+	return rd, retMsg, nil
 }
 
 func sliceDescribePortal(serv server.Server, portalDesc *pgproto3.Describe, bind *pgproto3.Bind) (*PortalDesc, error) {
