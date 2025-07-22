@@ -187,14 +187,9 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 	if len(shards) == 0 {
 		return nil, nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
 	}
-	shardId := shards[0].ID()
 
 	rd, retMsg, err := gangMemberDeployPreparedStatement(shards[0], hash, d)
 	if err != nil {
-		return nil, nil, err
-	}
-	// don't need to complete relay because tx state didn't change
-	if err := rst.Cl.Server().StorePrepareStatement(hash, shardId, d, rd); err != nil {
 		return nil, nil, err
 	}
 	return rd, retMsg, err
@@ -209,13 +204,8 @@ func (rst *RelayStateImpl) multishardPrepareScatter(hash uint64, d *prepstatemen
 	}
 
 	for _, shard := range shards {
-		rd, _, err := gangMemberDeployPreparedStatement(shard, hash, d)
+		_, _, err := gangMemberDeployPreparedStatement(shard, hash, d)
 		if err != nil {
-			return err
-		}
-
-		// don't need to complete relay because tx state didn't change
-		if err := rst.Cl.Server().StorePrepareStatement(hash, shard.ID(), d, rd); err != nil {
 			return err
 		}
 	}
