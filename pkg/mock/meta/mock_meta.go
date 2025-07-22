@@ -175,17 +175,17 @@ func (mr *MockEntityMgrMockRecorder) CreateDistribution(ctx, ds any) *gomock.Cal
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockEntityMgr) CreateKeyRange(ctx context.Context, arg1 *kr.KeyRange) error {
+func (m *MockEntityMgr) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, arg1)
+	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, kr)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateKeyRange indicates an expected call of CreateKeyRange.
-func (mr *MockEntityMgrMockRecorder) CreateKeyRange(ctx, arg1 any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) CreateKeyRange(ctx, kr any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).CreateKeyRange), ctx, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).CreateKeyRange), ctx, kr)
 }
 
 // CreateReferenceRelation mocks base method.
@@ -274,17 +274,17 @@ func (mr *MockEntityMgrMockRecorder) DropReferenceRelation(ctx, relName any) *go
 }
 
 // DropSequence mocks base method.
-func (m *MockEntityMgr) DropSequence(ctx context.Context, name string) error {
+func (m *MockEntityMgr) DropSequence(ctx context.Context, name string, force bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DropSequence", ctx, name)
+	ret := m.ctrl.Call(m, "DropSequence", ctx, name, force)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DropSequence indicates an expected call of DropSequence.
-func (mr *MockEntityMgrMockRecorder) DropSequence(ctx, name any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) DropSequence(ctx, name, force any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropSequence", reflect.TypeOf((*MockEntityMgr)(nil).DropSequence), ctx, name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropSequence", reflect.TypeOf((*MockEntityMgr)(nil).DropSequence), ctx, name, force)
 }
 
 // DropShard mocks base method.
@@ -479,6 +479,21 @@ func (m *MockEntityMgr) ListReferenceRelations(ctx context.Context) ([]*rrelatio
 func (mr *MockEntityMgrMockRecorder) ListReferenceRelations(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListReferenceRelations", reflect.TypeOf((*MockEntityMgr)(nil).ListReferenceRelations), ctx)
+}
+
+// ListRelationSequences mocks base method.
+func (m *MockEntityMgr) ListRelationSequences(ctx context.Context, rel *rfqn.RelationFQN) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRelationSequences", ctx, rel)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRelationSequences indicates an expected call of ListRelationSequences.
+func (mr *MockEntityMgrMockRecorder) ListRelationSequences(ctx, rel any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRelationSequences", reflect.TypeOf((*MockEntityMgr)(nil).ListRelationSequences), ctx, rel)
 }
 
 // ListRouters mocks base method.
