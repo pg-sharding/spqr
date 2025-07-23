@@ -176,21 +176,34 @@ func (rst *RelayStateImpl) Client() client.RouterClient {
 	return rst.Cl
 }
 
-func (rst *RelayStateImpl) gangDeployPrepStmt(hash uint64, d *prepstatement.PreparedStatementDefinition) error {
+func (rst *RelayStateImpl) gangDeployPrepStmt(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 	serv := rst.Client().Server()
 
 	shards := serv.Datashards()
 	if len(shards) == 0 {
-		return spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
+		return nil, nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
 	}
 
-	for _, shard := range shards {
-		_, _, err := gangMemberDeployPreparedStatement(shard, hash, d)
+	var rd *prepstatement.PreparedStatementDescriptor
+	var replyMsg pgproto3.BackendMessage
+
+shardLoop:
+	for i, shard := range shards {
+		shardRd, shardReplyMsg, err := gangMemberDeployPreparedStatement(shard, hash, d)
 		if err != nil {
-			return err
+			return nil, nil, err
+		}
+		if i == 0 {
+			rd = shardRd
+			replyMsg = shardReplyMsg
+		}
+		/* If prepared statement  */
+		switch replyMsg.(type) {
+		case *pgproto3.ErrorResponse:
+			break shardLoop
 		}
 	}
-	return nil
+	return rd, replyMsg, nil
 }
 
 func (rst *RelayStateImpl) Close() error {
@@ -572,12 +585,7 @@ func (rst *RelayStateImpl) AddExtendedProtocMessage(q pgproto3.FrontendMessage) 
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) gangDeployPrepStmtByName(qname string) error {
-
-	server := rst.Client().Server()
-	if server == nil {
-		return fmt.Errorf("relay is not attached to deploy")
-	}
+func (rst *RelayStateImpl) gangDeployPrepStmtByName(qname string) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 
 	def := rst.Client().PreparedStatementDefinitionByName(qname)
 	hash := rst.Client().PreparedStatementQueryHashByName(qname)
@@ -591,43 +599,6 @@ func (rst *RelayStateImpl) gangDeployPrepStmtByName(qname string) error {
 		Msg("deploy prepared statement")
 
 	return rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
-		Name:          name,
-		Query:         def.Query,
-		ParameterOIDs: def.ParameterOIDs,
-	})
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) DeployPrepStmt(qname string) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
-
-	server := rst.Client().Server()
-	if server == nil {
-		return nil, nil, fmt.Errorf("relay is not attached to deploy")
-	}
-
-	if len(server.Datashards()) != 1 {
-		return nil, nil,
-			spqrerror.NewWithHint(
-				spqrerror.SPQR_NOT_IMPLEMENTED,
-				"multishard prepared statement deploy is not supported",
-				"try to use simple protocol instead")
-	}
-
-	shard := server.Datashards()[0]
-
-	def := rst.Client().PreparedStatementDefinitionByName(qname)
-	hash := rst.Client().PreparedStatementQueryHashByName(qname)
-	name := fmt.Sprintf("%d", hash)
-
-	spqrlog.Zero.Debug().
-		Str("name", qname).
-		Str("query", def.Query).
-		Uint64("hash", hash).
-		Uint("client", rst.Client().ID()).
-		Uint("shard", shard.ID()).
-		Msg("deploy prepared statement")
-
-	return gangMemberDeployPreparedStatement(shard, hash, &prepstatement.PreparedStatementDefinition{
 		Name:          name,
 		Query:         def.Query,
 		ParameterOIDs: def.ParameterOIDs,
@@ -716,7 +687,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			/* TODO: refactor code to make this less ugly */
 			saveTxStatus := rst.qse.TxStatus()
 
-			_, retMsg, err := rst.DeployPrepStmt(currentMsg.Name)
+			_, retMsg, err := rst.gangDeployPrepStmtByName(currentMsg.Name)
 			if err != nil {
 				return err
 			}
@@ -813,7 +784,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.PreparedStatement)
 						name := fmt.Sprintf("%d", hash)
 
-						err = rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
+						_, _, err = rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
 							Name:          name,
 							Query:         def.Query,
 							ParameterOIDs: def.ParameterOIDs,
@@ -891,7 +862,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 						rst.routingDecisionPlan = rst.bindQueryPlan
 
-						if err := rst.gangDeployPrepStmtByName(rst.lastBindName); err != nil {
+						if _, _, err := rst.gangDeployPrepStmtByName(rst.lastBindName); err != nil {
 							return err
 						}
 
@@ -930,7 +901,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 				rst.routingDecisionPlan = p
 
-				rd, _, err := rst.DeployPrepStmt(currentMsg.Name)
+				rd, _, err := rst.gangDeployPrepStmtByName(currentMsg.Name)
 				if err != nil {
 					return err
 				}
