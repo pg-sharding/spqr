@@ -38,7 +38,6 @@ type RelayStateMgr interface {
 	PoolMgr() poolmgr.PoolMgr
 
 	Reset() error
-	Flush()
 
 	Parse(query string, doCaching bool) (parser.ParseState, string, error)
 
@@ -217,11 +216,6 @@ func (rst *RelayStateImpl) Reset() error {
 	_ = rst.Cl.Reset()
 
 	return rst.Cl.Unroute()
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) Flush() {
-	rst.msgBuf = nil
 }
 
 var ErrSkipQuery = fmt.Errorf("wait for a next query")
@@ -1035,7 +1029,6 @@ func (rst *RelayStateImpl) PrepareExecutionSlice() (plan.Plan, error) {
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return nil, ErrSkipQuery
 	default:
-		rst.msgBuf = nil
 		return q, err
 	}
 }
@@ -1090,7 +1083,6 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return ErrSkipQuery
 	default:
-		rst.msgBuf = nil
 		return err
 	}
 }
@@ -1141,7 +1133,6 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return currentPlan, noopCloseRouteFunc, ErrSkipQuery
 	default:
-		rst.msgBuf = nil
 		return currentPlan, noopCloseRouteFunc, err
 	}
 }
@@ -1155,7 +1146,6 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 	if err != nil {
 		/* some critical connection issue, client processing cannot be competed.
 		* empty our msg buf */
-		rst.msgBuf = nil
 		return err
 	}
 	if queryPlan != nil {
