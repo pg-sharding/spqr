@@ -33,11 +33,12 @@ DROP REFERENCE RELATION t1;
 ----------------------
  table -> t1
 (1 row)
+
 SHOW sequences;
- name  | value 
--------+-------
- t_id  | 0
-(2 rows)
+ name | value 
+------+-------
+ t_id | 0
+(1 row)
 
 DROP SEQUENCE t1_id;
    drop sequence   
