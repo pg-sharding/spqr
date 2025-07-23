@@ -552,9 +552,9 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &DistributionSelector{ID: `*`}, CascadeDelete: $4}
 	}
-	| DROP SHARD any_id
+	| DROP SHARD any_id opt_cascade
 	{
-		$$ = &Drop{Element: &ShardSelector{ID: $3}}
+		$$ = &Drop{Element: &ShardSelector{ID: $3}, CascadeDelete: $4}
 	}
 	| DROP TASK GROUP
 	{
