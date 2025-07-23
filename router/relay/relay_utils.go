@@ -48,7 +48,7 @@ func gangMemberDeployPreparedStatement(shard shard.ShardHostInstance, hash uint6
 		return nil, nil, err
 	}
 
-	if err := shard.Send(&pgproto3.Sync{}); err != nil {
+	if err := shard.Send(pgsync); err != nil {
 		return nil, nil, err
 	}
 
