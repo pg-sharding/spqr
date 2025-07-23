@@ -42,8 +42,6 @@ type RelayStateMgr interface {
 
 	Parse(query string, doCaching bool) (parser.ParseState, string, error)
 
-	AddQuery(q pgproto3.FrontendMessage)
-
 	CompleteRelay(replyCl bool) error
 	Close() error
 	Client() client.RouterClient
@@ -442,50 +440,6 @@ func (rst *RelayStateImpl) Connect() error {
 	return nil
 }
 
-func (rst *RelayStateImpl) flusher(waitForResp, replyCl bool) ([]pgproto3.BackendMessage, error) {
-
-	var unreplied []pgproto3.BackendMessage
-
-	for _, v := range rst.msgBuf {
-		spqrlog.Zero.Debug().
-			Uint("client-id", rst.Client().ID()).
-			Bool("waitForResp", waitForResp).
-			Bool("replyCl", replyCl).
-			Interface("plan", rst.routingDecisionPlan).
-			Msg("flushing")
-
-		resolvedReplyCl := replyCl
-
-		if unrep_local, err := rst.qse.ProcQuery(
-			&QueryDesc{
-				Msg:  v,
-				Stmt: rst.qp.Stmt(),
-				P:    rst.routingDecisionPlan, /*  ugh... fix this someday */
-			}, rst.Qr.Mgr(), waitForResp, resolvedReplyCl); err != nil {
-			spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Err(err).Msg("error executing query")
-			return nil, err
-		} else {
-			unreplied = append(unreplied, unrep_local...)
-		}
-
-	}
-
-	return unreplied, nil
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Msg("flushing message buffer")
-
-	msgs, err := rst.flusher(waitForResp, replyCl)
-
-	rst.msgBuf = rst.msgBuf[:0]
-
-	return msgs, err
-}
-
 func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	statistics.RecordFinishedTransaction(time.Now(), rst.Client().ID())
 
@@ -552,15 +506,6 @@ func (rst *RelayStateImpl) Unroute(shkey []kr.ShardKey) error {
 func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) error {
 	_ = rst.poolMgr.UnRouteWithError(rst.Cl, shkey, errmsg)
 	return rst.Reset()
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) AddQuery(q pgproto3.FrontendMessage) {
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Type("message-type", q).
-		Msg("client relay: adding message to message buffer")
-	rst.msgBuf = append(rst.msgBuf, q)
 }
 
 // TODO : unit tests

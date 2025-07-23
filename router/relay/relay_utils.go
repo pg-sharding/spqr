@@ -13,13 +13,24 @@ import (
 func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
 
 	/* Case when no describe stmt was issued before Execute+Sync*/
-	rst.AddQuery(bind)
-	// do not send saved bind twice
 
-	rst.AddQuery(pgexec)
-	rst.AddQuery(pgsync)
-	// do not complete relay here yet
-	_, err := rst.RelayFlush(true, true)
+	for _, sh := range rst.Client().Server().Datashards() {
+		/* this is pretty ugly but lets just do it */
+		if err := sh.Send(bind); err != nil {
+			return err
+		}
+		if err := sh.Send(pgexec); err != nil {
+			return err
+		}
+	}
+
+	_, err := rst.qse.ProcQuery(
+		&QueryDesc{
+			Msg:  pgsync,
+			Stmt: rst.qp.Stmt(),
+			P:    rst.routingDecisionPlan, /*  ugh... fix this someday */
+		}, rst.Qr.Mgr(), true, true)
+
 	return err
 }
 
