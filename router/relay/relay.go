@@ -197,7 +197,7 @@ shardLoop:
 			rd = shardRd
 			replyMsg = shardReplyMsg
 		}
-		/* If prepared statement  */
+		/* If prepared statement is not actually deployed by backend, return quickly */
 		switch replyMsg.(type) {
 		case *pgproto3.ErrorResponse:
 			break shardLoop
