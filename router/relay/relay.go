@@ -38,11 +38,8 @@ type RelayStateMgr interface {
 	PoolMgr() poolmgr.PoolMgr
 
 	Reset() error
-	Flush()
 
 	Parse(query string, doCaching bool) (parser.ParseState, string, error)
-
-	AddQuery(q pgproto3.FrontendMessage)
 
 	CompleteRelay(replyCl bool) error
 	Close() error
@@ -232,11 +229,6 @@ func (rst *RelayStateImpl) Reset() error {
 	_ = rst.Cl.Reset()
 
 	return rst.Cl.Unroute()
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) Flush() {
-	rst.msgBuf = nil
 }
 
 var ErrSkipQuery = fmt.Errorf("wait for a next query")
@@ -455,50 +447,6 @@ func (rst *RelayStateImpl) Connect() error {
 	return nil
 }
 
-func (rst *RelayStateImpl) flusher(waitForResp, replyCl bool) ([]pgproto3.BackendMessage, error) {
-
-	var unreplied []pgproto3.BackendMessage
-
-	for _, v := range rst.msgBuf {
-		spqrlog.Zero.Debug().
-			Uint("client-id", rst.Client().ID()).
-			Bool("waitForResp", waitForResp).
-			Bool("replyCl", replyCl).
-			Interface("plan", rst.routingDecisionPlan).
-			Msg("flushing")
-
-		resolvedReplyCl := replyCl
-
-		if unrep_local, err := rst.qse.ProcQuery(
-			&QueryDesc{
-				Msg:  v,
-				Stmt: rst.qp.Stmt(),
-				P:    rst.routingDecisionPlan, /*  ugh... fix this someday */
-			}, rst.Qr.Mgr(), waitForResp, resolvedReplyCl); err != nil {
-			spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Err(err).Msg("error executing query")
-			return nil, err
-		} else {
-			unreplied = append(unreplied, unrep_local...)
-		}
-
-	}
-
-	return unreplied, nil
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Msg("flushing message buffer")
-
-	msgs, err := rst.flusher(waitForResp, replyCl)
-
-	rst.msgBuf = rst.msgBuf[:0]
-
-	return msgs, err
-}
-
 func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	statistics.RecordFinishedTransaction(time.Now(), rst.Client().ID())
 
@@ -565,15 +513,6 @@ func (rst *RelayStateImpl) Unroute(shkey []kr.ShardKey) error {
 func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) error {
 	_ = rst.poolMgr.UnRouteWithError(rst.Cl, shkey, errmsg)
 	return rst.Reset()
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) AddQuery(q pgproto3.FrontendMessage) {
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Type("message-type", q).
-		Msg("client relay: adding message to message buffer")
-	rst.msgBuf = append(rst.msgBuf, q)
 }
 
 // TODO : unit tests
@@ -1061,7 +1000,6 @@ func (rst *RelayStateImpl) PrepareExecutionSlice() (plan.Plan, error) {
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return nil, ErrSkipQuery
 	default:
-		rst.msgBuf = nil
 		return q, err
 	}
 }
@@ -1116,7 +1054,6 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return ErrSkipQuery
 	default:
-		rst.msgBuf = nil
 		return err
 	}
 }
@@ -1167,7 +1104,6 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return currentPlan, noopCloseRouteFunc, ErrSkipQuery
 	default:
-		rst.msgBuf = nil
 		return currentPlan, noopCloseRouteFunc, err
 	}
 }
@@ -1181,7 +1117,6 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 	if err != nil {
 		/* some critical connection issue, client processing cannot be competed.
 		* empty our msg buf */
-		rst.msgBuf = nil
 		return err
 	}
 	if queryPlan != nil {

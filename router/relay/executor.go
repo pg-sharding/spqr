@@ -152,8 +152,6 @@ func (s *QueryStateExecutorImpl) ExecCommit(rst RelayStateMgr, query string) err
 		s.cl.CommitActiveSet()
 		_ = rst.Client().ReplyCommandComplete("COMMIT")
 		s.SetTxStatus(txstatus.TXIDLE)
-		/* empty message buf */
-		rst.Flush()
 		return nil
 	}
 
@@ -186,8 +184,6 @@ func (s *QueryStateExecutorImpl) ExecRollback(rst RelayStateMgr, query string) e
 		s.cl.Rollback()
 		_ = s.cl.ReplyCommandComplete("ROLLBACK")
 		s.SetTxStatus(txstatus.TXIDLE)
-		/* empty message buf */
-		rst.Flush()
 		return nil
 	}
 
