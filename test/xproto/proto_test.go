@@ -354,6 +354,10 @@ func TestSimpleMultiShardTxBlock(t *testing.T) {
 					String: "BEGIN",
 				},
 
+				&pgproto3.Query{
+					String: "SET __spqr__engine_v2 TO true",
+				},
+
 				&pgproto3.Parse{
 					Query: "INSERT INTO xproto_ref (a) VALUES(1)",
 				},
@@ -361,12 +365,14 @@ func TestSimpleMultiShardTxBlock(t *testing.T) {
 				&pgproto3.Bind{},
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
+
 				&pgproto3.Parse{
 					Query: "TRUNCATE xproto_ref",
 				},
 				&pgproto3.Bind{},
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
+
 				&pgproto3.Query{
 					String: "ROLLBACK",
 				},
@@ -374,6 +380,14 @@ func TestSimpleMultiShardTxBlock(t *testing.T) {
 			Response: []pgproto3.BackendMessage{
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
 				},
 
 				&pgproto3.ReadyForQuery{
