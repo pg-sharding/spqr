@@ -221,9 +221,15 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
 			// ignore this
 			_ = rst.Client().ReplyWarningf("there is already transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("BEGIN")
+
+			rst.execute = func() error { return rst.Client().ReplyCommandComplete("BEGIN") }
+
+			return noDataPd, nil
 		}
-		return noDataPd, rst.QueryExecutor().ExecBegin(rst, query, &st)
+
+		rst.execute = func() error { return rst.QueryExecutor().ExecBegin(rst, query, &st) }
+
+		return noDataPd, nil
 	case parser.ParseStateTXCommit:
 
 		if mp, err := parser.ParseComment(comment); err == nil {
@@ -244,15 +250,23 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("COMMIT")
+
+			rst.execute = func() error { return rst.Client().ReplyCommandComplete("COMMIT") }
+
+			return noDataPd, nil
 		}
-		return noDataPd, rst.QueryExecutor().ExecCommit(rst, query)
+
+		rst.execute = func() error { return rst.QueryExecutor().ExecCommit(rst, query) }
+		return noDataPd, nil
 	case parser.ParseStateTXRollback:
 		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("ROLLBACK")
+			rst.execute = func() error { return rst.Client().ReplyCommandComplete("ROLLBACK") }
+			return noDataPd, nil
 		}
-		return noDataPd, rst.QueryExecutor().ExecRollback(rst, query)
+
+		rst.execute = func() error { return rst.QueryExecutor().ExecRollback(rst, query) }
+		return noDataPd, nil
 	case parser.ParseStateEmptyQuery:
 		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
 			return nil, err
