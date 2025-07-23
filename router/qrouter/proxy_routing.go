@@ -868,7 +868,11 @@ func (qr *ProxyQrouter) planQueryV1(
 								Format:               0,
 							})
 
-						virtualRowVals = append(virtualRowVals, []byte{byte('t')})
+						if qr.mgr.IsReady() {
+							virtualRowVals = append(virtualRowVals, []byte{byte('t')})
+						} else {
+							virtualRowVals = append(virtualRowVals, []byte{byte('f')})
+						}
 						continue
 					} else if e.Name == "current_setting" && len(e.Args) == 1 {
 						if val, ok := e.Args[0].(*lyx.AExprSConst); ok && val.Value == "transaction_read_only" {
