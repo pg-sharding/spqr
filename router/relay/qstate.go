@@ -268,7 +268,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, commen
 			}
 			return noDataPd, rst.QueryExecutor().ExecRollback(rst, query)
 		default:
-			return nil, fmt.Errorf("This transaction statement is currenly unsipported")
+			return nil, fmt.Errorf("This transaction statement is currently unsupported")
 		}
 
 	// with tx pooling we might have no active connection while processing set x to y
