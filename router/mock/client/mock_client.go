@@ -175,16 +175,16 @@ func (mr *MockRouterClientMockRecorder) CancelMsg() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelMsg", reflect.TypeOf((*MockRouterClient)(nil).CancelMsg))
 }
 
-// CleanupLocalSet mocks base method.
-func (m *MockRouterClient) CleanupLocalSet() {
+// CleanupStatementSet mocks base method.
+func (m *MockRouterClient) CleanupStatementSet() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "CleanupLocalSet")
+	m.ctrl.Call(m, "CleanupStatementSet")
 }
 
-// CleanupLocalSet indicates an expected call of CleanupLocalSet.
-func (mr *MockRouterClientMockRecorder) CleanupLocalSet() *gomock.Call {
+// CleanupStatementSet indicates an expected call of CleanupStatementSet.
+func (mr *MockRouterClientMockRecorder) CleanupStatementSet() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CleanupLocalSet", reflect.TypeOf((*MockRouterClient)(nil).CleanupLocalSet))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CleanupStatementSet", reflect.TypeOf((*MockRouterClient)(nil).CleanupStatementSet))
 }
 
 // Close mocks base method.

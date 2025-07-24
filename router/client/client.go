@@ -65,7 +65,7 @@ type RouterClient interface {
 
 type PsqlClient struct {
 	activeParamSet     map[string]string
-	localParamSet      map[string]string
+	statementParamSet  map[string]string
 	savepointParamSet  map[string]map[string]string
 	savepointTxCounter map[string]int
 	beginTxParamSet    map[string]string
@@ -111,7 +111,7 @@ type PsqlClient struct {
 var _ RouterClient = &PsqlClient{}
 
 func (cl *PsqlClient) resolveVirtualBoolParam(name string) bool {
-	if val, ok := cl.localParamSet[name]; ok {
+	if val, ok := cl.statementParamSet[name]; ok {
 		return val == "ok"
 	}
 	if val, ok := cl.activeParamSet[name]; ok {
@@ -120,16 +120,16 @@ func (cl *PsqlClient) resolveVirtualBoolParam(name string) bool {
 	return false
 }
 
-func (cl *PsqlClient) recordVirtualParam(local bool, name string, val string) {
-	if local {
-		cl.localParamSet[name] = val
+func (cl *PsqlClient) recordVirtualParam(statement bool, name string, val string) {
+	if statement {
+		cl.statementParamSet[name] = val
 	} else {
 		cl.activeParamSet[name] = val
 	}
 }
 
 func (cl *PsqlClient) resolveVirtualStringParam(name string) string {
-	if val, ok := cl.localParamSet[name]; ok {
+	if val, ok := cl.statementParamSet[name]; ok {
 		return val
 	}
 	if val, ok := cl.activeParamSet[name]; ok {
@@ -139,8 +139,8 @@ func (cl *PsqlClient) resolveVirtualStringParam(name string) string {
 }
 
 // SetDistribution implements RouterClient.
-func (cl *PsqlClient) SetDistribution(local bool, val string) {
-	cl.recordVirtualParam(local, session.SPQR_DISTRIBUTION, val)
+func (cl *PsqlClient) SetDistribution(statement bool, val string) {
+	cl.recordVirtualParam(statement, session.SPQR_DISTRIBUTION, val)
 }
 
 // Distribution implements RouterClient.
@@ -149,8 +149,8 @@ func (cl *PsqlClient) Distribution() string {
 }
 
 // SetDistributedRelation implements RouterClient.
-func (cl *PsqlClient) SetDistributedRelation(local bool, val string) {
-	cl.recordVirtualParam(local, session.SPQR_DISTRIBUTED_RELATION, val)
+func (cl *PsqlClient) SetDistributedRelation(statement bool, val string) {
+	cl.recordVirtualParam(statement, session.SPQR_DISTRIBUTED_RELATION, val)
 }
 
 // DistributedRelation implements RouterClient.
@@ -159,8 +159,8 @@ func (cl *PsqlClient) DistributedRelation() string {
 }
 
 // SetExecuteOn implements RouterClient.
-func (cl *PsqlClient) SetExecuteOn(local bool, val string) {
-	cl.recordVirtualParam(local, session.SPQR_EXECUTE_ON, val)
+func (cl *PsqlClient) SetExecuteOn(statement bool, val string) {
+	cl.recordVirtualParam(statement, session.SPQR_EXECUTE_ON, val)
 }
 
 // ExecuteOn implements RouterClient.
@@ -169,17 +169,17 @@ func (cl *PsqlClient) ExecuteOn() string {
 }
 
 // SetExecuteOn implements RouterClient.
-func (cl *PsqlClient) SetEnhancedMultiShardProcessing(local bool, val bool) {
+func (cl *PsqlClient) SetEnhancedMultiShardProcessing(statement bool, val bool) {
 	if val {
-		cl.recordVirtualParam(local, session.SPQR_ENGINE_V2, "ok")
+		cl.recordVirtualParam(statement, session.SPQR_ENGINE_V2, "ok")
 	} else {
-		cl.recordVirtualParam(local, session.SPQR_ENGINE_V2, "no")
+		cl.recordVirtualParam(statement, session.SPQR_ENGINE_V2, "no")
 	}
 }
 
 // ExecuteOn implements RouterClient.
 func (cl *PsqlClient) EnhancedMultiShardProcessing() bool {
-	if _, ok := cl.localParamSet[session.SPQR_ENGINE_V2]; !ok {
+	if _, ok := cl.statementParamSet[session.SPQR_ENGINE_V2]; !ok {
 		if _, ok := cl.activeParamSet[session.SPQR_ENGINE_V2]; !ok {
 			return config.RouterConfig().Qr.EnhancedMultiShardProcessing
 		}
@@ -187,8 +187,8 @@ func (cl *PsqlClient) EnhancedMultiShardProcessing() bool {
 	return cl.resolveVirtualBoolParam(session.SPQR_ENGINE_V2)
 }
 
-func (cl *PsqlClient) SetCommitStrategy(local bool, val string) {
-	cl.recordVirtualParam(local, session.SPQR_COMMIT_STRATEGY, val)
+func (cl *PsqlClient) SetCommitStrategy(statement bool, val string) {
+	cl.recordVirtualParam(statement, session.SPQR_COMMIT_STRATEGY, val)
 }
 
 func (cl *PsqlClient) CommitStrategy() string {
@@ -196,8 +196,8 @@ func (cl *PsqlClient) CommitStrategy() string {
 }
 
 // SetAutoDistribution implements RouterClient.
-func (cl *PsqlClient) SetAutoDistribution(local bool, val string) {
-	cl.recordVirtualParam(local, session.SPQR_AUTO_DISTRIBUTION, val)
+func (cl *PsqlClient) SetAutoDistribution(statement bool, val string) {
+	cl.recordVirtualParam(statement, session.SPQR_AUTO_DISTRIBUTION, val)
 }
 
 // AutoDistribution implements RouterClient.
@@ -206,8 +206,8 @@ func (cl *PsqlClient) AutoDistribution() string {
 }
 
 // SetDistributionKey implements RouterClient.
-func (cl *PsqlClient) SetDistributionKey(local bool, val string) {
-	cl.recordVirtualParam(local, session.SPQR_DISTRIBUTION_KEY, val)
+func (cl *PsqlClient) SetDistributionKey(statement bool, val string) {
+	cl.recordVirtualParam(statement, session.SPQR_DISTRIBUTION_KEY, val)
 }
 
 // DistributionKey implements RouterClient.
@@ -256,8 +256,8 @@ func (cl *PsqlClient) SetBindParams(p [][]byte) {
 }
 
 // SetShardingKey implements RouterClient.
-func (cl *PsqlClient) SetShardingKey(local bool, k string) {
-	cl.recordVirtualParam(local, session.SPQR_SHARDING_KEY, k)
+func (cl *PsqlClient) SetShardingKey(statement bool, k string) {
+	cl.recordVirtualParam(statement, session.SPQR_SHARDING_KEY, k)
 }
 
 // ShardingKey implements RouterClient.
@@ -266,8 +266,8 @@ func (cl *PsqlClient) ShardingKey() string {
 }
 
 // SetDefaultRouteBehaviour implements RouterClient.
-func (cl *PsqlClient) SetDefaultRouteBehaviour(local bool, b string) {
-	cl.recordVirtualParam(local, session.SPQR_DEFAULT_ROUTE_BEHAVIOUR, b)
+func (cl *PsqlClient) SetDefaultRouteBehaviour(statement bool, b string) {
+	cl.recordVirtualParam(statement, session.SPQR_DEFAULT_ROUTE_BEHAVIOUR, b)
 }
 
 // DefaultRouteBehaviour implements RouterClient.
@@ -313,12 +313,12 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 			session.SPQR_DISTRIBUTION:            "default",
 			session.SPQR_DEFAULT_ROUTE_BEHAVIOUR: defaultRouteBehaviour,
 		},
-		localParamSet: map[string]string{},
-		conn:          pgconn,
-		startupMsg:    &pgproto3.StartupMessage{},
-		prepStmts:     map[string]*prepstatement.PreparedStatementDefinition{},
-		prepStmtsHash: map[string]uint64{},
-		defaultTsa:    target_session_attrs,
+		statementParamSet: map[string]string{},
+		conn:              pgconn,
+		startupMsg:        &pgproto3.StartupMessage{},
+		prepStmts:         map[string]*prepstatement.PreparedStatementDefinition{},
+		prepStmtsHash:     map[string]uint64{},
+		defaultTsa:        target_session_attrs,
 
 		show_notice_messages: showNoticeMessages,
 
@@ -360,7 +360,7 @@ func (cl *PsqlClient) StartTx() {
 	cl.beginTxParamSet = copymap(cl.activeParamSet)
 	cl.savepointParamSet = nil
 	cl.savepointTxCounter = nil
-	cl.localParamSet = map[string]string{}
+	cl.statementParamSet = map[string]string{}
 	cl.txCnt = 0
 }
 
@@ -368,12 +368,12 @@ func (cl *PsqlClient) CommitActiveSet() {
 	cl.beginTxParamSet = nil
 	cl.savepointParamSet = nil
 	cl.savepointTxCounter = nil
-	cl.localParamSet = map[string]string{}
+	cl.statementParamSet = map[string]string{}
 	cl.txCnt = 0
 }
 
-func (cl *PsqlClient) CleanupLocalSet() {
-	cl.localParamSet = map[string]string{}
+func (cl *PsqlClient) CleanupStatementSet() {
+	cl.statementParamSet = map[string]string{}
 }
 
 func (cl *PsqlClient) Savepoint(name string) {
@@ -387,7 +387,7 @@ func (cl *PsqlClient) Rollback() {
 	cl.beginTxParamSet = nil
 	cl.savepointParamSet = nil
 	cl.savepointTxCounter = nil
-	cl.localParamSet = map[string]string{}
+	cl.statementParamSet = map[string]string{}
 
 	cl.txCnt = 0
 }
@@ -402,7 +402,7 @@ func (cl *PsqlClient) RollbackToSP(name string) {
 		}
 	}
 	/* not exactly correct with roolback to SP */
-	cl.localParamSet = map[string]string{}
+	cl.statementParamSet = map[string]string{}
 
 	cl.txCnt = targetTxCnt + 1
 }
@@ -438,7 +438,7 @@ func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
 
 func (cl *PsqlClient) ResetAll() {
 	cl.activeParamSet = cl.startupMsg.Parameters
-	cl.localParamSet = map[string]string{}
+	cl.statementParamSet = map[string]string{}
 }
 
 func (cl *PsqlClient) StorePreparedStatement(d *prepstatement.PreparedStatementDefinition) {
@@ -1146,7 +1146,7 @@ func (cl *PsqlClient) Shutdown() error {
 }
 
 func (cl *PsqlClient) GetTsa() tsa.TSA {
-	if _, ok := cl.localParamSet[session.SPQR_TARGET_SESSION_ATTRS]; !ok {
+	if _, ok := cl.statementParamSet[session.SPQR_TARGET_SESSION_ATTRS]; !ok {
 		if _, ok := cl.activeParamSet[session.SPQR_TARGET_SESSION_ATTRS]; !ok {
 			return tsa.TSA(cl.defaultTsa)
 		}
@@ -1154,14 +1154,14 @@ func (cl *PsqlClient) GetTsa() tsa.TSA {
 	return tsa.TSA(cl.resolveVirtualStringParam(session.SPQR_TARGET_SESSION_ATTRS))
 }
 
-func (cl *PsqlClient) SetTsa(local bool, s string) {
+func (cl *PsqlClient) SetTsa(statement bool, s string) {
 	switch s {
 	case config.TargetSessionAttrsAny,
 		config.TargetSessionAttrsPS,
 		config.TargetSessionAttrsRW,
 		config.TargetSessionAttrsSmartRW,
 		config.TargetSessionAttrsRO:
-		cl.recordVirtualParam(local, session.SPQR_TARGET_SESSION_ATTRS, s)
+		cl.recordVirtualParam(statement, session.SPQR_TARGET_SESSION_ATTRS, s)
 	default:
 		// XXX: else error out!
 	}
