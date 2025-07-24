@@ -110,7 +110,7 @@ func SelectRandomDispatchPlan(routes []kr.ShardKey) (plan.Plan, error) {
 	}
 
 	r := routes[rand.Int()%len(routes)]
-	return plan.ShardDispatchPlan{
+	return &plan.ShardDispatchPlan{
 		ExecTarget: r,
 	}, nil
 }

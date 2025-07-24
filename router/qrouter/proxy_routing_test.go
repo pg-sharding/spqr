@@ -63,77 +63,78 @@ func TestMultiShardRouting(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "create table xx (i int);",
-			exp: plan.ScatterPlan{
+			exp: &plan.ScatterPlan{
 				IsDDL: true,
 			},
 			err: nil,
 		},
 		{
 			query: "DROP TABLE copy_test;",
-			exp: plan.ScatterPlan{
+			exp: &plan.ScatterPlan{
 				IsDDL: true,
 			},
 			err: nil,
 		},
 		{
 			query: "select current_schema;",
-			exp:   plan.RandomDispatchPlan{},
+			exp:   &plan.RandomDispatchPlan{},
 			err:   nil,
 		},
 		{
 			query: "select current_schema();",
-			exp:   plan.RandomDispatchPlan{},
+			exp:   &plan.RandomDispatchPlan{},
 			err:   nil,
 		},
 		{
 			query: "alter table xx  add column i int;",
-			exp: plan.ScatterPlan{
+			exp: &plan.ScatterPlan{
 				IsDDL: true,
 			},
 			err: nil,
 		},
 		{
 			query: "vacuum xx;",
-			exp: plan.ScatterPlan{
+			exp: &plan.ScatterPlan{
 				IsDDL: true,
 			},
 			err: nil,
 		},
 		{
 			query: "analyze xx;",
-			exp: plan.ScatterPlan{
+			exp: &plan.ScatterPlan{
 				IsDDL: true,
 			},
 			err: nil,
 		},
 		{
 			query: "cluster xx;",
-			exp: plan.ScatterPlan{
+			exp: &plan.ScatterPlan{
 				IsDDL: true,
 			},
 			err: nil,
 		},
 		{
 			query: "GRANT SELECT ON TABLE odssd.'eee' TO pp2;			",
-			exp: plan.ScatterPlan{
+			exp: &plan.ScatterPlan{
 				IsDDL: true,
 			},
+
 			err: nil,
 		},
 		{
 			query: "SELECT * FROM pg_catalog.pg_type",
-			exp:   plan.RandomDispatchPlan{},
+			exp:   &plan.RandomDispatchPlan{},
 			err:   nil,
 		},
 
 		{
 			query: "SELECT * FROM pg_class",
-			exp:   plan.RandomDispatchPlan{},
+			exp:   &plan.RandomDispatchPlan{},
 			err:   nil,
 		},
 		{
 			query: `SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'people' AND table_type = 'BASE TABLE'`,
-			exp:   plan.RandomDispatchPlan{},
+			exp:   &plan.RandomDispatchPlan{},
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
@@ -216,9 +217,9 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "UPDATE distrr_mm_test SET t = 'm' WHERE id IN (3, 34) /* __spqr__engine_v2: true */;",
-			exp: plan.ScatterPlan{
-				SubPlan: plan.ScatterPlan{
-					SubPlan: plan.ModifyTable{},
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{},
 				},
 				ExecTargets: []kr.ShardKey{
 					{
@@ -233,9 +234,9 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		},
 		{
 			query: "DELETE FROM distrr_mm_test WHERE id IN (3, 34) /* __spqr__engine_v2: true */;",
-			exp: plan.ScatterPlan{
-				SubPlan: plan.ScatterPlan{
-					SubPlan: plan.ModifyTable{},
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{},
 				},
 				ExecTargets: []kr.ShardKey{
 					{
@@ -271,6 +272,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
 		} else {
+			tmp.SetStmt(nil) /* dont check stmt */
 
 			assert.NoError(err, "query %s", tt.query)
 
@@ -315,10 +317,10 @@ func TestReferenceRelationRouting(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
-			exp: plan.DataRowFilter{
-				SubPlan: plan.ScatterPlan{
-					SubPlan: plan.ScatterPlan{
-						SubPlan: plan.ModifyTable{},
+			exp: &plan.DataRowFilter{
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ScatterPlan{
+						SubPlan: &plan.ModifyTable{},
 					},
 					ExecTargets: []kr.ShardKey{
 						{
@@ -333,9 +335,9 @@ func TestReferenceRelationRouting(t *testing.T) {
 		},
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
-			exp: plan.ScatterPlan{
-				SubPlan: plan.ScatterPlan{
-					SubPlan: plan.ModifyTable{},
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{},
 				},
 				ExecTargets: []kr.ShardKey{
 					{
@@ -349,9 +351,9 @@ func TestReferenceRelationRouting(t *testing.T) {
 		},
 		{
 			query: `UPDATE test_ref_rel SET i = i + 1 ;`,
-			exp: plan.ScatterPlan{
-				SubPlan: plan.ScatterPlan{
-					SubPlan: plan.ModifyTable{},
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{},
 				},
 				ExecTargets: []kr.ShardKey{
 					{
@@ -365,9 +367,9 @@ func TestReferenceRelationRouting(t *testing.T) {
 		},
 		{
 			query: `DELETE FROM test_ref_rel WHERE i = 2;`,
-			exp: plan.ScatterPlan{
-				SubPlan: plan.ScatterPlan{
-					SubPlan: plan.ModifyTable{},
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{},
 				},
 				ExecTargets: []kr.ShardKey{
 					{
@@ -389,10 +391,14 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 		tmp, err := pr.PlanQuery(context.TODO(), parserRes, dh)
 		if tt.err == nil {
+
+			tmp.SetStmt(nil) /* dont check stmt */
+
 			assert.NoError(err, "query %s", tt.query)
 
-			assert.Equal(tt.exp, tmp)
+			assert.Equal(tt.exp, tmp, tt.query)
 		} else {
+
 			assert.Equal(err, tt.err, tt.query)
 		}
 	}
@@ -469,7 +475,7 @@ func TestComment(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "select /* oiwejow--23**/ * from  xx where i = 4;",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -575,7 +581,7 @@ func TestCTE(t *testing.T) {
 				ON r.i = vals.x;
 			`,
 			err: nil,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -599,7 +605,7 @@ func TestCTE(t *testing.T) {
 				ON r.i = vals.x;
 			`,
 			err: nil,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -611,7 +617,7 @@ func TestCTE(t *testing.T) {
 			query: `
 			WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM t t, vv v  WHERE t.i = v.x;`,
 			err: nil,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -622,7 +628,7 @@ func TestCTE(t *testing.T) {
 			query: `
 			WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM t t, vv  WHERE t.i = vv.x;`,
 			err: nil,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -638,7 +644,7 @@ func TestCTE(t *testing.T) {
 			`,
 
 			err: nil,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -657,7 +663,7 @@ func TestCTE(t *testing.T) {
 			  SELECT * FROM qqq;
 			`,
 			err: nil,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -673,7 +679,7 @@ func TestCTE(t *testing.T) {
 			SELECT * from xxxx;
 			`,
 			err: nil,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -693,7 +699,7 @@ func TestCTE(t *testing.T) {
 			SELECT * FROM xxxx;
 			`,
 			err: nil,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -728,7 +734,7 @@ func TestCTE(t *testing.T) {
 			SELECT * FROM xxxx;
 			`,
 			err: nil,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -887,7 +893,7 @@ func TestSingleShard(t *testing.T) {
 		// },
 		{
 			query: ` select * from tt where id in (select * from tt2 g where g.id = 7);`,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -897,7 +903,7 @@ func TestSingleShard(t *testing.T) {
 		},
 		{
 			query: "SELECT * FROM sh1.xxtt1 WHERE sh1.xxtt1.i = 21;",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -908,7 +914,7 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "SELECT * FROM xxtt1 a WHERE a.i = 21 and w_idj + w_idi != 0;",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -919,7 +925,7 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "SELECT * FROM xxtt1 a WHERE a.i = '21' and w_idj + w_idi != 0;",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -938,7 +944,7 @@ func TestSingleShard(t *testing.T) {
 			/* __spqr__default_route_behaviour: BLOCK */  returning *;
 			`,
 			err: nil,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -956,7 +962,7 @@ func TestSingleShard(t *testing.T) {
 			/* __spqr__default_route_behaviour: BLOCK */  returning *;
 			`,
 			err: nil,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -965,7 +971,7 @@ func TestSingleShard(t *testing.T) {
 		},
 		{
 			query: "select * from  xx where i = 4;",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -976,7 +982,7 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "INSERT INTO xx (i) SELECT 20;",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -987,7 +993,7 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "select * from  xx where i = 11;",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -998,7 +1004,7 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "Insert into xx (i) values (1), (2)",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -1012,7 +1018,7 @@ func TestSingleShard(t *testing.T) {
 		 */
 		{
 			query: "Insert into xx (i) select * from yy a where a.i = 8",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -1023,7 +1029,7 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "SELECT * FROM xxmixed WHERE i BETWEEN 22 AND 30 ORDER BY id;;",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -1034,7 +1040,7 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "SELECT * FROM t WHERE i = 12 AND j = 1;",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -1046,7 +1052,7 @@ func TestSingleShard(t *testing.T) {
 		/* TODO: fix aliasing here  */
 		{
 			query: "SELECT * FROM t t WHERE t.i = 12 UNION ALL SELECT * FROM xxmixed x WHERE x.i = 22;",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -1149,7 +1155,7 @@ func TestInsertOffsets(t *testing.T) {
 
 		{
 			query: `INSERT INTO xxtt1 SELECT * FROM xxtt1 a WHERE a.w_id = 20;`,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -1162,7 +1168,7 @@ func TestInsertOffsets(t *testing.T) {
 			query: `
 			INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
 			`,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -1173,7 +1179,7 @@ func TestInsertOffsets(t *testing.T) {
 		{
 			query: `
 			INSERT INTO "people" ("first_name","last_name","email","id") VALUES ('John','Smith','',1) RETURNING "id"`,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -1185,7 +1191,7 @@ func TestInsertOffsets(t *testing.T) {
 			query: `
 			INSERT INTO xxtt1 (j, w_id) SELECT a, 20 from unnest(ARRAY[10]) a
 			`,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -1196,7 +1202,7 @@ func TestInsertOffsets(t *testing.T) {
 
 		{
 			query: "Insert into xx (i, j, k) values (1, 12, 13), (2, 3, 4)",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -1294,7 +1300,7 @@ func TestJoins(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12 AND b.j = a.j;",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -1305,7 +1311,7 @@ func TestJoins(t *testing.T) {
 
 		{
 			query: "SELECT * FROM sshjt1 join sshjt1 ON TRUE WHERE sshjt1.i = 12 AND sshjt1.j = sshjt1.j;",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -1316,7 +1322,7 @@ func TestJoins(t *testing.T) {
 
 		{
 			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where w_idx = 15 ORDER BY id;",
-			exp: plan.ScatterPlan{
+			exp: &plan.ScatterPlan{
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -1332,7 +1338,7 @@ func TestJoins(t *testing.T) {
 		// sharding columns, but unparsed
 		{
 			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where i = 15 ORDER BY id;",
-			exp: plan.ScatterPlan{ExecTargets: []kr.ShardKey{
+			exp: &plan.ScatterPlan{ExecTargets: []kr.ShardKey{
 				{
 					Name: "sh1",
 				},
@@ -1347,7 +1353,7 @@ func TestJoins(t *testing.T) {
 		// non-sharding columns
 		{
 			query: "SELECT * FROM xjoin a JOIN yjoin b ON a.j = b.j;",
-			exp: plan.ScatterPlan{
+			exp: &plan.ScatterPlan{
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -1441,7 +1447,7 @@ func TestUnnest(t *testing.T) {
 
 		{
 			query: "INSERT INTO xxtt1 (j, i) SELECT a, 20 from unnest(ARRAY[10]) a;",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -1452,7 +1458,7 @@ func TestUnnest(t *testing.T) {
 
 		{
 			query: "UPDATE xxtt1 set i=a.i, j=a.j from unnest(ARRAY[(1,10)]) as a(i int, j int) where i=20 and xxtt1.j=a.j;",
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
 				},
@@ -1538,7 +1544,7 @@ func TestCopySingleShard(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "COPY xx FROM STDIN WHERE i = 1;",
-			exp:   plan.CopyPlan{},
+			exp:   &plan.CopyPlan{},
 			err:   nil,
 		},
 	} {
@@ -1622,7 +1628,7 @@ func TestCopyMultiShard(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "COPY xx FROM STDIN",
-			exp:   plan.CopyPlan{},
+			exp:   &plan.CopyPlan{},
 			err:   nil,
 		},
 	} {
@@ -1692,19 +1698,19 @@ func TestSetStmt(t *testing.T) {
 		{
 			query:        "SET extra_float_digits = 3",
 			distribution: distribution1,
-			exp:          plan.RandomDispatchPlan{},
+			exp:          &plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SET application_name = 'jiofewjijiojioji';",
 			distribution: distribution2,
-			exp:          plan.RandomDispatchPlan{},
+			exp:          &plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SHOW TRANSACTION ISOLATION LEVEL;",
 			distribution: distribution1,
-			exp:          plan.RandomDispatchPlan{},
+			exp:          &plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 	} {
@@ -1798,7 +1804,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM pg_class a JOIN users b ON true WHERE b.id = '00000000-0000-1111-0000-000000000000';",
 			distribution: distribution.ID,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -1810,7 +1816,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT NOT pg_is_in_recovery();",
 			distribution: distribution.ID,
-			exp: plan.VirtualPlan{
+			exp: &plan.VirtualPlan{
 				VirtualRowCols: []pgproto3.FieldDescription{
 					{
 						Name:         []byte("pg_is_in_recovery"),
@@ -1826,14 +1832,14 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM information_schema.columns;",
 			distribution: distribution.ID,
-			exp:          plan.RandomDispatchPlan{},
+			exp:          &plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 
 		{
 			query:        "SELECT * FROM information_schema.sequences;",
 			distribution: distribution.ID,
-			exp:          plan.RandomDispatchPlan{},
+			exp:          &plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
@@ -1851,31 +1857,31 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM pg_class JOIN users ON true;",
 			distribution: distribution.ID,
-			exp:          plan.RandomDispatchPlan{},
+			exp:          &plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT * FROM pg_tables WHERE schemaname = 'information_schema'",
 			distribution: distribution.ID,
-			exp:          plan.RandomDispatchPlan{},
+			exp:          &plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT current_schema;",
 			distribution: distribution.ID,
-			exp:          plan.RandomDispatchPlan{},
+			exp:          &plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT current_schema();",
 			distribution: distribution.ID,
-			exp:          plan.RandomDispatchPlan{},
+			exp:          &plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT pg_is_in_recovery();",
 			distribution: distribution.ID,
-			exp: plan.VirtualPlan{
+			exp: &plan.VirtualPlan{
 				VirtualRowCols: []pgproto3.FieldDescription{
 					{
 						Name:         []byte("pg_is_in_recovery"),
@@ -1891,19 +1897,19 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT set_config('log_statement_stats', 'off', false);",
 			distribution: distribution.ID,
-			exp:          plan.RandomDispatchPlan{},
+			exp:          &plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT version()",
 			distribution: distribution.ID,
-			exp:          plan.RandomDispatchPlan{},
+			exp:          &plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT 1;",
 			distribution: distribution.ID,
-			exp: plan.VirtualPlan{
+			exp: &plan.VirtualPlan{
 				VirtualRowCols: []pgproto3.FieldDescription{
 					{
 						Name:         []byte("?column?"),
@@ -1919,13 +1925,13 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT true;",
 			distribution: distribution.ID,
-			exp:          plan.RandomDispatchPlan{},
+			exp:          &plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT 'Hello, world!'",
 			distribution: distribution.ID,
-			exp: plan.VirtualPlan{
+			exp: &plan.VirtualPlan{
 				VirtualRowCols: []pgproto3.FieldDescription{
 					pgproto3.FieldDescription{
 						Name:         []byte("?column?"),
@@ -1941,7 +1947,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM users;",
 			distribution: distribution.ID,
-			exp: plan.ScatterPlan{
+			exp: &plan.ScatterPlan{
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -1956,7 +1962,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM users WHERE id = '5f57cd31-806f-4789-a6fa-1d959ec4c64a';",
 			distribution: distribution.ID,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},
@@ -1973,7 +1979,7 @@ SELECT NULL::pg_catalog.text, n.nspname FROM pg_catalog.pg_namespace n WHERE n.n
 LIMIT 1000
 `,
 			distribution: distribution.ID,
-			exp:          plan.RandomDispatchPlan{},
+			exp:          &plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 
@@ -2077,7 +2083,7 @@ func TestHashRouting(t *testing.T) {
 		{
 			query:        "INSERT INTO xx (col1) VALUES ('Hello, world!');",
 			distribution: distribution1,
-			exp: plan.ShardDispatchPlan{
+			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh1",
 				},

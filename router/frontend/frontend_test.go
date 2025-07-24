@@ -116,7 +116,7 @@ func TestFrontendSimple(t *testing.T) {
 			&lyx.AExprIConst{Value: 1},
 		},
 		Where: &lyx.AExprEmpty{},
-	}, gomock.Any()).Return(plan.ShardDispatchPlan{
+	}, gomock.Any()).Return(&plan.ShardDispatchPlan{
 		ExecTarget: kr.ShardKey{
 			Name: "sh1",
 		},

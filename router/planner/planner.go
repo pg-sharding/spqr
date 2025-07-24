@@ -72,7 +72,7 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 	// }
 
 	/*XXX: fix this */
-	return plan.ScatterPlan{
+	return &plan.ScatterPlan{
 		IsDDL: true,
 	}, nil
 }
@@ -92,8 +92,8 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	} else if ds.Id != distributions.REPLICATED {
 		if allowDistr {
 			if subquery == nil {
-				return plan.ScatterPlan{
-					SubPlan: plan.ModifyTable{
+				return &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{
 						ExecTargets: nil,
 					},
 					ExecTargets: nil,
@@ -105,9 +105,9 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 				}
 				/* XXX: fix that */
 				switch subPlan.(type) {
-				case plan.ScatterPlan:
-					return plan.ScatterPlan{
-						SubPlan: plan.ModifyTable{
+				case *plan.ScatterPlan:
+					return &plan.ScatterPlan{
+						SubPlan: &plan.ModifyTable{
 							ExecTargets: nil,
 						},
 						ExecTargets: nil,
@@ -134,8 +134,8 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	}
 
 	if subquery == nil {
-		return plan.ScatterPlan{
-			SubPlan: plan.ModifyTable{
+		return &plan.ScatterPlan{
+			SubPlan: &plan.ModifyTable{
 				ExecTargets: shs,
 			},
 			ExecTargets: shs,
@@ -147,9 +147,9 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 		return nil, err
 	}
 	switch subPlan.(type) {
-	case plan.ScatterPlan:
-		return plan.ScatterPlan{
-			SubPlan: plan.ModifyTable{
+	case *plan.ScatterPlan:
+		return &plan.ScatterPlan{
+			SubPlan: &plan.ModifyTable{
 				ExecTargets: shs,
 			},
 			ExecTargets: shs,
@@ -192,7 +192,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context, qrouter_query *strin
 		return nil, err
 	}
 
-	return plan.ScatterPlan{
+	return &plan.ScatterPlan{
 		ExecTargets: rel.ListStorageRoutes(),
 	}, nil
 }
@@ -313,55 +313,54 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		/*
 		 * SET x = y etc., do not dispatch any statement to shards, just process this in router
 		 */
-		return plan.RandomDispatchPlan{}, nil
+		return &plan.RandomDispatchPlan{}, nil
 
 	case *lyx.VariableShowStmt:
 		/*
 		 if we want to reroute to execute this stmt, route to random shard
 		 XXX: support intelligent show support, without direct query dispatch
 		*/
-		return plan.RandomDispatchPlan{}, nil
+		return &plan.RandomDispatchPlan{}, nil
 
 	case *lyx.CreateSchema:
-		return plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{}, nil
 
 	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateTable:
 		return PlanCreateTable(ctx, rm, v)
 	case *lyx.Vacuum:
 		/* Send vacuum to each shard */
-		return plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{}, nil
 	case *lyx.Analyze:
 		/* Send analyze to each shard */
-		return plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{}, nil
 	case *lyx.Cluster:
 		/* Send cluster to each shard */
-		return plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{}, nil
 	case *lyx.Index:
 		/*
 		 * Disallow to index on table which does not contain any sharding column
 		 */
 		// XXX: do it
-		return plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{}, nil
 	case *lyx.CreateExtension:
-		return plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{}, nil
 	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
-		return plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{}, nil
 
 	case *lyx.CreateRole, *lyx.CreateDatabase:
 		/* XXX: should we forbid under separate setting?  */
-		return plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{}, nil
 	case *lyx.Copy:
-		return plan.CopyPlan{}, nil
-
+		return &plan.CopyPlan{}, nil
 	case *lyx.ValueClause:
-		return plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{}, nil
 	case *lyx.Select:
 		/* Should be single-relation scan or values. Join to be supported */
 		if len(v.FromClause) == 0 {
-			return plan.ScatterPlan{}, nil
+			return &plan.ScatterPlan{}, nil
 		}
 
 		if len(v.FromClause) > 1 {
@@ -379,7 +378,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		s.Projection = v.TargetList
 
 		/* Todo: support grouping columns */
-		return plan.ScatterPlan{
+		return &plan.ScatterPlan{
 			SubPlan: s,
 		}, nil
 	case *lyx.Insert:

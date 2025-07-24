@@ -16,7 +16,7 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
 	/* Case when no describe stmt was issued before Execute+Sync*/
 
 	switch rst.bindQueryPlan.(type) {
-	case plan.VirtualPlan:
+	case *plan.VirtualPlan:
 	default:
 		for _, sh := range rst.Client().Server().Datashards() {
 			/* this is pretty ugly but lets just do it */
@@ -31,9 +31,8 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
 
 	_, err := rst.qse.ProcQuery(
 		&QueryDesc{
-			Msg:  pgsync,
-			Stmt: rst.qp.Stmt(),
-			P:    rst.bindQueryPlan, /*  ugh... fix this someday */
+			Msg: pgsync,
+			P:   rst.bindQueryPlan, /*  ugh... fix this someday */
 		}, rst.Qr.Mgr(), true, true)
 
 	return err

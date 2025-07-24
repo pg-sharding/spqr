@@ -278,9 +278,8 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 			Str("query", query.String).
 			Msg("setting params for client")
 		_, err := rst.qse.ProcQuery(&QueryDesc{
-			Msg:  query,
-			Stmt: rst.qp.Stmt(),
-			P:    nil,
+			Msg: query,
+			P:   nil,
 		}, rst.Qr.Mgr(), true, false)
 		return err
 	}
@@ -360,7 +359,7 @@ func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 	var queryPlan plan.Plan
 
 	if v := rst.Client().ExecuteOn(); v != "" {
-		queryPlan = plan.ShardDispatchPlan{
+		queryPlan = &plan.ShardDispatchPlan{
 			ExecTarget: kr.ShardKey{
 				Name: v,
 			},
@@ -383,7 +382,7 @@ func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 	if rst.Client().Rule().PoolMode == config.PoolModeVirtual {
 		/* never try to get connection */
 		switch queryPlan.(type) {
-		case plan.VirtualPlan:
+		case *plan.VirtualPlan:
 			return queryPlan, nil
 		default:
 			return nil, fmt.Errorf("query processing for this client is disabled")
@@ -391,7 +390,7 @@ func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 	}
 
 	switch v := queryPlan.(type) {
-	case plan.VirtualPlan, plan.ScatterPlan, plan.ShardDispatchPlan, plan.DataRowFilter:
+	case *plan.VirtualPlan, *plan.ScatterPlan, *plan.ShardDispatchPlan, *plan.DataRowFilter:
 		return queryPlan, nil
 	default:
 		return nil, fmt.Errorf("unexpected query plan %T", v)
@@ -706,7 +705,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				}
 
 				switch rst.bindQueryPlan.(type) {
-				case plan.VirtualPlan:
+				case *plan.VirtualPlan:
 					rst.execute = func() error {
 						return BindAndReadSliceResult(rst, &rst.saveBind)
 					}
@@ -781,7 +780,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				} else {
 
 					switch q := rst.bindQueryPlan.(type) {
-					case plan.VirtualPlan:
+					case *plan.VirtualPlan:
 						// skip deploy
 
 						// send to the client
@@ -986,7 +985,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice() (plan.Plan, error) {
 	switch err {
 	case nil:
 		switch q.(type) {
-		case plan.VirtualPlan:
+		case *plan.VirtualPlan:
 			return q, nil
 		default:
 			return q, rst.procRoutes(q.ExecutionTargets())
@@ -1125,9 +1124,8 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 
 	_, err = rst.qse.ProcQuery(
 		&QueryDesc{
-			Msg:  q,
-			Stmt: rst.qp.Stmt(),
-			P:    rst.routingDecisionPlan, /*  ugh... fix this someday */
+			Msg: q,
+			P:   rst.routingDecisionPlan, /*  ugh... fix this someday */
 		}, rst.Qr.Mgr(), true, replyCl)
 
 	return err

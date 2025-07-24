@@ -121,7 +121,7 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 					Str("table", qualName.RelationName).
 					Msg("calculated route for table/cols")
 
-				p = plan.Combine(p, plan.ShardDispatchPlan{
+				p = plan.Combine(p, &plan.ShardDispatchPlan{
 					ExecTarget:         currroute,
 					TargetSessionAttrs: tsa,
 				})
@@ -792,7 +792,7 @@ func (qr *ProxyQrouter) planQueryV1(
 
 				switch e := actualExpr.(type) {
 				case *lyx.SVFOP_CURRENT_USER:
-					p = plan.Combine(p, plan.VirtualPlan{})
+					p = plan.Combine(p, &plan.VirtualPlan{})
 					virtualRowCols = append(virtualRowCols,
 						pgproto3.FieldDescription{
 							Name:                 []byte(colname),
@@ -811,7 +811,7 @@ func (qr *ProxyQrouter) planQueryV1(
 					switch arg := e.Arg.(type) {
 					case *lyx.FuncApplication:
 						if arg.Name == "pg_is_in_recovery" {
-							p = plan.Combine(p, plan.VirtualPlan{})
+							p = plan.Combine(p, &plan.VirtualPlan{})
 							virtualRowCols = append(virtualRowCols,
 								pgproto3.FieldDescription{
 									Name:                 []byte("pg_is_in_recovery"),
@@ -837,7 +837,7 @@ func (qr *ProxyQrouter) planQueryV1(
 
 					/* for queries, that need to access data on shard, ignore these "virtual" func.	 */
 					if e.Name == "pg_is_in_recovery" {
-						p = plan.Combine(p, plan.VirtualPlan{})
+						p = plan.Combine(p, &plan.VirtualPlan{})
 						virtualRowCols = append(virtualRowCols,
 							pgproto3.FieldDescription{
 								Name:                 []byte("pg_is_in_recovery"),
@@ -857,7 +857,7 @@ func (qr *ProxyQrouter) planQueryV1(
 						continue
 					} else if e.Name == "current_setting" && len(e.Args) == 1 {
 						if val, ok := e.Args[0].(*lyx.AExprSConst); ok && val.Value == "transaction_read_only" {
-							p = plan.Combine(p, plan.VirtualPlan{})
+							p = plan.Combine(p, &plan.VirtualPlan{})
 							virtualRowCols = append(virtualRowCols,
 								pgproto3.FieldDescription{
 									Name:                 []byte("current_setting"),
@@ -879,7 +879,7 @@ func (qr *ProxyQrouter) planQueryV1(
 					}
 
 					if e.Name == "current_schema" || e.Name == "now" || e.Name == "set_config" || e.Name == "version" || e.Name == "current_setting" {
-						p = plan.Combine(p, plan.RandomDispatchPlan{})
+						p = plan.Combine(p, &plan.RandomDispatchPlan{})
 						continue
 					}
 					deduced := false
@@ -896,12 +896,12 @@ func (qr *ProxyQrouter) planQueryV1(
 					}
 					if !deduced {
 						/* very questionable. */
-						p = plan.Combine(p, plan.RandomDispatchPlan{})
+						p = plan.Combine(p, &plan.RandomDispatchPlan{})
 					}
 				/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
 				case *lyx.AExprSConst:
 
-					p = plan.Combine(p, plan.VirtualPlan{})
+					p = plan.Combine(p, &plan.VirtualPlan{})
 					virtualRowCols = append(virtualRowCols,
 						pgproto3.FieldDescription{
 							Name:                 []byte(colname),
@@ -917,7 +917,7 @@ func (qr *ProxyQrouter) planQueryV1(
 
 				case *lyx.AExprIConst:
 
-					p = plan.Combine(p, plan.VirtualPlan{})
+					p = plan.Combine(p, &plan.VirtualPlan{})
 					virtualRowCols = append(virtualRowCols,
 						pgproto3.FieldDescription{
 							Name:                 []byte(colname),
@@ -931,12 +931,12 @@ func (qr *ProxyQrouter) planQueryV1(
 
 					virtualRowVals = append(virtualRowVals, []byte(fmt.Sprintf("%d", e.Value)))
 				case *lyx.AExprNConst, *lyx.AExprBConst:
-					p = plan.Combine(p, plan.RandomDispatchPlan{})
+					p = plan.Combine(p, &plan.RandomDispatchPlan{})
 
 				/* Special case for SELECT current_schema */
 				case *lyx.ColumnRef:
 					if e.ColName == "current_schema" {
-						p = plan.Combine(p, plan.RandomDispatchPlan{})
+						p = plan.Combine(p, &plan.RandomDispatchPlan{})
 					}
 				case *lyx.Select:
 
@@ -949,7 +949,7 @@ func (qr *ProxyQrouter) planQueryV1(
 			}
 
 			switch q := p.(type) {
-			case plan.VirtualPlan:
+			case *plan.VirtualPlan:
 				q.VirtualRowCols = virtualRowCols
 				q.VirtualRowVals = virtualRowVals
 
@@ -1048,16 +1048,16 @@ func (qr *ProxyQrouter) planQueryV1(
 						// ok
 						// XXX: todo - check that sub select is not doing anything insane
 						switch p.(type) {
-						case plan.VirtualPlan, plan.ScatterPlan, plan.RandomDispatchPlan:
+						case *plan.VirtualPlan, *plan.ScatterPlan, *plan.RandomDispatchPlan:
 							if stmt.Returning != nil {
-								return plan.DataRowFilter{
-									SubPlan: plan.ScatterPlan{
+								return &plan.DataRowFilter{
+									SubPlan: &plan.ScatterPlan{
 										ExecTargets: rel.ListStorageRoutes(),
 									},
 									FilterIndex: 0,
 								}, nil
 							}
-							return plan.ScatterPlan{
+							return &plan.ScatterPlan{
 								ExecTargets: rel.ListStorageRoutes(),
 							}, nil
 						default:
@@ -1076,7 +1076,7 @@ func (qr *ProxyQrouter) planQueryV1(
 						}
 					}
 					if len(shs) > 0 {
-						p = plan.Combine(p, plan.ShardDispatchPlan{
+						p = plan.Combine(p, &plan.ShardDispatchPlan{
 							ExecTarget:         shs[0],
 							TargetSessionAttrs: config.TargetSessionAttrsRW,
 						})
@@ -1102,7 +1102,7 @@ func (qr *ProxyQrouter) planQueryV1(
 						return nil, err
 					}
 					if stmt.Returning != nil {
-						return plan.DataRowFilter{
+						return &plan.DataRowFilter{
 							SubPlan:     p,
 							FilterIndex: 0,
 						}, nil
@@ -1121,7 +1121,7 @@ func (qr *ProxyQrouter) planQueryV1(
 					}
 
 					if len(shs) > 0 {
-						p = plan.Combine(p, plan.ShardDispatchPlan{
+						p = plan.Combine(p, &plan.ShardDispatchPlan{
 							ExecTarget:         shs[0],
 							TargetSessionAttrs: config.TargetSessionAttrsRW,
 						})
@@ -1304,7 +1304,7 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 				shs = r.ListStorageRoutes()
 			}
 
-			queryPlan = plan.Combine(queryPlan, plan.RandomDispatchPlan{
+			queryPlan = plan.Combine(queryPlan, &plan.RandomDispatchPlan{
 				ExecTargets: shs,
 			})
 			continue
@@ -1330,7 +1330,7 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, tsa tsa.TSA) (plan.Plan, bool, error) {
 	if stmt == nil {
 		// empty statement
-		return plan.RandomDispatchPlan{}, false, nil
+		return &plan.RandomDispatchPlan{}, false, nil
 	}
 
 	rh, err := rm.ResolveRouteHint(ctx)
@@ -1348,7 +1348,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	case *routehint.ScatterRouteHint:
 		// still, need to check config settings (later)
 		/* XXX: we return true for RO here to fool DRB */
-		return plan.ScatterPlan{
+		return &plan.ScatterPlan{
 			ExecTargets: qr.DataShardsRoutes(),
 		}, true, nil
 	}
@@ -1380,26 +1380,26 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		/*
 		 * SET x = y etc., do not dispatch any statement to shards, just process this in router
 		 */
-		return plan.RandomDispatchPlan{}, true, nil
+		return &plan.RandomDispatchPlan{}, true, nil
 
 	case *lyx.VariableShowStmt:
 		/*
 		 if we want to reroute to execute this stmt, route to random shard
 		 XXX: support intelligent show support, without direct query dispatch
 		*/
-		return plan.RandomDispatchPlan{}, true, nil
+		return &plan.RandomDispatchPlan{}, true, nil
 
 	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateSchema:
-		return plan.ScatterPlan{
+		return &plan.ScatterPlan{
 			IsDDL: true,
 		}, false, nil
 	case *lyx.CreateExtension:
-		return plan.ScatterPlan{
+		return &plan.ScatterPlan{
 			IsDDL: true,
 		}, false, nil
 	case *lyx.Grant:
-		return plan.ScatterPlan{
+		return &plan.ScatterPlan{
 			IsDDL: true,
 		}, false, nil
 	case *lyx.CreateTable:
@@ -1415,15 +1415,18 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		}
 		return ds, false, nil
 	case *lyx.Vacuum:
-		/* Send vacuum to each shard */ return plan.ScatterPlan{
+		/* Send vacuum to each shard */
+		return &plan.ScatterPlan{
 			IsDDL: true,
 		}, false, nil
 	case *lyx.Analyze:
-		/* Send vacuum to each shard */ return plan.ScatterPlan{
+		/* Send vacuum to each shard */
+		return &plan.ScatterPlan{
 			IsDDL: true,
 		}, false, nil
 	case *lyx.Cluster:
-		/* Send vacuum to each shard */ return plan.ScatterPlan{
+		/* Send vacuum to each shard */
+		return &plan.ScatterPlan{
 			IsDDL: true,
 		}, false, nil
 	case *lyx.Index:
@@ -1431,14 +1434,14 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		 * Disallow to index on table which does not contain any sharding column
 		 */
 		// XXX: do it
-		return plan.ScatterPlan{
+		return &plan.ScatterPlan{
 			IsDDL: true,
 		}, false, nil
 
 	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
-		return plan.ScatterPlan{
+		return &plan.ScatterPlan{
 			IsDDL: true,
 		}, false, nil
 		/*
@@ -1448,7 +1451,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		*/
 	case *lyx.CreateRole, *lyx.CreateDatabase:
 		// forbid under separate setting
-		return plan.ScatterPlan{
+		return &plan.ScatterPlan{
 			IsDDL: true,
 		}, false, nil
 	case *lyx.Insert:
@@ -1494,13 +1497,13 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		}
 
 		if onlyCatalog && anyCatalog {
-			return plan.RandomDispatchPlan{}, ro, nil
+			return &plan.RandomDispatchPlan{}, ro, nil
 		}
 		if hasInfSchema && hasOtherSchema {
 			return nil, false, rerrors.ErrInformationSchemaCombinedQuery
 		}
 		if hasInfSchema {
-			return plan.RandomDispatchPlan{}, ro, nil
+			return &plan.RandomDispatchPlan{}, ro, nil
 		}
 
 		p, err := qr.planQueryV1(ctx, stmt, rm)
@@ -1524,7 +1527,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		ro = false
 		pl = plan.Combine(pl, rs)
 	case *lyx.Copy:
-		return plan.CopyPlan{}, false, nil
+		return &plan.CopyPlan{}, false, nil
 	default:
 		return nil, false, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
@@ -1538,7 +1541,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 
 	// set up this variable if not yet
 	if pl == nil {
-		pl = plan.ScatterPlan{
+		pl = &plan.ScatterPlan{
 			ExecTargets: qr.DataShardsRoutes(),
 		}
 	}
@@ -1660,7 +1663,7 @@ func CheckRoOnlyQuery(stmt lyx.Node) bool {
 func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, p plan.Plan, ro bool, sph session.SessionParamsHolder) (plan.Plan, error) {
 
 	switch v := p.(type) {
-	case plan.DataRowFilter:
+	case *plan.DataRowFilter:
 		sp, err := qr.InitExecutionTargets(ctx, rm, stmt, v.SubPlan, ro, sph)
 		if err != nil {
 			return nil, err
@@ -1668,15 +1671,15 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 
 		/* XXX: Can we do better? */
 
-		return plan.DataRowFilter{
+		return &plan.DataRowFilter{
 			SubPlan:     sp,
 			FilterIndex: 0,
 		}, err
-	case plan.ShardDispatchPlan:
+	case *plan.ShardDispatchPlan:
 		return v, nil
-	case plan.VirtualPlan:
+	case *plan.VirtualPlan:
 		return v, nil
-	case plan.RandomDispatchPlan:
+	case *plan.RandomDispatchPlan:
 		if v.ExecTargets == nil {
 			return planner.SelectRandomDispatchPlan(qr.DataShardsRoutes())
 		} else {
@@ -1684,12 +1687,12 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 			return planner.SelectRandomDispatchPlan(v.ExecTargets)
 		}
 
-	case plan.CopyPlan:
+	case *plan.CopyPlan:
 		/* temporary */
-		return plan.ScatterPlan{
+		return &plan.ScatterPlan{
 			ExecTargets: qr.DataShardsRoutes(),
 		}, nil
-	case plan.ScatterPlan:
+	case *plan.ScatterPlan:
 		if v.IsDDL {
 			v.ExecTargets = qr.DataShardsRoutes()
 			return v, nil
@@ -1746,7 +1749,7 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph sessio
 				ro = CheckRoOnlyQuery(stmt)
 			}
 
-			return plan.ShardDispatchPlan{
+			return &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: firstShard,
 					RO:   ro,
@@ -1760,6 +1763,8 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph sessio
 	if err != nil {
 		return nil, err
 	}
+
+	p.SetStmt(stmt)
 
 	return qr.InitExecutionTargets(ctx, meta, stmt, p, ro, sph)
 }

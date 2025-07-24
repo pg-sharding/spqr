@@ -504,12 +504,20 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	return txt, nil
 }
 
-func (s *QueryStateExecutorImpl) copyExecutor(mgr meta.EntityMgr, q *lyx.Copy, doFinalizeTx, attachedCopy bool) error {
+func (s *QueryStateExecutorImpl) copyExecutor(mgr meta.EntityMgr, q plan.Plan, doFinalizeTx, attachedCopy bool) error {
 
 	var leftoverMsgData []byte
 	ctx := context.TODO()
 
-	cps, err := s.ProcCopyPrepare(ctx, mgr, q, attachedCopy)
+	stmt := q.Stmt()
+	if stmt == nil {
+		return fmt.Errorf("failed to prepare copy context")
+	}
+	cs, ok := stmt.(*lyx.Copy)
+	if !ok {
+		return fmt.Errorf("failed to prepare copy context")
+	}
+	cps, err := s.ProcCopyPrepare(ctx, mgr, cs, attachedCopy)
 	if err != nil {
 		return err
 	}
@@ -551,7 +559,7 @@ func (s *QueryStateExecutorImpl) copyExecutor(mgr meta.EntityMgr, q *lyx.Copy, d
 func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
 
 	switch q := qd.P.(type) {
-	case plan.VirtualPlan:
+	case *plan.VirtualPlan:
 		/* execute logic without shard dispatch */
 
 		/* XXX: fetch all tuples from sub-plan */
@@ -607,15 +615,22 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 	doFinalizeTx := false
 	attachedCopy := s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
 
-	switch qd.Stmt.(type) {
-	case *lyx.Copy:
-		spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
+	if p := qd.P; p != nil {
 
-		if serv.TxStatus() == txstatus.TXIDLE {
-			if err := s.DeployTx(serv, "BEGIN"); err != nil {
-				return nil, err
+		stmt := qd.P.Stmt()
+
+		if stmt != nil {
+			switch stmt.(type) {
+			case *lyx.Copy:
+				spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
+
+				if serv.TxStatus() == txstatus.TXIDLE {
+					if err := s.DeployTx(serv, "BEGIN"); err != nil {
+						return nil, err
+					}
+					doFinalizeTx = true
+				}
 			}
-			doFinalizeTx = true
 		}
 	}
 
@@ -659,16 +674,14 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 				return nil, err
 			}
 
-			q := qd.Stmt.(*lyx.Copy)
-
-			return nil, s.copyExecutor(mgr, q, doFinalizeTx, attachedCopy)
+			return nil, s.copyExecutor(mgr, qd.P, doFinalizeTx, attachedCopy)
 		case *pgproto3.DataRow:
 			spqrlog.Zero.Debug().
 				Str("server", serv.Name()).
 				Msg("received datarow message from server")
 			if replyCl {
 				switch v := qd.P.(type) {
-				case plan.DataRowFilter:
+				case *plan.DataRowFilter:
 					if v.FilterIndex == recvIndex {
 						err = s.Client().Send(msg)
 						if err != nil {
