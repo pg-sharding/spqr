@@ -777,12 +777,58 @@ func TestAlter(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: "CREATE DISTRIBUTED RELATION t (id) IN ds1;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name: "t",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										Column: "id",
+									},
+								},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1, id2;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
-							&spqrparser.DistributedRelation{
+							{
+								Name: "t",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										Column: "id1",
+									},
+									{
+										Column: "id2",
+									},
+								},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t (id1, id2);",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
 								Name: "t",
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
@@ -806,7 +852,33 @@ func TestAlter(t *testing.T) {
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
-							&spqrparser.DistributedRelation{
+							{
+								Name: "t",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										Column: "id1",
+									},
+									{
+										Column:       "id2",
+										HashFunction: "murmur",
+									},
+								},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t (id1, id2 HASH FUNCTION murmur);",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
 								Name: "t",
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{

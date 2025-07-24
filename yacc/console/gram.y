@@ -705,6 +705,27 @@ distributed_relation_def:
 			}
 		}
 	} 
+	| RELATION qualified_name TOPENBR distribution_key_argument_list opt_auto_increment opt_schema_name TCLOSEBR
+	{
+		if 	len($2.SchemaName)>0 && len($7)>0 {
+			yylex.Error("it is forbidden to use both a qualified relation name and the keyword SCHEMA")
+			return 1
+		} else if len($2.SchemaName)>0 {
+			$$ = &DistributedRelation{
+				Name: 	 $2.RelationName,
+				DistributionKey: $4,
+				AutoIncrementEntries: $5,
+				SchemaName: $2.SchemaName,
+			}
+		} else {
+			$$ = &DistributedRelation{
+				Name: 	 $2.RelationName,
+				DistributionKey: $4,
+				AutoIncrementEntries: $5,
+				SchemaName: $6,
+			}
+		}
+	} 
 
 opt_auto_increment:
     AUTO INCREMENT auto_inc_argument_list {
