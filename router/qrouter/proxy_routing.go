@@ -1754,6 +1754,7 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph sessio
 					Name: firstShard,
 					RO:   ro,
 				},
+				PStmt: stmt,
 			}, nil
 		}
 	}
@@ -1764,7 +1765,9 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph sessio
 		return nil, err
 	}
 
-	p.SetStmt(stmt)
-
-	return qr.InitExecutionTargets(ctx, meta, stmt, p, ro, sph)
+	np, err := qr.InitExecutionTargets(ctx, meta, stmt, p, ro, sph)
+	if err == nil {
+		np.SetStmt(stmt)
+	}
+	return np, err
 }

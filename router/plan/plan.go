@@ -64,7 +64,7 @@ var _ Plan = &ModifyTable{}
 type ShardDispatchPlan struct {
 	Plan
 
-	stmt               lyx.Node
+	PStmt              lyx.Node
 	ExecTarget         kr.ShardKey
 	TargetSessionAttrs tsa.TSA
 }
@@ -74,11 +74,11 @@ func (sms *ShardDispatchPlan) ExecutionTargets() []kr.ShardKey {
 }
 
 func (sp *ShardDispatchPlan) Stmt() lyx.Node {
-	return sp.stmt
+	return sp.PStmt
 }
 
 func (sp *ShardDispatchPlan) SetStmt(n lyx.Node) {
-	sp.stmt = n
+	sp.PStmt = n
 }
 
 var _ Plan = &ShardDispatchPlan{}
