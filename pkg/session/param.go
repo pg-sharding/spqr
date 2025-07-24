@@ -4,7 +4,7 @@ import "github.com/pg-sharding/spqr/pkg/tsa"
 
 type SessionParamsHolder interface {
 	GetTsa() tsa.TSA
-	SetTsa(bool, string)
+	SetTsa(statement bool, value string)
 
 	Usr() string
 	/* XXX: also maybe ROLE support is meaningful? */
@@ -12,27 +12,27 @@ type SessionParamsHolder interface {
 
 	// Get current session DRB
 	DefaultRouteBehaviour() string
-	SetDefaultRouteBehaviour(local bool, val string)
+	SetDefaultRouteBehaviour(statement bool, val string)
 
-	SetAutoDistribution(local bool, val string)
+	SetAutoDistribution(statement bool, val string)
 	AutoDistribution() string
 
-	SetDistributionKey(local bool, val string)
+	SetDistributionKey(statement bool, val string)
 	DistributionKey() string
 
 	// Get current session distribution
 
-	SetDistribution(local bool, val string)
+	SetDistribution(statement bool, val string)
 	Distribution() string
 
-	SetDistributedRelation(local bool, val string)
+	SetDistributedRelation(statement bool, val string)
 	DistributedRelation() string
 
-	SetExecuteOn(local bool, val string)
+	SetExecuteOn(statement bool, val string)
 	ExecuteOn() string
 
 	// ShardingKey
-	SetShardingKey(local bool, val string)
+	SetShardingKey(statement bool, val string)
 	ShardingKey() string
 
 	SetShowNoticeMsg(val bool)
@@ -46,7 +46,7 @@ type SessionParamsHolder interface {
 	ScatterQuery() bool
 
 	/* Check if we apply engine v2 routing for query */
-	SetEnhancedMultiShardProcessing(local bool, val bool)
+	SetEnhancedMultiShardProcessing(statement bool, val bool)
 	EnhancedMultiShardProcessing() bool
 
 	SetCommitStrategy(bool, string)

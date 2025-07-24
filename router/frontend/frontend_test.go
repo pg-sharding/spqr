@@ -76,7 +76,7 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
-	cl.EXPECT().CleanupLocalSet().AnyTimes()
+	cl.EXPECT().CleanupStatementSet().AnyTimes()
 
 	cl.EXPECT().ShowNoticeMsg().AnyTimes()
 	cl.EXPECT().GetTsa().AnyTimes()
@@ -206,7 +206,7 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 
-	cl.EXPECT().CleanupLocalSet().AnyTimes()
+	cl.EXPECT().CleanupStatementSet().AnyTimes()
 
 	cl.EXPECT().BindParams().AnyTimes()
 

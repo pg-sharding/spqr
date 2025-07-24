@@ -94,7 +94,7 @@ func (s *QueryStateExecutorImpl) DeployTx(server server.Server, query string) er
 func (s *QueryStateExecutorImpl) SetTxStatus(status txstatus.TXStatus) {
 	s.txStatus = status
 	/* handle implicit transactions - rollback all local state for params */
-	s.cl.CleanupLocalSet()
+	s.cl.CleanupStatementSet()
 }
 
 func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
