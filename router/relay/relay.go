@@ -45,7 +45,7 @@ type RelayStateMgr interface {
 	Close() error
 	Client() client.RouterClient
 
-	PrepareExecutionSlice() (plan.Plan, error)
+	PrepareExecutionSlice(plan.Plan) (plan.Plan, error)
 	PrepareRandomDispatchExecutionSlice(plan.Plan) (plan.Plan, func() error, error)
 	PrepareTargetDispatchExecutionSlice(hintPlan plan.Plan) error
 
@@ -278,9 +278,8 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 			Str("query", query.String).
 			Msg("setting params for client")
 		_, err := rst.qse.ProcQuery(&QueryDesc{
-			Msg:  query,
-			Stmt: rst.qp.Stmt(),
-			P:    nil,
+			Msg: query,
+			P:   nil,
 		}, rst.Qr.Mgr(), true, false)
 		return err
 	}
@@ -360,7 +359,8 @@ func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 	var queryPlan plan.Plan
 
 	if v := rst.Client().ExecuteOn(); v != "" {
-		queryPlan = plan.ShardDispatchPlan{
+		queryPlan = &plan.ShardDispatchPlan{
+			PStmt: rst.qp.Stmt(),
 			ExecTarget: kr.ShardKey{
 				Name: v,
 			},
@@ -383,7 +383,7 @@ func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 	if rst.Client().Rule().PoolMode == config.PoolModeVirtual {
 		/* never try to get connection */
 		switch queryPlan.(type) {
-		case plan.VirtualPlan:
+		case *plan.VirtualPlan:
 			return queryPlan, nil
 		default:
 			return nil, fmt.Errorf("query processing for this client is disabled")
@@ -391,7 +391,7 @@ func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 	}
 
 	switch v := queryPlan.(type) {
-	case plan.VirtualPlan, plan.ScatterPlan, plan.ShardDispatchPlan, plan.DataRowFilter:
+	case *plan.VirtualPlan, *plan.ScatterPlan, *plan.ShardDispatchPlan, *plan.DataRowFilter:
 		return queryPlan, nil
 	default:
 		return nil, fmt.Errorf("unexpected query plan %T", v)
@@ -683,17 +683,14 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				rst.saveBind.Parameters = currentMsg.Parameters
 				rst.Qr.SetQuery(&def.Query)
 				// Do not respond with BindComplete, as the relay step should take care of itself.
-				queryPlan, err := rst.PrepareExecutionSlice()
+				queryPlan, err := rst.PrepareExecutionSlice(rst.routingDecisionPlan)
 
 				if err != nil {
 					return err
 				}
 
-				if queryPlan != nil {
-					rst.routingDecisionPlan = queryPlan
-				}
-
-				rst.bindQueryPlan = rst.routingDecisionPlan
+				rst.routingDecisionPlan = queryPlan
+				rst.bindQueryPlan = queryPlan
 
 				// hold route if appropriate
 
@@ -706,7 +703,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				}
 
 				switch rst.bindQueryPlan.(type) {
-				case plan.VirtualPlan:
+				case *plan.VirtualPlan:
 					rst.execute = func() error {
 						return BindAndReadSliceResult(rst, &rst.saveBind)
 					}
@@ -781,7 +778,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				} else {
 
 					switch q := rst.bindQueryPlan.(type) {
-					case plan.VirtualPlan:
+					case *plan.VirtualPlan:
 						// skip deploy
 
 						// send to the client
@@ -943,7 +940,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 var _ RelayStateMgr = &RelayStateImpl{}
 
 // TODO : unit tests
-func (rst *RelayStateImpl) PrepareExecutionSlice() (plan.Plan, error) {
+func (rst *RelayStateImpl) PrepareExecutionSlice(prevPlan plan.Plan) (plan.Plan, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Str("user", rst.Client().Usr()).
@@ -978,7 +975,11 @@ func (rst *RelayStateImpl) PrepareExecutionSlice() (plan.Plan, error) {
 			/* else expand transaction */
 			return q, rst.expandRoutes(execTarg)
 		}
-		return nil, nil
+
+		/* TODO: fix this */
+		prevPlan.SetStmt(rst.qp.Stmt())
+
+		return prevPlan, nil
 	}
 
 	q, err := rst.CreateSlicePlan()
@@ -986,7 +987,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice() (plan.Plan, error) {
 	switch err {
 	case nil:
 		switch q.(type) {
-		case plan.VirtualPlan:
+		case *plan.VirtualPlan:
 			return q, nil
 		default:
 			return q, rst.procRoutes(q.ExecutionTargets())
@@ -1113,21 +1114,18 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("relay step: process message buf for client")
-	queryPlan, err := rst.PrepareExecutionSlice()
+	queryPlan, err := rst.PrepareExecutionSlice(rst.routingDecisionPlan)
 	if err != nil {
 		/* some critical connection issue, client processing cannot be competed.
 		* empty our msg buf */
 		return err
 	}
-	if queryPlan != nil {
-		rst.routingDecisionPlan = queryPlan
-	}
+	rst.routingDecisionPlan = queryPlan
 
 	_, err = rst.qse.ProcQuery(
 		&QueryDesc{
-			Msg:  q,
-			Stmt: rst.qp.Stmt(),
-			P:    rst.routingDecisionPlan, /*  ugh... fix this someday */
+			Msg: q,
+			P:   rst.routingDecisionPlan, /*  ugh... fix this someday */
 		}, rst.Qr.Mgr(), true, replyCl)
 
 	return err

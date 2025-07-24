@@ -15,9 +15,8 @@ import (
 )
 
 type QueryDesc struct {
-	Msg  pgproto3.FrontendMessage
-	Stmt lyx.Node
-	P    plan.Plan
+	Msg pgproto3.FrontendMessage
+	P   plan.Plan
 }
 
 // Execute required command via

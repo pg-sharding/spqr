@@ -339,7 +339,7 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (routehi
 			return nil, err
 		}
 		return &routehint.TargetRouteHint{
-			State: plan.ShardDispatchPlan{
+			State: &plan.ShardDispatchPlan{
 				ExecTarget: ds,
 			},
 		}, nil
