@@ -14,7 +14,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
-	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
@@ -101,7 +100,7 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 	return s.txStatus
 }
 
-func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error {
+func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *lyx.TransactionStmt) error {
 	if rst.PoolMgr().ConnectionActive(rst) {
 		return rst.QueryExecutor().DeployTx(rst.Client().Server(), query)
 	}
