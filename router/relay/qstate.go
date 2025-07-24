@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -53,7 +54,7 @@ var errAbortedTx = fmt.Errorf("current transaction is aborted, commands ignored 
 
 func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() error, doCaching, completeRelay bool) (*PortalDesc, error) {
 
-	state, comment, err := rst.Parse(query, doCaching)
+	stmt, comment, err := rst.Parse(query, doCaching)
 	if err != nil {
 		if rst.QueryExecutor().TxStatus() == txstatus.TXACT {
 			/* this way we format next msg correctly */
@@ -77,12 +78,14 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 
 	txbefore := rst.QueryExecutor().TxStatus()
 	if txbefore == txstatus.TXERR {
-		if _, ok := state.(parser.ParseStateTXRollback); !ok {
-			return nil, rst.Client().ReplyErrWithTxStatus(errAbortedTx, txstatus.TXERR)
+		if txStmt, ok := stmt.(*lyx.TransactionStmt); !ok {
+			if txStmt.Kind == lyx.TRANS_STMT_ROLLBACK {
+				return nil, rst.Client().ReplyErrWithTxStatus(errAbortedTx, txstatus.TXERR)
+			}
 		}
 	}
 
-	pd, err := rst.ProcQueryAdvanced(query, state, comment, binderQ, doCaching)
+	pd, err := rst.ProcQueryAdvanced(query, stmt, comment, binderQ, doCaching)
 
 	if txbefore != txstatus.TXIDLE && err != nil {
 		rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
@@ -208,77 +211,142 @@ var (
 // So, we need to process SETs, BEGINs, ROLLBACKs etc ourselves.
 // QueryStateExecutor provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseState, comment string, binderQ func() error, doCaching bool) (*PortalDesc, error) {
+func (rst *RelayStateImpl) ProcQueryAdvanced(query string, stmt lyx.Node, comment string, binderQ func() error, doCaching bool) (*PortalDesc, error) {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", rst.Client().ID()).Msgf("process relay state advanced")
 
-	switch st := state.(type) {
-	case parser.ParseStateTXBegin:
-
-		if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
-			// ignore this
-			_ = rst.Client().ReplyWarningf("there is already transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("BEGIN")
-		}
-		return noDataPd, rst.QueryExecutor().ExecBegin(rst, query, &st)
-	case parser.ParseStateTXCommit:
-
-		if mp, err := parser.ParseComment(comment); err == nil {
-
-			if val, ok := mp[session.SPQR_COMMIT_STRATEGY]; ok {
-				switch val {
-				case twopc.COMMIT_STRATEGY_2PC:
-					fallthrough
-				case twopc.COMMIT_STRATEGY_1PC:
-					fallthrough
-				case twopc.COMMIT_STRATEGY_BEST_EFFORT:
-					rst.Client().SetCommitStrategy(val)
-				default:
-					/*should error-out*/
-				}
-			}
-		}
-
-		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
-			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("COMMIT")
-		}
-		return noDataPd, rst.QueryExecutor().ExecCommit(rst, query)
-	case parser.ParseStateTXRollback:
-		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
-			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("ROLLBACK")
-		}
-		return noDataPd, rst.QueryExecutor().ExecRollback(rst, query)
-	case parser.ParseStateEmptyQuery:
+	if stmt == nil {
+		/* empty query */
 		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
 			return nil, err
 		}
 		// do not complete relay  here
 		return noDataPd, nil
+	}
+
+	switch st := stmt.(type) {
+	case *lyx.TransactionStmt:
+		switch st.Kind {
+		case lyx.TRANS_STMT_BEGIN:
+			if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
+				// ignore this
+				_ = rst.Client().ReplyWarningf("there is already transaction in progress")
+				return noDataPd, rst.Client().ReplyCommandComplete("BEGIN")
+			}
+			return noDataPd, rst.QueryExecutor().ExecBegin(rst, query, st)
+		case lyx.TRANS_STMT_COMMIT:
+
+			if mp, err := parser.ParseComment(comment); err == nil {
+
+				if val, ok := mp[session.SPQR_COMMIT_STRATEGY]; ok {
+					switch val {
+					case twopc.COMMIT_STRATEGY_2PC:
+						fallthrough
+					case twopc.COMMIT_STRATEGY_1PC:
+						fallthrough
+					case twopc.COMMIT_STRATEGY_BEST_EFFORT:
+						rst.Client().SetCommitStrategy(false, val)
+					default:
+						/*should error-out*/
+					}
+				}
+			}
+
+			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
+				_ = rst.Client().ReplyWarningf("there is no transaction in progress")
+				return noDataPd, rst.Client().ReplyCommandComplete("COMMIT")
+			}
+			return noDataPd, rst.QueryExecutor().ExecCommit(rst, query)
+		case lyx.TRANS_STMT_ROLLBACK:
+			if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
+				_ = rst.Client().ReplyWarningf("there is no transaction in progress")
+				return noDataPd, rst.Client().ReplyCommandComplete("ROLLBACK")
+			}
+			return noDataPd, rst.QueryExecutor().ExecRollback(rst, query)
+		default:
+			return nil, fmt.Errorf("This transaction statement is currently unsupported")
+		}
+
 	// with tx pooling we might have no active connection while processing set x to y
-	case parser.ParseStateSetStmt:
+	case *lyx.VariableSetStmt:
+		param := virtualParamTransformName(st.Name)
+
+		if st.IsLocal {
+			if len(st.Value) != 1 {
+				return nil, fmt.Errorf("set statement too complex")
+			}
+
+			if err := rst.QueryExecutor().ExecSetLocal(rst, query, st.Name, st.Value[0]); err != nil {
+				return nil, err
+			}
+			return noDataPd, rst.Client().ReplyCommandComplete("SET")
+		}
+
+		switch st.Kind {
+		case lyx.VarTypeReset:
+
+			switch param {
+			case session.SPQR_TARGET_SESSION_ATTRS:
+				fallthrough
+			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+				rst.Client().ResetTsa()
+
+			case "session_authorization", "role":
+				if len(st.Value) != 1 {
+					return nil, fmt.Errorf("set statement too complex")
+				}
+
+				value := strings.ToLower(st.Value[0])
+				if err := rst.QueryExecutor().ExecResetMetadata(rst, query, value); err != nil {
+					return nil, err
+				}
+
+				rst.Client().ResetParam(value)
+				if value == "session_authorization" {
+					rst.Client().ResetParam("role")
+				}
+
+				return noDataPd, rst.Client().ReplyCommandComplete("RESET")
+			default:
+
+				rst.Client().ResetParam(param)
+
+				if err := rst.QueryExecutor().ExecReset(rst, query, param); err != nil {
+					return nil, err
+				}
+			}
+
+			return noDataPd, rst.Client().ReplyCommandComplete("RESET")
+		case lyx.VarTypeResetAll:
+			rst.Client().ResetAll()
+			return noDataPd, rst.Client().ReplyCommandComplete("RESET")
+		default:
+		}
+
+		if len(st.Value) != 1 {
+			return nil, fmt.Errorf("set statement too complex")
+		}
+
 		spqrlog.Zero.Debug().
 			Str("name", st.Name).
-			Str("value", st.Value).
+			Str("value", st.Value[0]).
 			Msg("applying parsed set stmt")
 
 		if strings.HasPrefix(st.Name, "__spqr__") {
-			name := virtualParamTransformName(st.Name)
-			value := strings.ToLower(st.Value)
+			value := strings.ToLower(st.Value[0])
 
-			switch name {
+			switch param {
 			case session.SPQR_DISTRIBUTION:
-				rst.Client().SetDistribution(session.VirtualParamLevelTxBlock, st.Value)
+				rst.Client().SetDistribution(session.VirtualParamLevelTxBlock, st.Value[0])
 			case session.SPQR_DISTRIBUTED_RELATION:
-				rst.Client().SetDistributedRelation(session.VirtualParamLevelTxBlock, st.Value)
+				rst.Client().SetDistributedRelation(session.VirtualParamLevelTxBlock, st.Value[0])
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-				rst.Client().SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, st.Value)
+				rst.Client().SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, st.Value[0])
 			case session.SPQR_SHARDING_KEY:
-				rst.Client().SetShardingKey(session.VirtualParamLevelTxBlock, st.Value)
+				rst.Client().SetShardingKey(session.VirtualParamLevelTxBlock, st.Value[0])
 			case session.SPQR_REPLY_NOTICE:
 				if value == "on" || value == "true" {
 					rst.Client().SetShowNoticeMsg(session.VirtualParamLevelTxBlock, true)
@@ -292,13 +360,13 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 					rst.Client().SetMaintainParams(session.VirtualParamLevelTxBlock, false)
 				}
 			case session.SPQR_EXECUTE_ON:
-				rst.Client().SetExecuteOn(session.VirtualParamLevelTxBlock, st.Value)
+				rst.Client().SetExecuteOn(session.VirtualParamLevelTxBlock, st.Value[0])
 			case session.SPQR_TARGET_SESSION_ATTRS:
 				fallthrough
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
 				fallthrough
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-				rst.Client().SetTsa(session.VirtualParamLevelTxBlock, st.Value)
+				rst.Client().SetTsa(session.VirtualParamLevelTxBlock, st.Value[0])
 			case session.SPQR_ENGINE_V2:
 				switch value {
 				case "true", "on", "ok":
@@ -307,14 +375,14 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, false)
 				}
 			default:
-				rst.Client().SetParam(name, st.Value)
+				rst.Client().SetParam(param, st.Value[0])
 			}
 
 			return noDataPd, rst.Client().ReplyCommandComplete("SET")
 		}
 
-		return noDataPd, rst.QueryExecutor().ExecSet(rst, query, st.Name, st.Value)
-	case parser.ParseStateShowStmt:
+		return noDataPd, rst.QueryExecutor().ExecSet(rst, query, st.Name, st.Value[0])
+	case *lyx.VariableShowStmt:
 
 		param := virtualParamTransformName(st.Name)
 
@@ -402,67 +470,33 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			}
 		}
 		return pd, rst.Client().ReplyCommandComplete("SHOW")
-	case parser.ParseStateResetStmt:
-		param := virtualParamTransformName(st.Name)
-		switch param {
-		case session.SPQR_TARGET_SESSION_ATTRS:
-			fallthrough
-		case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
-			rst.Client().ResetTsa()
-		default:
-			rst.Client().ResetParam(param)
 
-			if err := rst.QueryExecutor().ExecReset(rst, query, param); err != nil {
-				return nil, err
-			}
-		}
-
-		return noDataPd, rst.Client().ReplyCommandComplete("RESET")
-	case parser.ParseStateResetMetadataStmt:
-		if err := rst.QueryExecutor().ExecResetMetadata(rst, query, st.Setting); err != nil {
-			return nil, err
-		}
-
-		rst.Client().ResetParam(st.Setting)
-		if st.Setting == "session_authorization" {
-			rst.Client().ResetParam("role")
-		}
-
-		return noDataPd, rst.Client().ReplyCommandComplete("RESET")
-	case parser.ParseStateResetAllStmt:
-		rst.Client().ResetAll()
-		return noDataPd, rst.Client().ReplyCommandComplete("RESET")
-	case parser.ParseStateSetLocalStmt:
-		if err := rst.QueryExecutor().ExecSetLocal(rst, query, st.Name, st.Value); err != nil {
-			return nil, err
-		}
-		return noDataPd, rst.Client().ReplyCommandComplete("SET")
-	case parser.ParseStatePrepareStmt:
+	case *lyx.PrepareStmt:
 		// sql level prepares stmt pooling
 		if AdvancedPoolModeNeeded(rst) {
 			spqrlog.Zero.Debug().Msg("sql level prep statement pooling support is on")
 
+			ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(st.Name))[1], "as")[1]
+
 			/* no oid for SQL level prep stmt */
 			rst.Client().StorePreparedStatement(&prepstatement.PreparedStatementDefinition{
 				Name:  st.Name,
-				Query: st.Query,
+				Query: ss,
 			})
 			return nil, nil
-		} else {
-			// process like regular query
-			return nil, rst.queryProc(comment, binderQ)
 		}
-	case parser.ParseStateExecute:
+		// process like regular query
+		return nil, rst.queryProc(comment, binderQ)
+	case *lyx.Execute:
 		if AdvancedPoolModeNeeded(rst) {
 			// do nothing
 			// wtf? TODO: test and fix
-			rst.Client().PreparedStatementQueryByName(st.Name)
+			rst.Client().PreparedStatementQueryByName(st.Id)
 			return nil, nil
-		} else {
-			// process like regular query
-			return nil, rst.queryProc(comment, binderQ)
 		}
-	case parser.ParseStateExplain:
+		// process like regular query
+		return nil, rst.queryProc(comment, binderQ)
+	case *lyx.Explain:
 		return nil, rst.Client().Send(
 			&pgproto3.ErrorResponse{
 				Message:  "SPQR explain to be supported",

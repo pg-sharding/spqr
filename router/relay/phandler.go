@@ -8,7 +8,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
-	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/server"
@@ -29,7 +28,7 @@ type QueryStateExecutor interface {
 	Deploy(server server.Server) error
 	DeployTx(server server.Server, query string) error
 
-	ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error
+	ExecBegin(rst RelayStateMgr, query string, st *lyx.TransactionStmt) error
 	ExecCommit(rst RelayStateMgr, query string) error
 	ExecRollback(rst RelayStateMgr, query string) error
 
