@@ -202,6 +202,27 @@ SHOW __spqr__target_session_attrs;
 (1 row)
 
 RESET __spqr__target_session_attrs;
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ smart-read-write
+(1 row)
+
+BEGIN READ ONLY;
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ prefer-standby
+(1 row)
+
+COMMIT;
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ smart-read-write
+(1 row)
+
+RESET __spqr__target_session_attrs;
 DROP TABLE tsa_test;
 NOTICE: send query to shard(s) : sh1
 \c spqr-console

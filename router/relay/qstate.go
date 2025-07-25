@@ -135,19 +135,19 @@ func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error
 			case session.SPQR_TARGET_SESSION_ATTRS:
 				// TBD: validate value
 				spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
-				rst.Client().SetTsa(true, val)
+				rst.Client().SetTsa(session.VirtualParamLevelStatement, val)
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
 				spqrlog.Zero.Debug().Str("default route", val).Msg("parse default route behaviour from comment")
-				rst.Client().SetDefaultRouteBehaviour(true, val)
+				rst.Client().SetDefaultRouteBehaviour(session.VirtualParamLevelStatement, val)
 			case session.SPQR_SHARDING_KEY:
 				spqrlog.Zero.Debug().Str("sharding key", val).Msg("parse sharding key from comment")
-				rst.Client().SetShardingKey(true, val)
+				rst.Client().SetShardingKey(session.VirtualParamLevelStatement, val)
 			case session.SPQR_DISTRIBUTION:
 				spqrlog.Zero.Debug().Str("distribution", val).Msg("parse distribution from comment")
-				rst.Client().SetDistribution(true, val)
+				rst.Client().SetDistribution(session.VirtualParamLevelStatement, val)
 			case session.SPQR_DISTRIBUTED_RELATION:
 				spqrlog.Zero.Debug().Str("distributed relation", val).Msg("parse distributed relation from comment")
-				rst.Client().SetDistributedRelation(true, val)
+				rst.Client().SetDistributedRelation(session.VirtualParamLevelStatement, val)
 			case session.SPQR_SCATTER_QUERY:
 				/* any non-empty value of SPQR_SCATTER_QUERY is local and means ON */
 				spqrlog.Zero.Debug().Str("scatter query", val).Msg("parse scatter query from comment")
@@ -157,20 +157,20 @@ func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error
 				if _, ok := config.RouterConfig().ShardMapping[val]; !ok {
 					return fmt.Errorf("no such shard: %v", val)
 				}
-				rst.Client().SetExecuteOn(true, val)
+				rst.Client().SetExecuteOn(session.VirtualParamLevelStatement, val)
 			case session.SPQR_ENGINE_V2:
 				switch val {
 				case "true", "ok", "on":
-					rst.Client().SetEnhancedMultiShardProcessing(true, true)
+					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelStatement, true)
 				case "false", "no", "off":
-					rst.Client().SetEnhancedMultiShardProcessing(true, false)
+					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelStatement, false)
 				}
 			case session.SPQR_AUTO_DISTRIBUTION:
 				/* Should we create distributed or reference relation? */
 
 				if val == distributions.REPLICATED {
 					/* This is an ddl query, which creates relation along with attaching to REPLICATED distribution */
-					rst.Client().SetAutoDistribution(true, val)
+					rst.Client().SetAutoDistribution(val)
 				} else {
 					if valDistrib, ok := mp[session.SPQR_DISTRIBUTION_KEY]; ok {
 						_, err = rst.QueryRouter().Mgr().GetDistribution(context.TODO(), val)
@@ -179,8 +179,8 @@ func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error
 						}
 
 						/* This is an ddl query, which creates relation along with attaching to distribution */
-						rst.Client().SetAutoDistribution(true, val)
-						rst.Client().SetDistributionKey(true, valDistrib)
+						rst.Client().SetAutoDistribution(val)
+						rst.Client().SetDistributionKey(valDistrib)
 
 						/* this is too early to do anything with distribution hint, as we do not yet parsed
 						* DDL of about-to-be-created relation
@@ -235,7 +235,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				case twopc.COMMIT_STRATEGY_1PC:
 					fallthrough
 				case twopc.COMMIT_STRATEGY_BEST_EFFORT:
-					rst.Client().SetCommitStrategy(false, val)
+					rst.Client().SetCommitStrategy(val)
 				default:
 					/*should error-out*/
 				}
@@ -272,39 +272,39 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 			switch name {
 			case session.SPQR_DISTRIBUTION:
-				rst.Client().SetDistribution(false, st.Value)
+				rst.Client().SetDistribution(session.VirtualParamLevelTxBlock, st.Value)
 			case session.SPQR_DISTRIBUTED_RELATION:
-				rst.Client().SetDistributedRelation(false, st.Value)
+				rst.Client().SetDistributedRelation(session.VirtualParamLevelTxBlock, st.Value)
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-				rst.Client().SetDefaultRouteBehaviour(false, st.Value)
+				rst.Client().SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, st.Value)
 			case session.SPQR_SHARDING_KEY:
-				rst.Client().SetShardingKey(false, st.Value)
+				rst.Client().SetShardingKey(session.VirtualParamLevelTxBlock, st.Value)
 			case session.SPQR_REPLY_NOTICE:
 				if value == "on" || value == "true" {
-					rst.Client().SetShowNoticeMsg(true)
+					rst.Client().SetShowNoticeMsg(session.VirtualParamLevelTxBlock, true)
 				} else {
-					rst.Client().SetShowNoticeMsg(false)
+					rst.Client().SetShowNoticeMsg(session.VirtualParamLevelTxBlock, false)
 				}
 			case session.SPQR_MAINTAIN_PARAMS:
 				if value == "on" || value == "true" {
-					rst.Client().SetMaintainParams(true)
+					rst.Client().SetMaintainParams(session.VirtualParamLevelTxBlock, true)
 				} else {
-					rst.Client().SetMaintainParams(false)
+					rst.Client().SetMaintainParams(session.VirtualParamLevelTxBlock, false)
 				}
 			case session.SPQR_EXECUTE_ON:
-				rst.Client().SetExecuteOn(false, st.Value)
+				rst.Client().SetExecuteOn(session.VirtualParamLevelTxBlock, st.Value)
 			case session.SPQR_TARGET_SESSION_ATTRS:
 				fallthrough
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
 				fallthrough
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-				rst.Client().SetTsa(false, st.Value)
+				rst.Client().SetTsa(session.VirtualParamLevelTxBlock, st.Value)
 			case session.SPQR_ENGINE_V2:
 				switch value {
 				case "true", "on", "ok":
-					rst.Client().SetEnhancedMultiShardProcessing(false, true)
+					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 				case "false", "off", "no":
-					rst.Client().SetEnhancedMultiShardProcessing(false, false)
+					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, false)
 				}
 			default:
 				rst.Client().SetParam(name, st.Value)
