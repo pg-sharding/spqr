@@ -85,6 +85,16 @@ COMMIT;
 
 SHOW __spqr__target_session_attrs;
 
+SET __spqr__target_session_attrs TO 'read-write';
+
+BEGIN READ ONLY;
+
+SHOW __spqr__target_session_attrs;
+
+COMMIT;
+
+SHOW __spqr__target_session_attrs;
+
 RESET __spqr__target_session_attrs;
 
 DROP TABLE tsa_test;
