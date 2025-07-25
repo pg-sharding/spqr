@@ -96,6 +96,8 @@ NOTICE: send query to shard(s) : sh2
 
 INSERT INTO test_ref_rel VALUES(1) /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+WITH data(x,z) AS (VALUES(1,3)) INSERT INTO test_ref_rel SELECT * FROM data;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test_ref_rel SELECT 1 /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
@@ -103,48 +105,52 @@ NOTICE: send query to shard(s) : sh1
  i | j 
 ---+---
  1 | 2
+ 1 | 3
  1 |  
  1 |  
  2 | 3
  3 | 4
  4 | 5
-(6 rows)
+(7 rows)
 
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2
  i | j 
 ---+---
  1 | 2
+ 1 | 3
  1 |  
  1 |  
  2 | 3
  3 | 4
  4 | 5
-(6 rows)
+(7 rows)
 
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh3 */;
 NOTICE: send query to shard(s) : sh3
  i | j 
 ---+---
  1 | 2
+ 1 | 3
  1 |  
  1 |  
  2 | 3
  3 | 4
  4 | 5
-(6 rows)
+(7 rows)
 
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
 NOTICE: send query to shard(s) : sh4
  i | j 
 ---+---
  1 | 2
+ 1 | 3
  1 |  
  1 |  
  2 | 3
  3 | 4
  4 | 5
-(6 rows)
+(7 rows)
 
 UPDATE test_ref_rel SET i = i + 1 /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -157,10 +163,11 @@ NOTICE: send query to shard(s) : sh1
  -4 | 4
  -3 | 3
   2 | 2
+  2 | 3
   2 |  
   2 |  
   5 | 5
-(6 rows)
+(7 rows)
 
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2
@@ -169,10 +176,11 @@ NOTICE: send query to shard(s) : sh2
  -4 | 4
  -3 | 3
   2 | 2
+  2 | 3
   2 |  
   2 |  
   5 | 5
-(6 rows)
+(7 rows)
 
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh3 */;
 NOTICE: send query to shard(s) : sh3
@@ -181,10 +189,11 @@ NOTICE: send query to shard(s) : sh3
  -4 | 4
  -3 | 3
   2 | 2
+  2 | 3
   2 |  
   2 |  
   5 | 5
-(6 rows)
+(7 rows)
 
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
 NOTICE: send query to shard(s) : sh4
@@ -193,10 +202,11 @@ NOTICE: send query to shard(s) : sh4
  -4 | 4
  -3 | 3
   2 | 2
+  2 | 3
   2 |  
   2 |  
   5 | 5
-(6 rows)
+(7 rows)
 
 DELETE FROM test_ref_rel WHERE i = 2 /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

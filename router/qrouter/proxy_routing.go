@@ -1046,6 +1046,11 @@ func (qr *ProxyQrouter) planQueryV1(
 					}
 					if len(rel.ColumnSequenceMapping) == 0 {
 						// ok
+						if p == nil {
+							return &plan.ScatterPlan{
+								ExecTargets: rel.ListStorageRoutes(),
+							}, nil
+						}
 						// XXX: todo - check that sub select is not doing anything insane
 						switch p.(type) {
 						case *plan.VirtualPlan, *plan.ScatterPlan, *plan.RandomDispatchPlan:
