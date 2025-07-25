@@ -24,7 +24,7 @@ func (t *DummySessionParamHandler) DistributedRelation() string {
 }
 
 // SetDistributedRelation implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetDistributedRelation(local bool, val string) {
+func (t *DummySessionParamHandler) SetDistributedRelation(string, string) {
 
 }
 
@@ -44,7 +44,7 @@ func (t *DummySessionParamHandler) GetTsa() tsa.TSA {
 }
 
 // SetTsa implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetTsa(bool, string) {
+func (t *DummySessionParamHandler) SetTsa(string, string) {
 
 }
 
@@ -54,7 +54,7 @@ func (t *DummySessionParamHandler) EnhancedMultiShardProcessing() bool {
 }
 
 // SetEnhancedMultiShardProcessing implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetEnhancedMultiShardProcessing(l bool, v bool) {
+func (t *DummySessionParamHandler) SetEnhancedMultiShardProcessing(l string, v bool) {
 	t.engineV2 = v
 }
 
@@ -62,7 +62,7 @@ func (t *DummySessionParamHandler) CommitStrategy() string {
 	return ""
 }
 
-func (t *DummySessionParamHandler) SetCommitStrategy(l bool, v string) {
+func (t *DummySessionParamHandler) SetCommitStrategy(v string) {
 }
 
 // ExecuteOn implements SessionParamsHolder.
@@ -71,7 +71,7 @@ func (t *DummySessionParamHandler) ExecuteOn() string {
 }
 
 // SetExecuteOn implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetExecuteOn(l bool, v string) {
+func (t *DummySessionParamHandler) SetExecuteOn(l string, v string) {
 	t.eo = v
 }
 
@@ -81,7 +81,7 @@ func (t *DummySessionParamHandler) DistributionKey() string {
 }
 
 // SetDistributionKey implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetDistributionKey(bool, string) {
+func (t *DummySessionParamHandler) SetDistributionKey(string) {
 
 }
 
@@ -91,7 +91,7 @@ func (t *DummySessionParamHandler) AutoDistribution() string {
 }
 
 // SetAutoDistribution implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetAutoDistribution(bool, string) {
+func (t *DummySessionParamHandler) SetAutoDistribution(string) {
 
 }
 
@@ -101,11 +101,11 @@ func (t *DummySessionParamHandler) MaintainParams() bool {
 }
 
 // SetMaintainParams implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetMaintainParams(bool) {
+func (t *DummySessionParamHandler) SetMaintainParams(string, bool) {
 }
 
 // SetShowNoticeMsg implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetShowNoticeMsg(bool) {
+func (t *DummySessionParamHandler) SetShowNoticeMsg(string, bool) {
 }
 
 // ShowNoticeMsg implements SessionParamsHolder.
@@ -169,7 +169,7 @@ func (t *DummySessionParamHandler) SetBindParams(b [][]byte) {
 
 // SetDistribution implements session.SessionParamsHolder.
 // SetDistribution sets the distribution for the DummySessionParamHandler.
-func (t *DummySessionParamHandler) SetDistribution(l bool, d string) {
+func (t *DummySessionParamHandler) SetDistribution(l string, d string) {
 	t.distribution = d
 }
 
@@ -182,7 +182,7 @@ func (t *DummySessionParamHandler) DistributionIsDefault() bool {
 // SetDefaultRouteBehaviour implements session.SessionParamsHolder.
 // SetDefaultRouteBehaviour sets the default route behaviour for the DummySessionParamHandler.
 // It takes a string parameter `b` representing the behaviour and assigns it to the `behaviour` field of the DummySessionParamHandler struct.
-func (t *DummySessionParamHandler) SetDefaultRouteBehaviour(l bool, b string) {
+func (t *DummySessionParamHandler) SetDefaultRouteBehaviour(l string, b string) {
 	t.behaviour = b
 }
 
@@ -195,7 +195,7 @@ func (t *DummySessionParamHandler) SetScatterQuery(bool) {
 // SetShardingKey implements session.SessionParamsHolder.
 // SetShardingKey sets the sharding key for the DummySessionParamHandler.
 // The sharding key is used to determine the partition or shard where the data will be stored.
-func (t *DummySessionParamHandler) SetShardingKey(l bool, k string) {
+func (t *DummySessionParamHandler) SetShardingKey(l string, k string) {
 	t.key = k
 }
 

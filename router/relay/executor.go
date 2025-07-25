@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -117,11 +118,11 @@ func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *
 	for _, opt := range st.Options {
 		switch opt {
 		case lyx.TransactionReadOnly:
-			rst.Client().SetTsa(false, config.TargetSessionAttrsPS)
+			rst.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsPS)
 		case lyx.TransactionReadWrite:
-			rst.Client().SetTsa(false, config.TargetSessionAttrsRW)
+			rst.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsRW)
 		default:
-			rst.Client().SetTsa(false, config.TargetSessionAttrsRW)
+			rst.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsRW)
 		}
 	}
 	return rst.Client().ReplyCommandComplete("BEGIN")

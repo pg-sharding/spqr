@@ -56,9 +56,7 @@ type Client interface {
 	Usr() string
 	DB() string
 	Send(msg pgproto3.BackendMessage) error
-	SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error
 	Receive() (pgproto3.FrontendMessage, error)
-	ReceiveCtx(ctx context.Context) (pgproto3.FrontendMessage, error)
 
 	Shutdown() error
 	Reset() error

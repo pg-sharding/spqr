@@ -4,7 +4,7 @@ import "github.com/pg-sharding/spqr/pkg/tsa"
 
 type SessionParamsHolder interface {
 	GetTsa() tsa.TSA
-	SetTsa(statement bool, value string)
+	SetTsa(level string, value string)
 
 	Usr() string
 	/* XXX: also maybe ROLE support is meaningful? */
@@ -12,44 +12,48 @@ type SessionParamsHolder interface {
 
 	// Get current session DRB
 	DefaultRouteBehaviour() string
-	SetDefaultRouteBehaviour(statement bool, val string)
+	SetDefaultRouteBehaviour(level string, val string)
 
-	SetAutoDistribution(statement bool, val string)
+	/* Only statement-level */
+	SetAutoDistribution(val string)
 	AutoDistribution() string
 
-	SetDistributionKey(statement bool, val string)
+	/* Only statement-level */
+	SetDistributionKey(val string)
 	DistributionKey() string
 
 	// Get current session distribution
 
-	SetDistribution(statement bool, val string)
+	SetDistribution(level string, val string)
 	Distribution() string
 
-	SetDistributedRelation(statement bool, val string)
+	/*  Only statement level */
+	SetDistributedRelation(level string, val string)
 	DistributedRelation() string
 
-	SetExecuteOn(statement bool, val string)
-	ExecuteOn() string
-
-	// ShardingKey
-	SetShardingKey(statement bool, val string)
+	SetShardingKey(level string, val string)
 	ShardingKey() string
 
-	SetShowNoticeMsg(val bool)
+	SetExecuteOn(level string, val string)
+	ExecuteOn() string
+
+	SetShowNoticeMsg(level string, val bool)
 	ShowNoticeMsg() bool
 
-	SetMaintainParams(val bool)
+	/* Statement level makes sence? */
+	SetMaintainParams(level string, val bool)
 	MaintainParams() bool
 
-	/* route hint always local */
+	/* route hint always statement-level  */
 	SetScatterQuery(val bool)
 	ScatterQuery() bool
 
 	/* Check if we apply engine v2 routing for query */
-	SetEnhancedMultiShardProcessing(statement bool, val bool)
+	SetEnhancedMultiShardProcessing(level string, val bool)
 	EnhancedMultiShardProcessing() bool
 
-	SetCommitStrategy(bool, string)
+	/* route hint always tx-block-level */
+	SetCommitStrategy(value string)
 	CommitStrategy() string
 
 	BindParams() [][]byte
@@ -58,6 +62,12 @@ type SessionParamsHolder interface {
 	BindParamFormatCodes() []int16
 	SetParamFormatCodes([]int16)
 }
+
+const (
+	VirtualParamLevelLocal     = "local"
+	VirtualParamLevelStatement = "statement"
+	VirtualParamLevelTxBlock   = "txBlock"
+)
 
 const (
 	SPQR_DISTRIBUTION            = "__spqr__distribution"
