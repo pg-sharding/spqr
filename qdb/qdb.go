@@ -33,7 +33,7 @@ type TopologyKeeper interface {
 }
 
 // Keep track of the status of the two-phase data move transaction.
-type DistributedXactKepper interface {
+type DistributedXactKeeper interface {
 	RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error
 	GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error)
 	RemoveTransferTx(ctx context.Context, key string) error
@@ -130,7 +130,7 @@ type XQDB interface {
 	TopologyKeeper
 	// data move state
 	ShardingSchemaKeeper
-	DistributedXactKepper
+	DistributedXactKeeper
 
 	TryCoordinatorLock(ctx context.Context, addr string) error
 }
