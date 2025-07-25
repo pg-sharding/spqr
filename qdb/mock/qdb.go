@@ -194,32 +194,32 @@ func (mr *MockTopologyKeeperMockRecorder) OpenRouter(ctx, rID any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenRouter", reflect.TypeOf((*MockTopologyKeeper)(nil).OpenRouter), ctx, rID)
 }
 
-// MockDistributedXactKepper is a mock of DistributedXactKepper interface.
-type MockDistributedXactKepper struct {
+// MockDistributedXactKeeper is a mock of DistributedXactKeeper interface.
+type MockDistributedXactKeeper struct {
 	ctrl     *gomock.Controller
-	recorder *MockDistributedXactKepperMockRecorder
+	recorder *MockDistributedXactKeeperMockRecorder
 	isgomock struct{}
 }
 
-// MockDistributedXactKepperMockRecorder is the mock recorder for MockDistributedXactKepper.
-type MockDistributedXactKepperMockRecorder struct {
-	mock *MockDistributedXactKepper
+// MockDistributedXactKeeperMockRecorder is the mock recorder for MockDistributedXactKeeper.
+type MockDistributedXactKeeperMockRecorder struct {
+	mock *MockDistributedXactKeeper
 }
 
-// NewMockDistributedXactKepper creates a new mock instance.
-func NewMockDistributedXactKepper(ctrl *gomock.Controller) *MockDistributedXactKepper {
-	mock := &MockDistributedXactKepper{ctrl: ctrl}
-	mock.recorder = &MockDistributedXactKepperMockRecorder{mock}
+// NewMockDistributedXactKeeper creates a new mock instance.
+func NewMockDistributedXactKeeper(ctrl *gomock.Controller) *MockDistributedXactKeeper {
+	mock := &MockDistributedXactKeeper{ctrl: ctrl}
+	mock.recorder = &MockDistributedXactKeeperMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockDistributedXactKepper) EXPECT() *MockDistributedXactKepperMockRecorder {
+func (m *MockDistributedXactKeeper) EXPECT() *MockDistributedXactKeeperMockRecorder {
 	return m.recorder
 }
 
 // GetTransferTx mocks base method.
-func (m *MockDistributedXactKepper) GetTransferTx(ctx context.Context, key string) (*qdb.DataTransferTransaction, error) {
+func (m *MockDistributedXactKeeper) GetTransferTx(ctx context.Context, key string) (*qdb.DataTransferTransaction, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTransferTx", ctx, key)
 	ret0, _ := ret[0].(*qdb.DataTransferTransaction)
@@ -228,13 +228,13 @@ func (m *MockDistributedXactKepper) GetTransferTx(ctx context.Context, key strin
 }
 
 // GetTransferTx indicates an expected call of GetTransferTx.
-func (mr *MockDistributedXactKepperMockRecorder) GetTransferTx(ctx, key any) *gomock.Call {
+func (mr *MockDistributedXactKeeperMockRecorder) GetTransferTx(ctx, key any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransferTx", reflect.TypeOf((*MockDistributedXactKepper)(nil).GetTransferTx), ctx, key)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransferTx", reflect.TypeOf((*MockDistributedXactKeeper)(nil).GetTransferTx), ctx, key)
 }
 
 // RecordTransferTx mocks base method.
-func (m *MockDistributedXactKepper) RecordTransferTx(ctx context.Context, key string, info *qdb.DataTransferTransaction) error {
+func (m *MockDistributedXactKeeper) RecordTransferTx(ctx context.Context, key string, info *qdb.DataTransferTransaction) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RecordTransferTx", ctx, key, info)
 	ret0, _ := ret[0].(error)
@@ -242,13 +242,13 @@ func (m *MockDistributedXactKepper) RecordTransferTx(ctx context.Context, key st
 }
 
 // RecordTransferTx indicates an expected call of RecordTransferTx.
-func (mr *MockDistributedXactKepperMockRecorder) RecordTransferTx(ctx, key, info any) *gomock.Call {
+func (mr *MockDistributedXactKeeperMockRecorder) RecordTransferTx(ctx, key, info any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordTransferTx", reflect.TypeOf((*MockDistributedXactKepper)(nil).RecordTransferTx), ctx, key, info)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordTransferTx", reflect.TypeOf((*MockDistributedXactKeeper)(nil).RecordTransferTx), ctx, key, info)
 }
 
 // RemoveTransferTx mocks base method.
-func (m *MockDistributedXactKepper) RemoveTransferTx(ctx context.Context, key string) error {
+func (m *MockDistributedXactKeeper) RemoveTransferTx(ctx context.Context, key string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveTransferTx", ctx, key)
 	ret0, _ := ret[0].(error)
@@ -256,9 +256,9 @@ func (m *MockDistributedXactKepper) RemoveTransferTx(ctx context.Context, key st
 }
 
 // RemoveTransferTx indicates an expected call of RemoveTransferTx.
-func (mr *MockDistributedXactKepperMockRecorder) RemoveTransferTx(ctx, key any) *gomock.Call {
+func (mr *MockDistributedXactKeeperMockRecorder) RemoveTransferTx(ctx, key any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveTransferTx", reflect.TypeOf((*MockDistributedXactKepper)(nil).RemoveTransferTx), ctx, key)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveTransferTx", reflect.TypeOf((*MockDistributedXactKeeper)(nil).RemoveTransferTx), ctx, key)
 }
 
 // MockQDB is a mock of QDB interface.
