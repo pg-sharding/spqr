@@ -62,6 +62,9 @@ set __spqr__default_route_behaviour to block;
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
 
 INSERT INTO test_ref_rel VALUES(1) /* __spqr__engine_v2: true */;
+
+WITH data(x,z) AS (VALUES(1,3)) INSERT INTO test_ref_rel SELECT * FROM data;
+
 INSERT INTO test_ref_rel SELECT 1 /* __spqr__engine_v2: true */;
 
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
@@ -99,9 +102,7 @@ SELECT * FROM test_ref_rel_part ORDER BY i, j /*__spqr__execute_on: sh4 */;
 
 TRUNCATE test_ref_rel;
 
-
 INSERT INTO test_ref_rel VALUES(1,3),(2,4),(3,-1) RETURNING *;
-
 
 -- check data on partially distributed reference relation
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
@@ -114,10 +115,8 @@ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
 SELECT FROM test_distr_ref_rel a JOIN test_ref_rel b ON TRUE WHERE a.id = 333;
 SELECT FROM test_distr_ref_rel a, test_ref_rel b WHERE a.id = 133;
 
-
 SELECT FROM test_distr_ref_rel a, test_ref_rel_part b WHERE a.id = 33;
 SELECT FROM test_distr_ref_rel a, test_ref_rel_part b WHERE a.id = 233;
-
 
 DROP TABLE test_ref_rel;
 DROP TABLE test_ref_rel_part;

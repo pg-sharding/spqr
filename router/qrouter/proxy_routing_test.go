@@ -349,6 +349,23 @@ func TestReferenceRelationRouting(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			query: `WITH data as (VALUES(1)) INSERT INTO test_ref_rel SELECT * FROM data;`,
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{},
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+		},
 		{
 			query: `UPDATE test_ref_rel SET i = i + 1 ;`,
 			exp: &plan.ScatterPlan{
@@ -390,16 +407,17 @@ func TestReferenceRelationRouting(t *testing.T) {
 		pr.SetQuery(&tt.query)
 
 		tmp, err := pr.PlanQuery(context.TODO(), parserRes, dh)
-		if tt.err == nil {
+		if tt.err != nil {
 
+			assert.Equal(err, tt.err, tt.query)
+		} else {
+
+			assert.NotNil(tmp, tt.query)
 			tmp.SetStmt(nil) /* dont check stmt */
 
 			assert.NoError(err, "query %s", tt.query)
 
 			assert.Equal(tt.exp, tmp, tt.query)
-		} else {
-
-			assert.Equal(err, tt.err, tt.query)
 		}
 	}
 }
