@@ -34,6 +34,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION tsa_test DISTRIBUTION KEY id;
 \c regress
 CREATE TABLE tsa_test (id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  relation "tsa_test" already exists
 INSERT INTO tsa_test (id) VALUES (22);
 NOTICE: send query to shard(s) : sh1
 -- you could specify target-session-attrs anywhere in your query
@@ -199,6 +200,27 @@ SHOW __spqr__target_session_attrs;
  target session attrs 
 ----------------------
  prefer-standby
+(1 row)
+
+RESET __spqr__target_session_attrs;
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ smart-read-write
+(1 row)
+
+BEGIN READ ONLY;
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ prefer-standby
+(1 row)
+
+COMMIT;
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ smart-read-write
 (1 row)
 
 RESET __spqr__target_session_attrs;
