@@ -29,13 +29,11 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
 		}
 	}
 
-	_, err := rst.qse.ProcQuery(
+	return rst.qse.ProcQuery(
 		&QueryDesc{
 			Msg: pgsync,
 			P:   rst.bindQueryPlan, /*  ugh... fix this someday */
-		}, rst.Qr.Mgr(), true, true)
-
-	return err
+		}, rst.Qr.Mgr(), true)
 }
 
 func gangMemberDeployPreparedStatement(shard shard.ShardHostInstance, hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {

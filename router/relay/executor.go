@@ -557,7 +557,7 @@ func (s *QueryStateExecutorImpl) copyExecutor(mgr meta.EntityMgr, q plan.Plan, d
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
+func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error {
 
 	switch q := qd.P.(type) {
 	case *plan.VirtualPlan:
@@ -574,43 +574,43 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 				if err := s.Client().Send(&pgproto3.RowDescription{
 					Fields: q.VirtualRowCols,
 				}); err != nil {
-					return nil, err
+					return err
 				}
 
 				if err := s.Client().Send(&pgproto3.DataRow{
 					Values: q.VirtualRowVals,
 				}); err != nil {
-					return nil, err
+					return err
 				}
 				if err := s.Client().Send(&pgproto3.CommandComplete{
 					CommandTag: []byte("SELECT 1"),
 				}); err != nil {
-					return nil, err
+					return err
 				}
 			case *pgproto3.Sync:
 
 				if err := s.Client().Send(&pgproto3.DataRow{
 					Values: q.VirtualRowVals,
 				}); err != nil {
-					return nil, err
+					return err
 				}
 				if err := s.Client().Send(&pgproto3.CommandComplete{
 					CommandTag: []byte("SELECT 1"),
 				}); err != nil {
-					return nil, err
+					return err
 				}
 			}
 
-			return nil, nil
+			return nil
 		} else {
-			return nil, rerrors.ErrComplexQuery
+			return rerrors.ErrExecutorSyncLost
 		}
 	}
 
 	serv := s.Client().Server()
 
 	if serv == nil {
-		return nil, fmt.Errorf("client %p is out of transaction sync with router", s.Client())
+		return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 	}
 
 	doFinalizeTx := false
@@ -627,7 +627,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 
 				if serv.TxStatus() == txstatus.TXIDLE {
 					if err := s.DeployTx(serv, "BEGIN"); err != nil {
-						return nil, err
+						return err
 					}
 					doFinalizeTx = true
 				}
@@ -641,10 +641,8 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 		Msg("relay process plan")
 
 	if err := DispatchPlan(qd, serv, s.Client(), replyCl); err != nil {
-		return nil, err
+		return err
 	}
-
-	waitForRespLocal := waitForResp
 
 	switch qd.Msg.(type) {
 	case *pgproto3.Query:
@@ -652,87 +650,75 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 	case *pgproto3.Sync:
 		// ok
 	default:
-		waitForRespLocal = false
+		return rerrors.ErrExecutorSyncLost
 	}
-
-	if !waitForRespLocal {
-		/* we do not alter txstatus here */
-		return nil, nil
-	}
-	unreplied := make([]pgproto3.BackendMessage, 0)
 
 	for {
 		msg, recvIndex, err := serv.Receive()
 		if err != nil {
-			return nil, err
+			return err
 		}
+
+		spqrlog.Zero.Debug().
+			Str("server", serv.Name()).
+			Type("msg-type", msg).
+			Msg("received message from server")
 
 		switch v := msg.(type) {
 		case *pgproto3.CopyInResponse:
 			// handle replyCl somehow
 			err = s.Client().Send(msg)
 			if err != nil {
-				return nil, err
+				return err
 			}
 
-			return nil, s.copyExecutor(mgr, qd.P, doFinalizeTx, attachedCopy)
+			return s.copyExecutor(mgr, qd.P, doFinalizeTx, attachedCopy)
 		case *pgproto3.DataRow:
-			spqrlog.Zero.Debug().
-				Str("server", serv.Name()).
-				Msg("received datarow message from server")
 			if replyCl {
 				switch v := qd.P.(type) {
 				case *plan.DataRowFilter:
 					if v.FilterIndex == recvIndex {
 						err = s.Client().Send(msg)
 						if err != nil {
-							return nil, err
+							return err
 						}
 					}
 				default:
 					err = s.Client().Send(msg)
 					if err != nil {
-						return nil, err
+						return err
 					}
 				}
-			} else {
-				unreplied = append(unreplied, msg)
 			}
 		case *pgproto3.ReadyForQuery:
 			s.SetTxStatus(txstatus.TXStatus(v.TxStatus))
-			return unreplied, nil
+			return nil
 		case *pgproto3.ErrorResponse:
 
-			spqrlog.Zero.Debug().
-				Str("server", serv.Name()).
-				Type("msg-type", v).
-				Msg("received message from server")
+			if replyCl {
+				err = s.Client().Send(msg)
+				if err != nil {
+					return err
+				}
+			}
+		// never resend these msgs
+		case *pgproto3.ParseComplete, *pgproto3.BindComplete, *pgproto3.CloseComplete:
+			return rerrors.ErrExecutorSyncLost
+		case *pgproto3.CommandComplete:
 
 			if replyCl {
 				err = s.Client().Send(msg)
 				if err != nil {
-					return nil, err
+					return err
 				}
-			} else {
-				unreplied = append(unreplied, msg)
 			}
-		// never resend these msgs
-		case *pgproto3.ParseComplete:
-			unreplied = append(unreplied, msg)
-		case *pgproto3.BindComplete:
-			unreplied = append(unreplied, msg)
 		default:
-			spqrlog.Zero.Debug().
-				Str("server", serv.Name()).
-				Type("msg-type", v).
-				Msg("received message from server")
+
 			if replyCl {
 				err = s.Client().Send(msg)
 				if err != nil {
-					return nil, err
+					return err
 				}
-			} else {
-				unreplied = append(unreplied, msg)
 			}
 		}
 	}
