@@ -265,7 +265,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		dh := session.NewDummyHandler(distribution)
-		dh.SetEnhancedMultiShardProcessing(false, true)
+		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
 		tmp, err := pr.PlanQuery(context.TODO(), parserRes, dh)
 
@@ -386,7 +386,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 		dh := session.NewDummyHandler("dd")
-		dh.SetEnhancedMultiShardProcessing(false, true)
+		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 		pr.SetQuery(&tt.query)
 
 		tmp, err := pr.PlanQuery(context.TODO(), parserRes, dh)
@@ -1553,7 +1553,7 @@ func TestCopySingleShard(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		dh := session.NewDummyHandler(distribution)
-		dh.SetDefaultRouteBehaviour(false, "BLOCK")
+		dh.SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, "BLOCK")
 
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
 
@@ -1637,7 +1637,7 @@ func TestCopyMultiShard(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		dh := session.NewDummyHandler(distribution)
-		dh.SetDefaultRouteBehaviour(false, "BLOCK")
+		dh.SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, "BLOCK")
 		dh.SetScatterQuery(false)
 
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
