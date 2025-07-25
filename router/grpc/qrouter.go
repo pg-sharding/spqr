@@ -557,7 +557,7 @@ func (l *LocalQrouterServer) RemoveBalancerTask(ctx context.Context, _ *emptypb.
 
 // TODO : unit tests
 func (l *LocalQrouterServer) DropSequence(ctx context.Context, request *protos.DropSequenceRequest) (*emptypb.Empty, error) {
-	err := l.mgr.DropSequence(ctx, request.Name)
+	err := l.mgr.DropSequence(ctx, request.Name, request.Force)
 	return nil, err
 }
 

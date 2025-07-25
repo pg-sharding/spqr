@@ -1777,12 +1777,12 @@ func (q *EtcdQDB) CreateSequence(ctx context.Context, seqName string, initialVal
 	return nil
 }
 
-func (q *EtcdQDB) DropSequence(ctx context.Context, seqName string) error {
+func (q *EtcdQDB) DropSequence(ctx context.Context, seqName string, force bool) error {
 	depends, err := q.getSequenceColumns(ctx, seqName)
 	if err != nil {
 		return err
 	}
-	if len(depends) != 0 {
+	if len(depends) != 0 && !force {
 		return spqrerror.Newf(spqrerror.SPQR_SEQUENCE_ERROR, "column %q is attached to sequence", depends[0])
 	}
 
@@ -1853,7 +1853,7 @@ func (q *EtcdQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
 }
 
 func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
-	spqrlog.Zero.Debug().Msg("etcdqdb: next val")
+	spqrlog.Zero.Debug().Msg("etcdqdb: curr val")
 
 	id := sequenceNodePath(seqName)
 	sess, err := concurrency.NewSession(q.cli)

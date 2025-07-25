@@ -1061,9 +1061,9 @@ func (q *MemQDB) AlterSequenceDetachRelation(_ context.Context, relName *rfqn.Re
 	return nil
 }
 
-func (q *MemQDB) DropSequence(ctx context.Context, seqName string) error {
+func (q *MemQDB) DropSequence(ctx context.Context, seqName string, force bool) error {
 	for col, colSeq := range q.ColumnSequence {
-		if colSeq == seqName {
+		if colSeq == seqName && !force {
 			data := strings.Split(col, "_")
 			relName := data[0]
 			colName := data[1]

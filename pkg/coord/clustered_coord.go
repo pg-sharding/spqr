@@ -2057,8 +2057,8 @@ func (qc *ClusteredCoordinator) AlterDistributedRelation(ctx context.Context, id
 	})
 }
 
-func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string) error {
-	if err := qc.Coordinator.DropSequence(ctx, seqName); err != nil {
+func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string, force bool) error {
+	if err := qc.Coordinator.DropSequence(ctx, seqName, force); err != nil {
 		return err
 	}
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {

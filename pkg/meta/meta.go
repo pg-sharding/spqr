@@ -88,6 +88,17 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		relName := &rfqn.RelationFQN{
 			RelationName: stmt.ID,
 		}
+
+		seqs, err := mngr.ListRelationSequences(ctx, relName)
+		if err != nil {
+			return err
+		}
+		for _, seq := range seqs {
+			if err := mngr.DropSequence(ctx, seq, true); err != nil {
+				return err
+			}
+		}
+
 		if err := mngr.DropReferenceRelation(ctx, relName); err != nil {
 			return err
 		}
@@ -192,7 +203,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 		return cli.DropTaskGroup(ctx)
 	case *spqrparser.SequenceSelector:
-		if err := mngr.DropSequence(ctx, stmt.Name); err != nil {
+		if err := mngr.DropSequence(ctx, stmt.Name, false); err != nil {
 			return err
 		}
 		return cli.DropSequence(ctx, stmt.Name)
