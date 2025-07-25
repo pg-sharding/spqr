@@ -7,7 +7,7 @@ ARG POSTGRES_VERSION=15
 ENV POSTGRES_VERSION=$POSTGRES_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=Europe/Moscow
+ENV TZ=UTC/Zulu
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt update && apt install -y ca-certificates
 # RUN sed -i 's/archive.ubuntu.com/mirror.yandex.ru/g' /etc/apt/sources.list
