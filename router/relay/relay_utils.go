@@ -29,7 +29,7 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
 		}
 	}
 
-	return rst.qse.ProcQuery(
+	return rst.qse.ExecuteSlice(
 		&QueryDesc{
 			Msg: pgsync,
 			P:   rst.bindQueryPlan, /*  ugh... fix this someday */

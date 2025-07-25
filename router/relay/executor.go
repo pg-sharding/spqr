@@ -65,8 +65,8 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *p
 	return nil
 }
 
-// Deploy implements QueryStateExecutor.
-func (s *QueryStateExecutorImpl) Deploy(server server.Server) error {
+// DeploySliceTransactionBlock implements QueryStateExecutor.
+func (s *QueryStateExecutorImpl) DeploySliceTransactionBlock(server server.Server) error {
 	if server == nil {
 		return errUnAttached
 	}
@@ -85,7 +85,7 @@ func (s *QueryStateExecutorImpl) Deploy(server server.Server) error {
 	return s.deployTxStatusInternal(server, s.savedBegin, txstatus.TXACT)
 }
 
-func (s *QueryStateExecutorImpl) DeployTx(server server.Server, query string) error {
+func (s *QueryStateExecutorImpl) DeploySliceTransactionQuery(server server.Server, query string) error {
 	s.SetTxStatus(txstatus.TXACT)
 	s.savedBegin = &pgproto3.Query{String: query}
 
@@ -104,7 +104,7 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 
 func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error {
 	if rst.PoolMgr().ConnectionActive(rst) {
-		return rst.QueryExecutor().DeployTx(rst.Client().Server(), query)
+		return rst.QueryExecutor().DeploySliceTransactionQuery(rst.Client().Server(), query)
 	}
 
 	s.SetTxStatus(txstatus.TXACT)
@@ -557,7 +557,7 @@ func (s *QueryStateExecutorImpl) copyExecutor(mgr meta.EntityMgr, q plan.Plan, d
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error {
+func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error {
 
 	switch q := qd.P.(type) {
 	case *plan.VirtualPlan:
@@ -626,7 +626,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, re
 				spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
 
 				if serv.TxStatus() == txstatus.TXIDLE {
-					if err := s.DeployTx(serv, "BEGIN"); err != nil {
+					if err := s.DeploySliceTransactionQuery(serv, "BEGIN"); err != nil {
 						return err
 					}
 					doFinalizeTx = true
