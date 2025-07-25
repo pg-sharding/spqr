@@ -135,7 +135,7 @@ func (cl *PsqlClient) recordVirtualParam(level string, name string, val string) 
 	}
 }
 
-func (cl *PsqlClient) resolveVirtualStringParam(name string) string {
+func (cl *PsqlClient) resolveVirtualStringParam(name string, defaultVal string) string {
 	if val, ok := cl.localTxParamSet[name]; ok {
 		return val
 	}
@@ -145,7 +145,7 @@ func (cl *PsqlClient) resolveVirtualStringParam(name string) string {
 	if val, ok := cl.activeParamSet[name]; ok {
 		return val
 	}
-	return ""
+	return defaultVal
 }
 
 // SetDistribution implements RouterClient.
@@ -155,7 +155,7 @@ func (cl *PsqlClient) SetDistribution(level string, val string) {
 
 // Distribution implements RouterClient.
 func (cl *PsqlClient) Distribution() string {
-	return cl.resolveVirtualStringParam(session.SPQR_DISTRIBUTION)
+	return cl.resolveVirtualStringParam(session.SPQR_DISTRIBUTION, "")
 }
 
 // SetDistributedRelation implements RouterClient.
@@ -165,7 +165,7 @@ func (cl *PsqlClient) SetDistributedRelation(level string, val string) {
 
 // DistributedRelation implements RouterClient.
 func (cl *PsqlClient) DistributedRelation() string {
-	return cl.resolveVirtualStringParam(session.SPQR_DISTRIBUTED_RELATION)
+	return cl.resolveVirtualStringParam(session.SPQR_DISTRIBUTED_RELATION, "")
 }
 
 // SetExecuteOn implements RouterClient.
@@ -175,7 +175,7 @@ func (cl *PsqlClient) SetExecuteOn(level string, val string) {
 
 // ExecuteOn implements RouterClient.
 func (cl *PsqlClient) ExecuteOn() string {
-	return cl.resolveVirtualStringParam(session.SPQR_EXECUTE_ON)
+	return cl.resolveVirtualStringParam(session.SPQR_EXECUTE_ON, "")
 }
 
 // SetExecuteOn implements RouterClient.
@@ -197,7 +197,7 @@ func (cl *PsqlClient) SetCommitStrategy(val string) {
 }
 
 func (cl *PsqlClient) CommitStrategy() string {
-	return cl.resolveVirtualStringParam(session.SPQR_COMMIT_STRATEGY)
+	return cl.resolveVirtualStringParam(session.SPQR_COMMIT_STRATEGY, twopc.COMMIT_STRATEGY_1PC)
 }
 
 // SetAutoDistribution implements RouterClient.
@@ -207,7 +207,7 @@ func (cl *PsqlClient) SetAutoDistribution(val string) {
 
 // AutoDistribution implements RouterClient.
 func (cl *PsqlClient) AutoDistribution() string {
-	return cl.resolveVirtualStringParam(session.SPQR_AUTO_DISTRIBUTION)
+	return cl.resolveVirtualStringParam(session.SPQR_AUTO_DISTRIBUTION, "")
 }
 
 // SetDistributionKey implements RouterClient.
@@ -217,7 +217,7 @@ func (cl *PsqlClient) SetDistributionKey(val string) {
 
 // DistributionKey implements RouterClient.
 func (cl *PsqlClient) DistributionKey() string {
-	return cl.resolveVirtualStringParam(session.SPQR_DISTRIBUTION_KEY)
+	return cl.resolveVirtualStringParam(session.SPQR_DISTRIBUTION_KEY, "")
 }
 
 // MaintainParams implements RouterClient.
@@ -267,7 +267,7 @@ func (cl *PsqlClient) SetShardingKey(level string, k string) {
 
 // ShardingKey implements RouterClient.
 func (cl *PsqlClient) ShardingKey() string {
-	return cl.resolveVirtualStringParam(session.SPQR_SHARDING_KEY)
+	return cl.resolveVirtualStringParam(session.SPQR_SHARDING_KEY, "")
 }
 
 // SetDefaultRouteBehaviour implements RouterClient.
@@ -277,7 +277,7 @@ func (cl *PsqlClient) SetDefaultRouteBehaviour(level string, b string) {
 
 // DefaultRouteBehaviour implements RouterClient.
 func (cl *PsqlClient) DefaultRouteBehaviour() string {
-	return cl.resolveVirtualStringParam(session.SPQR_DEFAULT_ROUTE_BEHAVIOUR)
+	return cl.resolveVirtualStringParam(session.SPQR_DEFAULT_ROUTE_BEHAVIOUR, "")
 }
 
 // ScatterQuery implements RouterClient.
@@ -1135,12 +1135,7 @@ func (cl *PsqlClient) Shutdown() error {
 }
 
 func (cl *PsqlClient) GetTsa() tsa.TSA {
-	if _, ok := cl.statementParamSet[session.SPQR_TARGET_SESSION_ATTRS]; !ok {
-		if _, ok := cl.activeParamSet[session.SPQR_TARGET_SESSION_ATTRS]; !ok {
-			return tsa.TSA(cl.defaultTsa)
-		}
-	}
-	return tsa.TSA(cl.resolveVirtualStringParam(session.SPQR_TARGET_SESSION_ATTRS))
+	return tsa.TSA(cl.resolveVirtualStringParam(session.SPQR_TARGET_SESSION_ATTRS, cl.defaultTsa))
 }
 
 func (cl *PsqlClient) SetTsa(level string, s string) {
