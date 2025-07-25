@@ -39,7 +39,7 @@ type RelayStateMgr interface {
 
 	Reset() error
 
-	Parse(query string, doCaching bool) (parser.ParseState, string, error)
+	Parse(query string, doCaching bool) (lyx.Node, string, error)
 
 	CompleteRelay(replyCl bool) error
 	Close() error
@@ -894,10 +894,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 // TODO : unit tests
 func (rst *RelayStateImpl) Parse(query string, doCaching bool) (lyx.Node, string, error) {
 	if cache, ok := rst.parseCache[query]; ok {
+		rst.qp.SetStmt(cache.stmt)
 		return cache.stmt, cache.comm, nil
 	}
 
 	stmt, comm, err := rst.qp.Parse(query)
+	rst.qp.SetStmt(stmt)
 
 	switch stm := stmt.(type) {
 	case *lyx.Insert:
@@ -923,7 +925,6 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (lyx.Node, string
 		switch stmt.(type) {
 		case *lyx.Select, *lyx.Insert, *lyx.Update, *lyx.Delete:
 			rst.parseCache[query] = ParseCacheEntry{
-				ps:   stmt,
 				comm: comm,
 				stmt: stmt,
 			}

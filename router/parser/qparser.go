@@ -5,6 +5,15 @@ import (
 )
 
 type QParser struct {
+	stmt lyx.Node
+}
+
+func (qp *QParser) Stmt() lyx.Node {
+	return qp.stmt
+}
+
+func (qp *QParser) SetStmt(v lyx.Node) {
+	qp.stmt = v
 }
 
 // TODO : unit tests
