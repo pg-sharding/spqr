@@ -78,10 +78,12 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 
 	txbefore := rst.QueryExecutor().TxStatus()
 	if txbefore == txstatus.TXERR {
-		if txStmt, ok := stmt.(*lyx.TransactionStmt); !ok {
-			if txStmt.Kind == lyx.TRANS_STMT_ROLLBACK {
+		if txStmt, ok := stmt.(*lyx.TransactionStmt); ok {
+			if txStmt.Kind != lyx.TRANS_STMT_ROLLBACK {
 				return nil, rst.Client().ReplyErrWithTxStatus(errAbortedTx, txstatus.TXERR)
 			}
+		} else {
+			return nil, rst.Client().ReplyErrWithTxStatus(errAbortedTx, txstatus.TXERR)
 		}
 	}
 
