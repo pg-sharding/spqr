@@ -701,8 +701,11 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 					return err
 				}
 			}
-		// never resend these msgs
-		case *pgproto3.ParseComplete, *pgproto3.BindComplete, *pgproto3.CloseComplete:
+		// never expect these msgs
+		case *pgproto3.BindComplete:
+			// skip
+		case *pgproto3.ParseComplete, *pgproto3.CloseComplete:
+
 			return rerrors.ErrExecutorSyncLost
 		case *pgproto3.CommandComplete:
 
