@@ -103,7 +103,7 @@ func (rm *RoutingMetadataContext) RecordAuxExpr(name string, value string, v lyx
 	rm.AuxValues[k] = vals
 }
 
-func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col string, paramResCodes []int16) ([]interface{}, bool) {
+func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col string, paramResCodes []int16) ([]any, bool) {
 
 	bindParams := rm.SPH.BindParams()
 

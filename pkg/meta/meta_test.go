@@ -54,7 +54,7 @@ func TestNoManualCreateDefaultShardKeyRange(t *testing.T) {
 	statement := spqrparser.KeyRangeDefinition{
 		ShardID:      "sh1",
 		KeyRangeID:   "ds1.DEFAULT",
-		Distribution: "ds1",
+		Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 		LowerBound: &spqrparser.KeyRangeBound{
 			Pivots: [][]byte{
 				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0},

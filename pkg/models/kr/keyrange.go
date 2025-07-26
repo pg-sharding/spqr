@@ -355,7 +355,7 @@ func KeyRangeFromSQL(krsql *spqrparser.KeyRangeDefinition, colTypes []string) (*
 	kr := &KeyRange{
 		ShardID:      krsql.ShardID,
 		ID:           krsql.KeyRangeID,
-		Distribution: krsql.Distribution,
+		Distribution: krsql.Distribution.ID,
 
 		ColumnTypes: colTypes,
 
