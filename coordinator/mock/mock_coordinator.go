@@ -177,17 +177,17 @@ func (mr *MockCoordinatorMockRecorder) CreateDistribution(ctx, ds any) *gomock.C
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockCoordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+func (m *MockCoordinator) CreateKeyRange(ctx context.Context, arg1 *kr.KeyRange) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, kr)
+	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateKeyRange indicates an expected call of CreateKeyRange.
-func (mr *MockCoordinatorMockRecorder) CreateKeyRange(ctx, kr any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) CreateKeyRange(ctx, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockCoordinator)(nil).CreateKeyRange), ctx, kr)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockCoordinator)(nil).CreateKeyRange), ctx, arg1)
 }
 
 // CreateReferenceRelation mocks base method.
