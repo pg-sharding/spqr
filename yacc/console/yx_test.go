@@ -364,9 +364,11 @@ func TestKeyRange(t *testing.T) {
 			query: "CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
-					ShardID:      "sh1",
-					KeyRangeID:   "krid1",
-					Distribution: "ds1",
+					ShardID:    "sh1",
+					KeyRangeID: "krid1",
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
 							{2, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -380,9 +382,11 @@ func TestKeyRange(t *testing.T) {
 			query: "CREATE KEY RANGE krid1 FROM 1 ROUTE TO 'sh-1' FOR DISTRIBUTION ds1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
-					ShardID:      "sh-1",
-					KeyRangeID:   "krid1",
-					Distribution: "ds1",
+					ShardID:    "sh-1",
+					KeyRangeID: "krid1",
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
 							{2, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -396,9 +400,11 @@ func TestKeyRange(t *testing.T) {
 			query: "CREATE KEY RANGE krid1 FROM -10 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
-					ShardID:      "sh1",
-					KeyRangeID:   "krid1",
-					Distribution: "ds1",
+					ShardID:    "sh1",
+					KeyRangeID: "krid1",
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
 							{0x13, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -412,9 +418,11 @@ func TestKeyRange(t *testing.T) {
 			query: "CREATE KEY RANGE krid1 FROM -20 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
-					ShardID:      "sh1",
-					KeyRangeID:   "krid1",
-					Distribution: "ds1",
+					ShardID:    "sh1",
+					KeyRangeID: "krid1",
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
 							{0x27, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -428,9 +436,11 @@ func TestKeyRange(t *testing.T) {
 			query: "CREATE KEY RANGE krid2 FROM 4611686018427387904 ROUTE TO sh2 FOR DISTRIBUTION ds1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
-					ShardID:      "sh2",
-					KeyRangeID:   "krid2",
-					Distribution: "ds1",
+					ShardID:    "sh2",
+					KeyRangeID: "krid2",
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
 							{128, 128, 128, 128, 128, 128, 128, 128, 128, 1},
@@ -444,9 +454,11 @@ func TestKeyRange(t *testing.T) {
 			query: "CREATE KEY RANGE krid2 FROM '88888888-8888-8888-8888-888888888889' ROUTE TO sh2 FOR DISTRIBUTION ds1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
-					ShardID:      "sh2",
-					KeyRangeID:   "krid2",
-					Distribution: "ds1",
+					ShardID:    "sh2",
+					KeyRangeID: "krid2",
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
 							[]byte("88888888-8888-8888-8888-888888888889"),
@@ -463,9 +475,11 @@ func TestKeyRange(t *testing.T) {
 
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
-					ShardID:      "sh1",
-					KeyRangeID:   "krid1",
-					Distribution: "ds1",
+					ShardID:    "sh1",
+					KeyRangeID: "krid1",
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
 							{0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -557,9 +571,11 @@ func TestKeyRangeBordersSuccess(t *testing.T) {
 			query: "CREATE KEY RANGE krid1 FROM 9223372036854775807 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
-					ShardID:      "sh1",
-					KeyRangeID:   "krid1",
-					Distribution: "ds1",
+					ShardID:    "sh1",
+					KeyRangeID: "krid1",
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
 							{254, 255, 255, 255, 255, 255, 255, 255, 255, 1},
@@ -573,9 +589,11 @@ func TestKeyRangeBordersSuccess(t *testing.T) {
 			query: "CREATE KEY RANGE krid1 FROM -9223372036854775808 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
-					ShardID:      "sh1",
-					KeyRangeID:   "krid1",
-					Distribution: "ds1",
+					ShardID:    "sh1",
+					KeyRangeID: "krid1",
+					Distribution: &spqrparser.DistributionSelector{
+						ID: "ds1",
+					},
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
 							{255, 255, 255, 255, 255, 255, 255, 255, 255, 1},
@@ -638,43 +656,6 @@ func TestKeyRangeBordersFail(t *testing.T) {
 		} else {
 			assert.Error(err, "query %s", tt.query)
 		}
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
-	}
-}
-
-func TestShardingRule(t *testing.T) {
-
-	assert := assert.New(t)
-
-	type tcase struct {
-		query string
-		exp   spqrparser.Statement
-		err   error
-	}
-
-	for _, tt := range []tcase{
-		{
-			query: "CREATE SHARDING RULE rule1 COLUMNS id FOR DISTRIBUTION ds1;",
-			exp: &spqrparser.Create{
-				Element: &spqrparser.ShardingRuleDefinition{
-					ID:           "rule1",
-					TableName:    "",
-					Distribution: "ds1",
-					Entries: []spqrparser.ShardingRuleEntry{
-						{
-							Column: "id",
-						},
-					},
-				},
-			},
-			err: nil,
-		},
-	} {
-
-		tmp, err := spqrparser.Parse(tt.query)
-
-		assert.NoError(err, "query %s", tt.query)
 
 		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
@@ -776,6 +757,51 @@ func TestAlter(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		{
+			query: "CREATE RELATION t (id) IN ds1;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name: "t",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										Column: "id",
+									},
+								},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: "CREATE RELATION t (id);",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name: "t",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										Column: "id",
+									},
+								},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "default"},
+					},
+				},
+			},
+			err: nil,
+		},
+
 		{
 			query: "CREATE DISTRIBUTED RELATION t (id) IN ds1;",
 			exp: &spqrparser.Alter{

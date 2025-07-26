@@ -221,6 +221,7 @@ func randomHex(n int) (string, error) {
 %type<uinteger> opt_auto_increment_start_clause
 %type<shruleEntry> sharding_rule_entry
 %type<str> opt_schema_name
+%type<distribution_selector> opt_distribution_selector
 
 %type<distrKeyEntry> distribution_key_entry
 %type<aiEntry> auto_increment_entry
@@ -229,7 +230,6 @@ func randomHex(n int) (string, error) {
 %type<str> sharding_rule_column_clause
 %type<str> opt_hash_function_clause
 %type<str> hash_function_name
-%type<str> distribution_membership
 
 %type<alter> alter_stmt create_distributed_relation_stmt
 %type<alter_distribution> distribution_alter_stmt
@@ -831,13 +831,23 @@ create_stmt:
 		}
 	}
 
+opt_distribution_selector:
+	FOR DISTRIBUTION any_id {
+		$$ = &DistributionSelector{ID: $3}
+	} |
+	IN any_id {
+		$$ = &DistributionSelector{ID: $2}
+	} |  /* empty means default */ {
+		$$ = &DistributionSelector{ID: "default"}
+	}
+
 create_distributed_relation_stmt:
-	CREATE opt_distributed distributed_relation_def IN any_id
+	CREATE opt_distributed distributed_relation_def opt_distribution_selector
 	{
 		$$ = &Alter{
 			Element: &AlterDistribution{
 				Element: &AttachRelation{
-					Distribution: 	&DistributionSelector{ID: $5},
+					Distribution: 	$4,
 					Relations:      []*DistributedRelation{$3},
 				},
 			},
@@ -931,18 +941,12 @@ opt_default_shard:
 	}
 
 sharding_rule_define_stmt:
-	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list distribution_membership
+	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list opt_distribution_selector
 	{
-		$$ = &ShardingRuleDefinition{ID: $3, TableName: $4, Entries: $5, Distribution: $6}
 	}
 	|
-	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list distribution_membership
+	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list opt_distribution_selector
 	{
-		str, err := randomHex(6)
-		if err != nil {
-			panic(err)
-		}
-		$$ = &ShardingRuleDefinition{ID:  "shrule"+str, TableName: $3, Entries: $4, Distribution: $5}
 	}
 
 sharding_rule_argument_list: sharding_rule_entry
@@ -1001,13 +1005,6 @@ opt_hash_function_clause:
 		$$ = ""
 	}
 
-distribution_membership:
-    FOR DISTRIBUTION any_id{
-        $$ = $3
-    } | /* empty */ {
-  		$$ = "default"
-	}
-
 key_range_bound_elem:
 	SCONST
 	{
@@ -1052,7 +1049,7 @@ key_range_bound:
 
 
 key_range_define_stmt:
-	KEY RANGE any_id FROM key_range_bound ROUTE TO shard_id distribution_membership
+	KEY RANGE any_id FROM key_range_bound ROUTE TO shard_id opt_distribution_selector
 	{
 		$$ = &KeyRangeDefinition{
 			KeyRangeID: $3,
@@ -1061,7 +1058,7 @@ key_range_define_stmt:
 			Distribution: $9,
 		}
 	}
-	| KEY RANGE FROM key_range_bound ROUTE TO any_id distribution_membership
+	| KEY RANGE FROM key_range_bound ROUTE TO any_id opt_distribution_selector
 	{
 		str, err := randomHex(6)
 		if err != nil {

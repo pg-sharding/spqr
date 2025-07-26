@@ -142,7 +142,7 @@ type KeyRangeDefinition struct {
 	LowerBound   *KeyRangeBound
 	ShardID      string
 	KeyRangeID   string
-	Distribution string
+	Distribution *DistributionSelector
 }
 
 type ShardDefinition struct {

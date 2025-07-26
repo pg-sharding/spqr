@@ -340,7 +340,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	case *spqrparser.ShardingRuleDefinition:
 		return cli.ReportError(spqrerror.ShardingRulesRemoved)
 	case *spqrparser.KeyRangeDefinition:
-		if stmt.Distribution == "default" {
+		if stmt.Distribution.ID == "default" {
 			list, err := mngr.ListDistributions(ctx)
 			if err != nil {
 				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "error while selecting list of distributions")
@@ -351,9 +351,9 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			if len(list) > 1 {
 				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "distributions count not equal one, use FOR DISTRIBUTION syntax")
 			}
-			stmt.Distribution = list[0].Id
+			stmt.Distribution.ID = list[0].Id
 		}
-		ds, err := mngr.GetDistribution(ctx, stmt.Distribution)
+		ds, err := mngr.GetDistribution(ctx, stmt.Distribution.ID)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 			return cli.ReportError(err)
@@ -423,8 +423,21 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		rels := []*distributions.DistributedRelation{}
 
 		for _, drel := range stmt.Relations {
-
 			rels = append(rels, distributions.DistributedRelationFromSQL(drel))
+		}
+
+		if stmt.Distribution.ID == "default" {
+			list, err := mngr.ListDistributions(ctx)
+			if err != nil {
+				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "error while selecting list of distributions")
+			}
+			if len(list) == 0 {
+				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "you don't have any distributions")
+			}
+			if len(list) > 1 {
+				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "distributions count not equal one, use FOR DISTRIBUTION syntax")
+			}
+			stmt.Distribution.ID = list[0].Id
 		}
 
 		selectedDistribId := stmt.Distribution.ID
