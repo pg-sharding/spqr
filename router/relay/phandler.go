@@ -26,8 +26,8 @@ type QueryStateExecutor interface {
 
 	Client() client.RouterClient
 
-	Deploy(server server.Server) error
-	DeployTx(server server.Server, query string) error
+	DeploySliceTransactionBlock(server server.Server) error
+	DeploySliceTransactionQuery(server server.Server, query string) error
 
 	ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error
 	ExecCommit(rst RelayStateMgr, query string) error
@@ -38,7 +38,7 @@ type QueryStateExecutor interface {
 	ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error)
 	ProcCopyComplete(query pgproto3.FrontendMessage) (txstatus.TXStatus, error)
 
-	ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error)
+	ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error
 
 	ExecSet(rst RelayStateMgr, query, name, value string) error
 	ExecSetLocal(rst RelayStateMgr, query, name, value string) error

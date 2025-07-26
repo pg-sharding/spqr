@@ -266,7 +266,7 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 	}
 
 	/* if transaction is explicitly requested, deploy */
-	if err := rst.QueryExecutor().Deploy(rst.Client().Server()); err != nil {
+	if err := rst.QueryExecutor().DeploySliceTransactionBlock(rst.Client().Server()); err != nil {
 		return err
 	}
 
@@ -277,11 +277,10 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 			Uint("client", rst.Client().ID()).
 			Str("query", query.String).
 			Msg("setting params for client")
-		_, err := rst.qse.ProcQuery(&QueryDesc{
+		return rst.qse.ExecuteSlice(&QueryDesc{
 			Msg: query,
 			P:   nil,
-		}, rst.Qr.Mgr(), true, false)
-		return err
+		}, rst.Qr.Mgr(), false)
 	}
 
 	return nil
@@ -332,7 +331,7 @@ func (rst *RelayStateImpl) expandRoutes(routes []kr.ShardKey) error {
 	// 		Uint("client", rst.Client().ID()).
 	// 		Str("query", query.String).
 	// 		Msg("setting params for client")
-	// 	_, err := rst.qse.ProcQuery(query, rst.qp.Stmt(), rst.Qr.Mgr(), true, false)
+	// 	_, err := rst.qse.ExecuteSlice(query, rst.qp.Stmt(), rst.Qr.Mgr(), true, false)
 	// 	return err
 	// }
 
@@ -1122,11 +1121,9 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 	}
 	rst.routingDecisionPlan = queryPlan
 
-	_, err = rst.qse.ProcQuery(
+	return rst.qse.ExecuteSlice(
 		&QueryDesc{
 			Msg: q,
 			P:   rst.routingDecisionPlan, /*  ugh... fix this someday */
-		}, rst.Qr.Mgr(), true, replyCl)
-
-	return err
+		}, rst.Qr.Mgr(), replyCl)
 }
