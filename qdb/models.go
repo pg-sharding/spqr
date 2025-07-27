@@ -1,6 +1,9 @@
 package qdb
 
 import (
+	"fmt"
+	"math"
+
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
@@ -159,4 +162,30 @@ type BalancerTask struct {
 type Sequence struct {
 	RelName string `json:"rel_name"`
 	ColName string `json:"col_name"`
+}
+
+type SequenceIdRange struct {
+	Left  int64
+	Right int64
+}
+
+func NewSequenceIdRange(left int64, right int64) (*SequenceIdRange, error) {
+	if left <= right {
+		return &SequenceIdRange{Left: left, Right: right}, nil
+	}
+	return nil, fmt.Errorf("invalid id range: start=%d > end=%d", left, right)
+}
+
+func NewRangeBySize(currentRight int64, rangeSize uint64) (*SequenceIdRange, error) {
+	if rangeSize >= math.MaxInt64 {
+		return nil, fmt.Errorf("invalid (case 0) id-range request: current=%d, request for=%d", currentRight, rangeSize)
+	}
+	if rangeSize < 1 {
+		return nil, fmt.Errorf("invalid (case 1) id-range request: current=%d, request for=%d", currentRight, rangeSize)
+	}
+	newRight := currentRight + int64(rangeSize) - 1
+	if currentRight > newRight {
+		return nil, fmt.Errorf("invalid (case 2) id-range request: current=%d, request for=%d", currentRight, rangeSize)
+	}
+	return NewSequenceIdRange(currentRight, newRight)
 }

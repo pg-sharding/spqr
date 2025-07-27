@@ -116,7 +116,7 @@ type QDB interface {
 	ListSequences(ctx context.Context) ([]string, error)
 	AlterSequenceAttach(ctx context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error
 	GetRelationSequence(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error)
-	NextVal(ctx context.Context, seqName string) (int64, error)
+	NextRange(ctx context.Context, seqName string, rangeSize uint64) (*SequenceIdRange, error)
 	CurrVal(ctx context.Context, seqName string) (int64, error)
 	DropSequence(ctx context.Context, seqName string, force bool) error
 }

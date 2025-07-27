@@ -335,7 +335,11 @@ func (lc *LocalInstanceMetadataMgr) NextVal(ctx context.Context, seqName string)
 		return -1, err
 	}
 	if coordAddr == "" {
-		return lc.Coordinator.QDB().NextVal(ctx, seqName)
+		if idRange, err := lc.Coordinator.QDB().NextRange(ctx, seqName, 1); err != nil {
+			return -1, err
+		} else {
+			return idRange.Right, nil
+		}
 	}
 	conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all
 	if err != nil {

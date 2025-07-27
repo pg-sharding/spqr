@@ -272,7 +272,7 @@ func TestMemQDB_NextVal(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < increments; j++ {
-				_, err := memqdb.NextVal(ctx, "seq")
+				_, err := memqdb.NextRange(ctx, "seq", 1)
 				assert.NoError(err)
 			}
 		}()
@@ -282,7 +282,7 @@ func TestMemQDB_NextVal(t *testing.T) {
 
 	// Verify final value
 	expectedValue := int64(goroutines*increments + 1)
-	val, err := memqdb.NextVal(ctx, "seq")
+	idRange, err := memqdb.NextRange(ctx, "seq", 1)
 	assert.NoError(err)
-	assert.Equal(expectedValue, val)
+	assert.Equal(expectedValue, idRange.Right)
 }
