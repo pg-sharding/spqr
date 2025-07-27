@@ -1820,6 +1820,21 @@ func TestRouteWithRules_Select(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query:        "select * from documents where id in (select 2);",
+			distribution: distribution.ID,
+			exp: &plan.ScatterPlan{
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
+		},
+		{
 			query:        "SELECT * FROM pg_class a JOIN users b ON true WHERE b.id = '00000000-0000-1111-0000-000000000000';",
 			distribution: distribution.ID,
 			exp: &plan.ShardDispatchPlan{
