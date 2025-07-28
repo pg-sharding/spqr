@@ -6,7 +6,6 @@ package mock_meta
 
 import (
 	context "context"
-	gomock "go.uber.org/mock/gomock"
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	rrelation "github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -15,6 +14,7 @@ import (
 	qdb "github.com/pg-sharding/spqr/qdb"
 	cache "github.com/pg-sharding/spqr/router/cache"
 	rfqn "github.com/pg-sharding/spqr/router/rfqn"
+	gomock "go.uber.org/mock/gomock"
 	reflect "reflect"
 )
 

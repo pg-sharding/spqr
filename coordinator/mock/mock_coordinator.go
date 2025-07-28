@@ -6,7 +6,6 @@ package mock
 
 import (
 	context "context"
-	gomock "go.uber.org/mock/gomock"
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	rrelation "github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -16,6 +15,7 @@ import (
 	cache "github.com/pg-sharding/spqr/router/cache"
 	port "github.com/pg-sharding/spqr/router/port"
 	rfqn "github.com/pg-sharding/spqr/router/rfqn"
+	gomock "go.uber.org/mock/gomock"
 	net "net"
 	reflect "reflect"
 )
