@@ -1930,7 +1930,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT spqr_is_ready();",
 			distribution: distribution.ID,
-			exp: plan.VirtualPlan{
+			exp: &plan.VirtualPlan{
 				VirtualRowCols: []pgproto3.FieldDescription{
 					{
 						Name:         []byte("spqr_is_ready"),

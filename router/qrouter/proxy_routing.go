@@ -856,7 +856,7 @@ func (qr *ProxyQrouter) planQueryV1(
 						}
 						continue
 					} else if e.Name == "spqr_is_ready" {
-						p = plan.Combine(p, plan.VirtualPlan{})
+						p = plan.Combine(p, &plan.VirtualPlan{})
 						virtualRowCols = append(virtualRowCols,
 							pgproto3.FieldDescription{
 								Name:                 []byte("spqr_is_ready"),
@@ -868,7 +868,7 @@ func (qr *ProxyQrouter) planQueryV1(
 								Format:               0,
 							})
 
-						if qr.mgr.IsReady() {
+						if qr.mgr.IsReady(ctx) {
 							virtualRowVals = append(virtualRowVals, []byte{byte('t')})
 						} else {
 							virtualRowVals = append(virtualRowVals, []byte{byte('f')})

@@ -950,3 +950,21 @@ func (lc *Coordinator) ListSequences(ctx context.Context) ([]string, error) {
 func (lc *Coordinator) ListRelationSequences(ctx context.Context, rel *rfqn.RelationFQN) (map[string]string, error) {
 	return lc.qdb.GetRelationSequence(ctx, rel)
 }
+
+// IsReady checks if the system is ready to handle requests
+// This implementation checks if we have shards and key ranges configured
+func (lc *Coordinator) IsReady(ctx context.Context) bool {
+	// Check if we have any shards configured
+	shards, err := lc.ListShards(ctx)
+	if err != nil || len(shards) == 0 {
+		return false
+	}
+
+	// Check if we have any key ranges configured
+	keyRanges, err := lc.ListAllKeyRanges(ctx)
+	if err != nil || len(keyRanges) == 0 {
+		return false
+	}
+
+	return true
+}

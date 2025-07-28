@@ -47,6 +47,9 @@ type EntityMgr interface {
 
 	QDB() qdb.QDB
 	Cache() *cache.SchemaCache
+
+	// IsReady checks if the system is ready to handle requests
+	IsReady(ctx context.Context) bool
 }
 
 var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
