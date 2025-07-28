@@ -216,6 +216,21 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query: "INSERT INTO distrr_mm_test VALUES (3), (34) /* __spqr__engine_v2: true */;",
+			exp:   nil,
+			err:   rerrors.ErrEngineFeatureUnsupported,
+		},
+		{
+			query: "INSERT INTO distrr_mm_test (id) VALUES (3) /* __spqr__engine_v2: true */;",
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: "read-write",
+			},
+			err: nil,
+		},
+		{
 			query: "UPDATE distrr_mm_test SET t = 'm' WHERE id IN (3, 34) /* __spqr__engine_v2: true */;",
 			exp: &plan.ScatterPlan{
 				SubPlan: &plan.ModifyTable{},
@@ -246,16 +261,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 			},
 			err: nil,
 		},
-		{
-			query: "INSERT INTO distrr_mm_test VALUES (3), (34) /* __spqr__engine_v2: true */;",
-			exp:   nil,
-			err:   rerrors.ErrEngineFeatureUnsupported,
-		},
-		{
-			query: "INSERT INTO distrr_mm_test VALUES (3) /* __spqr__engine_v2: true */;",
-			exp:   &plan.ShardDispatchPlan{},
-			err:   nil,
-		},
+
 		{
 			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: true */;",
 			exp:   nil,
@@ -353,7 +359,6 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `WITH data as (VALUES(1)) INSERT INTO test_ref_rel SELECT * FROM data;`,
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ModifyTable{},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",

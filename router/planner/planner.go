@@ -305,7 +305,6 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 }
 
 func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {
-
 	switch v := stmt.(type) {
 	/* TDB: comments? */
 
@@ -389,49 +388,62 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
 
-			if v.WithClause == nil {
+			qualName := &rfqn.RelationFQN{
+				RelationName: q.RelationName,
+				SchemaName:   q.SchemaName,
+			}
 
-				var routingList [][]lyx.Node
+			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
+				return nil, rerrors.ErrComplexQuery
+			} else if ds.Id == distributions.REPLICATED {
+				p, err := PlanRelationModifyWithSubquery(ctx, rm, q, v.SubSelect, false)
 
-				switch subS := v.SubSelect.(type) {
-				case *lyx.ValueClause:
-
-					routingList = subS.Values
-				case *lyx.Select:
-					routingList = [][]lyx.Node{subS.TargetList}
-				default:
-					return nil, rerrors.ErrComplexQuery
-				}
-
-				shs, err := PlanDistributedRelationInsert(ctx, routingList, rm, v)
 				if err != nil {
 					return nil, err
 				}
-				for _, sh := range shs {
-					if sh.Name != shs[0].Name {
-						/* TODO: support */
-						return nil, rerrors.ErrEngineFeatureUnsupported
-					}
-				}
-				var p plan.Plan = nil
-				if len(shs) > 0 {
-					p = plan.Combine(p, &plan.ShardDispatchPlan{
-						ExecTarget:         shs[0],
-						TargetSessionAttrs: config.TargetSessionAttrsRW,
-					})
-				}
-
 				if v.Returning != nil {
-					return &plan.DataRowFilter{
+					p = &plan.DataRowFilter{
 						SubPlan:     p,
 						FilterIndex: 0,
-					}, nil
+					}
 				}
-
 				return p, nil
 			}
 
-			return nil, rerrors.ErrComplexQuery
+			/* else distributed */
+
+			var routingList [][]lyx.Node
+
+			switch subS := v.SubSelect.(type) {
+			case *lyx.ValueClause:
+
+				routingList = subS.Values
+			case *lyx.Select:
+				routingList = [][]lyx.Node{subS.TargetList}
+			default:
+				return nil, rerrors.ErrComplexQuery
+			}
+
+			shs, err := PlanDistributedRelationInsert(ctx, routingList, rm, v)
+			if err != nil {
+				return nil, err
+			}
+			for _, sh := range shs {
+				if sh.Name != shs[0].Name {
+					/* TODO: support */
+					return nil, rerrors.ErrEngineFeatureUnsupported
+				}
+			}
+			var p plan.Plan = nil
+			if len(shs) > 0 {
+				p = plan.Combine(p, &plan.ShardDispatchPlan{
+					ExecTarget:         shs[0],
+					TargetSessionAttrs: config.TargetSessionAttrsRW,
+				})
+				return p, nil
+			}
+
+			return nil, rerrors.ErrEngineFeatureUnsupported
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
