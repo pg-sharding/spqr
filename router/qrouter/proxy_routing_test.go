@@ -1966,6 +1966,22 @@ func TestRouteWithRules_Select(t *testing.T) {
 			err: nil,
 		},
 		{
+			query:        "SELECT spqr_is_ready();",
+			distribution: distribution.ID,
+			exp: &plan.VirtualPlan{
+				VirtualRowCols: []pgproto3.FieldDescription{
+					{
+						Name:         []byte("spqr_is_ready"),
+						DataTypeOID:  catalog.ARRAYOID,
+						TypeModifier: -1,
+						DataTypeSize: 1,
+					},
+				},
+				VirtualRowVals: [][]byte{{byte('f')}},
+			},
+			err: nil,
+		},
+		{
 			query:        "SELECT set_config('log_statement_stats', 'off', false);",
 			distribution: distribution.ID,
 			exp:          &plan.RandomDispatchPlan{},

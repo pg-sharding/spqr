@@ -153,6 +153,26 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	return r, nil
 }
 
+func (r *InstanceImpl) watchRouterReadiness(ctx context.Context) {
+	spqrlog.Zero.Info().Msg("waiting for router to be ready")
+	for {
+		select {
+		case <-ctx.Done():
+			spqrlog.Zero.Info().Msg("context done, exiting readiness watch")
+			return
+		default:
+			ready := false
+			for _, check := range r.RuleRouter.InstanceHealthChecks() {
+				if check.CR.Alive {
+					ready = true
+				}
+			}
+			r.Qrouter.SetReady(ready)
+			time.Sleep(100 * time.Millisecond) // TODO tune this interval
+		}
+	}
+}
+
 func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, error) {
 	defer func() {
 		if err := netconn.Close(); err != nil {
@@ -233,6 +253,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 	}
 
 	go accept(listener, cChan)
+	go r.watchRouterReadiness(ctx)
 
 	if r.notifier != nil {
 		go func() {

@@ -29,6 +29,7 @@ type ProxyQrouter struct {
 	schemaCache *cache.SchemaCache
 
 	initialized *atomic.Bool
+	ready       *atomic.Bool
 	query       *string
 }
 
@@ -40,6 +41,14 @@ func (qr *ProxyQrouter) Initialized() bool {
 
 func (qr *ProxyQrouter) Initialize() bool {
 	return qr.initialized.Swap(true)
+}
+
+func (qr *ProxyQrouter) Ready() bool {
+	return qr.ready.Load()
+}
+
+func (qr *ProxyQrouter) SetReady(ready bool) {
+	qr.ready.Store(ready)
 }
 
 func (qr *ProxyQrouter) Mgr() meta.EntityMgr {
@@ -96,6 +105,7 @@ func NewProxyRouter(shardMapping map[string]*config.Shard, mgr meta.EntityMgr, q
 	proxy := &ProxyQrouter{
 		WorldShardCfgs: map[string]*config.Shard{},
 		initialized:    atomic.NewBool(false),
+		ready:          atomic.NewBool(false),
 		cfg:            qcfg,
 		mgr:            mgr,
 		schemaCache:    cache,
