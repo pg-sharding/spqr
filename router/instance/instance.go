@@ -161,7 +161,8 @@ func (r *InstanceImpl) watchRouterReadiness(ctx context.Context) {
 			spqrlog.Zero.Info().Msg("context done, exiting readiness watch")
 			return
 		default:
-			ready := false
+			healthChecks := r.RuleRouter.InstanceHealthChecks()
+			ready := len(healthChecks) == 0
 			for _, check := range r.RuleRouter.InstanceHealthChecks() {
 				if check.CR.Alive {
 					ready = true
