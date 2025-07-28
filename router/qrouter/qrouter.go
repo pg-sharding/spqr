@@ -19,8 +19,8 @@ type QueryRouter interface {
 	WorldShardsRoutes() []kr.ShardKey
 	DataShardsRoutes() []kr.ShardKey
 
-	Initialized() bool
-	Initialize() bool
+	IsOpened() bool
+	Open() bool
 
 	Mgr() meta.EntityMgr
 	SchemaCache() *cache.SchemaCache

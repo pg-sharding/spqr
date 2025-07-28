@@ -375,7 +375,7 @@ var runCmd = &cobra.Command{
 			}
 		} else {
 			/* TODO: maybe error-out? */
-			router.Initialize()
+			router.Open()
 		}
 
 		errCh := make(chan error)

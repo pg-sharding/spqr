@@ -28,8 +28,8 @@ import (
 type RouterInstance interface {
 	Addr() string
 	ID() string
-	Initialized() bool
-	Initialize() bool
+	IsOpened() bool
+	Open() bool
 
 	Console() console.Console
 }
@@ -61,12 +61,12 @@ func (r *InstanceImpl) Addr() string {
 	return r.addr
 }
 
-func (r *InstanceImpl) Initialized() bool {
-	return r.Qrouter.Initialized()
+func (r *InstanceImpl) IsOpened() bool {
+	return r.Qrouter.IsOpened()
 }
 
-func (r *InstanceImpl) Initialize() bool {
-	return r.Qrouter.Initialize()
+func (r *InstanceImpl) Open() bool {
+	return r.Qrouter.Open()
 }
 
 var _ RouterInstance = &InstanceImpl{}
@@ -248,7 +248,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 	for {
 		select {
 		case conn := <-cChan:
-			if !r.Initialized() {
+			if !r.IsOpened() {
 				/* do not accept client connections on un-initialized router */
 				_ = conn.Close()
 			} else {

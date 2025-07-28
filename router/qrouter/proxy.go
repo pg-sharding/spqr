@@ -34,11 +34,11 @@ type ProxyQrouter struct {
 
 var _ QueryRouter = &ProxyQrouter{}
 
-func (qr *ProxyQrouter) Initialized() bool {
+func (qr *ProxyQrouter) IsOpened() bool {
 	return qr.initialized.Load()
 }
 
-func (qr *ProxyQrouter) Initialize() bool {
+func (qr *ProxyQrouter) Open() bool {
 	return qr.initialized.Swap(true)
 }
 

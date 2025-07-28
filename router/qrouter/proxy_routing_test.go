@@ -1928,12 +1928,12 @@ func TestRouteWithRules_Select(t *testing.T) {
 			err: nil,
 		},
 		{
-			query:        "SELECT spqr_is_ready();",
+			query:        "SELECT spqr_is_opened();",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
 				VirtualRowCols: []pgproto3.FieldDescription{
 					{
-						Name:         []byte("spqr_is_ready"),
+						Name:         []byte("spqr_is_opened"),
 						DataTypeOID:  catalog.ARRAYOID,
 						TypeModifier: -1,
 						DataTypeSize: 1,

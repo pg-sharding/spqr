@@ -45,7 +45,7 @@ func (i *InitSQLMetadataBootstrapper) InitializeMetadata(ctx context.Context, r 
 			Msg("successfully init queries from file")
 	}
 
-	r.Initialize()
+	r.Open()
 
 	return nil
 }

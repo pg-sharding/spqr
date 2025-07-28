@@ -103,7 +103,7 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 		return err
 	}
 
-	r.Initialize()
+	r.Open()
 
 	return nil
 }
