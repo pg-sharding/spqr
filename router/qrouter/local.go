@@ -13,11 +13,25 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/plan"
+	"go.uber.org/atomic"
 )
 
 type LocalQrouter struct {
-	QueryRouter
-	ds *topology.DataShard
+	ds    *topology.DataShard
+	ready *atomic.Bool
+}
+
+func (qr *LocalQrouter) Ready() bool {
+	return qr.ready.Load()
+}
+
+func (qr *LocalQrouter) SetReady(ready bool) {
+	qr.ready.Store(ready)
+}
+
+// WorldShardsRoutes implements QueryRouter.
+func (l *LocalQrouter) WorldShardsRoutes() []kr.ShardKey {
+	return []kr.ShardKey{}
 }
 
 var _ QueryRouter = &LocalQrouter{}
