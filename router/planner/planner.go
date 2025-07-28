@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -77,7 +78,7 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 	}, nil
 }
 
-func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
+func PlanRelationModifyWithSubquery(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	q *lyx.RangeVar, subquery lyx.Node,
 	allowDistr bool) (plan.Plan, error) {
@@ -304,7 +305,6 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 }
 
 func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {
-
 	switch v := stmt.(type) {
 	/* TDB: comments? */
 
@@ -349,42 +349,78 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
 		return &plan.ScatterPlan{}, nil
-
 	case *lyx.CreateRole, *lyx.CreateDatabase:
 		/* XXX: should we forbid under separate setting?  */
 		return &plan.ScatterPlan{}, nil
 	case *lyx.Copy:
 		return &plan.CopyPlan{}, nil
 	case *lyx.ValueClause:
-		return &plan.ScatterPlan{}, nil
+		return nil, rerrors.ErrComplexQuery
 	case *lyx.Select:
-		/* Should be single-relation scan or values. Join to be supported */
-		if len(v.FromClause) == 0 {
-			return &plan.ScatterPlan{}, nil
-		}
-
-		if len(v.FromClause) > 1 {
-			return nil, rerrors.ErrComplexQuery
-		}
-
-		s := plan.Scan{}
-		switch q := v.FromClause[0].(type) {
-		case *lyx.RangeVar:
-			s.Relation = q
-		default:
-			return nil, rerrors.ErrComplexQuery
-		}
-
-		s.Projection = v.TargetList
-
-		/* Todo: support grouping columns */
-		return &plan.ScatterPlan{
-			SubPlan: s,
-		}, nil
+		return nil, rerrors.ErrComplexQuery
 	case *lyx.Insert:
+		if v.WithClause != nil {
+			return nil, rerrors.ErrComplexQuery
+		}
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, v.SubSelect, false)
+
+			qualName := &rfqn.RelationFQN{
+				RelationName: q.RelationName,
+				SchemaName:   q.SchemaName,
+			}
+
+			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
+				return nil, rerrors.ErrComplexQuery
+			} else if ds.Id == distributions.REPLICATED {
+				p, err := PlanRelationModifyWithSubquery(ctx, rm, q, v.SubSelect, false)
+
+				if err != nil {
+					return nil, err
+				}
+				if v.Returning != nil {
+					p = &plan.DataRowFilter{
+						SubPlan:     p,
+						FilterIndex: 0,
+					}
+				}
+				return p, nil
+			}
+
+			/* else distributed */
+
+			var routingList [][]lyx.Node
+
+			switch subS := v.SubSelect.(type) {
+			case *lyx.ValueClause:
+
+				routingList = subS.Values
+			case *lyx.Select:
+				routingList = [][]lyx.Node{subS.TargetList}
+			default:
+				return nil, rerrors.ErrComplexQuery
+			}
+
+			shs, err := PlanDistributedRelationInsert(ctx, routingList, rm, v)
+			if err != nil {
+				return nil, err
+			}
+			for _, sh := range shs {
+				if sh.Name != shs[0].Name {
+					/* TODO: support */
+					return nil, rerrors.ErrEngineFeatureUnsupported
+				}
+			}
+			var p plan.Plan = nil
+			if len(shs) > 0 {
+				p = plan.Combine(p, &plan.ShardDispatchPlan{
+					ExecTarget:         shs[0],
+					TargetSessionAttrs: config.TargetSessionAttrsRW,
+				})
+				return p, nil
+			}
+
+			return nil, rerrors.ErrEngineFeatureUnsupported
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -392,7 +428,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 	case *lyx.Update:
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true)
+			return PlanRelationModifyWithSubquery(ctx, rm, q, nil, true)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -400,7 +436,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 	case *lyx.Delete:
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true)
+			return PlanRelationModifyWithSubquery(ctx, rm, q, nil, true)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}

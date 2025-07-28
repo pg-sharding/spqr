@@ -1110,7 +1110,7 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 
 				&pgproto3.Parse{
 					Name:  "stmtcache_sr_2",
-					Query: "INSERT INTO t (id) VALUES($1);",
+					Query: "INSERT INTO t (id) VALUES ($1);",
 				},
 				&pgproto3.Describe{
 					Name:       "stmtcache_sr_2",

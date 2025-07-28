@@ -216,11 +216,25 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query: "INSERT INTO distrr_mm_test VALUES (3), (34) /* __spqr__engine_v2: true */;",
+			exp:   nil,
+			err:   rerrors.ErrEngineFeatureUnsupported,
+		},
+		{
+			query: "INSERT INTO distrr_mm_test (id) VALUES (3) /* __spqr__engine_v2: true */;",
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: "read-write",
+			},
+			err: nil,
+		},
+		{
 			query: "UPDATE distrr_mm_test SET t = 'm' WHERE id IN (3, 34) /* __spqr__engine_v2: true */;",
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ScatterPlan{
-					SubPlan: &plan.ModifyTable{},
-				},
+				SubPlan: &plan.ModifyTable{},
+
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -235,9 +249,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		{
 			query: "DELETE FROM distrr_mm_test WHERE id IN (3, 34) /* __spqr__engine_v2: true */;",
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ScatterPlan{
-					SubPlan: &plan.ModifyTable{},
-				},
+				SubPlan: &plan.ModifyTable{},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -249,15 +261,12 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 			},
 			err: nil,
 		},
-		{
-			query: "INSERT INTO distrr_mm_test VALUES (3), (34) /* __spqr__engine_v2: true */;",
-			exp:   nil,
-			err:   rerrors.ErrComplexQuery,
-		},
+
 		{
 			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: true */;",
 			exp:   nil,
-			err:   rerrors.ErrComplexQuery,
+			/* Batch insert TODO */
+			err: rerrors.ErrEngineFeatureUnsupported,
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
@@ -272,6 +281,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
 		} else {
+			assert.NotNil(tmp, tt.query)
 			tmp.SetStmt(nil) /* dont check stmt */
 
 			assert.NoError(err, "query %s", tt.query)
@@ -316,12 +326,25 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
+			query: `INSERT /* __spqr__engine_v2: true */ INTO test_ref_rel VALUES(1) returning *;`,
 			exp: &plan.DataRowFilter{
 				SubPlan: &plan.ScatterPlan{
-					SubPlan: &plan.ScatterPlan{
-						SubPlan: &plan.ModifyTable{},
+					ExecTargets: []kr.ShardKey{
+						{
+							Name: "sh1",
+						},
+						{
+							Name: "sh2",
+						},
 					},
+				},
+			},
+		},
+
+		{
+			query: `INSERT /* __spqr__engine_v2: false */ INTO test_ref_rel VALUES(1) returning *;`,
+			exp: &plan.DataRowFilter{
+				SubPlan: &plan.ScatterPlan{
 					ExecTargets: []kr.ShardKey{
 						{
 							Name: "sh1",
@@ -336,9 +359,6 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ScatterPlan{
-					SubPlan: &plan.ModifyTable{},
-				},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -353,9 +373,6 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `WITH data as (VALUES(1)) INSERT INTO test_ref_rel SELECT * FROM data;`,
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ScatterPlan{
-					SubPlan: &plan.ModifyTable{},
-				},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -369,9 +386,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `UPDATE test_ref_rel SET i = i + 1 ;`,
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ScatterPlan{
-					SubPlan: &plan.ModifyTable{},
-				},
+				SubPlan: &plan.ModifyTable{},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -385,9 +400,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `DELETE FROM test_ref_rel WHERE i = 2;`,
 			exp: &plan.ScatterPlan{
-				SubPlan: &plan.ScatterPlan{
-					SubPlan: &plan.ModifyTable{},
-				},
+				SubPlan: &plan.ModifyTable{},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -1228,6 +1241,23 @@ func TestInsertOffsets(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		{
+			query: "with zz as (select 1) Insert into xx (i, j, k) values (1, 12, 13), (2, 3, 4)",
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+			err: nil,
+		},
+
+		{
+			query: "with zz as (select * from xx where i = 202) Insert into xx (i, j, k) values (1, 12, 13), (2, 3, 4)",
+			exp:   nil,
+			err:   rerrors.ErrComplexQuery,
+		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 
@@ -1237,9 +1267,13 @@ func TestInsertOffsets(t *testing.T) {
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
 
-		assert.NoError(err, "query %s", tt.query)
+		if tt.err != nil {
+			assert.Equal(tt.err, err, tt.query)
+		} else {
+			assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, tt.query)
+			assert.Equal(tt.exp, tmp, tt.query)
+		}
 	}
 }
 

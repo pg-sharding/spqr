@@ -1725,19 +1725,11 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 		}
 
 		if sph.EnhancedMultiShardProcessing() {
-			var err error
-			if v.SubPlan == nil {
-				v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, stmt)
-				if err != nil {
-					return nil, err
-				}
-			}
 			if v.ExecTargets == nil {
 				v.ExecTargets = qr.DataShardsRoutes()
 			}
 			return v, nil
 		}
-
 		/*
 		* Here we have a chance for advanced multi-shard query processing.
 		* Try to build distributed plan, else scatter-out.
@@ -1784,8 +1776,22 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph sessio
 			}, nil
 		}
 	}
-
 	meta := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
+
+	if sph.EnhancedMultiShardProcessing() {
+		p, err := planner.PlanDistributedQuery(ctx, meta, stmt)
+		switch err {
+		case nil:
+			np, err := qr.InitExecutionTargets(ctx, meta, stmt, p, false /* TODO: fix this */, sph)
+			if err == nil {
+				np.SetStmt(stmt)
+			}
+			return np, err
+		case rerrors.ErrEngineFeatureUnsupported:
+			return nil, err
+		}
+	}
+
 	p, ro, err := qr.RouteWithRules(ctx, meta, stmt, sph.GetTsa())
 	if err != nil {
 		return nil, err
