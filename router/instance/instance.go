@@ -229,6 +229,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 
 	go accept(listener, cChan)
 
+
 	if r.notifier != nil {
 		go func() {
 			for {
@@ -267,6 +268,41 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 			_ = listener.Close()
 			spqrlog.Zero.Info().Msg("psql server done")
 			return nil
+		}
+	}
+}
+
+func (r *InstanceImpl) watchShouldCloseOpenRouter() {
+	for {
+		select {
+		case <-r.stchan:
+			spqrlog.Zero.Info().Msg("shutting down router")
+			if r.notifier != nil {
+				_ = r.notifier.Close()
+			}
+			return
+		case <-time.After(time.Second):
+			anyAlive := false
+			for _, cl := range r.RuleRouter.InstanceHealthChecks() {
+				if cl.IsAlive() {
+					anyAlive = true
+					break
+				}
+			}
+
+			if anyAlive {
+				r.Qrouter.Open()
+			} else {
+				if r.Qrouter.IsOpened() {
+
+			if !anyAlive {
+
+
+
+			if !r.Qrouter.IsOpened() {
+				spqrlog.Zero.Info().Msg("router is closed, stopping watch")
+				return
+			}
 		}
 	}
 }
