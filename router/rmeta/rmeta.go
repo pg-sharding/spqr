@@ -370,10 +370,14 @@ func (rm *RoutingMetadataContext) GetDistributionKeyOffsetType(resolvedRelation 
 	return -1, ""
 }
 
-func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation *rfqn.RelationFQN, tp string, colname string, expr lyx.Node) error {
+type ParamRef struct {
+	Indx int
+}
+
+func ParseExprValue(resolvedRelation *rfqn.RelationFQN, tp string, expr lyx.Node) (any, error) {
 	switch right := expr.(type) {
 	case *lyx.ParamRef:
-		return rm.RecordParamRefExpr(resolvedRelation, colname, right.Number-1)
+		return ParamRef{Indx: right.Number - 1}, nil
 	case *lyx.AExprSConst:
 		switch tp {
 		case qdb.ColumnTypeUUID:
@@ -383,40 +387,55 @@ func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation *rfqn.Relat
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
-			return rm.RecordConstExpr(resolvedRelation, colname, right.Value)
+			return right.Value, nil
 		case qdb.ColumnTypeInteger:
 			num, err := strconv.ParseInt(right.Value, 10, 64)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			return rm.RecordConstExpr(resolvedRelation, colname, num)
+			return num, nil
 		case qdb.ColumnTypeUinteger:
 			num, err := strconv.ParseUint(right.Value, 10, 64)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			return rm.RecordConstExpr(resolvedRelation, colname, num)
+			return num, nil
 		default:
-			return fmt.Errorf("incorrect key-offset type for AExprSConst expression: %s", tp)
+			return nil, fmt.Errorf("incorrect key-offset type for AExprSConst expression: %s", tp)
 		}
 	case *lyx.AExprIConst:
 		switch tp {
 		case qdb.ColumnTypeUUID:
-			return fmt.Errorf("uuid type is not supported for AExprIConst expression")
+			return nil, fmt.Errorf("uuid type is not supported for AExprIConst expression")
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
-			return fmt.Errorf("varchar type is not supported for AExprIConst expression")
+			return nil, fmt.Errorf("varchar type is not supported for AExprIConst expression")
 		case qdb.ColumnTypeInteger:
-			return rm.RecordConstExpr(resolvedRelation, colname, int64(right.Value))
+			return int64(right.Value), nil
 		case qdb.ColumnTypeUinteger:
-			return rm.RecordConstExpr(resolvedRelation, colname, uint64(right.Value))
+			return uint64(right.Value), nil
 		default:
-			return fmt.Errorf("incorrect key-offset type for AExprIConst expression: %s", tp)
+			return nil, fmt.Errorf("incorrect key-offset type for AExprIConst expression: %s", tp)
 		}
 	default:
-		return fmt.Errorf("expression is not const")
+		return nil, fmt.Errorf("expression is not const")
+	}
+}
+
+func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation *rfqn.RelationFQN, tp string, colname string, expr lyx.Node) error {
+
+	v, err := ParseExprValue(resolvedRelation, tp, expr)
+	if err != nil {
+		return err
+	}
+
+	switch q := v.(type) {
+	case ParamRef:
+		return rm.RecordParamRefExpr(resolvedRelation, colname, q.Indx)
+	default:
+		return rm.RecordConstExpr(resolvedRelation, colname, q)
 	}
 }
