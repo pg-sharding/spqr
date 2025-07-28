@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/router/cache"
+	"github.com/pg-sharding/spqr/router/planner"
 	"go.uber.org/atomic"
 )
 
@@ -25,8 +26,9 @@ type ProxyQrouter struct {
 
 	cfg *config.QRouter
 
-	mgr         meta.EntityMgr
-	schemaCache *cache.SchemaCache
+	mgr          meta.EntityMgr
+	schemaCache  *cache.SchemaCache
+	idRangeCache planner.IdentityRouterCache
 
 	initialized *atomic.Bool
 	query       *string
@@ -92,13 +94,19 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []kr.ShardKey {
 	return ret
 }
 
-func NewProxyRouter(shardMapping map[string]*config.Shard, mgr meta.EntityMgr, qcfg *config.QRouter, cache *cache.SchemaCache) (*ProxyQrouter, error) {
+func NewProxyRouter(shardMapping map[string]*config.Shard,
+	mgr meta.EntityMgr,
+	qcfg *config.QRouter,
+	cache *cache.SchemaCache,
+	idRangeCache planner.IdentityRouterCache,
+) (*ProxyQrouter, error) {
 	proxy := &ProxyQrouter{
 		WorldShardCfgs: map[string]*config.Shard{},
 		initialized:    atomic.NewBool(false),
 		cfg:            qcfg,
 		mgr:            mgr,
 		schemaCache:    cache,
+		idRangeCache:   idRangeCache,
 	}
 
 	ctx := context.TODO()

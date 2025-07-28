@@ -1054,15 +1054,16 @@ func (a *Adapter) DropSequence(ctx context.Context, seqName string, force bool) 
 	return err
 }
 
-func (a *Adapter) NextVal(ctx context.Context, seqName string) (int64, error) {
+func (a *Adapter) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
-	resp, err := c.NextVal(ctx, &proto.NextValRequest{
+	_, err := c.NextRange(ctx, &proto.NextRangeRequest{
 		Seq: seqName,
+		RangeSize: int64(rangeSize),
 	})
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
-	return resp.Value, err
+	return /*resp.Value*/ nil, err
 }
 
 func (a *Adapter) CurrVal(ctx context.Context, seqName string) (int64, error) {

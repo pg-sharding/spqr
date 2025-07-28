@@ -70,12 +70,14 @@ message GetRelationDistributionReply {
   Distribution distribution = 1;
 }
 
-message NextValRequest {
+message NextRangeRequest {
   string seq = 1;
+  int64 rangeSize = 2;
 }
 
-message NextValReply {
-  int64 value = 1;
+message NextRangeReply {
+  int64 left = 1;
+  int64 right = 2;
 }
 
 message CurrValRequest {
@@ -117,7 +119,7 @@ service DistributionService {
 
   rpc GetRelationDistribution(GetRelationDistributionRequest) returns (GetRelationDistributionReply) {}
 
-  rpc NextVal(NextValRequest) returns (NextValReply) {}
+  rpc NextRange(NextRangeRequest) returns (NextRangeReply) {}
   rpc CurrVal(CurrValRequest) returns (CurrValReply) {}
 
   rpc ListSequences(google.protobuf.Empty) returns (ListSequencesReply) {}

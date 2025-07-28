@@ -28,7 +28,7 @@ const (
 	DistributionService_AlterDistributedRelation_FullMethodName = "/spqr.DistributionService/AlterDistributedRelation"
 	DistributionService_GetDistribution_FullMethodName          = "/spqr.DistributionService/GetDistribution"
 	DistributionService_GetRelationDistribution_FullMethodName  = "/spqr.DistributionService/GetRelationDistribution"
-	DistributionService_NextVal_FullMethodName                  = "/spqr.DistributionService/NextVal"
+	DistributionService_NextRange_FullMethodName                = "/spqr.DistributionService/NextRange"
 	DistributionService_CurrVal_FullMethodName                  = "/spqr.DistributionService/CurrVal"
 	DistributionService_ListSequences_FullMethodName            = "/spqr.DistributionService/ListSequences"
 	DistributionService_ListRelationSequences_FullMethodName    = "/spqr.DistributionService/ListRelationSequences"
@@ -47,7 +47,7 @@ type DistributionServiceClient interface {
 	AlterDistributedRelation(ctx context.Context, in *AlterDistributedRelationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetDistribution(ctx context.Context, in *GetDistributionRequest, opts ...grpc.CallOption) (*GetDistributionReply, error)
 	GetRelationDistribution(ctx context.Context, in *GetRelationDistributionRequest, opts ...grpc.CallOption) (*GetRelationDistributionReply, error)
-	NextVal(ctx context.Context, in *NextValRequest, opts ...grpc.CallOption) (*NextValReply, error)
+	NextRange(ctx context.Context, in *NextRangeRequest, opts ...grpc.CallOption) (*NextRangeReply, error)
 	CurrVal(ctx context.Context, in *CurrValRequest, opts ...grpc.CallOption) (*CurrValReply, error)
 	ListSequences(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListSequencesReply, error)
 	ListRelationSequences(ctx context.Context, in *ListRelationSequencesRequest, opts ...grpc.CallOption) (*ListRelationSequencesReply, error)
@@ -134,9 +134,9 @@ func (c *distributionServiceClient) GetRelationDistribution(ctx context.Context,
 	return out, nil
 }
 
-func (c *distributionServiceClient) NextVal(ctx context.Context, in *NextValRequest, opts ...grpc.CallOption) (*NextValReply, error) {
-	out := new(NextValReply)
-	err := c.cc.Invoke(ctx, DistributionService_NextVal_FullMethodName, in, out, opts...)
+func (c *distributionServiceClient) NextRange(ctx context.Context, in *NextRangeRequest, opts ...grpc.CallOption) (*NextRangeReply, error) {
+	out := new(NextRangeReply)
+	err := c.cc.Invoke(ctx, DistributionService_NextRange_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ type DistributionServiceServer interface {
 	AlterDistributedRelation(context.Context, *AlterDistributedRelationRequest) (*emptypb.Empty, error)
 	GetDistribution(context.Context, *GetDistributionRequest) (*GetDistributionReply, error)
 	GetRelationDistribution(context.Context, *GetRelationDistributionRequest) (*GetRelationDistributionReply, error)
-	NextVal(context.Context, *NextValRequest) (*NextValReply, error)
+	NextRange(context.Context, *NextRangeRequest) (*NextRangeReply, error)
 	CurrVal(context.Context, *CurrValRequest) (*CurrValReply, error)
 	ListSequences(context.Context, *emptypb.Empty) (*ListSequencesReply, error)
 	ListRelationSequences(context.Context, *ListRelationSequencesRequest) (*ListRelationSequencesReply, error)
@@ -227,8 +227,8 @@ func (UnimplementedDistributionServiceServer) GetDistribution(context.Context, *
 func (UnimplementedDistributionServiceServer) GetRelationDistribution(context.Context, *GetRelationDistributionRequest) (*GetRelationDistributionReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRelationDistribution not implemented")
 }
-func (UnimplementedDistributionServiceServer) NextVal(context.Context, *NextValRequest) (*NextValReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method NextVal not implemented")
+func (UnimplementedDistributionServiceServer) NextRange(context.Context, *NextRangeRequest) (*NextRangeReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NextRange not implemented")
 }
 func (UnimplementedDistributionServiceServer) CurrVal(context.Context, *CurrValRequest) (*CurrValReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CurrVal not implemented")
@@ -399,20 +399,20 @@ func _DistributionService_GetRelationDistribution_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DistributionService_NextVal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NextValRequest)
+func _DistributionService_NextRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NextRangeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DistributionServiceServer).NextVal(ctx, in)
+		return srv.(DistributionServiceServer).NextRange(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: DistributionService_NextVal_FullMethodName,
+		FullMethod: DistributionService_NextRange_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DistributionServiceServer).NextVal(ctx, req.(*NextValRequest))
+		return srv.(DistributionServiceServer).NextRange(ctx, req.(*NextRangeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -529,8 +529,8 @@ var DistributionService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _DistributionService_GetRelationDistribution_Handler,
 		},
 		{
-			MethodName: "NextVal",
-			Handler:    _DistributionService_NextVal_Handler,
+			MethodName: "NextRange",
+			Handler:    _DistributionService_NextRange_Handler,
 		},
 		{
 			MethodName: "CurrVal",

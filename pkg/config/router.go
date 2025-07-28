@@ -100,6 +100,7 @@ type Router struct {
 
 	UseSystemdNotifier   bool `json:"use_systemd_notifier" toml:"use_systemd_notifier" yaml:"use_systemd_notifier"`
 	SystemdNotifierDebug bool `json:"systemd_notifier_debug" toml:"systemd_notifier_debug" yaml:"systemd_notifier_debug"`
+	IdentityRangeSize    int  `json:"identity_range_size" toml:"identity_range_size" yaml:"identity_range_size"`
 }
 
 type QRouter struct {

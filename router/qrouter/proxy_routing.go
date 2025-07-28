@@ -1102,7 +1102,7 @@ func (qr *ProxyQrouter) planQueryV1(
 					return nil, err
 				} else if rs {
 					/* If reference relation, use planner v2 */
-					p, err := planner.PlanReferenceRelationInsertValues(ctx, qr.query, rm, stmt.Columns, rf, subS)
+					p, err := planner.PlanReferenceRelationInsertValues(ctx, qr.query, rm, stmt.Columns, rf, subS, qr.idRangeCache)
 					if err != nil {
 						return nil, err
 					}
