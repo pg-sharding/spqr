@@ -326,7 +326,24 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
+			query: `INSERT /* __spqr__engine_v2: true */ INTO test_ref_rel VALUES(1) returning *;`,
+			exp: &plan.DataRowFilter{
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{},
+					ExecTargets: []kr.ShardKey{
+						{
+							Name: "sh1",
+						},
+						{
+							Name: "sh2",
+						},
+					},
+				},
+			},
+		},
+
+		{
+			query: `INSERT /* __spqr__engine_v2: false */ INTO test_ref_rel VALUES(1) returning *;`,
 			exp: &plan.DataRowFilter{
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
