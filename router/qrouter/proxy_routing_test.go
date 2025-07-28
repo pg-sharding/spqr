@@ -1244,6 +1244,23 @@ func TestInsertOffsets(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		{
+			query: "with zz as (select 1) Insert into xx (i, j, k) values (1, 12, 13), (2, 3, 4)",
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+			err: nil,
+		},
+
+		{
+			query: "with zz as (select * from xx where i = 202) Insert into xx (i, j, k) values (1, 12, 13), (2, 3, 4)",
+			exp:   nil,
+			err:   rerrors.ErrComplexQuery,
+		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 
@@ -1253,9 +1270,13 @@ func TestInsertOffsets(t *testing.T) {
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
 
-		assert.NoError(err, "query %s", tt.query)
+		if tt.err != nil {
+			assert.Equal(tt.err, err, tt.query)
+		} else {
+			assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, tt.query)
+			assert.Equal(tt.exp, tmp, tt.query)
+		}
 	}
 }
 
