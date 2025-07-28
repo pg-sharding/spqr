@@ -77,7 +77,7 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 	}, nil
 }
 
-func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
+func PlanRelationModifyWithSubquery(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	q *lyx.RangeVar, subquery lyx.Node,
 	allowDistr bool) (plan.Plan, error) {
@@ -117,7 +117,7 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 				}
 			}
 		} else {
-			return nil, rerrors.ErrComplexQuery
+			return nil, rerrors.ErrEngineFeatureUnsupported
 		}
 	}
 
@@ -384,7 +384,19 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 	case *lyx.Insert:
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, v.SubSelect, false)
+			p, err := PlanRelationModifyWithSubquery(ctx, rm, q, v.SubSelect, false)
+			if err != nil {
+				return p, err
+			}
+
+			if v.Returning != nil {
+				return &plan.DataRowFilter{
+					SubPlan:     p,
+					FilterIndex: 0,
+				}, nil
+			}
+
+			return p, nil
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -392,7 +404,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 	case *lyx.Update:
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true)
+			return PlanRelationModifyWithSubquery(ctx, rm, q, nil, true)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -400,7 +412,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 	case *lyx.Delete:
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true)
+			return PlanRelationModifyWithSubquery(ctx, rm, q, nil, true)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
