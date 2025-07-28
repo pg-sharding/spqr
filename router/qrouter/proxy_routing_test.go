@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/plan"
+	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rmeta"
@@ -2223,7 +2224,7 @@ func TestCheckTableIsRoutable(t *testing.T) {
 		assert.NoError(err)
 		switch node := stmt.(type) {
 		case *lyx.CreateTable:
-			actualErr := router.CheckTableIsRoutable(ctx, node)
+			actualErr := planner.CheckTableIsRoutable(ctx, router.Mgr(), node)
 			if tt.err == nil {
 				assert.NoError(actualErr, "case #%d", nn)
 			} else {

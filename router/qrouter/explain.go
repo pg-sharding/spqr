@@ -5,6 +5,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/rmeta"
 
 	"github.com/pg-sharding/lyx/lyx"
@@ -26,7 +27,7 @@ func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *lyx.Explain, cli *cli
 		/*
 		* Disallow to create table which does not contain any sharding column
 		 */
-		if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
+		if err := planner.CheckTableIsRoutable(ctx, qr.Mgr(), node); err != nil {
 			return cli.ReportError(err)
 		}
 		return cli.ReportStmtRoutedToAllShards(ctx)

@@ -22,7 +22,8 @@ type ScatterPlan struct {
 	stmt lyx.Node
 
 	/* To decide if query is OK even in DRH = BLOCK */
-	IsDDL bool
+	IsDDL  bool
+	Forced bool
 	/* Empty means execute everywhere */
 	ExecTargets []kr.ShardKey
 }

@@ -6,8 +6,10 @@ import (
 	"math/rand"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
@@ -113,4 +115,63 @@ func SelectRandomDispatchPlan(routes []kr.ShardKey) (plan.Plan, error) {
 	return &plan.ShardDispatchPlan{
 		ExecTarget: r,
 	}, nil
+}
+
+// CheckTableIsRoutable Given table create statement, check if it is routable with some sharding rule
+// TODO : unit tests
+func CheckTableIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.CreateTable) error {
+	var err error
+	var ds *distributions.Distribution
+	var relname *rfqn.RelationFQN
+
+	if node.PartitionOf != nil {
+		switch q := node.PartitionOf.(type) {
+		case *lyx.RangeVar:
+			relname := rfqn.RelationFQNFromRangeRangeVar(q)
+			_, err = mgr.GetRelationDistribution(ctx, relname)
+			return err
+		default:
+			return fmt.Errorf("partition of is not a range var")
+		}
+	}
+
+	switch q := node.TableRv.(type) {
+	case *lyx.RangeVar:
+		relname = rfqn.RelationFQNFromRangeRangeVar(q)
+		ds, err = mgr.GetRelationDistribution(ctx, relname)
+		if err != nil {
+			return err
+		}
+		if ds.Id == distributions.REPLICATED {
+			return nil
+		}
+	default:
+		return fmt.Errorf("wrong type of table range var")
+	}
+
+	entries := make(map[string]struct{})
+	/* Collect sharding rule entries list from create statement */
+	for _, elt := range node.TableElts {
+		// hashing function name unneeded for sharding rules matching purpose
+		switch q := elt.(type) {
+		case *lyx.TableElt:
+			entries[q.ColName] = struct{}{}
+		}
+	}
+	rel, ok := ds.TryGetRelation(relname)
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" not present in distribution \"%s\" it's attached to", relname, ds.Id)
+	}
+	check := true
+	for _, entry := range rel.DistributionKey {
+		if _, ok = entries[entry.Column]; !ok {
+			check = false
+			break
+		}
+	}
+	if check {
+		return nil
+	}
+
+	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
 }

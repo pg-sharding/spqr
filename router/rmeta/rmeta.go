@@ -16,7 +16,6 @@ import (
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
-	"github.com/pg-sharding/spqr/router/routehint"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -263,9 +262,11 @@ func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context
 	return kr.ShardKey{}, fmt.Errorf("failed to match key with ranges")
 }
 
-func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (routehint.RouteHint, error) {
+func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Plan, error) {
 	if rm.SPH.ScatterQuery() {
-		return &routehint.ScatterRouteHint{}, nil
+		return &plan.ScatterPlan{
+			Forced: true,
+		}, nil
 	}
 	if val := rm.SPH.ShardingKey(); val != "" {
 		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
@@ -338,14 +339,12 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (routehi
 		if err != nil {
 			return nil, err
 		}
-		return &routehint.TargetRouteHint{
-			State: &plan.ShardDispatchPlan{
-				ExecTarget: ds,
-			},
+		return &plan.ShardDispatchPlan{
+			ExecTarget: ds,
 		}, nil
 	}
 
-	return &routehint.EmptyRouteHint{}, nil
+	return nil, nil
 }
 
 func (rm *RoutingMetadataContext) GetDistributionKeyOffsetType(resolvedRelation *rfqn.RelationFQN, colname string) (int, string) {
