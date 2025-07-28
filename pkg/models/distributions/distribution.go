@@ -11,9 +11,19 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
+type TypedColRef struct {
+	ColName string
+	ColType string
+}
+
+type RoutingExpr struct {
+	ColRefs []TypedColRef
+}
+
 type DistributionKeyEntry struct {
 	Column       string
 	HashFunction string
+	Expr         RoutingExpr
 }
 
 type DistributedRelation struct {

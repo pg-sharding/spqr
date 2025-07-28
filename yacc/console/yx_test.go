@@ -823,6 +823,38 @@ func TestAlter(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		{
+			query: "CREATE DISTRIBUTED RELATION t (MURMUR [id1 INT, id2 VARCHAR]);",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name: "t",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										HashFunction: "murmur",
+										Expr: []spqrparser.TypedColRef{
+											{
+												Column: "id1",
+												Type:   "int",
+											},
+											{
+												Column: "id2",
+												Type:   "varchar",
+											},
+										},
+									},
+								},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "default"},
+					},
+				},
+			},
+			err: nil,
+		},
 		{
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1, id2;",
 			exp: &spqrparser.Alter{

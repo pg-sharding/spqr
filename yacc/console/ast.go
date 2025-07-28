@@ -277,9 +277,15 @@ func (*AlterDistribution) iStatement()         {}
 func (*AlterDistribution) iAlter()             {}
 func (*AlterDistribution) iAlterDistribution() {}
 
+type TypedColRef struct {
+	Column string
+	Type   string
+}
+
 type DistributionKeyEntry struct {
 	Column       string
 	HashFunction string
+	Expr         []TypedColRef
 }
 
 type DistributedRelation struct {

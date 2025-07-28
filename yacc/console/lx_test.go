@@ -224,6 +224,27 @@ func TestSimpleLex(t *testing.T) {
 			},
 		},
 		{
+			query: `CREATE DISTRIBUTED RELATION t (HASH MURMUR [id1 INT, id2 VARCHAR]);`,
+			exp: []int{
+				spqrparser.CREATE,
+				spqrparser.DISTRIBUTED,
+				spqrparser.RELATION,
+				spqrparser.IDENT,
+				spqrparser.TOPENBR,
+				spqrparser.HASH,
+				spqrparser.MURMUR,
+				spqrparser.TOPENSQBR,
+				spqrparser.IDENT,
+				spqrparser.INT,
+				spqrparser.TCOMMA,
+				spqrparser.IDENT,
+				spqrparser.VARCHAR,
+				spqrparser.TCLOSESQBR,
+				spqrparser.TCLOSEBR,
+				spqrparser.TSEMICOLON,
+			},
+		},
+		{
 			query: "ALTER DISTRIBUTION ds1 DETACH RELATION t",
 			exp: []int{
 				spqrparser.ALTER,
