@@ -7,6 +7,8 @@ SELECT 'postgres is cool';
 
 SELECT pg_is_in_recovery();
 
+SELECT spqr_is_ready();
+
 SELECT current_setting('transaction_read_only');
 
 SELECT pg_is_in_recovery(), 1, 'kek';

@@ -22,6 +22,12 @@ SELECT pg_is_in_recovery();
  f
 (1 row)
 
+SELECT spqr_is_ready();
+ spqr_is_ready 
+---------------
+ f
+(1 row)
+
 SELECT current_setting('transaction_read_only');
  current_setting 
 -----------------
