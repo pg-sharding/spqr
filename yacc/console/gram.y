@@ -677,19 +677,29 @@ distribution_key_argument_list:
     } 
 
 typed_col_ref:
-	any_id any_id {
+	any_id VARCHAR {
 		$$ = TypedColRef{
 			Column: $1,
 			Type: $2,
-		}	
+		}
+	} | any_id INT {
+		$$ = TypedColRef{
+			Column: $1,
+			Type: $2,
+		}
+	} | any_id UUID {
+		$$ = TypedColRef{
+			Column: $1,
+			Type: $2,
+		}
 	}
 
 
 routing_expr_column_list:
 	typed_col_ref {
 		$$ = []TypedColRef{ $1 }
-	} | typed_col_ref TCOMMA routing_expr_column_list {
-		$$ = append($3, $1)
+	} | routing_expr_column_list TCOMMA typed_col_ref {
+		$$ = append($1, $3)
 	}
 
 routing_expr:

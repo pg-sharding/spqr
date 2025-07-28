@@ -54,7 +54,7 @@ func (lex *Lexer) Lex(lval *yySymType) int {
 
         sconst = '\'' (any-'\'')* '\'';
         # not equal, minus, brackers, etc
-        identifier	=	(print - space - op_chars - '\'' - ';' - ',' - '(' - ')' - '.')*;
+        identifier	=	(print - space - op_chars - '\'' - ';' - ',' - '(' - ')' - '[' - ']' - '.')*;
 
         qidentifier	=	'"' identifier '"';
 
