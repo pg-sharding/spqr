@@ -349,38 +349,15 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
 		return &plan.ScatterPlan{}, nil
-
 	case *lyx.CreateRole, *lyx.CreateDatabase:
 		/* XXX: should we forbid under separate setting?  */
 		return &plan.ScatterPlan{}, nil
 	case *lyx.Copy:
 		return &plan.CopyPlan{}, nil
 	case *lyx.ValueClause:
-		return &plan.ScatterPlan{}, nil
+		return nil, rerrors.ErrComplexQuery
 	case *lyx.Select:
-		/* Should be single-relation scan or values. Join to be supported */
-		if len(v.FromClause) == 0 {
-			return &plan.ScatterPlan{}, nil
-		}
-
-		if len(v.FromClause) > 1 {
-			return nil, rerrors.ErrComplexQuery
-		}
-
-		s := plan.Scan{}
-		switch q := v.FromClause[0].(type) {
-		case *lyx.RangeVar:
-			s.Relation = q
-		default:
-			return nil, rerrors.ErrComplexQuery
-		}
-
-		s.Projection = v.TargetList
-
-		/* Todo: support grouping columns */
-		return &plan.ScatterPlan{
-			SubPlan: s,
-		}, nil
+		return nil, rerrors.ErrComplexQuery
 	case *lyx.Insert:
 		if v.WithClause != nil {
 			return nil, rerrors.ErrComplexQuery
