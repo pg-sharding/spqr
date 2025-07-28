@@ -329,7 +329,7 @@ func (lc *LocalInstanceMetadataMgr) Cache() *cache.SchemaCache {
 	return lc.cache
 }
 
-func (lc *LocalInstanceMetadataMgr) NextVal(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error){
+func (lc *LocalInstanceMetadataMgr) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
 	coordAddr, err := lc.GetCoordinator(ctx)
 	if err != nil {
 		return nil, err

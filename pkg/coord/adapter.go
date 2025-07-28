@@ -1057,7 +1057,7 @@ func (a *Adapter) DropSequence(ctx context.Context, seqName string, force bool) 
 func (a *Adapter) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.NextRange(ctx, &proto.NextRangeRequest{
-		Seq: seqName,
+		Seq:       seqName,
 		RangeSize: int64(rangeSize),
 	})
 	if err != nil {

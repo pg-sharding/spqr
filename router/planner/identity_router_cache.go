@@ -42,10 +42,10 @@ func (cir *CachedIdRange) nextVal() (int64, bool) {
 }
 
 type IdentityRouterCacheImpl struct {
-	cachedIndentities map[string]*CachedIdRange
-	defaultRangeSize  uint64
-	mu                sync.Mutex
-	mngr              *sequences.SequenceMgr
+	cachedIdentities map[string]*CachedIdRange
+	defaultRangeSize uint64
+	mu               sync.Mutex
+	mngr             *sequences.SequenceMgr
 }
 
 func NewIdentityRouterCache(defaultRangeSize uint64, mgr *sequences.SequenceMgr) *IdentityRouterCacheImpl {
@@ -55,20 +55,20 @@ func NewIdentityRouterCache(defaultRangeSize uint64, mgr *sequences.SequenceMgr)
 	}
 
 	return &IdentityRouterCacheImpl{defaultRangeSize: rngSize,
-		cachedIndentities: make(map[string]*CachedIdRange, 0),
-		mu:                sync.Mutex{},
-		mngr:              mgr,
+		cachedIdentities: make(map[string]*CachedIdRange, 0),
+		mu:               sync.Mutex{},
+		mngr:             mgr,
 	}
 }
 
 func (irc *IdentityRouterCacheImpl) getRangeForSeq(sequenceName string) *CachedIdRange {
 	irc.mu.Lock()
 	defer irc.mu.Unlock()
-	if _, ok := irc.cachedIndentities[sequenceName]; !ok {
+	if _, ok := irc.cachedIdentities[sequenceName]; !ok {
 		newRng := NewCachedIdRange()
-		irc.cachedIndentities[sequenceName] = &newRng
+		irc.cachedIdentities[sequenceName] = &newRng
 	}
-	return irc.cachedIndentities[sequenceName]
+	return irc.cachedIdentities[sequenceName]
 }
 
 func (irc *IdentityRouterCacheImpl) NextVal(ctx context.Context, sequenceName string) (int64, error) {

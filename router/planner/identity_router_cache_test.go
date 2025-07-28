@@ -18,7 +18,8 @@ func TestStepOne(t *testing.T) {
 	assert := assert.New(t)
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	ctx := context.TODO()
-	db.CreateSequence(ctx, "testSeq", 0)
+	err := db.CreateSequence(ctx, "testSeq", 0)
+	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
@@ -45,7 +46,8 @@ func TestStepFive(t *testing.T) {
 	assert := assert.New(t)
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	ctx := context.TODO()
-	db.CreateSequence(ctx, "testSeq", 0)
+	err := db.CreateSequence(ctx, "testSeq", 0)
+	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
@@ -68,14 +70,17 @@ func TestStepFive(t *testing.T) {
 	assert.Equal(int64(5), actualCurrent)
 
 	actualNext, err = identityMgr.NextVal(ctx, "testSeq")
+	assert.NoError(err)
 	assert.Equal(int64(4), actualNext)
 	actualNext, err = identityMgr.NextVal(ctx, "testSeq")
+	assert.NoError(err)
 	assert.Equal(int64(5), actualNext)
 	actualCurrent, err = lc.CurrVal(ctx, "testSeq")
 	assert.NoError(err)
 	assert.Equal(int64(5), actualCurrent)
 
 	actualNext, err = identityMgr.NextVal(ctx, "testSeq")
+	assert.NoError(err)
 	assert.Equal(int64(6), actualNext)
 	actualCurrent, err = lc.CurrVal(ctx, "testSeq")
 	assert.NoError(err)
@@ -83,12 +88,13 @@ func TestStepFive(t *testing.T) {
 
 }
 
-func TestStepOne_concurent(t *testing.T) {
+func TestStepOne_concurrent(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
 
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	db.CreateSequence(ctx, "testSeq", 0)
+	err := db.CreateSequence(ctx, "testSeq", 0)
+	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
@@ -122,12 +128,13 @@ func TestStepOne_concurent(t *testing.T) {
 	assert.Equal(expectedValue, actual)
 }
 
-func TestStepFive_concurent(t *testing.T) {
+func TestStepFive_concurrent(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
 
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	db.CreateSequence(ctx, "testSeq", 0)
+	err := db.CreateSequence(ctx, "testSeq", 0)
+	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
