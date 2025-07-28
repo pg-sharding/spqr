@@ -252,6 +252,11 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 			err:   rerrors.ErrEngineFeatureUnsupported,
 		},
 		{
+			query: "INSERT INTO distrr_mm_test VALUES (3) /* __spqr__engine_v2: true */;",
+			exp:   &plan.ShardDispatchPlan{},
+			err:   nil,
+		},
+		{
 			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: true */;",
 			exp:   nil,
 			/* Batch insert TODO */
