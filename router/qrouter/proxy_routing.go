@@ -1663,7 +1663,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 
 		if sph.EnhancedMultiShardProcessing() {
 			var err error
-			if v.SubPlan == nil && v.ExecTargets == nil {
+			if v.SubPlan == nil {
 				v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, stmt)
 				if err != nil {
 					return nil, err
