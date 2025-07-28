@@ -569,6 +569,8 @@ func TestCTE(t *testing.T) {
 		},
 	}).ToDB())
 
+	assert.NoError(err)
+
 	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh3",
 		Distribution: distribution,
