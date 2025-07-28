@@ -44,7 +44,9 @@ func NewLocalQrouter(shardMapping map[string]*config.Shard) (*LocalQrouter, erro
 		return nil, err
 	}
 
-	l := &LocalQrouter{}
+	l := &LocalQrouter{
+		ready: atomic.NewBool(true),
+	}
 
 	var name string
 	var cfg *config.Shard
