@@ -176,17 +176,17 @@ func (rm *RoutingMetadataContext) RFQNIsCTE(resolvedRelation *rfqn.RelationFQN) 
 }
 
 // TODO : unit tests
-func (rm *RoutingMetadataContext) RecordConstExpr(resolvedRelation *rfqn.RelationFQN, colname string, expr interface{}) error {
+func (rm *RoutingMetadataContext) RecordConstExpr(resolvedRelation *rfqn.RelationFQN, colname string, expr any) error {
 	if rm.RFQNIsCTE(resolvedRelation) {
 		// CTE, skip
 		return nil
 	}
 	rm.Rels[*resolvedRelation] = struct{}{}
 	if _, ok := rm.Exprs[*resolvedRelation]; !ok {
-		rm.Exprs[*resolvedRelation] = map[string][]interface{}{}
+		rm.Exprs[*resolvedRelation] = map[string][]any{}
 	}
 	if _, ok := rm.Exprs[*resolvedRelation][colname]; !ok {
-		rm.Exprs[*resolvedRelation][colname] = make([]interface{}, 0)
+		rm.Exprs[*resolvedRelation][colname] = make([]any, 0)
 	}
 	rm.Exprs[*resolvedRelation][colname] = append(rm.Exprs[*resolvedRelation][colname], expr)
 	return nil

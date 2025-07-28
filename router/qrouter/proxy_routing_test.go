@@ -569,6 +569,17 @@ func TestCTE(t *testing.T) {
 		},
 	}).ToDB())
 
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh3",
+		Distribution: distribution,
+		ID:           "id3", LowerBound: kr.KeyRangeBound{
+			int64(21),
+		},
+		ColumnTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
+	}).ToDB())
+
 	assert.NoError(err)
 
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
@@ -576,6 +587,7 @@ func TestCTE(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
+		"sh3": {},
 	}, lc, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil)
@@ -583,6 +595,29 @@ func TestCTE(t *testing.T) {
 	assert.NoError(err)
 
 	for _, tt := range []tcase{
+		{
+			query: `
+		WITH vals (x) AS (
+			VALUES (1), (202)
+		)
+		SELECT 
+			*
+		FROM t r
+		JOIN vals 
+			ON r.i = vals.x;
+		`,
+			err: nil,
+			exp: &plan.ScatterPlan{
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh3",
+					},
+				},
+			},
+		},
 
 		{
 			query: `
