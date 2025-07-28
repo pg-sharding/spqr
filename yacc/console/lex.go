@@ -140,10 +140,10 @@ tr2:
 	case 7:
 	{( lex.p) = ( lex.te) - 1
  lval.str = string(lex.data[lex.ts:lex.te]); tok = TEQ; {( lex.p)++;  lex.cs = 4; goto _out }}
-	case 13:
+	case 15:
 	{( lex.p) = ( lex.te) - 1
  lval.str = string(lex.data[lex.ts:lex.te]); tok = TPLUS; {( lex.p)++;  lex.cs = 4; goto _out }}
-	case 15:
+	case 17:
 	{( lex.p) = ( lex.te) - 1
 
                 lval.str = string(lex.data[lex.ts:lex.te]); tok = int(OP);    
@@ -168,12 +168,12 @@ tr14:
 { lval.str = string(lex.data[lex.ts:lex.te]); tok = TCOMMA; {( lex.p)++;  lex.cs = 4; goto _out }}
 	goto st4
 tr16:
-//line lex.rl:113
+//line lex.rl:115
  lex.te = ( lex.p)+1
 { lval.str = string(lex.data[lex.ts:lex.te]); tok = TDOT; {( lex.p)++;  lex.cs = 4; goto _out }}
 	goto st4
 tr19:
-//line lex.rl:110
+//line lex.rl:112
  lex.te = ( lex.p)+1
 { lval.str = string(lex.data[lex.ts:lex.te]); tok = TSEMICOLON; {( lex.p)++;  lex.cs = 4; goto _out }}
 	goto st4
@@ -199,7 +199,7 @@ tr23:
             }
 	goto st4
 tr24:
-//line lex.rl:111
+//line lex.rl:113
  lex.te = ( lex.p)
 ( lex.p)--
 { lval.str = string(lex.data[lex.ts:lex.te]); tok = TMINUS; {( lex.p)++;  lex.cs = 4; goto _out }}
@@ -319,15 +319,15 @@ tr8:
 //line NONE:1
  lex.te = ( lex.p)+1
 
-//line lex.rl:115
- lex.act = 15;
+//line lex.rl:117
+ lex.act = 17;
 	goto st6
 tr13:
 //line NONE:1
  lex.te = ( lex.p)+1
 
-//line lex.rl:112
- lex.act = 13;
+//line lex.rl:114
+ lex.act = 15;
 	goto st6
 tr20:
 //line NONE:1
@@ -706,7 +706,7 @@ tr5:
 	_out: {}
 	}
 
-//line lex.rl:122
+//line lex.rl:124
 
 
     return int(tok);

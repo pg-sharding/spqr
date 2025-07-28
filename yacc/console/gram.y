@@ -105,9 +105,10 @@ func randomHex(n int) (string, error) {
 
 	group_clause		   GroupByClause
 
-	opt_batch_size         int
-
 	retryMoveTaskGroup     *RetryMoveTaskGroup
+
+	typedColRef         	TypedColRef
+	routingExpr				[]TypedColRef
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -150,8 +151,8 @@ func randomHex(n int) (string, error) {
 // '+'
 %token<str> TPLUS
 
-// '(' & ')'
-%token<str> TOPENBR TCLOSEBR
+// '(' & ')', '[' & ']'
+%token<str> TOPENBR TCLOSEBR TOPENSQBR  TCLOSESQBR
 
 %type<str> operator where_operator
 
@@ -223,12 +224,12 @@ func randomHex(n int) (string, error) {
 %type<str> opt_schema_name
 %type<distribution_selector> opt_distribution_selector
 
-%type<distrKeyEntry> distribution_key_entry
+%type<distrKeyEntry> distribution_key_entry routing_expr
 %type<aiEntry> auto_increment_entry
 
 %type<str> sharding_rule_table_clause
 %type<str> sharding_rule_column_clause
-%type<str> opt_hash_function_clause
+%type<str> opt_hash_function_clause hash_function_clause
 %type<str> hash_function_name
 
 %type<alter> alter_stmt create_distributed_relation_stmt
@@ -263,7 +264,10 @@ func randomHex(n int) (string, error) {
 %type <unite> unite_key_range_stmt
 %type <register_router> register_router_stmt
 %type <unregister_router> unregister_router_stmt
-%type <opt_batch_size> opt_batch_size
+%type <integer> 	 opt_batch_size
+
+%type <typedColRef>  typed_col_ref
+%type <routingExpr> routing_expr_column_list
 
 %type <retryMoveTaskGroup> retry_move_task_group
 
@@ -672,7 +676,29 @@ distribution_key_argument_list:
 	  }
     } 
 
+typed_col_ref:
+	any_id any_id {
+		$$ = TypedColRef{
+			Column: $1,
+			Type: $2,
+		}	
+	}
 
+
+routing_expr_column_list:
+	typed_col_ref {
+		$$ = []TypedColRef{ $1 }
+	} | typed_col_ref TCOMMA routing_expr_column_list {
+		$$ = append($3, $1)
+	}
+
+routing_expr:
+	hash_function_name TOPENSQBR routing_expr_column_list TCLOSESQBR {
+		$$ = DistributionKeyEntry{
+			HashFunction: $1,
+			Expr: $3,
+		}
+	}
 
 distribution_key_entry:
 	any_id opt_hash_function_clause
@@ -681,6 +707,8 @@ distribution_key_entry:
 			Column: $1,
 			HashFunction: $2,
 		}
+	} | routing_expr {
+		$$ = $1
 	}
 
 distributed_relation_def:
@@ -997,10 +1025,18 @@ hash_function_name:
 		$$ = "city"
 	}
 
-opt_hash_function_clause:
-	HASH FUNCTION hash_function_name
+opt_function:
+	FUNCTION {} | {}
+
+hash_function_clause:
+	HASH opt_function hash_function_name
 	{
 		$$ = $3
+	}
+
+opt_hash_function_clause:
+	hash_function_clause {
+		$$ = $1
 	} | /* EMPTY */ {
 		$$ = ""
 	}
