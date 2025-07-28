@@ -48,11 +48,11 @@ func NewLocalQrouter(shardMapping map[string]*config.Shard) (*LocalQrouter, erro
 	return l, nil
 }
 
-func (l *LocalQrouter) Initialize() bool {
+func (l *LocalQrouter) IsOpened() bool {
 	return true
 }
 
-func (l *LocalQrouter) Initialized() bool {
+func (l *LocalQrouter) Open() bool {
 	return true
 }
 

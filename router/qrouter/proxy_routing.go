@@ -854,6 +854,25 @@ func (qr *ProxyQrouter) planQueryV1(
 							virtualRowVals = append(virtualRowVals, []byte{byte('t')})
 						}
 						continue
+					} else if e.Name == "spqr_is_opened" {
+						p = plan.Combine(p, &plan.VirtualPlan{})
+						virtualRowCols = append(virtualRowCols,
+							pgproto3.FieldDescription{
+								Name:                 []byte("spqr_is_opened"),
+								DataTypeOID:          catalog.ARRAYOID,
+								TypeModifier:         -1,
+								DataTypeSize:         1,
+								TableAttributeNumber: 0,
+								TableOID:             0,
+								Format:               0,
+							})
+
+						if qr.IsOpened() {
+							virtualRowVals = append(virtualRowVals, []byte{byte('t')})
+						} else {
+							virtualRowVals = append(virtualRowVals, []byte{byte('f')})
+						}
+						continue
 					} else if e.Name == "current_setting" && len(e.Args) == 1 {
 						if val, ok := e.Args[0].(*lyx.AExprSConst); ok && val.Value == "transaction_read_only" {
 							p = plan.Combine(p, &plan.VirtualPlan{})
@@ -1602,7 +1621,7 @@ func CheckRoOnlyQuery(stmt lyx.Node) bool {
 			case *lyx.FuncApplication:
 				/* only allow white list of functions here */
 				switch v.Name {
-				case "now", "pg_is_in_recovery":
+				case "now", "pg_is_in_recovery", "spqr_is_opened":
 					/* these cases ok */
 				default:
 					return false

@@ -28,8 +28,7 @@ import (
 type RouterInstance interface {
 	Addr() string
 	ID() string
-	Initialized() bool
-	Initialize() bool
+	Open() bool
 
 	Console() console.Console
 }
@@ -61,12 +60,8 @@ func (r *InstanceImpl) Addr() string {
 	return r.addr
 }
 
-func (r *InstanceImpl) Initialized() bool {
-	return r.Qrouter.Initialized()
-}
-
-func (r *InstanceImpl) Initialize() bool {
-	return r.Qrouter.Initialize()
+func (r *InstanceImpl) Open() bool {
+	return r.Qrouter.Open()
 }
 
 var _ RouterInstance = &InstanceImpl{}
@@ -234,6 +229,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 
 	go accept(listener, cChan)
 
+
 	if r.notifier != nil {
 		go func() {
 			for {
@@ -248,7 +244,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 	for {
 		select {
 		case conn := <-cChan:
-			if !r.Initialized() {
+			if !r.Qrouter.IsOpened() {
 				/* do not accept client connections on un-initialized router */
 				_ = conn.Close()
 			} else {
@@ -272,6 +268,41 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 			_ = listener.Close()
 			spqrlog.Zero.Info().Msg("psql server done")
 			return nil
+		}
+	}
+}
+
+func (r *InstanceImpl) watchShouldCloseOpenRouter() {
+	for {
+		select {
+		case <-r.stchan:
+			spqrlog.Zero.Info().Msg("shutting down router")
+			if r.notifier != nil {
+				_ = r.notifier.Close()
+			}
+			return
+		case <-time.After(time.Second):
+			anyAlive := false
+			for _, cl := range r.RuleRouter.InstanceHealthChecks() {
+				if cl.IsAlive() {
+					anyAlive = true
+					break
+				}
+			}
+
+			if anyAlive {
+				r.Qrouter.Open()
+			} else {
+				if r.Qrouter.IsOpened() {
+
+			if !anyAlive {
+
+
+
+			if !r.Qrouter.IsOpened() {
+				spqrlog.Zero.Info().Msg("router is closed, stopping watch")
+				return
+			}
 		}
 	}
 }

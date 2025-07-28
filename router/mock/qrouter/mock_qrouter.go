@@ -61,21 +61,21 @@ func (mr *MockQueryRouterMockRecorder) DataShardsRoutes() *gomock.Call {
 }
 
 // Initialize mocks base method.
-func (m *MockQueryRouter) Initialize() bool {
+func (m *MockQueryRouter) Open() bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Initialize")
+	ret := m.ctrl.Call(m, "Open")
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // Initialize indicates an expected call of Initialize.
-func (mr *MockQueryRouterMockRecorder) Initialize() *gomock.Call {
+func (mr *MockQueryRouterMockRecorder) Open() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Initialize", reflect.TypeOf((*MockQueryRouter)(nil).Initialize))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Initialize", reflect.TypeOf((*MockQueryRouter)(nil).Open))
 }
 
 // Initialized mocks base method.
-func (m *MockQueryRouter) Initialized() bool {
+func (m *MockQueryRouter) IsOpened() bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Initialized")
 	ret0, _ := ret[0].(bool)
@@ -83,9 +83,9 @@ func (m *MockQueryRouter) Initialized() bool {
 }
 
 // Initialized indicates an expected call of Initialized.
-func (mr *MockQueryRouterMockRecorder) Initialized() *gomock.Call {
+func (mr *MockQueryRouterMockRecorder) IsOpened() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Initialized", reflect.TypeOf((*MockQueryRouter)(nil).Initialized))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Initialized", reflect.TypeOf((*MockQueryRouter)(nil).IsOpened))
 }
 
 // Mgr mocks base method.

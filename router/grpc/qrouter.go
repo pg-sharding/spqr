@@ -236,13 +236,13 @@ func (l *LocalQrouterServer) GetRelationDistribution(ctx context.Context, reques
 
 // TODO : unit tests
 func (l *LocalQrouterServer) OpenRouter(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	l.qr.Initialize()
+	l.qr.Open()
 	return nil, nil
 }
 
 // TODO : unit tests
 func (l *LocalQrouterServer) GetRouterStatus(ctx context.Context, _ *emptypb.Empty) (*protos.GetRouterStatusReply, error) {
-	if l.qr.Initialized() {
+	if l.qr.IsOpened() {
 		return &protos.GetRouterStatusReply{
 			Status: protos.RouterStatus_OPENED,
 		}, nil
