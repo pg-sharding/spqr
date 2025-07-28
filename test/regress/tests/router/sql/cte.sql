@@ -6,12 +6,12 @@ CREATE KEY RANGE FROM 301 ROUTE TO sh4 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE FROM 201 ROUTE TO sh3 FOR DISTRIBUTION ds1;
 
 CREATE KEY RANGE FROM 101 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-CREATE KEY RANGE FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
 CREATE REFERENCE TABLE ref_rel_1;
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY i;
-CREATE DISTRIBUTED RELATION table2 DISTRIBUTION KEY a IN ds1;
+CREATE DISTRIBUTED RELATION table2 (a) FOR DISTRIBUTION ds1;
 
 \c regress
 
@@ -50,6 +50,9 @@ SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh3 */;
 SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh4 */;
 
 INSERT INTO table2 (a,b,c) VALUES (1, 22, 33);
+INSERT INTO table2 (a,b,c) VALUES (2, 22, 33);
+INSERT INTO table2 (a,b,c) VALUES (101, 22, 33);
+INSERT INTO table2 (a,b,c) VALUES (301, 22, 33);
 
 WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv WHERE t.a = vv.x;
 WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv v WHERE t.a = v.x;
@@ -68,6 +71,19 @@ FROM table2 r
 JOIN vals 
 	ON r.a = vals.x;
 
+
+WITH vals (x) AS (
+    VALUES (
+		1
+    ), (2),
+	(101),
+	(301)
+)
+SELECT 
+	*
+FROM table2 r
+JOIN vals 
+	ON r.a = vals.x;
 
 
 WITH vals (y, z, x) AS (

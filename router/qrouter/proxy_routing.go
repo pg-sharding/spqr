@@ -745,11 +745,11 @@ func (qr *ProxyQrouter) planWithClauseV1(ctx context.Context, rm *rmeta.RoutingM
 		switch qq := cte.SubQuery.(type) {
 		case *lyx.ValueClause:
 			/* special case */
-			if len(qq.Values) > 0 {
+			for _, vv := range qq.Values {
 				for i, name := range cte.NameList {
-					if i < len(cte.NameList) && i < len(qq.Values[0]) {
+					if i < len(cte.NameList) && i < len(vv) {
 						/* XXX: currently only one-tuple aux values supported */
-						rm.RecordAuxExpr(cte.Name, name, qq.Values[0][i])
+						rm.RecordAuxExpr(cte.Name, name, vv[i])
 					}
 				}
 			}
@@ -1664,9 +1664,14 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 		if sph.EnhancedMultiShardProcessing() {
 			var err error
 			if v.SubPlan == nil {
-				v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, stmt)
-				if err != nil {
-					return nil, err
+				switch stmt.(type) {
+				case *lyx.Select:
+				default:
+					/* XXX: very dirty hack */
+					v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, stmt)
+					if err != nil {
+						return nil, err
+					}
 				}
 			}
 			if v.ExecTargets == nil {
