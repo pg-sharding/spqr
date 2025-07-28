@@ -9,20 +9,20 @@ import (
 	"github.com/pg-sharding/spqr/router/xproto"
 )
 
-func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]byte) (interface{}, bool) {
+func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]byte) (any, bool) {
 
 	switch paramCode {
 	case xproto.FormatCodeBinary:
 		switch tp {
 		case qdb.ColumnTypeUUID:
 			val := string(bindParams[ind])
-			return []interface{}{val}, true
+			return []any{val}, true
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
-			return []interface{}{string(bindParams[ind])}, true
+			return []any{string(bindParams[ind])}, true
 		case qdb.ColumnTypeInteger:
 
 			var num int64
@@ -71,7 +71,7 @@ func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
-			return []interface{}{string(bindParams[ind])}, true
+			return []any{string(bindParams[ind])}, true
 		case qdb.ColumnTypeInteger:
 			num, err := strconv.ParseInt(string(bindParams[ind]), 10, 64)
 			if err != nil {

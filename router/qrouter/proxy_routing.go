@@ -1001,6 +1001,13 @@ func (qr *ProxyQrouter) planQueryV1(
 			if err != nil {
 				return nil, err
 			}
+			switch tmp.(type) {
+			case *plan.VirtualPlan:
+				if stmt.FromClause != nil {
+					/* de-virtualize */
+					tmp = nil
+				}
+			}
 			p = plan.Combine(p, tmp)
 		}
 
@@ -1179,6 +1186,13 @@ func (qr *ProxyQrouter) planQueryV1(
 		if err != nil {
 			return nil, err
 		}
+		switch tmp.(type) {
+		case *plan.VirtualPlan:
+			if stmt.TableRef != nil {
+				/* de-virtualize */
+				tmp = nil
+			}
+		}
 		p = plan.Combine(p, tmp)
 		return p, nil
 	case *lyx.Delete:
@@ -1218,6 +1232,13 @@ func (qr *ProxyQrouter) planQueryV1(
 		tmp, err := qr.planByQualExpr(ctx, clause, rm)
 		if err != nil {
 			return nil, err
+		}
+		switch tmp.(type) {
+		case *plan.VirtualPlan:
+			if stmt.TableRef != nil {
+				/* de-virtualize */
+				tmp = nil
+			}
 		}
 		p = plan.Combine(p, tmp)
 		return p, nil
