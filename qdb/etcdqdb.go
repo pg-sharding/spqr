@@ -1814,25 +1814,25 @@ func (q *EtcdQDB) ListSequences(ctx context.Context) ([]string, error) {
 	return ret, nil
 }
 
-func (q *EtcdQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
-	spqrlog.Zero.Debug().Msg("etcdqdb: next val")
+func (q *EtcdQDB) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*SequenceIdRange, error) {
+	spqrlog.Zero.Debug().Msg(fmt.Sprintf("etcdqdb: next id ranges, size=%d", rangeSize))
 
 	id := sequenceNodePath(seqName)
 	sess, err := concurrency.NewSession(q.cli)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 	defer closeSession(sess)
 
 	mu := concurrency.NewMutex(sess, sequenceSpace)
 	if err = mu.Lock(ctx); err != nil {
-		return -1, err
+		return nil, err
 	}
 	defer unlockMutex(mu, ctx)
 
 	resp, err := q.cli.Get(ctx, id)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 
 	var nextval int64 = 0
@@ -1841,15 +1841,19 @@ func (q *EtcdQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
 		var err error
 		nextval, err = strconv.ParseInt(string(resp.Kvs[0].Value), 10, 64)
 		if err != nil {
-			return -1, err
+			return nil, err
 		}
 	default:
 	}
 
 	nextval++
-	_, err = q.cli.Put(ctx, id, fmt.Sprintf("%d", nextval))
 
-	return nextval, err
+	if idRange, err := NewRangeBySize(nextval, rangeSize); err != nil {
+		return nil, fmt.Errorf("invalid id-range request: current=%d, request for=%d", nextval, rangeSize)
+	} else {
+		_, err = q.cli.Put(ctx, id, fmt.Sprintf("%d", idRange.Right))
+		return idRange, err
+	}
 }
 
 func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {

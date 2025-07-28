@@ -1105,19 +1105,25 @@ func (q *MemQDB) ListSequences(_ context.Context) ([]string, error) {
 	return seqNames, nil
 }
 
-func (q *MemQDB) NextVal(_ context.Context, seqName string) (int64, error) {
+func (q *MemQDB) NextRange(_ context.Context, seqName string, rangeSize uint64) (*SequenceIdRange, error) {
 	q.SequenceLock.Lock()
 	defer q.SequenceLock.Unlock()
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).
 		Msg("memqdb: get next value for sequence")
 
-	next := q.SequenceToValues[seqName] + 1
-	q.SequenceToValues[seqName] = next
-	if errDB := ExecuteCommands(q.DumpState, NewUpdateCommand(q.SequenceToValues, seqName, next)); errDB != nil {
-		return next, errDB
+	nextval := q.SequenceToValues[seqName] + 1
+
+	if idRange, err := NewRangeBySize(nextval, rangeSize); err != nil {
+		return nil, fmt.Errorf("invalid id-range request: current=%d, request for=%d", nextval, rangeSize)
+	} else {
+
+		q.SequenceToValues[seqName] = idRange.Right
+		if errDB := ExecuteCommands(q.DumpState, NewUpdateCommand(q.SequenceToValues, seqName, idRange.Right)); errDB != nil {
+			return nil, errDB
+		}
+		return idRange, nil
 	}
-	return next, nil
 
 }
 

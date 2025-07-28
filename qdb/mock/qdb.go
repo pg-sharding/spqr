@@ -853,19 +853,19 @@ func (mr *MockQDBMockRecorder) LockKeyRange(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRange", reflect.TypeOf((*MockQDB)(nil).LockKeyRange), ctx, id)
 }
 
-// NextVal mocks base method.
-func (m *MockQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
+// NextRange mocks base method.
+func (m *MockQDB) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NextVal", ctx, seqName)
-	ret0, _ := ret[0].(int64)
+	ret := m.ctrl.Call(m, "NextRange", ctx, seqName, rangeSize)
+	ret0, _ := ret[0].(*qdb.SequenceIdRange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// NextVal indicates an expected call of NextVal.
-func (mr *MockQDBMockRecorder) NextVal(ctx, seqName any) *gomock.Call {
+// NextRange indicates an expected call of NextRange.
+func (mr *MockQDBMockRecorder) NextRange(ctx, seqName, rangeSize any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockQDB)(nil).NextVal), ctx, seqName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextRange", reflect.TypeOf((*MockQDB)(nil).NextRange), ctx, seqName, rangeSize)
 }
 
 // RemoveBalancerTask mocks base method.
@@ -1742,19 +1742,19 @@ func (mr *MockXQDBMockRecorder) LockKeyRange(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockKeyRange", reflect.TypeOf((*MockXQDB)(nil).LockKeyRange), ctx, id)
 }
 
-// NextVal mocks base method.
-func (m *MockXQDB) NextVal(ctx context.Context, seqName string) (int64, error) {
+// NextRange mocks base method.
+func (m *MockXQDB) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NextVal", ctx, seqName)
-	ret0, _ := ret[0].(int64)
+	ret := m.ctrl.Call(m, "NextRange", ctx, seqName, rangeSize)
+	ret0, _ := ret[0].(*qdb.SequenceIdRange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// NextVal indicates an expected call of NextVal.
-func (mr *MockXQDBMockRecorder) NextVal(ctx, seqName any) *gomock.Call {
+// NextRange indicates an expected call of NextRange.
+func (mr *MockXQDBMockRecorder) NextRange(ctx, seqName, rangeSize any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockXQDB)(nil).NextVal), ctx, seqName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextRange", reflect.TypeOf((*MockXQDB)(nil).NextRange), ctx, seqName, rangeSize)
 }
 
 // OpenRouter mocks base method.
