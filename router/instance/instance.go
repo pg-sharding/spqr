@@ -28,7 +28,6 @@ import (
 type RouterInstance interface {
 	Addr() string
 	ID() string
-	IsOpened() bool
 	Open() bool
 
 	Console() console.Console
@@ -59,10 +58,6 @@ func (r *InstanceImpl) ID() string {
 
 func (r *InstanceImpl) Addr() string {
 	return r.addr
-}
-
-func (r *InstanceImpl) IsOpened() bool {
-	return r.Qrouter.IsOpened()
 }
 
 func (r *InstanceImpl) Open() bool {
@@ -248,7 +243,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 	for {
 		select {
 		case conn := <-cChan:
-			if !r.IsOpened() {
+			if !r.Qrouter.IsOpened() {
 				/* do not accept client connections on un-initialized router */
 				_ = conn.Close()
 			} else {

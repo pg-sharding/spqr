@@ -1939,7 +1939,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 						DataTypeSize: 1,
 					},
 				},
-				VirtualRowVals: [][]byte{{byte('t')}},
+				VirtualRowVals: [][]byte{{byte('f')}},
 			},
 			err: nil,
 		},
