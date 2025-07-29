@@ -351,6 +351,11 @@ func (rm *RoutingMetadataContext) GetDistributionKeyOffsetType(resolvedRelation 
 		if c.Column == colname {
 			return ind, ds.ColTypes[ind]
 		}
+		for _, cf := range c.Expr.ColRefs {
+			if cf.ColName == colname {
+				return ind, cf.ColType
+			}
+		}
 	}
 	return -1, ""
 }
