@@ -99,7 +99,6 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 		/* TODO: correct support for composite keys here */
 
 		for _, val := range vals {
-
 			compositeKey[lvl], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[lvl], hf)
 
 			if err != nil {
@@ -108,8 +107,8 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 			}
 
 			spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[lvl]).Msg("applying hash function on key")
-			if lvl+1 == len(relation.DistributionKey) {
 
+			if lvl+1 == len(relation.DistributionKey) {
 				currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
 				if err != nil {
 					spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
