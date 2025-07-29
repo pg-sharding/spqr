@@ -197,7 +197,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context, qrouter_query *strin
 	}, nil
 }
 
-func CalculareRoutingListTupleitemValue(
+func CalculateRoutingListTupleItemValue(
 	rm *rmeta.RoutingMetadataContext,
 	relation *distributions.DistributedRelation,
 	tp string,
@@ -292,7 +292,7 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 				return nil, nil
 			}
 
-			tup[j], err = CalculareRoutingListTupleitemValue(rm,
+			tup[j], err = CalculateRoutingListTupleItemValue(rm,
 				relation, tp,
 				routingList[i][val],
 				queryParamsFormatCodes, ds.ColTypes[j], relation.DistributionKey[j].HashFunction)
