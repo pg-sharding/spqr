@@ -10,19 +10,19 @@ CREATE KEY RANGE FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test DISTRIBUTION KEY id;
 ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test_mult DISTRIBUTION KEY id;
 
-CREATE DISTRIBUTED RELATION copy_test_multi_mutli (id1, id2) IN ds2;
+CREATE DISTRIBUTED RELATION copy_test_multi_multi (id1, id2) IN ds2;
 
 \c regress
 CREATE TABLE copy_test (id int);
 CREATE TABLE copy_test_mult (id int, uid int);
-CREATE TABLE copy_test_multi_mutli (id1 int, id2 TEXT, id3 int, id4 int);
+CREATE TABLE copy_test_multi_multi (id1 int, id2 TEXT, id3 int, id4 int);
 
 -- should fail
-COPY copy_test_multi_mutli (id1, id3, id4) FROM STDIN;
+COPY copy_test_multi_multi (id1, id3, id4) FROM STDIN;
 \.
-COPY copy_test_multi_mutli (id3, id4) FROM STDIN;
+COPY copy_test_multi_multi (id3, id4) FROM STDIN;
 \.
-COPY copy_test_multi_mutli (id4, id2) FROM STDIN;
+COPY copy_test_multi_multi (id4, id2) FROM STDIN;
 \.
 
 -- should be ok
@@ -148,7 +148,7 @@ COPY copy_test_mult (uid, id) FROM stdin;
 
 DROP TABLE copy_test;
 DROP TABLE copy_test_mult;
-DROP TABLE copy_test_multi_mutli;
+DROP TABLE copy_test_multi_multi;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

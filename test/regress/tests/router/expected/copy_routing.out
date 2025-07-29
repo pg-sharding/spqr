@@ -56,10 +56,10 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test_mult DISTRIBUTION KEY id;
  distribution id -> ds1
 (2 rows)
 
-CREATE DISTRIBUTED RELATION copy_test_multi_mutli (id1, id2) IN ds2;
+CREATE DISTRIBUTED RELATION copy_test_multi_multi (id1, id2) IN ds2;
                attach table               
 ------------------------------------------
- relation name   -> copy_test_multi_mutli
+ relation name   -> copy_test_multi_multi
  distribution id -> ds2
 (2 rows)
 
@@ -68,16 +68,16 @@ CREATE TABLE copy_test (id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE copy_test_mult (id int, uid int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-CREATE TABLE copy_test_multi_mutli (id1 int, id2 TEXT, id3 int, id4 int);
+CREATE TABLE copy_test_multi_multi (id1 int, id2 TEXT, id3 int, id4 int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- should fail
-COPY copy_test_multi_mutli (id1, id3, id4) FROM STDIN;
+COPY copy_test_multi_multi (id1, id3, id4) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  client processing error: failed to resolve target copy column offset, tx status ACTIVE
-COPY copy_test_multi_mutli (id3, id4) FROM STDIN;
+COPY copy_test_multi_multi (id3, id4) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  client processing error: failed to resolve target copy column offset, tx status ACTIVE
-COPY copy_test_multi_mutli (id4, id2) FROM STDIN;
+COPY copy_test_multi_multi (id4, id2) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  client processing error: failed to resolve target copy column offset, tx status ACTIVE
 -- should be ok
@@ -313,7 +313,7 @@ DROP TABLE copy_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE copy_test_mult;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-DROP TABLE copy_test_multi_mutli;
+DROP TABLE copy_test_multi_multi;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 

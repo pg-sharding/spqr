@@ -329,16 +329,17 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 			hashFunc[dKey] = v
 		}
 
-		if len(dRel.DistributionKey[dKey].Column) != 0 {
-			if _, ok := co[dRel.DistributionKey[dKey].Column]; !ok {
-				return nil, fmt.Errorf("failed to resolve target copy column offset")
+	}
+
+	for k := range co {
+		found := false
+		for _, c := range stmt.Columns {
+			if c == k {
+				found = true
 			}
-		} else {
-			for _, c := range dRel.DistributionKey[dKey].Expr.ColRefs {
-				if _, ok := co[c.ColName]; !ok {
-					return nil, fmt.Errorf("failed to resolve target copy column offset")
-				}
-			}
+		}
+		if !found {
+			return nil, fmt.Errorf("failed to resolve target copy column offset")
 		}
 	}
 
