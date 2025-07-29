@@ -237,6 +237,8 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 	queryParamsFormatCodes := GetParams(rm)
 	tupleShards := make([]kr.ShardKey, len(routingList))
 
+	vvs_resolved := make([][]any, len(offsets))
+
 	for i := range routingList {
 
 		for j := range offsets {
@@ -246,23 +248,31 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 				continue
 			}
 
-			if err := rm.ProcessSingleExpr(qualName, tp, insertCols[offsets[j]], routingList[i][offsets[j]]); err != nil {
+			v, err := rmeta.ParseExprValue(qualName, tp, routingList[i][offsets[j]])
+			if err != nil {
 				return nil, err
 			}
-		}
-	}
 
-	vvs_resolved := make([][]any, len(offsets))
+			switch q := v.(type) {
+			case rmeta.ParamRef:
 
-	for j := range offsets {
-		vvs, err := rm.ResolveValue(qualName, insertCols[offsets[j]], queryParamsFormatCodes)
-		if err != nil {
-			return nil, rerrors.ErrComplexQuery
-		}
+				// TODO: switch column type here
+				// only works for one value
+				ind := q.Indx
+				if len(queryParamsFormatCodes) < ind {
+					return nil, plan.ErrResolvingValue
+				}
+				fc := queryParamsFormatCodes[ind]
 
-		vvs_resolved[j] = vvs
-		if len(vvs) != len(routingList) {
-			return nil, rerrors.ErrComplexQuery
+				singleVal, err := plan.ParseResolveParamValue(fc, ind, tp, rm.SPH.BindParams())
+
+				if err != nil {
+					return nil, err
+				}
+				vvs_resolved[j] = append(vvs_resolved[j], singleVal)
+			default:
+				vvs_resolved[j] = append(vvs_resolved[j], v)
+			}
 		}
 	}
 
