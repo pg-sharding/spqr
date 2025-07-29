@@ -379,6 +379,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 	prevDelimiter := 0
 	prevLine := 0
 	attrCnt := 0
+	routingTupleCnt := 0
 
 	for i, b := range data.Data {
 		if i+2 < len(data.Data) && string(data.Data[i:i+2]) == "\\." {
@@ -396,6 +397,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 					return nil, err
 				}
 				routingTuple[indx] = val
+				routingTupleCnt++
 			}
 
 			attrCnt++
@@ -406,6 +408,10 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		}
 
 		/* By this time, row should contains all routing info */
+
+		if routingTupleCnt != len(cps.HashFunc) {
+			return nil, fmt.Errorf("insuffitient data in routing tuple")
+		}
 
 		// check where this tuple should go
 		tuplePlan, err := cps.RM.DeparseKeyWithRangesInternal(ctx, routingTuple, cps.Krs)
@@ -418,6 +424,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 
 		rowsMp[tuplePlan.Name] = append(rowsMp[tuplePlan.Name], data.Data[prevLine:i+1]...)
 		attrCnt = 0
+		routingTupleCnt = 0
 		prevLine = i + 1
 	}
 
