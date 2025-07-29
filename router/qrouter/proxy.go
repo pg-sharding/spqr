@@ -5,13 +5,14 @@ import (
 	"math/rand"
 	"sync"
 
+	"sync/atomic"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/planner"
-	"go.uber.org/atomic"
 )
 
 type ProxyQrouter struct {
@@ -31,6 +32,7 @@ type ProxyQrouter struct {
 	idRangeCache planner.IdentityRouterCache
 
 	initialized *atomic.Bool
+	ready       *atomic.Bool
 	query       *string
 }
 
@@ -42,6 +44,14 @@ func (qr *ProxyQrouter) Initialized() bool {
 
 func (qr *ProxyQrouter) Initialize() bool {
 	return qr.initialized.Swap(true)
+}
+
+func (qr *ProxyQrouter) Ready() bool {
+	return qr.ready.Load()
+}
+
+func (qr *ProxyQrouter) SetReady(ready bool) {
+	qr.ready.Store(ready)
 }
 
 func (qr *ProxyQrouter) Mgr() meta.EntityMgr {
@@ -102,7 +112,8 @@ func NewProxyRouter(shardMapping map[string]*config.Shard,
 ) (*ProxyQrouter, error) {
 	proxy := &ProxyQrouter{
 		WorldShardCfgs: map[string]*config.Shard{},
-		initialized:    atomic.NewBool(false),
+		initialized:    &atomic.Bool{},
+		ready:          &atomic.Bool{},
 		cfg:            qcfg,
 		mgr:            mgr,
 		schemaCache:    cache,

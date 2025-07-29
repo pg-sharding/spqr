@@ -3,7 +3,6 @@ package session
 import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/tsa"
-	"github.com/pg-sharding/spqr/router/routehint"
 )
 
 type DummySessionParamHandler struct {
@@ -12,7 +11,6 @@ type DummySessionParamHandler struct {
 	distribution string
 	behaviour    string
 	key          string
-	rh           routehint.RouteHint
 
 	engineV2 bool
 	eo       string
@@ -131,7 +129,6 @@ func (t *DummySessionParamHandler) SetParamFormatCodes(f []int16) {
 func NewDummyHandler(distribution string) SessionParamsHolder {
 	return &DummySessionParamHandler{
 		distribution: distribution,
-		rh:           routehint.EmptyRouteHint{},
 		engineV2:     false,
 	}
 }

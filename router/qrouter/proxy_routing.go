@@ -21,7 +21,6 @@ import (
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
-	"github.com/pg-sharding/spqr/router/routehint"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -90,9 +89,10 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 
 		col := relation.DistributionKey[lvl].Column
 
-		vals, valOk := rm.ResolveValue(qualName, col, queryParamsFormatCodes)
+		vals, err := rm.ResolveValue(qualName, col, queryParamsFormatCodes)
 
-		if !valOk {
+		if err != nil {
+			/* Is this ok? */
 			return nil
 		}
 
@@ -746,11 +746,11 @@ func (qr *ProxyQrouter) planWithClauseV1(ctx context.Context, rm *rmeta.RoutingM
 		switch qq := cte.SubQuery.(type) {
 		case *lyx.ValueClause:
 			/* special case */
-			if len(qq.Values) > 0 {
+			for _, vv := range qq.Values {
 				for i, name := range cte.NameList {
-					if i < len(cte.NameList) && i < len(qq.Values[0]) {
+					if i < len(cte.NameList) && i < len(vv) {
 						/* XXX: currently only one-tuple aux values supported */
-						rm.RecordAuxExpr(cte.Name, name, qq.Values[0][i])
+						rm.RecordAuxExpr(cte.Name, name, vv[i])
 					}
 				}
 			}
@@ -853,6 +853,25 @@ func (qr *ProxyQrouter) planQueryV1(
 							virtualRowVals = append(virtualRowVals, []byte{byte('f')})
 						} else {
 							virtualRowVals = append(virtualRowVals, []byte{byte('t')})
+						}
+						continue
+					} else if e.Name == "__spqr__is_ready" {
+						p = plan.Combine(p, &plan.VirtualPlan{})
+						virtualRowCols = append(virtualRowCols,
+							pgproto3.FieldDescription{
+								Name:                 []byte("__spqr__is_ready"),
+								DataTypeOID:          catalog.ARRAYOID,
+								TypeModifier:         -1,
+								DataTypeSize:         1,
+								TableAttributeNumber: 0,
+								TableOID:             0,
+								Format:               0,
+							})
+
+						if qr.Ready() {
+							virtualRowVals = append(virtualRowVals, []byte{byte('t')})
+						} else {
+							virtualRowVals = append(virtualRowVals, []byte{byte('f')})
 						}
 						continue
 					} else if e.Name == "current_setting" && len(e.Args) == 1 {
@@ -1247,65 +1266,6 @@ func (qr *ProxyQrouter) planQueryV1(
 	return nil, nil
 }
 
-// CheckTableIsRoutable Given table create statement, check if it is routable with some sharding rule
-// TODO : unit tests
-func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.CreateTable) error {
-	var err error
-	var ds *distributions.Distribution
-	var relname *rfqn.RelationFQN
-
-	if node.PartitionOf != nil {
-		switch q := node.PartitionOf.(type) {
-		case *lyx.RangeVar:
-			relname := rfqn.RelationFQNFromRangeRangeVar(q)
-			_, err = qr.mgr.GetRelationDistribution(ctx, relname)
-			return err
-		default:
-			return fmt.Errorf("partition of is not a range var")
-		}
-	}
-
-	switch q := node.TableRv.(type) {
-	case *lyx.RangeVar:
-		relname = rfqn.RelationFQNFromRangeRangeVar(q)
-		ds, err = qr.mgr.GetRelationDistribution(ctx, relname)
-		if err != nil {
-			return err
-		}
-		if ds.Id == distributions.REPLICATED {
-			return nil
-		}
-	default:
-		return fmt.Errorf("wrong type of table range var")
-	}
-
-	entries := make(map[string]struct{})
-	/* Collect sharding rule entries list from create statement */
-	for _, elt := range node.TableElts {
-		// hashing function name unneeded for sharding rules matching purpose
-		switch q := elt.(type) {
-		case *lyx.TableElt:
-			entries[q.ColName] = struct{}{}
-		}
-	}
-	rel, ok := ds.TryGetRelation(relname)
-	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" not present in distribution \"%s\" it's attached to", relname, ds.Id)
-	}
-	check := true
-	for _, entry := range rel.DistributionKey {
-		if _, ok = entries[entry.Column]; !ok {
-			check = false
-			break
-		}
-	}
-	if check {
-		return nil
-	}
-
-	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
-}
-
 func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext, tsa tsa.TSA) (plan.Plan, error) {
 
 	var queryPlan plan.Plan
@@ -1359,24 +1319,14 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		return &plan.RandomDispatchPlan{}, false, nil
 	}
 
-	rh, err := rm.ResolveRouteHint(ctx)
+	p, err := rm.ResolveRouteHint(ctx)
 
 	if err != nil {
 		return nil, false, err
 	}
 
-	// if route hint forces us to route on particular route, do it
-	switch v := rh.(type) {
-	case *routehint.EmptyRouteHint:
-		// nothing
-	case *routehint.TargetRouteHint:
-		return v.State, false, nil
-	case *routehint.ScatterRouteHint:
-		// still, need to check config settings (later)
-		/* XXX: we return true for RO here to fool DRB */
-		return &plan.ScatterPlan{
-			ExecTargets: qr.DataShardsRoutes(),
-		}, true, nil
+	if p != nil {
+		return p, false, nil
 	}
 
 	/*
@@ -1436,7 +1386,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		/*
 		 * Disallow to create table which does not contain any sharding column
 		 */
-		if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
+		if err := planner.CheckTableIsRoutable(ctx, qr.Mgr(), node); err != nil {
 			return nil, false, err
 		}
 		return ds, false, nil
@@ -1724,12 +1674,24 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 			return v, nil
 		}
 
+		if v.Forced {
+			if v.ExecTargets == nil {
+				v.ExecTargets = qr.DataShardsRoutes()
+			}
+			return v, nil
+		}
+
 		if sph.EnhancedMultiShardProcessing() {
 			var err error
 			if v.SubPlan == nil {
-				v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, stmt)
-				if err != nil {
-					return nil, err
+				switch stmt.(type) {
+				case *lyx.Select:
+				default:
+					/* XXX: very dirty hack */
+					v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, stmt)
+					if err != nil {
+						return nil, err
+					}
 				}
 			}
 			if v.ExecTargets == nil {

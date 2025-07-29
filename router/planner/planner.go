@@ -64,12 +64,12 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 		}
 	}
 	/* TODO: support */
-	// /*
-	//  * Disallow to create table which does not contain any sharding column
-	//  */
-	// if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
-	// 	return nil, false, err
-	// }
+	/*
+	 * Disallow to create table which does not contain any sharding column
+	 */
+	if err := CheckTableIsRoutable(ctx, rm.Mgr, v); err != nil {
+		return nil, err
+	}
 
 	/*XXX: fix this */
 	return &plan.ScatterPlan{
@@ -267,7 +267,10 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 	vvs_resolved := make([][]any, len(offsets))
 
 	for j := range offsets {
-		vvs, _ := rm.ResolveValue(qualName, insertCols[offsets[j]], queryParamsFormatCodes)
+		vvs, err := rm.ResolveValue(qualName, insertCols[offsets[j]], queryParamsFormatCodes)
+		if err != nil {
+			return nil, rerrors.ErrComplexQuery
+		}
 
 		vvs_resolved[j] = vvs
 		if len(vvs) != len(routingList) {

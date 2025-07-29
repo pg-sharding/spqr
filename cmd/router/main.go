@@ -41,6 +41,8 @@ var (
 	grpcPort              int
 	defaultRouteBehaviour string
 
+	enhancedMultishardProcessing bool
+
 	showNoticeMessages bool
 	pgprotoDebug       bool
 	profileFile        string
@@ -97,6 +99,9 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&prettyLogging, "pretty-log", "P", false, "enables pretty logging")
 	rootCmd.PersistentFlags().IntVarP(&gomaxprocs, "gomaxprocs", "", 0, "GOMAXPROCS value")
 
+	// Query processing
+	rootCmd.PersistentFlags().BoolVarP(&enhancedMultishardProcessing, "enhanced_multishard_processing", "e", false, "enables SPQR query processing engine V2")
+
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(testCmd)
 }
@@ -125,10 +130,12 @@ var runCmd = &cobra.Command{
 		if logLevel != "" {
 			config.RouterConfig().LogLevel = logLevel
 		}
+
 		if prettyLogging {
 			config.RouterConfig().PrettyLogging = prettyLogging
 		}
-		if withCoord {
+
+		if rootCmd.Flags().Changed("with-coordinator") {
 			config.RouterConfig().WithCoordinator = withCoord
 		}
 
@@ -245,6 +252,10 @@ var runCmd = &cobra.Command{
 			} else {
 				config.RouterConfig().Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourAllow
 			}
+		}
+
+		if rootCmd.Flags().Changed("enhanced_multishard_processing") {
+			config.RouterConfig().Qr.EnhancedMultiShardProcessing = enhancedMultishardProcessing
 		}
 
 		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"))

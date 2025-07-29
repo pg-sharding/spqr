@@ -580,11 +580,25 @@ func TestCTE(t *testing.T) {
 
 	assert.NoError(err)
 
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh3",
+		Distribution: distribution,
+		ID:           "id3", LowerBound: kr.KeyRangeBound{
+			int64(21),
+		},
+		ColumnTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
+	}).ToDB())
+
+	assert.NoError(err)
+
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
+		"sh3": {},
 	}, lc, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
@@ -592,6 +606,29 @@ func TestCTE(t *testing.T) {
 	assert.NoError(err)
 
 	for _, tt := range []tcase{
+		{
+			query: `
+		WITH vals (x) AS (
+			VALUES (1), (202)
+		)
+		SELECT 
+			*
+		FROM t r
+		JOIN vals 
+			ON r.i = vals.x;
+		`,
+			err: nil,
+			exp: &plan.ScatterPlan{
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh3",
+					},
+				},
+			},
+		},
 
 		{
 			query: `
@@ -1938,6 +1975,22 @@ func TestRouteWithRules_Select(t *testing.T) {
 			err: nil,
 		},
 		{
+			query:        "SELECT __spqr__is_ready();",
+			distribution: distribution.ID,
+			exp: &plan.VirtualPlan{
+				VirtualRowCols: []pgproto3.FieldDescription{
+					{
+						Name:         []byte("__spqr__is_ready"),
+						DataTypeOID:  catalog.ARRAYOID,
+						TypeModifier: -1,
+						DataTypeSize: 1,
+					},
+				},
+				VirtualRowVals: [][]byte{{byte('f')}},
+			},
+			err: nil,
+		},
+		{
 			query:        "SELECT set_config('log_statement_stats', 'off', false);",
 			distribution: distribution.ID,
 			exp:          &plan.RandomDispatchPlan{},
@@ -2233,7 +2286,7 @@ func TestCheckTableIsRoutable(t *testing.T) {
 		assert.NoError(err)
 		switch node := stmt.(type) {
 		case *lyx.CreateTable:
-			actualErr := router.CheckTableIsRoutable(ctx, node)
+			actualErr := planner.CheckTableIsRoutable(ctx, router.Mgr(), node)
 			if tt.err == nil {
 				assert.NoError(actualErr, "case #%d", nn)
 			} else {

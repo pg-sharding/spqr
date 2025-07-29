@@ -16,7 +16,6 @@ import (
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
-	"github.com/pg-sharding/spqr/router/routehint"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -103,36 +102,36 @@ func (rm *RoutingMetadataContext) RecordAuxExpr(name string, value string, v lyx
 	rm.AuxValues[k] = vals
 }
 
-func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col string, paramResCodes []int16) ([]any, bool) {
-
-	bindParams := rm.SPH.BindParams()
-
+func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col string, paramResCodes []int16) ([]any, error) {
+	/* explicit assignment in query */
 	if vals, ok := rm.Exprs[*rfqn][col]; ok {
-		return vals, true
+		return vals, nil
 	}
+
+	/* else get parameter from bind query */
 
 	inds, ok := rm.ParamRefs[*rfqn][col]
 	if !ok {
-		return nil, false
+		return nil, plan.ErrResolvingValue
 	}
 
 	off, tp := rm.GetDistributionKeyOffsetType(rfqn, col)
 	if off == -1 {
 		// column not from distr key
-		return nil, false
+		return nil, plan.ErrResolvingValue
 	}
 
 	// TODO: switch column type here
 	// only works for one value
 	ind := inds[0]
 	if len(paramResCodes) < ind {
-		return nil, false
+		return nil, plan.ErrResolvingValue
 	}
 	fc := paramResCodes[ind]
 
-	singleVal, res := plan.ParseResolveParamValue(fc, ind, tp, bindParams)
+	singleVal, err := plan.ParseResolveParamValue(fc, ind, tp, rm.SPH.BindParams())
 
-	return []any{singleVal}, res
+	return []any{singleVal}, err
 }
 
 func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node {
@@ -177,33 +176,19 @@ func (rm *RoutingMetadataContext) RFQNIsCTE(resolvedRelation *rfqn.RelationFQN) 
 }
 
 // TODO : unit tests
-func (rm *RoutingMetadataContext) RecordConstExpr(resolvedRelation *rfqn.RelationFQN, colname string, expr interface{}) error {
-	if rm.RFQNIsCTE(resolvedRelation) {
-		// CTE, skip
-		return nil
-	}
+func (rm *RoutingMetadataContext) RecordConstExpr(resolvedRelation *rfqn.RelationFQN, colname string, expr any) error {
 	rm.Rels[*resolvedRelation] = struct{}{}
 	if _, ok := rm.Exprs[*resolvedRelation]; !ok {
-		rm.Exprs[*resolvedRelation] = map[string][]interface{}{}
+		rm.Exprs[*resolvedRelation] = map[string][]any{}
 	}
 	if _, ok := rm.Exprs[*resolvedRelation][colname]; !ok {
-		rm.Exprs[*resolvedRelation][colname] = make([]interface{}, 0)
+		rm.Exprs[*resolvedRelation][colname] = make([]any, 0)
 	}
 	rm.Exprs[*resolvedRelation][colname] = append(rm.Exprs[*resolvedRelation][colname], expr)
 	return nil
 }
 
 func (routingMeta *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation *rfqn.RelationFQN, colname string, ind int) error {
-	if routingMeta.RFQNIsCTE(resolvedRelation) {
-		// CTE, skip
-		return nil
-	}
-
-	if routingMeta.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
-		// reference relation, skip
-		return nil
-	}
-
 	routingMeta.Rels[*resolvedRelation] = struct{}{}
 	if _, ok := routingMeta.ParamRefs[*resolvedRelation]; !ok {
 		routingMeta.ParamRefs[*resolvedRelation] = map[string][]int{}
@@ -263,9 +248,11 @@ func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context
 	return kr.ShardKey{}, fmt.Errorf("failed to match key with ranges")
 }
 
-func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (routehint.RouteHint, error) {
+func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Plan, error) {
 	if rm.SPH.ScatterQuery() {
-		return &routehint.ScatterRouteHint{}, nil
+		return &plan.ScatterPlan{
+			Forced: true,
+		}, nil
 	}
 	if val := rm.SPH.ShardingKey(); val != "" {
 		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
@@ -338,14 +325,12 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (routehi
 		if err != nil {
 			return nil, err
 		}
-		return &routehint.TargetRouteHint{
-			State: &plan.ShardDispatchPlan{
-				ExecTarget: ds,
-			},
+		return &plan.ShardDispatchPlan{
+			ExecTarget: ds,
 		}, nil
 	}
 
-	return &routehint.EmptyRouteHint{}, nil
+	return nil, nil
 }
 
 func (rm *RoutingMetadataContext) GetDistributionKeyOffsetType(resolvedRelation *rfqn.RelationFQN, colname string) (int, string) {
@@ -426,6 +411,16 @@ func ParseExprValue(resolvedRelation *rfqn.RelationFQN, tp string, expr lyx.Node
 }
 
 func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation *rfqn.RelationFQN, tp string, colname string, expr lyx.Node) error {
+
+	if rm.RFQNIsCTE(resolvedRelation) {
+		// CTE, skip
+		return nil
+	}
+
+	if rm.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
+		// reference relation, skip
+		return nil
+	}
 
 	v, err := ParseExprValue(resolvedRelation, tp, expr)
 	if err != nil {

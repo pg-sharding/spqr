@@ -131,6 +131,20 @@ func (mr *MockQueryRouterMockRecorder) Query() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockQueryRouter)(nil).Query))
 }
 
+// Ready mocks base method.
+func (m *MockQueryRouter) Ready() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Ready")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// Ready indicates an expected call of Ready.
+func (mr *MockQueryRouterMockRecorder) Ready() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ready", reflect.TypeOf((*MockQueryRouter)(nil).Ready))
+}
+
 // SchemaCache mocks base method.
 func (m *MockQueryRouter) SchemaCache() *cache.SchemaCache {
 	m.ctrl.T.Helper()
@@ -155,6 +169,18 @@ func (m *MockQueryRouter) SetQuery(q *string) {
 func (mr *MockQueryRouterMockRecorder) SetQuery(q any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetQuery", reflect.TypeOf((*MockQueryRouter)(nil).SetQuery), q)
+}
+
+// SetReady mocks base method.
+func (m *MockQueryRouter) SetReady(ready bool) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetReady", ready)
+}
+
+// SetReady indicates an expected call of SetReady.
+func (mr *MockQueryRouterMockRecorder) SetReady(ready any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetReady", reflect.TypeOf((*MockQueryRouter)(nil).SetReady), ready)
 }
 
 // WorldShardsRoutes mocks base method.

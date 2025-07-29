@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/xproto"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/stretchr/testify/assert"
@@ -113,7 +114,7 @@ func SetupSharding() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;")
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
@@ -121,19 +122,19 @@ func SetupSharding() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;")
+	_, err = conn.Exec(context.Background(), "CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid4 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds2;")
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid4 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds2;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid3 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds2;")
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid3 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds2;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "ALTER DISTRIBUTION ds2 ATTACH RELATION text_table DISTRIBUTION KEY id;")
+	_, err = conn.Exec(context.Background(), "CREATE RELATION text_table (id HASH MURMUR) IN ds2;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
@@ -1090,7 +1091,7 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 		return
 	}
 
-	for _, msgroup := range []MessageGroup{
+	for gr, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
@@ -1112,6 +1113,7 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 					Name:  "stmtcache_sr_2",
 					Query: "INSERT INTO t (id) VALUES($1);",
 				},
+
 				&pgproto3.Describe{
 					Name:       "stmtcache_sr_2",
 					ObjectType: 'S',
@@ -1122,7 +1124,17 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 					Parameters: [][]byte{
 						[]byte("1"),
 					},
-					ParameterFormatCodes: []int16{0},
+					ParameterFormatCodes: []int16{xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_2",
+					Parameters: [][]byte{
+						{0x0, 0x0, 0x0, 0x1},
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeBinary},
 				},
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
@@ -1182,6 +1194,17 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXACT),
 				},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
 				&pgproto3.BindComplete{},
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("INSERT 0 1"),
@@ -1206,6 +1229,162 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 				&pgproto3.DataRow{
 					Values: [][]byte{
 						[]byte("1"),
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 2"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{},
+				},
+
+				&pgproto3.NoData{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "stmtcache_sr_1_tt",
+					Query: "BEGIN",
+				},
+				&pgproto3.Describe{
+					Name:       "stmtcache_sr_1_tt",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_1_tt",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Name:  "stmtcache_sr_2_tt",
+					Query: "INSERT INTO text_table (id) VALUES($1);",
+				},
+
+				&pgproto3.Describe{
+					Name:       "stmtcache_sr_2_tt",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_2_tt",
+					Parameters: [][]byte{
+						[]byte("23i923i99032"),
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: `SELECT * FROM text_table`,
+				},
+
+				&pgproto3.Parse{
+					Name:  "stmtcache_sr_3_tt",
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Describe{
+					Name:       "stmtcache_sr_3_tt",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_3_tt",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{},
+				},
+
+				&pgproto3.NoData{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{
+						catalog.TEXTOID,
+					},
+				},
+
+				&pgproto3.NoData{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("id"),
+							DataTypeOID:          catalog.TEXTOID,
+							DataTypeSize:         -1,
+							TypeModifier:         -1,
+							TableAttributeNumber: 1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("23i923i99032"),
 					},
 				},
 
@@ -1265,7 +1444,7 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 			default:
 				break
 			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("index=%d", ind))
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("gr=%d index=%d", gr, ind))
 		}
 	}
 }
