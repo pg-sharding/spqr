@@ -87,10 +87,6 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 			return err
 		}
 
-		if len(relation.DistributionKey[lvl].Column) == 0 {
-			// calculate routing expression
-		}
-
 		col := relation.DistributionKey[lvl].Column
 
 		vals, err := rm.ResolveValue(qualName, col, queryParamsFormatCodes)
