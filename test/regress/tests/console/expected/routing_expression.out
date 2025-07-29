@@ -11,7 +11,7 @@ create distribution ds1 column types int hash;
  distribution id -> ds1
 (1 row)
 
-create relation tr(MURMUR [id1 INT , id2 VARCHAR]);
+create relation tr(MURMUR [id1 INT HASH, id2 VARCHAR HASH]);
       attach table      
 ------------------------
  relation name   -> tr

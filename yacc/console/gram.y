@@ -677,17 +677,7 @@ distribution_key_argument_list:
     } 
 
 typed_col_ref:
-	any_id VARCHAR {
-		$$ = TypedColRef{
-			Column: $1,
-			Type: $2,
-		}
-	} | any_id INT {
-		$$ = TypedColRef{
-			Column: $1,
-			Type: $2,
-		}
-	} | any_id UUID {
+	any_id col_types_elem {
 		$$ = TypedColRef{
 			Column: $1,
 			Type: $2,
