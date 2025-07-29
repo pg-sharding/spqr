@@ -19,13 +19,13 @@ func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]
 		switch tp {
 		case qdb.ColumnTypeUUID:
 			val := string(bindParams[ind])
-			return []any{val}, nil
+			return val, nil
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
-			return []any{string(bindParams[ind])}, nil
+			return string(bindParams[ind]), nil
 		case qdb.ColumnTypeInteger:
 
 			var num int64
@@ -90,7 +90,6 @@ func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]
 		}
 	default:
 		// ??? protoc violation
-
 	}
 
 	return nil, ErrResolvingValue

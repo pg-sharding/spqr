@@ -101,13 +101,14 @@ func (rm *RoutingMetadataContext) RecordAuxExpr(name string, value string, v lyx
 	vals = append(vals, v)
 	rm.AuxValues[k] = vals
 }
+
 func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col string, paramResCodes []int16) ([]any, error) {
-
-	bindParams := rm.SPH.BindParams()
-
+	/* explicit assigndment in query */
 	if vals, ok := rm.Exprs[*rfqn][col]; ok {
 		return vals, nil
 	}
+
+	/* else get parameter from bind query */
 
 	inds, ok := rm.ParamRefs[*rfqn][col]
 	if !ok {
@@ -128,7 +129,7 @@ func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col strin
 	}
 	fc := paramResCodes[ind]
 
-	singleVal, err := plan.ParseResolveParamValue(fc, ind, tp, bindParams)
+	singleVal, err := plan.ParseResolveParamValue(fc, ind, tp, rm.SPH.BindParams())
 
 	return []any{singleVal}, err
 }
@@ -176,10 +177,6 @@ func (rm *RoutingMetadataContext) RFQNIsCTE(resolvedRelation *rfqn.RelationFQN) 
 
 // TODO : unit tests
 func (rm *RoutingMetadataContext) RecordConstExpr(resolvedRelation *rfqn.RelationFQN, colname string, expr any) error {
-	if rm.RFQNIsCTE(resolvedRelation) {
-		// CTE, skip
-		return nil
-	}
 	rm.Rels[*resolvedRelation] = struct{}{}
 	if _, ok := rm.Exprs[*resolvedRelation]; !ok {
 		rm.Exprs[*resolvedRelation] = map[string][]any{}
@@ -192,16 +189,6 @@ func (rm *RoutingMetadataContext) RecordConstExpr(resolvedRelation *rfqn.Relatio
 }
 
 func (routingMeta *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation *rfqn.RelationFQN, colname string, ind int) error {
-	if routingMeta.RFQNIsCTE(resolvedRelation) {
-		// CTE, skip
-		return nil
-	}
-
-	if routingMeta.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
-		// reference relation, skip
-		return nil
-	}
-
 	routingMeta.Rels[*resolvedRelation] = struct{}{}
 	if _, ok := routingMeta.ParamRefs[*resolvedRelation]; !ok {
 		routingMeta.ParamRefs[*resolvedRelation] = map[string][]int{}
@@ -424,6 +411,16 @@ func ParseExprValue(resolvedRelation *rfqn.RelationFQN, tp string, expr lyx.Node
 }
 
 func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation *rfqn.RelationFQN, tp string, colname string, expr lyx.Node) error {
+
+	if rm.RFQNIsCTE(resolvedRelation) {
+		// CTE, skip
+		return nil
+	}
+
+	if rm.Distributions[*resolvedRelation].Id == distributions.REPLICATED {
+		// reference relation, skip
+		return nil
+	}
 
 	v, err := ParseExprValue(resolvedRelation, tp, expr)
 	if err != nil {
