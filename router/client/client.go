@@ -977,7 +977,7 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	spqrlog.Zero.Debug().
 		Uint("client", cl.ID()).
 		Type("msg-type", msg).
-		Msgf("sending msg to client %+v", msg)
+		Msg("sending msg to client")
 
 	cl.be.Send(msg)
 
