@@ -237,9 +237,8 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 	queryParamsFormatCodes := GetParams(rm)
 	tupleShards := make([]kr.ShardKey, len(routingList))
 
-	vvs_resolved := make([][]any, len(offsets))
-
 	for i := range routingList {
+		tup := make([]any, len(ds.ColTypes))
 
 		for j := range offsets {
 			off, tp := rm.GetDistributionKeyOffsetType(qualName, insertCols[offsets[j]])
@@ -269,21 +268,7 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 				if err != nil {
 					return nil, err
 				}
-				vvs_resolved[j] = append(vvs_resolved[j], singleVal)
-			default:
-				vvs_resolved[j] = append(vvs_resolved[j], v)
-			}
-		}
-	}
-
-	for i := range routingList {
-		tup := make([]any, len(ds.ColTypes))
-
-		for j := range offsets {
-			off, _ := rm.GetDistributionKeyOffsetType(qualName, insertCols[offsets[j]])
-			if off == -1 {
-				// column not from distr key
-				continue
+				v = singleVal
 			}
 
 			hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[j].HashFunction)
@@ -292,7 +277,7 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 				return nil, err
 			}
 
-			tup[j], err = hashfunction.ApplyHashFunction(vvs_resolved[j][i], ds.ColTypes[j], hf)
+			tup[j], err = hashfunction.ApplyHashFunction(v, ds.ColTypes[j], hf)
 
 			if err != nil {
 				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")

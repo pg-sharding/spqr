@@ -130,7 +130,7 @@ func ApplyHashFunction(input any, ctype string, hf HashFunctionType) (any, error
  */
 func ApplyHashFunctionOnStringRepr(input []byte, ctype string, hf HashFunctionType) (interface{}, error) {
 
-	var parsedInput interface{}
+	var parsedInput any
 
 	/*
 	* We need to convert raw bytes to appropriate interface
