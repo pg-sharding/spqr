@@ -21,9 +21,25 @@ CREATE TABLE tr (id1 INT, id2 TEXT, val TEXT);
 --3|abababab|ziizizizi
 --\.
 
+SELECT * FROM tr WHERE id1 = 0 AND id2 = 'aba';
 SELECT * FROM tr WHERE id1 = 1 AND id2 = 'ziziziz';
 SELECT * FROM tr WHERE id1 = 2 AND id2 = 'ziiziziziz';
 SELECT * FROM tr WHERE id1 = 3 AND id2 = 'ziizizizi';
+SELECT * FROM tr WHERE id1 = 4 AND id2 = 'yyuyuyuyu';
+
+WITH vals (x, y, z) AS (VALUES(1, 'ziziziz', 32), (2, 'ziiziziziz', 32)) 
+    SELECT * FROM 
+        tr JOIN vals ON tr.id1 = vals.x AND tr.id2 = vals.y;
+
+
+-- TODO: fix
+--WITH vals (x, y, z) AS (VALUES (4, 'yyuyuyuyu', 32), (1, 'ziziziz', 32)) 
+--    SELECT * FROM 
+--        tr JOIN vals ON tr.id1 = vals.x AND tr.id2 = vals.y /* __spqr__engine_v2: true */;
+
+UPDATE tr SET val = 1123 WHERE id1 = 1 AND id2 = 'ziziziz';
+
+DELETE FROM tr WHERE id1 = 1 AND id2 = 'ziziziz' RETURNING *;
 
 DROP TABLE tr;
 
