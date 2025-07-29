@@ -1,0 +1,84 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+create distribution ds1 column types int hash;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+create relation tr(MURMUR [id1 INT , id2 VARCHAR]);
+      attach table      
+------------------------
+ relation name   -> tr
+ distribution id -> ds1
+(2 rows)
+
+CREATE KEY RANGE FROM 3221225472 ROUTE TO sh4;
+    add key range    
+---------------------
+ bound -> 3221225472
+(1 row)
+
+CREATE KEY RANGE FROM 2147483648 ROUTE TO sh3;
+    add key range    
+---------------------
+ bound -> 2147483648
+(1 row)
+
+CREATE KEY RANGE FROM 1073741824 ROUTE TO sh2;
+    add key range    
+---------------------
+ bound -> 1073741824
+(1 row)
+
+CREATE KEY RANGE FROM 0 ROUTE TO sh1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+show relations;
+ Relation name | Distribution ID | Distribution key | Schema name  
+---------------+-----------------+------------------+--------------
+ tr            | ds1             | ("", murmur)     | $search_path
+(1 row)
+
+\c regress
+CREATE TABLE tr (id1 INT, val TEXT);
+ERROR:  client processing error: error processing query 'CREATE TABLE tr (id1 INT, val TEXT);': create table stmt ignored: no sharding rule columns found, tx status IDLE
+CREATE TABLE tr (id1 INT, id2 TEXT, val TEXT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  relation "tr" already exists
+--COPY tr (id1, id2, val) FROM STDIN DELIMETER '|';
+--1|abab|ziziziz
+--2|ababa|ziiziziziz
+--3|abababab|ziizizizi
+--\.
+--SELECT * FROM tr WHERE id1 = 1 AND id2 = 'ziziziz';
+--SELECT * FROM tr WHERE id1 = 2 AND id2 = 'ziiziziziz';
+--SELECT * FROM tr WHERE id1 = 3 AND id2 = 'ziizizizi';
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

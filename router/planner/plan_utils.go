@@ -164,9 +164,22 @@ func CheckTableIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.Cre
 	}
 	check := true
 	for _, entry := range rel.DistributionKey {
-		if _, ok = entries[entry.Column]; !ok {
-			check = false
-			break
+		if len(entry.Column) == 0 {
+			if len(entry.Expr.ColRefs) == 0 {
+				return fmt.Errorf("invalid routing expression for relation")
+			} else {
+				for _, cf := range entry.Expr.ColRefs {
+					if _, ok = entries[cf.ColName]; !ok {
+						check = false
+						break
+					}
+				}
+			}
+		} else {
+			if _, ok = entries[entry.Column]; !ok {
+				check = false
+				break
+			}
 		}
 	}
 	if check {

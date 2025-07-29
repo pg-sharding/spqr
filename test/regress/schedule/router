@@ -37,4 +37,5 @@ test: auto_distribution
 test: spqrguard
 test: negative_routing
 test: default_shard
+test: expression_routing
 test: show_backend_connections
