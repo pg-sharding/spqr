@@ -10,7 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/router/xproto"
 )
 
-var ErrResolvingValue = fmt.Errorf("Error while resolving expression value")
+var ErrResolvingValue = fmt.Errorf("error while resolving expression value")
 
 func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]byte) (any, error) {
 
