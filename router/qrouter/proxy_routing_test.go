@@ -282,6 +282,109 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 	}
 }
 
+func TestRoutingByExpression(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   plan.Plan
+		err   error
+	}
+	/* TODO: fix by adding configurable setting */
+	db, _ := qdb.NewMemQDB(MemQDBPath)
+	distribution := "ds1"
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID:       distribution,
+		ColTypes: []string{qdb.ColumnTypeInteger},
+		Relations: map[string]*qdb.DistributedRelation{
+			"distrr_mm_test": {
+				Name: "distrr_mm_test",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Expr: qdb.RoutingExpr{
+							ColRefs: []qdb.TypedColRef{
+								{
+									ColName: "id1",
+									ColType: qdb.ColumnTypeInteger,
+								},
+
+								{
+									ColName: "id2",
+									ColType: qdb.ColumnTypeVarchar,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh1",
+		Distribution: distribution,
+		ID:           "id1",
+		LowerBound: kr.KeyRangeBound{
+			int64(0),
+		},
+		ColumnTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
+	}).ToDB())
+
+	assert.NoError(err)
+
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh2",
+		Distribution: distribution,
+		ID:           "id2",
+		LowerBound: kr.KeyRangeBound{
+			int64(2147483648),
+		},
+		ColumnTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
+	}).ToDB())
+
+	assert.NoError(err)
+
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+
+	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
+		"sh1": {},
+		"sh2": {},
+	}, lc, &config.QRouter{}, nil)
+
+	assert.NoError(err)
+
+	for _, tt := range []tcase{
+		{
+			query: "SELECT * FROM distrr_mm_test WHERE id1 = 1 AND id2 = 'jidw';",
+			exp:   &plan.ShardDispatchPlan{},
+			err:   nil,
+		},
+	} {
+		parserRes, err := lyx.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		dh := session.NewDummyHandler(distribution)
+		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
+
+		tmp, err := pr.PlanQuery(context.TODO(), parserRes, dh)
+
+		if tt.err != nil {
+			assert.Equal(tt.err, err, tt.query)
+		} else {
+			tmp.SetStmt(nil) /* dont check stmt */
+
+			assert.NoError(err, "query %s", tt.query)
+
+			assert.Equal(tt.exp, tmp, tt.query)
+		}
+	}
+}
+
 func TestReferenceRelationRouting(t *testing.T) {
 	assert := assert.New(t)
 
