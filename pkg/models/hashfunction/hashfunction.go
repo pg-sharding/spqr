@@ -131,10 +131,10 @@ func ApplyCityHashFunction(input any, ctype string) (uint32, error) {
 func ApplyNonIdentHashFunction(input any, ctype string, hf HashFunctionType) (uint32, error) {
 	switch hf {
 	case HashFunctionMurmur:
-		v, err := ApplyMurmurHashFunction(input, ctype, hf)
+		v, err := ApplyMurmurHashFunction(input, ctype)
 		return v, err
 	case HashFunctionCity:
-		v, err := ApplyCityHashFunction(input, ctype, hf)
+		v, err := ApplyCityHashFunction(input, ctype)
 		return v, err
 	default:
 		return 0, fmt.Errorf("unsuitable hash function type: %d", hf)
