@@ -74,7 +74,7 @@ func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
-			return []any{string(bindParams[ind])}, nil
+			return string(bindParams[ind]), nil
 		case qdb.ColumnTypeInteger:
 			num, err := strconv.ParseInt(string(bindParams[ind]), 10, 64)
 			if err != nil {
