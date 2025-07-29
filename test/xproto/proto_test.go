@@ -1293,13 +1293,48 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 					Name:       "stmtcache_sr_2_tt",
 					ObjectType: 'S',
 				},
+
 				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Name:  "stmtcache_sr_4_tt",
+					Query: "UPDATE text_table SET id = id || $1 WHERE id = $2;",
+				},
+
+				&pgproto3.Describe{
+					Name:       "stmtcache_sr_2_tt",
+					ObjectType: 'S',
+				},
+
+				&pgproto3.Sync{},
+
 				&pgproto3.Bind{
 					PreparedStatement: "stmtcache_sr_2_tt",
 					Parameters: [][]byte{
 						[]byte("23i923i99032"),
 					},
 					ParameterFormatCodes: []int16{xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_2_tt",
+					Parameters: [][]byte{
+						[]byte("23i923i99032"),
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeBinary},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_4_tt",
+					Parameters: [][]byte{
+						[]byte("zz"),
+						[]byte("23i923i99032"),
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeBinary},
 				},
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
@@ -1317,6 +1352,7 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 					ObjectType: 'S',
 				},
 				&pgproto3.Sync{},
+
 				&pgproto3.Bind{
 					PreparedStatement: "stmtcache_sr_3_tt",
 				},
@@ -1360,10 +1396,44 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 					TxStatus: byte(txstatus.TXACT),
 				},
 
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{
+						catalog.TEXTOID,
+					},
+				},
+
+				&pgproto3.NoData{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
 				&pgproto3.BindComplete{},
 
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 2"),
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -1384,12 +1454,17 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 
 				&pgproto3.DataRow{
 					Values: [][]byte{
-						[]byte("23i923i99032"),
+						[]byte("23i923i99032zz"),
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("23i923i99032zz"),
 					},
 				},
 
 				&pgproto3.CommandComplete{
-					CommandTag: []byte("SELECT 1"),
+					CommandTag: []byte("SELECT 2"),
 				},
 
 				&pgproto3.ReadyForQuery{
