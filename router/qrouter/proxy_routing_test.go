@@ -360,6 +360,16 @@ func TestRoutingByExpression(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query: "INSERT INTO distrr_mm_test (id1, id2) VALUES(100, 'jidw');",
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: "read-write",
+			},
+			err: nil,
+		},
+		{
 			query: "SELECT * FROM distrr_mm_test WHERE id1 = 100 AND id2 = 'jidw';",
 			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
@@ -369,6 +379,7 @@ func TestRoutingByExpression(t *testing.T) {
 			},
 			err: nil,
 		},
+
 		{
 			query: "SELECT * FROM distrr_mm_test WHERE id1 = 2 AND id2 = 'jidw';",
 			exp: &plan.ShardDispatchPlan{

@@ -59,43 +59,60 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 --2|ababa|ziiziziziz
 --3|abababab|ziizizizi
 --\.
+INSERT INTO tr (id1, id2, val) VALUES (0, 'aba', 101);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO tr (id1, id2, val) VALUES (1, 'ziziziz', 102);
+NOTICE: send query to shard(s) : sh3
+INSERT INTO tr (id1, id2, val) VALUES (2, 'ziiziziziz', 103);
+NOTICE: send query to shard(s) : sh3
+INSERT INTO tr (id1, id2, val) VALUES (3, 'ziizizizi', 104);
+NOTICE: send query to shard(s) : sh4
+INSERT INTO tr (id1, id2, val) VALUES (4, 'yyuyuyuyu', 105);
+NOTICE: send query to shard(s) : sh4
 SELECT * FROM tr WHERE id1 = 0 AND id2 = 'aba';
 NOTICE: send query to shard(s) : sh1
  id1 | id2 | val 
 -----+-----+-----
-(0 rows)
+   0 | aba | 101
+(1 row)
 
 SELECT * FROM tr WHERE id1 = 1 AND id2 = 'ziziziz';
 NOTICE: send query to shard(s) : sh3
- id1 | id2 | val 
------+-----+-----
-(0 rows)
+ id1 |   id2   | val 
+-----+---------+-----
+   1 | ziziziz | 102
+(1 row)
 
 SELECT * FROM tr WHERE id1 = 2 AND id2 = 'ziiziziziz';
 NOTICE: send query to shard(s) : sh3
- id1 | id2 | val 
------+-----+-----
-(0 rows)
+ id1 |    id2     | val 
+-----+------------+-----
+   2 | ziiziziziz | 103
+(1 row)
 
 SELECT * FROM tr WHERE id1 = 3 AND id2 = 'ziizizizi';
 NOTICE: send query to shard(s) : sh4
- id1 | id2 | val 
------+-----+-----
-(0 rows)
+ id1 |    id2    | val 
+-----+-----------+-----
+   3 | ziizizizi | 104
+(1 row)
 
 SELECT * FROM tr WHERE id1 = 4 AND id2 = 'yyuyuyuyu';
 NOTICE: send query to shard(s) : sh4
- id1 | id2 | val 
------+-----+-----
-(0 rows)
+ id1 |    id2    | val 
+-----+-----------+-----
+   4 | yyuyuyuyu | 105
+(1 row)
 
 WITH vals (x, y, z) AS (VALUES(1, 'ziziziz', 32), (2, 'ziiziziziz', 32)) 
     SELECT * FROM 
         tr JOIN vals ON tr.id1 = vals.x AND tr.id2 = vals.y;
 NOTICE: send query to shard(s) : sh3
- id1 | id2 | val | x | y | z 
------+-----+-----+---+---+---
-(0 rows)
+ id1 |    id2     | val | x |     y      | z  
+-----+------------+-----+---+------------+----
+   1 | ziziziz    | 102 | 1 | ziziziz    | 32
+   2 | ziiziziziz | 103 | 2 | ziiziziziz | 32
+(2 rows)
 
 -- TODO: fix
 --WITH vals (x, y, z) AS (VALUES (4, 'yyuyuyuyu', 32), (1, 'ziziziz', 32)) 
@@ -105,9 +122,10 @@ UPDATE tr SET val = 1123 WHERE id1 = 1 AND id2 = 'ziziziz';
 NOTICE: send query to shard(s) : sh3
 DELETE FROM tr WHERE id1 = 1 AND id2 = 'ziziziz' RETURNING *;
 NOTICE: send query to shard(s) : sh3
- id1 | id2 | val 
------+-----+-----
-(0 rows)
+ id1 |   id2   | val  
+-----+---------+------
+   1 | ziziziz | 1123
+(1 row)
 
 DROP TABLE tr;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

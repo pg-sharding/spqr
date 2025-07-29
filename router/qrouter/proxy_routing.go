@@ -93,6 +93,9 @@ func (qr *ProxyQrouter) computeRoutingExpr(
 			ret = append(ret, b)
 			return nil
 		}
+		if len(rm.ParamRefs[*qualName][rExpr.ColRefs[i].ColName]) == 0 && len(rm.Exprs[*qualName][rExpr.ColRefs[i].ColName]) == 0 {
+			return nil
+		}
 
 		vals, err := rm.ResolveValue(qualName, rExpr.ColRefs[i].ColName, queryParamsFormatCodes)
 		if err != nil {
