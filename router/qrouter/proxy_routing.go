@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/tsa"
+	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -80,24 +81,45 @@ func (qr *ProxyQrouter) computeRoutingExpr(
 
 	var ret []any
 
-	expr := []byte{}
+	var rec func(acc []byte, i int) error
 
-	for idnx, cr := range rExpr.ColRefs {
+	rec = func(acc []byte, i int) error {
 
-		vals, err := rm.ResolveValue(qualName, cr.ColName, queryParamsFormatCodes)
+		if i == len(rExpr.ColRefs) {
+			b, err := hashfunction.ApplyHashFunction(acc, qdb.ColumnTypeVarcharHashed, hf)
+			if err != nil {
+				return err
+			}
+			ret = append(ret, b)
+			return nil
+		}
+
+		vals, err := rm.ResolveValue(qualName, rExpr.ColRefs[i].ColName, queryParamsFormatCodes)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		for _, v := range vals {
 
-			lExpr, err := hashfunction.ApplyHashFunction(v, cr.ColType, hf)
-
+			lExpr, err := hashfunction.ApplyNonIdentHashFunction(v, rExpr.ColRefs[i].ColType, hf)
 			if err != nil {
 				/* Is this ok? */
-				return nil, err
+				return err
+			}
+
+			buf := hashfunction.EncodeUInt64(uint64(lExpr))
+
+			localAcc := append(acc, buf...)
+
+			if err := rec(localAcc, i+1); err != nil {
+				return err
 			}
 		}
+		return nil
+	}
+
+	if err := rec([]byte{}, 0); err != nil {
+		return nil, err
 	}
 
 	return ret, nil
@@ -129,32 +151,45 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 		if len(relation.DistributionKey[lvl].Column) == 0 {
 			// calculate routing expression
 
-			compositeKey[lvl], err = qr.computeRoutingExpr(&relation.DistributionKey[lvl].Expr, relation.DistributionKey[lvl].HashFunction)
+			valList, err := qr.computeRoutingExpr(
+				qualName,
+				rm,
+				&relation.DistributionKey[lvl].Expr,
+				relation.DistributionKey[lvl].HashFunction,
+				queryParamsFormatCodes)
 
 			if err != nil {
 				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
 				return err
 			}
 
-			if lvl+1 == len(relation.DistributionKey) {
-				currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
-				if err != nil {
-					spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
+			for _, val := range valList {
+				compositeKey[lvl] = val
+
+				if lvl+1 == len(relation.DistributionKey) {
+					currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
+					if err != nil {
+						spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
+						return err
+					}
+
+					spqrlog.Zero.Debug().
+						Interface("current route", currroute).
+						Str("table", qualName.RelationName).
+						Msg("calculated route for table/cols")
+
+					p = plan.Combine(p, &plan.ShardDispatchPlan{
+						ExecTarget:         currroute,
+						TargetSessionAttrs: tsa,
+					})
+					return nil
+				}
+				if err := rec(lvl + 1); err != nil {
 					return err
 				}
-
-				spqrlog.Zero.Debug().
-					Interface("current route", currroute).
-					Str("table", qualName.RelationName).
-					Msg("calculated route for table/cols")
-
-				p = plan.Combine(p, &plan.ShardDispatchPlan{
-					ExecTarget:         currroute,
-					TargetSessionAttrs: tsa,
-				})
-				return nil
 			}
-			return rec(lvl + 1)
+
+			return nil
 		}
 		col := relation.DistributionKey[lvl].Column
 
