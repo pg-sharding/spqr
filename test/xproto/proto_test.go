@@ -134,7 +134,7 @@ func SetupSharding() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "CREATE RELATION text_table (id HASH MURMUR) IN ds1;")
+	_, err = conn.Exec(context.Background(), "CREATE RELATION text_table (id HASH MURMUR) IN ds2;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
