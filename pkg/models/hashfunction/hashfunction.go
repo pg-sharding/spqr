@@ -165,7 +165,7 @@ func ApplyHashFunction(input any, ctype string, hf HashFunctionType) (any, error
 /*
 * Apply routing hash function on bytes received in their string representation (from COPY).
  */
-func ApplyHashFunctionOnStringRepr(input []byte, ctype string, hf HashFunctionType) (interface{}, error) {
+func ApplyHashFunctionOnStringRepr(input []byte, ctype string, hf HashFunctionType) (any, error) {
 
 	var parsedInput any
 

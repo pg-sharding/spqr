@@ -12,6 +12,12 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES int;
  distribution id -> ds1
 (1 row)
 
+CREATE DISTRIBUTION ds2 COLUMN TYPES int, varchar;
+    add distribution    
+------------------------
+ distribution id -> ds2
+(1 row)
+
 CREATE KEY RANGE FROM 300 ROUTE TO sh4 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
@@ -50,11 +56,31 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test_mult DISTRIBUTION KEY id;
  distribution id -> ds1
 (2 rows)
 
+CREATE DISTRIBUTED RELATION copy_test_multi_multi (id1, id2) IN ds2;
+               attach table               
+------------------------------------------
+ relation name   -> copy_test_multi_multi
+ distribution id -> ds2
+(2 rows)
+
 \c regress
 CREATE TABLE copy_test (id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE copy_test_mult (id int, uid int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE copy_test_multi_multi (id1 int, id2 TEXT, id3 int, id4 int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- should fail
+COPY copy_test_multi_multi (id1, id3, id4) FROM STDIN;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  client processing error: failed to resolve target copy column offset, tx status ACTIVE
+COPY copy_test_multi_multi (id3, id4) FROM STDIN;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  client processing error: failed to resolve target copy column offset, tx status ACTIVE
+COPY copy_test_multi_multi (id4, id2) FROM STDIN;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  client processing error: failed to resolve target copy column offset, tx status ACTIVE
+-- should be ok
 COPY copy_test(id) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh1 */;
@@ -287,6 +313,8 @@ DROP TABLE copy_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE copy_test_mult;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE copy_test_multi_multi;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console
@@ -299,7 +327,8 @@ DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------
  distribution id -> ds1
-(1 row)
+ distribution id -> ds2
+(2 rows)
 
 DROP KEY RANGE ALL;
  drop key range 
