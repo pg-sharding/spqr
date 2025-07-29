@@ -21,6 +21,13 @@ CREATE TABLE tr (id1 INT, id2 TEXT, val TEXT);
 --3|abababab|ziizizizi
 --\.
 
+
+INSERT INTO tr (id1, id2, val) VALUES (0, 'aba', 101);
+INSERT INTO tr (id1, id2, val) VALUES (1, 'ziziziz', 102);
+INSERT INTO tr (id1, id2, val) VALUES (2, 'ziiziziziz', 103);
+INSERT INTO tr (id1, id2, val) VALUES (3, 'ziizizizi', 104);
+INSERT INTO tr (id1, id2, val) VALUES (4, 'yyuyuyuyu', 105);
+
 SELECT * FROM tr WHERE id1 = 0 AND id2 = 'aba';
 SELECT * FROM tr WHERE id1 = 1 AND id2 = 'ziziziz';
 SELECT * FROM tr WHERE id1 = 2 AND id2 = 'ziiziziziz';
