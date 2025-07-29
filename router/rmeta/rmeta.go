@@ -103,7 +103,7 @@ func (rm *RoutingMetadataContext) RecordAuxExpr(name string, value string, v lyx
 }
 
 func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col string, paramResCodes []int16) ([]any, error) {
-	/* explicit assigndment in query */
+	/* explicit assignment in query */
 	if vals, ok := rm.Exprs[*rfqn][col]; ok {
 		return vals, nil
 	}
