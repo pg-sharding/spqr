@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/xproto"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/stretchr/testify/assert"
@@ -1112,6 +1113,7 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 					Name:  "stmtcache_sr_2",
 					Query: "INSERT INTO t (id) VALUES($1);",
 				},
+
 				&pgproto3.Describe{
 					Name:       "stmtcache_sr_2",
 					ObjectType: 'S',
@@ -1122,7 +1124,17 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 					Parameters: [][]byte{
 						[]byte("1"),
 					},
-					ParameterFormatCodes: []int16{0},
+					ParameterFormatCodes: []int16{xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_2",
+					Parameters: [][]byte{
+						{0x0, 0x0, 0x0, 0x1},
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeBinary},
 				},
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
@@ -1182,6 +1194,17 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXACT),
 				},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
 				&pgproto3.BindComplete{},
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("INSERT 0 1"),
@@ -1209,8 +1232,14 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 					},
 				},
 
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+
 				&pgproto3.CommandComplete{
-					CommandTag: []byte("SELECT 1"),
+					CommandTag: []byte("SELECT 2"),
 				},
 
 				&pgproto3.ReadyForQuery{
