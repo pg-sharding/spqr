@@ -120,3 +120,23 @@ func TestApplyHashFunction(t *testing.T) {
 		assert.Equal(tt.expected, result, "query %s", tt.input)
 	}
 }
+
+func TestApplyMurmurHashNegative(t *testing.T) {
+	assert := assert.New(t)
+	uintVal := uint64(0)
+	_, err := hashfunction.ApplyMurmurHashFunction(uintVal, qdb.ColumnTypeInteger)
+	assert.Error(err, "incorrect int")
+	intVal := int64(0)
+	_, err = hashfunction.ApplyMurmurHashFunction(intVal, qdb.ColumnTypeUinteger)
+	assert.Error(err, "incorrect uint")
+}
+
+func TestApplyCityHashNegative(t *testing.T) {
+	assert := assert.New(t)
+	uintVal := uint64(0)
+	_, err := hashfunction.ApplyCityHashFunction(uintVal, qdb.ColumnTypeInteger)
+	assert.Error(err, "incorrect int")
+	intVal := int64(0)
+	_, err = hashfunction.ApplyCityHashFunction(intVal, qdb.ColumnTypeUinteger)
+	assert.Error(err, "incorrect uint")
+}

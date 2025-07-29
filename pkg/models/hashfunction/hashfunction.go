@@ -56,17 +56,24 @@ func EncodeUInt64(input uint64) []byte {
 	return buf
 }
 
-func ApplyMurmurHashFunction(input any, ctype string, hf HashFunctionType) (uint32, error) {
+func ApplyMurmurHashFunction(input any, ctype string) (uint32, error) {
 	switch ctype {
 	case qdb.ColumnTypeInteger:
-		buf := EncodeUInt64(uint64(input.(int64)))
-		h := murmur3.Sum32(buf)
-		return h, nil
-
+		if res, ok := input.(int64); ok {
+			buf := EncodeUInt64(uint64(res))
+			h := murmur3.Sum32(buf)
+			return h, nil
+		} else {
+			return 0, fmt.Errorf("invalid type for murmurhash '%s'", qdb.ColumnTypeInteger)
+		}
 	case qdb.ColumnTypeUinteger:
-		buf := EncodeUInt64(input.(uint64))
-		h := murmur3.Sum32(buf)
-		return h, nil
+		if res, ok := input.(uint64); ok {
+			buf := EncodeUInt64(res)
+			h := murmur3.Sum32(buf)
+			return h, nil
+		} else {
+			return 0, fmt.Errorf("invalid type for murmurhash '%s'", qdb.ColumnTypeUinteger)
+		}
 	case qdb.ColumnTypeVarcharHashed:
 		switch v := input.(type) {
 		case []byte:
@@ -78,23 +85,31 @@ func ApplyMurmurHashFunction(input any, ctype string, hf HashFunctionType) (uint
 
 			return h, nil
 		default:
-			return 0, errUnknownValueType(input, hf)
+			return 0, errUnknownValueType(input, HashFunctionMurmur)
 		}
 	default:
-		return 0, errUnknownColumnType(ctype, hf)
+		return 0, errUnknownColumnType(ctype, HashFunctionMurmur)
 	}
 }
 
-func ApplyCityHashFunction(input any, ctype string, hf HashFunctionType) (uint32, error) {
+func ApplyCityHashFunction(input any, ctype string) (uint32, error) {
 	switch ctype {
 	case qdb.ColumnTypeInteger:
-		buf := EncodeUInt64(uint64(input.(int64)))
-		h := city.Hash32(buf)
-		return h, nil
+		if res, ok := input.(int64); ok {
+			buf := EncodeUInt64(uint64(res))
+			h := city.Hash32(buf)
+			return h, nil
+		} else {
+			return 0, fmt.Errorf("invalid type for cityhash '%s'", qdb.ColumnTypeInteger)
+		}
 	case qdb.ColumnTypeUinteger:
-		buf := EncodeUInt64(input.(uint64))
-		h := city.Hash32(buf)
-		return h, nil
+		if res, ok := input.(uint64); ok {
+			buf := EncodeUInt64(res)
+			h := city.Hash32(buf)
+			return h, nil
+		} else {
+			return 0, fmt.Errorf("invalid type for cityhash '%s'", qdb.ColumnTypeUinteger)
+		}
 	case qdb.ColumnTypeVarcharHashed:
 		switch v := input.(type) {
 		case []byte:
@@ -106,10 +121,10 @@ func ApplyCityHashFunction(input any, ctype string, hf HashFunctionType) (uint32
 
 			return h, nil
 		default:
-			return 0, errUnknownValueType(input, hf)
+			return 0, errUnknownValueType(input, HashFunctionCity)
 		}
 	default:
-		return 0, errUnknownColumnType(ctype, hf)
+		return 0, errUnknownColumnType(ctype, HashFunctionCity)
 	}
 }
 
@@ -124,10 +139,10 @@ func ApplyHashFunction(input any, ctype string, hf HashFunctionType) (any, error
 		}
 		return input, nil
 	case HashFunctionMurmur:
-		v, err := ApplyMurmurHashFunction(input, ctype, hf)
+		v, err := ApplyMurmurHashFunction(input, ctype)
 		return uint64(v), err
 	case HashFunctionCity:
-		v, err := ApplyCityHashFunction(input, ctype, hf)
+		v, err := ApplyCityHashFunction(input, ctype)
 		return uint64(v), err
 	default:
 		return nil, fmt.Errorf("unknown hash function type: %d", hf)
