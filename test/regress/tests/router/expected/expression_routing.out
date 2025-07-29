@@ -54,7 +54,6 @@ CREATE TABLE tr (id1 INT, val TEXT);
 ERROR:  client processing error: error processing query 'CREATE TABLE tr (id1 INT, val TEXT);': create table stmt ignored: no sharding rule columns found, tx status IDLE
 CREATE TABLE tr (id1 INT, id2 TEXT, val TEXT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-ERROR:  relation "tr" already exists
 --COPY tr (id1, id2, val) FROM STDIN DELIMITER '|';
 --1|abab|ziziziz
 --2|ababa|ziiziziziz
