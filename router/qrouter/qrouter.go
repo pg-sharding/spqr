@@ -22,6 +22,9 @@ type QueryRouter interface {
 	Initialized() bool
 	Initialize() bool
 
+	Ready() bool
+	SetReady(ready bool)
+
 	Mgr() meta.EntityMgr
 	SchemaCache() *cache.SchemaCache
 
