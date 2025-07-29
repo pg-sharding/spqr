@@ -64,6 +64,45 @@ func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation *rfqn.RelationFQ
 	return nil
 }
 
+func (qr *ProxyQrouter) computeRoutingExpr(
+	qualName *rfqn.RelationFQN,
+	rm *rmeta.RoutingMetadataContext,
+	rExpr *distributions.RoutingExpr,
+	hfName string,
+	queryParamsFormatCodes []int16,
+) ([]any, error) {
+
+	hf, err := hashfunction.HashFunctionByName(hfName)
+	if err != nil {
+		spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
+		return nil, err
+	}
+
+	var ret []any
+
+	expr := []byte{}
+
+	for idnx, cr := range rExpr.ColRefs {
+
+		vals, err := rm.ResolveValue(qualName, cr.ColName, queryParamsFormatCodes)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, v := range vals {
+
+			lExpr, err := hashfunction.ApplyHashFunction(v, cr.ColType, hf)
+
+			if err != nil {
+				/* Is this ok? */
+				return nil, err
+			}
+		}
+	}
+
+	return ret, nil
+}
+
 func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 	ds *distributions.Distribution, qualName *rfqn.RelationFQN, relation *distributions.DistributedRelation, tsa tsa.TSA) (plan.Plan, error) {
 
@@ -87,6 +126,36 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 			return err
 		}
 
+		if len(relation.DistributionKey[lvl].Column) == 0 {
+			// calculate routing expression
+
+			compositeKey[lvl], err = qr.computeRoutingExpr(&relation.DistributionKey[lvl].Expr, relation.DistributionKey[lvl].HashFunction)
+
+			if err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+				return err
+			}
+
+			if lvl+1 == len(relation.DistributionKey) {
+				currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
+				if err != nil {
+					spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
+					return err
+				}
+
+				spqrlog.Zero.Debug().
+					Interface("current route", currroute).
+					Str("table", qualName.RelationName).
+					Msg("calculated route for table/cols")
+
+				p = plan.Combine(p, &plan.ShardDispatchPlan{
+					ExecTarget:         currroute,
+					TargetSessionAttrs: tsa,
+				})
+				return nil
+			}
+			return rec(lvl + 1)
+		}
 		col := relation.DistributionKey[lvl].Column
 
 		vals, err := rm.ResolveValue(qualName, col, queryParamsFormatCodes)
@@ -125,10 +194,11 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 					TargetSessionAttrs: tsa,
 				})
 
-			} else {
-				if err := rec(lvl + 1); err != nil {
-					return err
-				}
+				return nil
+			}
+
+			if err := rec(lvl + 1); err != nil {
+				return err
 			}
 		}
 
