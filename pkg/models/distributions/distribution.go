@@ -62,6 +62,9 @@ func DistributedRelationFromDB(rel *qdb.DistributedRelation) *DistributedRelatio
 		rdistr.DistributionKey = append(rdistr.DistributionKey, DistributionKeyEntry{
 			Column:       e.Column,
 			HashFunction: e.HashFunction,
+			Expr: RoutingExpr{
+				ColRefs: TypedColRefFromDB(e.Expr.ColRefs),
+			},
 		})
 	}
 
@@ -88,6 +91,9 @@ func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation 
 		rdistr.DistributionKey = append(rdistr.DistributionKey, qdb.DistributionKeyEntry{
 			Column:       e.Column,
 			HashFunction: e.HashFunction,
+			Expr: qdb.RoutingExpr{
+				ColRefs: TypedColRefToDB(e.Expr.ColRefs),
+			},
 		})
 	}
 
@@ -149,6 +155,45 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRe
 	return rdistr
 }
 
+func TypedColRefFromSQL(in []spqrparser.TypedColRef) []TypedColRef {
+	var ret []TypedColRef
+
+	for _, cr := range in {
+		ret = append(ret, TypedColRef{
+			ColName: cr.Column,
+			ColType: cr.Type,
+		})
+	}
+
+	return ret
+}
+
+func TypedColRefToDB(in []TypedColRef) []qdb.TypedColRef {
+	var ret []qdb.TypedColRef
+
+	for _, cr := range in {
+		ret = append(ret, qdb.TypedColRef{
+			ColName: cr.ColName,
+			ColType: cr.ColType,
+		})
+	}
+
+	return ret
+}
+
+func TypedColRefFromDB(in []qdb.TypedColRef) []TypedColRef {
+	var ret []TypedColRef
+
+	for _, cr := range in {
+		ret = append(ret, TypedColRef{
+			ColName: cr.ColName,
+			ColType: cr.ColType,
+		})
+	}
+
+	return ret
+}
+
 // DistributedRelationFromSQL converts a spqrparser.DistributedRelation object to a DistributedRelation object.
 //
 // Parameters:
@@ -167,6 +212,9 @@ func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *Distribute
 		rdistr.DistributionKey = append(rdistr.DistributionKey, DistributionKeyEntry{
 			Column:       e.Column,
 			HashFunction: e.HashFunction,
+			Expr: RoutingExpr{
+				ColRefs: TypedColRefFromSQL(e.Expr),
+			},
 		})
 	}
 	for _, entry := range rel.AutoIncrementEntries {
