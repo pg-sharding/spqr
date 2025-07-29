@@ -854,11 +854,11 @@ func (qr *ProxyQrouter) planQueryV1(
 							virtualRowVals = append(virtualRowVals, []byte{byte('t')})
 						}
 						continue
-					} else if e.Name == "spqr_is_ready" {
+					} else if e.Name == "__spqr__is_ready" {
 						p = plan.Combine(p, &plan.VirtualPlan{})
 						virtualRowCols = append(virtualRowCols,
 							pgproto3.FieldDescription{
-								Name:                 []byte("spqr_is_ready"),
+								Name:                 []byte("__spqr__is_ready"),
 								DataTypeOID:          catalog.ARRAYOID,
 								TypeModifier:         -1,
 								DataTypeSize:         1,

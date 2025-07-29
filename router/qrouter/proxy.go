@@ -10,7 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/router/cache"
-	"go.uber.org/atomic"
+	"sync/atomic"
 )
 
 type ProxyQrouter struct {
@@ -104,8 +104,8 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []kr.ShardKey {
 func NewProxyRouter(shardMapping map[string]*config.Shard, mgr meta.EntityMgr, qcfg *config.QRouter, cache *cache.SchemaCache) (*ProxyQrouter, error) {
 	proxy := &ProxyQrouter{
 		WorldShardCfgs: map[string]*config.Shard{},
-		initialized:    atomic.NewBool(false),
-		ready:          atomic.NewBool(false),
+		initialized:    &atomic.Bool{},
+		ready:          &atomic.Bool{},
 		cfg:            qcfg,
 		mgr:            mgr,
 		schemaCache:    cache,

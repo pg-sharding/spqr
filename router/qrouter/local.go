@@ -13,7 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/plan"
-	"go.uber.org/atomic"
+	"sync/atomic"
 )
 
 type LocalQrouter struct {
@@ -45,7 +45,7 @@ func NewLocalQrouter(shardMapping map[string]*config.Shard) (*LocalQrouter, erro
 	}
 
 	l := &LocalQrouter{
-		ready: atomic.NewBool(true),
+		ready: &atomic.Bool{},
 	}
 
 	var name string
