@@ -280,6 +280,9 @@ NOTICE: send query to shard(s) : sh4
  2012021 |  14
 (2 rows)
 
+COPY copy_test_mult (uid, id) FROM stdin;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  client processing error: insufficient data in routing tuple, tx status ACTIVE
 DROP TABLE copy_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE copy_test_mult;

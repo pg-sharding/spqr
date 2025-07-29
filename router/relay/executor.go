@@ -366,7 +366,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 	rowsMp := map[string][]byte{}
 
 	/* like hashfunction array */
-	values := make([]any, len(cps.HashFunc))
+	routingTuple := make([]any, len(cps.HashFunc))
 
 	backMap := map[int]int{}
 
@@ -378,7 +378,8 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 	// and decide where to route
 	prevDelimiter := 0
 	prevLine := 0
-	currentAttr := 0
+	attrCnt := 0
+	routingTupleCnt := 0
 
 	for i, b := range data.Data {
 		if i+2 < len(data.Data) && string(data.Data[i:i+2]) == "\\." {
@@ -387,15 +388,19 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		}
 		if b == '\n' || b == cps.Delimiter {
 
-			if indx, ok := backMap[currentAttr]; ok {
-				tmp, err := hashfunction.ApplyHashFunctionOnStringRepr(data.Data[prevDelimiter:i], cps.Ds.ColTypes[indx], cps.HashFunc[indx])
+			if indx, ok := backMap[attrCnt]; ok {
+				val, err := hashfunction.ApplyHashFunctionOnStringRepr(
+					data.Data[prevDelimiter:i],
+					cps.Ds.ColTypes[indx],
+					cps.HashFunc[indx])
 				if err != nil {
 					return nil, err
 				}
-				values[indx] = tmp
+				routingTuple[indx] = val
+				routingTupleCnt++
 			}
 
-			currentAttr++
+			attrCnt++
 			prevDelimiter = i + 1
 		}
 		if b != '\n' {
@@ -404,17 +409,22 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 
 		/* By this time, row should contains all routing info */
 
+		if routingTupleCnt != len(cps.HashFunc) {
+			return nil, fmt.Errorf("insufficient data in routing tuple")
+		}
+
 		// check where this tuple should go
-		currroute, err := cps.RM.DeparseKeyWithRangesInternal(ctx, values, cps.Krs)
+		tuplePlan, err := cps.RM.DeparseKeyWithRangesInternal(ctx, routingTuple, cps.Krs)
 		if err != nil {
 			return nil, err
 		}
 
 		/* reset values  */
-		values = make([]interface{}, len(cps.HashFunc))
+		routingTuple = make([]any, len(cps.HashFunc))
 
-		rowsMp[currroute.Name] = append(rowsMp[currroute.Name], data.Data[prevLine:i+1]...)
-		currentAttr = 0
+		rowsMp[tuplePlan.Name] = append(rowsMp[tuplePlan.Name], data.Data[prevLine:i+1]...)
+		attrCnt = 0
+		routingTupleCnt = 0
 		prevLine = i + 1
 	}
 

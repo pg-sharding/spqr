@@ -364,7 +364,7 @@ type ParamRef struct {
 	Indx int
 }
 
-func ParseExprValue(resolvedRelation *rfqn.RelationFQN, tp string, expr lyx.Node) (any, error) {
+func ParseExprValue(tp string, expr lyx.Node) (any, error) {
 	switch right := expr.(type) {
 	case *lyx.ParamRef:
 		return ParamRef{Indx: right.Number - 1}, nil
@@ -427,7 +427,7 @@ func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation *rfqn.Relat
 		return nil
 	}
 
-	v, err := ParseExprValue(resolvedRelation, tp, expr)
+	v, err := ParseExprValue(tp, expr)
 	if err != nil {
 		return err
 	}
