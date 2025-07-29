@@ -15,7 +15,7 @@ show relations;
 CREATE TABLE tr (id1 INT, val TEXT);
 CREATE TABLE tr (id1 INT, id2 TEXT, val TEXT);
 
---COPY tr (id1, id2, val) FROM STDIN DELIMETER '|';
+--COPY tr (id1, id2, val) FROM STDIN DELIMITER '|';
 --1|abab|ziziziz
 --2|ababa|ziiziziziz
 --3|abababab|ziizizizi
