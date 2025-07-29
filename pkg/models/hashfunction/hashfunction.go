@@ -124,9 +124,11 @@ func ApplyHashFunction(input any, ctype string, hf HashFunctionType) (any, error
 		}
 		return input, nil
 	case HashFunctionMurmur:
-		return ApplyMurmurHashFunction(input, ctype, hf)
+		v, err := ApplyMurmurHashFunction(input, ctype, hf)
+		return uint64(v), err
 	case HashFunctionCity:
-		return ApplyCityHashFunction(input, ctype, hf)
+		v, err := ApplyCityHashFunction(input, ctype, hf)
+		return uint64(v), err
 	default:
 		return nil, fmt.Errorf("unknown hash function type: %d", hf)
 	}
