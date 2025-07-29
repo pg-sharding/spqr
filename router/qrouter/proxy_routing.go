@@ -229,11 +229,10 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 					TargetSessionAttrs: tsa,
 				})
 
-				return nil
-			}
-
-			if err := rec(lvl + 1); err != nil {
-				return err
+			} else {
+				if err := rec(lvl + 1); err != nil {
+					return err
+				}
 			}
 		}
 
