@@ -101,37 +101,36 @@ func (rm *RoutingMetadataContext) RecordAuxExpr(name string, value string, v lyx
 	vals = append(vals, v)
 	rm.AuxValues[k] = vals
 }
-
-func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col string, paramResCodes []int16) ([]any, bool) {
+func (rm *RoutingMetadataContext) ResolveValue(rfqn *rfqn.RelationFQN, col string, paramResCodes []int16) ([]any, error) {
 
 	bindParams := rm.SPH.BindParams()
 
 	if vals, ok := rm.Exprs[*rfqn][col]; ok {
-		return vals, true
+		return vals, nil
 	}
 
 	inds, ok := rm.ParamRefs[*rfqn][col]
 	if !ok {
-		return nil, false
+		return nil, plan.ErrResolvingValue
 	}
 
 	off, tp := rm.GetDistributionKeyOffsetType(rfqn, col)
 	if off == -1 {
 		// column not from distr key
-		return nil, false
+		return nil, plan.ErrResolvingValue
 	}
 
 	// TODO: switch column type here
 	// only works for one value
 	ind := inds[0]
 	if len(paramResCodes) < ind {
-		return nil, false
+		return nil, plan.ErrResolvingValue
 	}
 	fc := paramResCodes[ind]
 
-	singleVal, res := plan.ParseResolveParamValue(fc, ind, tp, bindParams)
+	singleVal, err := plan.ParseResolveParamValue(fc, ind, tp, bindParams)
 
-	return []any{singleVal}, res
+	return []any{singleVal}, err
 }
 
 func (rm *RoutingMetadataContext) AuxExprByColref(cf *lyx.ColumnRef) []lyx.Node {
