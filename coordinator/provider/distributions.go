@@ -100,7 +100,7 @@ func (d *DistributionsServer) GetRelationDistribution(ctx context.Context, req *
 	return &protos.GetRelationDistributionReply{Distribution: distributions.DistributionToProto(ds)}, nil
 }
 
-func (d *DistributionsServer) NextVal(ctx context.Context, req *protos.NextRangeRequest) (*protos.NextRangeReply, error) {
+func (d *DistributionsServer) NextRange(ctx context.Context, req *protos.NextRangeRequest) (*protos.NextRangeReply, error) {
 	val, err := d.impl.NextRange(ctx, req.Seq, uint64(req.RangeSize))
 	if err != nil {
 		return nil, err
