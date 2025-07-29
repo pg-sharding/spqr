@@ -410,7 +410,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		/* By this time, row should contains all routing info */
 
 		if routingTupleCnt != len(cps.HashFunc) {
-			return nil, fmt.Errorf("insuffitient data in routing tuple")
+			return nil, fmt.Errorf("insufficient data in routing tuple")
 		}
 
 		// check where this tuple should go
