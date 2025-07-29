@@ -89,9 +89,10 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 
 		col := relation.DistributionKey[lvl].Column
 
-		vals, valOk := rm.ResolveValue(qualName, col, queryParamsFormatCodes)
+		vals, err := rm.ResolveValue(qualName, col, queryParamsFormatCodes)
 
-		if !valOk {
+		if err != nil {
+			/* Is this ok? */
 			return nil
 		}
 

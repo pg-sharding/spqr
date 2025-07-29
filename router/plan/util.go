@@ -3,26 +3,29 @@ package plan
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"strconv"
 
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/xproto"
 )
 
-func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]byte) (any, bool) {
+var ErrResolvingValue = fmt.Errorf("Error while resolving expression value")
+
+func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]byte) (any, error) {
 
 	switch paramCode {
 	case xproto.FormatCodeBinary:
 		switch tp {
 		case qdb.ColumnTypeUUID:
 			val := string(bindParams[ind])
-			return []any{val}, true
+			return []any{val}, nil
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
-			return []any{string(bindParams[ind])}, true
+			return []any{string(bindParams[ind])}, nil
 		case qdb.ColumnTypeInteger:
 
 			var num int64
@@ -38,10 +41,10 @@ func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]
 				err = binary.Read(buf, binary.BigEndian, &num)
 			}
 			if err != nil {
-				return nil, false
+				return nil, ErrResolvingValue
 			}
 
-			return num, true
+			return num, nil
 		case qdb.ColumnTypeUinteger:
 
 			var num uint64
@@ -57,10 +60,10 @@ func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]
 				err = binary.Read(buf, binary.BigEndian, &num)
 			}
 			if err != nil {
-				return nil, false
+				return nil, err
 			}
 
-			return num, true
+			return num, nil
 		}
 	case xproto.FormatCodeText:
 		switch tp {
@@ -71,24 +74,24 @@ func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
-			return []any{string(bindParams[ind])}, true
+			return []any{string(bindParams[ind])}, nil
 		case qdb.ColumnTypeInteger:
 			num, err := strconv.ParseInt(string(bindParams[ind]), 10, 64)
 			if err != nil {
-				return nil, false
+				return nil, err
 			}
-			return num, true
+			return num, nil
 		case qdb.ColumnTypeUinteger:
 			num, err := strconv.ParseUint(string(bindParams[ind]), 10, 64)
 			if err != nil {
-				return nil, false
+				return nil, err
 			}
-			return num, true
+			return num, nil
 		}
 	default:
 		// ??? protoc violation
 
 	}
 
-	return nil, false
+	return nil, ErrResolvingValue
 }
