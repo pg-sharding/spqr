@@ -21,10 +21,11 @@ CREATE TABLE tr (id1 INT, id2 TEXT, val TEXT);
 --3|abababab|ziizizizi
 --\.
 
---SELECT * FROM tr WHERE id1 = 1 AND id2 = 'ziziziz';
---SELECT * FROM tr WHERE id1 = 2 AND id2 = 'ziiziziziz';
---SELECT * FROM tr WHERE id1 = 3 AND id2 = 'ziizizizi';
+SELECT * FROM tr WHERE id1 = 1 AND id2 = 'ziziziz';
+SELECT * FROM tr WHERE id1 = 2 AND id2 = 'ziiziziziz';
+SELECT * FROM tr WHERE id1 = 3 AND id2 = 'ziizizizi';
 
+DROP TABLE tr;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
