@@ -309,8 +309,19 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		return nil, err
 	}
 
-	co := make([]int, len(dRel.DistributionKey))
+	co := map[string]int{}
+	ctm := map[string]string{}
+
 	for dKey := range dRel.DistributionKey {
+		if len(dRel.DistributionKey[dKey].Column) != 0 {
+			ctm[dRel.DistributionKey[dKey].Column] = ds.ColTypes[dKey]
+			co[dRel.DistributionKey[dKey].Column] = dKey
+		} else {
+			for _, cr := range dRel.DistributionKey[dKey].Expr.ColRefs {
+				ctm[cr.ColName] = cr.ColType
+				co[cr.ColName] = dKey
+			}
+		}
 
 		if v, err := hashfunction.HashFunctionByName(dRel.DistributionKey[dKey].HashFunction); err != nil {
 			return nil, err
@@ -318,26 +329,28 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 			hashFunc[dKey] = v
 		}
 
-		colOffset := -1
-		for indx, c := range stmt.Columns {
-			if c == dRel.DistributionKey[dKey].Column {
-				colOffset = indx
-				break
+		if len(dRel.DistributionKey[dKey].Column) != 0 {
+			if _, ok := co[dRel.DistributionKey[dKey].Column]; !ok {
+				return nil, fmt.Errorf("failed to resolve target copy column offset")
+			}
+		} else {
+			for _, c := range dRel.DistributionKey[dKey].Expr.ColRefs {
+				if _, ok := co[c.ColName]; !ok {
+					return nil, fmt.Errorf("failed to resolve target copy column offset")
+				}
 			}
 		}
-		if colOffset == -1 {
-			return nil, fmt.Errorf("failed to resolve target copy column offset")
-		}
-		co[dKey] = colOffset
 	}
 
 	return &pgcopy.CopyState{
-		Delimiter:    delimiter,
-		Krs:          krs,
-		RM:           rmeta.NewRoutingMetadataContext(s.cl, mgr),
-		Ds:           ds,
-		HashFunc:     hashFunc,
-		ColumnOffset: co,
+		Delimiter:      delimiter,
+		Krs:            krs,
+		RM:             rmeta.NewRoutingMetadataContext(s.cl, mgr),
+		Ds:             ds,
+		HashFunc:       hashFunc,
+		ColTypesMp:     ctm,
+		SchemaColumns:  stmt.Columns,
+		SchemaColumnMp: co,
 	}, nil
 }
 
@@ -368,17 +381,11 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 	/* like hashfunction array */
 	routingTuple := make([]any, len(cps.HashFunc))
 
-	backMap := map[int]int{}
-
-	for i, v := range cps.ColumnOffset {
-		backMap[v] = i
-	}
-
 	// Parse data
 	// and decide where to route
 	prevDelimiter := 0
 	prevLine := 0
-	attrCnt := 0
+	attrIndx := 0
 	routingTupleCnt := 0
 
 	for i, b := range data.Data {
@@ -388,10 +395,10 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		}
 		if b == '\n' || b == cps.Delimiter {
 
-			if indx, ok := backMap[attrCnt]; ok {
+			if indx, ok := cps.SchemaColumnMp[cps.SchemaColumns[attrIndx]]; ok {
 				val, err := hashfunction.ApplyHashFunctionOnStringRepr(
 					data.Data[prevDelimiter:i],
-					cps.Ds.ColTypes[indx],
+					cps.ColTypesMp[cps.SchemaColumns[attrIndx]],
 					cps.HashFunc[indx])
 				if err != nil {
 					return nil, err
@@ -400,7 +407,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 				routingTupleCnt++
 			}
 
-			attrCnt++
+			attrIndx++
 			prevDelimiter = i + 1
 		}
 		if b != '\n' {
@@ -423,7 +430,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		routingTuple = make([]any, len(cps.HashFunc))
 
 		rowsMp[tuplePlan.Name] = append(rowsMp[tuplePlan.Name], data.Data[prevLine:i+1]...)
-		attrCnt = 0
+		attrIndx = 0
 		routingTupleCnt = 0
 		prevLine = i + 1
 	}
