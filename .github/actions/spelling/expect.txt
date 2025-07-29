@@ -153,6 +153,7 @@ canreq
 ccb
 ccfg
 ccmsg
+cityhash
 ckr
 clid
 clientinteractor
@@ -392,6 +393,7 @@ multidim
 multierr
 multishard
 munakoiso
+murmurhash
 mylogs
 myworkloadlog
 nconn
