@@ -160,6 +160,13 @@ SHOW __spqr__target_session_attrs;
  prefer-standby
 (1 row)
 
+SET __spqr__target_session_attrs TO 'prefer-replica';
+SHOW __spqr__target_session_attrs;
+ target session attrs 
+----------------------
+ prefer-replica
+(1 row)
+
 BEGIN;
 SET __spqr__target_session_attrs TO 'read-write';
 SHOW __spqr__target_session_attrs;
