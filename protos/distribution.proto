@@ -7,9 +7,19 @@ option go_package = "spqr/proto";
 import "google/protobuf/empty.proto";
 import "protos/qualified_name.proto";
 
+message TypedColRef {
+  string columnName = 1;
+  string columnType = 2;
+}
+
+message RoutingExpr {
+  repeated TypedColRef colRefs = 1;
+}
+
 message DistributionKeyEntry {
   string column = 1;
   string hashFunction = 2;
+  RoutingExpr Expr = 3;
 }
 
 message DistributedRelation {
