@@ -12,6 +12,7 @@ type CopyState struct {
 
 	Delimiter byte
 	Ds        *distributions.Distribution
+	Drel      *distributions.DistributedRelation
 
 	/* For replicated relations */
 	Scatter          bool

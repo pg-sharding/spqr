@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
@@ -309,17 +310,17 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		return nil, err
 	}
 
-	co := map[string]int{}
+	schemaColMp := map[string]int{}
 	ctm := map[string]string{}
 
 	for dKey := range dRel.DistributionKey {
 		if len(dRel.DistributionKey[dKey].Column) != 0 {
 			ctm[dRel.DistributionKey[dKey].Column] = ds.ColTypes[dKey]
-			co[dRel.DistributionKey[dKey].Column] = dKey
+			schemaColMp[dRel.DistributionKey[dKey].Column] = dKey
 		} else {
 			for _, cr := range dRel.DistributionKey[dKey].Expr.ColRefs {
 				ctm[cr.ColName] = cr.ColType
-				co[cr.ColName] = dKey
+				schemaColMp[cr.ColName] = dKey
 			}
 		}
 
@@ -331,7 +332,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 
 	}
 
-	for k := range co {
+	for k := range schemaColMp {
 		found := false
 		for _, c := range stmt.Columns {
 			if c == k {
@@ -348,10 +349,11 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		Krs:            krs,
 		RM:             rmeta.NewRoutingMetadataContext(s.cl, mgr),
 		Ds:             ds,
+		Drel:           dRel,
 		HashFunc:       hashFunc,
 		ColTypesMp:     ctm,
 		SchemaColumns:  stmt.Columns,
-		SchemaColumnMp: co,
+		SchemaColumnMp: schemaColMp,
 	}, nil
 }
 
@@ -380,14 +382,14 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 	rowsMp := map[string][]byte{}
 
 	/* like hashfunction array */
-	routingTuple := make([]any, len(cps.HashFunc))
+	routingTuple := make([]any, len(cps.Drel.DistributionKey))
+	routingTupleItems := make([][][]byte, len(cps.Drel.DistributionKey))
 
 	// Parse data
 	// and decide where to route
 	prevDelimiter := 0
 	prevLine := 0
 	attrIndx := 0
-	routingTupleCnt := 0
 
 	for i, b := range data.Data {
 		if i+2 < len(data.Data) && string(data.Data[i:i+2]) == "\\." {
@@ -395,17 +397,8 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 			break
 		}
 		if b == '\n' || b == cps.Delimiter {
-
 			if indx, ok := cps.SchemaColumnMp[cps.SchemaColumns[attrIndx]]; ok {
-				val, err := hashfunction.ApplyHashFunctionOnStringRepr(
-					data.Data[prevDelimiter:i],
-					cps.ColTypesMp[cps.SchemaColumns[attrIndx]],
-					cps.HashFunc[indx])
-				if err != nil {
-					return nil, err
-				}
-				routingTuple[indx] = val
-				routingTupleCnt++
+				routingTupleItems[indx] = append(routingTupleItems[indx], data.Data[prevDelimiter:i])
 			}
 
 			attrIndx++
@@ -415,10 +408,51 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 			continue
 		}
 
-		/* By this time, row should contains all routing info */
+		var err error
 
-		if routingTupleCnt != len(cps.HashFunc) {
-			return nil, fmt.Errorf("insufficient data in routing tuple")
+		/* By this time, row should contains all routing info */
+		for i := range routingTupleItems {
+			if len(routingTupleItems[i]) == 0 {
+				return nil, fmt.Errorf("insufficient data in routing tuple")
+			}
+
+			if len(cps.Drel.DistributionKey[i].Column) != 0 {
+				val, err := hashfunction.ApplyHashFunctionOnStringRepr(
+					routingTupleItems[i][0],
+					cps.Ds.ColTypes[i],
+					cps.HashFunc[i])
+				if err != nil {
+					return nil, err
+				}
+				routingTuple[i] = val
+			} else {
+				if len(routingTupleItems[i]) != len(cps.Drel.DistributionKey[i].Expr.ColRefs) {
+					return nil, fmt.Errorf("insufficient data in routing tuple")
+				}
+
+				hf := cps.HashFunc[i]
+
+				acc := []byte{}
+				for j, itemVal := range routingTupleItems[i] {
+
+					lExpr, err := hashfunction.ApplyNonIdentHashFunctionOnStringRepr(itemVal,
+						cps.Drel.DistributionKey[i].Expr.ColRefs[j].ColType, hf)
+
+					if err != nil {
+						spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+						return nil, err
+					}
+
+					acc = append(acc, hashfunction.EncodeUInt64(uint64(lExpr))...)
+				}
+				/* because we take hash of bytes */
+				routingTuple[i], err = hashfunction.ApplyHashFunction(acc, qdb.ColumnTypeVarcharHashed, hf)
+
+				if err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+					return nil, err
+				}
+			}
 		}
 
 		// check where this tuple should go
@@ -428,11 +462,11 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		}
 
 		/* reset values  */
-		routingTuple = make([]any, len(cps.HashFunc))
+		routingTuple = make([]any, len(cps.Drel.DistributionKey))
+		routingTupleItems = make([][][]byte, len(cps.Drel.DistributionKey))
 
 		rowsMp[tuplePlan.Name] = append(rowsMp[tuplePlan.Name], data.Data[prevLine:i+1]...)
 		attrIndx = 0
-		routingTupleCnt = 0
 		prevLine = i + 1
 	}
 

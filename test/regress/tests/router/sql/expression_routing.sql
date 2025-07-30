@@ -15,18 +15,25 @@ show relations;
 CREATE TABLE tr (id1 INT, val TEXT);
 CREATE TABLE tr (id1 INT, id2 TEXT, val TEXT);
 
---COPY tr (id1, id2, val) FROM STDIN DELIMITER '|';
---1|abab|ziziziz
---2|ababa|ziiziziziz
---3|abababab|ziizizizi
---\.
+COPY tr (id1, id2, val) FROM STDIN DELIMITER '|';
+0|aba|ababababb
+1|ziziziz|abab
+2|ziiziziziz|ababa
+3|ziizizizi|abababab
+4|yyuyuyuyu|ababba
+\.
 
+SELECT * FROM tr WHERE id1 = 0 AND id2 = 'aba';
+SELECT * FROM tr WHERE id1 = 1 AND id2 = 'ziziziz';
+SELECT * FROM tr WHERE id1 = 2 AND id2 = 'ziiziziziz';
+SELECT * FROM tr WHERE id1 = 3 AND id2 = 'ziizizizi';
+SELECT * FROM tr WHERE id1 = 4 AND id2 = 'yyuyuyuyu';
 
-INSERT INTO tr (id1, id2, val) VALUES (0, 'aba', 101);
-INSERT INTO tr (id1, id2, val) VALUES (1, 'ziziziz', 102);
-INSERT INTO tr (id1, id2, val) VALUES (2, 'ziiziziziz', 103);
-INSERT INTO tr (id1, id2, val) VALUES (3, 'ziizizizi', 104);
-INSERT INTO tr (id1, id2, val) VALUES (4, 'yyuyuyuyu', 105);
+INSERT INTO tr (id1, id2, val) VALUES (0, 'aba', 'asas');
+INSERT INTO tr (id1, id2, val) VALUES (1, 'ziziziz', 'assaas');
+INSERT INTO tr (id1, id2, val) VALUES (2, 'ziiziziziz', 'asssa');
+INSERT INTO tr (id1, id2, val) VALUES (3, 'ziizizizi', 'asas');
+INSERT INTO tr (id1, id2, val) VALUES (4, 'yyuyuyuyu', 'saassa');
 
 SELECT * FROM tr WHERE id1 = 0 AND id2 = 'aba';
 SELECT * FROM tr WHERE id1 = 1 AND id2 = 'ziziziz';
