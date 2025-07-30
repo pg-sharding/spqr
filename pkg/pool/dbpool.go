@@ -247,6 +247,8 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 	case config.TargetSessionAttrsRO:
 		return s.selectReadOnlyShardHost(clid, key, hostOrder, effectiveTargetSessionAttrs)
 	case config.TargetSessionAttrsPS:
+		fallthrough
+	case config.TargetSessionAttrsPR:
 		if res, err := s.selectReadOnlyShardHost(clid, key, hostOrder, effectiveTargetSessionAttrs); err != nil {
 			return s.selectReadWriteShardHost(clid, key, hostOrder, effectiveTargetSessionAttrs)
 		} else {

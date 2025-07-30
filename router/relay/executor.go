@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
@@ -309,8 +310,19 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		return nil, err
 	}
 
-	co := make([]int, len(dRel.DistributionKey))
+	schemaColMp := map[string]int{}
+	ctm := map[string]string{}
+
 	for dKey := range dRel.DistributionKey {
+		if len(dRel.DistributionKey[dKey].Column) != 0 {
+			ctm[dRel.DistributionKey[dKey].Column] = ds.ColTypes[dKey]
+			schemaColMp[dRel.DistributionKey[dKey].Column] = dKey
+		} else {
+			for _, cr := range dRel.DistributionKey[dKey].Expr.ColRefs {
+				ctm[cr.ColName] = cr.ColType
+				schemaColMp[cr.ColName] = dKey
+			}
+		}
 
 		if v, err := hashfunction.HashFunctionByName(dRel.DistributionKey[dKey].HashFunction); err != nil {
 			return nil, err
@@ -318,26 +330,30 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 			hashFunc[dKey] = v
 		}
 
-		colOffset := -1
-		for indx, c := range stmt.Columns {
-			if c == dRel.DistributionKey[dKey].Column {
-				colOffset = indx
-				break
+	}
+
+	for k := range schemaColMp {
+		found := false
+		for _, c := range stmt.Columns {
+			if c == k {
+				found = true
 			}
 		}
-		if colOffset == -1 {
+		if !found {
 			return nil, fmt.Errorf("failed to resolve target copy column offset")
 		}
-		co[dKey] = colOffset
 	}
 
 	return &pgcopy.CopyState{
-		Delimiter:    delimiter,
-		Krs:          krs,
-		RM:           rmeta.NewRoutingMetadataContext(s.cl, mgr),
-		Ds:           ds,
-		HashFunc:     hashFunc,
-		ColumnOffset: co,
+		Delimiter:      delimiter,
+		Krs:            krs,
+		RM:             rmeta.NewRoutingMetadataContext(s.cl, mgr),
+		Ds:             ds,
+		Drel:           dRel,
+		HashFunc:       hashFunc,
+		ColTypesMp:     ctm,
+		SchemaColumns:  stmt.Columns,
+		SchemaColumnMp: schemaColMp,
 	}, nil
 }
 
@@ -366,19 +382,14 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 	rowsMp := map[string][]byte{}
 
 	/* like hashfunction array */
-	values := make([]any, len(cps.HashFunc))
-
-	backMap := map[int]int{}
-
-	for i, v := range cps.ColumnOffset {
-		backMap[v] = i
-	}
+	routingTuple := make([]any, len(cps.Drel.DistributionKey))
+	routingTupleItems := make([][][]byte, len(cps.Drel.DistributionKey))
 
 	// Parse data
 	// and decide where to route
 	prevDelimiter := 0
 	prevLine := 0
-	currentAttr := 0
+	attrIndx := 0
 
 	for i, b := range data.Data {
 		if i+2 < len(data.Data) && string(data.Data[i:i+2]) == "\\." {
@@ -386,35 +397,76 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 			break
 		}
 		if b == '\n' || b == cps.Delimiter {
-
-			if indx, ok := backMap[currentAttr]; ok {
-				tmp, err := hashfunction.ApplyHashFunctionOnStringRepr(data.Data[prevDelimiter:i], cps.Ds.ColTypes[indx], cps.HashFunc[indx])
-				if err != nil {
-					return nil, err
-				}
-				values[indx] = tmp
+			if indx, ok := cps.SchemaColumnMp[cps.SchemaColumns[attrIndx]]; ok {
+				routingTupleItems[indx] = append(routingTupleItems[indx], data.Data[prevDelimiter:i])
 			}
 
-			currentAttr++
+			attrIndx++
 			prevDelimiter = i + 1
 		}
 		if b != '\n' {
 			continue
 		}
 
+		var err error
+
 		/* By this time, row should contains all routing info */
+		for i := range routingTupleItems {
+			if len(routingTupleItems[i]) == 0 {
+				return nil, fmt.Errorf("insufficient data in routing tuple")
+			}
+
+			if len(cps.Drel.DistributionKey[i].Column) != 0 {
+				val, err := hashfunction.ApplyHashFunctionOnStringRepr(
+					routingTupleItems[i][0],
+					cps.Ds.ColTypes[i],
+					cps.HashFunc[i])
+				if err != nil {
+					return nil, err
+				}
+				routingTuple[i] = val
+			} else {
+				if len(routingTupleItems[i]) != len(cps.Drel.DistributionKey[i].Expr.ColRefs) {
+					return nil, fmt.Errorf("insufficient data in routing tuple")
+				}
+
+				hf := cps.HashFunc[i]
+
+				acc := []byte{}
+				for j, itemVal := range routingTupleItems[i] {
+
+					lExpr, err := hashfunction.ApplyNonIdentHashFunctionOnStringRepr(itemVal,
+						cps.Drel.DistributionKey[i].Expr.ColRefs[j].ColType, hf)
+
+					if err != nil {
+						spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+						return nil, err
+					}
+
+					acc = append(acc, hashfunction.EncodeUInt64(uint64(lExpr))...)
+				}
+				/* because we take hash of bytes */
+				routingTuple[i], err = hashfunction.ApplyHashFunction(acc, qdb.ColumnTypeVarcharHashed, hf)
+
+				if err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+					return nil, err
+				}
+			}
+		}
 
 		// check where this tuple should go
-		currroute, err := cps.RM.DeparseKeyWithRangesInternal(ctx, values, cps.Krs)
+		tuplePlan, err := cps.RM.DeparseKeyWithRangesInternal(ctx, routingTuple, cps.Krs)
 		if err != nil {
 			return nil, err
 		}
 
 		/* reset values  */
-		values = make([]interface{}, len(cps.HashFunc))
+		routingTuple = make([]any, len(cps.Drel.DistributionKey))
+		routingTupleItems = make([][][]byte, len(cps.Drel.DistributionKey))
 
-		rowsMp[currroute.Name] = append(rowsMp[currroute.Name], data.Data[prevLine:i+1]...)
-		currentAttr = 0
+		rowsMp[tuplePlan.Name] = append(rowsMp[tuplePlan.Name], data.Data[prevLine:i+1]...)
+		attrIndx = 0
 		prevLine = i + 1
 	}
 

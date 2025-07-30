@@ -84,9 +84,20 @@ var (
 	ColumnTypeUUID              = "uuid"
 )
 
+type TypedColRef struct {
+	ColName string `json:"column_name"`
+	ColType string `json:"column_type"`
+}
+
+type RoutingExpr struct {
+	ColRefs []TypedColRef `json:"column_refs_v1"`
+}
+
 type DistributionKeyEntry struct {
 	Column       string `json:"column"`
 	HashFunction string `json:"hash"`
+
+	Expr RoutingExpr `json:"routing_expression"`
 }
 
 type DistributedRelation struct {

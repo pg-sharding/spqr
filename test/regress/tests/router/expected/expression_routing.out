@@ -1,0 +1,190 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+create distribution ds1 column types int hash;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+create relation tr(MURMUR [id1 INT HASH, id2 VARCHAR HASH]);
+      attach table      
+------------------------
+ relation name   -> tr
+ distribution id -> ds1
+(2 rows)
+
+CREATE KEY RANGE FROM 3221225472 ROUTE TO sh4;
+    add key range    
+---------------------
+ bound -> 3221225472
+(1 row)
+
+CREATE KEY RANGE FROM 2147483648 ROUTE TO sh3;
+    add key range    
+---------------------
+ bound -> 2147483648
+(1 row)
+
+CREATE KEY RANGE FROM 1073741824 ROUTE TO sh2;
+    add key range    
+---------------------
+ bound -> 1073741824
+(1 row)
+
+CREATE KEY RANGE FROM 0 ROUTE TO sh1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+show relations;
+ Relation name | Distribution ID | Distribution key | Schema name  
+---------------+-----------------+------------------+--------------
+ tr            | ds1             | ("", murmur)     | $search_path
+(1 row)
+
+\c regress
+CREATE TABLE tr (id1 INT, val TEXT);
+ERROR:  client processing error: error processing query 'CREATE TABLE tr (id1 INT, val TEXT);': create table stmt ignored: no sharding rule columns found, tx status IDLE
+CREATE TABLE tr (id1 INT, id2 TEXT, val TEXT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+COPY tr (id1, id2, val) FROM STDIN DELIMITER '|';
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM tr WHERE id1 = 0 AND id2 = 'aba';
+NOTICE: send query to shard(s) : sh1
+ id1 | id2 |    val    
+-----+-----+-----------
+   0 | aba | ababababb
+(1 row)
+
+SELECT * FROM tr WHERE id1 = 1 AND id2 = 'ziziziz';
+NOTICE: send query to shard(s) : sh3
+ id1 |   id2   | val  
+-----+---------+------
+   1 | ziziziz | abab
+(1 row)
+
+SELECT * FROM tr WHERE id1 = 2 AND id2 = 'ziiziziziz';
+NOTICE: send query to shard(s) : sh3
+ id1 |    id2     |  val  
+-----+------------+-------
+   2 | ziiziziziz | ababa
+(1 row)
+
+SELECT * FROM tr WHERE id1 = 3 AND id2 = 'ziizizizi';
+NOTICE: send query to shard(s) : sh4
+ id1 |    id2    |   val    
+-----+-----------+----------
+   3 | ziizizizi | abababab
+(1 row)
+
+SELECT * FROM tr WHERE id1 = 4 AND id2 = 'yyuyuyuyu';
+NOTICE: send query to shard(s) : sh4
+ id1 |    id2    |  val   
+-----+-----------+--------
+   4 | yyuyuyuyu | ababba
+(1 row)
+
+INSERT INTO tr (id1, id2, val) VALUES (0, 'aba', 'asas');
+NOTICE: send query to shard(s) : sh1
+INSERT INTO tr (id1, id2, val) VALUES (1, 'ziziziz', 'assaas');
+NOTICE: send query to shard(s) : sh3
+INSERT INTO tr (id1, id2, val) VALUES (2, 'ziiziziziz', 'asssa');
+NOTICE: send query to shard(s) : sh3
+INSERT INTO tr (id1, id2, val) VALUES (3, 'ziizizizi', 'asas');
+NOTICE: send query to shard(s) : sh4
+INSERT INTO tr (id1, id2, val) VALUES (4, 'yyuyuyuyu', 'saassa');
+NOTICE: send query to shard(s) : sh4
+SELECT * FROM tr WHERE id1 = 0 AND id2 = 'aba';
+NOTICE: send query to shard(s) : sh1
+ id1 | id2 |    val    
+-----+-----+-----------
+   0 | aba | ababababb
+   0 | aba | asas
+(2 rows)
+
+SELECT * FROM tr WHERE id1 = 1 AND id2 = 'ziziziz';
+NOTICE: send query to shard(s) : sh3
+ id1 |   id2   |  val   
+-----+---------+--------
+   1 | ziziziz | abab
+   1 | ziziziz | assaas
+(2 rows)
+
+SELECT * FROM tr WHERE id1 = 2 AND id2 = 'ziiziziziz';
+NOTICE: send query to shard(s) : sh3
+ id1 |    id2     |  val  
+-----+------------+-------
+   2 | ziiziziziz | ababa
+   2 | ziiziziziz | asssa
+(2 rows)
+
+SELECT * FROM tr WHERE id1 = 3 AND id2 = 'ziizizizi';
+NOTICE: send query to shard(s) : sh4
+ id1 |    id2    |   val    
+-----+-----------+----------
+   3 | ziizizizi | abababab
+   3 | ziizizizi | asas
+(2 rows)
+
+SELECT * FROM tr WHERE id1 = 4 AND id2 = 'yyuyuyuyu';
+NOTICE: send query to shard(s) : sh4
+ id1 |    id2    |  val   
+-----+-----------+--------
+   4 | yyuyuyuyu | ababba
+   4 | yyuyuyuyu | saassa
+(2 rows)
+
+WITH vals (x, y, z) AS (VALUES(1, 'ziziziz', 32), (2, 'ziiziziziz', 32)) 
+    SELECT * FROM 
+        tr JOIN vals ON tr.id1 = vals.x AND tr.id2 = vals.y;
+NOTICE: send query to shard(s) : sh3
+ id1 |    id2     |  val   | x |     y      | z  
+-----+------------+--------+---+------------+----
+   1 | ziziziz    | abab   | 1 | ziziziz    | 32
+   2 | ziiziziziz | ababa  | 2 | ziiziziziz | 32
+   1 | ziziziz    | assaas | 1 | ziziziz    | 32
+   2 | ziiziziziz | asssa  | 2 | ziiziziziz | 32
+(4 rows)
+
+-- TODO: fix
+--WITH vals (x, y, z) AS (VALUES (4, 'yyuyuyuyu', 32), (1, 'ziziziz', 32)) 
+--    SELECT * FROM 
+--        tr JOIN vals ON tr.id1 = vals.x AND tr.id2 = vals.y /* __spqr__engine_v2: true */;
+UPDATE tr SET val = 1123 WHERE id1 = 1 AND id2 = 'ziziziz';
+NOTICE: send query to shard(s) : sh3
+DELETE FROM tr WHERE id1 = 1 AND id2 = 'ziziziz' RETURNING *;
+NOTICE: send query to shard(s) : sh3
+ id1 |   id2   | val  
+-----+---------+------
+   1 | ziziziz | 1123
+   1 | ziziziz | 1123
+(2 rows)
+
+DROP TABLE tr;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

@@ -825,7 +825,7 @@ func TestAlter(t *testing.T) {
 		},
 
 		{
-			query: "CREATE DISTRIBUTED RELATION t (MURMUR [id1 INT, id2 VARCHAR]);",
+			query: "CREATE DISTRIBUTED RELATION t (MURMUR [id1 INT HASH, id2 VARCHAR HASH]);",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.AttachRelation{
@@ -838,11 +838,11 @@ func TestAlter(t *testing.T) {
 										Expr: []spqrparser.TypedColRef{
 											{
 												Column: "id1",
-												Type:   "int",
+												Type:   "uinteger",
 											},
 											{
 												Column: "id2",
-												Type:   "varchar",
+												Type:   "varchar hashed",
 											},
 										},
 									},
@@ -855,6 +855,53 @@ func TestAlter(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		{
+			query: "CREATE DISTRIBUTED RELATION 'ss' (uid HASH MURMUR) IN dd;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name: "ss",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										Column:       "uid",
+										HashFunction: "murmur",
+									},
+								},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "dd"},
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `CREATE DISTRIBUTED RELATION "ss" (uid HASH MURMUR) IN dd;`,
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name: "ss",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										Column:       "uid",
+										HashFunction: "murmur",
+									},
+								},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "dd"},
+					},
+				},
+			},
+			err: nil,
+		},
+
 		{
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1, id2;",
 			exp: &spqrparser.Alter{

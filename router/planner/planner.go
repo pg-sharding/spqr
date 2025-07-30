@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -209,36 +210,56 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 	}, nil
 }
 
-func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node, rm *rmeta.RoutingMetadataContext, stmt *lyx.Insert) ([]kr.ShardKey, error) {
+func CalculateRoutingListTupleItemValue(
+	rm *rmeta.RoutingMetadataContext,
+	relation *distributions.DistributedRelation,
+	tp string,
+	expr lyx.Node, queryParamsFormatCodes []int16) (any, error) {
 
-	offsets, qualName, ds, err := ProcessInsertFromSelectOffsets(ctx, stmt, rm)
+	v, err := rmeta.ParseExprValue(tp, expr)
 	if err != nil {
 		return nil, err
 	}
 
-	insertCols := stmt.Columns
+	switch q := v.(type) {
+	case rmeta.ParamRef:
 
-	relation := ds.GetRelation(qualName)
-
-	tlUsable := len(offsets) == len(ds.ColTypes)
-	if len(routingList) > 0 {
-		/* check first tuple only */
-		for i := range offsets {
-			if offsets[i] >= len(routingList[0]) {
-				tlUsable = false
-				break
-			} else {
-				switch routingList[0][offsets[i]].(type) {
-				case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
-				default:
-					tlUsable = false
-				}
-			}
+		// TODO: switch column type here
+		// only works for one value
+		ind := q.Indx
+		if len(queryParamsFormatCodes) < ind {
+			return nil, plan.ErrResolvingValue
 		}
+
+		fc := queryParamsFormatCodes[ind]
+
+		singleVal, err := plan.ParseResolveParamValue(fc, ind, tp, rm.SPH.BindParams())
+		if err != nil {
+			return nil, err
+		}
+
+		v = singleVal
+	}
+	return v, nil
+}
+
+func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node, rm *rmeta.RoutingMetadataContext, stmt *lyx.Insert) ([]kr.ShardKey, error) {
+
+	insertColsPos, qualName, err := ProcessInsertFromSelectOffsets(ctx, stmt, rm)
+	if err != nil {
+		return nil, err
 	}
 
-	if !tlUsable {
-		return nil, nil
+	var ds *distributions.Distribution
+
+	if ds, err = rm.GetRelationDistribution(ctx, qualName); err != nil {
+		return nil, err
+	}
+
+	/* Omit distributed relations */
+	if ds.Id == distributions.REPLICATED {
+		/* should not happen */
+		return nil, rerrors.ErrComplexQuery
 	}
 
 	krs, err := rm.Mgr.ListKeyRanges(ctx, ds.Id)
@@ -248,45 +269,19 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 
 	queryParamsFormatCodes := GetParams(rm)
 	tupleShards := make([]kr.ShardKey, len(routingList))
-
-	for i := range routingList {
-
-		for j := range offsets {
-			off, tp := rm.GetDistributionKeyOffsetType(qualName, insertCols[offsets[j]])
-			if off == -1 {
-				// column not from distr key
-				continue
-			}
-
-			if err := rm.ProcessSingleExpr(qualName, tp, insertCols[offsets[j]], routingList[i][offsets[j]]); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	vvs_resolved := make([][]any, len(offsets))
-
-	for j := range offsets {
-		vvs, err := rm.ResolveValue(qualName, insertCols[offsets[j]], queryParamsFormatCodes)
-		if err != nil {
-			return nil, rerrors.ErrComplexQuery
-		}
-
-		vvs_resolved[j] = vvs
-		if len(vvs) != len(routingList) {
-			return nil, rerrors.ErrComplexQuery
-		}
-	}
+	relation := ds.GetRelation(qualName)
 
 	for i := range routingList {
 		tup := make([]any, len(ds.ColTypes))
 
-		for j := range offsets {
-			off, _ := rm.GetDistributionKeyOffsetType(qualName, insertCols[offsets[j]])
-			if off == -1 {
-				// column not from distr key
-				continue
-			}
+		for j, tp := range ds.ColTypes {
+
+			/* Do not return err here.
+			* This particular insert stmt is un-routable, but still, give it a try
+			* and continue parsing.
+			* Example: INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
+			* we have no insert cols specified, but still able to route on select
+			 */
 
 			hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[j].HashFunction)
 			if err != nil {
@@ -294,11 +289,94 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 				return nil, err
 			}
 
-			tup[j], err = hashfunction.ApplyHashFunction(vvs_resolved[j][i], ds.ColTypes[j], hf)
+			if len(relation.DistributionKey[j].Column) == 0 {
 
-			if err != nil {
-				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-				return nil, err
+				if len(relation.DistributionKey[j].Expr.ColRefs) == 0 {
+					return nil, rerrors.ErrComplexQuery
+				}
+
+				acc := []byte{}
+
+				for _, cr := range relation.DistributionKey[j].Expr.ColRefs {
+
+					val, ok := insertColsPos[cr.ColName]
+
+					if !ok {
+						return nil, nil
+					}
+
+					if len(routingList[i]) <= val {
+						return nil, nil
+					}
+
+					switch routingList[i][val].(type) {
+					case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
+					default:
+						return nil, nil
+					}
+
+					/* this is always non-ident hash function */
+					itemVal, err := CalculateRoutingListTupleItemValue(rm,
+						relation, cr.ColType,
+						routingList[i][val],
+						queryParamsFormatCodes)
+
+					if err != nil {
+						spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+						return nil, err
+					}
+
+					lExpr, err := hashfunction.ApplyNonIdentHashFunction(itemVal, cr.ColType, hf)
+
+					if err != nil {
+						spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+						return nil, err
+					}
+
+					acc = append(acc, hashfunction.EncodeUInt64(uint64(lExpr))...)
+				}
+
+				/* because we take hash of bytes */
+				tup[j], err = hashfunction.ApplyHashFunction(acc, qdb.ColumnTypeVarcharHashed, hf)
+
+				if err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+					return nil, err
+				}
+
+			} else {
+				val, ok := insertColsPos[relation.DistributionKey[j].Column]
+
+				if !ok {
+					return nil, nil
+				}
+
+				if len(routingList[i]) <= val {
+					return nil, nil
+				}
+
+				switch routingList[i][val].(type) {
+				case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
+				default:
+					return nil, nil
+				}
+
+				itemVal, err := CalculateRoutingListTupleItemValue(rm,
+					relation, tp,
+					routingList[i][val],
+					queryParamsFormatCodes)
+
+				if err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+					return nil, err
+				}
+
+				tup[j], err = hashfunction.ApplyHashFunction(itemVal, ds.ColTypes[j], hf)
+
+				if err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+					return nil, err
+				}
 			}
 		}
 

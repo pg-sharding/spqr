@@ -45,15 +45,13 @@ func GetParams(rm *rmeta.RoutingMetadataContext) []int16 {
 }
 
 func ProcessInsertFromSelectOffsets(
-	ctx context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) ([]int, *rfqn.RelationFQN, *distributions.Distribution, error) {
+	ctx context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) (map[string]int, *rfqn.RelationFQN, error) {
 	insertCols := stmt.Columns
 
 	spqrlog.Zero.Debug().
 		Strs("insert columns", insertCols).
 		Msg("deparsed insert statement columns")
 
-	// compute matched sharding rule offsets
-	offsets := make([]int, 0)
 	var curr_rfqn *rfqn.RelationFQN
 
 	switch q := stmt.TableRef.(type) {
@@ -66,43 +64,14 @@ func ProcessInsertFromSelectOffsets(
 
 		curr_rfqn = rfqn.RelationFQNFromRangeRangeVar(q)
 
-		var ds *distributions.Distribution
-		var err error
-
-		if ds, err = meta.GetRelationDistribution(ctx, curr_rfqn); err != nil {
-			return nil, nil, nil, err
-		}
-
-		/* Omit distributed relations */
-		if ds.Id == distributions.REPLICATED {
-			/* should not happen */
-			return nil, nil, nil, rerrors.ErrComplexQuery
-		}
-
 		insertColsPos := map[string]int{}
 		for i, c := range insertCols {
 			insertColsPos[c] = i
 		}
 
-		distributionKey := ds.GetRelation(curr_rfqn).DistributionKey
-		// TODO: check mapping by rules with multiple columns
-		for _, col := range distributionKey {
-			if val, ok := insertColsPos[col.Column]; !ok {
-				/* Do not return err here.
-				* This particular insert stmt is un-routable, but still, give it a try
-				* and continue parsing.
-				* Example: INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
-				* we have no insert cols specified, but still able to route on select
-				 */
-				return nil, curr_rfqn, ds, nil
-			} else {
-				offsets = append(offsets, val)
-			}
-		}
-
-		return offsets, curr_rfqn, ds, nil
+		return insertColsPos, curr_rfqn, nil
 	default:
-		return nil, nil, nil, rerrors.ErrComplexQuery
+		return nil, nil, rerrors.ErrComplexQuery
 	}
 }
 
@@ -164,9 +133,22 @@ func CheckTableIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.Cre
 	}
 	check := true
 	for _, entry := range rel.DistributionKey {
-		if _, ok = entries[entry.Column]; !ok {
-			check = false
-			break
+		if len(entry.Column) == 0 {
+			if len(entry.Expr.ColRefs) == 0 {
+				return fmt.Errorf("invalid routing expression for relation")
+			} else {
+				for _, cf := range entry.Expr.ColRefs {
+					if _, ok = entries[cf.ColName]; !ok {
+						check = false
+						break
+					}
+				}
+			}
+		} else {
+			if _, ok = entries[entry.Column]; !ok {
+				check = false
+				break
+			}
 		}
 	}
 	if check {

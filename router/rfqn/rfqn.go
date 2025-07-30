@@ -24,6 +24,7 @@ func (n RelationFQN) String() string {
 	}
 	return n.SchemaName + "." + n.RelationName
 }
+
 func ParseFQN(str string) (*RelationFQN, error) {
 	parts := strings.Split(str, ".")
 	if len(str) == 0 || len(strings.TrimSpace(str)) == 0 {

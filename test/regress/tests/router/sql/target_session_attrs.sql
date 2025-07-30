@@ -52,6 +52,9 @@ SHOW __spqr__target_session_attrs;
 SET __spqr__target_session_attrs TO 'prefer-standby';
 SHOW __spqr__target_session_attrs;
 
+SET __spqr__target_session_attrs TO 'prefer-replica';
+SHOW __spqr__target_session_attrs;
+
 BEGIN;
 
 SET __spqr__target_session_attrs TO 'read-write';

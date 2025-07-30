@@ -56,6 +56,91 @@ func EncodeUInt64(input uint64) []byte {
 	return buf
 }
 
+func ApplyMurmurHashFunction(input any, ctype string) (uint32, error) {
+	switch ctype {
+	case qdb.ColumnTypeInteger:
+		if res, ok := input.(int64); ok {
+			buf := EncodeUInt64(uint64(res))
+			h := murmur3.Sum32(buf)
+			return h, nil
+		} else {
+			return 0, fmt.Errorf("invalid type for murmurhash '%s'", qdb.ColumnTypeInteger)
+		}
+	case qdb.ColumnTypeUinteger:
+		if res, ok := input.(uint64); ok {
+			buf := EncodeUInt64(res)
+			h := murmur3.Sum32(buf)
+			return h, nil
+		} else {
+			return 0, fmt.Errorf("invalid type for murmurhash '%s'", qdb.ColumnTypeUinteger)
+		}
+	case qdb.ColumnTypeVarcharHashed:
+		switch v := input.(type) {
+		case []byte:
+			h := murmur3.Sum32(v)
+
+			return h, nil
+		case string:
+			h := murmur3.Sum32([]byte(v))
+
+			return h, nil
+		default:
+			return 0, errUnknownValueType(input, HashFunctionMurmur)
+		}
+	default:
+		return 0, errUnknownColumnType(ctype, HashFunctionMurmur)
+	}
+}
+
+func ApplyCityHashFunction(input any, ctype string) (uint32, error) {
+	switch ctype {
+	case qdb.ColumnTypeInteger:
+		if res, ok := input.(int64); ok {
+			buf := EncodeUInt64(uint64(res))
+			h := city.Hash32(buf)
+			return h, nil
+		} else {
+			return 0, fmt.Errorf("invalid type for cityhash '%s'", qdb.ColumnTypeInteger)
+		}
+	case qdb.ColumnTypeUinteger:
+		if res, ok := input.(uint64); ok {
+			buf := EncodeUInt64(res)
+			h := city.Hash32(buf)
+			return h, nil
+		} else {
+			return 0, fmt.Errorf("invalid type for cityhash '%s'", qdb.ColumnTypeUinteger)
+		}
+	case qdb.ColumnTypeVarcharHashed:
+		switch v := input.(type) {
+		case []byte:
+			h := city.Hash32(v)
+
+			return h, nil
+		case string:
+			h := city.Hash32([]byte(v))
+
+			return h, nil
+		default:
+			return 0, errUnknownValueType(input, HashFunctionCity)
+		}
+	default:
+		return 0, errUnknownColumnType(ctype, HashFunctionCity)
+	}
+}
+
+func ApplyNonIdentHashFunction(input any, ctype string, hf HashFunctionType) (uint32, error) {
+	switch hf {
+	case HashFunctionMurmur:
+		v, err := ApplyMurmurHashFunction(input, ctype)
+		return v, err
+	case HashFunctionCity:
+		v, err := ApplyCityHashFunction(input, ctype)
+		return v, err
+	default:
+		return 0, fmt.Errorf("unsuitable hash function type: %d", hf)
+	}
+}
+
 func ApplyHashFunction(input any, ctype string, hf HashFunctionType) (any, error) {
 
 	switch hf {
@@ -67,70 +152,19 @@ func ApplyHashFunction(input any, ctype string, hf HashFunctionType) (any, error
 		}
 		return input, nil
 	case HashFunctionMurmur:
-		switch ctype {
-		case qdb.ColumnTypeInteger:
-			buf := EncodeUInt64(uint64(input.(int64)))
-			h := murmur3.Sum32(buf)
-			return uint64(h), nil
-
-		case qdb.ColumnTypeUinteger:
-			buf := EncodeUInt64(input.(uint64))
-			h := murmur3.Sum32(buf)
-			return uint64(h), nil
-		case qdb.ColumnTypeVarcharHashed:
-			switch v := input.(type) {
-			case []byte:
-				h := murmur3.Sum32(v)
-
-				return uint64(h), nil
-			case string:
-				h := murmur3.Sum32([]byte(v))
-
-				return uint64(h), nil
-			default:
-				return nil, errUnknownValueType(input, hf)
-			}
-		default:
-			return nil, errUnknownColumnType(ctype, hf)
-		}
+		v, err := ApplyMurmurHashFunction(input, ctype)
+		return uint64(v), err
 	case HashFunctionCity:
-		switch ctype {
-		case qdb.ColumnTypeInteger:
-			buf := EncodeUInt64(uint64(input.(int64)))
-			h := city.Hash32(buf)
-			return uint64(h), nil
-
-		case qdb.ColumnTypeUinteger:
-			buf := EncodeUInt64(input.(uint64))
-			h := city.Hash32(buf)
-			return uint64(h), nil
-		case qdb.ColumnTypeVarcharHashed:
-			switch v := input.(type) {
-			case []byte:
-				h := city.Hash32(v)
-
-				return uint64(h), nil
-			case string:
-				h := city.Hash32([]byte(v))
-
-				return uint64(h), nil
-			default:
-				return nil, errUnknownValueType(input, hf)
-			}
-		default:
-			return nil, errUnknownColumnType(ctype, hf)
-		}
+		v, err := ApplyCityHashFunction(input, ctype)
+		return uint64(v), err
 	default:
 		return nil, fmt.Errorf("unknown hash function type: %d", hf)
 	}
 }
 
-/*
-* Apply routing hash function on bytes received in their string representation (from COPY).
- */
-func ApplyHashFunctionOnStringRepr(input []byte, ctype string, hf HashFunctionType) (interface{}, error) {
+func ParseBytesFromStringRepr(input []byte, ctype string) (any, error) {
 
-	var parsedInput interface{}
+	var parsedInput any
 
 	/*
 	* We need to convert raw bytes to appropriate interface
@@ -160,7 +194,26 @@ func ApplyHashFunctionOnStringRepr(input []byte, ctype string, hf HashFunctionTy
 		parsedInput = string(input)
 	}
 
+	return parsedInput, nil
+}
+
+/*
+* Apply routing hash function on bytes received in their string representation (from COPY).
+ */
+func ApplyHashFunctionOnStringRepr(input []byte, ctype string, hf HashFunctionType) (any, error) {
+	parsedInput, err := ParseBytesFromStringRepr(input, ctype)
+	if err != nil {
+		return nil, err
+	}
 	return ApplyHashFunction(parsedInput, ctype, hf)
+}
+
+func ApplyNonIdentHashFunctionOnStringRepr(input []byte, ctype string, hf HashFunctionType) (uint32, error) {
+	parsedInput, err := ParseBytesFromStringRepr(input, ctype)
+	if err != nil {
+		return 0, err
+	}
+	return ApplyNonIdentHashFunction(parsedInput, ctype, hf)
 }
 
 // HashFunctionByName returns the corresponding HashFunctionType based on the given hash function name.

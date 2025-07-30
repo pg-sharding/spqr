@@ -19,3 +19,4 @@ test: sequence
 test: alter_relation
 test: reference_table
 test: show_users
+test: routing_expression

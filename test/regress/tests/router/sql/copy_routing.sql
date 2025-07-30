@@ -1,15 +1,31 @@
 \c spqr-console
 CREATE DISTRIBUTION ds1 COLUMN TYPES int;
+CREATE DISTRIBUTION ds2 COLUMN TYPES int, varchar;
+
 CREATE KEY RANGE FROM 300 ROUTE TO sh4 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+
 ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test DISTRIBUTION KEY id;
 ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test_mult DISTRIBUTION KEY id;
+
+CREATE DISTRIBUTED RELATION copy_test_multi_multi (id1, id2) IN ds2;
 
 \c regress
 CREATE TABLE copy_test (id int);
 CREATE TABLE copy_test_mult (id int, uid int);
+CREATE TABLE copy_test_multi_multi (id1 int, id2 TEXT, id3 int, id4 int);
+
+-- should fail
+COPY copy_test_multi_multi (id1, id3, id4) FROM STDIN;
+\.
+COPY copy_test_multi_multi (id3, id4) FROM STDIN;
+\.
+COPY copy_test_multi_multi (id4, id2) FROM STDIN;
+\.
+
+-- should be ok
 
 COPY copy_test(id) FROM STDIN;
 1
@@ -125,8 +141,14 @@ SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh2 */;
 SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh3 */;
 SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh4 */;
 
+COPY copy_test_mult (uid, id) FROM stdin;
+7	16
+7
+\.
+
 DROP TABLE copy_test;
 DROP TABLE copy_test_mult;
+DROP TABLE copy_test_multi_multi;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
