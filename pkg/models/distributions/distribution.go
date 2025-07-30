@@ -136,7 +136,7 @@ func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRela
 //
 // Returns:
 //   - *DistributedRelation: The created DistributedRelation object.
-func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRelation {
+func DistributedRelationFromProto(rel *proto.DistributedRelation) (*DistributedRelation, error) {
 	rdistr := &DistributedRelation{
 		Name:                  rel.Name,
 		SchemaName:            rel.SchemaName,
@@ -144,6 +144,9 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRe
 	}
 
 	for _, e := range rel.DistributionKey {
+		if len(e.Column) == 0 {
+			return nil, fmt.Errorf("invalid input for distribution entry")
+		}
 		rdistr.DistributionKey = append(rdistr.DistributionKey, DistributionKeyEntry{
 			Column:       e.Column,
 			HashFunction: e.HashFunction,
@@ -152,7 +155,7 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRe
 
 	rdistr.ReplicatedRelation = rel.ReplicatedRelation
 
-	return rdistr
+	return rdistr, nil
 }
 
 func TypedColRefFromSQL(in []spqrparser.TypedColRef) []TypedColRef {
@@ -291,18 +294,21 @@ func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 //
 // Returns:
 //   - *Distribution: The created Distribution object.
-func DistributionFromProto(ds *proto.Distribution) *Distribution {
-	return &Distribution{
-		Id:       ds.Id,
-		ColTypes: ds.ColumnTypes,
-		Relations: func() map[string]*DistributedRelation {
-			res := make(map[string]*DistributedRelation)
-			for _, rel := range ds.Relations {
-				res[rel.Name] = DistributedRelationFromProto(rel)
-			}
-			return res
-		}(),
+func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
+	res := make(map[string]*DistributedRelation)
+	for _, rel := range ds.Relations {
+		var err error
+		res[rel.Name], err = DistributedRelationFromProto(rel)
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	return &Distribution{
+		Id:        ds.Id,
+		ColTypes:  ds.ColumnTypes,
+		Relations: res,
+	}, nil
 }
 
 // DistributionToProto converts a Distribution object to its corresponding proto.Distribution representation.

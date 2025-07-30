@@ -384,7 +384,10 @@ func (b *BalancerImpl) getKRRelations(ctx context.Context, kRange *kr.KeyRange) 
 	}
 	rels := make([]*distributions.DistributedRelation, len(res.Distribution.Relations))
 	for i, relProto := range res.Distribution.Relations {
-		rels[i] = distributions.DistributedRelationFromProto(relProto)
+		rels[i], err = distributions.DistributedRelationFromProto(relProto)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return rels, nil
 }
