@@ -110,7 +110,7 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 		Msg("creating QueryRouter with type")
 
 	var seqMngr sequences.SequenceMgr = lc
-	idRangeSize := uint64(config.RouterConfig().IdentityRangeSize)
+	idRangeSize := config.RouterConfig().IdentityRangeSize
 	var identityMgr planner.IdentityRouterCache = planner.NewIdentityRouterCache(idRangeSize, &seqMngr)
 
 	qr, err := qrouter.NewQrouter(qtype,

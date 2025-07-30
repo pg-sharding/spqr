@@ -98,9 +98,9 @@ type Router struct {
 
 	ClientInitMax int64 `json:"client_init_max" toml:"client_init_max" yaml:"client_init_max"`
 
-	UseSystemdNotifier   bool `json:"use_systemd_notifier" toml:"use_systemd_notifier" yaml:"use_systemd_notifier"`
-	SystemdNotifierDebug bool `json:"systemd_notifier_debug" toml:"systemd_notifier_debug" yaml:"systemd_notifier_debug"`
-	IdentityRangeSize    int  `json:"identity_range_size" toml:"identity_range_size" yaml:"identity_range_size"`
+	UseSystemdNotifier   bool   `json:"use_systemd_notifier" toml:"use_systemd_notifier" yaml:"use_systemd_notifier"`
+	SystemdNotifierDebug bool   `json:"systemd_notifier_debug" toml:"systemd_notifier_debug" yaml:"systemd_notifier_debug"`
+	IdentityRangeSize    uint64 `json:"identity_range_size" toml:"identity_range_size" yaml:"identity_range_size"`
 }
 
 type QRouter struct {

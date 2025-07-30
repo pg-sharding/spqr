@@ -26,19 +26,18 @@ func NewCachedIdRange() CachedIdRange {
 func (cir *CachedIdRange) nextVal() (int64, bool) {
 	if cir.idRange == nil {
 		return 0, false
-	} else {
-		if cir.idRange.Left < cir.idRange.Right {
-			res := cir.idRange.Left
-			cir.idRange.Left++
-			return res, true
-		} else if cir.idRange.Left == cir.idRange.Right {
-			res := cir.idRange.Left
-			cir.idRange = nil //the range is over
-			return res, true
-		}
-
-		return 0, false
 	}
+	if cir.idRange.Left < cir.idRange.Right {
+		res := cir.idRange.Left
+		cir.idRange.Left++
+		return res, true
+	} else if cir.idRange.Left == cir.idRange.Right {
+		res := cir.idRange.Left
+		cir.idRange = nil //the range is over
+		return res, true
+	}
+	return 0, false
+
 }
 
 type IdentityRouterCacheImpl struct {
@@ -78,15 +77,14 @@ func (irc *IdentityRouterCacheImpl) NextVal(ctx context.Context, sequenceName st
 	if nextVal, ok := rng.nextVal(); ok {
 		return nextVal, nil
 	} else {
-		mngr := *irc.mngr
-		if newRange, err := mngr.NextRange(ctx, sequenceName, irc.defaultRangeSize); err != nil {
+		if newRange, err := (*irc.mngr).NextRange(ctx, sequenceName, irc.defaultRangeSize); err != nil {
 			return 0, err
 		} else {
 			rng.idRange = newRange
 			if nextVal, ok := rng.nextVal(); ok {
 				return nextVal, nil
 			}
-			return 0, fmt.Errorf("can`t get next value from fresh id range! sequence='%s'", sequenceName)
+			return 0, fmt.Errorf("can't get next value from fresh id range! sequence='%s'", sequenceName)
 		}
 	}
 }
