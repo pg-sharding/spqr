@@ -855,6 +855,53 @@ func TestAlter(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		{
+			query: "CREATE DISTRIBUTED RELATION 'ss' (uid HASH MURMUR) IN dd;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name: "ss",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										Column:       "uid",
+										HashFunction: "murmur",
+									},
+								},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "dd"},
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `CREATE DISTRIBUTED RELATION "ss" (uid HASH MURMUR) IN dd;`,
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name: "ss",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										Column:       "uid",
+										HashFunction: "murmur",
+									},
+								},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "dd"},
+					},
+				},
+			},
+			err: nil,
+		},
+
 		{
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1, id2;",
 			exp: &spqrparser.Alter{

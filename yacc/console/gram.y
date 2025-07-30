@@ -428,6 +428,10 @@ qualified_name:
 	{
 		$$ = &rfqn.RelationFQN{RelationName: $1}
 	} |
+	SCONST
+	{
+		$$ = &rfqn.RelationFQN{RelationName: $1}
+	} |
 	IDENT TDOT IDENT
 	{
 		$$ = &rfqn.RelationFQN{RelationName: $3, SchemaName: $1}
