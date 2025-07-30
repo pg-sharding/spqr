@@ -363,7 +363,7 @@ func TestRoutingByExpression(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{}, nil)
+	}, lc, &config.QRouter{}, nil, getIdentityMngr(lc))
 
 	assert.NoError(err)
 
