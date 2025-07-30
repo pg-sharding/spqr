@@ -162,10 +162,7 @@ func ApplyHashFunction(input any, ctype string, hf HashFunctionType) (any, error
 	}
 }
 
-/*
-* Apply routing hash function on bytes received in their string representation (from COPY).
- */
-func ApplyHashFunctionOnStringRepr(input []byte, ctype string, hf HashFunctionType) (any, error) {
+func ParseBytesFromStringRepr(input []byte, ctype string) (any, error) {
 
 	var parsedInput any
 
@@ -197,7 +194,26 @@ func ApplyHashFunctionOnStringRepr(input []byte, ctype string, hf HashFunctionTy
 		parsedInput = string(input)
 	}
 
+	return parsedInput, nil
+}
+
+/*
+* Apply routing hash function on bytes received in their string representation (from COPY).
+ */
+func ApplyHashFunctionOnStringRepr(input []byte, ctype string, hf HashFunctionType) (any, error) {
+	parsedInput, err := ParseBytesFromStringRepr(input, ctype)
+	if err != nil {
+		return nil, err
+	}
 	return ApplyHashFunction(parsedInput, ctype, hf)
+}
+
+func ApplyNonIdentHashFunctionOnStringRepr(input []byte, ctype string, hf HashFunctionType) (uint32, error) {
+	parsedInput, err := ParseBytesFromStringRepr(input, ctype)
+	if err != nil {
+		return 0, err
+	}
+	return ApplyNonIdentHashFunction(parsedInput, ctype, hf)
 }
 
 // HashFunctionByName returns the corresponding HashFunctionType based on the given hash function name.
