@@ -749,7 +749,10 @@ func (a *Adapter) ListDistributions(ctx context.Context) ([]*distributions.Distr
 
 	dss := make([]*distributions.Distribution, len(resp.Distributions))
 	for i, ds := range resp.Distributions {
-		dss[i] = distributions.DistributionFromProto(ds)
+		dss[i], err = distributions.DistributionFromProto(ds)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return dss, nil
@@ -884,7 +887,7 @@ func (a *Adapter) GetDistribution(ctx context.Context, id string) (*distribution
 		return nil, err
 	}
 
-	return distributions.DistributionFromProto(resp.Distribution), nil
+	return distributions.DistributionFromProto(resp.Distribution)
 }
 
 // GetRelationDistribution retrieves the distribution related to a specific relation from the system.
@@ -906,7 +909,7 @@ func (a *Adapter) GetRelationDistribution(ctx context.Context, relationName *rfq
 		return nil, err
 	}
 
-	return distributions.DistributionFromProto(resp.Distribution), nil
+	return distributions.DistributionFromProto(resp.Distribution)
 }
 
 // GetMoveTaskGroup retrieves the task group from the system.

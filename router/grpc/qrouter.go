@@ -143,7 +143,11 @@ func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.Shard
 // TODO: unit tests
 func (l *LocalQrouterServer) CreateDistribution(ctx context.Context, request *protos.CreateDistributionRequest) (*emptypb.Empty, error) {
 	for _, ds := range request.GetDistributions() {
-		if err := l.mgr.CreateDistribution(ctx, distributions.DistributionFromProto(ds)); err != nil {
+		mds, err := distributions.DistributionFromProto(ds)
+		if err != nil {
+			return nil, err
+		}
+		if err := l.mgr.CreateDistribution(ctx, mds); err != nil {
 			return nil, err
 		}
 	}
@@ -182,16 +186,19 @@ func (l *LocalQrouterServer) ListDistributions(ctx context.Context, _ *emptypb.E
 // AlterDistributionAttach attaches relation to distribution
 // TODO: unit tests
 func (l *LocalQrouterServer) AlterDistributionAttach(ctx context.Context, request *protos.AlterDistributionAttachRequest) (*emptypb.Empty, error) {
+
+	res := make([]*distributions.DistributedRelation, len(request.GetRelations()))
+	for i, rel := range request.GetRelations() {
+		var err error
+		res[i], err = distributions.DistributedRelationFromProto(rel)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return nil, l.mgr.AlterDistributionAttach(
 		ctx,
 		request.GetId(),
-		func() []*distributions.DistributedRelation {
-			res := make([]*distributions.DistributedRelation, len(request.GetRelations()))
-			for i, rel := range request.GetRelations() {
-				res[i] = distributions.DistributedRelationFromProto(rel)
-			}
-			return res
-		}(),
+		res,
 	)
 }
 
@@ -210,7 +217,11 @@ func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, reques
 // AlterDistributedRelation alters the distributed relation
 // TODO: unit tests
 func (l *LocalQrouterServer) AlterDistributedRelation(ctx context.Context, request *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
-	return nil, l.mgr.AlterDistributedRelation(ctx, request.GetId(), distributions.DistributedRelationFromProto(request.GetRelation()))
+	ds, err := distributions.DistributedRelationFromProto(request.GetRelation())
+	if err != nil {
+		return nil, err
+	}
+	return nil, l.mgr.AlterDistributedRelation(ctx, request.GetId(), ds)
 }
 
 // GetDistribution retrieves info about distribution from QDB
