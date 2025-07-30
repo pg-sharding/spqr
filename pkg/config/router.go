@@ -117,6 +117,7 @@ const (
 	TargetSessionAttrsSmartRW = "smart-read-write"
 	TargetSessionAttrsRO      = "read-only"
 	TargetSessionAttrsPS      = "prefer-standby"
+	TargetSessionAttrsPR      = "prefer-replica"
 	TargetSessionAttrsAny     = "any"
 )
 

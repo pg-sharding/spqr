@@ -1142,6 +1142,7 @@ func (cl *PsqlClient) SetTsa(level string, s string) {
 	switch s {
 	case config.TargetSessionAttrsAny,
 		config.TargetSessionAttrsPS,
+		config.TargetSessionAttrsPR,
 		config.TargetSessionAttrsRW,
 		config.TargetSessionAttrsSmartRW,
 		config.TargetSessionAttrsRO:
