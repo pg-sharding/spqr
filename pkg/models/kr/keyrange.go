@@ -141,7 +141,7 @@ func (kr *KeyRange) RecvFunc(attribInd int, val string) error {
 	case qdb.ColumnTypeUUID:
 		kr.LowerBound[attribInd] = strings.ToLower(val)
 		if err := uuid.Validate(strings.ToLower(val)); err != nil {
-			return nil, err
+			return err
 		}
 
 	default:
