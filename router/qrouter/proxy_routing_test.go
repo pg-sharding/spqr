@@ -1739,9 +1739,18 @@ func TestCopySingleShard(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			/* TODO: check if this makes any sence */
 			query: "COPY xx FROM STDIN WHERE i = 1;",
 			exp: &plan.ScatterPlan{
 				IsCopy: true,
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
 			},
 			err: nil,
 		},
@@ -1828,6 +1837,14 @@ func TestCopyMultiShard(t *testing.T) {
 			query: "COPY xx FROM STDIN",
 			exp: &plan.ScatterPlan{
 				IsCopy: true,
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
 			},
 			err: nil,
 		},

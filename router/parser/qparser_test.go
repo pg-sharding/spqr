@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCopySingleShard(t *testing.T) {
+func TestCommentParsing(t *testing.T) {
 	assert := assert.New(t)
 
 	type tcase struct {
