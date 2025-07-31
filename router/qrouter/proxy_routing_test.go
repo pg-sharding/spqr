@@ -1740,8 +1740,10 @@ func TestCopySingleShard(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "COPY xx FROM STDIN WHERE i = 1;",
-			exp:   &plan.CopyPlan{},
-			err:   nil,
+			exp: &plan.ScatterPlan{
+				IsCopy: true,
+			},
+			err: nil,
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
@@ -1824,8 +1826,10 @@ func TestCopyMultiShard(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "COPY xx FROM STDIN",
-			exp:   &plan.CopyPlan{},
-			err:   nil,
+			exp: &plan.ScatterPlan{
+				IsCopy: true,
+			},
+			err: nil,
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)

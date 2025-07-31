@@ -217,6 +217,7 @@ func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shkey kr.Shar
 var ErrMultiShardSyncBroken = fmt.Errorf("multishard state is out of sync")
 
 func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
+
 	rollback := func() {
 		for i := range m.activeShards {
 			spqrlog.Zero.Debug().

@@ -562,8 +562,6 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, q plan.Pla
 	var leftoverMsgData []byte
 	ctx := context.TODO()
 
-	serv := s.Client().Server()
-
 	stmt := q.Stmt()
 	if stmt == nil {
 		return fmt.Errorf("failed to prepare copy context")
@@ -578,8 +576,9 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, q plan.Pla
 		return err
 	}
 
+	serv := s.Client().Server()
 	for _, sh := range serv.Datashards() {
-		/* retrieve exactly one msg - copy in responce */
+		/* retrieve exactly one msg - copy in response */
 		msg, err := sh.Receive()
 		if err != nil {
 			return err
@@ -588,16 +587,6 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, q plan.Pla
 			return server.ErrMultiShardSyncBroken
 		}
 	}
-
-	msg, _, err := serv.Receive()
-	if err != nil {
-		return err
-	}
-
-	spqrlog.Zero.Debug().
-		Str("server", serv.Name()).
-		Type("msg-type", msg).
-		Msg("received message from server")
 
 	err = s.Client().Send(&pgproto3.CopyInResponse{})
 	if err != nil {
@@ -719,15 +708,17 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 	spqrlog.Zero.Debug().
 		Uints("shards", shard.ShardIDs(serv.Datashards())).
 		Type("query-type", qd.Msg).Type("plan-type", qd.P).
-		Msg("relay process plan")
+		Msg("executor dispatch plan")
 
 	if err := DispatchPlan(qd, serv, s.Client(), replyCl); err != nil {
 		return err
 	}
 
-	switch qd.P.(type) {
-	case *plan.CopyPlan:
-		return s.copyFromExecutor(mgr, qd.P, doFinalizeTx, attachedCopy)
+	switch v := qd.P.(type) {
+	case *plan.ScatterPlan:
+		if v.IsCopy {
+			return s.copyFromExecutor(mgr, qd.P, doFinalizeTx, attachedCopy)
+		}
 	}
 
 	switch qd.Msg.(type) {
