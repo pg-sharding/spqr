@@ -1777,6 +1777,10 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 			v.ExecTargets = qr.DataShardsRoutes()
 			return v, nil
 		}
+		if v.IsCopy {
+			v.ExecTargets = qr.DataShardsRoutes()
+			return v, nil
+		}
 
 		if v.Forced {
 			if v.ExecTargets == nil {
