@@ -562,6 +562,8 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, q plan.Pla
 	var leftoverMsgData []byte
 	ctx := context.TODO()
 
+	serv := s.Client().Server()
+
 	stmt := q.Stmt()
 	if stmt == nil {
 		return fmt.Errorf("failed to prepare copy context")
@@ -570,7 +572,34 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, q plan.Pla
 	if !ok {
 		return fmt.Errorf("failed to prepare copy context")
 	}
+
 	cps, err := s.ProcCopyPrepare(ctx, mgr, cs, attachedCopy)
+	if err != nil {
+		return err
+	}
+
+	for _, sh := range serv.Datashards() {
+		/* retrieve exactly one msg - copy in responce */
+		msg, err := sh.Receive()
+		if err != nil {
+			return err
+		}
+		if _, ok := msg.(*pgproto3.CopyInResponse); !ok {
+			return server.ErrMultiShardSyncBroken
+		}
+	}
+
+	msg, _, err := serv.Receive()
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Zero.Debug().
+		Str("server", serv.Name()).
+		Type("msg-type", msg).
+		Msg("received message from server")
+
+	err = s.Client().Send(&pgproto3.CopyInResponse{})
 	if err != nil {
 		return err
 	}
@@ -698,29 +727,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 
 	switch qd.P.(type) {
 	case *plan.CopyPlan:
-
-		msg, _, err := serv.Receive()
-		if err != nil {
-			return err
-		}
-
-		spqrlog.Zero.Debug().
-			Str("server", serv.Name()).
-			Type("msg-type", msg).
-			Msg("received message from server")
-
-		switch msg.(type) {
-		case *pgproto3.CopyInResponse:
-			// handle replyCl somehow
-			err = s.Client().Send(msg)
-			if err != nil {
-				return err
-			}
-
-			return s.copyFromExecutor(mgr, qd.P, doFinalizeTx, attachedCopy)
-		default:
-			return server.ErrMultiShardSyncBroken
-		}
+		return s.copyFromExecutor(mgr, qd.P, doFinalizeTx, attachedCopy)
 	}
 
 	switch qd.Msg.(type) {
