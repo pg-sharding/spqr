@@ -172,7 +172,9 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation) (*DistributedR
 
 	for _, e := range rel.DistributionKey {
 		if len(e.Column) == 0 {
-			return nil, fmt.Errorf("invalid input for distribution entry")
+			if len(e.GetExpr().ColRefs) == 0 {
+				return nil, fmt.Errorf("invalid input for distribution entry")
+			}
 		}
 		rdistr.DistributionKey = append(rdistr.DistributionKey, DistributionKeyEntry{
 			Column:       e.Column,
