@@ -102,6 +102,32 @@ func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation 
 	return rdistr
 }
 
+func RoutingExprToProto(in RoutingExpr) *proto.RoutingExpr {
+	ret := &proto.RoutingExpr{}
+
+	for _, tcr := range in.ColRefs {
+		ret.ColRefs = append(ret.ColRefs, &proto.TypedColRef{
+			ColumnName: tcr.ColName,
+			ColumnType: tcr.ColType,
+		})
+	}
+
+	return ret
+}
+
+func RoutingExprFromProto(in *proto.RoutingExpr) RoutingExpr {
+	ret := RoutingExpr{}
+
+	for _, tcr := range in.GetColRefs() {
+		ret.ColRefs = append(ret.ColRefs, TypedColRef{
+			ColName: tcr.ColumnName,
+			ColType: tcr.ColumnType,
+		})
+	}
+
+	return ret
+}
+
 // DistributedRelationToProto converts a DistributedRelation object to a proto.DistributedRelation object.
 // It takes a pointer to a DistributedRelation object as input and returns a pointer to a proto.DistributedRelation object.
 //
@@ -121,6 +147,7 @@ func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRela
 		rdistr.DistributionKey = append(rdistr.DistributionKey, &proto.DistributionKeyEntry{
 			Column:       e.Column,
 			HashFunction: e.HashFunction,
+			Expr:         RoutingExprToProto(e.Expr),
 		})
 	}
 
@@ -145,11 +172,14 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation) (*DistributedR
 
 	for _, e := range rel.DistributionKey {
 		if len(e.Column) == 0 {
-			return nil, fmt.Errorf("invalid input for distribution entry")
+			if len(e.GetExpr().ColRefs) == 0 {
+				return nil, fmt.Errorf("invalid input for distribution entry")
+			}
 		}
 		rdistr.DistributionKey = append(rdistr.DistributionKey, DistributionKeyEntry{
 			Column:       e.Column,
 			HashFunction: e.HashFunction,
+			Expr:         RoutingExprFromProto(e.Expr),
 		})
 	}
 
