@@ -576,18 +576,6 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, q plan.Pla
 		return err
 	}
 
-	serv := s.Client().Server()
-	for _, sh := range serv.Datashards() {
-		/* retrieve exactly one msg - copy in response */
-		msg, err := sh.Receive()
-		if err != nil {
-			return err
-		}
-		if _, ok := msg.(*pgproto3.CopyInResponse); !ok {
-			return server.ErrMultiShardSyncBroken
-		}
-	}
-
 	err = s.Client().Send(&pgproto3.CopyInResponse{})
 	if err != nil {
 		return err
@@ -717,6 +705,18 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 	switch v := qd.P.(type) {
 	case *plan.ScatterPlan:
 		if v.IsCopy {
+
+			for _, sh := range serv.Datashards() {
+				/* retrieve exactly one msg - copy in response */
+				msg, err := sh.Receive()
+				if err != nil {
+					return err
+				}
+				if _, ok := msg.(*pgproto3.CopyInResponse); !ok {
+					return server.ErrMultiShardSyncBroken
+				}
+			}
+
 			return s.copyFromExecutor(mgr, qd.P, doFinalizeTx, attachedCopy)
 		}
 	}
