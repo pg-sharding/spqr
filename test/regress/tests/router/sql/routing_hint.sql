@@ -28,6 +28,8 @@ SELECT * FROM test_h /*__spqr__sharding_key: a12101, __spqr__distribution: ds2  
 INSERT INTO test_h(id, age) VALUES ('a121012', 16) /*__spqr__sharding_key: a121012, __spqr__distribution: ds2  */;
 SELECT * FROM test_h /*__spqr__sharding_key: a121012, __spqr__distribution: ds2  */;
 
+-- parse all comments in query, ignore output
+SELECT FROM test_h /*__spqr__sharding_key: a121012 */ /* __spqr__distribution: ds2  */;
 
 -- test transaction support for route-local variables;
 
