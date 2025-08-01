@@ -23,6 +23,7 @@ type ScatterPlan struct {
 
 	/* To decide if query is OK even in DRH = BLOCK */
 	IsDDL  bool
+	IsCopy bool
 	Forced bool
 	/* Empty means execute everywhere */
 	ExecTargets []kr.ShardKey
@@ -149,27 +150,6 @@ func (sp *DataRowFilter) SetStmt(n lyx.Node) {
 }
 
 var _ Plan = &DataRowFilter{}
-
-type CopyPlan struct {
-	Plan
-
-	stmt        lyx.Node
-	ExecTargets []kr.ShardKey
-}
-
-func (cs *CopyPlan) ExecutionTargets() []kr.ShardKey {
-	return cs.ExecTargets
-}
-
-func (sp *CopyPlan) Stmt() lyx.Node {
-	return sp.stmt
-}
-
-func (sp *CopyPlan) SetStmt(n lyx.Node) {
-	sp.stmt = n
-}
-
-var _ Plan = &CopyPlan{}
 
 const NOSHARD = ""
 

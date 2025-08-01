@@ -1610,7 +1610,10 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		ro = false
 		pl = plan.Combine(pl, rs)
 	case *lyx.Copy:
-		return &plan.CopyPlan{}, false, nil
+		return &plan.ScatterPlan{
+			IsCopy:      true,
+			ExecTargets: qr.DataShardsRoutes(),
+		}, false, nil
 	default:
 		return nil, false, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
@@ -1770,13 +1773,12 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 			return planner.SelectRandomDispatchPlan(v.ExecTargets)
 		}
 
-	case *plan.CopyPlan:
-		/* temporary */
-		return &plan.ScatterPlan{
-			ExecTargets: qr.DataShardsRoutes(),
-		}, nil
 	case *plan.ScatterPlan:
 		if v.IsDDL {
+			v.ExecTargets = qr.DataShardsRoutes()
+			return v, nil
+		}
+		if v.IsCopy {
 			v.ExecTargets = qr.DataShardsRoutes()
 			return v, nil
 		}
