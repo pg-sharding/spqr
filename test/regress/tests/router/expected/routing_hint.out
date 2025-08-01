@@ -96,6 +96,12 @@ NOTICE: send query to shard(s) : sh1
  a121012 |  16
 (2 rows)
 
+-- parse all comments in query, ignore output
+SELECT FROM test_h /*__spqr__sharding_key: a121012 */ /* __spqr__distribution: ds2  */;
+NOTICE: send query to shard(s) : sh1
+--
+(2 rows)
+
 -- test transaction support for route-local variables;
 SET __spqr__distribution = 'ds1';
 SHOW __spqr__distribution;
