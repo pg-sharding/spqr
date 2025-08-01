@@ -557,7 +557,7 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	return txt, nil
 }
 
-func (s *QueryStateExecutorImpl) copyExecutor(mgr meta.EntityMgr, q plan.Plan, doFinalizeTx, attachedCopy bool) error {
+func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, q plan.Plan, doFinalizeTx, attachedCopy bool) error {
 
 	var leftoverMsgData []byte
 	ctx := context.TODO()
@@ -696,6 +696,33 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 		return err
 	}
 
+	switch qd.P.(type) {
+	case *plan.CopyPlan:
+
+		msg, _, err := serv.Receive()
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Str("server", serv.Name()).
+			Type("msg-type", msg).
+			Msg("received message from server")
+
+		switch msg.(type) {
+		case *pgproto3.CopyInResponse:
+			// handle replyCl somehow
+			err = s.Client().Send(msg)
+			if err != nil {
+				return err
+			}
+
+			return s.copyFromExecutor(mgr, qd.P, doFinalizeTx, attachedCopy)
+		default:
+			return server.ErrMultiShardSyncBroken
+		}
+	}
+
 	switch qd.Msg.(type) {
 	case *pgproto3.Query:
 		// ok
@@ -724,7 +751,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 				return err
 			}
 
-			return s.copyExecutor(mgr, qd.P, doFinalizeTx, attachedCopy)
+			return s.copyFromExecutor(mgr, qd.P, doFinalizeTx, attachedCopy)
 		case *pgproto3.DataRow:
 			if replyCl {
 				switch v := qd.P.(type) {

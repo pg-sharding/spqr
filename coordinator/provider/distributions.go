@@ -26,7 +26,11 @@ var _ protos.DistributionServiceServer = &DistributionsServer{}
 
 func (d *DistributionsServer) CreateDistribution(ctx context.Context, req *protos.CreateDistributionRequest) (*emptypb.Empty, error) {
 	for _, ds := range req.Distributions {
-		if err := d.impl.CreateDistribution(ctx, distributions.DistributionFromProto(ds)); err != nil {
+		mds, err := distributions.DistributionFromProto(ds)
+		if err != nil {
+			return nil, err
+		}
+		if err := d.impl.CreateDistribution(ctx, mds); err != nil {
 			return nil, err
 		}
 	}
@@ -59,13 +63,17 @@ func (d *DistributionsServer) ListDistributions(ctx context.Context, _ *emptypb.
 }
 
 func (d *DistributionsServer) AlterDistributionAttach(ctx context.Context, req *protos.AlterDistributionAttachRequest) (*emptypb.Empty, error) {
-	return nil, d.impl.AlterDistributionAttach(ctx, req.GetId(), func() []*distributions.DistributedRelation {
-		res := make([]*distributions.DistributedRelation, len(req.GetRelations()))
-		for i, rel := range req.GetRelations() {
-			res[i] = distributions.DistributedRelationFromProto(rel)
+
+	res := make([]*distributions.DistributedRelation, len(req.GetRelations()))
+	for i, rel := range req.GetRelations() {
+		var err error
+		res[i], err = distributions.DistributedRelationFromProto(rel)
+		if err != nil {
+			return nil, err
 		}
-		return res
-	}())
+	}
+
+	return nil, d.impl.AlterDistributionAttach(ctx, req.GetId(), res)
 }
 
 func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *protos.AlterDistributionDetachRequest) (*emptypb.Empty, error) {
@@ -79,8 +87,11 @@ func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *
 }
 
 func (d *DistributionsServer) AlterDistributedRelation(ctx context.Context, req *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
-	err := d.impl.AlterDistributedRelation(ctx, req.GetId(), distributions.DistributedRelationFromProto(req.GetRelation()))
-	return nil, err
+	ds, err := distributions.DistributedRelationFromProto(req.GetRelation())
+	if err != nil {
+		return nil, err
+	}
+	return nil, d.impl.AlterDistributedRelation(ctx, req.GetId(), ds)
 }
 
 func (d *DistributionsServer) GetDistribution(ctx context.Context, req *protos.GetDistributionRequest) (*protos.GetDistributionReply, error) {

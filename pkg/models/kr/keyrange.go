@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
@@ -137,8 +138,14 @@ func (kr *KeyRange) RecvFunc(attribInd int, val string) error {
 		if err != nil {
 			return err
 		}
+	case qdb.ColumnTypeUUID:
+		kr.LowerBound[attribInd] = strings.ToLower(val)
+		if err := uuid.Validate(strings.ToLower(val)); err != nil {
+			return err
+		}
+
 	default:
-		panic("unknown column type")
+		return fmt.Errorf("unknown column type %s", kr.ColumnTypes[attribInd])
 	}
 	return nil
 }
