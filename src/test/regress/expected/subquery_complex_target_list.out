@@ -1,0 +1,651 @@
+-- ===================================================================
+-- test subquery functionality with complex target entries
+-- and some utilities
+-- ===================================================================
+CREATE SCHEMA subquery_complex;
+SET search_path TO subquery_complex, public;
+SET client_min_messages TO DEBUG1;
+-- the logs are enabled and it sometimes
+-- lead to flaky outputs when jit enabled
+SET jit_above_cost TO -1;
+-- COUNT DISTINCT at the top level query
+SELECT
+  event_type, count(distinct value_2)
+FROM
+  events_table
+WHERE
+  user_id IN (SELECT user_id FROM users_table GROUP BY user_id ORDER BY count(*) DESC LIMIT 20)
+GROUP BY
+  event_type
+ORDER BY 1 DESC, 2 DESC
+LIMIT 3;
+DEBUG:  push down of limit count: 20
+DEBUG:  generating subplan XXX_1 for subquery SELECT user_id FROM public.users_table GROUP BY user_id ORDER BY (count(*)) DESC LIMIT 20
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT event_type, count(DISTINCT value_2) AS count FROM public.events_table WHERE (user_id OPERATOR(pg_catalog.=) ANY (SELECT intermediate_result.user_id FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer))) GROUP BY event_type ORDER BY event_type DESC, (count(DISTINCT value_2)) DESC LIMIT 3
+ event_type | count
+---------------------------------------------------------------------
+          6 |     1
+          5 |     3
+          4 |     6
+(3 rows)
+
+-- column renaming in a subquery
+SELECT *
+FROM
+	(
+	SELECT user_id, value_1, value_2 FROM users_table OFFSET 0
+	) as foo(x, y)
+ORDER BY 1 DESC, 2 DESC, 3 DESC LIMIT 5;
+DEBUG:  generating subplan XXX_1 for subquery SELECT user_id, value_1, value_2 FROM public.users_table OFFSET 0
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT x, y, value_2 FROM (SELECT intermediate_result.user_id, intermediate_result.value_1, intermediate_result.value_2 FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer, value_1 integer, value_2 integer)) foo(x, y, value_2) ORDER BY x DESC, y DESC, value_2 DESC LIMIT 5
+ x | y | value_2
+---------------------------------------------------------------------
+ 6 | 5 |       2
+ 6 | 5 |       0
+ 6 | 3 |       2
+ 6 | 2 |       4
+ 6 | 2 |       4
+(5 rows)
+
+-- aggregate distinct in the subqueries
+	-- avg distinct on partition key
+	-- count distinct on partition key
+	-- count distinct on non-partition key
+	-- sum distinct on non-partition key when group by is partition key
+	-- and the final query is real-time query
+SELECT
+   DISTINCT ON (avg) avg, cnt_1, cnt_2, sum
+FROM
+    (
+    	SELECT avg(distinct user_id) as avg FROM users_table ORDER BY 1 DESC LIMIT 3
+     ) as foo,
+    (
+    	SELECT count(distinct user_id) as cnt_1 FROM users_table ORDER BY 1 DESC LIMIT 3
+    ) as bar,
+	(
+    	SELECT count(distinct value_2) as cnt_2 FROM users_table ORDER BY 1 DESC LIMIT 4
+    ) as baz,
+	(
+		SELECT user_id, sum(distinct value_2) as sum FROM users_table GROUP BY user_id ORDER BY 1 DESC LIMIT 4
+    ) as bat, events_table
+    WHERE foo.avg != bar.cnt_1 AND baz.cnt_2 = events_table.event_type
+    ORDER BY 1 DESC;
+DEBUG:  push down of limit count: 3
+DEBUG:  generating subplan XXX_1 for subquery SELECT avg(DISTINCT user_id) AS avg FROM public.users_table ORDER BY (avg(DISTINCT user_id)) DESC LIMIT 3
+DEBUG:  push down of limit count: 3
+DEBUG:  generating subplan XXX_2 for subquery SELECT count(DISTINCT user_id) AS cnt_1 FROM public.users_table ORDER BY (count(DISTINCT user_id)) DESC LIMIT 3
+DEBUG:  generating subplan XXX_3 for subquery SELECT count(DISTINCT value_2) AS cnt_2 FROM public.users_table ORDER BY (count(DISTINCT value_2)) DESC LIMIT 4
+DEBUG:  push down of limit count: 4
+DEBUG:  generating subplan XXX_4 for subquery SELECT user_id, sum(DISTINCT value_2) AS sum FROM public.users_table GROUP BY user_id ORDER BY user_id DESC LIMIT 4
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT DISTINCT ON (foo.avg) foo.avg, bar.cnt_1, baz.cnt_2, bat.sum FROM (SELECT intermediate_result.avg FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(avg numeric)) foo, (SELECT intermediate_result.cnt_1 FROM read_intermediate_result('XXX_2'::text, 'binary'::citus_copy_format) intermediate_result(cnt_1 bigint)) bar, (SELECT intermediate_result.cnt_2 FROM read_intermediate_result('XXX_3'::text, 'binary'::citus_copy_format) intermediate_result(cnt_2 bigint)) baz, (SELECT intermediate_result.user_id, intermediate_result.sum FROM read_intermediate_result('XXX_4'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer, sum bigint)) bat, public.events_table WHERE ((foo.avg OPERATOR(pg_catalog.<>) (bar.cnt_1)::numeric) AND (baz.cnt_2 OPERATOR(pg_catalog.=) events_table.event_type)) ORDER BY foo.avg DESC
+        avg         | cnt_1 | cnt_2 | sum
+---------------------------------------------------------------------
+ 3.5000000000000000 |     6 |     6 |  10
+(1 row)
+
+-- Aggregate type conversions inside the subqueries
+SELECT
+   *
+FROM
+    (
+    	SELECT
+    		min(user_id) * 2, max(user_id) / 2, sum(user_id), count(user_id)::float, avg(user_id)::bigint
+    	FROM
+    		users_table
+    	ORDER BY 1 DESC
+    	LIMIT 3
+    ) as foo,
+    (
+    	   SELECT
+    		min(value_3) * 2, max(value_3) / 2, sum(value_3), count(value_3), avg(value_3)
+    	FROM
+    		users_table
+    	ORDER BY 1 DESC
+    	LIMIT 3
+    ) as bar,
+	(
+    	SELECT
+    		min(time), max(time), count(time),
+    		count(*) FILTER (WHERE user_id = 3) as cnt_with_filter,
+    		count(*) FILTER (WHERE user_id::text LIKE '%3%') as cnt_with_filter_2
+    	FROM
+    		users_table
+    	ORDER BY 1 DESC
+    	LIMIT 3
+    ) as baz
+    ORDER BY 1 DESC;
+DEBUG:  push down of limit count: 3
+DEBUG:  generating subplan XXX_1 for subquery SELECT (min(user_id) OPERATOR(pg_catalog.*) 2), (max(user_id) OPERATOR(pg_catalog./) 2), sum(user_id) AS sum, (count(user_id))::double precision AS count, (avg(user_id))::bigint AS avg FROM public.users_table ORDER BY (min(user_id) OPERATOR(pg_catalog.*) 2) DESC LIMIT 3
+DEBUG:  push down of limit count: 3
+DEBUG:  generating subplan XXX_2 for subquery SELECT (min(value_3) OPERATOR(pg_catalog.*) (2)::double precision), (max(value_3) OPERATOR(pg_catalog./) (2)::double precision), sum(value_3) AS sum, count(value_3) AS count, avg(value_3) AS avg FROM public.users_table ORDER BY (min(value_3) OPERATOR(pg_catalog.*) (2)::double precision) DESC LIMIT 3
+DEBUG:  push down of limit count: 3
+DEBUG:  generating subplan XXX_3 for subquery SELECT min("time") AS min, max("time") AS max, count("time") AS count, count(*) FILTER (WHERE (user_id OPERATOR(pg_catalog.=) 3)) AS cnt_with_filter, count(*) FILTER (WHERE ((user_id)::text OPERATOR(pg_catalog.~~) '%3%'::text)) AS cnt_with_filter_2 FROM public.users_table ORDER BY (min("time")) DESC LIMIT 3
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT foo."?column?", foo."?column?_1", foo.sum, foo.count, foo.avg, bar."?column?", bar."?column?_1", bar.sum, bar.count, bar.avg, baz.min, baz.max, baz.count, baz.cnt_with_filter, baz.cnt_with_filter_2 FROM (SELECT intermediate_result."?column?", intermediate_result."?column?_1", intermediate_result.sum, intermediate_result.count, intermediate_result.avg FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result("?column?" integer, "?column?_1" integer, sum bigint, count double precision, avg bigint)) foo("?column?", "?column?_1", sum, count, avg), (SELECT intermediate_result."?column?", intermediate_result."?column?_1", intermediate_result.sum, intermediate_result.count, intermediate_result.avg FROM read_intermediate_result('XXX_2'::text, 'binary'::citus_copy_format) intermediate_result("?column?" double precision, "?column?_1" double precision, sum double precision, count bigint, avg double precision)) bar("?column?", "?column?_1", sum, count, avg), (SELECT intermediate_result.min, intermediate_result.max, intermediate_result.count, intermediate_result.cnt_with_filter, intermediate_result.cnt_with_filter_2 FROM read_intermediate_result('XXX_3'::text, 'binary'::citus_copy_format) intermediate_result(min timestamp without time zone, max timestamp without time zone, count bigint, cnt_with_filter bigint, cnt_with_filter_2 bigint)) baz ORDER BY foo."?column?" DESC
+ ?column? | ?column? | sum | count | avg | ?column? | ?column? | sum | count |       avg       |               min               |               max               | count | cnt_with_filter | cnt_with_filter_2
+---------------------------------------------------------------------
+        2 |        3 | 376 |   101 |   4 |        0 |      2.5 | 273 |   101 | 2.7029702970297 | Wed Nov 22 18:19:49.944985 2017 | Thu Nov 23 17:30:34.635085 2017 |   101 |              17 |                17
+(1 row)
+
+-- we reset the client min_messages here to avoid adding an alternative output
+-- for pg14 as the output slightly differs.
+RESET client_min_messages;
+-- Set binary protocol temporarily to true always, to get consistent float
+-- output across PG versions.
+-- This is a no-op for PG_VERSION_NUM >= 14
+SET citus.enable_binary_protocol = TRUE;
+-- Expressions inside the aggregates
+-- parts of the query is inspired by TPCH queries
+SELECT
+   DISTINCT ON (avg) avg, cnt_1, cnt_2, cnt_3, sum_1,l_year, pos, count_pay
+FROM
+    (
+    	SELECT avg(user_id * (5.0 / (value_1 + 0.1))) as avg FROM users_table ORDER BY 1 DESC LIMIT 3
+     ) as foo,
+    (
+    	SELECT sum(user_id * (5.0 / (value_1 + value_2 + 0.1)) * value_3) as cnt_1 FROM users_table ORDER BY 1 DESC LIMIT 3
+    ) as bar,
+	(
+    	SELECT
+    		avg(case
+            	when user_id > 4
+            	then value_1
+        	end) as cnt_2,
+    		avg(case
+            	when user_id > 500
+            	then value_1
+        	end) as cnt_3,
+    		sum(case
+				when value_1 = 1
+			 	OR value_2 = 1
+				then 1
+				else 0
+			end) as sum_1,
+			extract(year FROM max(time)) as l_year,
+			strpos(max(user_id)::text, '1') as pos
+         FROM
+         		users_table
+         ORDER BY
+         	1 DESC
+         LIMIT 4
+    ) as baz,
+	(
+		SELECT  COALESCE(value_3, 20) AS count_pay FROM users_table ORDER BY 1 OFFSET 20 LIMIT 5
+	) as tar,
+    events_table
+    WHERE foo.avg != bar.cnt_1 AND baz.cnt_2 != events_table.event_type
+    ORDER BY 1 DESC;
+           avg           |      cnt_1       |       cnt_2        | cnt_3 | sum_1 | l_year | pos | count_pay
+---------------------------------------------------------------------
+ 30.14666771571734992301 | 3308.14619815794 | 2.5000000000000000 |       |    31 |   2017 |   0 |         1
+(1 row)
+
+SET client_min_messages TO DEBUG1;
+-- Reset binary protocol back after temporaribly changing it
+-- This is a no-op for PG_VERSION_NUM >= 14
+RESET citus.enable_binary_protocol;
+-- Multiple columns in GROUP BYs
+-- foo needs to be recursively planned, bar can be pushded down
+SELECT
+   DISTINCT ON (avg) avg, avg2
+FROM
+    (
+    	SELECT avg(value_3) as avg FROM users_table GROUP BY value_1, value_2
+     ) as foo,
+    (
+    	SELECT avg(value_3) as avg2 FROM users_table GROUP BY value_1, value_2, user_id
+     ) as bar
+    WHERE foo.avg = bar.avg2
+    ORDER BY 1 DESC, 2 DESC
+    LIMIT 3;
+DEBUG:  generating subplan XXX_1 for subquery SELECT avg(value_3) AS avg FROM public.users_table GROUP BY value_1, value_2
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT DISTINCT ON (foo.avg) foo.avg, bar.avg2 FROM (SELECT intermediate_result.avg FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(avg double precision)) foo, (SELECT avg(users_table.value_3) AS avg2 FROM public.users_table GROUP BY users_table.value_1, users_table.value_2, users_table.user_id) bar WHERE (foo.avg OPERATOR(pg_catalog.=) bar.avg2) ORDER BY foo.avg DESC, bar.avg2 DESC LIMIT 3
+DEBUG:  push down of limit count: 3
+ avg | avg2
+---------------------------------------------------------------------
+   5 |    5
+   4 |    4
+ 3.5 |  3.5
+(3 rows)
+
+-- HAVING and ORDER BY tests
+SELECT a.user_id, b.value_2, c.avg
+FROM (
+         SELECT
+         	user_id
+    	 FROM
+         	users_table
+         WHERE
+           	(value_1 > 2)
+          GROUP BY
+      			user_id
+           HAVING
+      		count(distinct value_1) > 2
+      	   ORDER BY 1 DESC
+      	   LIMIT 3
+        ) as a,
+		(
+         SELECT
+         	value_2
+    	 FROM
+         	users_table
+         WHERE
+           	(value_1 > 2)
+          GROUP BY
+      			value_2
+           HAVING
+      		count(distinct value_1) > 2
+      	   ORDER BY 1 DESC
+      	   LIMIT 3
+        ) as b,
+       	(
+         SELECT
+         	avg(user_id) as avg
+    	 FROM
+         	users_table
+         WHERE
+           	(value_1 > 2)
+          GROUP BY
+      			value_2
+           HAVING
+      		sum(value_1) > 10
+      	   ORDER BY (sum(value_3) - avg(value_1) - COALESCE(array_upper(ARRAY[max(user_id)],1) * 5,0)) DESC
+      	   LIMIT 3
+        ) as c
+        WHERE b.value_2 != a.user_id
+        ORDER BY 3 DESC, 2 DESC, 1 DESC
+        LIMIT 5;
+DEBUG:  push down of limit count: 3
+DEBUG:  generating subplan XXX_1 for subquery SELECT user_id FROM public.users_table WHERE (value_1 OPERATOR(pg_catalog.>) 2) GROUP BY user_id HAVING (count(DISTINCT value_1) OPERATOR(pg_catalog.>) 2) ORDER BY user_id DESC LIMIT 3
+DEBUG:  generating subplan XXX_2 for subquery SELECT value_2 FROM public.users_table WHERE (value_1 OPERATOR(pg_catalog.>) 2) GROUP BY value_2 HAVING (count(DISTINCT value_1) OPERATOR(pg_catalog.>) 2) ORDER BY value_2 DESC LIMIT 3
+DEBUG:  generating subplan XXX_3 for subquery SELECT avg(user_id) AS avg FROM public.users_table WHERE (value_1 OPERATOR(pg_catalog.>) 2) GROUP BY value_2 HAVING (sum(value_1) OPERATOR(pg_catalog.>) 10) ORDER BY ((sum(value_3) OPERATOR(pg_catalog.-) (avg(value_1))::double precision) OPERATOR(pg_catalog.-) (COALESCE((array_upper(ARRAY[max(user_id)], 1) OPERATOR(pg_catalog.*) 5), 0))::double precision) DESC LIMIT 3
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT a.user_id, b.value_2, c.avg FROM (SELECT intermediate_result.user_id FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer)) a, (SELECT intermediate_result.value_2 FROM read_intermediate_result('XXX_2'::text, 'binary'::citus_copy_format) intermediate_result(value_2 integer)) b, (SELECT intermediate_result.avg FROM read_intermediate_result('XXX_3'::text, 'binary'::citus_copy_format) intermediate_result(avg numeric)) c WHERE (b.value_2 OPERATOR(pg_catalog.<>) a.user_id) ORDER BY c.avg DESC, b.value_2 DESC, a.user_id DESC LIMIT 5
+ user_id | value_2 |        avg
+---------------------------------------------------------------------
+       4 |       5 | 4.1666666666666667
+       3 |       5 | 4.1666666666666667
+       5 |       4 | 4.1666666666666667
+       3 |       4 | 4.1666666666666667
+       5 |       3 | 4.1666666666666667
+(5 rows)
+
+-- zero shard subquery joined with a regular one
+SELECT
+   bar.user_id
+FROM
+    (SELECT
+    	DISTINCT users_table.user_id
+     FROM
+     	users_table, events_table
+     WHERE
+     	users_table.user_id = events_table.user_id AND
+     event_type IN (1,2,3,4)
+     ORDER BY 1 DESC LIMIT 5
+     ) as foo,
+    (SELECT
+    	DISTINCT users_table.user_id
+     FROM
+     	users_table, events_table
+     WHERE
+     	users_table.user_id = events_table.user_id AND false AND
+     event_type IN (1,2,3,4)
+     ORDER BY 1 DESC LIMIT 5
+     ) as bar
+    WHERE foo.user_id > bar.user_id
+    ORDER BY 1 DESC;
+DEBUG:  push down of limit count: 5
+DEBUG:  generating subplan XXX_1 for subquery SELECT DISTINCT users_table.user_id FROM public.users_table, public.events_table WHERE ((users_table.user_id OPERATOR(pg_catalog.=) events_table.user_id) AND (events_table.event_type OPERATOR(pg_catalog.=) ANY (ARRAY[1, 2, 3, 4]))) ORDER BY users_table.user_id DESC LIMIT 5
+DEBUG:  generating subplan XXX_2 for subquery SELECT DISTINCT users_table.user_id FROM public.users_table, public.events_table WHERE ((users_table.user_id OPERATOR(pg_catalog.=) events_table.user_id) AND false AND (events_table.event_type OPERATOR(pg_catalog.=) ANY (ARRAY[1, 2, 3, 4]))) ORDER BY users_table.user_id DESC LIMIT 5
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT bar.user_id FROM (SELECT intermediate_result.user_id FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer)) foo, (SELECT intermediate_result.user_id FROM read_intermediate_result('XXX_2'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer)) bar WHERE (foo.user_id OPERATOR(pg_catalog.>) bar.user_id) ORDER BY bar.user_id DESC
+ user_id
+---------------------------------------------------------------------
+(0 rows)
+
+-- window functions tests, both is recursively planned
+SELECT * FROM
+(
+	SELECT
+	   user_id, time, rnk
+	FROM
+	(
+		SELECT * FROM (
+	  SELECT
+	    *, rank() OVER my_win as rnk
+	  FROM
+	    events_table
+	    WINDOW my_win AS (PARTITION BY user_id ORDER BY time DESC)
+	    ORDER BY rnk DESC
+		) as foo_inner
+     ORDER BY user_id DESC
+	   LIMIT 4
+	) as foo
+	ORDER BY
+	  3 DESC, 1 DESC, 2 DESC
+) foo,
+(
+	SELECT
+	   user_id, time, rnk
+	FROM
+	(
+	  SELECT
+	    *, rank() OVER my_win as rnk
+	  FROM
+	    events_table
+	  WHERE
+	   	user_id = 3
+	  WINDOW my_win AS (PARTITION BY event_type ORDER BY time DESC)
+	) as foo
+	ORDER BY
+	  3 DESC, 1 DESC, 2 DESC
+) bar WHERE foo.user_id = bar.user_id
+ORDER BY foo.rnk DESC, foo.time DESC, bar.time LIMIT 5;
+DEBUG:  push down of limit count: 4
+DEBUG:  generating subplan XXX_1 for subquery SELECT user_id, "time", event_type, value_2, value_3, value_4, rnk FROM (SELECT events_table.user_id, events_table."time", events_table.event_type, events_table.value_2, events_table.value_3, events_table.value_4, rank() OVER my_win AS rnk FROM public.events_table WINDOW my_win AS (PARTITION BY events_table.user_id ORDER BY events_table."time" DESC) ORDER BY (rank() OVER my_win) DESC) foo_inner ORDER BY user_id DESC LIMIT 4
+DEBUG:  generating subplan XXX_2 for subquery SELECT user_id, "time", event_type, value_2, value_3, value_4, rank() OVER my_win AS rnk FROM public.events_table WHERE (user_id OPERATOR(pg_catalog.=) 3) WINDOW my_win AS (PARTITION BY event_type ORDER BY "time" DESC)
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT foo.user_id, foo."time", foo.rnk, bar.user_id, bar."time", bar.rnk FROM (SELECT foo_1.user_id, foo_1."time", foo_1.rnk FROM (SELECT intermediate_result.user_id, intermediate_result."time", intermediate_result.event_type, intermediate_result.value_2, intermediate_result.value_3, intermediate_result.value_4, intermediate_result.rnk FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer, "time" timestamp without time zone, event_type integer, value_2 integer, value_3 double precision, value_4 bigint, rnk bigint)) foo_1 ORDER BY foo_1.rnk DESC, foo_1.user_id DESC, foo_1."time" DESC) foo, (SELECT foo_1.user_id, foo_1."time", foo_1.rnk FROM (SELECT intermediate_result.user_id, intermediate_result."time", intermediate_result.event_type, intermediate_result.value_2, intermediate_result.value_3, intermediate_result.value_4, intermediate_result.rnk FROM read_intermediate_result('XXX_2'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer, "time" timestamp without time zone, event_type integer, value_2 integer, value_3 double precision, value_4 bigint, rnk bigint)) foo_1 ORDER BY foo_1.rnk DESC, foo_1.user_id DESC, foo_1."time" DESC) bar WHERE (foo.user_id OPERATOR(pg_catalog.=) bar.user_id) ORDER BY foo.rnk DESC, foo."time" DESC, bar."time" LIMIT 5
+ user_id | time | rnk | user_id | time | rnk
+---------------------------------------------------------------------
+(0 rows)
+
+-- cursor test
+BEGIN;
+	DECLARE recursive_subquery CURSOR FOR
+	SELECT
+	  event_type, count(distinct value_2)
+	FROM
+	  events_table
+	WHERE
+	  user_id IN (SELECT user_id FROM users_table GROUP BY user_id ORDER BY count(*) DESC LIMIT 20)
+	GROUP BY
+	  event_type
+	ORDER BY 1 DESC, 2 DESC
+	LIMIT 3;
+DEBUG:  push down of limit count: 20
+DEBUG:  generating subplan XXX_1 for subquery SELECT user_id FROM public.users_table GROUP BY user_id ORDER BY (count(*)) DESC LIMIT 20
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT event_type, count(DISTINCT value_2) AS count FROM public.events_table WHERE (user_id OPERATOR(pg_catalog.=) ANY (SELECT intermediate_result.user_id FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer))) GROUP BY event_type ORDER BY event_type DESC, (count(DISTINCT value_2)) DESC LIMIT 3
+	FETCH 1 FROM recursive_subquery;
+ event_type | count
+---------------------------------------------------------------------
+          6 |     1
+(1 row)
+
+	FETCH 1 FROM recursive_subquery;
+ event_type | count
+---------------------------------------------------------------------
+          5 |     3
+(1 row)
+
+	FETCH 1 FROM recursive_subquery;
+ event_type | count
+---------------------------------------------------------------------
+          4 |     6
+(1 row)
+
+	FETCH 1 FROM recursive_subquery;
+ event_type | count
+---------------------------------------------------------------------
+(0 rows)
+
+COMMIT;
+-- cursor test with FETCH ALL
+BEGIN;
+	DECLARE recursive_subquery CURSOR FOR
+	SELECT
+	  event_type, count(distinct value_2)
+	FROM
+	  events_table
+	WHERE
+	  user_id IN (SELECT user_id FROM users_table GROUP BY user_id ORDER BY count(*) DESC LIMIT 20)
+	GROUP BY
+	  event_type
+	ORDER BY 1 DESC, 2 DESC
+	LIMIT 3;
+DEBUG:  push down of limit count: 20
+DEBUG:  generating subplan XXX_1 for subquery SELECT user_id FROM public.users_table GROUP BY user_id ORDER BY (count(*)) DESC LIMIT 20
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT event_type, count(DISTINCT value_2) AS count FROM public.events_table WHERE (user_id OPERATOR(pg_catalog.=) ANY (SELECT intermediate_result.user_id FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer))) GROUP BY event_type ORDER BY event_type DESC, (count(DISTINCT value_2)) DESC LIMIT 3
+	FETCH ALL FROM recursive_subquery;
+ event_type | count
+---------------------------------------------------------------------
+          6 |     1
+          5 |     3
+          4 |     6
+(3 rows)
+
+	FETCH ALL FROM recursive_subquery;
+ event_type | count
+---------------------------------------------------------------------
+(0 rows)
+
+COMMIT;
+SET client_min_messages TO DEFAULT;
+CREATE TABLE items (key text primary key, value text not null, t timestamp);
+SELECT create_distributed_table('items','key');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+INSERT INTO items VALUES ('key-1','value-2', '2020-01-01 00:00');
+INSERT INTO items VALUES ('key-2','value-1', '2020-02-02 00:00');
+CREATE TABLE other_items (key text primary key, value text not null);
+SELECT create_distributed_table('other_items','key');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+INSERT INTO other_items VALUES ('key-1','value-2');
+-- LEFT JOINs are wrapped into a subquery under the covers, which causes GROUP BY
+-- to be separated from the LEFT JOIN. If the GROUP BY is on a primary key we can
+-- normally use any column even ones that are not in the GROUP BY, but not when
+-- it is in the outer query. In that case, we use the any_value aggregate.
+SELECT key, a.value, count(b.value), t
+FROM items a LEFT JOIN other_items b USING (key)
+GROUP BY key HAVING a.value != 'value-2' ORDER BY count(b.value), a.value LIMIT 5;
+  key  |  value  | count |            t
+---------------------------------------------------------------------
+ key-2 | value-1 |     0 | Sun Feb 02 00:00:00 2020
+(1 row)
+
+SELECT key, a.value, count(b.value), t
+FROM items a LEFT JOIN other_items b USING (key)
+GROUP BY key, t HAVING a.value != 'value-2' ORDER BY count(b.value), a.value LIMIT 5;
+  key  |  value  | count |            t
+---------------------------------------------------------------------
+ key-2 | value-1 |     0 | Sun Feb 02 00:00:00 2020
+(1 row)
+
+-- make sure the same logic works for regular joins
+SELECT key, a.value, count(b.value), t
+FROM items a JOIN other_items b USING (key)
+GROUP BY key HAVING a.value = 'value-2' ORDER BY count(b.value), a.value LIMIT 5;
+  key  |  value  | count |            t
+---------------------------------------------------------------------
+ key-1 | value-2 |     1 | Wed Jan 01 00:00:00 2020
+(1 row)
+
+-- subqueries also trigger wrapping
+SELECT key, a.value, count(b.value), t
+FROM items a JOIN (SELECT key, value, random() FROM other_items) b USING (key)
+GROUP BY key ORDER BY 3, 2, 1;
+  key  |  value  | count |            t
+---------------------------------------------------------------------
+ key-1 | value-2 |     1 | Wed Jan 01 00:00:00 2020
+(1 row)
+
+-- pushdownable window functions also trigger wrapping
+SELECT a.key, a.value, count(a.value) OVER (PARTITION BY a.key)
+FROM items a JOIN other_items b ON (a.key = b.key)
+GROUP BY a.key ORDER BY 3, 2, 1;
+  key  |  value  | count
+---------------------------------------------------------------------
+ key-1 | value-2 |     1
+(1 row)
+
+-- left join with non-pushdownable window functions
+SELECT a.key, a.value, count(a.value) OVER ()
+FROM items a LEFT JOIN other_items b ON (a.key = b.key)
+GROUP BY a.key ORDER BY 3, 2, 1;
+  key  |  value  | count
+---------------------------------------------------------------------
+ key-2 | value-1 |     2
+ key-1 | value-2 |     2
+(2 rows)
+
+-- function joins (actually with read_intermediate_results) also trigger wrapping
+SELECT key, a.value, sum(b)
+FROM items a JOIN generate_series(1,10) b ON (a.key = 'key-'||b)
+GROUP BY key ORDER BY 3, 2, 1;
+  key  |  value  | sum
+---------------------------------------------------------------------
+ key-1 | value-2 |   1
+ key-2 | value-1 |   2
+(2 rows)
+
+-- whole rows in the output should work
+SELECT a.key, a, count(b)
+FROM items a LEFT JOIN other_items b ON (a.key = b.key)
+GROUP BY a.key ORDER BY 3, 2, 1;
+  key  |                     a                      | count
+---------------------------------------------------------------------
+ key-2 | (key-2,value-1,"Sun Feb 02 00:00:00 2020") |     0
+ key-1 | (key-1,value-2,"Wed Jan 01 00:00:00 2020") |     1
+(2 rows)
+
+-- Of the target list entries, v1-v3 should be wrapped in any_value as they do
+-- not appear in GROUP BY. The append happens on the coordinator in that case.
+-- Vars in the HAVING that do not appear in the GROUP BY are also wrapped.
+SELECT
+  a.key as k1,
+  a.key as k2,
+  a.key || '_append' as k3,
+  a.value as v1,
+  a.value as v2,
+  a.value || '_notgrouped' as v3,
+  a.value || '_append' as va1,
+  a.value || '_append' as va2,
+  a.value || '_append' || '_more' as va2,
+  count(*)
+FROM items a LEFT JOIN other_items b ON (a.key = b.key)
+GROUP BY a.key, a.value ||'_append'
+HAVING length(a.key) + length(a.value) < length(a.value || '_append')
+ORDER BY 1;
+  k1   |  k2   |      k3      |   v1    |   v2    |         v3         |      va1       |      va2       |         va2         | count
+---------------------------------------------------------------------
+ key-1 | key-1 | key-1_append | value-2 | value-2 | value-2_notgrouped | value-2_append | value-2_append | value-2_append_more |     1
+ key-2 | key-2 | key-2_append | value-1 | value-1 | value-1_notgrouped | value-1_append | value-1_append | value-1_append_more |     1
+(2 rows)
+
+SELECT coordinator_plan($$
+EXPLAIN (VERBOSE ON, COSTS OFF)
+SELECT
+  a.key as k1,
+  a.key as k2,
+  a.key || '_append' as k3,
+  a.value as v1,
+  a.value as v2,
+  a.value || '_notgrouped' as v3,
+  a.value || '_append' as va1,
+  a.value || '_append' as va2,
+  a.value || '_append' || '_more' as va3,
+  count(*)
+FROM items a LEFT JOIN other_items b ON (a.key = b.key)
+GROUP BY a.key, a.value ||'_append'
+HAVING length(a.key) + length(a.value) < length(a.value || '_append')
+ORDER BY 1
+$$);
+                                                                                   coordinator_plan
+---------------------------------------------------------------------
+ Sort
+   Output: remote_scan.k1, remote_scan.k2, remote_scan.k3, remote_scan.v1, remote_scan.v2, remote_scan.v3, remote_scan.va1, remote_scan.va2, remote_scan.va3, remote_scan.count
+   Sort Key: remote_scan.k1
+   ->  Custom Scan (Citus Adaptive)
+         Output: remote_scan.k1, remote_scan.k2, remote_scan.k3, remote_scan.v1, remote_scan.v2, remote_scan.v3, remote_scan.va1, remote_scan.va2, remote_scan.va3, remote_scan.count
+         Task Count: 4
+(6 rows)
+
+SELECT a FROM items a ORDER BY key;
+                     a
+---------------------------------------------------------------------
+ (key-1,value-2,"Wed Jan 01 00:00:00 2020")
+ (key-2,value-1,"Sun Feb 02 00:00:00 2020")
+(2 rows)
+
+SELECT a FROM items a WHERE key = 'key-1';
+                     a
+---------------------------------------------------------------------
+ (key-1,value-2,"Wed Jan 01 00:00:00 2020")
+(1 row)
+
+SELECT a FROM (SELECT a, random() FROM items a) b ORDER BY a;
+                     a
+---------------------------------------------------------------------
+ (key-1,value-2,"Wed Jan 01 00:00:00 2020")
+ (key-2,value-1,"Sun Feb 02 00:00:00 2020")
+(2 rows)
+
+-- whole rows when table name needs escaping
+create table "another table" (key text primary key, value text not null, t timestamp);
+SELECT create_distributed_table('"another table"','key');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+INSERT INTO "another table" TABLE items;
+SELECT a.key, a, count(b)
+FROM "another table" a LEFT JOIN other_items b ON (a.key = b.key)
+GROUP BY a.key ORDER BY 3, 2, 1;
+  key  |                     a                      | count
+---------------------------------------------------------------------
+ key-2 | (key-2,value-1,"Sun Feb 02 00:00:00 2020") |     0
+ key-1 | (key-1,value-2,"Wed Jan 01 00:00:00 2020") |     1
+(2 rows)
+
+-- subquery output is not recognised yet
+SELECT b FROM (SELECT a FROM items a GROUP BY key) b ORDER BY b;
+ERROR:  input of anonymous composite types is not implemented
+-- table output in recursive planning
+WITH a AS (SELECT a FROM items a OFFSET 0)
+SELECT count(a) FROM a;
+ count
+---------------------------------------------------------------------
+     2
+(1 row)
+
+WITH a AS (SELECT a AS b FROM items a OFFSET 0)
+SELECT b FROM a ORDER BY b;
+                     b
+---------------------------------------------------------------------
+ (key-1,value-2,"Wed Jan 01 00:00:00 2020")
+ (key-2,value-1,"Sun Feb 02 00:00:00 2020")
+(2 rows)
+
+BEGIN;
+WITH a AS (DELETE FROM items RETURNING items)
+SELECT count(a) FROM a;
+ count
+---------------------------------------------------------------------
+     2
+(1 row)
+
+ROLLBACK;
+-- mix custom types with table type
+CREATE TYPE full_item AS (key text, value text);
+ALTER TABLE items ADD COLUMN fi subquery_complex.full_item;
+UPDATE items SET fi = (items.key, items.value);
+SELECT a, a.fi, (a.fi).* FROM items a ORDER BY 1,2,3;
+                              a                               |       fi        |  key  |  value
+---------------------------------------------------------------------
+ (key-1,value-2,"Wed Jan 01 00:00:00 2020","(key-1,value-2)") | (key-1,value-2) | key-1 | value-2
+ (key-2,value-1,"Sun Feb 02 00:00:00 2020","(key-2,value-1)") | (key-2,value-1) | key-2 | value-1
+(2 rows)
+
+SELECT a, b.fi, (b.fi).*, (a).fi, ((a).fi).* FROM (SELECT a, fi FROM items a GROUP BY key) b ORDER BY 1,2,3;
+                              a                               |       fi        |  key  |  value  |       fi        |  key  |  value
+---------------------------------------------------------------------
+ (key-1,value-2,"Wed Jan 01 00:00:00 2020","(key-1,value-2)") | (key-1,value-2) | key-1 | value-2 | (key-1,value-2) | key-1 | value-2
+ (key-2,value-1,"Sun Feb 02 00:00:00 2020","(key-2,value-1)") | (key-2,value-1) | key-2 | value-1 | (key-2,value-1) | key-2 | value-1
+(2 rows)
+
+SET client_min_messages TO 'WARNING';
+DROP SCHEMA subquery_complex CASCADE;

@@ -1,0 +1,845 @@
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- Vanilla funnel query
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+CREATE SCHEMA multi_insert_select_non_pushable_queries;
+SET search_path = multi_insert_select_non_pushable_queries,public;
+-- not pushable since the JOIN is not an equi join
+INSERT INTO agg_results_third (user_id, value_1_agg)
+SELECT user_id, array_length(events_table, 1)
+FROM (
+  SELECT user_id, array_agg(event ORDER BY time) AS events_table
+  FROM (
+    SELECT u.user_id, e.event_type::text AS event, e.time
+    FROM users_table AS u,
+         events_table AS e
+    WHERE u.user_id != e.user_id
+      AND u.user_id >= 10
+      AND u.user_id <= 25
+      AND e.event_type IN (100, 101, 102)
+  ) t
+  GROUP BY user_id
+) q;
+ERROR:  complex joins are only supported when all distributed tables are joined on their distribution columns with equal operator
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+--  Funnel grouped by whether or not a user has done an event
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- not pushable since the JOIN is not an equi join left part of the UNION
+-- is not equi join
+INSERT INTO agg_results_third (user_id, value_1_agg, value_2_agg )
+SELECT user_id, sum(array_length(events_table, 1)), length(hasdone_event)
+FROM (
+  SELECT
+    t1.user_id,
+    array_agg(event ORDER BY time) AS events_table,
+    COALESCE(hasdone_event, 'Has not done event') AS hasdone_event
+  FROM (
+    (
+      SELECT u.user_id, 'step=>1'::text AS event, e.time
+      FROM users_table AS u,
+          events_table AS e
+      WHERE  u.user_id != e.user_id
+      AND u.user_id >= 10
+      AND u.user_id <= 25
+      AND e.event_type IN (100, 101, 102)
+    )
+    UNION
+    (
+      SELECT u.user_id, 'step=>2'::text AS event, e.time
+      FROM users_table AS u,
+         events_table AS e
+      WHERE  u.user_id = e.user_id
+      AND u.user_id >= 10
+      AND u.user_id <= 25
+      AND e.event_type IN (103, 104, 105)
+    )
+  ) t1 LEFT JOIN (
+      SELECT DISTINCT user_id,
+        'Has done event'::TEXT AS hasdone_event
+      FROM  events_table AS e
+      WHERE  e.user_id >= 10
+      AND e.user_id <= 25
+      AND e.event_type IN (106, 107, 108)
+  ) t2 ON (t1.user_id = t2.user_id)
+  GROUP BY  t1.user_id, hasdone_event
+) t GROUP BY user_id, hasdone_event;
+ERROR:  complex joins are only supported when all distributed tables are joined on their distribution columns with equal operator
+-- not pushable since the JOIN is not an equi join right part of the UNION
+-- is not joined on the partition key
+INSERT INTO agg_results_third (user_id, value_1_agg, value_2_agg )
+SELECT user_id, sum(array_length(events_table, 1)), length(hasdone_event)
+FROM (
+  SELECT
+    t1.user_id,
+    array_agg(event ORDER BY time) AS events_table,
+    COALESCE(hasdone_event, 'Has not done event') AS hasdone_event
+  FROM (
+    (
+      SELECT u.user_id, 'step=>1'::text AS event, e.time
+      FROM users_table AS u,
+          events_table AS e
+      WHERE  u.user_id = e.user_id
+      AND u.user_id >= 10
+      AND u.user_id <= 25
+      AND e.event_type IN (100, 101, 102)
+    )
+    UNION
+    (
+      SELECT u.user_id, 'step=>2'::text AS event, e.time
+      FROM users_table AS u,
+         events_table AS e
+      WHERE  u.user_id = e.event_type
+      AND u.user_id >= 10
+      AND u.user_id <= 25
+      AND e.event_type IN (103, 104, 105)
+    )
+  ) t1 LEFT JOIN (
+      SELECT DISTINCT user_id,
+        'Has done event'::TEXT AS hasdone_event
+      FROM  events_table AS e
+      WHERE  e.user_id >= 10
+      AND e.user_id <= 25
+      AND e.event_type IN (106, 107, 108)
+  ) t2 ON (t1.user_id = t2.user_id)
+  GROUP BY  t1.user_id, hasdone_event
+) t GROUP BY user_id, hasdone_event;
+ERROR:  the query contains a join that requires repartitioning
+HINT:  Set citus.enable_repartition_joins to on to enable repartitioning
+-- the LEFT JOIN conditon is not on the partition column (i.e., is it part_key divided by 2)
+-- but, we can plan the query thanks to recursive planning
+SET client_min_messages TO DEBUG1;
+INSERT INTO agg_results_third (user_id, value_1_agg, value_2_agg )
+SELECT user_id, sum(array_length(events_table, 1)), length(hasdone_event)
+FROM (
+  SELECT
+    t1.user_id,
+    array_agg(event ORDER BY time) AS events_table,
+    COALESCE(hasdone_event, 'Has not done event') AS hasdone_event
+  FROM (
+    (
+      SELECT u.user_id, 'step=>1'::text AS event, e.time
+      FROM users_table AS u,
+          events_table AS e
+      WHERE  u.user_id = e.user_id
+      AND u.user_id >= 10
+      AND u.user_id <= 25
+      AND e.event_type IN (100, 101, 102)
+    )
+    UNION
+    (
+      SELECT u.user_id, 'step=>2'::text AS event, e.time
+      FROM users_table AS u,
+         events_table AS e
+      WHERE  u.user_id = e.user_id
+      AND u.user_id >= 10
+      AND u.user_id <= 25
+      AND e.event_type IN (103, 104, 105)
+    )
+  ) t1 LEFT JOIN (
+      SELECT DISTINCT user_id,
+        'Has done event'::TEXT AS hasdone_event
+      FROM  events_table AS e
+      WHERE  e.user_id >= 10
+      AND e.user_id <= 25
+      AND e.event_type IN (106, 107, 108)
+  ) t2 ON (t1.user_id = (t2.user_id)/2)
+  GROUP BY  t1.user_id, hasdone_event
+) t GROUP BY user_id, hasdone_event
+RETURNING user_id, value_1_agg, value_2_agg;
+DEBUG:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+DEBUG:  generating subplan XXX_1 for subquery SELECT u.user_id, 'step=>1'::text AS event, e."time" FROM public.users_table u, public.events_table e WHERE ((u.user_id OPERATOR(pg_catalog.=) e.user_id) AND (u.user_id OPERATOR(pg_catalog.>=) 10) AND (u.user_id OPERATOR(pg_catalog.<=) 25) AND (e.event_type OPERATOR(pg_catalog.=) ANY (ARRAY[100, 101, 102])))
+DEBUG:  generating subplan XXX_2 for subquery SELECT u.user_id, 'step=>2'::text AS event, e."time" FROM public.users_table u, public.events_table e WHERE ((u.user_id OPERATOR(pg_catalog.=) e.user_id) AND (u.user_id OPERATOR(pg_catalog.>=) 10) AND (u.user_id OPERATOR(pg_catalog.<=) 25) AND (e.event_type OPERATOR(pg_catalog.=) ANY (ARRAY[103, 104, 105])))
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT intermediate_result.user_id, intermediate_result.event, intermediate_result."time" FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer, event text, "time" timestamp without time zone) UNION SELECT intermediate_result.user_id, intermediate_result.event, intermediate_result."time" FROM read_intermediate_result('XXX_2'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer, event text, "time" timestamp without time zone)
+DEBUG:  generating subplan XXX_1 for subquery SELECT u.user_id, 'step=>1'::text AS event, e."time" FROM public.users_table u, public.events_table e WHERE ((u.user_id OPERATOR(pg_catalog.=) e.user_id) AND (u.user_id OPERATOR(pg_catalog.>=) 10) AND (u.user_id OPERATOR(pg_catalog.<=) 25) AND (e.event_type OPERATOR(pg_catalog.=) ANY (ARRAY[100, 101, 102]))) UNION SELECT u.user_id, 'step=>2'::text AS event, e."time" FROM public.users_table u, public.events_table e WHERE ((u.user_id OPERATOR(pg_catalog.=) e.user_id) AND (u.user_id OPERATOR(pg_catalog.>=) 10) AND (u.user_id OPERATOR(pg_catalog.<=) 25) AND (e.event_type OPERATOR(pg_catalog.=) ANY (ARRAY[103, 104, 105])))
+DEBUG:  recursively planning right side of the left join since the outer side is a recurring rel
+DEBUG:  recursively planning the distributed subquery since it is part of a distributed join node that is outer joined with a recurring rel
+DEBUG:  generating subplan XXX_2 for subquery SELECT DISTINCT user_id, 'Has done event'::text AS hasdone_event FROM public.events_table e WHERE ((user_id OPERATOR(pg_catalog.>=) 10) AND (user_id OPERATOR(pg_catalog.<=) 25) AND (event_type OPERATOR(pg_catalog.=) ANY (ARRAY[106, 107, 108])))
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT user_id, int4(sum(array_length(events_table, 1))) AS value_1_agg, length(hasdone_event) AS value_2_agg FROM (SELECT t1.user_id, array_agg(t1.event ORDER BY t1."time") AS events_table, COALESCE(t2.hasdone_event, 'Has not done event'::text) AS hasdone_event FROM ((SELECT intermediate_result.user_id, intermediate_result.event, intermediate_result."time" FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer, event text, "time" timestamp without time zone)) t1 LEFT JOIN (SELECT intermediate_result.user_id, intermediate_result.hasdone_event FROM read_intermediate_result('XXX_2'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer, hasdone_event text)) t2 ON ((t1.user_id OPERATOR(pg_catalog.=) (t2.user_id OPERATOR(pg_catalog./) 2)))) GROUP BY t1.user_id, t2.hasdone_event) t GROUP BY user_id, hasdone_event
+DEBUG:  Collecting INSERT ... SELECT results on coordinator
+ user_id | value_1_agg | value_2_agg
+---------------------------------------------------------------------
+(0 rows)
+
+RESET client_min_messages;
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- Funnel, grouped by the number of times a user has done an event
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- not pushable since the right of the UNION query is not joined on
+-- the partition key
+INSERT INTO agg_results_third (user_id, value_1_agg, value_2_agg)
+SELECT
+  user_id,
+  avg(array_length(events_table, 1)) AS event_average,
+  count_pay
+  FROM (
+  SELECT
+  subquery_1.user_id,
+  array_agg(event ORDER BY time) AS events_table,
+  COALESCE(count_pay, 0) AS count_pay
+  FROM
+  (
+    (SELECT
+      users_table.user_id,
+      'action=>1'AS event,
+      events_table.time
+    FROM
+      users_table,
+      events_table
+    WHERE
+      users_table.user_id = events_table.user_id AND
+      users_table.user_id >= 10 AND
+      users_table.user_id <= 70 AND
+      events_table.event_type > 10 AND events_table.event_type < 12
+      )
+    UNION
+    (SELECT
+      users_table.user_id,
+      'action=>2'AS event,
+      events_table.time
+    FROM
+      users_table,
+      events_table
+    WHERE
+      users_table.user_id != events_table.user_id AND
+      users_table.user_id >= 10 AND
+      users_table.user_id <= 70 AND
+      events_table.event_type > 12 AND events_table.event_type < 14
+    )
+  ) AS subquery_1
+  LEFT JOIN
+    (SELECT
+       user_id,
+      COUNT(*) AS count_pay
+    FROM
+      users_table
+    WHERE
+      user_id >= 10 AND
+      user_id <= 70 AND
+      users_table.value_1 > 15 AND users_table.value_1 < 17
+    GROUP BY
+      user_id
+    HAVING
+      COUNT(*) > 1) AS subquery_2
+  ON
+    subquery_1.user_id = subquery_2.user_id
+  GROUP BY
+    subquery_1.user_id,
+    count_pay) AS subquery_top
+WHERE
+  array_ndims(events_table) > 0
+GROUP BY
+  count_pay, user_id
+ORDER BY
+  count_pay;
+ERROR:  complex joins are only supported when all distributed tables are joined on their distribution columns with equal operator
+-- not pushable since the JOIN condition is not equi JOIN
+-- (subquery_1 JOIN subquery_2)
+-- but, we can plan the query thanks to recursive planning
+SET client_min_messages TO DEBUG1;
+INSERT INTO agg_results_third (user_id, value_1_agg, value_2_agg)
+SELECT
+  user_id,
+  avg(array_length(events_table, 1)) AS event_average,
+  count_pay
+  FROM (
+  SELECT
+  subquery_1.user_id,
+  array_agg(event ORDER BY time) AS events_table,
+  COALESCE(count_pay, 0) AS count_pay
+  FROM
+  (
+    (SELECT
+      users_table.user_id,
+      'action=>1'AS event,
+      events_table.time
+    FROM
+      users_table,
+      events_table
+    WHERE
+      users_table.user_id = events_table.user_id AND
+      users_table.user_id >= 10 AND
+      users_table.user_id <= 70 AND
+      events_table.event_type > 10 AND events_table.event_type < 12
+      )
+    UNION
+    (SELECT
+      users_table.user_id,
+      'action=>2'AS event,
+      events_table.time
+    FROM
+      users_table,
+      events_table
+    WHERE
+      users_table.user_id = events_table.user_id AND
+      users_table.user_id >= 10 AND
+      users_table.user_id <= 70 AND
+      events_table.event_type > 12 AND events_table.event_type < 14
+    )
+  ) AS subquery_1
+  LEFT JOIN
+    (SELECT
+       user_id,
+      COUNT(*) AS count_pay
+    FROM
+      users_table
+    WHERE
+      user_id >= 10 AND
+      user_id <= 70 AND
+      users_table.value_1 > 15 AND users_table.value_1 < 17
+    GROUP BY
+      user_id
+    HAVING
+      COUNT(*) > 1) AS subquery_2
+  ON
+    subquery_1.user_id > subquery_2.user_id
+  GROUP BY
+    subquery_1.user_id,
+    count_pay) AS subquery_top
+WHERE
+  array_ndims(events_table) > 0
+GROUP BY
+  count_pay, user_id
+ORDER BY
+  count_pay
+RETURNING user_id, value_1_agg, value_2_agg;
+DEBUG:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+DEBUG:  generating subplan XXX_1 for subquery SELECT users_table.user_id, 'action=>1'::text AS event, events_table."time" FROM public.users_table, public.events_table WHERE ((users_table.user_id OPERATOR(pg_catalog.=) events_table.user_id) AND (users_table.user_id OPERATOR(pg_catalog.>=) 10) AND (users_table.user_id OPERATOR(pg_catalog.<=) 70) AND (events_table.event_type OPERATOR(pg_catalog.>) 10) AND (events_table.event_type OPERATOR(pg_catalog.<) 12))
+DEBUG:  generating subplan XXX_2 for subquery SELECT users_table.user_id, 'action=>2'::text AS event, events_table."time" FROM public.users_table, public.events_table WHERE ((users_table.user_id OPERATOR(pg_catalog.=) events_table.user_id) AND (users_table.user_id OPERATOR(pg_catalog.>=) 10) AND (users_table.user_id OPERATOR(pg_catalog.<=) 70) AND (events_table.event_type OPERATOR(pg_catalog.>) 12) AND (events_table.event_type OPERATOR(pg_catalog.<) 14))
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT intermediate_result.user_id, intermediate_result.event, intermediate_result."time" FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer, event text, "time" timestamp without time zone) UNION SELECT intermediate_result.user_id, intermediate_result.event, intermediate_result."time" FROM read_intermediate_result('XXX_2'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer, event text, "time" timestamp without time zone)
+DEBUG:  generating subplan XXX_1 for subquery SELECT users_table.user_id, 'action=>1'::text AS event, events_table."time" FROM public.users_table, public.events_table WHERE ((users_table.user_id OPERATOR(pg_catalog.=) events_table.user_id) AND (users_table.user_id OPERATOR(pg_catalog.>=) 10) AND (users_table.user_id OPERATOR(pg_catalog.<=) 70) AND (events_table.event_type OPERATOR(pg_catalog.>) 10) AND (events_table.event_type OPERATOR(pg_catalog.<) 12)) UNION SELECT users_table.user_id, 'action=>2'::text AS event, events_table."time" FROM public.users_table, public.events_table WHERE ((users_table.user_id OPERATOR(pg_catalog.=) events_table.user_id) AND (users_table.user_id OPERATOR(pg_catalog.>=) 10) AND (users_table.user_id OPERATOR(pg_catalog.<=) 70) AND (events_table.event_type OPERATOR(pg_catalog.>) 12) AND (events_table.event_type OPERATOR(pg_catalog.<) 14))
+DEBUG:  recursively planning right side of the left join since the outer side is a recurring rel
+DEBUG:  recursively planning the distributed subquery since it is part of a distributed join node that is outer joined with a recurring rel
+DEBUG:  generating subplan XXX_2 for subquery SELECT user_id, count(*) AS count_pay FROM public.users_table WHERE ((user_id OPERATOR(pg_catalog.>=) 10) AND (user_id OPERATOR(pg_catalog.<=) 70) AND (value_1 OPERATOR(pg_catalog.>) 15) AND (value_1 OPERATOR(pg_catalog.<) 17)) GROUP BY user_id HAVING (count(*) OPERATOR(pg_catalog.>) 1)
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT user_id, int4(avg(array_length(events_table, 1))) AS value_1_agg, int4(count_pay) AS value_2_agg FROM (SELECT subquery_1.user_id, array_agg(subquery_1.event ORDER BY subquery_1."time") AS events_table, COALESCE(subquery_2.count_pay, (0)::bigint) AS count_pay FROM ((SELECT intermediate_result.user_id, intermediate_result.event, intermediate_result."time" FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer, event text, "time" timestamp without time zone)) subquery_1 LEFT JOIN (SELECT intermediate_result.user_id, intermediate_result.count_pay FROM read_intermediate_result('XXX_2'::text, 'binary'::citus_copy_format) intermediate_result(user_id integer, count_pay bigint)) subquery_2 ON ((subquery_1.user_id OPERATOR(pg_catalog.>) subquery_2.user_id))) GROUP BY subquery_1.user_id, subquery_2.count_pay) subquery_top WHERE (array_ndims(events_table) OPERATOR(pg_catalog.>) 0) GROUP BY count_pay, user_id ORDER BY count_pay
+DEBUG:  Collecting INSERT ... SELECT results on coordinator
+ user_id | value_1_agg | value_2_agg
+---------------------------------------------------------------------
+(0 rows)
+
+RESET client_min_messages;
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- Most recently seen users_table events_table
+---------------------------------------------------------------------
+-- Note that we don't use ORDER BY/LIMIT yet
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- not pushable since lateral join is not an equi join
+INSERT INTO agg_results_third (user_id, agg_time, value_2_agg)
+SELECT
+    user_id,
+    user_lastseen,
+    array_length(event_array, 1)
+FROM (
+    SELECT
+        user_id,
+        max(u.time) as user_lastseen,
+        array_agg(event_type ORDER BY u.time) AS event_array
+    FROM (
+        SELECT user_id, time
+        FROM users_table
+        WHERE
+        user_id >= 10 AND
+        user_id <= 70 AND
+        users_table.value_1 > 10 AND users_table.value_1 < 12
+        ) u LEFT JOIN LATERAL (
+          SELECT event_type, time
+          FROM events_table
+          WHERE user_id != u.user_id AND
+          events_table.event_type > 10 AND events_table.event_type < 12
+        ) t ON true
+        GROUP BY user_id
+) AS shard_union
+ORDER BY user_lastseen DESC;
+ERROR:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+-- not pushable since lateral join is not on the partition key
+INSERT INTO agg_results_third (user_id, agg_time, value_2_agg)
+SELECT
+    user_id,
+    user_lastseen,
+    array_length(event_array, 1)
+FROM (
+    SELECT
+        user_id,
+        max(u.time) as user_lastseen,
+        array_agg(event_type ORDER BY u.time) AS event_array
+    FROM (
+        SELECT user_id, time
+        FROM users_table
+        WHERE
+        user_id >= 10 AND
+        user_id <= 70 AND
+        users_table.value_1 > 10 AND users_table.value_1 < 12
+        ) u LEFT JOIN LATERAL (
+          SELECT event_type, time
+          FROM events_table
+          WHERE event_type = u.user_id AND
+          events_table.event_type > 10 AND events_table.event_type < 12
+        ) t ON true
+        GROUP BY user_id
+) AS shard_union
+ORDER BY user_lastseen DESC;
+ERROR:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+-- not pushable since lateral join is not on the partition key
+INSERT INTO agg_results_third (user_id, agg_time, value_2_agg)
+SELECT
+    user_id,
+    user_lastseen,
+    array_length(event_array, 1)
+FROM (
+    SELECT
+        user_id,
+        max(u.time) as user_lastseen,
+        array_agg(event_type ORDER BY u.time) AS event_array
+    FROM (
+        SELECT user_id, time, value_3 as val_3
+        FROM users_table
+        WHERE
+        user_id >= 10 AND
+        user_id <= 70 AND
+        users_table.value_1 > 10 AND users_table.value_1 < 12
+        ) u LEFT JOIN LATERAL (
+          SELECT event_type, time
+          FROM events_table
+          WHERE event_type = u.val_3 AND
+          events_table.event_type > 10 AND events_table.event_type < 12
+        ) t ON true
+        GROUP BY user_id
+) AS shard_union
+ORDER BY user_lastseen DESC;
+ERROR:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- Count the number of distinct users_table who are in segment X and Y and Z
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- not pushable since partition key is NOT IN. Use pull to coordinator instead.
+SELECT coordinator_plan($Q$
+EXPLAIN (costs off)
+INSERT INTO agg_results_third (user_id)
+SELECT DISTINCT user_id
+FROM users_table
+WHERE user_id NOT IN (SELECT user_id FROM users_table WHERE value_1 >= 10 AND value_1 <= 20)
+    AND user_id IN (SELECT user_id FROM users_table WHERE value_1 >= 30 AND value_1 <= 40)
+    AND user_id IN (SELECT user_id FROM users_table WHERE  value_1 >= 50 AND value_1 <= 60);
+$Q$);
+                   coordinator_plan
+---------------------------------------------------------------------
+ Custom Scan (Citus INSERT ... SELECT)
+   INSERT/SELECT method: pull to coordinator
+   ->  HashAggregate
+         Group Key: remote_scan.user_id
+         ->  Custom Scan (Citus Adaptive)
+               ->  Distributed Subplan XXX_1
+                     ->  Custom Scan (Citus Adaptive)
+                           Task Count: 4
+(8 rows)
+
+-- not pushable since partition key is not selected from the second subquery.
+-- Use pull to coordinator instead.
+SELECT coordinator_plan($Q$
+EXPLAIN (costs off)
+INSERT INTO agg_results_third (user_id)
+SELECT DISTINCT user_id
+FROM users_table
+WHERE user_id IN (SELECT user_id FROM users_table WHERE value_1 >= 10 AND value_1 <= 20)
+    AND user_id IN (SELECT value_1 FROM users_table WHERE value_1 >= 30 AND value_1 <= 40)
+    AND user_id IN (SELECT user_id FROM users_table WHERE  value_1 >= 50 AND value_1 <= 60);
+$Q$);
+                   coordinator_plan
+---------------------------------------------------------------------
+ Custom Scan (Citus INSERT ... SELECT)
+   INSERT/SELECT method: pull to coordinator
+   ->  HashAggregate
+         Group Key: remote_scan.user_id
+         ->  Custom Scan (Citus Adaptive)
+               ->  Distributed Subplan XXX_1
+                     ->  Custom Scan (Citus Adaptive)
+                           Task Count: 4
+(8 rows)
+
+-- not pushable since second subquery does not return bare partition key.
+-- Use pull to coordinator instead.
+SELECT coordinator_plan($Q$
+EXPLAIN (costs off)
+INSERT INTO agg_results_third (user_id)
+SELECT DISTINCT user_id
+FROM users_table
+WHERE user_id IN (SELECT user_id FROM users_table WHERE value_1 >= 10 AND value_1 <= 20)
+    AND user_id IN (SELECT 3 * user_id FROM users_table WHERE value_1 >= 30 AND value_1 <= 40)
+    AND user_id IN (SELECT user_id FROM users_table WHERE  value_1 >= 50 AND value_1 <= 60);
+$Q$);
+                   coordinator_plan
+---------------------------------------------------------------------
+ Custom Scan (Citus INSERT ... SELECT)
+   INSERT/SELECT method: pull to coordinator
+   ->  HashAggregate
+         Group Key: remote_scan.user_id
+         ->  Custom Scan (Citus Adaptive)
+               ->  Distributed Subplan XXX_1
+                     ->  Custom Scan (Citus Adaptive)
+                           Task Count: 4
+(8 rows)
+
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- Find customers who have done X, and satisfy other customer specific criteria
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- not pushable since join is not an euqi join
+INSERT INTO agg_results_third(user_id, value_2_agg)
+SELECT user_id, value_2 FROM users_table WHERE
+  value_1 > 101 AND value_1 < 110
+  AND value_2 >= 5
+  AND EXISTS (SELECT user_id FROM events_table WHERE event_type>101  AND event_type < 110 AND value_3 > 100 AND user_id!=users_table.user_id);
+ERROR:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+-- not pushable since the join is not on the partition key
+INSERT INTO agg_results_third(user_id, value_2_agg)
+SELECT user_id, value_2 FROM users_table WHERE
+  value_1 > 101 AND value_1 < 110
+  AND value_2 >= 5
+  AND EXISTS (SELECT user_id FROM events_table WHERE event_type>101  AND event_type < 110 AND value_3 > 100 AND event_type = users_table.user_id);
+ERROR:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- Customers who haven’t done X, and satisfy other customer specific criteria
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- not pushable since the join is not an equi join
+INSERT INTO agg_results_third(user_id, value_2_agg)
+SELECT user_id, value_2 FROM users_table WHERE
+  value_1 = 101
+  AND value_2 >= 5
+  AND NOT EXISTS (SELECT user_id FROM events_table WHERE event_type=101 AND value_3 > 100 AND user_id!=users_table.user_id);
+ERROR:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+-- not pushable since the join is not the partition key
+INSERT INTO agg_results_third(user_id, value_2_agg)
+SELECT user_id, value_2 FROM users_table WHERE
+  value_1 = 101
+  AND value_2 >= 5
+  AND NOT EXISTS (SELECT user_id FROM events_table WHERE event_type=101 AND value_3 > 100 AND event_type=users_table.user_id);
+ERROR:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- Customers who have done X and Y, and satisfy other customer specific criteria
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- not pushable since the second join is not on the partition key
+INSERT INTO agg_results_third(user_id, value_2_agg)
+SELECT user_id, value_2 FROM users_table WHERE
+  value_1 > 100
+  AND value_2 >= 5
+  AND  EXISTS (SELECT user_id FROM events_table WHERE event_type!=100 AND value_3 > 100 AND user_id=users_table.user_id)
+  AND  EXISTS (SELECT user_id FROM events_table WHERE event_type=101 AND value_3 > 100 AND user_id!=users_table.user_id);
+ERROR:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- Customers who have done X and haven’t done Y, and satisfy other customer specific criteria
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- not pushable since the first join is not on the partition key
+INSERT INTO agg_results_third(user_id, value_2_agg)
+SELECT user_id, value_2 FROM users_table WHERE
+  value_2 >= 5
+  AND  EXISTS (SELECT user_id FROM events_table WHERE event_type > 100 AND event_type <= 300 AND value_3 > 100 AND user_id!=users_table.user_id)
+  AND  NOT EXISTS (SELECT user_id FROM events_table WHERE event_type > 300 AND event_type <= 350  AND value_3 > 100 AND user_id=users_table.user_id);
+ERROR:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- Customers who have done X more than 2 times, and satisfy other customer specific criteria
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- not pushable since the second join is not an equi join
+INSERT INTO agg_results_third(user_id, value_2_agg)
+  SELECT user_id,
+         value_2
+  FROM   users_table
+  WHERE  value_1 > 100
+         AND value_1 < 124
+         AND value_2 >= 5
+         AND EXISTS (SELECT user_id
+                     FROM   events_table
+                     WHERE  event_type > 100
+                            AND event_type < 124
+                            AND value_3 > 100
+                            AND user_id != users_table.user_id
+                     GROUP  BY user_id
+                     HAVING Count(*) > 2);
+ERROR:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+-- not pushable since the second join is not on the partition key
+INSERT INTO agg_results_third(user_id, value_2_agg)
+  SELECT user_id,
+         value_2
+  FROM   users_table
+  WHERE  value_1 > 100
+         AND value_1 < 124
+         AND value_2 >= 5
+         AND EXISTS (SELECT user_id
+                     FROM   events_table
+                     WHERE  event_type > 100
+                            AND event_type < 124
+                            AND value_3 > 100
+                            AND event_type = users_table.user_id
+                     GROUP  BY user_id
+                     HAVING Count(*) > 2);
+ERROR:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+-- not pushable since the second join is not on the partition key
+INSERT INTO agg_results_third(user_id, value_2_agg)
+  SELECT user_id,
+         value_2
+  FROM   users_table
+  WHERE  value_1 > 100
+         AND value_1 < 124
+         AND value_2 >= 5
+         AND EXISTS (SELECT user_id
+                     FROM   events_table
+                     WHERE  event_type > 100
+                            AND event_type < 124
+                            AND value_3 > 100
+                            AND user_id = users_table.value_1
+                     GROUP  BY user_id
+                     HAVING Count(*) > 2);
+ERROR:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- Find me all users_table who has done some event and has filters
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- not pushable due to NOT IN. Use repartition insert/select.
+SELECT coordinator_plan($Q$
+EXPLAIN (costs off)
+INSERT INTO agg_results_third(user_id)
+Select user_id
+From events_table
+Where event_type = 16
+And value_2 > 50
+And user_id NOT in
+  (select user_id
+   From users_table
+   Where value_1 = 15
+   And value_2 > 25);
+$Q$);
+                coordinator_plan
+---------------------------------------------------------------------
+ Custom Scan (Citus INSERT ... SELECT)
+   INSERT/SELECT method: repartition
+   ->  Custom Scan (Citus Adaptive)
+         ->  Distributed Subplan XXX_1
+               ->  Custom Scan (Citus Adaptive)
+                     Task Count: 4
+(6 rows)
+
+-- not pushable since we're not selecting the partition key.
+-- Use repartition insert/select.
+SELECT coordinator_plan($Q$
+EXPLAIN (costs off)
+INSERT INTO agg_results_third(user_id)
+Select user_id
+From events_table
+Where event_type = 16
+And value_2 > 50
+And user_id  in
+  (select value_3
+   From users_table
+   Where value_1 = 15
+   And value_2 > 25);
+$Q$);
+                coordinator_plan
+---------------------------------------------------------------------
+ Custom Scan (Citus INSERT ... SELECT)
+   INSERT/SELECT method: repartition
+   ->  Custom Scan (Citus Adaptive)
+         ->  Distributed Subplan XXX_1
+               ->  Custom Scan (Citus Adaptive)
+                     Task Count: 4
+(6 rows)
+
+ -- not pushable since we're not selecting the partition key
+ -- from the events table. Use repartition insert/select.
+SELECT coordinator_plan($Q$
+EXPLAIN (costs off)
+INSERT INTO agg_results_third(user_id)
+Select user_id
+From events_table
+Where event_type = 16
+And value_2 > 50
+And event_type  in
+  (select user_id
+   From users_table
+   Where value_1 = 15
+   And value_2 > 25);
+$Q$);
+                coordinator_plan
+---------------------------------------------------------------------
+ Custom Scan (Citus INSERT ... SELECT)
+   INSERT/SELECT method: repartition
+   ->  Custom Scan (Citus Adaptive)
+         ->  Distributed Subplan XXX_1
+               ->  Custom Scan (Citus Adaptive)
+                     Task Count: 4
+(6 rows)
+
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- Which events_table did people who has done some specific events_table
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- not pushable due to NOT IN. Use pull to coordinator instead.
+SELECT coordinator_plan($Q$
+EXPLAIN (costs off)
+INSERT INTO agg_results_third(user_id, value_1_agg)
+SELECT user_id, event_type FROM events_table
+WHERE user_id NOT IN (SELECT user_id from events_table WHERE event_type > 500 and event_type < 505)
+GROUP BY user_id, event_type;
+$Q$);
+                coordinator_plan
+---------------------------------------------------------------------
+ Custom Scan (Citus INSERT ... SELECT)
+   INSERT/SELECT method: repartition
+   ->  Custom Scan (Citus Adaptive)
+         ->  Distributed Subplan XXX_1
+               ->  Custom Scan (Citus Adaptive)
+                     Task Count: 4
+(6 rows)
+
+-- not pushable due to not selecting the partition key. Use pull to coordinator.
+SELECT coordinator_plan($Q$
+EXPLAIN (costs off)
+INSERT INTO agg_results_third(user_id, value_1_agg)
+SELECT user_id, event_type FROM events_table
+WHERE user_id IN (SELECT value_2 from events_table WHERE event_type > 500 and event_type < 505)
+GROUP BY user_id, event_type;
+$Q$);
+                coordinator_plan
+---------------------------------------------------------------------
+ Custom Scan (Citus INSERT ... SELECT)
+   INSERT/SELECT method: repartition
+   ->  Custom Scan (Citus Adaptive)
+         ->  Distributed Subplan XXX_1
+               ->  Custom Scan (Citus Adaptive)
+                     Task Count: 4
+(6 rows)
+
+-- not pushable due to not comparing user id from the events table.
+-- Use pull to coordinator.
+SELECT coordinator_plan($Q$
+EXPLAIN (costs off)
+INSERT INTO agg_results_third(user_id, value_1_agg)
+SELECT user_id, event_type FROM events_table
+WHERE event_type IN (SELECT user_id from events_table WHERE event_type > 500 and event_type < 505)
+GROUP BY user_id, event_type;
+$Q$);
+                coordinator_plan
+---------------------------------------------------------------------
+ Custom Scan (Citus INSERT ... SELECT)
+   INSERT/SELECT method: repartition
+   ->  Custom Scan (Citus Adaptive)
+         ->  Distributed Subplan XXX_1
+               ->  Custom Scan (Citus Adaptive)
+                     Task Count: 4
+(6 rows)
+
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- Find my assets that have the highest probability and fetch their metadata
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- not pushable since the join is not an equi join
+INSERT INTO agg_results_third(user_id, value_1_agg, value_3_agg)
+SELECT
+    users_table.user_id, users_table.value_1, prob
+FROM
+   users_table
+        JOIN
+   (SELECT
+      ma.user_id, (GREATEST(coalesce(ma.value_4 / 250, 0.0) + GREATEST(1.0))) / 2 AS prob
+    FROM
+      users_table AS ma, events_table as short_list
+    WHERE
+      short_list.user_id != ma.user_id and ma.value_1 < 50 and short_list.event_type < 50
+    ) temp
+  ON users_table.user_id = temp.user_id
+  WHERE users_table.value_1 < 50;
+ERROR:  complex joins are only supported when all distributed tables are joined on their distribution columns with equal operator
+-- not pushable since the join is not on the partition key
+INSERT INTO agg_results_third(user_id, value_1_agg, value_3_agg)
+SELECT
+    users_table.user_id, users_table.value_1, prob
+FROM
+   users_table
+        JOIN
+   (SELECT
+      ma.user_id, (GREATEST(coalesce(ma.value_4 / 250, 0.0) + GREATEST(1.0))) / 2 AS prob
+    FROM
+      users_table AS ma, events_table as short_list
+    WHERE
+      short_list.user_id = ma.value_2 and ma.value_1 < 50 and short_list.event_type < 50
+    ) temp
+  ON users_table.user_id = temp.user_id
+  WHERE users_table.value_1 < 50;
+ERROR:  the query contains a join that requires repartitioning
+HINT:  Set citus.enable_repartition_joins to on to enable repartitioning
+-- supported via recursive planning
+INSERT INTO agg_results (user_id, agg_time, value_2_agg)
+SELECT
+    user_id,
+    user_lastseen,
+    array_length(event_array, 1)
+FROM (
+    SELECT
+        user_id,
+        max(u.time) as user_lastseen,
+        array_agg(event_type ORDER BY u.time) AS event_array
+    FROM (
+        SELECT user_id, time, value_3 as val_3
+        FROM users_table
+        WHERE
+        user_id >= 10 AND user_id <= 70 AND
+        users_table.value_1 > 10 AND users_table.value_1 < 12
+        ) u LEFT JOIN LATERAL (
+          SELECT event_type, time
+          FROM events_table, (SELECT random()::int as x) as f
+          WHERE user_id = u.user_id AND
+          events_table.event_type > 10 AND events_table.event_type < 12
+        ) t ON true
+        GROUP BY user_id
+) AS shard_union
+ORDER BY user_lastseen DESC;
+CREATE TABLE dist_table_1(id int);
+SELECT create_distributed_table('dist_table_1','id');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE dist_table_2(id int, id2 int);
+SELECT create_distributed_table('dist_table_2','id2');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- verify that insert select with union can be pulled to coordinator. We cannot push down the query
+-- since UNION clause has no FROM clause at top level query.
+SELECT coordinator_plan($$
+  EXPLAIN (COSTS FALSE) INSERT INTO dist_table_1(id) SELECT id FROM dist_table_1 UNION SELECT id FROM dist_table_2;
+$$);
+                coordinator_plan
+---------------------------------------------------------------------
+ Custom Scan (Citus INSERT ... SELECT)
+   INSERT/SELECT method: pull to coordinator
+   ->  Custom Scan (Citus Adaptive)
+         ->  Distributed Subplan XXX_1
+               ->  Custom Scan (Citus Adaptive)
+                     Task Count: 4
+(6 rows)
+
+DROP SCHEMA multi_insert_select_non_pushable_queries CASCADE;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to table dist_table_1
+drop cascades to table dist_table_2

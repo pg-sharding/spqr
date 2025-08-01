@@ -1,0 +1,117 @@
+
+SET citus.next_shard_id TO 370000;
+
+
+-- ===================================================================
+-- create test functions and types needed for tests
+-- ===================================================================
+
+CREATE FUNCTION sort_names(cstring, cstring, cstring)
+	RETURNS cstring
+	AS 'citus'
+	LANGUAGE C STRICT;
+
+-- create a custom type...
+CREATE TYPE dummy_type AS (
+    i integer
+);
+
+-- ... as well as a function to use as its comparator...
+CREATE FUNCTION dummy_type_function(dummy_type, dummy_type) RETURNS boolean
+AS 'SELECT TRUE;'
+LANGUAGE SQL
+IMMUTABLE
+RETURNS NULL ON NULL INPUT;
+
+-- ... use that function to create a custom operator...
+CREATE OPERATOR = (
+    LEFTARG = dummy_type,
+    RIGHTARG = dummy_type,
+    PROCEDURE = dummy_type_function
+);
+
+-- ... and create a custom operator family for hash indexes...
+CREATE OPERATOR FAMILY dummy_op_family USING hash;
+
+-- ... finally, build an operator class, designate it as the default operator
+-- class for the type, but only specify an equality operator. So the type will
+-- have a default op class but no hash operator in that class.
+CREATE OPERATOR CLASS dummy_op_family_class
+DEFAULT FOR TYPE dummy_type USING hash FAMILY dummy_op_family AS
+OPERATOR 1 =;
+
+-- ===================================================================
+-- test shard creation functionality
+-- ===================================================================
+
+CREATE TABLE table_to_distribute (
+	name text PRIMARY KEY,
+	id bigint,
+	json_data json,
+	test_type_data dummy_type
+);
+
+SELECT create_distributed_table('table_to_distribute', 'id', 'hash');
+
+-- use an index instead of table name
+SELECT create_distributed_table('table_to_distribute_pkey', 'id', 'hash');
+
+-- use a bad column name
+SELECT create_distributed_table('table_to_distribute', 'bad_column', 'hash');
+
+-- use unrecognized partition type
+SELECT create_distributed_table('table_to_distribute', 'name', 'unrecognized');
+
+-- use a partition column of a type lacking any default operator class
+SELECT create_distributed_table('table_to_distribute', 'json_data', 'hash');
+
+-- use a partition column of type lacking the required support function (hash)
+SELECT create_distributed_table('table_to_distribute', 'test_type_data', 'hash');
+
+-- use a bad shard count
+SELECT create_distributed_table('table_to_distribute', 'name', 'hash', shard_count := 0);
+
+-- use a bad replication factor
+SET citus.shard_replication_factor TO 0;
+
+-- use a replication factor higher than shard count
+SET citus.shard_replication_factor TO 3;
+SELECT create_distributed_table('table_to_distribute', 'name', 'hash');
+RESET citus.shard_replication_factor;
+
+-- finally, create shards and inspect metadata
+SELECT create_distributed_table('table_to_distribute', 'name', 'hash', shard_count := 16);
+
+SELECT shardstorage, shardminvalue, shardmaxvalue FROM pg_dist_shard
+	WHERE logicalrelid = 'table_to_distribute'::regclass
+	ORDER BY (shardminvalue::integer) ASC;
+
+-- all shards should have the same size (16 divides evenly into the hash space)
+SELECT count(*) AS shard_count,
+	shardmaxvalue::integer - shardminvalue::integer AS shard_size
+	FROM pg_dist_shard
+	WHERE logicalrelid='table_to_distribute'::regclass
+	GROUP BY shard_size;
+
+SELECT COUNT(*) FROM pg_class WHERE relname LIKE 'table_to_distribute%' AND relkind = 'r';
+
+-- test list sorting
+SELECT sort_names('sumedh', 'jason', 'ozgun');
+
+SELECT COUNT(*) FROM pg_class WHERE relname LIKE 'throwaway%' AND relkind = 'r';
+
+-- test shard creation using weird shard count
+CREATE TABLE weird_shard_count
+(
+	name text,
+	id bigint
+);
+
+SET citus.shard_count TO 7;
+SELECT create_distributed_table('weird_shard_count', 'id', 'hash');
+
+-- Citus ensures all shards are roughly the same size
+SELECT shardmaxvalue::integer - shardminvalue::integer AS shard_size
+	FROM pg_dist_shard
+	WHERE logicalrelid = 'weird_shard_count'::regclass
+	ORDER BY shardminvalue::integer ASC;

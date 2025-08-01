@@ -1,1 +1,0 @@
-SHOW is_read_only;

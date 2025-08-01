@@ -1,0 +1,145 @@
+--
+-- MULTI_DROP_EXTENSION
+--
+-- Tests around dropping and recreating the extension
+
+
+SET citus.next_shard_id TO 550000;
+
+
+CREATE TABLE testtableddl(somecol int, distributecol text NOT NULL);
+SELECT create_distributed_table('testtableddl', 'distributecol', 'append');
+
+-- this emits a NOTICE message for every table we are dropping with our CASCADE. It would
+-- be nice to check that we get those NOTICE messages, but it's nicer to not have to
+-- change this test every time the previous tests change the set of tables they leave
+-- around.
+SET client_min_messages TO 'WARNING';
+DROP EXTENSION citus CASCADE;
+RESET client_min_messages;
+
+BEGIN;
+  SET client_min_messages TO ERROR;
+  SET search_path TO public;
+  CREATE EXTENSION citus;
+
+  create table l1 (a int unique);
+  SELECT create_reference_table('l1');
+
+  create schema other_schema;
+  create table other_schema.l3 (a int);
+  select create_reference_table ('other_schema.l3');
+
+  alter table other_schema.l3 add constraint fkey foreign key (a) references l1(a);
+
+  -- Commented out because it fails due to the issue documented in
+  -- https://github.com/citusdata/citus/issues/6901.
+  --
+  -- This wasn't the case before https://github.com/citusdata/citus/pull/6900.
+  -- This is because, we were not marking the schemas as distributed when there
+  -- are no worker nodes in the cluster before that PR.
+  -- drop schema public cascade;
+ROLLBACK;
+
+CREATE EXTENSION citus;
+
+CREATE SCHEMA test_schema;
+SET search_path TO test_schema;
+
+CREATE TABLE ref(x int, y int);
+SELECT create_reference_table('ref');
+
+CREATE INDEX CONCURRENTLY ref_concurrent_idx_x ON ref(x);
+CREATE INDEX CONCURRENTLY ref_concurrent_idx_y ON ref(x);
+
+REINDEX INDEX CONCURRENTLY ref_concurrent_idx_x;
+REINDEX INDEX CONCURRENTLY ref_concurrent_idx_y;
+REINDEX TABLE CONCURRENTLY ref;
+REINDEX SCHEMA CONCURRENTLY test_schema;
+
+SET search_path TO public;
+\set VERBOSITY TERSE
+DROP SCHEMA test_schema CASCADE;
+DROP EXTENSION citus CASCADE;
+\set VERBOSITY DEFAULT
+
+-- Test if metadatacache is cleared after a rollback
+BEGIN;
+CREATE EXTENSION citus;
+ROLLBACK;
+CREATE EXTENSION citus;
+DROP EXTENSION citus;
+
+-- Test if metadatacache is cleared for rollback subtransations
+BEGIN;
+SAVEPOINT my_savepoint;
+CREATE EXTENSION citus;
+ROLLBACK TO SAVEPOINT my_savepoint;
+CREATE EXTENSION citus;
+COMMIT;
+DROP EXTENSION citus;
+
+-- Test if metadatacache is cleared if subtransaction commits but parent rollsback
+BEGIN;
+SAVEPOINT my_savepoint;
+CREATE EXTENSION citus;
+RELEASE SAVEPOINT my_savepoint;
+ROLLBACK;
+CREATE EXTENSION citus;
+DROP EXTENSION citus;
+
+-- Test if metadatacache is cleared if we release a savepoint and rollback
+BEGIN;
+SAVEPOINT s1;
+SAVEPOINT s2;
+CREATE EXTENSION citus;
+RELEASE SAVEPOINT s1;
+ROLLBACK;
+CREATE EXTENSION citus;
+DROP EXTENSION citus;
+
+-- Test if metadatacache is cleared on a rollback in a nested subtransaction
+BEGIN;
+SAVEPOINT s1;
+SAVEPOINT s2;
+CREATE EXTENSION citus;
+ROLLBACK TO s1;
+CREATE EXTENSION citus;
+COMMIT;
+DROP EXTENSION citus;
+
+-- Test if metadatacache is cleared after columnar table is made and rollback happens
+BEGIN;
+SAVEPOINT s1;
+CREATE EXTENSION citus;
+SAVEPOINT s2;
+CREATE TABLE foo1 (i int) using columnar;
+SAVEPOINT s3;
+ROLLBACK TO SAVEPOINT s1;
+ROLLBACK;
+CREATE EXTENSION citus;
+DROP EXTENSION citus;
+
+-- Test with a release and rollback in transactions
+BEGIN;
+SAVEPOINT s1;
+SAVEPOINT s2;
+CREATE EXTENSION citus;
+RELEASE SAVEPOINT s1;
+SAVEPOINT s3;
+SAVEPOINT s4;
+ROLLBACK TO  SAVEPOINT s3;
+ROLLBACK;
+CREATE EXTENSION citus;
+
+-- re-add the nodes to the cluster
+SELECT citus_set_coordinator_host('localhost');
+SELECT 1 FROM master_add_node('localhost', :worker_1_port);
+SELECT 1 FROM master_add_node('localhost', :worker_2_port);
+
+-- verify that a table can be created after the extension has been dropped and recreated
+CREATE TABLE testtableddl(somecol int, distributecol text NOT NULL);
+SELECT create_distributed_table('testtableddl', 'distributecol', 'append');
+SELECT 1 FROM master_create_empty_shard('testtableddl');
+SELECT * FROM testtableddl;
+DROP TABLE testtableddl;

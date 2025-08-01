@@ -1,0 +1,118 @@
+Parsed test spec with 2 sessions
+
+starting permutation: s1-begin s1-move-placement s1-drop-marked-shards s2-drop-marked-shards s1-commit
+step s1-begin:
+    BEGIN;
+
+step s1-move-placement:
+    SELECT master_move_shard_placement((SELECT * FROM selected_shard), 'localhost', 57637, 'localhost', 57638);
+
+master_move_shard_placement
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-drop-marked-shards:
+    SET client_min_messages to ERROR;
+    CALL isolation_cleanup_orphaned_resources();
+    SELECT COUNT(*) FROM pg_dist_cleanup WHERE object_type = 1 AND object_name LIKE 'public.t1_%';
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+step s2-drop-marked-shards:
+    SET client_min_messages to DEBUG1;
+    CALL isolation_cleanup_orphaned_resources();
+
+step s1-commit:
+    COMMIT;
+
+
+starting permutation: s1-begin s1-move-placement s2-drop-marked-shards s1-drop-marked-shards s1-commit
+step s1-begin:
+    BEGIN;
+
+step s1-move-placement:
+    SELECT master_move_shard_placement((SELECT * FROM selected_shard), 'localhost', 57637, 'localhost', 57638);
+
+master_move_shard_placement
+---------------------------------------------------------------------
+
+(1 row)
+
+step s2-drop-marked-shards:
+    SET client_min_messages to DEBUG1;
+    CALL isolation_cleanup_orphaned_resources();
+
+step s1-drop-marked-shards:
+    SET client_min_messages to ERROR;
+    CALL isolation_cleanup_orphaned_resources();
+    SELECT COUNT(*) FROM pg_dist_cleanup WHERE object_type = 1 AND object_name LIKE 'public.t1_%';
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+step s1-commit:
+    COMMIT;
+
+
+starting permutation: s1-begin s1-move-placement s2-start-session-level-connection s2-lock-table-on-worker s1-drop-marked-shards s1-commit s2-stop-connection
+step s1-begin:
+    BEGIN;
+
+step s1-move-placement:
+    SELECT master_move_shard_placement((SELECT * FROM selected_shard), 'localhost', 57637, 'localhost', 57638);
+
+master_move_shard_placement
+---------------------------------------------------------------------
+
+(1 row)
+
+step s2-start-session-level-connection:
+        SELECT start_session_level_connection_to_node('localhost', 57637);
+
+start_session_level_connection_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+step s2-lock-table-on-worker:
+    SELECT run_commands_on_session_level_connection_to_node('BEGIN;');
+    SELECT run_commands_on_session_level_connection_to_node('LOCK TABLE t1_120000');
+
+run_commands_on_session_level_connection_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+run_commands_on_session_level_connection_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-drop-marked-shards:
+    SET client_min_messages to ERROR;
+    CALL isolation_cleanup_orphaned_resources();
+    SELECT COUNT(*) FROM pg_dist_cleanup WHERE object_type = 1 AND object_name LIKE 'public.t1_%';
+ <waiting ...>
+step s1-drop-marked-shards: <... completed>
+count
+---------------------------------------------------------------------
+    1
+(1 row)
+
+step s1-commit:
+    COMMIT;
+
+step s2-stop-connection:
+ SELECT stop_session_level_connection_to_node();
+
+stop_session_level_connection_to_node
+---------------------------------------------------------------------
+
+(1 row)
+

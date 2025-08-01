@@ -1,0 +1,171 @@
+CREATE SCHEMA adaptive_executor;
+SET search_path TO adaptive_executor;
+SET citus.shard_replication_factor to 1;
+SET citus.enable_repartition_joins TO true;
+CREATE TABLE ab(a int, b int);
+SELECT create_distributed_table('ab', 'a');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+INSERT INTO ab SELECT *,* FROM generate_series(1,10);
+SELECT COUNT(*) FROM ab k, ab l
+WHERE k.a = l.b;
+ count
+---------------------------------------------------------------------
+    10
+(1 row)
+
+SELECT COUNT(*) FROM ab k, ab l, ab m, ab t
+WHERE k.a = l.b AND k.a = m.b AND t.b = l.a;
+ count
+---------------------------------------------------------------------
+    10
+(1 row)
+
+SELECT count(*) FROM (SELECT k.a FROM ab k, ab l WHERE k.a = l.b) first, (SELECT * FROM ab) second WHERE first.a = second.b;
+ count
+---------------------------------------------------------------------
+    10
+(1 row)
+
+BEGIN;
+SELECT count(*) FROM (SELECT k.a FROM ab k, ab l WHERE k.a = l.b) first, (SELECT * FROM ab) second WHERE first.a = second.b;
+ count
+---------------------------------------------------------------------
+    10
+(1 row)
+
+SELECT count(*) FROM (SELECT k.a FROM ab k, ab l WHERE k.a = l.b) first, (SELECT * FROM ab) second WHERE first.a = second.b;
+ count
+---------------------------------------------------------------------
+    10
+(1 row)
+
+SELECT count(*) FROM (SELECT k.a FROM ab k, ab l WHERE k.a = l.b) first, (SELECT * FROM ab) second WHERE first.a = second.b;
+ count
+---------------------------------------------------------------------
+    10
+(1 row)
+
+ROLLBACK;
+BEGIN;
+INSERT INTO ab values(1, 2);
+SELECT count(*) FROM (SELECT k.a FROM ab k, ab l WHERE k.a = l.b) first, (SELECT * FROM ab) second WHERE first.a = second.b;
+ count
+---------------------------------------------------------------------
+    14
+(1 row)
+
+ROLLBACK;
+SET citus.enable_single_hash_repartition_joins TO ON;
+CREATE TABLE single_hash_repartition_first (id int, sum int, avg float);
+CREATE TABLE single_hash_repartition_second (id int, sum int, avg float);
+CREATE TABLE ref_table (id int, sum int, avg float);
+SELECT create_distributed_table('single_hash_repartition_first', 'id');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT create_distributed_table('single_hash_repartition_second', 'id');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT create_reference_table('ref_table');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- single hash repartition after bcast joins
+EXPLAIN (COSTS OFF)
+SELECT
+	count(*)
+FROM
+	ref_table r1, single_hash_repartition_second t1, single_hash_repartition_first t2
+WHERE
+	r1.id = t1.id AND t2.sum = t1.id;
+                            QUERY PLAN
+---------------------------------------------------------------------
+ Aggregate
+   ->  Custom Scan (Citus Adaptive)
+         Task Count: 4
+         Tasks Shown: None, not supported for re-partition queries
+         ->  MapMergeJob
+               Map Task Count: 4
+               Merge Task Count: 4
+(7 rows)
+
+-- a more complicated join order, first colocated join, later single hash repartition join
+EXPLAIN (COSTS OFF)
+SELECT
+	count(*)
+FROM
+	single_hash_repartition_first t1, single_hash_repartition_first t2, single_hash_repartition_second t3
+WHERE
+	t1.id = t2.id AND t1.sum = t3.id;
+                            QUERY PLAN
+---------------------------------------------------------------------
+ Aggregate
+   ->  Custom Scan (Citus Adaptive)
+         Task Count: 4
+         Tasks Shown: None, not supported for re-partition queries
+         ->  MapMergeJob
+               Map Task Count: 4
+               Merge Task Count: 4
+(7 rows)
+
+SET citus.enable_single_hash_repartition_joins TO OFF;
+--issue 4315
+create table cars (car_id int);
+insert into cars select s from generate_series(1,10) s;
+create table trips (trip_id int, car_id int);
+insert into trips select s % 10, s % 11 from generate_series(1, 100) s;
+-- the result of this should be the same when the tables are distributed
+select count(*) from trips t1, cars r1, trips t2, cars r2 where t1.trip_id = t2.trip_id and t1.car_id = r1.car_id and t2.car_id = r2.car_id;
+ count
+---------------------------------------------------------------------
+   829
+(1 row)
+
+select create_distributed_table('trips', 'trip_id');
+NOTICE:  Copying data from local table...
+NOTICE:  copying the data has completed
+DETAIL:  The local data in the table is no longer visible, but is still on disk.
+HINT:  To remove the local data, run: SELECT truncate_local_data_after_distributing_table($$adaptive_executor.trips$$)
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+select create_distributed_table('cars', 'car_id');
+NOTICE:  Copying data from local table...
+NOTICE:  copying the data has completed
+DETAIL:  The local data in the table is no longer visible, but is still on disk.
+HINT:  To remove the local data, run: SELECT truncate_local_data_after_distributing_table($$adaptive_executor.cars$$)
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+set citus.enable_repartition_joins to on;
+set citus.enable_single_hash_repartition_joins to off;
+select count(*) from trips t1, cars r1, trips t2, cars r2 where t1.trip_id = t2.trip_id and t1.car_id = r1.car_id and t2.car_id = r2.car_id;
+ count
+---------------------------------------------------------------------
+   829
+(1 row)
+
+set citus.enable_single_hash_repartition_joins to on;
+select count(*) from trips t1, cars r1, trips t2, cars r2 where t1.trip_id = t2.trip_id and t1.car_id = r1.car_id and t2.car_id = r2.car_id;
+ count
+---------------------------------------------------------------------
+   829
+(1 row)
+
+SET client_min_messages TO WARNING;
+DROP SCHEMA adaptive_executor CASCADE;

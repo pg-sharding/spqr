@@ -1,0 +1,2785 @@
+SET citus.next_shard_id TO 840000;
+-- ===================================================================
+-- test router planner functionality for single shard select queries
+-- ===================================================================
+-- all the tests in this file is intended for testing non-fast-path
+-- router planner, so we're disabling it in this file. We've bunch of
+-- other tests that triggers fast-path-router planner
+SET citus.enable_fast_path_router_planner TO false;
+CREATE SCHEMA multi_router_planner;
+SET search_path TO multi_router_planner;
+CREATE TABLE articles_hash (
+	id bigint NOT NULL,
+	author_id bigint,
+	title varchar(20) NOT NULL,
+	word_count integer
+);
+CREATE TABLE articles_range (
+	id bigint NOT NULL,
+	author_id bigint NOT NULL,
+	title varchar(20) NOT NULL,
+	word_count integer
+);
+CREATE TABLE articles_append (
+	id bigint NOT NULL,
+	author_id bigint NOT NULL,
+	title varchar(20) NOT NULL,
+	word_count integer
+);
+-- Check for the existence of line 'DEBUG:  Creating router plan'
+-- to determine if router planner is used.
+-- this table is used in a CTE test
+CREATE TABLE authors_hash ( name varchar(20), id bigint );
+CREATE TABLE authors_range ( name varchar(20), id bigint );
+CREATE TABLE authors_reference ( name varchar(20), id bigint );
+-- this table is used in router executor tests
+CREATE TABLE articles_single_shard_hash (LIKE articles_hash);
+SET citus.shard_replication_factor TO 1;
+SELECT create_distributed_table('articles_hash', 'author_id', 'hash', shard_count := 2);
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT create_distributed_table('articles_single_shard_hash', 'author_id', 'hash', shard_count := 1);
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT create_reference_table('authors_reference');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- create a bunch of test data
+INSERT INTO articles_hash VALUES ( 1,  1, 'arsenous', 9572);
+INSERT INTO articles_hash VALUES ( 2,  2, 'abducing', 13642);
+INSERT INTO articles_hash VALUES ( 3,  3, 'asternal', 10480);
+INSERT INTO articles_hash VALUES ( 4,  4, 'altdorfer', 14551);
+INSERT INTO articles_hash VALUES ( 5,  5, 'aruru', 11389);
+INSERT INTO articles_hash VALUES ( 6,  6, 'atlases', 15459);
+INSERT INTO articles_hash VALUES ( 7,  7, 'aseptic', 12298);
+INSERT INTO articles_hash VALUES ( 8,  8, 'agatized', 16368);
+INSERT INTO articles_hash VALUES ( 9,  9, 'alligate', 438);
+INSERT INTO articles_hash VALUES (10, 10, 'aggrandize', 17277);
+INSERT INTO articles_hash VALUES (11,  1, 'alamo', 1347);
+INSERT INTO articles_hash VALUES (12,  2, 'archiblast', 18185);
+INSERT INTO articles_hash VALUES (13,  3, 'aseyev', 2255);
+INSERT INTO articles_hash VALUES (14,  4, 'andesite', 19094);
+INSERT INTO articles_hash VALUES (15,  5, 'adversa', 3164);
+INSERT INTO articles_hash VALUES (16,  6, 'allonym', 2);
+INSERT INTO articles_hash VALUES (17,  7, 'auriga', 4073);
+INSERT INTO articles_hash VALUES (18,  8, 'assembly', 911);
+INSERT INTO articles_hash VALUES (19,  9, 'aubergiste', 4981);
+INSERT INTO articles_hash VALUES (20, 10, 'absentness', 1820);
+INSERT INTO articles_hash VALUES (21,  1, 'arcading', 5890);
+INSERT INTO articles_hash VALUES (22,  2, 'antipope', 2728);
+INSERT INTO articles_hash VALUES (23,  3, 'abhorring', 6799);
+INSERT INTO articles_hash VALUES (24,  4, 'audacious', 3637);
+INSERT INTO articles_hash VALUES (25,  5, 'antehall', 7707);
+INSERT INTO articles_hash VALUES (26,  6, 'abington', 4545);
+INSERT INTO articles_hash VALUES (27,  7, 'arsenous', 8616);
+INSERT INTO articles_hash VALUES (28,  8, 'aerophyte', 5454);
+INSERT INTO articles_hash VALUES (29,  9, 'amateur', 9524);
+INSERT INTO articles_hash VALUES (30, 10, 'andelee', 6363);
+INSERT INTO articles_hash VALUES (31,  1, 'athwartships', 7271);
+INSERT INTO articles_hash VALUES (32,  2, 'amazon', 11342);
+INSERT INTO articles_hash VALUES (33,  3, 'autochrome', 8180);
+INSERT INTO articles_hash VALUES (34,  4, 'amnestied', 12250);
+INSERT INTO articles_hash VALUES (35,  5, 'aminate', 9089);
+INSERT INTO articles_hash VALUES (36,  6, 'ablation', 13159);
+INSERT INTO articles_hash VALUES (37,  7, 'archduchies', 9997);
+INSERT INTO articles_hash VALUES (38,  8, 'anatine', 14067);
+INSERT INTO articles_hash VALUES (39,  9, 'anchises', 10906);
+INSERT INTO articles_hash VALUES (40, 10, 'attemper', 14976);
+INSERT INTO articles_hash VALUES (41,  1, 'aznavour', 11814);
+INSERT INTO articles_hash VALUES (42,  2, 'ausable', 15885);
+INSERT INTO articles_hash VALUES (43,  3, 'affixal', 12723);
+INSERT INTO articles_hash VALUES (44,  4, 'anteport', 16793);
+INSERT INTO articles_hash VALUES (45,  5, 'afrasia', 864);
+INSERT INTO articles_hash VALUES (46,  6, 'atlanta', 17702);
+INSERT INTO articles_hash VALUES (47,  7, 'abeyance', 1772);
+INSERT INTO articles_hash VALUES (48,  8, 'alkylic', 18610);
+INSERT INTO articles_hash VALUES (49,  9, 'anyone', 2681);
+INSERT INTO articles_hash VALUES (50, 10, 'anjanette', 19519);
+SET client_min_messages TO 'DEBUG2';
+-- insert a single row for the test
+INSERT INTO articles_single_shard_hash VALUES (50, 10, 'anjanette', 19519);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 10
+-- single-shard tests
+-- test simple select for a single row
+SELECT * FROM articles_hash WHERE author_id = 10 AND id = 50;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 10
+ id | author_id |   title   | word_count
+---------------------------------------------------------------------
+ 50 |        10 | anjanette |      19519
+(1 row)
+
+-- get all titles by a single author
+SELECT title FROM articles_hash WHERE author_id = 10;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 10
+   title
+---------------------------------------------------------------------
+ aggrandize
+ absentness
+ andelee
+ attemper
+ anjanette
+(5 rows)
+
+-- try ordering them by word count
+SELECT title, word_count FROM articles_hash
+	WHERE author_id = 10
+	ORDER BY word_count DESC NULLS LAST;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 10
+   title    | word_count
+---------------------------------------------------------------------
+ anjanette  |      19519
+ aggrandize |      17277
+ attemper   |      14976
+ andelee    |       6363
+ absentness |       1820
+(5 rows)
+
+-- look at last two articles by an author
+SELECT title, id FROM articles_hash
+	WHERE author_id = 5
+	ORDER BY id
+	LIMIT 2;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 5
+  title  | id
+---------------------------------------------------------------------
+ aruru   |  5
+ adversa | 15
+(2 rows)
+
+-- find all articles by two authors in same shard
+-- but plan is not router executable due to order by
+SELECT title, author_id FROM articles_hash
+	WHERE author_id = 7 OR author_id = 8
+	ORDER BY author_id ASC, id;
+DEBUG:  Creating router plan
+    title    | author_id
+---------------------------------------------------------------------
+ aseptic     |         7
+ auriga      |         7
+ arsenous    |         7
+ archduchies |         7
+ abeyance    |         7
+ agatized    |         8
+ assembly    |         8
+ aerophyte   |         8
+ anatine     |         8
+ alkylic     |         8
+(10 rows)
+
+-- same query is router executable with no order by
+SELECT title, author_id FROM articles_hash
+	WHERE author_id = 7 OR author_id = 8;
+DEBUG:  Creating router plan
+    title    | author_id
+---------------------------------------------------------------------
+ aseptic     |         7
+ agatized    |         8
+ auriga      |         7
+ assembly    |         8
+ arsenous    |         7
+ aerophyte   |         8
+ archduchies |         7
+ anatine     |         8
+ abeyance    |         7
+ alkylic     |         8
+(10 rows)
+
+-- add in some grouping expressions, still on same shard
+-- having queries unsupported in Citus
+SELECT author_id, sum(word_count) AS corpus_size FROM articles_hash
+	WHERE author_id = 1 OR author_id = 7 OR author_id = 8 OR author_id = 10
+	GROUP BY author_id
+	HAVING sum(word_count) > 1000
+	ORDER BY sum(word_count) DESC;
+DEBUG:  Creating router plan
+ author_id | corpus_size
+---------------------------------------------------------------------
+        10 |       59955
+         8 |       55410
+         7 |       36756
+         1 |       35894
+(4 rows)
+
+-- however having clause is supported if it goes to a single shard
+SELECT author_id, sum(word_count) AS corpus_size FROM articles_hash
+	WHERE author_id = 1
+	GROUP BY author_id
+	HAVING sum(word_count) > 1000
+	ORDER BY sum(word_count) DESC;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ author_id | corpus_size
+---------------------------------------------------------------------
+         1 |       35894
+(1 row)
+
+-- query is a single shard query but can't do shard pruning,
+-- not router-plannable due to <= and IN
+SELECT * FROM articles_hash WHERE author_id <= 1 ORDER BY id;
+DEBUG:  Router planner cannot handle multi-shard select queries
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+SELECT * FROM articles_hash WHERE author_id IN (1, 3) ORDER BY id;
+DEBUG:  Creating router plan
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+  3 |         3 | asternal     |      10480
+ 11 |         1 | alamo        |       1347
+ 13 |         3 | aseyev       |       2255
+ 21 |         1 | arcading     |       5890
+ 23 |         3 | abhorring    |       6799
+ 31 |         1 | athwartships |       7271
+ 33 |         3 | autochrome   |       8180
+ 41 |         1 | aznavour     |      11814
+ 43 |         3 | affixal      |      12723
+(10 rows)
+
+SELECT * FROM articles_hash WHERE author_id IN (1, NULL) ORDER BY id;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- queries with CTEs are supported
+WITH first_author AS MATERIALIZED ( SELECT id FROM articles_hash WHERE author_id = 1)
+SELECT * FROM first_author;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id
+---------------------------------------------------------------------
+  1
+ 11
+ 21
+ 31
+ 41
+(5 rows)
+
+-- SELECT FOR UPDATE is supported if not involving reference table
+BEGIN;
+WITH first_author AS MATERIALIZED (
+    SELECT articles_hash.id, auref.name FROM articles_hash, authors_reference auref
+    WHERE author_id = 2 AND auref.id = author_id
+    FOR UPDATE
+)
+UPDATE articles_hash SET title = first_author.name
+FROM first_author WHERE articles_hash.author_id = 2 AND articles_hash.id = first_author.id;
+DEBUG:  Router planner doesn't support SELECT FOR UPDATE in common table expressions involving reference tables.
+DEBUG:  generating subplan XXX_1 for CTE first_author: SELECT articles_hash.id, auref.name FROM multi_router_planner.articles_hash, multi_router_planner.authors_reference auref WHERE ((articles_hash.author_id OPERATOR(pg_catalog.=) 2) AND (auref.id OPERATOR(pg_catalog.=) articles_hash.author_id)) FOR UPDATE OF articles_hash FOR UPDATE OF auref
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 2
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: UPDATE multi_router_planner.articles_hash SET title = first_author.name FROM (SELECT intermediate_result.id, intermediate_result.name FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(id bigint, name character varying(20))) first_author WHERE ((articles_hash.author_id OPERATOR(pg_catalog.=) 2) AND (articles_hash.id OPERATOR(pg_catalog.=) first_author.id))
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 2
+WITH first_author AS MATERIALIZED (
+    SELECT id, word_count FROM articles_hash WHERE author_id = 2
+    FOR UPDATE
+)
+UPDATE articles_hash SET title = first_author.word_count::text
+FROM first_author WHERE articles_hash.author_id = 2 AND articles_hash.id = first_author.id;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 2
+-- Without FOR UPDATE this is router plannable
+WITH first_author AS  MATERIALIZED (
+    SELECT articles_hash.id, auref.name FROM articles_hash, authors_reference auref
+    WHERE author_id = 2 AND auref.id = author_id
+)
+UPDATE articles_hash SET title = first_author.name
+FROM first_author WHERE articles_hash.author_id = 2 AND articles_hash.id = first_author.id;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 2
+ROLLBACK;
+-- queries with CTEs are supported even if CTE is not referenced inside query
+WITH first_author AS MATERIALIZED ( SELECT id FROM articles_hash WHERE author_id = 1)
+SELECT title FROM articles_hash WHERE author_id = 1;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+    title
+---------------------------------------------------------------------
+ arsenous
+ alamo
+ arcading
+ athwartships
+ aznavour
+(5 rows)
+
+-- two CTE joins are supported if they go to the same worker
+WITH id_author AS MATERIALIZED ( SELECT id, author_id FROM articles_hash WHERE author_id = 1),
+id_title AS MATERIALIZED (SELECT id, title from articles_hash WHERE author_id = 1)
+SELECT * FROM id_author, id_title WHERE id_author.id = id_title.id;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id | id |    title
+---------------------------------------------------------------------
+  1 |         1 |  1 | arsenous
+ 11 |         1 | 11 | alamo
+ 21 |         1 | 21 | arcading
+ 31 |         1 | 31 | athwartships
+ 41 |         1 | 41 | aznavour
+(5 rows)
+
+WITH id_author AS MATERIALIZED ( SELECT id, author_id FROM articles_hash WHERE author_id = 1),
+id_title AS MATERIALIZED (SELECT id, title from articles_hash WHERE author_id = 3)
+SELECT * FROM id_author, id_title WHERE id_author.id = id_title.id;
+DEBUG:  Creating router plan
+ id | author_id | id | title
+---------------------------------------------------------------------
+(0 rows)
+
+-- CTE joins are supported because they are both planned recursively
+WITH id_author AS MATERIALIZED ( SELECT id, author_id FROM articles_hash WHERE author_id = 1),
+id_title AS MATERIALIZED (SELECT id, title from articles_hash WHERE author_id = 2)
+SELECT * FROM id_author, id_title WHERE id_author.id = id_title.id;
+DEBUG:  router planner does not support queries that reference non-colocated distributed tables
+DEBUG:  generating subplan XXX_1 for CTE id_author: SELECT id, author_id FROM multi_router_planner.articles_hash WHERE (author_id OPERATOR(pg_catalog.=) 1)
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+DEBUG:  generating subplan XXX_2 for CTE id_title: SELECT id, title FROM multi_router_planner.articles_hash WHERE (author_id OPERATOR(pg_catalog.=) 2)
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 2
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT id_author.id, id_author.author_id, id_title.id, id_title.title FROM (SELECT intermediate_result.id, intermediate_result.author_id FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(id bigint, author_id bigint)) id_author, (SELECT intermediate_result.id, intermediate_result.title FROM read_intermediate_result('XXX_2'::text, 'binary'::citus_copy_format) intermediate_result(id bigint, title character varying(20))) id_title WHERE (id_author.id OPERATOR(pg_catalog.=) id_title.id)
+DEBUG:  Creating router plan
+ id | author_id | id | title
+---------------------------------------------------------------------
+(0 rows)
+
+-- recursive CTEs are supported when filtered on partition column
+CREATE TABLE company_employees (company_id int, employee_id int, manager_id int);
+SELECT create_distributed_table('company_employees', 'company_id', 'hash', shard_count := 4);
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+INSERT INTO company_employees values(1, 1, 0);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+INSERT INTO company_employees values(1, 2, 1);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+INSERT INTO company_employees values(1, 3, 1);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+INSERT INTO company_employees values(1, 4, 2);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+INSERT INTO company_employees values(1, 5, 4);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+INSERT INTO company_employees values(3, 1, 0);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 3
+INSERT INTO company_employees values(3, 15, 1);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 3
+INSERT INTO company_employees values(3, 3, 1);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 3
+-- find employees at top 2 level within company hierarchy
+WITH RECURSIVE hierarchy as MATERIALIZED (
+	SELECT *, 1 AS level
+		FROM company_employees
+		WHERE company_id = 1 and manager_id = 0
+	UNION
+	SELECT ce.*, (h.level+1)
+		FROM hierarchy h JOIN company_employees ce
+			ON (h.employee_id = ce.manager_id AND
+				h.company_id = ce.company_id AND
+				ce.company_id = 1))
+SELECT * FROM hierarchy WHERE LEVEL <= 2;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ company_id | employee_id | manager_id | level
+---------------------------------------------------------------------
+          1 |           1 |          0 |     1
+          1 |           2 |          1 |     2
+          1 |           3 |          1 |     2
+(3 rows)
+
+-- query becomes not router plannble and gets rejected
+-- if filter on company is dropped
+WITH RECURSIVE hierarchy as MATERIALIZED (
+	SELECT *, 1 AS level
+		FROM company_employees
+		WHERE company_id = 1 and manager_id = 0
+	UNION
+	SELECT ce.*, (h.level+1)
+		FROM hierarchy h JOIN company_employees ce
+			ON (h.employee_id = ce.manager_id AND
+				h.company_id = ce.company_id))
+SELECT * FROM hierarchy WHERE LEVEL <= 2;
+DEBUG:  Router planner cannot handle multi-shard select queries
+ERROR:  recursive CTEs are only supported when they contain a filter on the distribution column
+-- logically wrong query, query involves different shards
+-- from the same table
+WITH RECURSIVE hierarchy as MATERIALIZED (
+	SELECT *, 1 AS level
+		FROM company_employees
+		WHERE company_id = 3 and manager_id = 0
+	UNION
+	SELECT ce.*, (h.level+1)
+		FROM hierarchy h JOIN company_employees ce
+			ON (h.employee_id = ce.manager_id AND
+				h.company_id = ce.company_id AND
+				ce.company_id = 2))
+SELECT * FROM hierarchy WHERE LEVEL <= 2;
+DEBUG:  router planner does not support queries that reference non-colocated distributed tables
+ERROR:  recursive CTEs are only supported when they contain a filter on the distribution column
+-- Test router modifying CTEs
+WITH new_article AS MATERIALIZED(
+    INSERT INTO articles_hash VALUES (1,  1, 'arsenous', 9) RETURNING *
+)
+SELECT * FROM new_article;
+DEBUG:  only SELECT, UPDATE, or DELETE common table expressions may be router planned
+DEBUG:  generating subplan XXX_1 for CTE new_article: INSERT INTO multi_router_planner.articles_hash (id, author_id, title, word_count) VALUES (1, 1, 'arsenous'::character varying, 9) RETURNING id, author_id, title, word_count
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT id, author_id, title, word_count FROM (SELECT intermediate_result.id, intermediate_result.author_id, intermediate_result.title, intermediate_result.word_count FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(id bigint, author_id bigint, title character varying(20), word_count integer)) new_article
+DEBUG:  Creating router plan
+ id | author_id |  title   | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous |          9
+(1 row)
+
+WITH update_article AS MATERIALIZED(
+    UPDATE articles_hash SET word_count = 10 WHERE id = 1 AND word_count = 9 RETURNING *
+)
+SELECT * FROM update_article;
+DEBUG:  Router planner cannot handle multi-shard select queries
+DEBUG:  generating subplan XXX_1 for CTE update_article: UPDATE multi_router_planner.articles_hash SET word_count = 10 WHERE ((id OPERATOR(pg_catalog.=) 1) AND (word_count OPERATOR(pg_catalog.=) 9)) RETURNING id, author_id, title, word_count
+DEBUG:  Creating router plan
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT id, author_id, title, word_count FROM (SELECT intermediate_result.id, intermediate_result.author_id, intermediate_result.title, intermediate_result.word_count FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(id bigint, author_id bigint, title character varying(20), word_count integer)) update_article
+DEBUG:  Creating router plan
+ id | author_id |  title   | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous |         10
+(1 row)
+
+WITH update_article AS MATERIALIZED (
+    UPDATE articles_hash SET word_count = 11 WHERE id = 1 AND word_count = 10 RETURNING *
+)
+SELECT coalesce(1,random());
+DEBUG:  Router planner cannot handle multi-shard select queries
+DEBUG:  generating subplan XXX_1 for CTE update_article: UPDATE multi_router_planner.articles_hash SET word_count = 11 WHERE ((id OPERATOR(pg_catalog.=) 1) AND (word_count OPERATOR(pg_catalog.=) 10)) RETURNING id, author_id, title, word_count
+DEBUG:  Creating router plan
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT COALESCE((1)::double precision, random()) AS "coalesce"
+DEBUG:  Creating router plan
+ coalesce
+---------------------------------------------------------------------
+        1
+(1 row)
+
+WITH update_article AS MATERIALIZED (
+    UPDATE articles_hash SET word_count = 10 WHERE author_id = 1 AND id = 1 AND word_count = 11 RETURNING *
+)
+SELECT coalesce(1,random());
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ coalesce
+---------------------------------------------------------------------
+        1
+(1 row)
+
+WITH update_article AS MATERIALIZED (
+    UPDATE authors_reference SET name = '' WHERE id = 0 RETURNING *
+)
+SELECT coalesce(1,random());
+DEBUG:  cannot router plan modification of a non-distributed table
+DEBUG:  generating subplan XXX_1 for CTE update_article: UPDATE multi_router_planner.authors_reference SET name = ''::character varying WHERE (id OPERATOR(pg_catalog.=) 0) RETURNING name, id
+DEBUG:  Creating router plan
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT COALESCE((1)::double precision, random()) AS "coalesce"
+DEBUG:  Creating router plan
+ coalesce
+---------------------------------------------------------------------
+        1
+(1 row)
+
+WITH delete_article AS MATERIALIZED (
+    DELETE FROM articles_hash WHERE id = 1 AND word_count = 10 RETURNING *
+)
+SELECT * FROM delete_article;
+DEBUG:  Router planner cannot handle multi-shard select queries
+DEBUG:  generating subplan XXX_1 for CTE delete_article: DELETE FROM multi_router_planner.articles_hash WHERE ((id OPERATOR(pg_catalog.=) 1) AND (word_count OPERATOR(pg_catalog.=) 10)) RETURNING id, author_id, title, word_count
+DEBUG:  Creating router plan
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT id, author_id, title, word_count FROM (SELECT intermediate_result.id, intermediate_result.author_id, intermediate_result.title, intermediate_result.word_count FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(id bigint, author_id bigint, title character varying(20), word_count integer)) delete_article
+DEBUG:  Creating router plan
+ id | author_id |  title   | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous |         10
+(1 row)
+
+-- Modifying statement in nested CTE case is covered by PostgreSQL itself
+WITH new_article AS MATERIALIZED(
+    WITH nested_cte AS MATERIALIZED(
+        INSERT INTO articles_hash VALUES (1,  1, 'arsenous', 9572) RETURNING *
+    )
+    SELECT * FROM nested_cte
+)
+SELECT * FROM new_article;
+ERROR:  WITH clause containing a data-modifying statement must be at the top level
+-- Modifying statement in a CTE in subquery is also covered by PostgreSQL
+SELECT * FROM (
+    WITH new_article AS MATERIALIZED (
+        INSERT INTO articles_hash VALUES (1,  1, 'arsenous', 9572) RETURNING *
+    )
+    SELECT * FROM new_article
+) AS subquery_cte;
+ERROR:  WITH clause containing a data-modifying statement must be at the top level
+-- grouping sets are supported on single shard
+SELECT
+	id, substring(title, 2, 1) AS subtitle, count(*)
+	FROM articles_hash
+	WHERE author_id = 1 or author_id = 3
+	GROUP BY GROUPING SETS ((id),(subtitle))
+	ORDER BY id, subtitle;
+DEBUG:  Creating router plan
+ id | subtitle | count
+---------------------------------------------------------------------
+  1 |          |     1
+  3 |          |     1
+ 11 |          |     1
+ 13 |          |     1
+ 21 |          |     1
+ 23 |          |     1
+ 31 |          |     1
+ 33 |          |     1
+ 41 |          |     1
+ 43 |          |     1
+    | b        |     1
+    | f        |     1
+    | l        |     1
+    | r        |     2
+    | s        |     2
+    | t        |     1
+    | u        |     1
+    | z        |     1
+(18 rows)
+
+-- grouping sets are not supported on multiple shards
+SELECT
+	id, substring(title, 2, 1) AS subtitle, count(*)
+	FROM articles_hash
+	WHERE author_id = 1 or author_id = 2
+	GROUP BY GROUPING SETS ((id),(subtitle))
+	ORDER BY id, subtitle;
+DEBUG:  Router planner cannot handle multi-shard select queries
+ERROR:  could not run distributed query with GROUPING SETS, CUBE, or ROLLUP
+HINT:  Consider using an equality filter on the distributed table's partition column.
+-- queries which involve functions in FROM clause are supported if it goes to a single worker.
+SELECT * FROM articles_hash, position('om' in 'Thomas') WHERE author_id = 1;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count | position
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572 |        3
+ 11 |         1 | alamo        |       1347 |        3
+ 21 |         1 | arcading     |       5890 |        3
+ 31 |         1 | athwartships |       7271 |        3
+ 41 |         1 | aznavour     |      11814 |        3
+(5 rows)
+
+SELECT * FROM articles_hash, position('om' in 'Thomas') WHERE author_id = 1 or author_id = 3;
+DEBUG:  Creating router plan
+ id | author_id |    title     | word_count | position
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572 |        3
+  3 |         3 | asternal     |      10480 |        3
+ 11 |         1 | alamo        |       1347 |        3
+ 13 |         3 | aseyev       |       2255 |        3
+ 21 |         1 | arcading     |       5890 |        3
+ 23 |         3 | abhorring    |       6799 |        3
+ 31 |         1 | athwartships |       7271 |        3
+ 33 |         3 | autochrome   |       8180 |        3
+ 41 |         1 | aznavour     |      11814 |        3
+ 43 |         3 | affixal      |      12723 |        3
+(10 rows)
+
+-- they are supported via (sub)query pushdown if multiple workers are involved
+SELECT * FROM articles_hash, position('om' in 'Thomas') WHERE author_id = 1 or author_id = 2 ORDER BY 4 DESC, 1 DESC, 2 DESC LIMIT 5;
+DEBUG:  Router planner cannot handle multi-shard select queries
+DEBUG:  push down of limit count: 5
+ id | author_id |   title    | word_count | position
+---------------------------------------------------------------------
+ 12 |         2 | archiblast |      18185 |        3
+ 42 |         2 | ausable    |      15885 |        3
+  2 |         2 | abducing   |      13642 |        3
+ 41 |         1 | aznavour   |      11814 |        3
+ 32 |         2 | amazon     |      11342 |        3
+(5 rows)
+
+-- unless the query can be transformed into a join
+SELECT * FROM articles_hash
+WHERE author_id IN (SELECT author_id FROM articles_hash WHERE author_id = 2)
+ORDER BY articles_hash.id;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 2
+ id | author_id |   title    | word_count
+---------------------------------------------------------------------
+  2 |         2 | abducing   |      13642
+ 12 |         2 | archiblast |      18185
+ 22 |         2 | antipope   |       2728
+ 32 |         2 | amazon     |      11342
+ 42 |         2 | ausable    |      15885
+(5 rows)
+
+-- subqueries are supported in FROM clause but they are not router plannable
+SELECT articles_hash.id,test.word_count
+FROM articles_hash, (SELECT id, word_count FROM articles_hash) AS test WHERE test.id = articles_hash.id
+ORDER BY test.word_count DESC, articles_hash.id LIMIT 5;
+DEBUG:  Router planner cannot handle multi-shard select queries
+DEBUG:  Router planner cannot handle multi-shard select queries
+DEBUG:  generating subplan XXX_1 for subquery SELECT id, word_count FROM multi_router_planner.articles_hash
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT articles_hash.id, test.word_count FROM multi_router_planner.articles_hash, (SELECT intermediate_result.id, intermediate_result.word_count FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(id bigint, word_count integer)) test WHERE (test.id OPERATOR(pg_catalog.=) articles_hash.id) ORDER BY test.word_count DESC, articles_hash.id LIMIT 5
+DEBUG:  Router planner cannot handle multi-shard select queries
+DEBUG:  push down of limit count: 5
+ id | word_count
+---------------------------------------------------------------------
+ 50 |      19519
+ 14 |      19094
+ 48 |      18610
+ 12 |      18185
+ 46 |      17702
+(5 rows)
+
+SELECT articles_hash.id,test.word_count
+FROM articles_hash, (SELECT id, word_count FROM articles_hash) AS test
+WHERE test.id = articles_hash.id and articles_hash.author_id = 1
+ORDER BY articles_hash.id;
+DEBUG:  Router planner cannot handle multi-shard select queries
+DEBUG:  Router planner cannot handle multi-shard select queries
+DEBUG:  generating subplan XXX_1 for subquery SELECT id, word_count FROM multi_router_planner.articles_hash
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT articles_hash.id, test.word_count FROM multi_router_planner.articles_hash, (SELECT intermediate_result.id, intermediate_result.word_count FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(id bigint, word_count integer)) test WHERE ((test.id OPERATOR(pg_catalog.=) articles_hash.id) AND (articles_hash.author_id OPERATOR(pg_catalog.=) 1)) ORDER BY articles_hash.id
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | word_count
+---------------------------------------------------------------------
+  1 |       9572
+ 11 |       1347
+ 21 |       5890
+ 31 |       7271
+ 41 |      11814
+(5 rows)
+
+-- subqueries are not supported in SELECT clause
+SELECT a.title AS name, (SELECT a2.id FROM articles_single_shard_hash a2 WHERE a.id = a2.id  LIMIT 1)
+						 AS special_price FROM articles_hash a;
+DEBUG:  Router planner cannot handle multi-shard select queries
+ERROR:  complex joins are only supported when all distributed tables are co-located and joined on their distribution columns
+-- simple lookup query
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- below query hits a single shard, router plannable
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1 OR author_id = 17;
+DEBUG:  Creating router plan
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- below query hits two shards, not router plannable + not router executable
+-- handled by real-time executor
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1 OR author_id = 18
+ORDER BY 4 DESC, 3 DESC, 2 DESC, 1 DESC;
+DEBUG:  Router planner cannot handle multi-shard select queries
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+ 41 |         1 | aznavour     |      11814
+  1 |         1 | arsenous     |       9572
+ 31 |         1 | athwartships |       7271
+ 21 |         1 | arcading     |       5890
+ 11 |         1 | alamo        |       1347
+(5 rows)
+
+-- rename the output columns
+SELECT id as article_id, word_count * id as random_value
+	FROM articles_hash
+	WHERE author_id = 1;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ article_id | random_value
+---------------------------------------------------------------------
+          1 |         9572
+         11 |        14817
+         21 |       123690
+         31 |       225401
+         41 |       484374
+(5 rows)
+
+-- we can push down co-located joins to a single worker
+SELECT a.author_id as first_author, b.word_count as second_word_count
+	FROM articles_hash a, articles_hash b
+	WHERE a.author_id = 10 and a.author_id = b.author_id
+	LIMIT 3;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 10
+ first_author | second_word_count
+---------------------------------------------------------------------
+           10 |             17277
+           10 |              1820
+           10 |              6363
+(3 rows)
+
+-- following join is router plannable since the same worker
+-- has both shards when citus.enable_non_colocated_router_query_pushdown
+-- is enabled
+SET citus.enable_non_colocated_router_query_pushdown TO ON;
+SELECT a.author_id as first_author, b.word_count as second_word_count
+	FROM articles_hash a, articles_single_shard_hash b
+	WHERE a.author_id = 10 and a.author_id = b.author_id
+	ORDER BY 1,2 LIMIT 3;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 10
+ first_author | second_word_count
+---------------------------------------------------------------------
+           10 |             19519
+           10 |             19519
+           10 |             19519
+(3 rows)
+
+SET citus.enable_non_colocated_router_query_pushdown TO OFF;
+-- but this is not the case otherwise
+SELECT a.author_id as first_author, b.word_count as second_word_count
+	FROM articles_hash a, articles_single_shard_hash b
+	WHERE a.author_id = 10 and a.author_id = b.author_id
+	ORDER BY 1,2 LIMIT 3;
+DEBUG:  router planner does not support queries that reference non-colocated distributed tables
+DEBUG:  push down of limit count: 3
+DEBUG:  join prunable for task partitionId 0 and 1
+DEBUG:  join prunable for task partitionId 0 and 2
+DEBUG:  join prunable for task partitionId 0 and 3
+DEBUG:  join prunable for task partitionId 0 and 4
+DEBUG:  join prunable for task partitionId 0 and 5
+DEBUG:  join prunable for task partitionId 1 and 0
+DEBUG:  join prunable for task partitionId 1 and 2
+DEBUG:  join prunable for task partitionId 1 and 3
+DEBUG:  join prunable for task partitionId 1 and 4
+DEBUG:  join prunable for task partitionId 1 and 5
+DEBUG:  join prunable for task partitionId 2 and 0
+DEBUG:  join prunable for task partitionId 2 and 1
+DEBUG:  join prunable for task partitionId 2 and 3
+DEBUG:  join prunable for task partitionId 2 and 4
+DEBUG:  join prunable for task partitionId 2 and 5
+DEBUG:  join prunable for task partitionId 3 and 0
+DEBUG:  join prunable for task partitionId 3 and 1
+DEBUG:  join prunable for task partitionId 3 and 2
+DEBUG:  join prunable for task partitionId 3 and 4
+DEBUG:  join prunable for task partitionId 3 and 5
+DEBUG:  join prunable for task partitionId 4 and 0
+DEBUG:  join prunable for task partitionId 4 and 1
+DEBUG:  join prunable for task partitionId 4 and 2
+DEBUG:  join prunable for task partitionId 4 and 3
+DEBUG:  join prunable for task partitionId 4 and 5
+DEBUG:  join prunable for task partitionId 5 and 0
+DEBUG:  join prunable for task partitionId 5 and 1
+DEBUG:  join prunable for task partitionId 5 and 2
+DEBUG:  join prunable for task partitionId 5 and 3
+DEBUG:  join prunable for task partitionId 5 and 4
+DEBUG:  pruning merge fetch taskId 1
+DETAIL:  Creating dependency on merge taskId 2
+DEBUG:  pruning merge fetch taskId 2
+DETAIL:  Creating dependency on merge taskId 2
+DEBUG:  pruning merge fetch taskId 4
+DETAIL:  Creating dependency on merge taskId 4
+DEBUG:  pruning merge fetch taskId 5
+DETAIL:  Creating dependency on merge taskId 4
+DEBUG:  pruning merge fetch taskId 7
+DETAIL:  Creating dependency on merge taskId 6
+DEBUG:  pruning merge fetch taskId 8
+DETAIL:  Creating dependency on merge taskId 6
+DEBUG:  pruning merge fetch taskId 10
+DETAIL:  Creating dependency on merge taskId 8
+DEBUG:  pruning merge fetch taskId 11
+DETAIL:  Creating dependency on merge taskId 8
+DEBUG:  pruning merge fetch taskId 13
+DETAIL:  Creating dependency on merge taskId 10
+DEBUG:  pruning merge fetch taskId 14
+DETAIL:  Creating dependency on merge taskId 10
+DEBUG:  pruning merge fetch taskId 16
+DETAIL:  Creating dependency on merge taskId 12
+DEBUG:  pruning merge fetch taskId 17
+DETAIL:  Creating dependency on merge taskId 12
+ERROR:  the query contains a join that requires repartitioning
+HINT:  Set citus.enable_repartition_joins to on to enable repartitioning
+RESET citus.enable_non_colocated_router_query_pushdown;
+-- following join is not router plannable since there are no
+-- workers containing both shards, but will work through recursive
+-- planning
+WITH single_shard as MATERIALIZED(SELECT * FROM articles_single_shard_hash)
+SELECT a.author_id as first_author, b.word_count as second_word_count
+	FROM articles_hash a, single_shard b
+	WHERE a.author_id = 2 and a.author_id = b.author_id
+	LIMIT 3;
+DEBUG:  router planner does not support queries that reference non-colocated distributed tables
+DEBUG:  generating subplan XXX_1 for CTE single_shard: SELECT id, author_id, title, word_count FROM multi_router_planner.articles_single_shard_hash
+DEBUG:  Creating router plan
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT a.author_id AS first_author, b.word_count AS second_word_count FROM multi_router_planner.articles_hash a, (SELECT intermediate_result.id, intermediate_result.author_id, intermediate_result.title, intermediate_result.word_count FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(id bigint, author_id bigint, title character varying(20), word_count integer)) b WHERE ((a.author_id OPERATOR(pg_catalog.=) 2) AND (a.author_id OPERATOR(pg_catalog.=) b.author_id)) LIMIT 3
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 2
+ first_author | second_word_count
+---------------------------------------------------------------------
+(0 rows)
+
+-- single shard select with limit is router plannable
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1
+	LIMIT 3;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |  title   | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous |       9572
+ 11 |         1 | alamo    |       1347
+ 21 |         1 | arcading |       5890
+(3 rows)
+
+-- single shard select with limit + offset is router plannable
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1
+	LIMIT 2
+	OFFSET 1;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |  title   | word_count
+---------------------------------------------------------------------
+ 11 |         1 | alamo    |       1347
+ 21 |         1 | arcading |       5890
+(2 rows)
+
+-- single shard select with limit + offset + order by is router plannable
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1
+	ORDER BY id desc
+	LIMIT 2
+	OFFSET 1;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+ 31 |         1 | athwartships |       7271
+ 21 |         1 | arcading     |       5890
+(2 rows)
+
+-- single shard select with group by on non-partition column is router plannable
+SELECT id
+	FROM articles_hash
+	WHERE author_id = 1
+	GROUP BY id
+	ORDER BY id;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id
+---------------------------------------------------------------------
+  1
+ 11
+ 21
+ 31
+ 41
+(5 rows)
+
+-- single shard select with distinct is router plannable
+SELECT DISTINCT id
+	FROM articles_hash
+	WHERE author_id = 1
+	ORDER BY id;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id
+---------------------------------------------------------------------
+  1
+ 11
+ 21
+ 31
+ 41
+(5 rows)
+
+-- single shard aggregate is router plannable
+SELECT avg(word_count)
+	FROM articles_hash
+	WHERE author_id = 2;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 2
+        avg
+---------------------------------------------------------------------
+ 12356.400000000000
+(1 row)
+
+-- max, min, sum, count are router plannable on single shard
+SELECT max(word_count) as max, min(word_count) as min,
+	   sum(word_count) as sum, count(word_count) as cnt
+	FROM articles_hash
+	WHERE author_id = 2;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 2
+  max  | min  |  sum  | cnt
+---------------------------------------------------------------------
+ 18185 | 2728 | 61782 |   5
+(1 row)
+
+-- queries with aggregates and group by supported on single shard
+SELECT max(word_count)
+	FROM articles_hash
+	WHERE author_id = 1
+	GROUP BY author_id;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+  max
+---------------------------------------------------------------------
+ 11814
+(1 row)
+
+-- router plannable union queries are supported
+SELECT * FROM (
+	SELECT * FROM articles_hash WHERE author_id = 1
+	UNION
+	SELECT * FROM articles_hash WHERE author_id = 3
+) AS combination
+ORDER BY id;
+DEBUG:  Creating router plan
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+  3 |         3 | asternal     |      10480
+ 11 |         1 | alamo        |       1347
+ 13 |         3 | aseyev       |       2255
+ 21 |         1 | arcading     |       5890
+ 23 |         3 | abhorring    |       6799
+ 31 |         1 | athwartships |       7271
+ 33 |         3 | autochrome   |       8180
+ 41 |         1 | aznavour     |      11814
+ 43 |         3 | affixal      |      12723
+(10 rows)
+
+(SELECT LEFT(title, 1) FROM articles_hash WHERE author_id = 1)
+UNION
+(SELECT LEFT(title, 1) FROM articles_hash WHERE author_id = 3);
+DEBUG:  Creating router plan
+ left
+---------------------------------------------------------------------
+ a
+(1 row)
+
+(SELECT LEFT(title, 1) FROM articles_hash WHERE author_id = 1)
+INTERSECT
+(SELECT LEFT(title, 1) FROM articles_hash WHERE author_id = 3);
+DEBUG:  Creating router plan
+ left
+---------------------------------------------------------------------
+ a
+(1 row)
+
+SELECT * FROM (
+	SELECT LEFT(title, 2) FROM articles_hash WHERE author_id = 1
+	EXCEPT
+	SELECT LEFT(title, 2) FROM articles_hash WHERE author_id = 3
+) AS combination
+ORDER BY 1;
+DEBUG:  Creating router plan
+ left
+---------------------------------------------------------------------
+ al
+ ar
+ at
+ az
+(4 rows)
+
+-- top-level union queries are supported through recursive planning
+SET client_min_messages to 'NOTICE';
+(
+  (SELECT * FROM articles_hash WHERE author_id = 1)
+  UNION
+  (SELECT * FROM articles_hash WHERE author_id = 3)
+)
+UNION
+(SELECT * FROM articles_hash WHERE author_id = 2)
+ORDER BY 1,2,3;
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+  2 |         2 | abducing     |      13642
+  3 |         3 | asternal     |      10480
+ 11 |         1 | alamo        |       1347
+ 12 |         2 | archiblast   |      18185
+ 13 |         3 | aseyev       |       2255
+ 21 |         1 | arcading     |       5890
+ 22 |         2 | antipope     |       2728
+ 23 |         3 | abhorring    |       6799
+ 31 |         1 | athwartships |       7271
+ 32 |         2 | amazon       |      11342
+ 33 |         3 | autochrome   |       8180
+ 41 |         1 | aznavour     |      11814
+ 42 |         2 | ausable      |      15885
+ 43 |         3 | affixal      |      12723
+(15 rows)
+
+-- unions in subqueries are supported with subquery pushdown
+SELECT * FROM (
+	(SELECT * FROM articles_hash WHERE author_id = 1)
+	UNION
+	(SELECT * FROM articles_hash WHERE author_id = 2)) uu
+ORDER BY 1, 2
+LIMIT 5;
+ id | author_id |   title    | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous   |       9572
+  2 |         2 | abducing   |      13642
+ 11 |         1 | alamo      |       1347
+ 12 |         2 | archiblast |      18185
+ 21 |         1 | arcading   |       5890
+(5 rows)
+
+-- error out for queries with repartition jobs
+SELECT *
+	FROM articles_hash a, articles_hash b
+	WHERE a.id = b.id  AND a.author_id = 1;
+ERROR:  the query contains a join that requires repartitioning
+HINT:  Set citus.enable_repartition_joins to on to enable repartitioning
+-- by setting enable_repartition_joins we can make this query run
+SET citus.enable_repartition_joins TO ON;
+SELECT *
+	FROM articles_hash a, articles_hash b
+	WHERE a.id = b.id  AND a.author_id = 1
+ORDER BY 1 DESC;
+ id | author_id |    title     | word_count | id | author_id |    title     | word_count
+---------------------------------------------------------------------
+ 41 |         1 | aznavour     |      11814 | 41 |         1 | aznavour     |      11814
+ 31 |         1 | athwartships |       7271 | 31 |         1 | athwartships |       7271
+ 21 |         1 | arcading     |       5890 | 21 |         1 | arcading     |       5890
+ 11 |         1 | alamo        |       1347 | 11 |         1 | alamo        |       1347
+  1 |         1 | arsenous     |       9572 |  1 |         1 | arsenous     |       9572
+(5 rows)
+
+SET citus.enable_repartition_joins TO OFF;
+-- queries which hit more than 1 shards are not router plannable or executable
+-- handled by real-time executor
+SELECT *
+	FROM articles_hash
+	WHERE author_id >= 1 AND author_id <= 3
+ORDER BY 1,2,3,4;
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+  2 |         2 | abducing     |      13642
+  3 |         3 | asternal     |      10480
+ 11 |         1 | alamo        |       1347
+ 12 |         2 | archiblast   |      18185
+ 13 |         3 | aseyev       |       2255
+ 21 |         1 | arcading     |       5890
+ 22 |         2 | antipope     |       2728
+ 23 |         3 | abhorring    |       6799
+ 31 |         1 | athwartships |       7271
+ 32 |         2 | amazon       |      11342
+ 33 |         3 | autochrome   |       8180
+ 41 |         1 | aznavour     |      11814
+ 42 |         2 | ausable      |      15885
+ 43 |         3 | affixal      |      12723
+(15 rows)
+
+-- Test various filtering options for router plannable check
+SET client_min_messages to 'DEBUG2';
+-- this is definitely single shard
+-- and router plannable
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1 and author_id >= 1;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- not router plannable due to or
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1 or id = 1;
+DEBUG:  Router planner cannot handle multi-shard select queries
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- router plannable
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1 and (id = 1 or id = 41);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |  title   | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous |       9572
+ 41 |         1 | aznavour |      11814
+(2 rows)
+
+-- router plannable
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1 and (id = random()::int  * 0);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+-- not router plannable due to function call on the right side
+SELECT *
+	FROM articles_hash
+	WHERE author_id = (random()::int  * 0 + 1);
+DEBUG:  Router planner cannot handle multi-shard select queries
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- not router plannable due to or
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1 or id = 1;
+DEBUG:  Router planner cannot handle multi-shard select queries
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- router plannable due to abs(-1) getting converted to 1 by postgresql
+SELECT *
+	FROM articles_hash
+	WHERE author_id = abs(-1);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- not router plannable due to abs() function
+SELECT *
+	FROM articles_hash
+	WHERE 1 = abs(author_id);
+DEBUG:  Router planner cannot handle multi-shard select queries
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- not router plannable due to abs() function
+SELECT *
+	FROM articles_hash
+	WHERE author_id = abs(author_id - 2);
+DEBUG:  Router planner cannot handle multi-shard select queries
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- router plannable, function on different field
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1 and (id = abs(id - 2));
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |  title   | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous |       9572
+(1 row)
+
+-- not router plannable due to is true
+SELECT *
+	FROM articles_hash
+	WHERE (author_id = 1) is true;
+DEBUG:  Router planner cannot handle multi-shard select queries
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- router plannable, (boolean expression) = true is collapsed to (boolean expression)
+SELECT *
+	FROM articles_hash
+	WHERE (author_id = 1) = true;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- router plannable, between operator is on another column
+SELECT *
+	FROM articles_hash
+	WHERE (author_id = 1) and id between 0 and 20;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |  title   | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous |       9572
+ 11 |         1 | alamo    |       1347
+(2 rows)
+
+-- router plannable, partition column expression is and'ed to rest
+SELECT *
+	FROM articles_hash
+	WHERE (author_id = 1) and (id = 1 or id = 31) and title like '%s';
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 31 |         1 | athwartships |       7271
+(2 rows)
+
+-- router plannable, order is changed
+SELECT *
+	FROM articles_hash
+	WHERE (id = 1 or id = 31) and title like '%s' and (author_id = 1);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 31 |         1 | athwartships |       7271
+(2 rows)
+
+-- router plannable
+SELECT *
+	FROM articles_hash
+	WHERE (title like '%s' or title like 'a%') and (author_id = 1);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- router plannable
+SELECT *
+	FROM articles_hash
+	WHERE (title like '%s' or title like 'a%') and (author_id = 1) and (word_count < 3000 or word_count > 8000);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |  title   | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous |       9572
+ 11 |         1 | alamo    |       1347
+ 41 |         1 | aznavour |      11814
+(3 rows)
+
+SELECT LAG(title, 1) over (ORDER BY word_count) prev, title, word_count
+	FROM articles_hash
+	WHERE author_id = 5;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 5
+   prev   |  title   | word_count
+---------------------------------------------------------------------
+          | afrasia  |        864
+ afrasia  | adversa  |       3164
+ adversa  | antehall |       7707
+ antehall | aminate  |       9089
+ aminate  | aruru    |      11389
+(5 rows)
+
+SELECT LAG(title, 1) over (ORDER BY word_count) prev, title, word_count
+	FROM articles_hash
+	WHERE author_id = 5
+	ORDER BY word_count DESC;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 5
+   prev   |  title   | word_count
+---------------------------------------------------------------------
+ aminate  | aruru    |      11389
+ antehall | aminate  |       9089
+ adversa  | antehall |       7707
+ afrasia  | adversa  |       3164
+          | afrasia  |        864
+(5 rows)
+
+SELECT id, MIN(id) over (order by word_count)
+	FROM articles_hash
+	WHERE author_id = 1;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | min
+---------------------------------------------------------------------
+ 11 |  11
+ 21 |  11
+ 31 |  11
+  1 |   1
+ 41 |   1
+(5 rows)
+
+SELECT id, word_count, AVG(word_count) over (order by word_count)
+	FROM articles_hash
+	WHERE author_id = 1;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | word_count |          avg
+---------------------------------------------------------------------
+ 11 |       1347 | 1347.0000000000000000
+ 21 |       5890 | 3618.5000000000000000
+ 31 |       7271 | 4836.0000000000000000
+  1 |       9572 | 6020.0000000000000000
+ 41 |      11814 | 7178.8000000000000000
+(5 rows)
+
+SELECT word_count, rank() OVER (PARTITION BY author_id ORDER BY word_count)
+	FROM articles_hash
+	WHERE author_id = 1;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ word_count | rank
+---------------------------------------------------------------------
+       1347 |    1
+       5890 |    2
+       7271 |    3
+       9572 |    4
+      11814 |    5
+(5 rows)
+
+SELECT id, MIN(id) over (order by word_count)
+	FROM articles_hash
+	WHERE author_id = 1 or author_id = 2
+    ORDER BY 1;
+DEBUG:  Router planner cannot handle multi-shard select queries
+ id | min
+---------------------------------------------------------------------
+  1 |   1
+  2 |   1
+ 11 |  11
+ 12 |   1
+ 21 |  11
+ 22 |  11
+ 31 |  11
+ 32 |   1
+ 41 |   1
+ 42 |   1
+(10 rows)
+
+SELECT LAG(title, 1) over (ORDER BY word_count) prev, title, word_count
+	FROM articles_hash
+	WHERE author_id = 5 or author_id = 2
+    ORDER BY 2;
+DEBUG:  Router planner cannot handle multi-shard select queries
+   prev   |   title    | word_count
+---------------------------------------------------------------------
+ aruru    | abducing   |      13642
+ antipope | adversa    |       3164
+          | afrasia    |        864
+ aminate  | amazon     |      11342
+ antehall | aminate    |       9089
+ adversa  | antehall   |       7707
+ afrasia  | antipope   |       2728
+ ausable  | archiblast |      18185
+ amazon   | aruru      |      11389
+ abducing | ausable    |      15885
+(10 rows)
+
+-- where false queries are router plannable
+SELECT *
+	FROM articles_hash
+	WHERE false;
+DEBUG:  Creating router plan
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1 and false;
+DEBUG:  Creating router plan
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1 and 1=0;
+DEBUG:  Creating router plan
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+-- Even if the where clause contains "false", the query is not router
+-- plannable when citus.enable_non_colocated_router_query_pushdown
+-- is disabled. This is because, the tables are not colocated.
+SET citus.enable_non_colocated_router_query_pushdown TO ON;
+-- the same query, router plannable
+SELECT a.author_id as first_author, b.word_count as second_word_count
+	FROM articles_hash a, articles_single_shard_hash b
+	WHERE a.author_id = 10 and a.author_id = b.author_id and false;
+DEBUG:  Creating router plan
+ first_author | second_word_count
+---------------------------------------------------------------------
+(0 rows)
+
+SET citus.enable_non_colocated_router_query_pushdown TO OFF;
+-- the same query, _not_ router plannable
+SELECT a.author_id as first_author, b.word_count as second_word_count
+	FROM articles_hash a, articles_single_shard_hash b
+	WHERE a.author_id = 10 and a.author_id = b.author_id and false;
+DEBUG:  Creating router plan
+ first_author | second_word_count
+---------------------------------------------------------------------
+(0 rows)
+
+RESET citus.enable_non_colocated_router_query_pushdown;
+SELECT *
+	FROM articles_hash
+	WHERE null;
+DEBUG:  Creating router plan
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+-- where false with immutable function returning false
+SELECT *
+	FROM articles_hash a
+	WHERE a.author_id = 10 and int4eq(1, 2);
+DEBUG:  Creating router plan
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+SELECT *
+	FROM articles_hash a
+	WHERE int4eq(1, 2);
+DEBUG:  Creating router plan
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+SELECT a.author_id as first_author, b.word_count as second_word_count
+	FROM articles_hash a, articles_single_shard_hash b
+	WHERE a.author_id = 10 and a.author_id = b.author_id and int4eq(1, 1);
+DEBUG:  router planner does not support queries that reference non-colocated distributed tables
+DEBUG:  join prunable for task partitionId 0 and 1
+DEBUG:  join prunable for task partitionId 0 and 2
+DEBUG:  join prunable for task partitionId 0 and 3
+DEBUG:  join prunable for task partitionId 0 and 4
+DEBUG:  join prunable for task partitionId 0 and 5
+DEBUG:  join prunable for task partitionId 1 and 0
+DEBUG:  join prunable for task partitionId 1 and 2
+DEBUG:  join prunable for task partitionId 1 and 3
+DEBUG:  join prunable for task partitionId 1 and 4
+DEBUG:  join prunable for task partitionId 1 and 5
+DEBUG:  join prunable for task partitionId 2 and 0
+DEBUG:  join prunable for task partitionId 2 and 1
+DEBUG:  join prunable for task partitionId 2 and 3
+DEBUG:  join prunable for task partitionId 2 and 4
+DEBUG:  join prunable for task partitionId 2 and 5
+DEBUG:  join prunable for task partitionId 3 and 0
+DEBUG:  join prunable for task partitionId 3 and 1
+DEBUG:  join prunable for task partitionId 3 and 2
+DEBUG:  join prunable for task partitionId 3 and 4
+DEBUG:  join prunable for task partitionId 3 and 5
+DEBUG:  join prunable for task partitionId 4 and 0
+DEBUG:  join prunable for task partitionId 4 and 1
+DEBUG:  join prunable for task partitionId 4 and 2
+DEBUG:  join prunable for task partitionId 4 and 3
+DEBUG:  join prunable for task partitionId 4 and 5
+DEBUG:  join prunable for task partitionId 5 and 0
+DEBUG:  join prunable for task partitionId 5 and 1
+DEBUG:  join prunable for task partitionId 5 and 2
+DEBUG:  join prunable for task partitionId 5 and 3
+DEBUG:  join prunable for task partitionId 5 and 4
+DEBUG:  pruning merge fetch taskId 1
+DETAIL:  Creating dependency on merge taskId 2
+DEBUG:  pruning merge fetch taskId 2
+DETAIL:  Creating dependency on merge taskId 2
+DEBUG:  pruning merge fetch taskId 4
+DETAIL:  Creating dependency on merge taskId 4
+DEBUG:  pruning merge fetch taskId 5
+DETAIL:  Creating dependency on merge taskId 4
+DEBUG:  pruning merge fetch taskId 7
+DETAIL:  Creating dependency on merge taskId 6
+DEBUG:  pruning merge fetch taskId 8
+DETAIL:  Creating dependency on merge taskId 6
+DEBUG:  pruning merge fetch taskId 10
+DETAIL:  Creating dependency on merge taskId 8
+DEBUG:  pruning merge fetch taskId 11
+DETAIL:  Creating dependency on merge taskId 8
+DEBUG:  pruning merge fetch taskId 13
+DETAIL:  Creating dependency on merge taskId 10
+DEBUG:  pruning merge fetch taskId 14
+DETAIL:  Creating dependency on merge taskId 10
+DEBUG:  pruning merge fetch taskId 16
+DETAIL:  Creating dependency on merge taskId 12
+DEBUG:  pruning merge fetch taskId 17
+DETAIL:  Creating dependency on merge taskId 12
+ERROR:  the query contains a join that requires repartitioning
+HINT:  Set citus.enable_repartition_joins to on to enable repartitioning
+SELECT a.author_id as first_author, b.word_count as second_word_count
+	FROM articles_hash a, articles_single_shard_hash b
+	WHERE a.author_id = 10 and a.author_id = b.author_id and int4eq(1, 2);
+DEBUG:  Creating router plan
+ first_author | second_word_count
+---------------------------------------------------------------------
+(0 rows)
+
+-- partition_column is null clause does not prune out any shards,
+-- all shards remain after shard pruning, not router plannable
+SELECT *
+	FROM articles_hash a
+	WHERE a.author_id is null;
+DEBUG:  Router planner cannot handle multi-shard select queries
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+-- partition_column equals to null clause prunes out all shards
+-- no shards after shard pruning, router plannable
+SELECT *
+	FROM articles_hash a
+	WHERE a.author_id = null;
+DEBUG:  Creating router plan
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+-- stable function returning bool
+SELECT *
+	FROM articles_hash a
+	WHERE date_ne_timestamp('1954-04-11', '1954-04-11'::timestamp);
+DEBUG:  Creating router plan
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+SELECT a.author_id as first_author, b.word_count as second_word_count
+	FROM articles_hash a, articles_single_shard_hash b
+	WHERE a.author_id = 10 and a.author_id = b.author_id and
+		date_ne_timestamp('1954-04-11', '1954-04-11'::timestamp);
+DEBUG:  Creating router plan
+ first_author | second_word_count
+---------------------------------------------------------------------
+(0 rows)
+
+-- union/difference /intersection with where false
+-- this query was not originally router plannable, addition of 1=0
+-- makes it router plannable
+SELECT * FROM (
+	SELECT * FROM articles_hash WHERE author_id = 1
+	UNION
+	SELECT * FROM articles_hash WHERE author_id = 2 and 1=0
+) AS combination
+ORDER BY id;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+SELECT * FROM (
+	SELECT * FROM articles_hash WHERE author_id = 1
+	EXCEPT
+	SELECT * FROM articles_hash WHERE author_id = 2 and 1=0
+) AS combination
+ORDER BY id;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+(SELECT * FROM articles_hash WHERE author_id = 1)
+INTERSECT
+(SELECT * FROM articles_hash WHERE author_id = 2 and 1=0);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+-- if these queries get routed, they would fail since number1() does not exist
+-- on workers. This tests an exceptional case in which some local tables bypass
+-- checks.
+CREATE OR REPLACE FUNCTION number1(OUT datid int)
+RETURNS SETOF int
+AS $$
+DECLARE
+BEGIN
+    RETURN QUERY SELECT 1;
+END;
+$$ LANGUAGE plpgsql;
+DEBUG:  switching to sequential query execution mode
+DETAIL:  A command for a distributed function is run. To make sure subsequent commands see the function correctly we need to make sure to use only one connection for all future commands
+SELECT 1 FROM authors_reference  r JOIN (
+  SELECT s.datid FROM number1() s LEFT JOIN pg_database d ON s.datid = d.oid
+) num_db ON (r.id = num_db.datid) LIMIT 1;
+DEBUG:  Creating router plan
+ ?column?
+---------------------------------------------------------------------
+(0 rows)
+
+-- same scenario with a view
+CREATE VIEW num_db AS
+SELECT s.datid FROM number1() s LEFT JOIN pg_database d ON s.datid = d.oid;
+SELECT 1 FROM authors_reference r JOIN num_db ON (r.id = num_db.datid) LIMIT 1;
+DEBUG:  Creating router plan
+ ?column?
+---------------------------------------------------------------------
+(0 rows)
+
+-- with a CTE in a view
+WITH cte AS MATERIALIZED (SELECT * FROM num_db)
+SELECT 1 FROM authors_reference r JOIN cte ON (r.id = cte.datid) LIMIT 1;
+DEBUG:  Creating router plan
+ ?column?
+---------------------------------------------------------------------
+(0 rows)
+
+-- hide changes between major versions
+RESET client_min_messages;
+-- with pg_stat_activity view
+WITH pg_stat_activity AS MATERIALIZED(
+  SELECT
+    pg_stat_activity.datid,
+    pg_stat_activity.application_name,
+    pg_stat_activity.query
+  FROM pg_catalog.pg_stat_activity
+)
+SELECT 1 FROM authors_reference  r LEFT JOIN pg_stat_activity ON (r.id = pg_stat_activity.datid) LIMIT 1;
+ ?column?
+---------------------------------------------------------------------
+(0 rows)
+
+SET client_min_messages TO DEBUG2;
+-- CTEs with where false
+-- terse because distribution column inference varies between pg11 & pg12
+\set VERBOSITY terse
+RESET client_min_messages;
+WITH id_author AS MATERIALIZED ( SELECT id, author_id FROM articles_hash WHERE author_id = 1),
+id_title AS MATERIALIZED (SELECT id, title from articles_hash WHERE author_id = 1 and 1=0)
+SELECT * FROM id_author, id_title WHERE id_author.id = id_title.id;
+ id | author_id | id | title
+---------------------------------------------------------------------
+(0 rows)
+
+WITH id_author AS MATERIALIZED ( SELECT id, author_id FROM articles_hash WHERE author_id = 1),
+id_title AS MATERIALIZED (SELECT id, title from articles_hash WHERE author_id = 1)
+SELECT * FROM id_author, id_title WHERE id_author.id = id_title.id and 1=0;
+ id | author_id | id | title
+---------------------------------------------------------------------
+(0 rows)
+
+SET client_min_messages TO DEBUG2;
+\set VERBOSITY DEFAULT
+WITH RECURSIVE hierarchy as MATERIALIZED (
+	SELECT *, 1 AS level
+		FROM company_employees
+		WHERE company_id = 1 and manager_id = 0
+	UNION
+	SELECT ce.*, (h.level+1)
+		FROM hierarchy h JOIN company_employees ce
+			ON (h.employee_id = ce.manager_id AND
+				h.company_id = ce.company_id AND
+				ce.company_id = 1))
+SELECT * FROM hierarchy WHERE LEVEL <= 2 and 1=0;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ company_id | employee_id | manager_id | level
+---------------------------------------------------------------------
+(0 rows)
+
+WITH RECURSIVE hierarchy as MATERIALIZED (
+	SELECT *, 1 AS level
+		FROM company_employees
+		WHERE company_id = 1 and manager_id = 0
+	UNION
+	SELECT ce.*, (h.level+1)
+		FROM hierarchy h JOIN company_employees ce
+			ON (h.employee_id = ce.manager_id AND
+				h.company_id = ce.company_id AND
+				ce.company_id = 1 AND 1=0))
+SELECT * FROM hierarchy WHERE LEVEL <= 2;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ company_id | employee_id | manager_id | level
+---------------------------------------------------------------------
+          1 |           1 |          0 |     1
+(1 row)
+
+WITH RECURSIVE hierarchy as MATERIALIZED (
+	SELECT *, 1 AS level
+		FROM company_employees
+		WHERE company_id = 1 and manager_id = 0 AND 1=0
+	UNION
+	SELECT ce.*, (h.level+1)
+		FROM hierarchy h JOIN company_employees ce
+			ON (h.employee_id = ce.manager_id AND
+				h.company_id = ce.company_id AND
+				ce.company_id = 1))
+SELECT * FROM hierarchy WHERE LEVEL <= 2;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ company_id | employee_id | manager_id | level
+---------------------------------------------------------------------
+(0 rows)
+
+-- window functions with where false
+SELECT word_count, rank() OVER (PARTITION BY author_id ORDER BY word_count)
+	FROM articles_hash
+	WHERE author_id = 1 and 1=0;
+DEBUG:  Creating router plan
+ word_count | rank
+---------------------------------------------------------------------
+(0 rows)
+
+-- function calls in WHERE clause with non-relational arguments
+SELECT author_id FROM articles_hash
+	WHERE
+		substring('hello world', 1, 5) = 'hello'
+	ORDER BY
+		author_id
+	LIMIT 1;
+DEBUG:  Router planner cannot handle multi-shard select queries
+DEBUG:  push down of limit count: 1
+ author_id
+---------------------------------------------------------------------
+         1
+(1 row)
+
+-- when expression evaluates to false
+SELECT author_id FROM articles_hash
+	WHERE
+		substring('hello world', 1, 4) = 'hello'
+	ORDER BY
+		author_id
+	LIMIT 1;
+DEBUG:  Creating router plan
+ author_id
+---------------------------------------------------------------------
+(0 rows)
+
+-- verify range partitioned tables can be used in router plannable queries
+-- just 4 shards to be created for each table to make sure
+-- they are 'co-located' pairwise
+SET citus.shard_replication_factor TO 1;
+SELECT create_distributed_table('authors_range', 'id', 'range');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT create_distributed_table('articles_range', 'author_id', 'range');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT master_create_empty_shard('authors_range') as shard_id \gset
+UPDATE pg_dist_shard SET shardminvalue = 1, shardmaxvalue=10 WHERE shardid = :shard_id;
+SELECT master_create_empty_shard('authors_range') as shard_id \gset
+UPDATE pg_dist_shard SET shardminvalue = 11, shardmaxvalue=20 WHERE shardid = :shard_id;
+SELECT master_create_empty_shard('authors_range') as shard_id \gset
+UPDATE pg_dist_shard SET shardminvalue = 21, shardmaxvalue=30 WHERE shardid = :shard_id;
+SELECT master_create_empty_shard('authors_range') as shard_id \gset
+UPDATE pg_dist_shard SET shardminvalue = 31, shardmaxvalue=40 WHERE shardid = :shard_id;
+SELECT master_create_empty_shard('articles_range') as shard_id \gset
+UPDATE pg_dist_shard SET shardminvalue = 1, shardmaxvalue=10 WHERE shardid = :shard_id;
+SELECT master_create_empty_shard('articles_range') as shard_id \gset
+UPDATE pg_dist_shard SET shardminvalue = 11, shardmaxvalue=20 WHERE shardid = :shard_id;
+SELECT master_create_empty_shard('articles_range') as shard_id \gset
+UPDATE pg_dist_shard SET shardminvalue = 21, shardmaxvalue=30 WHERE shardid = :shard_id;
+SELECT master_create_empty_shard('articles_range') as shard_id \gset
+UPDATE pg_dist_shard SET shardminvalue = 31, shardmaxvalue=40 WHERE shardid = :shard_id;
+SET citus.log_remote_commands TO on;
+-- single shard select queries are router plannable
+SELECT * FROM articles_range where author_id = 1;
+DEBUG:  Creating router plan
+NOTICE:  issuing SELECT id, author_id, title, word_count FROM multi_router_planner.articles_range_840012 articles_range WHERE (author_id OPERATOR(pg_catalog.=) 1)
+DETAIL:  on server postgres@localhost:xxxxx connectionId: xxxxxxx
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+SELECT * FROM articles_range where author_id = 1 or author_id = 5;
+DEBUG:  Creating router plan
+NOTICE:  issuing SELECT id, author_id, title, word_count FROM multi_router_planner.articles_range_840012 articles_range WHERE ((author_id OPERATOR(pg_catalog.=) 1) OR (author_id OPERATOR(pg_catalog.=) 5))
+DETAIL:  on server postgres@localhost:xxxxx connectionId: xxxxxxx
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+-- zero shard select query is router plannable
+SELECT * FROM articles_range where author_id = 1 and author_id = 2;
+DEBUG:  Creating router plan
+NOTICE:  executing the command locally: SELECT id, author_id, title, word_count FROM (SELECT NULL::bigint AS id, NULL::bigint AS author_id, NULL::character varying(20) AS title, NULL::integer AS word_count WHERE false) articles_range(id, author_id, title, word_count) WHERE ((author_id OPERATOR(pg_catalog.=) 1) AND (author_id OPERATOR(pg_catalog.=) 2))
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+-- single shard joins on range partitioned table are router plannable
+SELECT * FROM articles_range ar join authors_range au on (ar.author_id = au.id)
+	WHERE ar.author_id = 1;
+DEBUG:  Creating router plan
+NOTICE:  issuing SELECT ar.id, ar.author_id, ar.title, ar.word_count, au.name, au.id FROM (multi_router_planner.articles_range_840012 ar JOIN multi_router_planner.authors_range_840008 au ON ((ar.author_id OPERATOR(pg_catalog.=) au.id))) WHERE (ar.author_id OPERATOR(pg_catalog.=) 1)
+DETAIL:  on server postgres@localhost:xxxxx connectionId: xxxxxxx
+ id | author_id | title | word_count | name | id
+---------------------------------------------------------------------
+(0 rows)
+
+-- zero shard join is router plannable
+SELECT * FROM articles_range ar join authors_range au on (ar.author_id = au.id)
+	WHERE ar.author_id = 1 and au.id = 2;
+DEBUG:  Creating router plan
+NOTICE:  executing the command locally: SELECT ar.id, ar.author_id, ar.title, ar.word_count, au.name, au.id FROM ((SELECT NULL::bigint AS id, NULL::bigint AS author_id, NULL::character varying(20) AS title, NULL::integer AS word_count WHERE false) ar(id, author_id, title, word_count) JOIN (SELECT NULL::character varying(20) AS name, NULL::bigint AS id WHERE false) au(name, id) ON ((ar.author_id OPERATOR(pg_catalog.=) au.id))) WHERE ((ar.author_id OPERATOR(pg_catalog.=) 1) AND (au.id OPERATOR(pg_catalog.=) 2))
+ id | author_id | title | word_count | name | id
+---------------------------------------------------------------------
+(0 rows)
+
+RESET citus.log_remote_commands;
+-- This query was intended to test "multi-shard join is not router plannable"
+-- To run it using repartition join logic we change the join columns
+SET citus.enable_repartition_joins to ON;
+SELECT * FROM articles_range ar join authors_range au on (ar.title = au.name)
+	WHERE ar.author_id = 35;
+DEBUG:  Router planner cannot handle multi-shard select queries
+DEBUG:  join prunable for task partitionId 0 and 1
+DEBUG:  join prunable for task partitionId 0 and 2
+DEBUG:  join prunable for task partitionId 0 and 3
+DEBUG:  join prunable for task partitionId 0 and 4
+DEBUG:  join prunable for task partitionId 0 and 5
+DEBUG:  join prunable for task partitionId 1 and 0
+DEBUG:  join prunable for task partitionId 1 and 2
+DEBUG:  join prunable for task partitionId 1 and 3
+DEBUG:  join prunable for task partitionId 1 and 4
+DEBUG:  join prunable for task partitionId 1 and 5
+DEBUG:  join prunable for task partitionId 2 and 0
+DEBUG:  join prunable for task partitionId 2 and 1
+DEBUG:  join prunable for task partitionId 2 and 3
+DEBUG:  join prunable for task partitionId 2 and 4
+DEBUG:  join prunable for task partitionId 2 and 5
+DEBUG:  join prunable for task partitionId 3 and 0
+DEBUG:  join prunable for task partitionId 3 and 1
+DEBUG:  join prunable for task partitionId 3 and 2
+DEBUG:  join prunable for task partitionId 3 and 4
+DEBUG:  join prunable for task partitionId 3 and 5
+DEBUG:  join prunable for task partitionId 4 and 0
+DEBUG:  join prunable for task partitionId 4 and 1
+DEBUG:  join prunable for task partitionId 4 and 2
+DEBUG:  join prunable for task partitionId 4 and 3
+DEBUG:  join prunable for task partitionId 4 and 5
+DEBUG:  join prunable for task partitionId 5 and 0
+DEBUG:  join prunable for task partitionId 5 and 1
+DEBUG:  join prunable for task partitionId 5 and 2
+DEBUG:  join prunable for task partitionId 5 and 3
+DEBUG:  join prunable for task partitionId 5 and 4
+DEBUG:  pruning merge fetch taskId 1
+DETAIL:  Creating dependency on merge taskId 2
+DEBUG:  pruning merge fetch taskId 2
+DETAIL:  Creating dependency on merge taskId 5
+DEBUG:  pruning merge fetch taskId 4
+DETAIL:  Creating dependency on merge taskId 4
+DEBUG:  pruning merge fetch taskId 5
+DETAIL:  Creating dependency on merge taskId 10
+DEBUG:  pruning merge fetch taskId 7
+DETAIL:  Creating dependency on merge taskId 6
+DEBUG:  pruning merge fetch taskId 8
+DETAIL:  Creating dependency on merge taskId 15
+DEBUG:  pruning merge fetch taskId 10
+DETAIL:  Creating dependency on merge taskId 8
+DEBUG:  pruning merge fetch taskId 11
+DETAIL:  Creating dependency on merge taskId 20
+DEBUG:  pruning merge fetch taskId 13
+DETAIL:  Creating dependency on merge taskId 10
+DEBUG:  pruning merge fetch taskId 14
+DETAIL:  Creating dependency on merge taskId 25
+DEBUG:  pruning merge fetch taskId 16
+DETAIL:  Creating dependency on merge taskId 12
+DEBUG:  pruning merge fetch taskId 17
+DETAIL:  Creating dependency on merge taskId 30
+ id | author_id | title | word_count | name | id
+---------------------------------------------------------------------
+(0 rows)
+
+-- This query was intended to test "this is a bug, it is a single shard join
+-- query but not router plannable". To run it using repartition join logic we
+-- change the join columns.
+SELECT * FROM articles_range ar join authors_range au on (ar.title = au.name)
+	WHERE ar.author_id = 1 or au.id = 5;
+DEBUG:  Router planner cannot handle multi-shard select queries
+DEBUG:  join prunable for task partitionId 0 and 1
+DEBUG:  join prunable for task partitionId 0 and 2
+DEBUG:  join prunable for task partitionId 0 and 3
+DEBUG:  join prunable for task partitionId 0 and 4
+DEBUG:  join prunable for task partitionId 0 and 5
+DEBUG:  join prunable for task partitionId 1 and 0
+DEBUG:  join prunable for task partitionId 1 and 2
+DEBUG:  join prunable for task partitionId 1 and 3
+DEBUG:  join prunable for task partitionId 1 and 4
+DEBUG:  join prunable for task partitionId 1 and 5
+DEBUG:  join prunable for task partitionId 2 and 0
+DEBUG:  join prunable for task partitionId 2 and 1
+DEBUG:  join prunable for task partitionId 2 and 3
+DEBUG:  join prunable for task partitionId 2 and 4
+DEBUG:  join prunable for task partitionId 2 and 5
+DEBUG:  join prunable for task partitionId 3 and 0
+DEBUG:  join prunable for task partitionId 3 and 1
+DEBUG:  join prunable for task partitionId 3 and 2
+DEBUG:  join prunable for task partitionId 3 and 4
+DEBUG:  join prunable for task partitionId 3 and 5
+DEBUG:  join prunable for task partitionId 4 and 0
+DEBUG:  join prunable for task partitionId 4 and 1
+DEBUG:  join prunable for task partitionId 4 and 2
+DEBUG:  join prunable for task partitionId 4 and 3
+DEBUG:  join prunable for task partitionId 4 and 5
+DEBUG:  join prunable for task partitionId 5 and 0
+DEBUG:  join prunable for task partitionId 5 and 1
+DEBUG:  join prunable for task partitionId 5 and 2
+DEBUG:  join prunable for task partitionId 5 and 3
+DEBUG:  join prunable for task partitionId 5 and 4
+DEBUG:  pruning merge fetch taskId 1
+DETAIL:  Creating dependency on merge taskId 5
+DEBUG:  pruning merge fetch taskId 2
+DETAIL:  Creating dependency on merge taskId 5
+DEBUG:  pruning merge fetch taskId 4
+DETAIL:  Creating dependency on merge taskId 10
+DEBUG:  pruning merge fetch taskId 5
+DETAIL:  Creating dependency on merge taskId 10
+DEBUG:  pruning merge fetch taskId 7
+DETAIL:  Creating dependency on merge taskId 15
+DEBUG:  pruning merge fetch taskId 8
+DETAIL:  Creating dependency on merge taskId 15
+DEBUG:  pruning merge fetch taskId 10
+DETAIL:  Creating dependency on merge taskId 20
+DEBUG:  pruning merge fetch taskId 11
+DETAIL:  Creating dependency on merge taskId 20
+DEBUG:  pruning merge fetch taskId 13
+DETAIL:  Creating dependency on merge taskId 25
+DEBUG:  pruning merge fetch taskId 14
+DETAIL:  Creating dependency on merge taskId 25
+DEBUG:  pruning merge fetch taskId 16
+DETAIL:  Creating dependency on merge taskId 30
+DEBUG:  pruning merge fetch taskId 17
+DETAIL:  Creating dependency on merge taskId 30
+ id | author_id | title | word_count | name | id
+---------------------------------------------------------------------
+(0 rows)
+
+-- bogus query, join on non-partition column, but router plannable due to filters
+SELECT * FROM articles_range ar join authors_range au on (ar.id = au.id)
+	WHERE ar.author_id = 1 and au.id < 10;
+DEBUG:  Creating router plan
+ id | author_id | title | word_count | name | id
+---------------------------------------------------------------------
+(0 rows)
+
+-- join between hash and range partition tables are router plannable
+-- only if both tables pruned down to single shard and co-located on the same
+-- node.
+SET citus.enable_non_colocated_router_query_pushdown TO ON;
+-- router plannable when citus.enable_non_colocated_router_query_pushdown is on
+SELECT * FROM articles_hash ar join authors_range au on (ar.author_id = au.id)
+	WHERE ar.author_id = 2 ORDER BY 1,2,3,4,5,6;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 2
+ id | author_id | title | word_count | name | id
+---------------------------------------------------------------------
+(0 rows)
+
+SET citus.enable_non_colocated_router_query_pushdown TO OFF;
+-- not router plannable otherwise
+SELECT * FROM articles_hash ar join authors_range au on (ar.author_id = au.id)
+	WHERE ar.author_id = 2 ORDER BY 1,2,3,4,5,6;
+DEBUG:  router planner does not support queries that reference non-colocated distributed tables
+DEBUG:  join prunable for task partitionId 0 and 1
+DEBUG:  join prunable for task partitionId 0 and 2
+DEBUG:  join prunable for task partitionId 0 and 3
+DEBUG:  join prunable for task partitionId 0 and 4
+DEBUG:  join prunable for task partitionId 0 and 5
+DEBUG:  join prunable for task partitionId 1 and 0
+DEBUG:  join prunable for task partitionId 1 and 2
+DEBUG:  join prunable for task partitionId 1 and 3
+DEBUG:  join prunable for task partitionId 1 and 4
+DEBUG:  join prunable for task partitionId 1 and 5
+DEBUG:  join prunable for task partitionId 2 and 0
+DEBUG:  join prunable for task partitionId 2 and 1
+DEBUG:  join prunable for task partitionId 2 and 3
+DEBUG:  join prunable for task partitionId 2 and 4
+DEBUG:  join prunable for task partitionId 2 and 5
+DEBUG:  join prunable for task partitionId 3 and 0
+DEBUG:  join prunable for task partitionId 3 and 1
+DEBUG:  join prunable for task partitionId 3 and 2
+DEBUG:  join prunable for task partitionId 3 and 4
+DEBUG:  join prunable for task partitionId 3 and 5
+DEBUG:  join prunable for task partitionId 4 and 0
+DEBUG:  join prunable for task partitionId 4 and 1
+DEBUG:  join prunable for task partitionId 4 and 2
+DEBUG:  join prunable for task partitionId 4 and 3
+DEBUG:  join prunable for task partitionId 4 and 5
+DEBUG:  join prunable for task partitionId 5 and 0
+DEBUG:  join prunable for task partitionId 5 and 1
+DEBUG:  join prunable for task partitionId 5 and 2
+DEBUG:  join prunable for task partitionId 5 and 3
+DEBUG:  join prunable for task partitionId 5 and 4
+DEBUG:  pruning merge fetch taskId 1
+DETAIL:  Creating dependency on merge taskId 2
+DEBUG:  pruning merge fetch taskId 2
+DETAIL:  Creating dependency on merge taskId 5
+DEBUG:  pruning merge fetch taskId 4
+DETAIL:  Creating dependency on merge taskId 4
+DEBUG:  pruning merge fetch taskId 5
+DETAIL:  Creating dependency on merge taskId 10
+DEBUG:  pruning merge fetch taskId 7
+DETAIL:  Creating dependency on merge taskId 6
+DEBUG:  pruning merge fetch taskId 8
+DETAIL:  Creating dependency on merge taskId 15
+DEBUG:  pruning merge fetch taskId 10
+DETAIL:  Creating dependency on merge taskId 8
+DEBUG:  pruning merge fetch taskId 11
+DETAIL:  Creating dependency on merge taskId 20
+DEBUG:  pruning merge fetch taskId 13
+DETAIL:  Creating dependency on merge taskId 10
+DEBUG:  pruning merge fetch taskId 14
+DETAIL:  Creating dependency on merge taskId 25
+DEBUG:  pruning merge fetch taskId 16
+DETAIL:  Creating dependency on merge taskId 12
+DEBUG:  pruning merge fetch taskId 17
+DETAIL:  Creating dependency on merge taskId 30
+ id | author_id | title | word_count | name | id
+---------------------------------------------------------------------
+(0 rows)
+
+RESET citus.enable_non_colocated_router_query_pushdown;
+-- not router plannable
+SELECT * FROM articles_hash ar join authors_range au on (ar.author_id = au.id)
+	WHERE ar.author_id = 3;
+DEBUG:  router planner does not support queries that reference non-colocated distributed tables
+DEBUG:  join prunable for task partitionId 0 and 1
+DEBUG:  join prunable for task partitionId 0 and 2
+DEBUG:  join prunable for task partitionId 0 and 3
+DEBUG:  join prunable for task partitionId 0 and 4
+DEBUG:  join prunable for task partitionId 0 and 5
+DEBUG:  join prunable for task partitionId 1 and 0
+DEBUG:  join prunable for task partitionId 1 and 2
+DEBUG:  join prunable for task partitionId 1 and 3
+DEBUG:  join prunable for task partitionId 1 and 4
+DEBUG:  join prunable for task partitionId 1 and 5
+DEBUG:  join prunable for task partitionId 2 and 0
+DEBUG:  join prunable for task partitionId 2 and 1
+DEBUG:  join prunable for task partitionId 2 and 3
+DEBUG:  join prunable for task partitionId 2 and 4
+DEBUG:  join prunable for task partitionId 2 and 5
+DEBUG:  join prunable for task partitionId 3 and 0
+DEBUG:  join prunable for task partitionId 3 and 1
+DEBUG:  join prunable for task partitionId 3 and 2
+DEBUG:  join prunable for task partitionId 3 and 4
+DEBUG:  join prunable for task partitionId 3 and 5
+DEBUG:  join prunable for task partitionId 4 and 0
+DEBUG:  join prunable for task partitionId 4 and 1
+DEBUG:  join prunable for task partitionId 4 and 2
+DEBUG:  join prunable for task partitionId 4 and 3
+DEBUG:  join prunable for task partitionId 4 and 5
+DEBUG:  join prunable for task partitionId 5 and 0
+DEBUG:  join prunable for task partitionId 5 and 1
+DEBUG:  join prunable for task partitionId 5 and 2
+DEBUG:  join prunable for task partitionId 5 and 3
+DEBUG:  join prunable for task partitionId 5 and 4
+DEBUG:  pruning merge fetch taskId 1
+DETAIL:  Creating dependency on merge taskId 2
+DEBUG:  pruning merge fetch taskId 2
+DETAIL:  Creating dependency on merge taskId 5
+DEBUG:  pruning merge fetch taskId 4
+DETAIL:  Creating dependency on merge taskId 4
+DEBUG:  pruning merge fetch taskId 5
+DETAIL:  Creating dependency on merge taskId 10
+DEBUG:  pruning merge fetch taskId 7
+DETAIL:  Creating dependency on merge taskId 6
+DEBUG:  pruning merge fetch taskId 8
+DETAIL:  Creating dependency on merge taskId 15
+DEBUG:  pruning merge fetch taskId 10
+DETAIL:  Creating dependency on merge taskId 8
+DEBUG:  pruning merge fetch taskId 11
+DETAIL:  Creating dependency on merge taskId 20
+DEBUG:  pruning merge fetch taskId 13
+DETAIL:  Creating dependency on merge taskId 10
+DEBUG:  pruning merge fetch taskId 14
+DETAIL:  Creating dependency on merge taskId 25
+DEBUG:  pruning merge fetch taskId 16
+DETAIL:  Creating dependency on merge taskId 12
+DEBUG:  pruning merge fetch taskId 17
+DETAIL:  Creating dependency on merge taskId 30
+ id | author_id | title | word_count | name | id
+---------------------------------------------------------------------
+(0 rows)
+
+-- join between a range partitioned table and reference table is router plannable
+SELECT * FROM articles_range ar join authors_reference au on (ar.author_id = au.id)
+	WHERE ar.author_id = 1;
+DEBUG:  Creating router plan
+ id | author_id | title | word_count | name | id
+---------------------------------------------------------------------
+(0 rows)
+
+-- still hits a single shard and router plannable
+SELECT * FROM articles_range ar join authors_reference au on (ar.author_id = au.id)
+	WHERE ar.author_id = 1 or ar.author_id = 5;
+DEBUG:  Creating router plan
+ id | author_id | title | word_count | name | id
+---------------------------------------------------------------------
+(0 rows)
+
+-- it is not router plannable if hit multiple shards
+SELECT * FROM articles_range ar join authors_reference au on (ar.author_id = au.id)
+	WHERE ar.author_id = 1 or ar.author_id = 15;
+DEBUG:  Router planner cannot handle multi-shard select queries
+ id | author_id | title | word_count | name | id
+---------------------------------------------------------------------
+(0 rows)
+
+-- following is a bug, function should have been
+-- evaluated at master before going to worker
+-- need to use a append distributed table here
+SELECT create_distributed_table('articles_append', 'author_id', 'append');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SET citus.shard_replication_factor TO 1;
+SELECT master_create_empty_shard('articles_append') AS shard_id \gset
+UPDATE pg_dist_shard SET shardmaxvalue = 100, shardminvalue=1 WHERE shardid = :shard_id;
+-- we execute the query within a function to consolidate the error messages
+-- between different executors
+CREATE FUNCTION raise_failed_execution_router(query text) RETURNS void AS $$
+BEGIN
+        EXECUTE query;
+        EXCEPTION WHEN OTHERS THEN
+        IF SQLERRM LIKE '%failed to execute task%' THEN
+                RAISE 'Task failed to execute';
+        ELSIF SQLERRM LIKE '%does not exist%' THEN
+          RAISE 'Task failed to execute';
+        ELSIF SQLERRM LIKE '%could not receive query results%' THEN
+          	RAISE 'Task failed to execute';
+        END IF;
+END;
+$$LANGUAGE plpgsql;
+DEBUG:  switching to sequential query execution mode
+DETAIL:  A command for a distributed function is run. To make sure subsequent commands see the function correctly we need to make sure to use only one connection for all future commands
+SET client_min_messages TO ERROR;
+\set VERBOSITY terse
+SELECT raise_failed_execution_router($$
+	SELECT author_id FROM articles_append
+		WHERE
+			substring('articles_append'::regclass::text, 1, 5) = 'hello'
+		ORDER BY
+			author_id
+		LIMIT 1;
+$$);
+ERROR:  Task failed to execute
+-- same query with where false but evaluation left to worker
+SELECT raise_failed_execution_router($$
+	SELECT author_id FROM articles_append
+		WHERE
+			substring('articles_append'::regclass::text, 1, 4) = 'hello'
+		ORDER BY
+			author_id
+		LIMIT 1;
+$$);
+ERROR:  Task failed to execute
+-- hash-distributed tables can be evaluated on workers since they are synced
+SELECT raise_failed_execution_router($$
+	SELECT author_id FROM articles_single_shard_hash
+		WHERE
+			substring('articles_single_shard_hash'::regclass::text, 1, 4) = 'hello'
+		ORDER BY
+			author_id
+		LIMIT 1;
+$$);
+ raise_failed_execution_router
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT raise_failed_execution_router($$
+	SELECT author_id FROM articles_hash
+		WHERE
+			author_id = 1
+			AND substring('articles_hash'::regclass::text, 1, 5) = 'hello'
+		ORDER BY
+			author_id
+		LIMIT 1;
+$$);
+ raise_failed_execution_router
+---------------------------------------------------------------------
+
+(1 row)
+
+-- create a dummy function to be used in filtering
+CREATE OR REPLACE FUNCTION someDummyFunction(regclass)
+    RETURNS text AS
+$$
+BEGIN
+    RETURN md5($1::text);
+END;
+$$ LANGUAGE 'plpgsql' IMMUTABLE;
+-- not router plannable, returns all rows
+SELECT * FROM articles_hash
+	WHERE
+		someDummyFunction('articles_hash') = md5('articles_hash')
+	ORDER BY
+		author_id, id
+	LIMIT 5;
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- router plannable, errors
+SELECT raise_failed_execution_router($$
+	SELECT * FROM articles_hash
+		WHERE
+			someDummyFunction('articles_hash') = md5('articles_hash') AND author_id = 1
+		ORDER BY
+			author_id, id
+		LIMIT 5;
+$$);
+ raise_failed_execution_router
+---------------------------------------------------------------------
+
+(1 row)
+
+\set VERBOSITY DEFAULT
+-- temporarily turn off debug messages before dropping the function
+SET client_min_messages TO 'NOTICE';
+DROP FUNCTION someDummyFunction(regclass);
+SET client_min_messages TO 'DEBUG2';
+-- complex query hitting a single shard
+SELECT
+	count(DISTINCT CASE
+			WHEN
+				word_count > 100
+			THEN
+				id
+			ELSE
+				NULL
+			END) as c
+	FROM
+		articles_hash
+	WHERE
+		author_id = 5;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 5
+ c
+---------------------------------------------------------------------
+ 5
+(1 row)
+
+-- same query is not router plannable if hits multiple shards
+SELECT
+	count(DISTINCT CASE
+			WHEN
+				word_count > 100
+			THEN
+				id
+			ELSE
+				NULL
+			END) as c
+	FROM
+		articles_hash
+ 	GROUP BY
+		author_id
+	ORDER BY c;
+DEBUG:  Router planner cannot handle multi-shard select queries
+ c
+---------------------------------------------------------------------
+ 4
+ 5
+ 5
+ 5
+ 5
+ 5
+ 5
+ 5
+ 5
+ 5
+(10 rows)
+
+-- queries inside transactions can be router plannable
+BEGIN;
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1
+	ORDER BY id;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+END;
+-- queries inside read-only transactions can be router plannable
+BEGIN;
+SET TRANSACTION READ ONLY;
+SELECT *
+	FROM articles_hash
+	WHERE author_id = 1
+	ORDER BY id;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+END;
+-- cursor queries are router plannable
+BEGIN;
+DECLARE test_cursor CURSOR FOR
+	SELECT *
+		FROM articles_hash
+		WHERE author_id = 1
+		ORDER BY id;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+FETCH test_cursor;
+ id | author_id |  title   | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous |       9572
+(1 row)
+
+FETCH ALL test_cursor;
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(4 rows)
+
+FETCH test_cursor; -- fetch one row after the last
+ id | author_id | title | word_count
+---------------------------------------------------------------------
+(0 rows)
+
+FETCH BACKWARD test_cursor;
+ id | author_id |  title   | word_count
+---------------------------------------------------------------------
+ 41 |         1 | aznavour |      11814
+(1 row)
+
+END;
+-- queries inside copy can be router plannable
+COPY (
+	SELECT *
+	FROM articles_hash
+	WHERE author_id = 1
+	ORDER BY id) TO STDOUT;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+1	1	arsenous	9572
+11	1	alamo	1347
+21	1	arcading	5890
+31	1	athwartships	7271
+41	1	aznavour	11814
+-- table creation queries inside can be router plannable
+CREATE TEMP TABLE temp_articles_hash as
+	SELECT *
+	FROM articles_hash
+	WHERE author_id = 1
+	ORDER BY id;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+-- router plannable queries may include filter for aggregates
+SELECT count(*), count(*) FILTER (WHERE id < 3)
+	FROM articles_hash
+	WHERE author_id = 1;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ count | count
+---------------------------------------------------------------------
+     5 |     1
+(1 row)
+
+-- non-router plannable queries also support filters
+SELECT count(*), count(*) FILTER (WHERE id < 3)
+	FROM articles_hash
+	WHERE author_id = 1 or author_id = 2;
+DEBUG:  Router planner cannot handle multi-shard select queries
+ count | count
+---------------------------------------------------------------------
+    10 |     2
+(1 row)
+
+-- prepare queries can be router plannable
+PREPARE author_1_articles as
+	SELECT *
+	FROM articles_hash
+	WHERE author_id = 1
+	ORDER BY 1;
+EXECUTE author_1_articles;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- parametric prepare queries can be router plannable
+PREPARE author_articles(int) as
+	SELECT *
+	FROM articles_hash
+	WHERE author_id = $1
+	ORDER BY 1;
+EXECUTE author_articles(1);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+-- queries inside plpgsql functions could be router plannable
+CREATE OR REPLACE FUNCTION author_articles_max_id() RETURNS int AS $$
+DECLARE
+  max_id integer;
+BEGIN
+	SELECT MAX(id) FROM articles_hash ah
+		WHERE author_id = 1
+		into max_id;
+	return max_id;
+END;
+$$ LANGUAGE plpgsql;
+DEBUG:  switching to sequential query execution mode
+DETAIL:  A command for a distributed function is run. To make sure subsequent commands see the function correctly we need to make sure to use only one connection for all future commands
+SELECT author_articles_max_id();
+DEBUG:  Creating router plan
+CONTEXT:  SQL statement "SELECT MAX(id) FROM articles_hash ah
+		WHERE author_id = 1"
+PL/pgSQL function author_articles_max_id() line XX at SQL statement
+DEBUG:  query has a single distribution column value: 1
+CONTEXT:  SQL statement "SELECT MAX(id) FROM articles_hash ah
+		WHERE author_id = 1"
+PL/pgSQL function author_articles_max_id() line XX at SQL statement
+ author_articles_max_id
+---------------------------------------------------------------------
+                     41
+(1 row)
+
+-- check that function returning setof query are router plannable
+CREATE OR REPLACE FUNCTION author_articles_id_word_count() RETURNS TABLE(id bigint, word_count int) AS $$
+DECLARE
+BEGIN
+	RETURN QUERY
+		SELECT ah.id, ah.word_count
+		FROM articles_hash ah
+		WHERE author_id = 1;
+
+END;
+$$ LANGUAGE plpgsql;
+DEBUG:  switching to sequential query execution mode
+DETAIL:  A command for a distributed function is run. To make sure subsequent commands see the function correctly we need to make sure to use only one connection for all future commands
+SELECT * FROM author_articles_id_word_count() ORDER BY 1;
+DEBUG:  Creating router plan
+CONTEXT:  SQL statement "SELECT ah.id, ah.word_count
+		FROM articles_hash ah
+		WHERE author_id = 1"
+PL/pgSQL function author_articles_id_word_count() line XX at RETURN QUERY
+DEBUG:  query has a single distribution column value: 1
+CONTEXT:  SQL statement "SELECT ah.id, ah.word_count
+		FROM articles_hash ah
+		WHERE author_id = 1"
+PL/pgSQL function author_articles_id_word_count() line XX at RETURN QUERY
+ id | word_count
+---------------------------------------------------------------------
+  1 |       9572
+ 11 |       1347
+ 21 |       5890
+ 31 |       7271
+ 41 |      11814
+(5 rows)
+
+-- materialized views can be created for router plannable queries
+CREATE MATERIALIZED VIEW mv_articles_hash_empty AS
+	SELECT * FROM articles_hash WHERE author_id = 1;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+SELECT * FROM mv_articles_hash_empty;
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+ 11 |         1 | alamo        |       1347
+ 21 |         1 | arcading     |       5890
+ 31 |         1 | athwartships |       7271
+ 41 |         1 | aznavour     |      11814
+(5 rows)
+
+CREATE MATERIALIZED VIEW mv_articles_hash_data AS
+	SELECT * FROM articles_hash WHERE author_id in (1,2);
+DEBUG:  Router planner cannot handle multi-shard select queries
+SELECT * FROM mv_articles_hash_data ORDER BY 1, 2, 3, 4;
+ id | author_id |    title     | word_count
+---------------------------------------------------------------------
+  1 |         1 | arsenous     |       9572
+  2 |         2 | abducing     |      13642
+ 11 |         1 | alamo        |       1347
+ 12 |         2 | archiblast   |      18185
+ 21 |         1 | arcading     |       5890
+ 22 |         2 | antipope     |       2728
+ 31 |         1 | athwartships |       7271
+ 32 |         2 | amazon       |      11342
+ 41 |         1 | aznavour     |      11814
+ 42 |         2 | ausable      |      15885
+(10 rows)
+
+SELECT id
+	FROM articles_hash
+	WHERE author_id = 1
+	ORDER BY 1;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id
+---------------------------------------------------------------------
+  1
+ 11
+ 21
+ 31
+ 41
+(5 rows)
+
+INSERT INTO articles_hash VALUES (51, 1, 'amateus', 1814), (52, 1, 'second amateus', 2824);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+-- verify insert is successful (not router plannable and executable)
+SELECT id
+	FROM articles_hash
+	WHERE author_id = 1
+	ORDER BY 1;
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ id
+---------------------------------------------------------------------
+  1
+ 11
+ 21
+ 31
+ 41
+ 51
+ 52
+(7 rows)
+
+SET client_min_messages to 'NOTICE';
+-- test that a connection failure marks placements invalid
+SET citus.shard_replication_factor TO 2;
+CREATE TABLE failure_test (a int, b int);
+SELECT create_distributed_table('failure_test', 'a', 'hash');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SET citus.enable_ddl_propagation TO off;
+CREATE USER router_user;
+GRANT USAGE ON SCHEMA multi_router_planner TO router_user;
+GRANT INSERT ON ALL TABLES IN SCHEMA multi_router_planner TO router_user;
+\c - - - :worker_1_port
+SET citus.enable_ddl_propagation TO off;
+CREATE USER router_user;
+GRANT USAGE ON SCHEMA multi_router_planner TO router_user;
+GRANT INSERT ON ALL TABLES IN SCHEMA multi_router_planner TO router_user;
+\c - router_user - :master_port
+SET search_path TO multi_router_planner;
+-- we will fail to connect to worker 2, since the user does not exist
+-- still, we never mark placements inactive. Instead, fail the transaction
+BEGIN;
+INSERT INTO failure_test VALUES (1, 1);
+ERROR:  connection to the remote node router_user@localhost:xxxxx failed with the following error: FATAL:  role "router_user" does not exist
+ROLLBACK;
+INSERT INTO failure_test VALUES (2, 1);
+ERROR:  connection to the remote node router_user@localhost:xxxxx failed with the following error: FATAL:  role "router_user" does not exist
+SELECT shardid, shardstate, nodename, nodeport FROM pg_dist_shard_placement
+	WHERE shardid IN (
+		SELECT shardid FROM pg_dist_shard
+		WHERE logicalrelid = 'failure_test'::regclass
+	)
+	ORDER BY shardid, nodeport;
+ shardid | shardstate | nodename  | nodeport
+---------------------------------------------------------------------
+  840017 |          1 | localhost |    57637
+  840017 |          1 | localhost |    57638
+  840018 |          1 | localhost |    57637
+  840018 |          1 | localhost |    57638
+  840019 |          1 | localhost |    57637
+  840019 |          1 | localhost |    57638
+  840020 |          1 | localhost |    57637
+  840020 |          1 | localhost |    57638
+(8 rows)
+
+\c - postgres - :worker_1_port
+DROP OWNED BY router_user;
+DROP USER router_user;
+\c - - - :master_port
+DROP OWNED BY router_user;
+DROP USER router_user;
+SET search_path TO multi_router_planner;
+SET citus.next_shard_id TO 850000;
+SET citus.shard_replication_factor TO 1;
+CREATE TABLE single_shard_dist(a int, b int);
+SELECT create_distributed_table('single_shard_dist', 'a', shard_count=>1);
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SET citus.shard_replication_factor TO 2;
+CREATE TABLE table_with_four_shards(a int, b int);
+SELECT create_distributed_table('table_with_four_shards', 'a', shard_count=>4);
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SET client_min_messages TO DEBUG2;
+-- Make sure that router rejects planning this query because
+-- the target shards are not placed on the same node when
+-- citus.enable_non_colocated_router_query_pushdown is disabled.
+-- Otherwise, it throws a somewhat meaningless error but we assume
+-- that the user is aware of the setting.
+SET citus.enable_non_colocated_router_query_pushdown TO ON;
+WITH cte AS (
+    DELETE FROM table_with_four_shards WHERE a = 1 RETURNING *
+)
+SELECT * FROM single_shard_dist WHERE b IN (SELECT b FROM cte);
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+ERROR:  relation "multi_router_planner.single_shard_dist_850000" does not exist
+CONTEXT:  while executing command on localhost:xxxxx
+SET citus.enable_non_colocated_router_query_pushdown TO OFF;
+WITH cte AS (
+    DELETE FROM table_with_four_shards WHERE a = 1 RETURNING *
+)
+SELECT * FROM single_shard_dist WHERE b IN (SELECT b FROM cte);
+DEBUG:  router planner does not support queries that reference non-colocated distributed tables
+DEBUG:  generating subplan XXX_1 for CTE cte: DELETE FROM multi_router_planner.table_with_four_shards WHERE (a OPERATOR(pg_catalog.=) 1) RETURNING a, b
+DEBUG:  Distributed planning for a fast-path router query
+DEBUG:  Creating router plan
+DEBUG:  query has a single distribution column value: 1
+DEBUG:  Plan XXX query after replacing subqueries and CTEs: SELECT a, b FROM multi_router_planner.single_shard_dist WHERE (b OPERATOR(pg_catalog.=) ANY (SELECT cte.b FROM (SELECT intermediate_result.a, intermediate_result.b FROM read_intermediate_result('XXX_1'::text, 'binary'::citus_copy_format) intermediate_result(a integer, b integer)) cte))
+DEBUG:  Creating router plan
+ a | b
+---------------------------------------------------------------------
+(0 rows)
+
+RESET citus.enable_non_colocated_router_query_pushdown;
+SET client_min_messages TO WARNING;
+DROP SCHEMA multi_router_planner CASCADE;

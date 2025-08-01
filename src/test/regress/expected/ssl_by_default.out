@@ -1,0 +1,67 @@
+-- Citus uses ssl by default now. It does so by turning on ssl and if needed will generate
+-- self-signed certificates.
+-- To test this we will verify that SSL is set to ON for all machines, and we will make
+-- sure connections to workers use SSL by having it required in citus.conn_nodeinfo and
+-- lastly we will inspect the ssl state for connections to the workers
+-- ssl can only be enabled by default on installations that are OpenSSL-enabled.
+SHOW ssl_ciphers \gset
+SELECT :'ssl_ciphers' != 'none' AS hasssl;
+ hasssl
+---------------------------------------------------------------------
+ t
+(1 row)
+
+SHOW ssl;
+ ssl
+---------------------------------------------------------------------
+ on
+(1 row)
+
+SELECT run_command_on_workers($$
+    SHOW ssl;
+$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,on)
+ (localhost,57638,t,on)
+(2 rows)
+
+SHOW citus.node_conninfo;
+ citus.node_conninfo
+---------------------------------------------------------------------
+ sslmode=require
+(1 row)
+
+SELECT run_command_on_workers($$
+    SHOW citus.node_conninfo;
+$$);
+       run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,sslmode=require)
+ (localhost,57638,t,sslmode=require)
+(2 rows)
+
+SELECT run_command_on_workers($$
+    SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid();
+$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,t)
+ (localhost,57638,t,t)
+(2 rows)
+
+SHOW ssl_ciphers;
+                                                                                                       ssl_ciphers
+---------------------------------------------------------------------
+ ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384
+(1 row)
+
+SELECT run_command_on_workers($$
+    SHOW ssl_ciphers;
+$$);
+                                                                                                           run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384)
+ (localhost,57638,t,ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384)
+(2 rows)
+

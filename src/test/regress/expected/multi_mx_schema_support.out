@@ -1,0 +1,624 @@
+--
+-- MULTI_MX_SCHEMA_SUPPORT
+--
+-- connect to a worker node and run some queries
+\c - - - :worker_1_port
+-- test very basic queries
+SELECT * FROM nation_hash ORDER BY n_nationkey LIMIT 4;
+ n_nationkey |          n_name           | n_regionkey |                                                  n_comment
+---------------------------------------------------------------------
+           0 | ALGERIA                   |           0 |  haggle. carefully final deposits detect slyly agai
+           1 | ARGENTINA                 |           1 | al foxes promise slyly according to the regular accounts. bold requests alon
+           2 | BRAZIL                    |           1 | y alongside of the pending deposits. carefully special packages are about the ironic forges. slyly special
+           3 | CANADA                    |           1 | eas hang ironic, silent packages. slyly regular packages are furiously over the tithes. fluffily bold
+(4 rows)
+
+SELECT * FROM citus_mx_test_schema.nation_hash ORDER BY n_nationkey LIMIT 4;
+ n_nationkey |          n_name           | n_regionkey |                                                  n_comment
+---------------------------------------------------------------------
+           0 | ALGERIA                   |           0 |  haggle. carefully final deposits detect slyly agai
+           1 | ARGENTINA                 |           1 | al foxes promise slyly according to the regular accounts. bold requests alon
+           2 | BRAZIL                    |           1 | y alongside of the pending deposits. carefully special packages are about the ironic forges. slyly special
+           3 | CANADA                    |           1 | eas hang ironic, silent packages. slyly regular packages are furiously over the tithes. fluffily bold
+(4 rows)
+
+-- test cursors
+SET search_path TO public;
+BEGIN;
+DECLARE test_cursor CURSOR FOR
+    SELECT *
+        FROM nation_hash
+        WHERE n_nationkey = 1;
+FETCH test_cursor;
+ n_nationkey |          n_name           | n_regionkey |                                  n_comment
+---------------------------------------------------------------------
+           1 | ARGENTINA                 |           1 | al foxes promise slyly according to the regular accounts. bold requests alon
+(1 row)
+
+FETCH test_cursor;
+ n_nationkey | n_name | n_regionkey | n_comment
+---------------------------------------------------------------------
+(0 rows)
+
+FETCH BACKWARD test_cursor;
+ n_nationkey |          n_name           | n_regionkey |                                  n_comment
+---------------------------------------------------------------------
+           1 | ARGENTINA                 |           1 | al foxes promise slyly according to the regular accounts. bold requests alon
+(1 row)
+
+END;
+-- test with search_path is set
+SET search_path TO citus_mx_test_schema;
+BEGIN;
+DECLARE test_cursor CURSOR FOR
+    SELECT *
+        FROM nation_hash
+        WHERE n_nationkey = 1;
+FETCH test_cursor;
+ n_nationkey |          n_name           | n_regionkey |                                  n_comment
+---------------------------------------------------------------------
+           1 | ARGENTINA                 |           1 | al foxes promise slyly according to the regular accounts. bold requests alon
+(1 row)
+
+FETCH test_cursor;
+ n_nationkey | n_name | n_regionkey | n_comment
+---------------------------------------------------------------------
+(0 rows)
+
+FETCH BACKWARD test_cursor;
+ n_nationkey |          n_name           | n_regionkey |                                  n_comment
+---------------------------------------------------------------------
+           1 | ARGENTINA                 |           1 | al foxes promise slyly according to the regular accounts. bold requests alon
+(1 row)
+
+END;
+-- test inserting to table in different schema
+SET search_path TO public;
+DELETE from citus_mx_test_schema.nation_hash where n_nationkey = 100; -- allow rerunning this file
+INSERT INTO citus_mx_test_schema.nation_hash(n_nationkey, n_name, n_regionkey) VALUES (100, 'TURKEY', 3);
+-- verify insertion
+SELECT * FROM citus_mx_test_schema.nation_hash WHERE n_nationkey = 100;
+ n_nationkey |          n_name           | n_regionkey | n_comment
+---------------------------------------------------------------------
+         100 | TURKEY                    |           3 |
+(1 row)
+
+-- test with search_path is set
+SET search_path TO citus_mx_test_schema;
+DELETE from nation_hash where n_nationkey = 101; -- allow rerunning this file
+INSERT INTO nation_hash(n_nationkey, n_name, n_regionkey) VALUES (101, 'GERMANY', 3);
+-- verify insertion
+SELECT * FROM nation_hash WHERE n_nationkey = 101;
+ n_nationkey |          n_name           | n_regionkey | n_comment
+---------------------------------------------------------------------
+         101 | GERMANY                   |           3 |
+(1 row)
+
+-- TODO: add UPDATE/DELETE/UPSERT
+-- test UDFs with schemas
+SET search_path TO public;
+-- UDF in public, table in a schema other than public, search_path is not set
+SELECT simpleTestFunction(n_nationkey)::int FROM citus_mx_test_schema.nation_hash GROUP BY 1 ORDER BY 1 DESC LIMIT 5;
+ simpletestfunction
+---------------------------------------------------------------------
+                152
+                151
+                 37
+                 35
+                 34
+(5 rows)
+
+-- UDF in public, table in a schema other than public, search_path is set
+SET search_path TO citus_mx_test_schema;
+SELECT public.simpleTestFunction(n_nationkey)::int FROM citus_mx_test_schema.nation_hash GROUP BY 1 ORDER BY 1 DESC LIMIT 5;
+ simpletestfunction
+---------------------------------------------------------------------
+                152
+                151
+                 37
+                 35
+                 34
+(5 rows)
+
+-- UDF in schema, table in a schema other than public, search_path is not set
+SET search_path TO public;
+SELECT citus_mx_test_schema.simpleTestFunction2(n_nationkey)::int FROM citus_mx_test_schema.nation_hash  GROUP BY 1 ORDER BY 1 DESC LIMIT 5;
+ simpletestfunction2
+---------------------------------------------------------------------
+                 152
+                 151
+                  37
+                  35
+                  34
+(5 rows)
+
+-- UDF in schema, table in a schema other than public, search_path is set
+SET search_path TO citus_mx_test_schema;
+SELECT simpleTestFunction2(n_nationkey)::int FROM nation_hash  GROUP BY 1 ORDER BY 1 DESC LIMIT 5;
+ simpletestfunction2
+---------------------------------------------------------------------
+                 152
+                 151
+                  37
+                  35
+                  34
+(5 rows)
+
+-- test operators with schema
+SET search_path TO public;
+-- test with search_path is not set
+SELECT * FROM citus_mx_test_schema.nation_hash  WHERE n_nationkey OPERATOR(citus_mx_test_schema.===) 1;
+ n_nationkey |          n_name           | n_regionkey |                                  n_comment
+---------------------------------------------------------------------
+           1 | ARGENTINA                 |           1 | al foxes promise slyly according to the regular accounts. bold requests alon
+(1 row)
+
+-- test with search_path is set
+SET search_path TO citus_mx_test_schema;
+SELECT * FROM nation_hash  WHERE n_nationkey OPERATOR(===) 1;
+ n_nationkey |          n_name           | n_regionkey |                                  n_comment
+---------------------------------------------------------------------
+           1 | ARGENTINA                 |           1 | al foxes promise slyly according to the regular accounts. bold requests alon
+(1 row)
+
+SELECT * FROM citus_mx_test_schema.nation_hash_collation_search_path ORDER BY 1;
+ n_nationkey |          n_name           | n_regionkey |                                                 n_comment
+---------------------------------------------------------------------
+           0 | ALGERIA                   |           0 | haggle. carefully final deposits detect slyly agai
+           1 | ARGENTINA                 |           1 | al foxes promise slyly according to the regular accounts. bold requests alon
+           2 | BRAZIL                    |           1 | y alongside of the pending deposits. carefully special packages are about the ironic forges. slyly special
+           3 | CANADA                    |           1 | eas hang ironic, silent packages. slyly regular packages are furiously over the tithes. fluffily bold
+           4 | EGYPT                     |           4 | y above the carefully unusual theodolites. final dugouts are quickly across the furiously regular d
+           5 | ETHIOPIA                  |           0 | ven packages wake quickly. regu
+(6 rows)
+
+SELECT n_comment FROM citus_mx_test_schema.nation_hash_collation_search_path ORDER BY n_comment COLLATE citus_mx_test_schema.english;
+                                                 n_comment
+---------------------------------------------------------------------
+ al foxes promise slyly according to the regular accounts. bold requests alon
+ eas hang ironic, silent packages. slyly regular packages are furiously over the tithes. fluffily bold
+ haggle. carefully final deposits detect slyly agai
+ ven packages wake quickly. regu
+ y above the carefully unusual theodolites. final dugouts are quickly across the furiously regular d
+ y alongside of the pending deposits. carefully special packages are about the ironic forges. slyly special
+(6 rows)
+
+SET search_path  TO citus_mx_test_schema;
+SELECT * FROM nation_hash_collation_search_path ORDER BY 1 DESC;
+ n_nationkey |          n_name           | n_regionkey |                                                 n_comment
+---------------------------------------------------------------------
+           5 | ETHIOPIA                  |           0 | ven packages wake quickly. regu
+           4 | EGYPT                     |           4 | y above the carefully unusual theodolites. final dugouts are quickly across the furiously regular d
+           3 | CANADA                    |           1 | eas hang ironic, silent packages. slyly regular packages are furiously over the tithes. fluffily bold
+           2 | BRAZIL                    |           1 | y alongside of the pending deposits. carefully special packages are about the ironic forges. slyly special
+           1 | ARGENTINA                 |           1 | al foxes promise slyly according to the regular accounts. bold requests alon
+           0 | ALGERIA                   |           0 | haggle. carefully final deposits detect slyly agai
+(6 rows)
+
+SELECT n_comment FROM nation_hash_collation_search_path ORDER BY n_comment COLLATE english;
+                                                 n_comment
+---------------------------------------------------------------------
+ al foxes promise slyly according to the regular accounts. bold requests alon
+ eas hang ironic, silent packages. slyly regular packages are furiously over the tithes. fluffily bold
+ haggle. carefully final deposits detect slyly agai
+ ven packages wake quickly. regu
+ y above the carefully unusual theodolites. final dugouts are quickly across the furiously regular d
+ y alongside of the pending deposits. carefully special packages are about the ironic forges. slyly special
+(6 rows)
+
+SELECT * FROM citus_mx_test_schema.nation_hash_composite_types WHERE test_col = '(a,a)'::citus_mx_test_schema.new_composite_type ORDER BY 1::int DESC;
+ n_nationkey |          n_name           | n_regionkey |                     n_comment                      | test_col
+---------------------------------------------------------------------
+           0 | ALGERIA                   |           0 | haggle. carefully final deposits detect slyly agai | (a,a)
+(1 row)
+
+--test with search_path is set
+SET search_path TO citus_mx_test_schema;
+SELECT * FROM nation_hash_composite_types WHERE test_col = '(a,a)'::new_composite_type ORDER BY 1::int DESC;
+ n_nationkey |          n_name           | n_regionkey |                     n_comment                      | test_col
+---------------------------------------------------------------------
+           0 | ALGERIA                   |           0 | haggle. carefully final deposits detect slyly agai | (a,a)
+(1 row)
+
+SET citus.enable_repartition_joins to ON;
+-- check when search_path is public,
+-- join of two tables which are in different schemas,
+-- join on partition column
+SET search_path TO public;
+SELECT
+    count (*)
+FROM
+    citus_mx_test_schema_join_1.nation_hash n1, citus_mx_test_schema_join_2.nation_hash n2
+WHERE
+    n1.n_nationkey = n2.n_nationkey;
+ count
+---------------------------------------------------------------------
+    25
+(1 row)
+
+-- check when search_path is different than public,
+-- join of two tables which are in different schemas,
+-- join on partition column
+SET search_path TO citus_mx_test_schema_join_1;
+SELECT
+    count (*)
+FROM
+    nation_hash n1, citus_mx_test_schema_join_2.nation_hash n2
+WHERE
+    n1.n_nationkey = n2.n_nationkey;
+ count
+---------------------------------------------------------------------
+    25
+(1 row)
+
+-- check when search_path is public,
+-- join of two tables which are in same schemas,
+-- join on partition column
+SET search_path TO public;
+SELECT
+    count (*)
+FROM
+    citus_mx_test_schema_join_1.nation_hash n1, citus_mx_test_schema_join_1.nation_hash_2 n2
+WHERE
+    n1.n_nationkey = n2.n_nationkey;
+ count
+---------------------------------------------------------------------
+    25
+(1 row)
+
+-- check when search_path is different than public,
+-- join of two tables which are in same schemas,
+-- join on partition column
+SET search_path TO citus_mx_test_schema_join_1;
+SELECT
+    count (*)
+FROM
+    nation_hash n1, nation_hash_2 n2
+WHERE
+    n1.n_nationkey = n2.n_nationkey;
+ count
+---------------------------------------------------------------------
+    25
+(1 row)
+
+-- single repartition joins
+-- check when search_path is public,
+-- join of two tables which are in different schemas,
+-- join on partition column and non-partition column
+--SET search_path TO public;
+SELECT
+    count (*)
+FROM
+    citus_mx_test_schema_join_1.nation_hash n1, citus_mx_test_schema_join_2.nation_hash n2
+WHERE
+    n1.n_nationkey = n2.n_regionkey;
+ count
+---------------------------------------------------------------------
+    25
+(1 row)
+
+-- check when search_path is different than public,
+-- join of two tables which are in different schemas,
+-- join on partition column and non-partition column
+SET search_path TO citus_mx_test_schema_join_1;
+SELECT
+    count (*)
+FROM
+    nation_hash n1, citus_mx_test_schema_join_2.nation_hash n2
+WHERE
+    n1.n_nationkey = n2.n_regionkey;
+ count
+---------------------------------------------------------------------
+    25
+(1 row)
+
+-- check when search_path is different than public,
+-- join of two tables which are in same schemas,
+-- join on partition column and non-partition column
+SET search_path TO citus_mx_test_schema_join_1;
+SELECT
+    count (*)
+FROM
+    nation_hash n1, nation_hash_2 n2
+WHERE
+    n1.n_nationkey = n2.n_regionkey;
+ count
+---------------------------------------------------------------------
+    25
+(1 row)
+
+-- hash repartition joins
+-- check when search_path is public,
+-- join of two tables which are in different schemas,
+-- join on non-partition column
+SET search_path TO public;
+SELECT
+    count (*)
+FROM
+    citus_mx_test_schema_join_1.nation_hash n1, citus_mx_test_schema_join_2.nation_hash n2
+WHERE
+    n1.n_regionkey = n2.n_regionkey;
+ count
+---------------------------------------------------------------------
+   125
+(1 row)
+
+-- check when search_path is different than public,
+-- join of two tables which are in different schemas,
+-- join on non-partition column
+SET search_path TO citus_mx_test_schema_join_1;
+SELECT
+    count (*)
+FROM
+    nation_hash n1, citus_mx_test_schema_join_2.nation_hash n2
+WHERE
+    n1.n_regionkey = n2.n_regionkey;
+ count
+---------------------------------------------------------------------
+   125
+(1 row)
+
+-- check when search_path is different than public,
+-- join of two tables which are in same schemas,
+-- join on non-partition column
+SET search_path TO citus_mx_test_schema_join_1;
+SELECT
+    count (*)
+FROM
+    nation_hash n1, nation_hash_2 n2
+WHERE
+    n1.n_regionkey = n2.n_regionkey;
+ count
+---------------------------------------------------------------------
+   125
+(1 row)
+
+-- set task_executor back to adaptive
+-- connect to the master and do some test
+-- regarding DDL support on schemas where
+-- the search_path is set
+\c - - - :master_port
+CREATE SCHEMA mx_ddl_schema_1;
+CREATE SCHEMA mx_ddl_schema_2;
+CREATE SCHEMA "CiTuS.TeAeN";
+SET citus.shard_count TO 4;
+SET citus.shard_replication_factor TO 1;
+-- in the first test make sure that we handle DDLs
+-- when search path is set
+SET search_path TO mx_ddl_schema_1;
+CREATE TABLE table_1 (key int PRIMARY KEY, value text);
+SELECT create_distributed_table('table_1', 'key');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE INDEX i1 ON table_1(value);
+CREATE INDEX CONCURRENTLY i2 ON table_1(value);
+-- now create a foriegn key on tables that are on seperate schemas
+SET search_path TO mx_ddl_schema_1, mx_ddl_schema_2;
+CREATE TABLE mx_ddl_schema_2.table_2 (key int PRIMARY KEY, value text);
+SELECT create_distributed_table('mx_ddl_schema_2.table_2', 'key');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+ALTER TABLE table_2 ADD CONSTRAINT test_constraint FOREIGN KEY (key) REFERENCES table_1(key);
+-- we can also handle schema/table names with quotation
+SET search_path TO "CiTuS.TeAeN";
+CREATE TABLE "TeeNTabLE.1!?!"(id int, "TeNANt_Id" int);
+SELECT create_distributed_table('"TeeNTabLE.1!?!"', 'id');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE INDEX "MyTenantIndex" ON  "CiTuS.TeAeN"."TeeNTabLE.1!?!"("TeNANt_Id");
+SET search_path TO "CiTuS.TeAeN", mx_ddl_schema_1, mx_ddl_schema_2;
+ALTER TABLE "TeeNTabLE.1!?!" ADD CONSTRAINT test_constraint_2 FOREIGN KEY (id) REFERENCES table_1(key);
+ALTER TABLE "TeeNTabLE.1!?!" ADD COLUMN new_col INT;
+-- same semantics with CREATE INDEX CONCURRENTLY such that
+-- it uses a single connection to execute all the commands
+SET citus.multi_shard_modify_mode TO 'sequential';
+ALTER TABLE "TeeNTabLE.1!?!" DROP COLUMN new_col;
+-- set it back to the default value
+SET citus.multi_shard_modify_mode TO 'parallel';
+-- test with a not existing schema is in the search path
+SET search_path TO not_existing_schema, "CiTuS.TeAeN";
+ALTER TABLE "TeeNTabLE.1!?!" ADD COLUMN new_col INT;
+-- test with a public schema is in the search path
+SET search_path TO public, "CiTuS.TeAeN";
+ALTER TABLE "TeeNTabLE.1!?!" DROP COLUMN new_col;
+-- make sure that we handle transaction blocks properly
+BEGIN;
+    SET search_path TO public, "CiTuS.TeAeN";
+    ALTER TABLE "TeeNTabLE.1!?!" ADD COLUMN new_col INT;
+    SET search_path TO mx_ddl_schema_1;
+    CREATE INDEX i55 ON table_1(value);
+    SET search_path TO mx_ddl_schema_1, public, "CiTuS.TeAeN";
+    ALTER TABLE "TeeNTabLE.1!?!" DROP COLUMN new_col;
+    DROP INDEX i55;
+COMMIT;
+-- set the search_path to null
+SET search_path TO '';
+ALTER TABLE "CiTuS.TeAeN"."TeeNTabLE.1!?!" ADD COLUMN new_col INT;
+-- set the search_path to not existing schema
+SET search_path TO not_existing_schema;
+ALTER TABLE "CiTuS.TeAeN"."TeeNTabLE.1!?!" DROP COLUMN new_col;
+SET client_min_messages TO ERROR;
+DROP SCHEMA mx_ddl_schema_1, mx_ddl_schema_2, "CiTuS.TeAeN" CASCADE;
+RESET client_min_messages;
+-- test if ALTER TABLE SET SCHEMA sets the original table in the worker
+SET search_path TO public;
+CREATE SCHEMA mx_old_schema;
+CREATE TABLE mx_old_schema.table_set_schema (id int);
+SELECT create_distributed_table('mx_old_schema.table_set_schema', 'id');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE SCHEMA mx_new_schema;
+SELECT objid::oid::regnamespace::text as "Distributed Schemas"
+    FROM pg_catalog.pg_dist_object
+    WHERE objid::oid::regnamespace IN ('mx_old_schema', 'mx_new_schema')
+    ORDER BY "Distributed Schemas";
+ Distributed Schemas
+---------------------------------------------------------------------
+ mx_new_schema
+ mx_old_schema
+(2 rows)
+
+\c - - - :worker_1_port
+SELECT table_schema AS "Table's Schema" FROM information_schema.tables WHERE table_name='table_set_schema';
+ Table's Schema
+---------------------------------------------------------------------
+ mx_old_schema
+(1 row)
+
+SELECT table_schema AS "Shards' Schema"
+    FROM information_schema.tables
+    WHERE table_name LIKE 'table\_set\_schema\_%'
+    GROUP BY table_schema;
+ Shards' Schema
+---------------------------------------------------------------------
+ mx_old_schema
+(1 row)
+
+-- Show that altering distributed schema is not allowed on worker nodes
+ALTER SCHEMA mx_old_schema RENAME TO temp_mx_old_schema;
+ERROR:  operation is not allowed on this node
+HINT:  Connect to the coordinator and run it again.
+\c - - - :master_port
+ALTER TABLE mx_old_schema.table_set_schema SET SCHEMA mx_new_schema;
+SELECT objid::oid::regnamespace::text as "Distributed Schemas"
+    FROM pg_catalog.pg_dist_object
+    WHERE objid::oid::regnamespace IN ('mx_old_schema', 'mx_new_schema')
+    ORDER BY "Distributed Schemas";
+ Distributed Schemas
+---------------------------------------------------------------------
+ mx_new_schema
+ mx_old_schema
+(2 rows)
+
+\c - - - :worker_1_port
+SELECT table_schema AS "Table's Schema" FROM information_schema.tables WHERE table_name='table_set_schema';
+ Table's Schema
+---------------------------------------------------------------------
+ mx_new_schema
+(1 row)
+
+SELECT table_schema AS "Shards' Schema"
+    FROM information_schema.tables
+    WHERE table_name LIKE 'table\_set\_schema\_%'
+    GROUP BY table_schema;
+ Shards' Schema
+---------------------------------------------------------------------
+ mx_new_schema
+(1 row)
+
+-- check that we can drop a user-defined schema from workers
+SET citus.enable_ddl_propagation TO OFF;
+CREATE SCHEMA localschema;
+RESET citus.enable_ddl_propagation;
+DROP SCHEMA localschema;
+\c - - - :master_port
+SELECT * FROM mx_new_schema.table_set_schema;
+ id
+---------------------------------------------------------------------
+(0 rows)
+
+-- verify local schema does not exist on the worker
+-- worker errors out as "schema does not exist"
+SET citus.enable_ddl_propagation TO OFF;
+CREATE SCHEMA localschema;
+-- should error out
+SELECT run_command_on_workers($$DROP SCHEMA localschema;$$);
+                       run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,f,"ERROR:  schema ""localschema"" does not exist")
+ (localhost,57638,f,"ERROR:  schema ""localschema"" does not exist")
+(2 rows)
+
+SET client_min_messages TO ERROR;
+CREATE ROLE schema_owner WITH LOGIN;
+RESET client_min_messages;
+SELECT run_command_on_workers($$SET citus.enable_ddl_propagation TO OFF;CREATE ROLE schema_owner WITH LOGIN;RESET citus.enable_ddl_propagation;$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,SET)
+ (localhost,57638,t,SET)
+(2 rows)
+
+RESET citus.enable_ddl_propagation;
+-- create schema with the name of the owner
+CREATE SCHEMA AUTHORIZATION schema_owner;
+-- verify the schema is created on workers
+SELECT run_command_on_workers($$SELECT COUNT(*) FROM pg_namespace WHERE nspname='schema_owner';$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,1)
+ (localhost,57638,t,1)
+(2 rows)
+
+DROP SCHEMA schema_owner;
+-- test CREATE SCHEMA .. GRANT ON SCHEMA commands
+-- first create the role to be granted
+SET citus.enable_ddl_propagation TO OFF;
+SET client_min_messages TO ERROR;
+CREATE ROLE role_to_be_granted WITH LOGIN;
+RESET client_min_messages;
+SELECT run_command_on_workers($$SET citus.enable_ddl_propagation TO OFF;CREATE ROLE role_to_be_granted WITH LOGIN;RESET citus.enable_ddl_propagation;$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,SET)
+ (localhost,57638,t,SET)
+(2 rows)
+
+RESET citus.enable_ddl_propagation;
+CREATE SCHEMA old_schema;
+CREATE SCHEMA new_schema
+    CREATE TABLE t1 (a int)
+    GRANT ALL ON SCHEMA old_schema TO role_to_be_granted
+    GRANT ALL ON SCHEMA new_schema TO role_to_be_granted;
+-- the role should be granted on both the new and the old schema
+SELECT nspacl FROM pg_namespace WHERE nspname='old_schema' OR nspname='new_schema';
+                        nspacl
+---------------------------------------------------------------------
+ {postgres=UC/postgres,role_to_be_granted=UC/postgres}
+ {postgres=UC/postgres,role_to_be_granted=UC/postgres}
+(2 rows)
+
+-- verify on workers
+SELECT run_command_on_workers($$SELECT nspacl FROM pg_namespace WHERE nspname='new_schema';$$);
+                           run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,"{postgres=UC/postgres,role_to_be_granted=UC/postgres}")
+ (localhost,57638,t,"{postgres=UC/postgres,role_to_be_granted=UC/postgres}")
+(2 rows)
+
+SELECT run_command_on_workers($$SELECT nspacl FROM pg_namespace WHERE nspname='old_schema';$$);
+                           run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,"{postgres=UC/postgres,role_to_be_granted=UC/postgres}")
+ (localhost,57638,t,"{postgres=UC/postgres,role_to_be_granted=UC/postgres}")
+(2 rows)
+
+-- verify the table t1 is created as a local pg table
+-- this might be changed after some improvements on use_citus_managed_tables
+-- if so, please verify that t1 is added to metadata
+SELECT COUNT(*)=0 FROM pg_dist_partition WHERE logicalrelid='new_schema.t1'::regclass;
+ ?column?
+---------------------------------------------------------------------
+ t
+(1 row)
+
+DROP SCHEMA old_schema, new_schema CASCADE;
+NOTICE:  drop cascades to table new_schema.t1
+DROP SCHEMA mx_old_schema CASCADE;
+DROP SCHEMA mx_new_schema CASCADE;
+NOTICE:  drop cascades to table mx_new_schema.table_set_schema
+DROP SCHEMA localschema;
+DROP ROLE schema_owner;
+DROP ROLE role_to_be_granted;

@@ -1,1 +1,0 @@
-This directory contains top-level definitions of our (meta)data model

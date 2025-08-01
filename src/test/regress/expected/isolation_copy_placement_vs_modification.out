@@ -1,0 +1,568 @@
+Parsed test spec with 2 sessions
+
+starting permutation: s1-load-cache s1-insert s1-begin s1-select s2-delete-inactive s2-begin s2-repair-placement s1-update s2-commit s1-commit s2-print-content
+step s1-load-cache:
+ TRUNCATE test_repair_placement_vs_modification;
+
+step s1-insert:
+ INSERT INTO test_repair_placement_vs_modification VALUES (5, 10);
+
+step s1-begin:
+    BEGIN;
+ SET LOCAL citus.select_opens_transaction_block TO off;
+
+step s1-select:
+ SELECT count(*) FROM test_repair_placement_vs_modification WHERE x = 5;
+
+count
+---------------------------------------------------------------------
+    1
+(1 row)
+
+step s2-delete-inactive:
+ DELETE FROM pg_dist_shard_placement WHERE shardid IN (SELECT * FROM selected_shard) AND nodeport = 57638;
+
+step s2-begin:
+ BEGIN;
+
+step s2-repair-placement:
+ SELECT citus_copy_shard_placement((SELECT * FROM selected_shard), 'localhost', 57637, 'localhost', 57638, transfer_mode := 'block_writes');
+
+citus_copy_shard_placement
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-update:
+ UPDATE test_repair_placement_vs_modification SET y = 5 WHERE x = 5;
+ <waiting ...>
+step s2-commit: 
+ COMMIT;
+
+step s1-update: <... completed>
+step s1-commit:
+ COMMIT;
+
+step s2-print-content:
+ SELECT
+  nodeport, success, result
+ FROM
+  run_command_on_placements('test_repair_placement_vs_modification', 'select y from %s WHERE x = 5')
+ WHERE
+  shardid IN (SELECT * FROM selected_shard)
+ ORDER BY
+  nodeport;
+
+nodeport|success|result
+---------------------------------------------------------------------
+   57637|t      |     5
+   57638|t      |     5
+(2 rows)
+
+
+starting permutation: s1-load-cache s1-insert s1-begin s1-select s2-delete-inactive s2-begin s2-repair-placement s1-delete s2-commit s1-commit s2-print-content
+step s1-load-cache:
+ TRUNCATE test_repair_placement_vs_modification;
+
+step s1-insert:
+ INSERT INTO test_repair_placement_vs_modification VALUES (5, 10);
+
+step s1-begin:
+    BEGIN;
+ SET LOCAL citus.select_opens_transaction_block TO off;
+
+step s1-select:
+ SELECT count(*) FROM test_repair_placement_vs_modification WHERE x = 5;
+
+count
+---------------------------------------------------------------------
+    1
+(1 row)
+
+step s2-delete-inactive:
+ DELETE FROM pg_dist_shard_placement WHERE shardid IN (SELECT * FROM selected_shard) AND nodeport = 57638;
+
+step s2-begin:
+ BEGIN;
+
+step s2-repair-placement:
+ SELECT citus_copy_shard_placement((SELECT * FROM selected_shard), 'localhost', 57637, 'localhost', 57638, transfer_mode := 'block_writes');
+
+citus_copy_shard_placement
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-delete:
+ DELETE FROM test_repair_placement_vs_modification WHERE x = 5;
+ <waiting ...>
+step s2-commit: 
+ COMMIT;
+
+step s1-delete: <... completed>
+step s1-commit:
+ COMMIT;
+
+step s2-print-content:
+ SELECT
+  nodeport, success, result
+ FROM
+  run_command_on_placements('test_repair_placement_vs_modification', 'select y from %s WHERE x = 5')
+ WHERE
+  shardid IN (SELECT * FROM selected_shard)
+ ORDER BY
+  nodeport;
+
+nodeport|success|result
+---------------------------------------------------------------------
+   57637|t      |
+   57638|t      |
+(2 rows)
+
+
+starting permutation: s1-load-cache s1-begin s1-select s2-delete-inactive s2-begin s2-repair-placement s1-insert s2-commit s1-commit s2-print-content
+step s1-load-cache:
+ TRUNCATE test_repair_placement_vs_modification;
+
+step s1-begin:
+    BEGIN;
+ SET LOCAL citus.select_opens_transaction_block TO off;
+
+step s1-select:
+ SELECT count(*) FROM test_repair_placement_vs_modification WHERE x = 5;
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+step s2-delete-inactive:
+ DELETE FROM pg_dist_shard_placement WHERE shardid IN (SELECT * FROM selected_shard) AND nodeport = 57638;
+
+step s2-begin:
+ BEGIN;
+
+step s2-repair-placement:
+ SELECT citus_copy_shard_placement((SELECT * FROM selected_shard), 'localhost', 57637, 'localhost', 57638, transfer_mode := 'block_writes');
+
+citus_copy_shard_placement
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-insert:
+ INSERT INTO test_repair_placement_vs_modification VALUES (5, 10);
+ <waiting ...>
+step s2-commit: 
+ COMMIT;
+
+step s1-insert: <... completed>
+step s1-commit:
+ COMMIT;
+
+step s2-print-content:
+ SELECT
+  nodeport, success, result
+ FROM
+  run_command_on_placements('test_repair_placement_vs_modification', 'select y from %s WHERE x = 5')
+ WHERE
+  shardid IN (SELECT * FROM selected_shard)
+ ORDER BY
+  nodeport;
+
+nodeport|success|result
+---------------------------------------------------------------------
+   57637|t      |    10
+   57638|t      |    10
+(2 rows)
+
+
+starting permutation: s1-load-cache s1-begin s1-select s2-delete-inactive s2-begin s2-repair-placement s1-copy s2-commit s1-commit s2-print-content
+step s1-load-cache:
+ TRUNCATE test_repair_placement_vs_modification;
+
+step s1-begin:
+    BEGIN;
+ SET LOCAL citus.select_opens_transaction_block TO off;
+
+step s1-select:
+ SELECT count(*) FROM test_repair_placement_vs_modification WHERE x = 5;
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+step s2-delete-inactive:
+ DELETE FROM pg_dist_shard_placement WHERE shardid IN (SELECT * FROM selected_shard) AND nodeport = 57638;
+
+step s2-begin:
+ BEGIN;
+
+step s2-repair-placement:
+ SELECT citus_copy_shard_placement((SELECT * FROM selected_shard), 'localhost', 57637, 'localhost', 57638, transfer_mode := 'block_writes');
+
+citus_copy_shard_placement
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-copy:
+ COPY test_repair_placement_vs_modification FROM PROGRAM 'echo 1,1 && echo 2,2 && echo 3,3 && echo 4,4 && echo 5,5' WITH CSV;
+ <waiting ...>
+step s2-commit: 
+ COMMIT;
+
+step s1-copy: <... completed>
+step s1-commit:
+ COMMIT;
+
+step s2-print-content:
+ SELECT
+  nodeport, success, result
+ FROM
+  run_command_on_placements('test_repair_placement_vs_modification', 'select y from %s WHERE x = 5')
+ WHERE
+  shardid IN (SELECT * FROM selected_shard)
+ ORDER BY
+  nodeport;
+
+nodeport|success|result
+---------------------------------------------------------------------
+   57637|t      |     5
+   57638|t      |     5
+(2 rows)
+
+
+starting permutation: s1-load-cache s1-begin s1-select s2-delete-inactive s2-begin s2-repair-placement s1-ddl s2-commit s1-commit s2-print-index-count
+step s1-load-cache:
+ TRUNCATE test_repair_placement_vs_modification;
+
+step s1-begin:
+    BEGIN;
+ SET LOCAL citus.select_opens_transaction_block TO off;
+
+step s1-select:
+ SELECT count(*) FROM test_repair_placement_vs_modification WHERE x = 5;
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+step s2-delete-inactive:
+ DELETE FROM pg_dist_shard_placement WHERE shardid IN (SELECT * FROM selected_shard) AND nodeport = 57638;
+
+step s2-begin:
+ BEGIN;
+
+step s2-repair-placement:
+ SELECT citus_copy_shard_placement((SELECT * FROM selected_shard), 'localhost', 57637, 'localhost', 57638, transfer_mode := 'block_writes');
+
+citus_copy_shard_placement
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-ddl:
+ CREATE INDEX test_repair_placement_vs_modification_index ON test_repair_placement_vs_modification(x);
+ <waiting ...>
+step s2-commit: 
+ COMMIT;
+
+step s1-ddl: <... completed>
+step s1-commit:
+ COMMIT;
+
+step s2-print-index-count:
+ SELECT
+  nodeport, success, result
+ FROM
+  run_command_on_placements('test_repair_placement_vs_modification', 'select count(*) from pg_indexes WHERE tablename = ''%s''')
+ ORDER BY
+  nodeport;
+
+nodeport|success|result
+---------------------------------------------------------------------
+   57637|t      |     1
+   57637|t      |     1
+   57638|t      |     1
+   57638|t      |     1
+(4 rows)
+
+
+starting permutation: s1-insert s1-begin s1-select s2-delete-inactive s2-begin s2-repair-placement s1-update s2-commit s1-commit s2-print-content
+step s1-insert:
+ INSERT INTO test_repair_placement_vs_modification VALUES (5, 10);
+
+step s1-begin:
+    BEGIN;
+ SET LOCAL citus.select_opens_transaction_block TO off;
+
+step s1-select:
+ SELECT count(*) FROM test_repair_placement_vs_modification WHERE x = 5;
+
+count
+---------------------------------------------------------------------
+    1
+(1 row)
+
+step s2-delete-inactive:
+ DELETE FROM pg_dist_shard_placement WHERE shardid IN (SELECT * FROM selected_shard) AND nodeport = 57638;
+
+step s2-begin:
+ BEGIN;
+
+step s2-repair-placement:
+ SELECT citus_copy_shard_placement((SELECT * FROM selected_shard), 'localhost', 57637, 'localhost', 57638, transfer_mode := 'block_writes');
+
+citus_copy_shard_placement
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-update:
+ UPDATE test_repair_placement_vs_modification SET y = 5 WHERE x = 5;
+ <waiting ...>
+step s2-commit: 
+ COMMIT;
+
+step s1-update: <... completed>
+step s1-commit:
+ COMMIT;
+
+step s2-print-content:
+ SELECT
+  nodeport, success, result
+ FROM
+  run_command_on_placements('test_repair_placement_vs_modification', 'select y from %s WHERE x = 5')
+ WHERE
+  shardid IN (SELECT * FROM selected_shard)
+ ORDER BY
+  nodeport;
+
+nodeport|success|result
+---------------------------------------------------------------------
+   57637|t      |     5
+   57638|t      |     5
+(2 rows)
+
+
+starting permutation: s1-insert s1-begin s1-select s2-delete-inactive s2-begin s2-repair-placement s1-delete s2-commit s1-commit s2-print-content
+step s1-insert:
+ INSERT INTO test_repair_placement_vs_modification VALUES (5, 10);
+
+step s1-begin:
+    BEGIN;
+ SET LOCAL citus.select_opens_transaction_block TO off;
+
+step s1-select:
+ SELECT count(*) FROM test_repair_placement_vs_modification WHERE x = 5;
+
+count
+---------------------------------------------------------------------
+    1
+(1 row)
+
+step s2-delete-inactive:
+ DELETE FROM pg_dist_shard_placement WHERE shardid IN (SELECT * FROM selected_shard) AND nodeport = 57638;
+
+step s2-begin:
+ BEGIN;
+
+step s2-repair-placement:
+ SELECT citus_copy_shard_placement((SELECT * FROM selected_shard), 'localhost', 57637, 'localhost', 57638, transfer_mode := 'block_writes');
+
+citus_copy_shard_placement
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-delete:
+ DELETE FROM test_repair_placement_vs_modification WHERE x = 5;
+ <waiting ...>
+step s2-commit: 
+ COMMIT;
+
+step s1-delete: <... completed>
+step s1-commit:
+ COMMIT;
+
+step s2-print-content:
+ SELECT
+  nodeport, success, result
+ FROM
+  run_command_on_placements('test_repair_placement_vs_modification', 'select y from %s WHERE x = 5')
+ WHERE
+  shardid IN (SELECT * FROM selected_shard)
+ ORDER BY
+  nodeport;
+
+nodeport|success|result
+---------------------------------------------------------------------
+   57637|t      |
+   57638|t      |
+(2 rows)
+
+
+starting permutation: s1-begin s1-select s2-delete-inactive s2-begin s2-repair-placement s1-insert s2-commit s1-commit s2-print-content
+step s1-begin:
+    BEGIN;
+ SET LOCAL citus.select_opens_transaction_block TO off;
+
+step s1-select:
+ SELECT count(*) FROM test_repair_placement_vs_modification WHERE x = 5;
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+step s2-delete-inactive:
+ DELETE FROM pg_dist_shard_placement WHERE shardid IN (SELECT * FROM selected_shard) AND nodeport = 57638;
+
+step s2-begin:
+ BEGIN;
+
+step s2-repair-placement:
+ SELECT citus_copy_shard_placement((SELECT * FROM selected_shard), 'localhost', 57637, 'localhost', 57638, transfer_mode := 'block_writes');
+
+citus_copy_shard_placement
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-insert:
+ INSERT INTO test_repair_placement_vs_modification VALUES (5, 10);
+ <waiting ...>
+step s2-commit: 
+ COMMIT;
+
+step s1-insert: <... completed>
+step s1-commit:
+ COMMIT;
+
+step s2-print-content:
+ SELECT
+  nodeport, success, result
+ FROM
+  run_command_on_placements('test_repair_placement_vs_modification', 'select y from %s WHERE x = 5')
+ WHERE
+  shardid IN (SELECT * FROM selected_shard)
+ ORDER BY
+  nodeport;
+
+nodeport|success|result
+---------------------------------------------------------------------
+   57637|t      |    10
+   57638|t      |    10
+(2 rows)
+
+
+starting permutation: s1-begin s1-select s2-delete-inactive s2-begin s2-repair-placement s1-copy s2-commit s1-commit s2-print-content
+step s1-begin:
+    BEGIN;
+ SET LOCAL citus.select_opens_transaction_block TO off;
+
+step s1-select:
+ SELECT count(*) FROM test_repair_placement_vs_modification WHERE x = 5;
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+step s2-delete-inactive:
+ DELETE FROM pg_dist_shard_placement WHERE shardid IN (SELECT * FROM selected_shard) AND nodeport = 57638;
+
+step s2-begin:
+ BEGIN;
+
+step s2-repair-placement:
+ SELECT citus_copy_shard_placement((SELECT * FROM selected_shard), 'localhost', 57637, 'localhost', 57638, transfer_mode := 'block_writes');
+
+citus_copy_shard_placement
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-copy:
+ COPY test_repair_placement_vs_modification FROM PROGRAM 'echo 1,1 && echo 2,2 && echo 3,3 && echo 4,4 && echo 5,5' WITH CSV;
+ <waiting ...>
+step s2-commit: 
+ COMMIT;
+
+step s1-copy: <... completed>
+step s1-commit:
+ COMMIT;
+
+step s2-print-content:
+ SELECT
+  nodeport, success, result
+ FROM
+  run_command_on_placements('test_repair_placement_vs_modification', 'select y from %s WHERE x = 5')
+ WHERE
+  shardid IN (SELECT * FROM selected_shard)
+ ORDER BY
+  nodeport;
+
+nodeport|success|result
+---------------------------------------------------------------------
+   57637|t      |     5
+   57638|t      |     5
+(2 rows)
+
+
+starting permutation: s1-begin s1-select s2-delete-inactive s2-begin s2-repair-placement s1-ddl s2-commit s1-commit s2-print-index-count
+step s1-begin:
+    BEGIN;
+ SET LOCAL citus.select_opens_transaction_block TO off;
+
+step s1-select:
+ SELECT count(*) FROM test_repair_placement_vs_modification WHERE x = 5;
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+step s2-delete-inactive:
+ DELETE FROM pg_dist_shard_placement WHERE shardid IN (SELECT * FROM selected_shard) AND nodeport = 57638;
+
+step s2-begin:
+ BEGIN;
+
+step s2-repair-placement:
+ SELECT citus_copy_shard_placement((SELECT * FROM selected_shard), 'localhost', 57637, 'localhost', 57638, transfer_mode := 'block_writes');
+
+citus_copy_shard_placement
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-ddl:
+ CREATE INDEX test_repair_placement_vs_modification_index ON test_repair_placement_vs_modification(x);
+ <waiting ...>
+step s2-commit: 
+ COMMIT;
+
+step s1-ddl: <... completed>
+step s1-commit:
+ COMMIT;
+
+step s2-print-index-count:
+ SELECT
+  nodeport, success, result
+ FROM
+  run_command_on_placements('test_repair_placement_vs_modification', 'select count(*) from pg_indexes WHERE tablename = ''%s''')
+ ORDER BY
+  nodeport;
+
+nodeport|success|result
+---------------------------------------------------------------------
+   57637|t      |     1
+   57637|t      |     1
+   57638|t      |     1
+   57638|t      |     1
+(4 rows)
+

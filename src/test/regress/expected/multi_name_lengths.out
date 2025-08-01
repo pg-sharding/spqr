@@ -1,0 +1,419 @@
+--
+-- MULTI_NAME_LENGTHS
+--
+ALTER SEQUENCE pg_catalog.pg_dist_shardid_seq RESTART 225000;
+SET citus.shard_count TO 2;
+-- Verify that a table name > 56 characters gets hashed properly.
+CREATE TABLE too_long_12345678901234567890123456789012345678901234567890 (
+        col1 integer not null,
+        col2 integer not null);
+SELECT create_distributed_table('too_long_12345678901234567890123456789012345678901234567890', 'col1');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+\c - - :public_worker_1_host :worker_1_port
+\dt too_long_*
+                                      List of relations
+ Schema |                              Name                               | Type  |  Owner
+---------------------------------------------------------------------
+ public | too_long_12345678901234567890123456789012345678901234567890     | table | postgres
+ public | too_long_12345678901234567890123456789012345678_e0119164_225000 | table | postgres
+ public | too_long_12345678901234567890123456789012345678_e0119164_225001 | table | postgres
+(3 rows)
+
+\c - - :master_host :master_port
+SET citus.shard_count TO 2;
+SET citus.shard_replication_factor TO 2;
+-- Verify that the UDF works and rejects bad arguments.
+SELECT shard_name(NULL, 666666);
+ shard_name
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT shard_name(0, 666666);
+ERROR:  object_name does not reference a valid relation
+SELECT shard_name('too_long_12345678901234567890123456789012345678901234567890'::regclass, 666666);
+                           shard_name
+---------------------------------------------------------------------
+ too_long_12345678901234567890123456789012345678_e0119164_666666
+(1 row)
+
+SELECT shard_name('too_long_12345678901234567890123456789012345678901234567890'::regclass, NULL);
+ shard_name
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT shard_name('too_long_12345678901234567890123456789012345678901234567890'::regclass, -21);
+ERROR:  shard_id cannot be zero or negative value
+DROP TABLE too_long_12345678901234567890123456789012345678901234567890 CASCADE;
+-- Table to use for rename checks.
+CREATE TABLE name_lengths (
+	col1 integer not null,
+	col2 integer not null,
+	constraint constraint_a UNIQUE (col1)
+	);
+SELECT create_distributed_table('name_lengths', 'col1', 'hash');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- Verify that we CAN add columns with "too-long names", because
+-- the columns' names are not extended in the corresponding shard tables.
+ALTER TABLE name_lengths ADD COLUMN float_col_12345678901234567890123456789012345678901234567890 FLOAT;
+ALTER TABLE name_lengths ADD COLUMN date_col_12345678901234567890123456789012345678901234567890 DATE;
+ALTER TABLE name_lengths ADD COLUMN int_col_12345678901234567890123456789012345678901234567890 INTEGER DEFAULT 1;
+\c - - :public_worker_1_host :worker_1_port
+SELECT "Column", "Type", "Modifiers" FROM table_desc WHERE relid='public.name_lengths_225002'::regclass ORDER BY 1 DESC, 2 DESC;
+                            Column                            |       Type       | Modifiers
+---------------------------------------------------------------------
+ int_col_12345678901234567890123456789012345678901234567890   | integer          | default 1
+ float_col_12345678901234567890123456789012345678901234567890 | double precision |
+ date_col_12345678901234567890123456789012345678901234567890  | date             |
+ col2                                                         | integer          | not null
+ col1                                                         | integer          | not null
+(5 rows)
+
+\c - - :master_host :master_port
+-- Placeholders for unsupported add constraints with EXPLICIT names that are too long
+ALTER TABLE name_lengths ADD CONSTRAINT nl_unique_12345678901234567890123456789012345678901234567890 UNIQUE (float_col_12345678901234567890123456789012345678901234567890);
+ERROR:  cannot create constraint on "name_lengths"
+DETAIL:  Distributed relations cannot have UNIQUE, EXCLUDE, or PRIMARY KEY constraints that do not include the partition column (with an equality operator if EXCLUDE).
+ALTER TABLE name_lengths ADD CONSTRAINT nl_exclude_12345678901234567890123456789012345678901234567890 EXCLUDE (int_col_12345678901234567890123456789012345678901234567890 WITH =);
+ERROR:  cannot create constraint on "name_lengths"
+DETAIL:  Distributed relations cannot have UNIQUE, EXCLUDE, or PRIMARY KEY constraints that do not include the partition column (with an equality operator if EXCLUDE).
+ALTER TABLE name_lengths ADD CONSTRAINT nl_checky_12345678901234567890123456789012345678901234567890 CHECK (date_col_12345678901234567890123456789012345678901234567890 >= '2014-01-01'::date);
+\c - - :public_worker_1_host :worker_1_port
+SELECT "Constraint", "Definition" FROM table_checks WHERE relid='public.name_lengths_225002'::regclass ORDER BY 1 DESC, 2 DESC;
+                           Constraint                            |                                        Definition
+---------------------------------------------------------------------
+ nl_checky_1234567890123456789012345678901234567_b16df46d_225002 | CHECK (date_col_12345678901234567890123456789012345678901234567890 >= '01-01-2014'::date)
+(1 row)
+
+\c - - :master_host :master_port
+-- Rename the table to a too-long name
+SET client_min_messages TO DEBUG1;
+SET citus.force_max_query_parallelization TO ON;
+ALTER TABLE name_lengths RENAME TO name_len_12345678901234567890123456789012345678901234567890;
+DEBUG:  the name of the shard (name_len_12345678901234567890123456789012345678_fcd8ab6f_xxxxx) for relation (name_len_12345678901234567890123456789012345678901234567890) is too long, switching to sequential and local execution mode to prevent self deadlocks
+SELECT * FROM name_len_12345678901234567890123456789012345678901234567890;
+ col1 | col2 | float_col_12345678901234567890123456789012345678901234567890 | date_col_12345678901234567890123456789012345678901234567890 | int_col_12345678901234567890123456789012345678901234567890
+---------------------------------------------------------------------
+(0 rows)
+
+ALTER TABLE name_len_12345678901234567890123456789012345678901234567890 RENAME TO name_lengths;
+SELECT * FROM name_lengths;
+ col1 | col2 | float_col_12345678901234567890123456789012345678901234567890 | date_col_12345678901234567890123456789012345678901234567890 | int_col_12345678901234567890123456789012345678901234567890
+---------------------------------------------------------------------
+(0 rows)
+
+-- Test renames on zero shard distributed tables
+CREATE TABLE append_zero_shard_table (a int);
+SELECT create_distributed_table('append_zero_shard_table', 'a', 'append');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+ALTER TABLE append_zero_shard_table rename TO append_zero_shard_table_12345678901234567890123456789012345678901234567890;
+NOTICE:  identifier "append_zero_shard_table_12345678901234567890123456789012345678901234567890" will be truncated to "append_zero_shard_table_123456789012345678901234567890123456789"
+-- Verify that we do not support long renames after parallel queries are executed in transaction block
+BEGIN;
+ALTER TABLE name_lengths rename col1 to new_column_name;
+ALTER TABLE name_lengths RENAME TO name_len_12345678901234567890123456789012345678901234567890;
+ERROR:  Shard name (name_len_12345678901234567890123456789012345678_fcd8ab6f_xxxxx) for table (name_len_12345678901234567890123456789012345678901234567890) is too long and could lead to deadlocks when executed in a transaction block after a parallel query
+HINT:  Try re-running the transaction with "SET LOCAL citus.multi_shard_modify_mode TO 'sequential';"
+ROLLBACK;
+-- The same operation will work when sequential mode is set
+BEGIN;
+SET LOCAL citus.multi_shard_modify_mode TO 'sequential';
+ALTER TABLE name_lengths rename col1 to new_column_name;
+ALTER TABLE name_lengths RENAME TO name_len_12345678901234567890123456789012345678901234567890;
+DEBUG:  the name of the shard (name_len_12345678901234567890123456789012345678_fcd8ab6f_xxxxx) for relation (name_len_12345678901234567890123456789012345678901234567890) is too long, switching to sequential and local execution mode to prevent self deadlocks
+ROLLBACK;
+RESET client_min_messages;
+-- test long partitioned table renames
+SET citus.shard_replication_factor TO 1;
+CREATE TABLE partition_lengths
+(
+    tenant_id integer NOT NULL,
+    timeperiod timestamp without time zone NOT NULL
+) PARTITION BY RANGE (timeperiod);
+SELECT create_distributed_table('partition_lengths', 'tenant_id');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE partition_lengths_p2020_09_28 PARTITION OF partition_lengths FOR VALUES FROM ('2020-09-28 00:00:00') TO ('2020-09-29 00:00:00');
+-- verify that we can rename partitioned tables and partitions to too-long names
+ALTER TABLE partition_lengths RENAME TO partition_lengths_12345678901234567890123456789012345678901234567890;
+NOTICE:  identifier "partition_lengths_12345678901234567890123456789012345678901234567890" will be truncated to "partition_lengths_123456789012345678901234567890123456789012345"
+-- verify that we can rename partitioned tables and partitions with too-long names
+ALTER TABLE partition_lengths_12345678901234567890123456789012345678901234567890 RENAME TO partition_lengths;
+NOTICE:  identifier "partition_lengths_12345678901234567890123456789012345678901234567890" will be truncated to "partition_lengths_123456789012345678901234567890123456789012345"
+-- creating or attaching new partitions with long names
+CREATE TABLE partition_lengths_p2020_09_29_12345678901234567890123456789012345678901234567890 (LIKE partition_lengths_p2020_09_28);
+NOTICE:  identifier "partition_lengths_p2020_09_29_12345678901234567890123456789012345678901234567890" will be truncated to "partition_lengths_p2020_09_29_123456789012345678901234567890123"
+ALTER TABLE partition_lengths
+    ATTACH PARTITION partition_lengths_p2020_09_29_12345678901234567890123456789012345678901234567890
+    FOR VALUES FROM ('2020-09-29 00:00:00') TO ('2020-09-30 00:00:00');
+NOTICE:  identifier "partition_lengths_p2020_09_29_12345678901234567890123456789012345678901234567890" will be truncated to "partition_lengths_p2020_09_29_123456789012345678901234567890123"
+CREATE TABLE partition_lengths_p2020_09_30_12345678901234567890123456789012345678901234567890
+    PARTITION OF partition_lengths
+    FOR VALUES FROM ('2020-09-30 00:00:00') TO ('2020-10-01 00:00:00');
+NOTICE:  identifier "partition_lengths_p2020_09_30_12345678901234567890123456789012345678901234567890" will be truncated to "partition_lengths_p2020_09_30_123456789012345678901234567890123"
+CREATE TABLE partition_lengths_p2020_10_01_12345678901234567890123456789012345678901234567890
+    PARTITION OF partition_lengths
+    FOR VALUES FROM ('2020-10-01 00:00:00') TO ('2020-10-02 00:00:00');
+NOTICE:  identifier "partition_lengths_p2020_10_01_12345678901234567890123456789012345678901234567890" will be truncated to "partition_lengths_p2020_10_01_123456789012345678901234567890123"
+DROP TABLE partition_lengths_p2020_09_29_12345678901234567890123456789012345678901234567890;
+NOTICE:  identifier "partition_lengths_p2020_09_29_12345678901234567890123456789012345678901234567890" will be truncated to "partition_lengths_p2020_09_29_123456789012345678901234567890123"
+-- Placeholders for unsupported operations
+\set VERBOSITY TERSE
+-- renaming distributed table partitions are not supported
+ALTER TABLE partition_lengths_p2020_09_28 RENAME TO partition_lengths_p2020_09_28_12345678901234567890123456789012345678901234567890;
+NOTICE:  identifier "partition_lengths_p2020_09_28_12345678901234567890123456789012345678901234567890" will be truncated to "partition_lengths_p2020_09_28_123456789012345678901234567890123"
+-- renaming distributed table constraints are not supported
+ALTER TABLE name_lengths RENAME CONSTRAINT unique_12345678901234567890123456789012345678901234567890 TO unique2_12345678901234567890123456789012345678901234567890;
+ERROR:  renaming constraints belonging to distributed tables is currently unsupported
+DROP TABLE partition_lengths CASCADE;
+\set VERBOSITY DEFAULT
+-- Verify that we can create indexes with very long names on zero shard tables.
+CREATE INDEX append_zero_shard_table_idx_12345678901234567890123456789012345678901234567890 ON append_zero_shard_table_12345678901234567890123456789012345678901234567890(a);
+NOTICE:  identifier "append_zero_shard_table_idx_12345678901234567890123456789012345678901234567890" will be truncated to "append_zero_shard_table_idx_12345678901234567890123456789012345"
+NOTICE:  identifier "append_zero_shard_table_12345678901234567890123456789012345678901234567890" will be truncated to "append_zero_shard_table_123456789012345678901234567890123456789"
+-- Verify that CREATE INDEX on already distributed table has proper shard names.
+CREATE INDEX tmp_idx_12345678901234567890123456789012345678901234567890 ON name_lengths(col2);
+\c - - :public_worker_1_host :worker_1_port
+SET citus.override_table_visibility TO FALSE;
+SELECT "relname", "Column", "Type", "Definition" FROM index_attrs WHERE
+    relname SIMILAR TO 'tmp_idx_%\_\d{6}' ORDER BY 1 DESC, 2 DESC, 3 DESC, 4 DESC;
+                             relname                             | Column |  Type   | Definition
+---------------------------------------------------------------------
+ tmp_idx_123456789012345678901234567890123456789_5e470afa_225003 | col2   | integer | col2
+ tmp_idx_123456789012345678901234567890123456789_5e470afa_225002 | col2   | integer | col2
+(2 rows)
+
+\c - - :master_host :master_port
+-- Verify that a new index name > 63 characters is auto-truncated
+-- by the parser/rewriter before further processing, just as in Postgres.
+CREATE INDEX tmp_idx_123456789012345678901234567890123456789012345678901234567890 ON name_lengths(col2);
+NOTICE:  identifier "tmp_idx_123456789012345678901234567890123456789012345678901234567890" will be truncated to "tmp_idx_1234567890123456789012345678901234567890123456789012345"
+-- Verify we can rename indexes with long names
+ALTER INDEX tmp_idx_123456789012345678901234567890123456789012345678901234567890 RENAME TO tmp_idx_newname_123456789012345678901234567890123456789012345678901234567890;
+NOTICE:  identifier "tmp_idx_123456789012345678901234567890123456789012345678901234567890" will be truncated to "tmp_idx_1234567890123456789012345678901234567890123456789012345"
+NOTICE:  identifier "tmp_idx_newname_123456789012345678901234567890123456789012345678901234567890" will be truncated to "tmp_idx_newname_12345678901234567890123456789012345678901234567"
+\c - - :public_worker_1_host :worker_1_port
+SET citus.override_table_visibility TO FALSE;
+SELECT "relname", "Column", "Type", "Definition" FROM index_attrs WHERE
+    relname SIMILAR TO 'tmp_idx_%\_\d{6}' ORDER BY 1 DESC, 2 DESC, 3 DESC, 4 DESC;
+                             relname                             | Column |  Type   | Definition
+---------------------------------------------------------------------
+ tmp_idx_newname_1234567890123456789012345678901_c54e849b_225003 | col2   | integer | col2
+ tmp_idx_newname_1234567890123456789012345678901_c54e849b_225002 | col2   | integer | col2
+ tmp_idx_123456789012345678901234567890123456789_5e470afa_225003 | col2   | integer | col2
+ tmp_idx_123456789012345678901234567890123456789_5e470afa_225002 | col2   | integer | col2
+(4 rows)
+
+\c - - :master_host :master_port
+SET citus.shard_count TO 2;
+SET citus.shard_replication_factor TO 2;
+-- Verify that distributed tables with too-long names
+-- for CHECK constraints are no trouble.
+CREATE TABLE sneaky_name_lengths (
+	col1 integer not null,
+        col2 integer not null,
+        int_col_12345678901234567890123456789012345678901234567890 integer not null,
+        CHECK (int_col_12345678901234567890123456789012345678901234567890 > 100)
+        );
+SELECT create_distributed_table('sneaky_name_lengths', 'col1', 'hash');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+DROP TABLE sneaky_name_lengths CASCADE;
+CREATE TABLE sneaky_name_lengths (
+        int_col_123456789012345678901234567890123456789012345678901234 integer UNIQUE not null,
+        col2 integer not null,
+        CONSTRAINT checky_12345678901234567890123456789012345678901234567890 CHECK (int_col_123456789012345678901234567890123456789012345678901234 > 100)
+        );
+\di public.sneaky_name_lengths*
+                                                 List of relations
+ Schema |                              Name                               | Type  |  Owner   |        Table
+---------------------------------------------------------------------
+ public | sneaky_name_lengths_int_col_1234567890123456789012345678901_key | index | postgres | sneaky_name_lengths
+(1 row)
+
+SELECT "Constraint", "Definition" FROM table_checks WHERE relid='public.sneaky_name_lengths'::regclass ORDER BY 1 DESC, 2 DESC;
+                        Constraint                         |                                  Definition
+---------------------------------------------------------------------
+ checky_12345678901234567890123456789012345678901234567890 | CHECK (int_col_123456789012345678901234567890123456789012345678901234 > 100)
+(1 row)
+
+SELECT create_distributed_table('sneaky_name_lengths', 'int_col_123456789012345678901234567890123456789012345678901234', 'hash');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+\c - - :public_worker_1_host :worker_1_port
+SELECT c1.relname AS sneaky_index_name,
+       c2.oid AS sneaky_shard_oid
+FROM pg_class c1
+    JOIN pg_index i ON i.indexrelid = c1.oid
+    JOIN pg_class c2 ON i.indrelid = c2.oid
+WHERE c1.relname LIKE 'sneaky_name_lengths_int_col_%'
+    AND c2.relname LIKE 'sneaky_name_lengths_%'
+    AND c1.relkind = 'i'
+ORDER BY 1 ASC, 2 ASC
+LIMIT 1 \gset
+\di :sneaky_index_name
+                                                    List of relations
+ Schema |                              Name                               | Type  |  Owner   |           Table
+---------------------------------------------------------------------
+ public | sneaky_name_lengths_int_col_1234567890123456789_6402d2cd_225026 | index | postgres | sneaky_name_lengths_225026
+(1 row)
+
+SELECT "Constraint", "Definition" FROM table_checks WHERE relid= :sneaky_shard_oid ORDER BY 1 DESC, 2 DESC;
+                        Constraint                         |                                  Definition
+---------------------------------------------------------------------
+ checky_12345678901234567890123456789012345678901234567890 | CHECK (int_col_123456789012345678901234567890123456789012345678901234 > 100)
+(1 row)
+
+\c - - :master_host :master_port
+SET citus.shard_count TO 2;
+SET citus.shard_replication_factor TO 2;
+DROP TABLE sneaky_name_lengths CASCADE;
+-- verify that named constraint with too-long name gets hashed properly
+CREATE TABLE sneaky_name_lengths (
+	col1 integer not null,
+        col2 integer not null,
+        int_col_12345678901234567890123456789012345678901234567890 integer not null,
+        constraint unique_12345678901234567890123456789012345678901234567890 UNIQUE (col1)
+        );
+SELECT create_distributed_table('sneaky_name_lengths', 'col1', 'hash');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+\c - - :public_worker_1_host :worker_1_port
+SET citus.override_table_visibility TO FALSE;
+SELECT c1.relname AS unique_index_name
+FROM pg_class c1
+    JOIN pg_index i ON i.indexrelid = c1.oid
+    JOIN pg_class c2 ON i.indrelid = c2.oid
+WHERE c1.relname LIKE 'unique_123456789%'
+    AND c2.relname LIKE 'sneaky_name_lengths_%'
+    AND c1.relkind = 'i'
+ORDER BY 1 ASC
+LIMIT 1 \gset
+\di :unique_index_name
+                                                    List of relations
+ Schema |                              Name                               | Type  |  Owner   |           Table
+---------------------------------------------------------------------
+ public | unique_1234567890123456789012345678901234567890_a5986f27_225028 | index | postgres | sneaky_name_lengths_225028
+(1 row)
+
+\c - - :master_host :master_port
+SET citus.shard_count TO 2;
+SET citus.shard_replication_factor TO 2;
+DROP TABLE sneaky_name_lengths CASCADE;
+-- Verify that much larger shardIds are handled properly
+ALTER SEQUENCE pg_catalog.pg_dist_shardid_seq RESTART 2250000000000;
+CREATE TABLE too_long_12345678901234567890123456789012345678901234567890 (
+        col1 integer not null,
+        col2 integer not null);
+SELECT create_distributed_table('too_long_12345678901234567890123456789012345678901234567890', 'col1', 'hash');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+\c - - :public_worker_1_host :worker_1_port
+SET citus.override_table_visibility TO FALSE;
+\dt *225000000000*
+                                      List of relations
+ Schema |                              Name                               | Type  |  Owner
+---------------------------------------------------------------------
+ public | too_long_1234567890123456789012345678901_e0119164_2250000000000 | table | postgres
+ public | too_long_1234567890123456789012345678901_e0119164_2250000000001 | table | postgres
+(2 rows)
+
+\c - - :master_host :master_port
+SET citus.shard_count TO 2;
+SET citus.shard_replication_factor TO 2;
+DROP TABLE too_long_12345678901234567890123456789012345678901234567890 CASCADE;
+-- Verify that multi-byte boundaries are respected for databases with UTF8 encoding.
+CREATE TABLE U&"elephant_!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D" UESCAPE '!' (
+        col1 integer not null PRIMARY KEY,
+        col2 integer not null);
+SELECT create_distributed_table(U&'elephant_!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D' UESCAPE '!', 'col1', 'hash');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- Verify that quoting is used in shard_name
+SELECT shard_name(U&'elephant_!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D' UESCAPE '!'::regclass, min(shardid))
+FROM pg_dist_shard
+WHERE logicalrelid = U&'elephant_!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D' UESCAPE '!'::regclass;
+                    shard_name
+---------------------------------------------------------------------
+ "elephant_слонслонслонсло_c8b737c2_2250000000002"
+(1 row)
+
+\c - - :public_worker_1_host :worker_1_port
+SET citus.override_table_visibility TO FALSE;
+\dt public.elephant_*[0-9]+
+                              List of relations
+ Schema |                      Name                       | Type  |  Owner
+---------------------------------------------------------------------
+ public | elephant_слонслонслонсло_c8b737c2_2250000000002 | table | postgres
+ public | elephant_слонслонслонсло_c8b737c2_2250000000003 | table | postgres
+(2 rows)
+
+\di public.elephant_*[0-9]+
+                                                       List of relations
+ Schema |                      Name                       | Type  |  Owner   |                      Table
+---------------------------------------------------------------------
+ public | elephant_слонслонслонсло_14d34928_2250000000002 | index | postgres | elephant_слонслонслонсло_c8b737c2_2250000000002
+ public | elephant_слонслонслонсло_14d34928_2250000000003 | index | postgres | elephant_слонслонслонсло_c8b737c2_2250000000003
+(2 rows)
+
+\c - - :master_host :master_port
+SET citus.shard_count TO 2;
+SET citus.shard_replication_factor TO 2;
+-- Verify that shard_name UDF supports schemas
+CREATE SCHEMA multi_name_lengths;
+CREATE TABLE multi_name_lengths.too_long_12345678901234567890123456789012345678901234567890 (
+        col1 integer not null,
+        col2 integer not null);
+SELECT create_distributed_table('multi_name_lengths.too_long_12345678901234567890123456789012345678901234567890', 'col1', 'hash');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT shard_name('multi_name_lengths.too_long_12345678901234567890123456789012345678901234567890'::regclass, min(shardid))
+FROM pg_dist_shard
+WHERE logicalrelid = 'multi_name_lengths.too_long_12345678901234567890123456789012345678901234567890'::regclass;
+                                     shard_name
+---------------------------------------------------------------------
+ multi_name_lengths.too_long_1234567890123456789012345678901_e0119164_2250000000004
+(1 row)
+
+DROP TABLE multi_name_lengths.too_long_12345678901234567890123456789012345678901234567890;
+-- Clean up.
+DROP TABLE name_lengths CASCADE;
+DROP TABLE U&"elephant_!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D!0441!043B!043E!043D" UESCAPE '!' CASCADE;
+RESET citus.force_max_query_parallelization;
+DROP SCHEMA multi_name_lengths CASCADE;
+DROP TABLE append_zero_shard_table_12345678901234567890123456789012345678901234567890;
+NOTICE:  identifier "append_zero_shard_table_12345678901234567890123456789012345678901234567890" will be truncated to "append_zero_shard_table_123456789012345678901234567890123456789"

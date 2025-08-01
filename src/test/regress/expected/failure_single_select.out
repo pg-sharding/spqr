@@ -1,0 +1,206 @@
+SELECT citus.mitmproxy('conn.allow()');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT citus.clear_network_traffic();
+ clear_network_traffic
+---------------------------------------------------------------------
+
+(1 row)
+
+SET citus.shard_count = 2;
+SET citus.shard_replication_factor = 2;
+-- this test is designed such that no modification lock is acquired
+SET citus.allow_modifications_from_workers_to_replicated_tables TO false;
+CREATE TABLE select_test (key int, value text);
+SELECT create_distributed_table('select_test', 'key');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- put data in shard for which mitm node is first placement
+INSERT INTO select_test VALUES (3, 'test data');
+SELECT citus.mitmproxy('conn.onQuery(query="SELECT.*select_test").kill()');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT * FROM select_test WHERE key = 3;
+WARNING:  connection to the remote node postgres@localhost:xxxxx failed with the following error: connection not open
+ key |   value
+---------------------------------------------------------------------
+   3 | test data
+(1 row)
+
+SELECT * FROM select_test WHERE key = 3;
+WARNING:  connection to the remote node postgres@localhost:xxxxx failed with the following error: connection not open
+ key |   value
+---------------------------------------------------------------------
+   3 | test data
+(1 row)
+
+-- kill after first SELECT; txn should fail as INSERT triggers
+-- 2PC (and placementis not marked bad)
+SELECT citus.mitmproxy('conn.onQuery(query="SELECT.*select_test").kill()');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+BEGIN;
+INSERT INTO select_test VALUES (3, 'more data');
+SELECT * FROM select_test WHERE key = 3;
+ERROR:  connection to the remote node postgres@localhost:xxxxx failed with the following error: connection not open
+COMMIT;
+SELECT citus.mitmproxy('conn.allow()');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+TRUNCATE select_test;
+-- now the same tests with query cancellation
+-- put data in shard for which mitm node is first placement
+INSERT INTO select_test VALUES (3, 'test data');
+SELECT citus.mitmproxy('conn.onQuery(query="SELECT.*select_test").cancel(' ||  pg_backend_pid() || ')');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT * FROM select_test WHERE key = 3;
+ERROR:  canceling statement due to user request
+SELECT * FROM select_test WHERE key = 3;
+ERROR:  canceling statement due to user request
+-- cancel after first SELECT; txn should fail and nothing should be marked as invalid
+SELECT citus.mitmproxy('conn.onQuery(query="SELECT.*select_test").cancel(' ||  pg_backend_pid() || ')');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+BEGIN;
+INSERT INTO select_test VALUES (3, 'more data');
+SELECT * FROM select_test WHERE key = 3;
+ERROR:  canceling statement due to user request
+COMMIT;
+-- show that all placements are OK
+SELECT DISTINCT shardstate FROM  pg_dist_shard_placement
+WHERE shardid IN (
+  SELECT shardid FROM pg_dist_shard WHERE logicalrelid = 'select_test'::regclass
+);
+ shardstate
+---------------------------------------------------------------------
+          1
+(1 row)
+
+SELECT citus.mitmproxy('conn.allow()');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+TRUNCATE select_test;
+-- cancel the second query
+-- error after second SELECT; txn should fail
+SELECT citus.mitmproxy('conn.onQuery(query="SELECT.*select_test").after(1).cancel(' ||  pg_backend_pid() || ')');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+BEGIN;
+INSERT INTO select_test VALUES (3, 'more data');
+SELECT * FROM select_test WHERE key = 3;
+ key |   value
+---------------------------------------------------------------------
+   3 | more data
+(1 row)
+
+INSERT INTO select_test VALUES (3, 'even more data');
+SELECT * FROM select_test WHERE key = 3;
+ERROR:  canceling statement due to user request
+COMMIT;
+-- error after second SELECT; txn should fails the transaction
+SELECT citus.mitmproxy('conn.onQuery(query="SELECT.*select_test").after(1).reset()');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+BEGIN;
+INSERT INTO select_test VALUES (3, 'more data');
+SELECT * FROM select_test WHERE key = 3;
+ key |   value
+---------------------------------------------------------------------
+   3 | more data
+(1 row)
+
+INSERT INTO select_test VALUES (3, 'even more data');
+SELECT * FROM select_test WHERE key = 3;
+ERROR:  connection to the remote node postgres@localhost:xxxxx failed with the following error: connection not open
+COMMIT;
+SELECT citus.mitmproxy('conn.onQuery(query="SELECT.*pg_prepared_xacts").after(2).kill()');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT recover_prepared_transactions();
+ recover_prepared_transactions
+---------------------------------------------------------------------
+                             0
+(1 row)
+
+SELECT recover_prepared_transactions();
+ERROR:  connection not open
+CONTEXT:  while executing command on localhost:xxxxx
+-- bug from https://github.com/citusdata/citus/issues/1926
+SET citus.max_cached_conns_per_worker TO 0; -- purge cache
+DROP TABLE select_test;
+SET citus.shard_count = 2;
+SET citus.shard_replication_factor = 1;
+CREATE TABLE select_test (key int, value text);
+SELECT create_distributed_table('select_test', 'key');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SET citus.max_cached_conns_per_worker TO 1; -- allow connection to be cached
+INSERT INTO select_test VALUES (1, 'test data');
+SELECT citus.mitmproxy('conn.onQuery(query="SELECT.*select_test").after(1).kill()');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT * FROM select_test WHERE key = 1;
+ key |   value
+---------------------------------------------------------------------
+   1 | test data
+(1 row)
+
+SELECT * FROM select_test WHERE key = 1;
+ERROR:  connection to the remote node postgres@localhost:xxxxx failed with the following error: connection not open
+-- now the same test with query cancellation
+SELECT citus.mitmproxy('conn.onQuery(query="SELECT.*select_test").after(1).cancel(' ||  pg_backend_pid() || ')');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT * FROM select_test WHERE key = 1;
+ key |   value
+---------------------------------------------------------------------
+   1 | test data
+(1 row)
+
+SELECT * FROM select_test WHERE key = 1;
+ERROR:  canceling statement due to user request
+-- ==== Clean up, we're done here ====
+DROP TABLE select_test;

@@ -1,0 +1,997 @@
+SELECT success, result FROM run_command_on_all_nodes($cmd$
+  ALTER SYSTEM SET columnar.compression TO 'none'
+$cmd$);
+ success |    result
+---------------------------------------------------------------------
+ t       | ALTER SYSTEM
+ t       | ALTER SYSTEM
+ t       | ALTER SYSTEM
+(3 rows)
+
+SELECT success, result FROM run_command_on_all_nodes($cmd$
+  SELECT pg_reload_conf()
+$cmd$);
+ success | result
+---------------------------------------------------------------------
+ t       | t
+ t       | t
+ t       | t
+(3 rows)
+
+CREATE SCHEMA columnar_citus_integration;
+SET search_path TO columnar_citus_integration;
+SET citus.next_shard_id TO 20090000;
+SET citus.shard_replication_factor TO 1;
+SET citus.shard_count TO 4;
+-- table options integration testing
+-- distributed table 1 placement
+CREATE TABLE table_option (a int, b text) USING columnar;
+SELECT create_distributed_table('table_option', 'a');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- setting: compression
+-- get baseline for setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT compression FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090000,t,none)
+ (localhost,57638,20090001,t,none)
+ (localhost,57637,20090002,t,none)
+ (localhost,57638,20090003,t,none)
+(4 rows)
+
+-- change setting
+ALTER TABLE table_option SET (columnar.compression = pglz);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT compression FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090000,t,pglz)
+ (localhost,57638,20090001,t,pglz)
+ (localhost,57637,20090002,t,pglz)
+ (localhost,57638,20090003,t,pglz)
+(4 rows)
+
+-- reset setting
+ALTER TABLE table_option RESET (columnar.compression);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT compression FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090000,t,none)
+ (localhost,57638,20090001,t,none)
+ (localhost,57637,20090002,t,none)
+ (localhost,57638,20090003,t,none)
+(4 rows)
+
+-- setting: compression_level
+-- get baseline for setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT compression_level FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+   run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090000,t,3)
+ (localhost,57638,20090001,t,3)
+ (localhost,57637,20090002,t,3)
+ (localhost,57638,20090003,t,3)
+(4 rows)
+
+-- change setting
+ALTER TABLE table_option SET (columnar.compression_level = 13);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT compression_level FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+    run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090000,t,13)
+ (localhost,57638,20090001,t,13)
+ (localhost,57637,20090002,t,13)
+ (localhost,57638,20090003,t,13)
+(4 rows)
+
+-- reset setting
+ALTER TABLE table_option RESET (columnar.compression_level);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT compression_level FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+   run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090000,t,3)
+ (localhost,57638,20090001,t,3)
+ (localhost,57637,20090002,t,3)
+ (localhost,57638,20090003,t,3)
+(4 rows)
+
+-- setting: chunk_group_row_limit
+-- get baseline for setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT chunk_group_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090000,t,10000)
+ (localhost,57638,20090001,t,10000)
+ (localhost,57637,20090002,t,10000)
+ (localhost,57638,20090003,t,10000)
+(4 rows)
+
+-- change setting
+ALTER TABLE table_option SET (columnar.chunk_group_row_limit = 2000);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT chunk_group_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090000,t,2000)
+ (localhost,57638,20090001,t,2000)
+ (localhost,57637,20090002,t,2000)
+ (localhost,57638,20090003,t,2000)
+(4 rows)
+
+-- reset setting
+ALTER TABLE table_option RESET (columnar.chunk_group_row_limit);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT chunk_group_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090000,t,10000)
+ (localhost,57638,20090001,t,10000)
+ (localhost,57637,20090002,t,10000)
+ (localhost,57638,20090003,t,10000)
+(4 rows)
+
+-- setting: stripe_row_limit
+-- get baseline for setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT stripe_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+      run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090000,t,150000)
+ (localhost,57638,20090001,t,150000)
+ (localhost,57637,20090002,t,150000)
+ (localhost,57638,20090003,t,150000)
+(4 rows)
+
+-- change setting
+ALTER TABLE table_option SET (columnar.stripe_row_limit = 2000);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT stripe_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090000,t,2000)
+ (localhost,57638,20090001,t,2000)
+ (localhost,57637,20090002,t,2000)
+ (localhost,57638,20090003,t,2000)
+(4 rows)
+
+-- reset setting
+ALTER TABLE table_option RESET (columnar.stripe_row_limit);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT stripe_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+      run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090000,t,150000)
+ (localhost,57638,20090001,t,150000)
+ (localhost,57637,20090002,t,150000)
+ (localhost,57638,20090003,t,150000)
+(4 rows)
+
+-- verify settings are propagated when creating a table
+CREATE TABLE table_option_2 (a int, b text) USING columnar;
+ALTER TABLE table_option_2 SET
+  (columnar.chunk_group_row_limit = 2000,
+   columnar.stripe_row_limit = 20000,
+   columnar.compression = pglz,
+   columnar.compression_level = 15);
+SELECT create_distributed_table('table_option_2', 'a');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- verify settings on placements
+SELECT run_command_on_placements('table_option_2',$cmd$
+  SELECT ROW(chunk_group_row_limit, stripe_row_limit, compression, compression_level) FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+              run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090004,t,"(2000,20000,pglz,15)")
+ (localhost,57638,20090005,t,"(2000,20000,pglz,15)")
+ (localhost,57637,20090006,t,"(2000,20000,pglz,15)")
+ (localhost,57638,20090007,t,"(2000,20000,pglz,15)")
+(4 rows)
+
+-- verify undistribute works
+SELECT undistribute_table('table_option');
+NOTICE:  creating a new table for columnar_citus_integration.table_option
+NOTICE:  moving the data of columnar_citus_integration.table_option
+NOTICE:  dropping the old columnar_citus_integration.table_option
+NOTICE:  renaming the new table to columnar_citus_integration.table_option
+ undistribute_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT * FROM pg_dist_partition WHERE logicalrelid = 'table_option'::regclass;
+ logicalrelid | partmethod | partkey | colocationid | repmodel | autoconverted
+---------------------------------------------------------------------
+(0 rows)
+
+SELECT compression FROM columnar.options WHERE relation = 'table_option'::regclass;
+ compression
+---------------------------------------------------------------------
+ none
+(1 row)
+
+DROP TABLE table_option, table_option_2;
+-- verify settings get to all placements when there are multiple replica's
+SET citus.shard_replication_factor TO 2;
+-- table options integration testing
+CREATE TABLE table_option (a int, b text) USING columnar;
+SELECT create_distributed_table('table_option', 'a');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- setting: compression
+-- get baseline for setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT compression FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090008,t,none)
+ (localhost,57638,20090008,t,none)
+ (localhost,57637,20090009,t,none)
+ (localhost,57638,20090009,t,none)
+ (localhost,57637,20090010,t,none)
+ (localhost,57638,20090010,t,none)
+ (localhost,57637,20090011,t,none)
+ (localhost,57638,20090011,t,none)
+(8 rows)
+
+-- change setting
+ALTER TABLE table_option SET (columnar.compression = pglz);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT compression FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090008,t,pglz)
+ (localhost,57638,20090008,t,pglz)
+ (localhost,57637,20090009,t,pglz)
+ (localhost,57638,20090009,t,pglz)
+ (localhost,57637,20090010,t,pglz)
+ (localhost,57638,20090010,t,pglz)
+ (localhost,57637,20090011,t,pglz)
+ (localhost,57638,20090011,t,pglz)
+(8 rows)
+
+-- reset setting
+ALTER TABLE table_option RESET (columnar.compression);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT compression FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090008,t,none)
+ (localhost,57638,20090008,t,none)
+ (localhost,57637,20090009,t,none)
+ (localhost,57638,20090009,t,none)
+ (localhost,57637,20090010,t,none)
+ (localhost,57638,20090010,t,none)
+ (localhost,57637,20090011,t,none)
+ (localhost,57638,20090011,t,none)
+(8 rows)
+
+-- setting: compression_level
+-- get baseline for setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT compression_level FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+   run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090008,t,3)
+ (localhost,57638,20090008,t,3)
+ (localhost,57637,20090009,t,3)
+ (localhost,57638,20090009,t,3)
+ (localhost,57637,20090010,t,3)
+ (localhost,57638,20090010,t,3)
+ (localhost,57637,20090011,t,3)
+ (localhost,57638,20090011,t,3)
+(8 rows)
+
+-- change setting
+ALTER TABLE table_option SET (columnar.compression_level = 17);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT compression_level FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+    run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090008,t,17)
+ (localhost,57638,20090008,t,17)
+ (localhost,57637,20090009,t,17)
+ (localhost,57638,20090009,t,17)
+ (localhost,57637,20090010,t,17)
+ (localhost,57638,20090010,t,17)
+ (localhost,57637,20090011,t,17)
+ (localhost,57638,20090011,t,17)
+(8 rows)
+
+-- reset setting
+ALTER TABLE table_option RESET (columnar.compression_level);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT compression_level FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+   run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090008,t,3)
+ (localhost,57638,20090008,t,3)
+ (localhost,57637,20090009,t,3)
+ (localhost,57638,20090009,t,3)
+ (localhost,57637,20090010,t,3)
+ (localhost,57638,20090010,t,3)
+ (localhost,57637,20090011,t,3)
+ (localhost,57638,20090011,t,3)
+(8 rows)
+
+-- setting: chunk_group_row_limit
+-- get baseline for setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT chunk_group_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090008,t,10000)
+ (localhost,57638,20090008,t,10000)
+ (localhost,57637,20090009,t,10000)
+ (localhost,57638,20090009,t,10000)
+ (localhost,57637,20090010,t,10000)
+ (localhost,57638,20090010,t,10000)
+ (localhost,57637,20090011,t,10000)
+ (localhost,57638,20090011,t,10000)
+(8 rows)
+
+-- change setting
+ALTER TABLE table_option SET (columnar.chunk_group_row_limit = 2000);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT chunk_group_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090008,t,2000)
+ (localhost,57638,20090008,t,2000)
+ (localhost,57637,20090009,t,2000)
+ (localhost,57638,20090009,t,2000)
+ (localhost,57637,20090010,t,2000)
+ (localhost,57638,20090010,t,2000)
+ (localhost,57637,20090011,t,2000)
+ (localhost,57638,20090011,t,2000)
+(8 rows)
+
+-- reset setting
+ALTER TABLE table_option RESET (columnar.chunk_group_row_limit);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT chunk_group_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090008,t,10000)
+ (localhost,57638,20090008,t,10000)
+ (localhost,57637,20090009,t,10000)
+ (localhost,57638,20090009,t,10000)
+ (localhost,57637,20090010,t,10000)
+ (localhost,57638,20090010,t,10000)
+ (localhost,57637,20090011,t,10000)
+ (localhost,57638,20090011,t,10000)
+(8 rows)
+
+-- setting: stripe_row_limit
+-- get baseline for setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT stripe_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+      run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090008,t,150000)
+ (localhost,57638,20090008,t,150000)
+ (localhost,57637,20090009,t,150000)
+ (localhost,57638,20090009,t,150000)
+ (localhost,57637,20090010,t,150000)
+ (localhost,57638,20090010,t,150000)
+ (localhost,57637,20090011,t,150000)
+ (localhost,57638,20090011,t,150000)
+(8 rows)
+
+-- change setting
+ALTER TABLE table_option SET (columnar.stripe_row_limit = 2000);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT stripe_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090008,t,2000)
+ (localhost,57638,20090008,t,2000)
+ (localhost,57637,20090009,t,2000)
+ (localhost,57638,20090009,t,2000)
+ (localhost,57637,20090010,t,2000)
+ (localhost,57638,20090010,t,2000)
+ (localhost,57637,20090011,t,2000)
+ (localhost,57638,20090011,t,2000)
+(8 rows)
+
+-- reset setting
+ALTER TABLE table_option RESET (columnar.stripe_row_limit);
+-- verify setting
+SELECT run_command_on_placements('table_option',$cmd$
+  SELECT stripe_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+      run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090008,t,150000)
+ (localhost,57638,20090008,t,150000)
+ (localhost,57637,20090009,t,150000)
+ (localhost,57638,20090009,t,150000)
+ (localhost,57637,20090010,t,150000)
+ (localhost,57638,20090010,t,150000)
+ (localhost,57637,20090011,t,150000)
+ (localhost,57638,20090011,t,150000)
+(8 rows)
+
+-- verify settings are propagated when creating a table
+CREATE TABLE table_option_2 (a int, b text) USING columnar;
+ALTER TABLE table_option_2 SET
+  (columnar.chunk_group_row_limit = 2000,
+   columnar.stripe_row_limit = 20000,
+   columnar.compression = pglz,
+   columnar.compression_level = 19);
+SELECT create_distributed_table('table_option_2', 'a');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- verify settings on placements
+SELECT run_command_on_placements('table_option_2',$cmd$
+  SELECT ROW(chunk_group_row_limit, stripe_row_limit, compression, compression_level) FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+              run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090012,t,"(2000,20000,pglz,19)")
+ (localhost,57638,20090012,t,"(2000,20000,pglz,19)")
+ (localhost,57637,20090013,t,"(2000,20000,pglz,19)")
+ (localhost,57638,20090013,t,"(2000,20000,pglz,19)")
+ (localhost,57637,20090014,t,"(2000,20000,pglz,19)")
+ (localhost,57638,20090014,t,"(2000,20000,pglz,19)")
+ (localhost,57637,20090015,t,"(2000,20000,pglz,19)")
+ (localhost,57638,20090015,t,"(2000,20000,pglz,19)")
+(8 rows)
+
+-- verify undistribute works
+SELECT undistribute_table('table_option');
+NOTICE:  creating a new table for columnar_citus_integration.table_option
+NOTICE:  moving the data of columnar_citus_integration.table_option
+NOTICE:  dropping the old columnar_citus_integration.table_option
+NOTICE:  renaming the new table to columnar_citus_integration.table_option
+ undistribute_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT * FROM pg_dist_partition WHERE logicalrelid = 'table_option'::regclass;
+ logicalrelid | partmethod | partkey | colocationid | repmodel | autoconverted
+---------------------------------------------------------------------
+(0 rows)
+
+SELECT compression FROM columnar.options WHERE relation = 'table_option'::regclass;
+ compression
+---------------------------------------------------------------------
+ none
+(1 row)
+
+DROP TABLE table_option, table_option_2;
+-- test options on a reference table
+CREATE TABLE table_option_reference (a int, b text) USING columnar;
+SELECT create_reference_table('table_option_reference');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- setting: compression
+-- get baseline for setting
+SELECT run_command_on_placements('table_option_reference',$cmd$
+  SELECT compression FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090016,t,none)
+ (localhost,57638,20090016,t,none)
+(2 rows)
+
+-- change setting
+ALTER TABLE table_option_reference SET (columnar.compression = pglz);
+-- verify setting
+SELECT run_command_on_placements('table_option_reference',$cmd$
+  SELECT compression FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090016,t,pglz)
+ (localhost,57638,20090016,t,pglz)
+(2 rows)
+
+-- reset setting
+ALTER TABLE table_option_reference RESET (columnar.compression);
+-- verify setting
+SELECT run_command_on_placements('table_option_reference',$cmd$
+  SELECT compression FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090016,t,none)
+ (localhost,57638,20090016,t,none)
+(2 rows)
+
+-- setting: compression_level
+-- get baseline for setting
+SELECT run_command_on_placements('table_option_reference',$cmd$
+  SELECT compression_level FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+   run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090016,t,3)
+ (localhost,57638,20090016,t,3)
+(2 rows)
+
+-- change setting
+ALTER TABLE table_option_reference SET (columnar.compression_level = 11);
+-- verify setting
+SELECT run_command_on_placements('table_option_reference',$cmd$
+  SELECT compression_level FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+    run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090016,t,11)
+ (localhost,57638,20090016,t,11)
+(2 rows)
+
+-- reset setting
+ALTER TABLE table_option_reference RESET (columnar.compression_level);
+-- verify setting
+SELECT run_command_on_placements('table_option_reference',$cmd$
+  SELECT compression_level FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+   run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090016,t,3)
+ (localhost,57638,20090016,t,3)
+(2 rows)
+
+-- setting: chunk_group_row_limit
+-- get baseline for setting
+SELECT run_command_on_placements('table_option_reference',$cmd$
+  SELECT chunk_group_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090016,t,10000)
+ (localhost,57638,20090016,t,10000)
+(2 rows)
+
+-- change setting
+ALTER TABLE table_option_reference SET (columnar.chunk_group_row_limit = 2000);
+-- verify setting
+SELECT run_command_on_placements('table_option_reference',$cmd$
+  SELECT chunk_group_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090016,t,2000)
+ (localhost,57638,20090016,t,2000)
+(2 rows)
+
+-- reset setting
+ALTER TABLE table_option_reference RESET (columnar.chunk_group_row_limit);
+-- verify setting
+SELECT run_command_on_placements('table_option_reference',$cmd$
+  SELECT chunk_group_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090016,t,10000)
+ (localhost,57638,20090016,t,10000)
+(2 rows)
+
+-- setting: stripe_row_limit
+-- get baseline for setting
+SELECT run_command_on_placements('table_option_reference',$cmd$
+  SELECT stripe_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+      run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090016,t,150000)
+ (localhost,57638,20090016,t,150000)
+(2 rows)
+
+-- change setting
+ALTER TABLE table_option_reference SET (columnar.stripe_row_limit = 2000);
+-- verify setting
+SELECT run_command_on_placements('table_option_reference',$cmd$
+  SELECT stripe_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090016,t,2000)
+ (localhost,57638,20090016,t,2000)
+(2 rows)
+
+-- reset setting
+ALTER TABLE table_option_reference RESET (columnar.stripe_row_limit);
+-- verify setting
+SELECT run_command_on_placements('table_option_reference',$cmd$
+  SELECT stripe_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+      run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090016,t,150000)
+ (localhost,57638,20090016,t,150000)
+(2 rows)
+
+-- verify settings are propagated when creating a table
+CREATE TABLE table_option_reference_2 (a int, b text) USING columnar;
+ALTER TABLE table_option_reference_2 SET
+  (columnar.chunk_group_row_limit = 2000,
+   columnar.stripe_row_limit = 20000,
+   columnar.compression = pglz,
+   columnar.compression_level = 9);
+SELECT create_reference_table('table_option_reference_2');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- verify settings on placements
+SELECT run_command_on_placements('table_option_reference_2',$cmd$
+  SELECT ROW(chunk_group_row_limit, stripe_row_limit, compression, compression_level) FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+             run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57637,20090017,t,"(2000,20000,pglz,9)")
+ (localhost,57638,20090017,t,"(2000,20000,pglz,9)")
+(2 rows)
+
+-- verify undistribute works
+SELECT undistribute_table('table_option_reference');
+NOTICE:  creating a new table for columnar_citus_integration.table_option_reference
+NOTICE:  moving the data of columnar_citus_integration.table_option_reference
+NOTICE:  dropping the old columnar_citus_integration.table_option_reference
+NOTICE:  renaming the new table to columnar_citus_integration.table_option_reference
+ undistribute_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT * FROM pg_dist_partition WHERE logicalrelid = 'table_option_reference'::regclass;
+ logicalrelid | partmethod | partkey | colocationid | repmodel | autoconverted
+---------------------------------------------------------------------
+(0 rows)
+
+SELECT compression FROM columnar.options WHERE relation = 'table_option_reference'::regclass;
+ compression
+---------------------------------------------------------------------
+ none
+(1 row)
+
+DROP TABLE table_option_reference, table_option_reference_2;
+SET citus.shard_replication_factor TO 1;
+-- test options on a citus local table
+SELECT 1 FROM master_add_node('localhost', :master_port, groupId => 0);
+NOTICE:  localhost:xxxxx is the coordinator and already contains metadata, skipping syncing the metadata
+ ?column?
+---------------------------------------------------------------------
+        1
+(1 row)
+
+CREATE TABLE table_option_citus_local (a int, b text) USING columnar;
+SELECT citus_add_local_table_to_metadata('table_option_citus_local');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+-- setting: compression
+-- get baseline for setting
+SELECT run_command_on_placements('table_option_citus_local',$cmd$
+  SELECT compression FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57636,20090018,t,none)
+(1 row)
+
+-- change setting
+ALTER TABLE table_option_citus_local SET (columnar.compression = pglz);
+-- verify setting
+SELECT run_command_on_placements('table_option_citus_local',$cmd$
+  SELECT compression FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57636,20090018,t,pglz)
+(1 row)
+
+-- reset setting
+ALTER TABLE table_option_citus_local RESET (columnar.compression);
+-- verify setting
+SELECT run_command_on_placements('table_option_citus_local',$cmd$
+  SELECT compression FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57636,20090018,t,none)
+(1 row)
+
+-- setting: compression_level
+-- get baseline for setting
+SELECT run_command_on_placements('table_option_citus_local',$cmd$
+  SELECT compression_level FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+   run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57636,20090018,t,3)
+(1 row)
+
+-- change setting
+ALTER TABLE table_option_citus_local SET (columnar.compression_level = 11);
+-- verify setting
+SELECT run_command_on_placements('table_option_citus_local',$cmd$
+  SELECT compression_level FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+    run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57636,20090018,t,11)
+(1 row)
+
+-- reset setting
+ALTER TABLE table_option_citus_local RESET (columnar.compression_level);
+-- verify setting
+SELECT run_command_on_placements('table_option_citus_local',$cmd$
+  SELECT compression_level FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+   run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57636,20090018,t,3)
+(1 row)
+
+-- setting: chunk_group_row_limit
+-- get baseline for setting
+SELECT run_command_on_placements('table_option_citus_local',$cmd$
+  SELECT chunk_group_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57636,20090018,t,10000)
+(1 row)
+
+-- change setting
+ALTER TABLE table_option_citus_local SET (columnar.chunk_group_row_limit = 2000);
+-- verify setting
+SELECT run_command_on_placements('table_option_citus_local',$cmd$
+  SELECT chunk_group_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57636,20090018,t,2000)
+(1 row)
+
+-- reset setting
+ALTER TABLE table_option_citus_local RESET (columnar.chunk_group_row_limit);
+-- verify setting
+SELECT run_command_on_placements('table_option_citus_local',$cmd$
+  SELECT chunk_group_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57636,20090018,t,10000)
+(1 row)
+
+-- setting: stripe_row_limit
+-- get baseline for setting
+SELECT run_command_on_placements('table_option_citus_local',$cmd$
+  SELECT stripe_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+      run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57636,20090018,t,150000)
+(1 row)
+
+-- change setting
+ALTER TABLE table_option_citus_local SET (columnar.stripe_row_limit = 2000);
+-- verify setting
+SELECT run_command_on_placements('table_option_citus_local',$cmd$
+  SELECT stripe_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+     run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57636,20090018,t,2000)
+(1 row)
+
+-- reset setting
+ALTER TABLE table_option_citus_local RESET (columnar.stripe_row_limit);
+-- verify setting
+SELECT run_command_on_placements('table_option_citus_local',$cmd$
+  SELECT stripe_row_limit FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+      run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57636,20090018,t,150000)
+(1 row)
+
+-- verify settings are propagated when creating a table
+CREATE TABLE table_option_citus_local_2 (a int, b text) USING columnar;
+ALTER TABLE table_option_citus_local_2 SET
+  (columnar.chunk_group_row_limit = 2000,
+   columnar.stripe_row_limit = 20000,
+   columnar.compression = pglz,
+   columnar.compression_level = 9);
+SELECT citus_add_local_table_to_metadata('table_option_citus_local_2');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+-- verify settings on placements
+SELECT run_command_on_placements('table_option_citus_local_2',$cmd$
+  SELECT ROW(chunk_group_row_limit, stripe_row_limit, compression, compression_level) FROM columnar.options WHERE relation = '%s'::regclass;
+$cmd$);
+             run_command_on_placements
+---------------------------------------------------------------------
+ (localhost,57636,20090019,t,"(2000,20000,pglz,9)")
+(1 row)
+
+-- verify undistribute works
+SELECT undistribute_table('table_option_citus_local');
+NOTICE:  creating a new table for columnar_citus_integration.table_option_citus_local
+NOTICE:  moving the data of columnar_citus_integration.table_option_citus_local
+NOTICE:  dropping the old columnar_citus_integration.table_option_citus_local
+NOTICE:  renaming the new table to columnar_citus_integration.table_option_citus_local
+ undistribute_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT * FROM pg_dist_partition WHERE logicalrelid = 'table_option_citus_local'::regclass;
+ logicalrelid | partmethod | partkey | colocationid | repmodel | autoconverted
+---------------------------------------------------------------------
+(0 rows)
+
+SELECT compression FROM columnar.options WHERE relation = 'table_option_citus_local'::regclass;
+ compression
+---------------------------------------------------------------------
+ none
+(1 row)
+
+DROP TABLE table_option_citus_local, table_option_citus_local_2;
+SELECT 1 FROM master_remove_node('localhost', :master_port);
+ ?column?
+---------------------------------------------------------------------
+        1
+(1 row)
+
+-- verify reference table with no columns can be created
+-- https://github.com/citusdata/citus/issues/4608
+CREATE TABLE zero_col() USING columnar;
+SELECT create_reference_table('zero_col');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+select result from run_command_on_placements('zero_col', 'select count(*) from %s');
+ result
+---------------------------------------------------------------------
+ 0
+ 0
+(2 rows)
+
+-- add a column so we can ad some data
+ALTER TABLE zero_col ADD COLUMN a int;
+INSERT INTO zero_col SELECT i FROM generate_series(1, 10) i;
+select result from run_command_on_placements('zero_col', 'select count(*) from %s');
+ result
+---------------------------------------------------------------------
+ 10
+ 10
+(2 rows)
+
+CREATE TABLE weird_col_explain (
+  "bbbbbbbbbbbbbbbbbbbbbbbbb\!bbbb'bbbbbbbbbbbbbbbbbbbbb''bbbbbbbb" INT,
+  "aaaaaaaaaaaa$aaaaaa$$aaaaaaaaaaaaaaaaaaaaaaaaaaaaa'aaaaaaaa'$a'!" INT)
+USING columnar;
+NOTICE:  identifier "aaaaaaaaaaaa$aaaaaa$$aaaaaaaaaaaaaaaaaaaaaaaaaaaaa'aaaaaaaa'$a'!" will be truncated to "aaaaaaaaaaaa$aaaaaa$$aaaaaaaaaaaaaaaaaaaaaaaaaaaaa'aaaaaaaa'$a'"
+SELECT create_distributed_table('weird_col_explain', 'bbbbbbbbbbbbbbbbbbbbbbbbb\!bbbb''bbbbbbbbbbbbbbbbbbbbb''''bbbbbbbb');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+EXPLAIN (COSTS OFF, SUMMARY OFF)
+SELECT * FROM weird_col_explain;
+                                                                                   QUERY PLAN
+---------------------------------------------------------------------
+ Custom Scan (Citus Adaptive)
+   Task Count: 4
+   Tasks Shown: One of 4
+   ->  Task
+         Node: host=localhost port=xxxxx dbname=regression
+         ->  Custom Scan (ColumnarScan) on weird_col_explain_20090021 weird_col_explain
+               Columnar Projected Columns: "bbbbbbbbbbbbbbbbbbbbbbbbb\!bbbb'bbbbbbbbbbbbbbbbbbbbb''bbbbbbbb", "aaaaaaaaaaaa$aaaaaa$$aaaaaaaaaaaaaaaaaaaaaaaaaaaaa'aaaaaaaa'$a'"
+(7 rows)
+
+\set VERBOSITY terse
+EXPLAIN (COSTS OFF, SUMMARY OFF)
+SELECT *, "bbbbbbbbbbbbbbbbbbbbbbbbb\!bbbb'bbbbbbbbbbbbbbbbbbbbb''bbbbbbbb"
+FROM weird_col_explain
+WHERE "bbbbbbbbbbbbbbbbbbbbbbbbb\!bbbb'bbbbbbbbbbbbbbbbbbbbb''bbbbbbbb" * 2 >
+      "aaaaaaaaaaaa$aaaaaa$$aaaaaaaaaaaaaaaaaaaaaaaaaaaaa'aaaaaaaa'$a'!";
+NOTICE:  identifier "aaaaaaaaaaaa$aaaaaa$$aaaaaaaaaaaaaaaaaaaaaaaaaaaaa'aaaaaaaa'$a'!" will be truncated to "aaaaaaaaaaaa$aaaaaa$$aaaaaaaaaaaaaaaaaaaaaaaaaaaaa'aaaaaaaa'$a'"
+                                                                                   QUERY PLAN
+---------------------------------------------------------------------
+ Custom Scan (Citus Adaptive)
+   Task Count: 4
+   Tasks Shown: One of 4
+   ->  Task
+         Node: host=localhost port=xxxxx dbname=regression
+         ->  Custom Scan (ColumnarScan) on weird_col_explain_20090021 weird_col_explain
+               Filter: (("bbbbbbbbbbbbbbbbbbbbbbbbb\!bbbb'bbbbbbbbbbbbbbbbbbbbb''bbbbbbbb" * 2) > "aaaaaaaaaaaa$aaaaaa$$aaaaaaaaaaaaaaaaaaaaaaaaaaaaa'aaaaaaaa'$a'")
+               Columnar Projected Columns: "bbbbbbbbbbbbbbbbbbbbbbbbb\!bbbb'bbbbbbbbbbbbbbbbbbbbb''bbbbbbbb", "aaaaaaaaaaaa$aaaaaa$$aaaaaaaaaaaaaaaaaaaaaaaaaaaaa'aaaaaaaa'$a'"
+(8 rows)
+
+\set VERBOSITY default
+-- should not project any columns
+EXPLAIN (COSTS OFF, SUMMARY OFF)
+SELECT COUNT(*) FROM weird_col_explain;
+                                             QUERY PLAN
+---------------------------------------------------------------------
+ Aggregate
+   ->  Custom Scan (Citus Adaptive)
+         Task Count: 4
+         Tasks Shown: One of 4
+         ->  Task
+               Node: host=localhost port=xxxxx dbname=regression
+               ->  Aggregate
+                     ->  Custom Scan (ColumnarScan) on weird_col_explain_20090021 weird_col_explain
+                           Columnar Projected Columns: <columnar optimized out all columns>
+(9 rows)
+
+SET client_min_messages TO WARNING;
+DROP SCHEMA columnar_citus_integration CASCADE;

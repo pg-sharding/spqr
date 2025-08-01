@@ -1,0 +1,25 @@
+CREATE TABLE ref_not_autoconverted(a int unique);
+CREATE TABLE citus_local_autoconverted(a int unique references ref_not_autoconverted(a));
+CREATE TABLE citus_local_not_autoconverted(a int unique);
+select create_reference_table('ref_not_autoconverted');
+select citus_add_local_table_to_metadata('citus_local_not_autoconverted');
+select logicalrelid, autoconverted from pg_dist_partition
+    where logicalrelid IN ('citus_local_autoconverted'::regclass,
+                           'citus_local_not_autoconverted'::regclass);
+
+CREATE EXTENSION postgres_fdw;
+CREATE SERVER foreign_server
+        FOREIGN DATA WRAPPER postgres_fdw
+        OPTIONS (host 'localhost', dbname 'regression');
+CREATE USER MAPPING FOR CURRENT_USER
+        SERVER foreign_server
+        OPTIONS (user 'postgres');
+CREATE FOREIGN TABLE foreign_table (
+        id integer NOT NULL,
+        data text,
+        a bigserial
+)
+        SERVER foreign_server
+        OPTIONS (schema_name 'foreign_tables_schema_mx', table_name 'foreign_table_test');
+
+select citus_add_local_table_to_metadata('foreign_table');

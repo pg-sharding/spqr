@@ -1,0 +1,83 @@
+# ----------
+# $Id$
+#
+# Regression tests for MX. This schedule runs tests for worker metadata
+# and MX tables. The tests mostly aim for running SQL queries from the worker
+# nodes and metadata operations from the schema node.
+#
+# Note that we use variant comparison files to test version dependent regression
+# test results. For more information:
+# http://www.postgresql.org/docs/current/static/regress-variant.html
+# ----------
+
+# ---
+# Tests around schema changes, these are run first, so there's no preexisting objects.
+# ---
+test: multi_extension
+test: multi_test_helpers multi_test_helpers_superuser
+test: multi_mx_node_metadata
+test: multi_cluster_management
+test: remove_coordinator_from_metadata
+test: multi_mx_function_table_reference
+test: multi_test_catalog_views
+
+# the following test has to be run sequentially
+test: multi_mx_create_table
+test: start_stop_metadata_sync
+test: multi_mx_hide_shard_names
+test: multi_mx_add_coordinator
+test: multi_mx_modifications_to_reference_tables
+test: multi_mx_partitioning
+test: mx_coordinator_shouldhaveshards
+test: multi_mx_copy_data multi_mx_router_planner
+test: multi_mx_schema_support multi_mx_tpch_query1 multi_mx_tpch_query10
+test: multi_mx_tpch_query12 multi_mx_tpch_query14 multi_mx_tpch_query19
+test: multi_mx_tpch_query3 multi_mx_tpch_query6 multi_mx_tpch_query7
+test: multi_mx_tpch_query7_nested multi_mx_ddl
+test: ch_bench_having_mx
+test: recursive_dml_queries_mx multi_mx_truncate_from_worker
+test: multi_mx_repartition_udt_prepare mx_foreign_key_to_reference_table
+test: multi_mx_repartition_join_w1 multi_mx_repartition_join_w2
+test: multi_mx_metadata
+test: coordinator_evaluation
+test: coordinator_evaluation_modify
+test: coordinator_evaluation_select
+test: multi_mx_call
+test: multi_mx_function_call_delegation
+test: multi_mx_modifications
+test: local_shard_execution_replicated
+# the following test has to be run sequentially
+test: local_shard_execution
+test: multi_mx_repartition_udt_w1 multi_mx_repartition_udt_w2
+test: local_shard_copy
+test: undistribute_table_cascade_mx
+test: citus_local_tables_mx
+test: citus_local_tables_queries_mx
+test: foreign_tables_mx
+test: multi_mx_transaction_recovery
+test: multi_mx_modifying_xacts
+test: multi_mx_explain
+test: multi_mx_reference_table
+test: multi_mx_insert_select_repartition
+test: locally_execute_intermediate_results
+test: multi_mx_alter_distributed_table
+test: update_colocation_mx
+test: resync_metadata_with_sequences
+test: distributed_locks
+# should be executed sequentially because it modifies metadata
+test: local_shard_execution_dropped_column
+test: metadata_sync_helpers
+
+test: issue_6592
+test: executor_local_failure
+test: local_execution_local_plan
+
+# test that no tests leaked intermediate results. This should always be last
+test: ensure_no_intermediate_data_leak
+test: check_mx
+
+# ---------
+# ensures that we never leak any connection counts
+# in the shared memory
+# --------
+test: ensure_no_shared_connection_leak

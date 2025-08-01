@@ -1,0 +1,254 @@
+--
+-- failure_add_disable_node tests master_add_node, master_remove_node
+-- master_activate_node for failures.
+-- citus_disable_node_and_wait and master_add_inactive_node can not be
+-- tested as they don't create network activity
+--
+SELECT citus.mitmproxy('conn.allow()');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+SET citus.next_shard_id TO 200000;
+-- verify we have all worker nodes present
+SELECT * FROM master_get_active_worker_nodes()
+ORDER BY 1, 2;
+ node_name | node_port
+---------------------------------------------------------------------
+ localhost |      9060
+ localhost |     57637
+(2 rows)
+
+-- verify there are no tables that could prevent add/remove node operations
+SELECT * FROM pg_dist_partition;
+ logicalrelid | partmethod | partkey | colocationid | repmodel | autoconverted
+---------------------------------------------------------------------
+(0 rows)
+
+CREATE SCHEMA add_remove_node;
+SET SEARCH_PATH=add_remove_node;
+CREATE TABLE user_table(user_id int, user_name text);
+SELECT create_reference_table('user_table');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE event_table(user_id int, event_id int, event_name text);
+SELECT create_distributed_table('event_table', 'user_id');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT shardid, shardstate
+FROM pg_dist_placement p JOIN pg_dist_shard s USING (shardid)
+WHERE s.logicalrelid = 'user_table'::regclass
+ORDER BY placementid;
+ shardid | shardstate
+---------------------------------------------------------------------
+  200000 |          1
+  200000 |          1
+(2 rows)
+
+SELECT citus_disable_node('localhost', :worker_2_proxy_port, true);
+ citus_disable_node
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT public.wait_until_metadata_sync();
+ wait_until_metadata_sync
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT * FROM master_get_active_worker_nodes()
+ORDER BY 1, 2;
+ node_name | node_port
+---------------------------------------------------------------------
+ localhost |     57637
+(1 row)
+
+SELECT shardid, shardstate
+FROM pg_dist_placement p JOIN pg_dist_shard s USING (shardid) JOIN pg_dist_node n USING(groupid)
+WHERE s.logicalrelid = 'user_table'::regclass AND n.isactive
+ORDER BY placementid;
+ shardid | shardstate
+---------------------------------------------------------------------
+  200000 |          1
+(1 row)
+
+-- verify node is not activated
+SELECT * FROM master_get_active_worker_nodes()
+ORDER BY 1, 2;
+ node_name | node_port
+---------------------------------------------------------------------
+ localhost |     57637
+(1 row)
+
+SELECT shardid, shardstate
+FROM pg_dist_placement p JOIN pg_dist_shard s USING (shardid) JOIN pg_dist_node n USING(groupid)
+WHERE s.logicalrelid = 'user_table'::regclass AND n.isactive
+ORDER BY placementid;
+ shardid | shardstate
+---------------------------------------------------------------------
+  200000 |          1
+(1 row)
+
+-- fail create schema command
+SELECT citus.mitmproxy('conn.onQuery(query="CREATE SCHEMA").kill()');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT master_activate_node('localhost', :worker_2_proxy_port);
+WARNING:  connection not open
+CONTEXT:  while executing command on localhost:xxxxx
+ERROR:  failure on connection marked as essential: localhost:xxxxx
+-- verify node is not activated
+SELECT * FROM master_get_active_worker_nodes()
+ORDER BY 1, 2;
+ node_name | node_port
+---------------------------------------------------------------------
+ localhost |     57637
+(1 row)
+
+SELECT shardid, shardstate
+FROM pg_dist_placement p JOIN pg_dist_shard s USING (shardid) JOIN pg_dist_node n USING(groupid)
+WHERE s.logicalrelid = 'user_table'::regclass AND n.isactive
+ORDER BY placementid;
+ shardid | shardstate
+---------------------------------------------------------------------
+  200000 |          1
+(1 row)
+
+BEGIN;
+	-- master_remove_node succeeds because there are the
+	-- healthy placements of the shards that exists on
+	-- worker_2_proxy_port on the other worker (worker_1_port)
+	-- as well
+	SELECT master_remove_node('localhost', :worker_2_proxy_port);
+ master_remove_node
+---------------------------------------------------------------------
+
+(1 row)
+
+ROLLBACK;
+-- drop event table and re-run remove
+DROP TABLE event_table;
+SELECT master_remove_node('localhost', :worker_2_proxy_port);
+ master_remove_node
+---------------------------------------------------------------------
+
+(1 row)
+
+-- verify node is removed
+SELECT * FROM master_get_active_worker_nodes()
+ORDER BY 1, 2;
+ node_name | node_port
+---------------------------------------------------------------------
+ localhost |     57637
+(1 row)
+
+SELECT shardid, shardstate
+FROM pg_dist_placement p JOIN pg_dist_shard s USING (shardid) JOIN pg_dist_node n USING(groupid)
+WHERE s.logicalrelid = 'user_table'::regclass AND n.isactive
+ORDER BY placementid;
+ shardid | shardstate
+---------------------------------------------------------------------
+  200000 |          1
+(1 row)
+
+-- test master_add_inactive_node
+-- it does not create any network activity therefore can not
+-- be injected failure through network
+SELECT master_add_inactive_node('localhost', :worker_2_proxy_port);
+ master_add_inactive_node
+---------------------------------------------------------------------
+                        3
+(1 row)
+
+SELECT master_remove_node('localhost', :worker_2_proxy_port);
+ master_remove_node
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT shardid, shardstate
+FROM pg_dist_placement p JOIN pg_dist_shard s USING (shardid) JOIN pg_dist_node n USING(groupid)
+WHERE s.logicalrelid = 'user_table'::regclass AND n.isactive
+ORDER BY placementid;
+ shardid | shardstate
+---------------------------------------------------------------------
+  200000 |          1
+(1 row)
+
+-- reset cluster to original state
+ALTER SEQUENCE pg_dist_node_nodeid_seq RESTART 2;
+ALTER SEQUENCE pg_dist_groupid_seq RESTART 2;
+SELECT citus.mitmproxy('conn.allow()');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT master_add_node('localhost', :worker_2_proxy_port);
+ master_add_node
+---------------------------------------------------------------------
+               2
+(1 row)
+
+-- verify node is added
+SELECT * FROM master_get_active_worker_nodes()
+ORDER BY 1, 2;
+ node_name | node_port
+---------------------------------------------------------------------
+ localhost |      9060
+ localhost |     57637
+(2 rows)
+
+SELECT shardid, shardstate
+FROM pg_dist_placement p JOIN pg_dist_shard s USING (shardid) JOIN pg_dist_node n USING(groupid)
+WHERE s.logicalrelid = 'user_table'::regclass AND n.isactive
+ORDER BY placementid;
+ shardid | shardstate
+---------------------------------------------------------------------
+  200000 |          1
+(1 row)
+
+SELECT citus.mitmproxy('conn.allow()');
+ mitmproxy
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT master_add_node('localhost', :worker_1_port);
+ master_add_node
+---------------------------------------------------------------------
+               1
+(1 row)
+
+-- verify node is added
+SELECT * FROM master_get_active_worker_nodes()
+ORDER BY 1, 2;
+ node_name | node_port
+---------------------------------------------------------------------
+ localhost |      9060
+ localhost |     57637
+(2 rows)
+
+SELECT shardid, shardstate
+FROM pg_dist_placement p JOIN pg_dist_shard s USING (shardid)
+WHERE s.logicalrelid = 'user_table'::regclass
+ORDER BY placementid;
+ shardid | shardstate
+---------------------------------------------------------------------
+  200000 |          1
+(1 row)
+
+RESET SEARCH_PATH;
+DROP SCHEMA add_remove_node CASCADE;
+NOTICE:  drop cascades to table add_remove_node.user_table

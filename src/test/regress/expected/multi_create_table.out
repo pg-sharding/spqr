@@ -1,0 +1,468 @@
+--
+-- MULTI_CREATE_TABLE
+--
+-- Create new table definitions for use in testing in distributed planning and
+-- execution functionality. Also create indexes to boost performance. Since we
+-- need to cover both reference join and partitioned join, we have created
+-- reference and hash-distributed version of orders, customer and part tables.
+SET citus.next_shard_id TO 360000;
+CREATE TABLE lineitem (
+	l_orderkey bigint not null,
+	l_partkey integer not null,
+	l_suppkey integer not null,
+	l_linenumber integer not null,
+	l_quantity decimal(15, 2) not null,
+	l_extendedprice decimal(15, 2) not null,
+	l_discount decimal(15, 2) not null,
+	l_tax decimal(15, 2) not null,
+	l_returnflag char(1) not null,
+	l_linestatus char(1) not null,
+	l_shipdate date not null,
+	l_commitdate date not null,
+	l_receiptdate date not null,
+	l_shipinstruct char(25) not null,
+	l_shipmode char(10) not null,
+	l_comment varchar(44) not null,
+	PRIMARY KEY(l_orderkey, l_linenumber) );
+SELECT create_distributed_table('lineitem', 'l_orderkey', 'hash', shard_count := 2);
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE INDEX lineitem_time_index ON lineitem (l_shipdate);
+CREATE TABLE orders (
+	o_orderkey bigint not null,
+	o_custkey integer not null,
+	o_orderstatus char(1) not null,
+	o_totalprice decimal(15,2) not null,
+	o_orderdate date not null,
+	o_orderpriority char(15) not null,
+	o_clerk char(15) not null,
+	o_shippriority integer not null,
+	o_comment varchar(79) not null,
+	PRIMARY KEY(o_orderkey) );
+SELECT create_distributed_table('orders', 'o_orderkey', 'hash', colocate_with := 'lineitem');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE orders_reference (
+	o_orderkey bigint not null,
+	o_custkey integer not null,
+	o_orderstatus char(1) not null,
+	o_totalprice decimal(15,2) not null,
+	o_orderdate date not null,
+	o_orderpriority char(15) not null,
+	o_clerk char(15) not null,
+	o_shippriority integer not null,
+	o_comment varchar(79) not null,
+	PRIMARY KEY(o_orderkey) );
+SELECT create_reference_table('orders_reference');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE customer (
+	c_custkey integer not null,
+	c_name varchar(25) not null,
+	c_address varchar(40) not null,
+	c_nationkey integer not null,
+	c_phone char(15) not null,
+	c_acctbal decimal(15,2) not null,
+	c_mktsegment char(10) not null,
+	c_comment varchar(117) not null);
+SELECT create_reference_table('customer');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE customer_append (
+	c_custkey integer not null,
+	c_name varchar(25) not null,
+	c_address varchar(40) not null,
+	c_nationkey integer not null,
+	c_phone char(15) not null,
+	c_acctbal decimal(15,2) not null,
+	c_mktsegment char(10) not null,
+	c_comment varchar(117) not null);
+SELECT create_distributed_table('customer_append', 'c_custkey', 'append');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT master_create_empty_shard('customer_append');
+ master_create_empty_shard
+---------------------------------------------------------------------
+                    360006
+(1 row)
+
+CREATE TABLE nation (
+	n_nationkey integer not null,
+	n_name char(25) not null,
+	n_regionkey integer not null,
+	n_comment varchar(152));
+SELECT create_reference_table('nation');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE part (
+	p_partkey integer not null,
+	p_name varchar(55) not null,
+	p_mfgr char(25) not null,
+	p_brand char(10) not null,
+	p_type varchar(25) not null,
+	p_size integer not null,
+	p_container char(10) not null,
+	p_retailprice decimal(15,2) not null,
+	p_comment varchar(23) not null);
+SELECT create_reference_table('part');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE part_append (
+	p_partkey integer not null,
+	p_name varchar(55) not null,
+	p_mfgr char(25) not null,
+	p_brand char(10) not null,
+	p_type varchar(25) not null,
+	p_size integer not null,
+	p_container char(10) not null,
+	p_retailprice decimal(15,2) not null,
+	p_comment varchar(23) not null);
+SELECT create_distributed_table('part_append', 'p_partkey', 'append');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT master_create_empty_shard('part_append');
+ master_create_empty_shard
+---------------------------------------------------------------------
+                    360009
+(1 row)
+
+CREATE TABLE supplier
+(
+	s_suppkey integer not null,
+	s_name char(25) not null,
+	s_address varchar(40) not null,
+	s_nationkey integer,
+	s_phone char(15) not null,
+	s_acctbal decimal(15,2) not null,
+	s_comment varchar(101) not null
+);
+SELECT create_reference_table('supplier');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- create a single shard supplier table which is not
+-- a reference table
+CREATE TABLE supplier_single_shard
+(
+	s_suppkey integer not null,
+ 	s_name char(25) not null,
+ 	s_address varchar(40) not null,
+ 	s_nationkey integer,
+ 	s_phone char(15) not null,
+  	s_acctbal decimal(15,2) not null,
+  	s_comment varchar(101) not null
+);
+SELECT create_distributed_table('supplier_single_shard', 's_suppkey', 'hash', shard_count := 1);
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE mx_table_test (col1 int, col2 text);
+SET citus.next_shard_id TO 360013;
+-- Test initial data loading
+CREATE TABLE data_load_test (col1 int, col2 text, col3 serial);
+INSERT INTO data_load_test VALUES (132, 'hello');
+INSERT INTO data_load_test VALUES (243, 'world');
+-- table must be empty when using append- or range-partitioning
+SELECT create_distributed_table('data_load_test', 'col1', 'append');
+ERROR:  cannot distribute relation "data_load_test"
+DETAIL:  Relation "data_load_test" contains data.
+HINT:  Empty your table before distributing it.
+SELECT create_distributed_table('data_load_test', 'col1', 'range');
+ERROR:  cannot distribute relation "data_load_test"
+DETAIL:  Relation "data_load_test" contains data.
+HINT:  Empty your table before distributing it.
+-- create_distributed_table creates shards and copies data into the distributed table
+SELECT create_distributed_table('data_load_test', 'col1');
+NOTICE:  Copying data from local table...
+NOTICE:  copying the data has completed
+DETAIL:  The local data in the table is no longer visible, but is still on disk.
+HINT:  To remove the local data, run: SELECT truncate_local_data_after_distributing_table($$public.data_load_test$$)
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT * FROM data_load_test ORDER BY col1;
+ col1 | col2  | col3
+---------------------------------------------------------------------
+  132 | hello |    1
+  243 | world |    2
+(2 rows)
+
+DROP TABLE data_load_test;
+-- test queries on distributed tables with no shards
+CREATE TABLE no_shard_test (col1 int, col2 text);
+SELECT create_distributed_table('no_shard_test', 'col1', 'append');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT * FROM no_shard_test WHERE col1 > 1;
+ col1 | col2
+---------------------------------------------------------------------
+(0 rows)
+
+DROP TABLE no_shard_test;
+CREATE TABLE no_shard_test (col1 int, col2 text);
+SELECT create_distributed_table('no_shard_test', 'col1', 'range');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT * FROM no_shard_test WHERE col1 > 1;
+ col1 | col2
+---------------------------------------------------------------------
+(0 rows)
+
+DROP TABLE no_shard_test;
+-- ensure writes in the same transaction as create_distributed_table are visible
+BEGIN;
+CREATE TABLE data_load_test (col1 int, col2 text, col3 serial);
+INSERT INTO data_load_test VALUES (132, 'hello');
+SELECT create_distributed_table('data_load_test', 'col1');
+NOTICE:  Copying data from local table...
+NOTICE:  copying the data has completed
+DETAIL:  The local data in the table is no longer visible, but is still on disk.
+HINT:  To remove the local data, run: SELECT truncate_local_data_after_distributing_table($$public.data_load_test$$)
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+INSERT INTO data_load_test VALUES (243, 'world');
+END;
+SELECT * FROM data_load_test ORDER BY col1;
+ col1 | col2  | col3
+---------------------------------------------------------------------
+  132 | hello |    1
+  243 | world |    2
+(2 rows)
+
+DROP TABLE data_load_test;
+-- creating co-located distributed tables in the same transaction works
+BEGIN;
+CREATE TABLE data_load_test1 (col1 int, col2 text, col3 serial);
+INSERT INTO data_load_test1 VALUES (132, 'hello');
+SELECT create_distributed_table('data_load_test1', 'col1');
+NOTICE:  Copying data from local table...
+NOTICE:  copying the data has completed
+DETAIL:  The local data in the table is no longer visible, but is still on disk.
+HINT:  To remove the local data, run: SELECT truncate_local_data_after_distributing_table($$public.data_load_test1$$)
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE data_load_test2 (col1 int, col2 text, col3 serial);
+INSERT INTO data_load_test2 VALUES (132, 'world');
+SELECT create_distributed_table('data_load_test2', 'col1');
+NOTICE:  Copying data from local table...
+NOTICE:  copying the data has completed
+DETAIL:  The local data in the table is no longer visible, but is still on disk.
+HINT:  To remove the local data, run: SELECT truncate_local_data_after_distributing_table($$public.data_load_test2$$)
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT a.col2 ||' '|| b.col2
+FROM data_load_test1 a JOIN data_load_test2 b USING (col1)
+WHERE col1 = 132;
+  ?column?
+---------------------------------------------------------------------
+ hello world
+(1 row)
+
+DROP TABLE data_load_test1, data_load_test2;
+END;
+-- distributing catalog tables is not supported
+SELECT create_distributed_table('pg_class', 'relname');
+ERROR:  cannot create a citus table from a catalog table
+SELECT create_reference_table('pg_class');
+ERROR:  cannot create a citus table from a catalog table
+-- test shard_count parameter
+-- first set citus.shard_count so we know the parameter works
+SET citus.shard_count TO 10;
+CREATE TABLE shard_count_table (a INT, b TEXT);
+CREATE TABLE shard_count_table_2 (a INT, b TEXT);
+SELECT create_distributed_table('shard_count_table', 'a', shard_count:=5);
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT shard_count FROM citus_tables WHERE table_name::text = 'shard_count_table';
+ shard_count
+---------------------------------------------------------------------
+           5
+(1 row)
+
+SELECT create_distributed_table('shard_count_table_2', 'a', shard_count:=0);
+ERROR:  0 is outside the valid range for parameter "shard_count" (1 .. 64000)
+SELECT create_distributed_table('shard_count_table_2', 'a', shard_count:=-100);
+ERROR:  -100 is outside the valid range for parameter "shard_count" (1 .. 64000)
+SELECT create_distributed_table('shard_count_table_2', 'a', shard_count:=64001);
+ERROR:  64001 is outside the valid range for parameter "shard_count" (1 .. 64000)
+-- shard count with colocate with table should error
+SELECT create_distributed_table('shard_count_table_2', 'a', shard_count:=12, colocate_with:='shard_count');
+ERROR:  Cannot use colocate_with with a table and shard_count at the same time
+-- none should not error
+SELECT create_distributed_table('shard_count_table_2', 'a', shard_count:=12, colocate_with:='none');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+DROP TABLE shard_count_table, shard_count_table_2;
+-- test shard splitting doesn't break shard_count parameter
+-- when shard count is given table needs to have exactly that
+-- many shards, regardless of shard splitting on other tables
+-- ensure there is no colocation group with 9 shards
+SELECT count(*) FROM pg_dist_colocation WHERE shardcount = 9;
+ count
+---------------------------------------------------------------------
+     0
+(1 row)
+
+SET citus.shard_count TO 9;
+SET citus.shard_replication_factor TO 1;
+CREATE TABLE shard_split_table (a int, b int);
+SELECT create_distributed_table ('shard_split_table', 'a');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT 1 FROM isolate_tenant_to_new_shard('shard_split_table', 5, shard_transfer_mode => 'block_writes');
+ ?column?
+---------------------------------------------------------------------
+        1
+(1 row)
+
+-- show the difference in pg_dist_colocation and citus_tables shard counts
+SELECT
+	(
+		SELECT shardcount FROM pg_dist_colocation WHERE colocationid IN
+		(
+			SELECT colocation_id FROM citus_tables WHERE table_name = 'shard_split_table'::regclass
+		)
+	) AS "pg_dist_colocation",
+	(SELECT shard_count FROM citus_tables WHERE table_name = 'shard_split_table'::regclass) AS "citus_tables";
+ pg_dist_colocation | citus_tables
+---------------------------------------------------------------------
+                  9 |           11
+(1 row)
+
+CREATE TABLE shard_split_table_2 (a int, b int);
+SELECT create_distributed_table ('shard_split_table_2', 'a', shard_count:=9);
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT a.colocation_id = b.colocation_id FROM citus_tables a, citus_tables b
+	WHERE a.table_name = 'shard_split_table'::regclass AND b.table_name = 'shard_split_table_2'::regclass;
+ ?column?
+---------------------------------------------------------------------
+ f
+(1 row)
+
+SELECT shard_count FROM citus_tables WHERE table_name = 'shard_split_table_2'::regclass;
+ shard_count
+---------------------------------------------------------------------
+           9
+(1 row)
+
+-- also check we don't break regular behaviour
+CREATE TABLE shard_split_table_3 (a int, b int);
+SELECT create_distributed_table ('shard_split_table_3', 'a');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT a.colocation_id = b.colocation_id FROM citus_tables a, citus_tables b
+	WHERE a.table_name = 'shard_split_table'::regclass AND b.table_name = 'shard_split_table_3'::regclass;
+ ?column?
+---------------------------------------------------------------------
+ t
+(1 row)
+
+SELECT shard_count FROM citus_tables WHERE table_name = 'shard_split_table_3'::regclass;
+ shard_count
+---------------------------------------------------------------------
+          11
+(1 row)
+
+DROP TABLE shard_split_table, shard_split_table_2, shard_split_table_3;
+-- test a shard count with an empty default colocation group
+-- ensure there is no colocation group with 13 shards
+SELECT count(*) FROM pg_dist_colocation WHERE shardcount = 13;
+ count
+---------------------------------------------------------------------
+     0
+(1 row)
+
+SET citus.shard_count TO 13;
+CREATE TABLE shard_count_drop_table (a int);
+SELECT create_distributed_table('shard_count_drop_table', 'a');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+DROP TABLE shard_count_drop_table;
+CREATE TABLE shard_count_table_3 (a int);
+SELECT create_distributed_table('shard_count_table_3', 'a', shard_count:=13);
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT shardcount FROM pg_dist_colocation WHERE colocationid IN
+(
+	SELECT colocation_id FROM citus_tables WHERE table_name = 'shard_count_table_3'::regclass
+);
+ shardcount
+---------------------------------------------------------------------
+         13
+(1 row)
+
+CREATE TEMP TABLE temp_table(a int);
+-- make sure temp table cannot be distributed and we give a good error
+select create_distributed_table('temp_table', 'a');
+ERROR:  cannot distribute a temporary table
+select create_reference_table('temp_table');
+ERROR:  cannot distribute a temporary table
+DROP TABLE temp_table;
+DROP TABLE shard_count_table_3;

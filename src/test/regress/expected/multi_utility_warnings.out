@@ -1,0 +1,10 @@
+--
+-- MULTI_UTILITY_WARNINGS
+--
+-- Tests to check if we inform the user about potential caveats of creating new
+-- databases.
+CREATE DATABASE new_database;
+NOTICE:  Citus partially supports CREATE DATABASE for distributed databases
+DETAIL:  Citus does not propagate CREATE DATABASE command to other nodes
+HINT:  You can manually create a database and its extensions on other nodes.
+DROP DATABASE new_database;

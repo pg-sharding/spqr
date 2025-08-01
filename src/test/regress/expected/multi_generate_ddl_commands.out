@@ -1,0 +1,180 @@
+SET citus.next_shard_id TO 610000;
+-- ===================================================================
+-- test ddl command generation functionality
+-- ===================================================================
+-- first make sure a simple table works
+CREATE TABLE simple_table (
+	first_name text,
+	last_name text,
+	id bigint
+);
+SELECT master_get_table_ddl_events('simple_table');
+                               master_get_table_ddl_events
+---------------------------------------------------------------------
+ CREATE TABLE public.simple_table (first_name text, last_name text, id bigint) USING heap
+ ALTER TABLE public.simple_table OWNER TO postgres
+(2 rows)
+
+-- ensure not-null constraints are propagated
+CREATE TABLE not_null_table (
+	city text,
+	id bigint not null
+);
+SELECT master_get_table_ddl_events('not_null_table');
+                          master_get_table_ddl_events
+---------------------------------------------------------------------
+ CREATE TABLE public.not_null_table (city text, id bigint NOT NULL) USING heap
+ ALTER TABLE public.not_null_table OWNER TO postgres
+(2 rows)
+
+-- even more complex constraints should be preserved...
+CREATE TABLE column_constraint_table (
+	first_name text,
+	last_name text,
+	age int CONSTRAINT non_negative_age CHECK (age >= 0)
+);
+SELECT master_get_table_ddl_events('column_constraint_table');
+                                                              master_get_table_ddl_events
+---------------------------------------------------------------------
+ CREATE TABLE public.column_constraint_table (first_name text, last_name text, age integer, CONSTRAINT non_negative_age CHECK ((age >= 0))) USING heap
+ ALTER TABLE public.column_constraint_table OWNER TO postgres
+(2 rows)
+
+-- including table constraints
+CREATE TABLE table_constraint_table (
+	bid_item_id bigint,
+	min_bid decimal not null,
+	max_bid decimal not null,
+	CONSTRAINT bids_ordered CHECK (min_bid > max_bid)
+);
+SELECT master_get_table_ddl_events('table_constraint_table');
+                                                                             master_get_table_ddl_events
+---------------------------------------------------------------------
+ CREATE TABLE public.table_constraint_table (bid_item_id bigint, min_bid numeric NOT NULL, max_bid numeric NOT NULL, CONSTRAINT bids_ordered CHECK ((min_bid > max_bid))) USING heap
+ ALTER TABLE public.table_constraint_table OWNER TO postgres
+(2 rows)
+
+-- tables with "simple" CHECK constraints should be able to be distributed
+CREATE TABLE check_constraint_table_1(
+	id int,
+	b boolean,
+	CHECK(b)
+);
+SELECT create_distributed_table('check_constraint_table_1', 'id');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT master_get_table_ddl_events('check_constraint_table_1');
+                                                      master_get_table_ddl_events
+---------------------------------------------------------------------
+ CREATE TABLE public.check_constraint_table_1 (id integer, b boolean, CONSTRAINT check_constraint_table_1_b_check CHECK (b)) USING heap
+ ALTER TABLE public.check_constraint_table_1 OWNER TO postgres
+(2 rows)
+
+-- including hardcoded Booleans
+CREATE TABLE check_constraint_table_2(
+	id int CHECK(true)
+);
+SELECT create_distributed_table('check_constraint_table_2', 'id');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT master_get_table_ddl_events('check_constraint_table_2');
+                                                 master_get_table_ddl_events
+---------------------------------------------------------------------
+ CREATE TABLE public.check_constraint_table_2 (id integer, CONSTRAINT check_constraint_table_2_check CHECK (true)) USING heap
+ ALTER TABLE public.check_constraint_table_2 OWNER TO postgres
+(2 rows)
+
+-- default values are supported
+CREATE TABLE default_value_table (
+	name text,
+	price decimal default 0.00
+);
+SELECT master_get_table_ddl_events('default_value_table');
+                                master_get_table_ddl_events
+---------------------------------------------------------------------
+ CREATE TABLE public.default_value_table (name text, price numeric DEFAULT 0.00) USING heap
+ ALTER TABLE public.default_value_table OWNER TO postgres
+(2 rows)
+
+-- of course primary keys work...
+CREATE TABLE pkey_table (
+	first_name text,
+	last_name text,
+	id bigint PRIMARY KEY
+);
+SELECT master_get_table_ddl_events('pkey_table');
+                                   master_get_table_ddl_events
+---------------------------------------------------------------------
+ CREATE TABLE public.pkey_table (first_name text, last_name text, id bigint NOT NULL) USING heap
+ ALTER TABLE public.pkey_table OWNER TO postgres
+ ALTER TABLE public.pkey_table ADD CONSTRAINT pkey_table_pkey PRIMARY KEY (id)
+(3 rows)
+
+-- as do unique indexes...
+CREATE TABLE unique_table (
+	user_id bigint not null,
+	username text UNIQUE not null
+);
+SELECT master_get_table_ddl_events('unique_table');
+                                  master_get_table_ddl_events
+---------------------------------------------------------------------
+ CREATE TABLE public.unique_table (user_id bigint NOT NULL, username text NOT NULL) USING heap
+ ALTER TABLE public.unique_table OWNER TO postgres
+ ALTER TABLE public.unique_table ADD CONSTRAINT unique_table_username_key UNIQUE (username)
+(3 rows)
+
+-- and indexes used for clustering
+CREATE TABLE clustered_table (
+	data json not null,
+	received_at timestamp not null
+);
+CREATE INDEX clustered_time_idx ON clustered_table (received_at);
+CLUSTER clustered_table USING clustered_time_idx;
+SELECT master_get_table_ddl_events('clustered_table');
+                                              master_get_table_ddl_events
+---------------------------------------------------------------------
+ CREATE TABLE public.clustered_table (data json NOT NULL, received_at timestamp without time zone NOT NULL) USING heap
+ ALTER TABLE public.clustered_table OWNER TO postgres
+ CREATE INDEX clustered_time_idx ON public.clustered_table USING btree (received_at)
+ ALTER TABLE public.clustered_table CLUSTER ON clustered_time_idx
+(4 rows)
+
+-- fiddly things like storage type and statistics also work
+CREATE TABLE fiddly_table (
+	hostname char(255) not null,
+	os char(255) not null,
+	ip_addr inet not null,
+	traceroute text not null
+);
+ALTER TABLE fiddly_table
+	ALTER hostname SET STORAGE PLAIN,
+	ALTER os SET STORAGE MAIN,
+	ALTER ip_addr SET STORAGE EXTENDED,
+	ALTER traceroute SET STORAGE EXTERNAL,
+	ALTER ip_addr SET STATISTICS 500;
+SELECT master_get_table_ddl_events('fiddly_table');
+                                                                                                           master_get_table_ddl_events
+---------------------------------------------------------------------
+ CREATE TABLE public.fiddly_table (hostname character(255) NOT NULL, os character(255) NOT NULL, ip_addr inet NOT NULL, traceroute text NOT NULL) USING heap
+ ALTER TABLE ONLY public.fiddly_table ALTER COLUMN hostname SET STORAGE PLAIN, ALTER COLUMN os SET STORAGE MAIN, ALTER COLUMN ip_addr SET STORAGE EXTENDED, ALTER COLUMN ip_addr SET STATISTICS 500, ALTER COLUMN traceroute SET STORAGE EXTERNAL
+ ALTER TABLE public.fiddly_table OWNER TO postgres
+(3 rows)
+
+-- propagating views is not supported if local table dependency exists
+CREATE VIEW local_view AS SELECT * FROM simple_table;
+WARNING:  "view local_view" has dependency to "table simple_table" that is not in Citus' metadata
+DETAIL:  "view local_view" will be created only locally
+HINT:  Distribute "table simple_table" first to distribute "view local_view"
+SELECT master_get_table_ddl_events('local_view');
+ERROR:  local_view is not a regular, foreign or partitioned table
+-- clean up
+DROP VIEW IF EXISTS local_view;
+DROP TABLE IF EXISTS simple_table, not_null_table, column_constraint_table,
+					 table_constraint_table, default_value_table, pkey_table,
+					 unique_table, clustered_table, fiddly_table;

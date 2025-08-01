@@ -1,0 +1,7 @@
+[flake8]
+# E203 is ignored for black
+extend-ignore = E203
+# black will truncate to 88 characters usually, but long string literals it
+# might keep. That's fine in most cases unless it gets really excessive.
+max-line-length = 150
+exclude = .git,__pycache__,vendor,tmp_*

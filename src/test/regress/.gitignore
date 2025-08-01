@@ -1,0 +1,33 @@
+# Local binaries
+/pg_regress
+
+# Generated subdirectories
+/tmp_check/
+/tmp_upgrade/
+/tmp_citus_upgrade/
+/tmp_citus_tarballs/
+/tmp_citus_test/
+/build/
+/results/
+/log/
+/bin/test/results/
+
+# Regression test output
+/regression.diffs
+/regression.out
+/test_times.log
+
+# Regression test timing
+/test_times.log
+
+# Failure test side effets
+/proxy.output
+
+# python
+*.pyc
+
+# core dumps
+core
+
+# pg_vanilla output folders
+pg_vanilla_outputs

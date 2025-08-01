@@ -1,0 +1,292 @@
+Parsed test spec with 3 sessions
+
+starting permutation: s1-begin s1-update-node-1 s2-update-node-2 s1-commit s1-show-nodes s3-update-node-1-back s3-update-node-2-back s3-manually-fix-metadata
+nodeid|nodename |nodeport
+---------------------------------------------------------------------
+    23|localhost|   57638
+    22|localhost|   57637
+(2 rows)
+
+step s1-begin:
+ BEGIN;
+
+step s1-update-node-1:
+    SELECT 1 FROM master_update_node(
+        (select nodeid from pg_dist_node where nodeport = 57637),
+        'localhost',
+        58637);
+
+?column?
+---------------------------------------------------------------------
+       1
+(1 row)
+
+step s2-update-node-2:
+    SELECT 1 FROM master_update_node(
+        (select nodeid from pg_dist_node where nodeport = 57638),
+        'localhost',
+        58638);
+ <waiting ...>
+step s1-commit: 
+ COMMIT;
+
+step s2-update-node-2: <... completed>
+?column?
+---------------------------------------------------------------------
+       1
+(1 row)
+
+step s1-show-nodes:
+    SELECT nodeid, nodename, nodeport, isactive
+      FROM pg_dist_node
+  ORDER BY nodename, nodeport;
+
+nodeid|nodename |nodeport|isactive
+---------------------------------------------------------------------
+    22|localhost|   58637|t
+    23|localhost|   58638|t
+(2 rows)
+
+step s3-update-node-1-back:
+    SELECT 1 FROM master_update_node(
+        (select nodeid from pg_dist_node where nodeport = 58637),
+        'localhost',
+        57637);
+
+?column?
+---------------------------------------------------------------------
+       1
+(1 row)
+
+step s3-update-node-2-back:
+    SELECT 1 FROM master_update_node(
+        (select nodeid from pg_dist_node where nodeport = 58638),
+        'localhost',
+        57638);
+
+?column?
+---------------------------------------------------------------------
+       1
+(1 row)
+
+step s3-manually-fix-metadata:
+    UPDATE pg_dist_node SET metadatasynced = 't' WHERE nodeport = 57637;
+    UPDATE pg_dist_node SET metadatasynced = 't' WHERE nodeport = 57638;
+    SELECT start_metadata_sync_to_node('localhost', 57637);
+    SELECT start_metadata_sync_to_node('localhost', 57638);
+
+start_metadata_sync_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+start_metadata_sync_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+nodeid|nodename|nodeport
+---------------------------------------------------------------------
+(0 rows)
+
+
+starting permutation: s1-begin s1-update-node-1 s2-begin s2-update-node-1 s1-commit s2-abort s1-show-nodes s3-update-node-1-back s3-manually-fix-metadata
+nodeid|nodename |nodeport
+---------------------------------------------------------------------
+    23|localhost|   57638
+    22|localhost|   57637
+(2 rows)
+
+step s1-begin:
+ BEGIN;
+
+step s1-update-node-1:
+    SELECT 1 FROM master_update_node(
+        (select nodeid from pg_dist_node where nodeport = 57637),
+        'localhost',
+        58637);
+
+?column?
+---------------------------------------------------------------------
+       1
+(1 row)
+
+step s2-begin:
+ BEGIN;
+
+step s2-update-node-1:
+    SELECT 1 FROM master_update_node(
+        (select nodeid from pg_dist_node where nodeport = 57637),
+        'localhost',
+        58637);
+ <waiting ...>
+step s1-commit: 
+ COMMIT;
+
+step s2-update-node-1: <... completed>
+?column?
+---------------------------------------------------------------------
+       1
+(1 row)
+
+step s2-abort:
+ ABORT;
+
+step s1-show-nodes:
+    SELECT nodeid, nodename, nodeport, isactive
+      FROM pg_dist_node
+  ORDER BY nodename, nodeport;
+
+nodeid|nodename |nodeport|isactive
+---------------------------------------------------------------------
+    23|localhost|   57638|t
+    22|localhost|   58637|t
+(2 rows)
+
+step s3-update-node-1-back:
+    SELECT 1 FROM master_update_node(
+        (select nodeid from pg_dist_node where nodeport = 58637),
+        'localhost',
+        57637);
+
+?column?
+---------------------------------------------------------------------
+       1
+(1 row)
+
+step s3-manually-fix-metadata:
+    UPDATE pg_dist_node SET metadatasynced = 't' WHERE nodeport = 57637;
+    UPDATE pg_dist_node SET metadatasynced = 't' WHERE nodeport = 57638;
+    SELECT start_metadata_sync_to_node('localhost', 57637);
+    SELECT start_metadata_sync_to_node('localhost', 57638);
+
+start_metadata_sync_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+start_metadata_sync_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+nodeid|nodename|nodeport
+---------------------------------------------------------------------
+(0 rows)
+
+
+starting permutation: s2-create-table s1-begin s1-update-node-nonexistent s1-prepare-transaction s2-cache-prepared-statement s1-commit-prepared s2-execute-prepared s1-update-node-existent s3-manually-fix-metadata
+nodeid|nodename |nodeport
+---------------------------------------------------------------------
+    23|localhost|   57638
+    22|localhost|   57637
+(2 rows)
+
+step s2-create-table:
+    CREATE TABLE test (a int);
+    SELECT create_distributed_table('test','a');
+
+create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-begin:
+ BEGIN;
+
+step s1-update-node-nonexistent:
+    SELECT 1 FROM master_update_node(
+        (select nodeid from pg_dist_node where nodeport = 57637),
+        'non-existent',
+        57637);
+
+?column?
+---------------------------------------------------------------------
+       1
+(1 row)
+
+step s1-prepare-transaction:
+    PREPARE transaction 'label';
+
+step s2-cache-prepared-statement:
+    PREPARE foo AS SELECT COUNT(*) FROM test WHERE a = 3;
+    EXECUTE foo;
+    EXECUTE foo;
+    EXECUTE foo;
+    EXECUTE foo;
+    EXECUTE foo;
+    EXECUTE foo;
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+step s1-commit-prepared:
+    COMMIT prepared 'label';
+
+s2: WARNING:  connection to the remote node postgres@non-existent:57637 failed with the following error: could not translate host name "non-existent" to address: <system specific error>
+step s2-execute-prepared:
+    EXECUTE foo;
+
+count
+---------------------------------------------------------------------
+    0
+(1 row)
+
+step s1-update-node-existent:
+    SELECT 1 FROM master_update_node(
+        (select nodeid from pg_dist_node where nodeport = 57637),
+        'localhost',
+        57637);
+
+?column?
+---------------------------------------------------------------------
+       1
+(1 row)
+
+step s3-manually-fix-metadata:
+    UPDATE pg_dist_node SET metadatasynced = 't' WHERE nodeport = 57637;
+    UPDATE pg_dist_node SET metadatasynced = 't' WHERE nodeport = 57638;
+    SELECT start_metadata_sync_to_node('localhost', 57637);
+    SELECT start_metadata_sync_to_node('localhost', 57638);
+
+start_metadata_sync_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+start_metadata_sync_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+nodeid|nodename|nodeport
+---------------------------------------------------------------------
+(0 rows)
+

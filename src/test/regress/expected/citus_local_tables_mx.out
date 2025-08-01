@@ -1,0 +1,1127 @@
+\set VERBOSITY terse
+SET citus.next_shard_id TO 1508000;
+SET citus.shard_replication_factor TO 1;
+SET citus.enable_local_execution TO ON;
+SET citus.log_local_commands TO ON;
+CREATE SCHEMA citus_local_tables_mx;
+SET search_path TO citus_local_tables_mx;
+-- ensure that coordinator is added to pg_dist_node
+SET client_min_messages to ERROR;
+SELECT 1 FROM master_add_node('localhost', :master_port, groupId => 0);
+ ?column?
+---------------------------------------------------------------------
+        1
+(1 row)
+
+RESET client_min_messages;
+---------------------------------------------------------------------
+-- triggers --
+---------------------------------------------------------------------
+CREATE TABLE citus_local_table (value int);
+SELECT citus_add_local_table_to_metadata('citus_local_table');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+-- first stop metadata sync to worker_1
+SELECT stop_metadata_sync_to_node('localhost', :worker_1_port);
+NOTICE:  dropping metadata on the node (localhost,57637)
+ stop_metadata_sync_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE FUNCTION dummy_function() RETURNS trigger AS $dummy_function$
+BEGIN
+    RAISE EXCEPTION 'a trigger that throws this exception';
+END;
+$dummy_function$ LANGUAGE plpgsql;
+CREATE TRIGGER dummy_function_trigger
+BEFORE UPDATE OF value ON citus_local_table
+FOR EACH ROW EXECUTE FUNCTION dummy_function();
+NOTICE:  executing the command locally: SELECT worker_apply_shard_ddl_command (1508000, 'citus_local_tables_mx', 'CREATE TRIGGER dummy_function_trigger
+BEFORE UPDATE OF value ON citus_local_table
+FOR EACH ROW EXECUTE FUNCTION dummy_function();')
+-- Show that we can activate node successfully. That means, we create
+-- the function that trigger needs in mx workers too.
+SELECT 1 FROM citus_activate_node('localhost', :worker_1_port);
+ ?column?
+---------------------------------------------------------------------
+        1
+(1 row)
+
+-- show that the trigger is not allowed to depend(explicitly) on an extension.
+CREATE EXTENSION seg;
+ALTER TRIGGER dummy_function_trigger ON citus_local_table DEPENDS ON EXTENSION seg;
+ERROR:  trigger "dummy_function_trigger" depends on an extension and this is not supported for distributed tables and local tables added to metadata
+ALTER TRIGGER dummy_function_trigger ON citus_local_table RENAME TO renamed_trigger;
+NOTICE:  executing the command locally: SELECT worker_apply_shard_ddl_command (1508000, 'citus_local_tables_mx', 'ALTER TRIGGER dummy_function_trigger ON citus_local_table RENAME TO renamed_trigger;')
+ALTER TABLE citus_local_table DISABLE TRIGGER ALL;
+NOTICE:  executing the command locally: SELECT worker_apply_shard_ddl_command (1508000, 'citus_local_tables_mx', 'ALTER TABLE citus_local_table DISABLE TRIGGER ALL;')
+-- show that update trigger mx relation is renamed and disabled.
+-- both workers should should print 1.
+SELECT run_command_on_workers(
+$$
+SELECT COUNT(*) FROM pg_trigger
+WHERE pg_trigger.tgrelid='citus_local_tables_mx.citus_local_table'::regclass AND
+      pg_trigger.tgname='renamed_trigger' AND
+      pg_trigger.tgenabled='D'
+$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,1)
+ (localhost,57638,t,1)
+(2 rows)
+
+CREATE FUNCTION another_dummy_function() RETURNS trigger AS $another_dummy_function$
+BEGIN
+    RAISE EXCEPTION 'another trigger that throws another exception';
+END;
+$another_dummy_function$ LANGUAGE plpgsql;
+-- Show that we can create the trigger successfully. That means, we create
+-- the function that trigger needs in mx worker too when processing CREATE
+-- TRIGGER commands.
+CREATE TRIGGER another_dummy_function_trigger
+AFTER TRUNCATE ON citus_local_table
+FOR EACH STATEMENT EXECUTE FUNCTION another_dummy_function();
+-- create some test tables before next three sections
+-- and define some foreign keys between them
+CREATE TABLE citus_local_table_1(l1 int);
+SELECT citus_add_local_table_to_metadata('citus_local_table_1');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE reference_table_1(r1 int primary key);
+SELECT create_reference_table('reference_table_1');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+ALTER TABLE citus_local_table_1 ADD CONSTRAINT fkey_local_to_ref FOREIGN KEY(l1) REFERENCES reference_table_1(r1) ON DELETE CASCADE;
+NOTICE:  executing the command locally: SELECT worker_apply_inter_shard_ddl_command (1508001, 'citus_local_tables_mx', 1508002, 'citus_local_tables_mx', 'ALTER TABLE citus_local_table_1 ADD CONSTRAINT fkey_local_to_ref FOREIGN KEY(l1) REFERENCES reference_table_1(r1) ON DELETE CASCADE;')
+CREATE TABLE citus_local_table_2(l1 int primary key);
+SELECT citus_add_local_table_to_metadata('citus_local_table_2');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE reference_table_2(r1 int);
+SELECT create_reference_table('reference_table_2');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+ALTER TABLE reference_table_2 ADD CONSTRAINT fkey_ref_to_local FOREIGN KEY(r1) REFERENCES citus_local_table_2(l1) ON DELETE RESTRICT;
+NOTICE:  executing the command locally: SELECT worker_apply_inter_shard_ddl_command (1508004, 'citus_local_tables_mx', 1508003, 'citus_local_tables_mx', 'ALTER TABLE reference_table_2 ADD CONSTRAINT fkey_ref_to_local FOREIGN KEY(r1) REFERENCES citus_local_table_2(l1) ON DELETE RESTRICT;')
+CREATE TABLE citus_local_table_3(l1 int);
+SELECT citus_add_local_table_to_metadata('citus_local_table_3');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE citus_local_table_4(l1 int primary key);
+SELECT citus_add_local_table_to_metadata('citus_local_table_4');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+ALTER TABLE citus_local_table_3 ADD CONSTRAINT fkey_local_to_local FOREIGN KEY(l1) REFERENCES citus_local_table_4(l1) ON UPDATE SET NULL;
+NOTICE:  executing the command locally: SELECT worker_apply_inter_shard_ddl_command (1508005, 'citus_local_tables_mx', 1508006, 'citus_local_tables_mx', 'ALTER TABLE citus_local_table_3 ADD CONSTRAINT fkey_local_to_local FOREIGN KEY(l1) REFERENCES citus_local_table_4(l1) ON UPDATE SET NULL;')
+-- check stats creation
+CREATE TABLE citus_local_table_stats(a int, b int);
+CREATE STATISTICS stx1 ON a, b FROM citus_local_table_stats;
+SELECT citus_add_local_table_to_metadata('citus_local_table_stats');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE STATISTICS stx2 ON a, b FROM citus_local_table_stats;
+NOTICE:  executing the command locally: SELECT worker_apply_shard_ddl_command (1508007, 'citus_local_tables_mx', 'CREATE STATISTICS citus_local_tables_mx.stx2 ON a, b FROM citus_local_tables_mx.citus_local_table_stats')
+CREATE STATISTICS stx3 ON a, b FROM citus_local_table_stats;
+NOTICE:  executing the command locally: SELECT worker_apply_shard_ddl_command (1508007, 'citus_local_tables_mx', 'CREATE STATISTICS citus_local_tables_mx.stx3 ON a, b FROM citus_local_tables_mx.citus_local_table_stats')
+CREATE STATISTICS stx4 ON a, b FROM citus_local_table_stats;
+NOTICE:  executing the command locally: SELECT worker_apply_shard_ddl_command (1508007, 'citus_local_tables_mx', 'CREATE STATISTICS citus_local_tables_mx.stx4 ON a, b FROM citus_local_tables_mx.citus_local_table_stats')
+ALTER STATISTICS stx3 RENAME TO stx5;
+NOTICE:  executing the command locally: SELECT worker_apply_shard_ddl_command (1508007, 'citus_local_tables_mx', 'ALTER STATISTICS citus_local_tables_mx.stx3 RENAME TO stx5')
+DROP STATISTICS stx4;
+NOTICE:  executing the command locally: SELECT worker_apply_shard_ddl_command (1508007, 'citus_local_tables_mx', 'DROP STATISTICS citus_local_tables_mx.stx4')
+SELECT stxname FROM pg_statistic_ext ORDER BY stxname;
+   stxname
+---------------------------------------------------------------------
+ stx1
+ stx1_1508007
+ stx2
+ stx2_1508007
+ stx5
+ stx5_1508007
+(6 rows)
+
+-- and switch to worker1
+\c - - - :worker_1_port
+SET search_path TO citus_local_tables_mx;
+---------------------------------------------------------------------
+-- foreign key from citus local table to reference table --
+---------------------------------------------------------------------
+-- show that on delete cascade works
+INSERT INTO reference_table_1 VALUES (11);
+INSERT INTO citus_local_table_1 VALUES (11);
+DELETE FROM reference_table_1 WHERE r1=11;
+-- should print 0 rows
+SELECT * FROM citus_local_table_1 ORDER BY l1;
+ l1
+---------------------------------------------------------------------
+(0 rows)
+
+-- show that we are checking for foreign key constraint, below should fail
+INSERT INTO citus_local_table_1 VALUES (2);
+ERROR:  insert or update on table "citus_local_table_1_xxxxxxx" violates foreign key constraint "fkey_local_to_ref_1508001"
+-- below should work
+INSERT INTO reference_table_1 VALUES (2);
+INSERT INTO citus_local_table_1 VALUES (2);
+---------------------------------------------------------------------
+-- foreign key from reference table to citus local table --
+---------------------------------------------------------------------
+-- show that we are checking for foreign key constraint, below should fail
+INSERT INTO reference_table_2 VALUES (4);
+ERROR:  insert or update on table "reference_table_2_1508004" violates foreign key constraint "fkey_ref_to_local_1508004"
+-- below should work
+INSERT INTO citus_local_table_2 VALUES (4);
+INSERT INTO reference_table_2 VALUES (4);
+---------------------------------------------------------------------
+-- foreign key from citus local table to citus local table --
+---------------------------------------------------------------------
+-- show that we are checking for foreign key constraint, below should fail
+INSERT INTO citus_local_table_3 VALUES (3);
+ERROR:  insert or update on table "citus_local_table_3_xxxxxxx" violates foreign key constraint "fkey_local_to_local_1508005"
+-- below shoud work
+INSERT INTO citus_local_table_4 VALUES (3);
+INSERT INTO citus_local_table_3 VALUES (3);
+UPDATE citus_local_table_4 SET l1=6 WHERE l1=3;
+-- show that it prints only one row with l1=null due to ON UPDATE SET NULL
+SELECT * FROM citus_local_table_3;
+ l1
+---------------------------------------------------------------------
+
+(1 row)
+
+-- finally show that we do not allow defining foreign key in mx nodes
+ALTER TABLE citus_local_table_3 ADD CONSTRAINT fkey_local_to_local_2 FOREIGN KEY(l1) REFERENCES citus_local_table_4(l1);
+ERROR:  operation is not allowed on this node
+-- check stats creation
+CREATE TABLE citus_local_table_stats2(a int, b int);
+CREATE STATISTICS stx8 ON a, b FROM citus_local_table_stats2;
+SELECT citus_add_local_table_to_metadata('citus_local_table_stats2');
+ERROR:  operation is not allowed on this node
+CREATE STATISTICS stx9 ON a, b FROM citus_local_table_stats2;
+DROP STATISTICS stx8;
+DROP STATISTICS stx4;
+ERROR:  statistics object "stx4" does not exist
+SELECT stxname FROM pg_statistic_ext ORDER BY stxname;
+ stxname
+---------------------------------------------------------------------
+ stx1
+ stx2
+ stx5
+ stx9
+(4 rows)
+
+\c - - - :master_port
+SET search_path TO citus_local_tables_mx;
+-- undistribute old tables to prevent unnecessary undistribute logs later
+SELECT undistribute_table('citus_local_table', cascade_via_foreign_keys=>true);
+NOTICE:  creating a new table for citus_local_tables_mx.citus_local_table
+NOTICE:  moving the data of citus_local_tables_mx.citus_local_table
+NOTICE:  dropping the old citus_local_tables_mx.citus_local_table
+NOTICE:  renaming the new table to citus_local_tables_mx.citus_local_table
+ undistribute_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT undistribute_table('citus_local_table_3', cascade_via_foreign_keys=>true);
+NOTICE:  creating a new table for citus_local_tables_mx.citus_local_table_3
+NOTICE:  moving the data of citus_local_tables_mx.citus_local_table_3
+NOTICE:  dropping the old citus_local_tables_mx.citus_local_table_3
+NOTICE:  renaming the new table to citus_local_tables_mx.citus_local_table_3
+NOTICE:  creating a new table for citus_local_tables_mx.citus_local_table_4
+NOTICE:  moving the data of citus_local_tables_mx.citus_local_table_4
+NOTICE:  dropping the old citus_local_tables_mx.citus_local_table_4
+NOTICE:  renaming the new table to citus_local_tables_mx.citus_local_table_4
+ undistribute_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT undistribute_table('citus_local_table_stats', cascade_via_foreign_keys=>true);
+NOTICE:  creating a new table for citus_local_tables_mx.citus_local_table_stats
+NOTICE:  moving the data of citus_local_tables_mx.citus_local_table_stats
+NOTICE:  dropping the old citus_local_tables_mx.citus_local_table_stats
+NOTICE:  renaming the new table to citus_local_tables_mx.citus_local_table_stats
+ undistribute_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- verify that mx nodes have the shell table for partitioned citus local tables
+CREATE TABLE local_table_fkey(a INT UNIQUE);
+CREATE TABLE local_table_fkey2(a INT UNIQUE);
+CREATE TABLE partitioned_mx (a INT UNIQUE) PARTITION BY RANGE(a);
+ALTER TABLE partitioned_mx ADD CONSTRAINT fkey_to_local FOREIGN KEY (a) REFERENCES local_table_fkey(a);
+CREATE TABLE IF NOT EXISTS partitioned_mx_1 PARTITION OF partitioned_mx FOR VALUES FROM (1) TO (4);
+CREATE TABLE partitioned_mx_2 (a INT UNIQUE);
+ALTER TABLE partitioned_mx ATTACH PARTITION partitioned_mx_2 FOR VALUES FROM (5) TO (8);
+SELECT create_reference_table('local_table_fkey');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE partitioned_mx_3 (a INT UNIQUE);
+ALTER TABLE partitioned_mx ATTACH PARTITION partitioned_mx_3 FOR VALUES FROM (9) TO (12);
+-- these should error out since multi-level partitioned citus local tables are not supported
+CREATE TABLE IF NOT EXISTS partitioned_mx_4 PARTITION OF partitioned_mx FOR VALUES FROM (13) TO (16) PARTITION BY RANGE (a);
+ERROR:  distributing multi-level partitioned tables is not supported
+BEGIN;
+    CREATE TABLE partitioned_mx_4(a INT UNIQUE) PARTITION BY RANGE (a);
+    alter table partitioned_mx attach partition partitioned_mx_4 FOR VALUES FROM (13) TO (16);
+ERROR:  Citus doesn't support multi-level partitioned tables
+END;
+CREATE TABLE multi_level_p (a INT UNIQUE) PARTITION BY RANGE (a);
+CREATE TABLE IF NOT EXISTS multi_level_c PARTITION OF multi_level_p FOR VALUES FROM (13) TO (16) PARTITION BY RANGE (a);
+select citus_add_local_table_to_metadata('multi_level_p'); --errors
+ERROR:  Citus does not support multi-level partitioned tables
+select citus_add_local_table_to_metadata('multi_level_p', true); --errors
+ERROR:  Citus does not support multi-level partitioned tables
+-- try attaching a partition with an external foreign key
+CREATE TABLE partitioned_mx_4 (a INT UNIQUE);
+ALTER TABLE partitioned_mx_4 ADD CONSTRAINT fkey_not_inherited FOREIGN KEY (a) REFERENCES local_table_fkey2(a);
+-- these two should error out
+ALTER TABLE partitioned_mx ATTACH PARTITION partitioned_mx_4 FOR VALUES FROM (13) TO (16);
+ERROR:  relation citus_local_tables_mx.partitioned_mx_4 is involved in a foreign key relationship with another table
+ALTER TABLE partitioned_mx ATTACH PARTITION partitioned_mx_4 default;
+ERROR:  relation citus_local_tables_mx.partitioned_mx_4 is involved in a foreign key relationship with another table
+SELECT
+    nmsp_parent.nspname AS parent_schema,
+    parent.relname      AS parent,
+    nmsp_child.nspname  AS child_schema,
+    child.relname       AS child
+FROM pg_inherits
+    JOIN pg_class parent            ON pg_inherits.inhparent = parent.oid
+    JOIN pg_class child             ON pg_inherits.inhrelid   = child.oid
+    JOIN pg_namespace nmsp_parent   ON nmsp_parent.oid  = parent.relnamespace
+    JOIN pg_namespace nmsp_child    ON nmsp_child.oid   = child.relnamespace
+WHERE parent.relname='partitioned_mx'
+ORDER BY child;
+     parent_schema     |     parent     |     child_schema      |      child
+---------------------------------------------------------------------
+ citus_local_tables_mx | partitioned_mx | citus_local_tables_mx | partitioned_mx_1
+ citus_local_tables_mx | partitioned_mx | citus_local_tables_mx | partitioned_mx_2
+ citus_local_tables_mx | partitioned_mx | citus_local_tables_mx | partitioned_mx_3
+(3 rows)
+
+\c - - - :worker_1_port
+SELECT relname FROM pg_class WHERE relname LIKE 'partitioned_mx%' ORDER BY relname;
+        relname
+---------------------------------------------------------------------
+ partitioned_mx
+ partitioned_mx_1
+ partitioned_mx_1_a_key
+ partitioned_mx_2
+ partitioned_mx_2_a_key
+ partitioned_mx_3
+ partitioned_mx_3_a_key
+ partitioned_mx_a_key
+(8 rows)
+
+SELECT
+    nmsp_parent.nspname AS parent_schema,
+    parent.relname      AS parent,
+    nmsp_child.nspname  AS child_schema,
+    child.relname       AS child
+FROM pg_inherits
+    JOIN pg_class parent            ON pg_inherits.inhparent = parent.oid
+    JOIN pg_class child             ON pg_inherits.inhrelid   = child.oid
+    JOIN pg_namespace nmsp_parent   ON nmsp_parent.oid  = parent.relnamespace
+    JOIN pg_namespace nmsp_child    ON nmsp_child.oid   = child.relnamespace
+WHERE parent.relname='partitioned_mx'
+ORDER BY child;
+     parent_schema     |     parent     |     child_schema      |      child
+---------------------------------------------------------------------
+ citus_local_tables_mx | partitioned_mx | citus_local_tables_mx | partitioned_mx_1
+ citus_local_tables_mx | partitioned_mx | citus_local_tables_mx | partitioned_mx_2
+ citus_local_tables_mx | partitioned_mx | citus_local_tables_mx | partitioned_mx_3
+(3 rows)
+
+\c - - - :master_port
+SET search_path TO citus_local_tables_mx;
+SET client_min_messages TO ERROR;
+DROP TABLE partitioned_mx;
+RESET client_min_messages;
+-- test cascading via foreign keys
+CREATE TABLE cas_1 (a INT UNIQUE);
+CREATE TABLE cas_par (a INT UNIQUE) PARTITION BY RANGE(a);
+CREATE TABLE cas_par_1 PARTITION OF cas_par FOR VALUES FROM (1) TO (4);
+CREATE TABLE cas_par_2 PARTITION OF cas_par FOR VALUES FROM (5) TO (8);
+ALTER TABLE cas_par_1 ADD CONSTRAINT fkey_cas_test_1 FOREIGN KEY (a) REFERENCES cas_1(a);
+CREATE TABLE cas_par2 (a INT UNIQUE) PARTITION BY RANGE(a);
+CREATE TABLE cas_par2_1 PARTITION OF cas_par2 FOR VALUES FROM (1) TO (4);
+CREATE TABLE cas_par2_2 PARTITION OF cas_par2 FOR VALUES FROM (5) TO (8);
+ALTER TABLE cas_par2_1 ADD CONSTRAINT fkey_cas_test_2 FOREIGN KEY (a) REFERENCES cas_1(a);
+CREATE TABLE cas_par3 (a INT UNIQUE) PARTITION BY RANGE(a);
+CREATE TABLE cas_par3_1 PARTITION OF cas_par3 FOR VALUES FROM (1) TO (4);
+CREATE TABLE cas_par3_2 PARTITION OF cas_par3 FOR VALUES FROM (5) TO (8);
+-- these two should error out as we should call the conversion from the parent
+SELECT citus_add_local_table_to_metadata('cas_par2_2');
+ERROR:  cannot add local table cas_par2_2 to metadata since it is a partition of cas_par2. Instead, add the parent table cas_par2 to metadata.
+SELECT citus_add_local_table_to_metadata('cas_par2_2', cascade_via_foreign_keys=>true);
+ERROR:  cannot add local table cas_par2_2 to metadata since it is a partition of cas_par2. Instead, add the parent table cas_par2 to metadata.
+-- these two should error out as the foreign keys are not inherited from the parent
+SELECT citus_add_local_table_to_metadata('cas_par2');
+ERROR:  cannot cascade operation via foreign keys as partition table citus_local_tables_mx.cas_par2_1 involved in a foreign key relationship that is not inherited from its parent table
+SELECT citus_add_local_table_to_metadata('cas_par2', cascade_via_foreign_keys=>true);
+ERROR:  cannot cascade operation via foreign keys as partition table citus_local_tables_mx.cas_par2_1 involved in a foreign key relationship that is not inherited from its parent table
+-- drop the foreign keys and establish them again using the parent table
+ALTER TABLE cas_par_1 DROP CONSTRAINT fkey_cas_test_1;
+ALTER TABLE cas_par2_1 DROP CONSTRAINT fkey_cas_test_2;
+ALTER TABLE cas_par ADD CONSTRAINT fkey_cas_test_1 FOREIGN KEY (a) REFERENCES cas_1(a);
+ALTER TABLE cas_par2 ADD CONSTRAINT fkey_cas_test_2 FOREIGN KEY (a) REFERENCES cas_1(a);
+ALTER TABLE cas_par3 ADD CONSTRAINT fkey_cas_test_3 FOREIGN KEY (a) REFERENCES cas_par(a);
+-- this should error out as cascade_via_foreign_keys is not set to true
+SELECT citus_add_local_table_to_metadata('cas_par2');
+ERROR:  relation citus_local_tables_mx.cas_par2 is involved in a foreign key relationship with another table
+-- this should work
+SELECT citus_add_local_table_to_metadata('cas_par2', cascade_via_foreign_keys=>true);
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+-- verify the partitioning hierarchy is preserved
+select inhrelid::regclass from pg_inherits where inhparent='cas_par'::regclass order by 1;
+ inhrelid
+---------------------------------------------------------------------
+ cas_par_1
+ cas_par_2
+(2 rows)
+
+-- verify the fkeys + fkeys with shard ids are created
+select conname from pg_constraint where conname like 'fkey_cas_test%' order by conname;
+         conname
+---------------------------------------------------------------------
+ fkey_cas_test_1
+ fkey_cas_test_1
+ fkey_cas_test_1
+ fkey_cas_test_1_1330008
+ fkey_cas_test_1_1330008
+ fkey_cas_test_1_1330008
+ fkey_cas_test_2
+ fkey_cas_test_2
+ fkey_cas_test_2
+ fkey_cas_test_2_1330006
+ fkey_cas_test_2_1330006
+ fkey_cas_test_2_1330006
+ fkey_cas_test_3
+ fkey_cas_test_3
+ fkey_cas_test_3
+ fkey_cas_test_3_1330013
+ fkey_cas_test_3_1330013
+ fkey_cas_test_3_1330013
+(18 rows)
+
+-- when all partitions are converted, there should be 40 tables and indexes
+-- the individual names are not much relevant, so we only print the count
+SELECT count(*) FROM pg_class WHERE relname LIKE 'cas\_%' AND relnamespace IN
+    (SELECT oid FROM pg_namespace WHERE nspname = 'citus_local_tables_mx');
+ count
+---------------------------------------------------------------------
+    40
+(1 row)
+
+-- verify on the mx worker
+\c - - - :worker_1_port
+-- on worker, there should be 20, since the shards are created only on the coordinator
+SELECT count(*) FROM pg_class WHERE relname LIKE 'cas\_%' AND relnamespace IN
+    (SELECT oid FROM pg_namespace WHERE nspname = 'citus_local_tables_mx');
+ count
+---------------------------------------------------------------------
+    20
+(1 row)
+
+-- verify that the shell foreign keys are created on the worker as well
+select conname from pg_constraint where conname like 'fkey_cas_test%' order by conname;
+     conname
+---------------------------------------------------------------------
+ fkey_cas_test_1
+ fkey_cas_test_1
+ fkey_cas_test_1
+ fkey_cas_test_2
+ fkey_cas_test_2
+ fkey_cas_test_2
+ fkey_cas_test_3
+ fkey_cas_test_3
+ fkey_cas_test_3
+(9 rows)
+
+\c - - - :master_port
+SET search_path TO citus_local_tables_mx;
+-- undistribute table
+-- this one should error out since we don't set the cascade option as true
+SELECT undistribute_table('cas_par2');
+ERROR:  cannot complete operation because table cas_par2 has a foreign key
+-- this one should work
+SET client_min_messages TO WARNING;
+SELECT undistribute_table('cas_par2', cascade_via_foreign_keys=>true);
+ undistribute_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- verify the partitioning hierarchy is preserved
+select inhrelid::regclass from pg_inherits where inhparent='cas_par'::regclass order by 1;
+ inhrelid
+---------------------------------------------------------------------
+ cas_par_1
+ cas_par_2
+(2 rows)
+
+-- verify that the foreign keys with shard ids are gone, due to undistribution
+select conname from pg_constraint where conname like 'fkey_cas_test%' order by conname;
+     conname
+---------------------------------------------------------------------
+ fkey_cas_test_1
+ fkey_cas_test_1
+ fkey_cas_test_1
+ fkey_cas_test_2
+ fkey_cas_test_2
+ fkey_cas_test_2
+ fkey_cas_test_3
+ fkey_cas_test_3
+ fkey_cas_test_3
+(9 rows)
+
+-- add a non-inherited fkey and verify it fails when trying to convert
+ALTER TABLE cas_par2_1 ADD CONSTRAINT fkey_cas_test_3 FOREIGN KEY (a) REFERENCES cas_1(a);
+SELECT citus_add_local_table_to_metadata('cas_par2', cascade_via_foreign_keys=>true);
+ERROR:  cannot cascade operation via foreign keys as partition table citus_local_tables_mx.cas_par2_1 involved in a foreign key relationship that is not inherited from its parent table
+-- verify undistribute_table works proper for the mx worker
+\c - - - :worker_1_port
+SELECT relname FROM pg_class WHERE relname LIKE 'cas\_%' ORDER BY relname;
+ relname
+---------------------------------------------------------------------
+(0 rows)
+
+\c - - - :master_port
+SET search_path TO citus_local_tables_mx;
+CREATE TABLE date_partitioned_citus_local_table_seq( measureid bigserial, eventdate date, measure_data jsonb, PRIMARY KEY (measureid, eventdate)) PARTITION BY RANGE(eventdate);
+SELECT create_time_partitions('date_partitioned_citus_local_table_seq', INTERVAL '1 month', '2022-01-01', '2021-01-01');
+ create_time_partitions
+---------------------------------------------------------------------
+ t
+(1 row)
+
+SELECT citus_add_local_table_to_metadata('date_partitioned_citus_local_table_seq');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+DROP TABLE date_partitioned_citus_local_table_seq;
+-- test sequences
+CREATE TABLE par_citus_local_seq(measureid bigserial, val int) PARTITION BY RANGE(val);
+CREATE TABLE par_citus_local_seq_1 PARTITION OF par_citus_local_seq FOR VALUES FROM (1) TO (4);
+SELECT citus_add_local_table_to_metadata('par_citus_local_seq');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+INSERT INTO par_citus_local_seq (val) VALUES (1) RETURNING *;
+ measureid | val
+---------------------------------------------------------------------
+         1 |   1
+(1 row)
+
+INSERT INTO par_citus_local_seq (val) VALUES (2) RETURNING *;
+ measureid | val
+---------------------------------------------------------------------
+         2 |   2
+(1 row)
+
+\c - - - :worker_1_port
+-- insert on the worker
+INSERT INTO citus_local_tables_mx.par_citus_local_seq (val) VALUES (1) RETURNING *;
+    measureid     | val
+---------------------------------------------------------------------
+ 3940649673949185 |   1
+(1 row)
+
+\c - - - :master_port
+SET search_path TO citus_local_tables_mx;
+INSERT INTO par_citus_local_seq (val) VALUES (2) RETURNING *;
+ measureid | val
+---------------------------------------------------------------------
+         3 |   2
+(1 row)
+
+SELECT undistribute_table('par_citus_local_seq');
+NOTICE:  converting the partitions of citus_local_tables_mx.par_citus_local_seq
+NOTICE:  creating a new table for citus_local_tables_mx.par_citus_local_seq_1
+NOTICE:  moving the data of citus_local_tables_mx.par_citus_local_seq_1
+NOTICE:  dropping the old citus_local_tables_mx.par_citus_local_seq_1
+NOTICE:  renaming the new table to citus_local_tables_mx.par_citus_local_seq_1
+NOTICE:  creating a new table for citus_local_tables_mx.par_citus_local_seq
+NOTICE:  dropping the old citus_local_tables_mx.par_citus_local_seq
+NOTICE:  renaming the new table to citus_local_tables_mx.par_citus_local_seq
+ undistribute_table
+---------------------------------------------------------------------
+
+(1 row)
+
+INSERT INTO par_citus_local_seq (val) VALUES (3) RETURNING *;
+ measureid | val
+---------------------------------------------------------------------
+         4 |   3
+(1 row)
+
+SELECT measureid FROM par_citus_local_seq ORDER BY measureid;
+    measureid
+---------------------------------------------------------------------
+                1
+                2
+                3
+                4
+ 3940649673949185
+(5 rows)
+
+-- test adding invalid foreign key to partition table
+CREATE TABLE citus_local_parent_1 (a INT UNIQUE) PARTITION BY RANGE(a);
+CREATE TABLE citus_local_parent_2 (a INT UNIQUE) PARTITION BY RANGE(a);
+CREATE TABLE citus_local_plain (a INT UNIQUE);
+CREATE TABLE ref (a INT UNIQUE);
+SELECT create_reference_table('ref');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+alter table citus_local_parent_1 add foreign key (a) references citus_local_parent_2(a);
+alter table citus_local_plain add foreign key (a) references citus_local_parent_2(a);
+CREATE TABLE citus_local_parent_1_child_1 PARTITION OF citus_local_parent_1 FOR VALUES FROM (3) TO (5);
+CREATE TABLE citus_local_parent_1_child_2 PARTITION OF citus_local_parent_1 FOR VALUES FROM (30) TO (50);
+CREATE TABLE citus_local_parent_2_child_1 PARTITION OF citus_local_parent_2 FOR VALUES FROM (40) TO (60);
+-- this one should error out, since we cannot convert it to citus local table,
+-- as citus local table partitions cannot have non-inherited foreign keys
+alter table citus_local_parent_1_child_1 add foreign key(a) references ref(a);
+ERROR:  cannot build foreign key between reference table and a partition
+-- this should work
+alter table citus_local_parent_1 add constraint fkey_to_drop_test foreign key(a) references ref(a);
+-- this should undistribute the table, and the entries should be gone from pg_dist_partition
+select logicalrelid from pg_dist_partition where logicalrelid::text like 'citus_local_parent%' order by logicalrelid;
+         logicalrelid
+---------------------------------------------------------------------
+ citus_local_parent_1
+ citus_local_parent_2
+ citus_local_parent_2_child_1
+ citus_local_parent_1_child_1
+ citus_local_parent_1_child_2
+(5 rows)
+
+set client_min_messages to error;
+alter table citus_local_parent_1 drop constraint fkey_to_drop_test;
+select logicalrelid from pg_dist_partition where logicalrelid::text like 'citus_local_parent%';
+ logicalrelid
+---------------------------------------------------------------------
+(0 rows)
+
+-- verify attaching partition with a foreign key errors out
+CREATE TABLE citus_local_parent (b TEXT, a INT UNIQUE REFERENCES ref(a), d INT) PARTITION BY RANGE(a);
+CREATE TABLE citus_local_with_fkey (d INT);
+ALTER TABLE citus_local_with_fkey ADD CONSTRAINT cl_to_cl FOREIGN KEY(d) REFERENCES citus_local_parent(a);
+-- error out
+ALTER TABLE citus_local_parent ATTACH PARTITION citus_local_with_fkey DEFAULT;
+ERROR:  partition local tables added to citus metadata cannot have non-inherited foreign keys
+DROP TABLE citus_local_parent CASCADE;
+-- test attaching citus local table to distributed table
+-- citus local table should be distributed
+CREATE TABLE dist_table_parent (a INT UNIQUE) PARTITION BY RANGE(a);
+SELECT create_distributed_table('dist_table_parent','a');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE citus_local_child (a int unique);
+select citus_add_local_table_to_metadata('citus_local_child', false);
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+alter table dist_table_parent attach partition  citus_local_child default ;
+select logicalrelid, partmethod from pg_dist_partition where logicalrelid::text in ('dist_table_parent', 'citus_local_child');
+   logicalrelid    | partmethod
+---------------------------------------------------------------------
+ dist_table_parent | h
+ citus_local_child | h
+(2 rows)
+
+-- test attaching distributed table to citus local table
+CREATE TABLE dist_table_child (a INT UNIQUE);
+SELECT create_distributed_table('dist_table_child','a');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE citus_local_parent (a INT UNIQUE) PARTITION BY RANGE(a);
+select citus_add_local_table_to_metadata('citus_local_parent', false);
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+-- this should error out
+alter table citus_local_parent attach partition dist_table_child default ;
+ERROR:  non-distributed partitioned tables cannot have distributed partitions
+-- error out attaching
+CREATE TABLE pg_local (a INT UNIQUE) PARTITION BY RANGE(a);
+CREATE TABLE citus_local_attach_to_pglocal (a INT UNIQUE) PARTITION BY RANGE(a);
+select citus_add_local_table_to_metadata('citus_local_attach_to_pglocal', false);
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+alter table citus_local_attach_to_pglocal attach partition pg_local default ;
+ERROR:  Citus doesn't support multi-level partitioned tables
+SELECT master_remove_distributed_table_metadata_from_workers('citus_local_table_4'::regclass::oid, 'citus_local_tables_mx', 'citus_local_table_4');
+ master_remove_distributed_table_metadata_from_workers
+---------------------------------------------------------------------
+
+(1 row)
+
+-- both workers should print 0 as master_remove_distributed_table_metadata_from_workers
+-- drops the table as well
+SELECT run_command_on_workers(
+$$
+SELECT count(*) FROM pg_catalog.pg_tables WHERE tablename='citus_local_table_4'
+$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,0)
+ (localhost,57638,t,0)
+(2 rows)
+
+-- verify that partitioned citus local tables with dropped columns can be distributed. issue: #5577
+CREATE TABLE parent_dropped_col(a int, eventtime date) PARTITION BY RANGE ( eventtime);
+SELECT citus_add_local_table_to_metadata('parent_dropped_col');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+ALTER TABLE parent_dropped_col DROP column a;
+CREATE TABLE parent_dropped_col_1 PARTITION OF parent_dropped_col for VALUES FROM ('2000-01-01') TO ('2001-01-01');
+SELECT create_distributed_table('parent_dropped_col', 'eventtime');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- another example to test
+CREATE TABLE parent_dropped_col_2(
+  col_to_drop_0 text,
+  col_to_drop_1 text,
+  col_to_drop_2 date,
+  col_to_drop_3 inet,
+  col_to_drop_4 date,
+  measureid integer,
+  eventdatetime date,
+  measure_data jsonb,
+  PRIMARY KEY (measureid, eventdatetime, measure_data))
+  PARTITION BY RANGE(eventdatetime);
+select citus_add_local_table_to_metadata('parent_dropped_col_2');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+ALTER TABLE parent_dropped_col_2 DROP COLUMN col_to_drop_1;
+CREATE TABLE parent_dropped_col_2_2000 PARTITION OF parent_dropped_col_2 FOR VALUES FROM ('2000-01-01') TO ('2001-01-01');
+SELECT create_distributed_table('parent_dropped_col_2', 'measureid');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- verify that the partitioned tables are distributed with the correct distribution column
+SELECT logicalrelid, partmethod, partkey FROM pg_dist_partition
+    WHERE logicalrelid IN ('parent_dropped_col'::regclass, 'parent_dropped_col_2'::regclass)
+        ORDER BY logicalrelid;
+     logicalrelid     | partmethod |                                                          partkey
+---------------------------------------------------------------------
+ parent_dropped_col   | h          | {VAR :varno 1 :varattno 1 :vartype 1082 :vartypmod -1 :varcollid 0 :varnullingrels (b) :varlevelsup 0 :varnosyn 1 :varattnosyn 1 :location -1}
+ parent_dropped_col_2 | h          | {VAR :varno 1 :varattno 5 :vartype 23 :vartypmod -1 :varcollid 0 :varnullingrels (b) :varlevelsup 0 :varnosyn 1 :varattnosyn 5 :location -1}
+(2 rows)
+
+-- some tests for view propagation on citus local tables
+CREATE TABLE view_tbl_1 (a int);
+CREATE TABLE view_tbl_2 (a int);
+CREATE SCHEMA viewsc;
+-- create dependent views, in a different schema
+-- the first one depends on a citus metadata table
+CREATE VIEW viewsc.prop_view AS SELECT COUNT (*) FROM view_tbl_1 JOIN pg_dist_node ON view_tbl_1.a=pg_dist_node.nodeid;
+CREATE VIEW viewsc.prop_view2 AS SELECT COUNT (*) FROM view_tbl_1;
+SELECT citus_add_local_table_to_metadata('view_tbl_1');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+-- verify the shard view is dropped, and created&propagated the correct view
+SELECT viewname, definition FROM pg_views WHERE viewname LIKE 'prop_view%' ORDER BY viewname;
+  viewname  |                             definition
+---------------------------------------------------------------------
+ prop_view  |  SELECT count(*) AS count                                         +
+            |    FROM (view_tbl_1                                               +
+            |      JOIN pg_dist_node ON ((view_tbl_1.a = pg_dist_node.nodeid)));
+ prop_view2 |  SELECT count(*) AS count                                         +
+            |    FROM view_tbl_1;
+(2 rows)
+
+SELECT run_command_on_workers($$SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'prop_view%';$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,2)
+ (localhost,57638,t,2)
+(2 rows)
+
+SELECT pg_identify_object_as_address(classid, objid, objsubid) from pg_catalog.pg_dist_object where objid IN('viewsc.prop_view'::regclass::oid, 'viewsc.prop_view2'::regclass::oid) ORDER BY 1;
+  pg_identify_object_as_address
+---------------------------------------------------------------------
+ (view,"{viewsc,prop_view}",{})
+ (view,"{viewsc,prop_view2}",{})
+(2 rows)
+
+-- drop views
+DROP VIEW viewsc.prop_view;
+DROP VIEW viewsc.prop_view2;
+-- verify dropped on workers
+SELECT run_command_on_workers($$SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'prop_view%';$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,0)
+ (localhost,57638,t,0)
+(2 rows)
+
+-- create a view that depends on a pg_ table
+CREATE VIEW viewsc.prop_view3 AS SELECT COUNT (*) FROM view_tbl_1 JOIN pg_namespace ON view_tbl_1.a=pg_namespace.nspowner;
+-- create a view that depends on two different tables, one of them is local for now
+CREATE VIEW viewsc.prop_view4 AS SELECT COUNT (*) FROM view_tbl_1 JOIN view_tbl_2 ON view_tbl_1.a=view_tbl_2.a;
+-- distribute the first table
+SELECT create_distributed_table('view_tbl_1','a');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- verify the last view is not distributed
+SELECT run_command_on_workers($$SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'prop_view%';$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,1)
+ (localhost,57638,t,1)
+(2 rows)
+
+-- add the other table to metadata, so the local view gets distributed
+SELECT citus_add_local_table_to_metadata('view_tbl_2');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+-- verify both views are distributed
+SELECT run_command_on_workers($$SELECT COUNT(*) FROM pg_views WHERE viewname LIKE 'prop_view%';$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,2)
+ (localhost,57638,t,2)
+(2 rows)
+
+SELECT pg_identify_object_as_address(classid, objid, objsubid) from pg_catalog.pg_dist_object where objid IN('viewsc.prop_view3'::regclass::oid, 'viewsc.prop_view4'::regclass::oid) ORDER BY 1;
+  pg_identify_object_as_address
+---------------------------------------------------------------------
+ (view,"{viewsc,prop_view3}",{})
+ (view,"{viewsc,prop_view4}",{})
+(2 rows)
+
+-- test with fkey cascading
+create table ref_tb(a int primary key);
+SELECT create_reference_table('ref_tb');
+ create_reference_table
+---------------------------------------------------------------------
+
+(1 row)
+
+CREATE TABLE loc_tb (a int );
+CREATE VIEW v100 AS SELECT * FROM loc_tb;
+CREATE VIEW v101 AS SELECT * FROM loc_tb JOIN ref_tb USING (a);
+CREATE VIEW v102 AS SELECT * FROM v101;
+-- a regular matview that depends on local table
+CREATE MATERIALIZED VIEW matview_101 AS SELECT * from loc_tb;
+-- a matview and a view that depend on the local table + each other
+CREATE VIEW v103 AS SELECT * from loc_tb;
+CREATE MATERIALIZED VIEW matview_102 AS SELECT * from loc_tb JOIN v103 USING (a);
+CREATE OR REPLACE VIEW v103 AS SELECT * from loc_tb JOIN matview_102 USING (a);
+-- fails to add local table to metadata, because of the circular dependency
+ALTER TABLE loc_tb ADD CONSTRAINT fkey FOREIGN KEY (a) references ref_tb(a);
+ERROR:  Citus can not handle circular dependencies between distributed objects
+-- drop the view&matview with circular dependency
+DROP VIEW v103 CASCADE;
+-- now it should successfully add to metadata and create the views on workers
+ALTER TABLE loc_tb ADD CONSTRAINT fkey FOREIGN KEY (a) references ref_tb(a);
+-- verify the views are created on workers
+select run_command_on_workers($$SELECT count(*)=0 from citus_local_tables_mx.v100$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,t)
+ (localhost,57638,t,t)
+(2 rows)
+
+select run_command_on_workers($$SELECT count(*)=0 from citus_local_tables_mx.v101$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,t)
+ (localhost,57638,t,t)
+(2 rows)
+
+select run_command_on_workers($$SELECT count(*)=0 from citus_local_tables_mx.v102$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,t)
+ (localhost,57638,t,t)
+(2 rows)
+
+CREATE TABLE loc_tb_2 (a int);
+CREATE VIEW v104 AS SELECT * from loc_tb_2 table_name_for_view;
+SET client_min_messages TO DEBUG1;
+-- verify the CREATE command for the view is generated correctly
+ALTER TABLE loc_tb_2 ADD CONSTRAINT fkey_2 FOREIGN KEY (a) references ref_tb(a);
+DEBUG:  executing "CREATE OR REPLACE VIEW citus_local_tables_mx.v104 (a) AS  SELECT a
+   FROM citus_local_tables_mx.loc_tb_2 table_name_for_view; ALTER VIEW citus_local_tables_mx.v104 OWNER TO postgres"
+DEBUG:  "view v104" has dependency to "table loc_tb_2" that is not in Citus' metadata
+DEBUG:  validating foreign key constraint "fkey_2_1330083"
+SET client_min_messages TO WARNING;
+-- works fine
+select run_command_on_workers($$SELECT count(*) from citus_local_tables_mx.v100, citus_local_tables_mx.v101, citus_local_tables_mx.v102$$);
+ run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,t,0)
+ (localhost,57638,t,0)
+(2 rows)
+
+-- auto undistribute
+ALTER TABLE loc_tb DROP CONSTRAINT fkey;
+-- fails because fkey is dropped and table is converted to local table
+select run_command_on_workers($$SELECT count(*) from citus_local_tables_mx.v100$$);
+                                run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,f,"ERROR:  relation ""citus_local_tables_mx.v100"" does not exist")
+ (localhost,57638,f,"ERROR:  relation ""citus_local_tables_mx.v100"" does not exist")
+(2 rows)
+
+select run_command_on_workers($$SELECT count(*) from citus_local_tables_mx.v101$$);
+                                run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,f,"ERROR:  relation ""citus_local_tables_mx.v101"" does not exist")
+ (localhost,57638,f,"ERROR:  relation ""citus_local_tables_mx.v101"" does not exist")
+(2 rows)
+
+select run_command_on_workers($$SELECT count(*) from citus_local_tables_mx.v102$$);
+                                run_command_on_workers
+---------------------------------------------------------------------
+ (localhost,57637,f,"ERROR:  relation ""citus_local_tables_mx.v102"" does not exist")
+ (localhost,57638,f,"ERROR:  relation ""citus_local_tables_mx.v102"" does not exist")
+(2 rows)
+
+INSERT INTO loc_tb VALUES (1), (2);
+-- test a matview with columnar
+CREATE MATERIALIZED VIEW matview_columnar USING COLUMNAR AS SELECT * FROM loc_tb WITH DATA;
+-- cant recreate matviews, because the size limit is set to zero, by the GUC
+SET citus.max_matview_size_to_auto_recreate TO 0;
+SELECT citus_add_local_table_to_metadata('loc_tb', true);
+ERROR:  size of the materialized view matview_columnar exceeds citus.max_matview_size_to_auto_recreate (currently 0 MB)
+-- remove the limit
+SET citus.max_matview_size_to_auto_recreate TO -1;
+SELECT citus_add_local_table_to_metadata('loc_tb', true);
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+-- test REFRESH MAT VIEW
+SELECT * FROM matview_101 ORDER BY a;
+ a
+---------------------------------------------------------------------
+(0 rows)
+
+REFRESH MATERIALIZED VIEW matview_101;
+SELECT * FROM matview_101 ORDER BY a;
+ a
+---------------------------------------------------------------------
+ 1
+ 2
+(2 rows)
+
+-- verify columnar matview works on a table added to metadata
+SELECT * FROM matview_columnar;
+ a
+---------------------------------------------------------------------
+(0 rows)
+
+REFRESH MATERIALIZED VIEW matview_columnar;
+SELECT * FROM matview_columnar ORDER BY a;
+ a
+---------------------------------------------------------------------
+ 1
+ 2
+(2 rows)
+
+-- test with partitioned tables
+SET citus.use_citus_managed_tables TO ON;
+CREATE TABLE parent_1 (a INT UNIQUE) PARTITION BY RANGE(a);
+SET citus.use_citus_managed_tables TO OFF;
+CREATE MATERIALIZED VIEW part_matview1 as SELECT count(*) FROM parent_1 JOIN parent_1 p2 ON (true);
+CREATE MATERIALIZED VIEW part_matview2 as SELECT count(*) FROM parent_1 JOIN part_matview1 on (true);
+SELECT count(*) FROM citus_local_tables_mx.part_matview1 JOIN citus_local_tables_mx.part_matview2 ON (true);
+ count
+---------------------------------------------------------------------
+     1
+(1 row)
+
+CREATE TABLE parent_1_child_1 (a int);
+CREATE TABLE parent_1_child_2 (a int);
+-- create matviews on partition tables
+CREATE MATERIALIZED VIEW mv1 AS SELECT * FROM parent_1_child_1;
+CREATE MATERIALIZED VIEW mv2 AS SELECT * FROM parent_1_child_2;
+CREATE MATERIALIZED VIEW mv3 AS SELECT parent_1_child_2.* FROM parent_1_child_2 JOIN parent_1_child_1 USING(a);
+CREATE MATERIALIZED VIEW mv4 AS SELECT * FROM mv3;
+alter table parent_1 attach partition parent_1_child_1 FOR VALUES FROM (0) TO (10) ;
+-- all matviews work
+SELECT count(*) FROM citus_local_tables_mx.mv1;
+ count
+---------------------------------------------------------------------
+     0
+(1 row)
+
+SELECT count(*) FROM citus_local_tables_mx.mv2;
+ count
+---------------------------------------------------------------------
+     0
+(1 row)
+
+SELECT count(*) FROM citus_local_tables_mx.mv3;
+ count
+---------------------------------------------------------------------
+     0
+(1 row)
+
+SELECT count(*) FROM citus_local_tables_mx.mv4;
+ count
+---------------------------------------------------------------------
+     0
+(1 row)
+
+-- recreate matviews and verify they still work
+alter table parent_1 attach partition parent_1_child_2 FOR VALUES FROM (10) TO (20);
+SELECT count(*) FROM citus_local_tables_mx.mv1;
+ count
+---------------------------------------------------------------------
+     0
+(1 row)
+
+SELECT count(*) FROM citus_local_tables_mx.mv2;
+ count
+---------------------------------------------------------------------
+     0
+(1 row)
+
+SELECT count(*) FROM citus_local_tables_mx.mv3;
+ count
+---------------------------------------------------------------------
+     0
+(1 row)
+
+SELECT count(*) FROM citus_local_tables_mx.mv4;
+ count
+---------------------------------------------------------------------
+     0
+(1 row)
+
+-- verify matviews work after undistributing
+SELECT undistribute_table('parent_1');
+ undistribute_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SELECT count(*) FROM citus_local_tables_mx.mv1;
+ count
+---------------------------------------------------------------------
+     0
+(1 row)
+
+SELECT count(*) FROM citus_local_tables_mx.mv2;
+ count
+---------------------------------------------------------------------
+     0
+(1 row)
+
+SELECT count(*) FROM citus_local_tables_mx.mv3;
+ count
+---------------------------------------------------------------------
+     0
+(1 row)
+
+SELECT count(*) FROM citus_local_tables_mx.mv4;
+ count
+---------------------------------------------------------------------
+     0
+(1 row)
+
+-- test circular dependency detection among views
+create table root_tbl (a int);
+create materialized view chain_v1 as select * from root_tbl;
+create view chain_v2 as select * from chain_v1;
+WARNING:  "view chain_v2" has dependency to "table root_tbl" that is not in Citus' metadata
+create materialized view chain_v3 as select * from chain_v2;
+create or replace view chain_v2 as select * from chain_v1 join chain_v3 using (a);
+WARNING:  "view chain_v2" has dependency on unsupported object "materialized view chain_v3"
+-- catch circular dependency and error out
+select citus_add_local_table_to_metadata('root_tbl');
+ERROR:  Citus can not handle circular dependencies between distributed objects
+-- same for create_distributed_table
+select create_distributed_table('root_tbl','a');
+ERROR:  Citus can not handle circular dependencies between distributed objects
+-- fix the circular dependency and add to metadata
+create or replace view chain_v2 as select * from chain_v1;
+WARNING:  "view chain_v2" has dependency to "table root_tbl" that is not in Citus' metadata
+select citus_add_local_table_to_metadata('root_tbl');
+ citus_add_local_table_to_metadata
+---------------------------------------------------------------------
+
+(1 row)
+
+-- todo: add more matview tests once 5968 and 6028 are fixed
+-- cleanup at exit
+set client_min_messages to error;
+DROP SCHEMA citus_local_tables_mx CASCADE;

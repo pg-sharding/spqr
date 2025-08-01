@@ -1,0 +1,642 @@
+--
+-- MULTI_LIMIT_CLAUSE
+--
+CREATE TABLE lineitem_hash (LIKE lineitem);
+SELECT create_distributed_table('lineitem_hash', 'l_orderkey', 'hash');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+INSERT INTO lineitem_hash SELECT * FROM lineitem;
+-- Display debug messages on limit clause push down.
+SET client_min_messages TO DEBUG1;
+-- Check that we can correctly handle the Limit clause in distributed queries.
+-- Note that we don't have the limit optimization enabled for these queries, and
+-- will end up fetching all rows to the master database.
+SELECT count(*) count_quantity, l_quantity FROM lineitem WHERE l_quantity < 32.0
+	GROUP BY l_quantity
+	ORDER BY count_quantity ASC, l_quantity ASC;
+ count_quantity | l_quantity
+---------------------------------------------------------------------
+            219 |      13.00
+            222 |      29.00
+            227 |       3.00
+            229 |      18.00
+            229 |      31.00
+            230 |      14.00
+            230 |      16.00
+            230 |      17.00
+            230 |      26.00
+            232 |       7.00
+            234 |      10.00
+            235 |      15.00
+            236 |      25.00
+            237 |       2.00
+            241 |      12.00
+            242 |       6.00
+            242 |      22.00
+            243 |       1.00
+            243 |      19.00
+            244 |       4.00
+            246 |      20.00
+            249 |      24.00
+            249 |      27.00
+            250 |       8.00
+            250 |      11.00
+            254 |       5.00
+            255 |      21.00
+            258 |       9.00
+            261 |      23.00
+            264 |      30.00
+            273 |      28.00
+(31 rows)
+
+SELECT count(*) count_quantity, l_quantity FROM lineitem WHERE l_quantity < 32.0
+	GROUP BY l_quantity
+	ORDER BY count_quantity DESC, l_quantity DESC;
+ count_quantity | l_quantity
+---------------------------------------------------------------------
+            273 |      28.00
+            264 |      30.00
+            261 |      23.00
+            258 |       9.00
+            255 |      21.00
+            254 |       5.00
+            250 |      11.00
+            250 |       8.00
+            249 |      27.00
+            249 |      24.00
+            246 |      20.00
+            244 |       4.00
+            243 |      19.00
+            243 |       1.00
+            242 |      22.00
+            242 |       6.00
+            241 |      12.00
+            237 |       2.00
+            236 |      25.00
+            235 |      15.00
+            234 |      10.00
+            232 |       7.00
+            230 |      26.00
+            230 |      17.00
+            230 |      16.00
+            230 |      14.00
+            229 |      31.00
+            229 |      18.00
+            227 |       3.00
+            222 |      29.00
+            219 |      13.00
+(31 rows)
+
+SELECT count(*) count_quantity, l_quantity FROM lineitem WHERE l_quantity < 32.0
+	GROUP BY l_quantity
+	ORDER BY count_quantity ASC, l_quantity ASC LIMIT 5;
+ count_quantity | l_quantity
+---------------------------------------------------------------------
+            219 |      13.00
+            222 |      29.00
+            227 |       3.00
+            229 |      18.00
+            229 |      31.00
+(5 rows)
+
+SELECT count(*) count_quantity, l_quantity FROM lineitem WHERE l_quantity < 32.0
+	GROUP BY l_quantity
+	ORDER BY count_quantity ASC, l_quantity ASC LIMIT 10;
+ count_quantity | l_quantity
+---------------------------------------------------------------------
+            219 |      13.00
+            222 |      29.00
+            227 |       3.00
+            229 |      18.00
+            229 |      31.00
+            230 |      14.00
+            230 |      16.00
+            230 |      17.00
+            230 |      26.00
+            232 |       7.00
+(10 rows)
+
+SELECT count(*) count_quantity, l_quantity FROM lineitem WHERE l_quantity < 32.0
+	GROUP BY l_quantity
+	ORDER BY count_quantity DESC, l_quantity DESC LIMIT 10;
+ count_quantity | l_quantity
+---------------------------------------------------------------------
+            273 |      28.00
+            264 |      30.00
+            261 |      23.00
+            258 |       9.00
+            255 |      21.00
+            254 |       5.00
+            250 |      11.00
+            250 |       8.00
+            249 |      27.00
+            249 |      24.00
+(10 rows)
+
+-- Check that we can handle limits for simple sort clauses. We order by columns
+-- in the first two tests, and then by a simple expression in the last test.
+SELECT min(l_orderkey) FROM  lineitem;
+ min
+---------------------------------------------------------------------
+   1
+(1 row)
+
+SELECT l_orderkey FROM lineitem ORDER BY l_orderkey ASC LIMIT 1;
+DEBUG:  push down of limit count: 1
+ l_orderkey
+---------------------------------------------------------------------
+          1
+(1 row)
+
+SELECT max(l_orderkey) FROM lineitem;
+  max
+---------------------------------------------------------------------
+ 14947
+(1 row)
+
+SELECT l_orderkey FROM lineitem ORDER BY l_orderkey DESC LIMIT 1;
+DEBUG:  push down of limit count: 1
+ l_orderkey
+---------------------------------------------------------------------
+      14947
+(1 row)
+
+SELECT * FROM lineitem ORDER BY l_orderkey DESC, l_linenumber DESC LIMIT 3;
+DEBUG:  push down of limit count: 3
+ l_orderkey | l_partkey | l_suppkey | l_linenumber | l_quantity | l_extendedprice | l_discount | l_tax | l_returnflag | l_linestatus | l_shipdate | l_commitdate | l_receiptdate |      l_shipinstruct       | l_shipmode |            l_comment
+---------------------------------------------------------------------
+      14947 |    107098 |      7099 |            2 |      29.00 |        32047.61 |       0.04 |  0.06 | N            | O            | 11-08-1995 | 08-30-1995   | 12-03-1995    | TAKE BACK RETURN          | FOB        | inal sentiments t
+      14947 |     31184 |      3688 |            1 |      14.00 |        15612.52 |       0.09 |  0.02 | N            | O            | 11-05-1995 | 09-25-1995   | 11-27-1995    | TAKE BACK RETURN          | RAIL       | bout the even, iro
+      14946 |     79479 |      4494 |            2 |      37.00 |        53963.39 |       0.01 |  0.01 | N            | O            | 11-27-1996 | 02-01-1997   | 11-29-1996    | COLLECT COD               | AIR        | sleep furiously after the furio
+(3 rows)
+
+SELECT max(extract(epoch from l_shipdate)) FROM lineitem;
+    max
+---------------------------------------------------------------------
+ 912124800
+(1 row)
+
+SELECT * FROM lineitem
+	ORDER BY extract(epoch from l_shipdate) DESC, l_orderkey DESC LIMIT 3;
+DEBUG:  push down of limit count: 3
+ l_orderkey | l_partkey | l_suppkey | l_linenumber | l_quantity | l_extendedprice | l_discount | l_tax | l_returnflag | l_linestatus | l_shipdate | l_commitdate | l_receiptdate |      l_shipinstruct       | l_shipmode |              l_comment
+---------------------------------------------------------------------
+       4678 |     57388 |      9894 |            1 |      35.00 |        47088.30 |       0.04 |  0.08 | N            | O            | 11-27-1998 | 10-02-1998   | 12-17-1998    | TAKE BACK RETURN          | AIR        | he accounts. fluffily bold sheaves b
+      12384 |     84161 |      1686 |            5 |       6.00 |         6870.96 |       0.04 |  0.00 | N            | O            | 11-26-1998 | 10-04-1998   | 12-08-1998    | COLLECT COD               | RAIL       | ep blithely. blithely ironic r
+       1124 |     92298 |      4808 |            3 |      35.00 |        45160.15 |       0.10 |  0.05 | N            | O            | 11-25-1998 | 10-08-1998   | 12-25-1998    | TAKE BACK RETURN          | AIR        | ut the slyly bold pinto beans; fi
+(3 rows)
+
+-- Exercise the scenario where order by clauses don't have any aggregates, and
+-- that we can push down the limit as a result. Check that when this happens, we
+-- also sort on all group by clauses behind the covers.
+SELECT l_quantity, l_discount, avg(l_partkey) FROM lineitem
+	GROUP BY l_quantity, l_discount
+	ORDER BY l_quantity LIMIT 1;
+DEBUG:  push down of limit count: 1
+ l_quantity | l_discount |        avg
+---------------------------------------------------------------------
+       1.00 |       0.00 | 99167.304347826087
+(1 row)
+
+-- Results from the previous query should match this query's results.
+SELECT l_quantity, l_discount, avg(l_partkey) FROM lineitem
+	GROUP BY l_quantity, l_discount
+	ORDER BY l_quantity, l_discount LIMIT 1;
+DEBUG:  push down of limit count: 1
+ l_quantity | l_discount |        avg
+---------------------------------------------------------------------
+       1.00 |       0.00 | 99167.304347826087
+(1 row)
+
+-- We can push down LIMIT clause when we group by partition column of a hash
+-- partitioned table.
+SELECT l_orderkey, count(DISTINCT l_partkey)
+	FROM lineitem_hash
+	GROUP BY l_orderkey
+	ORDER BY 2 DESC, 1 DESC LIMIT 5;
+DEBUG:  push down of limit count: 5
+ l_orderkey | count
+---------------------------------------------------------------------
+      14885 |     7
+      14884 |     7
+      14821 |     7
+      14790 |     7
+      14785 |     7
+(5 rows)
+
+SELECT l_orderkey
+	FROM lineitem_hash
+	GROUP BY l_orderkey
+	ORDER BY l_orderkey LIMIT 5;
+DEBUG:  push down of limit count: 5
+ l_orderkey
+---------------------------------------------------------------------
+          1
+          2
+          3
+          4
+          5
+(5 rows)
+
+-- Don't push down if not grouped by partition column.
+SELECT max(l_orderkey)
+	FROM lineitem_hash
+	GROUP BY l_linestatus
+	ORDER BY 1 DESC LIMIT 2;
+  max
+---------------------------------------------------------------------
+ 14947
+ 14916
+(2 rows)
+
+-- Don't push down if table is distributed by append
+SELECT l_orderkey, max(l_shipdate)
+	FROM lineitem
+	GROUP BY l_orderkey
+	ORDER BY 2 DESC, 1 LIMIT 5;
+DEBUG:  push down of limit count: 5
+ l_orderkey |    max
+---------------------------------------------------------------------
+       4678 | 11-27-1998
+      12384 | 11-26-1998
+       1124 | 11-25-1998
+      11523 | 11-22-1998
+      14694 | 11-21-1998
+(5 rows)
+
+-- Push down if grouped by multiple columns one of which is partition column.
+SELECT
+	l_linestatus, l_orderkey, max(l_shipdate)
+	FROM lineitem_hash
+	GROUP BY l_linestatus, l_orderkey
+	ORDER BY 3 DESC, 1, 2 LIMIT 5;
+DEBUG:  push down of limit count: 5
+ l_linestatus | l_orderkey |    max
+---------------------------------------------------------------------
+ O            |       4678 | 11-27-1998
+ O            |      12384 | 11-26-1998
+ O            |       1124 | 11-25-1998
+ O            |      11523 | 11-22-1998
+ O            |      14694 | 11-21-1998
+(5 rows)
+
+-- Don't push down if grouped by multiple columns none of which is partition column.
+SELECT
+	l_linestatus, l_shipmode, max(l_shipdate)
+	FROM lineitem_hash
+	GROUP BY l_linestatus, l_shipmode
+	ORDER BY 3 DESC, 1, 2 LIMIT 5;
+ l_linestatus | l_shipmode |    max
+---------------------------------------------------------------------
+ O            | AIR        | 11-27-1998
+ O            | RAIL       | 11-26-1998
+ O            | SHIP       | 11-21-1998
+ O            | REG AIR    | 11-19-1998
+ O            | TRUCK      | 11-17-1998
+(5 rows)
+
+-- Push down limit even if there is distinct on
+SELECT
+	DISTINCT ON (l_orderkey, l_linenumber) l_orderkey, l_linenumber
+	FROM lineitem_hash
+	GROUP BY l_orderkey, l_linenumber
+	ORDER BY l_orderkey, l_linenumber
+	LIMIT 5;
+DEBUG:  push down of limit count: 5
+ l_orderkey | l_linenumber
+---------------------------------------------------------------------
+          1 |            1
+          1 |            2
+          1 |            3
+          1 |            4
+          1 |            5
+(5 rows)
+
+-- Don't push down limit when group by clause not included in distinct on
+SELECT
+	DISTINCT ON (l_linenumber) l_orderkey, l_linenumber
+	FROM lineitem_hash
+	GROUP BY l_orderkey, l_linenumber
+	ORDER BY l_linenumber, l_orderkey
+	LIMIT 5;
+ l_orderkey | l_linenumber
+---------------------------------------------------------------------
+          1 |            1
+          1 |            2
+          1 |            3
+          1 |            4
+          1 |            5
+(5 rows)
+
+-- Push down limit when there is const in distinct on
+-- referring to a column such that group by clause
+-- list is contained in distinct on
+SELECT
+	DISTINCT ON (l_linenumber, 1) l_orderkey, l_linenumber
+	FROM lineitem_hash
+	GROUP BY l_orderkey, l_linenumber
+	ORDER BY l_linenumber, l_orderkey
+	LIMIT 5;
+DEBUG:  push down of limit count: 5
+ l_orderkey | l_linenumber
+---------------------------------------------------------------------
+          1 |            1
+          2 |            1
+          3 |            1
+          4 |            1
+          5 |            1
+(5 rows)
+
+-- Don't push down limit when there is const expression in distinct on
+-- even if there is a group by on the expression
+-- This is due to fact that postgres removes (1+1) from distinct on
+-- clause but keeps it in group by list.
+SELECT
+	DISTINCT ON (l_linenumber, 1+1, l_linenumber) l_orderkey, l_linenumber
+	FROM lineitem_hash
+	GROUP BY l_orderkey, (1+1), l_linenumber
+	ORDER BY l_linenumber, (1+1), l_orderkey
+	LIMIT 5;
+ l_orderkey | l_linenumber
+---------------------------------------------------------------------
+          1 |            1
+          1 |            2
+          1 |            3
+          1 |            4
+          1 |            5
+(5 rows)
+
+-- Don't push down limit when there is const reference
+-- does not point to a column to make distinct clause superset
+-- of group by
+SELECT
+	DISTINCT ON (l_linenumber, 2) l_orderkey, l_linenumber
+	FROM lineitem_hash
+	GROUP BY l_orderkey, l_linenumber
+	ORDER BY l_linenumber, l_orderkey
+	LIMIT 5;
+ l_orderkey | l_linenumber
+---------------------------------------------------------------------
+          1 |            1
+          1 |            2
+          1 |            3
+          1 |            4
+          1 |            5
+(5 rows)
+
+-- Push down limit even when there is a column expression
+-- in distinct clause provided that distinct clause covers
+-- group by expression, and there is no aggregates in the query.
+SELECT
+	DISTINCT ON (l_orderkey + 1) l_orderkey + 1
+	FROM lineitem_hash
+	GROUP BY l_orderkey + 1
+	ORDER BY l_orderkey + 1
+	LIMIT 5;
+DEBUG:  push down of limit count: 5
+ ?column?
+---------------------------------------------------------------------
+        2
+        3
+        4
+        5
+        6
+(5 rows)
+
+-- Limit is not pushed down when there are aggregates in the query
+-- This is because group by is not on distribution column itself
+-- but on an expression on distribution column
+SELECT
+	DISTINCT ON (l_orderkey + 1, count(*)) l_orderkey + 1, count(*)
+	FROM lineitem_hash
+	GROUP BY l_orderkey + 1
+	ORDER BY l_orderkey + 1 , 2
+	LIMIT 5;
+ ?column? | count
+---------------------------------------------------------------------
+        2 |     6
+        3 |     1
+        4 |     6
+        5 |     1
+        6 |     3
+(5 rows)
+
+-- same query with column instead of column expression, limit is pushed down
+-- because group by is on distribution column
+SELECT
+	DISTINCT ON (l_orderkey, count(*)) l_orderkey, count(*)
+	FROM lineitem_hash
+	GROUP BY l_orderkey
+	ORDER BY l_orderkey , 2
+	LIMIT 5;
+DEBUG:  push down of limit count: 5
+ l_orderkey | count
+---------------------------------------------------------------------
+          1 |     6
+          2 |     1
+          3 |     6
+          4 |     1
+          5 |     3
+(5 rows)
+
+-- limit is not pushed down because distinct clause
+-- does not cover group by clause
+SELECT
+	DISTINCT ON (count(*)) l_orderkey, count(*)
+	FROM lineitem_hash
+	GROUP BY l_orderkey
+	ORDER BY 2 DESC, 1
+	LIMIT 2;
+ l_orderkey | count
+---------------------------------------------------------------------
+          7 |     7
+          1 |     6
+(2 rows)
+
+-- push down limit if there is a window function in distinct on
+SELECT
+	DISTINCT ON (l_orderkey, RANK() OVER (partition by l_orderkey)) l_orderkey, RANK() OVER (partition by l_orderkey)
+	FROM lineitem_hash
+	GROUP BY l_orderkey
+	ORDER BY l_orderkey , 2
+	LIMIT 5;
+DEBUG:  push down of limit count: 5
+ l_orderkey | rank
+---------------------------------------------------------------------
+          1 |    1
+          2 |    1
+          3 |    1
+          4 |    1
+          5 |    1
+(5 rows)
+
+-- do not push down limit if there is an aggragete in distinct on
+-- we should be able to push this down, but query goes to subquery
+-- planner and we can't safely determine it is grouped by partition
+-- column.
+SELECT
+	DISTINCT ON (l_orderkey, RANK() OVER (partition by l_orderkey)) l_orderkey, count(*), RANK() OVER (partition by l_orderkey)
+	FROM lineitem_hash
+	GROUP BY l_orderkey
+	ORDER BY l_orderkey , 3, 2
+	LIMIT 5;
+DEBUG:  push down of limit count: 5
+ l_orderkey | count | rank
+---------------------------------------------------------------------
+          1 |     6 |    1
+          2 |     1 |    1
+          3 |     6 |    1
+          4 |     1 |    1
+          5 |     3 |    1
+(5 rows)
+
+-- limit is not pushed down due to same reason
+SELECT
+	DISTINCT ON (l_orderkey, count(*) OVER (partition by l_orderkey)) l_orderkey, l_linenumber, count(*), count(*) OVER (partition by l_orderkey)
+	FROM lineitem_hash
+	GROUP BY l_orderkey, l_linenumber
+	ORDER BY l_orderkey , count(*) OVER (partition by l_orderkey), count(*), l_linenumber
+	LIMIT 5;
+ l_orderkey | l_linenumber | count | count
+---------------------------------------------------------------------
+          1 |            1 |     1 |     6
+          2 |            1 |     1 |     1
+          3 |            1 |     1 |     6
+          4 |            1 |     1 |     1
+          5 |            1 |     1 |     3
+(5 rows)
+
+-- limit is not pushed down since distinct clause is not superset of group clause
+SELECT
+	DISTINCT ON (RANK() OVER (partition by l_orderkey)) l_orderkey, RANK() OVER (partition by l_orderkey)
+	FROM lineitem_hash
+	GROUP BY l_orderkey
+	ORDER BY 2 DESC, 1
+	LIMIT 5;
+ l_orderkey | rank
+---------------------------------------------------------------------
+          1 |    1
+(1 row)
+
+-- check if we can correctly push the limit when it is null
+SELECT l_orderkey FROM lineitem WHERE l_orderkey < 3 ORDER BY l_orderkey LIMIT null;
+DEBUG:  push down of limit count: ALL
+ l_orderkey
+---------------------------------------------------------------------
+          1
+          1
+          1
+          1
+          1
+          1
+          2
+(7 rows)
+
+SELECT l_orderkey FROM lineitem WHERE l_orderkey < 3 ORDER BY l_orderkey OFFSET 1 LIMIT null;
+DEBUG:  push down of limit count: ALL
+ l_orderkey
+---------------------------------------------------------------------
+          1
+          1
+          1
+          1
+          1
+          2
+(6 rows)
+
+SELECT count(*) FROM lineitem LIMIT null;
+DEBUG:  push down of limit count: ALL
+ count
+---------------------------------------------------------------------
+ 12000
+(1 row)
+
+SELECT count(*) FROM lineitem OFFSET 0 LIMIT null;
+DEBUG:  push down of limit count: ALL
+ count
+---------------------------------------------------------------------
+ 12000
+(1 row)
+
+-- check if we push the right limit when both offset and limit are given
+SELECT l_orderkey FROM lineitem WHERE l_orderkey < 3 ORDER BY l_orderkey OFFSET 1 LIMIT 3;
+DEBUG:  push down of limit count: 4
+ l_orderkey
+---------------------------------------------------------------------
+          1
+          1
+          1
+(3 rows)
+
+SELECT l_orderkey FROM lineitem WHERE l_orderkey < 3 ORDER BY l_orderkey OFFSET null LIMIT 1;
+DEBUG:  push down of limit count: 1
+ l_orderkey
+---------------------------------------------------------------------
+          1
+(1 row)
+
+-- check if we can correctly push the limit when it is all
+SELECT l_orderkey FROM lineitem WHERE l_orderkey < 2 LIMIT all;
+DEBUG:  push down of limit count: ALL
+ l_orderkey
+---------------------------------------------------------------------
+          1
+          1
+          1
+          1
+          1
+          1
+(6 rows)
+
+SELECT l_orderkey FROM lineitem WHERE l_orderkey < 2 OFFSET 2 LIMIT all;
+DEBUG:  push down of limit count: ALL
+ l_orderkey
+---------------------------------------------------------------------
+          1
+          1
+          1
+          1
+(4 rows)
+
+SET client_min_messages TO NOTICE;
+-- non constants should not push down
+CREATE OR REPLACE FUNCTION my_limit()
+RETURNS INT AS $$
+BEGIN
+  RETURN 5;
+END; $$ language plpgsql VOLATILE;
+SELECT l_orderkey FROM lineitem_hash ORDER BY l_orderkey LIMIT my_limit();
+ l_orderkey
+---------------------------------------------------------------------
+          1
+          1
+          1
+          1
+          1
+(5 rows)
+
+SELECT l_orderkey FROM lineitem_hash ORDER BY l_orderkey LIMIT 10 OFFSET my_limit();
+ l_orderkey
+---------------------------------------------------------------------
+          1
+          2
+          3
+          3
+          3
+          3
+          3
+          3
+          4
+          5
+(10 rows)
+
+DROP FUNCTION my_limit();
+-- subqueries should error out
+SELECT l_orderkey FROM lineitem_hash ORDER BY l_orderkey LIMIT (SELECT 10);
+ERROR:  subquery in LIMIT is not supported in multi-shard queries
+SELECT l_orderkey FROM lineitem_hash ORDER BY l_orderkey LIMIT 10 OFFSET (SELECT 10);
+ERROR:  subquery in OFFSET is not supported in multi-shard queries
+DROP TABLE lineitem_hash;

@@ -1,0 +1,120 @@
+test: isolation_setup
+test: isolation_add_remove_node
+test: isolation_update_node
+test: isolation_update_node_lock_writes
+test: isolation_ensure_dependency_activate_node
+test: isolation_add_node_vs_reference_table_operations
+test: isolation_create_table_vs_add_remove_node
+test: isolation_master_update_node
+test: isolation_shouldhaveshards
+
+test: isolation_extension_commands
+
+# tests that change node metadata should precede
+# isolation_cluster_management such that tests
+# that come later can be parallelized
+test: isolation_cluster_management
+
+# the following tests depend on the distributed
+# transactionId, so should not be parallelized
+# and no tests should be added before these
+test: isolation_metadata_sync_vs_all
+test: isolation_distributed_transaction_id
+test: isolation_dump_global_wait_edges
+test: isolation_add_coordinator
+test: isolation_citus_dist_activity
+test: isolation_remove_coordinator
+
+test: isolation_insert_select_repartition
+test: isolation_copy_placement_vs_copy_placement
+
+test: isolation_concurrent_dml
+test: isolation_data_migration
+test: isolation_drop_shards
+test: isolation_copy_placement_vs_modification
+test: isolation_insert_vs_vacuum
+test: isolation_transaction_recovery
+test: isolation_vacuum_skip_locked
+test: isolation_progress_monitoring
+test: isolation_dump_local_wait_edges
+
+test: isolation_replace_wait_function
+test: isolation_distributed_deadlock_detection
+test: isolation_create_citus_local_table
+
+# creating a restore point briefly blocks all
+# writes, run this test serially.
+test: isolation_create_restore_point
+
+test: isolation_create_distributed_table
+test: isolation_create_distributed_table_concurrently
+test: isolation_multi_shard_modify_vs_all
+test: isolation_modify_with_subquery_vs_dml
+test: isolation_hash_copy_vs_all
+test: isolation_range_copy_vs_all
+test: isolation_reference_copy_vs_all
+test: isolation_partitioned_copy_vs_all
+test: isolation_select_vs_all
+test: isolation_insert_vs_all
+test: isolation_insert_select_vs_all
+test: isolation_upsert_vs_all
+test: isolation_update_vs_all
+test: isolation_select_for_update
+test: isolation_delete_vs_all
+test: isolation_truncate_vs_all
+test: isolation_drop_vs_all
+test: isolation_ddl_vs_all
+test: isolation_get_all_active_transactions
+test: isolation_validate_vs_insert
+test: isolation_insert_select_conflict
+test: isolation_ref2ref_foreign_keys
+test: shared_connection_waits
+test: isolation_cancellation
+test: isolation_max_client_connections
+test: isolation_undistribute_table
+test: isolation_fix_partition_shard_index_names
+test: isolation_global_pid
+test: isolation_citus_locks
+test: isolation_reference_table
+test: isolation_schema_based_sharding
+test: isolation_database_cmd_from_any_node
+test: isolation_citus_pause_node
+test: isolation_citus_schema_distribute_undistribute
+
+# Rebalancer
+test: isolation_blocking_move_single_shard_commands
+test: isolation_blocking_move_multi_shard_commands
+test: isolation_blocking_move_single_shard_commands_on_mx
+test: isolation_blocking_move_multi_shard_commands_on_mx
+test: isolation_shard_rebalancer
+test: isolation_rebalancer_deferred_drop
+test: isolation_shard_rebalancer_progress
+
+# MX tests
+test: isolation_reference_on_mx
+test: isolation_ref2ref_foreign_keys_on_mx
+test: isolation_get_distributed_wait_queries_mx
+test: isolation_insert_vs_all_on_mx
+test: isolation_select_vs_all_on_mx
+test: isolation_update_delete_upsert_vs_all_on_mx
+test: isolation_copy_vs_all_on_mx
+test: isolation_truncate_vs_all_on_mx
+test: isolation_drop_alter_index_select_for_update_on_mx
+test: isolation_insert_select_vs_all_on_mx
+test: isolation_ref_select_for_update_vs_all_on_mx
+test: isolation_ref_update_delete_upsert_vs_all_on_mx
+test: isolation_dis2ref_foreign_keys_on_mx
+test: isolation_metadata_sync_deadlock
+test: isolation_replicated_dist_on_mx
+test: isolation_replicate_reference_tables_to_coordinator
+test: isolation_multiuser_locking
+test: isolation_acquire_distributed_locks
+test: isolation_concurrent_move_create_table
+
+# MERGE
+test: isolation_merge
+test: isolation_merge_replicated
+
+
+# Note: Always keep this test at the end
+test: isolation_check_mx

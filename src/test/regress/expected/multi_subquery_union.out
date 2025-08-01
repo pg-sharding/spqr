@@ -1,0 +1,1250 @@
+--
+-- multi subquery toplevel union queries aims to expand existing subquery pushdown
+-- regression tests to cover more cases
+-- the tables that are used depends to multi_insert_select_behavioral_analytics_create_table.sql
+-- We don't need shard id sequence here, so commented out to prevent conflicts with concurrent tests
+-- SET citus.next_shard_id TO 1400000;
+-- a very simple union query
+SELECT user_id, counter
+FROM (
+    SELECT user_id, value_2 % 10 AS counter FROM events_table WHERE event_type IN (1, 2)
+      UNION
+    SELECT user_id, value_2 % 10 AS counter FROM events_table WHERE event_type IN (5, 6)
+) user_id
+ORDER BY 2 DESC,1
+LIMIT 5;
+ user_id | counter
+---------------------------------------------------------------------
+       2 |       5
+       3 |       5
+       4 |       5
+       1 |       4
+       2 |       4
+(5 rows)
+
+-- can use different filters on partition columns
+SELECT *
+FROM (
+    SELECT user_id, max(value_2) FROM users_table WHERE user_id = 1 GROUP BY user_id
+      UNION ALL
+    SELECT user_id, max(value_2) FROM users_table WHERE user_id = 5 GROUP BY user_id
+) user_id
+ORDER BY 2 DESC,1
+LIMIT 5;
+ user_id | max
+---------------------------------------------------------------------
+       5 |   5
+       1 |   4
+(2 rows)
+
+-- a very simple union query with reference table
+SELECT user_id, counter
+FROM (
+    SELECT user_id, value_2 % 10 AS counter FROM events_table WHERE event_type IN (1, 2)
+      UNION
+    SELECT user_id, value_2 % 10 AS counter FROM events_reference_table WHERE event_type IN (5, 6)
+) user_id
+ORDER BY 2 DESC,1
+LIMIT 5;
+ user_id | counter
+---------------------------------------------------------------------
+       2 |       5
+       3 |       5
+       4 |       5
+       1 |       4
+       2 |       4
+(5 rows)
+
+-- the same query with union all
+SELECT user_id, counter
+FROM (
+    SELECT user_id, value_2 % 10 AS counter FROM events_table WHERE event_type IN (1, 2)
+      UNION ALL
+    SELECT user_id, value_2 % 10 AS counter FROM events_table WHERE event_type IN (5, 6)
+) user_id
+ORDER BY 2 DESC,1
+LIMIT 5;
+ user_id | counter
+---------------------------------------------------------------------
+       2 |       5
+       2 |       5
+       3 |       5
+       3 |       5
+       4 |       5
+(5 rows)
+
+-- the same query with union all and reference table
+SELECT user_id, counter
+FROM (
+    SELECT user_id, value_2 % 10 AS counter FROM events_table WHERE event_type IN (1, 2)
+      UNION ALL
+    SELECT user_id, value_2 % 10 AS counter FROM events_reference_table WHERE event_type IN (5, 6)
+) user_id
+ORDER BY 2 DESC,1
+LIMIT 5;
+ user_id | counter
+---------------------------------------------------------------------
+       2 |       5
+       2 |       5
+       3 |       5
+       3 |       5
+       4 |       5
+(5 rows)
+
+-- the same query with group by
+SELECT user_id, sum(counter)
+FROM (
+    SELECT user_id, value_2 % 10 AS counter FROM events_table WHERE event_type IN (1, 2)
+      UNION
+    SELECT user_id, value_2 % 10 AS counter FROM events_table WHERE event_type IN (5, 6)
+) user_id
+GROUP BY 1
+ORDER BY 2 DESC,1
+LIMIT 5;
+ user_id | sum
+---------------------------------------------------------------------
+       2 |  15
+       3 |  15
+       4 |  15
+       5 |  10
+       1 |   7
+(5 rows)
+
+-- the same query with UNION ALL clause
+SELECT user_id, sum(counter)
+FROM (
+    SELECT user_id, value_2 % 10 AS counter FROM events_table WHERE event_type IN (1, 2)
+      UNION ALL
+    SELECT user_id, value_2 % 10 AS counter FROM events_table WHERE event_type IN (5, 6)
+) user_id
+GROUP BY 1
+ORDER BY 2 DESC,1
+LIMIT 5;
+ user_id | sum
+---------------------------------------------------------------------
+       2 |  32
+       3 |  32
+       4 |  23
+       5 |  21
+       1 |  15
+(5 rows)
+
+-- the same query target list entries shuffled
+SELECT user_id, sum(counter)
+FROM (
+    SELECT value_2 % 10 AS counter, user_id FROM events_table WHERE event_type IN (1, 2)
+      UNION
+    SELECT value_2 % 10 AS counter, user_id FROM events_table WHERE event_type IN (5, 6)
+) user_id
+GROUP BY 1
+ORDER BY 2 DESC,1
+LIMIT 5;
+ user_id | sum
+---------------------------------------------------------------------
+       2 |  15
+       3 |  15
+       4 |  15
+       5 |  10
+       1 |   7
+(5 rows)
+
+-- same query with GROUP BY
+SELECT user_id, sum(counter)
+FROM (
+    SELECT user_id, value_2 AS counter FROM events_table WHERE event_type IN (1, 2)
+      UNION
+    SELECT user_id, value_2 AS counter FROM events_table WHERE event_type IN (5, 6)
+) user_id
+GROUP BY
+  user_id
+--HAVING sum(counter) > 900
+ORDER BY 1,2 DESC LIMIT 5;
+ user_id | sum
+---------------------------------------------------------------------
+       1 |   7
+       2 |  15
+       3 |  15
+       4 |  15
+       5 |  10
+(5 rows)
+
+-- the same query target list entries shuffled but this time the subqueries target list
+-- is shuffled
+SELECT user_id, sum(counter)
+FROM (
+    SELECT value_2 AS counter, user_id FROM events_table WHERE event_type IN (1, 2)
+      UNION
+    SELECT value_2 AS counter, user_id FROM events_table WHERE event_type IN (5, 6)
+) user_id
+GROUP BY
+  user_id
+--HAVING sum(counter) > 900
+ORDER BY 1,2 DESC LIMIT 5;
+ user_id | sum
+---------------------------------------------------------------------
+       1 |   7
+       2 |  15
+       3 |  15
+       4 |  15
+       5 |  10
+(5 rows)
+
+-- similar query this time more subqueries and target list contains a resjunk entry
+SELECT sum(counter)
+FROM (
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 1 GROUP BY user_id HAVING sum(value_2) > 5
+      UNION
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 2 and value_1 < 3 GROUP BY user_id HAVING sum(value_2) > 25
+      UNION
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 3 and value_1 < 4 GROUP BY user_id HAVING sum(value_2) > 25
+        UNION
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 4 and value_1 < 5 GROUP BY user_id HAVING sum(value_2) > 25
+        UNION
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 5 and value_1 < 6 GROUP BY user_id HAVING sum(value_2) > 25
+) user_id
+GROUP BY user_id ORDER BY 1 DESC LIMIT 5;
+ sum
+---------------------------------------------------------------------
+ 141
+  94
+  87
+  76
+(4 rows)
+
+-- similar query this time more subqueries with reference table and target list contains a resjunk entry
+SELECT sum(counter)
+FROM (
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 1 GROUP BY user_id HAVING sum(value_2) > 25
+      UNION
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 2 and value_1 < 3 GROUP BY user_id HAVING sum(value_2) > 25
+      UNION
+    SELECT user_id, sum(value_2) AS counter FROM users_reference_table where value_1 < 3 and value_1 < 4 GROUP BY user_id HAVING sum(value_2) > 25
+        UNION
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 4 and value_1 < 5 GROUP BY user_id HAVING sum(value_2) > 25
+        UNION
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 5 and value_1 < 6 GROUP BY user_id HAVING sum(value_2) > 25
+) user_id
+GROUP BY user_id ORDER BY 1 DESC LIMIT 5;
+ sum
+---------------------------------------------------------------------
+ 135
+  87
+  85
+  69
+(4 rows)
+
+-- similar query as above, with UNION ALL
+SELECT sum(counter)
+FROM (
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 1 GROUP BY user_id HAVING sum(value_2) > 250
+      UNION ALL
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 2 and value_1 < 3 GROUP BY user_id HAVING sum(value_2) > 25
+      UNION ALL
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 3 and value_1 < 4 GROUP BY user_id HAVING sum(value_2) > 25
+        UNION ALL
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 4 and value_1 < 5 GROUP BY user_id HAVING sum(value_2) > 25
+        UNION ALL
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 5 and value_1 < 6 GROUP BY user_id HAVING sum(value_2) > 25
+) user_id
+GROUP BY user_id ORDER BY 1 DESC LIMIT 5;
+ sum
+---------------------------------------------------------------------
+ 135
+  87
+  85
+  69
+(4 rows)
+
+-- unions within unions
+SELECT *
+FROM (
+        ( SELECT user_id,
+                 sum(counter)
+         FROM
+           (SELECT
+              user_id, sum(value_2) AS counter
+            FROM
+              users_table
+            GROUP BY
+              user_id
+          UNION
+            SELECT
+              user_id, sum(value_2) AS counter
+            FROM
+              events_table
+            GROUP BY
+              user_id) user_id_1
+         GROUP BY
+          user_id)
+      UNION
+        (SELECT
+            user_id, sum(counter)
+         FROM
+           (SELECT
+              user_id, sum(value_2) AS counter
+            FROM
+              users_table
+            GROUP BY
+              user_id
+          UNION
+            SELECT
+              user_id, sum(value_2) AS counter
+            FROM
+              events_table
+            GROUP BY
+              user_id) user_id_2
+         GROUP BY
+            user_id)) AS ftop
+ORDER BY 2 DESC, 1 DESC
+LIMIT 5;
+ user_id | sum
+---------------------------------------------------------------------
+       2 | 107
+       3 | 101
+       5 |  94
+       4 |  91
+       1 |  62
+(5 rows)
+
+-- unions within unions with reference table
+SELECT *
+FROM (
+        ( SELECT user_id,
+                 sum(counter)
+         FROM
+           (SELECT
+              user_id, sum(value_2) AS counter
+            FROM
+              users_table
+            GROUP BY
+              user_id
+          UNION
+            SELECT
+              user_id, sum(value_2) AS counter
+            FROM
+              events_reference_table
+            GROUP BY
+              user_id) user_id_1
+         GROUP BY
+          user_id)
+      UNION
+        (SELECT
+            user_id, sum(counter)
+         FROM
+           (SELECT
+              user_id, sum(value_2) AS counter
+            FROM
+              users_table
+            GROUP BY
+              user_id
+          UNION
+            SELECT
+              user_id, sum(value_2) AS counter
+            FROM
+              events_table
+            GROUP BY
+              user_id) user_id_2
+         GROUP BY
+            user_id)) AS ftop
+ORDER BY 2 DESC, 1 DESC
+LIMIT 5;
+ user_id | sum
+---------------------------------------------------------------------
+       2 | 107
+       3 | 101
+       5 |  94
+       4 |  91
+       1 |  62
+(5 rows)
+
+-- top level unions are wrapped into top level aggregations
+SELECT ("final_query"."event_types") as types, count(*) AS sumOfEventType
+FROM
+  ( SELECT *, random()
+   FROM
+     ( SELECT "t"."user_id", "t"."time", unnest("t"."collected_events") AS "event_types"
+      FROM
+        ( SELECT "t1"."user_id", min("t1"."time") AS "time", array_agg(("t1"."event") ORDER BY TIME ASC, event DESC) AS collected_events
+         FROM (
+                 (SELECT *
+                  FROM
+                    (SELECT
+                        "events"."user_id", "events"."time", 0 AS event
+                     FROM
+                        events_table as  "events"
+                     WHERE
+                        event_type IN (1, 2)) events_subquery_1)
+               UNION
+                 (SELECT *
+                  FROM
+                    (SELECT
+                        "events"."user_id", "events"."time", 1 AS event
+                     FROM
+                        events_table as "events"
+                     WHERE
+                        event_type IN (2, 3) ) events_subquery_2)
+               UNION
+                 (SELECT *
+                  FROM
+                    (SELECT
+                        "events"."user_id", "events"."time", 2 AS event
+                     FROM
+                        events_table as  "events"
+                     WHERE
+                        event_type IN (4, 5) ) events_subquery_3)
+               UNION
+                 (SELECT *
+                  FROM
+                    (SELECT
+                        "events"."user_id", "events"."time", 3 AS event
+                     FROM
+                        events_table as "events"
+                     WHERE
+                        event_type IN (6, 1)) events_subquery_4)) t1
+         GROUP BY "t1"."user_id") AS t) "q"
+) as final_query
+GROUP BY types
+ORDER BY types;
+ types | sumofeventtype
+---------------------------------------------------------------------
+     0 |             43
+     1 |             42
+     2 |             28
+     3 |             25
+(4 rows)
+
+-- exactly the same query
+-- but wrapper unions are removed from the inner part of the query
+SELECT ("final_query"."event_types") as types, count(*) AS sumOfEventType
+FROM
+  (SELECT *, random()
+   FROM
+     (SELECT
+        "t"."user_id", "t"."time", unnest("t"."collected_events") AS "event_types"
+      FROM
+        (SELECT
+            "t1"."user_id", min("t1"."time") AS "time", array_agg(("t1"."event") ORDER BY TIME ASC, event DESC) AS collected_events
+         FROM(
+                  (SELECT
+                    "events"."user_id", "events"."time", 0 AS event
+                   FROM
+                    events_table as  "events"
+                   WHERE
+                    event_type IN (1, 2))
+               UNION
+                    (SELECT
+                        "events"."user_id", "events"."time", 1 AS event
+                     FROM
+                        events_table as "events"
+                     WHERE
+                        event_type IN (2, 3) )
+               UNION
+                    (SELECT
+                        "events"."user_id", "events"."time", 2 AS event
+                     FROM
+                        events_table as  "events"
+                     WHERE
+                        event_type IN (4, 5) )
+               UNION
+                    (SELECT
+                        "events"."user_id", "events"."time", 3 AS event
+                     FROM
+                        events_table as "events"
+                     WHERE
+                        event_type IN (6, 1))) t1
+         GROUP BY "t1"."user_id") AS t) "q"
+) as final_query
+GROUP BY types
+ORDER BY types;
+ types | sumofeventtype
+---------------------------------------------------------------------
+     0 |             43
+     1 |             42
+     2 |             28
+     3 |             25
+(4 rows)
+
+-- again excatly the same query with top level wrapper removed
+SELECT ("q"."event_types") as types, count(*) AS sumOfEventType
+FROM
+     ( SELECT "t"."user_id", "t"."time", unnest("t"."collected_events") AS "event_types"
+      FROM
+        ( SELECT "t1"."user_id", min("t1"."time") AS "time", array_agg(("t1"."event") ORDER BY TIME ASC, event DESC) AS collected_events
+         FROM (
+                  (SELECT
+                    "events"."user_id", "events"."time", 0 AS event
+                   FROM
+                    events_table as  "events"
+                   WHERE
+                    event_type IN (1, 2))
+               UNION
+                    (SELECT
+                        "events"."user_id", "events"."time", 1 AS event
+                     FROM
+                        events_table as "events"
+                     WHERE
+                        event_type IN (2, 3) )
+               UNION
+                    (SELECT
+                        "events"."user_id", "events"."time", 2 AS event
+                     FROM
+                        events_table as  "events"
+                     WHERE
+                        event_type IN (4, 5) )
+               UNION
+                    (SELECT
+                        "events"."user_id", "events"."time", 3 AS event
+                     FROM
+                        events_table as "events"
+                     WHERE
+                        event_type IN (6, 1))) t1
+         GROUP BY "t1"."user_id") AS t) "q"
+GROUP BY types
+ORDER BY types;
+ types | sumofeventtype
+---------------------------------------------------------------------
+     0 |             43
+     1 |             42
+     2 |             28
+     3 |             25
+(4 rows)
+
+-- again same query but with only two top level empty queries (i.e., no group bys)
+SELECT *
+FROM
+     ( SELECT *
+      FROM
+        ( SELECT "t1"."user_id"
+         FROM (
+                  (SELECT
+                    "events"."user_id", "events"."time", 0 AS event
+                   FROM
+                    events_table as  "events"
+                   WHERE
+                    event_type IN (1, 2))
+               UNION
+                    (SELECT
+                        "events"."user_id", "events"."time", 1 AS event
+                     FROM
+                        events_table as "events"
+                     WHERE
+                        event_type IN (2, 3) )
+               UNION
+                    (SELECT
+                        "events"."user_id", "events"."time", 2 AS event
+                     FROM
+                        events_table as  "events"
+                     WHERE
+                        event_type IN (4, 5) )
+               UNION
+                    (SELECT
+                        "events"."user_id", "events"."time", 3 AS event
+                     FROM
+                        events_table as "events"
+                     WHERE
+                        event_type IN (6, 1))) t1
+        ) AS t) "q"
+ORDER BY 1
+LIMIT 5;
+ user_id
+---------------------------------------------------------------------
+       1
+       1
+       1
+       1
+       1
+(5 rows)
+
+-- a very similar query UNION ALL
+SELECT ("q"."event_types") as types, count(*) AS sumOfEventType
+FROM
+     ( SELECT "t"."user_id", "t"."time", unnest("t"."collected_events") AS "event_types"
+      FROM
+        ( SELECT "t1"."user_id", min("t1"."time") AS "time", array_agg(("t1"."event") ORDER BY TIME ASC, event DESC) AS collected_events
+         FROM (
+                  (SELECT
+                    "events"."user_id", "events"."time", 0 AS event
+                   FROM
+                    events_table as  "events"
+                   WHERE
+                    event_type IN (1, 2))
+               UNION ALL
+                    (SELECT
+                        "events"."user_id", "events"."time", 1 AS event
+                     FROM
+                        events_table as "events"
+                     WHERE
+                        event_type IN (2, 3) )
+               UNION ALL
+                    (SELECT
+                        "events"."user_id", "events"."time", 2 AS event
+                     FROM
+                        events_table as  "events"
+                     WHERE
+                        event_type IN (4, 5) )
+               UNION ALL
+                    (SELECT
+                        "events"."user_id", "events"."time", 3 AS event
+                     FROM
+                        events_table as "events"
+                     WHERE
+                        event_type IN (6, 1))) t1
+         GROUP BY "t1"."user_id") AS t) "q"
+GROUP BY types
+ORDER BY types;
+ types | sumofeventtype
+---------------------------------------------------------------------
+     0 |             43
+     1 |             42
+     2 |             28
+     3 |             25
+(4 rows)
+
+-- some UNION ALL queries that are going to be pulled up
+SELECT
+  count(*)
+FROM
+(
+  (SELECT user_id FROM users_table)
+    UNION ALL
+  (SELECT user_id FROM events_table)
+) b;
+ count
+---------------------------------------------------------------------
+   202
+(1 row)
+
+-- some UNION ALL queries that are going to be pulled up with reference table
+SELECT
+  count(*)
+FROM
+(
+  (SELECT user_id FROM users_table)
+    UNION ALL
+  (SELECT user_id FROM events_reference_table)
+) b;
+ count
+---------------------------------------------------------------------
+   202
+(1 row)
+
+-- similar query without top level agg
+SELECT
+  user_id
+FROM
+(
+  (SELECT user_id FROM users_table)
+    UNION ALL
+  (SELECT user_id FROM events_table)
+) b
+ORDER BY 1 DESC
+LIMIT 5;
+ user_id
+---------------------------------------------------------------------
+       6
+       6
+       6
+       6
+       6
+(5 rows)
+
+-- similar query with multiple target list entries
+SELECT
+  user_id, value_3
+FROM
+(
+  (SELECT value_3, user_id FROM users_table)
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table)
+) b
+ORDER BY 1 DESC, 2 DESC
+LIMIT 5;
+ user_id | value_3
+---------------------------------------------------------------------
+       6 |       5
+       6 |       5
+       6 |       5
+       6 |       5
+       6 |       4
+(5 rows)
+
+-- similar query group by inside the subqueries
+SELECT
+  user_id, value_3_sum
+FROM
+(
+  (SELECT sum(value_3) as value_3_sum, user_id FROM users_table GROUP BY user_id)
+    UNION ALL
+  (SELECT sum(value_3) as value_3_sum, user_id FROM users_table GROUP BY user_id)
+) b
+ORDER BY 2 DESC, 1 DESC
+LIMIT 5;
+ user_id | value_3_sum
+---------------------------------------------------------------------
+       4 |          65
+       4 |          65
+       5 |          64
+       5 |          64
+       2 |          54
+(5 rows)
+
+-- similar query top level group by
+SELECT
+  user_id, sum(value_3)
+FROM
+(
+  (SELECT value_3, user_id FROM users_table)
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table)
+) b
+GROUP BY 1
+ORDER BY 2 DESC, 1 DESC
+LIMIT 5;
+ user_id | sum
+---------------------------------------------------------------------
+       2 | 119
+       4 | 111
+       3 | 100
+       5 |  85
+       1 |  53
+(5 rows)
+
+-- a long set operation list
+SELECT
+  user_id, value_3
+FROM
+(
+  (SELECT value_3, user_id FROM events_table where event_type IN (1, 2))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (2, 3))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (3, 4))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (4, 5))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (5, 6))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (1, 6))
+) b
+ORDER BY 1 DESC, 2 DESC
+LIMIT 5;
+ user_id | value_3
+---------------------------------------------------------------------
+       6 |       5
+       6 |       5
+       6 |       3
+       6 |       3
+       6 |       3
+(5 rows)
+
+-- no partition key on the top
+SELECT
+  max(value_3)
+FROM
+(
+  (SELECT value_3, user_id FROM events_table where event_type IN (1, 2))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (2, 3))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (3, 4))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (4, 5))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (5, 6))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (1, 6))
+) b
+GROUP BY user_id
+ORDER BY 1 DESC
+LIMIT 5;
+ max
+---------------------------------------------------------------------
+   5
+   5
+   5
+   5
+   4
+(5 rows)
+
+-- now lets also have some unsupported queries
+-- group by is not on the partition key, supported through recursive planning
+SELECT user_id, sum(counter)
+FROM (
+    SELECT user_id, sum(value_2) AS counter FROM events_table GROUP BY user_id
+      UNION
+    SELECT value_1 as user_id, sum(value_2) AS counter FROM users_table GROUP BY value_1
+) user_id
+GROUP BY user_id
+ORDER BY 1,2;
+ user_id | sum
+---------------------------------------------------------------------
+       0 |  31
+       1 |  76
+       2 |  99
+       3 | 119
+       4 |  94
+       5 |  57
+       6 |  22
+(7 rows)
+
+-- partition key is not selected, supported through recursive planning
+SELECT sum(counter)
+FROM (
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 1 GROUP BY user_id HAVING sum(value_2) > 25
+      UNION
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 2 and value_1 < 3 GROUP BY user_id HAVING sum(value_2) > 25
+      UNION
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 3 and value_1 < 4 GROUP BY user_id HAVING sum(value_2) > 25
+      UNION
+    SELECT user_id, sum(value_2) AS counter FROM users_table where value_1 < 4 and value_1 < 5 GROUP BY user_id HAVING sum(value_2) > 25
+      UNION
+    SELECT 2 * user_id, sum(value_2) AS counter FROM users_table where value_1 < 5 and value_1 < 6 GROUP BY user_id HAVING sum(value_2) > 25
+) user_id
+GROUP BY user_id ORDER BY 1 DESC LIMIT 5;
+ sum
+---------------------------------------------------------------------
+  80
+  76
+  55
+  50
+  43
+(5 rows)
+
+-- excepts within unions are supported through recursive planning
+SELECT * FROM
+(
+(
+  SELECT user_id, sum(counter)
+    FROM (
+     SELECT user_id, sum(value_2) AS counter FROM users_table GROUP BY user_id
+        UNION
+     SELECT user_id, sum(value_2) AS counter FROM events_table GROUP BY user_id
+  ) user_id_1
+  GROUP BY user_id
+)
+UNION
+(
+  SELECT user_id, sum(counter)
+    FROM (
+      SELECT user_id, sum(value_2) AS counter FROM users_table GROUP BY user_id
+        EXCEPT
+      SELECT user_id, sum(value_2) AS counter FROM events_table GROUP BY user_id
+) user_id_2
+  GROUP BY user_id)
+) as ftop
+ORDER BY 1,2;
+ user_id | sum
+---------------------------------------------------------------------
+       1 |  20
+       1 |  62
+       2 |  50
+       2 | 107
+       3 |  55
+       3 | 101
+       4 |  50
+       4 |  91
+       5 |  63
+       5 |  94
+       6 |  21
+       6 |  43
+(12 rows)
+
+-- non-equi join are not supported since there is no equivalence between the partition column
+SELECT user_id, sum(counter)
+FROM (
+    SELECT user_id, sum(value_2) AS counter FROM users_table GROUP BY user_id
+      UNION
+    SELECT events_table.user_id, sum(events_table.value_2) AS counter FROM events_table, users_table WHERE users_table.user_id > events_table.user_id GROUP BY 1
+) user_id
+GROUP BY user_id;
+ERROR:  complex joins are only supported when all distributed tables are joined on their distribution columns with equal operator
+-- non-equi join also not supported for UNION ALL
+SELECT user_id, sum(counter)
+FROM (
+    SELECT user_id, sum(value_2) AS counter FROM users_table GROUP BY user_id
+      UNION ALL
+    SELECT events_table.user_id, sum(events_table.value_2) AS counter FROM events_table, users_table WHERE users_table.user_id > events_table.user_id GROUP BY 1
+) user_id
+GROUP BY user_id;
+ERROR:  complex joins are only supported when all distributed tables are joined on their distribution columns with equal operator
+-- joins inside unions are supported -- slightly more comlex than the above
+SELECT * FROM
+(
+(
+  SELECT user_id, sum(counter)
+    FROM (
+     SELECT user_id, sum(value_2) AS counter FROM users_table GROUP BY user_id
+       UNION
+     SELECT user_id, sum(value_2) AS counter FROM events_table GROUP BY user_id
+  ) user_id_1
+  GROUP BY user_id
+)
+UNION
+(
+  SELECT user_id, sum(counter)
+    FROM (
+      SELECT user_id, sum(value_2) AS counter FROM users_table GROUP BY user_id
+        UNION
+      SELECT events_table.user_id, sum(events_table.value_2) AS counter FROM events_table, users_table WHERE (events_table.user_id = users_table.user_id) GROUP BY events_table.user_id
+) user_id_2
+  GROUP BY user_id)
+) as ftop
+ORDER BY 2, 1
+LIMIT 10;
+ user_id | sum
+---------------------------------------------------------------------
+       6 |  43
+       1 |  62
+       4 |  91
+       5 |  94
+       3 | 101
+       2 | 107
+       6 | 241
+       1 | 314
+       3 | 837
+       5 | 869
+(10 rows)
+
+-- mix up the joins a bit
+SELECT * FROM
+(
+(
+  SELECT sum(users_table.value_2), events_table.user_id
+  FROM users_table, events_table
+  WHERE users_table.user_id = events_Table.user_id
+  GROUP BY events_table.user_id
+)
+UNION
+(
+  SELECT sum(users_table.value_2), user_id
+  FROM users_table LEFT JOIN events_table USING (user_id)
+  GROUP BY user_id
+)
+) ftop
+ORDER BY 2, 1
+LIMIT 10;
+ sum  | user_id
+---------------------------------------------------------------------
+  300 |       1
+ 1200 |       2
+ 1155 |       3
+  850 |       4
+  882 |       5
+  210 |       6
+(6 rows)
+
+SELECT * FROM
+(
+(
+  SELECT value_2, user_id
+  FROM users_table
+)
+UNION
+(
+  SELECT sum(users_table.value_2), user_id
+  FROM users_table RIGHT JOIN events_table USING (user_id)
+  GROUP BY user_id
+)
+) ftop
+ORDER BY 2, 1
+LIMIT 10;
+ value_2 | user_id
+---------------------------------------------------------------------
+       0 |       1
+       2 |       1
+       3 |       1
+       4 |       1
+     300 |       1
+       0 |       2
+       1 |       2
+       2 |       2
+       3 |       2
+       4 |       2
+(10 rows)
+
+-- UNION ALL with joins is supported
+SELECT * FROM
+(
+(
+  SELECT sum(users_table.value_2), events_table.user_id
+  FROM users_table, events_table
+  WHERE users_table.user_id = events_Table.user_id
+  GROUP BY events_table.user_id
+)
+UNION ALL
+(
+  SELECT sum(users_table.value_2), user_id
+  FROM users_table JOIN events_table USING (user_id)
+  GROUP BY user_id
+)
+) ftop
+ORDER BY 2, 1
+LIMIT 10;
+ sum  | user_id
+---------------------------------------------------------------------
+  300 |       1
+  300 |       1
+ 1200 |       2
+ 1200 |       2
+ 1155 |       3
+ 1155 |       3
+  850 |       4
+  850 |       4
+  882 |       5
+  882 |       5
+(10 rows)
+
+-- offset inside the union
+SELECT user_id, sum(counter)
+FROM (
+    SELECT user_id, sum(value_2) AS counter FROM events_table GROUP BY user_id
+      UNION
+    SELECT user_id, sum(value_2) AS counter FROM users_table GROUP BY user_id ORDER BY user_id OFFSET 4
+) user_id
+GROUP BY user_id
+ORDER BY 1,2;
+ user_id | sum
+---------------------------------------------------------------------
+       3 | 101
+       4 |  91
+       5 |  94
+       6 |  43
+(4 rows)
+
+-- lower level union does not return partition key with the other relations
+SELECT *
+FROM (
+        ( SELECT user_id,
+                 sum(counter)
+         FROM
+           (SELECT
+              user_id, sum(value_2) AS counter
+            FROM
+              users_table
+            GROUP BY
+              user_id
+          UNION
+            SELECT
+              user_id, sum(value_2) AS counter
+            FROM
+              events_table
+            GROUP BY
+              user_id) user_id_1
+         GROUP BY
+          user_id)
+      UNION
+        (SELECT
+            user_id, sum(counter)
+         FROM
+           (SELECT
+              sum(value_2) AS counter, user_id
+            FROM
+              users_table
+            GROUP BY
+              user_id
+          UNION
+            SELECT
+              user_id, sum(value_2) AS counter
+            FROM
+              events_table
+            GROUP BY
+              user_id) user_id_2
+         GROUP BY
+            user_id)) AS ftop
+ORDER BY 1,2;
+ user_id | sum
+---------------------------------------------------------------------
+       1 |  20
+       1 |  62
+       2 |  50
+       2 | 107
+       3 |  55
+       3 | 101
+       4 |  50
+       4 |  91
+       5 |  63
+       5 |  94
+       6 |  21
+       6 |  43
+      22 |   6
+      31 |   5
+      41 |   4
+      42 |   1
+      46 |   3
+      57 |   2
+(18 rows)
+
+-- some UNION all queries that are going to be pulled up
+SELECT
+  count(*)
+FROM
+(
+  (SELECT user_id FROM users_table)
+    UNION ALL
+  (SELECT 2 * user_id FROM events_table)
+) b;
+ count
+---------------------------------------------------------------------
+   202
+(1 row)
+
+-- last query does not have partition key
+SELECT
+  user_id, value_3
+FROM
+(
+  (SELECT value_3, user_id FROM events_table where event_type IN (1, 2))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (2, 3))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (3, 4))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (4, 5))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (5, 6))
+    UNION ALL
+  (SELECT value_3, value_2 FROM events_table where event_type IN (1, 6))
+) b
+ORDER BY 1 DESC, 2 DESC
+LIMIT 5;
+ user_id | value_3
+---------------------------------------------------------------------
+       6 |       5
+       6 |       5
+       6 |       3
+       6 |       3
+       6 |       3
+(5 rows)
+
+-- we allow joins within unions
+SELECT
+  count(*)
+FROM
+(
+  (SELECT user_id FROM users_table)
+    UNION ALL
+  (SELECT users_table.user_id FROM events_table, users_table WHERE events_table.user_id = users_table.user_id)
+) b;
+ count
+---------------------------------------------------------------------
+  1850
+(1 row)
+
+-- we support unions on subqueries without relations through recursive planning
+SELECT
+  count(*)
+FROM
+(
+  (SELECT user_id FROM users_table)
+    UNION ALL
+  (SELECT 1)
+) b;
+ count
+---------------------------------------------------------------------
+   102
+(1 row)
+
+-- we support pushing down subqueries without relations through recursive planning
+SELECT
+  count(*)
+FROM
+(
+  (SELECT user_id FROM users_table)
+    UNION ALL
+  (SELECT (random() * 100)::int)
+) b;
+ count
+---------------------------------------------------------------------
+   102
+(1 row)
+
+-- we support subqueries without relations within a union
+SELECT
+  user_id, value_3
+FROM
+(
+  (SELECT value_3, user_id FROM events_table where event_type IN (1, 2))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (2, 3))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (3, 4))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (4, 5))
+    UNION ALL
+  (SELECT value_3, user_id FROM events_table where event_type IN (5, 6))
+    UNION ALL
+  (SELECT 1, 2)
+) b
+ORDER BY 1 DESC, 2 DESC
+LIMIT 5;
+ user_id | value_3
+---------------------------------------------------------------------
+       6 |       5
+       6 |       5
+       6 |       3
+       6 |       3
+       6 |       3
+(5 rows)
+
+-- we support pushing down subqueries without relations through recursive planning
+SELECT ("final_query"."event_types") as types, count(*) AS sumOfEventType
+FROM
+  ( SELECT *, random()
+   FROM
+     ( SELECT "t"."user_id", "t"."time", unnest("t"."collected_events") AS "event_types"
+      FROM
+        ( SELECT "t1"."user_id", min("t1"."time") AS "time", array_agg(("t1"."event") ORDER BY TIME ASC, event DESC) AS collected_events
+         FROM (
+                 (SELECT *
+                  FROM
+                    (SELECT
+                        "events"."user_id", "events"."time", 0 AS event
+                     FROM
+                        events_table as  "events"
+                     WHERE
+                        event_type IN (1, 2)) events_subquery_1)
+               UNION
+                 (SELECT *
+                  FROM
+                    (SELECT
+                        "events"."user_id", "events"."time", 1 AS event
+                     FROM
+                        events_table as "events"
+                     WHERE
+                        event_type IN (2, 3) ) events_subquery_2)
+               UNION
+                 (SELECT *
+                  FROM
+                    (SELECT
+                        "events"."user_id", "events"."time", 2 AS event
+                     FROM
+                        events_table as  "events"
+                     WHERE
+                        event_type IN (4, 5) ) events_subquery_3)
+               UNION
+                 (SELECT *
+                  FROM
+                    (SELECT 1, now(), 3 AS event) events_subquery_4)) t1
+         GROUP BY "t1"."user_id") AS t) "q"
+) as final_query
+GROUP BY types
+ORDER BY types;
+ types | sumofeventtype
+---------------------------------------------------------------------
+     0 |             43
+     1 |             42
+     2 |             28
+     3 |              1
+(4 rows)
+
+-- Previously this produced a segfault from standard_planner introducing a subquery after we'd called AssignRTEIdentities
+CREATE OR REPLACE FUNCTION users_udf()
+RETURNS TABLE(user_id int)
+AS $$SELECT user_id FROM users_reference_table;$$
+LANGUAGE sql stable;
+SELECT user_id FROM users_table
+UNION SELECT u.user_id FROM users_table, users_udf() u;
+ERROR:  cannot perform distributed planning on this query because parameterized queries for SQL functions referencing distributed tables are not supported
+HINT:  Consider using PL/pgSQL functions instead.
+DROP TABLE events_reference_table;
+DROP TABLE users_reference_table;

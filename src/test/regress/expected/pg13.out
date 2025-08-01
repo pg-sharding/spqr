@@ -1,0 +1,243 @@
+create schema test_pg13;
+set search_path to test_pg13;
+SET citus.shard_replication_factor to 1;
+SET citus.shard_count to 2;
+SET citus.next_shard_id TO 65000;
+-- Ensure tuple data in explain analyze output is the same on all PG versions
+SET citus.enable_binary_protocol = TRUE;
+CREATE TABLE dist_table (name char, age int);
+CREATE INDEX name_index on dist_table(name);
+SELECT create_distributed_table('dist_table', 'name');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+SET client_min_messages to DEBUG1;
+SET citus.log_remote_commands to ON;
+-- make sure vacuum parallel doesn't error out
+VACUUM (PARALLEL 2) dist_table;
+NOTICE:  issuing VACUUM (PARALLEL 2) test_pg13.dist_table_65000
+DETAIL:  on server postgres@localhost:xxxxx connectionId: xxxxxxx
+NOTICE:  issuing VACUUM (PARALLEL 2) test_pg13.dist_table_65001
+DETAIL:  on server postgres@localhost:xxxxx connectionId: xxxxxxx
+VACUUM (PARALLEL 0) dist_table;
+NOTICE:  issuing VACUUM (PARALLEL 0) test_pg13.dist_table_65000
+DETAIL:  on server postgres@localhost:xxxxx connectionId: xxxxxxx
+NOTICE:  issuing VACUUM (PARALLEL 0) test_pg13.dist_table_65001
+DETAIL:  on server postgres@localhost:xxxxx connectionId: xxxxxxx
+-- This should error out since -5 is not valid.
+VACUUM (PARALLEL -5) dist_table;
+ERROR:  parallel workers for vacuum must be between 0 and 1024
+-- This should error out since no number is given
+VACUUM (PARALLEL) dist_table;
+ERROR:  parallel option requires a value between 0 and 1024
+RESET client_min_messages;
+RESET citus.log_remote_commands;
+-- test alter table alter column drop expression
+CREATE TABLE generated_col_table(a int, b int GENERATED ALWAYS AS (a * 10) STORED);
+SELECT create_distributed_table('generated_col_table', 'a');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+INSERT INTO generated_col_table VALUES (1);
+-- Make sure that we currently error out
+ALTER TABLE generated_col_table ALTER COLUMN b DROP EXPRESSION;
+ERROR:  alter table command is currently unsupported
+DETAIL:  Only ADD|DROP COLUMN, SET|DROP NOT NULL, SET|DROP DEFAULT, ADD|DROP|VALIDATE CONSTRAINT, SET (), RESET (), ENABLE|DISABLE|NO FORCE|FORCE ROW LEVEL SECURITY, ATTACH|DETACH PARTITION and TYPE subcommands are supported.
+-- alter view rename column works fine
+CREATE VIEW v AS SELECT * FROM dist_table;
+ALTER VIEW v RENAME age to new_age;
+SELECT * FROM v;
+ name | new_age
+---------------------------------------------------------------------
+(0 rows)
+
+-- row suffix notation works fine
+CREATE TABLE ab (a int, b int);
+SELECT create_distributed_table('ab','a');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+INSERT INTO ab SELECT i, 2 * i FROM generate_series(1,20)i;
+SELECT * FROM ab WHERE (ROW(a,b)).f1 > (ROW(10,30)).f1 ORDER BY 1,2;
+ a  | b
+---------------------------------------------------------------------
+ 11 | 22
+ 12 | 24
+ 13 | 26
+ 14 | 28
+ 15 | 30
+ 16 | 32
+ 17 | 34
+ 18 | 36
+ 19 | 38
+ 20 | 40
+(10 rows)
+
+SELECT * FROM ab WHERE (ROW(a,b)).f2 > (ROW(0,38)).f2 ORDER BY 1,2;
+ a  | b
+---------------------------------------------------------------------
+ 20 | 40
+(1 row)
+
+-- test normalized
+CREATE TABLE text_table (name text);
+SELECT create_distributed_table('text_table', 'name');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+INSERT INTO text_table VALUES ('abc');
+-- not normalized
+INSERT INTO text_table VALUES (U&'\0061\0308bc');
+SELECT name IS NORMALIZED FROM text_table ORDER BY 1;
+ is_normalized
+---------------------------------------------------------------------
+ f
+ t
+(2 rows)
+
+SELECT is_normalized(name) FROM text_table ORDER BY 1;
+ is_normalized
+---------------------------------------------------------------------
+ f
+ t
+(2 rows)
+
+SELECT normalize(name) FROM text_table ORDER BY 1;
+ normalize
+---------------------------------------------------------------------
+ abc
+ äbc
+(2 rows)
+
+INSERT INTO text_table VALUES (normalize(U&'\0061\0308bc', NFC));
+-- test unicode escape
+-- insert the word 'data' with unicode escapes
+INSERT INTO text_table VALUES(U&'d\0061t\+000061');
+-- insert the word слон
+INSERT INTO text_table VALUES(U&'\0441\043B\043E\043D');
+SELECT * FROM text_table ORDER BY 1;
+ name
+---------------------------------------------------------------------
+ abc
+ äbc
+ data
+ äbc
+ слон
+(5 rows)
+
+-- Test that we don't propagate base types
+CREATE TYPE myvarchar;
+CREATE FUNCTION myvarcharin(cstring, oid, integer) RETURNS myvarchar
+LANGUAGE internal IMMUTABLE PARALLEL SAFE STRICT AS 'varcharin';
+NOTICE:  return type myvarchar is only a shell
+WARNING:  "function myvarcharin(cstring,oid,integer)" has dependency on unsupported object "type myvarchar"
+DETAIL:  "function myvarcharin(cstring,oid,integer)" will be created only locally
+CREATE FUNCTION myvarcharout(myvarchar) RETURNS cstring
+LANGUAGE internal IMMUTABLE PARALLEL SAFE STRICT AS 'varcharout';
+NOTICE:  argument type myvarchar is only a shell
+WARNING:  "function myvarcharout(myvarchar)" has dependency on unsupported object "type myvarchar"
+DETAIL:  "function myvarcharout(myvarchar)" will be created only locally
+CREATE TYPE myvarchar (
+    input = myvarcharin,
+    output = myvarcharout,
+    alignment = integer,
+    storage = main
+);
+CREATE TABLE my_table (a int, b myvarchar);
+-- this will error because it seems that we don't propagate the "BASE TYPES"
+-- Alter table also errors out so this doesn't seem to apply to use:
+-- """Add ALTER TYPE options useful for extensions,
+-- like TOAST and I/O functions control (Tomas Vondra, Tom Lane)"""
+SELECT create_distributed_table('my_table', 'a');
+ERROR:  "table my_table" has dependency on unsupported object "type myvarchar"
+CREATE TABLE test_table(a int, b tsvector);
+SELECT create_distributed_table('test_table', 'a');
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+-- operator class options are supported
+CREATE INDEX test_table_index ON test_table USING gist (b tsvector_ops(siglen = 100));
+-- testing WAL
+CREATE TABLE test_wal(a int, b int);
+-- test WAL without ANALYZE, this should raise an error
+EXPLAIN (WAL) INSERT INTO test_wal VALUES(1,11);
+ERROR:  EXPLAIN option WAL requires ANALYZE
+-- test WAL working properly for router queries
+EXPLAIN (ANALYZE TRUE, WAL TRUE, COSTS FALSE, SUMMARY FALSE, BUFFERS FALSE, TIMING FALSE)
+INSERT INTO test_wal VALUES(1,11);
+                 QUERY PLAN
+---------------------------------------------------------------------
+ Insert on test_wal (actual rows=0 loops=1)
+   WAL: records=1 bytes=63
+   ->  Result (actual rows=1 loops=1)
+(3 rows)
+
+SELECT create_distributed_table('test_wal', 'a');
+NOTICE:  Copying data from local table...
+NOTICE:  copying the data has completed
+DETAIL:  The local data in the table is no longer visible, but is still on disk.
+HINT:  To remove the local data, run: SELECT truncate_local_data_after_distributing_table($$test_pg13.test_wal$$)
+ create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+EXPLAIN (ANALYZE TRUE, WAL TRUE, COSTS FALSE, SUMMARY FALSE, BUFFERS FALSE, TIMING FALSE)
+INSERT INTO test_wal VALUES(2,22);
+                          QUERY PLAN
+---------------------------------------------------------------------
+ Custom Scan (Citus Adaptive) (actual rows=0 loops=1)
+   Task Count: 1
+   Tasks Shown: All
+   ->  Task
+         Node: host=localhost port=xxxxx dbname=regression
+         ->  Insert on test_wal_65011 (actual rows=0 loops=1)
+               WAL: records=1 bytes=63
+               ->  Result (actual rows=1 loops=1)
+(8 rows)
+
+-- Test WAL working for multi-shard query
+SET citus.explain_all_tasks TO on;
+EXPLAIN (ANALYZE TRUE, WAL TRUE, COSTS FALSE, SUMMARY FALSE, BUFFERS FALSE, TIMING FALSE)
+INSERT INTO test_wal VALUES(3,33),(4,44),(5,55) RETURNING *;
+                                   QUERY PLAN
+---------------------------------------------------------------------
+ Custom Scan (Citus Adaptive) (actual rows=3 loops=1)
+   Task Count: 1
+   Tuple data received from nodes: 24 bytes
+   Tasks Shown: All
+   ->  Task
+         Tuple data received from node: 24 bytes
+         Node: host=localhost port=xxxxx dbname=regression
+         ->  Insert on test_wal_65010 citus_table_alias (actual rows=3 loops=1)
+               WAL: records=3 bytes=189
+               ->  Values Scan on "*VALUES*" (actual rows=3 loops=1)
+(10 rows)
+
+-- make sure WAL works in distributed subplans
+-- this test has different output for pg14 and here we mostly test that
+-- we don't get an error, hence we use explain_has_distributed_subplan.
+SELECT public.explain_has_distributed_subplan(
+$$
+EXPLAIN (ANALYZE TRUE, WAL TRUE, COSTS FALSE, SUMMARY FALSE, BUFFERS FALSE, TIMING FALSE)
+WITH cte_1 AS (INSERT INTO test_wal VALUES(6,66),(7,77),(8,88) RETURNING *)
+SELECT * FROM cte_1;
+$$
+);
+ explain_has_distributed_subplan
+---------------------------------------------------------------------
+ t
+(1 row)
+
+SET client_min_messages TO WARNING;
+drop schema test_pg13 cascade;

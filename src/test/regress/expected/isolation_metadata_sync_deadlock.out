@@ -1,0 +1,119 @@
+Parsed test spec with 3 sessions
+
+starting permutation: enable-deadlock-detection reload-conf s2-start-session-level-connection s1-begin s1-update-1 s2-begin-on-worker s2-update-2-on-worker s2-truncate-on-worker s3-invalidate-metadata s3-resync s3-wait s2-update-1-on-worker s1-update-2 s1-commit s2-commit-on-worker disable-deadlock-detection reload-conf s2-stop-connection
+create_distributed_table
+---------------------------------------------------------------------
+
+(1 row)
+
+step enable-deadlock-detection:
+  ALTER SYSTEM SET citus.distributed_deadlock_detection_factor TO 3;
+
+step reload-conf:
+    SELECT pg_reload_conf();
+
+pg_reload_conf
+---------------------------------------------------------------------
+t
+(1 row)
+
+step s2-start-session-level-connection:
+ SELECT start_session_level_connection_to_node('localhost', 57638);
+
+start_session_level_connection_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-begin:
+  BEGIN;
+
+step s1-update-1:
+  UPDATE deadlock_detection_test SET some_val = 1 WHERE user_id = 1;
+
+step s2-begin-on-worker:
+ SELECT run_commands_on_session_level_connection_to_node('BEGIN');
+
+run_commands_on_session_level_connection_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+step s2-update-2-on-worker:
+  SELECT run_commands_on_session_level_connection_to_node('UPDATE deadlock_detection_test SET some_val = 2 WHERE user_id = 2');
+
+run_commands_on_session_level_connection_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+step s2-truncate-on-worker:
+    SELECT run_commands_on_session_level_connection_to_node('TRUNCATE t2');
+
+run_commands_on_session_level_connection_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+step s3-invalidate-metadata:
+    update pg_dist_node SET metadatasynced = false;
+
+step s3-resync:
+  SELECT trigger_metadata_sync();
+
+trigger_metadata_sync
+---------------------------------------------------------------------
+
+(1 row)
+
+step s3-wait:
+  SELECT pg_sleep(2);
+
+pg_sleep
+---------------------------------------------------------------------
+
+(1 row)
+
+step s2-update-1-on-worker:
+  SELECT run_commands_on_session_level_connection_to_node('UPDATE deadlock_detection_test SET some_val = 2 WHERE user_id = 1');
+ <waiting ...>
+step s1-update-2: 
+  UPDATE deadlock_detection_test SET some_val = 1 WHERE user_id = 2;
+
+ERROR:  canceling the transaction since it was involved in a distributed deadlock
+step s2-update-1-on-worker: <... completed>
+run_commands_on_session_level_connection_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+step s1-commit:
+  COMMIT;
+
+step s2-commit-on-worker:
+  SELECT run_commands_on_session_level_connection_to_node('COMMIT');
+
+run_commands_on_session_level_connection_to_node
+---------------------------------------------------------------------
+
+(1 row)
+
+step disable-deadlock-detection:
+  ALTER SYSTEM SET citus.distributed_deadlock_detection_factor TO -1;
+
+step reload-conf:
+    SELECT pg_reload_conf();
+
+pg_reload_conf
+---------------------------------------------------------------------
+t
+(1 row)
+
+step s2-stop-connection:
+ SELECT stop_session_level_connection_to_node();
+
+stop_session_level_connection_to_node
+---------------------------------------------------------------------
+
+(1 row)
+

@@ -1,0 +1,69 @@
+/*-------------------------------------------------------------------------
+ *
+ * test/src/create_shards.c
+ *
+ * This file contains functions to exercise shard creation functionality
+ * within Citus.
+ *
+ * Copyright (c) Citus Data, Inc.
+ *
+ *-------------------------------------------------------------------------
+ */
+
+#include <string.h>
+
+#include "postgres.h"
+
+#include "c.h"
+#include "fmgr.h"
+
+#include "lib/stringinfo.h"
+#include "nodes/pg_list.h"
+
+#include "distributed/listutils.h"
+
+
+/* local function forward declarations */
+static int CompareStrings(const void *leftElement, const void *rightElement);
+
+
+/* declarations for dynamic loading */
+PG_FUNCTION_INFO_V1(sort_names);
+
+
+/*
+ * sort_names accepts three strings, places them in a list, then calls PGSSortList
+ * to test its sort functionality. Returns a string containing sorted lines.
+ */
+Datum
+sort_names(PG_FUNCTION_ARGS)
+{
+	char *first = PG_GETARG_CSTRING(0);
+	char *second = PG_GETARG_CSTRING(1);
+	char *third = PG_GETARG_CSTRING(2);
+	List *nameList = SortList(list_make3(first, second, third),
+							  (int (*)(const void *, const void *))(&CompareStrings));
+	StringInfo sortedNames = makeStringInfo();
+
+	const char *name = NULL;
+	foreach_declared_ptr(name, nameList)
+	{
+		appendStringInfo(sortedNames, "%s\n", name);
+	}
+
+
+	PG_RETURN_CSTRING(sortedNames->data);
+}
+
+
+/*
+ * A simple wrapper around strcmp suitable for use with PGSSortList or qsort.
+ */
+static int
+CompareStrings(const void *leftElement, const void *rightElement)
+{
+	const char *leftString = *((const char **) leftElement);
+	const char *rightString = *((const char **) rightElement);
+
+	return strcmp(leftString, rightString);
+}

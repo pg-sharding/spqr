@@ -1,20 +1,60 @@
-coorctl
-.idea
-.vscode
-vendor
-tmp
-spqr-router
-spqr-coordinator
-spqr-worldmock
-spqr-balancer
-spqr-mover
-spqr-workloadreplay
-spqr-dump
-y.output
+# Global excludes across all subdirectories
+*.o
+*.so
+*.so.[0-9]
+*.so.[0-9].[0-9]
+*.sl
+*.sl.[0-9]
+*.sl.[0-9].[0-9]
+*.dylib
+*.dll
+*.a
+*.mo
+*.pot
+objfiles.txt
+.deps/
+*.gcno
+*.gcda
+*.gcov
+*.gcov.out
+lcov.info
+coverage/
+*.vcproj
+*.vcxproj
+win32ver.rc
+*.exe
+lib*dll.def
+lib*.pc
+*.bc
+
+# Local excludes in root directory
+/config.log
+/config.status
+/pgsql.sln
+/pgsql.sln.cache
+/Debug/
+/Release/
+/autom4te.cache
+/Makefile.global
+/src/Makefile.custom
+/compile_commands.json
+/src/backend/distributed/cdc/build-cdc-*/*
+/src/test/cdc/tmp_check/*
+
+
+# temporary files vim creates
 *.swp
-*.swo
-memqdb.json
-test/feature/generatedFeatures
-test/feature/logs
-yacc/console/gram.y.save
-.DS_Store
+
+# vscode
+.vscode/*
+
+# output from diff normalization that shouldn't be commited
+*.unmodified
+*.modified
+
+# style related temporary outputs
+*.uncrustify
+.venv
+
+# added output when modifying check_gucs_are_alphabetically_sorted.sh
+guc.out
