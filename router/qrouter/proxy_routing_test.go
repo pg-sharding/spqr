@@ -369,6 +369,23 @@ func TestRoutingByExpression(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query: `
+			WITH vals(x,y) AS (VALUES(5, 'jidw'), (100, 'jidw'))
+			SELECT * FROM distrr_mm_test d JOIN vals v ON d.id1 = v.x AND d.id2 = v.y;`,
+			exp: &plan.ScatterPlan{
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh2",
+					},
+					{
+						Name: "sh1",
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
 			query: "INSERT INTO distrr_mm_test (id1, id2) VALUES(100, 'jidw');",
 			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{

@@ -144,7 +144,7 @@ NOTICE: send query to shard(s) : sh4
 WITH vals (x, y, z) AS (VALUES(1, 'ziziziz', 32), (2, 'ziiziziziz', 32)) 
     SELECT * FROM 
         tr JOIN vals ON tr.id1 = vals.x AND tr.id2 = vals.y;
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3,sh4
  id1 |    id2     |  val   | x |     y      | z  
 -----+------------+--------+---+------------+----
    1 | ziziziz    | abab   | 1 | ziziziz    | 32
@@ -154,9 +154,34 @@ NOTICE: send query to shard(s) : sh3
 (4 rows)
 
 -- TODO: fix
---WITH vals (x, y, z) AS (VALUES (4, 'yyuyuyuyu', 32), (1, 'ziziziz', 32)) 
---    SELECT * FROM 
---        tr JOIN vals ON tr.id1 = vals.x AND tr.id2 = vals.y /* __spqr__engine_v2: true */;
+WITH vals (x, y, z) AS (VALUES (4, 'yyuyuyuyu', 32), (1, 'ziziziz', 32)) 
+    SELECT * FROM 
+        tr JOIN vals ON tr.id1 = vals.x AND tr.id2 = vals.y /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh3,sh4
+ id1 |    id2    |  val   | x |     y     | z  
+-----+-----------+--------+---+-----------+----
+   4 | yyuyuyuyu | ababba | 4 | yyuyuyuyu | 32
+   4 | yyuyuyuyu | saassa | 4 | yyuyuyuyu | 32
+   1 | ziziziz   | abab   | 1 | ziziziz   | 32
+   1 | ziziziz   | assaas | 1 | ziziziz   | 32
+(4 rows)
+
+WITH vals (x, y, z) AS (VALUES (4, 'yyuyuyuyu', 32), (1, 'ziziziz', 32), (0, 'aba', 3), (1, 'ziziziz', 3)) 
+    SELECT * FROM 
+        tr JOIN vals ON tr.id1 = vals.x AND tr.id2 = vals.y /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ id1 |    id2    |    val    | x |     y     | z  
+-----+-----------+-----------+---+-----------+----
+   4 | yyuyuyuyu | ababba    | 4 | yyuyuyuyu | 32
+   4 | yyuyuyuyu | saassa    | 4 | yyuyuyuyu | 32
+   0 | aba       | ababababb | 0 | aba       |  3
+   0 | aba       | asas      | 0 | aba       |  3
+   1 | ziziziz   | abab      | 1 | ziziziz   |  3
+   1 | ziziziz   | abab      | 1 | ziziziz   | 32
+   1 | ziziziz   | assaas    | 1 | ziziziz   |  3
+   1 | ziziziz   | assaas    | 1 | ziziziz   | 32
+(8 rows)
+
 UPDATE tr SET val = 1123 WHERE id1 = 1 AND id2 = 'ziziziz';
 NOTICE: send query to shard(s) : sh3
 DELETE FROM tr WHERE id1 = 1 AND id2 = 'ziziziz' RETURNING *;

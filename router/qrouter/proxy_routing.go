@@ -93,6 +93,7 @@ func (qr *ProxyQrouter) computeRoutingExpr(
 			ret = append(ret, b)
 			return nil
 		}
+
 		if len(rm.ParamRefs[*qualName][rExpr.ColRefs[i].ColName]) == 0 && len(rm.Exprs[*qualName][rExpr.ColRefs[i].ColName]) == 0 {
 			return nil
 		}
@@ -185,10 +186,10 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 						ExecTarget:         currroute,
 						TargetSessionAttrs: tsa,
 					})
-					return nil
-				}
-				if err := rec(lvl + 1); err != nil {
-					return err
+				} else {
+					if err := rec(lvl + 1); err != nil {
+						return err
+					}
 				}
 			}
 
