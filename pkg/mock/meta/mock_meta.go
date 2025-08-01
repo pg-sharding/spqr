@@ -570,19 +570,19 @@ func (mr *MockEntityMgrMockRecorder) Move(ctx, move any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockEntityMgr)(nil).Move), ctx, move)
 }
 
-// NextVal mocks base method.
-func (m *MockEntityMgr) NextVal(ctx context.Context, seqName string) (int64, error) {
+// NextRange mocks base method.
+func (m *MockEntityMgr) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NextVal", ctx, seqName)
-	ret0, _ := ret[0].(int64)
+	ret := m.ctrl.Call(m, "NextRange", ctx, seqName, rangeSize)
+	ret0, _ := ret[0].(*qdb.SequenceIdRange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// NextVal indicates an expected call of NextVal.
-func (mr *MockEntityMgrMockRecorder) NextVal(ctx, seqName any) *gomock.Call {
+// NextRange indicates an expected call of NextRange.
+func (mr *MockEntityMgrMockRecorder) NextRange(ctx, seqName, rangeSize any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockEntityMgr)(nil).NextVal), ctx, seqName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextRange", reflect.TypeOf((*MockEntityMgr)(nil).NextRange), ctx, seqName, rangeSize)
 }
 
 // QDB mocks base method.

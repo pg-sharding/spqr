@@ -23,6 +23,7 @@ Refer to the [pkg/config/router.go](https://github.com/pg-sharding/spqr/blob/mas
 | `with_coordinator`       | Whether to run the router in a special coordinator mode.           | `true`, `false`     |
 | `enable_role_system`     | Whether to enable the [role-based access control system](./roles). | `true`, `false`     |
 | `roles_file`             | The file path to the [roles](./roles) configuration.               | Any valid file path |
+| `identity_range_size`    | Size of range identifiers of sequence which router gets from coordinator. | int > 1      |
 
 ## Network Settings
 

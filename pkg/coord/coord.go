@@ -301,12 +301,8 @@ func (lc *Coordinator) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 }
 
 // NextVal implements meta.EntityMgr.
-func (lc *Coordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
-	if idRange, err := lc.qdb.NextRange(ctx, seqName, 1); err != nil {
-		return -1, err
-	} else {
-		return idRange.Right, nil
-	}
+func (lc *Coordinator) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
+	return lc.qdb.NextRange(ctx, seqName, rangeSize)
 }
 
 // QDB implements meta.EntityMgr.

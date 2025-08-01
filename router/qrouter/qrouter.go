@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/plan"
+	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pkg/errors"
 )
 
@@ -32,12 +33,18 @@ type QueryRouter interface {
 	Query() *string
 }
 
-func NewQrouter(qtype config.RouterMode, shardMapping map[string]*config.Shard, mgr meta.EntityMgr, qcfg *config.QRouter, cache *cache.SchemaCache) (QueryRouter, error) {
+func NewQrouter(qtype config.RouterMode,
+	shardMapping map[string]*config.Shard,
+	mgr meta.EntityMgr,
+	qcfg *config.QRouter,
+	cache *cache.SchemaCache,
+	idRangeCache planner.IdentityRouterCache,
+) (QueryRouter, error) {
 	switch qtype {
 	case config.LocalMode:
 		return NewLocalQrouter(shardMapping)
 	case config.ProxyMode:
-		return NewProxyRouter(shardMapping, mgr, qcfg, cache)
+		return NewProxyRouter(shardMapping, mgr, qcfg, cache, idRangeCache)
 	default:
 		return nil, errors.Errorf("unknown qrouter type: %v", qtype)
 	}

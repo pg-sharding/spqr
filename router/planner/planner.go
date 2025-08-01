@@ -160,14 +160,19 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	}
 }
 
-func insertSequenceValue(ctx context.Context, meta *rmeta.RoutingMetadataContext, qrouter_query *string, rel *rrelation.ReferenceRelation) error {
+func insertSequenceValue(ctx context.Context,
+	meta *rmeta.RoutingMetadataContext,
+	qrouter_query *string,
+	rel *rrelation.ReferenceRelation,
+	idCache IdentityRouterCache,
+) error {
 
 	query := *qrouter_query
 
 	for colName, seqName := range rel.ColumnSequenceMapping {
 
 		newQuery, err := RewriteReferenceRelationAutoIncInsert(query, colName, func() (int64, error) {
-			return meta.Mgr.NextVal(ctx, seqName)
+			return idCache.NextVal(ctx, seqName)
 		})
 		if err != nil {
 			return err
@@ -179,7 +184,14 @@ func insertSequenceValue(ctx context.Context, meta *rmeta.RoutingMetadataContext
 	return nil
 }
 
-func PlanReferenceRelationInsertValues(ctx context.Context, qrouter_query *string, rm *rmeta.RoutingMetadataContext, columns []string, rv *lyx.RangeVar, values *lyx.ValueClause) (plan.Plan, error) {
+func PlanReferenceRelationInsertValues(ctx context.Context,
+	qrouter_query *string,
+	rm *rmeta.RoutingMetadataContext,
+	columns []string,
+	rv *lyx.RangeVar,
+	values *lyx.ValueClause,
+	idCache IdentityRouterCache,
+) (plan.Plan, error) {
 
 	/*  XXX: use interface call here */
 	qualName := rfqn.RelationFQNFromRangeRangeVar(rv)
@@ -189,7 +201,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context, qrouter_query *strin
 		return nil, err
 	}
 
-	if err := insertSequenceValue(ctx, rm, qrouter_query, rel); err != nil {
+	if err := insertSequenceValue(ctx, rm, qrouter_query, rel, idCache); err != nil {
 		return nil, err
 	}
 

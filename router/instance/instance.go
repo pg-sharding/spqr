@@ -12,12 +12,14 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/console"
 	"github.com/pg-sharding/spqr/router/frontend"
+	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/qrouter"
@@ -107,7 +109,17 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 		Type("qtype", qtype).
 		Msg("creating QueryRouter with type")
 
-	qr, err := qrouter.NewQrouter(qtype, config.RouterConfig().ShardMapping, lc, &config.RouterConfig().Qr, cache)
+	var seqMngr sequences.SequenceMgr = lc
+	idRangeSize := config.RouterConfig().IdentityRangeSize
+	var identityMgr planner.IdentityRouterCache = planner.NewIdentityRouterCache(idRangeSize, &seqMngr)
+
+	qr, err := qrouter.NewQrouter(qtype,
+		config.RouterConfig().ShardMapping,
+		lc,
+		&config.RouterConfig().Qr,
+		cache,
+		identityMgr,
+	)
 	if err != nil {
 		return nil, err
 	}

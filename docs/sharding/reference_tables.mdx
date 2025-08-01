@@ -133,3 +133,5 @@ NOTICE: send query to shard(s) : sh2
   4 | AU           | Australia
   5 | IN           | India
 ```
+
+Whenever router need new autoincrement value it ask it from coordinator. To improve performance generating autoincrement values you can set `identity_range_size` in router config file. This parameter set size of range identifiers which router get  from coordinator in a time.

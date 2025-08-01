@@ -329,21 +329,17 @@ func (lc *LocalInstanceMetadataMgr) Cache() *cache.SchemaCache {
 	return lc.cache
 }
 
-func (lc *LocalInstanceMetadataMgr) NextVal(ctx context.Context, seqName string) (int64, error) {
+func (lc *LocalInstanceMetadataMgr) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
 	coordAddr, err := lc.GetCoordinator(ctx)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 	if coordAddr == "" {
-		if idRange, err := lc.Coordinator.QDB().NextRange(ctx, seqName, 1); err != nil {
-			return -1, err
-		} else {
-			return idRange.Right, nil
-		}
+		return lc.Coordinator.QDB().NextRange(ctx, seqName, rangeSize)
 	}
 	conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 	defer func() {
 		if err := conn.Close(); err != nil {
@@ -351,7 +347,7 @@ func (lc *LocalInstanceMetadataMgr) NextVal(ctx context.Context, seqName string)
 		}
 	}()
 	mgr := NewAdapter(conn)
-	return mgr.NextVal(ctx, seqName)
+	return mgr.NextRange(ctx, seqName, rangeSize)
 }
 
 func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string) (int64, error) {

@@ -586,19 +586,19 @@ func (mr *MockCoordinatorMockRecorder) Move(ctx, move any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockCoordinator)(nil).Move), ctx, move)
 }
 
-// NextVal mocks base method.
-func (m *MockCoordinator) NextVal(ctx context.Context, seqName string) (int64, error) {
+// NextRange mocks base method.
+func (m *MockCoordinator) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NextVal", ctx, seqName)
-	ret0, _ := ret[0].(int64)
+	ret := m.ctrl.Call(m, "NextRange", ctx, seqName, rangeSize)
+	ret0, _ := ret[0].(*qdb.SequenceIdRange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// NextVal indicates an expected call of NextVal.
-func (mr *MockCoordinatorMockRecorder) NextVal(ctx, seqName any) *gomock.Call {
+// NextRange indicates an expected call of NextRange.
+func (mr *MockCoordinatorMockRecorder) NextRange(ctx, seqName, rangeSize any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextVal", reflect.TypeOf((*MockCoordinator)(nil).NextVal), ctx, seqName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextRange", reflect.TypeOf((*MockCoordinator)(nil).NextRange), ctx, seqName, rangeSize)
 }
 
 // ProcClient mocks base method.

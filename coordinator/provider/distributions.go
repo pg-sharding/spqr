@@ -111,12 +111,12 @@ func (d *DistributionsServer) GetRelationDistribution(ctx context.Context, req *
 	return &protos.GetRelationDistributionReply{Distribution: distributions.DistributionToProto(ds)}, nil
 }
 
-func (d *DistributionsServer) NextVal(ctx context.Context, req *protos.NextValRequest) (*protos.NextValReply, error) {
-	val, err := d.impl.NextVal(ctx, req.Seq)
+func (d *DistributionsServer) NextRange(ctx context.Context, req *protos.NextRangeRequest) (*protos.NextRangeReply, error) {
+	val, err := d.impl.NextRange(ctx, req.Seq, uint64(req.RangeSize))
 	if err != nil {
 		return nil, err
 	}
-	return &protos.NextValReply{Value: val}, nil
+	return &protos.NextRangeReply{Left: val.Left, Right: val.Right}, nil
 }
 
 func (d *DistributionsServer) CurrVal(ctx context.Context, req *protos.CurrValRequest) (*protos.CurrValReply, error) {
