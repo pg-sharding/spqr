@@ -117,7 +117,7 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	if err != nil {
 		return nil, comment, err
 	}
-	if routerStmts == nil {
+	if routerStmts == nil || routerStmts[0] == nil {
 		qp.state = ParseStateEmptyQuery{}
 		return qp.state, comment, nil
 	}
