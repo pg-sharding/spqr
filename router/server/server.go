@@ -33,6 +33,8 @@ type Server interface {
 
 	Cancel() error
 
+	Bind(bind *pgproto3.Bind) error
+
 	Reset() error
 	Sync() int64
 
