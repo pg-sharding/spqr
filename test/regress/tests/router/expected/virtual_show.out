@@ -47,7 +47,7 @@ SHOW __spqr__execute_on;
 SHOW __spqr__engine_v2;
  engine v2 
 -----------
- off
+ on
 (1 row)
 
 SHOW __spqr__commit_strategy;
@@ -114,6 +114,6 @@ RESET __spqr__.engine_v2;
 SHOW __spqr__engine_v2;
  engine v2 
 -----------
- off
+ on
 (1 row)
 
