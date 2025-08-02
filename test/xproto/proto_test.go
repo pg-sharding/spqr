@@ -4689,7 +4689,7 @@ func TestVirtualParams(t *testing.T) {
 				&pgproto3.RowDescription{
 					Fields: []pgproto3.FieldDescription{
 						{
-							Name:         []byte("__spqr__engine_v2"),
+							Name:         []byte("engine v2"),
 							DataTypeOID:  catalog.TEXTOID,
 							DataTypeSize: -1,
 							TypeModifier: -1,
@@ -4727,7 +4727,7 @@ func TestVirtualParams(t *testing.T) {
 				&pgproto3.RowDescription{
 					Fields: []pgproto3.FieldDescription{
 						{
-							Name:         []byte("__spqr__engine_v2"),
+							Name:         []byte("engine v2"),
 							DataTypeOID:  catalog.TEXTOID,
 							DataTypeSize: -1,
 							TypeModifier: -1,

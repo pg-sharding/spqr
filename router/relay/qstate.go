@@ -377,9 +377,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				return nil, rerrors.ErrComplexQuery
 			}
 			// XXX: TODO: support
-			if q.IsLocal {
-				// ignore for now
-			}
+			// if q.IsLocal {
+			// 	// ignore for now
+			// }
 
 			switch q.Kind {
 			case lyx.VarTypeResetAll:
