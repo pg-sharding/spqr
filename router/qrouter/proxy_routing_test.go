@@ -153,7 +153,7 @@ func TestMultiShardRouting(t *testing.T) {
 
 		dh := session.NewDummyHandler(distribution)
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
+		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -277,7 +277,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		dh := session.NewDummyHandler(distribution)
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		tmp, err := pr.PlanQuery(context.TODO(), parserRes, dh)
+		tmp, err := pr.PlanQuery(context.TODO(), parserRes[0], dh)
 
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
@@ -434,7 +434,7 @@ func TestRoutingByExpression(t *testing.T) {
 		dh := session.NewDummyHandler(distribution)
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		tmp, err := pr.PlanQuery(context.TODO(), parserRes, dh)
+		tmp, err := pr.PlanQuery(context.TODO(), parserRes[0], dh)
 
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
@@ -573,7 +573,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 		pr.SetQuery(&tt.query)
 
-		tmp, err := pr.PlanQuery(context.TODO(), parserRes, dh)
+		tmp, err := pr.PlanQuery(context.TODO(), parserRes[0], dh)
 		if tt.err != nil {
 
 			assert.Equal(err, tt.err, tt.query)
@@ -675,7 +675,7 @@ func TestComment(t *testing.T) {
 
 		dh := session.NewDummyHandler(distribution)
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
+		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -970,7 +970,7 @@ func TestCTE(t *testing.T) {
 
 		dh := session.NewDummyHandler(distribution)
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
+		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
@@ -1289,7 +1289,7 @@ func TestSingleShard(t *testing.T) {
 
 		dh := session.NewDummyHandler(distribution)
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
+		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1439,7 +1439,7 @@ func TestInsertOffsets(t *testing.T) {
 
 		dh := session.NewDummyHandler(distribution)
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
+		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1595,7 +1595,7 @@ func TestJoins(t *testing.T) {
 		dh := session.NewDummyHandler(distribution)
 
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
+		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		if tt.err != nil {
 			assert.Equal(tt.err, err, "query %s", tt.query)
@@ -1695,7 +1695,7 @@ func TestUnnest(t *testing.T) {
 
 		dh := session.NewDummyHandler(distribution)
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
+		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1779,7 +1779,7 @@ func TestCopySingleShard(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
 
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
+		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1863,7 +1863,7 @@ func TestCopyMultiShard(t *testing.T) {
 		dh.SetScatterQuery(false)
 
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
+		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1943,7 +1943,7 @@ func TestSetStmt(t *testing.T) {
 		dh := session.NewDummyHandler(tt.distribution)
 
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
+		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2265,7 +2265,7 @@ LIMIT 1000
 
 		dh := session.NewDummyHandler(tt.distribution)
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
+		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
@@ -2351,7 +2351,7 @@ func TestHashRouting(t *testing.T) {
 
 		dh := session.NewDummyHandler(tt.distribution)
 		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes, dh.GetTsa())
+		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
@@ -2441,7 +2441,7 @@ func TestCheckTableIsRoutable(t *testing.T) {
 	} {
 		stmt, err := lyx.Parse(tt.query)
 		assert.NoError(err)
-		switch node := stmt.(type) {
+		switch node := stmt[0].(type) {
 		case *lyx.CreateTable:
 			actualErr := planner.CheckTableIsRoutable(ctx, router.Mgr(), node)
 			if tt.err == nil {

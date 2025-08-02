@@ -239,13 +239,6 @@ func (s *QueryStateExecutorImpl) ExecResetMetadata(rst RelayStateMgr, query stri
 	return nil
 }
 
-func (s *QueryStateExecutorImpl) ExecSetLocal(rst RelayStateMgr, query, name, value string) error {
-	if rst.PoolMgr().ConnectionActive(rst) {
-		return rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true)
-	}
-	return nil
-}
-
 // TODO: unit tests
 func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.EntityMgr, stmt *lyx.Copy, attachedCopy bool) (*pgcopy.CopyState, error) {
 	spqrlog.Zero.Debug().

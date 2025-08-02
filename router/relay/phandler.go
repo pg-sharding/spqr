@@ -41,7 +41,6 @@ type QueryStateExecutor interface {
 	ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error
 
 	ExecSet(rst RelayStateMgr, query, name, value string) error
-	ExecSetLocal(rst RelayStateMgr, query, name, value string) error
 	ExecReset(rst RelayStateMgr, query, name string) error
 	ExecResetMetadata(rst RelayStateMgr, query, setting string) error
 }
