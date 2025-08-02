@@ -54,33 +54,12 @@ type ParseStateSkip struct {
 
 type ParseStateSetStmt struct {
 	ParseState
-	Name  string
-	Value string
-}
-
-type ParseStateSetLocalStmt struct {
-	ParseState
-	Name  string
-	Value string
-}
-
-type ParseStateResetStmt struct {
-	ParseState
-	Name string
+	Stmts []lyx.Node
 }
 
 type ParseStateShowStmt struct {
 	ParseState
-	Name string
-}
-
-type ParseStateResetAllStmt struct {
-	ParseState
-}
-
-type ParseStateResetMetadataStmt struct {
-	ParseState
-	Setting string
+	Stmts []lyx.Node
 }
 
 type ParseStatePrepareStmt struct {
@@ -143,13 +122,13 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 		return qp.state, comment, nil
 	}
 
-	qp.stmt = routerStmts
+	qp.stmt = routerStmts[0]
 	qp.state = ParseStateQuery{}
 
 	spqrlog.Zero.Debug().Type("stmt-type", routerStmts).Msg("parsed query statements")
 	qp.state = ParseStateQuery{}
 
-	switch q := routerStmts.(type) {
+	switch q := routerStmts[0].(type) {
 	case *lyx.Explain:
 		varStmt := ParseStateExplain{}
 		/* TODO: get query here*/
@@ -183,50 +162,12 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 		return qp.state, comment, nil
 	case *lyx.VariableShowStmt:
 		return ParseStateShowStmt{
-			Name: q.Name,
+			Stmts: routerStmts,
 		}, comment, nil
 	case *lyx.VariableSetStmt:
-		spqrlog.Zero.Debug().
-			Str("name", q.Name).
-			Str("query", string(q.Kind)).
-			Bool("local", q.IsLocal).
-			Bool("session", q.Session).
-			Msg("parsed set stmt")
-		// XXX: TODO: support
-		if q.IsLocal {
-			qp.state = ParseStateSetLocalStmt{
-				Name:  q.Name,
-				Value: q.Value[0],
-			}
-			return qp.state, comment, nil
-		}
 
-		switch q.Kind {
-		case lyx.VarTypeResetAll:
-			qp.state = ParseStateResetAllStmt{}
-		case lyx.VarTypeReset:
-			switch q.Name {
-			case "session_authorization", "role":
-				qp.state = ParseStateResetMetadataStmt{
-					Setting: q.Name,
-				}
-			default:
-				varStmt := ParseStateResetStmt{}
-				varStmt.Name = q.Name
-				qp.state = varStmt
-			}
-		/* TBD: support multi-set */
-		// case pgquery.VariableSetKind_VAR_SET_MULTI:
-		// 	qp.state = ParseStateSetLocalStmt{}
-		// 	return qp.state, comment, nil
-		case lyx.VarTypeSet, "":
-			varStmt := ParseStateSetStmt{}
-			varStmt.Name = q.Name
-			if len(q.Value) > 0 {
-				varStmt.Value = q.Value[0]
-			}
-
-			qp.state = varStmt
+		qp.state = ParseStateSetStmt{
+			Stmts: routerStmts,
 		}
 		return qp.state, comment, nil
 	case *lyx.TransactionStmt:

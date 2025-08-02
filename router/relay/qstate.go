@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -17,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/parser"
+	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/twopc"
 )
@@ -260,183 +262,242 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		// do not complete relay  here
 		return noDataPd, nil
 	// with tx pooling we might have no active connection while processing set x to y
-	case parser.ParseStateSetStmt:
-		spqrlog.Zero.Debug().
-			Str("name", st.Name).
-			Str("value", st.Value).
-			Msg("applying parsed set stmt")
+	case parser.ParseStateShowStmt:
+		var pd *PortalDesc
 
-		if strings.HasPrefix(st.Name, "__spqr__") {
-			name := virtualParamTransformName(st.Name)
-			value := strings.ToLower(st.Value)
+		for _, stmt := range st.Stmts {
+			q, ok := stmt.(*lyx.VariableShowStmt)
+			if !ok {
+				return nil, rerrors.ErrComplexQuery
+			}
 
-			switch name {
+			param := virtualParamTransformName(q.Name)
+
+			// manually create router response
+			// here we just reply single row with single column value
+
+			pd = &PortalDesc{
+				rd: &pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte(q.Name),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				},
+			}
+
+			switch param {
 			case session.SPQR_DISTRIBUTION:
-				rst.Client().SetDistribution(session.VirtualParamLevelTxBlock, st.Value)
+				return pd, rst.Client().Send(
+					&pgproto3.ErrorResponse{
+						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
+							session.SPQR_DISTRIBUTION),
+						Severity: "ERROR",
+						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
+					})
 			case session.SPQR_DISTRIBUTED_RELATION:
-				rst.Client().SetDistributedRelation(session.VirtualParamLevelTxBlock, st.Value)
+				return pd, rst.Client().Send(
+					&pgproto3.ErrorResponse{
+						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
+							session.SPQR_DISTRIBUTED_RELATION),
+						Severity: "ERROR",
+						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
+					})
+
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-				rst.Client().SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, st.Value)
-			case session.SPQR_SHARDING_KEY:
-				rst.Client().SetShardingKey(session.VirtualParamLevelTxBlock, st.Value)
+				ReplyVirtualParamState(rst.Client(), "default route behaviour", []byte(rst.Client().DefaultRouteBehaviour()))
 			case session.SPQR_REPLY_NOTICE:
-				if value == "on" || value == "true" {
-					rst.Client().SetShowNoticeMsg(session.VirtualParamLevelTxBlock, true)
+
+				if rst.Client().ShowNoticeMsg() {
+					ReplyVirtualParamState(rst.Client(), "show notice messages", []byte("true"))
 				} else {
-					rst.Client().SetShowNoticeMsg(session.VirtualParamLevelTxBlock, false)
+					ReplyVirtualParamState(rst.Client(), "show notice messages", []byte("false"))
 				}
+
 			case session.SPQR_MAINTAIN_PARAMS:
-				if value == "on" || value == "true" {
-					rst.Client().SetMaintainParams(session.VirtualParamLevelTxBlock, true)
+
+				if rst.Client().MaintainParams() {
+					ReplyVirtualParamState(rst.Client(), "maintain params", []byte("true"))
 				} else {
-					rst.Client().SetMaintainParams(session.VirtualParamLevelTxBlock, false)
+					ReplyVirtualParamState(rst.Client(), "maintain params", []byte("false"))
 				}
+
+			case session.SPQR_SHARDING_KEY:
+				ReplyVirtualParamState(rst.Client(), "sharding key", []byte(rst.Client().ShardingKey()))
+			case session.SPQR_SCATTER_QUERY:
+				return pd, rst.Client().Send(
+					&pgproto3.ErrorResponse{
+						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
+							session.SPQR_SCATTER_QUERY),
+						Severity: "ERROR",
+						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
+					})
 			case session.SPQR_EXECUTE_ON:
-				rst.Client().SetExecuteOn(session.VirtualParamLevelTxBlock, st.Value)
+				ReplyVirtualParamState(rst.Client(), "execute on", []byte(rst.Client().ExecuteOn()))
+			case session.SPQR_ENGINE_V2:
+				if rst.Client().EnhancedMultiShardProcessing() {
+					ReplyVirtualParamState(rst.Client(), "engine v2", []byte("on"))
+				} else {
+					ReplyVirtualParamState(rst.Client(), "engine v2", []byte("off"))
+				}
 			case session.SPQR_TARGET_SESSION_ATTRS:
 				fallthrough
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
 				fallthrough
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-				rst.Client().SetTsa(session.VirtualParamLevelTxBlock, st.Value)
-			case session.SPQR_ENGINE_V2:
-				switch value {
-				case "true", "on", "ok":
-					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
-				case "false", "off", "no":
-					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, false)
-				}
+				ReplyVirtualParamState(rst.Client(), "target session attrs", []byte(rst.Client().GetTsa()))
 			default:
-				rst.Client().SetParam(name, st.Value)
-			}
 
-			return noDataPd, rst.Client().ReplyCommandComplete("SET")
-		}
+				if strings.HasPrefix(param, "__spqr__") {
+					ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
+				} else {
+					/* If router does dot have any info about param, fire query to random shard. */
+					if _, ok := rst.Client().Params()[param]; !ok {
+						return pd, rst.queryProc(comment, binderQ)
+					}
 
-		return noDataPd, rst.QueryExecutor().ExecSet(rst, query, st.Name, st.Value)
-	case parser.ParseStateShowStmt:
-
-		param := virtualParamTransformName(st.Name)
-
-		// manually create router response
-		// here we just reply single row with single column value
-
-		pd := &PortalDesc{
-			rd: &pgproto3.RowDescription{
-				Fields: []pgproto3.FieldDescription{
-					{
-						Name:         []byte(st.Name),
-						DataTypeOID:  25,
-						DataTypeSize: -1,
-						TypeModifier: -1,
-					},
-				},
-			},
-		}
-
-		switch param {
-		case session.SPQR_DISTRIBUTION:
-			return pd, rst.Client().Send(
-				&pgproto3.ErrorResponse{
-					Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
-						session.SPQR_DISTRIBUTION),
-					Severity: "ERROR",
-					Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
-				})
-		case session.SPQR_DISTRIBUTED_RELATION:
-			return pd, rst.Client().Send(
-				&pgproto3.ErrorResponse{
-					Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
-						session.SPQR_DISTRIBUTED_RELATION),
-					Severity: "ERROR",
-					Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
-				})
-
-		case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-			ReplyVirtualParamState(rst.Client(), "default route behaviour", []byte(rst.Client().DefaultRouteBehaviour()))
-		case session.SPQR_REPLY_NOTICE:
-
-			if rst.Client().ShowNoticeMsg() {
-				ReplyVirtualParamState(rst.Client(), "show notice messages", []byte("true"))
-			} else {
-				ReplyVirtualParamState(rst.Client(), "show notice messages", []byte("false"))
-			}
-
-		case session.SPQR_MAINTAIN_PARAMS:
-
-			if rst.Client().MaintainParams() {
-				ReplyVirtualParamState(rst.Client(), "maintain params", []byte("true"))
-			} else {
-				ReplyVirtualParamState(rst.Client(), "maintain params", []byte("false"))
-			}
-
-		case session.SPQR_SHARDING_KEY:
-			ReplyVirtualParamState(rst.Client(), "sharding key", []byte(rst.Client().ShardingKey()))
-		case session.SPQR_SCATTER_QUERY:
-			return pd, rst.Client().Send(
-				&pgproto3.ErrorResponse{
-					Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
-						session.SPQR_SCATTER_QUERY),
-					Severity: "ERROR",
-					Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
-				})
-		case session.SPQR_EXECUTE_ON:
-			ReplyVirtualParamState(rst.Client(), "execute on", []byte(rst.Client().ExecuteOn()))
-		case session.SPQR_TARGET_SESSION_ATTRS:
-			fallthrough
-		case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
-			fallthrough
-		case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-			ReplyVirtualParamState(rst.Client(), "target session attrs", []byte(rst.Client().GetTsa()))
-		default:
-
-			if strings.HasPrefix(param, "__spqr__") {
-				ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
-			} else {
-				/* If router does dot have any info about param, fire query to random shard. */
-				if _, ok := rst.Client().Params()[param]; !ok {
-					return pd, rst.queryProc(comment, binderQ)
+					ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
 				}
-
-				ReplyVirtualParamState(rst.Client(), param, []byte(rst.Client().Params()[param]))
 			}
-		}
-		return pd, rst.Client().ReplyCommandComplete("SHOW")
-	case parser.ParseStateResetStmt:
-		param := virtualParamTransformName(st.Name)
-		switch param {
-		case session.SPQR_TARGET_SESSION_ATTRS:
-			fallthrough
-		case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
-			rst.Client().ResetTsa()
-		default:
-			rst.Client().ResetParam(param)
 
-			if err := rst.QueryExecutor().ExecReset(rst, query, param); err != nil {
+			if err := rst.Client().ReplyCommandComplete("SHOW"); err != nil {
 				return nil, err
 			}
 		}
 
-		return noDataPd, rst.Client().ReplyCommandComplete("RESET")
-	case parser.ParseStateResetMetadataStmt:
-		if err := rst.QueryExecutor().ExecResetMetadata(rst, query, st.Setting); err != nil {
-			return nil, err
+		return pd, nil
+	case parser.ParseStateSetStmt:
+
+		for _, stmt := range st.Stmts {
+			q, ok := stmt.(*lyx.VariableSetStmt)
+			if !ok {
+				return nil, rerrors.ErrComplexQuery
+			}
+			// XXX: TODO: support
+			if q.IsLocal {
+				// ignore for now
+			}
+
+			switch q.Kind {
+			case lyx.VarTypeResetAll:
+				rst.Client().ResetAll()
+				if err := rst.Client().ReplyCommandComplete("RESET"); err != nil {
+					return nil, err
+				}
+			case lyx.VarTypeReset:
+				switch q.Name {
+				case "session_authorization", "role":
+
+					if err := rst.QueryExecutor().ExecResetMetadata(rst, query, q.Name); err != nil {
+						return nil, err
+					}
+
+					rst.Client().ResetParam(q.Name)
+					if q.Name == "session_authorization" {
+						rst.Client().ResetParam("role")
+					}
+
+					if err := rst.Client().ReplyCommandComplete("RESET"); err != nil {
+						return nil, err
+					}
+
+				default:
+
+					param := virtualParamTransformName(q.Name)
+					switch param {
+					case session.SPQR_TARGET_SESSION_ATTRS:
+						fallthrough
+					case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+						rst.Client().ResetTsa()
+					default:
+						rst.Client().ResetParam(param)
+
+						if err := rst.QueryExecutor().ExecReset(rst, query, param); err != nil {
+							return nil, err
+						}
+					}
+
+					if err := rst.Client().ReplyCommandComplete("RESET"); err != nil {
+						return nil, err
+					}
+
+				}
+			/* TBD: support multi-set */
+			// case pgquery.VariableSetKind_VAR_SET_MULTI:
+			// 	qp.state = ParseStateSetLocalStmt{}
+			// 	return qp.state, comment, nil
+			case lyx.VarTypeSet, "":
+				name := q.Name
+				val := ""
+				if len(q.Value) > 0 {
+					val = q.Value[0]
+				}
+
+				if strings.HasPrefix(name, "__spqr__") {
+					name := virtualParamTransformName(name)
+					value := strings.ToLower(val)
+
+					switch name {
+					case session.SPQR_DISTRIBUTION:
+						rst.Client().SetDistribution(session.VirtualParamLevelTxBlock, val)
+					case session.SPQR_DISTRIBUTED_RELATION:
+						rst.Client().SetDistributedRelation(session.VirtualParamLevelTxBlock, val)
+					case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
+						rst.Client().SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, val)
+					case session.SPQR_SHARDING_KEY:
+						rst.Client().SetShardingKey(session.VirtualParamLevelTxBlock, val)
+					case session.SPQR_REPLY_NOTICE:
+						if value == "on" || value == "true" {
+							rst.Client().SetShowNoticeMsg(session.VirtualParamLevelTxBlock, true)
+						} else {
+							rst.Client().SetShowNoticeMsg(session.VirtualParamLevelTxBlock, false)
+						}
+					case session.SPQR_MAINTAIN_PARAMS:
+						if value == "on" || value == "true" {
+							rst.Client().SetMaintainParams(session.VirtualParamLevelTxBlock, true)
+						} else {
+							rst.Client().SetMaintainParams(session.VirtualParamLevelTxBlock, false)
+						}
+					case session.SPQR_EXECUTE_ON:
+						rst.Client().SetExecuteOn(session.VirtualParamLevelTxBlock, val)
+					case session.SPQR_TARGET_SESSION_ATTRS:
+						fallthrough
+					case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+						fallthrough
+					case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
+						rst.Client().SetTsa(session.VirtualParamLevelTxBlock, val)
+					case session.SPQR_ENGINE_V2:
+						switch value {
+						case "true", "on", "ok":
+							rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
+						case "false", "off", "no":
+							rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, false)
+						}
+					default:
+						rst.Client().SetParam(name, val)
+					}
+
+					if err := rst.Client().ReplyCommandComplete("SET"); err != nil {
+						return nil, err
+					}
+				} else {
+
+					if err := rst.QueryExecutor().ExecSet(rst, query, name, val); err != nil {
+						return nil, err
+					}
+
+					if err := rst.Client().ReplyCommandComplete("SET"); err != nil {
+						return nil, err
+					}
+				}
+			}
+
 		}
 
-		rst.Client().ResetParam(st.Setting)
-		if st.Setting == "session_authorization" {
-			rst.Client().ResetParam("role")
-		}
-
-		return noDataPd, rst.Client().ReplyCommandComplete("RESET")
-	case parser.ParseStateResetAllStmt:
-		rst.Client().ResetAll()
-		return noDataPd, rst.Client().ReplyCommandComplete("RESET")
-	case parser.ParseStateSetLocalStmt:
-		if err := rst.QueryExecutor().ExecSetLocal(rst, query, st.Name, st.Value); err != nil {
-			return nil, err
-		}
-		return noDataPd, rst.Client().ReplyCommandComplete("SET")
+		return noDataPd, nil
 	case parser.ParseStatePrepareStmt:
 		// sql level prepares stmt pooling
 		if AdvancedPoolModeNeeded(rst) {

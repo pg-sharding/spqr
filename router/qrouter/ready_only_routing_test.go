@@ -75,7 +75,7 @@ func TestCheckRoOnlyQuery(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		act := qrouter.CheckRoOnlyQuery(parserRes)
+		act := qrouter.CheckRoOnlyQuery(parserRes[0])
 
 		assert.Equal(tt.exp, act, tt.query)
 	}
