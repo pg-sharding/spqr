@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/xproto"
 )
 
 type ShardState int
@@ -47,6 +48,24 @@ type MultiShardServer struct {
 	status txstatus.TXStatus
 
 	copyBuf []*pgproto3.CopyOutResponse
+}
+
+// Bind implements Server.
+func (m *MultiShardServer) Bind(bind *pgproto3.Bind) error {
+
+	m.multistate = RunningState
+	for i, sh := range m.Datashards() {
+
+		/* this is pretty ugly but lets just do it */
+		if err := sh.Send(bind); err != nil {
+			return err
+		}
+		if err := sh.Send(xproto.PGexec); err != nil {
+			return err
+		}
+		m.states[i] = DatarowState
+	}
+	return nil
 }
 
 // ToMultishard implements Server.

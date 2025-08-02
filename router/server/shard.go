@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/xproto"
 )
 
 var ErrShardUnavailable = fmt.Errorf("shard is unavailable, try again later")
@@ -21,6 +22,20 @@ var ErrShardUnavailable = fmt.Errorf("shard is unavailable, try again later")
 type ShardServer struct {
 	pool  pool.MultiShardTSAPool
 	shard atomic.Pointer[shard.ShardHostInstance]
+}
+
+// Bind implements Server.
+func (srv *ShardServer) Bind(bind *pgproto3.Bind) error {
+	sh := (*srv.shard.Load())
+
+	/* this is pretty ugly but lets just do it */
+	if err := sh.Send(bind); err != nil {
+		return err
+	}
+	if err := sh.Send(xproto.PGexec); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ToMultishard implements Server.

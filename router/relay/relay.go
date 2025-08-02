@@ -26,6 +26,7 @@ import (
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
+	"github.com/pg-sharding/spqr/router/xproto"
 	"golang.org/x/exp/slices"
 )
 
@@ -39,7 +40,7 @@ type RelayStateMgr interface {
 
 	Reset() error
 
-	Parse(query string, doCaching bool) (parser.ParseState, string, error)
+	Parse(query string, doCaching bool) (lyx.Node, string, error)
 
 	CompleteRelay(replyCl bool) error
 	Close() error
@@ -61,13 +62,18 @@ type RelayStateMgr interface {
 	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching, completeRelay bool) (*PortalDesc, error)
 }
 
+var (
+	emptyExecFunc = func() error {
+		return nil
+	}
+)
+
 type PortalDesc struct {
 	rd     *pgproto3.RowDescription
 	nodata *pgproto3.NoData
 }
 
 type ParseCacheEntry struct {
-	ps   parser.ParseState
 	comm string
 	stmt lyx.Node
 }
@@ -543,20 +549,6 @@ func (rst *RelayStateImpl) gangDeployPrepStmtByName(qname string) (*prepstatemen
 	})
 }
 
-var (
-	pgexec   = &pgproto3.Execute{}
-	pgsync   = &pgproto3.Sync{}
-	pgNoData = &pgproto3.NoData{}
-
-	portalClose = &pgproto3.Close{
-		ObjectType: 'P',
-	}
-
-	emptyExecFunc = func() error {
-		return nil
-	}
-)
-
 // TODO : unit tests
 func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
@@ -848,7 +840,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				}
 
 				if rd.NoData {
-					if err := rst.Client().Send(pgNoData); err != nil {
+					if err := rst.Client().Send(xproto.PGNoData); err != nil {
 						return err
 					}
 				} else {
@@ -892,15 +884,16 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseState, string, error) {
+func (rst *RelayStateImpl) Parse(query string, doCaching bool) (lyx.Node, string, error) {
 	if cache, ok := rst.parseCache[query]; ok {
 		rst.qp.SetStmt(cache.stmt)
-		return cache.ps, cache.comm, nil
+		return cache.stmt, cache.comm, nil
 	}
 
-	state, comm, err := rst.qp.Parse(query)
+	stmt, comm, err := rst.qp.Parse(query)
+	rst.qp.SetStmt(stmt)
 
-	switch stm := rst.qp.Stmt().(type) {
+	switch stm := stmt.(type) {
 	case *lyx.Insert:
 		// load columns from information schema
 		if len(stm.Columns) == 0 {
@@ -912,7 +905,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 					stm.Columns, schemaErr = cptr.GetColumns(rst.Cl.DB(), tableref.SchemaName, tableref.RelationName)
 					if schemaErr != nil {
 						spqrlog.Zero.Err(schemaErr).Msg("get columns from schema cache")
-						return state, comm, spqrerror.Newf(spqrerror.SPQR_FAILED_MATCH, "failed to get schema cache: %s", err)
+						return stmt, comm, spqrerror.Newf(spqrerror.SPQR_FAILED_MATCH, "failed to get schema cache: %s", err)
 					}
 				}
 			}
@@ -920,12 +913,10 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 	}
 
 	if err == nil && doCaching {
-		stmt := rst.qp.Stmt()
 		/* only cache specific type of queries */
 		switch stmt.(type) {
 		case *lyx.Select, *lyx.Insert, *lyx.Update, *lyx.Delete:
 			rst.parseCache[query] = ParseCacheEntry{
-				ps:   state,
 				comm: comm,
 				stmt: stmt,
 			}
@@ -933,7 +924,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 	}
 
 	rst.plainQ = query
-	return state, comm, err
+	return stmt, comm, err
 }
 
 var _ RelayStateMgr = &RelayStateImpl{}

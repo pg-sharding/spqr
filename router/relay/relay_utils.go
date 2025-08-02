@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/xproto"
 )
 
 func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
@@ -18,20 +19,14 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
 	switch rst.bindQueryPlan.(type) {
 	case *plan.VirtualPlan:
 	default:
-		for _, sh := range rst.Client().Server().Datashards() {
-			/* this is pretty ugly but lets just do it */
-			if err := sh.Send(bind); err != nil {
-				return err
-			}
-			if err := sh.Send(pgexec); err != nil {
-				return err
-			}
+		if err := rst.Client().Server().Bind(bind); err != nil {
+			return err
 		}
 	}
 
 	return rst.qse.ExecuteSlice(
 		&QueryDesc{
-			Msg: pgsync,
+			Msg: xproto.PGsync,
 			P:   rst.bindQueryPlan, /*  ugh... fix this someday */
 		}, rst.Qr.Mgr(), true)
 }
@@ -61,7 +56,7 @@ func gangMemberDeployPreparedStatement(shard shard.ShardHostInstance, hash uint6
 		return nil, nil, err
 	}
 
-	if err := shard.Send(pgsync); err != nil {
+	if err := shard.Send(xproto.PGsync); err != nil {
 		return nil, nil, err
 	}
 
@@ -148,11 +143,11 @@ func sliceDescribePortal(serv server.Server, portalDesc *pgproto3.Describe, bind
 		return nil, err
 	}
 
-	if err := serv.SendShard(portalClose, shkey); err != nil {
+	if err := serv.SendShard(xproto.PortalClose, shkey); err != nil {
 		return nil, err
 	}
 
-	if err := serv.SendShard(pgsync, shkey); err != nil {
+	if err := serv.SendShard(xproto.PGsync, shkey); err != nil {
 		return nil, err
 	}
 
@@ -175,7 +170,7 @@ recvLoop:
 		case *pgproto3.ErrorResponse:
 			return nil, fmt.Errorf("error describing slice portal: \"%s\"", q.Message)
 		case *pgproto3.NoData:
-			rd.nodata = pgNoData
+			rd.nodata = xproto.PGNoData
 		case *pgproto3.CloseComplete:
 			saveCloseComplete = q
 
