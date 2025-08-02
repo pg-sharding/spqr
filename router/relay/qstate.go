@@ -484,12 +484,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						return nil, err
 					}
 				} else {
-
 					if err := rst.QueryExecutor().ExecSet(rst, query, name, val); err != nil {
-						return nil, err
-					}
-
-					if err := rst.Client().ReplyCommandComplete("SET"); err != nil {
 						return nil, err
 					}
 				}
