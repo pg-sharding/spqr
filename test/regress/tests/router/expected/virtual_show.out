@@ -45,9 +45,9 @@ SHOW __spqr__execute_on;
 (1 row)
 
 SHOW __spqr__engine_v2;
- __spqr__engine_v2 
--------------------
- 
+ engine v2 
+-----------
+ on
 (1 row)
 
 SHOW __spqr__commit_strategy;
@@ -70,50 +70,50 @@ SHOW target_session_attrs;
 
 SET __spqr__engine_v2 TO false;
 SHOW __spqr__engine_v2;
- __spqr__engine_v2 
--------------------
- no
+ engine v2 
+-----------
+ off
 (1 row)
 
 SET __spqr__engine_v2 TO ok;
 SHOW __spqr__engine_v2;
- __spqr__engine_v2 
--------------------
- ok
+ engine v2 
+-----------
+ on
 (1 row)
 
 SHOW __spqr__.engine_v2;
- __spqr__engine_v2 
--------------------
- ok
+ engine v2 
+-----------
+ on
 (1 row)
 
 BEGIN;
 SET __spqr__.engine_v2 TO off;
 SHOW __spqr__engine_v2;
- __spqr__engine_v2 
--------------------
- no
+ engine v2 
+-----------
+ off
 (1 row)
 
 ROLLBACK;
 SHOW __spqr__engine_v2;
- __spqr__engine_v2 
--------------------
- ok
+ engine v2 
+-----------
+ on
 (1 row)
 
 SET __spqr__.engine_v2 TO OFF;
 SHOW __spqr__.engine_v2;
- __spqr__engine_v2 
--------------------
- no
+ engine v2 
+-----------
+ off
 (1 row)
 
 RESET __spqr__.engine_v2;
 SHOW __spqr__engine_v2;
- __spqr__engine_v2 
--------------------
- 
+ engine v2 
+-----------
+ on
 (1 row)
 
