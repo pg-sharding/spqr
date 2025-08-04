@@ -52,7 +52,7 @@ const (
 	postgresqlQueryTimeout          = 10 * time.Second
 
 	spqrQdbHost             = "qdb01"
-	checkCoordinatortimeout = 15 * time.Second
+	checkCoordinatorTimeout = 15 * time.Second
 )
 
 type testContext struct {
@@ -726,7 +726,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		}()
 
 		client := protos.NewRouterServiceClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), checkCoordinatortimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), checkCoordinatorTimeout)
 		defer cancel()
 		log.Printf("try send command ListRouters to %s\n", addr)
 		if _, err = client.ListRouters(ctx, nil); err == nil {

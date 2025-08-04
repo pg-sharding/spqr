@@ -228,10 +228,10 @@ func (dc *DockerComposer) GetMappedPort(testHost string, internalPort string) (u
 				return 0, errI
 			} else {
 				port, errPort := nat.NewPort("tcp", internalPort)
-				if errPort!=nil {
+				if errPort != nil {
 					return 0, errPort
 				}
-				if bindings,ok := cntInspect.HostConfig.PortBindings[port];ok {
+				if bindings, ok := cntInspect.HostConfig.PortBindings[port]; ok {
 					for _, extPort := range bindings {
 						if res, err := strconv.Atoi(extPort.HostPort); err != nil {
 							return 0, err
@@ -240,11 +240,11 @@ func (dc *DockerComposer) GetMappedPort(testHost string, internalPort string) (u
 						}
 					}
 				}
-				return 0, fmt.Errorf("Port for host=%s:%s not found (case 1)", testHost, internalPort)
+				return 0, fmt.Errorf("port for host=%s:%s not found (case 1)", testHost, internalPort)
 			}
 		}
 	}
-	return 0, fmt.Errorf("Port for host=%s:%s not found (case 0)", testHost, internalPort)
+	return 0, fmt.Errorf("port for host=%s:%s not found (case 0)", testHost, internalPort)
 }
 
 func (dc *DockerComposer) RunCommandAtHosts(cmd, hostSubstring string, timeout time.Duration) error {
