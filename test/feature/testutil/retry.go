@@ -3,9 +3,9 @@ package testutil
 import "time"
 
 // nolint: unparam
-func Retry(code func() bool, timeout, sleep time.Duration) {
+func Retry(code func() bool, timeout, sleep time.Duration) bool {
 	if code() {
-		return
+		return true
 	}
 	timer := time.NewTimer(timeout)
 	ticker := time.NewTicker(sleep)
@@ -13,10 +13,10 @@ func Retry(code func() bool, timeout, sleep time.Duration) {
 		select {
 		case <-ticker.C:
 			if code() {
-				return
+				return true
 			}
 		case <-timer.C:
-			return
+			return false
 		}
 	}
 }

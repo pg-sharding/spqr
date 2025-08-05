@@ -818,6 +818,25 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 			return fmt.Errorf("failed to connect to SPQR QDB %s: %s", service, err)
 		}
 		tctx.qdb = db
+
+		log.Println("wait for QDB be ready")
+		retryRes := testutil.Retry(func() bool {
+			db, err := qdb.NewEtcdQDB(addr)
+			if err != nil {
+				return false
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			_, err = db.ListShards(ctx)
+			if err != nil {
+				return false
+			}
+			return true
+		}, time.Minute, time.Second)
+		if !retryRes {
+			return fmt.Errorf("SPQR QDB %s isn't ready after 1 minute", service)
+		}
+
 		return nil
 	}
 
