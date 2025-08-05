@@ -14,7 +14,7 @@ services:
       timeout: 3s
       retries: 50
     networks:
-      - featureTestNetwork
+      - feature_test_network
   shard1-replica:
     image: spqr-shard-image
     environment:
@@ -27,7 +27,7 @@ services:
     healthcheck: 
       <<: *shard-healthcheck
     networks:
-      - featureTestNetwork
+      - feature_test_network
   shard2:
     image: spqr-shard-image
     environment:
@@ -39,7 +39,7 @@ services:
     healthcheck: 
       <<: *shard-healthcheck
     networks:
-      - featureTestNetwork
+      - feature_test_network
   shard2-replica:
     image: spqr-shard-image
     environment:
@@ -52,7 +52,7 @@ services:
     healthcheck: 
       <<: *shard-healthcheck 
     networks:
-      - featureTestNetwork
+      - feature_test_network
   shard3:
     image: spqr-shard-image
     environment:
@@ -64,7 +64,7 @@ services:
     healthcheck: 
       <<: *shard-healthcheck
     networks:
-      - featureTestNetwork
+      - feature_test_network
   shard3-replica:
     image: spqr-shard-image
     environment:
@@ -77,7 +77,7 @@ services:
     healthcheck: 
       <<: *shard-healthcheck
     networks:
-      - featureTestNetwork
+      - feature_test_network
   router:
     build:
       dockerfile: ./docker/router/Dockerfile
@@ -117,7 +117,7 @@ services:
       - keytab:/keytab
       - ./conf/kdc/krb5.conf:/etc/krb5.conf
     networks:
-      - featureTestNetwork
+      - feature_test_network
   router2:
     build:
       dockerfile: ./docker/router/Dockerfile
@@ -153,7 +153,7 @@ services:
       - keytab:/keytab
       - ./conf/kdc/krb5.conf:/etc/krb5.conf
     networks:
-      - featureTestNetwork
+      - feature_test_network
   coordinator:
     build:
       dockerfile: ./docker/coordinator/Dockerfile
@@ -170,7 +170,7 @@ services:
       - "router2"
       - "qdb01"
     networks:
-      - featureTestNetwork
+      - feature_test_network
   coordinator2:
     build:
       dockerfile: ./docker/coordinator/Dockerfile
@@ -187,7 +187,7 @@ services:
       - "router2"
       - "qdb01"
     networks:
-      - featureTestNetwork
+      - feature_test_network
   qdb01: #the instance of etcd is hardcoded in feature test
     image: 'bitnami/etcd:latest'
     hostname: regress_qdb_0_1
@@ -198,7 +198,7 @@ services:
     ports:
       - "2379:2379"
     networks:
-      - featureTestNetwork
+      - feature_test_network
   ldapserver:
     image: "bitnami/openldap:latest"
     hostname: regress_ldap_server
@@ -220,7 +220,7 @@ services:
       timeout: 3s
       retries: 50
     networks:
-      - featureTestNetwork
+      - feature_test_network
   ldapserver2:
     image: "bitnami/openldap:latest"
     hostname: regress_ldap_server_2
@@ -239,7 +239,7 @@ services:
     healthcheck:
       <<: *ldap-healthcheck
     networks:
-      - featureTestNetwork
+      - feature_test_network
   kdc:
     build:
       context: ./conf/kdc
@@ -247,9 +247,9 @@ services:
       - ./conf/kdc/start.sh:/start.sh
       - keytab:/keytab
     networks:
-      - featureTestNetwork
+      - feature_test_network
 volumes:
   keytab:
 networks:
-  featureTestNetwork:
-    name: featureTestNetwork
+  feature_test_network:
+    name: feature_test_network

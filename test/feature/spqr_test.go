@@ -698,7 +698,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		return nil
 	}
 	// need to make sure another coordinator took control
-	testutil.Retry(func() bool {
+	retryRes := testutil.Retry(func() bool {
 		_, output, err := tctx.composer.RunCommand(spqrQdbHost, "etcdctl get coordinator_exists", time.Second)
 		if err != nil {
 			return false
@@ -736,6 +736,9 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		}
 		return err == nil
 	}, time.Minute, time.Second)
+	if !retryRes {
+		return fmt.Errorf("timed out waiting for another coordinator to take control after stopping %s", service)
+	}
 	log.Printf("end stop %s", service)
 	return nil
 }
