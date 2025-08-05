@@ -828,10 +828,7 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 			_, err = db.ListShards(ctx)
-			if err != nil {
-				return false
-			}
-			return true
+			return err == nil
 		}, time.Minute, time.Second)
 		if !retryRes {
 			return fmt.Errorf("SPQR QDB %s isn't ready after 1 minute", service)
