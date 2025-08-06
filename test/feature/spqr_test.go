@@ -50,6 +50,9 @@ const (
 	postgresqlConnectTimeout        = 60 * time.Second
 	postgresqlInitialConnectTimeout = 30 * time.Second
 	postgresqlQueryTimeout          = 10 * time.Second
+
+	spqrQdbHost             = "qdb01"
+	checkCoordinatorTimeout = 15 * time.Second
 )
 
 type testContext struct {
@@ -676,6 +679,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning() error {
 }
 
 func (tctx *testContext) stepHostIsStopped(service string) error {
+	log.Printf("begin stop %s", service)
 	for _, dbs := range tctx.userDbs {
 		if db, ok := dbs[service]; ok {
 			if err := db.Close(); err != nil {
@@ -689,17 +693,30 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 	if err != nil {
 		return fmt.Errorf("failed to stop service %s: %s", service, err)
 	}
-
+	if service == spqrQdbHost {
+		log.Printf("it's QDB (%s). coordinator can't answer when it's stopped", service)
+		return nil
+	}
 	// need to make sure another coordinator took control
-	testutil.Retry(func() bool {
-		_, output, err := tctx.composer.RunCommand("qdb01", "etcdctl get coordinator_exists", time.Second)
+	retryRes := testutil.Retry(func() bool {
+		_, output, err := tctx.composer.RunCommand(spqrQdbHost, "etcdctl get coordinator_exists", time.Second)
 		if err != nil {
 			return false
 		}
 		if output == "" {
 			return false
 		}
+		log.Printf("ETCD key:coordinator_exists %#v\n", output)
 		addr := strings.Split(output, "\n")[1]
+		addrWithoutPort := strings.Split(addr, ":")[0]
+		port := strings.Split(addr, ":")[1]
+		if mappedPort, err := tctx.composer.GetMappedPort(addrWithoutPort, port); err != nil {
+			log.Printf("cant't get real port: %s\n", err.Error())
+			return false
+		} else {
+			addr = fmt.Sprintf("%s:%d", "localhost", mappedPort)
+		}
+
 		conn, err := grpc.NewClient(addr, grpc.WithInsecure()) //nolint:all
 		if err != nil {
 			return false
@@ -709,12 +726,20 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		}()
 
 		client := protos.NewRouterServiceClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), checkCoordinatorTimeout)
 		defer cancel()
-		_, err = client.ListRouters(ctx, nil)
+		log.Printf("try send command ListRouters to %s\n", addr)
+		if _, err = client.ListRouters(ctx, nil); err == nil {
+			log.Printf("got list routers from %s: successfully", addr)
+		} else {
+			log.Printf("can't get list routers. error: %s", err.Error())
+		}
 		return err == nil
 	}, time.Minute, time.Second)
-
+	if !retryRes {
+		return fmt.Errorf("timed out waiting for another coordinator to take control after stopping %s", service)
+	}
+	log.Printf("end stop %s", service)
 	return nil
 }
 
@@ -796,6 +821,22 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 			return fmt.Errorf("failed to connect to SPQR QDB %s: %s", service, err)
 		}
 		tctx.qdb = db
+
+		log.Println("wait for QDB be ready")
+		retryRes := testutil.Retry(func() bool {
+			db, err := qdb.NewEtcdQDB(addr)
+			if err != nil {
+				return false
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			_, err = db.ListShards(ctx)
+			return err == nil
+		}, time.Minute, time.Second)
+		if !retryRes {
+			return fmt.Errorf("SPQR QDB %s isn't ready after 1 minute", service)
+		}
+
 		return nil
 	}
 

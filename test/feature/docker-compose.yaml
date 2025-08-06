@@ -13,6 +13,8 @@ services:
       interval: 10s
       timeout: 3s
       retries: 50
+    networks:
+      - feature_test_network
   shard1-replica:
     image: spqr-shard-image
     environment:
@@ -24,6 +26,8 @@ services:
     container_name: spqr_shard_1_replica
     healthcheck: 
       <<: *shard-healthcheck
+    networks:
+      - feature_test_network
   shard2:
     image: spqr-shard-image
     environment:
@@ -34,6 +38,8 @@ services:
     container_name: spqr_shard_2
     healthcheck: 
       <<: *shard-healthcheck
+    networks:
+      - feature_test_network
   shard2-replica:
     image: spqr-shard-image
     environment:
@@ -45,6 +51,8 @@ services:
     container_name: spqr_shard_2_replica
     healthcheck: 
       <<: *shard-healthcheck 
+    networks:
+      - feature_test_network
   shard3:
     image: spqr-shard-image
     environment:
@@ -55,6 +63,8 @@ services:
     container_name: spqr_shard_3
     healthcheck: 
       <<: *shard-healthcheck
+    networks:
+      - feature_test_network
   shard3-replica:
     image: spqr-shard-image
     environment:
@@ -66,6 +76,8 @@ services:
     container_name: spqr_shard_3_replica
     healthcheck: 
       <<: *shard-healthcheck
+    networks:
+      - feature_test_network
   router:
     build:
       dockerfile: ./docker/router/Dockerfile
@@ -74,6 +86,7 @@ services:
       - "6432:6432"
       - "7432:7432"
       - "7012:7002"
+      - "7013:7003"
     environment:
       - ROUTER_CONFIG=${ROUTER_CONFIG}
       - ROUTER_LOG=/var/log/spqr-router.log
@@ -103,6 +116,8 @@ services:
     volumes:
       - keytab:/keytab
       - ./conf/kdc/krb5.conf:/etc/krb5.conf
+    networks:
+      - feature_test_network
   router2:
     build:
       dockerfile: ./docker/router/Dockerfile
@@ -111,6 +126,7 @@ services:
       - "6433:6432"
       - "7433:7432"
       - "7022:7002"
+      - "7023:7003"
     environment:
       - ROUTER_CONFIG=${ROUTER_CONFIG}
       - ROUTER_LOG=/var/log/spqr-router.log
@@ -136,6 +152,8 @@ services:
     volumes:
       - keytab:/keytab
       - ./conf/kdc/krb5.conf:/etc/krb5.conf
+    networks:
+      - feature_test_network
   coordinator:
     build:
       dockerfile: ./docker/coordinator/Dockerfile
@@ -151,7 +169,8 @@ services:
       - "router"
       - "router2"
       - "qdb01"
-
+    networks:
+      - feature_test_network
   coordinator2:
     build:
       dockerfile: ./docker/coordinator/Dockerfile
@@ -167,8 +186,9 @@ services:
       - "router"
       - "router2"
       - "qdb01"
-
-  qdb01:
+    networks:
+      - feature_test_network
+  qdb01: #the instance of etcd is hardcoded in feature test
     image: 'bitnami/etcd:latest'
     hostname: regress_qdb_0_1
     container_name: regress_qdb_0_1
@@ -177,7 +197,8 @@ services:
       ETCD_LOG_LEVEL: "debug"
     ports:
       - "2379:2379"
-
+    networks:
+      - feature_test_network
   ldapserver:
     image: "bitnami/openldap:latest"
     hostname: regress_ldap_server
@@ -198,7 +219,8 @@ services:
       interval: 10s
       timeout: 3s
       retries: 50
-
+    networks:
+      - feature_test_network
   ldapserver2:
     image: "bitnami/openldap:latest"
     hostname: regress_ldap_server_2
@@ -216,12 +238,18 @@ services:
       - "2636:636"
     healthcheck:
       <<: *ldap-healthcheck
-
+    networks:
+      - feature_test_network
   kdc:
     build:
       context: ./conf/kdc
     volumes:
       - ./conf/kdc/start.sh:/start.sh
       - keytab:/keytab
+    networks:
+      - feature_test_network
 volumes:
   keytab:
+networks:
+  feature_test_network:
+    name: feature_test_network
