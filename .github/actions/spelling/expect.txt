@@ -22,11 +22,9 @@ HIy
 HTAP
 IDR
 IExecute
+IPrepare
 IRecord
 IRun
-IPrepare
-Preparex
-Queryx
 KFS
 Kirill
 Kvs
@@ -54,9 +52,12 @@ Patroni
 Percona
 Pmgr
 Postgre
+Preparex
 QDBKR
 QDBTx
+Qdocker
 Qgo
+Queryx
 RAddr
 RFQNIs
 RIR
@@ -268,6 +269,7 @@ golangconf
 gomaxprocs
 gomock
 gomod
+gomodtidy
 goooal
 gorm
 goyacc
@@ -654,4 +656,3 @@ yjoin
 youtube
 yylex
 zerolog
-Qdocker
