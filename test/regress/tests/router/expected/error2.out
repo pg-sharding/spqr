@@ -13,8 +13,8 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES INTEGER;
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION tt DISTRIBUTION KEY id;
-          attach table          
---------------------------------
+      attach table      
+------------------------
  relation name   -> tt
  distribution id -> ds1
 (2 rows)
@@ -28,6 +28,13 @@ CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid2 FROM 50 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 ERROR:  key range krid2 intersects with key range krid1 in QDB
 \c regress
+-- test table does not exist
+INSERT INTO tt (id, data) VALUES (2, 'valid');
+NOTICE: send query to shard(s) : sh1
+ERROR:  relation "tt" does not exist
+LINE 1: INSERT INTO tt (id, data) VALUES (2, 'valid');
+                    ^
+-- create table after error
 CREATE TABLE tt(id INT PRIMARY KEY, data TEXT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- insert initial data

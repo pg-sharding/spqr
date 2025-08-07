@@ -9,6 +9,10 @@ CREATE KEY RANGE krid2 FROM 50 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 
 \c regress
 
+-- test table does not exist
+INSERT INTO tt (id, data) VALUES (2, 'valid');
+
+-- create table after error
 CREATE TABLE tt(id INT PRIMARY KEY, data TEXT);
 
 -- insert initial data
@@ -31,7 +35,7 @@ SELECT COUNT(*) FROM tt;
 BEGIN;
 INSERT INTO tt (id, data) VALUES (10, 'shard1');
 INSERT INTO tt (id, data) VALUES (60, 'shard2');
--- Violate constraint on different shard
+-- violate constraint on different shard
 INSERT INTO tt (id, data) VALUES (51, 'duplicate_shard2');
 -- should fail with transaction aborted error
 SELECT * FROM tt WHERE id = 10;
