@@ -8,6 +8,7 @@ require (
 	github.com/containerd/errdefs v1.0.0
 	github.com/cucumber/godog v0.15.1
 	github.com/docker/docker v28.3.3+incompatible
+	github.com/docker/go-connections v0.5.0
 	github.com/go-faster/city v1.0.1
 	github.com/go-ldap/ldap/v3 v3.4.11
 	github.com/gofrs/uuid v4.4.0+incompatible
@@ -55,7 +56,6 @@ require (
 	github.com/cucumber/messages/go/v21 v21.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
-	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
