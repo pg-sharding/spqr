@@ -14,7 +14,7 @@ services:
         &shard-common
         image: spqr-shard-image
         healthcheck:
-            test: 'pg_isready -U postgres --dbname=postgres'
+            test: 'pg_isready -U postgres --dbname=postgres -p 6432'
             interval: 10s
             timeout: 5s
             retries: 5
