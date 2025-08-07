@@ -12,30 +12,12 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES INTEGER;
  distribution id -> ds1
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION tt DISTRIBUTION KEY i;
+ALTER DISTRIBUTION ds1 ATTACH RELATION tt DISTRIBUTION KEY id;
       attach table      
 ------------------------
  relation name   -> tt
  distribution id -> ds1
 (2 rows)
-
-CREATE KEY RANGE krid4 FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
- add key range 
----------------
- bound -> 100
-(1 row)
-
-CREATE KEY RANGE krid3 FROM 70 ROUTE TO sh2 FOR DISTRIBUTION ds1;
- add key range 
----------------
- bound -> 70
-(1 row)
-
-CREATE KEY RANGE krid2 FROM 30 ROUTE TO sh2 FOR DISTRIBUTION ds1;
- add key range 
----------------
- bound -> 30
-(1 row)
 
 CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
  add key range 
@@ -43,35 +25,62 @@ CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
  bound -> 0
 (1 row)
 
+CREATE KEY RANGE krid2 FROM 50 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ERROR:  key range krid2 intersects with key range krid1 in QDB
 \c regress
-CREATE TABLE tt(i INT) /*  */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-SET __spqr__engine_v2 TO false;
-BEGIN;
-INSERT INTO tt (i) VALUES(1);
-NOTICE: send query to shard(s) : sh1
-DROP TABLE tt;
-NOTICE: send query to shard(s) : sh1
-INSERT INTO tt (i) VALUES(1);
+-- test table does not exist
+INSERT INTO tt (id, data) VALUES (2, 'valid');
 NOTICE: send query to shard(s) : sh1
 ERROR:  relation "tt" does not exist
-LINE 1: INSERT INTO tt (i) VALUES(1);
+LINE 1: INSERT INTO tt (id, data) VALUES (2, 'valid');
                     ^
-INSERT INTO tt (i) VALUES(1);
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
-INSERT INTO tt (i) VALUES(1);
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
-INSERT INTO tt (i) VALUES(1);
+-- create table after error
+CREATE TABLE tt(id INT PRIMARY KEY, data TEXT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- insert initial data
+INSERT INTO tt (id, data) VALUES (1, 'first');
+NOTICE: send query to shard(s) : sh1
+INSERT INTO tt (id, data) VALUES (51, 'second');
+NOTICE: send query to shard(s) : sh1
+-- test unique constraint violation on shard
+BEGIN;
+INSERT INTO tt (id, data) VALUES (2, 'valid');
+NOTICE: send query to shard(s) : sh1
+-- this should cause a unique constraint violation error from shard
+INSERT INTO tt (id, data) VALUES (1, 'duplicate');
+NOTICE: send query to shard(s) : sh1
+ERROR:  duplicate key value violates unique constraint "tt_pkey"
+DETAIL:  Key (id)=(1) already exists.
+-- after error, transaction should be aborted - this should fail with SPQRU
+INSERT INTO tt (id, data) VALUES (3, 'should_fail');
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
--- should exists 
-SET __spqr__engine_v2 TO true;
-TABLE tt;
+-- test that table is still accessible after rollback
+SELECT COUNT(*) FROM tt;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
- i 
----
-(0 rows)
+ count 
+-------
+     2
+     0
+     0
+     0
+(4 rows)
 
+-- test cross-shard transaction with error
+BEGIN;
+INSERT INTO tt (id, data) VALUES (10, 'shard1');
+NOTICE: send query to shard(s) : sh1
+INSERT INTO tt (id, data) VALUES (60, 'shard2');
+NOTICE: send query to shard(s) : sh1
+-- violate constraint on different shard
+INSERT INTO tt (id, data) VALUES (51, 'duplicate_shard2');
+NOTICE: send query to shard(s) : sh1
+ERROR:  duplicate key value violates unique constraint "tt_pkey"
+DETAIL:  Key (id)=(51) already exists.
+-- should fail with transaction aborted error
+SELECT * FROM tt WHERE id = 10;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ROLLBACK;
 DROP TABLE tt;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
