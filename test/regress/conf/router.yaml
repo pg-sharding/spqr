@@ -4,8 +4,11 @@ admin_console_port: '7432'
 grpc_api_port: '7000'
 router_mode: PROXY
 log_level: debug
-time_quantiles:
-  - 0.75
+time_quantiles_str:
+  - "0.75"
+  - "0.90"
+  - "0.999"
+  - "0.9999"
 world_shard_fallback: true
 show_notice_messages: true
 enable_role_system: true
