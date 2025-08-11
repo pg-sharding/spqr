@@ -41,7 +41,10 @@ type Router struct {
 	LogLevel      string `json:"log_level" toml:"log_level" yaml:"log_level"`
 	PrettyLogging bool   `json:"pretty_logging" toml:"pretty_logging" yaml:"pretty_logging"`
 
+	// TimeQuantiles is deprecated, use TimeQuantilesStr instead
 	TimeQuantiles []float64 `json:"time_quantiles" toml:"time_quantiles" yaml:"time_quantiles"`
+	// TimeQuantilesStr is an array of quantiles to show in "SHOW time_quantiles" query. Each quantile is set as a string containig float64 representation
+	TimeQuantilesStr []string `json:"time_quantiles_str" toml:"time_quantiles_str" yaml:"time_quantiles_str"`
 
 	Daemonize bool `json:"daemonize" toml:"daemonize" yaml:"daemonize"`
 
@@ -224,7 +227,13 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 		return "", err
 	}
 
-	statistics.InitStatistics(rcfg.TimeQuantiles)
+	if len(rcfg.TimeQuantilesStr) > 0 {
+		if err := statistics.InitStatisticsStr(rcfg.TimeQuantilesStr); err != nil {
+			return "", err
+		}
+	} else {
+		statistics.InitStatistics(rcfg.TimeQuantiles)
+	}
 	/* init default_target_session_attrs as read-write if nothing else specified */
 	if rcfg.Qr.DefaultTSA == "" {
 		rcfg.Qr.DefaultTSA = TargetSessionAttrsSmartRW
