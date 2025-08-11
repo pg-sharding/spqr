@@ -43,7 +43,7 @@ type Router struct {
 
 	// TimeQuantiles is deprecated, use TimeQuantilesStr instead
 	TimeQuantiles []float64 `json:"time_quantiles" toml:"time_quantiles" yaml:"time_quantiles"`
-	// TimeQuantilesStr is an array of quantiles to show in "SHOW time_quantiles" query. Each quantile is set as a string containig float64 representation
+	// TimeQuantilesStr is an array of quantiles to show in "SHOW time_quantiles" query. Each quantile is set as a string containing float64 representation
 	TimeQuantilesStr []string `json:"time_quantiles_str" toml:"time_quantiles_str" yaml:"time_quantiles_str"`
 
 	Daemonize bool `json:"daemonize" toml:"daemonize" yaml:"daemonize"`
