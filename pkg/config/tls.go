@@ -128,7 +128,7 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 			Msg("loading tls")
 		cert, err := tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
 		if err != nil {
-			return nil, fmt.Errorf("unable to X509 key pair: %w", err)
+			return nil, fmt.Errorf("unable to load X509 key pair: %w", err)
 		}
 		tlsConfig.Certificates = []tls.Certificate{cert}
 	}
