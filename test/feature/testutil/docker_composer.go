@@ -189,7 +189,9 @@ func (dc *DockerComposer) Services() []string {
 }
 
 func (dc *DockerComposer) ContainerState(cont string) (container.ContainerState, error) {
-	dc.fillContainers()
+	if err := dc.fillContainers(); err != nil {
+		return "", err
+	}
 	c, ok := dc.containers[cont]
 	if !ok {
 		return "", fmt.Errorf("container \"%s\" not found", cont)
