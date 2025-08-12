@@ -519,6 +519,7 @@ Feature: Coordinator test
 
   Scenario: QDB is down
     Given host "qdb01" is stopped
+    And we wait for "5" seconds
     When I run SQL on host "coordinator"
     """
     CREATE KEY RANGE krid3 FROM 31 ROUTE to sh1 FOR DISTRIBUTION ds1
