@@ -60,7 +60,7 @@ services:
       - "qdb01"
 
   qdb01:
-    image: 'bitnami/etcd:latest'
+    image: 'quay.io/coreos/etcd:v3.6.4'
     hostname: regress_qdb_0_1
     container_name: regress_qdb_0_1
     environment:
@@ -68,6 +68,7 @@ services:
       ETCD_LOG_LEVEL: "debug"
     ports:
       - "2379:2379"
+    entrypoint: ["/usr/local/bin/etcd", "--advertise-client-urls", "http://regress_qdb_0_1:2379", "--listen-client-urls", "http://0.0.0.0:2379"]
 
   regress:
     build:
