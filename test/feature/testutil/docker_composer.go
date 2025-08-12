@@ -36,6 +36,8 @@ type Composer interface {
 	Down() error
 	// Returns names/ids of running containers
 	Services() []string
+	// Returns state of the specific service
+	ContainerState(service string) (container.ContainerState, error)
 	// Returns real exposed addr (ip:port) for given service/port
 	GetAddr(service string, port int) (string, error)
 	// Returns internal ip address of given service
@@ -184,6 +186,15 @@ func (dc *DockerComposer) Services() []string {
 	}
 	sort.Strings(services)
 	return services
+}
+
+func (dc *DockerComposer) ContainerState(cont string) (container.ContainerState, error) {
+	dc.fillContainers()
+	c, ok := dc.containers[cont]
+	if !ok {
+		return "", fmt.Errorf("container \"%s\" not found", cont)
+	}
+	return c.State, nil
 }
 
 // GetAddr returns real exposed addr (ip:port) for given service/port
