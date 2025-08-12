@@ -697,6 +697,27 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		log.Printf("it's QDB (%s). coordinator can't answer when it's stopped", service)
 		return nil
 	}
+	anyCoord := false
+	for _, service := range tctx.composer.Services() {
+		if strings.HasPrefix(service, spqrCoordinatorName) {
+			state, err := tctx.composer.ContainerState(service)
+			if err != nil {
+				return err
+			}
+			if state == "running" {
+				anyCoord = true
+				break
+			}
+		}
+	}
+	if !anyCoord {
+		log.Printf("all coordinators are stopped, skip QDB check\n")
+		return nil
+	}
+	if service == spqrQdbHost {
+		log.Printf("it's QDB (%s). coordinator can't answer when it's stopped\n", service)
+		return nil
+	}
 	// need to make sure another coordinator took control
 	retryRes := testutil.Retry(func() bool {
 		_, output, err := tctx.composer.RunCommand(spqrQdbHost, "etcdctl get coordinator_exists", time.Second)
