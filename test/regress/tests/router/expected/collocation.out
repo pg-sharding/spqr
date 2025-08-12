@@ -1,0 +1,128 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE DISTRIBUTION ds2 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds2
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE KEY RANGE krid2 FROM 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 10
+(1 row)
+
+CREATE KEY RANGE krid11 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds2;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE KEY RANGE krid12 FROM 20 ROUTE TO sh1 FOR DISTRIBUTION ds2;
+ add key range 
+---------------
+ bound -> 20
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION xx1 DISTRIBUTION KEY i;
+      attach table      
+------------------------
+ relation name   -> xx1
+ distribution id -> ds1
+(2 rows)
+
+ALTER DISTRIBUTION ds2 ATTACH RELATION xx2 DISTRIBUTION KEY j;
+      attach table      
+------------------------
+ relation name   -> xx2
+ distribution id -> ds2
+(2 rows)
+
+CREATE REFERENCE TABLE reft;
+         attach table          
+-------------------------------
+ relation name   -> reft
+ distribution id -> REPLICATED
+(2 rows)
+
+CREATE REFERENCE TABLE reft2;
+         attach table          
+-------------------------------
+ relation name   -> reft2
+ distribution id -> REPLICATED
+(2 rows)
+
+\c regress
+CREATE TABLE xx1 (i int);
+NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE xx2 (j int);
+NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE reft(ii int);
+NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE reft2(jj int);
+NOTICE: send query to shard(s) : sh1,sh2
+COPY reft FROM STDIN;
+NOTICE: send query to shard(s) : sh1,sh2
+COPY reft2 FROM STDIN;
+NOTICE: send query to shard(s) : sh1,sh2
+COPY xx1 (i) FROM STDIN /* __spqr__allow_multishard */;
+NOTICE: send query to shard(s) : sh1,sh2
+COPY xx2 (j) FROM STDIN /* __spqr__allow_multishard */;
+NOTICE: send query to shard(s) : sh1,sh2
+INSERT INTO xx1 TABLE reft; -- ok
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx2 TABLE reft; -- ok
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx1 SELECT a.ii + b.jj FROM reft a, reft2 b; --ok
+NOTICE: send query to shard(s) : sh1
+-- Below is very quitionable
+--INSERT INTO xx1 TABLE xx2; -- should fail, different distributions;
+/* maybe test join here? */
+--INSERT INTO xx1 SELECT a.ii + b.j FROM reft a, xx2 b; --similar
+DROP TABLE xx1;
+NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE xx2;
+NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE reft;
+NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE reft2;
+NOTICE: send query to shard(s) : sh1,sh2
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+       drop distribution       
+-------------------------------
+ distribution id -> REPLICATED
+ distribution id -> ds1
+ distribution id -> ds2
+(3 rows)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+
