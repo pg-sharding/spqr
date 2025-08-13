@@ -25,7 +25,7 @@ var kr1 = &kr.KeyRange{
 	ID:           "kr1",
 	ShardID:      "sh1",
 	Distribution: "ds1",
-	LowerBound:   []interface{}{int64(0)},
+	LowerBound:   []any{int64(0)},
 	ColumnTypes:  []string{qdb.ColumnTypeInteger},
 }
 
@@ -33,7 +33,7 @@ var kr1_double = &kr.KeyRange{
 	ID:           "kr1DOUBLE",
 	ShardID:      "sh1",
 	Distribution: "ds1",
-	LowerBound:   []interface{}{int64(0)},
+	LowerBound:   []any{int64(0)},
 	ColumnTypes:  []string{qdb.ColumnTypeInteger},
 }
 
@@ -41,14 +41,14 @@ var kr2 = &kr.KeyRange{
 	ID:           "kr2",
 	ShardID:      "sh1",
 	Distribution: "ds1",
-	LowerBound:   []interface{}{int64(10)},
+	LowerBound:   []any{int64(10)},
 	ColumnTypes:  []string{qdb.ColumnTypeInteger},
 }
 var kr2_sh2 = &kr.KeyRange{
 	ID:           "kr2",
 	ShardID:      "sh2",
 	Distribution: "ds1",
-	LowerBound:   []interface{}{int64(10)},
+	LowerBound:   []any{int64(10)},
 	ColumnTypes:  []string{qdb.ColumnTypeInteger},
 }
 

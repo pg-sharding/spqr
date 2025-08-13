@@ -615,7 +615,7 @@ func (cl *PsqlClient) ReplyDebugNotice(msg string) error {
 	})
 }
 
-func (cl *PsqlClient) ReplyDebugNoticef(fmtString string, args ...interface{}) error {
+func (cl *PsqlClient) ReplyDebugNoticef(fmtString string, args ...any) error {
 	return cl.ReplyDebugNotice(fmt.Sprintf(fmtString, args...))
 }
 
@@ -634,7 +634,7 @@ func (cl *PsqlClient) ReplyWarningMsg(errmsg string) error {
 	return nil
 }
 
-func (cl *PsqlClient) ReplyWarningf(fmtString string, args ...interface{}) error {
+func (cl *PsqlClient) ReplyWarningf(fmtString string, args ...any) error {
 	return cl.ReplyWarningMsg(fmt.Sprintf(fmtString, args...))
 }
 

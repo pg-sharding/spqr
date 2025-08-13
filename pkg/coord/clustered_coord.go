@@ -1243,7 +1243,7 @@ ORDER BY (%s) %s;
 	var moveWhole bool
 	for rows.Next() {
 		values := make([]string, len(rel.DistributionKey)+1)
-		links := make([]interface{}, len(values)+1)
+		links := make([]any, len(values)+1)
 
 		for i := range values {
 			links[i] = &values[i]

@@ -34,7 +34,7 @@ type Denis struct {
 // It verifies that the function returns the correct memory address of the input value.
 func TestGetPointer(t *testing.T) {
 
-	tests := []interface{}{true, 123, "denis", Denis{Age: 25}}
+	tests := []any{true, 123, "denis", Denis{Age: 25}}
 	for _, test := range tests {
 		expected := fmt.Sprintf("%p", &test)
 

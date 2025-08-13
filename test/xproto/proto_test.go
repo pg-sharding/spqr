@@ -32,7 +32,7 @@ func getC() (net.Conn, error) {
 	if port == "" {
 		port = "6432"
 	}
-	addr := fmt.Sprintf("%s:%s", host, port)
+	addr := net.JoinHostPort(host, port)
 	return net.Dial(proto, addr)
 }
 
@@ -723,7 +723,7 @@ func TestHintRoutingXproto(t *testing.T) {
 
 				&pgproto3.DataRow{
 					Values: [][]byte{
-						[]byte{byte(0x31)},
+						{byte(0x31)},
 					},
 				},
 
@@ -3612,7 +3612,7 @@ func TestMultiPortal(t *testing.T) {
 
 				&pgproto3.DataRow{
 					Values: [][]byte{
-						[]byte{'1'},
+						{'1'},
 					},
 				},
 				&pgproto3.CommandComplete{
@@ -3721,7 +3721,7 @@ func TestPrepStmtBinaryFormat(t *testing.T) {
 					PreparedStatement: "stmtcache_ft_1",
 					Parameters: [][]byte{
 						// 1022
-						[]byte{0, 0, 3, 254},
+						{0, 0, 3, 254},
 					},
 					ParameterFormatCodes: []int16{1},
 				},
@@ -4413,7 +4413,7 @@ func TestMixedProtoTxcommands(t *testing.T) {
 					},
 				},
 				&pgproto3.DataRow{
-					Values: [][]byte{[]byte{0x31}},
+					Values: [][]byte{{0x31}},
 				},
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("SELECT 1"),
@@ -4433,7 +4433,7 @@ func TestMixedProtoTxcommands(t *testing.T) {
 
 				&pgproto3.BindComplete{},
 				&pgproto3.DataRow{
-					Values: [][]byte{[]byte{0x31}},
+					Values: [][]byte{{0x31}},
 				},
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("SELECT 1"),

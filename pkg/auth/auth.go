@@ -388,7 +388,7 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 			return fmt.Errorf("user from client %v != %v mismatch user in config", cl.Usr(), rule.Usr)
 		}
 		b := BaseAuthModule{
-			properties: map[string]interface{}{
+			properties: map[string]any{
 				keyTabFileProperty: rule.AuthRule.GssConfig.KrbKeyTabFile,
 			},
 		}

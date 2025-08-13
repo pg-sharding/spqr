@@ -57,12 +57,12 @@ const (
 )
 
 type testContext struct {
-	variables         map[string]interface{}
+	variables         map[string]any
 	templateErr       error
 	composer          testutil.Composer
 	composerEnv       []string
 	userDbs           map[string]map[string]*sqlx.DB
-	sqlQueryResult    []map[string]interface{}
+	sqlQueryResult    []map[string]any
 	sqlUserQueryError sync.Map // host -> error
 	commandRetcode    int
 	commandOutput     string
@@ -220,9 +220,9 @@ func (tctx *testContext) cleanup() {
 	if err := tctx.composer.Down(); err != nil {
 		log.Printf("failed to tear down compose: %s", err)
 	}
-	tctx.variables = make(map[string]interface{})
+	tctx.variables = make(map[string]any)
 	tctx.composerEnv = make([]string, 0)
-	tctx.sqlQueryResult = make([]map[string]interface{}, 0)
+	tctx.sqlQueryResult = make([]map[string]any, 0)
 	tctx.sqlUserQueryError = sync.Map{}
 	tctx.commandRetcode = 0
 	tctx.commandOutput = ""
@@ -432,9 +432,9 @@ func (tctx *testContext) prepareQueryPostgresql(host, user, query string) error 
 	return nil
 }
 
-func (tctx *testContext) queryPreparedPostgresql(host, user, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
+func (tctx *testContext) queryPreparedPostgresql(host, query string, args any) ([]map[string]any, error) {
 	tctx.sqlQueryResult = nil
-	result, err := tctx.doPrepQueryPostgresql(host, user, query, args, timeout)
+	result, err := tctx.doPrepQueryPostgresql(host, query, args)
 	tctx.commandRetcode = 0
 	if err != nil {
 		tctx.commandRetcode = 1
@@ -455,7 +455,7 @@ func (tctx *testContext) closePreparedPostgresql() {
 	}
 }
 
-func (tctx *testContext) doPrepQueryPostgresql(host, user, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
+func (tctx *testContext) doPrepQueryPostgresql(host, query string, args any) ([]map[string]any, error) {
 	if stmts, ok := tctx.preparedQueries[host]; !ok {
 		return nil, fmt.Errorf("Query '%s' is not prepared", query)
 	} else {
@@ -476,9 +476,9 @@ func (tctx *testContext) doPrepQueryPostgresql(host, user, query string, args in
 			defer func() {
 				_ = rows.Close()
 			}()
-			result := make([]map[string]interface{}, 0)
+			result := make([]map[string]any, 0)
 			for rows.Next() {
-				rowmap := make(map[string]interface{})
+				rowmap := make(map[string]any)
 				err = rows.MapScan(rowmap)
 				if err != nil {
 					return nil, err
@@ -495,7 +495,7 @@ func (tctx *testContext) doPrepQueryPostgresql(host, user, query string, args in
 	}
 }
 
-func (tctx *testContext) queryPostgresql(host, user, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
+func (tctx *testContext) queryPostgresql(host, user, query string, args any, timeout time.Duration) ([]map[string]any, error) {
 	db, err := tctx.getPostgresqlConnection(user, host)
 	if err != nil {
 		return nil, err
@@ -503,7 +503,7 @@ func (tctx *testContext) queryPostgresql(host, user, query string, args interfac
 	// sqlx can't execute requests with semicolon
 	// we will execute them in single connection
 	queries := strings.Split(query, ";")
-	var result []map[string]interface{}
+	var result []map[string]any
 
 	for _, q := range queries {
 		q = strings.TrimSpace(q)
@@ -547,7 +547,7 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 	return nil
 }
 
-func (tctx *testContext) doPostgresqlQuery(db *sqlx.DB, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
+func (tctx *testContext) doPostgresqlQuery(db *sqlx.DB, query string, args any, timeout time.Duration) ([]map[string]any, error) {
 	if args == nil {
 		args = struct{}{}
 	}
@@ -562,9 +562,9 @@ func (tctx *testContext) doPostgresqlQuery(db *sqlx.DB, query string, args inter
 		_ = rows.Close()
 	}()
 
-	result := make([]map[string]interface{}, 0)
+	result := make([]map[string]any, 0)
 	for rows.Next() {
-		rowmap := make(map[string]interface{})
+		rowmap := make(map[string]any)
 		err = rows.MapScan(rowmap)
 		if err != nil {
 			return nil, err
@@ -923,7 +923,7 @@ func (tctx *testContext) stepIPrepareSQLOnHost(host string, body *godog.DocStrin
 
 func (tctx *testContext) stepIRunPreparedSQLOnHost(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
-	_, err := tctx.queryPreparedPostgresql(host, shardUser, query, struct{}{}, postgresqlQueryTimeout)
+	_, err := tctx.queryPreparedPostgresql(host, query, struct{}{})
 	return err
 }
 
@@ -1204,7 +1204,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 			"ROUTER_COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
 			"ROUTER_2_COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
 		}
-		tctx.variables = make(map[string]interface{})
+		tctx.variables = make(map[string]any)
 		return ctx, nil
 	})
 	s.StepContext().Before(func(ctx context.Context, step *godog.Step) (context.Context, error) {

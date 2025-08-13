@@ -126,7 +126,7 @@ func DumpKeyRangesPsql() error {
 
 		return decode.KeyRange(
 			&kr.KeyRange{
-				LowerBound: []interface{}{l},
+				LowerBound: []any{l},
 				ID:         id,
 				ShardID:    shard,
 			}), nil
