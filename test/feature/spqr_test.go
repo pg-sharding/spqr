@@ -432,9 +432,9 @@ func (tctx *testContext) prepareQueryPostgresql(host, user, query string) error 
 	return nil
 }
 
-func (tctx *testContext) queryPreparedPostgresql(host, user, query string, args any, timeout time.Duration) ([]map[string]any, error) {
+func (tctx *testContext) queryPreparedPostgresql(host, query string, args any) ([]map[string]any, error) {
 	tctx.sqlQueryResult = nil
-	result, err := tctx.doPrepQueryPostgresql(host, user, query, args, timeout)
+	result, err := tctx.doPrepQueryPostgresql(host, query, args)
 	tctx.commandRetcode = 0
 	if err != nil {
 		tctx.commandRetcode = 1
@@ -455,7 +455,7 @@ func (tctx *testContext) closePreparedPostgresql() {
 	}
 }
 
-func (tctx *testContext) doPrepQueryPostgresql(host, user, query string, args any, timeout time.Duration) ([]map[string]any, error) {
+func (tctx *testContext) doPrepQueryPostgresql(host, query string, args any) ([]map[string]any, error) {
 	if stmts, ok := tctx.preparedQueries[host]; !ok {
 		return nil, fmt.Errorf("Query '%s' is not prepared", query)
 	} else {
@@ -923,7 +923,7 @@ func (tctx *testContext) stepIPrepareSQLOnHost(host string, body *godog.DocStrin
 
 func (tctx *testContext) stepIRunPreparedSQLOnHost(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
-	_, err := tctx.queryPreparedPostgresql(host, shardUser, query, struct{}{}, postgresqlQueryTimeout)
+	_, err := tctx.queryPreparedPostgresql(host, query, struct{}{})
 	return err
 }
 
