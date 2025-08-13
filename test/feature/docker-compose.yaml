@@ -108,6 +108,10 @@ services:
         condition: service_healthy
       kdc:
         condition: service_started
+      ldapserver:
+        condition: service_healthy
+      ldapserver2:
+        condition: service_healthy
     healthcheck: &router-healthcheck
       test: psql -h regress_router -p 6432 -U regress -d regress
       interval: 10s
@@ -200,39 +204,34 @@ services:
     networks:
       - feature_test_network
   ldapserver:
-    image: "bitnami/openldap:latest"
+    image: "osixia/openldap:latest"
     hostname: regress_ldap_server
     container_name: regress_ldap_server
-    environment:
-      - LDAP_ROOT=dc=example,dc=com
-      - LDAP_ADMIN_USERNAME=admin
-      - LDAP_ADMIN_PASSWORD=adminpassword
-      - LDAP_USERS=regress
-      - LDAP_PASSWORDS=12345678
-      - LDAP_PORT_NUMBER=389
-      - LDAP_LDAPS_PORT_NUMBER=636
+    environment: &ldap-env
+      LDAP_ADMIN_USERNAME: admin
+      LDAP_ADMIN_PASSWORD: adminpassword
+      LDAP_DOMAIN: example.com
+      LDAP_READONLY_USER: true
+      LDAP_READONLY_USER_USERNAME: regress
+      LDAP_READONLY_USER_PASSWORD: 12345678
+      LDAP_PORT_NUMBER: 389
+      LDAP_LDAPS_PORT_NUMBER: 636
     ports:
       - "1389:389"
       - "1636:636"
     healthcheck: &ldap-healthcheck
-      test: ldapwhoami -D "cn=regress,ou=users,dc=example,dc=com" -w 12345678
+      test: ldapwhoami -D "cn=regress,dc=example,dc=com" -w 12345678
       interval: 10s
       timeout: 3s
       retries: 50
     networks:
       - feature_test_network
   ldapserver2:
-    image: "bitnami/openldap:latest"
+    image: "osixia/openldap:latest"
     hostname: regress_ldap_server_2
     container_name: regress_ldap_server_2
-    environment:
-      - LDAP_ROOT=dc=example,dc=com
-      - LDAP_ADMIN_USERNAME=admin
-      - LDAP_ADMIN_PASSWORD=adminpassword
-      - LDAP_USERS=regress
-      - LDAP_PASSWORDS=12345678
-      - LDAP_PORT_NUMBER=389
-      - LDAP_LDAPS_PORT_NUMBER=636
+    environment: 
+     <<: *ldap-env
     ports:
       - "2389:389"
       - "2636:636"
