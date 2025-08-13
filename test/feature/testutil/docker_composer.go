@@ -50,7 +50,10 @@ type Composer interface {
 	AttachToNet(service string) error
 	// Executes command inside container/VM with given timeout.
 	// Returns command retcode and output (stdout and stderr are mixed)
+	// Shell form
 	RunCommand(service, cmd string, timeout time.Duration) (retcode int, output string, err error)
+	// JSON form
+	RunCommandJSON(service string, cmd []string, timeout time.Duration) (retcode int, output string, err error)
 	RunCommandAtHosts(cmd, hostsSubstring string, timeout time.Duration) error
 	// Executes command inside container/VM with given timeout.
 	// Returns command retcode and output (stdout and stderr are mixed)
@@ -261,7 +264,19 @@ func (dc *DockerComposer) RunCommandAtHosts(cmd, hostSubstring string, timeout t
 }
 
 // RunCommand executes command inside container/VM with given timeout.
+// The command is executed in shell form, i.e. /bin/bash -c "{{cmd}}".
 func (dc *DockerComposer) RunCommand(service string, cmd string, timeout time.Duration) (retcode int, out string, err error) {
+	return dc.runCommand(service, []string{shell, "-c", cmd}, timeout)
+}
+
+// RunCommandJSON executes command inside container/VM with given timeout.
+// The command is given in JSON form(i.e. array of strings) and executed directly.
+func (dc *DockerComposer) RunCommandJSON(service string, cmd []string, timeout time.Duration) (retcode int, out string, err error) {
+	return dc.runCommand(service, cmd, timeout)
+}
+
+// RunCommand executes command inside container/VM with given timeout.
+func (dc *DockerComposer) runCommand(service string, cmd []string, timeout time.Duration) (retcode int, out string, err error) {
 	cont, ok := dc.containers[service]
 	if !ok {
 		return 0, "", fmt.Errorf("no such service: %s", service)
@@ -274,7 +289,7 @@ func (dc *DockerComposer) RunCommand(service string, cmd string, timeout time.Du
 	execCfg := container.ExecOptions{
 		AttachStdout: true,
 		AttachStderr: true,
-		Cmd:          []string{shell, "-c", cmd},
+		Cmd:          cmd,
 	}
 	execResp, err := dc.api.ContainerExecCreate(ctx, cont.ID, execCfg)
 	if err != nil {
