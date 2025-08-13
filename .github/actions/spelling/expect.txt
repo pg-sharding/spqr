@@ -144,7 +144,6 @@ bda
 bebc
 bemp
 berule
-bitnami
 bts
 buildpackage
 byt
