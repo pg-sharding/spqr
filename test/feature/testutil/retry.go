@@ -2,7 +2,6 @@ package testutil
 
 import "time"
 
-// nolint: unparam
 func Retry(code func() bool, timeout, sleep time.Duration) bool {
 	if code() {
 		return true

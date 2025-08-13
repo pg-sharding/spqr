@@ -123,7 +123,7 @@ func (dc *DockerComposer) fillContainers() error {
 	}
 	errorFlag := false
 	var name, state string
-	for _, c := range containers { // nolint: gocritic
+	for _, c := range containers {
 		prj := c.Labels["com.docker.compose.project"]
 		srv := c.Labels["com.docker.compose.service"]
 		if prj != dc.projectName || srv == "" {
@@ -153,7 +153,7 @@ func (dc *DockerComposer) Up(env []string) error {
 		if apiErr != nil {
 			return err
 		}
-		for _, c := range containers { // nolint: gocritic
+		for _, c := range containers {
 			prj := c.Labels["com.docker.compose.project"]
 			srv := c.Labels["com.docker.compose.service"]
 			if prj != dc.projectName || srv == "" {

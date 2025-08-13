@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // TDB: move to util
@@ -34,8 +35,8 @@ var (
 )
 
 func DialCoordinator(r *topology.Router) (*grpc.ClientConn, error) {
-	// TODO: add creds, remove WithInsecure
-	return grpc.NewClient(r.Address, grpc.WithInsecure()) //nolint:all
+	// TODO: add creds
+	return grpc.NewClient(r.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 }
 
 var rootCmd = &cobra.Command{

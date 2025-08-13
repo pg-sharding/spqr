@@ -17,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rulerouter"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const greeting = `
@@ -90,7 +91,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 		}
 		switch tstmt.Cmd {
 		case spqrparser.RoutersStr:
-			conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all
+			conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
 				return err
 			}
@@ -105,7 +106,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
 		}
-		conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all
+		conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return err
 		}

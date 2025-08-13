@@ -29,7 +29,6 @@ func (m *ctxMatcher) String() string {
 	return "context matcher"
 }
 
-//nolint:revive
 func MatchContext(t *testing.T, ctx context.Context) (context.Context, gomock.Matcher) {
 	ctx = context.WithValue(ctx, ctxIDKeyName, NewUUIDStr(t))
 	return ctx, &ctxMatcher{

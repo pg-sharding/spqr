@@ -46,7 +46,6 @@ func RegexpMatcher(actual string, expected string) error {
 	return nil
 }
 
-// nolint: gocyclo
 func jsonContains(a, e interface{}, path []string, reStrCmp bool) []string {
 	av := reflect.ValueOf(a)
 	ev := reflect.ValueOf(e)

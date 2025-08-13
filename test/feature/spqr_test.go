@@ -229,7 +229,6 @@ func (tctx *testContext) cleanup() {
 	tctx.closePreparedPostgresql()
 }
 
-// nolint: unparam
 func (tctx *testContext) connectPostgresql(addr string, user string, timeout time.Duration) (*sqlx.DB, error) {
 	if strings.Contains(addr, strconv.Itoa(spqrConsolePort)) {
 		return tctx.connectRouterConsoleWithCredentials(user, shardPassword, addr, timeout)
@@ -1190,7 +1189,6 @@ func (tctx *testContext) stepCoordinatorShouldTakeControl(leader string) error {
 	return nil
 }
 
-// nolint: unused
 func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	tctx, err := newTestContext(t)
 	if err != nil {
