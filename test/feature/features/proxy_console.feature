@@ -18,7 +18,9 @@ Feature: Proxy console
         # Make host "router" take control over coordinator
         #
         Given host "router2" is stopped
+        And I wait for coordinator "regress_router" to take control
         And host "router2" is started
+        And I wait for host "router2" to respond
 
         When I run SQL on host "router-admin"
         """

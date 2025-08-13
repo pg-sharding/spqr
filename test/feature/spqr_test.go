@@ -25,6 +25,7 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -719,44 +720,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		return nil
 	}
 	// need to make sure another coordinator took control
-	retryRes := testutil.Retry(func() bool {
-		_, output, err := tctx.composer.RunCommandJSON(spqrQdbHost, []string{"/usr/local/bin/etcdctl", "get", "coordinator_exists"}, time.Second)
-		if err != nil {
-			return false
-		}
-		if output == "" {
-			return false
-		}
-		log.Printf("ETCD key:coordinator_exists %#v\n", output)
-		addr := strings.Split(output, "\n")[1]
-		addrWithoutPort := strings.Split(addr, ":")[0]
-		port := strings.Split(addr, ":")[1]
-		if mappedPort, err := tctx.composer.GetMappedPort(addrWithoutPort, port); err != nil {
-			log.Printf("cant't get real port: %s\n", err.Error())
-			return false
-		} else {
-			addr = fmt.Sprintf("%s:%d", "localhost", mappedPort)
-		}
-
-		conn, err := grpc.NewClient(addr, grpc.WithInsecure()) //nolint:all
-		if err != nil {
-			return false
-		}
-		defer func() {
-			_ = conn.Close()
-		}()
-
-		client := protos.NewRouterServiceClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), checkCoordinatorTimeout)
-		defer cancel()
-		log.Printf("try send command ListRouters to %s\n", addr)
-		if _, err = client.ListRouters(ctx, nil); err == nil {
-			log.Printf("got list routers from %s: successfully", addr)
-		} else {
-			log.Printf("can't get list routers. error: %s", err.Error())
-		}
-		return err == nil
-	}, time.Minute, time.Second)
+	retryRes := testutil.Retry(tctx.checkCoordinatorInQDBFunc(""), time.Minute, time.Second)
 	if !retryRes {
 		return fmt.Errorf("timed out waiting for another coordinator to take control after stopping %s", service)
 	}
@@ -1174,6 +1138,58 @@ func (tctx *testContext) stepErrorShouldMatch(host string, matcher string, body 
 	return m(string(res), strings.TrimSpace(body.Content))
 }
 
+func (tctx *testContext) checkCoordinatorInQDBFunc(expected string) func() bool {
+	return func() bool {
+		_, output, err := tctx.composer.RunCommandJSON(spqrQdbHost, []string{"/usr/local/bin/etcdctl", "get", "coordinator_exists"}, time.Second)
+		if err != nil {
+			return false
+		}
+		if output == "" {
+			return false
+		}
+		log.Printf("ETCD key:coordinator_exists %#v\n", output)
+		addr := strings.Split(output, "\n")[1]
+		addrWithoutPort := strings.Split(addr, ":")[0]
+		if expected != "" && addrWithoutPort != expected {
+			return false
+		}
+		port := strings.Split(addr, ":")[1]
+		if mappedPort, err := tctx.composer.GetMappedPort(addrWithoutPort, port); err != nil {
+			log.Printf("cant't get real port: %s\n", err.Error())
+			return false
+		} else {
+			addr = fmt.Sprintf("%s:%d", "localhost", mappedPort)
+		}
+
+		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return false
+		}
+		defer func() {
+			_ = conn.Close()
+		}()
+
+		client := protos.NewRouterServiceClient(conn)
+		ctx, cancel := context.WithTimeout(context.Background(), checkCoordinatorTimeout)
+		defer cancel()
+		log.Printf("try send command ListRouters to %s\n", addr)
+		if _, err = client.ListRouters(ctx, nil); err == nil {
+			log.Printf("got list routers from %s: successfully", addr)
+		} else {
+			log.Printf("can't get list routers. error: %s", err.Error())
+		}
+		return err == nil
+	}
+}
+
+func (tctx *testContext) stepCoordinatorShouldTakeControl(leader string) error {
+	retryRes := testutil.Retry(tctx.checkCoordinatorInQDBFunc(leader), time.Minute, time.Second)
+	if !retryRes {
+		return fmt.Errorf("timed out waiting for \"%s\" to take control", leader)
+	}
+	return nil
+}
+
 // nolint: unused
 func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	tctx, err := newTestContext(t)
@@ -1272,6 +1288,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
 	s.Step(`^I wait for host "([^"]*)" to respond$`, tctx.stepWaitPostgresqlToRespond)
+	s.Step(`^I wait for coordinator "([^"]*)" to take control$`, tctx.stepCoordinatorShouldTakeControl)
 
 	// variable manipulation
 	s.Step(`^we save response row "([^"]*)" column "([^"]*)"$`, tctx.stepSaveResponseBodyAtPathAsJSON)
