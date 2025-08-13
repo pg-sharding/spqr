@@ -499,7 +499,6 @@ terraform
 testdb
 testutil
 texpr
-TEXTOID
 textoid
 timeb
 tlsconfig
