@@ -36,17 +36,6 @@ func getC() (net.Conn, error) {
 	return net.Dial(proto, addr)
 }
 
-// nolint
-func readCnt(fr *pgproto3.Frontend, count int) error {
-	for range count {
-		if _, err := fr.Receive(); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func waitRFQ(fr *pgproto3.Frontend) error {
 	for {
 		if msg, err := fr.Receive(); err != nil {

@@ -16,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type LocalInstanceMetadataMgr struct {
@@ -337,7 +338,7 @@ func (lc *LocalInstanceMetadataMgr) NextRange(ctx context.Context, seqName strin
 	if coordAddr == "" {
 		return lc.Coordinator.QDB().NextRange(ctx, seqName, rangeSize)
 	}
-	conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all
+	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +359,7 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 	if coordAddr == "" {
 		return lc.Coordinator.QDB().CurrVal(ctx, seqName)
 	}
-	conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all
+	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return -1, err
 	}
