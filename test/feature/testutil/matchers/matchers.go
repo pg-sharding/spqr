@@ -46,7 +46,7 @@ func RegexpMatcher(actual string, expected string) error {
 	return nil
 }
 
-func jsonContains(a, e interface{}, path []string, reStrCmp bool) []string {
+func jsonContains(a, e any, path []string, reStrCmp bool) []string {
 	av := reflect.ValueOf(a)
 	ev := reflect.ValueOf(e)
 	if (a == nil && e != nil) || (a != nil && e == nil) {
@@ -60,11 +60,11 @@ func jsonContains(a, e interface{}, path []string, reStrCmp bool) []string {
 	}
 	switch ev.Kind() {
 	case reflect.Map:
-		em, ok := e.(map[string]interface{})
+		em, ok := e.(map[string]any)
 		if !ok {
 			panic(fmt.Sprintf("unexpected expected JSON datatype %s at path %s", reflect.TypeOf(e), path))
 		}
-		am, ok := a.(map[string]interface{})
+		am, ok := a.(map[string]any)
 		if !ok {
 			panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %s", reflect.TypeOf(a), path))
 		}
@@ -79,11 +79,11 @@ func jsonContains(a, e interface{}, path []string, reStrCmp bool) []string {
 			}
 		}
 	case reflect.Slice:
-		es, ok := e.([]interface{})
+		es, ok := e.([]any)
 		if !ok {
 			panic(fmt.Sprintf("unexpected expected JSON datatype %s at path %s", reflect.TypeOf(e), path))
 		}
-		as, ok := a.([]interface{})
+		as, ok := a.([]any)
 		if !ok {
 			panic(fmt.Sprintf("unexpected actual JSON datatype %s at path %s", reflect.TypeOf(a), path))
 		}
@@ -146,7 +146,7 @@ func jsonContains(a, e interface{}, path []string, reStrCmp bool) []string {
 // In other words actual value should be superset of expected
 // See tests for more examples
 func JSONMatcher(actual string, expected string) error {
-	var a, e interface{}
+	var a, e any
 	if err := json.Unmarshal([]byte(actual), &a); err != nil {
 		return fmt.Errorf("actual value is not valid json: %s", err)
 	}
@@ -163,7 +163,7 @@ func JSONMatcher(actual string, expected string) error {
 // JSONExactlyMatcher checks that actual and expected JSON represents
 // exactly the same data structure
 func JSONExactlyMatcher(actual string, expected string) error {
-	var a, e interface{}
+	var a, e any
 	if err := json.Unmarshal([]byte(actual), &a); err != nil {
 		return fmt.Errorf("actual value is not valid json: %s", err)
 	}
@@ -178,7 +178,7 @@ func JSONExactlyMatcher(actual string, expected string) error {
 
 // JSONRegexpMatcher works like JSONMatcher, but checks strings as regexp
 func JSONRegexpMatcher(actual string, expected string) error {
-	var a, e interface{}
+	var a, e any
 	if err := json.Unmarshal([]byte(actual), &a); err != nil {
 		return fmt.Errorf("actual value is not valid json: %s", err)
 	}

@@ -9,7 +9,7 @@ import (
 
 // GetPointer do the same thing like fmt.Sprintf("%p", &num) but fast
 // GetPointer returns the memory address of the given value as an unsigned integer.
-func GetPointer(value interface{}) uint {
+func GetPointer(value any) uint {
 	ptr := reflect.ValueOf(value).Pointer()
 	uintPtr := uintptr(ptr)
 	return uint(uintPtr)

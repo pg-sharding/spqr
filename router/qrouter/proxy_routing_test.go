@@ -1341,7 +1341,7 @@ func TestInsertOffsets(t *testing.T) {
 	})
 
 	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
-		LowerBound: []interface{}{int64(1)},
+		LowerBound: []any{int64(1)},
 
 		ShardID:      "sh1",
 		Distribution: distribution,
@@ -1352,7 +1352,7 @@ func TestInsertOffsets(t *testing.T) {
 	assert.NoError(err)
 
 	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
-		LowerBound: []interface{}{int64(11)},
+		LowerBound: []any{int64(11)},
 
 		ShardID:      "sh2",
 		Distribution: distribution,
@@ -1494,7 +1494,7 @@ func TestJoins(t *testing.T) {
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
-		LowerBound:   []interface{}{int64(11)},
+		LowerBound:   []any{int64(11)},
 		ColumnTypes:  []string{qdb.ColumnTypeInteger},
 	}).ToDB())
 
@@ -1504,7 +1504,7 @@ func TestJoins(t *testing.T) {
 		ShardID:      "sh2",
 		Distribution: distribution,
 		ID:           "id2",
-		LowerBound:   []interface{}{int64(11)},
+		LowerBound:   []any{int64(11)},
 		ColumnTypes:  []string{qdb.ColumnTypeInteger},
 	}).ToDB())
 
@@ -1638,7 +1638,7 @@ func TestUnnest(t *testing.T) {
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
-		LowerBound:   []interface{}{int64(11)},
+		LowerBound:   []any{int64(11)},
 		ColumnTypes:  []string{qdb.ColumnTypeInteger},
 	}).ToDB())
 
@@ -1648,7 +1648,7 @@ func TestUnnest(t *testing.T) {
 		ShardID:      "sh2",
 		Distribution: distribution,
 		ID:           "id2",
-		LowerBound:   []interface{}{int64(11)},
+		LowerBound:   []any{int64(11)},
 		ColumnTypes:  []string{qdb.ColumnTypeInteger},
 	}).ToDB())
 
@@ -1734,7 +1734,7 @@ func TestCopySingleShard(t *testing.T) {
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
-		LowerBound:   []interface{}{int64(1)},
+		LowerBound:   []any{int64(1)},
 
 		ColumnTypes: []string{qdb.ColumnTypeInteger},
 	}).ToDB())
@@ -1745,7 +1745,7 @@ func TestCopySingleShard(t *testing.T) {
 		ShardID:      "sh2",
 		Distribution: distribution,
 		ID:           "id2",
-		LowerBound:   []interface{}{int64(11)},
+		LowerBound:   []any{int64(11)},
 
 		ColumnTypes: []string{qdb.ColumnTypeInteger},
 	}).ToDB())
@@ -1818,7 +1818,7 @@ func TestCopyMultiShard(t *testing.T) {
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
-		LowerBound:   []interface{}{int64(1)},
+		LowerBound:   []any{int64(1)},
 
 		ColumnTypes: []string{qdb.ColumnTypeInteger},
 	}).ToDB())
@@ -1829,7 +1829,7 @@ func TestCopyMultiShard(t *testing.T) {
 		ShardID:      "sh2",
 		Distribution: distribution,
 		ID:           "id2",
-		LowerBound:   []interface{}{int64(11)},
+		LowerBound:   []any{int64(11)},
 
 		ColumnTypes: []string{qdb.ColumnTypeInteger},
 	}).ToDB())
@@ -2249,7 +2249,7 @@ LIMIT 1000
 		// 				ID:           "id1",
 		// 				ShardID:      "sh1",
 		// 				Distribution: distribution.ID,
-		// 				LowerBound:   []interface{}{"00000000-0000-0000-0000-000000000000"},
+		// 				LowerBound:   []any{"00000000-0000-0000-0000-000000000000"},
 		// 				ColumnTypes:  []string{qdb.ColumnTypeVarchar},
 		// 			},
 		// 		},
@@ -2394,7 +2394,7 @@ func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "krid1",
-		LowerBound:   []interface{}{int64(11)},
+		LowerBound:   []any{int64(11)},
 		ColumnTypes:  []string{qdb.ColumnTypeInteger},
 	}).ToDB())
 	if err != nil {

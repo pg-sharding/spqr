@@ -26,7 +26,7 @@ func TestKeyRange(t *testing.T) {
 			ID:           "kr1",
 			ShardID:      "sh1",
 			Distribution: "ds1",
-			LowerBound:   []interface{}{10},
+			LowerBound:   []any{10},
 
 			ColumnTypes: []string{qdb.ColumnTypeInteger},
 		}))
@@ -37,7 +37,7 @@ func TestKeyRange(t *testing.T) {
 				ID:           "kr1",
 				ShardID:      "sh1",
 				Distribution: "ds1",
-				LowerBound:   []interface{}{10},
+				LowerBound:   []any{10},
 
 				ColumnTypes: []string{qdb.ColumnTypeInteger},
 			}))

@@ -15,7 +15,7 @@ type ctxMatcher struct {
 	ctx context.Context
 }
 
-func (m *ctxMatcher) Matches(x interface{}) bool {
+func (m *ctxMatcher) Matches(x any) bool {
 	newCtx, ok := x.(context.Context)
 	if !ok {
 		return false

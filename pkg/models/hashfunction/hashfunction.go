@@ -25,7 +25,7 @@ var (
 	errUnknownColumnType = func(ctype string, hf HashFunctionType) error {
 		return fmt.Errorf("unknown column type '%s' for hash function '%d'", ctype, hf)
 	}
-	errUnknownValueType = func(v interface{}, hf HashFunctionType) error {
+	errUnknownValueType = func(v any, hf HashFunctionType) error {
 		return fmt.Errorf("unknown type of value that the hash will be calculated from: %T for %d hash type", v, hf)
 	}
 )
