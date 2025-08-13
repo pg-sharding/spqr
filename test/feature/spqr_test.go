@@ -720,7 +720,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 	}
 	// need to make sure another coordinator took control
 	retryRes := testutil.Retry(func() bool {
-		_, output, err := tctx.composer.RunCommand(spqrQdbHost, "etcdctl get coordinator_exists", time.Second)
+		_, output, err := tctx.composer.RunCommandJSON(spqrQdbHost, []string{"/usr/local/bin/etcdctl", "get", "coordinator_exists"}, time.Second)
 		if err != nil {
 			return false
 		}
