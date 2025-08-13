@@ -7,8 +7,7 @@ import (
 // Tokenizer is the struct used to generate SQL
 // tokens for the parser.
 type Tokenizer struct {
-	s   string
-	pos int
+	s string
 
 	ParseTree Statement
 	LastError string
