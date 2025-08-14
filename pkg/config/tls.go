@@ -36,7 +36,7 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 	}
 
 	if (c.CertFile != "" && c.KeyFile == "") || (c.CertFile == "" && c.KeyFile != "") {
-		return nil, fmt.Errorf(`both "cert_file" and "key_file" are required`)
+		return nil, fmt.Errorf(`SPQR: both "cert_file" and "key_file" are required`)
 	}
 
 	tlsConfig := &tls.Config{}
@@ -101,22 +101,14 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 	case "verify-full":
 		tlsConfig.ServerName = host
 	default:
-		return nil, fmt.Errorf("sslmode is invalid")
+		return nil, fmt.Errorf("SPQR: sslmode is invalid")
 	}
 
 	if c.RootCertFile != "" {
-		caCertPool := x509.NewCertPool()
-
-		caPath := c.RootCertFile
-		caCert, err := os.ReadFile(caPath)
+		caCertPool, err := c.validateRootCA()
 		if err != nil {
-			return nil, fmt.Errorf("unable to read CA file: %w", err)
+			return nil, err
 		}
-
-		if !caCertPool.AppendCertsFromPEM(caCert) {
-			return nil, fmt.Errorf("unable to add CA to cert pool")
-		}
-
 		tlsConfig.RootCAs = caCertPool
 		tlsConfig.ClientCAs = caCertPool
 	}
@@ -125,13 +117,71 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 		spqrlog.Zero.Debug().
 			Str("cert_file", c.CertFile).
 			Str("key_file", c.KeyFile).
-			Msg("loading tls")
-		cert, err := tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
+			Msg("loading TLS certificates")
+		cert, err := c.validateCertificates()
 		if err != nil {
-			return nil, fmt.Errorf("unable to load X509 key pair: %w", err)
+			return nil, err
 		}
-		tlsConfig.Certificates = []tls.Certificate{cert}
+		if cert != nil {
+			tlsConfig.Certificates = []tls.Certificate{*cert}
+		}
 	}
 
 	return tlsConfig, nil
+}
+
+// validateCertificates validates certificate and key pair, returns the certificate
+func (c *TLSConfig) validateCertificates() (*tls.Certificate, error) {
+	if c.CertFile == "" || c.KeyFile == "" {
+		return nil, nil
+	}
+	cert, err := tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
+	if err != nil {
+		return nil, fmt.Errorf("SPQR: unable to load X509 key pair: %w", err)
+	}
+	return &cert, nil
+}
+
+// validateRootCA validates root CA certificate, returns the cert pool
+func (c *TLSConfig) validateRootCA() (*x509.CertPool, error) {
+	if c.RootCertFile == "" {
+		return nil, nil
+	}
+
+	caCert, err := os.ReadFile(c.RootCertFile)
+	if err != nil {
+		return nil, fmt.Errorf("SPQR: unable to read CA file: %w", err)
+	}
+
+	caCertPool := x509.NewCertPool()
+	if !caCertPool.AppendCertsFromPEM(caCert) {
+		return nil, fmt.Errorf("SPQR: unable to add CA to cert pool")
+	}
+
+	return caCertPool, nil
+}
+
+// ReloadCertificates validates new certificates without breaking existing connections
+func (c *TLSConfig) ReloadCertificates() error {
+	if c == nil || (c.CertFile == "" && c.KeyFile == "") {
+		return nil
+	}
+
+	// Validate certificates using shared logic
+	if _, err := c.validateCertificates(); err != nil {
+		spqrlog.Zero.Error().Err(err).Str("cert_file", c.CertFile).Str("key_file", c.KeyFile).
+			Msg("TLS certificate reload failed - keeping existing certificates")
+		return fmt.Errorf("SPQR: %w", err)
+	}
+
+	// Validate root CA using shared logic
+	if _, err := c.validateRootCA(); err != nil {
+		spqrlog.Zero.Error().Err(err).Str("root_cert_file", c.RootCertFile).
+			Msg("Root CA reload failed - keeping existing CA")
+		return fmt.Errorf("SPQR: %w", err)
+	}
+
+	spqrlog.Zero.Info().Str("cert_file", c.CertFile).Str("key_file", c.KeyFile).
+		Str("root_cert_file", c.RootCertFile).Msg("TLS certificates reloaded successfully")
+	return nil
 }
