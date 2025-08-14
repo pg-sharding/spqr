@@ -46,20 +46,27 @@ Feature: Config reloading works
     """
 
   Scenario: TLS certificate reload works
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_tls.yaml
-    """
     Given cluster is up and running
-    # Create initial TLS certificates
+    # Create TLS certificates and update router config
     When I run command on host "router"
     """
     mkdir -p /tmp/tls
     openssl req -x509 -newkey rsa:2048 -keyout /tmp/tls/server.key -out /tmp/tls/server.crt -days 365 -nodes -subj "/CN=localhost"
     chmod 600 /tmp/tls/server.key
+    # Backup original config and add TLS section
+    cp $ROUTER_CONFIG $ROUTER_CONFIG.backup
+    cat >> $ROUTER_CONFIG << EOF
+frontend_tls:
+  sslmode: require
+  cert_file: /tmp/tls/server.crt
+  key_file: /tmp/tls/server.key
+EOF
+    # Restart router to apply TLS config
+    ps uax | grep [s]pqr-router | grep -v /bin/sh | awk '{print $2}' | xargs kill -HUP
+    sleep 3
     """
     Then command return code should be "0"
-    # Test initial connection works
+    # Test that connection still works
     When I run SQL on host "router"
     """
     SELECT 1
@@ -81,12 +88,6 @@ Feature: Config reloading works
     sleep 2
     """
     Then command return code should be "0"
-    # Verify reload was successful by checking logs
-    When I run command on host "router"
-    """
-    grep -i "TLS certificates reloaded successfully" /var/log/spqr/router.log || grep -i "TLS certificates reloaded successfully" /tmp/spqr-router.log || echo "Certificate reload completed"
-    """
-    Then command return code should be "0"
     # Test that new connections still work after TLS reload
     When I run SQL on host "router"
     """
@@ -99,17 +100,24 @@ Feature: Config reloading works
     """
 
   Scenario: TLS certificate reload handles invalid certificates gracefully
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_tls.yaml
-    """
     Given cluster is up and running
-    # Create initial valid TLS certificates
+    # Create initial valid TLS certificates and configure TLS
     When I run command on host "router"
     """
     mkdir -p /tmp/tls_invalid
     openssl req -x509 -newkey rsa:2048 -keyout /tmp/tls_invalid/server.key -out /tmp/tls_invalid/server.crt -days 365 -nodes -subj "/CN=localhost"
     chmod 600 /tmp/tls_invalid/server.key
+    # Backup and update config
+    cp $ROUTER_CONFIG $ROUTER_CONFIG.backup2
+    cat >> $ROUTER_CONFIG << EOF
+frontend_tls:
+  sslmode: require
+  cert_file: /tmp/tls_invalid/server.crt
+  key_file: /tmp/tls_invalid/server.key
+EOF
+    # Apply TLS config
+    ps uax | grep [s]pqr-router | grep -v /bin/sh | awk '{print $2}' | xargs kill -HUP
+    sleep 3
     """
     Then command return code should be "0"
     # Test initial connection works
@@ -118,7 +126,7 @@ Feature: Config reloading works
     SELECT 1
     """
     Then command return code should be "0"
-    # Create invalid certificate (key mismatch)
+    # Create invalid certificate (corrupted content) and trigger reload
     When I run command on host "router"
     """
     echo "INVALID_CERTIFICATE_CONTENT" > /tmp/tls_invalid/server.crt
@@ -126,13 +134,7 @@ Feature: Config reloading works
     sleep 2
     """
     Then command return code should be "0"
-    # Verify reload failed but service continues (should find error in logs)
-    When I run command on host "router"
-    """
-    grep -i "TLS certificate reload failed" /var/log/spqr/router.log || grep -i "TLS certificate reload failed" /tmp/spqr-router.log || echo "Certificate reload failed as expected"
-    """
-    Then command return code should be "0"
-    # Test that connections still work with old certificates
+    # Test that connections still work with old certificates (graceful failure)
     When I run SQL on host "router"
     """
     SELECT 3
