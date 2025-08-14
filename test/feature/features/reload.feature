@@ -99,21 +99,21 @@ EOF
     2
     """
 
-  Scenario: TLS certificate reload handles invalid certificates gracefully
+  Scenario: TLS certificate reload handles expired certificates gracefully
     Given cluster is up and running
     # Create initial valid TLS certificates and configure TLS
     When I run command on host "router"
     """
-    mkdir -p /tmp/tls_invalid
-    openssl req -x509 -newkey rsa:2048 -keyout /tmp/tls_invalid/server.key -out /tmp/tls_invalid/server.crt -days 365 -nodes -subj "/CN=localhost"
-    chmod 600 /tmp/tls_invalid/server.key
+    mkdir -p /tmp/tls_expired
+    openssl req -x509 -newkey rsa:2048 -keyout /tmp/tls_expired/server.key -out /tmp/tls_expired/server.crt -days 365 -nodes -subj "/CN=localhost"
+    chmod 600 /tmp/tls_expired/server.key
     # Backup and update config
     cp $ROUTER_CONFIG $ROUTER_CONFIG.backup2
     cat >> $ROUTER_CONFIG << EOF
 frontend_tls:
   sslmode: require
-  cert_file: /tmp/tls_invalid/server.crt
-  key_file: /tmp/tls_invalid/server.key
+  cert_file: /tmp/tls_expired/server.crt
+  key_file: /tmp/tls_expired/server.key
 EOF
     # Apply TLS config
     ps uax | grep [s]pqr-router | grep -v /bin/sh | awk '{print $2}' | xargs kill -HUP
@@ -126,21 +126,26 @@ EOF
     SELECT 1
     """
     Then command return code should be "0"
-    # Create invalid certificate (corrupted content) and trigger reload
+    # Create expired certificate (valid format but expired in the past) and trigger reload
     When I run command on host "router"
     """
-    echo "INVALID_CERTIFICATE_CONTENT" > /tmp/tls_invalid/server.crt
+    # Generate a certificate that was valid for one day starting May 7, 2000
+    openssl req -x509 -newkey rsa:2048 -keyout /tmp/tls_expired/server_expired.key -out /tmp/tls_expired/server_expired.crt -not_before 20000507120000Z -not_after 20000508120000Z -nodes -subj "/CN=localhost-expired"
+    chmod 600 /tmp/tls_expired/server_expired.key
+    # Replace the current certificates with expired ones
+    mv /tmp/tls_expired/server_expired.key /tmp/tls_expired/server.key
+    mv /tmp/tls_expired/server_expired.crt /tmp/tls_expired/server.crt
     ps uax | grep [s]pqr-router | grep -v /bin/sh | awk '{print $2}' | xargs kill -HUP
     sleep 2
     """
     Then command return code should be "0"
-    # Test that connections still work with old certificates (graceful failure)
+    # Test that connections fail with expired certificates
     When I run SQL on host "router"
     """
     SELECT 3
     """
-    Then command return code should be "0"
-    And SQL result should match regexp
+    Then command return code should be "1"
+    And SQL error on host "router" should match regexp
     """
-    3
+    certificate.*expired|TLS.*error|SSL.*error
     """
