@@ -284,7 +284,6 @@ netconn
 Newf
 Nofity
 noid
-nolint
 nonexistentshard
 NOSHARD
 Noticef
