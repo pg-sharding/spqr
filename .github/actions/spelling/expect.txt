@@ -200,6 +200,7 @@ kcache
 kdb
 kdc
 kek
+keyout
 keyr
 keyrange
 keyrangemgr
