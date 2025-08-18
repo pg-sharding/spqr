@@ -12,17 +12,17 @@ Feature: TLS connectivity
 
   Scenario: Connect with TLS enabled
     When I connect to "router" with TLS enabled
-    And I execute SQL on "router"
+    And I execute SQL on host "router"
     """
     CREATE TABLE test_tls(id INT);
     """
     Then command return code should be "0"
-    When I execute SQL on "router" 
+    When I execute SQL on host "router" 
     """
     INSERT INTO test_tls VALUES (1);
     """
     Then command return code should be "0"
-    When I execute SQL on "router"
+    When I execute SQL on host "router"
     """
     SELECT * FROM test_tls;
     """
