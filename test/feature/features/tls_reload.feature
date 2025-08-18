@@ -28,19 +28,19 @@ Feature: TLS connectivity
     # Create TLS certificates and update the router config
     When I run command on host "router"
     """
-    mkdir -p /tmp/tls
+    mkdir -p /tmp/tls_expired
     # Generate an expired certificate
     openssl req -x509 -newkey rsa:2048 -keyout /tmp/tls_expired/server_expired.key -out /tmp/tls_expired/server_expired.crt -not_before 20000507120000Z -not_after 20000508120000Z -nodes -subj "/CN=localhost-expired"
     chmod 600 /tmp/tls_expired/server_expired.key
     # Move the expired certificate to the expected location
-    mv /tmp/tls_expired/server_expired.key /etc/spqr/ssl/server
+    mv /tmp/tls_expired/server_expired.key /etc/spqr/ssl/server.key
     mv /tmp/tls_expired/server_expired.crt /etc/spqr/ssl/server.crt
     # Reload router to apply TLS config
     ps uax | grep [s]pqr-router | grep -v /bin/sh | awk '{print $2}' | xargs kill -HUP
     sleep 3
     """
     Then command return code should be "0"
-    # Test that connection still works
+    When I connect to "router" with TLS enabled
     When I run SQL on host "router"
     """
     SELECT 2
