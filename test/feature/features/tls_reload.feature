@@ -35,9 +35,13 @@ Feature: TLS connectivity
     # Move the expired certificate to the expected location
     mv /tmp/tls_expired/server_expired.key /etc/spqr/ssl/server.key
     mv /tmp/tls_expired/server_expired.crt /etc/spqr/ssl/server.crt
+    """
+    Then command return code should be "0"
     # Reload router to apply TLS config
-    ps uax | grep [s]pqr-router | grep -v /bin/sh | awk '{print $2}' | xargs kill -HUP
-    sleep 3
+    When I run command on host "router"
+    """
+    pkill -HUP spqr-router
+    sleep 2
     """
     Then command return code should be "0"
     When I connect to "router" with TLS enabled
@@ -62,8 +66,12 @@ Feature: TLS connectivity
     """
     mv /tmp/tls/server_new.key /etc/spqr/ssl/server.key
     mv /tmp/tls/server_new.crt /etc/spqr/ssl/server.crt
+    """
+    Then command return code should be "0"
     # Reload the router to apply new TLS certificates
-    ps uax | grep [s]pqr-router | grep -v /bin/sh | awk '{print $2}' | xargs kill -HUP
+    When I run command on host "router"
+    """
+    pkill -HUP spqr-router
     sleep 2
     """
     Then command return code should be "0"
@@ -76,5 +84,5 @@ Feature: TLS connectivity
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    1
+    3
     """

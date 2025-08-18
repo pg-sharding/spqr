@@ -339,6 +339,13 @@ var runCmd = &cobra.Command{
 						spqrlog.Zero.Error().Err(err).Msg("")
 					}
 					spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLogging)
+
+					// reload TLS certificates
+					if config.RouterConfig().FrontendTLS != nil {
+						if err := config.RouterConfig().FrontendTLS.ReloadCertificates(); err != nil {
+							spqrlog.Zero.Error().Err(err).Msg("failed to reload TLS certificates")
+						}
+					}
 				case syscall.SIGINT, syscall.SIGTERM:
 					if cpuProfile {
 						// write profile
