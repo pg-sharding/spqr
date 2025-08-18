@@ -37,13 +37,10 @@ Feature: TLS connectivity
     mv /tmp/tls_expired/server_expired.crt /etc/spqr/ssl/server.crt
     """
     Then command return code should be "0"
-    # Reload router to apply TLS config
-    When I run command on host "router"
-    """
-    pkill -HUP spqr-router
-    sleep 2
-    """
-    Then command return code should be "0"
+    # Restart the router to apply TLS config
+    # If you try to reload it, it will not work because the certificate is expired
+    When host "router" is stopped
+    And host "router" is started
     When I connect to "router" with TLS enabled
     When I run SQL on host "router"
     """
