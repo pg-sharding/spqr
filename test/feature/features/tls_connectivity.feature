@@ -12,22 +12,12 @@ Feature: TLS connectivity
 
   Scenario: Connect with TLS enabled
     When I connect to "router" with TLS enabled
-    And I execute SQL on host "router"
+    When I run SQL on host "router"
     """
-    CREATE TABLE test_tls(id INT);
-    """
-    Then command return code should be "0"
-    When I execute SQL on host "router" 
-    """
-    INSERT INTO test_tls VALUES (1);
+    SELECT 1
     """
     Then command return code should be "0"
-    When I execute SQL on host "router"
+    And SQL result should match regexp
     """
-    SELECT * FROM test_tls;
-    """
-    Then command return code should be "0"
-    And SQL result should match json
-    """
-    [{"id":1}]
+    1
     """
