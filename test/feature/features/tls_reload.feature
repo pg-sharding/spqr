@@ -29,8 +29,8 @@ Feature: TLS connectivity
     When I run command on host "router"
     """
     mkdir -p /tmp/tls_expired
-    # Generate an expired certificate
-    openssl req -x509 -newkey rsa:2048 -keyout /tmp/tls_expired/server_expired.key -out /tmp/tls_expired/server_expired.crt -not_before 20000507120000Z -not_after 20000508120000Z -nodes -subj "/CN=localhost-expired"
+    # Generate an expired certificate (expired yesterday)
+    openssl req -x509 -newkey rsa:2048 -keyout /tmp/tls_expired/server_expired.key -out /tmp/tls_expired/server_expired.crt -days -1 -nodes -subj "/CN=localhost-expired"
     chmod 600 /tmp/tls_expired/server_expired.key
     # Move the expired certificate to the expected location
     mv /tmp/tls_expired/server_expired.key /etc/spqr/ssl/server.key
@@ -38,7 +38,6 @@ Feature: TLS connectivity
     """
     Then command return code should be "0"
     # Restart the router to apply TLS config
-    # If you try to reload it, it will not work because the certificate is expired
     When host "router" is stopped
     And host "router" is started
     When I connect to "router" with TLS enabled
@@ -54,6 +53,7 @@ Feature: TLS connectivity
     # Create a new valid TLS certificates
     When I run command on host "router"
     """
+    mkdir -p /tmp/tls
     openssl req -x509 -newkey rsa:2048 -keyout /tmp/tls/server_new.key -out /tmp/tls/server_new.crt -days 365 -nodes -subj "/CN=localhost-new"
     chmod 600 /tmp/tls/server_new.key
     """
@@ -83,3 +83,4 @@ Feature: TLS connectivity
     """
     3
     """
+
