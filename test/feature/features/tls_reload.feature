@@ -30,7 +30,7 @@ Feature: TLS connectivity
     """
     mkdir -p /tmp/tls_expired
     # Generate an expired certificate (expired yesterday)
-    openssl req -x509 -newkey rsa:2048 -keyout /tmp/tls_expired/server_expired.key -out /tmp/tls_expired/server_expired.crt -days -1 -nodes -subj "/CN=localhost-expired"
+    openssl req -x509 -newkey rsa:2048 -keyout /tmp/tls_expired/server_expired.key -out /tmp/tls_expired/server_expired.crt -days 1 -nodes -subj "/CN=localhost-expired"
     chmod 600 /tmp/tls_expired/server_expired.key
     # Move the expired certificate to the expected location
     mv /tmp/tls_expired/server_expired.key /etc/spqr/ssl/server.key
