@@ -236,7 +236,7 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 	}
 	/* init default_target_session_attrs as read-write if nothing else specified */
 	if rcfg.Qr.DefaultTSA == "" {
-		rcfg.Qr.DefaultTSA = TargetSessionAttrsSmartRW
+		rcfg.Qr.DefaultTSA = TargetSessionAttrsRW
 	}
 
 	configBytes, err := json.MarshalIndent(rcfg, "", "  ")
