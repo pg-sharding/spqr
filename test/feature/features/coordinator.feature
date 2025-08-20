@@ -491,18 +491,9 @@ Feature: Coordinator test
     ]
     """
 
-    When I run SQL on host "coordinator"
+    When I run SQL on host "router-admin"
     """
-    ADD SHARD sh3 WITH HOSTS "yandex:6432";
-    """
-    Then command return code should be "1"
-    And SQL error on host "coordinator" should match regexp
-    """
-    shard with id sh3 already exist
-    """
-    When I run SQL on host "coordinator"
-    """
-    SHOW hosts;
+    SHOW shards;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -577,6 +568,19 @@ Feature: Coordinator test
       }
     ]
     """
+
+    When I run SQL on host "router-admin"
+    """
+    SHOW shards;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "shard":"sh2"
+      }
+    ]
 
   Scenario: Router is down
     #
