@@ -2219,7 +2219,32 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 
 // TODO : unit tests
 func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
-	return qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.RawHosts))
+	if err := qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.RawHosts)); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		c := proto.NewShardServiceClient(cc)
+		_, err := c.AddDataShard(ctx, &proto.AddShardRequest{
+			Shard: topology.DataShardToProto(shard),
+		})
+		return err
+	})
+}
+
+// TODO : unit tests
+func (qc *ClusteredCoordinator) DropShard(ctx context.Context, shardId string) error {
+	if err := qc.db.DropShard(ctx, shardId); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		c := proto.NewShardServiceClient(cc)
+		_, err := c.DropShard(ctx, &proto.DropShardRequest{
+			Id: shardId,
+		})
+		return err
+	})
 }
 
 func (qc *ClusteredCoordinator) AddWorldShard(_ context.Context, _ *topology.DataShard) error {

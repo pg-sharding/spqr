@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	meta_transaction "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -28,6 +29,26 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 			spqrlog.Zero.Debug().Err(err).Msg("failed to close etcd client")
 		}
 	}()
+
+	/* Re-initialize shards from config with shards from QDB  */
+	currentShards, err := r.Console().Mgr().ListShards(ctx)
+	if err != nil {
+		return err
+	}
+	for _, sh := range currentShards {
+		if err := r.Console().Mgr().DropShard(ctx, sh.ID); err != nil {
+			return err
+		}
+	}
+	shards, err := etcdConn.ListShards(ctx)
+	if err != nil {
+		return err
+	}
+	for _, sh := range shards {
+		if err := r.Console().Mgr().AddDataShard(ctx, topology.DataShardFromDB(sh)); err != nil {
+			return err
+		}
+	}
 
 	/* Initialize distributions */
 	ds, err := etcdConn.ListDistributions(ctx)
