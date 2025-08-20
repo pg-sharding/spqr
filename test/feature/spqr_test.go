@@ -318,7 +318,7 @@ func (tctx *testContext) connectorWithCredentialsAndTLS(username string, passwor
 	connCfg.RuntimeParams["client_encoding"] = "UTF8"
 	connCfg.RuntimeParams["standard_conforming_strings"] = "on"
 	// Disable certificate verification for testing with self-signed certificates
-	connCfg.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	// connCfg.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	connStr := stdlib.RegisterConnConfig(connCfg)
 	db, err := sqlx.Open("pgx", connStr)
 	if err != nil {
