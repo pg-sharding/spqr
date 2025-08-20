@@ -464,6 +464,24 @@ Feature: Coordinator test
       }
     ]
     """
+
+    When I run SQL on host "router-admin"
+    """
+    SHOW shards;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "shard":"sh1"
+      },
+      {
+        "shard":"sh2"
+      }
+    ]
+    """
+
     When I run SQL on host "coordinator"
     """
     DROP SHARD sh1 CASCADE;
@@ -482,6 +500,19 @@ Feature: Coordinator test
       }
     ]
     """
+
+    When I run SQL on host "router-admin"
+    """
+    SHOW shards;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "shard":"sh2"
+      }
+    ]
 
   Scenario: Router is down
     #
