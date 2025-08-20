@@ -132,8 +132,6 @@ gcflags
 getconn
 gettime
 gitlab
-gocritic
-gocyclo
 godog
 gofmt
 gofmtcheck
@@ -165,6 +163,7 @@ hotspots
 hst
 HTAP
 iana
+IConnect
 idi
 idj
 IDR
@@ -201,6 +200,7 @@ kcache
 kdb
 kdc
 kek
+keyout
 keyr
 keyrange
 keyrangemgr
@@ -532,7 +532,6 @@ umi
 unconfigured
 underyling
 unmarshalling
-unparam
 unrecognised
 unregisters
 unregistration

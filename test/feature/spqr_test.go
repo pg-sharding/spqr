@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -252,6 +253,19 @@ func (tctx *testContext) connectPostgresqlWithCredentials(username string, passw
 	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
 }
 
+func (tctx *testContext) connectPostgresqlWithCredentialsAndTLS(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
+	ping := func(db *sqlx.DB) bool {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		err := db.PingContext(ctx)
+		if err != nil {
+			log.Printf("failed to ping postgres with TLS at %s: %s", addr, err)
+		}
+		return err == nil
+	}
+	return tctx.connectorWithCredentialsAndTLS(username, password, addr, dbName, timeout, ping)
+}
+
 func (tctx *testContext) connectCoordinatorWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
 	ping := func(db *sqlx.DB) bool {
 		_, err := db.Exec("SHOW routers")
@@ -280,6 +294,31 @@ func (tctx *testContext) connectorWithCredentials(username string, password stri
 	connCfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 	connCfg.RuntimeParams["client_encoding"] = "UTF8"
 	connCfg.RuntimeParams["standard_conforming_strings"] = "on"
+	connStr := stdlib.RegisterConnConfig(connCfg)
+	db, err := sqlx.Open("pgx", connStr)
+	if err != nil {
+		return nil, err
+	}
+	success := false
+	// sql is lazy in go, so we need ping db
+	testutil.Retry(func() bool {
+		success = ping(db)
+		return success
+	}, timeout, 2*time.Second)
+	if !success {
+		return nil, fmt.Errorf("postgres does not respond")
+	}
+	return db, nil
+}
+
+func (tctx *testContext) connectorWithCredentialsAndTLS(username string, password string, addr string, dbName string, timeout time.Duration, ping func(db *sqlx.DB) bool) (*sqlx.DB, error) {
+	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=require", username, password, addr, dbName)
+	connCfg, _ := pgx.ParseConfig(dsn)
+	connCfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	connCfg.RuntimeParams["client_encoding"] = "UTF8"
+	connCfg.RuntimeParams["standard_conforming_strings"] = "on"
+	// Disable certificate verification for testing with self-signed certificates
+	// connCfg.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	connStr := stdlib.RegisterConnConfig(connCfg)
 	db, err := sqlx.Open("pgx", connStr)
 	if err != nil {
@@ -602,6 +641,18 @@ func (tctx *testContext) stepClusterIsUpAndRunning() error {
 		tctx.userDbs[shardUser] = make(map[string]*sqlx.DB)
 	}
 
+	// Check if we're using a TLS-enabled router config by examining the config file path
+	routerUsesTLS := false
+	for _, env := range tctx.composerEnv {
+		if strings.HasPrefix(env, "ROUTER_CONFIG=") {
+			configPath := strings.TrimPrefix(env, "ROUTER_CONFIG=")
+			if configData, err := os.ReadFile(configPath); err == nil {
+				routerUsesTLS = strings.Contains(string(configData), "frontend_tls")
+			}
+			break
+		}
+	}
+
 	// check databases
 	for _, service := range tctx.composer.Services() {
 		if strings.HasPrefix(service, spqrShardName) {
@@ -624,7 +675,12 @@ func (tctx *testContext) stepClusterIsUpAndRunning() error {
 			if err != nil {
 				return fmt.Errorf("failed to get router addr %s: %s", service, err)
 			}
-			db, err := tctx.connectPostgresql(addr, shardUser, postgresqlInitialConnectTimeout)
+			var db *sqlx.DB
+			if routerUsesTLS {
+				db, err = tctx.connectPostgresqlWithCredentialsAndTLS(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
+			} else {
+				db, err = tctx.connectPostgresql(addr, shardUser, postgresqlInitialConnectTimeout)
+			}
 			if err != nil {
 				return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 			}
@@ -825,6 +881,28 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 	}
 
 	return fmt.Errorf("service %s was not found in docker composer", service)
+}
+
+func (tctx *testContext) stepIConnectWithTLS(service string) error {
+	if _, ok := tctx.userDbs[shardUser]; !ok {
+		tctx.userDbs[shardUser] = make(map[string]*sqlx.DB)
+	}
+
+	// check router with TLS
+	if strings.HasPrefix(service, spqrRouterName) {
+		addr, err := tctx.composer.GetAddr(service, spqrPort)
+		if err != nil {
+			return fmt.Errorf("failed to get router addr %s: %s", service, err)
+		}
+		db, err := tctx.connectPostgresqlWithCredentialsAndTLS(shardUser, shardPassword, addr, 10*postgresqlInitialConnectTimeout)
+		if err != nil {
+			return fmt.Errorf("failed to connect to SPQR router %s with TLS: %s", service, err)
+		}
+		tctx.userDbs[shardUser][service] = db
+		return nil
+	}
+
+	return fmt.Errorf("TLS connection not supported for service %s", service)
 }
 
 func (tctx *testContext) stepWaitPostgresqlToRespond(host string) error {
@@ -1264,6 +1342,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I run SQL on host "([^"]*)" with timeout "(\d+)" seconds$`, tctx.stepIRunSQLOnHostWithTimeout)
 	s.Step(`^I run SQL on host "([^"]*)" as user "([^"]*)"$`, tctx.stepIRunSQLOnHostAsUser)
 	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSql)
+	s.Step(`^I connect to "([^"]*)" with TLS enabled$`, tctx.stepIConnectWithTLS)
 	s.Step(`^I prepare SQL on host "([^"]*)"$`, tctx.stepIPrepareSQLOnHost)
 	s.Step(`^I run prepared SQL on host "([^"]*)"$`, tctx.stepIRunPreparedSQLOnHost)
 	s.Step(`^SQL result should match (\w+)$`, tctx.stepSQLResultShouldMatch)

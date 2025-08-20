@@ -120,6 +120,7 @@ services:
     volumes:
       - keytab:/keytab
       - ./conf/kdc/krb5.conf:/etc/krb5.conf
+      - ./certs:/etc/spqr/ssl
     networks:
       - feature_test_network
   router2:
@@ -156,6 +157,7 @@ services:
     volumes:
       - keytab:/keytab
       - ./conf/kdc/krb5.conf:/etc/krb5.conf
+      - ./certs:/etc/spqr/ssl
     networks:
       - feature_test_network
   coordinator:
