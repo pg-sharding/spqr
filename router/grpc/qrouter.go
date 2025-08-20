@@ -126,6 +126,10 @@ func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.A
 	return nil, nil
 }
 
+func (l *LocalQrouterServer) DropShard(ctx context.Context, request *protos.DropShardRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropShard(ctx, request.Id)
+}
+
 func (l *LocalQrouterServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
 	panic("LocalQrouterServer.AddWorldShard not implemented")
 }
