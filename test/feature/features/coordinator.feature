@@ -581,6 +581,7 @@ Feature: Coordinator test
         "shard":"sh2"
       }
     ]
+    """
 
   Scenario: Router is down
     #
