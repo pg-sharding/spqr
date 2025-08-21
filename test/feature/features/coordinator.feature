@@ -444,8 +444,8 @@ Feature: Coordinator test
   Scenario: Adding/dropping shards works
     When I run SQL on host "coordinator"
     """
-    ADD SHARD sh1 WITH HOSTS spqr_shard_1::6432;
-    ADD SHARD sh2 WITH HOSTS spqr_shard_2::6432;
+    ADD SHARD sh8 WITH HOSTS spqr_shard_1::6432;
+    ADD SHARD sh9 WITH HOSTS spqr_shard_2::6432;
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator"
@@ -513,6 +513,7 @@ Feature: Coordinator test
         "shard":"sh2"
       }
     ]
+    """
 
   Scenario: Router is down
     #

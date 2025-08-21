@@ -383,12 +383,12 @@ Feature: Redistribution test
   Scenario: REDISTRIBUTE KEY RANGE works with newly added shard
     When I execute SQL on host "coordinator"
     """
-    ADD SHARD sh3 WITH HOSTS 'postgresql://regress@spqr_shard_3:6432/regress';
+    ADD SHARD sh9 WITH HOSTS 'postgresql://regress@spqr_shard_3:6432/regress';
     """
     Then command return code should be "0"
     When I execute SQL on host "coordinator"
     """
-    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh9 FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
 
