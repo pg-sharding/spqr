@@ -258,7 +258,13 @@ var runCmd = &cobra.Command{
 			config.RouterConfig().Qr.EnhancedMultiShardProcessing = enhancedMultishardProcessing
 		}
 
-		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"))
+		shardMapping := config.RouterConfig().ShardMapping
+		if config.RouterConfig().UseCoordinatorInit {
+			// will be initialized below
+			shardMapping = map[string]*config.Shard{}
+		}
+
+		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"), shardMapping)
 		if err != nil {
 			return errors.Wrap(err, "router failed to start")
 		}

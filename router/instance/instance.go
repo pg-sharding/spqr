@@ -73,7 +73,7 @@ func (r *InstanceImpl) Initialize() bool {
 
 var _ RouterInstance = &InstanceImpl{}
 
-func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
+func NewRouter(ctx context.Context, ns string, shardMapping map[string]*config.Shard) (*InstanceImpl, error) {
 	var db *qdb.MemQDB
 	var err error
 
@@ -89,7 +89,7 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 		}
 	}
 
-	cache := cache.NewSchemaCache(config.RouterConfig().ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
+	cache := cache.NewSchemaCache(shardMapping, config.RouterConfig().SchemaCacheBackendRule)
 	lc := coord.NewLocalInstanceMetadataMgr(db, cache)
 
 	var notifier *sdnotifier.Notifier
@@ -114,7 +114,7 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	var identityMgr planner.IdentityRouterCache = planner.NewIdentityRouterCache(idRangeSize, &seqMngr)
 
 	qr, err := qrouter.NewQrouter(qtype,
-		config.RouterConfig().ShardMapping,
+		shardMapping,
 		lc,
 		&config.RouterConfig().Qr,
 		cache,
