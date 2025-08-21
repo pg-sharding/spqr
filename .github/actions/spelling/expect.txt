@@ -318,7 +318,6 @@ pgdata
 PGDATABASE
 pgdg
 pgexec
-pghashlib
 PGHOST
 pgi
 pgoption
@@ -448,6 +447,7 @@ spqrerror
 SPQRF
 spqrguard
 SPQRH
+spqrhash
 SPQRI
 SPQRJ
 SPQRK

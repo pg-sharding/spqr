@@ -418,7 +418,7 @@ func GetHashedColumn(col string, hash string) (string, error) {
 		// return fmt.Sprintf("hash_string(%s, 'city64')", col), nil
 		return "", spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "city hashing is not supported in coordinator operations")
 	case "murmur":
-		return fmt.Sprintf("(hash_string(%s, 'murmur3') + 2147483648)", col), nil
+		return fmt.Sprintf("spqrhash_murmur3(%s)", col), nil
 	default:
 		return "", spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "invalid hash function \"%s\"", hash)
 	}
