@@ -39,7 +39,7 @@ func TestGetHashedColumn(t *testing.T) {
 		{
 			col:      "a",
 			hash:     "murmur",
-			expected: "(hash_string(a, 'murmur3') + 2147483648)",
+			expected: "spqrhash_murmur3(a)",
 			err:      nil,
 		},
 		{
@@ -102,7 +102,7 @@ func TestGetDistributionKeyColumns(t *testing.T) {
 					{Column: "b", HashFunction: "ident"},
 				},
 			},
-			expected: []string{"(hash_string(a, 'murmur3') + 2147483648)", "b"},
+			expected: []string{"spqrhash_murmur3(a)", "b"},
 			err:      nil,
 		},
 		{

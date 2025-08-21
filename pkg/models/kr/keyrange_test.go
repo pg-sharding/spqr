@@ -117,7 +117,7 @@ func TestGetKRCondition(t *testing.T) {
 			krg:        &kr.KeyRange{ID: "kr1", LowerBound: []any{0}, ColumnTypes: []string{"varchar hashed"}},
 			upperBound: []any{1000},
 			prefix:     "",
-			expected:   "(hash_string(col1, 'murmur3') + 2147483648) >= 0 AND (hash_string(col1, 'murmur3') + 2147483648) < 1000",
+			expected:   "spqrhash_murmur3(col1) >= 0 AND spqrhash_murmur3(col1) < 1000",
 			err:        nil,
 		},
 		// incorrect hash
