@@ -1300,10 +1300,14 @@ func (qr *ProxyQrouter) PlanQueryTopLevel(ctx context.Context, rm *rmeta.Routing
 func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
 	if !config.RouterConfig().Qr.AlwaysCheckRules {
-		if len(config.RouterConfig().ShardMapping) == 1 {
+		shards, err := qr.mgr.ListShards(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if len(shards) == 1 {
 			firstShard := ""
-			for s := range config.RouterConfig().ShardMapping {
-				firstShard = s
+			for _, s := range shards {
+				firstShard = s.ID
 			}
 
 			return &plan.ShardDispatchPlan{

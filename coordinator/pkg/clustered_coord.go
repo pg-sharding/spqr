@@ -1917,6 +1917,32 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		return err
 	}
 
+	// Configure shards
+	shCl := proto.NewShardServiceClient(cc)
+	spqrlog.Zero.Debug().Msg("qdb coordinator: configure shards")
+	shards, err := qc.ListShards(ctx)
+	if err != nil {
+		return err
+	}
+	shardResp, err := shCl.ListShards(ctx, nil)
+	if err != nil {
+		return err
+	}
+	for _, sh := range shardResp.GetShards() {
+		_, err = shCl.DropShard(ctx, &proto.DropShardRequest{
+			Id: sh.GetId(),
+		})
+		if err != nil {
+			return err
+		}
+	}
+	for _, sh := range shards {
+		_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(sh)})
+		if err != nil {
+			return err
+		}
+	}
+
 	// Configure distributions
 	dsCl := proto.NewDistributionServiceClient(cc)
 	spqrlog.Zero.Debug().Msg("qdb coordinator: configure distributions")

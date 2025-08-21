@@ -30,22 +30,14 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 		}
 	}()
 
-	/* Re-initialize shards from config with shards from QDB  */
-	currentShards, err := r.Console().Mgr().ListShards(ctx)
-	if err != nil {
-		return err
-	}
-	for _, sh := range currentShards {
-		if err := r.Console().Mgr().DropShard(ctx, sh.ID); err != nil {
-			return err
-		}
-	}
+	/* Initialize shards */
 	shards, err := etcdConn.ListShards(ctx)
 	if err != nil {
 		return err
 	}
 	for _, sh := range shards {
 		if err := r.Console().Mgr().AddDataShard(ctx, topology.DataShardFromDB(sh)); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
 			return err
 		}
 	}

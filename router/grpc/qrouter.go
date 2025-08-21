@@ -747,6 +747,8 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	reflection.Register(server)
 
 	protos.RegisterKeyRangeServiceServer(server, lqr)
+	protos.RegisterShardingRulesServiceServer(server, lqr)
+	protos.RegisterShardServiceServer(server, lqr)
 	protos.RegisterRouterServiceServer(server, lqr)
 	protos.RegisterTopologyServiceServer(server, lqr)
 	protos.RegisterClientInfoServiceServer(server, lqr)

@@ -170,8 +170,19 @@ func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error
 				spqrlog.Zero.Debug().Str("scatter query", val).Msg("parse scatter query from comment")
 				rst.Client().SetScatterQuery(val != "")
 			case session.SPQR_EXECUTE_ON:
+				shards, err := rst.QueryRouter().Mgr().ListShards(context.TODO())
+				if err != nil {
+					return err
+				}
+				found := false
+				for _, sh := range shards {
+					if sh.ID == val {
+						found = true
+						break
+					}
+				}
 
-				if _, ok := config.RouterConfig().ShardMapping[val]; !ok {
+				if !found {
 					return fmt.Errorf("no such shard: %v", val)
 				}
 				rst.Client().SetExecuteOn(session.VirtualParamLevelStatement, val)
