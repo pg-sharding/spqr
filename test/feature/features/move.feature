@@ -418,6 +418,9 @@ Feature: Move test
     insert into xMoveStr(w_id, s) values(9205782308057835986, '012');
     insert into xMoveStr(w_id, s) values(9211959669762309738, '032');
     insert into xMoveStr(w_id, s) values(9168081209580446793, '022');
+    insert into xMoveStr(w_id, s) values(-5481793538779107328, '013');
+    insert into xMoveStr(w_id, s) values(-1575708340926397440, '033');
+    insert into xMoveStr(w_id, s) values(-573229011708378240, '023');
     """
     Then command return code should be "0"
     When I run SQL on host "shard2"
@@ -427,7 +430,7 @@ Feature: Move test
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
-    [{"s":"021"},{"s":"022"}]
+    [{"s":"021"},{"s":"022"},{"s":"023"}]
     """
     When I run SQL on host "shard1"
     """
@@ -436,7 +439,7 @@ Feature: Move test
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
-    [{"s":"011"},{"s":"012"},{"s":"031"},{"s":"032"}]
+    [{"s":"011"},{"s":"012"},{"s":"013"},{"s":"031"},{"s":"032"},{"s":"033"}]
     """
     When I execute SQL on host "coordinator"
     """
@@ -450,7 +453,7 @@ Feature: Move test
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
-    [{"s":"011"},{"s":"012"},{"s":"021"},{"s":"022"}]
+    [{"s":"011"},{"s":"012"},{"s":"013"},{"s":"021"},{"s":"022"},{"s":"023"}]
     """
     When I run SQL on host "shard1"
     """
@@ -459,7 +462,7 @@ Feature: Move test
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
-    [{"s":"031"},{"s":"032"}]
+    [{"s":"031"},{"s":"032"},{"s":"033"}]
     """
     When I run SQL on host "coordinator"
     """
@@ -532,7 +535,7 @@ Feature: Move test
     Then command return code should be "0"
     When I run SQL on host "shard2"
     """
-    SELECT s FROM xMoveStr
+    SELECT s FROM xMoveStr ORDER BY s
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -541,13 +544,12 @@ Feature: Move test
     """
     When I run SQL on host "shard1"
     """
-    SELECT s FROM xMoveStr
+    SELECT s FROM xMoveStr ORDER BY s
     """
     Then command return code should be "0"
     And SQL result should match regexp
     """
     [{"s":"001"},{"s":"003"}]
-    .*001(.|\n)*003
     """
     When I execute SQL on host "coordinator"
     """
@@ -556,25 +558,21 @@ Feature: Move test
     Then command return code should be "0"
     When I run SQL on host "shard2"
     """
-    SELECT * FROM xMoveStr
+    SELECT s FROM xMoveStr ORDER BY s
     """
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    .*002(.|\n)*001
+    [{"s":"001"},{"s":"002"}]
     """
     When I run SQL on host "shard1"
     """
-    SELECT * FROM xMoveStr
+    SELECT s FROM xMoveStr ORDER BY s
     """
     Then command return code should be "0"
-    And SQL result should not match regexp
+    And SQL result should match json_exactly
     """
-    001
-    """
-    And SQL result should match regexp
-    """
-    003
+    [{"s":"003"}]
     """
     When I run SQL on host "coordinator"
     """
