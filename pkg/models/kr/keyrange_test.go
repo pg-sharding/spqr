@@ -99,11 +99,11 @@ func TestGetKRCondition(t *testing.T) {
 					{Column: "col1", HashFunction: "city"},
 				},
 			},
-			krg:        &kr.KeyRange{ID: "kr1", LowerBound: []any{"a"}, ColumnTypes: []string{"varchar"}},
-			upperBound: []any{"b"},
+			krg:        &kr.KeyRange{ID: "kr1", LowerBound: []any{0}, ColumnTypes: []string{"varchar hashed"}},
+			upperBound: []any{1000},
 			prefix:     "",
-			expected:   "",
-			err:        spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "city hashing is not supported in coordinator operations"),
+			expected:   "spqrhash_city32(col1) >= 0 AND spqrhash_city32(col1) < 1000",
+			err:        nil,
 		},
 		// murmur hashed column
 		{
