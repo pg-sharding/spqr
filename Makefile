@@ -52,7 +52,7 @@ build_spqrdump:
 build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay build_spqrdump
 
 build_images:
-	docker compose build spqr-base-image
+	docker compose build --no-cache spqr-base-image
 	@if [ "x" != "${POSTGRES_VERSION}x" ]; then\
 		echo "building ${POSTGRES_VERSION} version";\
 		docker compose build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} spqr-shard-image;\
@@ -147,7 +147,7 @@ feature_test_ci:
 	else\
 		docker load -i ${CACHE_FILE_SHARD};\
 	fi
-	docker compose build spqr-base-image
+	docker compose build --no-cache spqr-base-image
 	go build ./test/feature/...
 	mkdir ./test/feature/logs
 	(cd test/feature; go test -timeout 150m)
