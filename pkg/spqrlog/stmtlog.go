@@ -29,7 +29,7 @@ func ReloadSLogger(logMinDurationStatement time.Duration) {
 
 // TODO unit tests
 func (s *StmtLogger) shouldLogStatement(t time.Duration) bool {
-	return s.logMinDurationStatement != 0 && (s.logMinDurationStatement < 0 || t > s.logMinDurationStatement)
+	return s.logMinDurationStatement != -1 && t > s.logMinDurationStatement
 }
 
 func (s *StmtLogger) ReportStatement(typ StmtType, stmt string, t time.Duration) {
