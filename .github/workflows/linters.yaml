@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  GO_VERSION: 1.24.3
+  GO_VERSION: 1.25.0
 
 jobs:
   fmtcheck:
@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23.0'
+          go-version: '1.25.0'
           cache: false
       - name: go fmt check
         run: make fmtcheck
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23.0'
+          go-version: '1.25.0'
           cache: false
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
