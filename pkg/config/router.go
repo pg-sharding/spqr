@@ -104,6 +104,8 @@ type Router struct {
 	UseSystemdNotifier   bool   `json:"use_systemd_notifier" toml:"use_systemd_notifier" yaml:"use_systemd_notifier"`
 	SystemdNotifierDebug bool   `json:"systemd_notifier_debug" toml:"systemd_notifier_debug" yaml:"systemd_notifier_debug"`
 	IdentityRangeSize    uint64 `json:"identity_range_size" toml:"identity_range_size" yaml:"identity_range_size"`
+
+	LogMinDurationStatement time.Duration `json:"log_min_duration_statement" toml:"log_min_duration_statement" yaml:"log_min_duration_statement"`
 }
 
 type QRouter struct {
@@ -204,7 +206,7 @@ func ValueOrDefaultDuration(value time.Duration, def time.Duration) time.Duratio
 // Returns:
 //   - error: An error if any occurred during the loading process.
 func LoadRouterCfg(cfgPath string) (string, error) {
-	var rcfg Router
+	rcfg := generateDefaultConfig()
 	file, err := os.Open(cfgPath)
 	if err != nil {
 		cfgRouter = rcfg
@@ -248,6 +250,12 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 	// log.Println("Running config:", string(configBytes))
 	cfgRouter = rcfg
 	return string(configBytes), nil
+}
+
+func generateDefaultConfig() Router {
+	return Router{
+		LogMinDurationStatement: -1,
+	}
 }
 
 // initRouterConfig initializes the router configuration from a file.

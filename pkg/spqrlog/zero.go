@@ -3,6 +3,7 @@ package spqrlog
 import (
 	"log"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 )
@@ -76,4 +77,10 @@ func parseLevel(level string) zerolog.Level {
 
 func IsDebugLevel() bool {
 	return Zero.GetLevel() == zerolog.DebugLevel
+}
+
+func ReportStatement(t time.Duration, s string, threshold time.Duration) {
+	if t > threshold {
+		Zero.Info().Dur("time duration", t).Str("stmt", s).Msg("report statement")
+	}
 }
