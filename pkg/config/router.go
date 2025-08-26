@@ -206,7 +206,7 @@ func ValueOrDefaultDuration(value time.Duration, def time.Duration) time.Duratio
 // Returns:
 //   - error: An error if any occurred during the loading process.
 func LoadRouterCfg(cfgPath string) (string, error) {
-	rcfg := generateDefaultConfig()
+	var rcfg Router
 	file, err := os.Open(cfgPath)
 	if err != nil {
 		cfgRouter = rcfg
@@ -250,12 +250,6 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 	// log.Println("Running config:", string(configBytes))
 	cfgRouter = rcfg
 	return string(configBytes), nil
-}
-
-func generateDefaultConfig() Router {
-	return Router{
-		LogMinDurationStatement: -1,
-	}
 }
 
 // initRouterConfig initializes the router configuration from a file.
