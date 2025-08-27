@@ -112,6 +112,7 @@ eshkere
 etcdctl
 etcdqdb
 expd
+extldflags
 FAFBFF
 fdw
 feauter
@@ -271,6 +272,7 @@ multicoordinator
 multidbpool
 multidim
 multierr
+multiclient
 multishard
 munakoiso
 murmurhash

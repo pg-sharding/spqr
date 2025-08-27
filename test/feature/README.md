@@ -51,5 +51,5 @@ docker compose --verbose -f ./test/feature/docker-compose-debug.yaml up
 ```
 4. Attach to the required spqr cluster components in the required order. Only the components you will attach to will work.
 
-### Troupbleshooting
+### Troubleshooting
 - Fix toolchain version in .vscode\launch.json if you have problem in "Step into" action.

@@ -172,7 +172,7 @@ services:
       - "qdb01"
 
   ldapserver:
-    image: "bitnami/openldap:latest"
+    image: "osixia/openldap:latest"
     hostname: regress_ldap_server
     container_name: regress_ldap_server
     environment:
@@ -193,7 +193,7 @@ services:
       retries: 50
 
   ldapserver2:
-    image: "bitnami/openldap:latest"
+    image: "osixia/openldap:latest"
     hostname: regress_ldap_server_2
     container_name: regress_ldap_server_2
     environment:
