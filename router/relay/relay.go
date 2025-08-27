@@ -875,6 +875,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 		case *pgproto3.Execute:
 			startTime := time.Now()
+			q := rst.plainQ
 			spqrlog.Zero.Debug().
 				Uint("client", rst.Client().ID()).
 				Msg("Execute prepared statement, reset saved bind")
@@ -888,11 +889,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			if err != nil {
 				return err
 			}
-			def := rst.Client().PreparedStatementDefinitionByName(rst.lastBindName)
-			if def == nil {
-				return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement %s not found", rst.lastBindName)
-			}
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
+			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, q, time.Since(startTime))
 		case *pgproto3.Close:
 			//
 		default:
