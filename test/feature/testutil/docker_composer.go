@@ -36,6 +36,8 @@ type Composer interface {
 	Down() error
 	// Returns names/ids of running containers
 	Services() []string
+	// Returns state of the specific service
+	ContainerState(service string) (container.ContainerState, error)
 	// Returns real exposed addr (ip:port) for given service/port
 	GetAddr(service string, port int) (string, error)
 	// Returns internal ip address of given service
@@ -50,7 +52,10 @@ type Composer interface {
 	AttachToNet(service string) error
 	// Executes command inside container/VM with given timeout.
 	// Returns command retcode and output (stdout and stderr are mixed)
+	// Shell form
 	RunCommand(service, cmd string, timeout time.Duration) (retcode int, output string, err error)
+	// JSON form
+	RunCommandJSON(service string, cmd []string, timeout time.Duration) (retcode int, output string, err error)
 	RunCommandAtHosts(cmd, hostsSubstring string, timeout time.Duration) error
 	// Executes command inside container/VM with given timeout.
 	// Returns command retcode and output (stdout and stderr are mixed)
@@ -118,7 +123,7 @@ func (dc *DockerComposer) fillContainers() error {
 	}
 	errorFlag := false
 	var name, state string
-	for _, c := range containers { // nolint: gocritic
+	for _, c := range containers {
 		prj := c.Labels["com.docker.compose.project"]
 		srv := c.Labels["com.docker.compose.service"]
 		if prj != dc.projectName || srv == "" {
@@ -148,7 +153,7 @@ func (dc *DockerComposer) Up(env []string) error {
 		if apiErr != nil {
 			return err
 		}
-		for _, c := range containers { // nolint: gocritic
+		for _, c := range containers {
 			prj := c.Labels["com.docker.compose.project"]
 			srv := c.Labels["com.docker.compose.service"]
 			if prj != dc.projectName || srv == "" {
@@ -184,6 +189,17 @@ func (dc *DockerComposer) Services() []string {
 	}
 	sort.Strings(services)
 	return services
+}
+
+func (dc *DockerComposer) ContainerState(cont string) (container.ContainerState, error) {
+	if err := dc.fillContainers(); err != nil {
+		return "", err
+	}
+	c, ok := dc.containers[cont]
+	if !ok {
+		return "", fmt.Errorf("container \"%s\" not found", cont)
+	}
+	return c.State, nil
 }
 
 // GetAddr returns real exposed addr (ip:port) for given service/port
@@ -261,7 +277,19 @@ func (dc *DockerComposer) RunCommandAtHosts(cmd, hostSubstring string, timeout t
 }
 
 // RunCommand executes command inside container/VM with given timeout.
+// The command is executed in shell form, i.e. /bin/bash -c "{{cmd}}".
 func (dc *DockerComposer) RunCommand(service string, cmd string, timeout time.Duration) (retcode int, out string, err error) {
+	return dc.runCommand(service, []string{shell, "-c", cmd}, timeout)
+}
+
+// RunCommandJSON executes command inside container/VM with given timeout.
+// The command is given in JSON form(i.e. array of strings) and executed directly.
+func (dc *DockerComposer) RunCommandJSON(service string, cmd []string, timeout time.Duration) (retcode int, out string, err error) {
+	return dc.runCommand(service, cmd, timeout)
+}
+
+// RunCommand executes command inside container/VM with given timeout.
+func (dc *DockerComposer) runCommand(service string, cmd []string, timeout time.Duration) (retcode int, out string, err error) {
 	cont, ok := dc.containers[service]
 	if !ok {
 		return 0, "", fmt.Errorf("no such service: %s", service)
@@ -274,7 +302,7 @@ func (dc *DockerComposer) RunCommand(service string, cmd string, timeout time.Du
 	execCfg := container.ExecOptions{
 		AttachStdout: true,
 		AttachStderr: true,
-		Cmd:          []string{shell, "-c", cmd},
+		Cmd:          cmd,
 	}
 	execResp, err := dc.api.ContainerExecCreate(ctx, cont.ID, execCfg)
 	if err != nil {

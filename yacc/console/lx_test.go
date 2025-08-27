@@ -348,7 +348,6 @@ func TestDefaultShard(t *testing.T) {
 	type tcase struct {
 		query string
 		exp   []int
-		err   error
 	}
 
 	for _, tt := range []tcase{

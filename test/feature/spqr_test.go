@@ -25,6 +25,7 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -56,12 +57,12 @@ const (
 )
 
 type testContext struct {
-	variables         map[string]interface{}
+	variables         map[string]any
 	templateErr       error
 	composer          testutil.Composer
 	composerEnv       []string
 	userDbs           map[string]map[string]*sqlx.DB
-	sqlQueryResult    []map[string]interface{}
+	sqlQueryResult    []map[string]any
 	sqlUserQueryError sync.Map // host -> error
 	commandRetcode    int
 	commandOutput     string
@@ -219,16 +220,15 @@ func (tctx *testContext) cleanup() {
 	if err := tctx.composer.Down(); err != nil {
 		log.Printf("failed to tear down compose: %s", err)
 	}
-	tctx.variables = make(map[string]interface{})
+	tctx.variables = make(map[string]any)
 	tctx.composerEnv = make([]string, 0)
-	tctx.sqlQueryResult = make([]map[string]interface{}, 0)
+	tctx.sqlQueryResult = make([]map[string]any, 0)
 	tctx.sqlUserQueryError = sync.Map{}
 	tctx.commandRetcode = 0
 	tctx.commandOutput = ""
 	tctx.closePreparedPostgresql()
 }
 
-// nolint: unparam
 func (tctx *testContext) connectPostgresql(addr string, user string, timeout time.Duration) (*sqlx.DB, error) {
 	if strings.Contains(addr, strconv.Itoa(spqrConsolePort)) {
 		return tctx.connectRouterConsoleWithCredentials(user, shardPassword, addr, timeout)
@@ -432,9 +432,9 @@ func (tctx *testContext) prepareQueryPostgresql(host, user, query string) error 
 	return nil
 }
 
-func (tctx *testContext) queryPreparedPostgresql(host, user, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
+func (tctx *testContext) queryPreparedPostgresql(host, query string, args any) ([]map[string]any, error) {
 	tctx.sqlQueryResult = nil
-	result, err := tctx.doPrepQueryPostgresql(host, user, query, args, timeout)
+	result, err := tctx.doPrepQueryPostgresql(host, query, args)
 	tctx.commandRetcode = 0
 	if err != nil {
 		tctx.commandRetcode = 1
@@ -455,7 +455,7 @@ func (tctx *testContext) closePreparedPostgresql() {
 	}
 }
 
-func (tctx *testContext) doPrepQueryPostgresql(host, user, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
+func (tctx *testContext) doPrepQueryPostgresql(host, query string, args any) ([]map[string]any, error) {
 	if stmts, ok := tctx.preparedQueries[host]; !ok {
 		return nil, fmt.Errorf("Query '%s' is not prepared", query)
 	} else {
@@ -476,9 +476,9 @@ func (tctx *testContext) doPrepQueryPostgresql(host, user, query string, args in
 			defer func() {
 				_ = rows.Close()
 			}()
-			result := make([]map[string]interface{}, 0)
+			result := make([]map[string]any, 0)
 			for rows.Next() {
-				rowmap := make(map[string]interface{})
+				rowmap := make(map[string]any)
 				err = rows.MapScan(rowmap)
 				if err != nil {
 					return nil, err
@@ -495,7 +495,7 @@ func (tctx *testContext) doPrepQueryPostgresql(host, user, query string, args in
 	}
 }
 
-func (tctx *testContext) queryPostgresql(host, user, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
+func (tctx *testContext) queryPostgresql(host, user, query string, args any, timeout time.Duration) ([]map[string]any, error) {
 	db, err := tctx.getPostgresqlConnection(user, host)
 	if err != nil {
 		return nil, err
@@ -503,7 +503,7 @@ func (tctx *testContext) queryPostgresql(host, user, query string, args interfac
 	// sqlx can't execute requests with semicolon
 	// we will execute them in single connection
 	queries := strings.Split(query, ";")
-	var result []map[string]interface{}
+	var result []map[string]any
 
 	for _, q := range queries {
 		q = strings.TrimSpace(q)
@@ -547,7 +547,7 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 	return nil
 }
 
-func (tctx *testContext) doPostgresqlQuery(db *sqlx.DB, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
+func (tctx *testContext) doPostgresqlQuery(db *sqlx.DB, query string, args any, timeout time.Duration) ([]map[string]any, error) {
 	if args == nil {
 		args = struct{}{}
 	}
@@ -562,9 +562,9 @@ func (tctx *testContext) doPostgresqlQuery(db *sqlx.DB, query string, args inter
 		_ = rows.Close()
 	}()
 
-	result := make([]map[string]interface{}, 0)
+	result := make([]map[string]any, 0)
 	for rows.Next() {
-		rowmap := make(map[string]interface{})
+		rowmap := make(map[string]any)
 		err = rows.MapScan(rowmap)
 		if err != nil {
 			return nil, err
@@ -697,45 +697,29 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		log.Printf("it's QDB (%s). coordinator can't answer when it's stopped", service)
 		return nil
 	}
+	anyCoord := false
+	for _, service := range tctx.composer.Services() {
+		if strings.HasPrefix(service, spqrCoordinatorName) {
+			state, err := tctx.composer.ContainerState(service)
+			if err != nil {
+				return err
+			}
+			if state == "running" {
+				anyCoord = true
+				break
+			}
+		}
+	}
+	if !anyCoord {
+		log.Printf("all coordinators are stopped, skip QDB check\n")
+		return nil
+	}
+	if service == spqrQdbHost {
+		log.Printf("it's QDB (%s). coordinator can't answer when it's stopped\n", service)
+		return nil
+	}
 	// need to make sure another coordinator took control
-	retryRes := testutil.Retry(func() bool {
-		_, output, err := tctx.composer.RunCommand(spqrQdbHost, "etcdctl get coordinator_exists", time.Second)
-		if err != nil {
-			return false
-		}
-		if output == "" {
-			return false
-		}
-		log.Printf("ETCD key:coordinator_exists %#v\n", output)
-		addr := strings.Split(output, "\n")[1]
-		addrWithoutPort := strings.Split(addr, ":")[0]
-		port := strings.Split(addr, ":")[1]
-		if mappedPort, err := tctx.composer.GetMappedPort(addrWithoutPort, port); err != nil {
-			log.Printf("cant't get real port: %s\n", err.Error())
-			return false
-		} else {
-			addr = fmt.Sprintf("%s:%d", "localhost", mappedPort)
-		}
-
-		conn, err := grpc.NewClient(addr, grpc.WithInsecure()) //nolint:all
-		if err != nil {
-			return false
-		}
-		defer func() {
-			_ = conn.Close()
-		}()
-
-		client := protos.NewRouterServiceClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), checkCoordinatorTimeout)
-		defer cancel()
-		log.Printf("try send command ListRouters to %s\n", addr)
-		if _, err = client.ListRouters(ctx, nil); err == nil {
-			log.Printf("got list routers from %s: successfully", addr)
-		} else {
-			log.Printf("can't get list routers. error: %s", err.Error())
-		}
-		return err == nil
-	}, time.Minute, time.Second)
+	retryRes := testutil.Retry(tctx.checkCoordinatorInQDBFunc(""), time.Minute, time.Second)
 	if !retryRes {
 		return fmt.Errorf("timed out waiting for another coordinator to take control after stopping %s", service)
 	}
@@ -939,7 +923,7 @@ func (tctx *testContext) stepIPrepareSQLOnHost(host string, body *godog.DocStrin
 
 func (tctx *testContext) stepIRunPreparedSQLOnHost(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
-	_, err := tctx.queryPreparedPostgresql(host, shardUser, query, struct{}{}, postgresqlQueryTimeout)
+	_, err := tctx.queryPreparedPostgresql(host, query, struct{}{})
 	return err
 }
 
@@ -1153,7 +1137,58 @@ func (tctx *testContext) stepErrorShouldMatch(host string, matcher string, body 
 	return m(string(res), strings.TrimSpace(body.Content))
 }
 
-// nolint: unused
+func (tctx *testContext) checkCoordinatorInQDBFunc(expected string) func() bool {
+	return func() bool {
+		_, output, err := tctx.composer.RunCommandJSON(spqrQdbHost, []string{"/usr/local/bin/etcdctl", "get", "coordinator_exists"}, time.Second)
+		if err != nil {
+			return false
+		}
+		if output == "" {
+			return false
+		}
+		log.Printf("ETCD key:coordinator_exists %#v\n", output)
+		addr := strings.Split(output, "\n")[1]
+		addrWithoutPort := strings.Split(addr, ":")[0]
+		if expected != "" && addrWithoutPort != expected {
+			return false
+		}
+		port := strings.Split(addr, ":")[1]
+		if mappedPort, err := tctx.composer.GetMappedPort(addrWithoutPort, port); err != nil {
+			log.Printf("cant't get real port: %s\n", err.Error())
+			return false
+		} else {
+			addr = fmt.Sprintf("%s:%d", "localhost", mappedPort)
+		}
+
+		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return false
+		}
+		defer func() {
+			_ = conn.Close()
+		}()
+
+		client := protos.NewRouterServiceClient(conn)
+		ctx, cancel := context.WithTimeout(context.Background(), checkCoordinatorTimeout)
+		defer cancel()
+		log.Printf("try send command ListRouters to %s\n", addr)
+		if _, err = client.ListRouters(ctx, nil); err == nil {
+			log.Printf("got list routers from %s: successfully", addr)
+		} else {
+			log.Printf("can't get list routers. error: %s", err.Error())
+		}
+		return err == nil
+	}
+}
+
+func (tctx *testContext) stepCoordinatorShouldTakeControl(leader string) error {
+	retryRes := testutil.Retry(tctx.checkCoordinatorInQDBFunc(leader), time.Minute, time.Second)
+	if !retryRes {
+		return fmt.Errorf("timed out waiting for \"%s\" to take control", leader)
+	}
+	return nil
+}
+
 func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	tctx, err := newTestContext(t)
 	if err != nil {
@@ -1169,7 +1204,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 			"ROUTER_COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
 			"ROUTER_2_COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
 		}
-		tctx.variables = make(map[string]interface{})
+		tctx.variables = make(map[string]any)
 		return ctx, nil
 	})
 	s.StepContext().Before(func(ctx context.Context, step *godog.Step) (context.Context, error) {
@@ -1251,6 +1286,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
 	s.Step(`^I wait for host "([^"]*)" to respond$`, tctx.stepWaitPostgresqlToRespond)
+	s.Step(`^I wait for coordinator "([^"]*)" to take control$`, tctx.stepCoordinatorShouldTakeControl)
 
 	// variable manipulation
 	s.Step(`^we save response row "([^"]*)" column "([^"]*)"$`, tctx.stepSaveResponseBodyAtPathAsJSON)

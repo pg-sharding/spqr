@@ -47,6 +47,7 @@ import (
 	"github.com/pg-sharding/spqr/router/route"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type grpcConnMgr struct {
@@ -207,7 +208,7 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 		Str("router-id", r.ID).
 		Msg("dialing router")
 	// TODO: add creds
-	return grpc.NewClient(r.Address, grpc.WithInsecure()) //nolint:all
+	return grpc.NewClient(r.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 }
 
 const defaultWatchRouterTimeout = time.Second
@@ -1242,7 +1243,7 @@ ORDER BY (%s) %s;
 	var moveWhole bool
 	for rows.Next() {
 		values := make([]string, len(rel.DistributionKey)+1)
-		links := make([]interface{}, len(values)+1)
+		links := make([]any, len(values)+1)
 
 		for i := range values {
 			links[i] = &values[i]

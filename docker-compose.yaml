@@ -14,7 +14,7 @@ services:
         &shard-common
         image: spqr-shard-image
         healthcheck:
-            test: 'pg_isready -U postgres --dbname=postgres'
+            test: 'pg_isready -U postgres --dbname=postgres -p 6432'
             interval: 10s
             timeout: 5s
             retries: 5
@@ -109,7 +109,7 @@ services:
         depends_on: 
             - qdb01
     qdb01:
-        image: 'bitnami/etcd:latest'
+        image: 'quay.io/coreos/etcd:v3.6.4'
         container_name: spqr_qdb_0_1
         hostname: spqr_qdb_0_1
         environment:
@@ -117,6 +117,7 @@ services:
             ETCD_LOG_LEVEL: "debug"
         ports:
             - "2379:2379"
+        entrypoint: ["/usr/local/bin/etcd", "--advertise-client-urls", "http://spqr_qdb_0_1:2379", "--listen-client-urls", "http://0.0.0.0:2379"]
     router:
         build:
             dockerfile: ./docker/router/Dockerfile

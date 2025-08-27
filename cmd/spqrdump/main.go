@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -22,7 +23,7 @@ import (
 
 func Dial(addr string) (*grpc.ClientConn, error) {
 	// TODO: add creds
-	return grpc.Dial(addr, grpc.WithInsecure()) //nolint:all
+	return grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 }
 
 var rootCmd = &cobra.Command{
@@ -125,7 +126,7 @@ func DumpKeyRangesPsql() error {
 
 		return decode.KeyRange(
 			&kr.KeyRange{
-				LowerBound: []interface{}{l},
+				LowerBound: []any{l},
 				ID:         id,
 				ShardID:    shard,
 			}), nil

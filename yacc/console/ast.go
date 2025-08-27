@@ -6,7 +6,7 @@ type ColumnRef struct {
 	TableAlias string
 	ColName    string
 }
-type OptAscDesc interface{}
+type OptAscDesc any
 
 type SortByDefault struct {
 	OptAscDesc
@@ -17,7 +17,7 @@ type SortByAsc struct {
 type SortByDesc struct {
 	OptAscDesc
 }
-type OrderClause interface{}
+type OrderClause any
 
 type Order struct {
 	OrderClause
@@ -25,7 +25,7 @@ type Order struct {
 	Col        ColumnRef
 }
 
-type GroupByClause interface{}
+type GroupByClause any
 
 type GroupByClauseEmpty struct {
 	GroupByClause

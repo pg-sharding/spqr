@@ -414,11 +414,9 @@ func GetHashedColumn(col string, hash string) (string, error) {
 	case "identity", "ident", "":
 		return col, nil
 	case "city":
-		// TODO: change internal city hashing to 64 bits (32 bit hashing is not supported in postgresql)
-		// return fmt.Sprintf("hash_string(%s, 'city64')", col), nil
-		return "", spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "city hashing is not supported in coordinator operations")
+		return fmt.Sprintf("spqrhash_city32(%s)", col), nil
 	case "murmur":
-		return fmt.Sprintf("(hash_string(%s, 'murmur3') + 2147483648)", col), nil
+		return fmt.Sprintf("spqrhash_murmur3(%s)", col), nil
 	default:
 		return "", spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "invalid hash function \"%s\"", hash)
 	}

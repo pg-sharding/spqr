@@ -14,7 +14,7 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
-type KeyRangeBound []interface{}
+type KeyRangeBound []any
 
 type ShardKey struct {
 	Name string

@@ -18,6 +18,7 @@ import (
 	"go.etcd.io/etcd/client/v3/clientv3util"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
@@ -33,8 +34,8 @@ var _ XQDB = &EtcdQDB{}
 func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints: []string{addr},
-		DialOptions: []grpc.DialOption{ // TODO remove WithInsecure
-			grpc.WithInsecure(), //nolint:all
+		DialOptions: []grpc.DialOption{
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		},
 	})
 	if err != nil {

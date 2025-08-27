@@ -14,7 +14,7 @@ import (
 )
 
 type BaseAuthModule struct {
-	properties map[string]interface{}
+	properties map[string]any
 }
 type Kerberos struct {
 	BaseAuthModule

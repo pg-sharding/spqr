@@ -15,7 +15,7 @@ type ctxMatcher struct {
 	ctx context.Context
 }
 
-func (m *ctxMatcher) Matches(x interface{}) bool {
+func (m *ctxMatcher) Matches(x any) bool {
 	newCtx, ok := x.(context.Context)
 	if !ok {
 		return false
@@ -29,7 +29,6 @@ func (m *ctxMatcher) String() string {
 	return "context matcher"
 }
 
-//nolint:revive
 func MatchContext(t *testing.T, ctx context.Context) (context.Context, gomock.Matcher) {
 	ctx = context.WithValue(ctx, ctxIDKeyName, NewUUIDStr(t))
 	return ctx, &ctxMatcher{

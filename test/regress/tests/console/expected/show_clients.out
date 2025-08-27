@@ -6,17 +6,17 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 SHOW clients;
- client_id | user | dbname | server_id | router_address | router_time_0.75 | shard_time_0.75 
------------+------+--------+-----------+----------------+------------------+-----------------
+ client_id | user | dbname | server_id | router_address | router_time_0.75 | shard_time_0.75 | router_time_0.9 | shard_time_0.9 | router_time_0.999 | shard_time_0.999 | router_time_0.9999 | shard_time_0.9999 
+-----------+------+--------+-----------+----------------+------------------+-----------------+-----------------+----------------+-------------------+------------------+--------------------+-------------------
 (0 rows)
 
 SHOW clients WHERE server_id = spqr_shard_1:6432;
- client_id | user | dbname | server_id | router_address | router_time_0.75 | shard_time_0.75 
------------+------+--------+-----------+----------------+------------------+-----------------
+ client_id | user | dbname | server_id | router_address | router_time_0.75 | shard_time_0.75 | router_time_0.9 | shard_time_0.9 | router_time_0.999 | shard_time_0.999 | router_time_0.9999 | shard_time_0.9999 
+-----------+------+--------+-----------+----------------+------------------+-----------------+-----------------+----------------+-------------------+------------------+--------------------+-------------------
 (0 rows)
 
 SHOW clients WHERE server_id = nonexistent:6432 OR dbname = regress;
- client_id | user | dbname | server_id | router_address | router_time_0.75 | shard_time_0.75 
------------+------+--------+-----------+----------------+------------------+-----------------
+ client_id | user | dbname | server_id | router_address | router_time_0.75 | shard_time_0.75 | router_time_0.9 | shard_time_0.9 | router_time_0.999 | shard_time_0.999 | router_time_0.9999 | shard_time_0.9999 
+-----------+------+--------+-----------+----------------+------------------+-----------------+-----------------+----------------+-------------------+------------------+--------------------+-------------------
 (0 rows)
 

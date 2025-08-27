@@ -395,12 +395,18 @@ func (pi *PSQLInteractor) Quantiles(_ context.Context) error {
 	}
 
 	quantiles := statistics.GetQuantiles()
+	quantilesStr := statistics.GetQuantilesStr()
 	spqrlog.Zero.Debug().Str("quantiles", fmt.Sprintf("%#v", quantiles)).Msg("Got quantiles")
-	for _, q := range *quantiles {
-		if err := pi.WriteDataRow(fmt.Sprintf("router_time_%.2f", q), fmt.Sprintf("%.2f", statistics.GetTotalTimeQuantile(statistics.Router, q))); err != nil {
+	for i := range *quantiles {
+		q := (*quantiles)[i]
+		qStr := (*quantilesStr)[i]
+		if qStr == "" {
+			qStr = fmt.Sprintf("%.2f", q)
+		}
+		if err := pi.WriteDataRow(fmt.Sprintf("router_time_%s", qStr), fmt.Sprintf("%.2f", statistics.GetTotalTimeQuantile(statistics.Router, q))); err != nil {
 			return err
 		}
-		if err := pi.WriteDataRow(fmt.Sprintf("shard_time_%.2f", q), fmt.Sprintf("%.2f", statistics.GetTotalTimeQuantile(statistics.Shard, q))); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("shard_time_%s", qStr), fmt.Sprintf("%.2f", statistics.GetTotalTimeQuantile(statistics.Shard, q))); err != nil {
 			return err
 		}
 	}

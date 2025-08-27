@@ -120,3 +120,20 @@ func TestCheckMultithreading(t *testing.T) {
 
 	assert.True(true)
 }
+
+func TestStatisticsInit(t *testing.T) {
+	assert := assert.New(t)
+
+	statistics.InitStatistics([]float64{0.5})
+	q := *(statistics.GetQuantiles())
+	assert.Len(q, 1)
+	assert.Equal(q[0], 0.5)
+
+	assert.NoError(statistics.InitStatisticsStr([]string{"0.5", ".999"}))
+	q = *(statistics.GetQuantiles())
+	assert.Len(q, 2)
+	assert.Equal(q[0], 0.5)
+	assert.Equal(q[1], 0.999)
+
+	assert.ErrorContains(statistics.InitStatisticsStr([]string{"erroneous_str"}), "could not parse time quantile to float")
+}

@@ -3,4 +3,4 @@ version: "2"
 linters:
   exclusions:
     paths:
-      - yacc
+      - yacc/console/lex.go

@@ -184,4 +184,4 @@ func NewMgr(frules []*config.FrontendRule, brules []*config.BackendRule) RulesMg
 	}
 }
 
-var _ MatchMgr[interface{}] = &MgrImpl[interface{}]{}
+var _ MatchMgr[any] = &MgrImpl[any]{}

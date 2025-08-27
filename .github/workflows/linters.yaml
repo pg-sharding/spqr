@@ -9,15 +9,18 @@ on:
 permissions:
   contents: read
 
+env:
+  GO_VERSION: 1.25.0
+
 jobs:
   fmtcheck:
     name: go fmt check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23.0'
+          go-version: '1.25.0'
           cache: false
       - name: go fmt check
         run: make fmtcheck
@@ -26,10 +29,10 @@ jobs:
     name: golangci-lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23.0'
+          go-version: '1.25.0'
           cache: false
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
@@ -42,9 +45,25 @@ jobs:
     name: goimports check
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: goimports check
         uses: DarthBenro008/goimports-check-action@v0.2.0
         with:
           root-path: './' # The relative root path to run goimports
           excludes: "./yacc/"
+
+  gomodtidy:
+    name: go mod tidy check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: ensure go.mod is tidy
+        run: |
+          go mod tidy
+          DIFF=$(git diff .);
+          if [ -n "$DIFF" ]; then
+            echo "$DIFF" && echo "run 'go mod tidy' and commit the changes" && exit 1;
+          fi

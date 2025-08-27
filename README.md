@@ -2,7 +2,7 @@
 
 [![Go](https://github.com/pg-sharding/spqr/actions/workflows/build.yaml/badge.svg)](https://github.com/pg-sharding/spqr/actions/workflows/build.yaml)
 [![Go](https://github.com/pg-sharding/spqr/actions/workflows/tests.yaml/badge.svg)](https://github.com/pg-sharding/spqr/actions/workflows/tests.yaml)
-[![Docs](https://img.shields.io/badge/docs-SPQR_dev-blue)](https://t.me/+jMGhyjwicpI3ZWQy)
+[![Docs](https://img.shields.io/badge/docs-SPQR_dev-blue)](https://pg-sharding.tech/welcome/get_started)
 [![Telegram Chat](https://img.shields.io/badge/telegram-SPQR_dev-blue)](https://t.me/+jMGhyjwicpI3ZWQy)
 
 <picture align=center>

@@ -1,6 +1,8 @@
 package statistics
 
 import (
+	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -27,6 +29,7 @@ type statistics struct {
 	ShardTimeTotal    *tdigest.TDigest
 	TimeData          map[uint]*startTimes
 	Quantiles         []float64
+	QuantilesStr      []string
 	NeedToCollectData bool
 	lock              sync.RWMutex
 }
@@ -42,7 +45,24 @@ var queryStatistics = statistics{
 
 func InitStatistics(q []float64) {
 	queryStatistics.Quantiles = q
+	initStatsCommon()
+}
 
+func InitStatisticsStr(q []string) error {
+	queryStatistics.QuantilesStr = q
+	queryStatistics.Quantiles = make([]float64, len(q))
+	for i, qStr := range q {
+		var err error
+		queryStatistics.Quantiles[i], err = strconv.ParseFloat(qStr, 64)
+		if err != nil {
+			return fmt.Errorf("could not parse time quantile to float: \"%s\"", qStr)
+		}
+	}
+	initStatsCommon()
+	return nil
+}
+
+func initStatsCommon() {
 	if len(queryStatistics.Quantiles) > 0 { // also not nil
 		queryStatistics.NeedToCollectData = false
 	} else {
@@ -55,6 +75,10 @@ func InitStatistics(q []float64) {
 
 func GetQuantiles() *[]float64 {
 	return &queryStatistics.Quantiles
+}
+
+func GetQuantilesStr() *[]string {
+	return &queryStatistics.QuantilesStr
 }
 
 func GetTimeQuantile(statType StatisticsType, q float64, client uint) float64 {
