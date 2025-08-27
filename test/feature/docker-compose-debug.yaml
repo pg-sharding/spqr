@@ -13,6 +13,8 @@ services:
       interval: 10s
       timeout: 3s
       retries: 50
+    networks:
+      - feature_test_network
   shard1-replica:
     image: spqr-shard-image
     environment:
@@ -24,6 +26,8 @@ services:
     container_name: spqr_shard_1_replica
     healthcheck: 
       <<: *shard-healthcheck
+    networks:
+      - feature_test_network
   shard2:
     image: spqr-shard-image
     environment:
@@ -34,6 +38,8 @@ services:
     container_name: spqr_shard_2
     healthcheck: 
       <<: *shard-healthcheck
+    networks:
+      - feature_test_network
   shard2-replica:
     image: spqr-shard-image
     environment:
@@ -45,6 +51,8 @@ services:
     container_name: spqr_shard_2_replica
     healthcheck: 
       <<: *shard-healthcheck 
+    networks:
+      - feature_test_network
   shard3:
     image: spqr-shard-image
     environment:
@@ -55,6 +63,8 @@ services:
     container_name: spqr_shard_3
     healthcheck: 
       <<: *shard-healthcheck
+    networks:
+      - feature_test_network
   shard3-replica:
     image: spqr-shard-image
     environment:
@@ -66,6 +76,8 @@ services:
     container_name: spqr_shard_3_replica
     healthcheck: 
       <<: *shard-healthcheck
+    networks:
+      - feature_test_network
   router:
     build:
       dockerfile: ./docker/router/Dockerfile.debug
@@ -104,6 +116,8 @@ services:
     volumes:
       - keytab:/keytab
       - ./conf/kdc/krb5.conf:/etc/krb5.conf
+    networks:
+      - feature_test_network
   router2:
     build:
       dockerfile: ./docker/router/Dockerfile.debug
@@ -137,7 +151,9 @@ services:
       test: psql -h regress_router_2 -p 6432 -U regress -d regress
     volumes:
       - keytab:/keytab
-      - ./conf/kdc/krb5.conf:/etc/krb5.conf      
+      - ./conf/kdc/krb5.conf:/etc/krb5.conf   
+    networks:
+      - feature_test_network
   coordinator:
     build:
       dockerfile: ./docker/coordinator/Dockerfile.debug
@@ -154,6 +170,8 @@ services:
       - "router"
       - "router2"
       - "qdb01"
+    networks:
+      - feature_test_network
   coordinator2:
     build:
       dockerfile: ./docker/coordinator/Dockerfile.debug
@@ -170,7 +188,8 @@ services:
       - "router"
       - "router2"
       - "qdb01"
-
+    networks:
+      - feature_test_network
   ldapserver:
     image: "osixia/openldap:latest"
     hostname: regress_ldap_server
@@ -191,7 +210,8 @@ services:
       interval: 10s
       timeout: 3s
       retries: 50
-
+    networks:
+      - feature_test_network
   ldapserver2:
     image: "osixia/openldap:latest"
     hostname: regress_ldap_server_2
@@ -209,16 +229,20 @@ services:
       - "2636:636"
     healthcheck:
       <<: *ldap-healthcheck
-
+    networks:
+      - feature_test_network
   qdb01:
-    image: 'bitnami/etcd:latest'
+    image: 'quay.io/coreos/etcd:v3.6.4'
     hostname: regress_qdb_0_1
     container_name: regress_qdb_0_1
     environment:
       ALLOW_NONE_AUTHENTICATION: "yes"
-      ETCD_LOG_LEVEL: "error"
+      ETCD_LOG_LEVEL: "debug"
     ports:
       - "2379:2379"
+    networks:
+      - feature_test_network
+    entrypoint: ["/usr/local/bin/etcd", "--advertise-client-urls", "http://regress_qdb_0_1:2379", "--listen-client-urls", "http://0.0.0.0:2379"]
 
   kdc:
     build:
@@ -226,6 +250,11 @@ services:
     volumes:
       - ./conf/kdc/start.sh:/start.sh
       - keytab:/keytab
+    networks:
+      - feature_test_network
 volumes:
   keytab:
+networks:
+  feature_test_network:
+    name: feature_test_network
 
