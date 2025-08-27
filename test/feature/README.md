@@ -31,3 +31,25 @@ In case you are using Rancher Desktop
 > Error: failed to setup compose cluster: Cannot connect to the Docker daemon at unix:///var/run/docker. sock. Is the docker daemon running?
 
 You need enable setting "Allow to acquire administrative credentials (sudo access)" in Preferences -> Application -> General
+
+
+## Debug in the enviroment similar enviroment of feature tests on linux using VS Code
+1. Copy configurations from launch-example.json into .vscode\launch.json configurations for attach router, router2, coordinator and coordinator2.
+The following configurations will be available to you:
+- Attach router
+- Attach router2
+- Attach coordinator
+- Attach coordinator2
+2. Generate images using 
+```shell
+make build_images
+```
+It generates image `spqr-base-image-debug` with delve in image.
+3. run test enviroment
+```shell
+docker compose --verbose -f ./test/feature/docker-compose-debug.yaml up
+```
+4. Attach to the required spqr cluster components in the required order. Only the components you will attach to will work.
+
+### Troupbleshooting
+- Fix toolchain version in .vscode\launch.json if you have problem in "Step into" action.

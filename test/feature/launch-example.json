@@ -1,0 +1,94 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        
+		{
+			"name": "Attach router",
+			"type": "go",
+			"request": "attach",
+			"mode": "remote",
+            "remotePath": "/app",
+			"port":2346,
+			"host":"127.0.0.1",
+			"showLog": true,
+			"trace": "verbose",
+            "substitutePath": [
+                {
+                "from": "${workspaceFolder}",
+                "to": "/spqr"
+                },
+                {
+                "from": "~/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.3.linux-amd64/src",
+                "to": "/usr/local/go/src"
+                }
+            ],
+			"logOutput": "rpc"
+		},
+		{
+			"name": "Attach coordinator",
+			"type": "go",
+			"request": "attach",
+			"mode": "remote",
+            "remotePath": "/app",
+			"port":2345,
+			"host":"127.0.0.1",
+			"showLog": true,
+			"trace": "verbose",
+            "substitutePath": [
+                {
+                "from": "${workspaceFolder}",
+                "to": "/spqr"
+                },
+                {
+                "from": "~/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.3.linux-amd64/src",
+                "to": "/usr/local/go/src"
+                }
+            ],
+			"logOutput": "rpc"
+		},
+		{
+			"name": "Attach router2",
+			"type": "go",
+			"request": "attach",
+			"mode": "remote",
+            "remotePath": "/app",
+			"port":2347,
+			"host":"127.0.0.1",
+			"showLog": true,
+			"trace": "verbose",
+            "substitutePath": [
+                {
+                "from": "${workspaceFolder}",
+                "to": "/spqr"
+                },
+                {
+                "from": "~/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.3.linux-amd64/src",
+                "to": "/usr/local/go/src"
+                }
+            ],
+			"logOutput": "rpc"
+		},
+		{
+			"name": "Attach coordinator2",
+			"type": "go",
+			"request": "attach",
+			"mode": "remote",
+            "remotePath": "/app",
+			"port":2348,
+			"host":"127.0.0.1",
+			"showLog": true,
+			"trace": "verbose",
+            "substitutePath": [
+                {
+                "from": "${workspaceFolder}",
+                "to": "/spqr"
+                },
+                {
+                "from": "~/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.3.linux-amd64/src",
+                "to": "/usr/local/go/src"
+                }
+            ],
+			"logOutput": "rpc"
+		}
+    ]
+}

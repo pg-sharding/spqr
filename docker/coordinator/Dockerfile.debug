@@ -1,0 +1,6 @@
+FROM spqr-base-image-debug
+EXPOSE 2345
+
+RUN CGO_ENABLED=0 go install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@latest
+
+CMD [ "/go/bin/dlv", "--listen=:2345", "--headless=true", "--log=true", "--accept-multiclient", "--log-output=rpc,dap", "--check-go-version=true", "exec", "/spqr/spqr-coordinator","--", "-c", "/spqr/test/feature/conf/coordinator.yaml" ]

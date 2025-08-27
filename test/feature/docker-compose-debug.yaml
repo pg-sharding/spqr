@@ -1,0 +1,231 @@
+services:
+  shard1:
+    image: spqr-shard-image
+    environment: &feature-env-common
+      POSTGRES_USER: regress
+      POSTGRES_DB: regress
+    ports:
+      - "5500:6432"
+    hostname: spqr_shard_1
+    container_name: spqr_shard_1
+    healthcheck: &shard-healthcheck
+      test: 'pg_isready -U regress --dbname=regress -p 6432'
+      interval: 10s
+      timeout: 3s
+      retries: 50
+  shard1-replica:
+    image: spqr-shard-image
+    environment:
+      <<: *feature-env-common
+      PG_MASTER: spqr_shard_1
+    ports:
+      - "5600:6432"
+    hostname: spqr_shard_1_replica
+    container_name: spqr_shard_1_replica
+    healthcheck: 
+      <<: *shard-healthcheck
+  shard2:
+    image: spqr-shard-image
+    environment:
+      <<: *feature-env-common
+    ports:
+      - "5501:6432"
+    hostname: spqr_shard_2
+    container_name: spqr_shard_2
+    healthcheck: 
+      <<: *shard-healthcheck
+  shard2-replica:
+    image: spqr-shard-image
+    environment:
+      <<: *feature-env-common
+      PG_MASTER: spqr_shard_2
+    ports:
+      - "5601:6432"
+    hostname: spqr_shard_2_replica
+    container_name: spqr_shard_2_replica
+    healthcheck: 
+      <<: *shard-healthcheck 
+  shard3:
+    image: spqr-shard-image
+    environment:
+      <<: *feature-env-common
+    ports:
+      - "5502:6432"
+    hostname: spqr_shard_3
+    container_name: spqr_shard_3
+    healthcheck: 
+      <<: *shard-healthcheck
+  shard3-replica:
+    image: spqr-shard-image
+    environment:
+      <<: *feature-env-common
+      PG_MASTER: spqr_shard_3
+    ports:
+      - "5602:6432"
+    hostname: spqr_shard_3_replica
+    container_name: spqr_shard_3_replica
+    healthcheck: 
+      <<: *shard-healthcheck
+  router:
+    build:
+      dockerfile: ./docker/router/Dockerfile.debug
+      context: ../../
+    ports:
+      - "2346:2345"
+      - "6432:6432"
+      - "7432:7432"
+      - "7012:7002"
+    environment:
+      - ROUTER_CONFIG=/spqr/test/feature/conf/router.yaml
+      - ROUTER_LOG=/var/log/spqr-router.log
+      - COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml
+    hostname: regress_router
+    container_name: regress_router
+    depends_on:
+      shard1:
+        condition: service_healthy
+      shard2:
+        condition: service_healthy
+      shard1-replica:
+        condition: service_healthy
+      shard2-replica:
+        condition: service_healthy
+      shard3:
+        condition: service_healthy
+      shard3-replica:
+        condition: service_healthy
+      kdc:
+        condition: service_started
+    healthcheck: &router-healthcheck
+      test: psql -h regress_router -p 6432 -U regress -d regress
+      interval: 10s
+      timeout: 3s
+      retries: 50
+    volumes:
+      - keytab:/keytab
+      - ./conf/kdc/krb5.conf:/etc/krb5.conf
+  router2:
+    build:
+      dockerfile: ./docker/router/Dockerfile.debug
+      context: ../../
+    ports:
+      - "2347:2345"
+      - "6433:6432"
+      - "7433:7432"
+      - "7022:7002"
+    environment:
+      - ROUTER_CONFIG=/spqr/test/feature/conf/router.yaml
+      - ROUTER_LOG=/var/log/spqr-router.log
+      - COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml
+    hostname: regress_router_2
+    container_name: regress_router_2
+    depends_on:
+      shard1:
+        condition: service_healthy
+      shard2:
+        condition: service_healthy
+      shard1-replica:
+        condition: service_healthy
+      shard2-replica:
+        condition: service_healthy
+      shard3:
+        condition: service_healthy
+      shard3-replica:
+        condition: service_healthy
+    healthcheck:
+      <<: *router-healthcheck
+      test: psql -h regress_router_2 -p 6432 -U regress -d regress
+    volumes:
+      - keytab:/keytab
+      - ./conf/kdc/krb5.conf:/etc/krb5.conf      
+  coordinator:
+    build:
+      dockerfile: ./docker/coordinator/Dockerfile.debug
+      context: ../../
+    ports:
+      - "2345:2345"
+      - "7002:7002"
+      - "7003:7003"
+    environment:
+      - COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml
+    hostname: regress_coordinator
+    container_name: regress_coordinator
+    depends_on:
+      - "router"
+      - "router2"
+      - "qdb01"
+  coordinator2:
+    build:
+      dockerfile: ./docker/coordinator/Dockerfile.debug
+      context: ../../
+    ports:
+      - "2348:2345"
+      - "7032:7002"
+      - "7033:7003"
+    environment:
+      - COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator2.yaml
+    hostname: regress_coordinator_2
+    container_name: regress_coordinator_2
+    depends_on:
+      - "router"
+      - "router2"
+      - "qdb01"
+
+  ldapserver:
+    image: "bitnami/openldap:latest"
+    hostname: regress_ldap_server
+    container_name: regress_ldap_server
+    environment:
+      - LDAP_ROOT=dc=example,dc=com
+      - LDAP_ADMIN_USERNAME=admin
+      - LDAP_ADMIN_PASSWORD=adminpassword
+      - LDAP_USERS=regress
+      - LDAP_PASSWORDS=12345678
+      - LDAP_PORT_NUMBER=389
+      - LDAP_LDAPS_PORT_NUMBER=636
+    ports:
+      - "1389:389"
+      - "1636:636"
+    healthcheck: &ldap-healthcheck
+      test: ldapwhoami -D "cn=regress,ou=users,dc=example,dc=com" -w 12345678
+      interval: 10s
+      timeout: 3s
+      retries: 50
+
+  ldapserver2:
+    image: "bitnami/openldap:latest"
+    hostname: regress_ldap_server_2
+    container_name: regress_ldap_server_2
+    environment:
+      - LDAP_ROOT=dc=example,dc=com
+      - LDAP_ADMIN_USERNAME=admin
+      - LDAP_ADMIN_PASSWORD=adminpassword
+      - LDAP_USERS=regress
+      - LDAP_PASSWORDS=12345678
+      - LDAP_PORT_NUMBER=389
+      - LDAP_LDAPS_PORT_NUMBER=636
+    ports:
+      - "2389:389"
+      - "2636:636"
+    healthcheck:
+      <<: *ldap-healthcheck
+
+  qdb01:
+    image: 'bitnami/etcd:latest'
+    hostname: regress_qdb_0_1
+    container_name: regress_qdb_0_1
+    environment:
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_LOG_LEVEL: "error"
+    ports:
+      - "2379:2379"
+
+  kdc:
+    build:
+      context: ./conf/kdc
+    volumes:
+      - ./conf/kdc/start.sh:/start.sh
+      - keytab:/keytab
+volumes:
+  keytab:
+
