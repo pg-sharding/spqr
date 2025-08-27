@@ -888,7 +888,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			if err != nil {
 				return err
 			}
-			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, *rst.Qr.Query(), time.Since(startTime))
+			def := rst.Client().PreparedStatementDefinitionByName(rst.lastBindName)
+			if def == nil {
+				return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement %s not found", rst.lastBindName)
+			}
+			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
 		case *pgproto3.Close:
 			//
 		default:
