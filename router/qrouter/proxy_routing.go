@@ -1834,10 +1834,14 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 func (qr *ProxyQrouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
 
 	if !config.RouterConfig().Qr.AlwaysCheckRules {
-		if len(config.RouterConfig().ShardMapping) == 1 {
+		shards, err := qr.mgr.ListShards(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if len(shards) == 1 {
 			firstShard := ""
-			for s := range config.RouterConfig().ShardMapping {
-				firstShard = s
+			for _, s := range shards {
+				firstShard = s.ID
 			}
 
 			ro := true
