@@ -2,6 +2,7 @@ package frontend
 
 import (
 	"io"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -12,10 +13,12 @@ import (
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/relay"
+	"github.com/pg-sharding/spqr/router/statistics"
 )
 
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
+	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 	switch q := msg.(type) {
 	case *pgproto3.Terminate:
 		return nil

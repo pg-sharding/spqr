@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -23,6 +24,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/twopc"
 
 	"github.com/pg-sharding/lyx/lyx"
@@ -685,6 +687,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 		Type("query-type", qd.Msg).Type("plan-type", qd.P).
 		Msg("relay process plan")
 
+	statistics.RecordStartTime(statistics.Shard, time.Now(), s.Client().ID())
 	if err := DispatchPlan(qd, serv, s.Client(), replyCl); err != nil {
 		return err
 	}

@@ -137,3 +137,17 @@ func TestStatisticsInit(t *testing.T) {
 
 	assert.ErrorContains(statistics.InitStatisticsStr([]string{"erroneous_str"}), "could not parse time quantile to float")
 }
+
+func TestStatisticsReset(t *testing.T) {
+	assert := assert.New(t)
+
+	tim := time.Now()
+	assert.NoError(statistics.InitStatisticsStr([]string{"0.5"}))
+	statistics.RecordStartTime(statistics.Router, tim, 227)
+	statistics.RecordStartTime(statistics.Shard, tim, 227)
+	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), 227)
+	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*4), 227)
+	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*8), 227)
+	assert.Equal(2.0, statistics.GetTimeQuantile(statistics.Router, 0.5, 227))
+	assert.Equal(1.0, statistics.GetTimeQuantile(statistics.Shard, 0.5, 227))
+}
