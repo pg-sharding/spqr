@@ -181,6 +181,7 @@ func RecordFinishedTransaction(t time.Time, client uint) {
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
+		clientST.RouterStart = time.Time{}
 	}
 	if !clientST.ShardStart.IsZero() {
 		shardTime := float64(t.Sub(clientST.ShardStart).Microseconds()) / 1000
@@ -192,5 +193,6 @@ func RecordFinishedTransaction(t time.Time, client uint) {
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
+		clientST.ShardStart = time.Time{}
 	}
 }
