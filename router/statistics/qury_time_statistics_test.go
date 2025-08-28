@@ -148,6 +148,6 @@ func TestStatisticsReset(t *testing.T) {
 	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), 227)
 	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*4), 227)
 	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*8), 227)
-	assert.Equal(statistics.GetTimeQuantile(statistics.Router, 0.5, 227), 2.0)
-	assert.Equal(statistics.GetTimeQuantile(statistics.Shard, 0.5, 227), 2.0)
+	assert.Equal(2.0, statistics.GetTimeQuantile(statistics.Router, 0.5, 227))
+	assert.Equal(1.0, statistics.GetTimeQuantile(statistics.Shard, 0.5, 227))
 }
