@@ -142,7 +142,7 @@ func TestStatisticsReset(t *testing.T) {
 	assert := assert.New(t)
 
 	tim := time.Now()
-	statistics.InitStatisticsStr([]string{"0.5"})
+	assert.NoError(statistics.InitStatisticsStr([]string{"0.5"}))
 	statistics.RecordStartTime(statistics.Router, tim, 227)
 	statistics.RecordStartTime(statistics.Shard, tim, 227)
 	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), 227)
