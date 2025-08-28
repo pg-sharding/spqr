@@ -132,8 +132,6 @@ gcflags
 getconn
 gettime
 gitlab
-gocritic
-gocyclo
 godog
 gofmt
 gofmtcheck
@@ -244,7 +242,6 @@ logproxy
 lol
 lsb
 lval
-markokr
 maxuint
 mcol
 mdblocales
@@ -475,6 +472,7 @@ sssssdss
 stchan
 stdcopy
 stmtcache
+stmtlog
 stoptrace
 stretchr
 strlist
@@ -532,7 +530,6 @@ umi
 unconfigured
 underyling
 unmarshalling
-unparam
 unrecognised
 unregisters
 unregistration

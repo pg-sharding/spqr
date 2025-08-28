@@ -593,6 +593,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 		switch currentMsg := msg.(type) {
 		case *pgproto3.Parse:
+			startTime := time.Now()
 
 			rst.Client().StorePreparedStatement(&prepstatement.PreparedStatementDefinition{
 				Name:          currentMsg.Name,
@@ -642,7 +643,10 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			if err := fin(); err != nil {
 				return err
 			}
+			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, currentMsg.Query, time.Since(startTime))
 		case *pgproto3.Bind:
+			startTime := time.Now()
+
 			spqrlog.Zero.Debug().
 				Str("name", currentMsg.PreparedStatement).
 				Uint("client", rst.Client().ID()).
@@ -706,6 +710,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.execute = func() error {
 						return BindAndReadSliceResult(rst, &rst.saveBind)
 					}
+					spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
 					return nil
 				default:
 					rst.execute = func() error {
@@ -731,6 +736,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 						return BindAndReadSliceResult(rst, &rst.saveBind)
 					}
+					spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
 
 					return nil
 
@@ -745,6 +751,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			if pd != nil {
 				rst.savedPortalDesc[currentMsg.PreparedStatement] = pd
 			}
+			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
 
 		case *pgproto3.Describe:
 			// save txstatus because it may be overwritten if we have no backend connection
@@ -867,6 +874,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			rst.qse.SetTxStatus(saveTxStat)
 
 		case *pgproto3.Execute:
+			startTime := time.Now()
+			q := rst.plainQ
 			spqrlog.Zero.Debug().
 				Uint("client", rst.Client().ID()).
 				Msg("Execute prepared statement, reset saved bind")
@@ -880,6 +889,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			if err != nil {
 				return err
 			}
+			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, q, time.Since(startTime))
 		case *pgproto3.Close:
 			//
 		default:
