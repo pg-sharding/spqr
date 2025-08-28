@@ -19,7 +19,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/rerrors"
-	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/twopc"
 )
 
@@ -211,7 +210,6 @@ var (
 // QueryStateExecutor provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
 func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseState, comment string, binderQ func() error, doCaching bool) (*PortalDesc, error) {
-	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 	startTime := time.Now()
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
