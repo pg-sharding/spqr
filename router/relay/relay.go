@@ -897,7 +897,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 		}
 	}
 
-	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
 	return rst.CompleteRelay(true)
 }
 
