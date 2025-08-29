@@ -65,24 +65,24 @@ CREATE DISTRIBUTED RELATION copy_test_multi_multi (id1, id2) IN ds2;
 
 \c regress
 CREATE TABLE copy_test (id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 CREATE TABLE copy_test_mult (id int, uid int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 CREATE TABLE copy_test_multi_multi (id1 int, id2 TEXT, id3 int, id4 int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 -- should fail
 COPY copy_test_multi_multi (id1, id3, id4) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 ERROR:  client processing error: failed to resolve target copy column offset, tx status ACTIVE
 COPY copy_test_multi_multi (id3, id4) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 ERROR:  client processing error: failed to resolve target copy column offset, tx status ACTIVE
 COPY copy_test_multi_multi (id4, id2) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 ERROR:  client processing error: failed to resolve target copy column offset, tx status ACTIVE
 -- should be ok
 COPY copy_test(id) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  id 
@@ -99,7 +99,7 @@ NOTICE: send query to shard(s) : sh1
 (9 rows)
 
 SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  id  
 -----
  101
@@ -109,7 +109,7 @@ NOTICE: send query to shard(s) : sh2
 (4 rows)
 
 SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh3 */;
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  id  
 -----
  200
@@ -119,7 +119,7 @@ NOTICE: send query to shard(s) : sh3
 (4 rows)
 
 SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh4 */;
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
   id   
 -------
    300
@@ -132,7 +132,7 @@ NOTICE: send query to shard(s) : sh4
 (7 rows)
 
 COPY copy_test(id) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  id 
@@ -150,7 +150,7 @@ NOTICE: send query to shard(s) : sh1
 (10 rows)
 
 SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  id  
 -----
  101
@@ -161,7 +161,7 @@ NOTICE: send query to shard(s) : sh2
 (5 rows)
 
 SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh3 */;
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  id  
 -----
  200
@@ -172,7 +172,7 @@ NOTICE: send query to shard(s) : sh3
 (5 rows)
 
 SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh4 */;
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
   id   
 -------
    300
@@ -187,10 +187,10 @@ NOTICE: send query to shard(s) : sh4
 (9 rows)
 
 TRUNCATE copy_test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 /* test conditional copy */
 COPY copy_test(id) FROM STDIN WHERE id <= 10 OR id % 2 = 1;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  id 
@@ -207,7 +207,7 @@ NOTICE: send query to shard(s) : sh1
 (9 rows)
 
 SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  id  
 -----
  101
@@ -215,7 +215,7 @@ NOTICE: send query to shard(s) : sh2
 (2 rows)
 
 SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh3 */;
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  id  
 -----
  201
@@ -223,7 +223,7 @@ NOTICE: send query to shard(s) : sh3
 (2 rows)
 
 SELECT * FROM copy_test ORDER BY id /* __spqr__execute_on: sh4 */;
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
  id  
 -----
  301
@@ -231,7 +231,7 @@ NOTICE: send query to shard(s) : sh4
 
 /* copy with several columns */
 COPY copy_test_mult (id, uid) FROM stdin;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  id | uid 
@@ -243,7 +243,7 @@ NOTICE: send query to shard(s) : sh1
 (4 rows)
 
 SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  id  | uid 
 -----+-----
  101 |  14
@@ -252,7 +252,7 @@ NOTICE: send query to shard(s) : sh2
 (3 rows)
 
 SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh3 */;
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  id  | uid 
 -----+-----
  202 |  14
@@ -260,14 +260,14 @@ NOTICE: send query to shard(s) : sh3
 (2 rows)
 
 SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh4 */;
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
    id    | uid 
 ---------+-----
  2012021 |  14
 (1 row)
 
 COPY copy_test_mult (uid, id) FROM stdin;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  id | uid 
@@ -280,7 +280,7 @@ NOTICE: send query to shard(s) : sh1
 (5 rows)
 
 SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  id  | uid 
 -----+-----
  101 |  14
@@ -290,7 +290,7 @@ NOTICE: send query to shard(s) : sh2
 (4 rows)
 
 SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh3 */;
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  id  | uid 
 -----+-----
  202 |  14
@@ -299,7 +299,7 @@ NOTICE: send query to shard(s) : sh3
 (3 rows)
 
 SELECT * FROM copy_test_mult ORDER BY id /* __spqr__execute_on: sh4 */;
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
    id    | uid 
 ---------+-----
      316 |   7
@@ -307,14 +307,14 @@ NOTICE: send query to shard(s) : sh4
 (2 rows)
 
 COPY copy_test_mult (uid, id) FROM stdin;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 ERROR:  client processing error: insufficient data in routing tuple, tx status ACTIVE
 DROP TABLE copy_test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 DROP TABLE copy_test_mult;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 DROP TABLE copy_test_multi_multi;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 \c spqr-console
 
 		SPQR router admin console

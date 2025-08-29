@@ -1,9 +1,9 @@
 SET __spqr__maintain_params TO TRUE;
 SET allow_system_table_mods TO true;
 CREATE EXTENSION spqrguard;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 CREATE TABLE guard_zz(i INT) /* __spqr__auto_distribution: REPLICATED */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 SELECT spqr_metadata.mark_reference_relation('guard_zz') /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  mark_reference_relation 
@@ -12,36 +12,36 @@ NOTICE: send query to shard(s) : sh1
 (1 row)
 
 SELECT spqr_metadata.mark_reference_relation('guard_zz') /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  mark_reference_relation 
 -------------------------
  
 (1 row)
 
 SELECT spqr_metadata.mark_reference_relation('guard_zz') /* __spqr__execute_on: sh3 */;
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  mark_reference_relation 
 -------------------------
  
 (1 row)
 
 SELECT spqr_metadata.mark_reference_relation('guard_zz') /* __spqr__execute_on: sh4 */;
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
  mark_reference_relation 
 -------------------------
  
 (1 row)
 
 INSERT INTO guard_zz (i) VALUES(1);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 SET spqrguard.prevent_reference_table_modify TO on;
 INSERT INTO guard_zz (i) VALUES(1);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 ERROR:  unable to modify SPQR reference relation within read-only transaction
 DROP TABLE guard_zz;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 DROP EXTENSION spqrguard;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 \c spqr-console
 
 		SPQR router admin console

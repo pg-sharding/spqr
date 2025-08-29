@@ -58,16 +58,16 @@ CREATE DISTRIBUTED RELATION test_h DISTRIBUTION KEY id HASH FUNCTION MURMUR IN d
 
 \c regress
 CREATE TABLE test(id int, age int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 -- TODO: specify distribution as well as sharding_key
 INSERT INTO test(id, age) VALUES (1210, 16) /*__spqr__sharding_key: 1, __spqr__distribution: ds1  */;
 NOTICE: send query to shard(s) : sh1
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30, __spqr__distribution: ds1  */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000, __spqr__distribution: ds1  */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 CREATE TABLE test_h(id TEXT, age int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 INSERT INTO test_h(id, age) VALUES ('a1210', 16) /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
 NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_h /*__spqr__sharding_key: a1210, __spqr__distribution: ds2  */;
@@ -78,9 +78,9 @@ NOTICE: send query to shard(s) : sh1
 (1 row)
 
 INSERT INTO test_h(id, age) VALUES ('a12101', 16) /*__spqr__sharding_key: a12101, __spqr__distribution: ds2  */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 SELECT * FROM test_h /*__spqr__sharding_key: a12101, __spqr__distribution: ds2  */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
    id   | age 
 --------+-----
  a12101 |  16
@@ -122,7 +122,7 @@ NOTICE: send query to shard(s) : sh1
 
 SET __spqr__sharding_key = 12;
 SELECT * FROM test;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  id | age 
 ----+-----
  10 |  16
@@ -141,7 +141,7 @@ NOTICE: send query to shard(s) : sh1
 ROLLBACK;
 -- should return to previous value, so select from second shard
 SELECT * FROM test;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  id | age 
 ----+-----
  10 |  16
@@ -152,9 +152,9 @@ RESET __spqr__sharding_key;
 \c regress
 -- cleanup test relation to avoid confusion
 TRUNCATE test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 COPY test (id, age) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 -- SELECT here with order to avoid flaps
 SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
@@ -166,7 +166,7 @@ NOTICE: send query to shard(s) : sh1
 (3 rows)
 
 SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  id | age 
 ----+-----
  15 |  15
@@ -198,7 +198,7 @@ SHOW __spqr__execute_on;
 (1 row)
 
 SELECT * FROM test ORDER BY id;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  id | age 
 ----+-----
  15 |  15
@@ -209,7 +209,7 @@ NOTICE: send query to shard(s) : sh2
 SET __spqr__execute_on TO sh1;
 -- overrides prev set
 SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  id | age 
 ----+-----
  15 |  15
@@ -244,7 +244,7 @@ SHOW __spqr__execute_on;
 
 SET __spqr__default_route_behaviour to 'BLOCK';
 SELECT 1 FROM test WHERE id IN (5, 25) /* __spqr__scatter_query: true, __spqr__default_route_behaviour: allow */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
  ?column? 
 ----------
         1
@@ -259,7 +259,7 @@ SHOW __spqr__default_route_behaviour;
 (1 row)
 
 SELECT 1 FROM test WHERE id IN (5, 25) /* __spqr__scatter_query: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
  ?column? 
 ----------
         1
@@ -269,9 +269,9 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- restart session, reset all params
 \c regress
 DROP TABLE test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 DROP TABLE test_h;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 \c spqr-console
 
 		SPQR router admin console

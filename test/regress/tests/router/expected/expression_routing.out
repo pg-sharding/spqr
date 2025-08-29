@@ -53,9 +53,9 @@ show relations;
 CREATE TABLE tr (id1 INT, val TEXT);
 ERROR:  client processing error: error processing query 'CREATE TABLE tr (id1 INT, val TEXT);': create table stmt ignored: no sharding rule columns found, tx status IDLE
 CREATE TABLE tr (id1 INT, id2 TEXT, val TEXT);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 COPY tr (id1, id2, val) FROM STDIN DELIMITER '|';
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 SELECT * FROM tr WHERE id1 = 0 AND id2 = 'aba';
 NOTICE: send query to shard(s) : sh1
  id1 | id2 |    val    
@@ -64,28 +64,28 @@ NOTICE: send query to shard(s) : sh1
 (1 row)
 
 SELECT * FROM tr WHERE id1 = 1 AND id2 = 'ziziziz';
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  id1 |   id2   | val  
 -----+---------+------
    1 | ziziziz | abab
 (1 row)
 
 SELECT * FROM tr WHERE id1 = 2 AND id2 = 'ziiziziziz';
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  id1 |    id2     |  val  
 -----+------------+-------
    2 | ziiziziziz | ababa
 (1 row)
 
 SELECT * FROM tr WHERE id1 = 3 AND id2 = 'ziizizizi';
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
  id1 |    id2    |   val    
 -----+-----------+----------
    3 | ziizizizi | abababab
 (1 row)
 
 SELECT * FROM tr WHERE id1 = 4 AND id2 = 'yyuyuyuyu';
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
  id1 |    id2    |  val   
 -----+-----------+--------
    4 | yyuyuyuyu | ababba
@@ -94,13 +94,13 @@ NOTICE: send query to shard(s) : sh4
 INSERT INTO tr (id1, id2, val) VALUES (0, 'aba', 'asas');
 NOTICE: send query to shard(s) : sh1
 INSERT INTO tr (id1, id2, val) VALUES (1, 'ziziziz', 'assaas');
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
 INSERT INTO tr (id1, id2, val) VALUES (2, 'ziiziziziz', 'asssa');
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
 INSERT INTO tr (id1, id2, val) VALUES (3, 'ziizizizi', 'asas');
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
 INSERT INTO tr (id1, id2, val) VALUES (4, 'yyuyuyuyu', 'saassa');
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
 SELECT * FROM tr WHERE id1 = 0 AND id2 = 'aba';
 NOTICE: send query to shard(s) : sh1
  id1 | id2 |    val    
@@ -110,7 +110,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 SELECT * FROM tr WHERE id1 = 1 AND id2 = 'ziziziz';
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  id1 |   id2   |  val   
 -----+---------+--------
    1 | ziziziz | abab
@@ -118,7 +118,7 @@ NOTICE: send query to shard(s) : sh3
 (2 rows)
 
 SELECT * FROM tr WHERE id1 = 2 AND id2 = 'ziiziziziz';
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  id1 |    id2     |  val  
 -----+------------+-------
    2 | ziiziziziz | ababa
@@ -126,7 +126,7 @@ NOTICE: send query to shard(s) : sh3
 (2 rows)
 
 SELECT * FROM tr WHERE id1 = 3 AND id2 = 'ziizizizi';
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
  id1 |    id2    |   val    
 -----+-----------+----------
    3 | ziizizizi | abababab
@@ -134,7 +134,7 @@ NOTICE: send query to shard(s) : sh4
 (2 rows)
 
 SELECT * FROM tr WHERE id1 = 4 AND id2 = 'yyuyuyuyu';
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
  id1 |    id2    |  val   
 -----+-----------+--------
    4 | yyuyuyuyu | ababba
@@ -144,7 +144,7 @@ NOTICE: send query to shard(s) : sh4
 WITH vals (x, y, z) AS (VALUES(1, 'ziziziz', 32), (2, 'ziiziziziz', 32)) 
     SELECT * FROM 
         tr JOIN vals ON tr.id1 = vals.x AND tr.id2 = vals.y;
-NOTICE: send query to shard(s) : sh3,sh4
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
  id1 |    id2     |  val   | x |     y      | z  
 -----+------------+--------+---+------------+----
    1 | ziziziz    | abab   | 1 | ziziziz    | 32
@@ -169,7 +169,7 @@ NOTICE: send query to shard(s) : sh1,sh3,sh4
 WITH vals (x, y, z) AS (VALUES (4, 'yyuyuyuyu', 32), (1, 'ziziziz', 32), (0, 'aba', 3), (1, 'ziziziz', 3)) 
     SELECT * FROM 
         tr JOIN vals ON tr.id1 = vals.x AND tr.id2 = vals.y /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
  id1 |    id2    |    val    | x |     y     | z  
 -----+-----------+-----------+---+-----------+----
    4 | yyuyuyuyu | ababba    | 4 | yyuyuyuyu | 32
@@ -183,9 +183,9 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (8 rows)
 
 UPDATE tr SET val = 1123 WHERE id1 = 1 AND id2 = 'ziziziz';
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
 DELETE FROM tr WHERE id1 = 1 AND id2 = 'ziziziz' RETURNING *;
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  id1 |   id2   | val  
 -----+---------+------
    1 | ziziziz | 1123
@@ -193,7 +193,7 @@ NOTICE: send query to shard(s) : sh3
 (2 rows)
 
 DROP TABLE tr;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 \c spqr-console
 
 		SPQR router admin console

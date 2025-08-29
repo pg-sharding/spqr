@@ -52,9 +52,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY i;
 
 \c regress
 CREATE TABLE table1(i INT PRIMARY KEY);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 CREATE TABLE ref_rel_1(i int, j int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 SELECT * FROM (SELECT * FROM table1 WHERE i = 1) AS a;
 NOTICE: send query to shard(s) : sh1
  i 
@@ -69,7 +69,7 @@ NOTICE: send query to shard(s) : sh1
 
 -- should dispatch to sh3
 SELECT 1, (SELECT i FROM table1 WHERE i = 201);
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  ?column? | i 
 ----------+---
         1 |  
@@ -77,7 +77,7 @@ NOTICE: send query to shard(s) : sh3
 
 -- should dispatch to sh3 and sh4 (TODO: parallel processing)
 SELECT 1, (SELECT i FROM table1 WHERE i = 201), (SELECT i FROM table1 WHERE i = 301);
-NOTICE: send query to shard(s) : sh3,sh4
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
  ?column? | i | i 
 ----------+---+---
         1 |   |  
@@ -85,9 +85,9 @@ NOTICE: send query to shard(s) : sh3,sh4
 (2 rows)
 
 DROP TABLE table1;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 DROP TABLE ref_rel_1;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 \c spqr-console
 
 		SPQR router admin console

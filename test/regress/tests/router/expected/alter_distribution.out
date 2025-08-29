@@ -62,13 +62,13 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
 ERROR:  relation "xx" is already attached
 \c regress
 DROP TABLE IF EXISTS xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 CREATE TABLE xx (w_id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 INSERT INTO xx(w_id) VALUES(5);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx(w_id) VALUES(20);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 SELECT * FROM xx WHERE w_id=5;
 NOTICE: send query to shard(s) : sh1
  w_id 
@@ -77,9 +77,9 @@ NOTICE: send query to shard(s) : sh1
 (1 row)
 
 CREATE TABLE yy (w_id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 SELECT * FROM yy WHERE w_id=5;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  w_id 
 ------
 (0 rows)
@@ -123,9 +123,9 @@ NOTICE: send query to shard(s) : sh1
 (0 rows)
 
 DROP TABLE xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 DROP TABLE yy;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 \c spqr-console
 
 		SPQR router admin console

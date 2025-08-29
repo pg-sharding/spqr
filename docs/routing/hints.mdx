@@ -124,7 +124,7 @@ Whether to show notice messages. Overload for [query_routing.default_route_behav
 ```sql
 SET __spqr__reply_notice TO true;
 INSERT INTO xxtest_sw (id) VALUES(1), (2), (3);
-NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432
 ```
 
 ### __spqr__sharding_key
@@ -169,7 +169,7 @@ CREATE TABLE tax_rates (
     country_code VARCHAR(2),
     state_code VARCHAR(2) /* __spqr__auto_distribution: REPLICATED */;
 );
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 ```
 
 ### __spqr__distribution_key

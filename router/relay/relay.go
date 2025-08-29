@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/pkg/shard"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/opentracing/opentracing-go"
@@ -405,6 +406,32 @@ func replyShardMatches(client client.RouterClient, sh []kr.ShardKey) error {
 	}
 	sort.Strings(shardNames)
 	shardMatches := strings.Join(shardNames, ",")
+
+	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
+}
+
+// TODO : unit tests
+func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, shardKeys []kr.ShardKey) error {
+	// Create a map of shard key names to actual shard instances for quick lookup
+	shardInstanceMap := make(map[string]shard.ShardHostInstance)
+	for _, shardInstance := range serv.Datashards() {
+		shardInstanceMap[shardInstance.SHKey().Name] = shardInstance
+	}
+
+	// Build shard info with both name and host
+	var shardInfos []string
+	for _, shkey := range shardKeys {
+		if shardInstance, exists := shardInstanceMap[shkey.Name]; exists {
+			shardInfo := fmt.Sprintf("%s@%s", shkey.Name, shardInstance.InstanceHostname())
+			shardInfos = append(shardInfos, shardInfo)
+		} else {
+			// Fallback to just shard name if we can't find the instance
+			shardInfos = append(shardInfos, shkey.Name)
+		}
+	}
+	
+	sort.Strings(shardInfos)
+	shardMatches := strings.Join(shardInfos, ",")
 
 	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
 }

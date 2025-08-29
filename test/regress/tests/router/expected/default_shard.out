@@ -47,25 +47,25 @@ CREATE DISTRIBUTED RELATION def_sh_xx DISTRIBUTION KEY id IN ds1;
 
 \c regress
 CREATE TABLE def_sh_xx(id INT);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 INSERT INTO def_sh_xx (id) VALUES (-30);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO def_sh_xx (id) VALUES (-21);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO def_sh_xx (id) VALUES (-20);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO def_sh_xx (id) VALUES (-19);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO def_sh_xx (id) VALUES (-11);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO def_sh_xx (id) VALUES (-10);
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
 INSERT INTO def_sh_xx (id) VALUES (-9);
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
 INSERT INTO def_sh_xx (id) VALUES (0);
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
 INSERT INTO def_sh_xx (id) VALUES (1);
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
 SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  id  
@@ -75,7 +75,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  id  
 -----
  -20
@@ -84,7 +84,7 @@ NOTICE: send query to shard(s) : sh2
 (3 rows)
 
 SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh3 */;
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  id  
 -----
  -10
@@ -92,7 +92,7 @@ NOTICE: send query to shard(s) : sh3
 (2 rows)
 
 SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh4 */;
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
  id 
 ----
   0
@@ -100,9 +100,9 @@ NOTICE: send query to shard(s) : sh4
 (2 rows)
 
 TRUNCATE def_sh_xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 COPY def_sh_xx (id) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  id  
@@ -112,7 +112,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  id  
 -----
  -20
@@ -121,7 +121,7 @@ NOTICE: send query to shard(s) : sh2
 (3 rows)
 
 SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh3 */;
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  id  
 -----
  -10
@@ -129,7 +129,7 @@ NOTICE: send query to shard(s) : sh3
 (2 rows)
 
 SELECT * FROM def_sh_xx ORDER BY id /* __spqr__execute_on: sh4 */;
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
  id 
 ----
   0
@@ -137,7 +137,7 @@ NOTICE: send query to shard(s) : sh4
 (2 rows)
 
 DROP TABLE def_sh_xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 \c spqr-console
 
 		SPQR router admin console
