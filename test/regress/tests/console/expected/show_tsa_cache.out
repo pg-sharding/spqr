@@ -1,0 +1,12 @@
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+SHOW tsa_cache;
+ tsa | host | az | alive | match | reason | last_check_time 
+-----+------+----+-------+-------+--------+-----------------
+(0 rows)
+
