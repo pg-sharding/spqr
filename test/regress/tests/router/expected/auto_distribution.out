@@ -23,13 +23,13 @@ CREATE KEY RANGE FROM 0 ROUTE TO sh1;
 CREATE TABLE zz(i int, j int, k int);
 ERROR:  client processing error: error processing query 'CREATE TABLE zz(i int, j int, k int);': distribution for relation "zz" not found, tx status IDLE
 CREATE TABLE zz(i int, j int, k int) /* __spqr__auto_distribution: REPLICATED */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 INSERT INTO zz (i,j,k) VALUES(1,2,3);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 INSERT INTO zz (i,j,k) VALUES(2,3,4);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 INSERT INTO zz (i,j,k) VALUES(4,5,6);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 TABLE zz /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  i | j | k 
@@ -40,7 +40,7 @@ NOTICE: send query to shard(s) : sh1
 (3 rows)
 
 TABLE zz /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  i | j | k 
 ---+---+---
  1 | 2 | 3
@@ -49,7 +49,7 @@ NOTICE: send query to shard(s) : sh2
 (3 rows)
 
 TABLE zz /* __spqr__execute_on: sh3 */;
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  i | j | k 
 ---+---+---
  1 | 2 | 3
@@ -58,7 +58,7 @@ NOTICE: send query to shard(s) : sh3
 (3 rows)
 
 TABLE zz /* __spqr__execute_on: sh4 */;
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
  i | j | k 
 ---+---+---
  1 | 2 | 3
@@ -70,7 +70,7 @@ NOTICE: send query to shard(s) : sh4
 CREATE TABLE d_zz (i int, j int);
 ERROR:  client processing error: error processing query 'CREATE TABLE d_zz (i int, j int);': distribution for relation "d_zz" not found, tx status IDLE
 CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 INSERT INTO d_zz (i, j) VALUES(1,2); 
 NOTICE: send query to shard(s) : sh1
 INSERT INTO d_zz (i, j) VALUES(2,3); 
@@ -84,27 +84,27 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 TABLE d_zz /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  i | j 
 ---+---
 (0 rows)
 
 TABLE d_zz /* __spqr__execute_on: sh3 */;
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  i | j 
 ---+---
 (0 rows)
 
 TABLE d_zz /* __spqr__execute_on: sh4 */;
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
  i | j 
 ---+---
 (0 rows)
 
 DROP TABLE zz;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 DROP TABLE d_zz;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 \c spqr-console
 
 		SPQR router admin console

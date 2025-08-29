@@ -34,47 +34,47 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY col1 HASH FUNCTION MU
 
 \c regress
 DROP TABLE IF EXISTS xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 CREATE TABLE xx (col1 INT);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 INSERT INTO xx (col1) VALUES (1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (col1) VALUES (2);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (col1) VALUES (3);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (col1) VALUES (4);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (col1) VALUES (5);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (col1) VALUES (6);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (col1) VALUES (7);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (col1) VALUES (8);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (col1) VALUES (9);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (col1) VALUES (10);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (col1) VALUES (11);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (col1) VALUES (65535);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (col1) VALUES (65536);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (col1) VALUES (65537);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (col1) VALUES (65538);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (col1) VALUES (65539);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (col1) VALUES (2147483644);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (col1) VALUES (2147483645);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (col1) VALUES (2147483646);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (col1) VALUES (2147483647);
 NOTICE: send query to shard(s) : sh1
 SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
@@ -93,7 +93,7 @@ NOTICE: send query to shard(s) : sh1
 (9 rows)
 
 SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
     col1    
 ------------
           2
@@ -110,7 +110,7 @@ NOTICE: send query to shard(s) : sh2
 (11 rows)
 
 COPY xx (col1) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
     col1    
@@ -136,7 +136,7 @@ NOTICE: send query to shard(s) : sh1
 (18 rows)
 
 SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
     col1    
 ------------
           2
@@ -172,7 +172,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 SELECT * FROM xx WHERE col1 = 2;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  col1 
 ------
     2
@@ -180,7 +180,7 @@ NOTICE: send query to shard(s) : sh2
 (2 rows)
 
 SELECT * FROM xx WHERE col1 = 3;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  col1 
 ------
     3
@@ -188,7 +188,7 @@ NOTICE: send query to shard(s) : sh2
 (2 rows)
 
 SELECT * FROM xx WHERE col1 = 4;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  col1 
 ------
     4
@@ -212,7 +212,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 SELECT * FROM xx WHERE col1 = 7;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  col1 
 ------
     7
@@ -220,7 +220,7 @@ NOTICE: send query to shard(s) : sh2
 (2 rows)
 
 SELECT * FROM xx WHERE col1 = 8;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  col1 
 ------
     8
@@ -236,7 +236,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 SELECT * FROM xx WHERE col1 = 10;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  col1 
 ------
    10
@@ -252,7 +252,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 SELECT * FROM xx WHERE col1 = 65535;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  col1  
 -------
  65535
@@ -260,7 +260,7 @@ NOTICE: send query to shard(s) : sh2
 (2 rows)
 
 SELECT * FROM xx WHERE col1 = 65536;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  col1  
 -------
  65536
@@ -268,7 +268,7 @@ NOTICE: send query to shard(s) : sh2
 (2 rows)
 
 SELECT * FROM xx WHERE col1 = 65537;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  col1  
 -------
  65537
@@ -292,7 +292,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 SELECT * FROM xx WHERE col1 = 2147483644;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
     col1    
 ------------
  2147483644
@@ -308,7 +308,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 SELECT * FROM xx WHERE col1 = 2147483646;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
     col1    
 ------------
  2147483646
@@ -324,7 +324,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 DROP TABLE xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 \c spqr-console
 
 		SPQR router admin console

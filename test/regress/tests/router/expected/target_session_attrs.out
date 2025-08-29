@@ -33,7 +33,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION tsa_test DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE tsa_test (id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 INSERT INTO tsa_test (id) VALUES (22);
 NOTICE: send query to shard(s) : sh1
 -- you could specify target-session-attrs anywhere in your query

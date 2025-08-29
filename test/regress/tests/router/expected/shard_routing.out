@@ -53,11 +53,11 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxtt1 DISTRIBUTION KEY w_id;
 
 \c regress
 CREATE TABLE xx (w_id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 CREATE TABLE xxerr (i int);
 ERROR:  client processing error: error processing query 'CREATE TABLE xxerr (i int);': create table stmt ignored: no sharding rule columns found, tx status IDLE
 CREATE TABLE xxtt1 (i int, j int, w_id int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 INSERT INTO xx (w_id) VALUES (1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (w_id) VALUES (10);
@@ -65,9 +65,9 @@ NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (w_id) VALUES (20);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (w_id) VALUES (21);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (w_id) VALUES (30);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 SELECT * FROM xx WHERE w_id >= 1;
 NOTICE: send query to shard(s) : sh1
  w_id 
@@ -85,7 +85,7 @@ NOTICE: send query to shard(s) : sh1
 (1 row)
 
 SELECT * FROM xx WHERE w_id >= 21;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  w_id 
 ------
    21
@@ -97,42 +97,42 @@ NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (w_id) VALUES(15);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (w_id) VALUES(21);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xxtt1 (i, w_id) VALUES(1, 1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (i, w_id) VALUES(15, 15);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (i, w_id) VALUES(21, 21);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xxtt1 (w_id, i) VALUES(1, 1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (w_id, i) VALUES(15, -12);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (w_id, i) VALUES(21, 12);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xxtt1 (i, w_id) VALUES(1, 1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (i, w_id) VALUES(-12, 15);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (i, w_id) VALUES(2121221, 21);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xxtt1 (i, j, w_id) VALUES(-12, 1, 1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (i, w_id, j) VALUES(-12, 15, 123123);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 23);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 -- check that insert without columns works
 INSERT INTO xxtt1 VALUES(333, 333, 333);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xxtt1 VALUES(333, 333);
 ERROR:  client processing error: error processing query 'INSERT INTO xxtt1 VALUES(333, 333);': too complex query to route, tx status IDLE
 SELECT * FROM xxtt1 WHERE w_id >= 1;
@@ -158,7 +158,7 @@ NOTICE: send query to shard(s) : sh1
 (0 rows)
 
 SELECT * FROM xxtt1 WHERE w_id >= 21;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
     i    |    j    | w_id 
 ---------+---------+------
          |         |   21
@@ -174,7 +174,7 @@ NOTICE: send query to shard(s) : sh2
 (10 rows)
 
 SELECT DISTINCT * FROM xxtt1 WHERE w_id=21;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
     i    |    j    | w_id 
 ---------+---------+------
  -211212 | 2121221 |   21
@@ -208,7 +208,7 @@ NOTICE: send query to shard(s) : sh1
 (0 rows)
 
 SELECT * FROM xxtt1 a WHERE a.w_id >= 21;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
     i    |    j    | w_id 
 ---------+---------+------
          |         |   21
@@ -224,7 +224,7 @@ NOTICE: send query to shard(s) : sh2
 (10 rows)
 
 SELECT * FROM xxtt1 a WHERE a.w_id = 21 and j + i != 0;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
     i    |    j    | w_id 
 ---------+---------+------
  -211212 | 2121221 |   21
@@ -234,7 +234,7 @@ NOTICE: send query to shard(s) : sh2
 (4 rows)
 
 SELECT * FROM xxtt1 a WHERE a.w_id = 21 and w_id <= 30 and j + i != 0;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
     i    |    j    | w_id 
 ---------+---------+------
  -211212 | 2121221 |   21
@@ -286,11 +286,11 @@ NOTICE: send query to shard(s) : sh1
 (1 row)
 
 DROP TABLE xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 DROP TABLE xxtt1;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 DROP TABLE xxerr;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 ERROR:  table "xxerr" does not exist
 \c spqr-console
 

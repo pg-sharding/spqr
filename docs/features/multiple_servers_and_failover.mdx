@@ -7,7 +7,7 @@ In the router configuration, it is possible to specify multiple servers for one 
 ```sql
 -- you could specify target-session-attrs anywhere in your query
 SELECT pg_is_in_recovery(), id FROM tsa_test WHERE id = 22 /* target-session-attrs: read-write */;
-NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432
  pg_is_in_recovery | id 
 -------------------+----
  f                 | 22

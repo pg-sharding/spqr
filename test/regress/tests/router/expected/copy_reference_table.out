@@ -22,13 +22,13 @@ CREATE REFERENCE TABLE test_ref_rel_2;
 
 \c regress
 CREATE TABLE test_ref_rel(i int, j int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 CREATE TABLE test_ref_rel_2(i int, j int);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 COPY test_ref_rel FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 COPY test_ref_rel_2 FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 TABLE test_ref_rel /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  i | j 
@@ -40,7 +40,7 @@ NOTICE: send query to shard(s) : sh1
 (4 rows)
 
 TABLE test_ref_rel /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  i | j 
 ---+---
  1 | 2
@@ -60,7 +60,7 @@ NOTICE: send query to shard(s) : sh1
 (4 rows)
 
 TABLE test_ref_rel_2 /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  i | j 
 ---+---
  1 | 2
@@ -70,9 +70,9 @@ NOTICE: send query to shard(s) : sh2
 (4 rows)
 
 DROP TABLE test_ref_rel;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 DROP TABLE test_ref_rel_2;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 \c spqr-console
 
 		SPQR router admin console

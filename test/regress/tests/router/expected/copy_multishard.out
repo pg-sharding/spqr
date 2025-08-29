@@ -38,44 +38,44 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY i HASH FUNCTION MURMU
 \c regress
 SET __spqr__engine_v2 TO true;
 CREATE TABLE xx (i bigint, j bigint CHECK(j != 11));
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 -- check schema-qualified name
 COPY public.xx (i, j) FROM STDIN WITH DELIMITER '|';
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 INSERT INTO xx (i, j) VALUES(1,1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (i, j) VALUES(2,2);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (i, j) VALUES(3,3);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (i, j) VALUES(4,4);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (i, j) VALUES(5,5);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (i, j) VALUES(6,6);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (i, j) VALUES(7,7);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (i, j) VALUES(8,8);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (i, j) VALUES(9,9);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (i, j) VALUES(10,10);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (i, j) VALUES(4294967296,4294967296);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (i, j) VALUES(4294967297,4294967297);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (i, j) VALUES(4294967298,4294967298);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (i, j) VALUES(144115188075855872,144115188075855872);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (i, j) VALUES(144115188075855871,144115188075855871);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (i, j) VALUES(9223372036854775807,9223372036854775807);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO xx (i, j) VALUES(9223372036854775806,9223372036854775806);
 NOTICE: send query to shard(s) : sh1
 TABLE xx /* __spqr__execute_on: sh1 */;
@@ -99,7 +99,7 @@ NOTICE: send query to shard(s) : sh1
 (14 rows)
 
 TABLE xx /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
           i          |          j          
 ---------------------+---------------------
                    2 |                   2
@@ -127,44 +127,44 @@ NOTICE: send query to shard(s) : sh2
 (22 rows)
 
 TRUNCATE xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 ERROR:  new row for relation "xx" violates check constraint "xx_j_check"
 DETAIL:  Failing row contains (1, 11).
 CONTEXT:  COPY xx, line 2: "1|11"
 TABLE xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
  i | j 
 ---+---
 (0 rows)
 
 BEGIN;
 COPY xx (i, j) FROM STDIN WITH DELIMITER '|' /*__spqr__engine_v2: true*/;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 ERROR:  new row for relation "xx" violates check constraint "xx_j_check"
 DETAIL:  Failing row contains (1, 11).
 CONTEXT:  COPY xx, line 3: "1|11"
 ROLLBACK;
 TABLE xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
  i | j 
 ---+---
 (0 rows)
 
 BEGIN;
 COPY xx (i, j) FROM STDIN WITH DELIMITER '|' /*__spqr__engine_v2: true*/;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 ROLLBACK;
 TABLE xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
  i | j 
 ---+---
 (0 rows)
 
 SET __spqr__engine_v2 TO false;
 DROP TABLE xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 \c spqr-console
 
 		SPQR router admin console

@@ -46,31 +46,31 @@ CREATE DISTRIBUTED RELATION hash_multi_xx DISTRIBUTION KEY col1, col2 HASH FUNCT
 
 \c regress
 CREATE TABLE hash_multi_xx(col1 INT, col2 TEXT);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'abwqqwqabba');
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
 INSERT INTO hash_multi_xx (col1, col2) VALUES(0, 'abwqqwqabba');
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO hash_multi_xx (col1, col2) VALUES(0, 'ababba');
 NOTICE: send query to shard(s) : sh1
 INSERT INTO hash_multi_xx (col1, col2) VALUES(0, 'ababdfba');
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'abawqqqwbba');
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
 INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'ababxaxasba');
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
 INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'ababxxxxba');
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
 INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'ababbxxxa');
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
 INSERT INTO hash_multi_xx (col1, col2) VALUES(0, 'ababbxxxa');
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
 INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'dejwio');
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
 INSERT INTO hash_multi_xx (col1, col2) VALUES(1, 'dejwiewdewo');
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
 INSERT INTO hash_multi_xx (col1, col2) VALUES(1, '232892');
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
 INSERT INTO hash_multi_xx (col1, col2) VALUES(0, '232892');
 NOTICE: send query to shard(s) : sh1
 SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
@@ -82,7 +82,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  col1 |    col2     
 ------+-------------
     0 | abwqqwqabba
@@ -91,7 +91,7 @@ NOTICE: send query to shard(s) : sh2
 (3 rows)
 
 SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh3 */;
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  col1 |    col2     
 ------+-------------
     1 | ababxaxasba
@@ -101,7 +101,7 @@ NOTICE: send query to shard(s) : sh3
 (4 rows)
 
 SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh4 */;
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
  col1 |    col2     
 ------+-------------
     1 | abwqqwqabba
@@ -111,9 +111,9 @@ NOTICE: send query to shard(s) : sh4
 (4 rows)
 
 TRUNCATE hash_multi_xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 COPY hash_multi_xx (col1, col2)  FROM STDIN DELIMITER '|';
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  col1 |  col2  
@@ -123,7 +123,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  col1 |    col2     
 ------+-------------
     0 | abwqqwqabba
@@ -132,7 +132,7 @@ NOTICE: send query to shard(s) : sh2
 (3 rows)
 
 SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh3 */;
-NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3@spqr_shard_3:6432
  col1 |    col2     
 ------+-------------
     1 | ababxaxasba
@@ -142,7 +142,7 @@ NOTICE: send query to shard(s) : sh3
 (4 rows)
 
 SELECT * FROM hash_multi_xx ORDER BY col1 /* __spqr__execute_on: sh4 */;
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4@spqr_shard_4:6432
  col1 |    col2     
 ------+-------------
     1 | abwqqwqabba
@@ -152,7 +152,7 @@ NOTICE: send query to shard(s) : sh4
 (4 rows)
 
 DROP TABLE hash_multi_xx;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 \c spqr-console
 
 		SPQR router admin console

@@ -33,11 +33,11 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION distrr_mm_test DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE distrr_mm_test (id INTEGER, t TEXT);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 COPY distrr_mm_test(id,t) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 COPY distrr_mm_test(id,t) FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 UPDATE distrr_mm_test SET t = 'm' WHERE id IN (3, 34) /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2
 SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh1 */;
@@ -52,7 +52,7 @@ NOTICE: send query to shard(s) : sh1
 (5 rows)
 
 SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  id |  t  
 ----+-----
  31 | 'u'
@@ -75,7 +75,7 @@ NOTICE: send query to shard(s) : sh1
 (4 rows)
 
 SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh2 */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2@spqr_shard_2:6432
  id |  t  
 ----+-----
  31 | 'u'
@@ -95,7 +95,7 @@ ERROR:  client processing error: error processing query 'INSERT INTO distrr_mm_t
 INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx') /* __spqr__engine_v2: true */;
 ERROR:  client processing error: error processing query 'INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx') /* __spqr__engine_v2: true */;': too complex query to route, tx status IDLE
 DROP TABLE distrr_mm_test;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1@spqr_shard_1:6432,sh2@spqr_shard_2:6432,sh3@spqr_shard_3:6432,sh4@spqr_shard_4:6432
 \c spqr-console
 
 		SPQR router admin console
