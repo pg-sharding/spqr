@@ -1,7 +1,7 @@
 package config
 
 import (
-	jsonv2 "encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -62,7 +62,7 @@ func LoadBalancerCfg(cfgPath string) (string, error) {
 		cfgBalancer.TimeoutSec = defaultBalancerTimeout
 	}
 
-	configBytes, err := jsonv2.MarshalIndent(cfgBalancer, "", "  ")
+	configBytes, err := json.MarshalIndent(cfgBalancer, "", "  ")
 	if err != nil {
 		return "", err
 	}
@@ -87,7 +87,7 @@ func initBalancerConfig(file *os.File, filepath string) error {
 		return yaml.NewDecoder(file).Decode(&cfgBalancer)
 	}
 	if strings.HasSuffix(filepath, ".json") {
-		return jsonv2.NewDecoder(file).Decode(&cfgBalancer)
+		return json.NewDecoder(file).Decode(&cfgBalancer)
 	}
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", filepath)
 }
