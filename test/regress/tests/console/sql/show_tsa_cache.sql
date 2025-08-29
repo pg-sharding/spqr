@@ -1,0 +1,1 @@
+SHOW tsa_cache;

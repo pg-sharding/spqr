@@ -152,6 +152,14 @@ func TestSimpleShow(t *testing.T) {
 				GroupBy: spqrparser.GroupByClauseEmpty{},
 			},
 		},
+		{
+			query: "SHOW tsa_cache",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.TsaCacheStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 

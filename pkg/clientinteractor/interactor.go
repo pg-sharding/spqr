@@ -1817,6 +1817,33 @@ func (pi *PSQLInteractor) Users(ctx context.Context) error {
 	return pi.CompleteMsg(len(berules))
 }
 
+// TsaCache outputs TSA cache entries showing the target session attributes cache status
+func (pi *PSQLInteractor) TsaCache(ctx context.Context, cacheEntries map[pool.TsaKey]pool.CachedEntry) error {
+	if err := pi.WriteHeader("tsa", "host", "az", "alive", "match", "reason", "last_check_time"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	count := 0
+	for key, entry := range cacheEntries {
+		if err := pi.WriteDataRow(
+			string(key.Tsa),
+			key.Host,
+			key.AZ,
+			fmt.Sprintf("%v", entry.Result.Alive),
+			fmt.Sprintf("%v", entry.Result.Match),
+			entry.Result.Reason,
+			entry.LastCheckTime.Format(time.RFC3339),
+		); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+		count++
+	}
+
+	return pi.CompleteMsg(count)
+}
+
 // Outputs groupBy get list values and counts its 'groupByCol' property.
 // 'groupByCol' sorted in grouped result by string key ASC mode
 //

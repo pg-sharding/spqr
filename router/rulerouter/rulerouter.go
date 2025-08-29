@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"golang.org/x/sync/semaphore"
@@ -76,6 +77,19 @@ func (r *RuleRouterImpl) InstanceHealthChecks() map[string]tsa.CachedCheckResult
 			if v2, ok := rt[k]; !ok || v2.LastCheckTime.UnixNano() > v.LastCheckTime.UnixNano() {
 				rt[k] = v
 			}
+		}
+		return true, nil
+	})
+	return rt
+}
+
+// TsaCacheEntries implements ConnectionStatsMgr.
+func (r *RuleRouterImpl) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
+	rt := map[pool.TsaKey]pool.CachedEntry{}
+	_ = r.NotifyRoutes(func(r *route.Route) (bool, error) {
+		m := r.ServPool().TsaCacheEntries()
+		for k, v := range m {
+			rt[k] = v
 		}
 		return true, nil
 	})

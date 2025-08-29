@@ -375,6 +375,7 @@ const (
 	SequencesStr          = "sequences"
 	IsReadOnlyStr         = "is_read_only"
 	MoveStatsStr          = "move_stats"
+	TsaCacheStr           = "tsa_cache"
 	Users                 = "users"
 )
 

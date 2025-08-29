@@ -19,4 +19,5 @@ test: sequence
 test: alter_relation
 test: reference_table
 test: show_users
+test: show_tsa_cache
 test: routing_expression

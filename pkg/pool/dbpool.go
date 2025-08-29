@@ -46,6 +46,11 @@ func (s *DBPool) InstanceHealthChecks() map[string]tsa.CachedCheckResult {
 	return s.checker.InstanceHealthChecks()
 }
 
+// TsaCacheEntries implements MultiShardTSAPool.
+func (s *DBPool) TsaCacheEntries() map[TsaKey]CachedEntry {
+	return s.cache.GetAllCachedEntries()
+}
+
 // View implements MultiShardPool.
 func (s *DBPool) View() Statistics {
 	return s.pool.View()
