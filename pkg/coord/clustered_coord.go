@@ -59,6 +59,11 @@ func (ci grpcConnMgr) InstanceHealthChecks() map[string]tsa.CachedCheckResult {
 	return map[string]tsa.CachedCheckResult{}
 }
 
+// TsaCacheEntries implements connmgr.ConnectionStatsMgr.
+func (ci grpcConnMgr) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
+	return map[pool.TsaKey]pool.CachedEntry{}
+}
+
 // TODO implement it
 // ActiveTcpCount implements connectiterator.ConnectIterator.
 func (ci grpcConnMgr) ActiveTcpCount() int64 {

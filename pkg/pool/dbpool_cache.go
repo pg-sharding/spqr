@@ -155,6 +155,20 @@ func (c *DbpoolCache) GetAllEntries() map[TsaKey]LocalCheckResult {
 	return entries
 }
 
+// GetAllCachedEntries returns all cache entries with timestamps
+func (c *DbpoolCache) GetAllCachedEntries() map[TsaKey]CachedEntry {
+	entries := make(map[TsaKey]CachedEntry)
+	c.cache.Range(func(key, value any) bool {
+		if tsaKey, ok := key.(TsaKey); ok {
+			if entry, ok := value.(CachedEntry); ok {
+				entries[tsaKey] = entry
+			}
+		}
+		return true
+	})
+	return entries
+}
+
 // startCacheCleanup starts a background goroutine that cleans up stale cache entries every 30 seconds
 func (c *DbpoolCache) startCacheCleanup(d time.Duration) {
 	go func() {

@@ -1,6 +1,7 @@
 package connmgr
 
 import (
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
@@ -8,6 +9,7 @@ type ConnectionStatsMgr interface {
 	ConnectionIterator
 
 	InstanceHealthChecks() map[string]tsa.CachedCheckResult
+	TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry
 
 	/*
 		user-facing connection stat callbacks.
