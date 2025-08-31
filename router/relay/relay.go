@@ -414,7 +414,7 @@ func replyShardMatches(client client.RouterClient, sh []kr.ShardKey) error {
 // Supported placeholders: {shard}, {host}, {hostname}, {port}, {user}, {db}, {pid}, {az}, {id}, {tx_status}, {tx_served}
 func formatShardNoticeMessage(template string, shardInstance shard.ShardHostInstance) string {
 	result := template
-	
+
 	// Extract hostname and port from host address
 	host := shardInstance.InstanceHostname()
 	hostname := host
@@ -423,7 +423,7 @@ func formatShardNoticeMessage(template string, shardInstance shard.ShardHostInst
 		hostname = host[:colonIndex]
 		port = host[colonIndex+1:]
 	}
-	
+
 	// Replace all placeholders
 	result = strings.ReplaceAll(result, "{shard}", shardInstance.SHKey().Name)
 	result = strings.ReplaceAll(result, "{host}", host)
@@ -436,7 +436,7 @@ func formatShardNoticeMessage(template string, shardInstance shard.ShardHostInst
 	result = strings.ReplaceAll(result, "{id}", fmt.Sprintf("%d", shardInstance.ID()))
 	result = strings.ReplaceAll(result, "{tx_status}", shardInstance.TxStatus().String())
 	result = strings.ReplaceAll(result, "{tx_served}", fmt.Sprintf("%d", shardInstance.TxServed()))
-	
+
 	return result
 }
 
@@ -462,7 +462,7 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 			shardInfos = append(shardInfos, shkey.Name)
 		}
 	}
-	
+
 	sort.Strings(shardInfos)
 	shardMatches := strings.Join(shardInfos, ",")
 
