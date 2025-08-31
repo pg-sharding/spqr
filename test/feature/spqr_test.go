@@ -697,14 +697,14 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 	}
 
 	//wait for the container to change state from "running".  stop operation and changing state is async
-	checkNotRunnigService := func() bool {
+	checkNotRunningService := func() bool {
 		if state, err := tctx.composer.ContainerState(service); err != nil {
 			return false
 		} else {
 			return state != SERVICE_STATE_RUNNING
 		}
 	}
-	retryStop := testutil.Retry(checkNotRunnigService, time.Minute, time.Second)
+	retryStop := testutil.Retry(checkNotRunningService, time.Minute, time.Second)
 	if !retryStop {
 		return fmt.Errorf("timed out change state from 'running' %s", service)
 	}
