@@ -33,7 +33,7 @@ In case you are using Rancher Desktop
 You need enable setting "Allow to acquire administrative credentials (sudo access)" in Preferences -> Application -> General
 
 
-## Debug in the enviroment similar enviroment of feature tests on linux using VS Code
+## Debug in the environment similar environment of feature tests on linux using VS Code
 1. Copy configurations from launch-example.json into .vscode\launch.json configurations for attach router, router2, coordinator and coordinator2.
 The following configurations will be available to you:
 - Attach router
