@@ -54,6 +54,8 @@ const (
 
 	spqrQdbHost             = "qdb01"
 	checkCoordinatorTimeout = 15 * time.Second
+
+	SERVICE_STATE_RUNNING = "running"
 )
 
 type testContext struct {
@@ -693,6 +695,20 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 	if err != nil {
 		return fmt.Errorf("failed to stop service %s: %s", service, err)
 	}
+
+	//wait for the container to change state from "running".  stop operation and changing state is async
+	checkNotRunnigService := func() bool {
+		if state, err := tctx.composer.ContainerState(service); err != nil {
+			return false
+		} else {
+			return state != SERVICE_STATE_RUNNING
+		}
+	}
+	retryStop := testutil.Retry(checkNotRunnigService, time.Minute, time.Second)
+	if !retryStop {
+		return fmt.Errorf("timed out change state from 'running' %s", service)
+	}
+
 	if service == spqrQdbHost {
 		log.Printf("it's QDB (%s). coordinator can't answer when it's stopped", service)
 		return nil
@@ -704,7 +720,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 			if err != nil {
 				return err
 			}
-			if state == "running" {
+			if state == SERVICE_STATE_RUNNING {
 				anyCoord = true
 				break
 			}
