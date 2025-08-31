@@ -410,6 +410,36 @@ func replyShardMatches(client client.RouterClient, sh []kr.ShardKey) error {
 	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
 }
 
+// formatShardNoticeMessage formats a shard notice message using the configured template format
+// Supported placeholders: {shard}, {host}, {hostname}, {port}, {user}, {db}, {pid}, {az}, {id}, {tx_status}, {tx_served}
+func formatShardNoticeMessage(template string, shardInstance shard.ShardHostInstance) string {
+	result := template
+	
+	// Extract hostname and port from host address
+	host := shardInstance.InstanceHostname()
+	hostname := host
+	port := ""
+	if colonIndex := strings.LastIndex(host, ":"); colonIndex != -1 {
+		hostname = host[:colonIndex]
+		port = host[colonIndex+1:]
+	}
+	
+	// Replace all placeholders
+	result = strings.ReplaceAll(result, "{shard}", shardInstance.SHKey().Name)
+	result = strings.ReplaceAll(result, "{host}", host)
+	result = strings.ReplaceAll(result, "{hostname}", hostname)
+	result = strings.ReplaceAll(result, "{port}", port)
+	result = strings.ReplaceAll(result, "{user}", shardInstance.Usr())
+	result = strings.ReplaceAll(result, "{db}", shardInstance.DB())
+	result = strings.ReplaceAll(result, "{pid}", fmt.Sprintf("%d", shardInstance.Pid()))
+	result = strings.ReplaceAll(result, "{az}", shardInstance.Instance().AvailabilityZone())
+	result = strings.ReplaceAll(result, "{id}", fmt.Sprintf("%d", shardInstance.ID()))
+	result = strings.ReplaceAll(result, "{tx_status}", shardInstance.TxStatus().String())
+	result = strings.ReplaceAll(result, "{tx_served}", fmt.Sprintf("%d", shardInstance.TxServed()))
+	
+	return result
+}
+
 // TODO : unit tests
 func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, shardKeys []kr.ShardKey) error {
 	// Create a map of shard key names to actual shard instances for quick lookup
@@ -418,11 +448,14 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 		shardInstanceMap[shardInstance.SHKey().Name] = shardInstance
 	}
 
-	// Build shard info with both name and host
+	// Get the notice message format from config
+	messageFormat := config.RouterConfig().NoticeMessageFormat
+
+	// Build shard info with the configured format
 	var shardInfos []string
 	for _, shkey := range shardKeys {
 		if shardInstance, exists := shardInstanceMap[shkey.Name]; exists {
-			shardInfo := fmt.Sprintf("%s@%s", shkey.Name, shardInstance.InstanceHostname())
+			shardInfo := formatShardNoticeMessage(messageFormat, shardInstance)
 			shardInfos = append(shardInfos, shardInfo)
 		} else {
 			// Fallback to just shard name if we can't find the instance
