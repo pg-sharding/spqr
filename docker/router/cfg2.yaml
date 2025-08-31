@@ -13,7 +13,7 @@ time_quantiles:
 frontend_tls:
   key_file: /etc/spqr/ssl/server.key
   cert_file: /etc/spqr/ssl/server.crt
-  sslmode: allow
+  sslmode: require
 frontend_rules:
   - usr: user1
     db: db1
