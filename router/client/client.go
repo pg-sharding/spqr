@@ -100,7 +100,7 @@ type PsqlClient struct {
 	paramCodes []int16
 
 	showNoticeMessages bool
-	maintain_params      bool
+	maintain_params    bool
 
 	id uint
 
