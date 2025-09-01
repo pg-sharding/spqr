@@ -1,6 +1,6 @@
 # SPQR Feature tests
 
-## Run feature tests on linux dev enviroment
+## Run feature tests on linux dev environment
 1. Runing all tests
 ```bash
 GODOG_FEATURE_DIR=generatedFeatures make feature_test; 
@@ -30,10 +30,10 @@ export DOCKER_API_VERSION=1.47
 In case you are using Rancher Desktop 
 > Error: failed to setup compose cluster: Cannot connect to the Docker daemon at unix:///var/run/docker. sock. Is the docker daemon running?
 
-You need enable setting "Allow to acquire administrative credentials (sudo access)" in Preferences -> Application -> General
+You need to enable the setting "Allow acquiring of administrative credentials (sudo access)" in the Preferences -> Application -> General section.
 
 
-## Debug in the enviroment similar enviroment of feature tests on linux using VS Code
+## Debug in the environment similar environment of feature tests on linux using VS Code
 1. Copy configurations from launch-example.json into .vscode\launch.json configurations for attach router, router2, coordinator and coordinator2.
 The following configurations will be available to you:
 - Attach router
@@ -45,7 +45,7 @@ The following configurations will be available to you:
 make build_images
 ```
 It generates image `spqr-base-image-debug` with delve in image.
-3. run test enviroment
+3. run test environment
 ```shell
 docker compose --verbose -f ./test/feature/docker-compose-debug.yaml up
 ```
