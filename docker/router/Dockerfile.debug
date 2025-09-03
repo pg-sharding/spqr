@@ -1,0 +1,8 @@
+FROM spqr-base-image-debug
+EXPOSE 2345
+
+RUN apt-get update && apt-get install -y --no-install-recommends krb5-user postgresql-client
+COPY ./docker/router/ssl/localhost.crt /etc/spqr/ssl/server.crt
+COPY ./docker/router/ssl/localhost.key /etc/spqr/ssl/server.key
+
+ENTRYPOINT ["/spqr/docker/router/entrypoint-debug.sh"]

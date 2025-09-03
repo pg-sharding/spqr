@@ -53,6 +53,7 @@ build: build_balancer build_coordinator build_coorctl build_router build_mover b
 
 build_images:
 	docker compose build spqr-base-image
+	docker compose build spqr-base-image-debug
 	@if [ "x" != "${POSTGRES_VERSION}x" ]; then\
 		echo "building ${POSTGRES_VERSION} version";\
 		docker compose build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} spqr-shard-image;\
