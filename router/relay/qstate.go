@@ -456,33 +456,75 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 					switch name {
 					case session.SPQR_DISTRIBUTION:
-						rst.Client().SetDistribution(session.VirtualParamLevelTxBlock, val)
-					case session.SPQR_DISTRIBUTED_RELATION:
-						rst.Client().SetDistributedRelation(session.VirtualParamLevelTxBlock, val)
-					case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-						rst.Client().SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, val)
-					case session.SPQR_SHARDING_KEY:
-						rst.Client().SetShardingKey(session.VirtualParamLevelTxBlock, val)
-					case session.SPQR_REPLY_NOTICE:
-						if value == "on" || value == "true" {
-							rst.Client().SetShowNoticeMsg(session.VirtualParamLevelTxBlock, true)
+						if q.IsLocal {
+							rst.Client().SetDistribution(session.VirtualParamLevelLocal, val)
 						} else {
-							rst.Client().SetShowNoticeMsg(session.VirtualParamLevelTxBlock, false)
+							rst.Client().SetDistribution(session.VirtualParamLevelTxBlock, val)
+						}
+					case session.SPQR_DISTRIBUTED_RELATION:
+						lvl := session.VirtualParamLevelTxBlock
+
+						if q.IsLocal {
+							lvl = session.VirtualParamLevelLocal
+						}
+
+						rst.Client().SetDistributedRelation(lvl, val)
+					case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
+						lvl := session.VirtualParamLevelTxBlock
+
+						if q.IsLocal {
+							lvl = session.VirtualParamLevelLocal
+						}
+
+						rst.Client().SetDefaultRouteBehaviour(lvl, val)
+					case session.SPQR_SHARDING_KEY:
+						lvl := session.VirtualParamLevelTxBlock
+
+						if q.IsLocal {
+							lvl = session.VirtualParamLevelLocal
+						}
+
+						rst.Client().SetShardingKey(lvl, val)
+					case session.SPQR_REPLY_NOTICE:
+						lvl := session.VirtualParamLevelTxBlock
+
+						if q.IsLocal {
+							lvl = session.VirtualParamLevelLocal
+						}
+
+						if value == "on" || value == "true" {
+							rst.Client().SetShowNoticeMsg(lvl, true)
+						} else {
+							rst.Client().SetShowNoticeMsg(lvl, false)
 						}
 					case session.SPQR_MAINTAIN_PARAMS:
+						lvl := session.VirtualParamLevelTxBlock
+
+						if q.IsLocal {
+							lvl = session.VirtualParamLevelLocal
+						}
+
 						if value == "on" || value == "true" {
-							rst.Client().SetMaintainParams(session.VirtualParamLevelTxBlock, true)
+							rst.Client().SetMaintainParams(lvl, true)
 						} else {
-							rst.Client().SetMaintainParams(session.VirtualParamLevelTxBlock, false)
+							rst.Client().SetMaintainParams(lvl, false)
 						}
 					case session.SPQR_EXECUTE_ON:
-						rst.Client().SetExecuteOn(session.VirtualParamLevelTxBlock, val)
+						if q.IsLocal {
+							rst.Client().SetExecuteOn(session.VirtualParamLevelLocal, val)
+						} else {
+							rst.Client().SetExecuteOn(session.VirtualParamLevelTxBlock, val)
+						}
 					case session.SPQR_TARGET_SESSION_ATTRS:
 						fallthrough
 					case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
 						fallthrough
 					case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-						rst.Client().SetTsa(session.VirtualParamLevelTxBlock, val)
+						if q.IsLocal {
+							rst.Client().SetTsa(session.VirtualParamLevelLocal, val)
+						} else {
+							rst.Client().SetTsa(session.VirtualParamLevelTxBlock, val)
+						}
 					case session.SPQR_ENGINE_V2:
 						switch value {
 						case "true", "on", "ok":
