@@ -879,7 +879,9 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.MoveStats(ctx, stats)
 	case spqrparser.Users:
 		return cli.Users(ctx)
-
+	case spqrparser.TsaCacheStr:
+		cacheEntries := ci.TsaCacheEntries()
+		return cli.TsaCache(ctx, cacheEntries)
 	default:
 		return ErrUnknownCoordinatorCommand
 	}
