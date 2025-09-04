@@ -397,6 +397,10 @@ func (pi *PSQLInteractor) Quantiles(_ context.Context) error {
 	quantiles := statistics.GetQuantiles()
 	quantilesStr := statistics.GetQuantilesStr()
 	spqrlog.Zero.Debug().Str("quantiles", fmt.Sprintf("%#v", quantiles)).Msg("Got quantiles")
+	if len(*quantiles) != len(*quantilesStr) {
+		return fmt.Errorf("malformed configuration for quantilesStr")
+	}
+
 	for i := range *quantiles {
 		q := (*quantiles)[i]
 		qStr := (*quantilesStr)[i]
