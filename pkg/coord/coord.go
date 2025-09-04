@@ -362,6 +362,9 @@ func (lc *Coordinator) UnregisterRouter(ctx context.Context, rID string) error {
 	spqrlog.Zero.Debug().
 		Str("router", rID).
 		Msg("unregister router")
+	if rID == "*" {
+		return lc.qdb.DeleteRouterAll(ctx)
+	}
 	return lc.qdb.DeleteRouter(ctx, rID)
 }
 

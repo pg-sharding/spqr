@@ -680,6 +680,23 @@ func (q *EtcdQDB) DeleteRouter(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
+func (q *EtcdQDB) DeleteRouterAll(ctx context.Context) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: unregister all routers")
+
+	resp, err := q.cli.Delete(ctx, routerNodePath(""), clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: unregister all routers")
+
+	return nil
+}
+
+// TODO : unit tests
 func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).

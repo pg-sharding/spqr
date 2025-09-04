@@ -526,6 +526,15 @@ func (q *MemQDB) DeleteRouter(_ context.Context, id string) error {
 }
 
 // TODO : unit tests
+func (q *MemQDB) DeleteRouterAll(_ context.Context) error {
+	spqrlog.Zero.Debug().Msg("memqdb: unregister all routers")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	return ExecuteCommands(q.DumpState, NewDropCommand(q.Routers))
+}
+
+// TODO : unit tests
 func (q *MemQDB) OpenRouter(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("router", id).
