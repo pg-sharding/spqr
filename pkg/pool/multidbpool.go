@@ -9,7 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/pkg/startup"
 )
 
 type MultiDBPool struct {
@@ -71,7 +70,7 @@ func (p *MultiDBPool) Connection(db string) (shard.ShardHostInstance, error) {
 		 * DisableCheckInterval because we do not want to check the health of the connection
 		 */
 
-		pool = NewDBPool(p.mapping, &startup.StartupParams{}, "", DisableCheckInterval)
+		pool := NewDBPoolWithDisabledFeatures(p.mapping)
 		pool.SetRule(&beRule)
 		p.dbs.Store(db, pool)
 	} else {

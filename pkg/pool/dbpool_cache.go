@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
@@ -29,36 +30,35 @@ type DbpoolCache struct {
 }
 
 const (
-	defaultCacheTTL      = 5 * time.Minute
+	DefaultCacheTTL      = 5 * time.Minute
 	DefaultCheckInterval = 30 * time.Second
-	DisableCheckInterval = 0 * time.Second
 )
 
 // NewDbpoolCache creates a new cache instance
 func NewDbpoolCache() *DbpoolCache {
 	return &DbpoolCache{
 		cache:    &sync.Map{},
-		cacheTTL: defaultCacheTTL, // Default max age for cache entries
+		cacheTTL: config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCacheTTL, DefaultCacheTTL),
 	}
 }
 
 // NewDbpoolCacheWithCleanup creates a new cache instance with automatic cleanup
-func NewDbpoolCacheWithCleanup(cacheTTL time.Duration, pulseCheckInterval time.Duration) *DbpoolCache {
+func NewDbpoolCacheWithCleanup(cacheTTL time.Duration, hostCheckInterval time.Duration) *DbpoolCache {
 
 	cache := &DbpoolCache{
 		cache:    &sync.Map{},
 		cacheTTL: cacheTTL,
 	}
 
-	// pulseCheckInterval is equal to 0 disables the cleanup
-	if pulseCheckInterval > time.Duration(0) {
+	// hostCheckInterval is equal to 0 disables the cleanup
+	if hostCheckInterval > time.Duration(0) {
 		// Start the cleanup goroutine
 		ctx, cancel := context.WithCancel(context.Background())
 
 		cache.cleanupCancel = cancel
 		cache.cleanupCtx = ctx
 
-		cache.startCacheCleanup(pulseCheckInterval)
+		cache.startCacheCleanup(hostCheckInterval)
 	}
 
 	return cache

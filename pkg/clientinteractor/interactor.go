@@ -1813,7 +1813,6 @@ func (pi *PSQLInteractor) Users(ctx context.Context) error {
 			berule.ConnectionTimeout.String(),
 			berule.KeepAlive.String(),
 			berule.TcpUserTimeout.String(),
-			berule.PulseCheckInterval.String(),
 		); err != nil {
 			return err
 		}
