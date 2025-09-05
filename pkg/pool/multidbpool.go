@@ -70,9 +70,10 @@ func (p *MultiDBPool) Connection(db string) (shard.ShardHostInstance, error) {
 		 * DisableCheckInterval because we do not want to check the health of the connection
 		 */
 
-		pool := NewDBPoolWithDisabledFeatures(p.mapping)
-		pool.SetRule(&beRule)
-		p.dbs.Store(db, pool)
+		newPool := NewDBPoolWithDisabledFeatures(p.mapping)
+		newPool.SetRule(&beRule)
+		p.dbs.Store(db, newPool)
+		pool = newPool
 	} else {
 		pool = poolElement.(*DBPool)
 	}

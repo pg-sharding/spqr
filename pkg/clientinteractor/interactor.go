@@ -1799,7 +1799,6 @@ func (pi *PSQLInteractor) Users(ctx context.Context) error {
 		"connection_timeout",
 		"keep_alive",
 		"tcp_user_timeout",
-		"pulse_check_interval",
 	); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
