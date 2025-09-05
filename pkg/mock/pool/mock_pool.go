@@ -492,6 +492,20 @@ func (mr *MockMultiShardTSAPoolMockRecorder) StopCacheWatchdog() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopCacheWatchdog", reflect.TypeOf((*MockMultiShardTSAPool)(nil).StopCacheWatchdog))
 }
 
+// TsaCacheEntries mocks base method.
+func (m *MockMultiShardTSAPool) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TsaCacheEntries")
+	ret0, _ := ret[0].(map[pool.TsaKey]pool.CachedEntry)
+	return ret0
+}
+
+// TsaCacheEntries indicates an expected call of TsaCacheEntries.
+func (mr *MockMultiShardTSAPoolMockRecorder) TsaCacheEntries() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TsaCacheEntries", reflect.TypeOf((*MockMultiShardTSAPool)(nil).TsaCacheEntries))
+}
+
 // View mocks base method.
 func (m *MockMultiShardTSAPool) View() pool.Statistics {
 	m.ctrl.T.Helper()

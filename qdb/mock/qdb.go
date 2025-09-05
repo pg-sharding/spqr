@@ -165,6 +165,20 @@ func (mr *MockTopologyKeeperMockRecorder) DeleteRouter(ctx, rID any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRouter", reflect.TypeOf((*MockTopologyKeeper)(nil).DeleteRouter), ctx, rID)
 }
 
+// DeleteRouterAll mocks base method.
+func (m *MockTopologyKeeper) DeleteRouterAll(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteRouterAll", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteRouterAll indicates an expected call of DeleteRouterAll.
+func (mr *MockTopologyKeeperMockRecorder) DeleteRouterAll(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRouterAll", reflect.TypeOf((*MockTopologyKeeper)(nil).DeleteRouterAll), ctx)
+}
+
 // ListRouters mocks base method.
 func (m *MockTopologyKeeper) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
 	m.ctrl.T.Helper()
@@ -1326,6 +1340,20 @@ func (m *MockXQDB) DeleteRouter(ctx context.Context, rID string) error {
 func (mr *MockXQDBMockRecorder) DeleteRouter(ctx, rID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRouter", reflect.TypeOf((*MockXQDB)(nil).DeleteRouter), ctx, rID)
+}
+
+// DeleteRouterAll mocks base method.
+func (m *MockXQDB) DeleteRouterAll(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteRouterAll", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteRouterAll indicates an expected call of DeleteRouterAll.
+func (mr *MockXQDBMockRecorder) DeleteRouterAll(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRouterAll", reflect.TypeOf((*MockXQDB)(nil).DeleteRouterAll), ctx)
 }
 
 // DropDistribution mocks base method.
