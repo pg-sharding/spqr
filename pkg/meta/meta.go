@@ -639,8 +639,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 	case *spqrparser.SyncReferenceTables:
 		/* TODO: fix RelationSelector logic */
 		if err := mgr.SyncReferenceRelations(ctx, []*rfqn.RelationFQN{
-			{
-				RelationName: stmt.RelationSelector},
+			{RelationName: stmt.RelationSelector},
 		}, stmt.ShardID); err != nil {
 			return err
 		}
@@ -883,7 +882,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	case spqrparser.TsaCacheStr:
 		cacheEntries := ci.TsaCacheEntries()
 		return cli.TsaCache(ctx, cacheEntries)
-
 	default:
 		return ErrUnknownCoordinatorCommand
 	}

@@ -24,6 +24,8 @@ type TopologyKeeper interface {
 	AddRouter(ctx context.Context, r *Router) error
 	// DeleteRouter removes the router from the cluster
 	DeleteRouter(ctx context.Context, rID string) error
+	// DeleteRouter removes all routers from the cluster
+	DeleteRouterAll(ctx context.Context) error
 	//ListRouters lists the routers of the cluster
 	ListRouters(ctx context.Context) ([]*Router, error)
 	// OpenRouter changes the state of the router to online, making it usable for query execution.

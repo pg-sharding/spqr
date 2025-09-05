@@ -667,7 +667,7 @@ func (q *EtcdQDB) DeleteRouter(ctx context.Context, id string) error {
 	if id == "*" {
 		id = ""
 	}
-	resp, err := q.cli.Delete(ctx, routerNodePath(id), clientv3.WithPrefix())
+	resp, err := q.cli.Delete(ctx, routerNodePath(id))
 	if err != nil {
 		return err
 	}
@@ -675,6 +675,23 @@ func (q *EtcdQDB) DeleteRouter(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: drop router")
+
+	return nil
+}
+
+// TODO : unit tests
+func (q *EtcdQDB) DeleteRouterAll(ctx context.Context) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: unregister all routers")
+
+	resp, err := q.cli.Delete(ctx, routerNodePath(""), clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: unregister all routers")
 
 	return nil
 }
@@ -976,7 +993,7 @@ func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relName *rf
 
 	nodePath := referenceRelationNodePath(tableName)
 
-	resp, err := q.cli.Get(ctx, nodePath, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, nodePath)
 	if err != nil {
 		return err
 	}
@@ -1018,7 +1035,7 @@ func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.Relat
 
 	nodePath := referenceRelationNodePath(tableName)
 
-	resp, err := q.cli.Get(ctx, nodePath, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, nodePath)
 	if err != nil {
 		return err
 	}
@@ -1144,7 +1161,7 @@ func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 		Str("id", id).
 		Msg("etcdqdb: drop distribution")
 
-	resp, err := q.cli.Get(ctx, distributionNodePath(id), clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, distributionNodePath(id))
 	if err != nil {
 		return err
 	}
@@ -1705,7 +1722,7 @@ func (q *EtcdQDB) AlterSequenceDetachRelation(ctx context.Context, relName *rfqn
 		Str("relation", relName.RelationName).
 		Msg("etcdqdb: detach relation from sequence")
 
-	resp, err := q.cli.Delete(ctx, relationSequenceMappingNodePath(relName.RelationName), clientv3.WithPrefix())
+	resp, err := q.cli.Delete(ctx, relationSequenceMappingNodePath(relName.RelationName))
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: detach relation from sequence")
@@ -1718,7 +1735,7 @@ func (q *EtcdQDB) GetRelationSequence(ctx context.Context, relName *rfqn.Relatio
 		Msg("etcdqdb: get column sequence")
 
 	key := relationSequenceMappingNodePath(relName.RelationName)
-	resp, err := q.cli.Get(ctx, key, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, key)
 	if err != nil {
 		return nil, err
 	}
