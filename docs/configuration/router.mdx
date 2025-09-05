@@ -71,7 +71,6 @@ Refer to the `BackendRule` struct in the [pkg/config/rules.go](https://github.co
 | `connection_timeout`   | The timeout duration for establishing connections to the backend.      | Any valid duration (e.g., `30s`, `1m`)         |
 | `keep_alive`           | The duration for keeping connections alive.                            | Any valid duration (e.g., `30s`, `1m`)         |
 | `tcp_user_timeout`     | The TCP user timeout for backend connections.                          | Any valid duration (e.g., `30s`, `1m`)         |
-| `pulse_check_interval` | The interval between health checks for backend connections.            | Any valid duration (e.g., `30s`, `1m`)         |
 
 ## Shards
 
@@ -127,6 +126,13 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 | `pid_file_name`  | The file name to store the process ID.                | Any valid filepath |
 | `log_file_name`  | The file name for logging output.                     | Any valid filepath |
 | `pgproto_debug`  | PostgreSQL protocol debug flag.                       | `true`, `false`    |
+
+## DBpool Settings
+
+| Setting                 | Description                                            | Possible Values                        |
+|-------------------------|--------------------------------------------------------|----------------------------------------|
+| `dbpool_cache_ttl`      | Time-to-live for database pool cache entries           | Any valid duration (e.g., `30s`, `1m`) |
+| `dbpool_check_interval` | Interval for checking database pool health and cleanup | Any valid duration (e.g., `30s`, `1m`) |
 
 ## QDB Settings
 

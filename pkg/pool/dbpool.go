@@ -424,7 +424,7 @@ func (s *DBPool) StopCacheWatchdog() {
 //
 // Returns:
 //   - DBPool: A DBPool interface that represents the created pool.
-func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams, preferAZ string, hostCheckInterval time.Duration) MultiShardTSAPool {
+func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams, preferAZ string, hostCheckTTL time.Duration, hostCheckInterval time.Duration) MultiShardTSAPool {
 	allocator := func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.ShardHostInstance, error) {
 		shardConfig := mapping[shardKey.Name]
 		hostname, _, _ := net.SplitHostPort(host.Address) // TODO try to remove this
@@ -453,9 +453,22 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 		checker:      tsa.NewCachedTSAChecker(),
 	}
 
-	// Create cache with cleanup functionality (5 minute max age)
-	/* XXX: take PulseCheckInterval from config */
-	dbPool.cache = NewDbpoolCacheWithCleanup(defaultCacheTTL, hostCheckInterval)
+	dbPool.cache = NewDbpoolCacheWithCleanup(hostCheckTTL, hostCheckInterval)
 
 	return dbPool
+}
+
+// NewDBPoolWithDisabledFeatures creates a new DBPool instance with all optional features disabled.
+// It uses the provided mapping to allocate shards based on the shard key,
+// and initializes the necessary connections and configurations for each shard.
+// The function returns a DBPool interface that can be used to interact with the pool.
+//
+// Parameters:
+//   - mapping: A map containing the shard mapping, where the key is the shard name
+//     and the value is a pointer to the corresponding Shard configuration.
+//
+// Returns:
+//   - DBPool: A DBPool interface that represents the created pool.
+func NewDBPoolWithDisabledFeatures(mapping map[string]*config.Shard) MultiShardTSAPool {
+	return NewDBPool(mapping, &startup.StartupParams{}, "", time.Duration(0), time.Duration(0))
 }

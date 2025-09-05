@@ -58,20 +58,18 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 		sp.SearchPath = frRule.SearchPath
 	}
 
-	pulseCheckInterval := pool.DefaultCheckInterval
-	if beRule != nil {
-		pulseCheckInterval = beRule.PulseCheckInterval
-	}
-
 	var preferAZ string
 	if config.RouterConfig().PreferSameAvailabilityZone {
 		preferAZ = config.RouterConfig().AvailabilityZone
 	}
 
+	hostCheckInterval := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCheckInterval, pool.DefaultCheckInterval)
+	hostCheckTTL := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCacheTTL, pool.DefaultCacheTTL)
+
 	route := &Route{
 		beRule:   beRule,
 		frRule:   frRule,
-		servPool: pool.NewDBPool(mapping, sp, preferAZ, pulseCheckInterval),
+		servPool: pool.NewDBPool(mapping, sp, preferAZ, hostCheckTTL, hostCheckInterval),
 		clPool:   client.NewClientPool(),
 		params:   shard.ParameterSet{},
 	}
