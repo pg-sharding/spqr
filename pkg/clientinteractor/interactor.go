@@ -695,11 +695,22 @@ func (pi *PSQLInteractor) MoveTaskGroup(_ context.Context, ts *tasks.MoveTaskGro
 	}
 
 	for _, task := range ts.Tasks {
-		kRange := kr.KeyRangeFromBytes(task.Bound, colTypes)
+		if task == nil {
+			continue //the task may be removed while the command is being processed.
+		}
+		krData := []string{""}
+		if task.Bound != nil {
+			if len(task.Bound) != len(colTypes) {
+				err := fmt.Errorf("something wrong in task: %#v, columns: %#v", task, colTypes)
+				return err
+			}
+			kRange := kr.KeyRangeFromBytes(task.Bound, colTypes)
+			krData = kRange.SendRaw()
+		}
 		if err := pi.cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
 				[]byte(tasks.TaskStateToStr(task.State)),
-				[]byte(strings.Join(kRange.SendRaw(), ";")),
+				[]byte(strings.Join(krData, ";")),
 				[]byte(ts.KrIdFrom),
 				[]byte(ts.KrIdTo),
 			},
