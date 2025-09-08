@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"net"
@@ -39,6 +40,171 @@ type DBPool struct {
 	cache        *DbpoolCache
 	ShuffleHosts bool
 	PreferAZ     string
+
+	// Background health checking
+	healthCheckCtx    context.Context
+	healthCheckCancel context.CancelFunc
+	deadCheckInterval time.Duration
+}
+
+// StartBackgroundHealthCheck starts background health checking for failed hosts
+func (s *DBPool) StartBackgroundHealthCheck() {
+	if s.deadCheckInterval <= 0 {
+		return // Disabled
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.healthCheckCancel = cancel
+	s.healthCheckCtx = ctx
+
+	go s.backgroundHealthCheckLoop()
+}
+
+// backgroundHealthCheckLoop runs the background health checking
+func (s *DBPool) backgroundHealthCheckLoop() {
+	ticker := time.NewTicker(s.deadCheckInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-s.healthCheckCtx.Done():
+			spqrlog.Zero.Info().Msg("DBPool background health check stopped")
+			return
+		case <-ticker.C:
+			s.recheckFailedHosts()
+		}
+	}
+}
+
+// recheckFailedHosts scans cache for failed hosts and rechecks them
+func (s *DBPool) recheckFailedHosts() {
+	// Get all cache entries
+	cacheEntries := s.cache.GetAllCachedEntries()
+	recheckCount := 0
+
+	for tsaKey, entry := range cacheEntries {
+		// Only recheck dead hosts that haven't been checked recently
+		if !entry.Result.Alive && time.Since(entry.LastCheckTime) > s.deadCheckInterval {
+			go s.recheckSingleHost(tsaKey, entry)
+			recheckCount++
+		}
+	}
+
+	if recheckCount > 0 {
+		spqrlog.Zero.Debug().
+			Int("hosts_rechecked", recheckCount).
+			Msg("DBPool background health check completed")
+	}
+}
+
+// recheckSingleHost performs health check on a specific host
+func (s *DBPool) recheckSingleHost(tsaKey TsaKey, oldEntry CachedEntry) {
+	// Find the shard that contains this host
+	var targetShard *config.Shard
+	var shardName string
+
+	for name, shard := range s.shardMapping {
+		for _, host := range shard.HostsAZ() {
+			if host.Address == tsaKey.Host && host.AZ == tsaKey.AZ {
+				targetShard = shard
+				shardName = name
+				break
+			}
+		}
+		if targetShard != nil {
+			break
+		}
+	}
+
+	if targetShard == nil {
+		spqrlog.Zero.Warn().
+			Str("host", tsaKey.Host).
+			Str("az", tsaKey.AZ).
+			Msg("host not found in any shard during background check")
+		return
+	}
+
+	// Create a temporary shard instance for health checking
+	shardInstance, err := s.createShardInstanceForHost(shardName, tsaKey.Host, tsaKey.AZ)
+	if err != nil {
+		spqrlog.Zero.Warn().
+			Str("host", tsaKey.Host).
+			Str("az", tsaKey.AZ).
+			Err(err).
+			Msg("failed to create shard instance for background check")
+		return
+	}
+	defer s.pool.Discard(shardInstance) // Always clean up
+
+	// Perform TSA check using existing checker
+	tcr, err := s.checker.CheckTSA(shardInstance)
+	if err != nil {
+		spqrlog.Zero.Warn().
+			Str("host", tsaKey.Host).
+			Str("az", tsaKey.AZ).
+			Str("tsa", string(tsaKey.Tsa)).
+			Err(err).
+			Msg("background health check failed")
+		return
+	}
+
+	// Determine if this is a match based on TSA requirements
+	isMatch := s.evaluateTSAMatch(tcr.CR, tsaKey.Tsa)
+
+	// Update cache with new result
+	if tcr.CR.Alive && isMatch {
+		s.cache.MarkMatched(tsaKey.Tsa, tsaKey.Host, tsaKey.AZ, tcr.CR.Alive, tcr.CR.Reason)
+	} else {
+		s.cache.MarkUnmatched(tsaKey.Tsa, tsaKey.Host, tsaKey.AZ, tcr.CR.Alive, tcr.CR.Reason)
+	}
+
+	// Log if host status changed
+	if oldEntry.Result.Alive != tcr.CR.Alive {
+		spqrlog.Zero.Info().
+			Str("host", tsaKey.Host).
+			Str("az", tsaKey.AZ).
+			Str("tsa", string(tsaKey.Tsa)).
+			Bool("old_alive", oldEntry.Result.Alive).
+			Bool("new_alive", tcr.CR.Alive).
+			Str("reason", tcr.CR.Reason).
+			Msg("host status changed via DBPool background check")
+	}
+}
+
+// createShardInstanceForHost creates a shard instance for a specific host
+func (s *DBPool) createShardInstanceForHost(shardName, hostAddr, az string) (shard.ShardHostInstance, error) {
+	return s.pool.ConnectionHost(0, kr.ShardKey{Name: shardName}, config.Host{Address: hostAddr, AZ: az})
+}
+
+// evaluateTSAMatch determines if a TSA check result matches the required TSA
+func (s *DBPool) evaluateTSAMatch(cr tsa.CheckResult, requiredTSA tsa.TSA) bool {
+	if !cr.Alive {
+		return false
+	}
+
+	switch requiredTSA {
+	case config.TargetSessionAttrsRW:
+		return cr.RW
+	case config.TargetSessionAttrsSmartRW:
+		return cr.RW
+	case config.TargetSessionAttrsRO:
+		return !cr.RW
+	case config.TargetSessionAttrsPS:
+		return !cr.RW // prefer standby (read-only)
+	case config.TargetSessionAttrsPR:
+		return !cr.RW // prefer replica (read-only)
+	case config.TargetSessionAttrsAny:
+		return true
+	default:
+		return false
+	}
+}
+
+// StopBackgroundHealthCheck stops the background health checking
+func (s *DBPool) StopBackgroundHealthCheck() {
+	if s.healthCheckCancel != nil {
+		s.healthCheckCancel()
+	}
 }
 
 // InstanceHealthChecks implements MultiShardTSAPool.
@@ -407,9 +573,10 @@ func (s *DBPool) Cache() *DbpoolCache {
 	return s.cache
 }
 
-// StopCacheWatchdog stops the cache cleanup goroutine
+// StopCacheWatchdog stops the cache cleanup goroutine and background health checking
 func (s *DBPool) StopCacheWatchdog() {
 	s.cache.StopWatchdog()
+	s.StopBackgroundHealthCheck()
 }
 
 // NewDBPool creates a new DBPool instance with the given shard mapping.
@@ -446,14 +613,20 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 	}
 
 	dbPool := &DBPool{
-		pool:         NewPool(allocator),
-		shardMapping: mapping,
-		ShuffleHosts: true,
-		PreferAZ:     preferAZ,
-		checker:      tsa.NewCachedTSAChecker(),
+		pool:              NewPool(allocator),
+		shardMapping:      mapping,
+		ShuffleHosts:      true,
+		PreferAZ:          preferAZ,
+		checker:           tsa.NewCachedTSAChecker(),
+		deadCheckInterval: config.ValueOrDefaultDuration(config.RouterConfig().DbpoolDeadCheckInterval, DefaultDeadCheckInterval),
 	}
 
 	dbPool.cache = NewDbpoolCacheWithCleanup(hostCheckTTL, hostCheckInterval)
+
+	// Start background health checking if enabled
+	if dbPool.deadCheckInterval > 0 {
+		dbPool.StartBackgroundHealthCheck()
+	}
 
 	return dbPool
 }
