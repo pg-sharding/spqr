@@ -134,7 +134,15 @@ func (s *DBPool) recheckSingleHost(tsaKey TsaKey, oldEntry CachedEntry) {
 			Msg("failed to create shard instance for background check")
 		return
 	}
-	defer s.pool.Discard(shardInstance) // Always clean up
+	defer func() {
+		if err := s.pool.Discard(shardInstance); err != nil {
+			spqrlog.Zero.Warn().
+				Str("host", tsaKey.Host).
+				Str("az", tsaKey.AZ).
+				Err(err).
+				Msg("failed to discard shard instance during cleanup")
+		}
+	}()
 
 	// Perform TSA check using existing checker
 	tcr, err := s.checker.CheckTSA(shardInstance)
