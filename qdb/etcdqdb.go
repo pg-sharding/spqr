@@ -1442,9 +1442,12 @@ func (q *EtcdQDB) WriteMoveTaskGroupTransactional(ctx context.Context, group *Mo
 
 		ops = append(ops, clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson)))
 	}
-	_, err = q.cli.Txn(ctx).If(clientv3.Compare(clientv3.Value(taskGroupPath), "=", "")).Then(ops...).Commit()
+	txResp, err := q.cli.Txn(ctx).If(clientv3.Compare(clientv3.Version(taskGroupPath), "=", 0)).Then(ops...).Commit()
 	if err != nil {
 		return fmt.Errorf("failed to write move task group metadata: %s", err)
+	}
+	if !txResp.Succeeded {
+		return fmt.Errorf("failed to write move task group: tx precondition failed")
 	}
 	statistics.RecordQDBOperation("WriteMoveTaskGroup", time.Since(t))
 	return nil
