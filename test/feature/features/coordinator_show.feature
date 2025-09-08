@@ -565,30 +565,20 @@ Feature: Coordinator show clients, pools and backend_connections
         {
             "tasks":
             [
-                "1",
-                "2"
+                {
+                "id":            "1",
+                "bound":         ["AgAAAAAAAAA="],
+                "state":         1
+                },
+                {
+                "id":            "2",
+                "bound":         ["FAAAAAAAAAA="],
+                "state":         0
+                }
             ],
             "shard_to_id":   "sh_to",
             "kr_id_from":    "kr_from",
             "kr_id_to":      "kr_to"
-        }
-        """
-        Then command return code should be "0"
-        When I record in qdb move task
-        """
-        {
-            "id":            "1",
-            "bound":         ["AgAAAAAAAAA="],
-            "state":         1
-        }
-        """
-        Then command return code should be "0"
-        When I record in qdb move task
-        """
-        {
-            "id":            "2",
-            "bound":         ["FAAAAAAAAAA="],
-            "state":         0
         }
         """
         Then command return code should be "0"

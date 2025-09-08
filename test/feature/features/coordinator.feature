@@ -668,8 +668,16 @@ Feature: Coordinator test
     {
         "tasks":
         [
-            "1",
-            "2"
+            {
+              "id":            "1",
+              "bound":         ["AgAAAAAAAAA="],
+              "state":         1
+            },
+            {
+              "id":            "2",
+              "bound":         ["FAAAAAAAAAA="],
+              "state":         0
+            }
         ],
         "shard_to_id":   "sh_to",
         "kr_id_from":    "krid1",
@@ -677,23 +685,6 @@ Feature: Coordinator test
     }
     """
     Then command return code should be "0"
-    When I record in qdb move task
-    """
-    {
-        "id":            "1",
-        "bound":         ["AgAAAAAAAAA="],
-        "state":         1
-    }
-    """
-    Then command return code should be "0"
-    When I record in qdb move task
-    """
-    {
-        "id":            "2",
-        "bound":         ["FAAAAAAAAAA="],
-        "state":         0
-    }
-    """
     When I run SQL on host "coordinator"
     """
     SHOW task_group
