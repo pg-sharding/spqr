@@ -1354,7 +1354,7 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 
 	resp, err := q.cli.Get(ctx, taskGroupPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get task group: %s", err)
 	}
 
 	if len(resp.Kvs) == 0 {
@@ -1365,12 +1365,22 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 
 	var taskGroup *MoveTaskGroup
 	if err := json.Unmarshal(resp.Kvs[0].Value, &taskGroup); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal task group: %s", err)
 	}
+
+	resp, err = q.cli.Get(ctx, moveTaskIDsNamespace, clientv3.WithPrefix(), clientv3.WithFragment())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task IDs: %s", err)
+	}
+	taskIDs := make([]string, len(resp.Kvs))
+	for i, kv := range resp.Kvs {
+		taskIDs[i] = string(kv.Value)
+	}
+	taskGroup.TaskIDs = taskIDs
 
 	resp, err = q.cli.Get(ctx, currentTaskIndexPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get current task idx: %s", err)
 	}
 	taskGroup.CurrentTaskInd, err = strconv.Atoi(string(resp.Kvs[0].Value))
 	if err != nil {
@@ -1465,14 +1475,20 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 	t := time.Now()
 
 	if _, err := q.cli.Delete(ctx, currentTaskIndexPath); err != nil {
-		return err
+		return fmt.Errorf("failed to delete current task index: %s", err)
 	}
 	if _, err := q.cli.Delete(ctx, moveTasksCountPath); err != nil {
-		return err
+		return fmt.Errorf("failed to delete move tasks count: %s", err)
 	}
-	_, err := q.cli.Delete(ctx, taskGroupPath)
+	if _, err := q.cli.Delete(ctx, moveTaskIDsNamespace, clientv3.WithPrefix()); err != nil {
+		return fmt.Errorf("failed to delete move task ids: %s", err)
+	}
+	if _, err := q.cli.Delete(ctx, taskGroupPath); err != nil {
+		return fmt.Errorf("failed to delete move task group: %s", err)
+	}
+
 	statistics.RecordQDBOperation("RemoveMoveTaskGroup", time.Since(t))
-	return err
+	return nil
 }
 
 func (q *EtcdQDB) CreateMoveTask(ctx context.Context, task *MoveTask) error {
