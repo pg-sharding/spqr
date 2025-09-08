@@ -1373,8 +1373,15 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 		return nil, fmt.Errorf("failed to get task IDs: %s", err)
 	}
 	taskIDs := make([]string, len(resp.Kvs))
-	for i, kv := range resp.Kvs {
-		taskIDs[i] = string(kv.Value)
+	for _, kv := range resp.Kvs {
+		idx, err := strconv.Atoi(string(kv.Key))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse move task ID index \"%s\"", string(kv.Key))
+		}
+		if idx < 0 || idx >= len(taskIDs) {
+			return nil, fmt.Errorf("incorrect task ID index %d, task ID \"%s\"", idx, string(kv.Value))
+		}
+		taskIDs[idx] = string(kv.Value)
 	}
 	taskGroup.TaskIDs = taskIDs
 
