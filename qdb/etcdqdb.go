@@ -1368,7 +1368,7 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 		return nil, fmt.Errorf("failed to unmarshal task group: %s", err)
 	}
 
-	resp, err = q.cli.Get(ctx, moveTaskIDsNamespace, clientv3.WithPrefix(), clientv3.WithFragment())
+	resp, err = q.cli.Get(ctx, moveTaskIDsNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task IDs: %s", err)
 	}
