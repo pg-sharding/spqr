@@ -1426,8 +1426,6 @@ func (q *EtcdQDB) WriteMoveTaskGroupTransactional(ctx context.Context, group *Mo
 		return err
 	}
 
-	// TODO check for no move task group
-	tx := q.cli.Txn(ctx)
 	ops := []clientv3.Op{
 		clientv3.OpPut(taskGroupPath, string(groupJson)),
 		clientv3.OpPut(moveTasksCountPath, fmt.Sprintf("%d", len(group.TaskIDs))),
@@ -1444,9 +1442,12 @@ func (q *EtcdQDB) WriteMoveTaskGroupTransactional(ctx context.Context, group *Mo
 
 		ops = append(ops, clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson)))
 	}
-	tx.If(clientv3.Compare(clientv3.Value(taskGroupPath), "=", "")).Then(ops...).Commit()
+	_, err = q.cli.Txn(ctx).If(clientv3.Compare(clientv3.Value(taskGroupPath), "=", "")).Then(ops...).Commit()
+	if err != nil {
+		return fmt.Errorf("failed to write move task group metadata: %s", err)
+	}
 	statistics.RecordQDBOperation("WriteMoveTaskGroup", time.Since(t))
-	return err
+	return nil
 }
 
 // TODO: unit tests
