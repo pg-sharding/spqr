@@ -553,13 +553,13 @@ func (qc *Coordinator) ListKeyRanges(ctx context.Context, distribution string) (
 // Returns:
 // - error: an error if the write operation fails.
 func (qc *Coordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
-	if err := qc.qdb.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup)); err != nil {
-		return err
+	taskList := make([]*qdb.MoveTask, len(taskGroup.Tasks))
+	for i, task := range taskGroup.Tasks {
+		taskList[i] = tasks.MoveTaskToDb(task)
 	}
-	for _, task := range taskGroup.Tasks[taskGroup.CurrentTaskIndex:] {
-		if err := qc.qdb.CreateMoveTask(ctx, tasks.MoveTaskToDb(task)); err != nil {
-			return err
-		}
+	if err := qc.qdb.WriteMoveTaskGroupTransactional(ctx, tasks.TaskGroupToDb(taskGroup), taskList); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("failed to write move task group")
+		return err
 	}
 	return nil
 }

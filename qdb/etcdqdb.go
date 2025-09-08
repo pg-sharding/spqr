@@ -60,6 +60,7 @@ const (
 	shardsNamespace                = "/shards/"
 	relationMappingNamespace       = "/relation_mappings/"
 	taskGroupPath                  = "/move_task_group"
+	moveTaskIDsNamespace           = "/move_task_ids/"
 	moveTasksNamespace             = "/move_tasks/"
 	currentTaskIndexPath           = "/current_task_index"
 	moveTasksCountPath             = "/total_move_tasks"
@@ -71,7 +72,6 @@ const (
 	columnSequenceMappingNamespace = "/column_sequence_mappings/"
 
 	CoordKeepAliveTtl = 3
-	keyspace          = "key_space"
 	coordLockKey      = "coordinator_exists"
 	sequenceSpace     = "sequence_space"
 )
@@ -125,6 +125,10 @@ func columnSequenceMappingNodePath(relName, colName string) string {
 
 func moveTaskNodePath(id string) string {
 	return path.Join(moveTasksNamespace, id)
+}
+
+func moveTaskIdNodePath(idx int) string {
+	return path.Join(moveTaskIDsNamespace, strconv.Itoa(idx))
 }
 
 func (q *EtcdQDB) Client() *clientv3.Client {
@@ -1396,6 +1400,41 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup) 
 		return err
 	}
 	_, err = q.cli.Put(ctx, currentTaskIndexPath, fmt.Sprintf("%d", group.CurrentTaskInd))
+	statistics.RecordQDBOperation("WriteMoveTaskGroup", time.Since(t))
+	return err
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) WriteMoveTaskGroupTransactional(ctx context.Context, group *MoveTaskGroup, tasks []*MoveTask) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: write task group")
+
+	t := time.Now()
+
+	groupJson, err := json.Marshal(group)
+	if err != nil {
+		return err
+	}
+
+	// TODO check for no move task group
+	tx := q.cli.Txn(ctx)
+	ops := []clientv3.Op{
+		clientv3.OpPut(taskGroupPath, string(groupJson)),
+		clientv3.OpPut(moveTasksCountPath, fmt.Sprintf("%d", len(group.TaskIDs))),
+		clientv3.OpPut(currentTaskIndexPath, fmt.Sprintf("%d", group.CurrentTaskInd)),
+	}
+	for i, id := range group.TaskIDs {
+		ops = append(ops, clientv3.OpPut(moveTaskIdNodePath(i), id))
+	}
+	for _, task := range tasks {
+		taskJson, err := json.Marshal(task)
+		if err != nil {
+			return err
+		}
+
+		ops = append(ops, clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson)))
+	}
+	tx.If(clientv3.Compare(clientv3.Value(taskGroupPath), "=", "")).Then(ops...).Commit()
 	statistics.RecordQDBOperation("WriteMoveTaskGroup", time.Since(t))
 	return err
 }

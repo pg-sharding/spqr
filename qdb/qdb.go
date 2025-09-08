@@ -88,6 +88,7 @@ type QDB interface {
 	// Task group
 	GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error)
 	WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup) error
+	WriteMoveTaskGroupTransactional(ctx context.Context, group *MoveTaskGroup, tasks []*MoveTask) error
 	UpdateMoveTaskGroupSetCurrentTask(ctx context.Context, taskIndex int) error
 	GetCurrentMoveTaskIndex(ctx context.Context) (int, error)
 	RemoveMoveTaskGroup(ctx context.Context) error

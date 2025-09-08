@@ -888,6 +888,19 @@ func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, group *MoveTaskGroup) err
 }
 
 // TODO: unit tests
+func (q *MemQDB) WriteMoveTaskGroupTransactional(_ context.Context, group *MoveTaskGroup, tasks []*MoveTask) error {
+	spqrlog.Zero.Debug().Msg("memqdb: write task group")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.MoveTaskGroup = group
+	for _, task := range tasks {
+		q.MoveTasks[task.ID] = task
+	}
+	return nil
+}
+
+// TODO: unit tests
 func (q *MemQDB) RemoveMoveTaskGroup(_ context.Context) error {
 	spqrlog.Zero.Debug().Msg("memqdb: remove task group")
 	q.mu.Lock()
