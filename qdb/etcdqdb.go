@@ -1392,30 +1392,7 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup) error {
-	spqrlog.Zero.Debug().
-		Msg("etcdqdb: write task group")
-
-	t := time.Now()
-
-	groupJson, err := json.Marshal(group)
-	if err != nil {
-		return err
-	}
-
-	if _, err = q.cli.Put(ctx, taskGroupPath, string(groupJson)); err != nil {
-		return err
-	}
-	if _, err = q.cli.Put(ctx, moveTasksCountPath, fmt.Sprintf("%d", len(group.TaskIDs))); err != nil {
-		return err
-	}
-	_, err = q.cli.Put(ctx, currentTaskIndexPath, fmt.Sprintf("%d", group.CurrentTaskInd))
-	statistics.RecordQDBOperation("WriteMoveTaskGroup", time.Since(t))
-	return err
-}
-
-// TODO: unit tests
-func (q *EtcdQDB) WriteMoveTaskGroupTransactional(ctx context.Context, group *MoveTaskGroup, tasks []*MoveTask) error {
+func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, tasks []*MoveTask) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: write task group")
 
@@ -1493,26 +1470,6 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 
 	statistics.RecordQDBOperation("RemoveMoveTaskGroup", time.Since(t))
 	return nil
-}
-
-func (q *EtcdQDB) CreateMoveTask(ctx context.Context, task *MoveTask) error {
-	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: write move task")
-
-	res, err := q.cli.Get(ctx, moveTaskNodePath(task.ID), clientv3.WithCountOnly())
-	if err != nil {
-		return err
-	}
-	if res.Count != 0 {
-		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "move task \"%s\" already exists", task.ID)
-	}
-
-	taskJson, err := json.Marshal(task)
-	if err != nil {
-		return err
-	}
-
-	_, err = q.cli.Put(ctx, moveTaskNodePath(task.ID), string(taskJson))
-	return err
 }
 
 func (q *EtcdQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {

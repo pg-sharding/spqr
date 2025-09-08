@@ -1097,18 +1097,7 @@ func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
 		taskArr[i] = tasks.MoveTaskToDb(task)
 	}
 
-	return tctx.qdb.WriteMoveTaskGroupTransactional(context.TODO(), tasks.TaskGroupToDb(&taskGroup), taskArr)
-}
-
-func (tctx *testContext) stepIRecordQDBMoveTask(body *godog.DocString) error {
-	query := strings.TrimSpace(body.Content)
-	var task qdb.MoveTask
-	if err := json.Unmarshal([]byte(query), &task); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal request")
-		return err
-	}
-
-	return tctx.qdb.CreateMoveTask(context.TODO(), &task)
+	return tctx.qdb.WriteMoveTaskGroup(context.TODO(), tasks.TaskGroupToDb(&taskGroup), taskArr)
 }
 
 func (tctx *testContext) stepQDBShouldContainTx(key string) error {
