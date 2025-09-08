@@ -8,7 +8,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
-
 func TestDBPool_BackgroundHealthCheck(t *testing.T) {
 	// Create shard mapping
 	mapping := map[string]*config.Shard{
