@@ -30,8 +30,9 @@ type DbpoolCache struct {
 }
 
 const (
-	DefaultCacheTTL      = 5 * time.Minute
-	DefaultCheckInterval = 30 * time.Second
+	DefaultCacheTTL          = 5 * time.Minute
+	DefaultCheckInterval     = 30 * time.Second
+	DefaultDeadCheckInterval = 15 * time.Second
 )
 
 // NewDbpoolCache creates a new cache instance
