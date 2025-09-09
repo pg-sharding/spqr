@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/router/rfqn"
 
 	"github.com/cucumber/godog"
@@ -1083,26 +1084,20 @@ func (tctx *testContext) stepRecordQDBKRMove(body *godog.DocString) error {
 	return tctx.qdb.RecordKeyRangeMove(context.TODO(), &m)
 }
 
+// TODO use WriteMoveTaskGroupTransactional
 func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
-	var taskGroup qdb.MoveTaskGroup
+	var taskGroup tasks.MoveTaskGroup
 	if err := json.Unmarshal([]byte(query), &taskGroup); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal request")
 		return err
 	}
-
-	return tctx.qdb.WriteMoveTaskGroup(context.TODO(), &taskGroup)
-}
-
-func (tctx *testContext) stepIRecordQDBMoveTask(body *godog.DocString) error {
-	query := strings.TrimSpace(body.Content)
-	var task qdb.MoveTask
-	if err := json.Unmarshal([]byte(query), &task); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal request")
-		return err
+	taskArr := make([]*qdb.MoveTask, len(taskGroup.Tasks))
+	for i, task := range taskGroup.Tasks {
+		taskArr[i] = tasks.MoveTaskToDb(task)
 	}
 
-	return tctx.qdb.CreateMoveTask(context.TODO(), &task)
+	return tctx.qdb.WriteMoveTaskGroup(context.TODO(), tasks.TaskGroupToDb(&taskGroup), taskArr)
 }
 
 func (tctx *testContext) stepQDBShouldContainTx(key string) error {
@@ -1295,7 +1290,6 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^qdb should not contain relation "([^"]*)"$`, tctx.stepQDBShouldNotContainRelation)
 	s.Step(`^I record in qdb key range move$`, tctx.stepRecordQDBKRMove)
 	s.Step(`^I record in qdb move task group$`, tctx.stepRecordQDBTaskGroup)
-	s.Step(`^I record in qdb move task$`, tctx.stepIRecordQDBMoveTask)
 	s.Step(`^qdb should contain transaction "([^"]*)"$`, tctx.stepQDBShouldContainTx)
 	s.Step(`^qdb should not contain transaction "([^"]*)"$`, tctx.stepQDBShouldNotContainTx)
 	s.Step(`^qdb should not contain key range moves$`, tctx.stepQDBShouldNotContainKRMoves)

@@ -426,20 +426,6 @@ func (mr *MockQDBMockRecorder) CreateKeyRange(ctx, keyRange any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockQDB)(nil).CreateKeyRange), ctx, keyRange)
 }
 
-// CreateMoveTask mocks base method.
-func (m *MockQDB) CreateMoveTask(ctx context.Context, task *qdb.MoveTask) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateMoveTask", ctx, task)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// CreateMoveTask indicates an expected call of CreateMoveTask.
-func (mr *MockQDBMockRecorder) CreateMoveTask(ctx, task any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMoveTask", reflect.TypeOf((*MockQDB)(nil).CreateMoveTask), ctx, task)
-}
-
 // CreateReferenceRelation mocks base method.
 func (m *MockQDB) CreateReferenceRelation(ctx context.Context, r *qdb.ReferenceRelation) error {
 	m.ctrl.T.Helper()
@@ -1051,17 +1037,17 @@ func (mr *MockQDBMockRecorder) WriteBalancerTask(ctx, task any) *gomock.Call {
 }
 
 // WriteMoveTaskGroup mocks base method.
-func (m *MockQDB) WriteMoveTaskGroup(ctx context.Context, group *qdb.MoveTaskGroup) error {
+func (m *MockQDB) WriteMoveTaskGroup(ctx context.Context, group *qdb.MoveTaskGroup, tasks []*qdb.MoveTask) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteMoveTaskGroup", ctx, group)
+	ret := m.ctrl.Call(m, "WriteMoveTaskGroup", ctx, group, tasks)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // WriteMoveTaskGroup indicates an expected call of WriteMoveTaskGroup.
-func (mr *MockQDBMockRecorder) WriteMoveTaskGroup(ctx, group any) *gomock.Call {
+func (mr *MockQDBMockRecorder) WriteMoveTaskGroup(ctx, group, tasks any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteMoveTaskGroup", reflect.TypeOf((*MockQDB)(nil).WriteMoveTaskGroup), ctx, group)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteMoveTaskGroup", reflect.TypeOf((*MockQDB)(nil).WriteMoveTaskGroup), ctx, group, tasks)
 }
 
 // WriteRedistributeTask mocks base method.
@@ -1255,20 +1241,6 @@ func (m *MockXQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) e
 func (mr *MockXQDBMockRecorder) CreateKeyRange(ctx, keyRange any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockXQDB)(nil).CreateKeyRange), ctx, keyRange)
-}
-
-// CreateMoveTask mocks base method.
-func (m *MockXQDB) CreateMoveTask(ctx context.Context, task *qdb.MoveTask) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateMoveTask", ctx, task)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// CreateMoveTask indicates an expected call of CreateMoveTask.
-func (mr *MockXQDBMockRecorder) CreateMoveTask(ctx, task any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMoveTask", reflect.TypeOf((*MockXQDB)(nil).CreateMoveTask), ctx, task)
 }
 
 // CreateReferenceRelation mocks base method.
@@ -2038,17 +2010,17 @@ func (mr *MockXQDBMockRecorder) WriteBalancerTask(ctx, task any) *gomock.Call {
 }
 
 // WriteMoveTaskGroup mocks base method.
-func (m *MockXQDB) WriteMoveTaskGroup(ctx context.Context, group *qdb.MoveTaskGroup) error {
+func (m *MockXQDB) WriteMoveTaskGroup(ctx context.Context, group *qdb.MoveTaskGroup, tasks []*qdb.MoveTask) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteMoveTaskGroup", ctx, group)
+	ret := m.ctrl.Call(m, "WriteMoveTaskGroup", ctx, group, tasks)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // WriteMoveTaskGroup indicates an expected call of WriteMoveTaskGroup.
-func (mr *MockXQDBMockRecorder) WriteMoveTaskGroup(ctx, group any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) WriteMoveTaskGroup(ctx, group, tasks any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteMoveTaskGroup", reflect.TypeOf((*MockXQDB)(nil).WriteMoveTaskGroup), ctx, group)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteMoveTaskGroup", reflect.TypeOf((*MockXQDB)(nil).WriteMoveTaskGroup), ctx, group, tasks)
 }
 
 // WriteRedistributeTask mocks base method.

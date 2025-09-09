@@ -9,10 +9,10 @@ import (
 )
 
 type MoveTask struct {
-	ID       string
-	Bound    [][]byte
-	KrIdTemp string
-	State    TaskState
+	ID       string    `json:"id"`
+	Bound    [][]byte  `json:"bound"`
+	KrIdTemp string    `json:"kr_id_temp"`
+	State    TaskState `json:"state"`
 }
 
 type TaskState int
@@ -39,12 +39,12 @@ const (
 )
 
 type MoveTaskGroup struct {
-	ShardToId        string
-	KrIdFrom         string
-	KrIdTo           string
-	Tasks            []*MoveTask
-	Type             SplitType
-	CurrentTaskIndex int
+	ShardToId        string      `json:"shard_to_id"`
+	KrIdFrom         string      `json:"kr_id_from"`
+	KrIdTo           string      `json:"kr_id_to"`
+	Tasks            []*MoveTask `json:"tasks"`
+	Type             SplitType   `json:"type"`
+	CurrentTaskIndex int         `json:"cur_task_ind"`
 }
 
 type RedistributeTaskState int
