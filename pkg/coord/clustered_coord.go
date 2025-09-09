@@ -1266,6 +1266,8 @@ ORDER BY (%s) %s;
 			switch t {
 			case qdb.ColumnTypeVarcharDeprecated:
 				fallthrough
+			case qdb.ColumnTypeUUID:
+				fallthrough
 			case qdb.ColumnTypeVarchar:
 				bound[i] = []byte(values[i])
 			case qdb.ColumnTypeVarcharHashed:
@@ -1283,6 +1285,8 @@ ORDER BY (%s) %s;
 				}
 				bound[i] = make([]byte, binary.MaxVarintLen64)
 				binary.PutVarint(bound[i], number)
+			default:
+				return nil, fmt.Errorf("unknown column type: %s", t)
 			}
 		}
 		taskList = append(taskList, &tasks.MoveTask{ID: uuid.NewString(), KrIdTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound})
