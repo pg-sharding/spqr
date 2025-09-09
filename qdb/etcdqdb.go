@@ -31,12 +31,13 @@ type EtcdQDB struct {
 
 var _ XQDB = &EtcdQDB{}
 
-func NewEtcdQDB(addr string) (*EtcdQDB, error) {
+func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints: []string{addr},
 		DialOptions: []grpc.DialOption{
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		},
+		MaxCallSendMsgSize: maxCallSendMsgSize,
 	})
 	if err != nil {
 		return nil, err

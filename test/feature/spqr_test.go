@@ -670,7 +670,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning() error {
 				return fmt.Errorf("failed to connect to SPQR QDB %s: %s", service, err)
 			}
 
-			db, err := qdb.NewEtcdQDB(addr)
+			db, err := qdb.NewEtcdQDB(addr, 0)
 			if err != nil {
 				return fmt.Errorf("failed to connect to SPQR QDB %s: %s", service, err)
 			}
@@ -817,7 +817,7 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 			return fmt.Errorf("failed to connect to SPQR QDB %s: %s", service, err)
 		}
 
-		db, err := qdb.NewEtcdQDB(addr)
+		db, err := qdb.NewEtcdQDB(addr, 0)
 		if err != nil {
 			return fmt.Errorf("failed to connect to SPQR QDB %s: %s", service, err)
 		}
@@ -825,7 +825,7 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 
 		log.Println("wait for QDB be ready")
 		retryRes := testutil.Retry(func() bool {
-			db, err := qdb.NewEtcdQDB(addr)
+			db, err := qdb.NewEtcdQDB(addr, 0)
 			if err != nil {
 				return false
 			}

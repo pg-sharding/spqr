@@ -18,7 +18,7 @@ type EtcdMetadataBootstrapper struct {
 
 // InitializeMetadata implements RouterMetadataBootstrapper.
 func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r RouterInstance) error {
-	etcdConn, err := qdb.NewEtcdQDB(e.QdbAddr)
+	etcdConn, err := qdb.NewEtcdQDB(e.QdbAddr, 0)
 	if err != nil {
 		return err
 	}
