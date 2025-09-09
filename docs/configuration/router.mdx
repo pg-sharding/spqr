@@ -129,10 +129,11 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 
 ## DBpool Settings
 
-| Setting                 | Description                                            | Possible Values                        |
-|-------------------------|--------------------------------------------------------|----------------------------------------|
-| `dbpool_cache_ttl`      | Time-to-live for database pool cache entries           | Any valid duration (e.g., `30s`, `1m`) |
-| `dbpool_check_interval` | Interval for checking database pool health and cleanup | Any valid duration (e.g., `30s`, `1m`) |
+| Setting                     | Description                                                               | Possible Values                        |
+|-----------------------------|---------------------------------------------------------------------------|----------------------------------------|
+| `dbpool_cache_ttl`          | Time-to-live for database pool cache entries                              | Any valid duration (e.g., `30s`, `1m`) |
+| `dbpool_check_interval`     | Interval for checking database pool health and cleanup                    | Any valid duration (e.g., `30s`, `1m`) |
+| `dbpool_dead_check_interval`| Background health check interval for dead hosts (enables faster recovery) | Any valid duration (e.g., `15s`, `30s`) or `0` to disable |
 
 ## QDB Settings
 

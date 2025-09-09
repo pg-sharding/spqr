@@ -86,8 +86,9 @@ type Router struct {
 	SchemaCacheBackendRule *BackendRule      `json:"schema_cache_backend_rule" toml:"schema_cache_backend_rule" yaml:"schema_cache_backend_rule"`
 	MultiDBPoolSize        int               `json:"multidb_pool_size" toml:"multidb_pool_size" yaml:"multidb_pool_size"`
 
-	DbpoolCacheTTL      time.Duration `json:"dbpool_cache_ttl" yaml:"dbpool_cache_ttl" toml:"dbpool_cache_ttl"`
-	DbpoolCheckInterval time.Duration `json:"dbpool_check_interval" toml:"dbpool_check_interval" yaml:"dbpool_check_interval"`
+	DbpoolCacheTTL          time.Duration `json:"dbpool_cache_ttl" yaml:"dbpool_cache_ttl" toml:"dbpool_cache_ttl"`
+	DbpoolCheckInterval     time.Duration `json:"dbpool_check_interval" toml:"dbpool_check_interval" yaml:"dbpool_check_interval"`
+	DbpoolDeadCheckInterval time.Duration `json:"dbpool_dead_check_interval" toml:"dbpool_dead_check_interval" yaml:"dbpool_dead_check_interval"`
 
 	WorkloadFile      string `json:"workload_file" toml:"workload_file" yaml:"workload_file"`
 	WorkloadBatchSize int    `json:"workload_batch_size" toml:"workload_batch_size" yaml:"workload_batch_size"`
