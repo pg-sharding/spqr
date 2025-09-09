@@ -1374,7 +1374,7 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 	}
 	taskIDs := make([]string, len(resp.Kvs))
 	for _, kv := range resp.Kvs {
-		idx, err := strconv.Atoi(string(kv.Key))
+		idx, err := strconv.Atoi(string(kv.Key)[len(moveTaskIDsNamespace):])
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse move task ID index \"%s\"", string(kv.Key))
 		}
