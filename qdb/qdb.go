@@ -139,7 +139,7 @@ type XQDB interface {
 func NewXQDB(qdbType string) (XQDB, error) {
 	switch qdbType {
 	case "etcd":
-		return NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
+		return NewEtcdQDB(config.CoordinatorConfig().QdbAddr, config.CoordinatorConfig().EtcdMaxSendBytes)
 	case "mem":
 		return NewMemQDB("")
 	default:
