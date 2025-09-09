@@ -849,3 +849,100 @@ Feature: Move test
       }
     ]
     """
+  
+  Scenario: MOVE KEY RANGE works with uuid keys
+    When I execute SQL on host "coordinator"
+    """
+    CREATE DISTRIBUTION ds2 COLUMN TYPES uuid;
+    ADD KEY RANGE krid4 FROM '80000000-0000-0000-0000000000' ROUTE TO sh2 FOR DISTRIBUTION ds2;
+    ADD KEY RANGE krid3 FROM '00000000-0000-0000-0000000000' ROUTE TO sh1 FOR DISTRIBUTION ds2;
+    ALTER DISTRIBUTION ds2 ATTACH RELATION xMoveStr DISTRIBUTION KEY w_id;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMoveStr(w_id TEXT, s TEXT);
+    insert into xMoveStr(w_id, s) values('10000000-4000-a000-0000000000', '001');
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMoveStr(w_id TEXT, s TEXT);
+    insert into xMoveStr(w_id, s) values('90000000-4000-a000-0000000000', '002');
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM xMoveStr
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    002
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM xMoveStr
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    001
+    """
+    When I execute SQL on host "coordinator"
+    """
+    MOVE KEY RANGE krid3 to sh2
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM xMoveStr
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    .*002(.|\n)*001
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM xMoveStr
+    """
+    Then command return code should be "0"
+    And SQL result should not match regexp
+    """
+    001
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+      "Key range ID":"krid1",
+      "Distribution ID":"ds1",
+      "Lower bound":"1",
+      "Shard ID":"sh1"
+      },
+      {
+      "Key range ID":"krid2",
+      "Distribution ID":"ds1",
+      "Lower bound":"11",
+      "Shard ID":"sh2"
+      },
+      {
+      "Key range ID":"krid3",
+      "Distribution ID":"ds2",
+      "Lower bound":"'00000000-0000-0000-0000000000'",
+      "Shard ID":"sh2"
+      },
+      {
+      "Key range ID":"krid4",
+      "Distribution ID":"ds2",
+      "Lower bound":"'80000000-0000-0000-0000000000'",
+      "Shard ID":"sh2"
+      }
+    ]
+    """
