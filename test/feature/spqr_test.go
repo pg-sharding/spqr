@@ -481,7 +481,6 @@ func (tctx *testContext) doPrepQueryPostgresql(host, query string, args any) ([]
 			}()
 			result := make([]map[string]any, 0)
 			for rows.Next() {
-				rowmap := make(map[string]any)
 				rowmap, err := testutil.CurrenRowToMap(rows)
 				if err != nil {
 					return nil, err
@@ -549,9 +548,6 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 }
 
 func (tctx *testContext) doPostgresqlQuery(db *sql.DB, query string, args interface{}, timeout time.Duration) ([]map[string]any, error) {
-	if args == nil {
-		args = struct{}{}
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	var rows *sql.Rows
