@@ -96,7 +96,7 @@ func (kr *KeyRange) OutFunc(attribInd int) []byte {
 	case qdb.ColumnTypeVarcharDeprecated:
 		fallthrough
 	case qdb.ColumnTypeVarchar:
-		return []byte(kr.LowerBound[attribInd].(string))
+		fallthrough
 	case qdb.ColumnTypeUUID:
 		return []byte(kr.LowerBound[attribInd].(string))
 	}
