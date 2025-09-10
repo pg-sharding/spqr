@@ -947,6 +947,90 @@ Feature: Move test
   #   ]
   #   """
   
+  Scenario: MOVE KEY RANGE works with many tables and deferrable foreign key constraints
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, i INT, j INT PRIMARY KEY, data TEXT);
+    CREATE TABLE xMove2(w_id INT, i INT PRIMARY KEY, j INT REFERENCES xMove DEFERRABLE, data TEXT);
+    ALTER TABLE xMove ADD FOREIGN KEY (i) REFERENCES xMove2 DEFERRABLE;
+    BEGIN;
+    SET CONSTRAINTS ALL DEFERRED;
+    INSERT INTO xMove (w_id, i, j, data) VALUES (1, 2, 3, '001');
+    INSERT INTO xMove2 (w_id, i, j, data) VALUES (2, 2, 3, '002');
+    COMMIT;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, i INT, j INT PRIMARY KEY, data TEXT);
+    CREATE TABLE xMove2(w_id INT, i INT PRIMARY KEY, j INT REFERENCES xMove DEFERRABLE, data TEXT);
+    ALTER TABLE xMove ADD FOREIGN KEY (i) REFERENCES xMove2 DEFERRABLE;
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "coordinator"
+    """
+    MOVE KEY RANGE krid1 to sh2
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    001
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM xMove2
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    002
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should not match regexp
+    """
+    001
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM xMove2
+    """
+    Then command return code should be "0"
+    And SQL result should not match regexp
+    """
+    002
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+      "Key range ID":"krid1",
+      "Distribution ID":"ds1",
+      "Lower bound":"1",
+      "Shard ID":"sh2"
+      },
+      {
+      "Key range ID":"krid2",
+      "Distribution ID":"ds1",
+      "Lower bound":"11",
+      "Shard ID":"sh2"
+      }
+    ]
+    """
+
   Scenario: MOVE KEY RANGE works with many tables and foreign key constraints
     When I run SQL on host "shard1"
     """
