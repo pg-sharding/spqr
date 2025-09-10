@@ -548,8 +548,6 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 	return nil
 }
 
-
-
 func (tctx *testContext) doPostgresqlQuery(db *sql.DB, query string, args interface{}, timeout time.Duration) ([]map[string]any, error) {
 	if args == nil {
 		args = struct{}{}
