@@ -481,6 +481,7 @@ strlist
 subplan
 subquery
 subselects
+sqlx
 SVFOP
 SVGID
 sysbench
