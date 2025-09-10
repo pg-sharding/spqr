@@ -13,7 +13,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    REGISTER ROUTER r1 ADDRESS regress_router::7000
+    REGISTER ROUTER r1 ADDRESS regress_router:7000
     """
     Then command return code should be "0"
 
@@ -116,7 +116,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    REGISTER ROUTER r2 ADDRESS regress_router::7000;
+    REGISTER ROUTER r2 ADDRESS regress_router:7000;
     SHOW routers
     """
     Then command return code should be "0"
@@ -128,7 +128,7 @@ Feature: Coordinator test
   Scenario: Register 2 routers with same address fails
     When I run SQL on host "coordinator"
     """
-    REGISTER ROUTER r2 ADDRESS regress_router::7000
+    REGISTER ROUTER r2 ADDRESS regress_router:7000
     """
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
@@ -147,7 +147,7 @@ Feature: Coordinator test
   Scenario: Register 2 routers with same id fails
     When I run SQL on host "coordinator"
     """
-    REGISTER ROUTER r1 ADDRESS regress_router::7000
+    REGISTER ROUTER r1 ADDRESS regress_router:7000
     """
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
@@ -166,7 +166,7 @@ Feature: Coordinator test
   Scenario: Register router with invalid address fails
     When I run SQL on host "coordinator"
     """
-    REGISTER ROUTER r3 ADDRESS invalid_router::7000
+    REGISTER ROUTER r3 ADDRESS invalid_router:7000
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -196,7 +196,7 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     UNREGISTER ROUTER r1;
-    REGISTER ROUTER r1 ADDRESS regress_router::7000
+    REGISTER ROUTER r1 ADDRESS regress_router:7000
     """
     Then command return code should be "0"
     When I run SQL on host "router-admin"
@@ -444,8 +444,8 @@ Feature: Coordinator test
   Scenario: Adding/dropping shards works
     When I run SQL on host "coordinator"
     """
-    ADD SHARD sh1 WITH HOSTS spqr_shard_1::6432;
-    ADD SHARD sh2 WITH HOSTS spqr_shard_2::6432;
+    ADD SHARD sh1 WITH HOSTS spqr_shard_1:6432;
+    ADD SHARD sh2 WITH HOSTS spqr_shard_2:6432;
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator"
@@ -606,7 +606,7 @@ Feature: Coordinator test
     Then command return code should be "0"
     When I run SQL on host "coordinator"
     """
-    REGISTER ROUTER r1 ADDRESS regress_router::7000
+    REGISTER ROUTER r1 ADDRESS regress_router:7000
     """
     Then command return code should be "0"
 

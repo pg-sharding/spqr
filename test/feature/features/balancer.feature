@@ -314,7 +314,7 @@ Feature: Balancer test
     Then command return code should be "0"
     When I run SQL on host "shard1"
     """
-    /* key_range_id:: kr1 */ INSERT INTO xMove (w_id, s) SELECT generate_series(0, 99999), 'sample text value';
+    /* key_range_id: kr1 */ INSERT INTO xMove (w_id, s) SELECT generate_series(0, 99999), 'sample text value';
     """
     Then command return code should be "0"
     When I run command on host "coordinator" with timeout "60" seconds

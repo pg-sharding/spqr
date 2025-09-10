@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,7 +25,6 @@ import (
 	"github.com/cucumber/godog"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/jmoiron/sqlx"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -64,7 +64,7 @@ type testContext struct {
 	templateErr       error
 	composer          testutil.Composer
 	composerEnv       []string
-	userDbs           map[string]map[string]*sqlx.DB
+	userDbs           map[string]map[string]*sql.DB
 	sqlQueryResult    []map[string]any
 	sqlUserQueryError sync.Map // host -> error
 	commandRetcode    int
@@ -72,7 +72,7 @@ type testContext struct {
 	qdb               qdb.XQDB
 	t                 *testing.T
 	debug             bool
-	preparedQueries   map[string]map[string]*sqlx.Stmt
+	preparedQueries   map[string]map[string]*sql.Stmt
 }
 
 func newTestContext(t *testing.T) (*testContext, error) {
@@ -83,8 +83,8 @@ func newTestContext(t *testing.T) (*testContext, error) {
 	if err != nil {
 		return nil, err
 	}
-	tctx.userDbs = make(map[string]map[string]*sqlx.DB)
-	tctx.preparedQueries = make(map[string]map[string]*sqlx.Stmt)
+	tctx.userDbs = make(map[string]map[string]*sql.DB)
+	tctx.preparedQueries = make(map[string]map[string]*sql.Stmt)
 	return tctx, nil
 }
 
@@ -219,7 +219,7 @@ func (tctx *testContext) cleanup() {
 			}
 		}
 	}
-	tctx.userDbs = make(map[string]map[string]*sqlx.DB)
+	tctx.userDbs = make(map[string]map[string]*sql.DB)
 	if err := tctx.composer.Down(); err != nil {
 		log.Printf("failed to tear down compose: %s", err)
 	}
@@ -232,7 +232,7 @@ func (tctx *testContext) cleanup() {
 	tctx.closePreparedPostgresql()
 }
 
-func (tctx *testContext) connectPostgresql(addr string, user string, timeout time.Duration) (*sqlx.DB, error) {
+func (tctx *testContext) connectPostgresql(addr string, user string, timeout time.Duration) (*sql.DB, error) {
 	if strings.Contains(addr, strconv.Itoa(spqrConsolePort)) {
 		return tctx.connectRouterConsoleWithCredentials(user, shardPassword, addr, timeout)
 	}
@@ -242,8 +242,8 @@ func (tctx *testContext) connectPostgresql(addr string, user string, timeout tim
 	return tctx.connectPostgresqlWithCredentials(user, shardPassword, addr, timeout)
 }
 
-func (tctx *testContext) connectPostgresqlWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
-	ping := func(db *sqlx.DB) bool {
+func (tctx *testContext) connectPostgresqlWithCredentials(username string, password string, addr string, timeout time.Duration) (*sql.DB, error) {
+	ping := func(db *sql.DB) bool {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		err := db.PingContext(ctx)
@@ -255,8 +255,8 @@ func (tctx *testContext) connectPostgresqlWithCredentials(username string, passw
 	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
 }
 
-func (tctx *testContext) connectCoordinatorWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
-	ping := func(db *sqlx.DB) bool {
+func (tctx *testContext) connectCoordinatorWithCredentials(username string, password string, addr string, timeout time.Duration) (*sql.DB, error) {
+	ping := func(db *sql.DB) bool {
 		_, err := db.Exec("SHOW routers")
 		if err != nil {
 			log.Printf("failed to ping coordinator at %s: %s", addr, err)
@@ -266,8 +266,8 @@ func (tctx *testContext) connectCoordinatorWithCredentials(username string, pass
 	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
 }
 
-func (tctx *testContext) connectRouterConsoleWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
-	ping := func(db *sqlx.DB) bool {
+func (tctx *testContext) connectRouterConsoleWithCredentials(username string, password string, addr string, timeout time.Duration) (*sql.DB, error) {
+	ping := func(db *sql.DB) bool {
 		_, err := db.Exec("SHOW key_ranges")
 		if err != nil {
 			log.Printf("failed to ping router console at %s: %s", addr, err)
@@ -277,14 +277,14 @@ func (tctx *testContext) connectRouterConsoleWithCredentials(username string, pa
 	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
 }
 
-func (tctx *testContext) connectorWithCredentials(username string, password string, addr string, dbName string, timeout time.Duration, ping func(db *sqlx.DB) bool) (*sqlx.DB, error) {
+func (tctx *testContext) connectorWithCredentials(username string, password string, addr string, dbName string, timeout time.Duration, ping func(db *sql.DB) bool) (*sql.DB, error) {
 	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s", username, password, addr, dbName)
 	connCfg, _ := pgx.ParseConfig(dsn)
 	connCfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 	connCfg.RuntimeParams["client_encoding"] = "UTF8"
 	connCfg.RuntimeParams["standard_conforming_strings"] = "on"
 	connStr := stdlib.RegisterConnConfig(connCfg)
-	db, err := sqlx.Open("pgx", connStr)
+	db, err := sql.Open("pgx", connStr)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +300,7 @@ func (tctx *testContext) connectorWithCredentials(username string, password stri
 	return db, nil
 }
 
-func (tctx *testContext) trySetupConnection(user, service string) (*sqlx.DB, error) {
+func (tctx *testContext) trySetupConnection(user, service string) (*sql.DB, error) {
 	// check databases
 	if strings.HasPrefix(service, spqrShardName) {
 		addr, err := tctx.composer.GetAddr(service, spqrPort)
@@ -312,7 +312,7 @@ func (tctx *testContext) trySetupConnection(user, service string) (*sqlx.DB, err
 			return nil, fmt.Errorf("failed to connect to postgresql %s: %s", service, err)
 		}
 		if _, ok := tctx.userDbs[user]; !ok {
-			tctx.userDbs[user] = make(map[string]*sqlx.DB)
+			tctx.userDbs[user] = make(map[string]*sql.DB)
 		}
 		tctx.userDbs[user][service] = db
 		return db, nil
@@ -329,7 +329,7 @@ func (tctx *testContext) trySetupConnection(user, service string) (*sqlx.DB, err
 			return nil, fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 		}
 		if _, ok := tctx.userDbs[user]; !ok {
-			tctx.userDbs[user] = make(map[string]*sqlx.DB)
+			tctx.userDbs[user] = make(map[string]*sql.DB)
 		}
 		tctx.userDbs[user][service] = db
 
@@ -343,7 +343,7 @@ func (tctx *testContext) trySetupConnection(user, service string) (*sqlx.DB, err
 			return nil, fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 		}
 		if _, ok := tctx.userDbs[user]; !ok {
-			tctx.userDbs[user] = make(map[string]*sqlx.DB)
+			tctx.userDbs[user] = make(map[string]*sql.DB)
 		}
 		tctx.userDbs[user][fmt.Sprintf("%s-admin", service)] = db
 
@@ -361,7 +361,7 @@ func (tctx *testContext) trySetupConnection(user, service string) (*sqlx.DB, err
 			return nil, fmt.Errorf("failed to connect to SPQR coordinator %s: %s", service, err)
 		}
 		if _, ok := tctx.userDbs[user]; !ok {
-			tctx.userDbs[user] = make(map[string]*sqlx.DB)
+			tctx.userDbs[user] = make(map[string]*sql.DB)
 		}
 		tctx.userDbs[user][service] = db
 		return db, nil
@@ -370,8 +370,8 @@ func (tctx *testContext) trySetupConnection(user, service string) (*sqlx.DB, err
 	return nil, fmt.Errorf("unrecognised service \"%s\"", service)
 }
 
-func (tctx *testContext) getPostgresqlConnection(user, host string) (*sqlx.DB, error) {
-	var db *sqlx.DB
+func (tctx *testContext) getPostgresqlConnection(user, host string) (*sql.DB, error) {
+	var db *sql.DB
 	dbs, ok := tctx.userDbs[user]
 	if !ok {
 		var err error
@@ -406,7 +406,7 @@ func (tctx *testContext) getPostgresqlConnection(user, host string) (*sqlx.DB, e
 	}
 
 	if _, ok := tctx.userDbs[user]; !ok {
-		tctx.userDbs[user] = make(map[string]*sqlx.DB)
+		tctx.userDbs[user] = make(map[string]*sql.DB)
 	}
 	tctx.userDbs[user][host] = db
 	return db, nil
@@ -417,9 +417,9 @@ func (tctx *testContext) prepareQueryPostgresql(host, user, query string) error 
 	if err != nil {
 		return err
 	}
-	stmt, err := db.Preparex(query)
+	stmt, err := db.Prepare(query)
 	if pqHst, ok := tctx.preparedQueries[host]; !ok {
-		hstDat := map[string]*sqlx.Stmt{query: stmt}
+		hstDat := map[string]*sql.Stmt{query: stmt}
 		tctx.preparedQueries[host] = hstDat
 	} else {
 		pqHst[query] = stmt
@@ -465,12 +465,12 @@ func (tctx *testContext) doPrepQueryPostgresql(host, query string, args any) ([]
 		if stmt, ok := stmts[query]; !ok {
 			return nil, fmt.Errorf("Query '%s' is not prepared", query)
 		} else {
-			var rows *sqlx.Rows
+			var rows *sql.Rows
 			var err error
 			if reflect.DeepEqual(args, struct{}{}) {
-				rows, err = stmt.Queryx()
+				rows, err = stmt.Query()
 			} else {
-				rows, err = stmt.Queryx(args)
+				rows, err = stmt.Query(args)
 			}
 			if err != nil {
 				log.Printf("query error %#v\n", err)
@@ -482,7 +482,7 @@ func (tctx *testContext) doPrepQueryPostgresql(host, query string, args any) ([]
 			result := make([]map[string]any, 0)
 			for rows.Next() {
 				rowmap := make(map[string]any)
-				err = rows.MapScan(rowmap)
+				rowmap, err := testutil.CurrenRowToMap(rows)
 				if err != nil {
 					return nil, err
 				}
@@ -503,8 +503,7 @@ func (tctx *testContext) queryPostgresql(host, user, query string, args any, tim
 	if err != nil {
 		return nil, err
 	}
-	// sqlx can't execute requests with semicolon
-	// we will execute them in single connection
+	// sqlx is not used now. try remove split
 	queries := strings.Split(query, ";")
 	var result []map[string]any
 
@@ -533,8 +532,7 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 		return err
 	}
 
-	// sqlx can't execute requests with semicolon
-	// we will execute them in single connection
+	// sqlx is not used now. try remove split
 	queries := strings.Split(query, ";")
 
 	for _, q := range queries {
@@ -550,13 +548,17 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 	return nil
 }
 
-func (tctx *testContext) doPostgresqlQuery(db *sqlx.DB, query string, args any, timeout time.Duration) ([]map[string]any, error) {
+
+
+func (tctx *testContext) doPostgresqlQuery(db *sql.DB, query string, args interface{}, timeout time.Duration) ([]map[string]any, error) {
 	if args == nil {
 		args = struct{}{}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	rows, err := db.NamedQueryContext(ctx, query, args)
+	var rows *sql.Rows
+	var err error
+	rows, err = db.QueryContext(ctx, query)
 	if err != nil {
 		log.Printf("query error %#v\n", err)
 		return nil, err
@@ -567,8 +569,7 @@ func (tctx *testContext) doPostgresqlQuery(db *sqlx.DB, query string, args any, 
 
 	result := make([]map[string]any, 0)
 	for rows.Next() {
-		rowmap := make(map[string]any)
-		err = rows.MapScan(rowmap)
+		rowmap, err := testutil.CurrenRowToMap(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -602,7 +603,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning() error {
 	}
 
 	if _, ok := tctx.userDbs[shardUser]; !ok {
-		tctx.userDbs[shardUser] = make(map[string]*sqlx.DB)
+		tctx.userDbs[shardUser] = make(map[string]*sql.DB)
 	}
 
 	// check databases
@@ -751,7 +752,7 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 	}
 
 	if _, ok := tctx.userDbs[shardUser]; !ok {
-		tctx.userDbs[shardUser] = make(map[string]*sqlx.DB)
+		tctx.userDbs[shardUser] = make(map[string]*sql.DB)
 	}
 
 	// check databases
