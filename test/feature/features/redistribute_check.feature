@@ -215,3 +215,98 @@ Feature: Redistribution test
     """
     distribution key column "w_id" not found in relation "public.xmove" on destination shard
     """
+  
+  Scenario: REDISTRIBUTE KEY RANGE checks for non-deferrable constraints
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION xMove2 DISTRIBUTION KEY w_id;
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, pkey INT PRIMARY KEY);
+    CREATE TABLE xMove2(w_id INT, skey INT REFERENCES xMove ( pkey ));
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, pkey INT PRIMARY KEY);
+    CREATE TABLE xMove2(w_id INT, skey INT REFERENCES xMove ( pkey ));
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
+    """
+    Then command return code should be "1"
+    And command output should match regexp
+    """
+    found non-deferrable constraint or constraint referencing non-distributed table on source shard: "xmove2_skey_fkey"
+    """
+
+    When I run SQL on host "shard1"
+    """
+    ALTER TABLE xMove2 ALTER CONSTRAINT xmove2_skey_fkey DEFERRABLE;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
+    """
+    Then command return code should be "1"
+    And command output should match regexp
+    """
+    found non-deferrable constraint or constraint referencing non-distributed table on destination shard: "xmove2_skey_fkey"
+    """
+
+    Scenario: REDISTRIBUTE KEY RANGE checks for constraints on non-distributed tables
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xExt(w_id INT, pkey INT PRIMARY KEY);
+    CREATE TABLE xMove(w_id INT, pkey INT REFERENCES xExt DEFERRABLE);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xExt(w_id INT, pkey INT PRIMARY KEY);
+    CREATE TABLE xMove(w_id INT, pkey INT REFERENCES xExt DEFERRABLE);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
+    """
+    Then command return code should be "1"
+    And command output should match regexp
+    """
+    found non-deferrable constraint or constraint referencing non-distributed table on source shard: "xmove_pkey_fkey"
+    """
+
+    When I run SQL on host "shard1"
+    """
+    ALTER TABLE xMove DROP CONSTRAINT xmove_pkey_fkey
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
+    """
+    Then command return code should be "1"
+    And command output should match regexp
+    """
+    found non-deferrable constraint or constraint referencing non-distributed table on destination shard: "xmove_pkey_fkey"
+    """

@@ -905,9 +905,11 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	}
 
 	schemas := make(map[string]struct{})
+	rels := make([]string, 0, len(ds.Relations))
 	for _, rel := range ds.Relations {
 		schemas[rel.GetSchema()] = struct{}{}
 		relName := strings.ToLower(rel.Name)
+		rels = append(rels, rel.GetFullName())
 		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, relName, rel.GetSchema())
 		if err != nil {
 			return err
@@ -942,6 +944,22 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "distribution key column \"%s\" not found in relation \"%s\" on destination shard", col.Column, rel.GetFullName())
 			}
 		}
+	}
+
+	deferrable, constraintName, err := datatransfers.CheckConstraints(ctx, sourceConn, rels)
+	if err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking table constraints on source shard: %s", err)
+	}
+	if !deferrable {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing non-distributed table on source shard: \"%s\"", constraintName)
+	}
+
+	deferrable, constraintName, err = datatransfers.CheckConstraints(ctx, destConn, rels)
+	if err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking table constraints on destination shard: %s", err)
+	}
+	if !deferrable {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing non-distributed table on destination shard: \"%s\"", constraintName)
 	}
 
 	return datatransfers.SetupFDW(ctx, sourceConn, destConn, keyRange.ShardID, req.ShardId, schemas)

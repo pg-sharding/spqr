@@ -516,12 +516,13 @@ func (tctx *testContext) queryPostgresql(host, user, query string, args any, tim
 		tctx.sqlQueryResult = nil
 		result, err = tctx.doPostgresqlQuery(db, q, args, timeout)
 		tctx.commandRetcode = 0
+		tctx.sqlQueryResult = result
 		if err != nil {
 			tctx.commandRetcode = 1
 			tctx.commandOutput = err.Error()
 			tctx.sqlUserQueryError.Store(host, err.Error())
+			break
 		}
-		tctx.sqlQueryResult = result
 	}
 
 	return result, nil

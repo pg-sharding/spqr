@@ -186,8 +186,15 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			}
 		case qdb.DataCopied:
 			// drop data from sending shard
+			ftx, err := from.Begin(ctx)
+			if err != nil {
+				return fmt.Errorf("could not delete data: could not begin transaction: %s", err)
+			}
+			if _, err := ftx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
+				return fmt.Errorf("could not delete data: error deferring constraints: %s", err)
+			}
 			for _, rel := range ds.Relations {
-				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = '%s'`, strings.ToLower(rel.Name), rel.GetSchema()))
+				res := ftx.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = '%s'`, strings.ToLower(rel.Name), rel.GetSchema()))
 				fromTableExists := false
 				if err = res.Scan(&fromTableExists); err != nil {
 					return err
@@ -199,10 +206,13 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				if err != nil {
 					return err
 				}
-				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, rel.GetFullName(), cond))
+				_, err = ftx.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, rel.GetFullName(), cond))
 				if err != nil {
-					return err
+					return fmt.Errorf("could not delete data: error executing DELETE FROM: %s", err)
 				}
+			}
+			if err = ftx.Commit(ctx); err != nil {
+				return fmt.Errorf("could not delete data: could not commit transaction: %s", err)
 			}
 			if err = db.RemoveTransferTx(ctx, krg.ID); err != nil {
 				return err
@@ -389,13 +399,19 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	dbName := fromShard.DB
 	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
 	schemaName := fmt.Sprintf("%s_%s_%s_schema", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
+	tx, err := to.Begin(ctx)
+	if err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not start transaction: %s", err)
+	}
+	if _, err := tx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: error deferring contraints: %s", err)
+	}
 	for _, rel := range ds.Relations {
 		krCondition, err := kr.GetKRCondition(rel, krg, upperBound, "")
 		if err != nil {
 			return err
 		}
 		// check that relation exists on sending shard and there is data to copy. If not, skip the relation
-		// TODO get actual schema
 		relSchemaName := rel.GetSchema()
 		fromTableExists, err := CheckTableExists(ctx, from, strings.ToLower(rel.Name), relSchemaName)
 		if err != nil {
@@ -410,14 +426,14 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 			return err
 		}
 		// check that relation exists on receiving shard. If not, exit
-		toTableExists, err := CheckTableExists(ctx, to, strings.ToLower(rel.Name), relSchemaName)
+		toTableExists, err := CheckTableExists(ctx, tx, strings.ToLower(rel.Name), relSchemaName)
 		if err != nil {
 			return err
 		}
 		if !toTableExists {
 			return fmt.Errorf("relation %s does not exist on receiving shard", rel.Name)
 		}
-		toCount, err := getEntriesCount(ctx, to, relFullName, krCondition)
+		toCount, err := getEntriesCount(ctx, tx, relFullName, krCondition)
 		if err != nil {
 			return err
 		}
@@ -434,10 +450,13 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 					SELECT * FROM %s
 					WHERE %s
 `, relFullName, fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.Name)), krCondition)
-		_, err = to.Exec(ctx, query)
+		_, err = tx.Exec(ctx, query)
 		if err != nil {
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
 		}
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not execute transaction: %s", err)
 	}
 	return nil
 }
@@ -505,6 +524,10 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	return nil
 }
 
+type Queryable interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
 // CheckTableExists checks if a table exists in the database.
 //
 // Parameters:
@@ -516,8 +539,8 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 // Returns:
 // - bool: true if the table exists, false otherwise.
 // - error: an error if there was a problem executing the query.
-func CheckTableExists(ctx context.Context, conn *pgx.Conn, relName, schema string) (bool, error) {
-	res := conn.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = '%s'`, relName, schema))
+func CheckTableExists(ctx context.Context, tx Queryable, relName, schema string) (bool, error) {
+	res := tx.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = '%s'`, relName, schema))
 	exists := false
 	if err := res.Scan(&exists); err != nil {
 		return false, err
@@ -546,6 +569,40 @@ func CheckColumnExists(ctx context.Context, conn *pgx.Conn, relName, schema, col
 	return exists, nil
 }
 
+// CheckConstraints checks for non-deferrable contsraints or constraints referencing external relations.
+//
+// Parameters:
+// - ctx (context.Context): the context for database operations;
+// - conn (*pgx.Conn): the connection to the database;
+// - relNames (string): the list of relations, for which to check for constraints;
+//
+// Returns:
+// - bool: true if no such constraints are found, false otherwise;
+// - string: name of a constraint, if found;
+// - error: an error if there was a problem executing the query.
+func CheckConstraints(ctx context.Context, conn *pgx.Conn, relNames []string) (bool, string, error) {
+	if len(relNames) == 0 {
+		return true, "", nil
+	}
+	relOidList := make([]string, len(relNames))
+	for i, relName := range relNames {
+		relOidList[i] = fmt.Sprintf("'%s'::regclass::oid", relName)
+	}
+	relOids := strings.Join(relOidList, ", ")
+	rows, err := conn.Query(ctx, fmt.Sprintf(`SELECT conname FROM pg_constraint WHERE conrelid IN (%s) and confrelid != 0 and (condeferrable=false or not (confrelid IN (%s))) LIMIT 1`, relOids, relOids))
+	if err != nil {
+		return false, "", err
+	}
+	if !rows.Next() {
+		return true, "", nil
+	}
+	var conName string
+	if err = rows.Scan(&conName); err != nil {
+		return false, "", err
+	}
+	return false, conName, nil
+}
+
 // getEntriesCount retrieves the number of entries from a database table based on the provided condition.
 //
 // Parameters:
@@ -557,7 +614,7 @@ func CheckColumnExists(ctx context.Context, conn *pgx.Conn, relName, schema, col
 // Returns:
 // - int: the count of entries in the table.
 // - error: an error if there was a problem executing the query.
-func getEntriesCount(ctx context.Context, conn *pgx.Conn, relName string, condition string) (int, error) {
+func getEntriesCount(ctx context.Context, conn Queryable, relName string, condition string) (int, error) {
 	res := conn.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, relName, condition))
 	count := 0
 	if err := res.Scan(&count); err != nil {
