@@ -581,6 +581,9 @@ func CheckColumnExists(ctx context.Context, conn *pgx.Conn, relName, schema, col
 // - string: name of a constraint, if found;
 // - error: an error if there was a problem executing the query.
 func CheckConstraints(ctx context.Context, conn *pgx.Conn, relNames []string) (bool, string, error) {
+	if len(relNames) == 0 {
+		return true, "", nil
+	}
 	relOidList := make([]string, len(relNames))
 	for i, relName := range relNames {
 		relOidList[i] = fmt.Sprintf("'%s'::regclass::oid", relName)
