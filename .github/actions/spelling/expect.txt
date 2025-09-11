@@ -55,9 +55,15 @@ colname
 colref
 colreflist
 coltypes
+condeferrable
+confrelid
+conname
 connectiterator
 connmgr
 connstring
+conrelid
+contraints
+contsraints
 coorctl
 coordctl
 copymap
@@ -177,7 +183,6 @@ inputdir
 installable
 interactor
 IPrepare
-IRecord
 IRun
 isgomock
 isready
@@ -203,7 +208,6 @@ kek
 keyr
 keyrange
 keyrangemgr
-keyspace
 keytab
 keytabdata
 keytabfile
@@ -265,11 +269,11 @@ mocksrv
 Msgf
 msgroup
 msgtype
+multiclient
 multicoordinator
 multidbpool
 multidim
 multierr
-multiclient
 multishard
 munakoiso
 murmurhash
@@ -294,6 +298,7 @@ nspname
 odssd
 ogima
 OIDKRB
+Oids
 oiwejow
 OLAP
 opentracing
@@ -372,6 +377,7 @@ rclient
 rconn
 rdistr
 receivepasswd
+regclass
 relpersistence
 rels
 repeattimes
