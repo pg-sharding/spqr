@@ -10,7 +10,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -435,7 +434,7 @@ func (tctx *testContext) prepareQueryPostgresql(host, user, query string) error 
 	return nil
 }
 
-func (tctx *testContext) queryPreparedPostgresql(host, query string, args any) ([]map[string]any, error) {
+func (tctx *testContext) queryPreparedPostgresql(host, query string, args []interface{}) ([]map[string]any, error) {
 	tctx.sqlQueryResult = nil
 	result, err := tctx.doPrepQueryPostgresql(host, query, args)
 	tctx.commandRetcode = 0
@@ -458,20 +457,14 @@ func (tctx *testContext) closePreparedPostgresql() {
 	}
 }
 
-func (tctx *testContext) doPrepQueryPostgresql(host, query string, args any) ([]map[string]any, error) {
+func (tctx *testContext) doPrepQueryPostgresql(host, query string, args []interface{}) ([]map[string]any, error) {
 	if stmts, ok := tctx.preparedQueries[host]; !ok {
 		return nil, fmt.Errorf("Query '%s' is not prepared", query)
 	} else {
 		if stmt, ok := stmts[query]; !ok {
 			return nil, fmt.Errorf("Query '%s' is not prepared", query)
 		} else {
-			var rows *sql.Rows
-			var err error
-			if reflect.DeepEqual(args, struct{}{}) {
-				rows, err = stmt.Query()
-			} else {
-				rows, err = stmt.Query(args)
-			}
+			rows, err := stmt.Query(args...)
 			if err != nil {
 				log.Printf("query error %#v\n", err)
 				return nil, err
@@ -497,7 +490,7 @@ func (tctx *testContext) doPrepQueryPostgresql(host, query string, args any) ([]
 	}
 }
 
-func (tctx *testContext) queryPostgresql(host, user, query string, args any, timeout time.Duration) ([]map[string]any, error) {
+func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.Duration, args []interface{}) ([]map[string]any, error) {
 	db, err := tctx.getPostgresqlConnection(user, host)
 	if err != nil {
 		return nil, err
@@ -512,7 +505,7 @@ func (tctx *testContext) queryPostgresql(host, user, query string, args any, tim
 			continue
 		}
 		tctx.sqlQueryResult = nil
-		result, err = tctx.doPostgresqlQuery(db, q, args, timeout)
+		result, err = tctx.doPostgresqlQuery(db, q, timeout, args)
 		tctx.commandRetcode = 0
 		if err != nil {
 			tctx.commandRetcode = 1
@@ -547,12 +540,12 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 	return nil
 }
 
-func (tctx *testContext) doPostgresqlQuery(db *sql.DB, query string, args interface{}, timeout time.Duration) ([]map[string]any, error) {
+func (tctx *testContext) doPostgresqlQuery(db *sql.DB, query string, timeout time.Duration, args []interface{}) ([]map[string]any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	var rows *sql.Rows
 	var err error
-	rows, err = db.QueryContext(ctx, query)
+	rows, err = db.QueryContext(ctx, query, args...)
 	if err != nil {
 		log.Printf("query error %#v\n", err)
 		return nil, err
@@ -843,7 +836,7 @@ func (tctx *testContext) stepWaitPostgresqlToRespond(host string) error {
 	const trials = 10
 	const timeout = 20 * time.Second
 	for range trials {
-		_, err := tctx.queryPostgresql(host, shardUser, "SELECT 1", struct{}{}, postgresqlQueryTimeout)
+		_, err := tctx.queryPostgresql(host, shardUser, "SELECT 1", postgresqlQueryTimeout, make([]interface{}, 0))
 		if err == nil {
 			return nil
 		}
@@ -909,21 +902,21 @@ func (tctx *testContext) stepCommandOutputShouldMatch(matcher string, body *godo
 func (tctx *testContext) stepIRunSQLOnHost(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(host, shardUser, query, struct{}{}, postgresqlQueryTimeout)
+	_, err := tctx.queryPostgresql(host, shardUser, query, postgresqlQueryTimeout, make([]interface{}, 0))
 	return err
 }
 
 func (tctx *testContext) stepIRunSQLOnHostWithTimeout(host string, timeout int, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(host, shardUser, query, struct{}{}, time.Duration(timeout)*time.Second)
+	_, err := tctx.queryPostgresql(host, shardUser, query, time.Duration(timeout)*time.Second, make([]interface{}, 0))
 	return err
 }
 
 func (tctx *testContext) stepIRunSQLOnHostAsUser(host string, user string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(host, user, query, struct{}{}, postgresqlQueryTimeout)
+	_, err := tctx.queryPostgresql(host, user, query, postgresqlQueryTimeout, make([]interface{}, 0))
 	return err
 }
 
@@ -935,7 +928,7 @@ func (tctx *testContext) stepIPrepareSQLOnHost(host string, body *godog.DocStrin
 
 func (tctx *testContext) stepIRunPreparedSQLOnHost(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
-	_, err := tctx.queryPreparedPostgresql(host, query, struct{}{})
+	_, err := tctx.queryPreparedPostgresql(host, query, make([]interface{}, 0))
 	return err
 }
 
