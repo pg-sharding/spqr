@@ -948,10 +948,18 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 
 	deferrable, constraintName, err := datatransfers.CheckConstraints(ctx, sourceConn, rels)
 	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking table constraints: %s", err)
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking table constraints on source shard: %s", err)
 	}
 	if !deferrable {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing non-distributed table: \"%s\"", constraintName)
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing non-distributed table on source shard: \"%s\"", constraintName)
+	}
+
+	deferrable, constraintName, err = datatransfers.CheckConstraints(ctx, destConn, rels)
+	if err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking table constraints on destination shard: %s", err)
+	}
+	if !deferrable {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing non-distributed table on destination shard: \"%s\"", constraintName)
 	}
 
 	return datatransfers.SetupFDW(ctx, sourceConn, destConn, keyRange.ShardID, req.ShardId, schemas)
