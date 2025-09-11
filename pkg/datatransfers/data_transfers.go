@@ -569,6 +569,37 @@ func CheckColumnExists(ctx context.Context, conn *pgx.Conn, relName, schema, col
 	return exists, nil
 }
 
+// CheckConstraints checks for non-deferrable contsraints or constraints referencing external relations.
+//
+// Parameters:
+// - ctx (context.Context): the context for database operations;
+// - conn (*pgx.Conn): the connection to the database;
+// - relNames (string): the list of relations, for which to check for constraints;
+//
+// Returns:
+// - bool: true if no such constraints are found, false otherwise;
+// - string: name of a constraint, if found;
+// - error: an error if there was a problem executing the query.
+func CheckConstraints(ctx context.Context, conn *pgx.Conn, relNames []string) (bool, string, error) {
+	relOidList := make([]string, len(relNames))
+	for i, relName := range relNames {
+		relOidList[i] = fmt.Sprintf("'%s'::regclass::oid", relName)
+	}
+	relOids := strings.Join(relOidList, ", ")
+	rows, err := conn.Query(ctx, fmt.Sprintf(`SELECT conname FROM pg_constraint WHERE conrelid IN (%s) and confrelid != 0 and (condeferrable=false or not (confrelid IN (%s))) LIMIT 1`, relOids, relOids))
+	if err != nil {
+		return false, "", err
+	}
+	if !rows.Next() {
+		return true, "", nil
+	}
+	var conName string
+	if err = rows.Scan(&conName); err != nil {
+		return false, "", err
+	}
+	return false, conName, nil
+}
+
 // getEntriesCount retrieves the number of entries from a database table based on the provided condition.
 //
 // Parameters:
