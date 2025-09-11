@@ -946,7 +946,17 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		}
 	}
 
-	deferrable, constraintName, err := datatransfers.CheckConstraints(ctx, sourceConn, rels)
+	replDs, err := qc.GetDistribution(ctx, distributions.REPLICATED)
+	if err != nil {
+		return err
+	}
+	replRels := make([]string, 0, len(replDs.Relations))
+	for _, r := range replDs.Relations {
+		replRels = append(replRels, r.GetFullName())
+	}
+
+	// TODO: add replicated relations
+	deferrable, constraintName, err := datatransfers.CheckConstraints(ctx, sourceConn, rels, replRels)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking table constraints on source shard: %s", err)
 	}
@@ -954,7 +964,8 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing non-distributed table on source shard: \"%s\"", constraintName)
 	}
 
-	deferrable, constraintName, err = datatransfers.CheckConstraints(ctx, destConn, rels)
+	// TODO: add replicated relations
+	deferrable, constraintName, err = datatransfers.CheckConstraints(ctx, destConn, rels, replRels)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking table constraints on destination shard: %s", err)
 	}

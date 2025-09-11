@@ -574,22 +574,28 @@ func CheckColumnExists(ctx context.Context, conn *pgx.Conn, relName, schema, col
 // Parameters:
 // - ctx (context.Context): the context for database operations;
 // - conn (*pgx.Conn): the connection to the database;
-// - relNames (string): the list of relations, for which to check for constraints;
+// - dsRels (string): the list of distributed relations, for which to check for constraints;
+// - rpRels (string): the list of replicated relations, which can also be referred to by distributed relations;
 //
 // Returns:
 // - bool: true if no such constraints are found, false otherwise;
 // - string: name of a constraint, if found;
 // - error: an error if there was a problem executing the query.
-func CheckConstraints(ctx context.Context, conn *pgx.Conn, relNames []string) (bool, string, error) {
-	if len(relNames) == 0 {
+func CheckConstraints(ctx context.Context, conn *pgx.Conn, dsRels []string, rpRels []string) (bool, string, error) {
+	if len(dsRels) == 0 {
 		return true, "", nil
 	}
-	relOidList := make([]string, len(relNames))
-	for i, relName := range relNames {
-		relOidList[i] = fmt.Sprintf("'%s'::regclass::oid", relName)
+	dsRelOidList := make([]string, len(dsRels))
+	for i, relName := range dsRels {
+		dsRelOidList[i] = fmt.Sprintf("'%s'::regclass::oid", relName)
 	}
-	relOids := strings.Join(relOidList, ", ")
-	rows, err := conn.Query(ctx, fmt.Sprintf(`SELECT conname FROM pg_constraint WHERE conrelid IN (%s) and confrelid != 0 and (condeferrable=false or not (confrelid IN (%s))) LIMIT 1`, relOids, relOids))
+	dsRelOids := strings.Join(dsRelOidList, ", ")
+	refRelOidList := make([]string, len(rpRels))
+	for i, relName := range rpRels {
+		refRelOidList[i] = fmt.Sprintf("'%s'::regclass::oid", relName)
+	}
+	rpRelOids := strings.Join(refRelOidList, ", ")
+	rows, err := conn.Query(ctx, fmt.Sprintf(`SELECT conname FROM pg_constraint WHERE conrelid IN (%s) and confrelid != 0 and (condeferrable=false or not (confrelid IN (%s))) and not (confrelid IN (%s)) LIMIT 1`, dsRelOids, dsRelOids, rpRelOids))
 	if err != nil {
 		return false, "", err
 	}
