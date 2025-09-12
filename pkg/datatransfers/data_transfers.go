@@ -590,12 +590,16 @@ func CheckConstraints(ctx context.Context, conn *pgx.Conn, dsRels []string, rpRe
 		dsRelOidList[i] = fmt.Sprintf("'%s'::regclass::oid", relName)
 	}
 	dsRelOids := strings.Join(dsRelOidList, ", ")
-	refRelOidList := make([]string, len(rpRels))
-	for i, relName := range rpRels {
-		refRelOidList[i] = fmt.Sprintf("'%s'::regclass::oid", relName)
+	rpRelsClause := ""
+	if len(rpRels) > 0 {
+		refRelOidList := make([]string, len(rpRels))
+		for i, relName := range rpRels {
+			refRelOidList[i] = fmt.Sprintf("'%s'::regclass::oid", relName)
+		}
+		rpRelOids := strings.Join(refRelOidList, ", ")
+		rpRelsClause = fmt.Sprintf(" and not (confrelid IN (%s))", rpRelOids)
 	}
-	rpRelOids := strings.Join(refRelOidList, ", ")
-	rows, err := conn.Query(ctx, fmt.Sprintf(`SELECT conname FROM pg_constraint WHERE conrelid IN (%s) and confrelid != 0 and (condeferrable=false or not (confrelid IN (%s))) and not (confrelid IN (%s)) LIMIT 1`, dsRelOids, dsRelOids, rpRelOids))
+	rows, err := conn.Query(ctx, fmt.Sprintf(`SELECT conname FROM pg_constraint WHERE conrelid IN (%s) and confrelid != 0 and (condeferrable=false or not (confrelid IN (%s)))%s LIMIT 1`, dsRelOids, dsRelOids, rpRelsClause))
 	if err != nil {
 		return false, "", err
 	}
