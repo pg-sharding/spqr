@@ -845,6 +845,16 @@ func (q *MemQDB) GetDistribution(_ context.Context, id string) (*Distribution, e
 	}
 }
 
+// TODO : unit tests
+func (q *MemQDB) CheckDistribution(_ context.Context, id string) (bool, error) {
+	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: check distribution")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	_, ok := q.Distributions[id]
+	return ok, nil
+}
+
 func (q *MemQDB) GetRelationDistribution(_ context.Context, relation *rfqn.RelationFQN) (*Distribution, error) {
 	spqrlog.Zero.Debug().Str("relation", relation.RelationName).Msg("memqdb: get distribution for table")
 	q.mu.RLock()
