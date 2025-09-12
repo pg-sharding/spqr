@@ -383,6 +383,21 @@ func (mr *MockQDBMockRecorder) AlterSequenceAttach(ctx, seqName, relName, colNam
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterSequenceAttach", reflect.TypeOf((*MockQDB)(nil).AlterSequenceAttach), ctx, seqName, relName, colName)
 }
 
+// CheckDistribution mocks base method.
+func (m *MockQDB) CheckDistribution(ctx context.Context, id string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckDistribution", ctx, id)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckDistribution indicates an expected call of CheckDistribution.
+func (mr *MockQDBMockRecorder) CheckDistribution(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckDistribution", reflect.TypeOf((*MockQDB)(nil).CheckDistribution), ctx, id)
+}
+
 // CheckLockedKeyRange mocks base method.
 func (m *MockQDB) CheckLockedKeyRange(ctx context.Context, id string) (*qdb.KeyRange, error) {
 	m.ctrl.T.Helper()
@@ -1184,6 +1199,21 @@ func (m *MockXQDB) AlterSequenceAttach(ctx context.Context, seqName string, relN
 func (mr *MockXQDBMockRecorder) AlterSequenceAttach(ctx, seqName, relName, colName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterSequenceAttach", reflect.TypeOf((*MockXQDB)(nil).AlterSequenceAttach), ctx, seqName, relName, colName)
+}
+
+// CheckDistribution mocks base method.
+func (m *MockXQDB) CheckDistribution(ctx context.Context, id string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckDistribution", ctx, id)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckDistribution indicates an expected call of CheckDistribution.
+func (mr *MockXQDBMockRecorder) CheckDistribution(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckDistribution", reflect.TypeOf((*MockXQDB)(nil).CheckDistribution), ctx, id)
 }
 
 // CheckLockedKeyRange mocks base method.

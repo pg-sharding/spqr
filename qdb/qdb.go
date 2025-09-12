@@ -70,7 +70,7 @@ type QDB interface {
 	ListDistributions(ctx context.Context) ([]*Distribution, error)
 	DropDistribution(ctx context.Context, id string) error
 	GetDistribution(ctx context.Context, id string) (*Distribution, error)
-	// TODO: fix this by passing FQRN (fully qualified relation name (+schema))
+	CheckDistribution(ctx context.Context, id string) (bool, error)
 	GetRelationDistribution(ctx context.Context, relation *rfqn.RelationFQN) (*Distribution, error)
 
 	// Reference relations

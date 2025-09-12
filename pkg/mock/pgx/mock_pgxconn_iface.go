@@ -8,3 +8,54 @@
 
 // Package mock is a generated GoMock package.
 package mock
+
+import (
+	context "context"
+	reflect "reflect"
+
+	pgx "github.com/jackc/pgx/v5"
+	gomock "go.uber.org/mock/gomock"
+)
+
+// MockQueryable is a mock of Queryable interface.
+type MockQueryable struct {
+	ctrl     *gomock.Controller
+	recorder *MockQueryableMockRecorder
+	isgomock struct{}
+}
+
+// MockQueryableMockRecorder is the mock recorder for MockQueryable.
+type MockQueryableMockRecorder struct {
+	mock *MockQueryable
+}
+
+// NewMockQueryable creates a new mock instance.
+func NewMockQueryable(ctrl *gomock.Controller) *MockQueryable {
+	mock := &MockQueryable{ctrl: ctrl}
+	mock.recorder = &MockQueryableMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockQueryable) EXPECT() *MockQueryableMockRecorder {
+	return m.recorder
+}
+
+// QueryRow mocks base method.
+func (m *MockQueryable) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, sql}
+	for _, a := range args {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "QueryRow", varargs...)
+	ret0, _ := ret[0].(pgx.Row)
+	return ret0
+}
+
+// QueryRow indicates an expected call of QueryRow.
+func (mr *MockQueryableMockRecorder) QueryRow(ctx, sql any, args ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, sql}, args...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryRow", reflect.TypeOf((*MockQueryable)(nil).QueryRow), varargs...)
+}
