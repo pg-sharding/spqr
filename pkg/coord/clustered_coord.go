@@ -952,13 +952,13 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	}
 	replRels := []string{}
 	if exists {
-		replDs, err := qc.qdb.GetDistribution(ctx, distributions.REPLICATED)
+		replDs, err := qc.GetDistribution(ctx, distributions.REPLICATED)
 		if err != nil {
 			return fmt.Errorf("error getting replicated distribution: %s", err)
 		}
 		replRels = make([]string, 0, len(replDs.Relations))
 		for _, r := range replDs.Relations {
-			replRels = append(replRels, r.QualifiedName().String())
+			replRels = append(replRels, r.GetFullName())
 		}
 	}
 
