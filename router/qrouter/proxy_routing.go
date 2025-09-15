@@ -965,11 +965,11 @@ func (qr *ProxyQrouter) planQueryV1(
 							virtualRowVals = append(virtualRowVals, []byte{byte('t')})
 						}
 						continue
-					} else if e.Name == virtual.VFIsReadyFunc {
+					} else if e.Name == virtual.VirtFuncIsReadyFunc {
 						p = plan.Combine(p, &plan.VirtualPlan{})
 						virtualRowCols = append(virtualRowCols,
 							pgproto3.FieldDescription{
-								Name:                 []byte(virtual.VFIsReadyFunc),
+								Name:                 []byte(virtual.VirtFuncIsReadyFunc),
 								DataTypeOID:          catalog.ARRAYOID,
 								TypeModifier:         -1,
 								DataTypeSize:         1,
@@ -1013,17 +1013,17 @@ func (qr *ProxyQrouter) planQueryV1(
 							case *lyx.AExprSConst:
 								k = vv.Value
 							default:
-								return nil, fmt.Errorf("incorrect argumnet type for %s", virtual.VFHostsFunc)
+								return nil, fmt.Errorf("incorrect argument type for %s", virtual.VFHostsFunc)
 							}
 
 							if v, ok := qr.csm.InstanceHealthChecks()[k]; ok {
 								virtualRowVals = append(virtualRowVals, []byte(k),
 									fmt.Appendf(nil, "%v", v.CR.RW))
 							} else {
-								return nil, fmt.Errorf("incorrect first argumnet for %s", virtual.VFHostsFunc)
+								return nil, fmt.Errorf("incorrect first argument for %s", virtual.VFHostsFunc)
 							}
 						} else {
-							return nil, fmt.Errorf("incorrect argumnet number for %s", virtual.VFHostsFunc)
+							return nil, fmt.Errorf("incorrect argument number for %s", virtual.VFHostsFunc)
 						}
 
 						continue
