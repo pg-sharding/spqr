@@ -482,8 +482,23 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			}
 			return cli.MakeSimpleResponse(ctx, manager.SuccessCreateResponse(stmt.Shard))
 		}
+	case *spqrparser.AlterRelationV2:
+		return processAlterRelation(ctx, stmt, mngr, cli, dsId)
 	default:
 		return ErrUnknownCoordinatorCommand
+	}
+}
+
+func processAlterRelation(ctx context.Context, astmt *spqrparser.AlterRelationV2, mngr EntityMgr, cli *clientinteractor.PSQLInteractor, dsId string) error {
+	switch stmt := astmt.Element.(type) {
+	case *spqrparser.AlterRelationSchema:
+		return fmt.Errorf("not implemented")
+	case *spqrparser.AlterRelationDistributionKey:
+		return fmt.Errorf("not implemented")
+	case *spqrparser.AlterRelationAutoIncrement:
+		return fmt.Errorf("not implemented")
+	default:
+		return fmt.Errorf("unexpected 'ALTER RELATION' request type %#T", stmt)
 	}
 }
 
