@@ -507,7 +507,8 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, relName, stmt.SchemaName); err != nil {
 			return err
 		}
-		return cli.AlterDistributedRelation(ctx, dsId, relName)
+		qName := rfqn.RelationFQN{RelationName: relName, SchemaName: stmt.SchemaName}
+		return cli.AlterDistributedRelation(ctx, dsId, qName.String())
 	case *spqrparser.AlterRelationDistributionKey:
 		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relName, distributions.DistributionKeyFromSQL(stmt.DistributionKey)); err != nil {
 			return err
