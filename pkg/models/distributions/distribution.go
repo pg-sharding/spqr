@@ -239,28 +239,37 @@ func TypedColRefFromDB(in []qdb.TypedColRef) []TypedColRef {
 // Returns:
 //   - *DistributedRelation: The created DistributedRelation object.
 func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *DistributedRelation {
-	rdistr := &DistributedRelation{
+	return &DistributedRelation{
 		Name:                  rel.Name,
 		SchemaName:            rel.SchemaName,
-		ColumnSequenceMapping: map[string]string{},
+		DistributionKey:       DistributionKeyFromSQL(rel.DistributionKey),
+		ColumnSequenceMapping: ColumnSequenceMappingFromSQL(rel.Name, rel.AutoIncrementEntries),
+		ReplicatedRelation:    rel.ReplicatedRelation,
 	}
+}
 
-	for _, e := range rel.DistributionKey {
-		rdistr.DistributionKey = append(rdistr.DistributionKey, DistributionKeyEntry{
+func DistributionKeyFromSQL(dsKey []spqrparser.DistributionKeyEntry) []DistributionKeyEntry {
+	res := make([]DistributionKeyEntry, len(dsKey))
+	for i, e := range dsKey {
+		res[i] = DistributionKeyEntry{
 			Column:       e.Column,
 			HashFunction: e.HashFunction,
 			Expr: RoutingExpr{
 				ColRefs: TypedColRefFromSQL(e.Expr),
 			},
-		})
-	}
-	for _, entry := range rel.AutoIncrementEntries {
-		rdistr.ColumnSequenceMapping[entry.Column] = SequenceName(rel.Name, entry.Column)
+		}
 	}
 
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
+	return res
+}
 
-	return rdistr
+func ColumnSequenceMappingFromSQL(relName string, autoInc []*spqrparser.AutoIncrementEntry) map[string]string {
+	res := make(map[string]string)
+	for _, entry := range autoInc {
+		res[entry.Column] = SequenceName(relName, entry.Column)
+	}
+
+	return res
 }
 
 type Distribution struct {

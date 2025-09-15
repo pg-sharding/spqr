@@ -492,11 +492,20 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 func processAlterRelation(ctx context.Context, astmt *spqrparser.AlterRelationV2, mngr EntityMgr, cli *clientinteractor.PSQLInteractor, dsId string) error {
 	switch stmt := astmt.Element.(type) {
 	case *spqrparser.AlterRelationSchema:
-		return fmt.Errorf("not implemented")
+		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, astmt.RelationName, stmt.SchemaName); err != nil {
+			return err
+		}
+		return cli.AlterDistributedRelation(ctx, dsId, astmt.RelationName)
 	case *spqrparser.AlterRelationDistributionKey:
-		return fmt.Errorf("not implemented")
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, astmt.RelationName, distributions.DistributionKeyFromSQL(stmt.DistributionKey)); err != nil {
+			return err
+		}
+		return cli.AlterDistributedRelation(ctx, dsId, astmt.RelationName)
 	case *spqrparser.AlterRelationAutoIncrement:
-		return fmt.Errorf("not implemented")
+		if err := mngr.AlterDistributedRelationColumnSequenceMapping(ctx, dsId, astmt.RelationName, distributions.ColumnSequenceMappingFromSQL(astmt.RelationName, stmt.AutoIncrementEntries)); err != nil {
+			return err
+		}
+		return cli.AlterDistributedRelation(ctx, dsId, astmt.RelationName)
 	default:
 		return fmt.Errorf("unexpected 'ALTER RELATION' request type %#T", stmt)
 	}
