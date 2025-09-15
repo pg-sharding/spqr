@@ -46,7 +46,7 @@ func solveLeaf(expr lyx.AExprOp,
 		rightBorderOfCurrent = &kr.KeyRangeBound{int64(krNext.LowerBound[0].(int64) - 1)} //быстро костыльно
 	}
 	if relation.ReplicatedRelation {
-		return nil, fmt.Errorf("replicated relation is not implevemted to solve")
+		return nil, fmt.Errorf("replicated relation is not implemented to solve")
 	}
 	if expr.Left == nil {
 		return nil, fmt.Errorf("can't solve expression (case 1)")
@@ -57,8 +57,8 @@ func solveLeaf(expr lyx.AExprOp,
 	if column, ok := expr.Left.(*lyx.ColumnRef); ok {
 		columnExpr = column
 	}
-	if cnst, ok := expr.Right.(*lyx.AExprIConst); ok {
-		boundFromExpression = &kr.KeyRangeBound{int64(cnst.Value)}
+	if constValue, ok := expr.Right.(*lyx.AExprIConst); ok {
+		boundFromExpression = &kr.KeyRangeBound{int64(constValue.Value)}
 	}
 	if columnExpr == nil || boundFromExpression == nil {
 		return nil, fmt.Errorf("not all parts of expression are found")
@@ -123,7 +123,7 @@ func solveKeyRange(whereStmt lyx.AExprOp,
 	ds *ds.Distribution,
 ) (*SolveResult, error) {
 	if len(ds.ColTypes) != 1 {
-		return nil, fmt.Errorf("solver is implemented for distribulton with single val key")
+		return nil, fmt.Errorf("solver is implemented for distribution with single val key")
 	}
 	if ds.ColTypes[0] != "integer" {
 		return nil, fmt.Errorf("solver is implemented for integer val")
@@ -132,7 +132,7 @@ func solveKeyRange(whereStmt lyx.AExprOp,
 		return nil, fmt.Errorf("invalid key range pair in solver: %s, %s", krCurrent.ID, krNext.ID)
 	}
 	if relation.ReplicatedRelation {
-		return nil, fmt.Errorf("replicated relation is not implevemted to solve")
+		return nil, fmt.Errorf("replicated relation is not implemented to solve")
 	}
 	return solveInternal(whereStmt, krCurrent, krNext, relation, ds)
 }

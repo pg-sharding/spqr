@@ -894,7 +894,7 @@ func (qr *ProxyQrouter) planWhereInSelect(ctx context.Context,
 			}
 		}
 	}
-	spqrlog.Zero.Debug().Msg("exprawwion solver fails. run old-style")
+	spqrlog.Zero.Debug().Msg("solver fails. run old-style")
 	//old-style dispatch where statement
 	tmp, err := qr.planByQualExpr(ctx, stmt.Where, rm)
 	if err != nil {
