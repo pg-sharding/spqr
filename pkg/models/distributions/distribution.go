@@ -148,6 +148,23 @@ func DistributionKeyToProto(key []DistributionKeyEntry) []*proto.DistributionKey
 	return res
 }
 
+func DistributionKeyFromProto(key []*proto.DistributionKeyEntry) ([]DistributionKeyEntry, error) {
+	res := make([]DistributionKeyEntry, len(key))
+	for i, e := range key {
+		if len(e.Column) == 0 {
+			if len(e.GetExpr().ColRefs) == 0 {
+				return nil, fmt.Errorf("invalid input for distribution entry")
+			}
+		}
+		res[i] = DistributionKeyEntry{
+			Column:       e.Column,
+			HashFunction: e.HashFunction,
+			Expr:         RoutingExprFromProto(e.Expr),
+		}
+	}
+	return res, nil
+}
+
 // DistributedRelationFromProto converts a proto.DistributedRelation object to a DistributedRelation object.
 //
 // Parameters:
@@ -156,28 +173,18 @@ func DistributionKeyToProto(key []DistributionKeyEntry) []*proto.DistributionKey
 // Returns:
 //   - *DistributedRelation: The created DistributedRelation object.
 func DistributedRelationFromProto(rel *proto.DistributedRelation) (*DistributedRelation, error) {
-	rdistr := &DistributedRelation{
+	key, err := DistributionKeyFromProto(rel.DistributionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DistributedRelation{
 		Name:                  rel.Name,
 		SchemaName:            rel.SchemaName,
 		ColumnSequenceMapping: rel.SequenceColumns,
-	}
-
-	for _, e := range rel.DistributionKey {
-		if len(e.Column) == 0 {
-			if len(e.GetExpr().ColRefs) == 0 {
-				return nil, fmt.Errorf("invalid input for distribution entry")
-			}
-		}
-		rdistr.DistributionKey = append(rdistr.DistributionKey, DistributionKeyEntry{
-			Column:       e.Column,
-			HashFunction: e.HashFunction,
-			Expr:         RoutingExprFromProto(e.Expr),
-		})
-	}
-
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
-
-	return rdistr, nil
+		DistributionKey:       key,
+		ReplicatedRelation:    rel.ReplicatedRelation,
+	}, nil
 }
 
 func TypedColRefFromSQL(in []spqrparser.TypedColRef) []TypedColRef {
