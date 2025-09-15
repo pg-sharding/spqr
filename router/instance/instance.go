@@ -113,17 +113,6 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	idRangeSize := config.RouterConfig().IdentityRangeSize
 	var identityMgr planner.IdentityRouterCache = planner.NewIdentityRouterCache(idRangeSize, &seqMngr)
 
-	qr, err := qrouter.NewQrouter(qtype,
-		config.RouterConfig().ShardMapping,
-		lc,
-		&config.RouterConfig().Qr,
-		cache,
-		identityMgr,
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	// frontend
 	frTLS, err := config.RouterConfig().FrontendTLS.Init(config.RouterConfig().Host)
 	if err != nil {
@@ -148,6 +137,18 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	localConsole, err := console.NewLocalInstanceConsole(lc, rr, stchan, writ)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to initialize router")
+		return nil, err
+	}
+
+	qr, err := qrouter.NewQrouter(qtype,
+		config.RouterConfig().ShardMapping,
+		lc,
+		rr,
+		&config.RouterConfig().Qr,
+		cache,
+		identityMgr,
+	)
+	if err != nil {
 		return nil, err
 	}
 

@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -28,6 +29,7 @@ type ProxyQrouter struct {
 	cfg *config.QRouter
 
 	mgr          meta.EntityMgr
+	csm          connmgr.ConnectionStatMgr
 	schemaCache  *cache.SchemaCache
 	idRangeCache planner.IdentityRouterCache
 
@@ -106,6 +108,7 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []kr.ShardKey {
 
 func NewProxyRouter(shardMapping map[string]*config.Shard,
 	mgr meta.EntityMgr,
+	csm connmgr.ConnectionStatMgr,
 	qcfg *config.QRouter,
 	cache *cache.SchemaCache,
 	idRangeCache planner.IdentityRouterCache,
@@ -116,6 +119,7 @@ func NewProxyRouter(shardMapping map[string]*config.Shard,
 		ready:          &atomic.Bool{},
 		cfg:            qcfg,
 		mgr:            mgr,
+		csm:            csm,
 		schemaCache:    cache,
 		idRangeCache:   idRangeCache,
 	}
