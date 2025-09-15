@@ -310,3 +310,31 @@ Feature: Redistribution test
     """
     found non-deferrable constraint or constraint referencing non-distributed table on destination shard: "xmove_pkey_fkey"
     """
+  
+Scenario: REDISTRIBUTE KEY RANGE allows constraints on reference tables
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE REFERENCE TABLE ref;
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE ref(id INT PRIMARY KEY);
+    CREATE TABLE xMove(w_id INT, ext_id INT REFERENCES ref(id));
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE ref(id INT PRIMARY KEY);
+    CREATE TABLE xMove(w_id INT, ext_id INT REFERENCES ref(id));
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
+    """
+    Then command return code should be "0"

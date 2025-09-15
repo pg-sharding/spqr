@@ -1320,6 +1320,20 @@ func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution
 }
 
 // TODO : unit tests
+func (q *EtcdQDB) CheckDistribution(ctx context.Context, id string) (bool, error) {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: get distribution by id")
+
+	resp, err := q.cli.Get(ctx, distributionNodePath(id), clientv3.WithCountOnly())
+	if err != nil {
+		return false, err
+	}
+
+	return resp.Count == 1, nil
+}
+
+// TODO : unit tests
 func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName *rfqn.RelationFQN) (*Distribution, error) {
 	spqrlog.Zero.Debug().
 		Str("relation", relName.RelationName).
