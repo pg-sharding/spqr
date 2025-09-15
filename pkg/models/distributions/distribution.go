@@ -138,22 +138,26 @@ func RoutingExprFromProto(in *proto.RoutingExpr) RoutingExpr {
 //   - *proto.DistributedRelation: The converted proto.DistributedRelation object.
 func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRelation {
 	rdistr := &proto.DistributedRelation{
-		Name:            rel.Name,
-		SchemaName:      rel.SchemaName,
-		SequenceColumns: rel.ColumnSequenceMapping,
+		Name:               rel.Name,
+		SchemaName:         rel.SchemaName,
+		SequenceColumns:    rel.ColumnSequenceMapping,
+		DistributionKey:    DistributionKeyToProto(rel.DistributionKey),
+		ReplicatedRelation: rel.ReplicatedRelation,
 	}
 
-	for _, e := range rel.DistributionKey {
-		rdistr.DistributionKey = append(rdistr.DistributionKey, &proto.DistributionKeyEntry{
+	return rdistr
+}
+
+func DistributionKeyToProto(key []DistributionKeyEntry) []*proto.DistributionKeyEntry {
+	res := make([]*proto.DistributionKeyEntry, len(key))
+	for i, e := range key {
+		res[i] = &proto.DistributionKeyEntry{
 			Column:       e.Column,
 			HashFunction: e.HashFunction,
 			Expr:         RoutingExprToProto(e.Expr),
-		})
+		}
 	}
-
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
-
-	return rdistr
+	return res
 }
 
 // DistributedRelationFromProto converts a proto.DistributedRelation object to a DistributedRelation object.

@@ -849,6 +849,36 @@ func (a *Adapter) AlterDistributedRelation(ctx context.Context, id string, rel *
 	return err
 }
 
+func (a *Adapter) AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
+	c := proto.NewDistributionServiceClient(a.conn)
+	_, err := c.AlterDistributedRelationSchema(ctx, &proto.AlterDistributedRelationSchemaRequest{
+		Id:           id,
+		RelationName: relName,
+		SchemaName:   schemaName,
+	})
+	return err
+}
+
+func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []distributions.DistributionKeyEntry) error {
+	c := proto.NewDistributionServiceClient(a.conn)
+	_, err := c.AlterDistributedRelationDistributionKey(ctx, &proto.AlterDistributedRelationDistributionKeyRequest{
+		Id:              id,
+		RelationName:    relName,
+		DistributionKey: distributions.DistributionKeyToProto(distributionKey),
+	})
+	return err
+}
+
+func (a *Adapter) AlterDistributedRelationColumnSequenceMapping(ctx context.Context, id string, relName string, sequenceCols map[string]string) error {
+	c := proto.NewDistributionServiceClient(a.conn)
+	_, err := c.AlterDistributedRelationColumnSequenceMapping(ctx, &proto.AlterDistributedRelationColumnSequenceMappingRequest{
+		Id:              id,
+		RelationName:    relName,
+		SequenceColumns: sequenceCols,
+	})
+	return err
+}
+
 // AlterDistributionDetach detaches a relation from a distribution using the provided ID and relation name.
 //
 // Parameters:

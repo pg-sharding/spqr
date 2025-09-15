@@ -2096,9 +2096,21 @@ func (qc *ClusteredCoordinator) AlterDistributedRelation(ctx context.Context, id
 
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
-			Msg("alter relation response")
+		Msg("alter relation response")
 		return nil
 	})
+}
+
+func (qc *ClusteredCoordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
+	return fmt.Errorf("now implemented")
+}
+
+func (qc *ClusteredCoordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []distributions.DistributionKeyEntry) error {
+	return fmt.Errorf("now implemented")
+}
+
+func (qc *ClusteredCoordinator) AlterDistributedRelationColumnSequenceMapping(ctx context.Context, id string, relName string, sequenceCols map[string]string) error {
+	return fmt.Errorf("now implemented")
 }
 
 func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string, force bool) error {
