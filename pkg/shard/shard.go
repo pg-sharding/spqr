@@ -2,6 +2,7 @@ package shard
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -47,6 +48,9 @@ type ShardHostCtl interface {
 	ID() uint
 	ShardKeyName() string
 	InstanceHostname() string
+
+	CreatedAt() time.Time
+
 	Pid() uint32
 	Usr() string
 	DB() string

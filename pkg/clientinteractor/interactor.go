@@ -56,6 +56,7 @@ var BackendConnectionsHeaders = []string{
 	"tx_served",
 	"tx status",
 	"is stale",
+	"created at",
 }
 
 var BackendConnectionsGetters = map[string]toString[shard.ShardHostCtl]{
@@ -70,6 +71,7 @@ var BackendConnectionsGetters = map[string]toString[shard.ShardHostCtl]{
 	BackendConnectionsHeaders[8]:  func(sh shard.ShardHostCtl) string { return strconv.FormatInt(sh.TxServed(), 10) },
 	BackendConnectionsHeaders[9]:  func(sh shard.ShardHostCtl) string { return sh.TxStatus().String() },
 	BackendConnectionsHeaders[10]: func(sh shard.ShardHostCtl) string { return strconv.FormatBool(sh.IsStale()) },
+	BackendConnectionsHeaders[11]: func(s shard.ShardHostCtl) string { return s.CreatedAt().UTC().Format(time.RFC3339) },
 }
 
 type Interactor interface {
