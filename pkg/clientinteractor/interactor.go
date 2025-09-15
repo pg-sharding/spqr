@@ -124,7 +124,7 @@ func (pi *PSQLInteractor) CoordinatorAddr(ctx context.Context, addr string) erro
 }
 
 // TODO refactor it to make more user-friendly
-func (pi *PSQLInteractor) Instance(ctx context.Context, ci connmgr.ConnectionStatsMgr) error {
+func (pi *PSQLInteractor) Instance(ctx context.Context, ci connmgr.ConnectionMgr) error {
 	if err := pi.WriteHeader(
 		"total tcp connection count",
 		"total cancel requests",
@@ -1602,6 +1602,21 @@ func (pi *PSQLInteractor) KillClient(clientID uint) error {
 	}
 
 	if err := pi.WriteDataRow(fmt.Sprintf("client id -> %d", clientID)); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+	return pi.CompleteMsg(0)
+}
+
+/* TODO: pretty-print if spefied GUC set */
+/* KillBackend reports a backend as killed (makred stale) in the PSQL client. */
+func (pi *PSQLInteractor) KillBackend(id uint) error {
+	if err := pi.WriteHeader("kill backend"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	if err := pi.WriteDataRow(fmt.Sprintf("backend id -> %d", id)); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}

@@ -34,7 +34,7 @@ const (
 )
 
 type RuleRouter interface {
-	connmgr.ConnectionStatsMgr
+	connmgr.ConnectionMgr
 
 	Shutdown() error
 	Reload(configPath string) error

@@ -206,7 +206,7 @@ func (ci grpcConnMgr) ForEachPool(cb func(p pool.Pool) error) error {
 	})
 }
 
-var _ connmgr.ConnectionStatsMgr = &grpcConnMgr{}
+var _ connmgr.ConnectionMgr = &grpcConnMgr{}
 
 func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 	spqrlog.Zero.Debug().
