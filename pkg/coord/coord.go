@@ -115,6 +115,13 @@ func (lc *Coordinator) AlterDistributedRelationColumnSequenceMapping(ctx context
 
 // AlterDistributedRelationDistributionKey implements meta.EntityMgr.
 func (lc *Coordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []distributions.DistributionKeyEntry) error {
+	ds, err := lc.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
+	if len(ds.ColTypes) != len(distributionKey) {
+		return fmt.Errorf("cannot alter relation \"%s\" distribution key: numbers of columns mismatch", relName)
+	}
 	return lc.qdb.AlterDistributedRelationDistributionKey(ctx, id, relName, distributions.DistributionKeyToDB(distributionKey))
 }
 

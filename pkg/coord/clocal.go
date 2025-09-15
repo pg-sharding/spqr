@@ -81,45 +81,6 @@ func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context
 	return nil
 }
 
-// AlterDistributedRelation alters metadata of a distributed relation.
-//
-// Parameters:
-// - ctx (context.Context): the context.Context object for managing the request's lifetime.
-// - id (string): the ID of the distribution of the relation.
-// - rel (*distributions.DistributedRelation): the metadata of the distributed relation.
-//
-// Returns:
-// - error: an error if the alteration operation fails.
-func (lc *LocalInstanceMetadataMgr) AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
-	return fmt.Errorf("now implemented")
-}
-
-// AlterDistributedRelation alters metadata of a distributed relation.
-//
-// Parameters:
-// - ctx (context.Context): the context.Context object for managing the request's lifetime.
-// - id (string): the ID of the distribution of the relation.
-// - rel (*distributions.DistributedRelation): the metadata of the distributed relation.
-//
-// Returns:
-// - error: an error if the alteration operation fails.
-func (lc *LocalInstanceMetadataMgr) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []distributions.DistributionKeyEntry) error {
-	return fmt.Errorf("now implemented")
-}
-
-// AlterDistributedRelation alters metadata of a distributed relation.
-//
-// Parameters:
-// - ctx (context.Context): the context.Context object for managing the request's lifetime.
-// - id (string): the ID of the distribution of the relation.
-// - rel (*distributions.DistributedRelation): the metadata of the distributed relation.
-//
-// Returns:
-// - error: an error if the alteration operation fails.
-func (lc *LocalInstanceMetadataMgr) AlterDistributedRelationColumnSequenceMapping(ctx context.Context, id string, relName string, sequenceCols map[string]string) error {
-	return fmt.Errorf("now implemented")
-}
-
 // TODO : unit tests
 
 // DropDistribution removes a distribution with the specified ID from the local coordinator's QDB.
