@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	pkgclient "github.com/pg-sharding/spqr/pkg/client"
@@ -283,6 +284,7 @@ func genShard(ctrl *gomock.Controller, host string, shardName string, shardId ui
 	sh.EXPECT().ID().Return(shardId).AnyTimes()
 	sh.EXPECT().Instance().Return(ins1).AnyTimes()
 	sh.EXPECT().IsStale().AnyTimes().Return(false)
+	sh.EXPECT().CreatedAt().AnyTimes().Return(time.Time(time.Unix(11, 0)))
 	return sh
 }
 
@@ -307,6 +309,7 @@ func TestBackendConnections(t *testing.T) {
 			[]byte("10"),
 			[]byte("IDLE"),
 			[]byte("false"),
+			[]byte("1970-01-01T00:00:11Z"),
 		},
 	}
 	secondRow := pgproto3.DataRow{
@@ -322,6 +325,7 @@ func TestBackendConnections(t *testing.T) {
 			[]byte("10"),
 			[]byte("IDLE"),
 			[]byte("false"),
+			[]byte("1970-01-01T00:00:11Z"),
 		},
 	}
 	thirdRow := pgproto3.DataRow{
@@ -337,6 +341,7 @@ func TestBackendConnections(t *testing.T) {
 			[]byte("10"),
 			[]byte("IDLE"),
 			[]byte("false"),
+			[]byte("1970-01-01T00:00:11Z"),
 		},
 	}
 

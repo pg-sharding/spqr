@@ -11,6 +11,7 @@ package mock
 
 import (
 	reflect "reflect"
+	time "time"
 
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	config "github.com/pg-sharding/spqr/pkg/config"
@@ -44,6 +45,20 @@ func NewMockShardHostCtl(ctrl *gomock.Controller) *MockShardHostCtl {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockShardHostCtl) EXPECT() *MockShardHostCtlMockRecorder {
 	return m.recorder
+}
+
+// CreatedAt mocks base method.
+func (m *MockShardHostCtl) CreatedAt() time.Time {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreatedAt")
+	ret0, _ := ret[0].(time.Time)
+	return ret0
+}
+
+// CreatedAt indicates an expected call of CreatedAt.
+func (mr *MockShardHostCtlMockRecorder) CreatedAt() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatedAt", reflect.TypeOf((*MockShardHostCtl)(nil).CreatedAt))
 }
 
 // DB mocks base method.
@@ -248,6 +263,20 @@ func NewMockCoordShardinfo(ctrl *gomock.Controller) *MockCoordShardinfo {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockCoordShardinfo) EXPECT() *MockCoordShardinfoMockRecorder {
 	return m.recorder
+}
+
+// CreatedAt mocks base method.
+func (m *MockCoordShardinfo) CreatedAt() time.Time {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreatedAt")
+	ret0, _ := ret[0].(time.Time)
+	return ret0
+}
+
+// CreatedAt indicates an expected call of CreatedAt.
+func (mr *MockCoordShardinfoMockRecorder) CreatedAt() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatedAt", reflect.TypeOf((*MockCoordShardinfo)(nil).CreatedAt))
 }
 
 // DB mocks base method.
@@ -508,6 +537,20 @@ func (m *MockShardHostInstance) Close() error {
 func (mr *MockShardHostInstanceMockRecorder) Close() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockShardHostInstance)(nil).Close))
+}
+
+// CreatedAt mocks base method.
+func (m *MockShardHostInstance) CreatedAt() time.Time {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreatedAt")
+	ret0, _ := ret[0].(time.Time)
+	return ret0
+}
+
+// CreatedAt indicates an expected call of CreatedAt.
+func (mr *MockShardHostInstanceMockRecorder) CreatedAt() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatedAt", reflect.TypeOf((*MockShardHostInstance)(nil).CreatedAt))
 }
 
 // DB mocks base method.

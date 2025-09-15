@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"time"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -73,6 +74,11 @@ func (s *ShardServer) GetShard(ctx context.Context, shardRequest *protos.ShardRe
 type CoordShardInfo struct {
 	underlying *protos.BackendConnectionsInfo
 	router     string
+}
+
+// CreatedAt implements shard.ShardHostCtl.
+func (c *CoordShardInfo) CreatedAt() time.Time {
+	return time.Now()
 }
 
 // MarkStale implements shard.ShardHostCtl.

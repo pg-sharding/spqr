@@ -33,6 +33,8 @@ type Conn struct {
 
 	stale atomic.Bool
 
+	allocTime time.Time
+
 	dataPending bool
 
 	tx_served int64
@@ -273,6 +275,10 @@ func (sh *Conn) InstanceHostname() string {
 	return sh.Instance().Hostname()
 }
 
+func (sh *Conn) CreatedAt() time.Time {
+	return sh.allocTime
+}
+
 func (sh *Conn) Pid() uint32 {
 	return sh.backend_key_pid
 }
@@ -386,6 +392,7 @@ func NewShardHostInstance(
 		stmtDef:   map[uint64]*prepstatement.PreparedStatementDefinition{},
 		stmtDesc:  map[uint64]*prepstatement.PreparedStatementDescriptor{},
 		dedicated: pgi,
+		allocTime: time.Now(),
 	}
 
 	if dtSh.dedicated.Status() == conn.NotInitialized {
