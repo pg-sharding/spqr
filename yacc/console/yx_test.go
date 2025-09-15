@@ -1191,6 +1191,57 @@ func TestAlter(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "ALTER DISTRIBUTION ds1 ALTER RELATION t DISTRIBUTION KEY id;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AlterRelationV2{
+						RelationName: "t",
+						Element: &spqrparser.AlterRelationDistributionKey{
+							DistributionKey: []spqrparser.DistributionKeyEntry{
+								{
+									Column: "id",
+								},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER DISTRIBUTION ds1 ALTER RELATION t SCHEMA test;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AlterRelationV2{
+						RelationName: "t",
+						Element: &spqrparser.AlterRelationSchema{
+							SchemaName: "test",
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER DISTRIBUTION REPLICATED ALTER RELATION t AUTO INCREMENT id START 10;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AlterRelationV2{
+						RelationName: "t",
+						Element: &spqrparser.AlterRelationAutoIncrement{
+							AutoIncrementEntries: []*spqrparser.AutoIncrementEntry{
+								{Column: "id", Start: 10},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+			err: nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)

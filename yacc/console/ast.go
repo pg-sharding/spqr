@@ -314,6 +314,41 @@ func (*AlterRelation) iStatement()         {}
 func (*AlterRelation) iAlter()             {}
 func (*AlterRelation) iAlterDistribution() {}
 
+type AlterRelationV2 struct {
+	Distribution *DistributionSelector
+	RelationName string
+	Element      RelationAlterStmt
+}
+
+func (*AlterRelationV2) iStatement()         {}
+func (*AlterRelationV2) iAlter()             {}
+func (*AlterRelationV2) iAlterDistribution() {}
+
+type RelationAlterStmt interface {
+	iAlterRelation()
+}
+
+type AlterRelationSchema struct {
+	SchemaName string
+}
+
+func (*AlterRelationSchema) iStatement()     {}
+func (*AlterRelationSchema) iAlterRelation() {}
+
+type AlterRelationDistributionKey struct {
+	DistributionKey []DistributionKeyEntry
+}
+
+func (*AlterRelationDistributionKey) iStatement()     {}
+func (*AlterRelationDistributionKey) iAlterRelation() {}
+
+type AlterRelationAutoIncrement struct {
+	AutoIncrementEntries []*AutoIncrementEntry
+}
+
+func (*AlterRelationAutoIncrement) iStatement()     {}
+func (*AlterRelationAutoIncrement) iAlterRelation() {}
+
 type DetachRelation struct {
 	Distribution *DistributionSelector
 	RelationName *rfqn.RelationFQN
