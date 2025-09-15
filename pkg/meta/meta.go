@@ -498,7 +498,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connmgr.ConnectionStatsMgr, rc rclient.RouterClient, writer workloadlog.WorkloadLog, ro bool) error {
+func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connmgr.ConnectionMgr, rc rclient.RouterClient, writer workloadlog.WorkloadLog, ro bool) error {
 	cli := clientinteractor.NewPSQLInteractor(rc)
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 
@@ -662,11 +662,11 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 //
 // Returns:
 // - error: An error if the operation encounters any issues.
-func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, clPool client.Pool, cli *clientinteractor.PSQLInteractor) error {
+func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, ci connmgr.ConnectionMgr, cli *clientinteractor.PSQLInteractor) error {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process kill")
 	switch stmt.Cmd {
 	case spqrparser.ClientStr:
-		ok, err := clPool.Pop(stmt.Target)
+		ok, err := ci.Pop(stmt.Target)
 		if err != nil {
 			return err
 		}
@@ -674,6 +674,27 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, clP
 			return fmt.Errorf("no such client %d", stmt.Target)
 		}
 		return cli.KillClient(stmt.Target)
+	case spqrparser.BackendStr:
+
+		ok := false
+
+		if err := ci.ForEachPool(func(p pool.Pool) error {
+			return p.ForEach(func(sh shard.ShardHostCtl) error {
+				if sh.ID() == stmt.Target {
+					ok = true
+					sh.MarkStale() /* request backend invalidation */
+				}
+				return nil
+			})
+		}); err != nil {
+			return err
+		}
+
+		if !ok {
+			return fmt.Errorf("no such backend %d", stmt.Target)
+		}
+
+		return cli.KillBackend(stmt.Target)
 	default:
 		return ErrUnknownCoordinatorCommand
 	}
@@ -692,7 +713,7 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, clP
 //
 // Returns:
 // - error: An error if the operation encounters any issues.
-func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connmgr.ConnectionStatsMgr, cli *clientinteractor.PSQLInteractor, ro bool) error {
+func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connmgr.ConnectionMgr, cli *clientinteractor.PSQLInteractor, ro bool) error {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
 	switch stmt.Cmd {
 	case spqrparser.BackendConnectionsStr:

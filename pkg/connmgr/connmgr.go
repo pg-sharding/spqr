@@ -5,7 +5,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
-type ConnectionStatsMgr interface {
+type ConnectionMgr interface {
 	ConnectionIterator
 
 	InstanceHealthChecks() map[string]tsa.CachedCheckResult

@@ -522,10 +522,14 @@ show_statement_type:
 	}
 
 kill_statement_type:
-	IDENT
+	CLIENT 
+	{
+		$$ = string($1)
+	}
+	| IDENT
 	{
 		switch v := string($1); v {
-		case ClientStr:
+		case BackendStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -1173,9 +1177,7 @@ kill_stmt:
 	{
 		$$ = &Kill{Cmd: $2, Target: $3}
 	}
-	| KILL CLIENT any_uint {
-		$$ = &Kill{Cmd: "client", Target: $3}
-	}
+
 
 move_key_range_stmt:
 	MOVE key_range_stmt TO any_id
