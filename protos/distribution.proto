@@ -70,12 +70,6 @@ message AlterDistributedRelationDistributionKeyRequest{
   repeated DistributionKeyEntry distributionKey = 3;
 }
 
-message AlterDistributedRelationColumnSequenceMappingRequest{
-  string id = 1;
-  string relationName = 2;
-  map<string, string> sequenceColumns = 3;
-}
-
 message AlterDistributedRelationRequest{
   string id = 1;
   DistributedRelation relation = 2;
@@ -144,7 +138,6 @@ service DistributionService {
   rpc AlterDistributedRelation(AlterDistributedRelationRequest) returns (google.protobuf.Empty) {}
   rpc AlterDistributedRelationSchema(AlterDistributedRelationSchemaRequest) returns (google.protobuf.Empty) {}
   rpc AlterDistributedRelationDistributionKey(AlterDistributedRelationDistributionKeyRequest) returns (google.protobuf.Empty) {}
-  rpc AlterDistributedRelationColumnSequenceMapping(AlterDistributedRelationColumnSequenceMappingRequest) returns (google.protobuf.Empty) {}
 
   rpc GetDistribution(GetDistributionRequest) returns (GetDistributionReply) {}
 

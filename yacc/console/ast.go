@@ -341,13 +341,6 @@ type AlterRelationDistributionKey struct {
 func (*AlterRelationDistributionKey) iStatement()     {}
 func (*AlterRelationDistributionKey) iAlterRelation() {}
 
-type AlterRelationAutoIncrement struct {
-	AutoIncrementEntries []*AutoIncrementEntry
-}
-
-func (*AlterRelationAutoIncrement) iStatement()     {}
-func (*AlterRelationAutoIncrement) iAlterRelation() {}
-
 type DetachRelation struct {
 	RelationName *rfqn.RelationFQN
 }

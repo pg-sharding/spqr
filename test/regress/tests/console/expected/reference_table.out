@@ -23,6 +23,16 @@ CREATE REFERENCE RELATION zz2;
 ERROR:  reference relation zz2 already exists
 SYNC REFERENCE TABLES ON sh1;
 ERROR:  request is unprocessable in router
+ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 SCHEMA my_schema;
+          alter relation          
+----------------------------------
+ relation name   -> my_schema.zz2
+ distribution id -> REPLICATED
+(2 rows)
+
+ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 DISTRIBUTION KEY id;
+ERROR: EDIT LATER
+
 DROP REFERENCE RELATION zz2;
  drop reference table 
 ----------------------

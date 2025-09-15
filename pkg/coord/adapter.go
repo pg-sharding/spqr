@@ -889,26 +889,6 @@ func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, i
 	return err
 }
 
-// AlterDistributedRelationColumnSequenceMapping alters the column to sequence mapping metadata of a distributed relation.
-//
-// Parameters:
-// - ctx (context.Context): The context for the request.
-// - id (string): The ID of the distribution of the relation.
-// - relName (string): The name of the relation.
-// - sequenceCols (map[string]string): the new column to sequence mapping for the relation.
-//
-// Returns:
-// - error: An error if the alteration of the distribution's attachments fails, otherwise nil.
-func (a *Adapter) AlterDistributedRelationColumnSequenceMapping(ctx context.Context, id string, relName string, sequenceCols map[string]string) error {
-	c := proto.NewDistributionServiceClient(a.conn)
-	_, err := c.AlterDistributedRelationColumnSequenceMapping(ctx, &proto.AlterDistributedRelationColumnSequenceMappingRequest{
-		Id:              id,
-		RelationName:    relName,
-		SequenceColumns: sequenceCols,
-	})
-	return err
-}
-
 // AlterDistributionDetach detaches a relation from a distribution using the provided ID and relation name.
 //
 // Parameters:

@@ -834,14 +834,6 @@ relation_alter_stmt_v2:
 				SchemaName: $5,
 			},
 		}
-	} |
-	ALTER RELATION qualified_name AUTO INCREMENT auto_inc_argument_list {
-		$$ = &AlterRelationV2{
-			RelationName: $3.RelationName,
-			Element: &AlterRelationAutoIncrement {
-				AutoIncrementEntries: $6,
-			},
-		}
 	}
 
 opt_distributed:

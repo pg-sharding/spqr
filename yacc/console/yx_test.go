@@ -1185,23 +1185,6 @@ func TestAlter(t *testing.T) {
 			},
 			err: nil,
 		},
-		{
-			query: "ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION t AUTO INCREMENT id START 10;",
-			exp: &spqrparser.Alter{
-				Element: &spqrparser.AlterDistribution{
-					Distribution: &spqrparser.DistributionSelector{ID: "REPLICATED"},
-					Element: &spqrparser.AlterRelationV2{
-						RelationName: "t",
-						Element: &spqrparser.AlterRelationAutoIncrement{
-							AutoIncrementEntries: []*spqrparser.AutoIncrementEntry{
-								{Column: "id", Start: 10},
-							},
-						},
-					},
-				},
-			},
-			err: nil,
-		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)

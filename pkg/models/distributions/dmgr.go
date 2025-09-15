@@ -19,5 +19,4 @@ type DistributionMgr interface {
 	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
 	AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error
 	AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []DistributionKeyEntry) error
-	AlterDistributedRelationColumnSequenceMapping(ctx context.Context, id string, relName string, columnSequenceMapping map[string]string) error
 }

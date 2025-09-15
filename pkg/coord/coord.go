@@ -95,24 +95,6 @@ func (lc *Coordinator) AlterDistributedRelation(ctx context.Context, id string, 
 	return nil
 }
 
-// AlterDistributedRelationColumnSequenceMapping implements meta.EntityMgr.
-func (lc *Coordinator) AlterDistributedRelationColumnSequenceMapping(ctx context.Context, id string, relName string, columnSequenceMapping map[string]string) error {
-	replDs, err := lc.GetDistribution(ctx, distributions.REPLICATED)
-	if err != nil {
-		return fmt.Errorf("failed to get replicated distribution: %s", err)
-	}
-	if _, ok := replDs.Relations[relName]; !ok {
-		return fmt.Errorf("altering column sequence mapping is only allowed for replicated relations")
-	}
-
-	for colName, seqName := range columnSequenceMapping {
-		if err := lc.qdb.AlterSequenceAttach(ctx, seqName, &rfqn.RelationFQN{RelationName: relName}, colName); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // AlterDistributedRelationDistributionKey implements meta.EntityMgr.
 func (lc *Coordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []distributions.DistributionKeyEntry) error {
 	ds, err := lc.GetDistribution(ctx, id)

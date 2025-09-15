@@ -514,11 +514,6 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 			return err
 		}
 		return cli.AlterDistributedRelation(ctx, dsId, relName)
-	case *spqrparser.AlterRelationAutoIncrement:
-		if err := mngr.AlterDistributedRelationColumnSequenceMapping(ctx, dsId, relName, distributions.ColumnSequenceMappingFromSQL(relName, stmt.AutoIncrementEntries)); err != nil {
-			return err
-		}
-		return cli.AlterDistributedRelation(ctx, dsId, relName)
 	default:
 		return fmt.Errorf("unexpected 'ALTER RELATION' request type %T", stmt)
 	}

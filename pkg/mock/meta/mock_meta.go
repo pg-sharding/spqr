@@ -90,20 +90,6 @@ func (mr *MockEntityMgrMockRecorder) AlterDistributedRelation(ctx, id, rel any) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelation", reflect.TypeOf((*MockEntityMgr)(nil).AlterDistributedRelation), ctx, id, rel)
 }
 
-// AlterDistributedRelationColumnSequenceMapping mocks base method.
-func (m *MockEntityMgr) AlterDistributedRelationColumnSequenceMapping(ctx context.Context, id, relName string, columnSequenceMapping map[string]string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterDistributedRelationColumnSequenceMapping", ctx, id, relName, columnSequenceMapping)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AlterDistributedRelationColumnSequenceMapping indicates an expected call of AlterDistributedRelationColumnSequenceMapping.
-func (mr *MockEntityMgrMockRecorder) AlterDistributedRelationColumnSequenceMapping(ctx, id, relName, columnSequenceMapping any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationColumnSequenceMapping", reflect.TypeOf((*MockEntityMgr)(nil).AlterDistributedRelationColumnSequenceMapping), ctx, id, relName, columnSequenceMapping)
-}
-
 // AlterDistributedRelationDistributionKey mocks base method.
 func (m *MockEntityMgr) AlterDistributedRelationDistributionKey(ctx context.Context, id, relName string, distributionKey []distributions.DistributionKeyEntry) error {
 	m.ctrl.T.Helper()

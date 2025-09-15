@@ -94,6 +94,8 @@ func (d *DistributionsServer) AlterDistributedRelation(ctx context.Context, req 
 	return nil, d.impl.AlterDistributedRelation(ctx, req.GetId(), ds)
 }
 
+// TODO: implement proto shit
+
 func (d *DistributionsServer) GetDistribution(ctx context.Context, req *protos.GetDistributionRequest) (*protos.GetDistributionReply, error) {
 	ds, err := d.impl.GetDistribution(ctx, req.GetId())
 	if err != nil {

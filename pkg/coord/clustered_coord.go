@@ -2151,31 +2151,6 @@ func (qc *ClusteredCoordinator) AlterDistributedRelationDistributionKey(ctx cont
 	})
 }
 
-// AlterDistributedRelationSchema changes the column to sequence mapping of a relation attached to a distribution
-// TODO: unit tests
-func (qc *ClusteredCoordinator) AlterDistributedRelationColumnSequenceMapping(ctx context.Context, id string, relName string, sequenceCols map[string]string) error {
-	if err := qc.Coordinator.AlterDistributedRelationColumnSequenceMapping(ctx, id, relName, sequenceCols); err != nil {
-		return err
-	}
-
-	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.AlterDistributedRelationColumnSequenceMapping(context.TODO(), &proto.AlterDistributedRelationColumnSequenceMappingRequest{
-			Id:              id,
-			RelationName:    relName,
-			SequenceColumns: sequenceCols,
-		})
-		if err != nil {
-			return err
-		}
-
-		spqrlog.Zero.Debug().
-			Interface("response", resp).
-			Msg("alter relation column to sequence mapping response")
-		return nil
-	})
-}
-
 func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string, force bool) error {
 	if err := qc.Coordinator.DropSequence(ctx, seqName, force); err != nil {
 		return err
