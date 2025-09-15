@@ -875,6 +875,41 @@ func (qr *ProxyQrouter) planWithClauseV1(ctx context.Context, rm *rmeta.RoutingM
 	return p, nil
 }
 
+func (qr *ProxyQrouter) planWhereInSelect(ctx context.Context,
+	stmt *lyx.Select, p plan.Plan,
+	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
+	if whereStmt, ok := stmt.Where.(*lyx.AExprOp); ok {
+		relation, distribution, krs, err := prepareDataForSolver(ctx, rm, stmt)
+		if err == nil {
+			shards, err := SolveShards(*whereStmt, krs, relation, distribution)
+			if err == nil {
+				queryPlan := p
+				for _, shard := range shards {
+					queryPlan = plan.Combine(queryPlan, &plan.ShardDispatchPlan{
+						ExecTarget: kr.ShardKey{Name: shard},
+					})
+
+				}
+				return queryPlan, nil
+			}
+		}
+	}
+	spqrlog.Zero.Debug().Msg("exprawwion solver fails. run old-style")
+	//old-style dispatch where statement
+	tmp, err := qr.planByQualExpr(ctx, stmt.Where, rm)
+	if err != nil {
+		return nil, err
+	}
+	switch tmp.(type) {
+	case *plan.VirtualPlan:
+		if stmt.FromClause != nil {
+			/* de-virtualize */
+			tmp = nil
+		}
+	}
+	return plan.Combine(p, tmp), nil
+}
+
 // TODO : unit tests
 // May return nil routing state here - thats ok
 func (qr *ProxyQrouter) planQueryV1(
@@ -1125,18 +1160,7 @@ func (qr *ProxyQrouter) planQueryV1(
 		if stmt.Where != nil {
 			/* return plan from where clause and route on it */
 			/*  SELECT stmts, which would be routed with their WHERE clause */
-			tmp, err := qr.planByQualExpr(ctx, stmt.Where, rm)
-			if err != nil {
-				return nil, err
-			}
-			switch tmp.(type) {
-			case *plan.VirtualPlan:
-				if stmt.FromClause != nil {
-					/* de-virtualize */
-					tmp = nil
-				}
-			}
-			p = plan.Combine(p, tmp)
+			return qr.planWhereInSelect(ctx, stmt, p, rm)
 		}
 
 		return p, nil

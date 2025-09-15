@@ -1,0 +1,73 @@
+log_level: log
+
+host: '[localhost]'
+router_port: '6432'
+router_ro_port: '6433'
+admin_console_port: '7432'
+grpc_api_port: '7010'
+
+show_notice_messages: false
+
+time_quantiles:
+  - 0.75
+
+world_shard_fallback: true
+router_mode: PROXY
+
+init_sql: "/home/aklepov/repoPublic/go/spqr-klepov/examples/debuglocal-init2shards.sql"
+use_init_sql: true
+
+memqdb_backup_path: "memqdb.json"
+
+query_routing:
+    enhanced_multishard_processing: true
+
+frontend_tls:
+  key_file: /etc/odyssey/ssl/server.key
+  cert_file: /etc/odyssey/ssl/server.crt
+  sslmode: disable
+
+frontend_rules:
+  - usr: user1
+    db: db1
+    pool_mode: TRANSACTION
+    pool_prepared_statement: true
+    auth_rule:
+      auth_method: ok
+      password: strong
+  - pool_mode: TRANSACTION
+    pool_default: true
+    pool_prepared_statement: false
+    auth_rule:
+      auth_method: ok
+
+backend_rules:
+  - usr:                user1
+    db:                 db1
+    pool_discard:       false
+    pool_rollback:      true
+    connection_timeout: 500ms
+    keep_alive:         1000ms
+    tcp_user_timeout:   9500ms
+    connection_limit:   50
+    auth_rule:
+      auth_method: cleartext
+      password:    12345678
+
+shards:
+  sh1:
+    tls:
+      key_file: /etc/odyssey/ssl/server.key
+      sslmode: disable
+      cert_file: /etc/odyssey/ssl/server.crt
+    type: DATA
+    hosts:
+      - 'localhost:5550'
+  sh2:
+    tls:
+      key_file: /etc/odyssey/ssl/server.key
+      sslmode: disable
+      cert_file: /etc/odyssey/ssl/server.crt
+    type: DATA
+    hosts:
+      - 'localhost:5551'
