@@ -519,7 +519,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		}
 		return cli.AlterDistributedRelation(ctx, dsId, relName)
 	default:
-		return fmt.Errorf("unexpected 'ALTER RELATION' request type %#T", stmt)
+		return fmt.Errorf("unexpected 'ALTER RELATION' request type %T", stmt)
 	}
 }
 
