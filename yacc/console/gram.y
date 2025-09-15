@@ -79,7 +79,7 @@ func randomHex(n int) (string, error) {
 	alter                  *Alter
 	alter_distribution     *AlterDistribution
 	distributed_relation   *DistributedRelation
-	alter_default_shard     *AlterDefaultShard
+	alter_default_shard    *AlterDefaultShard
 	
 	relations              []*DistributedRelation
 	relation               *DistributedRelation
@@ -633,8 +633,8 @@ distribution_alter_stmt:
 	distribution_select_stmt relation_attach_stmt
 	{
 		$$ = &AlterDistribution{
+			Distribution: $1,
 			Element: &AttachRelation{
-				Distribution: $1,
 				Relations:     $2,
 			},
 		}
@@ -642,8 +642,8 @@ distribution_alter_stmt:
 	distribution_select_stmt DETACH RELATION qualified_name
 	{
 		$$ = &AlterDistribution{
+			Distribution: $1,
 			Element: &DetachRelation{
-				Distribution: $1,
 				RelationName: $4,
 			},
 		}
@@ -651,8 +651,8 @@ distribution_alter_stmt:
 	distribution_select_stmt relation_alter_stmt
 	{
 		$$ = &AlterDistribution{
+			Distribution: $1,
 			Element: &AlterRelation{
-				Distribution: $1,
 				Relation: $2,
 			},
 		}
@@ -660,8 +660,8 @@ distribution_alter_stmt:
 	distribution_select_stmt ADD DEFAULT SHARD any_id
 	{
 		$$ = &AlterDistribution{
+			Distribution: $1,
 			Element: &AlterDefaultShard{
-				Distribution: $1,
 				Shard: $5,
 			},
 		}
@@ -669,7 +669,8 @@ distribution_alter_stmt:
 	distribution_select_stmt DROP DEFAULT SHARD
 	{
 		$$ = &AlterDistribution{
-			Element: &DropDefaultShard{ Distribution: $1 },
+			Distribution: $1,
+			Element: &DropDefaultShard{},
 		}
 	}
 
@@ -882,8 +883,8 @@ create_distributed_relation_stmt:
 	{
 		$$ = &Alter{
 			Element: &AlterDistribution{
+				Distribution: 	$4,
 				Element: &AttachRelation{
-					Distribution: 	$4,
 					Relations:      []*DistributedRelation{$3},
 				},
 			},
