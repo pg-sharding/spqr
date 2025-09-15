@@ -1156,45 +1156,6 @@ func TestAlter(t *testing.T) {
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
-					Element: &spqrparser.AlterRelation{
-						Relation: &spqrparser.DistributedRelation{
-							Name: "t",
-							DistributionKey: []spqrparser.DistributionKeyEntry{
-								{
-									Column: "id",
-								},
-							},
-						},
-					},
-				},
-			},
-			err: nil,
-		},
-		{
-			query: "ALTER DISTRIBUTION ds1 ALTER RELATION t DISTRIBUTION KEY id SCHEMA test;",
-			exp: &spqrparser.Alter{
-				Element: &spqrparser.AlterDistribution{
-					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
-					Element: &spqrparser.AlterRelation{
-						Relation: &spqrparser.DistributedRelation{
-							Name:       "t",
-							SchemaName: "test",
-							DistributionKey: []spqrparser.DistributionKeyEntry{
-								{
-									Column: "id",
-								},
-							},
-						},
-					},
-				},
-			},
-			err: nil,
-		},
-		{
-			query: "ALTER DISTRIBUTION ds1 ALTER RELATION t DISTRIBUTION KEY id;",
-			exp: &spqrparser.Alter{
-				Element: &spqrparser.AlterDistribution{
-					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AlterRelationV2{
 						RelationName: "t",
 						Element: &spqrparser.AlterRelationDistributionKey{
@@ -1225,7 +1186,7 @@ func TestAlter(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "ALTER DISTRIBUTION REPLICATED ALTER RELATION t AUTO INCREMENT id START 10;",
+			query: "ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION t AUTO INCREMENT id START 10;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Distribution: &spqrparser.DistributionSelector{ID: "REPLICATED"},

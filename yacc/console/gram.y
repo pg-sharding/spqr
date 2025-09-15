@@ -109,6 +109,8 @@ func randomHex(n int) (string, error) {
 
 	typedColRef         	TypedColRef
 	routingExpr				[]TypedColRef
+
+	alter_relation          *AlterRelationV2
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -241,8 +243,9 @@ func randomHex(n int) (string, error) {
 %type<relations> relation_attach_stmt
 %type<relations> distributed_relation_list_def
 
-%type<distributed_relation> relation_alter_stmt
 %type<distributed_relation> distributed_relation_def
+
+%type<alter_relation> relation_alter_stmt_v2
 
 %type<strlist> col_types_list opt_col_types any_id_list opt_on_shards
 %type<str> col_types_elem
@@ -648,13 +651,11 @@ distribution_alter_stmt:
 			},
 		}
 	} |
-	distribution_select_stmt relation_alter_stmt
+	distribution_select_stmt relation_alter_stmt_v2
 	{
 		$$ = &AlterDistribution{
 			Distribution: $1,
-			Element: &AlterRelation{
-				Relation: $2,
-			},
+			Element: $2,
 		}
 	} |
 	distribution_select_stmt ADD DEFAULT SHARD any_id
@@ -817,9 +818,30 @@ relation_attach_stmt:
 		$$ = $2
 	}
 
-relation_alter_stmt:
-	ALTER distributed_relation_def {
-		$$ = $2
+relation_alter_stmt_v2:
+	ALTER RELATION qualified_name DISTRIBUTION KEY distribution_key_argument_list {
+		$$ = &AlterRelationV2{
+			RelationName: $3.RelationName,
+			Element: &AlterRelationDistributionKey{
+				DistributionKey: $6,
+			},
+		}
+	} |
+	ALTER RELATION qualified_name SCHEMA any_id {
+		$$ = &AlterRelationV2{
+			RelationName: $3.RelationName,
+			Element: &AlterRelationSchema {
+				SchemaName: $5,
+			},
+		}
+	} |
+	ALTER RELATION qualified_name AUTO INCREMENT auto_inc_argument_list {
+		$$ = &AlterRelationV2{
+			RelationName: $3.RelationName,
+			Element: &AlterRelationAutoIncrement {
+				AutoIncrementEntries: $6,
+			},
+		}
 	}
 
 opt_distributed:
