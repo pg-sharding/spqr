@@ -136,6 +136,13 @@ func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRela
 	return rdistr
 }
 
+// DistributionKeyToProto converts an array of DistributionKeyEntry's to *proto.DistributionKeyEntry objects.
+//
+// Parameters:
+//   - key ([]DistributionKeyEntry): The array to convert.
+//
+// Returns:
+//   - []*proto.DistributionKeyEntry: The converted array.
 func DistributionKeyToProto(key []DistributionKeyEntry) []*proto.DistributionKeyEntry {
 	res := make([]*proto.DistributionKeyEntry, len(key))
 	for i, e := range key {
@@ -148,6 +155,14 @@ func DistributionKeyToProto(key []DistributionKeyEntry) []*proto.DistributionKey
 	return res
 }
 
+// DistributionKeyFromProto converts an array of *proto.DistributionKeyEntry's to DistributionKeyEntry objects.
+//
+// Parameters:
+//   - key ([]*proto.DistributionKeyEntry): The array to convert.
+//
+// Returns:
+//   - []DistributionKeyEntry: The converted array.
+//   - error: An error if request is malformed, nil otherwise.
 func DistributionKeyFromProto(key []*proto.DistributionKeyEntry) ([]DistributionKeyEntry, error) {
 	res := make([]DistributionKeyEntry, len(key))
 	for i, e := range key {
@@ -243,6 +258,13 @@ func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *Distribute
 	}
 }
 
+// DistributionKeyFromSQL converts an array of spqrparser.DistributionKeyEntry's to DistributionKeyEntry objects.
+//
+// Parameters:
+//   - key ([]spqrparser.DistributionKeyEntry): The array to convert.
+//
+// Returns:
+//   - []DistributionKeyEntry: The converted array.
 func DistributionKeyFromSQL(dsKey []spqrparser.DistributionKeyEntry) []DistributionKeyEntry {
 	res := make([]DistributionKeyEntry, len(dsKey))
 	for i, e := range dsKey {
@@ -258,6 +280,13 @@ func DistributionKeyFromSQL(dsKey []spqrparser.DistributionKeyEntry) []Distribut
 	return res
 }
 
+// DistributionKeyToDB converts an array of DistributionKeyEntry's to qdb.DistributionKeyEntry objects.
+//
+// Parameters:
+//   - key ([]DistributionKeyEntry): The array to convert.
+//
+// Returns:
+//   - []qdb.DistributionKeyEntry: The converted array.
 func DistributionKeyToDB(key []DistributionKeyEntry) []qdb.DistributionKeyEntry {
 	res := make([]qdb.DistributionKeyEntry, len(key))
 	for i, e := range key {

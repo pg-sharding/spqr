@@ -106,8 +106,6 @@ func (d *DistributionsServer) AlterDistributedRelationDistributionKey(ctx contex
 	return nil, d.impl.AlterDistributedRelationDistributionKey(ctx, req.GetId(), req.GetRelationName(), key)
 }
 
-// TODO: implement proto shit
-
 func (d *DistributionsServer) GetDistribution(ctx context.Context, req *protos.GetDistributionRequest) (*protos.GetDistributionReply, error) {
 	ds, err := d.impl.GetDistribution(ctx, req.GetId())
 	if err != nil {
