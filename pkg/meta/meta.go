@@ -483,29 +483,41 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			return cli.MakeSimpleResponse(ctx, manager.SuccessCreateResponse(stmt.Shard))
 		}
 	case *spqrparser.AlterRelationV2:
-		return processAlterRelation(ctx, stmt, mngr, cli, dsId)
+		return processAlterRelation(ctx, stmt.Element, mngr, cli, dsId, stmt.RelationName)
 	default:
 		return ErrUnknownCoordinatorCommand
 	}
 }
 
-func processAlterRelation(ctx context.Context, astmt *spqrparser.AlterRelationV2, mngr EntityMgr, cli *clientinteractor.PSQLInteractor, dsId string) error {
-	switch stmt := astmt.Element.(type) {
+// processAlterDistribution processes the given 'ALTER DISTRIBUTION ALTER RELATION' statement and performs the corresponding operation.
+//
+// Parameters:
+// - ctx (context.Context): The context for the operation.
+// - astmt (spqrparser.Statement): The alter relation statement to be processed.
+// - mngr (EntityMgr): The entity manager for performing the operation.
+// - cli (*clientinteractor.PSQLInteractor): The PSQL client interactor for interacting with the PSQL server.
+// - dsId (string): ID of the distribution, to which the relation belongs.
+// - relName (string): the name of the relation to alter.
+//
+// Returns:
+// - error: An error if the operation fails, otherwise nil.
+func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor, dsId string, relName string) error {
+	switch stmt := astmt.(type) {
 	case *spqrparser.AlterRelationSchema:
-		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, astmt.RelationName, stmt.SchemaName); err != nil {
+		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, relName, stmt.SchemaName); err != nil {
 			return err
 		}
-		return cli.AlterDistributedRelation(ctx, dsId, astmt.RelationName)
+		return cli.AlterDistributedRelation(ctx, dsId, relName)
 	case *spqrparser.AlterRelationDistributionKey:
-		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, astmt.RelationName, distributions.DistributionKeyFromSQL(stmt.DistributionKey)); err != nil {
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relName, distributions.DistributionKeyFromSQL(stmt.DistributionKey)); err != nil {
 			return err
 		}
-		return cli.AlterDistributedRelation(ctx, dsId, astmt.RelationName)
+		return cli.AlterDistributedRelation(ctx, dsId, relName)
 	case *spqrparser.AlterRelationAutoIncrement:
-		if err := mngr.AlterDistributedRelationColumnSequenceMapping(ctx, dsId, astmt.RelationName, distributions.ColumnSequenceMappingFromSQL(astmt.RelationName, stmt.AutoIncrementEntries)); err != nil {
+		if err := mngr.AlterDistributedRelationColumnSequenceMapping(ctx, dsId, relName, distributions.ColumnSequenceMappingFromSQL(relName, stmt.AutoIncrementEntries)); err != nil {
 			return err
 		}
-		return cli.AlterDistributedRelation(ctx, dsId, astmt.RelationName)
+		return cli.AlterDistributedRelation(ctx, dsId, relName)
 	default:
 		return fmt.Errorf("unexpected 'ALTER RELATION' request type %#T", stmt)
 	}

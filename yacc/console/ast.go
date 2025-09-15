@@ -324,6 +324,7 @@ func (*AlterRelationV2) iAlterDistribution() {}
 
 type RelationAlterStmt interface {
 	iAlterRelation()
+	iStatement()
 }
 
 type AlterRelationSchema struct {
