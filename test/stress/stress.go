@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"math/rand"
 	"sync"
 	"time"
 
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/spf13/cobra"
@@ -25,11 +25,11 @@ var (
 	sslmode  string
 )
 
-func getConn(ctx context.Context, dbname string, retryCnt int) (*sqlx.DB, error) {
+func getConn(dbname string, retryCnt int) (*sql.DB, error) {
 	pgConString := fmt.Sprintf("host=%s port=%d dbname=%s sslmode=%v user=%s", hostname, spqrPort, dbname, sslmode, username)
 	fmt.Printf("using connstring %s\n", pgConString)
 	for range retryCnt {
-		db, err := sqlx.ConnectContext(ctx, "postgres", pgConString)
+		db, err := sql.Open("postgres", pgConString)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("error while connecting to postgresql")
 			continue
@@ -42,18 +42,17 @@ func getConn(ctx context.Context, dbname string, retryCnt int) (*sqlx.DB, error)
 var r = rand.New(rand.NewSource(31337))
 
 func simple() {
-	ctx := context.TODO()
 
 	for {
 		func() {
 			time.Sleep(time.Duration(50+r.Intn(10)) * time.Microsecond)
 
-			conn, err := getConn(ctx, dbname, 2)
+			conn, err := getConn(dbname, 2)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("stress test FAILED")
 				panic(err)
 			}
-			defer func(conn *sqlx.DB) {
+			defer func(conn *sql.DB) {
 				err := conn.Close()
 				if err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")

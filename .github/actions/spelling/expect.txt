@@ -83,6 +83,7 @@ datatransfer
 datname
 dbpool
 dbtpcc
+dbutils
 dcd
 ddl
 debhelper
@@ -472,7 +473,6 @@ SPQRZ
 SQLF
 sqlfile
 SQLOn
-sqlx
 sshjt
 SSLREQ
 sspi
@@ -487,6 +487,7 @@ strlist
 subplan
 subquery
 subselects
+sqlx
 SVFOP
 SVGID
 sysbench
