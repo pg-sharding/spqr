@@ -82,24 +82,12 @@ func DistributedRelationFromDB(rel *qdb.DistributedRelation) *DistributedRelatio
 // Returns:
 //   - *qdb.DistributedRelation: The converted qdb.DistributedRelation object.
 func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation {
-	rdistr := &qdb.DistributedRelation{
-		Name:       rel.Name,
-		SchemaName: rel.SchemaName,
+	return &qdb.DistributedRelation{
+		Name:               rel.Name,
+		SchemaName:         rel.SchemaName,
+		DistributionKey:    DistributionKeyToDB(rel.DistributionKey),
+		ReplicatedRelation: rel.ReplicatedRelation,
 	}
-
-	for _, e := range rel.DistributionKey {
-		rdistr.DistributionKey = append(rdistr.DistributionKey, qdb.DistributionKeyEntry{
-			Column:       e.Column,
-			HashFunction: e.HashFunction,
-			Expr: qdb.RoutingExpr{
-				ColRefs: TypedColRefToDB(e.Expr.ColRefs),
-			},
-		})
-	}
-
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
-
-	return rdistr
 }
 
 func RoutingExprToProto(in RoutingExpr) *proto.RoutingExpr {
@@ -260,6 +248,20 @@ func DistributionKeyFromSQL(dsKey []spqrparser.DistributionKeyEntry) []Distribut
 		}
 	}
 
+	return res
+}
+
+func DistributionKeyToDB(key []DistributionKeyEntry) []qdb.DistributionKeyEntry {
+	res := make([]qdb.DistributionKeyEntry, len(key))
+	for i, e := range key {
+		res[i] = qdb.DistributionKeyEntry{
+			Column:       e.Column,
+			HashFunction: e.HashFunction,
+			Expr: qdb.RoutingExpr{
+				ColRefs: TypedColRefToDB(e.Expr.ColRefs),
+			},
+		}
+	}
 	return res
 }
 
