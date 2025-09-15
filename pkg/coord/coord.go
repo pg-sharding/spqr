@@ -97,6 +97,9 @@ func (lc *Coordinator) AlterDistributedRelation(ctx context.Context, id string, 
 
 // AlterDistributedRelationDistributionKey implements meta.EntityMgr.
 func (lc *Coordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []distributions.DistributionKeyEntry) error {
+	if id == distributions.REPLICATED {
+		return fmt.Errorf("setting distribution key is forbidden for reference relations")
+	}
 	ds, err := lc.GetDistribution(ctx, id)
 	if err != nil {
 		return err
