@@ -849,6 +849,16 @@ func (a *Adapter) AlterDistributedRelation(ctx context.Context, id string, rel *
 	return err
 }
 
+// AlterDistributedRelationSchema alters the sequence name of a distributed relation.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+// - id (string): The ID of the distribution of the relation.
+// - relName (string): The name of the relation.
+// - schemaName (string): the new schema name for the relation.
+//
+// Returns:
+// - error: An error if the alteration of the distribution's attachments fails, otherwise nil.
 func (a *Adapter) AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.AlterDistributedRelationSchema(ctx, &proto.AlterDistributedRelationSchemaRequest{
@@ -859,6 +869,16 @@ func (a *Adapter) AlterDistributedRelationSchema(ctx context.Context, id string,
 	return err
 }
 
+// AlterDistributedRelationDistributionKey alters the distribution key metadata of a distributed relation.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+// - id (string): The ID of the distribution of the relation.
+// - relName (string): The name of the relation.
+// - distributionKey ([]distributions.DistributionKeyEntry): the new distribution key for the relation.
+//
+// Returns:
+// - error: An error if the alteration of the distribution's attachments fails, otherwise nil.
 func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []distributions.DistributionKeyEntry) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.AlterDistributedRelationDistributionKey(ctx, &proto.AlterDistributedRelationDistributionKeyRequest{
@@ -869,6 +889,16 @@ func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, i
 	return err
 }
 
+// AlterDistributedRelationColumnSequenceMapping alters the column to sequence mapping metadata of a distributed relation.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+// - id (string): The ID of the distribution of the relation.
+// - relName (string): The name of the relation.
+// - sequenceCols (map[string]string): the new column to sequence mapping for the relation.
+//
+// Returns:
+// - error: An error if the alteration of the distribution's attachments fails, otherwise nil.
 func (a *Adapter) AlterDistributedRelationColumnSequenceMapping(ctx context.Context, id string, relName string, sequenceCols map[string]string) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.AlterDistributedRelationColumnSequenceMapping(ctx, &proto.AlterDistributedRelationColumnSequenceMappingRequest{
