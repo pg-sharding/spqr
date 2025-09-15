@@ -1608,8 +1608,8 @@ func (pi *PSQLInteractor) KillClient(clientID uint) error {
 	return pi.CompleteMsg(0)
 }
 
-/* TODO: pretty-print if spefied GUC set */
-/* KillBackend reports a backend as killed (makred stale) in the PSQL client. */
+/* TODO: pretty-print if specified GUC set */
+/* KillBackend reports a backend as killed (marked stale) in the PSQL client. */
 func (pi *PSQLInteractor) KillBackend(id uint) error {
 	if err := pi.WriteHeader("kill backend"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
