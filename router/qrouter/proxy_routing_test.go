@@ -66,7 +66,7 @@ func TestMultiShardRouting(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{}, nil, getIdentityMngr(lc))
+	}, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
 
 	assert.NoError(err)
 
@@ -220,7 +220,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{}, nil, getIdentityMngr(lc))
+	}, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
 
 	assert.NoError(err)
 
@@ -363,7 +363,7 @@ func TestRoutingByExpression(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{}, nil, getIdentityMngr(lc))
+	}, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
 
 	assert.NoError(err)
 
@@ -477,7 +477,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{}, nil, getIdentityMngr(lc))
+	}, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
 
 	assert.NoError(err)
 
@@ -651,7 +651,7 @@ func TestComment(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{
+	}, lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -756,7 +756,7 @@ func TestCTE(t *testing.T) {
 		"sh1": {},
 		"sh2": {},
 		"sh3": {},
-	}, lc, &config.QRouter{
+	}, lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -1092,7 +1092,7 @@ func TestSingleShard(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{
+	}, lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -1367,7 +1367,7 @@ func TestInsertOffsets(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{
+	}, lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -1515,7 +1515,7 @@ func TestJoins(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{}, nil, getIdentityMngr(lc))
+	}, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
 
 	assert.NoError(err)
 
@@ -1659,7 +1659,7 @@ func TestUnnest(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{
+	}, lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -1757,7 +1757,7 @@ func TestCopySingleShard(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{
+	}, lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -1841,7 +1841,7 @@ func TestCopyMultiShard(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{
+	}, lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -1910,7 +1910,7 @@ func TestSetStmt(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{
+	}, lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -2016,7 +2016,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{
+	}, lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -2326,7 +2326,7 @@ func TestHashRouting(t *testing.T) {
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{
+	}, lc, nil, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	}, nil, getIdentityMngr(lc))
 
@@ -2406,7 +2406,7 @@ func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error
 	router, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
 		"sh2": {},
-	}, lc, &config.QRouter{}, nil, getIdentityMngr(lc))
+	}, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
 
 	return router, err
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/session"
@@ -36,6 +37,7 @@ type QueryRouter interface {
 func NewQrouter(qtype config.RouterMode,
 	shardMapping map[string]*config.Shard,
 	mgr meta.EntityMgr,
+	csm connmgr.ConnectionStatMgr,
 	qcfg *config.QRouter,
 	cache *cache.SchemaCache,
 	idRangeCache planner.IdentityRouterCache,
@@ -44,7 +46,7 @@ func NewQrouter(qtype config.RouterMode,
 	case config.LocalMode:
 		return NewLocalQrouter(shardMapping)
 	case config.ProxyMode:
-		return NewProxyRouter(shardMapping, mgr, qcfg, cache, idRangeCache)
+		return NewProxyRouter(shardMapping, mgr, csm, qcfg, cache, idRangeCache)
 	default:
 		return nil, errors.Errorf("unknown qrouter type: %v", qtype)
 	}

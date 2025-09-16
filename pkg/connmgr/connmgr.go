@@ -5,9 +5,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
-type ConnectionMgr interface {
-	ConnectionIterator
-
+type ConnectionStatMgr interface {
 	InstanceHealthChecks() map[string]tsa.CachedCheckResult
 	TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry
 
@@ -15,10 +13,14 @@ type ConnectionMgr interface {
 		user-facing connection stat callbacks.
 		TODO: Refactor it, add:
 		- handshake counter
-		- connect start time
 		- unexpected eof error counter
 	*/
 	TotalTcpCount() int64
 	ActiveTcpCount() int64
 	TotalCancelCount() int64
+}
+
+type ConnectionMgr interface {
+	ConnectionIterator
+	ConnectionStatMgr
 }

@@ -22,6 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/pg-sharding/spqr/router/virtual"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -964,11 +965,11 @@ func (qr *ProxyQrouter) planQueryV1(
 							virtualRowVals = append(virtualRowVals, []byte{byte('t')})
 						}
 						continue
-					} else if e.Name == "__spqr__is_ready" {
+					} else if e.Name == virtual.VirtualFuncIsReady {
 						p = plan.Combine(p, &plan.VirtualPlan{})
 						virtualRowCols = append(virtualRowCols,
 							pgproto3.FieldDescription{
-								Name:                 []byte("__spqr__is_ready"),
+								Name:                 []byte(virtual.VirtualFuncIsReady),
 								DataTypeOID:          catalog.ARRAYOID,
 								TypeModifier:         -1,
 								DataTypeSize:         1,
@@ -982,6 +983,49 @@ func (qr *ProxyQrouter) planQueryV1(
 						} else {
 							virtualRowVals = append(virtualRowVals, []byte{byte('f')})
 						}
+						continue
+					} else if e.Name == virtual.VirtualFuncHosts {
+						p = plan.Combine(p, &plan.VirtualPlan{})
+						virtualRowCols = append(virtualRowCols,
+							pgproto3.FieldDescription{
+								Name:                 []byte("host"),
+								DataTypeOID:          catalog.TEXTOID,
+								TypeModifier:         -1,
+								DataTypeSize:         1,
+								TableAttributeNumber: 0,
+								TableOID:             0,
+								Format:               0,
+							},
+							pgproto3.FieldDescription{
+								Name:                 []byte("rw"),
+								DataTypeOID:          catalog.TEXTOID,
+								TypeModifier:         -1,
+								DataTypeSize:         1,
+								TableAttributeNumber: 0,
+								TableOID:             0,
+								Format:               0,
+							},
+						)
+						if len(e.Args) == 1 {
+							var k string
+
+							switch vv := e.Args[0].(type) {
+							case *lyx.AExprSConst:
+								k = vv.Value
+							default:
+								return nil, fmt.Errorf("incorrect argument type for %s", virtual.VirtualFuncHosts)
+							}
+
+							if v, ok := qr.csm.InstanceHealthChecks()[k]; ok {
+								virtualRowVals = append(virtualRowVals, []byte(k),
+									fmt.Appendf(nil, "%v", v.CR.RW))
+							} else {
+								return nil, fmt.Errorf("incorrect first argument for %s", virtual.VirtualFuncHosts)
+							}
+						} else {
+							return nil, fmt.Errorf("incorrect argument number for %s", virtual.VirtualFuncHosts)
+						}
+
 						continue
 					} else if e.Name == "current_setting" && len(e.Args) == 1 {
 						if val, ok := e.Args[0].(*lyx.AExprSConst); ok && val.Value == "transaction_read_only" {
