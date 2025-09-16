@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	pkgclient "github.com/pg-sharding/spqr/pkg/client"
+	"github.com/pg-sharding/spqr/pkg/engine"
 	mock "github.com/pg-sharding/spqr/pkg/mock/clientinteractor"
 	mockinst "github.com/pg-sharding/spqr/pkg/mock/conn"
 	mockshard "github.com/pg-sharding/spqr/pkg/mock/shard"
@@ -48,7 +49,7 @@ func TestSimpleWhere(t *testing.T) {
 	}
 	expected := true
 
-	actual, err := clientinteractor.MatchRow(row, rowDesc, where)
+	actual, err := engine.MatchRow(row, rowDesc, where)
 	assert.NoError(err)
 	assert.Equal(expected, actual)
 }
@@ -76,7 +77,7 @@ func TestSimpleNoMatchWhere(t *testing.T) {
 	}
 	expected := false
 
-	actual, err := clientinteractor.MatchRow(row, rowDesc, where)
+	actual, err := engine.MatchRow(row, rowDesc, where)
 	assert.NoError(err)
 	assert.Equal(expected, actual)
 }
@@ -112,7 +113,7 @@ func TestAndNoMatchWhere(t *testing.T) {
 	}
 	expected := false
 
-	actual, err := clientinteractor.MatchRow(row, rowDesc, where)
+	actual, err := engine.MatchRow(row, rowDesc, where)
 	assert.Nil(err)
 	assert.Equal(expected, actual)
 }
@@ -148,7 +149,7 @@ func TestOrMatchWhere(t *testing.T) {
 	}
 	expected := true
 
-	actual, err := clientinteractor.MatchRow(row, rowDesc, where)
+	actual, err := engine.MatchRow(row, rowDesc, where)
 	assert.NoError(err)
 	assert.Equal(expected, actual)
 }
@@ -293,7 +294,7 @@ func TestBackendConnections(t *testing.T) {
 	ca := mockcl.NewMockRouterClient(ctrl)
 	var desc []pgproto3.FieldDescription
 	for _, header := range clientinteractor.BackendConnectionsHeaders {
-		desc = append(desc, clientinteractor.TextOidFD(header))
+		desc = append(desc, engine.TextOidFD(header))
 	}
 
 	firstRow := pgproto3.DataRow{
@@ -369,12 +370,67 @@ func TestBackendConnections(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestBackendConnectionsWhere(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	ca := mockcl.NewMockRouterClient(ctrl)
+	var desc []pgproto3.FieldDescription
+	for _, header := range clientinteractor.BackendConnectionsHeaders {
+		desc = append(desc, engine.TextOidFD(header))
+	}
+
+	secondRow := pgproto3.DataRow{
+		Values: [][]byte{
+			[]byte("6"),
+			[]byte("no data"),
+			[]byte("sh2"),
+			[]byte("h2"),
+			[]byte("1"),
+			[]byte("usr1"),
+			[]byte("db1"),
+			[]byte("0"),
+			[]byte("10"),
+			[]byte("IDLE"),
+			[]byte("false"),
+			[]byte("1970-01-01T00:00:11Z"),
+		},
+	}
+
+	gomock.InOrder(
+		ca.EXPECT().Send(&pgproto3.RowDescription{Fields: desc}),
+		ca.EXPECT().Send(&secondRow),
+		ca.EXPECT().Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")}),
+		ca.EXPECT().Send(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}),
+	)
+
+	interactor := clientinteractor.NewPSQLInteractor(ca)
+	ctx := context.Background()
+	shards := []shard.ShardHostCtl{
+		genShard(ctrl, "h1", "sh1", 5),
+		genShard(ctrl, "h2", "sh2", 6),
+		genShard(ctrl, "h1", "sh3", 7),
+	}
+	cmd := &spqrparser.Show{
+		Cmd: spqrparser.BackendConnectionsStr,
+		Where: spqrparser.WhereClauseLeaf{
+			ColRef: spqrparser.ColumnRef{
+				ColName: "hostname",
+			},
+			Value: "h2",
+			Op:    "=",
+		},
+		GroupBy: spqrparser.GroupByClauseEmpty{},
+	}
+	err := interactor.BackendConnections(ctx, shards, cmd)
+
+	assert.Nil(t, err)
+}
+
 func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
 	var desc []pgproto3.FieldDescription
-	desc = append(desc, clientinteractor.TextOidFD("hostname"))
-	desc = append(desc, clientinteractor.IntOidFD("count"))
+	desc = append(desc, engine.TextOidFD("hostname"))
+	desc = append(desc, engine.IntOidFD("count"))
 	firstRow := pgproto3.DataRow{
 		Values: [][]byte{
 			[]byte("h1"),
@@ -413,8 +469,8 @@ func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
 	var desc []pgproto3.FieldDescription
-	desc = append(desc, clientinteractor.TextOidFD("hostname"))
-	desc = append(desc, clientinteractor.IntOidFD("count"))
+	desc = append(desc, engine.TextOidFD("hostname"))
+	desc = append(desc, engine.IntOidFD("count"))
 	firstRow := pgproto3.DataRow{
 		Values: [][]byte{
 			[]byte("h1"),
@@ -480,7 +536,7 @@ func TestMakeSimpleResponseWithData(t *testing.T) {
 	}
 	data := clientinteractor.SimpleResultMsg{Header: "test header", Rows: info}
 
-	desc := []pgproto3.FieldDescription{clientinteractor.TextOidFD("test header")}
+	desc := []pgproto3.FieldDescription{engine.TextOidFD("test header")}
 	firstRow := pgproto3.DataRow{
 		Values: [][]byte{[]byte(fmt.Sprintf("%s	-> %s", "test1", "data1"))},
 	}
@@ -506,7 +562,7 @@ func TestMakeSimpleResponseEmpty(t *testing.T) {
 	info := []clientinteractor.SimpleResultRow{}
 	data := clientinteractor.SimpleResultMsg{Header: "test header", Rows: info}
 
-	desc := []pgproto3.FieldDescription{clientinteractor.TextOidFD("test header")}
+	desc := []pgproto3.FieldDescription{engine.TextOidFD("test header")}
 	gomock.InOrder(
 		ca.EXPECT().Send(&pgproto3.RowDescription{Fields: desc}),
 		ca.EXPECT().Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 0")}),

@@ -11,10 +11,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg"
-	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
+	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -183,65 +183,6 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 
 // TODO : unit tests
 
-// TextOidFD generates a pgproto3.FieldDescription object with the provided statement text.
-//
-// Parameters:
-// - stmt (string): The statement text to use in the FieldDescription.
-//
-// Returns:
-// - A pgproto3.FieldDescription object initialized with the provided statement text and default values.
-func TextOidFD(stmt string) pgproto3.FieldDescription {
-	return pgproto3.FieldDescription{
-		Name:                 []byte(stmt),
-		TableOID:             0,
-		TableAttributeNumber: 0,
-		DataTypeOID:          catalog.TEXTOID,
-		DataTypeSize:         -1,
-		TypeModifier:         -1,
-		Format:               0,
-	}
-}
-
-// FloatOidFD generates a pgproto3.FieldDescription object of FLOAT8 type with the provided statement text.
-//
-// Parameters:
-// - stmt (string): The statement text to use in the FieldDescription.
-//
-// Returns:
-// - A pgproto3.FieldDescription object initialized with the provided statement text and default values.
-func FloatOidFD(stmt string) pgproto3.FieldDescription {
-	return pgproto3.FieldDescription{
-		Name:                 []byte(stmt),
-		TableOID:             0,
-		TableAttributeNumber: 0,
-		DataTypeOID:          catalog.DOUBLEOID,
-		DataTypeSize:         8,
-		TypeModifier:         -1,
-		Format:               0,
-	}
-}
-
-// IntOidFD generates a pgproto3.FieldDescription object of INT type with the provided statement text.
-//
-// Parameters:
-// - stmt (string): The statement text to use in the FieldDescription.
-//
-// Returns:
-// - A pgproto3.FieldDescription object initialized with the provided statement text and default values.
-func IntOidFD(stmt string) pgproto3.FieldDescription {
-	return pgproto3.FieldDescription{
-		Name:                 []byte(stmt),
-		TableOID:             0,
-		TableAttributeNumber: 0,
-		DataTypeOID:          catalog.INT8OID,
-		DataTypeSize:         8,
-		TypeModifier:         -1,
-		Format:               0,
-	}
-}
-
-// TODO : unit tests
-
 // WriteHeader sends the row description message with the specified field descriptions.
 //
 // Parameters:
@@ -252,7 +193,7 @@ func IntOidFD(stmt string) pgproto3.FieldDescription {
 func (pi *PSQLInteractor) WriteHeader(stmts ...string) error {
 	var desc []pgproto3.FieldDescription
 	for _, stmt := range stmts {
-		desc = append(desc, TextOidFD(stmt))
+		desc = append(desc, engine.TextOidFD(stmt))
 	}
 	return pi.cl.Send(&pgproto3.RowDescription{Fields: desc})
 }
@@ -390,7 +331,7 @@ func (pi *PSQLInteractor) Version(_ context.Context) error {
 // TODO: unit tests
 func (pi *PSQLInteractor) Quantiles(_ context.Context) error {
 	if err := pi.cl.Send(&pgproto3.RowDescription{
-		Fields: []pgproto3.FieldDescription{TextOidFD("quantile_type"), FloatOidFD("time, ms")},
+		Fields: []pgproto3.FieldDescription{engine.TextOidFD("quantile_type"), engine.FloatOidFD("time, ms")},
 	}); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Could not write header for time quantiles")
 		return err
@@ -489,10 +430,10 @@ func (pi *PSQLInteractor) DropShard(id string) error {
 func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			TextOidFD("Key range ID"),
-			TextOidFD("Shard ID"),
-			TextOidFD("Distribution ID"),
-			TextOidFD("Lower bound"),
+			engine.TextOidFD("Key range ID"),
+			engine.TextOidFD("Shard ID"),
+			engine.TextOidFD("Distribution ID"),
+			engine.TextOidFD("Lower bound"),
 		},
 		},
 	} {
@@ -683,10 +624,10 @@ func (pi *PSQLInteractor) MoveTaskGroup(_ context.Context, ts *tasks.MoveTaskGro
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			TextOidFD("State"),
-			TextOidFD("Bound"),
-			TextOidFD("Source key range ID"),
-			TextOidFD("Destination key range ID"),
+			engine.TextOidFD("State"),
+			engine.TextOidFD("Bound"),
+			engine.TextOidFD("Source key range ID"),
+			engine.TextOidFD("Destination key range ID"),
 		},
 		},
 	} {
@@ -825,72 +766,6 @@ func (pi *PSQLInteractor) Hosts(ctx context.Context, shards []*topology.DataShar
 	return pi.CompleteMsg(0)
 }
 
-// TODO : unit tests
-
-// MatchRow checks if a row matches a given condition in a WHERE clause.
-//
-// Parameters:
-// - row ([]string): The row of data to be checked.
-// - nameToIndex (map[string]int): A map that maps column names to their respective indices in the row.
-// - condition (spqrparser.WhereClauseNode): The condition to be checked against the row.
-//
-// Returns:
-// - bool: True if the row matches the condition, false otherwise.
-// - error: An error if there was a problem evaluating the condition.
-func MatchRow(row []string, nameToIndex map[string]int, condition spqrparser.WhereClauseNode) (bool, error) {
-	if condition == nil {
-		return true, nil
-	}
-	switch where := condition.(type) {
-	case spqrparser.WhereClauseEmpty:
-		return true, nil
-	case spqrparser.WhereClauseOp:
-		switch strings.ToLower(where.Op) {
-		case "and":
-			left, err := MatchRow(row, nameToIndex, where.Left)
-			if err != nil {
-				return true, err
-			}
-			if !left {
-				return false, nil
-			}
-			right, err := MatchRow(row, nameToIndex, where.Right)
-			if err != nil {
-				return true, err
-			}
-			return right, nil
-		case "or":
-			left, err := MatchRow(row, nameToIndex, where.Left)
-			if err != nil {
-				return true, err
-			}
-			if left {
-				return true, nil
-			}
-			right, err := MatchRow(row, nameToIndex, where.Right)
-			if err != nil {
-				return true, err
-			}
-			return right, nil
-		default:
-			return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "not supported logic operation: %s", where.Op)
-		}
-	case spqrparser.WhereClauseLeaf:
-		switch where.Op {
-		case "=":
-			i, ok := nameToIndex[where.ColRef.ColName]
-			if !ok {
-				return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "column %s does not exist", where.ColRef.ColName)
-			}
-			return row[i] == where.Value, nil
-		default:
-			return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "not supported operation %s", where.Op)
-		}
-	default:
-		return false, nil
-	}
-}
-
 type TableDesc interface {
 	GetHeader() []string
 }
@@ -956,6 +831,57 @@ func (ClientDesc) GetHeader() []string {
 	return headers
 }
 
+type BackendDesc struct {
+}
+
+// TODO : unit tests
+
+// GetRow retrieves a row of data for a given client, hostname, and rAddr.
+//
+// Parameters:
+// - cl (client.Client): The client object.
+// - hostname (string): The hostname.
+// - rAddr (string): The rAddr.
+//
+// Returns:
+// - []string: The row data, which consists of the following elements:
+//   - ID (int): The ID of the client.
+//   - Usr (string): The user of the client.
+//   - DB (string): The database of the client.
+//   - Hostname (string): The hostname.
+//   - RAddr (string): The rAddr.
+//   - Quantiles ([]float64): The quantiles of time statistics for the client.
+//   - TimeQuantileRouter (float64): The time quantile for the router.
+//   - TimeQuantileShard (float64): The time quantile for the shard.
+func (BackendDesc) GetRow(sh shard.ShardHostCtl) []string {
+	var rowData []string
+	for _, header := range BackendConnectionsHeaders {
+		rowData = append(rowData, BackendConnectionsGetters[header](sh))
+	}
+
+	return rowData
+}
+
+// TODO : unit tests
+
+// GetHeader returns the header row for the client description.
+//
+// Parameters:
+// - None.
+//
+// Returns:
+// - []string: The header row, which consists of the following elements:
+//   - "client_id" (string): The ID of the client.
+//   - "user" (string): The user of the client.
+//   - "dbname" (string): The database of the client.
+//   - "server_id" (string): The server ID.
+//   - "router_address" (string): The router address.
+//   - "router_time_<quantile>" (string): The header for the quantile time for the router.
+//   - "shard_time_<quantile>" (string): The header for the quantile time for the shard.
+func (BackendDesc) GetHeader() []string {
+	return BackendConnectionsHeaders
+}
+
 // GetColumnsMap generates a map that maps column names to their respective indices in the table description header.
 //
 // Parameters:
@@ -1004,7 +930,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 				}
 				row := desc.GetRow(cl, sh.Instance().Hostname(), cl.RAddr())
 
-				match, err := MatchRow(row, rowDesc, condition)
+				match, err := engine.MatchRow(row, rowDesc, condition)
 				if err != nil {
 					return err
 				}
@@ -1016,7 +942,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 		} else {
 			row := desc.GetRow(cl, "no backend connection", cl.RAddr())
 
-			match, err := MatchRow(row, rowDesc, condition)
+			match, err := engine.MatchRow(row, rowDesc, condition)
 			if err != nil {
 				return err
 			}
@@ -1089,9 +1015,9 @@ func (a SortableWithContext) Less(i, j int) bool {
 func (pi *PSQLInteractor) Distributions(_ context.Context, distributions []*distributions.Distribution, defShardIDs []string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			TextOidFD("Distribution ID"),
-			TextOidFD("Column types"),
-			TextOidFD("Default shard"),
+			engine.TextOidFD("Distribution ID"),
+			engine.TextOidFD("Column types"),
+			engine.TextOidFD("Default shard"),
 		}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
@@ -1633,6 +1559,28 @@ func (pi *PSQLInteractor) KillBackend(id uint) error {
 // Returns:
 // - error: An error if any occurred during the operation.
 func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.ShardHostCtl, stmt *spqrparser.Show) error {
+
+	var filteredShs []shard.ShardHostCtl
+
+	var desc BackendDesc
+	rowDesc := GetColumnsMap(desc)
+
+	for _, sh := range shs {
+
+		row := desc.GetRow(sh)
+
+		match, err := engine.MatchRow(row, rowDesc, stmt.Where)
+		if err != nil {
+			return err
+		}
+		if !match {
+			continue
+		}
+		filteredShs = append(filteredShs, sh)
+	}
+
+	shs = filteredShs
+
 	switch gb := stmt.GroupBy.(type) {
 	case spqrparser.GroupBy:
 		groupByCols := []string{}
@@ -1695,7 +1643,7 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 		sort.Slice(rels, func(i, j int) bool {
 			return rels[i].Name < rels[j].Name
 		})
-		if ok, err := MatchRow([]string{ds}, index, condition); err != nil {
+		if ok, err := engine.MatchRow([]string{ds}, index, condition); err != nil {
 			return err
 		} else if !ok {
 			continue
@@ -1900,10 +1848,10 @@ func groupBy[T any](values []T, getters map[string]toString[T], groupByCols []st
 
 	colDescs := make([]pgproto3.FieldDescription, 0, len(groupByCols)+1)
 	for _, groupByCol := range groupByCols {
-		colDescs = append(colDescs, TextOidFD(groupByCol))
+		colDescs = append(colDescs, engine.TextOidFD(groupByCol))
 	}
 	if err := pi.cl.Send(&pgproto3.RowDescription{
-		Fields: append(colDescs, IntOidFD("count")),
+		Fields: append(colDescs, engine.IntOidFD("count")),
 	}); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Could not write header for backend connections")
 		return err
