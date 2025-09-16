@@ -284,11 +284,22 @@ func (h *shardHostPool) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
+	var refreshedPool []shard.ShardHostInstance
+
 	for _, sh := range h.pool {
 		if err := cb(sh); err != nil {
 			return err
 		}
+		// optimize stale management
+		if !sh.IsStale() {
+			refreshedPool = append(refreshedPool, sh)
+		} else {
+			// do we return here?
+			_ = sh.Close()
+		}
 	}
+
+	h.pool = refreshedPool
 
 	for _, sh := range h.active {
 		if err := cb(sh); err != nil {

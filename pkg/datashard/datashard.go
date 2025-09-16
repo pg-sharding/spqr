@@ -51,6 +51,7 @@ type Conn struct {
 func (sh *Conn) MarkStale() {
 	sh.stale.Store(true)
 }
+
 func (sh *Conn) IsStale() bool {
 	return sh.stale.Load()
 }
