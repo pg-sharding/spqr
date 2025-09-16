@@ -117,6 +117,7 @@ type QRouter struct {
 	DefaultTSA                   string                `json:"default_target_session_attrs" toml:"default_target_session_attrs" yaml:"default_target_session_attrs"`
 	EnhancedMultiShardProcessing bool                  `json:"enhanced_multishard_processing" toml:"enhanced_multishard_processing" yaml:"enhanced_multishard_processing"`
 	AlwaysCheckRules             bool                  `json:"always_check_rules" toml:"always_check_rules" yaml:"always_check_rules"`
+	StrictOperators              bool                  `json:"strict_operators" toml:"strict_operators" yaml:"strict_operators"`
 
 	/* XXX: for now, supported only for single-shard topology */
 	AutoRouteRoOnStandby bool `json:"auto_route_ro_on_standby" toml:"auto_route_ro_on_standby" yaml:"auto_route_ro_on_standby"`

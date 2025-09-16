@@ -392,6 +392,12 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, expr lyx.Node, meta 
 
 	case *lyx.AExprOp:
 
+		if config.RouterConfig().Qr.StrictOperators {
+			if texpr.Op != "=" {
+				return p, nil
+			}
+		}
+
 		switch lft := texpr.Left.(type) {
 		/* lyx.ResTarget is unexpected here */
 		case *lyx.ColumnRef:
