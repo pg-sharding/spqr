@@ -85,7 +85,7 @@ func (s *DBPool) recheckFailedHosts() {
 	for tsaKey, entry := range cacheEntries {
 		// Only recheck dead hosts that haven't been checked recently
 		if !entry.Result.Alive && time.Since(entry.LastCheckTime) > s.deadCheckInterval {
-			go s.recheckSingleHost(tsaKey, entry)
+			s.recheckSingleHost(tsaKey, entry)
 			recheckCount++
 		}
 	}
