@@ -1560,7 +1560,7 @@ func (pi *PSQLInteractor) KillBackend(id uint) error {
 // - error: An error if any occurred during the operation.
 func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.ShardHostCtl, stmt *spqrparser.Show) error {
 
-	var filteredShs []shard.ShardHostCtl
+	var filteredShards []shard.ShardHostCtl
 
 	var desc BackendDesc
 	rowDesc := GetColumnsMap(desc)
@@ -1576,10 +1576,10 @@ func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.Shar
 		if !match {
 			continue
 		}
-		filteredShs = append(filteredShs, sh)
+		filteredShards = append(filteredShards, sh)
 	}
 
-	shs = filteredShs
+	shs = filteredShards
 
 	switch gb := stmt.GroupBy.(type) {
 	case spqrparser.GroupBy:
