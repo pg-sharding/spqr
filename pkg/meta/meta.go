@@ -720,6 +720,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		var resp []shard.ShardHostCtl
 		if err := ci.ForEach(func(sh shard.ShardHostCtl) error {
+			// apply filters
 			resp = append(resp, sh)
 			return nil
 		}); err != nil {
