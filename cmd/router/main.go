@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -442,6 +443,11 @@ var runCmd = &cobra.Command{
 			}
 			wg.Done()
 		}(wg)
+
+		// run pprof without wait group
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
 
 		wg.Wait()
 
