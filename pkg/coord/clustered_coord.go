@@ -958,7 +958,20 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		}
 		replRels = make([]string, 0, len(replDs.Relations))
 		for _, r := range replDs.Relations {
-			replRels = append(replRels, r.GetFullName())
+			relExists, err := datatransfers.CheckTableExists(ctx, sourceConn, r.Name, r.GetSchema())
+			if err != nil {
+				return fmt.Errorf("failed to check for relation \"%s\" existence on source shard: %s", r.GetFullName(), err)
+			}
+			if relExists {
+				destRelExists, err := datatransfers.CheckTableExists(ctx, destConn, r.Name, r.GetSchema())
+				if err != nil {
+					return fmt.Errorf("failed to check for relation \"%s\" existence on destination shard: %s", r.GetFullName(), err)
+				}
+				if !destRelExists {
+					return fmt.Errorf("replicated relation \"%s\" exists on source shard, but not on destination shard", r.GetFullName())
+				}
+				replRels = append(replRels, r.GetFullName())
+			}
 		}
 	}
 
