@@ -338,3 +338,60 @@ Scenario: REDISTRIBUTE KEY RANGE allows constraints on reference tables
     REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
     """
     Then command return code should be "0"
+
+Scenario: REDISTRIBUTE KEY RANGE ignores non-existent reference tables while checking for constraints
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE REFERENCE TABLE ref;
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
+    """
+    Then command return code should be "0"
+
+Scenario: REDISTRIBUTE KEY RANGE fails if no replicated relation on destination shard
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE REFERENCE TABLE ref;
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE ref(id INT PRIMARY KEY);
+    CREATE TABLE xMove(w_id INT);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
+    """
+    Then command return code should be "1"
+    And command output should match regexp
+    """
+    replicated relation "public.ref" exists on source shard, but not on destination shard
+    """
