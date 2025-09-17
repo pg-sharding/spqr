@@ -400,7 +400,10 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AlterDistribution:
-		return processAlterDistribution(ctx, stmt.Element, mngr, cli)
+		if stmt.Distribution == nil {
+			return fmt.Errorf("failed to process 'ALTER DISTRIBUTION' statement: distribution ID is nil")
+		}
+		return processAlterDistribution(ctx, stmt.Element, mngr, cli, stmt.Distribution.ID)
 	default:
 		return ErrUnknownCoordinatorCommand
 	}
@@ -416,7 +419,7 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
+func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor, dsId string) error {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AttachRelation:
 
@@ -426,7 +429,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			rels = append(rels, distributions.DistributedRelationFromSQL(drel))
 		}
 
-		if stmt.Distribution.ID == "default" {
+		if dsId == "default" {
 			list, err := mngr.ListDistributions(ctx)
 			if err != nil {
 				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "error while selecting list of distributions")
@@ -437,10 +440,10 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			if len(list) > 1 {
 				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "distributions count not equal one, use FOR DISTRIBUTION syntax")
 			}
-			stmt.Distribution.ID = list[0].Id
+			dsId = list[0].Id
 		}
 
-		selectedDistribId := stmt.Distribution.ID
+		selectedDistribId := dsId
 
 		if err := mngr.AlterDistributionAttach(ctx, selectedDistribId, rels); err != nil {
 			return cli.ReportError(err)
@@ -448,18 +451,18 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 
 		return cli.AlterDistributionAttach(ctx, selectedDistribId, rels)
 	case *spqrparser.DetachRelation:
-		if err := mngr.AlterDistributionDetach(ctx, stmt.Distribution.ID, stmt.RelationName); err != nil {
+		if err := mngr.AlterDistributionDetach(ctx, dsId, stmt.RelationName); err != nil {
 			return err
 		}
-		return cli.AlterDistributionDetach(ctx, stmt.Distribution.ID, stmt.RelationName.String())
+		return cli.AlterDistributionDetach(ctx, dsId, stmt.RelationName.String())
 	case *spqrparser.AlterRelation:
-		if err := mngr.AlterDistributedRelation(ctx, stmt.Distribution.ID, distributions.DistributedRelationFromSQL(stmt.Relation)); err != nil {
+		if err := mngr.AlterDistributedRelation(ctx, dsId, distributions.DistributedRelationFromSQL(stmt.Relation)); err != nil {
 			return err
 		}
 		qName := rfqn.RelationFQN{RelationName: stmt.Relation.Name, SchemaName: stmt.Relation.SchemaName}
-		return cli.AlterDistributedRelation(ctx, stmt.Distribution.ID, qName.String())
+		return cli.AlterDistributedRelation(ctx, dsId, qName.String())
 	case *spqrparser.DropDefaultShard:
-		if distribution, err := mngr.GetDistribution(ctx, stmt.Distribution.ID); err != nil {
+		if distribution, err := mngr.GetDistribution(ctx, dsId); err != nil {
 			return err
 		} else {
 			manager := NewDefaultShardManager(distribution, mngr)
@@ -470,7 +473,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			}
 		}
 	case *spqrparser.AlterDefaultShard:
-		if distribution, err := mngr.GetDistribution(ctx, stmt.Distribution.ID); err != nil {
+		if distribution, err := mngr.GetDistribution(ctx, dsId); err != nil {
 			return err
 		} else {
 			manager := NewDefaultShardManager(distribution, mngr)
@@ -479,8 +482,40 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			}
 			return cli.MakeSimpleResponse(ctx, manager.SuccessCreateResponse(stmt.Shard))
 		}
+	case *spqrparser.AlterRelationV2:
+		return processAlterRelation(ctx, stmt.Element, mngr, cli, dsId, stmt.RelationName)
 	default:
 		return ErrUnknownCoordinatorCommand
+	}
+}
+
+// processAlterDistribution processes the given 'ALTER DISTRIBUTION ALTER RELATION' statement and performs the corresponding operation.
+//
+// Parameters:
+// - ctx (context.Context): The context for the operation.
+// - astmt (spqrparser.Statement): The alter relation statement to be processed.
+// - mngr (EntityMgr): The entity manager for performing the operation.
+// - cli (*clientinteractor.PSQLInteractor): The PSQL client interactor for interacting with the PSQL server.
+// - dsId (string): ID of the distribution, to which the relation belongs.
+// - relName (string): the name of the relation to alter.
+//
+// Returns:
+// - error: An error if the operation fails, otherwise nil.
+func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor, dsId string, relName string) error {
+	switch stmt := astmt.(type) {
+	case *spqrparser.AlterRelationSchema:
+		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, relName, stmt.SchemaName); err != nil {
+			return err
+		}
+		qName := rfqn.RelationFQN{RelationName: relName, SchemaName: stmt.SchemaName}
+		return cli.AlterDistributedRelation(ctx, dsId, qName.String())
+	case *spqrparser.AlterRelationDistributionKey:
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relName, distributions.DistributionKeyFromSQL(stmt.DistributionKey)); err != nil {
+			return err
+		}
+		return cli.AlterDistributedRelation(ctx, dsId, relName)
+	default:
+		return fmt.Errorf("unexpected 'ALTER RELATION' request type %T", stmt)
 	}
 }
 

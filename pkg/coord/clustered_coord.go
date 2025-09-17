@@ -2101,6 +2101,56 @@ func (qc *ClusteredCoordinator) AlterDistributedRelation(ctx context.Context, id
 	})
 }
 
+// AlterDistributedRelationSchema changes the schema name of a relation attached to a distribution
+// TODO: unit tests
+func (qc *ClusteredCoordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
+	if err := qc.Coordinator.AlterDistributedRelationSchema(ctx, id, relName, schemaName); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := proto.NewDistributionServiceClient(cc)
+		resp, err := cl.AlterDistributedRelationSchema(context.TODO(), &proto.AlterDistributedRelationSchemaRequest{
+			Id:           id,
+			RelationName: relName,
+			SchemaName:   schemaName,
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("alter relation schema response")
+		return nil
+	})
+}
+
+// AlterDistributedRelationSchema changes the distribution key of a relation attached to a distribution
+// TODO: unit tests
+func (qc *ClusteredCoordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []distributions.DistributionKeyEntry) error {
+	if err := qc.Coordinator.AlterDistributedRelationDistributionKey(ctx, id, relName, distributionKey); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := proto.NewDistributionServiceClient(cc)
+		resp, err := cl.AlterDistributedRelationDistributionKey(context.TODO(), &proto.AlterDistributedRelationDistributionKeyRequest{
+			Id:              id,
+			RelationName:    relName,
+			DistributionKey: distributions.DistributionKeyToProto(distributionKey),
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("alter relation distribution key response")
+		return nil
+	})
+}
+
 func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string, force bool) error {
 	if err := qc.Coordinator.DropSequence(ctx, seqName, force); err != nil {
 		return err

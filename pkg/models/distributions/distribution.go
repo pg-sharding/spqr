@@ -82,24 +82,12 @@ func DistributedRelationFromDB(rel *qdb.DistributedRelation) *DistributedRelatio
 // Returns:
 //   - *qdb.DistributedRelation: The converted qdb.DistributedRelation object.
 func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation {
-	rdistr := &qdb.DistributedRelation{
-		Name:       rel.Name,
-		SchemaName: rel.SchemaName,
+	return &qdb.DistributedRelation{
+		Name:               rel.Name,
+		SchemaName:         rel.SchemaName,
+		DistributionKey:    DistributionKeyToDB(rel.DistributionKey),
+		ReplicatedRelation: rel.ReplicatedRelation,
 	}
-
-	for _, e := range rel.DistributionKey {
-		rdistr.DistributionKey = append(rdistr.DistributionKey, qdb.DistributionKeyEntry{
-			Column:       e.Column,
-			HashFunction: e.HashFunction,
-			Expr: qdb.RoutingExpr{
-				ColRefs: TypedColRefToDB(e.Expr.ColRefs),
-			},
-		})
-	}
-
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
-
-	return rdistr
 }
 
 func RoutingExprToProto(in RoutingExpr) *proto.RoutingExpr {
@@ -138,22 +126,58 @@ func RoutingExprFromProto(in *proto.RoutingExpr) RoutingExpr {
 //   - *proto.DistributedRelation: The converted proto.DistributedRelation object.
 func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRelation {
 	rdistr := &proto.DistributedRelation{
-		Name:            rel.Name,
-		SchemaName:      rel.SchemaName,
-		SequenceColumns: rel.ColumnSequenceMapping,
+		Name:               rel.Name,
+		SchemaName:         rel.SchemaName,
+		SequenceColumns:    rel.ColumnSequenceMapping,
+		DistributionKey:    DistributionKeyToProto(rel.DistributionKey),
+		ReplicatedRelation: rel.ReplicatedRelation,
 	}
 
-	for _, e := range rel.DistributionKey {
-		rdistr.DistributionKey = append(rdistr.DistributionKey, &proto.DistributionKeyEntry{
+	return rdistr
+}
+
+// DistributionKeyToProto converts an array of DistributionKeyEntry's to *proto.DistributionKeyEntry objects.
+//
+// Parameters:
+//   - key ([]DistributionKeyEntry): The array to convert.
+//
+// Returns:
+//   - []*proto.DistributionKeyEntry: The converted array.
+func DistributionKeyToProto(key []DistributionKeyEntry) []*proto.DistributionKeyEntry {
+	res := make([]*proto.DistributionKeyEntry, len(key))
+	for i, e := range key {
+		res[i] = &proto.DistributionKeyEntry{
 			Column:       e.Column,
 			HashFunction: e.HashFunction,
 			Expr:         RoutingExprToProto(e.Expr),
-		})
+		}
 	}
+	return res
+}
 
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
-
-	return rdistr
+// DistributionKeyFromProto converts an array of *proto.DistributionKeyEntry's to DistributionKeyEntry objects.
+//
+// Parameters:
+//   - key ([]*proto.DistributionKeyEntry): The array to convert.
+//
+// Returns:
+//   - []DistributionKeyEntry: The converted array.
+//   - error: An error if request is malformed, nil otherwise.
+func DistributionKeyFromProto(key []*proto.DistributionKeyEntry) ([]DistributionKeyEntry, error) {
+	res := make([]DistributionKeyEntry, len(key))
+	for i, e := range key {
+		if len(e.Column) == 0 {
+			if len(e.GetExpr().ColRefs) == 0 {
+				return nil, fmt.Errorf("invalid input for distribution entry")
+			}
+		}
+		res[i] = DistributionKeyEntry{
+			Column:       e.Column,
+			HashFunction: e.HashFunction,
+			Expr:         RoutingExprFromProto(e.Expr),
+		}
+	}
+	return res, nil
 }
 
 // DistributedRelationFromProto converts a proto.DistributedRelation object to a DistributedRelation object.
@@ -164,28 +188,18 @@ func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRela
 // Returns:
 //   - *DistributedRelation: The created DistributedRelation object.
 func DistributedRelationFromProto(rel *proto.DistributedRelation) (*DistributedRelation, error) {
-	rdistr := &DistributedRelation{
+	key, err := DistributionKeyFromProto(rel.DistributionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DistributedRelation{
 		Name:                  rel.Name,
 		SchemaName:            rel.SchemaName,
 		ColumnSequenceMapping: rel.SequenceColumns,
-	}
-
-	for _, e := range rel.DistributionKey {
-		if len(e.Column) == 0 {
-			if len(e.GetExpr().ColRefs) == 0 {
-				return nil, fmt.Errorf("invalid input for distribution entry")
-			}
-		}
-		rdistr.DistributionKey = append(rdistr.DistributionKey, DistributionKeyEntry{
-			Column:       e.Column,
-			HashFunction: e.HashFunction,
-			Expr:         RoutingExprFromProto(e.Expr),
-		})
-	}
-
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
-
-	return rdistr, nil
+		DistributionKey:       key,
+		ReplicatedRelation:    rel.ReplicatedRelation,
+	}, nil
 }
 
 func TypedColRefFromSQL(in []spqrparser.TypedColRef) []TypedColRef {
@@ -235,28 +249,65 @@ func TypedColRefFromDB(in []qdb.TypedColRef) []TypedColRef {
 // Returns:
 //   - *DistributedRelation: The created DistributedRelation object.
 func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *DistributedRelation {
-	rdistr := &DistributedRelation{
+	return &DistributedRelation{
 		Name:                  rel.Name,
 		SchemaName:            rel.SchemaName,
-		ColumnSequenceMapping: map[string]string{},
+		DistributionKey:       DistributionKeyFromSQL(rel.DistributionKey),
+		ColumnSequenceMapping: ColumnSequenceMappingFromSQL(rel.Name, rel.AutoIncrementEntries),
+		ReplicatedRelation:    rel.ReplicatedRelation,
 	}
+}
 
-	for _, e := range rel.DistributionKey {
-		rdistr.DistributionKey = append(rdistr.DistributionKey, DistributionKeyEntry{
+// DistributionKeyFromSQL converts an array of spqrparser.DistributionKeyEntry's to DistributionKeyEntry objects.
+//
+// Parameters:
+//   - key ([]spqrparser.DistributionKeyEntry): The array to convert.
+//
+// Returns:
+//   - []DistributionKeyEntry: The converted array.
+func DistributionKeyFromSQL(dsKey []spqrparser.DistributionKeyEntry) []DistributionKeyEntry {
+	res := make([]DistributionKeyEntry, len(dsKey))
+	for i, e := range dsKey {
+		res[i] = DistributionKeyEntry{
 			Column:       e.Column,
 			HashFunction: e.HashFunction,
 			Expr: RoutingExpr{
 				ColRefs: TypedColRefFromSQL(e.Expr),
 			},
-		})
-	}
-	for _, entry := range rel.AutoIncrementEntries {
-		rdistr.ColumnSequenceMapping[entry.Column] = SequenceName(rel.Name, entry.Column)
+		}
 	}
 
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
+	return res
+}
 
-	return rdistr
+// DistributionKeyToDB converts an array of DistributionKeyEntry's to qdb.DistributionKeyEntry objects.
+//
+// Parameters:
+//   - key ([]DistributionKeyEntry): The array to convert.
+//
+// Returns:
+//   - []qdb.DistributionKeyEntry: The converted array.
+func DistributionKeyToDB(key []DistributionKeyEntry) []qdb.DistributionKeyEntry {
+	res := make([]qdb.DistributionKeyEntry, len(key))
+	for i, e := range key {
+		res[i] = qdb.DistributionKeyEntry{
+			Column:       e.Column,
+			HashFunction: e.HashFunction,
+			Expr: qdb.RoutingExpr{
+				ColRefs: TypedColRefToDB(e.Expr.ColRefs),
+			},
+		}
+	}
+	return res
+}
+
+func ColumnSequenceMappingFromSQL(relName string, autoInc []*spqrparser.AutoIncrementEntry) map[string]string {
+	res := make(map[string]string)
+	for _, entry := range autoInc {
+		res[entry.Column] = SequenceName(relName, entry.Column)
+	}
+
+	return res
 }
 
 type Distribution struct {

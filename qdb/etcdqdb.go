@@ -1297,6 +1297,61 @@ func (q *EtcdQDB) AlterDistributedRelation(ctx context.Context, id string, rel *
 }
 
 // TODO : unit tests
+func (q *EtcdQDB) AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Str("relName", relName).
+		Str("schemaName", schemaName).
+		Msg("etcdqdb: alter distributed relation schema")
+
+	distribution, err := q.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if _, ok := distribution.Relations[relName]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relName)
+	}
+	distribution.Relations[relName].SchemaName = schemaName
+	if ds, err := q.GetRelationDistribution(ctx, &rfqn.RelationFQN{RelationName: relName}); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relName)
+	} else if ds.ID != id {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relName, ds.ID, id)
+	}
+
+	err = q.CreateDistribution(ctx, distribution)
+
+	return err
+}
+
+// TODO : unit tests
+func (q *EtcdQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []DistributionKeyEntry) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Str("relName", relName).
+		Msg("etcdqdb: alter distributed relation distribution key")
+
+	distribution, err := q.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if _, ok := distribution.Relations[relName]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relName)
+	}
+	distribution.Relations[relName].DistributionKey = distributionKey
+	if ds, err := q.GetRelationDistribution(ctx, &rfqn.RelationFQN{RelationName: relName}); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relName)
+	} else if ds.ID != id {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relName, ds.ID, id)
+	}
+
+	err = q.CreateDistribution(ctx, distribution)
+
+	return err
+}
+
+// TODO : unit tests
 func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).

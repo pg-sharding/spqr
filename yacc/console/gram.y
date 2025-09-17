@@ -79,7 +79,7 @@ func randomHex(n int) (string, error) {
 	alter                  *Alter
 	alter_distribution     *AlterDistribution
 	distributed_relation   *DistributedRelation
-	alter_default_shard     *AlterDefaultShard
+	alter_default_shard    *AlterDefaultShard
 	
 	relations              []*DistributedRelation
 	relation               *DistributedRelation
@@ -109,6 +109,8 @@ func randomHex(n int) (string, error) {
 
 	typedColRef         	TypedColRef
 	routingExpr				[]TypedColRef
+
+	alter_relation          *AlterRelationV2
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -241,8 +243,9 @@ func randomHex(n int) (string, error) {
 %type<relations> relation_attach_stmt
 %type<relations> distributed_relation_list_def
 
-%type<distributed_relation> relation_alter_stmt
 %type<distributed_relation> distributed_relation_def
+
+%type<alter_relation> relation_alter_stmt_v2
 
 %type<strlist> col_types_list opt_col_types any_id_list opt_on_shards
 %type<str> col_types_elem
@@ -633,8 +636,8 @@ distribution_alter_stmt:
 	distribution_select_stmt relation_attach_stmt
 	{
 		$$ = &AlterDistribution{
+			Distribution: $1,
 			Element: &AttachRelation{
-				Distribution: $1,
 				Relations:     $2,
 			},
 		}
@@ -642,26 +645,24 @@ distribution_alter_stmt:
 	distribution_select_stmt DETACH RELATION qualified_name
 	{
 		$$ = &AlterDistribution{
+			Distribution: $1,
 			Element: &DetachRelation{
-				Distribution: $1,
 				RelationName: $4,
 			},
 		}
 	} |
-	distribution_select_stmt relation_alter_stmt
+	distribution_select_stmt relation_alter_stmt_v2
 	{
 		$$ = &AlterDistribution{
-			Element: &AlterRelation{
-				Distribution: $1,
-				Relation: $2,
-			},
+			Distribution: $1,
+			Element: $2,
 		}
 	} |
 	distribution_select_stmt ADD DEFAULT SHARD any_id
 	{
 		$$ = &AlterDistribution{
+			Distribution: $1,
 			Element: &AlterDefaultShard{
-				Distribution: $1,
 				Shard: $5,
 			},
 		}
@@ -669,7 +670,8 @@ distribution_alter_stmt:
 	distribution_select_stmt DROP DEFAULT SHARD
 	{
 		$$ = &AlterDistribution{
-			Element: &DropDefaultShard{ Distribution: $1 },
+			Distribution: $1,
+			Element: &DropDefaultShard{},
 		}
 	}
 
@@ -816,9 +818,22 @@ relation_attach_stmt:
 		$$ = $2
 	}
 
-relation_alter_stmt:
-	ALTER distributed_relation_def {
-		$$ = $2
+relation_alter_stmt_v2:
+	ALTER RELATION qualified_name DISTRIBUTION KEY distribution_key_argument_list {
+		$$ = &AlterRelationV2{
+			RelationName: $3.RelationName,
+			Element: &AlterRelationDistributionKey{
+				DistributionKey: $6,
+			},
+		}
+	} |
+	ALTER RELATION qualified_name SCHEMA any_id {
+		$$ = &AlterRelationV2{
+			RelationName: $3.RelationName,
+			Element: &AlterRelationSchema {
+				SchemaName: $5,
+			},
+		}
 	}
 
 opt_distributed:
@@ -882,8 +897,8 @@ create_distributed_relation_stmt:
 	{
 		$$ = &Alter{
 			Element: &AlterDistribution{
+				Distribution: 	$4,
 				Element: &AttachRelation{
-					Distribution: 	$4,
 					Relations:      []*DistributedRelation{$3},
 				},
 			},

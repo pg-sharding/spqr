@@ -327,6 +327,34 @@ func (mr *MockQDBMockRecorder) AlterDistributedRelation(ctx, id, rel any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelation", reflect.TypeOf((*MockQDB)(nil).AlterDistributedRelation), ctx, id, rel)
 }
 
+// AlterDistributedRelationDistributionKey mocks base method.
+func (m *MockQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id, relName string, distributionKey []qdb.DistributionKeyEntry) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterDistributedRelationDistributionKey", ctx, id, relName, distributionKey)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterDistributedRelationDistributionKey indicates an expected call of AlterDistributedRelationDistributionKey.
+func (mr *MockQDBMockRecorder) AlterDistributedRelationDistributionKey(ctx, id, relName, distributionKey any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationDistributionKey", reflect.TypeOf((*MockQDB)(nil).AlterDistributedRelationDistributionKey), ctx, id, relName, distributionKey)
+}
+
+// AlterDistributedRelationSchema mocks base method.
+func (m *MockQDB) AlterDistributedRelationSchema(ctx context.Context, id, relName, schemaName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterDistributedRelationSchema", ctx, id, relName, schemaName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterDistributedRelationSchema indicates an expected call of AlterDistributedRelationSchema.
+func (mr *MockQDBMockRecorder) AlterDistributedRelationSchema(ctx, id, relName, schemaName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationSchema", reflect.TypeOf((*MockQDB)(nil).AlterDistributedRelationSchema), ctx, id, relName, schemaName)
+}
+
 // AlterDistributionAttach mocks base method.
 func (m *MockQDB) AlterDistributionAttach(ctx context.Context, id string, rels []*qdb.DistributedRelation) error {
 	m.ctrl.T.Helper()
@@ -1143,6 +1171,34 @@ func (m *MockXQDB) AlterDistributedRelation(ctx context.Context, id string, rel 
 func (mr *MockXQDBMockRecorder) AlterDistributedRelation(ctx, id, rel any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelation", reflect.TypeOf((*MockXQDB)(nil).AlterDistributedRelation), ctx, id, rel)
+}
+
+// AlterDistributedRelationDistributionKey mocks base method.
+func (m *MockXQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id, relName string, distributionKey []qdb.DistributionKeyEntry) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterDistributedRelationDistributionKey", ctx, id, relName, distributionKey)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterDistributedRelationDistributionKey indicates an expected call of AlterDistributedRelationDistributionKey.
+func (mr *MockXQDBMockRecorder) AlterDistributedRelationDistributionKey(ctx, id, relName, distributionKey any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationDistributionKey", reflect.TypeOf((*MockXQDB)(nil).AlterDistributedRelationDistributionKey), ctx, id, relName, distributionKey)
+}
+
+// AlterDistributedRelationSchema mocks base method.
+func (m *MockXQDB) AlterDistributedRelationSchema(ctx context.Context, id, relName, schemaName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterDistributedRelationSchema", ctx, id, relName, schemaName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterDistributedRelationSchema indicates an expected call of AlterDistributedRelationSchema.
+func (mr *MockXQDBMockRecorder) AlterDistributedRelationSchema(ctx, id, relName, schemaName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationSchema", reflect.TypeOf((*MockXQDB)(nil).AlterDistributedRelationSchema), ctx, id, relName, schemaName)
 }
 
 // AlterDistributionAttach mocks base method.

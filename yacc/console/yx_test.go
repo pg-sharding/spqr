@@ -719,6 +719,7 @@ func TestAlter(t *testing.T) {
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -730,7 +731,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -740,6 +740,7 @@ func TestAlter(t *testing.T) {
 			query: "CREATE DISTRIBUTED RELATION t DISTRIBUTION KEY id IN ds1;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -751,7 +752,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -762,6 +762,7 @@ func TestAlter(t *testing.T) {
 			query: "CREATE RELATION t (id) IN ds1;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -773,7 +774,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -784,6 +784,7 @@ func TestAlter(t *testing.T) {
 			query: "CREATE RELATION t (id);",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "default"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -795,7 +796,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "default"},
 					},
 				},
 			},
@@ -806,6 +806,7 @@ func TestAlter(t *testing.T) {
 			query: "CREATE DISTRIBUTED RELATION t (id) IN ds1;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -817,7 +818,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -828,6 +828,7 @@ func TestAlter(t *testing.T) {
 			query: "CREATE DISTRIBUTED RELATION t (MURMUR [id1 INT HASH, id2 VARCHAR HASH]);",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "default"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -849,7 +850,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "default"},
 					},
 				},
 			},
@@ -860,6 +860,7 @@ func TestAlter(t *testing.T) {
 			query: "CREATE DISTRIBUTED RELATION 'ss' (uid HASH MURMUR) IN dd;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "dd"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -872,7 +873,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "dd"},
 					},
 				},
 			},
@@ -883,6 +883,7 @@ func TestAlter(t *testing.T) {
 			query: `CREATE DISTRIBUTED RELATION "ss" (uid HASH MURMUR) IN dd;`,
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "dd"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -895,7 +896,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "dd"},
 					},
 				},
 			},
@@ -906,6 +906,7 @@ func TestAlter(t *testing.T) {
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1, id2;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -920,7 +921,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -931,6 +931,7 @@ func TestAlter(t *testing.T) {
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t (id1, id2);",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -945,7 +946,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -955,6 +955,7 @@ func TestAlter(t *testing.T) {
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1, id2 HASH FUNCTION murmur;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -970,7 +971,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -981,6 +981,7 @@ func TestAlter(t *testing.T) {
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t (id1, id2 HASH FUNCTION murmur);",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -996,7 +997,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -1013,6 +1013,7 @@ func TestAlter(t *testing.T) {
 			`,
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -1040,7 +1041,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -1051,9 +1051,9 @@ func TestAlter(t *testing.T) {
 			query: "ALTER DISTRIBUTION ds1 DETACH RELATION t;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.DetachRelation{
 						RelationName: &rfqn.RelationFQN{RelationName: "t"},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -1063,10 +1063,9 @@ func TestAlter(t *testing.T) {
 			query: "ALTER DISTRIBUTION ds1 DETACH RELATION schema1.t;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.DetachRelation{
 						RelationName: &rfqn.RelationFQN{RelationName: "t", SchemaName: "schema1"},
-
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -1076,6 +1075,7 @@ func TestAlter(t *testing.T) {
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1 AUTO INCREMENT id1, id2;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -1095,7 +1095,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -1104,6 +1103,7 @@ func TestAlter(t *testing.T) {
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1 AUTO INCREMENT id1 START 123, id2 START 321;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -1125,7 +1125,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -1134,6 +1133,7 @@ func TestAlter(t *testing.T) {
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id SCHEMA test;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -1146,7 +1146,6 @@ func TestAlter(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -1156,36 +1155,31 @@ func TestAlter(t *testing.T) {
 			query: "ALTER DISTRIBUTION ds1 ALTER RELATION t DISTRIBUTION KEY id;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
-					Element: &spqrparser.AlterRelation{
-						Relation: &spqrparser.DistributedRelation{
-							Name: "t",
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					Element: &spqrparser.AlterRelationV2{
+						RelationName: "t",
+						Element: &spqrparser.AlterRelationDistributionKey{
 							DistributionKey: []spqrparser.DistributionKeyEntry{
 								{
 									Column: "id",
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
 			err: nil,
 		},
 		{
-			query: "ALTER DISTRIBUTION ds1 ALTER RELATION t DISTRIBUTION KEY id SCHEMA test;",
+			query: "ALTER DISTRIBUTION ds1 ALTER RELATION t SCHEMA test;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
-					Element: &spqrparser.AlterRelation{
-						Relation: &spqrparser.DistributedRelation{
-							Name:       "t",
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					Element: &spqrparser.AlterRelationV2{
+						RelationName: "t",
+						Element: &spqrparser.AlterRelationSchema{
 							SchemaName: "test",
-							DistributionKey: []spqrparser.DistributionKeyEntry{
-								{
-									Column: "id",
-								},
-							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},
@@ -1599,9 +1593,9 @@ func TestDistributionDefaultShard(t *testing.T) {
 			query: "ALTER DISTRIBUTION distr1 ADD DEFAULT SHARD sh1;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "distr1"},
 					Element: &spqrparser.AlterDefaultShard{
-						Shard:        "sh1",
-						Distribution: &spqrparser.DistributionSelector{ID: "distr1"},
+						Shard: "sh1",
 					},
 				},
 			},
@@ -1611,9 +1605,8 @@ func TestDistributionDefaultShard(t *testing.T) {
 			query: "ALTER DISTRIBUTION distr1 DROP DEFAULT SHARD;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
-					Element: &spqrparser.DropDefaultShard{
-						Distribution: &spqrparser.DistributionSelector{ID: "distr1"},
-					},
+					Distribution: &spqrparser.DistributionSelector{ID: "distr1"},
+					Element:      &spqrparser.DropDefaultShard{},
 				},
 			},
 			err: nil,
@@ -1643,6 +1636,7 @@ func TestRelationQualifiedName(t *testing.T) {
 			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION sch1.table1 DISTRIBUTION KEY id;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
@@ -1655,7 +1649,6 @@ func TestRelationQualifiedName(t *testing.T) {
 								},
 							},
 						},
-						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
 				},
 			},

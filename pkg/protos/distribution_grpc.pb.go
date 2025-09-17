@@ -20,19 +20,21 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	DistributionService_CreateDistribution_FullMethodName       = "/spqr.DistributionService/CreateDistribution"
-	DistributionService_DropDistribution_FullMethodName         = "/spqr.DistributionService/DropDistribution"
-	DistributionService_ListDistributions_FullMethodName        = "/spqr.DistributionService/ListDistributions"
-	DistributionService_AlterDistributionAttach_FullMethodName  = "/spqr.DistributionService/AlterDistributionAttach"
-	DistributionService_AlterDistributionDetach_FullMethodName  = "/spqr.DistributionService/AlterDistributionDetach"
-	DistributionService_AlterDistributedRelation_FullMethodName = "/spqr.DistributionService/AlterDistributedRelation"
-	DistributionService_GetDistribution_FullMethodName          = "/spqr.DistributionService/GetDistribution"
-	DistributionService_GetRelationDistribution_FullMethodName  = "/spqr.DistributionService/GetRelationDistribution"
-	DistributionService_NextRange_FullMethodName                = "/spqr.DistributionService/NextRange"
-	DistributionService_CurrVal_FullMethodName                  = "/spqr.DistributionService/CurrVal"
-	DistributionService_ListSequences_FullMethodName            = "/spqr.DistributionService/ListSequences"
-	DistributionService_ListRelationSequences_FullMethodName    = "/spqr.DistributionService/ListRelationSequences"
-	DistributionService_DropSequence_FullMethodName             = "/spqr.DistributionService/DropSequence"
+	DistributionService_CreateDistribution_FullMethodName                      = "/spqr.DistributionService/CreateDistribution"
+	DistributionService_DropDistribution_FullMethodName                        = "/spqr.DistributionService/DropDistribution"
+	DistributionService_ListDistributions_FullMethodName                       = "/spqr.DistributionService/ListDistributions"
+	DistributionService_AlterDistributionAttach_FullMethodName                 = "/spqr.DistributionService/AlterDistributionAttach"
+	DistributionService_AlterDistributionDetach_FullMethodName                 = "/spqr.DistributionService/AlterDistributionDetach"
+	DistributionService_AlterDistributedRelation_FullMethodName                = "/spqr.DistributionService/AlterDistributedRelation"
+	DistributionService_AlterDistributedRelationSchema_FullMethodName          = "/spqr.DistributionService/AlterDistributedRelationSchema"
+	DistributionService_AlterDistributedRelationDistributionKey_FullMethodName = "/spqr.DistributionService/AlterDistributedRelationDistributionKey"
+	DistributionService_GetDistribution_FullMethodName                         = "/spqr.DistributionService/GetDistribution"
+	DistributionService_GetRelationDistribution_FullMethodName                 = "/spqr.DistributionService/GetRelationDistribution"
+	DistributionService_NextRange_FullMethodName                               = "/spqr.DistributionService/NextRange"
+	DistributionService_CurrVal_FullMethodName                                 = "/spqr.DistributionService/CurrVal"
+	DistributionService_ListSequences_FullMethodName                           = "/spqr.DistributionService/ListSequences"
+	DistributionService_ListRelationSequences_FullMethodName                   = "/spqr.DistributionService/ListRelationSequences"
+	DistributionService_DropSequence_FullMethodName                            = "/spqr.DistributionService/DropSequence"
 )
 
 // DistributionServiceClient is the client API for DistributionService service.
@@ -45,6 +47,8 @@ type DistributionServiceClient interface {
 	AlterDistributionAttach(ctx context.Context, in *AlterDistributionAttachRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	AlterDistributionDetach(ctx context.Context, in *AlterDistributionDetachRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	AlterDistributedRelation(ctx context.Context, in *AlterDistributedRelationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	AlterDistributedRelationSchema(ctx context.Context, in *AlterDistributedRelationSchemaRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	AlterDistributedRelationDistributionKey(ctx context.Context, in *AlterDistributedRelationDistributionKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetDistribution(ctx context.Context, in *GetDistributionRequest, opts ...grpc.CallOption) (*GetDistributionReply, error)
 	GetRelationDistribution(ctx context.Context, in *GetRelationDistributionRequest, opts ...grpc.CallOption) (*GetRelationDistributionReply, error)
 	NextRange(ctx context.Context, in *NextRangeRequest, opts ...grpc.CallOption) (*NextRangeReply, error)
@@ -116,6 +120,26 @@ func (c *distributionServiceClient) AlterDistributedRelation(ctx context.Context
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, DistributionService_AlterDistributedRelation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *distributionServiceClient) AlterDistributedRelationSchema(ctx context.Context, in *AlterDistributedRelationSchemaRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, DistributionService_AlterDistributedRelationSchema_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *distributionServiceClient) AlterDistributedRelationDistributionKey(ctx context.Context, in *AlterDistributedRelationDistributionKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, DistributionService_AlterDistributedRelationDistributionKey_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -202,6 +226,8 @@ type DistributionServiceServer interface {
 	AlterDistributionAttach(context.Context, *AlterDistributionAttachRequest) (*emptypb.Empty, error)
 	AlterDistributionDetach(context.Context, *AlterDistributionDetachRequest) (*emptypb.Empty, error)
 	AlterDistributedRelation(context.Context, *AlterDistributedRelationRequest) (*emptypb.Empty, error)
+	AlterDistributedRelationSchema(context.Context, *AlterDistributedRelationSchemaRequest) (*emptypb.Empty, error)
+	AlterDistributedRelationDistributionKey(context.Context, *AlterDistributedRelationDistributionKeyRequest) (*emptypb.Empty, error)
 	GetDistribution(context.Context, *GetDistributionRequest) (*GetDistributionReply, error)
 	GetRelationDistribution(context.Context, *GetRelationDistributionRequest) (*GetRelationDistributionReply, error)
 	NextRange(context.Context, *NextRangeRequest) (*NextRangeReply, error)
@@ -236,6 +262,12 @@ func (UnimplementedDistributionServiceServer) AlterDistributionDetach(context.Co
 }
 func (UnimplementedDistributionServiceServer) AlterDistributedRelation(context.Context, *AlterDistributedRelationRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AlterDistributedRelation not implemented")
+}
+func (UnimplementedDistributionServiceServer) AlterDistributedRelationSchema(context.Context, *AlterDistributedRelationSchemaRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AlterDistributedRelationSchema not implemented")
+}
+func (UnimplementedDistributionServiceServer) AlterDistributedRelationDistributionKey(context.Context, *AlterDistributedRelationDistributionKeyRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AlterDistributedRelationDistributionKey not implemented")
 }
 func (UnimplementedDistributionServiceServer) GetDistribution(context.Context, *GetDistributionRequest) (*GetDistributionReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDistribution not implemented")
@@ -383,6 +415,42 @@ func _DistributionService_AlterDistributedRelation_Handler(srv interface{}, ctx 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(DistributionServiceServer).AlterDistributedRelation(ctx, req.(*AlterDistributedRelationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DistributionService_AlterDistributedRelationSchema_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AlterDistributedRelationSchemaRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistributionServiceServer).AlterDistributedRelationSchema(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistributionService_AlterDistributedRelationSchema_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistributionServiceServer).AlterDistributedRelationSchema(ctx, req.(*AlterDistributedRelationSchemaRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DistributionService_AlterDistributedRelationDistributionKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AlterDistributedRelationDistributionKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistributionServiceServer).AlterDistributedRelationDistributionKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistributionService_AlterDistributedRelationDistributionKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistributionServiceServer).AlterDistributedRelationDistributionKey(ctx, req.(*AlterDistributedRelationDistributionKeyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -543,6 +611,14 @@ var DistributionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AlterDistributedRelation",
 			Handler:    _DistributionService_AlterDistributedRelation_Handler,
+		},
+		{
+			MethodName: "AlterDistributedRelationSchema",
+			Handler:    _DistributionService_AlterDistributedRelationSchema_Handler,
+		},
+		{
+			MethodName: "AlterDistributedRelationDistributionKey",
+			Handler:    _DistributionService_AlterDistributedRelationDistributionKey_Handler,
 		},
 		{
 			MethodName: "GetDistribution",

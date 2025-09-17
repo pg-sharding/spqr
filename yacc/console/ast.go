@@ -270,7 +270,8 @@ type DistributionAlterStatement interface {
 }
 
 type AlterDistribution struct {
-	Element Statement
+	Distribution *DistributionSelector
+	Element      Statement
 }
 
 func (*AlterDistribution) iStatement()         {}
@@ -297,8 +298,7 @@ type DistributedRelation struct {
 }
 
 type AttachRelation struct {
-	Distribution *DistributionSelector
-	Relations    []*DistributedRelation
+	Relations []*DistributedRelation
 }
 
 func (*AttachRelation) iStatement()         {}
@@ -306,16 +306,42 @@ func (*AttachRelation) iAlter()             {}
 func (*AttachRelation) iAlterDistribution() {}
 
 type AlterRelation struct {
-	Distribution *DistributionSelector
-	Relation     *DistributedRelation
+	Relation *DistributedRelation
 }
 
 func (*AlterRelation) iStatement()         {}
 func (*AlterRelation) iAlter()             {}
 func (*AlterRelation) iAlterDistribution() {}
 
+type AlterRelationV2 struct {
+	RelationName string
+	Element      RelationAlterStmt
+}
+
+func (*AlterRelationV2) iStatement()         {}
+func (*AlterRelationV2) iAlter()             {}
+func (*AlterRelationV2) iAlterDistribution() {}
+
+type RelationAlterStmt interface {
+	iAlterRelation()
+	iStatement()
+}
+
+type AlterRelationSchema struct {
+	SchemaName string
+}
+
+func (*AlterRelationSchema) iStatement()     {}
+func (*AlterRelationSchema) iAlterRelation() {}
+
+type AlterRelationDistributionKey struct {
+	DistributionKey []DistributionKeyEntry
+}
+
+func (*AlterRelationDistributionKey) iStatement()     {}
+func (*AlterRelationDistributionKey) iAlterRelation() {}
+
 type DetachRelation struct {
-	Distribution *DistributionSelector
 	RelationName *rfqn.RelationFQN
 }
 
@@ -324,8 +350,7 @@ func (*DetachRelation) iAlter()             {}
 func (*DetachRelation) iAlterDistribution() {}
 
 type AlterDefaultShard struct {
-	Distribution *DistributionSelector
-	Shard        string
+	Shard string
 }
 
 func (*AlterDefaultShard) iStatement()         {}
@@ -333,7 +358,6 @@ func (*AlterDefaultShard) iAlter()             {}
 func (*AlterDefaultShard) iAlterDistribution() {}
 
 type DropDefaultShard struct {
-	Distribution *DistributionSelector
 }
 
 func (*DropDefaultShard) iStatement()         {}

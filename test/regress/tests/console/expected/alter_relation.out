@@ -44,6 +44,8 @@ SHOW relations;
 (1 row)
 
 ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;
+ERROR:  syntax error
+ALTER DISTRIBUTION ds1 ALTER RELATION a SCHEMA schema_name;
           alter relation          
 ----------------------------------
  relation name   -> schema_name.a

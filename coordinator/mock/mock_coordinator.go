@@ -92,6 +92,34 @@ func (mr *MockCoordinatorMockRecorder) AlterDistributedRelation(ctx, id, rel any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelation", reflect.TypeOf((*MockCoordinator)(nil).AlterDistributedRelation), ctx, id, rel)
 }
 
+// AlterDistributedRelationDistributionKey mocks base method.
+func (m *MockCoordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id, relName string, distributionKey []distributions.DistributionKeyEntry) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterDistributedRelationDistributionKey", ctx, id, relName, distributionKey)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterDistributedRelationDistributionKey indicates an expected call of AlterDistributedRelationDistributionKey.
+func (mr *MockCoordinatorMockRecorder) AlterDistributedRelationDistributionKey(ctx, id, relName, distributionKey any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationDistributionKey", reflect.TypeOf((*MockCoordinator)(nil).AlterDistributedRelationDistributionKey), ctx, id, relName, distributionKey)
+}
+
+// AlterDistributedRelationSchema mocks base method.
+func (m *MockCoordinator) AlterDistributedRelationSchema(ctx context.Context, id, relName, schemaName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterDistributedRelationSchema", ctx, id, relName, schemaName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterDistributedRelationSchema indicates an expected call of AlterDistributedRelationSchema.
+func (mr *MockCoordinatorMockRecorder) AlterDistributedRelationSchema(ctx, id, relName, schemaName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationSchema", reflect.TypeOf((*MockCoordinator)(nil).AlterDistributedRelationSchema), ctx, id, relName, schemaName)
+}
+
 // AlterDistributionAttach mocks base method.
 func (m *MockCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
 	m.ctrl.T.Helper()

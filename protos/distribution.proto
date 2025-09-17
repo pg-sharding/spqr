@@ -58,6 +58,18 @@ message AlterDistributionDetachRequest{
   repeated QualifiedName relNames = 2;
 }
 
+message AlterDistributedRelationSchemaRequest{
+  string id = 1;
+  string relationName = 2;
+  string schemaName = 3;
+}
+
+message AlterDistributedRelationDistributionKeyRequest{
+  string id = 1;
+  string relationName = 2;
+  repeated DistributionKeyEntry distributionKey = 3;
+}
+
 message AlterDistributedRelationRequest{
   string id = 1;
   DistributedRelation relation = 2;
@@ -124,6 +136,8 @@ service DistributionService {
   rpc AlterDistributionAttach(AlterDistributionAttachRequest) returns (google.protobuf.Empty) {}
   rpc AlterDistributionDetach(AlterDistributionDetachRequest) returns (google.protobuf.Empty) {}
   rpc AlterDistributedRelation(AlterDistributedRelationRequest) returns (google.protobuf.Empty) {}
+  rpc AlterDistributedRelationSchema(AlterDistributedRelationSchemaRequest) returns (google.protobuf.Empty) {}
+  rpc AlterDistributedRelationDistributionKey(AlterDistributedRelationDistributionKeyRequest) returns (google.protobuf.Empty) {}
 
   rpc GetDistribution(GetDistributionRequest) returns (GetDistributionReply) {}
 

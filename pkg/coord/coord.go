@@ -95,6 +95,26 @@ func (lc *Coordinator) AlterDistributedRelation(ctx context.Context, id string, 
 	return nil
 }
 
+// AlterDistributedRelationDistributionKey implements meta.EntityMgr.
+func (lc *Coordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []distributions.DistributionKeyEntry) error {
+	if id == distributions.REPLICATED {
+		return fmt.Errorf("setting distribution key is forbidden for reference relations")
+	}
+	ds, err := lc.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
+	if len(ds.ColTypes) != len(distributionKey) {
+		return fmt.Errorf("cannot alter relation \"%s\" distribution key: numbers of columns mismatch", relName)
+	}
+	return lc.qdb.AlterDistributedRelationDistributionKey(ctx, id, relName, distributions.DistributionKeyToDB(distributionKey))
+}
+
+// AlterDistributedRelationSchema implements meta.EntityMgr.
+func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
+	return lc.qdb.AlterDistributedRelationSchema(ctx, id, relName, schemaName)
+}
+
 // BatchMoveKeyRange implements meta.EntityMgr.
 func (lc *Coordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
 	panic("unimplemented")

@@ -605,7 +605,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     When I run SQL on host "coordinator" with timeout "150" seconds
     """
-    ALTER DISTRIBUTION ds1 ALTER RELATION xMove DISTRIBUTION KEY w_id SCHEMA my_schema;
+    ALTER DISTRIBUTION ds1 ALTER RELATION xMove SCHEMA my_schema;
     ALTER DISTRIBUTION ds1 DETACH RELATION xMove2;
     REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 100 APPLY;
     """
@@ -647,7 +647,7 @@ Feature: Redistribution test
     When I execute SQL on host "coordinator"
     """
     ALTER DISTRIBUTION ds1 ATTACH RELATION xMove2 DISTRIBUTION KEY w_id;
-    ALTER DISTRIBUTION ds1 ALTER RELATION xMove DISTRIBUTION KEY w_id SCHEMA my_schema;
+    ALTER DISTRIBUTION ds1 ALTER RELATION xMove SCHEMA my_schema;
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
