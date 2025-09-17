@@ -339,7 +339,7 @@ Scenario: REDISTRIBUTE KEY RANGE allows constraints on reference tables
     """
     Then command return code should be "0"
 
-Scenario: REDISTRIBUTE KEY RANGE ingores non-existent reference tables while checking for constraints
+Scenario: REDISTRIBUTE KEY RANGE ignores non-existent reference tables while checking for constraints
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
@@ -365,7 +365,7 @@ Scenario: REDISTRIBUTE KEY RANGE ingores non-existent reference tables while che
     """
     Then command return code should be "0"
 
-Scenario: REDISTRIBUTE KEY RANGE failes if no replicated relation on destination shard
+Scenario: REDISTRIBUTE KEY RANGE fails if no replicated relation on destination shard
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
