@@ -1906,13 +1906,19 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph sessio
 		}
 	}
 
-	meta := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
-	p, ro, err := qr.RouteWithRules(ctx, meta, stmt, sph.GetTsa())
+	rm := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
+	p, ro, err := qr.RouteWithRules(ctx, rm, stmt, sph.GetTsa())
 	if err != nil {
-		return nil, err
+		if sph.EnhancedMultiShardProcessing() {
+			/* XXX: very dirty hack, give chance to v2 planner on error */
+			p, err = planner.PlanDistributedQuery(ctx, rm, stmt)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
-	np, err := qr.InitExecutionTargets(ctx, meta, stmt, p, ro, sph)
+	np, err := qr.InitExecutionTargets(ctx, rm, stmt, p, ro, sph)
 	if err == nil {
 		np.SetStmt(stmt)
 	}
