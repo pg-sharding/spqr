@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
@@ -30,7 +32,9 @@ func (m *ctxMatcher) String() string {
 }
 
 func MatchContext(t *testing.T, ctx context.Context) (context.Context, gomock.Matcher) {
-	ctx = context.WithValue(ctx, ctxIDKeyName, NewUUIDStr(t))
+	uuidVal, err := uuid.NewRandom()
+	require.NoError(t, err)
+	ctx = context.WithValue(ctx, ctxIDKeyName, uuidVal.String())
 	return ctx, &ctxMatcher{
 		ctx: ctx,
 	}
