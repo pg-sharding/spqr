@@ -66,7 +66,7 @@ func TestFrontendSimple(t *testing.T) {
 		Usr: "user1",
 	}
 
-	statistics.InitStatisticsStr(nil)
+	_ = statistics.InitStatisticsStr(nil)
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 	qr.EXPECT().SetQuery(gomock.Any()).AnyTimes()
