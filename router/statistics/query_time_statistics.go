@@ -81,12 +81,12 @@ func GetQuantilesStr() *[]string {
 	return &QueryStatistics.QuantilesStr
 }
 
-func GetTimeQuantile(statType StatisticsType, q float64, clienth StatHolder) float64 {
+func GetTimeQuantile(statType StatisticsType, q float64, h StatHolder) float64 {
 	if !QueryStatistics.NeedToCollectData {
 		return 0
 	}
 
-	return clienth.GetTimeQuantile(statType, q)
+	return h.GetTimeQuantile(statType, q)
 }
 
 func GetTotalTimeQuantile(statType StatisticsType, q float64) float64 {

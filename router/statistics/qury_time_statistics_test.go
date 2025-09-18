@@ -15,7 +15,7 @@ import (
 )
 
 func genTestClient(t *testing.T, tim time.Time) client.RouterClient {
-	tinit := tim
+	timeInit := tim
 
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
@@ -26,17 +26,17 @@ func genTestClient(t *testing.T, tim time.Time) client.RouterClient {
 		statistics.StatisticsTypeShard:  td2,
 	}
 
-	sttime := &statistics.StartTimes{
-		RouterStart: tinit,
-		ShardStart:  tinit,
+	statTime := &statistics.StartTimes{
+		RouterStart: timeInit,
+		ShardStart:  timeInit,
 	}
 
 	ca.EXPECT().RecordStartTime(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(st statistics.StatisticsType, tt time.Time) {
 			if st == statistics.StatisticsTypeRouter {
-				sttime.RouterStart = tt
+				statTime.RouterStart = tt
 			} else {
-				sttime.ShardStart = tt
+				statTime.ShardStart = tt
 			}
 		},
 	).AnyTimes()
@@ -48,7 +48,7 @@ func genTestClient(t *testing.T, tim time.Time) client.RouterClient {
 			return tds[st].Quantile(q)
 		}).AnyTimes()
 
-	ca.EXPECT().GetTimeData().Return(sttime).AnyTimes()
+	ca.EXPECT().GetTimeData().Return(statTime).AnyTimes()
 	return ca
 }
 
