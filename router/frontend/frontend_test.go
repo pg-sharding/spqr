@@ -18,6 +18,7 @@ import (
 	mocksrv "github.com/pg-sharding/spqr/router/mock/server"
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/route"
+	"github.com/pg-sharding/spqr/router/statistics"
 
 	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
@@ -64,6 +65,8 @@ func TestFrontendSimple(t *testing.T) {
 		DB:  "db1",
 		Usr: "user1",
 	}
+
+	statistics.InitStatisticsStr(nil)
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 	qr.EXPECT().SetQuery(gomock.Any()).AnyTimes()

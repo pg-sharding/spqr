@@ -13,47 +13,47 @@ import (
 type StatisticsType string
 
 const (
-	Router = StatisticsType("router")
-	Shard  = StatisticsType("shard")
+	StatisticsTypeRouter = StatisticsType("router")
+	StatisticsTypeShard  = StatisticsType("shard")
 )
 
-type startTimes struct {
+type StartTimes struct {
 	RouterStart time.Time
 	ShardStart  time.Time
 }
 
-type statistics struct {
+type Statistics struct {
 	RouterTime        map[uint]*tdigest.TDigest
 	ShardTime         map[uint]*tdigest.TDigest
 	RouterTimeTotal   *tdigest.TDigest
 	ShardTimeTotal    *tdigest.TDigest
-	TimeData          map[uint]*startTimes
+	TimeData          map[uint]*StartTimes
 	Quantiles         []float64
 	QuantilesStr      []string
 	NeedToCollectData bool
 	lock              sync.RWMutex
 }
 
-var queryStatistics = statistics{
+var QueryStatistics = Statistics{
 	RouterTime:      make(map[uint]*tdigest.TDigest),
 	ShardTime:       make(map[uint]*tdigest.TDigest),
 	RouterTimeTotal: nil,
 	ShardTimeTotal:  nil,
-	TimeData:        make(map[uint]*startTimes),
+	TimeData:        make(map[uint]*StartTimes),
 	lock:            sync.RWMutex{},
 }
 
 func InitStatistics(q []float64) {
-	queryStatistics.Quantiles = q
+	QueryStatistics.Quantiles = q
 	initStatsCommon()
 }
 
 func InitStatisticsStr(q []string) error {
-	queryStatistics.QuantilesStr = q
-	queryStatistics.Quantiles = make([]float64, len(q))
+	QueryStatistics.QuantilesStr = q
+	QueryStatistics.Quantiles = make([]float64, len(q))
 	for i, qStr := range q {
 		var err error
-		queryStatistics.Quantiles[i], err = strconv.ParseFloat(qStr, 64)
+		QueryStatistics.Quantiles[i], err = strconv.ParseFloat(qStr, 64)
 		if err != nil {
 			return fmt.Errorf("could not parse time quantile to float: \"%s\"", qStr)
 		}
@@ -63,121 +63,80 @@ func InitStatisticsStr(q []string) error {
 }
 
 func initStatsCommon() {
-	if len(queryStatistics.Quantiles) > 0 { // also not nil
-		queryStatistics.NeedToCollectData = false
+	if len(QueryStatistics.Quantiles) > 0 { // also not nil
+		QueryStatistics.NeedToCollectData = true
 	} else {
-		queryStatistics.NeedToCollectData = true
+		QueryStatistics.NeedToCollectData = false
 	}
 
-	queryStatistics.RouterTimeTotal, _ = tdigest.New()
-	queryStatistics.ShardTimeTotal, _ = tdigest.New()
+	QueryStatistics.RouterTimeTotal, _ = tdigest.New()
+	QueryStatistics.ShardTimeTotal, _ = tdigest.New()
 }
 
 func GetQuantiles() *[]float64 {
-	return &queryStatistics.Quantiles
+	return &QueryStatistics.Quantiles
 }
 
 func GetQuantilesStr() *[]string {
-	return &queryStatistics.QuantilesStr
+	return &QueryStatistics.QuantilesStr
 }
 
-func GetTimeQuantile(statType StatisticsType, q float64, client uint) float64 {
-	queryStatistics.lock.Lock()
-	defer queryStatistics.lock.Unlock()
-
-	var stat *tdigest.TDigest
-
-	switch statType {
-	case Router:
-		stat = queryStatistics.RouterTime[client]
-		if stat == nil {
-			return 0
-		}
-		return stat.Quantile(q)
-	case Shard:
-		stat = queryStatistics.ShardTime[client]
-		if stat == nil {
-			return 0
-		}
-		return stat.Quantile(q)
-	default:
+func GetTimeQuantile(statType StatisticsType, q float64, clienth StatHolder) float64 {
+	if !QueryStatistics.NeedToCollectData {
 		return 0
 	}
+
+	return clienth.GetTimeQuantile(statType, q)
 }
 
 func GetTotalTimeQuantile(statType StatisticsType, q float64) float64 {
-	queryStatistics.lock.Lock()
-	defer queryStatistics.lock.Unlock()
+	QueryStatistics.lock.Lock()
+	defer QueryStatistics.lock.Unlock()
 
 	switch statType {
-	case Router:
-		if queryStatistics.RouterTimeTotal == nil || queryStatistics.RouterTimeTotal.Count() == 0 {
+	case StatisticsTypeRouter:
+		if QueryStatistics.RouterTimeTotal.Count() == 0 {
 			return 0
 		}
-		return queryStatistics.RouterTimeTotal.Quantile(q)
-	case Shard:
-		if queryStatistics.ShardTimeTotal == nil || queryStatistics.ShardTimeTotal.Count() == 0 {
+		return QueryStatistics.RouterTimeTotal.Quantile(q)
+	case StatisticsTypeShard:
+		if QueryStatistics.ShardTimeTotal.Count() == 0 {
 			return 0
 		}
-		return queryStatistics.ShardTimeTotal.Quantile(q)
+		return QueryStatistics.ShardTimeTotal.Quantile(q)
 	default:
 		return 0
 	}
 }
 
-func RecordStartTime(statType StatisticsType, t time.Time, client uint) {
-	if queryStatistics.NeedToCollectData {
+func RecordStartTime(statType StatisticsType, t time.Time, clientH StatHolder) {
+	if !QueryStatistics.NeedToCollectData {
 		return
 	}
 
-	queryStatistics.lock.Lock()
-	defer queryStatistics.lock.Unlock()
-
-	if queryStatistics.TimeData[client] == nil {
-		queryStatistics.TimeData[client] = &startTimes{}
-	}
-	switch statType {
-	case Router:
-		queryStatistics.TimeData[client].RouterStart = t
-	case Shard:
-		queryStatistics.TimeData[client].ShardStart = t
-	}
+	clientH.RecordStartTime(statType, t)
 }
 
-func RecordFinishedTransaction(t time.Time, client uint) {
-	if queryStatistics.NeedToCollectData {
+func RecordFinishedTransaction(t time.Time, clientH StatHolder) {
+	if !QueryStatistics.NeedToCollectData {
 		return
 	}
 
-	queryStatistics.lock.Lock()
-	defer queryStatistics.lock.Unlock()
+	QueryStatistics.lock.Lock()
+	defer QueryStatistics.lock.Unlock()
 
-	var clientST *startTimes
-	var ok bool
-	if clientST, ok = queryStatistics.TimeData[client]; !ok {
+	clientST := clientH.GetTimeData()
+	if clientST == nil {
 		panic("finish of unstarted transaction")
-	}
-
-	if queryStatistics.RouterTime[client] == nil {
-		queryStatistics.RouterTime[client], _ = tdigest.New()
-	}
-	if queryStatistics.ShardTime[client] == nil {
-		queryStatistics.ShardTime[client], _ = tdigest.New()
-	}
-	if queryStatistics.RouterTimeTotal == nil {
-		queryStatistics.RouterTimeTotal, _ = tdigest.New()
-	}
-	if queryStatistics.ShardTimeTotal == nil {
-		queryStatistics.ShardTimeTotal, _ = tdigest.New()
 	}
 
 	if !clientST.RouterStart.IsZero() {
 		routerTime := float64(t.Sub(clientST.RouterStart).Microseconds()) / 1000
-		err := queryStatistics.RouterTime[client].Add(routerTime)
+		err := clientH.Add(StatisticsTypeRouter, routerTime)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
-		err = queryStatistics.RouterTimeTotal.Add(routerTime)
+		err = QueryStatistics.RouterTimeTotal.Add(routerTime)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
@@ -185,11 +144,11 @@ func RecordFinishedTransaction(t time.Time, client uint) {
 	}
 	if !clientST.ShardStart.IsZero() {
 		shardTime := float64(t.Sub(clientST.ShardStart).Microseconds()) / 1000
-		err := queryStatistics.ShardTime[client].Add(shardTime)
+		err := clientH.Add(StatisticsTypeShard, shardTime)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}
-		err = queryStatistics.ShardTimeTotal.Add(shardTime)
+		err = QueryStatistics.ShardTimeTotal.Add(shardTime)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to record transaction duration")
 		}

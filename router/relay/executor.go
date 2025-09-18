@@ -687,7 +687,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 		Type("query-type", qd.Msg).Type("plan-type", qd.P).
 		Msg("relay process plan")
 
-	statistics.RecordStartTime(statistics.Shard, time.Now(), s.Client().ID())
+	statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
 	if err := DispatchPlan(qd, serv, s.Client(), replyCl); err != nil {
 		return err
 	}

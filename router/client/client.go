@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/caio/go-tdigest"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/tsa"
@@ -27,6 +28,7 @@ import (
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/twopc"
 )
 
@@ -106,10 +108,68 @@ type PsqlClient struct {
 
 	cacheCC pgproto3.CommandComplete
 
+	RouterTime *tdigest.TDigest
+	ShardTime  *tdigest.TDigest
+
+	TimeData *statistics.StartTimes
+
 	serverP atomic.Pointer[server.Server]
 }
 
 var _ RouterClient = &PsqlClient{}
+
+// Add implements statistics.StatHolder.
+func (r *PsqlClient) Add(st statistics.StatisticsType, value float64) error {
+	switch st {
+	case statistics.StatisticsTypeRouter:
+		return r.RouterTime.Add(value)
+	case statistics.StatisticsTypeShard:
+		return r.ShardTime.Add(value)
+	default:
+		// panic?
+		return nil
+	}
+}
+
+// GetTimeData implements statistics.StatHolder.
+func (r *PsqlClient) GetTimeData() *statistics.StartTimes {
+	return r.TimeData
+}
+
+// GetTimeQuantile implements statistics.StatHolder.
+func (r *PsqlClient) GetTimeQuantile(statType statistics.StatisticsType, q float64) float64 {
+
+	switch statType {
+	case statistics.StatisticsTypeRouter:
+		if r.RouterTime.Count() == 0 {
+			return 0
+		}
+
+		return r.RouterTime.Quantile(q)
+	case statistics.StatisticsTypeShard:
+		if r.ShardTime.Count() == 0 {
+			return 0
+		}
+
+		return r.ShardTime.Quantile(q)
+	default:
+		return 0
+	}
+}
+
+// RecordStartTime implements statistics.StatHolder.
+func (r *PsqlClient) RecordStartTime(statType statistics.StatisticsType, t time.Time) {
+	if r.TimeData == nil {
+		r.TimeData = &statistics.StartTimes{}
+	}
+
+	switch statType {
+	case statistics.StatisticsTypeRouter:
+		r.TimeData.RouterStart = t
+	case statistics.StatisticsTypeShard:
+		r.TimeData.ShardStart = t
+	}
+}
 
 func (cl *PsqlClient) resolveVirtualBoolParam(name string, defaultVal bool) bool {
 	if val, ok := cl.localTxParamSet[name]; ok {
@@ -330,6 +390,9 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 	cl.id = spqrlog.GetPointer(cl)
 
 	cl.serverP.Store(nil)
+
+	cl.RouterTime, _ = tdigest.New()
+	cl.ShardTime, _ = tdigest.New()
 
 	return cl
 }
