@@ -12,6 +12,7 @@ package mock
 import (
 	tls "crypto/tls"
 	reflect "reflect"
+	time "time"
 
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	config "github.com/pg-sharding/spqr/pkg/config"
@@ -21,6 +22,7 @@ import (
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
 	route "github.com/pg-sharding/spqr/router/route"
 	server "github.com/pg-sharding/spqr/router/server"
+	statistics "github.com/pg-sharding/spqr/router/statistics"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -46,6 +48,20 @@ func NewMockRouterClient(ctrl *gomock.Controller) *MockRouterClient {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockRouterClient) EXPECT() *MockRouterClientMockRecorder {
 	return m.recorder
+}
+
+// Add mocks base method.
+func (m *MockRouterClient) Add(statType statistics.StatisticsType, value float64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Add", statType, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Add indicates an expected call of Add.
+func (mr *MockRouterClientMockRecorder) Add(statType, value any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockRouterClient)(nil).Add), statType, value)
 }
 
 // AssignRoute mocks base method.
@@ -380,6 +396,34 @@ func (mr *MockRouterClientMockRecorder) GetCancelPid() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCancelPid", reflect.TypeOf((*MockRouterClient)(nil).GetCancelPid))
 }
 
+// GetTimeData mocks base method.
+func (m *MockRouterClient) GetTimeData() *statistics.StartTimes {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTimeData")
+	ret0, _ := ret[0].(*statistics.StartTimes)
+	return ret0
+}
+
+// GetTimeData indicates an expected call of GetTimeData.
+func (mr *MockRouterClientMockRecorder) GetTimeData() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTimeData", reflect.TypeOf((*MockRouterClient)(nil).GetTimeData))
+}
+
+// GetTimeQuantile mocks base method.
+func (m *MockRouterClient) GetTimeQuantile(statType statistics.StatisticsType, q float64) float64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTimeQuantile", statType, q)
+	ret0, _ := ret[0].(float64)
+	return ret0
+}
+
+// GetTimeQuantile indicates an expected call of GetTimeQuantile.
+func (mr *MockRouterClientMockRecorder) GetTimeQuantile(statType, q any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTimeQuantile", reflect.TypeOf((*MockRouterClient)(nil).GetTimeQuantile), statType, q)
+}
+
 // GetTsa mocks base method.
 func (m *MockRouterClient) GetTsa() tsa.TSA {
 	m.ctrl.T.Helper()
@@ -535,6 +579,18 @@ func (m *MockRouterClient) Receive() (pgproto3.FrontendMessage, error) {
 func (mr *MockRouterClientMockRecorder) Receive() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockRouterClient)(nil).Receive))
+}
+
+// RecordStartTime mocks base method.
+func (m *MockRouterClient) RecordStartTime(statType statistics.StatisticsType, t time.Time) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RecordStartTime", statType, t)
+}
+
+// RecordStartTime indicates an expected call of RecordStartTime.
+func (mr *MockRouterClientMockRecorder) RecordStartTime(statType, t any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordStartTime", reflect.TypeOf((*MockRouterClient)(nil).RecordStartTime), statType, t)
 }
 
 // Reply mocks base method.

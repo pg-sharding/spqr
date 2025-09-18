@@ -447,7 +447,7 @@ func (rst *RelayStateImpl) Connect() error {
 }
 
 func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
-	statistics.RecordFinishedTransaction(time.Now(), rst.Client().ID())
+	statistics.RecordFinishedTransaction(time.Now(), rst.Client())
 
 	rst.unnamedPortalExists = false
 

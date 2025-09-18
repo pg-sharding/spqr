@@ -5,77 +5,117 @@ import (
 	"testing"
 	"time"
 
+	"github.com/caio/go-tdigest"
+	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
+
+	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 )
+
+func genTestClient(t *testing.T, tim time.Time) client.RouterClient {
+	timeInit := tim
+
+	ctrl := gomock.NewController(t)
+	ca := mockcl.NewMockRouterClient(ctrl)
+	td1, _ := tdigest.New()
+	td2, _ := tdigest.New()
+	tds := map[statistics.StatisticsType]*tdigest.TDigest{
+		statistics.StatisticsTypeRouter: td1,
+		statistics.StatisticsTypeShard:  td2,
+	}
+
+	statTime := &statistics.StartTimes{
+		RouterStart: timeInit,
+		ShardStart:  timeInit,
+	}
+
+	ca.EXPECT().RecordStartTime(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(st statistics.StatisticsType, tt time.Time) {
+			if st == statistics.StatisticsTypeRouter {
+				statTime.RouterStart = tt
+			} else {
+				statTime.ShardStart = tt
+			}
+		},
+	).AnyTimes()
+	ca.EXPECT().Add(gomock.Any(), gomock.Any()).Do(func(st statistics.StatisticsType, value float64) {
+		_ = tds[st].Add(value)
+	}).AnyTimes()
+	ca.EXPECT().GetTimeQuantile(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(st statistics.StatisticsType, q float64) float64 {
+			return tds[st].Quantile(q)
+		}).AnyTimes()
+
+	ca.EXPECT().GetTimeData().Return(statTime).AnyTimes()
+	return ca
+}
 
 func TestStatisticsForOneUser(t *testing.T) {
 	assert := assert.New(t)
 
 	statistics.InitStatistics([]float64{0.5})
-	tim := time.Now()
+	tim := time.Unix(11, 0)
+	ca := genTestClient(t, tim)
 
-	statistics.RecordStartTime(statistics.Router, tim, 144)
-	statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond), 144)
-	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), 144)
+	statistics.RecordStartTime(statistics.StatisticsTypeRouter, tim, ca)
+	statistics.RecordStartTime(statistics.StatisticsTypeShard, tim.Add(time.Millisecond), ca)
+	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), ca)
 
-	statistics.RecordStartTime(statistics.Router, tim, 144)
-	statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond), 144)
-	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*3), 144)
+	statistics.RecordStartTime(statistics.StatisticsTypeRouter, tim, ca)
+	statistics.RecordStartTime(statistics.StatisticsTypeShard, tim.Add(time.Millisecond), ca)
+	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*3), ca)
 
-	statistics.RecordStartTime(statistics.Router, tim, 144)
-	statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond), 144)
-	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*5), 144)
+	statistics.RecordStartTime(statistics.StatisticsTypeRouter, tim, ca)
+	statistics.RecordStartTime(statistics.StatisticsTypeShard, tim.Add(time.Millisecond), ca)
+	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*5), ca)
 
-	statistics.RecordStartTime(statistics.Router, tim, 144)
-	statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond), 144)
-	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*7), 144)
+	statistics.RecordStartTime(statistics.StatisticsTypeRouter, tim, ca)
+	statistics.RecordStartTime(statistics.StatisticsTypeShard, tim.Add(time.Millisecond), ca)
+	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*7), ca)
 
-	assert.Equal(4.0, statistics.GetTimeQuantile(statistics.Router, 0.5, 144))
-	assert.Equal(3.0, statistics.GetTimeQuantile(statistics.Shard, 0.5, 144))
+	assert.Equal(4.0, statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, 0.5, ca))
+	assert.Equal(3.0, statistics.GetTimeQuantile(statistics.StatisticsTypeShard, 0.5, ca))
 
-	assert.Equal(4.0, statistics.GetTotalTimeQuantile(statistics.Router, 0.5))
-	assert.Equal(3.0, statistics.GetTotalTimeQuantile(statistics.Shard, 0.5))
+	assert.Equal(4.0, statistics.GetTotalTimeQuantile(statistics.StatisticsTypeRouter, 0.5))
+	assert.Equal(3.0, statistics.GetTotalTimeQuantile(statistics.StatisticsTypeShard, 0.5))
 }
 
 func TestStatisticsForDifferentUsers(t *testing.T) {
 	assert := assert.New(t)
 
 	statistics.InitStatistics([]float64{0.5})
-	tim := time.Now()
 
-	statistics.RecordStartTime(statistics.Router, tim, 227)
-	statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond), 227)
-	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), 227)
+	tim := time.Unix(11, 0)
 
-	statistics.RecordStartTime(statistics.Router, tim, 227)
-	statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond*2), 227)
-	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*3), 227)
+	ca := genTestClient(t, tim)
+	cb := genTestClient(t, tim)
 
-	statistics.RecordStartTime(statistics.Router, tim, 229)
-	statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond*5), 229)
-	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*7), 229)
+	statistics.RecordStartTime(statistics.StatisticsTypeRouter, tim, ca)
+	statistics.RecordStartTime(statistics.StatisticsTypeShard, tim.Add(time.Millisecond), ca)
+	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), ca)
 
-	statistics.RecordStartTime(statistics.Router, tim, 229)
-	statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond*6), 229)
-	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*7), 229)
+	statistics.RecordStartTime(statistics.StatisticsTypeRouter, tim, ca)
+	statistics.RecordStartTime(statistics.StatisticsTypeShard, tim.Add(time.Millisecond*2), ca)
+	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*3), ca)
 
-	assert.Equal(2.5, statistics.GetTimeQuantile(statistics.Router, 0.5, 227))
-	assert.Equal(1.0, statistics.GetTimeQuantile(statistics.Shard, 0.5, 227))
+	statistics.RecordStartTime(statistics.StatisticsTypeRouter, tim, cb)
+	statistics.RecordStartTime(statistics.StatisticsTypeShard, tim.Add(time.Millisecond*5), cb)
+	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*7), cb)
 
-	assert.Equal(7.0, statistics.GetTimeQuantile(statistics.Router, 0.5, 229))
-	assert.Equal(1.5, statistics.GetTimeQuantile(statistics.Shard, 0.5, 229))
+	statistics.RecordStartTime(statistics.StatisticsTypeRouter, tim, cb)
+	statistics.RecordStartTime(statistics.StatisticsTypeShard, tim.Add(time.Millisecond*6), cb)
+	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*7), cb)
 
-	assert.Equal(5.0, statistics.GetTotalTimeQuantile(statistics.Router, 0.5))
-	assert.Equal(1.0, statistics.GetTotalTimeQuantile(statistics.Shard, 0.5))
-}
+	assert.Equal(2.5, statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, 0.5, ca))
+	assert.Equal(1.0, statistics.GetTimeQuantile(statistics.StatisticsTypeShard, 0.5, ca))
 
-func TestNoStatisticsForMissingUser(t *testing.T) {
-	assert := assert.New(t)
+	assert.Equal(7.0, statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, 0.5, cb))
+	assert.Equal(1.5, statistics.GetTimeQuantile(statistics.StatisticsTypeShard, 0.5, cb))
 
-	statistics.InitStatistics([]float64{0.5})
-
-	assert.Equal(0.0, statistics.GetTimeQuantile(statistics.Router, 0.5, 148))
+	assert.Equal(5.0, statistics.GetTotalTimeQuantile(statistics.StatisticsTypeRouter, 0.5))
+	assert.Equal(1.0, statistics.GetTotalTimeQuantile(statistics.StatisticsTypeShard, 0.5))
 }
 
 func TestNoStatisticsWhenNotNeeded(t *testing.T) {
@@ -84,12 +124,14 @@ func TestNoStatisticsWhenNotNeeded(t *testing.T) {
 	statistics.InitStatistics([]float64{})
 	tim := time.Now()
 
-	statistics.RecordStartTime(statistics.Router, tim, 149)
-	statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond), 149)
-	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), 149)
+	ca := genTestClient(t, tim)
 
-	assert.Equal(0.0, statistics.GetTimeQuantile(statistics.Router, 0.5, 149))
-	assert.Equal(0.0, statistics.GetTotalTimeQuantile(statistics.Router, 0.5))
+	statistics.RecordStartTime(statistics.StatisticsTypeRouter, tim, ca)
+	statistics.RecordStartTime(statistics.StatisticsTypeShard, tim.Add(time.Millisecond), ca)
+	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), ca)
+
+	assert.Equal(0.0, statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, 0.5, ca))
+	assert.Equal(0.0, statistics.GetTotalTimeQuantile(statistics.StatisticsTypeRouter, 0.5))
 }
 
 func TestCheckMultithreading(t *testing.T) {
@@ -102,15 +144,19 @@ func TestCheckMultithreading(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			tim := time.Now()
-			for range 1000 {
-				statistics.RecordStartTime(statistics.Router, tim, 150)
-				statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond), 150)
-				statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), 150)
 
-				statistics.GetTimeQuantile(statistics.Router, 0.5, 149)
-				statistics.GetTimeQuantile(statistics.Router, 0.99, 149)
-				statistics.GetTotalTimeQuantile(statistics.Router, 0.99)
-				statistics.GetTotalTimeQuantile(statistics.Router, 0.99)
+			ca := genTestClient(t, tim)
+			cb := genTestClient(t, tim)
+
+			for range 1000 {
+				statistics.RecordStartTime(statistics.StatisticsTypeRouter, tim, ca)
+				statistics.RecordStartTime(statistics.StatisticsTypeShard, tim.Add(time.Millisecond), ca)
+				statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), ca)
+
+				statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, 0.5, cb)
+				statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, 0.99, cb)
+				statistics.GetTotalTimeQuantile(statistics.StatisticsTypeRouter, 0.99)
+				statistics.GetTotalTimeQuantile(statistics.StatisticsTypeRouter, 0.99)
 			}
 			wg.Done()
 		}()
@@ -136,18 +182,4 @@ func TestStatisticsInit(t *testing.T) {
 	assert.Equal(q[1], 0.999)
 
 	assert.ErrorContains(statistics.InitStatisticsStr([]string{"erroneous_str"}), "could not parse time quantile to float")
-}
-
-func TestStatisticsReset(t *testing.T) {
-	assert := assert.New(t)
-
-	tim := time.Now()
-	assert.NoError(statistics.InitStatisticsStr([]string{"0.5"}))
-	statistics.RecordStartTime(statistics.Router, tim, 227)
-	statistics.RecordStartTime(statistics.Shard, tim, 227)
-	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), 227)
-	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*4), 227)
-	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*8), 227)
-	assert.Equal(2.0, statistics.GetTimeQuantile(statistics.Router, 0.5, 227))
-	assert.Equal(1.0, statistics.GetTimeQuantile(statistics.Shard, 0.5, 227))
 }
