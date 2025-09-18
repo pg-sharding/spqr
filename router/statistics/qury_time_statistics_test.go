@@ -41,7 +41,7 @@ func genTestClient(t *testing.T, tim time.Time) client.RouterClient {
 		},
 	).AnyTimes()
 	ca.EXPECT().Add(gomock.Any(), gomock.Any()).Do(func(st statistics.StatisticsType, value float64) {
-		tds[st].Add(value)
+		_ = tds[st].Add(value)
 	}).AnyTimes()
 	ca.EXPECT().GetTimeQuantile(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(st statistics.StatisticsType, q float64) float64 {
