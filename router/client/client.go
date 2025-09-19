@@ -101,8 +101,8 @@ type PsqlClient struct {
 
 	paramCodes []int16
 
-	show_notice_messages bool
-	maintain_params      bool
+	showNoticeMessages bool
+	maintain_params    bool
 
 	id uint
 
@@ -292,12 +292,12 @@ func (cl *PsqlClient) SetMaintainParams(level string, val bool) {
 
 // SetShowNoticeMsg implements client.Client.
 func (cl *PsqlClient) SetShowNoticeMsg(level string, val bool) {
-	cl.show_notice_messages = val
+	cl.showNoticeMessages = val
 }
 
 // ShowNoticeMsg implements RouterClient.
 func (cl *PsqlClient) ShowNoticeMsg() bool {
-	return cl.show_notice_messages
+	return cl.showNoticeMessages
 }
 
 // BindParamFormatCodes implements RouterClient.
@@ -380,7 +380,7 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		prepStmtsHash:     map[string]uint64{},
 		defaultTsa:        target_session_attrs,
 
-		show_notice_messages: showNoticeMessages,
+		showNoticeMessages: showNoticeMessages,
 
 		serverP: atomic.Pointer[server.Server]{},
 	}

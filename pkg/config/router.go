@@ -70,6 +70,8 @@ type Router struct {
 	WorldShardFallback bool `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
 	ShowNoticeMessages bool `json:"show_notice_messages" toml:"show_notice_messages" yaml:"show_notice_messages"`
 
+	NoticeMessageFormat string `json:"notice_message_format" toml:"notice_message_format" yaml:"notice_message_format"`
+
 	InitSQL            string `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
 	UseInitSQL         bool   `json:"use_init_sql" toml:"use_init_sql" yaml:"use_init_sql"`
 	ExitOnInitSQLError bool   `json:"exit_on_init_sql" toml:"exit_on_init_sql" yaml:"exit_on_init_sql"`
@@ -244,6 +246,11 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 	/* init default_target_session_attrs as read-write if nothing else specified */
 	if rcfg.Qr.DefaultTSA == "" {
 		rcfg.Qr.DefaultTSA = TargetSessionAttrsSmartRW
+	}
+
+	/* init default notice message format if not specified */
+	if rcfg.NoticeMessageFormat == "" {
+		rcfg.NoticeMessageFormat = "{shard}@{host}"
 	}
 
 	configBytes, err := json.MarshalIndent(rcfg, "", "  ")

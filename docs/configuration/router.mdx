@@ -123,6 +123,7 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 | Setting          | Description                                           | Possible Values    |
 |------------------|-------------------------------------------------------|--------------------|
 | `show_notice_messages` | Whether to show notice messages.                | `true`, `false`    |
+| `notice_message_format` | Format template for notice messages. Supported placeholders: `{shard}`, `{host}`, `{hostname}`, `{port}`, `{user}`, `{db}`, `{pid}`, `{az}`, `{id}`, `{tx_status}`, `{tx_served}`. Default: `"{shard}@{host}"`. Examples: `"{shard}"`, `"{host}"`, `"{shard}@{hostname}:{port}"`, `"{shard}@{host} (user={user}, db={db})"` | Any valid template string |
 | `pid_file_name`  | The file name to store the process ID.                | Any valid filepath |
 | `log_file_name`  | The file name for logging output.                     | Any valid filepath |
 | `pgproto_debug`  | PostgreSQL protocol debug flag.                       | `true`, `false`    |
