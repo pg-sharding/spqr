@@ -1911,10 +1911,14 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph sessio
 	if err != nil {
 		if sph.EnhancedMultiShardProcessing() {
 			/* XXX: very dirty hack, give chance to v2 planner on error */
-			p, err = planner.PlanDistributedQuery(ctx, rm, stmt)
-			if err != nil {
+			var errV2 error
+			p, errV2 = planner.PlanDistributedQuery(ctx, rm, stmt)
+			if errV2 != nil {
+				// return origin error
 				return nil, err
-			}
+			} // else we are good, execute p
+		} else {
+			return nil, err
 		}
 	}
 
