@@ -5,6 +5,9 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 -- test both ways of ref relation crete syntax
 CREATE REFERENCE TABLE test_ref_rel;
 
+-- test schema-qualified creation
+CREATE REFERENCE TABLE sh1.test_ref_rel_rel;
+
 -- partial ref relation test
 CREATE REFERENCE RELATION test_ref_rel_part ON sh1, sh3;
 
@@ -18,11 +21,21 @@ CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
 CREATE TABLE test_ref_rel(i int, j int);
 
+CREATE SCHEMA sh1;
+CREATE TABLE sh1.test_ref_rel_rel(i int, j int);
+
 CREATE TABLE test_distr_ref_rel(id int, val int);
 
 CREATE TABLE test_ref_rel_part(i int, j int);
 
 COPY test_ref_rel FROM STDIN;
+1	2
+2	3
+3	4
+4	5
+\.
+
+COPY sh1.test_ref_rel_rel FROM STDIN;
 1	2
 2	3
 3	4
@@ -66,11 +79,18 @@ INSERT INTO test_ref_rel VALUES(1) /* __spqr__engine_v2: true */;
 WITH data(x,z) AS (VALUES(1,3)) INSERT INTO test_ref_rel SELECT * FROM data;
 
 INSERT INTO test_ref_rel SELECT 1 /* __spqr__engine_v2: true */;
+INSERT INTO sh1.test_ref_rel_rel SELECT 1 /* __spqr__engine_v2: true */;
 
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh3 */;
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
+
+
+SELECT * FROM sh1.test_ref_rel_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
+SELECT * FROM sh1.test_ref_rel_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
+SELECT * FROM sh1.test_ref_rel_rel ORDER BY i, j /*__spqr__execute_on: sh3 */;
+SELECT * FROM sh1.test_ref_rel_rel ORDER BY i, j /*__spqr__execute_on: sh4 */;
 
 UPDATE test_ref_rel SET i = i + 1 /* __spqr__engine_v2: true */;
 
@@ -119,6 +139,8 @@ SELECT FROM test_distr_ref_rel a, test_ref_rel_part b WHERE a.id = 33;
 SELECT FROM test_distr_ref_rel a, test_ref_rel_part b WHERE a.id = 233;
 
 DROP TABLE test_ref_rel;
+DROP TABLE sh1.test_ref_rel_rel;
+DROP SCHEMA sh1;
 DROP TABLE test_ref_rel_part;
 DROP TABLE test_distr_ref_rel;
 

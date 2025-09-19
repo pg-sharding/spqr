@@ -308,7 +308,8 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	case *spqrparser.ReferenceRelationDefinition:
 
 		r := &rrelation.ReferenceRelation{
-			TableName:     stmt.TableName,
+			TableName:     stmt.TableName.RelationName,
+			SchemaName:    stmt.TableName.SchemaName,
 			SchemaVersion: 1,
 			ShardIds:      stmt.ShardIds,
 		}

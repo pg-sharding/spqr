@@ -871,7 +871,7 @@ create_stmt:
 		$$ = &Create{Element: $2}
 	}
 	|
-	CREATE REFERENCE table_or_relation any_id opt_auto_increment opt_on_shards
+	CREATE REFERENCE table_or_relation qualified_name opt_auto_increment opt_on_shards
 	{
 		$$ = &Create{
 			Element: &ReferenceRelationDefinition{
