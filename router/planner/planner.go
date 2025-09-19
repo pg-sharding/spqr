@@ -460,10 +460,26 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 			return nil, rerrors.ErrComplexQuery
 		}
 
+		/* we only support reference relation here */
+
 		s := plan.Scan{}
 		switch q := v.FromClause[0].(type) {
 		case *lyx.RangeVar:
 			s.Relation = q
+
+			qualName := rfqn.RelationFQNFromRangeRangeVar(q)
+
+			// CTE, skip
+			if rm.RFQNIsCTE(qualName) {
+				// is that ok?
+				return &plan.ScatterPlan{}, nil
+			}
+
+			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
+				return nil, err
+			} else if ds.ID() != distributions.REPLICATED {
+				return nil, rerrors.ErrComplexQuery
+			}
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
