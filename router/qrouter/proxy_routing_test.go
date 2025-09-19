@@ -448,6 +448,73 @@ func TestRoutingByExpression(t *testing.T) {
 	}
 }
 
+func TestReferenceRelationSequenceRouting(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   plan.Plan
+		err   error
+	}
+	/* TODO: fix by adding configurable setting */
+	db, _ := qdb.NewMemQDB(MemQDBPath)
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID:       distributions.REPLICATED,
+		ColTypes: []string{qdb.ColumnTypeInteger},
+		Relations: map[string]*qdb.DistributedRelation{
+			"test_ref_rel": {
+				Name: "test_ref_rel",
+			},
+		},
+	})
+
+	_ = db.CreateSequence(context.TODO(), "s1", 10)
+
+	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
+		TableName: "test_ref_rel",
+		ColumnSequenceMapping: map[string]string{
+			"id1": "s1",
+		},
+	})
+
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+
+	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
+		"sh1": {},
+		"sh2": {},
+	}, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+
+	assert.NoError(err)
+
+	for _, tt := range []tcase{
+		// we do not currently support SELECT rewrite
+		{
+			query: `INSERT INTO test_ref_rel SELECT 1;`,
+			err:   rerrors.ErrComplexQuery,
+		},
+	} {
+		parserRes, err := lyx.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+		dh := session.NewDummyHandler("dd")
+		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
+		pr.SetQuery(&tt.query)
+
+		tmp, err := pr.PlanQuery(context.TODO(), parserRes[0], dh)
+		if tt.err != nil {
+			assert.Equal(tt.err, err, tt.query)
+		} else {
+
+			assert.NotNil(tmp, tt.query)
+			tmp.SetStmt(nil) /* dont check stmt */
+
+			assert.NoError(err, "query %s", tt.query)
+
+			assert.Equal(tt.exp, tmp, tt.query)
+		}
+	}
+}
+
 func TestReferenceRelationRouting(t *testing.T) {
 	assert := assert.New(t)
 
