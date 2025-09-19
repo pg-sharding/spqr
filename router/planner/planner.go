@@ -81,7 +81,8 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	q *lyx.RangeVar, subquery lyx.Node,
-	allowDistr bool) (plan.Plan, error) {
+	allowDistr bool,
+	allowRewrite bool) (plan.Plan, error) {
 
 	qualName := &rfqn.RelationFQN{
 		RelationName: q.RelationName,
@@ -100,7 +101,7 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 					ExecTargets: nil,
 				}, nil
 			} else {
-				subPlan, err := PlanDistributedQuery(ctx, rm, subquery)
+				subPlan, err := PlanDistributedQuery(ctx, rm, subquery, allowRewrite)
 				if err != nil {
 					return nil, err
 				}
@@ -131,6 +132,11 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+		// column rewrite is not yet supported to planner v2
+		if len(r.ColumnSequenceMapping) != 0 && !allowRewrite {
+			return nil, rerrors.ErrComplexQuery
+		}
+
 		shs = r.ListStorageRoutes()
 	}
 
@@ -143,7 +149,7 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 		}, nil
 	}
 	/* Plan sub-select here. TODO: check that modified relation is a ref relation */
-	subPlan, err := PlanDistributedQuery(ctx, rm, subquery)
+	subPlan, err := PlanDistributedQuery(ctx, rm, subquery, allowRewrite)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +167,7 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 }
 
 func insertSequenceValue(ctx context.Context,
-	meta *rmeta.RoutingMetadataContext,
+	_ *rmeta.RoutingMetadataContext,
 	qrouter_query *string,
 	rel *rrelation.ReferenceRelation,
 	idCache IdentityRouterCache,
@@ -396,7 +402,7 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 	return tupleShards, nil
 }
 
-func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {
+func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, allowRewrite bool) (plan.Plan, error) {
 
 	switch v := stmt.(type) {
 	/* TDB: comments? */
@@ -460,10 +466,26 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 			return nil, rerrors.ErrComplexQuery
 		}
 
+		/* we only support reference relation here */
+
 		s := plan.Scan{}
 		switch q := v.FromClause[0].(type) {
 		case *lyx.RangeVar:
 			s.Relation = q
+
+			qualName := rfqn.RelationFQNFromRangeRangeVar(q)
+
+			// CTE, skip
+			if rm.RFQNIsCTE(qualName) {
+				// is that ok?
+				return &plan.ScatterPlan{}, nil
+			}
+
+			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
+				return nil, err
+			} else if ds.ID() != distributions.REPLICATED {
+				return nil, rerrors.ErrComplexQuery
+			}
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -477,7 +499,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 	case *lyx.Insert:
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, v.SubSelect, false)
+			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, v.SubSelect, false, allowRewrite)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -485,7 +507,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 	case *lyx.Update:
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true)
+			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true, allowRewrite)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -493,7 +515,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 	case *lyx.Delete:
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true)
+			return PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true, allowRewrite)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}

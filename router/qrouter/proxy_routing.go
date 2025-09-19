@@ -1347,7 +1347,7 @@ func (qr *ProxyQrouter) planQueryV1(
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
-					tmp, err := planner.PlanDistributedQuery(ctx, rm, stmt)
+					tmp, err := planner.PlanDistributedQuery(ctx, rm, stmt, true)
 					if err != nil {
 						return nil, err
 					}
@@ -1394,7 +1394,7 @@ func (qr *ProxyQrouter) planQueryV1(
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
-					tmp, err := planner.PlanDistributedQuery(ctx, rm, stmt)
+					tmp, err := planner.PlanDistributedQuery(ctx, rm, stmt, true)
 					if err != nil {
 						return nil, err
 					}
@@ -1847,7 +1847,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 				case *lyx.Select:
 				default:
 					/* XXX: very dirty hack */
-					v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, stmt)
+					v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, stmt, true)
 					if err != nil {
 						return nil, err
 					}
@@ -1906,13 +1906,13 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph sessio
 		}
 	}
 
-	meta := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
-	p, ro, err := qr.RouteWithRules(ctx, meta, stmt, sph.GetTsa())
+	rm := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
+	p, ro, err := qr.RouteWithRules(ctx, rm, stmt, sph.GetTsa())
 	if err != nil {
 		return nil, err
 	}
 
-	np, err := qr.InitExecutionTargets(ctx, meta, stmt, p, ro, sph)
+	np, err := qr.InitExecutionTargets(ctx, rm, stmt, p, ro, sph)
 	if err == nil {
 		np.SetStmt(stmt)
 	}
