@@ -1269,7 +1269,9 @@ func TestReferenceRelation(t *testing.T) {
 			query: "CREATE REFERENCE TABLE xtab",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
-					TableName: "xtab",
+					TableName: &rfqn.RelationFQN{
+						RelationName: "xtab",
+					},
 				},
 			},
 			err: nil,
@@ -1278,7 +1280,9 @@ func TestReferenceRelation(t *testing.T) {
 			query: "CREATE REFERENCE TABLE xtab",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
-					TableName: "xtab",
+					TableName: &rfqn.RelationFQN{
+						RelationName: "xtab",
+					},
 				},
 			},
 			err: nil,
@@ -1287,8 +1291,10 @@ func TestReferenceRelation(t *testing.T) {
 			query: "CREATE REFERENCE RELATION xtab ON sh1, sh2, sh3",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
-					TableName: "xtab",
-					ShardIds:  []string{"sh1", "sh2", "sh3"},
+					TableName: &rfqn.RelationFQN{
+						RelationName: "xtab",
+					},
+					ShardIds: []string{"sh1", "sh2", "sh3"},
 				},
 			},
 			err: nil,
@@ -1297,8 +1303,10 @@ func TestReferenceRelation(t *testing.T) {
 			query: "CREATE REFERENCE RELATION xtab ON SHARDS sh1, sh2, sh3",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
-					TableName: "xtab",
-					ShardIds:  []string{"sh1", "sh2", "sh3"},
+					TableName: &rfqn.RelationFQN{
+						RelationName: "xtab",
+					},
+					ShardIds: []string{"sh1", "sh2", "sh3"},
 				},
 			},
 			err: nil,
@@ -1307,7 +1315,9 @@ func TestReferenceRelation(t *testing.T) {
 			query: "CREATE REFERENCE TABLE xtab AUTO INCREMENT id",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
-					TableName: "xtab",
+					TableName: &rfqn.RelationFQN{
+						RelationName: "xtab",
+					},
 					AutoIncrementEntries: []*spqrparser.AutoIncrementEntry{
 						{
 							Column: "id",
@@ -1321,7 +1331,9 @@ func TestReferenceRelation(t *testing.T) {
 			query: "CREATE REFERENCE TABLE xtab AUTO INCREMENT id START 42",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
-					TableName: "xtab",
+					TableName: &rfqn.RelationFQN{
+						RelationName: "xtab",
+					},
 					AutoIncrementEntries: []*spqrparser.AutoIncrementEntry{
 						{
 							Column: "id",
@@ -1336,7 +1348,9 @@ func TestReferenceRelation(t *testing.T) {
 			query: "CREATE REFERENCE TABLE xtab AUTO INCREMENT id1 START 42, id2 START 43",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ReferenceRelationDefinition{
-					TableName: "xtab",
+					TableName: &rfqn.RelationFQN{
+						RelationName: "xtab",
+					},
 					AutoIncrementEntries: []*spqrparser.AutoIncrementEntry{
 						{
 							Column: "id1",
