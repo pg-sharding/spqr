@@ -43,8 +43,6 @@ type PoolImpl struct {
 
 var _ Pool = &PoolImpl{}
 
-// TODO : unit tests
-
 // Put adds a client to the client pool.
 //
 // It acquires a write lock on the mutex to ensure exclusive access to the pool.
@@ -60,8 +58,6 @@ func (c *PoolImpl) Put(client Client) error {
 	c.pool.Store(client.ID(), client)
 	return nil
 }
-
-// TODO : unit tests
 
 // Pop removes a client with the specified ID from the client pool.
 //
@@ -85,8 +81,6 @@ func (c *PoolImpl) Pop(id uint) (bool, error) {
 
 	return ok, err
 }
-
-// TODO : unit tests
 
 // Shutdown shuts down the client pool by closing all clients and releasing associated resources.
 //
@@ -112,8 +106,6 @@ func (c *PoolImpl) Shutdown() error {
 
 	return nil
 }
-
-// TODO : unit tests
 
 // ClientPoolForeach iterates over all clients in the client pool and executes the provided function for each client.
 //
