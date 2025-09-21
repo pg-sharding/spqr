@@ -2,8 +2,10 @@ package qrouter
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/juju/errors"
+	"sync/atomic"
+
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -13,7 +15,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/plan"
-	"sync/atomic"
 )
 
 type LocalQrouter struct {
@@ -39,7 +40,7 @@ var _ QueryRouter = &LocalQrouter{}
 func NewLocalQrouter(shardMapping map[string]*config.Shard) (*LocalQrouter, error) {
 	if len(shardMapping) != 1 {
 		errmsg := "local router support only single-datashard routing"
-		err := errors.New(errmsg)
+		err := fmt.Errorf(errmsg)
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return nil, err
 	}
