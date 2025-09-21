@@ -340,38 +340,95 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	return ret, nil
 }
 
-// TODO : unit tests
-func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error) {
+func (q *EtcdQDB) FastLockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().
-		Str("id", id).
+		Str("id", idKeyRange).
+		Msg("etcdqdb: lock key range (fast)")
+	t := time.Now()
+	kr, err := q.internalFastLockKeyRange(ctx, idKeyRange)
+	statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
+	return kr, err
+}
+
+func (q *EtcdQDB) internalFastLockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
+
+	resp, err := q.cli.Txn(ctx).
+		If(
+			//check exists key range lock
+			clientv3.Compare(clientv3.Version(keyLockPath(keyRangeNodePath(idKeyRange))), "=", 0),
+			//check exists key range
+			clientv3.Compare(clientv3.Version(keyRangeNodePath(idKeyRange)), ">", 0),
+		).
+		Then(
+			clientv3.OpPut(keyLockPath(keyRangeNodePath(idKeyRange)), "locked"),
+			clientv3.OpGet(keyRangeNodePath(idKeyRange)),
+		).
+		Else(
+			clientv3.OpGet(keyLockPath(keyRangeNodePath(idKeyRange)), clientv3.WithCountOnly()),
+			clientv3.OpGet(keyRangeNodePath(idKeyRange), clientv3.WithCountOnly()),
+		).
+		Commit()
+	if err != nil {
+		return nil, err
+	}
+	if !resp.Succeeded {
+		if len(resp.Responses) != 2 {
+			return nil, fmt.Errorf("unexpected (case 0) etcd lock '%s' responce parts count=%d",
+				idKeyRange, len(resp.Responses))
+		}
+		if resp.Responses[1].GetResponseRange().Count == 0 {
+			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "cant't lock non existent key range %v", idKeyRange)
+		}
+		spqrlog.Zero.Debug().
+			Str("id", idKeyRange).
+			Msg(fmt.Sprintf("unsuccesful lock '%s' LS:%d, KR:%d", idKeyRange, resp.Responses[0], resp.Responses[1]))
+		return nil, retry.RetryableError(spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", idKeyRange))
+	} else {
+		if len(resp.Responses) != 2 {
+			return nil, fmt.Errorf("unexpected (case 1) etcd lock '%s' responce parts count=%d",
+				idKeyRange, len(resp.Responses))
+		} else {
+			rng := resp.Responses[1].GetResponseRange()
+			if len(rng.Kvs) != 1 {
+				return nil, fmt.Errorf("unexpected (case 2) etcd lock '%s' responce parts count=%d",
+					idKeyRange, len(rng.Kvs))
+			}
+			if rng.Kvs[0] == nil {
+				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 0)",
+					idKeyRange)
+			}
+			kv := rng.Kvs[0].Value
+			if kv == nil {
+				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 1)",
+					idKeyRange)
+			}
+			keyRange := KeyRange{}
+			if err := json.Unmarshal(kv, &keyRange); err != nil {
+				return nil, err
+			}
+			return &keyRange, nil
+		}
+	}
+}
+
+// TODO : unit tests
+func (q *EtcdQDB) LockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
+	spqrlog.Zero.Debug().
+		Str("id", idKeyRange).
 		Msg("etcdqdb: lock key range")
 
 	t := time.Now()
-
-	if err := retry.Do(ctx, retry.WithMaxRetries(7, retry.NewFibonacci(500*time.Millisecond)), func(ctx context.Context) error {
-		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(id)), clientv3.WithCountOnly())
-		if err != nil {
-			return retry.RetryableError(err)
-		}
-		switch resp.Count {
-		case 0:
-			_, err := q.cli.Put(ctx, keyLockPath(keyRangeNodePath(id)), "locked")
-			if err != nil {
-				return retry.RetryableError(err)
-			}
-
-			return nil
-		case 1:
-			return retry.RetryableError(spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id))
-		default:
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "too much key ranges matched: %d", len(resp.Kvs))
-		}
-	}); err != nil {
+	if kr, err := retry.DoValue(ctx, retry.WithMaxRetries(7,
+		retry.NewFibonacci(500*time.Millisecond)),
+		func(ctx context.Context) (*KeyRange, error) {
+			return q.internalFastLockKeyRange(ctx, idKeyRange)
+		}); err != nil {
 		statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
 		return nil, err
+	} else {
+		statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
+		return kr, nil
 	}
-	statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
-	return q.GetKeyRange(ctx, id)
 }
 
 // TODO : unit tests

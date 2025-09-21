@@ -596,6 +596,21 @@ func (mr *MockQDBMockRecorder) DropShard(ctx, shardID any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropShard", reflect.TypeOf((*MockQDB)(nil).DropShard), ctx, shardID)
 }
 
+// FastLockKeyRange mocks base method.
+func (m *MockQDB) FastLockKeyRange(ctx context.Context, id string) (*qdb.KeyRange, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FastLockKeyRange", ctx, id)
+	ret0, _ := ret[0].(*qdb.KeyRange)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FastLockKeyRange indicates an expected call of FastLockKeyRange.
+func (mr *MockQDBMockRecorder) FastLockKeyRange(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FastLockKeyRange", reflect.TypeOf((*MockQDB)(nil).FastLockKeyRange), ctx, id)
+}
+
 // GetBalancerTask mocks base method.
 func (m *MockQDB) GetBalancerTask(ctx context.Context) (*qdb.BalancerTask, error) {
 	m.ctrl.T.Helper()
@@ -1496,6 +1511,21 @@ func (m *MockXQDB) DropShard(ctx context.Context, shardID string) error {
 func (mr *MockXQDBMockRecorder) DropShard(ctx, shardID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropShard", reflect.TypeOf((*MockXQDB)(nil).DropShard), ctx, shardID)
+}
+
+// FastLockKeyRange mocks base method.
+func (m *MockXQDB) FastLockKeyRange(ctx context.Context, id string) (*qdb.KeyRange, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FastLockKeyRange", ctx, id)
+	ret0, _ := ret[0].(*qdb.KeyRange)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FastLockKeyRange indicates an expected call of FastLockKeyRange.
+func (mr *MockXQDBMockRecorder) FastLockKeyRange(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FastLockKeyRange", reflect.TypeOf((*MockXQDB)(nil).FastLockKeyRange), ctx, id)
 }
 
 // GetBalancerTask mocks base method.
