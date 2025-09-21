@@ -39,8 +39,7 @@ var _ QueryRouter = &LocalQrouter{}
 
 func NewLocalQrouter(shardMapping map[string]*config.Shard) (*LocalQrouter, error) {
 	if len(shardMapping) != 1 {
-		errmsg := "local router support only single-datashard routing"
-		err := fmt.Errorf(errmsg)
+		err := fmt.Errorf("local router support only single-datashard routing")
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return nil, err
 	}
