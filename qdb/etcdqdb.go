@@ -381,7 +381,7 @@ func (q *EtcdQDB) internalFastLockKeyRange(ctx context.Context, idKeyRange strin
 		}
 		spqrlog.Zero.Debug().
 			Str("id", idKeyRange).
-			Msg(fmt.Sprintf("unsuccesful lock '%s' LS:%d, KR:%d", idKeyRange, resp.Responses[0], resp.Responses[1]))
+			Msg(fmt.Sprintf("unsuccessful lock '%s' LS:%d, KR:%d", idKeyRange, resp.Responses[0], resp.Responses[1]))
 		return nil, retry.RetryableError(spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", idKeyRange))
 	} else {
 		if len(resp.Responses) != 2 {
