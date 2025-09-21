@@ -373,7 +373,7 @@ func (q *EtcdQDB) internalFastLockKeyRange(ctx context.Context, idKeyRange strin
 	}
 	if !resp.Succeeded {
 		if len(resp.Responses) != 2 {
-			return nil, fmt.Errorf("unexpected (case 0) etcd lock '%s' responce parts count=%d",
+			return nil, fmt.Errorf("unexpected (case 0) etcd lock '%s' response parts count=%d",
 				idKeyRange, len(resp.Responses))
 		}
 		if resp.Responses[1].GetResponseRange().Count == 0 {
@@ -385,12 +385,12 @@ func (q *EtcdQDB) internalFastLockKeyRange(ctx context.Context, idKeyRange strin
 		return nil, retry.RetryableError(spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", idKeyRange))
 	} else {
 		if len(resp.Responses) != 2 {
-			return nil, fmt.Errorf("unexpected (case 1) etcd lock '%s' responce parts count=%d",
+			return nil, fmt.Errorf("unexpected (case 1) etcd lock '%s' response parts count=%d",
 				idKeyRange, len(resp.Responses))
 		} else {
 			rng := resp.Responses[1].GetResponseRange()
 			if len(rng.Kvs) != 1 {
-				return nil, fmt.Errorf("unexpected (case 2) etcd lock '%s' responce parts count=%d",
+				return nil, fmt.Errorf("unexpected (case 2) etcd lock '%s' response parts count=%d",
 					idKeyRange, len(rng.Kvs))
 			}
 			if rng.Kvs[0] == nil {
