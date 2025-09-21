@@ -124,7 +124,7 @@ type ShardingRuleEntry struct {
 }
 
 type ReferenceRelationDefinition struct {
-	TableName            string
+	TableName            *rfqn.RelationFQN
 	AutoIncrementEntries []*AutoIncrementEntry
 	ShardIds             []string
 }

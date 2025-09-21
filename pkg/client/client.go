@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/statistics"
 )
 
 type Pmgr interface {
@@ -29,6 +30,7 @@ type Pmgr interface {
 type Client interface {
 	Pmgr
 	session.SessionParamsHolder
+	statistics.StatHolder
 
 	ID() uint
 

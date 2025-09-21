@@ -18,7 +18,7 @@ import (
 
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
-	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
+	statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 	switch q := msg.(type) {
 	case *pgproto3.Terminate:
 		return nil

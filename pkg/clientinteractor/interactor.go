@@ -350,10 +350,10 @@ func (pi *PSQLInteractor) Quantiles(_ context.Context) error {
 		if qStr == "" {
 			qStr = fmt.Sprintf("%.2f", q)
 		}
-		if err := pi.WriteDataRow(fmt.Sprintf("router_time_%s", qStr), fmt.Sprintf("%.2f", statistics.GetTotalTimeQuantile(statistics.Router, q))); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("router_time_%s", qStr), fmt.Sprintf("%.2f", statistics.GetTotalTimeQuantile(statistics.StatisticsTypeRouter, q))); err != nil {
 			return err
 		}
-		if err := pi.WriteDataRow(fmt.Sprintf("shard_time_%s", qStr), fmt.Sprintf("%.2f", statistics.GetTotalTimeQuantile(statistics.Shard, q))); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("shard_time_%s", qStr), fmt.Sprintf("%.2f", statistics.GetTotalTimeQuantile(statistics.StatisticsTypeShard, q))); err != nil {
 			return err
 		}
 	}
@@ -797,8 +797,10 @@ func (ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) []stri
 	rowData := []string{fmt.Sprintf("%d", cl.ID()), cl.Usr(), cl.DB(), hostname, rAddr}
 
 	for _, el := range *quantiles {
-		rowData = append(rowData, fmt.Sprintf("%.2fms", statistics.GetTimeQuantile(statistics.Router, el, cl.ID())))
-		rowData = append(rowData, fmt.Sprintf("%.2fms", statistics.GetTimeQuantile(statistics.Shard, el, cl.ID())))
+		rowData = append(rowData, fmt.Sprintf("%.2fms",
+			statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, el, cl)))
+		rowData = append(rowData, fmt.Sprintf("%.2fms",
+			statistics.GetTimeQuantile(statistics.StatisticsTypeShard, el, cl)))
 	}
 	return rowData
 }
