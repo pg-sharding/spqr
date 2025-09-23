@@ -37,7 +37,8 @@ Feature: default shards test
       "Key range ID":"ds1.DEFAULT",
       "Distribution ID":"ds1",
       "Lower bound":"-9223372036854775808",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     }]
     """
 
@@ -66,7 +67,8 @@ Feature: default shards test
       "Key range ID":"kr1",
       "Distribution ID":"ds1",
       "Lower bound":"0",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     }]
     """
 
@@ -86,12 +88,14 @@ Feature: default shards test
       "Key range ID":"ds1.DEFAULT",
       "Distribution ID":"ds1",
       "Lower bound":"-9223372036854775808",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     },
     {
       "Key range ID":"kr1",
       "Distribution ID":"ds1",
       "Lower bound":"0",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     }]
     """

@@ -208,6 +208,23 @@ func (a *Adapter) ListKeyRanges(ctx context.Context, distribution string) ([]*kr
 	return krs, nil
 }
 
+// ListKeyRangeLocks lists the locked key ranges idents .
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+//
+// Returns:
+// - []string: A list locked key range idents.
+// - error: An error if listing the key ranges was unsuccessful.
+func (a *Adapter) ListKeyRangeLocks(ctx context.Context) ([]string, error) {
+	client := proto.NewKeyRangeServiceClient(a.conn)
+	reply, err := client.ListKeyRangeLocks(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	return reply.KeyRangesLocks, nil
+}
+
 // TODO : unit tests
 
 // ListAllKeyRanges lists all key ranges available.

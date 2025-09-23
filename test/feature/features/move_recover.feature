@@ -73,13 +73,15 @@ Feature: Move recover test
           "Key range ID":"krid1",
           "Distribution ID":"ds1",
           "Lower bound":"1",
-          "Shard ID":"sh1"
+          "Shard ID":"sh1",
+          "Locked":"false"
       },
       {
           "Key range ID":"krid2",
           "Distribution ID":"ds1",
           "Lower bound":"11",
-          "Shard ID":"sh1"
+          "Shard ID":"sh1",
+          "Locked":"false"
       }
     ]
     """
@@ -138,6 +140,7 @@ Feature: Move recover test
     """
     002
     """
+    And we wait for "5" seconds
     When I run SQL on host "coordinator2"
     """
     SHOW key_ranges
@@ -150,13 +153,15 @@ Feature: Move recover test
           "Key range ID":"krid1",
           "Distribution ID":"ds1",
           "Lower bound":"1",
-          "Shard ID":"sh1"
+          "Shard ID":"sh1",
+          "Locked":"false"
       },
       {
           "Key range ID":"krid2",
           "Distribution ID":"ds1",
           "Lower bound":"11",
-          "Shard ID":"sh1"
+          "Shard ID":"sh1",
+          "Locked":"false"
       }
     ]
     """
@@ -236,13 +241,15 @@ Feature: Move recover test
           "Key range ID":"krid1",
           "Distribution ID":"ds1",
           "Lower bound":"1",
-          "Shard ID":"sh1"
+          "Shard ID":"sh1",
+          "Locked":"false"
       },
       {
           "Key range ID":"krid2",
           "Distribution ID":"ds1",
           "Lower bound":"11",
-          "Shard ID":"sh1"
+          "Shard ID":"sh1",
+          "Locked":"false"
       }
     ]
     """
@@ -322,13 +329,15 @@ Feature: Move recover test
           "Key range ID":"krid1",
           "Distribution ID":"ds1",
           "Lower bound":"1",
-          "Shard ID":"sh1"
+          "Shard ID":"sh1",
+          "Locked":"false"
       },
       {
           "Key range ID":"krid2",
           "Distribution ID":"ds1",
           "Lower bound":"11",
-          "Shard ID":"sh1"
+          "Shard ID":"sh1",
+          "Locked":"false"
       }
     ]
     """
@@ -386,6 +395,7 @@ Feature: Move recover test
     """
     002
     """
+    And we wait for "5" seconds
     When I run SQL on host "coordinator2"
     """
     SHOW key_ranges
@@ -398,13 +408,15 @@ Feature: Move recover test
           "Key range ID":"krid1",
           "Distribution ID":"ds1",
           "Lower bound":"1",
-          "Shard ID":"sh1"
+          "Shard ID":"sh1",
+          "Locked":"false"
       },
       {
           "Key range ID":"krid2",
           "Distribution ID":"ds1",
           "Lower bound":"11",
-          "Shard ID":"sh1"
+          "Shard ID":"sh1",
+          "Locked":"false"
       }
     ]
     """

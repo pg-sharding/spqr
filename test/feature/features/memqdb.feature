@@ -108,13 +108,15 @@ Feature: MemQDB save state into a file
         "Key range ID": "krid1",
         "Distribution ID":"ds1",
         "Lower bound": "1",
-        "Shard ID": "sh1"
+        "Shard ID": "sh1",
+        "Locked":"false"
       },
       {
         "Key range ID": "krid2",
         "Distribution ID":"ds1",
         "Lower bound": "11",
-        "Shard ID": "sh1"
+        "Shard ID": "sh1",
+        "Locked":"false"
       }
     ]
     """

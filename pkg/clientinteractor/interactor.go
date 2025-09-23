@@ -427,13 +427,14 @@ func (pi *PSQLInteractor) DropShard(id string) error {
 //
 // Returns:
 //   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
+func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, locks []string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			engine.TextOidFD("Key range ID"),
 			engine.TextOidFD("Shard ID"),
 			engine.TextOidFD("Distribution ID"),
 			engine.TextOidFD("Lower bound"),
+			engine.TextOidFD("Locked"),
 		},
 		},
 	} {
@@ -443,13 +444,23 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 		}
 	}
 
+	lockMap := make(map[string]string, len(locks))
+	for _, idKeyRange := range locks {
+		lockMap[idKeyRange] = "true"
+	}
+
 	for _, keyRange := range krs {
+		isLocked := "false"
+		if lockState, ok := lockMap[keyRange.ID]; ok {
+			isLocked = lockState
+		}
 		if err := pi.cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
 				[]byte(keyRange.ID),
 				[]byte(keyRange.ShardID),
 				[]byte(keyRange.Distribution),
 				[]byte(strings.Join(keyRange.SendRaw(), ",")),
+				[]byte(isLocked),
 			},
 		}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")

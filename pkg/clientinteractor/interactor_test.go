@@ -13,8 +13,10 @@ import (
 	mock "github.com/pg-sharding/spqr/pkg/mock/clientinteractor"
 	mockinst "github.com/pg-sharding/spqr/pkg/mock/conn"
 	mockshard "github.com/pg-sharding/spqr/pkg/mock/shard"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/qdb"
 	"go.uber.org/mock/gomock"
 
 	proto "github.com/pg-sharding/spqr/pkg/protos"
@@ -531,8 +533,8 @@ func TestMakeSimpleResponseWithData(t *testing.T) {
 	ca := mockcl.NewMockRouterClient(ctrl)
 	interactor := clientinteractor.NewPSQLInteractor(ca)
 	info := []clientinteractor.SimpleResultRow{
-		clientinteractor.SimpleResultRow{Name: "test1", Value: "data1"},
-		clientinteractor.SimpleResultRow{Name: "test2", Value: "data2"},
+		{Name: "test1", Value: "data1"},
+		{Name: "test2", Value: "data2"},
 	}
 	data := clientinteractor.SimpleResultMsg{Header: "test header", Rows: info}
 
@@ -569,5 +571,77 @@ func TestMakeSimpleResponseEmpty(t *testing.T) {
 		ca.EXPECT().Send(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}),
 	)
 	err := interactor.MakeSimpleResponse(ctx, data)
+	assert.Nil(t, err)
+}
+
+func TestKeyRangesSuccess(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	ca := mockcl.NewMockRouterClient(ctrl)
+	var desc []pgproto3.FieldDescription
+	desc = append(desc, engine.TextOidFD("Key range ID"))
+	desc = append(desc, engine.TextOidFD("Shard ID"))
+	desc = append(desc, engine.TextOidFD("Distribution ID"))
+	desc = append(desc, engine.TextOidFD("Lower bound"))
+	desc = append(desc, engine.TextOidFD("Locked"))
+	firstRow := pgproto3.DataRow{
+		Values: [][]byte{
+			[]byte("krid1"),
+			[]byte("sh1"),
+			[]byte("ds1"),
+			[]byte("0"),
+			[]byte("false"),
+		},
+	}
+	secondRow := pgproto3.DataRow{
+		Values: [][]byte{
+			[]byte("krid2"),
+			[]byte("sh1"),
+			[]byte("ds1"),
+			[]byte("30"),
+
+			[]byte("true"),
+		},
+	}
+	thirdRow := pgproto3.DataRow{
+		Values: [][]byte{
+			[]byte("krid3"),
+			[]byte("sh1"),
+			[]byte("ds2"),
+			[]byte("3"),
+			[]byte("false"),
+		},
+	}
+	gomock.InOrder(
+		ca.EXPECT().Send(&pgproto3.RowDescription{Fields: desc}),
+		ca.EXPECT().Send(&firstRow),
+		ca.EXPECT().Send(&secondRow),
+		ca.EXPECT().Send(&thirdRow),
+		ca.EXPECT().Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 3")}),
+		ca.EXPECT().Send(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}),
+	)
+
+	interactor := clientinteractor.NewPSQLInteractor(ca)
+	keyRanges := []*kr.KeyRange{
+		{ID: "krid1",
+			ShardID:      "sh1",
+			Distribution: "ds1",
+			LowerBound:   []any{0},
+			ColumnTypes:  []string{qdb.ColumnTypeInteger},
+		},
+		{ID: "krid2",
+			ShardID:      "sh1",
+			Distribution: "ds1",
+			LowerBound:   []any{30},
+			ColumnTypes:  []string{qdb.ColumnTypeInteger},
+		},
+		{ID: "krid3",
+			ShardID:      "sh1",
+			Distribution: "ds2",
+			LowerBound:   []any{3},
+			ColumnTypes:  []string{qdb.ColumnTypeInteger},
+		},
+	}
+	krLocks := []string{"krid2"}
+	err := interactor.KeyRanges(keyRanges, krLocks)
 	assert.Nil(t, err)
 }

@@ -707,6 +707,50 @@ func (x *KeyRangeReply) GetKeyRangesInfo() []*KeyRangeInfo {
 	return nil
 }
 
+type KeyRangeLocksReply struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	KeyRangesLocks []string               `protobuf:"bytes,1,rep,name=key_ranges_locks,json=keyRangesLocks,proto3" json:"key_ranges_locks,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *KeyRangeLocksReply) Reset() {
+	*x = KeyRangeLocksReply{}
+	mi := &file_protos_key_range_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KeyRangeLocksReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KeyRangeLocksReply) ProtoMessage() {}
+
+func (x *KeyRangeLocksReply) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_key_range_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KeyRangeLocksReply.ProtoReflect.Descriptor instead.
+func (*KeyRangeLocksReply) Descriptor() ([]byte, []int) {
+	return file_protos_key_range_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *KeyRangeLocksReply) GetKeyRangesLocks() []string {
+	if x != nil {
+		return x.KeyRangesLocks
+	}
+	return nil
+}
+
 type ModifyReply struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	OperationId   string                 `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
@@ -716,7 +760,7 @@ type ModifyReply struct {
 
 func (x *ModifyReply) Reset() {
 	*x = ModifyReply{}
-	mi := &file_protos_key_range_proto_msgTypes[12]
+	mi := &file_protos_key_range_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -728,7 +772,7 @@ func (x *ModifyReply) String() string {
 func (*ModifyReply) ProtoMessage() {}
 
 func (x *ModifyReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_key_range_proto_msgTypes[12]
+	mi := &file_protos_key_range_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -741,7 +785,7 @@ func (x *ModifyReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModifyReply.ProtoReflect.Descriptor instead.
 func (*ModifyReply) Descriptor() ([]byte, []int) {
-	return file_protos_key_range_proto_rawDescGZIP(), []int{12}
+	return file_protos_key_range_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ModifyReply) GetOperationId() string {
@@ -760,7 +804,7 @@ type ResolveKeyRangeRequest struct {
 
 func (x *ResolveKeyRangeRequest) Reset() {
 	*x = ResolveKeyRangeRequest{}
-	mi := &file_protos_key_range_proto_msgTypes[13]
+	mi := &file_protos_key_range_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -772,7 +816,7 @@ func (x *ResolveKeyRangeRequest) String() string {
 func (*ResolveKeyRangeRequest) ProtoMessage() {}
 
 func (x *ResolveKeyRangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_key_range_proto_msgTypes[13]
+	mi := &file_protos_key_range_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -785,7 +829,7 @@ func (x *ResolveKeyRangeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveKeyRangeRequest.ProtoReflect.Descriptor instead.
 func (*ResolveKeyRangeRequest) Descriptor() ([]byte, []int) {
-	return file_protos_key_range_proto_rawDescGZIP(), []int{13}
+	return file_protos_key_range_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ResolveKeyRangeRequest) GetBound() string {
@@ -804,7 +848,7 @@ type ResolveKeyRangeReply struct {
 
 func (x *ResolveKeyRangeReply) Reset() {
 	*x = ResolveKeyRangeReply{}
-	mi := &file_protos_key_range_proto_msgTypes[14]
+	mi := &file_protos_key_range_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -816,7 +860,7 @@ func (x *ResolveKeyRangeReply) String() string {
 func (*ResolveKeyRangeReply) ProtoMessage() {}
 
 func (x *ResolveKeyRangeReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_key_range_proto_msgTypes[14]
+	mi := &file_protos_key_range_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -829,7 +873,7 @@ func (x *ResolveKeyRangeReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveKeyRangeReply.ProtoReflect.Descriptor instead.
 func (*ResolveKeyRangeReply) Descriptor() ([]byte, []int) {
-	return file_protos_key_range_proto_rawDescGZIP(), []int{14}
+	return file_protos_key_range_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ResolveKeyRangeReply) GetKeyRangeD() []string {
@@ -848,7 +892,7 @@ type GetKeyRangeRequest struct {
 
 func (x *GetKeyRangeRequest) Reset() {
 	*x = GetKeyRangeRequest{}
-	mi := &file_protos_key_range_proto_msgTypes[15]
+	mi := &file_protos_key_range_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -860,7 +904,7 @@ func (x *GetKeyRangeRequest) String() string {
 func (*GetKeyRangeRequest) ProtoMessage() {}
 
 func (x *GetKeyRangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_key_range_proto_msgTypes[15]
+	mi := &file_protos_key_range_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -873,7 +917,7 @@ func (x *GetKeyRangeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetKeyRangeRequest.ProtoReflect.Descriptor instead.
 func (*GetKeyRangeRequest) Descriptor() ([]byte, []int) {
-	return file_protos_key_range_proto_rawDescGZIP(), []int{15}
+	return file_protos_key_range_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetKeyRangeRequest) GetIds() []string {
@@ -898,7 +942,7 @@ type BatchMoveKeyRangeRequest struct {
 
 func (x *BatchMoveKeyRangeRequest) Reset() {
 	*x = BatchMoveKeyRangeRequest{}
-	mi := &file_protos_key_range_proto_msgTypes[16]
+	mi := &file_protos_key_range_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -910,7 +954,7 @@ func (x *BatchMoveKeyRangeRequest) String() string {
 func (*BatchMoveKeyRangeRequest) ProtoMessage() {}
 
 func (x *BatchMoveKeyRangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_key_range_proto_msgTypes[16]
+	mi := &file_protos_key_range_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -923,7 +967,7 @@ func (x *BatchMoveKeyRangeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchMoveKeyRangeRequest.ProtoReflect.Descriptor instead.
 func (*BatchMoveKeyRangeRequest) Descriptor() ([]byte, []int) {
-	return file_protos_key_range_proto_rawDescGZIP(), []int{16}
+	return file_protos_key_range_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *BatchMoveKeyRangeRequest) GetId() string {
@@ -988,7 +1032,7 @@ type RedistributeKeyRangeRequest struct {
 
 func (x *RedistributeKeyRangeRequest) Reset() {
 	*x = RedistributeKeyRangeRequest{}
-	mi := &file_protos_key_range_proto_msgTypes[17]
+	mi := &file_protos_key_range_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1000,7 +1044,7 @@ func (x *RedistributeKeyRangeRequest) String() string {
 func (*RedistributeKeyRangeRequest) ProtoMessage() {}
 
 func (x *RedistributeKeyRangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_key_range_proto_msgTypes[17]
+	mi := &file_protos_key_range_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1013,7 +1057,7 @@ func (x *RedistributeKeyRangeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RedistributeKeyRangeRequest.ProtoReflect.Descriptor instead.
 func (*RedistributeKeyRangeRequest) Descriptor() ([]byte, []int) {
-	return file_protos_key_range_proto_rawDescGZIP(), []int{17}
+	return file_protos_key_range_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *RedistributeKeyRangeRequest) GetId() string {
@@ -1061,7 +1105,7 @@ type RenameKeyRangeRequest struct {
 
 func (x *RenameKeyRangeRequest) Reset() {
 	*x = RenameKeyRangeRequest{}
-	mi := &file_protos_key_range_proto_msgTypes[18]
+	mi := &file_protos_key_range_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1073,7 +1117,7 @@ func (x *RenameKeyRangeRequest) String() string {
 func (*RenameKeyRangeRequest) ProtoMessage() {}
 
 func (x *RenameKeyRangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_key_range_proto_msgTypes[18]
+	mi := &file_protos_key_range_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1086,7 +1130,7 @@ func (x *RenameKeyRangeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameKeyRangeRequest.ProtoReflect.Descriptor instead.
 func (*RenameKeyRangeRequest) Descriptor() ([]byte, []int) {
-	return file_protos_key_range_proto_rawDescGZIP(), []int{18}
+	return file_protos_key_range_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *RenameKeyRangeRequest) GetKeyRangeId() string {
@@ -1140,7 +1184,9 @@ const file_protos_key_range_proto_rawDesc = "" +
 	"\x15UnlockKeyRangeRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x03(\tR\x02id\"K\n" +
 	"\rKeyRangeReply\x12:\n" +
-	"\x0fkey_ranges_info\x18\x01 \x03(\v2\x12.spqr.KeyRangeInfoR\rkeyRangesInfo\"0\n" +
+	"\x0fkey_ranges_info\x18\x01 \x03(\v2\x12.spqr.KeyRangeInfoR\rkeyRangesInfo\">\n" +
+	"\x12KeyRangeLocksReply\x12(\n" +
+	"\x10key_ranges_locks\x18\x01 \x03(\tR\x0ekeyRangesLocks\"0\n" +
 	"\vModifyReply\x12!\n" +
 	"\foperation_id\x18\x01 \x01(\tR\voperationId\".\n" +
 	"\x16ResolveKeyRangeRequest\x12\x14\n" +
@@ -1174,11 +1220,12 @@ const file_protos_key_range_proto_rawDesc = "" +
 	"\tAVAILABLE\x10\x01*K\n" +
 	"\x15RedistributeLimitType\x12\x17\n" +
 	"\x13RedistributeAllKeys\x10\x00\x12\x19\n" +
-	"\x15RedistributeKeysLimit\x10\x012\xac\b\n" +
+	"\x15RedistributeKeysLimit\x10\x012\xf5\b\n" +
 	"\x0fKeyRangeService\x12>\n" +
 	"\vGetKeyRange\x12\x18.spqr.GetKeyRangeRequest\x1a\x13.spqr.KeyRangeReply\"\x00\x12@\n" +
 	"\fListKeyRange\x12\x19.spqr.ListKeyRangeRequest\x1a\x13.spqr.KeyRangeReply\"\x00\x12A\n" +
-	"\x10ListAllKeyRanges\x12\x16.google.protobuf.Empty\x1a\x13.spqr.KeyRangeReply\"\x00\x12>\n" +
+	"\x10ListAllKeyRanges\x12\x16.google.protobuf.Empty\x1a\x13.spqr.KeyRangeReply\"\x00\x12G\n" +
+	"\x11ListKeyRangeLocks\x12\x16.google.protobuf.Empty\x1a\x18.spqr.KeyRangeLocksReply\"\x00\x12>\n" +
 	"\fLockKeyRange\x12\x19.spqr.LockKeyRangeRequest\x1a\x11.spqr.ModifyReply\"\x00\x12B\n" +
 	"\x0eCreateKeyRange\x12\x1b.spqr.CreateKeyRangeRequest\x1a\x11.spqr.ModifyReply\"\x00\x12>\n" +
 	"\fDropKeyRange\x12\x19.spqr.DropKeyRangeRequest\x1a\x11.spqr.ModifyReply\"\x00\x12L\n" +
@@ -1206,7 +1253,7 @@ func file_protos_key_range_proto_rawDescGZIP() []byte {
 }
 
 var file_protos_key_range_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_protos_key_range_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_protos_key_range_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_protos_key_range_proto_goTypes = []any{
 	(KeyRangeStatus)(0),                 // 0: spqr.KeyRangeStatus
 	(RedistributeLimitType)(0),          // 1: spqr.RedistributeLimitType
@@ -1222,15 +1269,16 @@ var file_protos_key_range_proto_goTypes = []any{
 	(*LockKeyRangeRequest)(nil),         // 11: spqr.LockKeyRangeRequest
 	(*UnlockKeyRangeRequest)(nil),       // 12: spqr.UnlockKeyRangeRequest
 	(*KeyRangeReply)(nil),               // 13: spqr.KeyRangeReply
-	(*ModifyReply)(nil),                 // 14: spqr.ModifyReply
-	(*ResolveKeyRangeRequest)(nil),      // 15: spqr.ResolveKeyRangeRequest
-	(*ResolveKeyRangeReply)(nil),        // 16: spqr.ResolveKeyRangeReply
-	(*GetKeyRangeRequest)(nil),          // 17: spqr.GetKeyRangeRequest
-	(*BatchMoveKeyRangeRequest)(nil),    // 18: spqr.BatchMoveKeyRangeRequest
-	(*RedistributeKeyRangeRequest)(nil), // 19: spqr.RedistributeKeyRangeRequest
-	(*RenameKeyRangeRequest)(nil),       // 20: spqr.RenameKeyRangeRequest
-	(SplitType)(0),                      // 21: spqr.SplitType
-	(*emptypb.Empty)(nil),               // 22: google.protobuf.Empty
+	(*KeyRangeLocksReply)(nil),          // 14: spqr.KeyRangeLocksReply
+	(*ModifyReply)(nil),                 // 15: spqr.ModifyReply
+	(*ResolveKeyRangeRequest)(nil),      // 16: spqr.ResolveKeyRangeRequest
+	(*ResolveKeyRangeReply)(nil),        // 17: spqr.ResolveKeyRangeReply
+	(*GetKeyRangeRequest)(nil),          // 18: spqr.GetKeyRangeRequest
+	(*BatchMoveKeyRangeRequest)(nil),    // 19: spqr.BatchMoveKeyRangeRequest
+	(*RedistributeKeyRangeRequest)(nil), // 20: spqr.RedistributeKeyRangeRequest
+	(*RenameKeyRangeRequest)(nil),       // 21: spqr.RenameKeyRangeRequest
+	(SplitType)(0),                      // 22: spqr.SplitType
+	(*emptypb.Empty)(nil),               // 23: google.protobuf.Empty
 }
 var file_protos_key_range_proto_depIdxs = []int32{
 	2,  // 0: spqr.KeyRangeInfo.bound:type_name -> spqr.KeyRangeBound
@@ -1238,39 +1286,41 @@ var file_protos_key_range_proto_depIdxs = []int32{
 	3,  // 2: spqr.DropAllKeyRangesResponse.key_range:type_name -> spqr.KeyRangeInfo
 	3,  // 3: spqr.KeyRangeReply.key_ranges_info:type_name -> spqr.KeyRangeInfo
 	1,  // 4: spqr.BatchMoveKeyRangeRequest.limitType:type_name -> spqr.RedistributeLimitType
-	21, // 5: spqr.BatchMoveKeyRangeRequest.splitType:type_name -> spqr.SplitType
-	17, // 6: spqr.KeyRangeService.GetKeyRange:input_type -> spqr.GetKeyRangeRequest
+	22, // 5: spqr.BatchMoveKeyRangeRequest.splitType:type_name -> spqr.SplitType
+	18, // 6: spqr.KeyRangeService.GetKeyRange:input_type -> spqr.GetKeyRangeRequest
 	4,  // 7: spqr.KeyRangeService.ListKeyRange:input_type -> spqr.ListKeyRangeRequest
-	22, // 8: spqr.KeyRangeService.ListAllKeyRanges:input_type -> google.protobuf.Empty
-	11, // 9: spqr.KeyRangeService.LockKeyRange:input_type -> spqr.LockKeyRangeRequest
-	5,  // 10: spqr.KeyRangeService.CreateKeyRange:input_type -> spqr.CreateKeyRangeRequest
-	9,  // 11: spqr.KeyRangeService.DropKeyRange:input_type -> spqr.DropKeyRangeRequest
-	22, // 12: spqr.KeyRangeService.DropAllKeyRanges:input_type -> google.protobuf.Empty
-	12, // 13: spqr.KeyRangeService.UnlockKeyRange:input_type -> spqr.UnlockKeyRangeRequest
-	6,  // 14: spqr.KeyRangeService.SplitKeyRange:input_type -> spqr.SplitKeyRangeRequest
-	7,  // 15: spqr.KeyRangeService.MergeKeyRange:input_type -> spqr.MergeKeyRangeRequest
-	8,  // 16: spqr.KeyRangeService.MoveKeyRange:input_type -> spqr.MoveKeyRangeRequest
-	15, // 17: spqr.KeyRangeService.ResolveKeyRange:input_type -> spqr.ResolveKeyRangeRequest
-	18, // 18: spqr.KeyRangeService.BatchMoveKeyRange:input_type -> spqr.BatchMoveKeyRangeRequest
-	19, // 19: spqr.KeyRangeService.RedistributeKeyRange:input_type -> spqr.RedistributeKeyRangeRequest
-	20, // 20: spqr.KeyRangeService.RenameKeyRange:input_type -> spqr.RenameKeyRangeRequest
-	13, // 21: spqr.KeyRangeService.GetKeyRange:output_type -> spqr.KeyRangeReply
-	13, // 22: spqr.KeyRangeService.ListKeyRange:output_type -> spqr.KeyRangeReply
-	13, // 23: spqr.KeyRangeService.ListAllKeyRanges:output_type -> spqr.KeyRangeReply
-	14, // 24: spqr.KeyRangeService.LockKeyRange:output_type -> spqr.ModifyReply
-	14, // 25: spqr.KeyRangeService.CreateKeyRange:output_type -> spqr.ModifyReply
-	14, // 26: spqr.KeyRangeService.DropKeyRange:output_type -> spqr.ModifyReply
-	10, // 27: spqr.KeyRangeService.DropAllKeyRanges:output_type -> spqr.DropAllKeyRangesResponse
-	14, // 28: spqr.KeyRangeService.UnlockKeyRange:output_type -> spqr.ModifyReply
-	14, // 29: spqr.KeyRangeService.SplitKeyRange:output_type -> spqr.ModifyReply
-	14, // 30: spqr.KeyRangeService.MergeKeyRange:output_type -> spqr.ModifyReply
-	14, // 31: spqr.KeyRangeService.MoveKeyRange:output_type -> spqr.ModifyReply
-	16, // 32: spqr.KeyRangeService.ResolveKeyRange:output_type -> spqr.ResolveKeyRangeReply
-	22, // 33: spqr.KeyRangeService.BatchMoveKeyRange:output_type -> google.protobuf.Empty
-	22, // 34: spqr.KeyRangeService.RedistributeKeyRange:output_type -> google.protobuf.Empty
-	22, // 35: spqr.KeyRangeService.RenameKeyRange:output_type -> google.protobuf.Empty
-	21, // [21:36] is the sub-list for method output_type
-	6,  // [6:21] is the sub-list for method input_type
+	23, // 8: spqr.KeyRangeService.ListAllKeyRanges:input_type -> google.protobuf.Empty
+	23, // 9: spqr.KeyRangeService.ListKeyRangeLocks:input_type -> google.protobuf.Empty
+	11, // 10: spqr.KeyRangeService.LockKeyRange:input_type -> spqr.LockKeyRangeRequest
+	5,  // 11: spqr.KeyRangeService.CreateKeyRange:input_type -> spqr.CreateKeyRangeRequest
+	9,  // 12: spqr.KeyRangeService.DropKeyRange:input_type -> spqr.DropKeyRangeRequest
+	23, // 13: spqr.KeyRangeService.DropAllKeyRanges:input_type -> google.protobuf.Empty
+	12, // 14: spqr.KeyRangeService.UnlockKeyRange:input_type -> spqr.UnlockKeyRangeRequest
+	6,  // 15: spqr.KeyRangeService.SplitKeyRange:input_type -> spqr.SplitKeyRangeRequest
+	7,  // 16: spqr.KeyRangeService.MergeKeyRange:input_type -> spqr.MergeKeyRangeRequest
+	8,  // 17: spqr.KeyRangeService.MoveKeyRange:input_type -> spqr.MoveKeyRangeRequest
+	16, // 18: spqr.KeyRangeService.ResolveKeyRange:input_type -> spqr.ResolveKeyRangeRequest
+	19, // 19: spqr.KeyRangeService.BatchMoveKeyRange:input_type -> spqr.BatchMoveKeyRangeRequest
+	20, // 20: spqr.KeyRangeService.RedistributeKeyRange:input_type -> spqr.RedistributeKeyRangeRequest
+	21, // 21: spqr.KeyRangeService.RenameKeyRange:input_type -> spqr.RenameKeyRangeRequest
+	13, // 22: spqr.KeyRangeService.GetKeyRange:output_type -> spqr.KeyRangeReply
+	13, // 23: spqr.KeyRangeService.ListKeyRange:output_type -> spqr.KeyRangeReply
+	13, // 24: spqr.KeyRangeService.ListAllKeyRanges:output_type -> spqr.KeyRangeReply
+	14, // 25: spqr.KeyRangeService.ListKeyRangeLocks:output_type -> spqr.KeyRangeLocksReply
+	15, // 26: spqr.KeyRangeService.LockKeyRange:output_type -> spqr.ModifyReply
+	15, // 27: spqr.KeyRangeService.CreateKeyRange:output_type -> spqr.ModifyReply
+	15, // 28: spqr.KeyRangeService.DropKeyRange:output_type -> spqr.ModifyReply
+	10, // 29: spqr.KeyRangeService.DropAllKeyRanges:output_type -> spqr.DropAllKeyRangesResponse
+	15, // 30: spqr.KeyRangeService.UnlockKeyRange:output_type -> spqr.ModifyReply
+	15, // 31: spqr.KeyRangeService.SplitKeyRange:output_type -> spqr.ModifyReply
+	15, // 32: spqr.KeyRangeService.MergeKeyRange:output_type -> spqr.ModifyReply
+	15, // 33: spqr.KeyRangeService.MoveKeyRange:output_type -> spqr.ModifyReply
+	17, // 34: spqr.KeyRangeService.ResolveKeyRange:output_type -> spqr.ResolveKeyRangeReply
+	23, // 35: spqr.KeyRangeService.BatchMoveKeyRange:output_type -> google.protobuf.Empty
+	23, // 36: spqr.KeyRangeService.RedistributeKeyRange:output_type -> google.protobuf.Empty
+	23, // 37: spqr.KeyRangeService.RenameKeyRange:output_type -> google.protobuf.Empty
+	22, // [22:38] is the sub-list for method output_type
+	6,  // [6:22] is the sub-list for method input_type
 	6,  // [6:6] is the sub-list for extension type_name
 	6,  // [6:6] is the sub-list for extension extendee
 	0,  // [0:6] is the sub-list for field type_name
@@ -1288,7 +1338,7 @@ func file_protos_key_range_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_key_range_proto_rawDesc), len(file_protos_key_range_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   19,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
