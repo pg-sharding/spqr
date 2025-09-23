@@ -79,7 +79,7 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 			for i, asn1Data := range certificates {
 				cert, err := x509.ParseCertificate(asn1Data)
 				if err != nil {
-					return fmt.Errorf("failed to parse certificate from server" + ": " + err.Error())
+					return fmt.Errorf("failed to parse certificate from server: %s", err.Error())
 				}
 				certs[i] = cert
 			}

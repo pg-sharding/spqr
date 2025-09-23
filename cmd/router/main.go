@@ -261,7 +261,7 @@ var runCmd = &cobra.Command{
 
 		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"))
 		if err != nil {
-			return fmt.Errorf( "router failed to start" + ": " + err.Error())
+			return fmt.Errorf("router failed to start: %s", err.Error())
 		}
 
 		app := app.NewApp(router)
