@@ -14,7 +14,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
-	"github.com/pkg/errors"
 	"golang.org/x/sync/semaphore"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -247,7 +246,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 			},
 		} {
 			if err := cl.Send(msg); err != nil {
-				return nil, errors.Wrap(err, "failed to make route failure response")
+				return nil, fmt.Errorf("failed to make route failure response" + ": " + err.Error())
 			}
 		}
 		return nil, err

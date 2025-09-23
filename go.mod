@@ -19,7 +19,6 @@ require (
 	github.com/libp2p/go-reuseport v0.4.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pg-sharding/lyx v0.0.0-20250802034259-035f2510a593
-	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.34.0
 	github.com/samborkent/uuidv7 v0.0.0-20231110121620-f2e19d87e48b
 	github.com/sethvargo/go-retry v0.3.0
@@ -84,6 +83,7 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
