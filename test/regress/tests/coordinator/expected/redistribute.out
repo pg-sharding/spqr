@@ -17,9 +17,9 @@ CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 (1 row)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Distribution ID | Lower bound 
---------------+----------+-----------------+-------------
- krid1        | sh1      | ds1             | 1
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked
+--------------+----------+-----------------+-------------+--------
+ krid1        | sh1      | ds1             | 1           | false
 (1 row)
 
 REDISTRIBUTE KEY RANGE krid1 TO sh1 BATCH SIZE 100;
@@ -31,9 +31,9 @@ REDISTRIBUTE KEY RANGE krid1 TO sh1 BATCH SIZE 100;
 (3 rows)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Distribution ID | Lower bound 
---------------+----------+-----------------+-------------
- krid1        | sh1      | ds1             | 1
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked
+--------------+----------+-----------------+-------------+--------
+ krid1        | sh1      | ds1             | 1           | false
 (1 row)
 
 REDISTRIBUTE KEY RANGE krid1 TO sh2 BATCH SIZE 100;
@@ -45,9 +45,9 @@ REDISTRIBUTE KEY RANGE krid1 TO sh2 BATCH SIZE 100;
 (3 rows)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Distribution ID | Lower bound 
---------------+----------+-----------------+-------------
- krid1        | sh2      | ds1             | 1
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked
+--------------+----------+-----------------+-------------+--------
+ krid1        | sh2      | ds1             | 1           | false
 (1 row)
 
 REDISTRIBUTE KEY RANGE krid1 TO sh1 BATCH SIZE -1;
@@ -61,9 +61,9 @@ REDISTRIBUTE KEY RANGE krid1 TO sh2;
 (3 rows)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Distribution ID | Lower bound 
---------------+----------+-----------------+-------------
- krid1        | sh2      | ds1             | 1
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked
+--------------+----------+-----------------+-------------+--------
+ krid1        | sh2      | ds1             | 1           | false
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;

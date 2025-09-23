@@ -21,7 +21,7 @@ CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid3 FROM 50 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 ERROR:  key range krid3 intersects with key range krid2 in QDB
 SHOW key_ranges;
- Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked
 --------------+----------+-----------------+-------------+--------
  krid1        | sh1      | ds1             | 0           | false
  krid2        | sh2      | ds1             | 11          | false
@@ -40,7 +40,7 @@ CREATE KEY RANGE krid3 FROM -50 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 (1 row)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked
 --------------+----------+-----------------+-------------+--------
  krid3        | sh1      | ds1             | -50         | false
 (1 row)
