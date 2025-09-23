@@ -24,7 +24,7 @@ CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 (1 row)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Distribution ID | Lower bound | Locked
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
 --------------+----------+-----------------+-------------+--------
  krid1        | sh1      | ds1             | 1           | false
  krid2        | sh1      | ds1             | 11          | false
