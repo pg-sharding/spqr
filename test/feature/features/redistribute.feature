@@ -856,19 +856,22 @@ Feature: Redistribution test
       "Key range ID":"kr2",
       "Distribution ID":"ds1",
       "Lower bound":"100",
-      "Shard ID":"sh2"
+      "Shard ID":"sh2",
+      "Locked":"false"
     },
     {
       "Key range ID":"kr3",
       "Distribution ID":"ds1",
       "Lower bound":"150",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     },
     {
       "Key range ID":"kr4",
       "Distribution ID":"ds1",
       "Lower bound":"90",
-      "Shard ID":"sh2"
+      "Shard ID":"sh2",
+      "Locked":"false"
     }]
     """
   

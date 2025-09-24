@@ -143,7 +143,8 @@ Feature: Proxy console
             "Key range ID":"new_krid",
             "Distribution ID":"ds1",
             "Lower bound":"5",
-            "Shard ID":"sh1"
+            "Shard ID":"sh1",
+            "Locked":"false"
         }]
         """
 
