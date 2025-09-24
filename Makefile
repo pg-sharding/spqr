@@ -72,7 +72,7 @@ clean: clean_feature_test
 ######################## RUN ########################
 
 run: build_images
-	docker compose up -d --remove-orphans --build router router2 coordinator shard1 shard2 qdb01
+	docker compose up -d --remove-orphans --build router router2 coordinator shard1 shard2 shard3 shard4 qdb01
 
 proxy_2sh_run:
 	./spqr-router run --config ./examples/2shardproxy.yaml -d --pgproto-debug
