@@ -341,7 +341,7 @@ func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*ClusteredCoor
 				if _, err := db.GetShard(context.TODO(), id); err == nil {
 					spqrlog.Zero.Debug().
 						Str("shard", id).
-						Msg("already exists. creating shard skiped")
+						Msg("already exists. creating shard skipped")
 					continue
 				}
 				if err := db.AddShard(context.TODO(), qdb.NewShard(id, cfg.Hosts)); err != nil {
