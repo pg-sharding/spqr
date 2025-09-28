@@ -182,6 +182,12 @@ func (s *Shard) HostsAZ() []Host {
 	return s.parsedHosts
 }
 
+func (rcfg *Router) String() string {
+	configBytes, _ := json.MarshalIndent(rcfg, "", "  ")
+
+	return string(configBytes)
+}
+
 func ValueOrDefaultInt(value int, def int) int {
 	if value == 0 {
 		return def
@@ -210,12 +216,12 @@ func ValueOrDefaultDuration(value time.Duration, def time.Duration) time.Duratio
 //
 // Returns:
 //   - error: An error if any occurred during the loading process.
-func LoadRouterCfg(cfgPath string) (string, error) {
+func LoadRouterCfg(cfgPath string) (*Router, error) {
 	rcfg := generateDefaultConfig()
 	file, err := os.Open(cfgPath)
 	if err != nil {
 		cfgRouter = rcfg
-		return "", err
+		return nil, err
 	}
 	defer func(file *os.File) {
 		err := file.Close()
@@ -226,17 +232,17 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 
 	if err := initRouterConfig(file, &rcfg); err != nil {
 		cfgRouter = rcfg
-		return "", err
+		return nil, err
 	}
 
 	if err := validateRouterConfig(&rcfg); err != nil {
 		cfgRouter = rcfg
-		return "", err
+		return nil, err
 	}
 
 	if len(rcfg.TimeQuantilesStr) > 0 {
 		if err := statistics.InitStatisticsStr(rcfg.TimeQuantilesStr); err != nil {
-			return "", err
+			return nil, err
 		}
 	} else {
 		statistics.InitStatistics(rcfg.TimeQuantiles)
@@ -246,15 +252,7 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 		rcfg.Qr.DefaultTSA = TargetSessionAttrsSmartRW
 	}
 
-	configBytes, err := json.MarshalIndent(rcfg, "", "  ")
-	if err != nil {
-		cfgRouter = rcfg
-		return "", err
-	}
-
-	// log.Println("Running config:", string(configBytes))
-	cfgRouter = rcfg
-	return string(configBytes), nil
+	return &rcfg, nil
 }
 
 func generateDefaultConfig() Router {

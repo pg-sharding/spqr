@@ -111,17 +111,17 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run router",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfgStr, err := config.LoadRouterCfg(rcfgPath)
+		cfg, err := config.LoadRouterCfg(rcfgPath)
 		if err != nil {
 			return err
 		}
-		log.Println("Running config:", cfgStr)
+		log.Println("Running config:", cfg.String())
 
-		if config.RouterConfig().EnableRoleSystem {
-			if config.RouterConfig().RolesFile == "" {
+		if cfg.EnableRoleSystem {
+			if cfg.RolesFile == "" {
 				return fmt.Errorf("role system enabled but no roles file specified, see `enable_role_system` and `roles_file` in config")
 			}
-			rolesCfgStr, err := config.LoadRolesCfg(config.RouterConfig().RolesFile)
+			rolesCfgStr, err := config.LoadRolesCfg(cfg.RolesFile)
 			if err != nil {
 				return err
 			}
@@ -129,34 +129,34 @@ var runCmd = &cobra.Command{
 		}
 
 		if logLevel != "" {
-			config.RouterConfig().LogLevel = logLevel
+			cfg.LogLevel = logLevel
 		}
 
 		if prettyLogging {
-			config.RouterConfig().PrettyLogging = prettyLogging
+			cfg.PrettyLogging = prettyLogging
 		}
 
 		if rootCmd.Flags().Changed("with-coordinator") {
-			config.RouterConfig().WithCoordinator = withCoord
+			cfg.WithCoordinator = withCoord
 		}
 
-		spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLogging)
-		spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
+		spqrlog.ReloadLogger(cfg.LogFileName, cfg.LogLevel, cfg.PrettyLogging)
+		spqrlog.ReloadSLogger(cfg.LogMinDurationStatement)
 
 		if memqdbBackupPath != "" {
 			if qdbImpl == "etcd" {
 				return fmt.Errorf("cannot use memqdb-backup-path with etcdqdb")
 			}
-			config.RouterConfig().MemqdbBackupPath = memqdbBackupPath
+			cfg.MemqdbBackupPath = memqdbBackupPath
 		}
 
 		if console && daemonize {
 			return fmt.Errorf("simultaneous use of `console` and `daemonize`. Abort")
 		}
 
-		if !console && (config.RouterConfig().Daemonize || daemonize) {
+		if !console && (cfg.Daemonize || daemonize) {
 			ctx := &daemon.Context{
-				PidFileName: config.RouterConfig().PidFileName,
+				PidFileName: cfg.PidFileName,
 				PidFilePerm: 0644,
 				WorkDir:     "./",
 				Umask:       027,
@@ -181,7 +181,7 @@ var runCmd = &cobra.Command{
 			spqrlog.Zero.Debug().Msg("daemon started")
 		}
 
-		if config.RouterConfig().UseCoordinatorInit && config.RouterConfig().UseInitSQL {
+		if cfg.UseCoordinatorInit && cfg.UseInitSQL {
 			return fmt.Errorf("cannot use initSQL and coordinator-based init simultaneously")
 		}
 
@@ -229,35 +229,35 @@ var runCmd = &cobra.Command{
 		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 
 		/* will change on reload */
-		config.RouterConfig().PgprotoDebug = config.RouterConfig().PgprotoDebug || pgprotoDebug
-		config.RouterConfig().ShowNoticeMessages = config.RouterConfig().ShowNoticeMessages || showNoticeMessages
+		cfg.PgprotoDebug = cfg.PgprotoDebug || pgprotoDebug
+		cfg.ShowNoticeMessages = cfg.ShowNoticeMessages || showNoticeMessages
 
 		if routerPort != 0 {
-			config.RouterConfig().RouterPort = strconv.FormatInt(int64(routerPort), 10)
+			cfg.RouterPort = strconv.FormatInt(int64(routerPort), 10)
 		}
 
 		if routerROPort != 0 {
-			config.RouterConfig().RouterROPort = strconv.FormatInt(int64(routerROPort), 10)
+			cfg.RouterROPort = strconv.FormatInt(int64(routerROPort), 10)
 		}
 
 		if adminPort != 0 {
-			config.RouterConfig().AdminConsolePort = strconv.FormatInt(int64(adminPort), 10)
+			cfg.AdminConsolePort = strconv.FormatInt(int64(adminPort), 10)
 		}
 
 		if grpcPort != 0 {
-			config.RouterConfig().GrpcApiPort = strconv.FormatInt(int64(grpcPort), 10)
+			cfg.GrpcApiPort = strconv.FormatInt(int64(grpcPort), 10)
 		}
 
 		if defaultRouteBehaviour != "" {
 			if strings.ToLower(defaultRouteBehaviour) == "block" {
-				config.RouterConfig().Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourBlock
+				cfg.Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourBlock
 			} else {
-				config.RouterConfig().Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourAllow
+				cfg.Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourAllow
 			}
 		}
 
 		if rootCmd.Flags().Changed("enhanced_multishard_processing") {
-			config.RouterConfig().Qr.EnhancedMultiShardProcessing = enhancedMultishardProcessing
+			cfg.Qr.EnhancedMultiShardProcessing = enhancedMultishardProcessing
 		}
 
 		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"))
@@ -272,14 +272,14 @@ var runCmd = &cobra.Command{
 				return err
 			}
 		}
-		if config.RouterConfig().WithCoordinator {
+		if cfg.WithCoordinator {
 			go func() {
 				if err := func() error {
-					cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
+					cfg, err := config.LoadCoordinatorCfg(ccfgPath)
 					if err != nil {
 						return err
 					}
-					log.Println("Running coordinator config:", cfgStr)
+					log.Println("Running coordinator config:", cfg)
 
 					db, err := qdb.NewXQDB(qdbImpl)
 					if err != nil {
@@ -311,8 +311,8 @@ var runCmd = &cobra.Command{
 
 				switch s {
 				case syscall.SIGUSR1:
-					spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLogging)
-					spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
+					spqrlog.ReloadLogger(cfg.LogFileName, cfg.LogLevel, cfg.PrettyLogging)
+					spqrlog.ReloadSLogger(cfg.LogMinDurationStatement)
 				case syscall.SIGUSR2:
 					if cpuProfile {
 						// write profile
@@ -341,8 +341,8 @@ var runCmd = &cobra.Command{
 					if err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("")
 					}
-					spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLogging)
-					spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
+					spqrlog.ReloadLogger(cfg.LogFileName, cfg.LogLevel, cfg.PrettyLogging)
+					spqrlog.ReloadSLogger(cfg.LogMinDurationStatement)
 				case syscall.SIGINT, syscall.SIGTERM:
 					if cpuProfile {
 						// write profile
@@ -373,12 +373,12 @@ var runCmd = &cobra.Command{
 		}()
 
 		/* initialize metadata */
-		if config.RouterConfig().UseInitSQL {
-			i := instance.NewInitSQLMetadataBootstrapper(config.RouterConfig().InitSQL, config.RouterConfig().ExitOnInitSQLError)
+		if cfg.UseInitSQL {
+			i := instance.NewInitSQLMetadataBootstrapper(cfg.InitSQL, cfg.ExitOnInitSQLError)
 			if err := i.InitializeMetadata(ctx, router); err != nil {
 				return err
 			}
-		} else if config.RouterConfig().UseCoordinatorInit {
+		} else if cfg.UseCoordinatorInit {
 			/* load config if not yet */
 			_, err := config.LoadCoordinatorCfg(ccfgPath)
 			if err != nil {
@@ -404,45 +404,37 @@ var runCmd = &cobra.Command{
 
 		wg := &sync.WaitGroup{}
 
-		wg.Add(1)
-		go func(wg *sync.WaitGroup) {
+		wg.Go(func() {
 			err := app.ServeRouter(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to serve SQL console")
 				errCh <- err
 			}
-			wg.Done()
-		}(wg)
+		})
 
-		wg.Add(1)
-		go func(wg *sync.WaitGroup) {
+		wg.Go(func() {
 			err := app.ServeGrpcApi(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to serve gRPC API")
 				errCh <- err
 			}
-			wg.Done()
-		}(wg)
+		})
 
-		wg.Add(1)
-		go func(wg *sync.WaitGroup) {
+		wg.Go(func() {
 			err := app.ServeAdminConsole(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to serve SQL administrative console")
 				errCh <- err
 			}
-			wg.Done()
-		}(wg)
+		})
 
-		wg.Add(1)
-		go func(wg *sync.WaitGroup) {
+		wg.Go(func() {
 			err := app.ServiceUnixSocket(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to serve unix socket")
 				errCh <- err
 			}
-			wg.Done()
-		}(wg)
+		})
 
 		// run pprof without wait group
 		go func() {
@@ -462,11 +454,11 @@ var testCmd = &cobra.Command{
 		if len(args) > 0 {
 			rcfgPath = args[0]
 		}
-		cfgStr, err := config.LoadRouterCfg(rcfgPath)
+		cfg, err := config.LoadRouterCfg(rcfgPath)
 		if err != nil {
 			return err
 		}
-		fmt.Println(cfgStr)
+		fmt.Println(cfg.String())
 		return nil
 	},
 }
