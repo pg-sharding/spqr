@@ -11,8 +11,6 @@ import (
 	"path"
 	"runtime"
 	"runtime/pprof"
-	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 
@@ -115,6 +113,11 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
+		if err := applyOverrides(cmd, cfg); err != nil {
+			return err
+		}
+
 		log.Println("Running config:", cfg.String())
 
 		if cfg.EnableRoleSystem {
@@ -128,27 +131,8 @@ var runCmd = &cobra.Command{
 			log.Println("Running roles config:", rolesCfgStr)
 		}
 
-		if logLevel != "" {
-			cfg.LogLevel = logLevel
-		}
-
-		if prettyLogging {
-			cfg.PrettyLogging = prettyLogging
-		}
-
-		if rootCmd.Flags().Changed("with-coordinator") {
-			cfg.WithCoordinator = withCoord
-		}
-
 		spqrlog.ReloadLogger(cfg.LogFileName, cfg.LogLevel, cfg.PrettyLogging)
 		spqrlog.ReloadSLogger(cfg.LogMinDurationStatement)
-
-		if memqdbBackupPath != "" {
-			if qdbImpl == "etcd" {
-				return fmt.Errorf("cannot use memqdb-backup-path with etcdqdb")
-			}
-			cfg.MemqdbBackupPath = memqdbBackupPath
-		}
 
 		if console && daemonize {
 			return fmt.Errorf("simultaneous use of `console` and `daemonize`. Abort")
@@ -227,38 +211,6 @@ var runCmd = &cobra.Command{
 
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
-
-		/* will change on reload */
-		cfg.PgprotoDebug = cfg.PgprotoDebug || pgprotoDebug
-		cfg.ShowNoticeMessages = cfg.ShowNoticeMessages || showNoticeMessages
-
-		if routerPort != 0 {
-			cfg.RouterPort = strconv.FormatInt(int64(routerPort), 10)
-		}
-
-		if routerROPort != 0 {
-			cfg.RouterROPort = strconv.FormatInt(int64(routerROPort), 10)
-		}
-
-		if adminPort != 0 {
-			cfg.AdminConsolePort = strconv.FormatInt(int64(adminPort), 10)
-		}
-
-		if grpcPort != 0 {
-			cfg.GrpcApiPort = strconv.FormatInt(int64(grpcPort), 10)
-		}
-
-		if defaultRouteBehaviour != "" {
-			if strings.ToLower(defaultRouteBehaviour) == "block" {
-				cfg.Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourBlock
-			} else {
-				cfg.Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourAllow
-			}
-		}
-
-		if rootCmd.Flags().Changed("enhanced_multishard_processing") {
-			cfg.Qr.EnhancedMultiShardProcessing = enhancedMultishardProcessing
-		}
 
 		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"))
 		if err != nil {
@@ -458,6 +410,11 @@ var testCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
+		if err := applyOverrides(cmd, cfg); err != nil {
+			return err
+		}
+
 		fmt.Println(cfg.String())
 		return nil
 	},
