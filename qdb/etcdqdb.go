@@ -876,9 +876,21 @@ func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 	if err != nil {
 		return err
 	}
-	resp, err := q.cli.Put(ctx, shardNodePath(shard.ID), string(bytes))
+	resp, err := q.cli.Txn(ctx).
+		If(
+			//check exists shard with key
+			clientv3.Compare(clientv3.Version(shardNodePath(shard.ID)), "=", 0),
+		).
+		Then(
+			clientv3.OpPut(shardNodePath(shard.ID), string(bytes)),
+		).
+		Commit()
+
 	if err != nil {
 		return err
+	}
+	if len(resp.Responses) == 0 {
+		return fmt.Errorf("shard with id %s already exists", shard.ID)
 	}
 
 	spqrlog.Zero.Debug().

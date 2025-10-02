@@ -453,8 +453,8 @@ Feature: Coordinator test
   Scenario: Adding/dropping shards works
     When I run SQL on host "coordinator"
     """
-    ADD SHARD sh1 WITH HOSTS spqr_shard_1:6432;
-    ADD SHARD sh2 WITH HOSTS spqr_shard_2:6432;
+    ADD SHARD sh3 WITH HOSTS spqr_shard_1:6432;
+    ADD SHARD sh4 WITH HOSTS spqr_shard_2:6432;
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator"
@@ -470,9 +470,78 @@ Feature: Coordinator test
       },
       {
         "shard":"sh2"
+      },
+      {
+        "shard":"sh3"
+      },
+      {
+        "shard":"sh4"
       }
     ]
     """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD SHARD sh3 WITH HOSTS yandex:6432;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    shard with id sh3 already exist
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW hosts;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "shard":"sh1",
+        "host":"spqr_shard_1:6432",
+        "alive":"unknown",
+        "rw":"unknown",
+        "time":"unknown"
+      },
+      {
+        "shard":"sh1",
+        "host":"spqr_shard_1_replica:6432",
+        "alive":"unknown",
+        "rw":"unknown",
+        "time":"unknown"
+      },
+      {
+        "shard":"sh2",
+        "host":"spqr_shard_2:6432",
+        "alive":"unknown",
+        "rw":"unknown",
+        "time":"unknown"
+      },
+      {
+        "shard":"sh2",
+        "host":"spqr_shard_2_replica:6432",
+        "alive":"unknown",
+        "rw":"unknown",
+        "time":"unknown"
+      },
+      {
+        "shard":"sh3",
+        "host":"spqr_shard_1:6432",
+        "alive":"unknown",
+        "rw":"unknown",
+        "time":"unknown"
+      },
+      {
+        "shard":"sh4",
+        "host":"spqr_shard_2:6432",
+        "alive":"unknown",
+        "rw":"unknown",
+        "time":"unknown"
+      }
+    ]
+    """
+
     When I run SQL on host "coordinator"
     """
     DROP SHARD sh1 CASCADE;
@@ -488,6 +557,12 @@ Feature: Coordinator test
     [
       {
         "shard":"sh2"
+      },
+      {
+        "shard":"sh3"
+      },
+      {
+        "shard":"sh4"
       }
     ]
     """

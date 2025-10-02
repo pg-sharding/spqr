@@ -18,8 +18,6 @@ Feature: Redistribution test
     REGISTER ROUTER r1 ADDRESS regress_router:7000;
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
-    ADD SHARD sh1 WITH HOSTS 'postgresql://regress@spqr_shard_1:6432/regress';
-    ADD SHARD sh2 WITH HOSTS 'postgresql://regress@spqr_shard_2:6432/regress';
     """
     Then command return code should be "0"
 
@@ -389,11 +387,6 @@ Feature: Redistribution test
 
 
   Scenario: REDISTRIBUTE KEY RANGE works with newly added shard
-    When I execute SQL on host "coordinator"
-    """
-    ADD SHARD sh3 WITH HOSTS 'postgresql://regress@spqr_shard_3:6432/regress';
-    """
-    Then command return code should be "0"
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
