@@ -35,6 +35,7 @@ Feature: Initialize router metadata from Etcd
             "Key range ID":"krid1",
             "Distribution ID":"ds1",
             "Lower bound":"19",
-            "Shard ID":"sh1"
+            "Shard ID":"sh1",
+            "Locked":"false"
         }]
         """

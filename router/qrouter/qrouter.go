@@ -2,6 +2,7 @@ package qrouter
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -12,7 +13,6 @@ import (
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/planner"
-	"github.com/pkg/errors"
 )
 
 type QueryRouter interface {
@@ -48,6 +48,6 @@ func NewQrouter(qtype config.RouterMode,
 	case config.ProxyMode:
 		return NewProxyRouter(shardMapping, mgr, csm, qcfg, cache, idRangeCache)
 	default:
-		return nil, errors.Errorf("unknown qrouter type: %v", qtype)
+		return nil, fmt.Errorf("unknown qrouter type: %v", qtype)
 	}
 }

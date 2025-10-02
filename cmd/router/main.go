@@ -25,7 +25,6 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/app"
 	"github.com/pg-sharding/spqr/router/instance"
-	"github.com/pkg/errors"
 	"github.com/sevlyar/go-daemon"
 	"github.com/spf13/cobra"
 )
@@ -262,7 +261,8 @@ var runCmd = &cobra.Command{
 
 		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"))
 		if err != nil {
-			return errors.Wrap(err, "router failed to start")
+			return fmt.Errorf("router failed to start: %w", err)
+
 		}
 
 		app := app.NewApp(router)

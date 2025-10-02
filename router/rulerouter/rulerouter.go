@@ -26,7 +26,6 @@ import (
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
 	notifier "github.com/pg-sharding/spqr/router/sdnotifier"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -232,7 +231,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 			},
 		} {
 			if err := cl.Send(msg); err != nil {
-				return nil, errors.Wrap(err, "failed to make route failure response")
+				return nil, fmt.Errorf("failed to make route failure response: %w", err)
 			}
 		}
 		return nil, err
@@ -247,7 +246,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 			},
 		} {
 			if err := cl.Send(msg); err != nil {
-				return nil, errors.Wrap(err, "failed to make route failure response")
+				return nil, fmt.Errorf("failed to make route failure response: %w", err)
 			}
 		}
 		return nil, err

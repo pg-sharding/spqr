@@ -386,6 +386,20 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 			return nil
 		}))
 }
+func (q *MemQDB) ListLockedKeyRanges(ctx context.Context) ([]string, error) {
+	spqrlog.Zero.Debug().
+		Str("key-range lock request", "").
+		Msg("memqdb: get list locked key range")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	result := make([]string, 0, len(q.Locks))
+	for lk, v := range q.Freq {
+		if v {
+			result = append(result, lk)
+		}
+	}
+	return result, nil
+}
 
 // TODO : unit tests
 func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error) {

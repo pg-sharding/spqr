@@ -28,8 +28,8 @@ type KeyRange struct {
 	ShardID      string
 	ID           string
 	Distribution string
-
-	ColumnTypes []string
+	IsLocked     *bool //if nil then is not checked lock state in qdb
+	ColumnTypes  []string
 }
 
 /*

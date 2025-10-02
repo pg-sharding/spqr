@@ -143,6 +143,15 @@ func (c *CoordinatorService) ListAllKeyRanges(ctx context.Context, _ *emptypb.Em
 	return &protos.KeyRangeReply{KeyRangesInfo: krs}, nil
 }
 
+func (c *CoordinatorService) ListKeyRangeLocks(ctx context.Context, _ *emptypb.Empty) (*protos.KeyRangeLocksReply, error) {
+	krLocks, err := c.impl.ListKeyRangeLocks(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &protos.KeyRangeLocksReply{KeyRangesLocks: krLocks}, nil
+}
+
 // TODO : unit tests
 func (c *CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := c.impl.Move(ctx, &kr.MoveKeyRange{

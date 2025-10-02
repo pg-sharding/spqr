@@ -9,7 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
-	"github.com/pkg/errors"
 )
 
 type ConnectionKeeper interface {
@@ -204,6 +203,6 @@ func MatchConnectionPooler(client client.RouterClient) (PoolMgr, error) {
 			}
 		}
 
-		return nil, errors.Errorf("unknown pool mode %v", client.Rule().PoolMode)
+		return nil, fmt.Errorf("unknown pool mode %v", client.Rule().PoolMode)
 	}
 }

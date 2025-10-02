@@ -52,7 +52,8 @@ Feature: Proxy console
             "Key range ID":"krid1",
             "Distribution ID":"ds1",
             "Lower bound":"0",
-            "Shard ID":"sh1"
+            "Shard ID":"sh1",
+            "Locked":"false"
         }]
         """
 
@@ -69,7 +70,8 @@ Feature: Proxy console
             "Key range ID":"krid1",
             "Distribution ID":"ds1",
             "Lower bound":"0",
-            "Shard ID":"sh1"
+            "Shard ID":"sh1",
+            "Locked":"false"
         }]
         """
 
@@ -134,13 +136,15 @@ Feature: Proxy console
             "Key range ID":"krid1",
             "Distribution ID":"ds1",
             "Lower bound":"0",
-            "Shard ID":"sh1"
+            "Shard ID":"sh1",
+            "Locked":"false"
         },
         {
             "Key range ID":"new_krid",
             "Distribution ID":"ds1",
             "Lower bound":"5",
-            "Shard ID":"sh1"
+            "Shard ID":"sh1",
+            "Locked":"false"
         }]
         """
 
@@ -160,7 +164,8 @@ Feature: Proxy console
             "Key range ID":"krid1",
             "Distribution ID":"ds1",
             "Lower bound":"0",
-            "Shard ID":"sh1"
+            "Shard ID":"sh1",
+            "Locked":"false"
         }]
         """
 
@@ -221,7 +226,8 @@ Feature: Proxy console
             "Key range ID":"old_krid",
             "Distribution ID":"ds1",
             "Lower bound":"100",
-            "Shard ID":"sh2"
+            "Shard ID":"sh2",
+            "Locked":"false"
         }]
         """
 

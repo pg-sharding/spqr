@@ -7,7 +7,6 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/pool"
-	"github.com/pkg/errors"
 )
 
 type SchemaCache struct {
@@ -32,7 +31,7 @@ func NewSchemaCache(shardMapping map[string]*config.Shard, be *config.BackendRul
 
 func (c *SchemaCache) GetColumns(db, schemaName, tableName string) ([]string, error) {
 	if c.be == nil {
-		return nil, errors.Errorf("backend rule was not provided")
+		return nil, fmt.Errorf("backend rule was not provided")
 	}
 
 	if schemaName == "" {
