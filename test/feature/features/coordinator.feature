@@ -209,13 +209,15 @@ Feature: Coordinator test
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
       "Lower bound":"50",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     },
     {
       "Key range ID":"krid2",
       "Distribution ID":"ds1",
       "Lower bound":"100",
-      "Shard ID":"sh2"
+      "Shard ID":"sh2",
+      "Locked":"false"
     }]
     """
 
@@ -271,7 +273,8 @@ Feature: Coordinator test
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
       "Lower bound":"50",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     }]
     """
     And SQL result should match json
@@ -280,7 +283,8 @@ Feature: Coordinator test
       "Key range ID":"krid3",
       "Distribution ID":"ds1",
       "Lower bound":"70",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     }]
     """
 
@@ -295,7 +299,8 @@ Feature: Coordinator test
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
       "Lower bound":"50",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     }]
     """
     And SQL result should match json
@@ -304,7 +309,8 @@ Feature: Coordinator test
       "Key range ID":"krid3",
       "Distribution ID":"ds1",
       "Lower bound":"70",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     }]
     """
 
@@ -320,7 +326,8 @@ Feature: Coordinator test
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
       "Lower bound":"50",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     }]
     """
 
@@ -335,7 +342,8 @@ Feature: Coordinator test
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
       "Lower bound":"50",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     }]
     """
 
@@ -389,7 +397,8 @@ Feature: Coordinator test
       "Key range ID":"krid3",
       "Distribution ID":"ds1",
       "Lower bound":"31",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     }]
     """
 
@@ -579,7 +588,8 @@ Feature: Coordinator test
       "Key range ID":"krid3",
       "Distribution ID":"ds1",
       "Lower bound":"31",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     }]
     """
 
@@ -636,13 +646,15 @@ Feature: Coordinator test
       "Key range ID":"krid1",
       "Distribution ID":"ds1",
       "Lower bound":"0",
-      "Shard ID":"sh1"
+      "Shard ID":"sh1",
+      "Locked":"false"
     },
     {
       "Key range ID":"krid2",
       "Distribution ID":"ds1",
       "Lower bound":"11",
-      "Shard ID":"sh2"
+      "Shard ID":"sh2",
+      "Locked":"false"
     }]
     """
     When I run SQL on host "router-admin"

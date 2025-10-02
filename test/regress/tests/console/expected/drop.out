@@ -24,10 +24,10 @@ CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 (1 row)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Distribution ID | Lower bound 
---------------+----------+-----------------+-------------
- krid1        | sh1      | ds1             | 1
- krid2        | sh2      | ds1             | 11
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+--------------+----------+-----------------+-------------+--------
+ krid1        | sh1      | ds1             | 1           | false
+ krid2        | sh2      | ds1             | 11          | false
 (2 rows)
 
 DROP SHARD sh1;
@@ -48,9 +48,9 @@ SHOW shards;
 (3 rows)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Distribution ID | Lower bound 
---------------+----------+-----------------+-------------
- krid2        | sh2      | ds1             | 11
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+--------------+----------+-----------------+-------------+--------
+ krid2        | sh2      | ds1             | 11          | false
 (1 row)
 
 CREATE SHARD sh1 WITH HOSTS spqr_shard_1:6432,spqr_shard_1_replica:6432;
@@ -71,8 +71,8 @@ DROP KEY RANGE ALL;
 (0 rows)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Distribution ID | Lower bound 
---------------+----------+-----------------+-------------
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+--------------+----------+-----------------+-------------+--------
 (0 rows)
 
 DROP DISTRIBUTION ALL CASCADE;

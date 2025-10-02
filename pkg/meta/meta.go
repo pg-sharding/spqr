@@ -784,7 +784,11 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
-		return cli.KeyRanges(ranges)
+		locksKr, err := mngr.ListKeyRangeLocks(ctx)
+		if err != nil {
+			return err
+		}
+		return cli.KeyRanges(ranges, locksKr)
 	case spqrparser.RoutersStr:
 		resp, err := mngr.ListRouters(ctx)
 		if err != nil {
