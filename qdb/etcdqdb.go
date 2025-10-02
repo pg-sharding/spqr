@@ -71,6 +71,7 @@ const (
 	sequenceNamespace              = "/sequences/"
 	referenceRelationsNamespace    = "/reference_relations"
 	columnSequenceMappingNamespace = "/column_sequence_mappings/"
+	lockNamespace                  = "/lock"
 
 	CoordKeepAliveTtl = 3
 	coordLockKey      = "coordinator_exists"
@@ -78,7 +79,7 @@ const (
 )
 
 func keyLockPath(key string) string {
-	return path.Join("/lock", key)
+	return path.Join(lockNamespace, key)
 }
 
 func keyRangeNodePath(key string) string {
@@ -402,6 +403,26 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 	})
 	statistics.RecordQDBOperation("UnlockKeyRange", time.Since(t))
 	return err
+}
+
+func (q *EtcdQDB) ListLockedKeyRanges(ctx context.Context) ([]string, error) {
+	spqrlog.Zero.Debug().
+		Str("key-range lock request", "").
+		Msg("etcdqdb: get list locked key range")
+	krLockNs := path.Join(lockNamespace, keyRangesNamespace)
+	resp, err := q.cli.Get(ctx, krLockNs, clientv3.WithPrefix())
+	result := make([]string, 0, len(resp.Kvs))
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range resp.Kvs {
+		etcdKey := string(v.Key)
+		if strings.Index(etcdKey, krLockNs+"/") != 0 {
+			return nil, fmt.Errorf("invalid key in etcd lock namespace:%s", etcdKey)
+		}
+		result = append(result, etcdKey[len(krLockNs)+1:])
+	}
+	return result, nil
 }
 
 // TODO : unit tests

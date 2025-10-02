@@ -48,6 +48,7 @@ type KeyRangeMgr interface {
 	GetKeyRange(ctx context.Context, krId string) (*KeyRange, error)
 	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)
 	ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error)
+	ListKeyRangeLocks(ctx context.Context) ([]string, error)
 	CreateKeyRange(ctx context.Context, kr *KeyRange) error
 	LockKeyRange(ctx context.Context, krid string) (*KeyRange, error)
 	UnlockKeyRange(ctx context.Context, krid string) error

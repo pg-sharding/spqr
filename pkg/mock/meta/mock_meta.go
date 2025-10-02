@@ -479,6 +479,21 @@ func (mr *MockEntityMgrMockRecorder) ListDistributions(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDistributions", reflect.TypeOf((*MockEntityMgr)(nil).ListDistributions), ctx)
 }
 
+// ListKeyRangeLocks mocks base method.
+func (m *MockEntityMgr) ListKeyRangeLocks(ctx context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListKeyRangeLocks", ctx)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListKeyRangeLocks indicates an expected call of ListKeyRangeLocks.
+func (mr *MockEntityMgrMockRecorder) ListKeyRangeLocks(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListKeyRangeLocks", reflect.TypeOf((*MockEntityMgr)(nil).ListKeyRangeLocks), ctx)
+}
+
 // ListKeyRanges mocks base method.
 func (m *MockEntityMgr) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
 	m.ctrl.T.Helper()

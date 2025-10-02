@@ -281,6 +281,10 @@ func (lc *Coordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, er
 	return keyr, nil
 }
 
+func (lc *Coordinator) ListKeyRangeLocks(ctx context.Context) ([]string, error) {
+	return lc.qdb.ListLockedKeyRanges(ctx)
+}
+
 // ListReferenceRelations implements meta.EntityMgr.
 func (lc *Coordinator) ListReferenceRelations(ctx context.Context) ([]*rrelation.ReferenceRelation, error) {
 	var ret []*rrelation.ReferenceRelation

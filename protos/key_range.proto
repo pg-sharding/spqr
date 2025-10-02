@@ -11,6 +11,7 @@ service KeyRangeService {
   rpc GetKeyRange (GetKeyRangeRequest) returns (KeyRangeReply) {}
   rpc ListKeyRange (ListKeyRangeRequest) returns (KeyRangeReply) {}
   rpc ListAllKeyRanges (google.protobuf.Empty) returns (KeyRangeReply) {}
+  rpc ListKeyRangeLocks (google.protobuf.Empty) returns (KeyRangeLocksReply) {}
   rpc LockKeyRange (LockKeyRangeRequest) returns (ModifyReply) {}
   rpc CreateKeyRange(CreateKeyRangeRequest) returns (ModifyReply) {}
   rpc DropKeyRange(DropKeyRangeRequest) returns (ModifyReply) {}
@@ -86,6 +87,10 @@ message UnlockKeyRangeRequest {
 
 message KeyRangeReply {
   repeated KeyRangeInfo key_ranges_info = 1;
+}
+
+message KeyRangeLocksReply {
+  repeated string key_ranges_locks = 1;
 }
 
 message ModifyReply {
