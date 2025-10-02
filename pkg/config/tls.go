@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pkg/errors"
 )
 
 // https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-PROTECTION
@@ -80,7 +79,7 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 			for i, asn1Data := range certificates {
 				cert, err := x509.ParseCertificate(asn1Data)
 				if err != nil {
-					return errors.Wrap(err, "failed to parse certificate from server: ")
+					return fmt.Errorf("failed to parse certificate from server: %w", err)
 				}
 				certs[i] = cert
 			}
