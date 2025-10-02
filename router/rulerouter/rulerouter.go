@@ -231,7 +231,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 			},
 		} {
 			if err := cl.Send(msg); err != nil {
-				return nil, fmt.Errorf("failed to make route failure response: %s", err.Error())
+				return nil, fmt.Errorf("failed to make route failure response: %w", err)
 			}
 		}
 		return nil, err
@@ -246,7 +246,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 			},
 		} {
 			if err := cl.Send(msg); err != nil {
-				return nil, fmt.Errorf("failed to make route failure response: %s", err.Error())
+				return nil, fmt.Errorf("failed to make route failure response: %w", err)
 			}
 		}
 		return nil, err
