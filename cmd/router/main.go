@@ -310,6 +310,11 @@ var runCmd = &cobra.Command{
 
 					spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLogging)
 					spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
+
+					if err := logEffectiveConfig(config.RouterConfig()); err != nil {
+						spqrlog.Zero.Error().Err(err).Msg("failed to print running config")
+					}
+
 				case syscall.SIGINT, syscall.SIGTERM:
 					if cpuProfile {
 						// write profile
