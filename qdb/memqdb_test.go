@@ -190,7 +190,7 @@ func TestDropReferenceRelation(t *testing.T) {
 	}
 	err = memqdb.CreateReferenceRelation(ctx, referenceRelation)
 	assert.NoError(err)
-	memqdb.DropReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: "test2"})
+	err = memqdb.DropReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: "test2"})
 	assert.NoError(err)
 	_, err = memqdb.GetReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: "test2"})
 	assert.Error(err)
