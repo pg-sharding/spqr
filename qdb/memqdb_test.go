@@ -174,6 +174,34 @@ func TestMemQDB_GetAbsentDistribution(t *testing.T) {
 	assert.Error(err)
 }
 
+func TestDropReferenceRelation(t *testing.T) {
+
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+	referenceRelation := &qdb.ReferenceRelation{
+		TableName:             "test2",
+		SchemaVersion:         1,
+		ColumnSequenceMapping: map[string]string{"id": "test2_id"},
+		ShardIds:              []string{"sh1", "sh2"},
+	}
+	err = memqdb.CreateReferenceRelation(ctx, referenceRelation)
+	assert.NoError(err)
+	memqdb.DropReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: "test2"})
+	assert.NoError(err)
+	_, err = memqdb.GetReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: "test2"})
+	assert.Error(err)
+	assert.Equal(0, len(memqdb.Sequences))
+	assert.Equal(0, len(memqdb.ColumnSequence))
+	assert.Equal(0, len(memqdb.SequenceToValues))
+	assert.Equal(0, len(memqdb.ReferenceRelations))
+
+	assert.NoError(memqdb.DropKeyRange(ctx, "nonexistentKeyRange"))
+}
+
 func TestKeyRanges(t *testing.T) {
 
 	assert := assert.New(t)
