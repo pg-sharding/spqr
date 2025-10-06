@@ -1848,7 +1848,7 @@ func (q *EtcdQDB) AlterSequenceDetachRelation(ctx context.Context, relName *rfqn
 		Str("relation", relName.RelationName).
 		Msg("etcdqdb: detach relation from sequence")
 
-	resp, err := q.cli.Delete(ctx, relationSequenceMappingNodePath(relName.RelationName))
+	resp, err := q.cli.Delete(ctx, relationSequenceMappingNodePath(relName.RelationName), clientv3.WithPrefix())
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: detach relation from sequence")
@@ -1861,7 +1861,7 @@ func (q *EtcdQDB) GetRelationSequence(ctx context.Context, relName *rfqn.Relatio
 		Msg("etcdqdb: get column sequence")
 
 	key := relationSequenceMappingNodePath(relName.RelationName)
-	resp, err := q.cli.Get(ctx, key)
+	resp, err := q.cli.Get(ctx, key, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}

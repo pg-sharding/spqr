@@ -100,3 +100,48 @@ Feature: Sequence test
         }
     ]
     """
+
+  Scenario: Remove sequence
+    #
+    # Make host "coordinator" take control
+    #
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster.yaml
+    """
+    Given cluster is up and running
+    And host "coordinator2" is stopped
+    And host "coordinator2" is started
+
+
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE t AUTO INCREMENT id;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    SHOW sequences;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+        {
+            "name": "t_id",
+            "value": "0"
+        }
+    ]
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    DROP REFERENCE RELATION t;
+    SHOW sequences;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """

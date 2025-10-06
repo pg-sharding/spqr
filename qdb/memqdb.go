@@ -1145,7 +1145,8 @@ func (q *MemQDB) DropSequence(ctx context.Context, seqName string, force bool) e
 		return nil
 	}
 
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Sequences, seqName))
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Sequences, seqName),
+		NewDeleteCommand(q.SequenceToValues, seqName))
 }
 
 func (q *MemQDB) GetRelationSequence(_ context.Context, relName *rfqn.RelationFQN) (map[string]string, error) {
