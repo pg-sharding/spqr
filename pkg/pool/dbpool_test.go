@@ -469,8 +469,8 @@ func TestBuildHostOrder(t *testing.T) {
 			shuffleHosts:       false,
 			preferAZ:           "klg",
 			expectedHosts: []string{
-				"klg-234.db.yandex.net:6432",
 				"klg-123.db.yandex.net:6432",
+				"klg-234.db.yandex.net:6432",
 				"sas-123.db.yandex.net:6432",
 				"sas-234.db.yandex.net:6432",
 				"vla-123.db.yandex.net:6432",
