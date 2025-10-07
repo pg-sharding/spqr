@@ -440,6 +440,13 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 	}
 }
 
+// XXX: find better place to this (config/host.go?)
+// Maybe adjust values
+const (
+	highestHostPriority = 100
+	lowerHostPriority   = 1
+)
+
 func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]config.Host, error) {
 	var hostOrder []config.Host
 	var posCache []config.Host
@@ -465,6 +472,13 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 		}
 	}
 
+	getHostPrior := func(h config.Host) int {
+		if h.AZ == s.PreferAZ {
+			return highestHostPriority
+		}
+		return lowerHostPriority
+	}
+
 	if s.ShuffleHosts {
 		rand.Shuffle(len(posCache), func(i, j int) {
 			posCache[i], posCache[j] = posCache[j], posCache[i]
@@ -479,13 +493,13 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 
 	if len(s.PreferAZ) > 0 {
 		sort.Slice(posCache, func(i, j int) bool {
-			return posCache[i].AZ == s.PreferAZ
+			return getHostPrior(posCache[i]) > getHostPrior(posCache[j])
 		})
 		sort.Slice(negCache, func(i, j int) bool {
-			return negCache[i].AZ == s.PreferAZ
+			return getHostPrior(negCache[i]) > getHostPrior(negCache[j])
 		})
 		sort.Slice(deadCache, func(i, j int) bool {
-			return deadCache[i].AZ == s.PreferAZ
+			return getHostPrior(deadCache[i]) > getHostPrior(deadCache[j])
 		})
 	}
 
