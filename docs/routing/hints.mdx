@@ -69,6 +69,13 @@ db1=# SHOW __spqr__commit_strategy;
 
 ## List of hints
 
+### __spqr__engine_v2
+Enables v2 routing engine features.
+
+```sql
+SET __spqr__engine_v2 TO on;
+```
+
 ### __spqr__target_session_attrs
 
 The `target-session-attrs` parameter in PostgreSQL is used to specify the desired session state when connecting to a database. It is particularly useful in scenarios with multiple servers and failover configurations, where you want to ensure your session connects to the server with the desired role or state.
@@ -191,7 +198,7 @@ SELECT * FROM users /* __spqr__scatter_query: true */;
 ### __spqr__commit_strategy
 
 The `__spqr__commit_strategy` parameter is used to specify the commit strategy for a distributed transaction. Possible values are `1pc` and `2pc`. `best-effort` is an alias for `1pc`.
-
+`2pc` mode only works when the `__spqr_engine_v2` hint is enabled. Additionally, `2pc` requires setting the `max_prepared_transactions` parameter on all shards that take part in a transaction (refer to the PostgreSQL documentation).
 ```sql
 SELECT * FROM users /* __spqr__commit_strategy: 1pc */ WHERE id = 123;
 ```
