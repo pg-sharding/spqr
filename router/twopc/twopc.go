@@ -3,12 +3,12 @@ package twopc
 import (
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/server"
-	"github.com/samborkent/uuidv7"
 )
 
 const (
@@ -23,8 +23,11 @@ func ExecuteTwoPhaseCommit(clid uint, s server.Server) error {
 	/*
 	* go along first phase
 	 */
-
-	txid := uuidv7.New().String()
+	uid7, err := uuid.NewV7()
+	if err != nil {
+		return err
+	}
+	txid := uid7.String()
 
 	for _, dsh := range s.Datashards() {
 		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
