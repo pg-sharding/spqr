@@ -116,6 +116,7 @@ type Distribution struct {
 	ColTypes []string `json:"col_types,omitempty"`
 
 	Relations map[string]*DistributedRelation `json:"relations"`
+	Version   int64                           //if 0 then not exists
 }
 
 type ReferenceRelation struct {
