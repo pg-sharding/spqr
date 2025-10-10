@@ -1150,11 +1150,37 @@ func (q *EtcdQDB) CreateDistribution(ctx context.Context, distribution *Distribu
 	if err != nil {
 		return err
 	}
-	resp, err := q.cli.Put(ctx, distributionNodePath(distribution.ID), string(distrJson))
+	resp, err := q.cli.Txn(ctx).
+		If(
+			clientv3.Compare(
+				clientv3.Version(distributionNodePath(distribution.ID)), "=", distribution.Version,
+			),
+		).
+		Then(
+			clientv3.OpPut(distributionNodePath(distribution.ID), string(distrJson)),
+		).
+		Else(
+			clientv3.OpGet(distributionNodePath(distribution.ID), clientv3.WithCountOnly()),
+		).
+		Commit()
 	if err != nil {
 		return err
 	}
-
+	if !resp.Succeeded {
+		if len(resp.Responses) < 1 {
+			return fmt.Errorf("unexpected (case 1) etcd create distribution '%s' response parts count=%d",
+				distribution.ID, len(resp.Responses))
+		} else {
+			rng := resp.Responses[0].GetResponseRange()
+			if len(rng.Kvs) < 1 {
+				return fmt.Errorf("unexpected (case 0) etcd create distribution '%s' response parts count=%d",
+					distribution.ID, len(rng.Kvs))
+			}
+			currentVersion := rng.Kvs[0].Version
+			return fmt.Errorf("distribution was changed '%s' current version is=%d",
+				distribution.ID, currentVersion)
+		}
+	}
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: add distribution")
@@ -1403,6 +1429,7 @@ func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution
 	if err := json.Unmarshal(resp.Kvs[0].Value, &distrib); err != nil {
 		return nil, err
 	}
+	distrib.Version = resp.Kvs[0].Version
 
 	return distrib, nil
 }
