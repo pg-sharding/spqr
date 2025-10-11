@@ -2,6 +2,7 @@ package rmeta
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/pg-sharding/lyx/lyx"
@@ -23,7 +24,7 @@ func getMasterCoordinatorConn(ctx context.Context, localCoordinator meta.EntityM
 		return nil, err
 	}
 	if coordAddr == "" {
-		return nil, fmt.Errorf(ERR_NO_REMOTE_COORDINATOR)
+		return nil, errors.New(ERR_NO_REMOTE_COORDINATOR)
 	}
 	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
