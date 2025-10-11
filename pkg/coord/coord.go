@@ -2,6 +2,7 @@ package coord
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -20,6 +21,18 @@ import (
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
+
+// Get error message for case when reference table already exists.
+// Needs when we have to check this case by the error message.
+//
+// Parameters:
+// - table (string): table name
+//
+// Returns:
+// - string: error message.
+func MessageReferenceRelationExists(table string) string {
+	return fmt.Sprintf("reference relation %+v already exists", table)
+}
 
 type Coordinator struct {
 	qdb qdb.XQDB
@@ -134,7 +147,7 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 	}
 
 	if _, err := lc.qdb.GetReferenceRelation(ctx, relName); err == nil {
-		return fmt.Errorf("reference relation %+v already exists", r.TableName)
+		return errors.New(MessageReferenceRelationExists(r.TableName))
 	}
 
 	selectedDistribId := distributions.REPLICATED
