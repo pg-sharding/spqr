@@ -25,12 +25,10 @@ import (
 // Needs when we have to check this case by the error message.
 //
 // Parameters:
-// - ctx: (context.Context): context
-// - localCoordinator (meta.EntityMgr): Current (local) coordinator
+// - table (s)tring): table name
 //
 // Returns:
-//   - meta.EntityMgr: adapter tor remote coordinator
-//   - error: An error when fails.
+// - string: error message.
 func MessageReferenceRelationExists(table string) string {
 	return fmt.Sprintf("reference relation %+v already exists", table)
 }
