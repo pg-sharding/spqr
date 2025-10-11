@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	ERR_NO_REMOTE_COORDINATOR = "remote master coordinator not found!"
+	ERR_NO_REMOTE_COORDINATOR = "remote master coordinator not found"
 )
 
 func getMasterCoordinatorConn(ctx context.Context, localCoordinator meta.EntityMgr) (*grpc.ClientConn, error) {
@@ -58,11 +58,12 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clau
 	}
 	masterCoordinatorConn, err := getMasterCoordinatorConn(ctx, localMngr)
 	if err != nil {
-		if err.Error() != ERR_NO_REMOTE_COORDINATOR {
+		if err.Error() == ERR_NO_REMOTE_COORDINATOR {
 			err = localMngr.CreateReferenceRelation(ctx, newReferenceRelation, nil)
 			if err != nil && err.Error() != coord.MessageReferenceRelationExists(clauseNode.RelationName) {
 				return err
 			}
+			return nil
 		} else {
 			return fmt.Errorf("can't get master coordinator: %s", err.Error())
 		}
