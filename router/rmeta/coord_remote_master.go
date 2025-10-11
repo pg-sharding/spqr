@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	ERR_NO_REMOTE_COORDINATOR = "remote masster coordinator not found!"
+	ERR_NO_REMOTE_COORDINATOR = "remote master coordinator not found!"
 )
 
 func getMasterCoordinatorConn(ctx context.Context, localCoordinator meta.EntityMgr) (*grpc.ClientConn, error) {
@@ -32,7 +32,7 @@ func getMasterCoordinatorConn(ctx context.Context, localCoordinator meta.EntityM
 	return conn, nil
 }
 
-// Create reference relatin on master coordinator. Be careful, it's a network-based operation.
+// Create reference relation on master coordinator. Be careful, it's a network-based operation.
 //
 // Parameters:
 // - ctx: (context.Context): context
@@ -50,7 +50,7 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clau
 	for _, sh := range shs {
 		shardIds = append(shardIds, sh.ID)
 	}
-	newReferenceRalation := &rrelation.ReferenceRelation{
+	newReferenceRelation := &rrelation.ReferenceRelation{
 		TableName:     clauseNode.RelationName,
 		SchemaVersion: 1,
 		ShardIds:      shardIds,
@@ -58,7 +58,7 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clau
 	masterCoordinatorConn, err := getMasterCoordinatorConn(ctx, localMngr)
 	if err != nil {
 		if err.Error() != ERR_NO_REMOTE_COORDINATOR {
-			err = localMngr.CreateReferenceRelation(ctx, newReferenceRalation, nil)
+			err = localMngr.CreateReferenceRelation(ctx, newReferenceRelation, nil)
 			if err != nil && err.Error() != coord.MessageReferenceRelationExists(clauseNode.RelationName) {
 				return err
 			}
@@ -73,7 +73,7 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clau
 	}()
 
 	masterCoordinator := coord.NewAdapter(masterCoordinatorConn)
-	err = masterCoordinator.CreateReferenceRelation(ctx, newReferenceRalation, nil)
+	err = masterCoordinator.CreateReferenceRelation(ctx, newReferenceRelation, nil)
 	if err != nil && err.Error() != coord.MessageReferenceRelationExists(clauseNode.RelationName) {
 		return err
 	}

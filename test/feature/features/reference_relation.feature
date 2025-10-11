@@ -85,7 +85,7 @@ Feature: Reference relation test
     ]
     """
 
-  Scenario: autocreate reference relation
+  Scenario: create reference relation on create table
     #
     # Make host "coordinator" take control
     #

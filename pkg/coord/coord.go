@@ -2,6 +2,7 @@ package coord
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -25,7 +26,7 @@ import (
 // Needs when we have to check this case by the error message.
 //
 // Parameters:
-// - table (s)tring): table name
+// - table (string): table name
 //
 // Returns:
 // - string: error message.
@@ -146,7 +147,7 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 	}
 
 	if _, err := lc.qdb.GetReferenceRelation(ctx, relName); err == nil {
-		return fmt.Errorf(MessageReferenceRelationExists(r.TableName))
+		return errors.New(MessageReferenceRelationExists(r.TableName))
 	}
 
 	selectedDistribId := distributions.REPLICATED
