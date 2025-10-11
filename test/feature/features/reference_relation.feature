@@ -84,3 +84,50 @@ Feature: Reference relation test
         }
     ]
     """
+
+  Scenario: autocreate reference relation
+    #
+    # Make host "coordinator" take control
+    #
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster.yaml
+    """
+    Given cluster is up and running
+    And host "coordinator2" is stopped
+    And host "coordinator2" is started
+
+    When I run SQL on host "coordinator"
+    """
+    REGISTER ROUTER r1 ADDRESS regress_router:7000
+    """
+    Then command return code should be "0"
+
+    When I execute SQL on host "router"
+    """
+    set __spqr__auto_distribution=REPLICATED;
+    """
+    Then command return code should be "0"
+
+    When I execute SQL on host "router"
+    """
+    CREATE TABLE test (id int, name text);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    SHOW relations;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "Relation name": "test",
+        "Distribution ID": "REPLICATED",
+        "Distribution key":"",
+        "Schema name": "$search_path"
+      }
+    ]
+    """

@@ -1,0 +1,81 @@
+package rmeta
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/coord"
+	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+)
+
+const (
+	ERR_NO_REMOTE_COORDINATOR = "remote masster coordinator not found!"
+)
+
+func getMasterCoordinatorConn(ctx context.Context, localCoordinator meta.EntityMgr) (*grpc.ClientConn, error) {
+	coordAddr, err := localCoordinator.GetCoordinator(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if coordAddr == "" {
+		return nil, fmt.Errorf(ERR_NO_REMOTE_COORDINATOR)
+	}
+	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
+// Create reference relatin on master coordinator. Be careful, it's a network-based operation.
+//
+// Parameters:
+// - ctx: (context.Context): context
+// - localCoordinator (meta.EntityMgr): Current (local) coordinator
+// - clauseNode (*lyx.RangeVar): table definition
+//
+// Returns:
+//   - error: An error when fails.
+func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clauseNode *lyx.RangeVar) error {
+	shs, err := localMngr.ListShards(ctx)
+	if err != nil {
+		return err
+	}
+	shardIds := []string{}
+	for _, sh := range shs {
+		shardIds = append(shardIds, sh.ID)
+	}
+	newReferenceRalation := &rrelation.ReferenceRelation{
+		TableName:     clauseNode.RelationName,
+		SchemaVersion: 1,
+		ShardIds:      shardIds,
+	}
+	masterCoordinatorConn, err := getMasterCoordinatorConn(ctx, localMngr)
+	if err != nil {
+		if err.Error() != ERR_NO_REMOTE_COORDINATOR {
+			err = localMngr.CreateReferenceRelation(ctx, newReferenceRalation, nil)
+			if err != nil && err.Error() != coord.MessageReferenceRelationExists(clauseNode.RelationName) {
+				return err
+			}
+		} else {
+			return fmt.Errorf("can't get master coordinator: %s", err.Error())
+		}
+	}
+	defer func() {
+		if err := masterCoordinatorConn.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+		}
+	}()
+
+	masterCoordinator := coord.NewAdapter(masterCoordinatorConn)
+	err = masterCoordinator.CreateReferenceRelation(ctx, newReferenceRalation, nil)
+	if err != nil && err.Error() != coord.MessageReferenceRelationExists(clauseNode.RelationName) {
+		return err
+	}
+	return nil
+}
