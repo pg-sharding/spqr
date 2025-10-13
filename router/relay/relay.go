@@ -398,18 +398,6 @@ func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 	}
 }
 
-// TODO : unit tests
-func replyShardMatches(client client.RouterClient, sh []kr.ShardKey) error {
-	var shardNames []string
-	for _, shkey := range sh {
-		shardNames = append(shardNames, shkey.Name)
-	}
-	sort.Strings(shardNames)
-	shardMatches := strings.Join(shardNames, ",")
-
-	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
-}
-
 // formatShardNoticeMessage formats a shard notice message using the configured template format
 // Supported placeholders: {shard}, {host}, {hostname}, {port}, {user}, {db}, {pid}, {az}, {id}, {tx_status}, {tx_served}
 func formatShardNoticeMessage(template string, shardInstance shard.ShardHostInstance) string {
