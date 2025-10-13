@@ -145,9 +145,10 @@ func findMatchingCloseParen(query string, openPos int) int {
 			inDoubleQuote = !inDoubleQuote
 		} else if !inSingleQuote && !inDoubleQuote {
 			// Only count parentheses outside of string literals
-			if char == '(' {
+			switch char {
+			case '(':
 				level++
-			} else if char == ')' {
+			case ')':
 				level--
 				if level == 0 {
 					return i
