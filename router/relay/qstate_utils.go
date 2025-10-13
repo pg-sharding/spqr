@@ -24,7 +24,7 @@ func DispatchPlan(qd *QueryDesc, serv server.Server, cl client.RouterClient, rep
 		}
 
 		if cl.ShowNoticeMsg() && replyCl {
-			_ = replyShardMatches(cl, server.ServerShkeys(serv))
+			_ = replyShardMatchesWithHosts(cl, serv, server.ServerShkeys(serv))
 		}
 	} else {
 		et := qd.P.ExecutionTargets()
@@ -35,7 +35,7 @@ func DispatchPlan(qd *QueryDesc, serv server.Server, cl client.RouterClient, rep
 			}
 
 			if cl.ShowNoticeMsg() && replyCl {
-				_ = replyShardMatches(cl, server.ServerShkeys(serv))
+				_ = replyShardMatchesWithHosts(cl, serv, server.ServerShkeys(serv))
 			}
 		} else {
 			for _, targ := range et {
@@ -45,7 +45,7 @@ func DispatchPlan(qd *QueryDesc, serv server.Server, cl client.RouterClient, rep
 			}
 
 			if cl.ShowNoticeMsg() && replyCl {
-				_ = replyShardMatches(cl, et)
+				_ = replyShardMatchesWithHosts(cl, serv, et)
 			}
 		}
 	}
