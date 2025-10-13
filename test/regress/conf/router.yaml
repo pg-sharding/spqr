@@ -13,6 +13,7 @@ world_shard_fallback: true
 show_notice_messages: true
 enable_role_system: true
 roles_file: /spqr/test/regress/conf/roles.yaml
+notice_message_format: "{shard}"
 query_routing:
     enhanced_multishard_processing: true
 frontend_tls:

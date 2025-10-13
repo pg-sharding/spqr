@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/pkg/shard"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/opentracing/opentracing-go"
@@ -397,14 +398,61 @@ func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 	}
 }
 
-// TODO : unit tests
-func replyShardMatches(client client.RouterClient, sh []kr.ShardKey) error {
-	var shardNames []string
-	for _, shkey := range sh {
-		shardNames = append(shardNames, shkey.Name)
+// formatShardNoticeMessage formats a shard notice message using the configured template format
+// Supported placeholders: {shard}, {host}, {hostname}, {port}, {user}, {db}, {pid}, {az}, {id}, {tx_status}, {tx_served}
+func formatShardNoticeMessage(template string, shardInstance shard.ShardHostInstance) string {
+	result := template
+
+	// Extract hostname and port from host address
+	host := shardInstance.InstanceHostname()
+	hostname := host
+	port := ""
+	if colonIndex := strings.LastIndex(host, ":"); colonIndex != -1 {
+		hostname = host[:colonIndex]
+		port = host[colonIndex+1:]
 	}
-	sort.Strings(shardNames)
-	shardMatches := strings.Join(shardNames, ",")
+
+	// Replace all placeholders
+	result = strings.ReplaceAll(result, "{shard}", shardInstance.SHKey().Name)
+	result = strings.ReplaceAll(result, "{host}", host)
+	result = strings.ReplaceAll(result, "{hostname}", hostname)
+	result = strings.ReplaceAll(result, "{port}", port)
+	result = strings.ReplaceAll(result, "{user}", shardInstance.Usr())
+	result = strings.ReplaceAll(result, "{db}", shardInstance.DB())
+	result = strings.ReplaceAll(result, "{pid}", fmt.Sprintf("%d", shardInstance.Pid()))
+	result = strings.ReplaceAll(result, "{az}", shardInstance.Instance().AvailabilityZone())
+	result = strings.ReplaceAll(result, "{id}", fmt.Sprintf("%d", shardInstance.ID()))
+	result = strings.ReplaceAll(result, "{tx_status}", shardInstance.TxStatus().String())
+	result = strings.ReplaceAll(result, "{tx_served}", fmt.Sprintf("%d", shardInstance.TxServed()))
+
+	return result
+}
+
+// TODO : unit tests
+func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, shardKeys []kr.ShardKey) error {
+	// Create a map of shard key names to actual shard instances for quick lookup
+	shardInstanceMap := make(map[string]shard.ShardHostInstance)
+	for _, shardInstance := range serv.Datashards() {
+		shardInstanceMap[shardInstance.SHKey().Name] = shardInstance
+	}
+
+	// Get the notice message format from config
+	messageFormat := config.RouterConfig().NoticeMessageFormat
+
+	// Build shard info with the configured format
+	var shardInfos []string
+	for _, shkey := range shardKeys {
+		if shardInstance, exists := shardInstanceMap[shkey.Name]; exists {
+			shardInfo := formatShardNoticeMessage(messageFormat, shardInstance)
+			shardInfos = append(shardInfos, shardInfo)
+		} else {
+			// Fallback to just shard name if we can't find the instance
+			shardInfos = append(shardInfos, shkey.Name)
+		}
+	}
+
+	sort.Strings(shardInfos)
+	shardMatches := strings.Join(shardInfos, ",")
 
 	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
 }
