@@ -75,6 +75,8 @@ const (
 	CoordKeepAliveTtl = 3
 	coordLockKey      = "coordinator_exists"
 	sequenceSpace     = "sequence_space"
+
+	MaxLockRetry = 7
 )
 
 func keyLockPath(key string) string {
@@ -340,17 +342,17 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	return ret, nil
 }
 
-func (q *EtcdQDB) FastLockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
+func (q *EtcdQDB) NoWaitLockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().
 		Str("id", idKeyRange).
 		Msg("etcdqdb: lock key range (fast)")
 	t := time.Now()
-	kr, err := q.internalFastLockKeyRange(ctx, idKeyRange)
+	kr, err := q.internalNoWaitLockKeyRange(ctx, idKeyRange)
 	statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
 	return kr, err
 }
 
-func (q *EtcdQDB) internalFastLockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
+func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
 
 	resp, err := q.cli.Txn(ctx).
 		If(
@@ -418,10 +420,10 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, idKeyRange string) (*KeyRang
 		Msg("etcdqdb: lock key range")
 
 	t := time.Now()
-	if kr, err := retry.DoValue(ctx, retry.WithMaxRetries(7,
+	if kr, err := retry.DoValue(ctx, retry.WithMaxRetries(MaxLockRetry,
 		retry.NewFibonacci(500*time.Millisecond)),
 		func(ctx context.Context) (*KeyRange, error) {
-			return q.internalFastLockKeyRange(ctx, idKeyRange)
+			return q.internalNoWaitLockKeyRange(ctx, idKeyRange)
 		}); err != nil {
 		statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
 		return nil, err

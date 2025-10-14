@@ -330,7 +330,7 @@ func (q *MemQDB) TryLockKeyRange(lock *sync.RWMutex, id string, read bool) error
 	}
 	return nil
 }
-func (q *MemQDB) FastLockKeyRange(ctx context.Context, id string) (*KeyRange, error) {
+func (q *MemQDB) NoWaitLockKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	return q.LockKeyRange(ctx, id)
 }
 
