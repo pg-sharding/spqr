@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-var ERR_NO_REMOTE_COORDINATOR = errors.New("remote master coordinator not found")
+var ErrNoRemoteCoordinator = errors.New("remote master coordinator not found")
 
 func getMasterCoordinatorConn(ctx context.Context, localCoordinator meta.EntityMgr) (*grpc.ClientConn, error) {
 	coordAddr, err := localCoordinator.GetCoordinator(ctx)
@@ -22,7 +22,7 @@ func getMasterCoordinatorConn(ctx context.Context, localCoordinator meta.EntityM
 		return nil, err
 	}
 	if coordAddr == "" {
-		return nil, ERR_NO_REMOTE_COORDINATOR
+		return nil, ErrNoRemoteCoordinator
 	}
 	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -56,7 +56,7 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clau
 	}
 	masterCoordinatorConn, err := getMasterCoordinatorConn(ctx, localMngr)
 	if err != nil {
-		if errors.Is(err, ERR_NO_REMOTE_COORDINATOR) {
+		if errors.Is(err, ErrNoRemoteCoordinator) {
 			err = localMngr.CreateReferenceRelation(ctx, newReferenceRelation, nil)
 			if err != nil {
 				return err
