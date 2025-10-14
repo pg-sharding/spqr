@@ -2,7 +2,7 @@ name: tests
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master ]``
   pull_request:
     branches: [ master ]
 
@@ -35,10 +35,30 @@ jobs:
       - name: stress tests
         run: make stress
 
+  cli-overrides:
+    name: cli_overrides
+    runs-on: ubuntu-latest
+    needs: ['unit', 'stress']
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - name: Install test deps
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y jq gawk coreutils procps
+
+      - name: Run CLI override
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          make test-cli-overrides
+
   regress-pgdg:
     name: regress
     runs-on: ubuntu-latest
-    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress', 'xproto-regress']
+    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress', 'xproto-regress', 'cli-overrides']
 
     strategy:
       matrix:
@@ -103,7 +123,7 @@ jobs:
   feature_prepare:
     name: feature_prepare
     runs-on: ubuntu-latest
-    needs: ['unit', 'stress', 'regress-pgdg', 'gorm-regress', 'jdbc-regress', 'xproto-regress']
+    needs: ['unit', 'stress', 'regress-pgdg', 'gorm-regress', 'jdbc-regress', 'xproto-regress', 'cli-overrides']
     outputs:
       output1: ${{ steps.step1.outputs.features }}
     steps:
