@@ -2,7 +2,6 @@ package coord
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -30,8 +29,8 @@ import (
 //
 // Returns:
 // - string: error message.
-func MessageReferenceRelationExists(table string) string {
-	return fmt.Sprintf("reference relation %+v already exists", table)
+func ErrorReferenceRelationExists(table string) error {
+	return fmt.Errorf("reference relation %+v already exists", table)
 }
 
 type Coordinator struct {
@@ -147,7 +146,7 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 	}
 
 	if _, err := lc.qdb.GetReferenceRelation(ctx, relName); err == nil {
-		return errors.New(MessageReferenceRelationExists(r.TableName))
+		return ErrorReferenceRelationExists(r.TableName)
 	}
 
 	selectedDistribId := distributions.REPLICATED

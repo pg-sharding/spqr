@@ -24,7 +24,7 @@ func getMasterCoordinatorConn(ctx context.Context, localCoordinator meta.EntityM
 		return nil, err
 	}
 	if coordAddr == "" {
-		return nil, errors.New(ERR_NO_REMOTE_COORDINATOR)
+		return nil, fmt.Errorf(ERR_NO_REMOTE_COORDINATOR)
 	}
 	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -58,9 +58,10 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clau
 	}
 	masterCoordinatorConn, err := getMasterCoordinatorConn(ctx, localMngr)
 	if err != nil {
-		if err.Error() == ERR_NO_REMOTE_COORDINATOR {
+		if errors.Is(err, fmt.Errorf(ERR_NO_REMOTE_COORDINATOR)) {
 			err = localMngr.CreateReferenceRelation(ctx, newReferenceRelation, nil)
-			if err != nil && err.Error() != coord.MessageReferenceRelationExists(clauseNode.RelationName) {
+			if err != nil &&
+				!errors.Is(err, coord.ErrorReferenceRelationExists(clauseNode.RelationName)) {
 				return err
 			}
 			return nil
@@ -76,7 +77,8 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clau
 
 	masterCoordinator := coord.NewAdapter(masterCoordinatorConn)
 	err = masterCoordinator.CreateReferenceRelation(ctx, newReferenceRelation, nil)
-	if err != nil && err.Error() != coord.MessageReferenceRelationExists(clauseNode.RelationName) {
+	if err != nil &&
+		!errors.Is(err, coord.ErrorReferenceRelationExists(clauseNode.RelationName)) {
 		return err
 	}
 	return nil
