@@ -21,18 +21,6 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
-// Get error message for case when reference table already exists.
-// Needs when we have to check this case by the error message.
-//
-// Parameters:
-// - table (string): table name
-//
-// Returns:
-// - string: error message.
-func ErrorReferenceRelationExists(table string) error {
-	return fmt.Errorf("reference relation %+v already exists", table)
-}
-
 type Coordinator struct {
 	qdb qdb.XQDB
 }
@@ -146,7 +134,7 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 	}
 
 	if _, err := lc.qdb.GetReferenceRelation(ctx, relName); err == nil {
-		return ErrorReferenceRelationExists(r.TableName)
+		return fmt.Errorf("reference relation %+v already exists", r.TableName)
 	}
 
 	selectedDistribId := distributions.REPLICATED
