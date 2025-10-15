@@ -342,7 +342,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 	return &pgcopy.CopyState{
 		Delimiter:      delimiter,
 		Krs:            krs,
-		RM:             rmeta.NewRoutingMetadataContext(s.cl, mgr),
+		RM:             rmeta.NewRoutingMetadataContext(s.cl, nil /*XXX: fix this*/, mgr),
 		Ds:             ds,
 		Drel:           dRel,
 		HashFunc:       hashFunc,
@@ -624,11 +624,15 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 					return err
 				}
 
-				if err := s.Client().Send(&pgproto3.DataRow{
-					Values: q.VirtualRowVals,
-				}); err != nil {
-					return err
+				for _, vals := range q.VirtualRowVals {
+
+					if err := s.Client().Send(&pgproto3.DataRow{
+						Values: vals,
+					}); err != nil {
+						return err
+					}
 				}
+
 				if err := s.Client().Send(&pgproto3.CommandComplete{
 					CommandTag: []byte("SELECT 1"),
 				}); err != nil {
@@ -636,11 +640,15 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 				}
 			case *pgproto3.Sync:
 
-				if err := s.Client().Send(&pgproto3.DataRow{
-					Values: q.VirtualRowVals,
-				}); err != nil {
-					return err
+				for _, vals := range q.VirtualRowVals {
+
+					if err := s.Client().Send(&pgproto3.DataRow{
+						Values: vals,
+					}); err != nil {
+						return err
+					}
 				}
+
 				if err := s.Client().Send(&pgproto3.CommandComplete{
 					CommandTag: []byte("SELECT 1"),
 				}); err != nil {

@@ -896,7 +896,7 @@ func (qr *ProxyQrouter) planQueryV1(
 		/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
 		if len(stmt.FromClause) == 0 && (stmt.LArg == nil || stmt.RArg == nil) {
 			virtualRowCols := []pgproto3.FieldDescription{}
-			virtualRowVals := [][]byte{}
+			virtualRowVals := [][][]byte{}
 
 			for _, expr := range stmt.TargetList {
 				actualExpr := expr
@@ -920,7 +920,7 @@ func (qr *ProxyQrouter) planQueryV1(
 							Format:               0,
 						})
 
-					virtualRowVals = append(virtualRowVals, []byte(rm.SPH.Usr()))
+					virtualRowVals = append(virtualRowVals, [][]byte{[]byte(rm.SPH.Usr())})
 
 				case *lyx.AExprNot:
 					/* inspect our arg. If this is pg_is_in_recovery, apply NOT */
@@ -941,9 +941,9 @@ func (qr *ProxyQrouter) planQueryV1(
 
 							/* notice this sign */
 							if rm.SPH.GetTsa() != config.TargetSessionAttrsRW {
-								virtualRowVals = append(virtualRowVals, []byte{byte('f')})
+								virtualRowVals = append(virtualRowVals, [][]byte{{byte('f')}})
 							} else {
-								virtualRowVals = append(virtualRowVals, []byte{byte('t')})
+								virtualRowVals = append(virtualRowVals, [][]byte{{byte('t')}})
 							}
 							continue
 						}
@@ -966,9 +966,9 @@ func (qr *ProxyQrouter) planQueryV1(
 							})
 
 						if rm.SPH.GetTsa() == config.TargetSessionAttrsRW {
-							virtualRowVals = append(virtualRowVals, []byte{byte('f')})
+							virtualRowVals = append(virtualRowVals, [][]byte{{byte('f')}})
 						} else {
-							virtualRowVals = append(virtualRowVals, []byte{byte('t')})
+							virtualRowVals = append(virtualRowVals, [][]byte{{byte('t')}})
 						}
 						continue
 					} else if e.Name == virtual.VirtualFuncIsReady {
@@ -985,9 +985,9 @@ func (qr *ProxyQrouter) planQueryV1(
 							})
 
 						if qr.Ready() {
-							virtualRowVals = append(virtualRowVals, []byte{byte('t')})
+							virtualRowVals = append(virtualRowVals, [][]byte{{byte('t')}})
 						} else {
-							virtualRowVals = append(virtualRowVals, []byte{byte('f')})
+							virtualRowVals = append(virtualRowVals, [][]byte{{byte('f')}})
 						}
 						continue
 					} else if e.Name == virtual.VirtualFuncHosts {
@@ -1023,8 +1023,8 @@ func (qr *ProxyQrouter) planQueryV1(
 							}
 
 							if v, ok := qr.csm.InstanceHealthChecks()[k]; ok {
-								virtualRowVals = append(virtualRowVals, []byte(k),
-									fmt.Appendf(nil, "%v", v.CR.RW))
+								virtualRowVals = append(virtualRowVals, [][]byte{
+									[]byte(k), fmt.Appendf(nil, "%v", v.CR.RW)})
 							} else {
 								return nil, fmt.Errorf("incorrect first argument for %s", virtual.VirtualFuncHosts)
 							}
@@ -1048,9 +1048,9 @@ func (qr *ProxyQrouter) planQueryV1(
 								})
 
 							if rm.SPH.GetTsa() == config.TargetSessionAttrsRW {
-								virtualRowVals = append(virtualRowVals, []byte{byte('f')})
+								virtualRowVals = append(virtualRowVals, [][]byte{{byte('f')}})
 							} else {
-								virtualRowVals = append(virtualRowVals, []byte{byte('t')})
+								virtualRowVals = append(virtualRowVals, [][]byte{{byte('t')}})
 							}
 							continue
 						}
@@ -1091,7 +1091,7 @@ func (qr *ProxyQrouter) planQueryV1(
 							Format:               0,
 						})
 
-					virtualRowVals = append(virtualRowVals, []byte(e.Value))
+					virtualRowVals = append(virtualRowVals, [][]byte{[]byte(e.Value)})
 
 				case *lyx.AExprIConst:
 
@@ -1107,7 +1107,7 @@ func (qr *ProxyQrouter) planQueryV1(
 							Format:               0,
 						})
 
-					virtualRowVals = append(virtualRowVals, []byte(fmt.Sprintf("%d", e.Value)))
+					virtualRowVals = append(virtualRowVals, [][]byte{fmt.Appendf(nil, "%d", e.Value)})
 				case *lyx.AExprNConst, *lyx.AExprBConst:
 					p = plan.Combine(p, &plan.RandomDispatchPlan{})
 
@@ -1906,10 +1906,21 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph sessio
 		}
 	}
 
-	rm := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
-	p, ro, err := qr.RouteWithRules(ctx, rm, stmt, sph.GetTsa())
-	if err != nil {
-		return nil, err
+	rm := rmeta.NewRoutingMetadataContext(sph, qr.csm, qr.mgr)
+	var p plan.Plan
+	var ro bool
+	var err error
+	if config.RouterConfig().Qr.PreferEngine == "v2" {
+		p, err = planner.PlanDistributedQuery(ctx, rm, stmt, true)
+		if err != nil {
+			return nil, err
+		}
+		ro = false
+	} else {
+		p, ro, err = qr.RouteWithRules(ctx, rm, stmt, sph.GetTsa())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	np, err := qr.InitExecutionTargets(ctx, rm, stmt, p, ro, sph)
