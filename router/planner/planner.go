@@ -422,40 +422,58 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		return &plan.RandomDispatchPlan{}, nil
 
 	case *lyx.CreateSchema:
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 
 	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateTable:
 		return PlanCreateTable(ctx, rm, v)
 	case *lyx.Vacuum:
 		/* Send vacuum to each shard */
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.Analyze:
 		/* Send analyze to each shard */
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.Cluster:
 		/* Send cluster to each shard */
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.Index:
 		/*
 		 * Disallow to index on table which does not contain any sharding column
 		 */
 		// XXX: do it
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.CreateExtension:
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 
 	case *lyx.CreateRole, *lyx.CreateDatabase:
 		/* XXX: should we forbid under separate setting?  */
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.Copy:
 		return &plan.CopyPlan{}, nil
 	case *lyx.ValueClause:
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.Select:
 		/* Should be single-relation scan or values. Join to be supported */
 		if len(v.FromClause) == 0 {
