@@ -437,11 +437,11 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 SHOW reference_relations;
-    table name     | schema version |      shards       
--------------------+----------------+-------------------
- test_ref_rel      | 1              | [sh1 sh2 sh3 sh4]
- test_ref_rel_part | 1              | [sh1 sh3]
- test_ref_rel_rel  | 1              | [sh1 sh2 sh3 sh4]
+    table name     | schema version |      shards       | column sequence mapping 
+-------------------+----------------+-------------------+-------------------------
+ test_ref_rel      | 1              | [sh1 sh2 sh3 sh4] | map[]
+ test_ref_rel_part | 1              | [sh1 sh3]         | map[]
+ test_ref_rel_rel  | 1              | [sh1 sh2 sh3 sh4] | map[]
 (3 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
