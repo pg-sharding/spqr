@@ -1684,12 +1684,16 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 }
 
 func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation) error {
-	if err := pi.WriteHeader("table name", "schema version", "shards"); err != nil {
+	if err := pi.WriteHeader("table name", "schema version", "shards", "column sequence mapping"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 	for _, r := range rrs {
-		if err := pi.WriteDataRow(r.TableName, fmt.Sprintf("%d", r.SchemaVersion), fmt.Sprintf("%+v", r.ShardIds)); err != nil {
+		if err := pi.WriteDataRow(
+			r.TableName,
+			fmt.Sprintf("%d", r.SchemaVersion),
+			fmt.Sprintf("%+v", r.ShardIds),
+			fmt.Sprintf("%+v", r.ColumnSequenceMapping)); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
