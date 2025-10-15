@@ -69,8 +69,21 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 	}
 
 	for _, rr := range rrels {
+		entries := []*rrelation.AutoIncrementEntry{}
+
+		for c, seq := range rr.ColumnSequenceMapping {
+			n, err := etcdConn.CurrVal(ctx, seq)
+			if err != nil {
+				return err
+			}
+			entries = append(entries, &rrelation.AutoIncrementEntry{
+				Column: c,
+				Start:  uint64(n),
+			})
+		}
+
 		/* XXX: nil for auto inc entry is OK? */
-		if err := r.Console().Mgr().CreateReferenceRelation(ctx, rrelation.RefRelationFromDB(rr), nil); err != nil {
+		if err := r.Console().Mgr().CreateReferenceRelation(ctx, rrelation.RefRelationFromDB(rr), entries); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
 			return err
 		}
