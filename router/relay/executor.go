@@ -727,8 +727,12 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 		}
 	}
 
+	/* XXX: refactor this */
+	expectRowDesc := false
+
 	switch qd.Msg.(type) {
 	case *pgproto3.Query:
+		expectRowDesc = true
 		// ok
 	case *pgproto3.Sync:
 		// ok
@@ -797,6 +801,17 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 				if err != nil {
 					return err
 				}
+			}
+		case *pgproto3.RowDescription:
+			if expectRowDesc {
+				if replyCl {
+					err = s.Client().Send(msg)
+					if err != nil {
+						return err
+					}
+				}
+			} else {
+				return fmt.Errorf("unexpected row disription in slice deploy")
 			}
 		default:
 
