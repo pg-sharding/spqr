@@ -103,7 +103,7 @@ func init() {
 	// Query processing
 	rootCmd.PersistentFlags().BoolVarP(&enhancedMultishardProcessing, "enhanced_multishard_processing", "e", false, "enables SPQR query processing engine V2")
 
-	rootCmd.PersistentFlags().BoolVarP(&useCoordInit, "use_coordinator_init", "", false, "do use coordinator based metadata initializion")
+	rootCmd.PersistentFlags().BoolVarP(&useCoordInit, "use_coordinator_init", "", false, "do use coordinator based metadata initialization")
 
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(testCmd)
