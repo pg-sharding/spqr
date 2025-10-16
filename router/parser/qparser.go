@@ -13,6 +13,14 @@ type QParser struct {
 	stmt  lyx.Node
 }
 
+func (qp *QParser) OriginQuery() string {
+	return qp.query
+}
+
+func (qp *QParser) SetOriginQuery(q string) {
+	qp.query = q
+}
+
 func (qp *QParser) Stmt() lyx.Node {
 	return qp.stmt
 }

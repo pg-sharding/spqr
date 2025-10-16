@@ -13,6 +13,7 @@ type Plan interface {
 	Stmt() lyx.Node
 	SetStmt(lyx.Node)
 	ExecutionTargets() []kr.ShardKey
+	GetQuery(sh string) string
 }
 
 type ScatterPlan struct {
@@ -24,6 +25,8 @@ type ScatterPlan struct {
 	/* To decide if query is OK even in DRH = BLOCK */
 	IsDDL  bool
 	Forced bool
+
+	OverwriteQuery string
 	/* Empty means execute everywhere */
 	ExecTargets []kr.ShardKey
 }
@@ -38,6 +41,10 @@ func (sp *ScatterPlan) Stmt() lyx.Node {
 
 func (sp *ScatterPlan) SetStmt(n lyx.Node) {
 	sp.stmt = n
+}
+
+func (s *ScatterPlan) GetQuery(string) string {
+	return s.OverwriteQuery
 }
 
 var _ Plan = &ScatterPlan{}
@@ -58,6 +65,10 @@ func (sp *ModifyTable) Stmt() lyx.Node {
 
 func (sp *ModifyTable) SetStmt(n lyx.Node) {
 	sp.stmt = n
+}
+
+func (s *ModifyTable) GetQuery(string) string {
+	return ""
 }
 
 var _ Plan = &ModifyTable{}
@@ -82,6 +93,10 @@ func (sp *ShardDispatchPlan) SetStmt(n lyx.Node) {
 	sp.PStmt = n
 }
 
+func (s *ShardDispatchPlan) GetQuery(string) string {
+	return ""
+}
+
 var _ Plan = &ShardDispatchPlan{}
 
 type RandomDispatchPlan struct {
@@ -101,6 +116,10 @@ func (sp *RandomDispatchPlan) Stmt() lyx.Node {
 
 func (sp *RandomDispatchPlan) SetStmt(n lyx.Node) {
 	sp.stmt = n
+}
+
+func (s *RandomDispatchPlan) GetQuery(string) string {
+	return ""
 }
 
 var _ Plan = &RandomDispatchPlan{}
@@ -126,6 +145,10 @@ func (sp *VirtualPlan) SetStmt(n lyx.Node) {
 	sp.stmt = n
 }
 
+func (s *VirtualPlan) GetQuery(string) string {
+	return ""
+}
+
 var _ Plan = &VirtualPlan{}
 
 type DataRowFilter struct {
@@ -148,6 +171,10 @@ func (sp *DataRowFilter) SetStmt(n lyx.Node) {
 	sp.stmt = n
 }
 
+func (s *DataRowFilter) GetQuery(string) string {
+	return ""
+}
+
 var _ Plan = &DataRowFilter{}
 
 type CopyPlan struct {
@@ -167,6 +194,10 @@ func (sp *CopyPlan) Stmt() lyx.Node {
 
 func (sp *CopyPlan) SetStmt(n lyx.Node) {
 	sp.stmt = n
+}
+
+func (s *CopyPlan) GetQuery(string) string {
+	return ""
 }
 
 var _ Plan = &CopyPlan{}

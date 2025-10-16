@@ -1304,7 +1304,7 @@ func (qr *ProxyQrouter) planQueryV1(
 					return nil, err
 				} else if rs {
 					/* If reference relation, use planner v2 */
-					p, err := planner.PlanReferenceRelationInsertValues(ctx, qr.query, rm, stmt.Columns, rf, subS, qr.idRangeCache)
+					p, err := planner.PlanReferenceRelationInsertValues(ctx, rm, stmt.Columns, rf, subS, qr.idRangeCache)
 					if err != nil {
 						return nil, err
 					}
@@ -1489,7 +1489,9 @@ func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMeta
 }
 
 // Returns state, is read-only flag and err if any
-func (qr *ProxyQrouter) RouteWithRules(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, tsa tsa.TSA) (plan.Plan, bool, error) {
+func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	stmt lyx.Node, tsa tsa.TSA) (plan.Plan, bool, error) {
 	if stmt == nil {
 		// empty statement
 		return &plan.RandomDispatchPlan{}, false, nil
@@ -1812,7 +1814,9 @@ func CheckRoOnlyQuery(stmt lyx.Node) bool {
 	}
 }
 
-func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, p plan.Plan, ro bool, sph session.SessionParamsHolder) (plan.Plan, error) {
+func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	stmt lyx.Node, p plan.Plan, ro bool, sph session.SessionParamsHolder) (plan.Plan, error) {
 
 	switch v := p.(type) {
 	case *plan.DataRowFilter:
@@ -1898,7 +1902,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context, rm *rmeta.Rout
 }
 
 // TODO : unit tests
-func (qr *ProxyQrouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
+func (qr *ProxyQrouter) PlanQuery(ctx context.Context, query string, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
 
 	if !config.RouterConfig().Qr.AlwaysCheckRules {
 		if len(config.RouterConfig().ShardMapping) == 1 {
@@ -1923,7 +1927,7 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph sessio
 		}
 	}
 
-	rm := rmeta.NewRoutingMetadataContext(sph, qr.csm, qr.mgr)
+	rm := rmeta.NewRoutingMetadataContext(sph, query, qr.csm, qr.mgr)
 	var p plan.Plan
 	var ro bool
 	var err error

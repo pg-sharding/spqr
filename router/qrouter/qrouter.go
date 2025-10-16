@@ -16,7 +16,7 @@ import (
 )
 
 type QueryRouter interface {
-	PlanQuery(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error)
+	PlanQuery(ctx context.Context, OriginQuery string, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error)
 
 	WorldShardsRoutes() []kr.ShardKey
 	DataShardsRoutes() []kr.ShardKey
@@ -29,9 +29,6 @@ type QueryRouter interface {
 
 	Mgr() meta.EntityMgr
 	SchemaCache() *cache.SchemaCache
-
-	SetQuery(q *string)
-	Query() *string
 }
 
 func NewQrouter(qtype config.RouterMode,

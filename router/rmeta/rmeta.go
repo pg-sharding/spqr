@@ -51,15 +51,17 @@ type RoutingMetadataContext struct {
 
 	SPH session.SessionParamsHolder
 
-	CSM connmgr.ConnectionStatMgr
-	Mgr meta.EntityMgr
+	CSM   connmgr.ConnectionStatMgr
+	Mgr   meta.EntityMgr
+	Query string
 
 	AuxValues map[AuxValuesKey][]lyx.Node
 
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
 }
 
-func NewRoutingMetadataContext(sph session.SessionParamsHolder, csm connmgr.ConnectionStatMgr, mgr meta.EntityMgr) *RoutingMetadataContext {
+func NewRoutingMetadataContext(sph session.SessionParamsHolder,
+	query string, csm connmgr.ConnectionStatMgr, mgr meta.EntityMgr) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
 		Rels:          map[rfqn.RelationFQN]struct{}{},
 		CteNames:      map[string]struct{}{},
@@ -72,6 +74,7 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder, csm connmgr.Conn
 		SPH:           sph,
 		CSM:           csm,
 		Mgr:           mgr,
+		Query:         query,
 	}
 }
 
