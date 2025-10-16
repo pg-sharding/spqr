@@ -55,7 +55,8 @@ var (
 	prettyLogging bool
 	gomaxprocs    int
 
-	withCoord bool
+	withCoord    bool
+	useCoordInit bool
 
 	rootCmd = &cobra.Command{
 		Use:   "spqr-router run --config `path-to-config-folder`",
@@ -102,6 +103,8 @@ func init() {
 	// Query processing
 	rootCmd.PersistentFlags().BoolVarP(&enhancedMultishardProcessing, "enhanced_multishard_processing", "e", false, "enables SPQR query processing engine V2")
 
+	rootCmd.PersistentFlags().BoolVarP(&useCoordInit, "use_coordinator_init", "", false, "do use coordinator based metadata initializion")
+
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(testCmd)
 }
@@ -141,6 +144,14 @@ var runCmd = &cobra.Command{
 
 		spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLogging)
 		spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
+
+		if cmd.Flags().Changed("use_coordinator_init") {
+			config.RouterConfig().UseCoordinatorInit = useCoordInit
+			if config.RouterConfig().UseInitSQL && useCoordInit {
+				config.RouterConfig().UseInitSQL = false
+				config.RouterConfig().MemqdbBackupPath = ""
+			}
+		}
 
 		if memqdbBackupPath != "" {
 			if qdbImpl == "etcd" {
