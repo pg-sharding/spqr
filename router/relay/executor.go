@@ -811,7 +811,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 					}
 				}
 			} else {
-				return fmt.Errorf("unexpected row disription in slice deploy")
+				return fmt.Errorf("unexpected row description in slice deploy")
 			}
 		default:
 
