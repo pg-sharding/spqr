@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -50,6 +51,7 @@ type RoutingMetadataContext struct {
 
 	SPH session.SessionParamsHolder
 
+	CSM connmgr.ConnectionStatMgr
 	Mgr meta.EntityMgr
 
 	AuxValues map[AuxValuesKey][]lyx.Node
@@ -57,7 +59,7 @@ type RoutingMetadataContext struct {
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
 }
 
-func NewRoutingMetadataContext(sph session.SessionParamsHolder, mgr meta.EntityMgr) *RoutingMetadataContext {
+func NewRoutingMetadataContext(sph session.SessionParamsHolder, csm connmgr.ConnectionStatMgr, mgr meta.EntityMgr) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
 		Rels:          map[rfqn.RelationFQN]struct{}{},
 		CteNames:      map[string]struct{}{},
@@ -68,6 +70,7 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder, mgr meta.EntityM
 		Distributions: map[rfqn.RelationFQN]*distributions.Distribution{},
 		AuxValues:     map[AuxValuesKey][]lyx.Node{},
 		SPH:           sph,
+		CSM:           csm,
 		Mgr:           mgr,
 	}
 }

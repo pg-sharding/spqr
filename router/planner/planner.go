@@ -2,8 +2,12 @@ package planner
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -15,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/pg-sharding/spqr/router/virtual"
 )
 
 func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *lyx.CreateTable) (plan.Plan, error) {
@@ -402,6 +407,84 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 	return tupleShards, nil
 }
 
+func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataContext, fname string, args []lyx.Node) (plan.Plan, error) {
+	switch fname {
+	case virtual.VirtualShards:
+		p := &plan.VirtualPlan{
+			VirtualRowCols: []pgproto3.FieldDescription{
+				{
+					Name:                 []byte("shard name"),
+					DataTypeOID:          catalog.TEXTOID,
+					TypeModifier:         -1,
+					DataTypeSize:         1,
+					TableAttributeNumber: 0,
+					TableOID:             0,
+					Format:               0,
+				},
+			},
+		}
+		shs, err := rm.Mgr.ListShards(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, sh := range shs {
+			p.VirtualRowVals = append(p.VirtualRowVals, [][]byte{[]byte(sh.ID)})
+		}
+
+		return p, nil
+	case virtual.VirtualFuncHosts:
+		if rm.CSM == nil {
+			return nil, fmt.Errorf("spqr metadata uninitialized")
+		}
+		p := &plan.VirtualPlan{
+			VirtualRowCols: []pgproto3.FieldDescription{
+				{
+					Name:                 []byte("host"),
+					DataTypeOID:          catalog.TEXTOID,
+					TypeModifier:         -1,
+					DataTypeSize:         1,
+					TableAttributeNumber: 0,
+					TableOID:             0,
+					Format:               0,
+				},
+				{
+					Name:                 []byte("rw"),
+					DataTypeOID:          catalog.TEXTOID,
+					TypeModifier:         -1,
+					DataTypeSize:         1,
+					TableAttributeNumber: 0,
+					TableOID:             0,
+					Format:               0,
+				},
+			},
+		}
+
+		if len(args) == 1 {
+			var k string
+
+			switch vv := args[0].(type) {
+			case *lyx.AExprSConst:
+				k = vv.Value
+			default:
+				return nil, fmt.Errorf("incorrect argument type for %s", virtual.VirtualFuncHosts)
+			}
+
+			if v, ok := rm.CSM.InstanceHealthChecks()[k]; ok {
+				p.VirtualRowVals = append(p.VirtualRowVals,
+					[][]byte{[]byte(k),
+						fmt.Appendf(nil, "%v", v.CR.RW)})
+			} else {
+				return nil, fmt.Errorf("incorrect first argument for %s", virtual.VirtualFuncHosts)
+			}
+		} else {
+			return nil, fmt.Errorf("incorrect argument number for %s", virtual.VirtualFuncHosts)
+		}
+
+		return p, nil
+	}
+	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
+}
+
 func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, allowRewrite bool) (plan.Plan, error) {
 
 	switch v := stmt.(type) {
@@ -477,6 +560,20 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 	case *lyx.Select:
 		/* Should be single-relation scan or values. Join to be supported */
 		if len(v.FromClause) == 0 {
+
+			// try to plan query, if query is virtual-only
+
+			// is query a single function call?
+
+			if len(v.TargetList) == 1 {
+				switch q := v.TargetList[0].(type) {
+				case *lyx.FuncApplication:
+					if strings.HasPrefix(q.Name, "__spqr__") {
+						return PlanVirtualFunctionCall(ctx, rm, q.Name, q.Args)
+					}
+				}
+			}
+
 			return &plan.ScatterPlan{}, nil
 		}
 

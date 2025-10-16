@@ -110,7 +110,7 @@ type VirtualPlan struct {
 
 	stmt           lyx.Node
 	VirtualRowCols []pgproto3.FieldDescription
-	VirtualRowVals [][]byte
+	VirtualRowVals [][][]byte
 	SubPlan        Plan
 }
 

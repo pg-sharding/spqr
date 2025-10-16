@@ -1023,8 +1023,8 @@ func (qr *ProxyQrouter) planQueryV1(
 							}
 
 							if v, ok := qr.csm.InstanceHealthChecks()[k]; ok {
-								virtualRowVals = append(virtualRowVals, []byte(k),
-									fmt.Appendf(nil, "%v", v.CR.RW))
+								virtualRowVals = append(virtualRowVals,
+									[]byte(k), fmt.Appendf(nil, "%v", v.CR.RW))
 							} else {
 								return nil, fmt.Errorf("incorrect first argument for %s", virtual.VirtualFuncHosts)
 							}
@@ -1107,7 +1107,7 @@ func (qr *ProxyQrouter) planQueryV1(
 							Format:               0,
 						})
 
-					virtualRowVals = append(virtualRowVals, []byte(fmt.Sprintf("%d", e.Value)))
+					virtualRowVals = append(virtualRowVals, fmt.Appendf(nil, "%d", e.Value))
 				case *lyx.AExprNConst, *lyx.AExprBConst:
 					p = plan.Combine(p, &plan.RandomDispatchPlan{})
 
@@ -1129,7 +1129,7 @@ func (qr *ProxyQrouter) planQueryV1(
 			switch q := p.(type) {
 			case *plan.VirtualPlan:
 				q.VirtualRowCols = virtualRowCols
-				q.VirtualRowVals = virtualRowVals
+				q.VirtualRowVals = [][][]byte{virtualRowVals}
 
 				return q, nil
 			}
@@ -1906,10 +1906,21 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph sessio
 		}
 	}
 
-	rm := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
-	p, ro, err := qr.RouteWithRules(ctx, rm, stmt, sph.GetTsa())
-	if err != nil {
-		return nil, err
+	rm := rmeta.NewRoutingMetadataContext(sph, qr.csm, qr.mgr)
+	var p plan.Plan
+	var ro bool
+	var err error
+	if config.RouterConfig().Qr.PreferEngine == "v2" {
+		p, err = planner.PlanDistributedQuery(ctx, rm, stmt, true)
+		if err != nil {
+			return nil, err
+		}
+		ro = false
+	} else {
+		p, ro, err = qr.RouteWithRules(ctx, rm, stmt, sph.GetTsa())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	np, err := qr.InitExecutionTargets(ctx, rm, stmt, p, ro, sph)
