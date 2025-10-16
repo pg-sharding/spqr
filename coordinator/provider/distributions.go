@@ -138,3 +138,15 @@ func (d *DistributionsServer) CurrVal(ctx context.Context, req *protos.CurrValRe
 	}
 	return &protos.CurrValReply{Value: val}, nil
 }
+
+func (d *DistributionsServer) DropSequence(ctx context.Context, req *protos.DropSequenceRequest) (*emptypb.Empty, error) {
+	return nil, d.impl.DropSequence(ctx, req.Name, true)
+}
+
+func (d *DistributionsServer) ListRelationSequences(ctx context.Context, req *protos.ListRelationSequencesRequest) (*protos.ListRelationSequencesReply, error) {
+	val, err := d.impl.ListRelationSequences(ctx, rfqn.RelationFQNFromFullName(req.SchemaName, req.Name))
+	if err != nil {
+		return nil, err
+	}
+	return &protos.ListRelationSequencesReply{ColumnSequences: val}, nil
+}
