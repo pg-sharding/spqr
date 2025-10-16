@@ -18,6 +18,13 @@ func RelationFQNFromRangeRangeVar(rv *lyx.RangeVar) *RelationFQN {
 		SchemaName:   rv.SchemaName,
 	}
 }
+func RelationFQNFromFullName(s string, t string) *RelationFQN {
+	return &RelationFQN{
+		RelationName: s,
+		SchemaName:   t,
+	}
+}
+
 func (n RelationFQN) String() string {
 	if len(n.SchemaName) < 1 {
 		return n.RelationName
