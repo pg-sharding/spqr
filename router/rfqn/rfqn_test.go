@@ -34,3 +34,10 @@ func TestParseQualifiedNameFail(t *testing.T) {
 	_, err6 := rfqn.ParseFQN(" .")
 	assert.Error(err6)
 }
+
+func TestRelationFQNFromFullName(t *testing.T) {
+	assert := assert.New(t)
+
+	fullName := rfqn.RelationFQNFromFullName("schema1", "table1")
+	assert.Equal("schema1.table1", fullName.String())
+}
