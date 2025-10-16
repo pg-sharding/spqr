@@ -606,6 +606,63 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, q plan.Pla
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error {
 
+	/* XXX: refactor this */
+	expectRowDesc := false
+
+	switch qd.Msg.(type) {
+	case *pgproto3.Query:
+		expectRowDesc = true
+		// ok
+	case *pgproto3.Sync:
+		// ok
+	default:
+		return rerrors.ErrExecutorSyncLost
+	}
+
+	serv := s.Client().Server()
+
+	doFinalizeTx := false
+	attachedCopy := false
+
+	switch qd.P.(type) {
+	case *plan.VirtualPlan:
+	default:
+		if serv == nil {
+			return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
+		}
+
+		attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
+
+		if p := qd.P; p != nil {
+
+			stmt := qd.P.Stmt()
+
+			if stmt != nil {
+				switch stmt.(type) {
+				case *lyx.Copy:
+					spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
+
+					if serv.TxStatus() == txstatus.TXIDLE {
+						if err := s.DeploySliceTransactionQuery(serv, "BEGIN"); err != nil {
+							return err
+						}
+						doFinalizeTx = true
+					}
+				}
+			}
+		}
+
+		spqrlog.Zero.Debug().
+			Uints("shards", shard.ShardIDs(serv.Datashards())).
+			Type("query-type", qd.Msg).Type("plan-type", qd.P).
+			Msg("relay process plan")
+
+		statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
+		if err := DispatchPlan(qd, serv, s.Client(), replyCl); err != nil {
+			return err
+		}
+	}
+
 	switch q := qd.P.(type) {
 	case *plan.VirtualPlan:
 		/* execute logic without shard dispatch */
@@ -615,8 +672,8 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 		if q.SubPlan == nil {
 
 			/* only send row description for simple proto case */
-			switch qd.Msg.(type) {
-			case *pgproto3.Query:
+
+			if expectRowDesc {
 
 				if err := s.Client().Send(&pgproto3.RowDescription{
 					Fields: q.VirtualRowCols,
@@ -624,83 +681,27 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 					return err
 				}
 
-				for _, vals := range q.VirtualRowVals {
+			}
 
-					if err := s.Client().Send(&pgproto3.DataRow{
-						Values: vals,
-					}); err != nil {
-						return err
-					}
-				}
+			for _, vals := range q.VirtualRowVals {
 
-				if err := s.Client().Send(&pgproto3.CommandComplete{
-					CommandTag: []byte("SELECT 1"),
+				if err := s.Client().Send(&pgproto3.DataRow{
+					Values: vals,
 				}); err != nil {
 					return err
 				}
-			case *pgproto3.Sync:
+			}
 
-				for _, vals := range q.VirtualRowVals {
-
-					if err := s.Client().Send(&pgproto3.DataRow{
-						Values: vals,
-					}); err != nil {
-						return err
-					}
-				}
-
-				if err := s.Client().Send(&pgproto3.CommandComplete{
-					CommandTag: []byte("SELECT 1"),
-				}); err != nil {
-					return err
-				}
+			if err := s.Client().Send(&pgproto3.CommandComplete{
+				CommandTag: []byte("SELECT 1"),
+			}); err != nil {
+				return err
 			}
 
 			return nil
 		} else {
 			return rerrors.ErrExecutorSyncLost
 		}
-	}
-
-	serv := s.Client().Server()
-
-	if serv == nil {
-		return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
-	}
-
-	doFinalizeTx := false
-	attachedCopy := s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
-
-	if p := qd.P; p != nil {
-
-		stmt := qd.P.Stmt()
-
-		if stmt != nil {
-			switch stmt.(type) {
-			case *lyx.Copy:
-				spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
-
-				if serv.TxStatus() == txstatus.TXIDLE {
-					if err := s.DeploySliceTransactionQuery(serv, "BEGIN"); err != nil {
-						return err
-					}
-					doFinalizeTx = true
-				}
-			}
-		}
-	}
-
-	spqrlog.Zero.Debug().
-		Uints("shards", shard.ShardIDs(serv.Datashards())).
-		Type("query-type", qd.Msg).Type("plan-type", qd.P).
-		Msg("relay process plan")
-
-	statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
-	if err := DispatchPlan(qd, serv, s.Client(), replyCl); err != nil {
-		return err
-	}
-
-	switch qd.P.(type) {
 	case *plan.CopyPlan:
 
 		msg, _, err := serv.Receive()
@@ -725,19 +726,6 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 		default:
 			return server.ErrMultiShardSyncBroken
 		}
-	}
-
-	/* XXX: refactor this */
-	expectRowDesc := false
-
-	switch qd.Msg.(type) {
-	case *pgproto3.Query:
-		expectRowDesc = true
-		// ok
-	case *pgproto3.Sync:
-		// ok
-	default:
-		return rerrors.ErrExecutorSyncLost
 	}
 
 	for {
