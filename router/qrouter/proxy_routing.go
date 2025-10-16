@@ -1138,8 +1138,9 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
 		if len(stmt.FromClause) == 0 && (stmt.LArg == nil || stmt.RArg == nil) {
+			var err error
 
-			p, err := qr.planTargetList(ctx, stmt, rm)
+			p, err = qr.planTargetList(ctx, stmt, rm)
 			if err != nil {
 				return nil, err
 			}
