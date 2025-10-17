@@ -37,6 +37,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq gawk coreutils procps
 
+      - name: Prepare postgres runtime dir for unix socket
+        run: |
+          set -euo pipefail
+          sudo mkdir -p /var/run/postgresql
+          sudo chmod 1777 /var/run/postgresql
+
       - name: Run CLI override
         timeout-minutes: 5
         run: |
