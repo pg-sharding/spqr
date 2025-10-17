@@ -504,10 +504,11 @@ func (q *MemQDB) TryCoordinatorLock(_ context.Context, _ string) error {
 // TODO : unit tests
 func (q *MemQDB) UpdateCoordinator(_ context.Context, address string) error {
 	q.mu.Lock()
+	changed := q.Coordinator != address
 	q.Coordinator = address
 	q.mu.Unlock()
 
-	if q.Coordinator != address {
+	if changed {
 		spqrlog.Zero.Debug().Str("address", address).Msg("memqdb: update coordinator address")
 	}
 	return nil
