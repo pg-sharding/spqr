@@ -658,12 +658,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			stmt := rst.qp.Stmt()
 
 			/* XXX: very stupid here - is query exactly like insert into ref_rel values()?*/
-			switch pasred := stmt.(type) {
+			switch parsed := stmt.(type) {
 			case *lyx.Insert:
-				switch pasred.SubSelect.(type) {
+				switch parsed.SubSelect.(type) {
 				case *lyx.ValueClause:
 
-					switch rf := pasred.TableRef.(type) {
+					switch rf := parsed.TableRef.(type) {
 					case *lyx.RangeVar:
 						qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
 						if rel, err := rst.Qr.Mgr().GetReferenceRelation(ctx, qualName); err != nil {
