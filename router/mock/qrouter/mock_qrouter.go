@@ -19,6 +19,7 @@ import (
 	session "github.com/pg-sharding/spqr/pkg/session"
 	cache "github.com/pg-sharding/spqr/router/cache"
 	plan "github.com/pg-sharding/spqr/router/plan"
+	planner "github.com/pg-sharding/spqr/router/planner"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -58,6 +59,20 @@ func (m *MockQueryRouter) DataShardsRoutes() []kr.ShardKey {
 func (mr *MockQueryRouterMockRecorder) DataShardsRoutes() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataShardsRoutes", reflect.TypeOf((*MockQueryRouter)(nil).DataShardsRoutes))
+}
+
+// IdRange mocks base method.
+func (m *MockQueryRouter) IdRange() planner.IdentityRouterCache {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IdRange")
+	ret0, _ := ret[0].(planner.IdentityRouterCache)
+	return ret0
+}
+
+// IdRange indicates an expected call of IdRange.
+func (mr *MockQueryRouterMockRecorder) IdRange() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdRange", reflect.TypeOf((*MockQueryRouter)(nil).IdRange))
 }
 
 // Initialize mocks base method.
