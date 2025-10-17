@@ -15,11 +15,17 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/plan"
+	"github.com/pg-sharding/spqr/router/planner"
 )
 
 type LocalQrouter struct {
 	ds    *topology.DataShard
 	ready *atomic.Bool
+}
+
+// IdRange implements QueryRouter.
+func (qr *LocalQrouter) IdRange() planner.IdentityRouterCache {
+	return nil
 }
 
 func (qr *LocalQrouter) Ready() bool {

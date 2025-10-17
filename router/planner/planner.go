@@ -187,7 +187,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 		return nil, err
 	}
 
-	if q, err := InsertSequenceValue(ctx, rm.Query, rel, idCache); err != nil {
+	if q, err := InsertSequenceValue(ctx, rm.Query, rel.ColumnSequenceMapping, idCache); err != nil {
 		return nil, err
 	} else {
 		return &plan.ScatterPlan{
