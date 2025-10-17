@@ -132,6 +132,10 @@ func SetupSharding() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
+	_, err = conn.Exec(context.Background(), "CREATE REFERENCE TABLE xproto_ref_autoinc AUTO INCREMENT id;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
 }
 
 func CreateTables() {
@@ -174,6 +178,10 @@ func CreateTables() {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
 	}
 	_, err = conn.Exec(context.Background(), "CREATE TABLE xproto_ref (a int, b int, c int)")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
+	}
+	_, err = conn.Exec(context.Background(), "CREATE TABLE xproto_ref_autoinc (a int, b int, id int)")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
 	}
@@ -444,6 +452,179 @@ func TestSimpleMultiShardTxBlock(t *testing.T) {
 				}
 			default:
 				break
+			}
+			assert.Equal(t, msg, retMsg, "iter %d", i)
+		}
+	}
+}
+
+func TestSimpleReferenceRelationAutoinc(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+
+				&pgproto3.Query{
+					String: "SET __spqr__engine_v2 TO true",
+				},
+
+				&pgproto3.Parse{
+					Query: "INSERT INTO xproto_ref_autoinc (a,b) VALUES(1,2)",
+				},
+
+				&pgproto3.Bind{},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "TABLE xproto_ref_autoinc",
+				},
+
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.NoticeResponse{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.NoticeResponse{},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("a"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 1,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+						{
+							Name:                 []byte("b"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 2,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+						{
+							Name:                 []byte("id"),
+							DataTypeOID:          23,
+							TableAttributeNumber: 3,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{0x31},
+						{0x32},
+						{0x31},
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte{},
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for i, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			skip := false
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.NoticeResponse:
+				skip = true
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+
+			if skip {
+				continue
 			}
 			assert.Equal(t, msg, retMsg, "iter %d", i)
 		}
