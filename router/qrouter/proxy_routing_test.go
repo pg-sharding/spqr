@@ -552,6 +552,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 			query: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
 			exp: &plan.DataRowFilter{
 				SubPlan: &plan.ScatterPlan{
+					OverwriteQuery: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
 					SubPlan: &plan.ScatterPlan{
 						SubPlan: &plan.ModifyTable{},
 					},
@@ -569,6 +570,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
 			exp: &plan.ScatterPlan{
+				OverwriteQuery: `INSERT INTO test_ref_rel VALUES(1) ;`,
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -640,10 +642,8 @@ func TestReferenceRelationRouting(t *testing.T) {
 
 		tmp, err := pr.PlanQuery(context.TODO(), tt.query, parserRes[0], dh)
 		if tt.err != nil {
-
 			assert.Equal(err, tt.err, tt.query)
 		} else {
-
 			assert.NotNil(tmp, tt.query)
 			tmp.SetStmt(nil) /* dont check stmt */
 
