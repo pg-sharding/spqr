@@ -116,6 +116,12 @@ type Distribution struct {
 	ColTypes []string `json:"col_types,omitempty"`
 
 	Relations map[string]*DistributedRelation `json:"relations"`
+	// The `version` is obtained from the QDB key version.
+	// This field is needed to prevent corruption of the value
+	// when it is updated in concurrent mode by the router.
+	// There is no need to try to deserialize the value or serialize it.
+	// if Version 0 then it not exists in qdb.
+	Version int64 `json:"-"`
 }
 
 type ReferenceRelation struct {
