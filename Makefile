@@ -26,28 +26,28 @@ codename ?= jammy
 POSTGRES_VERSION ?= 15
 
 build_balancer:
-	go build -pgo=auto -o spqr-balancer $(LDFLAGS) $(GCFLAGS) ./cmd/balancer
+	go build -o spqr-balancer $(LDFLAGS) $(GCFLAGS) ./cmd/balancer
 
 build_coorctl:
-	go build -pgo=auto -o coorctl ./cmd/coordctl
+	go build -o coorctl ./cmd/coordctl
 
 build_coordinator: 
-	go build -pgo=auto -o spqr-coordinator  $(LDFLAGS) $(GCFLAGS) ./cmd/coordinator
+	go build -o spqr-coordinator  $(LDFLAGS) $(GCFLAGS) ./cmd/coordinator
 
 build_router: 
-	go build -pgo=auto -o spqr-router $(LDFLAGS) $(GCFLAGS) ./cmd/router
+	go build -o spqr-router $(LDFLAGS) $(GCFLAGS) ./cmd/router
 
 build_mover:
-	go build -pgo=auto -o spqr-mover  ./cmd/mover
+	go build -o spqr-mover  ./cmd/mover
 
 build_worldmock:
-	go build -pgo=auto -o spqr-worldmock ./cmd/worldmock
+	go build -o spqr-worldmock ./cmd/worldmock
 
 build_workloadreplay:
-	go build -pgo=auto -o spqr-workloadreplay ./cmd/workloadreplay
+	go build -o spqr-workloadreplay ./cmd/workloadreplay
 
 build_spqrdump:
-	go build -pgo=auto -o spqr-dump ./cmd/spqrdump
+	go build -o spqr-dump ./cmd/spqrdump
 
 build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay build_spqrdump
 
