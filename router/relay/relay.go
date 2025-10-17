@@ -24,6 +24,7 @@ import (
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
@@ -57,7 +58,7 @@ type RelayStateMgr interface {
 	ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error
 
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
-	ProcessExtendedBuffer() error
+	ProcessExtendedBuffer(ctx context.Context) error
 
 	ProcQueryAdvancedTx(query string, binderQ func() error, doCaching, completeRelay bool) (*PortalDesc, error)
 }
@@ -607,7 +608,7 @@ var (
 )
 
 // TODO : unit tests
-func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
+func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -647,8 +648,37 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			// analyze statement and maybe rewrite query
 
 			query := currentMsg.Query
+			_, _, err := rst.Parse(query, true)
+			if err != nil {
+				return err
+			}
 
 			/* XXX: check that we have reference relation insert here */
+
+			stmt := rst.qp.Stmt()
+
+			/* XXX: very stupid here - is query exactly like insert into ref_rel values()?*/
+			switch pasred := stmt.(type) {
+			case *lyx.Insert:
+				switch pasred.SubSelect.(type) {
+				case *lyx.ValueClause:
+
+					switch rf := pasred.TableRef.(type) {
+					case *lyx.RangeVar:
+						qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
+						if rel, err := rst.Qr.Mgr().GetReferenceRelation(ctx, qualName); err != nil {
+							return err
+						} else {
+							if q, err := planner.InsertSequenceValue(ctx, query, rel.ColumnSequenceMapping, rst.Qr.IdRange()); err != nil {
+								return err
+							} else {
+								query = q
+							}
+						}
+					}
+				}
+			}
+
 			p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
 			if err != nil {
 				return err
