@@ -27,6 +27,8 @@ type QueryRouter interface {
 	Ready() bool
 	SetReady(ready bool)
 
+	IdRange() planner.IdentityRouterCache
+
 	Mgr() meta.EntityMgr
 	SchemaCache() *cache.SchemaCache
 }

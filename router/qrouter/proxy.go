@@ -37,6 +37,11 @@ type ProxyQrouter struct {
 	ready       *atomic.Bool
 }
 
+// IdRange implements QueryRouter.
+func (qr *ProxyQrouter) IdRange() planner.IdentityRouterCache {
+	return qr.idRangeCache
+}
+
 var _ QueryRouter = &ProxyQrouter{}
 
 func (qr *ProxyQrouter) Initialized() bool {

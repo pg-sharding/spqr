@@ -649,6 +649,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			query := currentMsg.Query
 
 			/* XXX: check that we have reference relation insert here */
+			p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
+			if err != nil {
+				return err
+			}
+
+			rst.routingDecisionPlan = p
 
 			rst.Client().StorePreparedStatement(&prepstatement.PreparedStatementDefinition{
 				Name:          currentMsg.Name,
@@ -670,13 +676,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					return err
 				}
 			}
-
-			p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
-			if err != nil {
-				return err
-			}
-
-			rst.routingDecisionPlan = p
 
 			/* TODO: refactor code to make this less ugly */
 			saveTxStatus := rst.qse.TxStatus()
