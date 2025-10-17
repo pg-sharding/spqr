@@ -23,6 +23,7 @@ type CachedIdRange struct {
 func NewCachedIdRange() CachedIdRange {
 	return CachedIdRange{mu: sync.Mutex{}}
 }
+
 func (cir *CachedIdRange) nextVal() (int64, bool) {
 	if cir.idRange == nil {
 		return 0, false

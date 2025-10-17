@@ -1,10 +1,13 @@
 package planner
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 )
 
 func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextvalGen func() (int64, error)) (string, error) {
@@ -154,4 +157,26 @@ func findMatchingClosingParenthesis(query string, openPos int) int {
 	}
 
 	return -1 // No matching closing parenthesis found
+}
+
+func InsertSequenceValue(ctx context.Context,
+	qrouter_query string,
+	rel *rrelation.ReferenceRelation,
+	idCache IdentityRouterCache,
+) (string, error) {
+
+	query := qrouter_query
+
+	for colName, seqName := range rel.ColumnSequenceMapping {
+
+		newQuery, err := RewriteReferenceRelationAutoIncInsert(query, colName, func() (int64, error) {
+			return idCache.NextVal(ctx, seqName)
+		})
+		if err != nil {
+			return "", err
+		}
+		query = newQuery
+	}
+
+	return query, nil
 }

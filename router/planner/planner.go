@@ -171,29 +171,6 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	}
 }
 
-func insertSequenceValue(ctx context.Context,
-	_ *rmeta.RoutingMetadataContext,
-	qrouter_query string,
-	rel *rrelation.ReferenceRelation,
-	idCache IdentityRouterCache,
-) (string, error) {
-
-	query := qrouter_query
-
-	for colName, seqName := range rel.ColumnSequenceMapping {
-
-		newQuery, err := RewriteReferenceRelationAutoIncInsert(query, colName, func() (int64, error) {
-			return idCache.NextVal(ctx, seqName)
-		})
-		if err != nil {
-			return "", err
-		}
-		query = newQuery
-	}
-
-	return query, nil
-}
-
 func PlanReferenceRelationInsertValues(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	columns []string,
@@ -210,7 +187,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 		return nil, err
 	}
 
-	if q, err := insertSequenceValue(ctx, rm, rm.Query, rel, idCache); err != nil {
+	if q, err := InsertSequenceValue(ctx, rm.Query, rel, idCache); err != nil {
 		return nil, err
 	} else {
 		return &plan.ScatterPlan{
