@@ -644,9 +644,15 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 		case *pgproto3.Parse:
 			startTime := time.Now()
 
+			// analyze statement and maybe rewrite query
+
+			query := currentMsg.Query
+
+			/* XXX: check that we have reference relation insert here */
+
 			rst.Client().StorePreparedStatement(&prepstatement.PreparedStatementDefinition{
 				Name:          currentMsg.Name,
-				Query:         currentMsg.Query,
+				Query:         query,
 				ParameterOIDs: currentMsg.ParameterOIDs,
 			})
 
@@ -664,8 +670,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					return err
 				}
 			}
-
-			// analyze statement and maybe rewrite query
 
 			p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
 			if err != nil {
