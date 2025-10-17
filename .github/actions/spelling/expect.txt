@@ -116,6 +116,7 @@ dolorem
 doloremque
 dotnet
 DOUBLEOID
+drb
 drel
 dserr
 dssd
@@ -489,6 +490,7 @@ shname
 shq
 shrid
 shrule
+stdbuf
 singleshard
 Smartphone
 spaolacci

@@ -94,6 +94,12 @@ pooler_d_run:
 
 ####################### TESTS #######################
 
+# sudo --preserve-env=PATH,GOPATH,HOME make test-cli-overrides
+test-cli-overrides: build_router
+	@chmod +x test/cli/override.sh
+	@echo ">> Running CLI override e2e test via test/cli/override.sh"
+	@CFG="test/cli/router.yaml" test/cli/override.sh ./spqr-router
+
 unittest:
 	go test -timeout 120s ./cmd/... ./pkg/... ./router/... ./coordinator/... ./yacc/console...
 	go test -race -count 20 -timeout 30s ./qdb/...
