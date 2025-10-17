@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -666,9 +667,14 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					switch rf := parsed.TableRef.(type) {
 					case *lyx.RangeVar:
 						qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
-						if rel, err := rst.Qr.Mgr().GetReferenceRelation(ctx, qualName); err != nil {
+						if ds, err := rst.Qr.Mgr().GetRelationDistribution(ctx, qualName); err != nil {
 							return err
-						} else {
+						} else if ds.Id == distributions.REPLICATED {
+							rel, err := rst.Qr.Mgr().GetReferenceRelation(ctx, qualName)
+							if err != nil {
+								return err
+							}
+
 							if q, err := planner.InsertSequenceValue(ctx, query, rel.ColumnSequenceMapping, rst.Qr.IdRange()); err != nil {
 								return err
 							} else {
