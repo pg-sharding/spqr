@@ -368,6 +368,7 @@ func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 	} else {
 		var err error
 		queryPlan, err = rst.Qr.PlanQuery(context.TODO(), rst.qp.OriginQuery(), rst.qp.Stmt(), rst.Cl)
+
 		if err != nil {
 			return nil, fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 		}
@@ -663,6 +664,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					return err
 				}
 			}
+
+			// analyze statement and maybe rewrite query
 
 			p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
 			if err != nil {

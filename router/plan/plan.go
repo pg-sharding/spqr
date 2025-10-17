@@ -171,8 +171,11 @@ func (sp *DataRowFilter) SetStmt(n lyx.Node) {
 	sp.stmt = n
 }
 
-func (s *DataRowFilter) GetQuery(string) string {
-	return ""
+func (s *DataRowFilter) GetQuery(sh string) string {
+	if s.SubPlan == nil {
+		return ""
+	}
+	return s.SubPlan.GetQuery(sh)
 }
 
 var _ Plan = &DataRowFilter{}
@@ -268,8 +271,15 @@ func Combine(p1, p2 Plan) Plan {
 	case *VirtualPlan:
 		return p2
 	case *ScatterPlan:
+		rs := p1.GetQuery("")
+		if rs == "" {
+			// XXX: is this bad?
+			rs = p2.GetQuery("")
+		}
+
 		return &ScatterPlan{
-			ExecTargets: mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
+			OverwriteQuery: rs,
+			ExecTargets:    mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
 		}
 	case *RandomDispatchPlan:
 		return p2

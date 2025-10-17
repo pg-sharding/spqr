@@ -1943,7 +1943,6 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, query string, stmt lyx.No
 			return nil, err
 		}
 	}
-
 	np, err := qr.InitExecutionTargets(ctx, rm, stmt, p, ro, sph)
 	if err == nil {
 		np.SetStmt(stmt)
