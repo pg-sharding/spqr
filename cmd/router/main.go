@@ -53,7 +53,8 @@ var (
 	prettyLogging bool
 	gomaxprocs    int
 
-	withCoord bool
+	withCoord    bool
+	useCoordInit bool
 
 	rootCmd = &cobra.Command{
 		Use:   "spqr-router run --config `path-to-config-folder`",
@@ -101,6 +102,8 @@ func init() {
 
 	// Query processing
 	rootCmd.PersistentFlags().BoolVarP(&enhancedMultishardProcessing, "enhanced_multishard_processing", "e", false, "enables SPQR query processing engine V2")
+
+	rootCmd.PersistentFlags().BoolVarP(&useCoordInit, "use_coordinator_init", "", false, "do use coordinator based metadata initialization")
 
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(testCmd)

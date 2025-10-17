@@ -24,6 +24,7 @@ type Overrides struct {
 	PrettyLogging                *bool
 	WithCoordinator              *bool
 	EnhancedMultiShardProcessing *bool
+	UseCoordinatorInit           *bool
 }
 
 func collectOverrides(cmd *cobra.Command) Overrides {
@@ -65,6 +66,9 @@ func collectOverrides(cmd *cobra.Command) Overrides {
 	if cmd.Flags().Changed("enhanced_multishard_processing") {
 		ov.EnhancedMultiShardProcessing = &enhancedMultishardProcessing
 	}
+	if cmd.Flags().Changed("use_coordinator_init") {
+		ov.UseCoordinatorInit = &useCoordInit
+	}
 
 	return ov
 }
@@ -78,6 +82,14 @@ func ApplyOverrides(cfg *config.Router, ov Overrides, qdbImpl string) error {
 	}
 	if ov.WithCoordinator != nil {
 		cfg.WithCoordinator = *ov.WithCoordinator
+	}
+
+	if ov.UseCoordinatorInit != nil {
+		cfg.UseCoordinatorInit = useCoordInit
+		if cfg.UseInitSQL && useCoordInit {
+			cfg.UseInitSQL = false
+			cfg.MemqdbBackupPath = ""
+		}
 	}
 
 	if ov.MemqdbBackupPath != nil && *ov.MemqdbBackupPath != "" {

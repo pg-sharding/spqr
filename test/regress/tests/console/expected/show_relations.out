@@ -79,9 +79,9 @@ SHOW relations WHERE distribution_id = 'ds1';
 SHOW relations WHERE unknown_param = 'ds1';
 ERROR:  column unknown_param does not exist
 SHOW reference_relations;
- table name | schema version |      shards       
-------------+----------------+-------------------
- z_rf       | 1              | [sh1 sh2 sh3 sh4]
+ table name | schema version |      shards       | column sequence mapping 
+------------+----------------+-------------------+-------------------------
+ z_rf       | 1              | [sh1 sh2 sh3 sh4] | map[]
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;

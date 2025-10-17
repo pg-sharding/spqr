@@ -1,9 +1,11 @@
 package planner
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextvalGen func() (int64, error)) (string, error) {
@@ -14,7 +16,7 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 	}
 
 	// Find the position of the closing parenthesis for the column list using balanced parentheses
-	colsCloseInd := findMatchingCloseParen(query, colsOpenInd)
+	colsCloseInd := findMatchingClosingParenthesis(query, colsOpenInd)
 	if colsCloseInd == -1 {
 		return "", fmt.Errorf("invalid query: missing closing parenthesis in column list")
 	}
@@ -40,7 +42,7 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 
 	for {
 		// Skip whitespace
-		for pos < len(query) && isWhitespace(query[pos]) {
+		for pos < len(query) && unicode.IsSpace(rune(query[pos])) {
 			pos++
 		}
 
@@ -59,7 +61,7 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 
 		// Find matching closing parenthesis for this VALUES clause
 		valuesOpenInd := pos
-		valuesCloseInd := findMatchingCloseParen(query, valuesOpenInd)
+		valuesCloseInd := findMatchingClosingParenthesis(query, valuesOpenInd)
 		if valuesCloseInd == -1 {
 			return "", fmt.Errorf("invalid query: missing closing parenthesis in VALUES clause")
 		}
@@ -90,7 +92,7 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 
 		// Skip whitespace and look for comma
 		whitespaceStart := pos
-		for pos < len(query) && isWhitespace(query[pos]) {
+		for pos < len(query) && unicode.IsSpace(rune(query[pos])) {
 			pos++
 		}
 
@@ -109,14 +111,9 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 	return newQuery, nil
 }
 
-// isWhitespace checks if a character is whitespace
-func isWhitespace(c byte) bool {
-	return c == ' ' || c == '\t' || c == '\n' || c == '\r'
-}
-
 // formatInsertValue formats a new value to insert while preserving original formatting
 func formatInsertValue(newValue, originalContent string) string {
-	if len(originalContent) > 0 && isWhitespace(originalContent[0]) {
+	if len(originalContent) > 0 && unicode.IsSpace(rune(originalContent[0])) {
 		// Multiline format: no space after comma
 		return newValue + "," + originalContent
 	}
@@ -124,9 +121,9 @@ func formatInsertValue(newValue, originalContent string) string {
 	return newValue + ", " + originalContent
 }
 
-// findMatchingCloseParen finds the matching closing parenthesis for an opening parenthesis at the given position
+// findMatchingClosingParenthesis finds the matching closing parenthesis for an opening parenthesis at the given position
 // It properly handles nested parentheses and string literals
-func findMatchingCloseParen(query string, openPos int) int {
+func findMatchingClosingParenthesis(query string, openPos int) int {
 	if openPos >= len(query) || query[openPos] != '(' {
 		return -1
 	}
@@ -158,4 +155,26 @@ func findMatchingCloseParen(query string, openPos int) int {
 	}
 
 	return -1 // No matching closing parenthesis found
+}
+
+func InsertSequenceValue(ctx context.Context,
+	qrouter_query string,
+	ColumnSequenceMapping map[string]string,
+	idCache IdentityRouterCache,
+) (string, error) {
+
+	query := qrouter_query
+
+	for colName, seqName := range ColumnSequenceMapping {
+
+		newQuery, err := RewriteReferenceRelationAutoIncInsert(query, colName, func() (int64, error) {
+			return idCache.NextVal(ctx, seqName)
+		})
+		if err != nil {
+			return "", err
+		}
+		query = newQuery
+	}
+
+	return query, nil
 }

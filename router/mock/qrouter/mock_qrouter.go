@@ -19,6 +19,7 @@ import (
 	session "github.com/pg-sharding/spqr/pkg/session"
 	cache "github.com/pg-sharding/spqr/router/cache"
 	plan "github.com/pg-sharding/spqr/router/plan"
+	planner "github.com/pg-sharding/spqr/router/planner"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -58,6 +59,20 @@ func (m *MockQueryRouter) DataShardsRoutes() []kr.ShardKey {
 func (mr *MockQueryRouterMockRecorder) DataShardsRoutes() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataShardsRoutes", reflect.TypeOf((*MockQueryRouter)(nil).DataShardsRoutes))
+}
+
+// IdRange mocks base method.
+func (m *MockQueryRouter) IdRange() planner.IdentityRouterCache {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IdRange")
+	ret0, _ := ret[0].(planner.IdentityRouterCache)
+	return ret0
+}
+
+// IdRange indicates an expected call of IdRange.
+func (mr *MockQueryRouterMockRecorder) IdRange() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdRange", reflect.TypeOf((*MockQueryRouter)(nil).IdRange))
 }
 
 // Initialize mocks base method.
@@ -103,32 +118,18 @@ func (mr *MockQueryRouterMockRecorder) Mgr() *gomock.Call {
 }
 
 // PlanQuery mocks base method.
-func (m *MockQueryRouter) PlanQuery(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
+func (m *MockQueryRouter) PlanQuery(ctx context.Context, OriginQuery string, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PlanQuery", ctx, stmt, sph)
+	ret := m.ctrl.Call(m, "PlanQuery", ctx, OriginQuery, stmt, sph)
 	ret0, _ := ret[0].(plan.Plan)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // PlanQuery indicates an expected call of PlanQuery.
-func (mr *MockQueryRouterMockRecorder) PlanQuery(ctx, stmt, sph any) *gomock.Call {
+func (mr *MockQueryRouterMockRecorder) PlanQuery(ctx, OriginQuery, stmt, sph any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PlanQuery", reflect.TypeOf((*MockQueryRouter)(nil).PlanQuery), ctx, stmt, sph)
-}
-
-// Query mocks base method.
-func (m *MockQueryRouter) Query() *string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Query")
-	ret0, _ := ret[0].(*string)
-	return ret0
-}
-
-// Query indicates an expected call of Query.
-func (mr *MockQueryRouterMockRecorder) Query() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockQueryRouter)(nil).Query))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PlanQuery", reflect.TypeOf((*MockQueryRouter)(nil).PlanQuery), ctx, OriginQuery, stmt, sph)
 }
 
 // Ready mocks base method.
@@ -157,18 +158,6 @@ func (m *MockQueryRouter) SchemaCache() *cache.SchemaCache {
 func (mr *MockQueryRouterMockRecorder) SchemaCache() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SchemaCache", reflect.TypeOf((*MockQueryRouter)(nil).SchemaCache))
-}
-
-// SetQuery mocks base method.
-func (m *MockQueryRouter) SetQuery(q *string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetQuery", q)
-}
-
-// SetQuery indicates an expected call of SetQuery.
-func (mr *MockQueryRouterMockRecorder) SetQuery(q any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetQuery", reflect.TypeOf((*MockQueryRouter)(nil).SetQuery), q)
 }
 
 // SetReady mocks base method.

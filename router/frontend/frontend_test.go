@@ -69,7 +69,6 @@ func TestFrontendSimple(t *testing.T) {
 	_ = statistics.InitStatisticsStr(nil)
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
-	qr.EXPECT().SetQuery(gomock.Any()).AnyTimes()
 
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{})
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
@@ -114,7 +113,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 
-	qr.EXPECT().PlanQuery(gomock.Any(), &lyx.Select{
+	qr.EXPECT().PlanQuery(gomock.Any(), gomock.Any(), &lyx.Select{
 		TargetList: []lyx.Node{
 			&lyx.AExprIConst{Value: 1},
 		},
