@@ -530,7 +530,6 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 
 				&pgproto3.BindComplete{},
 
-				&pgproto3.NoticeResponse{},
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("INSERT 0 1"),
 				},
@@ -539,7 +538,6 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 					TxStatus: byte(txstatus.TXACT),
 				},
 
-				&pgproto3.NoticeResponse{},
 				&pgproto3.RowDescription{
 					Fields: []pgproto3.FieldDescription{
 						{
@@ -603,10 +601,7 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 			}
 			retMsg, err := frontend.Receive()
 			assert.NoError(t, err)
-			skip := false
 			switch retMsgType := retMsg.(type) {
-			case *pgproto3.NoticeResponse:
-				skip = true
 			case *pgproto3.RowDescription:
 				for i := range retMsgType.Fields {
 					// We don't want to check table OID
@@ -623,9 +618,6 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 				break
 			}
 
-			if skip {
-				continue
-			}
 			assert.Equal(t, msg, retMsg, "iter %d", i)
 		}
 	}
