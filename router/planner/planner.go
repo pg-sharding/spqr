@@ -173,12 +173,12 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 
 func insertSequenceValue(ctx context.Context,
 	_ *rmeta.RoutingMetadataContext,
-	qrouter_query *string,
+	qrouter_query string,
 	rel *rrelation.ReferenceRelation,
 	idCache IdentityRouterCache,
-) error {
+) (string, error) {
 
-	query := *qrouter_query
+	query := qrouter_query
 
 	for colName, seqName := range rel.ColumnSequenceMapping {
 
@@ -186,17 +186,15 @@ func insertSequenceValue(ctx context.Context,
 			return idCache.NextVal(ctx, seqName)
 		})
 		if err != nil {
-			return err
+			return "", err
 		}
 		query = newQuery
 	}
 
-	*qrouter_query = query
-	return nil
+	return query, nil
 }
 
 func PlanReferenceRelationInsertValues(ctx context.Context,
-	qrouter_query *string,
 	rm *rmeta.RoutingMetadataContext,
 	columns []string,
 	rv *lyx.RangeVar,
@@ -212,13 +210,14 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 		return nil, err
 	}
 
-	if err := insertSequenceValue(ctx, rm, qrouter_query, rel, idCache); err != nil {
+	if q, err := insertSequenceValue(ctx, rm, rm.Query, rel, idCache); err != nil {
 		return nil, err
+	} else {
+		return &plan.ScatterPlan{
+			OverwriteQuery: q,
+			ExecTargets:    rel.ListStorageRoutes(),
+		}, nil
 	}
-
-	return &plan.ScatterPlan{
-		ExecTargets: rel.ListStorageRoutes(),
-	}, nil
 }
 
 func CalculateRoutingListTupleItemValue(
@@ -485,7 +484,9 @@ func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataConte
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 }
 
-func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, allowRewrite bool) (plan.Plan, error) {
+func PlanDistributedQuery(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	stmt lyx.Node, allowRewrite bool) (plan.Plan, error) {
 
 	switch v := stmt.(type) {
 	/* TDB: comments? */

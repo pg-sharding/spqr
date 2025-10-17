@@ -367,7 +367,8 @@ func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 		}
 	} else {
 		var err error
-		queryPlan, err = rst.Qr.PlanQuery(context.TODO(), rst.qp.Stmt(), rst.Cl)
+		queryPlan, err = rst.Qr.PlanQuery(context.TODO(), rst.qp.OriginQuery(), rst.qp.Stmt(), rst.Cl)
+
 		if err != nil {
 			return nil, fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 		}
@@ -664,6 +665,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				}
 			}
 
+			// analyze statement and maybe rewrite query
+
 			p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
 			if err != nil {
 				return err
@@ -732,7 +735,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				rst.Client().SetParamFormatCodes(currentMsg.ParameterFormatCodes)
 				rst.saveBind.ResultFormatCodes = currentMsg.ResultFormatCodes
 				rst.saveBind.Parameters = currentMsg.Parameters
-				rst.Qr.SetQuery(&def.Query)
 				// Do not respond with BindComplete, as the relay step should take care of itself.
 				queryPlan, err := rst.PrepareExecutionSlice(rst.routingDecisionPlan)
 
@@ -952,6 +954,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseState, string, error) {
 	if cache, ok := rst.parseCache[query]; ok {
 		rst.qp.SetStmt(cache.stmt)
+		rst.qp.SetOriginQuery(query)
 		return cache.ps, cache.comm, nil
 	}
 
@@ -1177,6 +1180,11 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		return err
 	}
 	rst.routingDecisionPlan = queryPlan
+
+	// rewrite query
+	if qs := queryPlan.GetQuery(""); qs != "" {
+		q.String = qs
+	}
 
 	return rst.qse.ExecuteSlice(
 		&QueryDesc{

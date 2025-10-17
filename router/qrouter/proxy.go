@@ -35,7 +35,6 @@ type ProxyQrouter struct {
 
 	initialized *atomic.Bool
 	ready       *atomic.Bool
-	query       *string
 }
 
 var _ QueryRouter = &ProxyQrouter{}
@@ -62,13 +61,6 @@ func (qr *ProxyQrouter) Mgr() meta.EntityMgr {
 
 func (qr *ProxyQrouter) SchemaCache() *cache.SchemaCache {
 	return qr.schemaCache
-}
-
-func (qr *ProxyQrouter) SetQuery(q *string) {
-	qr.query = q
-}
-func (qr *ProxyQrouter) Query() *string {
-	return qr.query
 }
 
 // TODO : unit tests
