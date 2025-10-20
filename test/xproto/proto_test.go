@@ -490,14 +490,17 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 				},
 
 				&pgproto3.Query{
-					String: "SET __spqr__engine_v2 TO true",
+					String: "SET __spqr__.engine_v2 TO true",
 				},
 
 				&pgproto3.Parse{
+					Name:  "autoinc_p_0",
 					Query: "INSERT INTO xproto_ref_autoinc (a,b) VALUES(1,2)",
 				},
 
-				&pgproto3.Bind{},
+				&pgproto3.Bind{
+					PreparedStatement: "autoinc_p_0",
+				},
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
 
@@ -597,7 +600,7 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 				},
 
 				&pgproto3.Query{
-					String: "SET __spqr__engine_v2 TO true",
+					String: "SET __spqr__.engine_v2 TO true",
 				},
 
 				&pgproto3.Parse{
@@ -605,9 +608,26 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 					Query: "INSERT INTO xproto_ref_autoinc (a,b) VALUES($1,122)",
 				},
 
+				&pgproto3.Describe{
+					Name:       "autoinc_p_1",
+					ObjectType: 'S',
+				},
+
 				&pgproto3.Bind{
 					PreparedStatement: "autoinc_p_1",
 					Parameters:        [][]byte{fmt.Appendf(nil, "%d", 112)},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Describe{
+					Name:       "autoinc_p_1",
+					ObjectType: 'S',
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement: "autoinc_p_1",
+					Parameters:        [][]byte{fmt.Appendf(nil, "%d", 113)},
 				},
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
@@ -638,6 +658,26 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 				},
 
 				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.NoData{},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.NoData{},
 
 				&pgproto3.BindComplete{},
 
@@ -680,6 +720,14 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 						{0x31, 0x31, 0x32},
 						{0x31, 0x32, 0x32},
 						{0x33},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{0x31, 0x31, 0x33},
+						{0x31, 0x32, 0x32},
+						{0x35},
 					},
 				},
 
