@@ -939,6 +939,13 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					Str("stmt-name", currentMsg.Name).
 					Msg("Describe prep statement")
 
+				def := rst.Client().PreparedStatementDefinitionByName(currentMsg.Name)
+
+				if def == nil {
+					/* this prepared statement was not prepared by client */
+					return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.Name)
+				}
+
 				p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
 				if err != nil {
 					return err
