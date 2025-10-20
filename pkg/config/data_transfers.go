@@ -54,7 +54,7 @@ func LoadShardDataCfg(cfgPath string) (*DatatransferConnections, error) {
 		return &cfg, err
 	}
 
-	spqrlog.Zero.Debug().Str("running config: %s", string(configBytes))
+	spqrlog.Zero.Debug().Str("config", string(configBytes)).Msg("got shard data config")
 
 	return &cfg, nil
 }
