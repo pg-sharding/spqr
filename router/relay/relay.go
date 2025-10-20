@@ -976,8 +976,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 						return err
 					}
 				} else {
-					if desc != nil {
-						if err := rst.Client().Send(desc); err != nil {
+					if rd.RowDesc != nil {
+						if err := rst.Client().Send(rd.RowDesc); err != nil {
 							return err
 						}
 					}
