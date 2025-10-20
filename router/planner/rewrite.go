@@ -6,9 +6,12 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 )
 
-func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextvalGen func() (int64, error)) (string, error) {
+func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextvalGen func() (string, error)) (string, error) {
 	// Find the position of the opening parenthesis for the column list
 	colsOpenInd := strings.Index(query, "(")
 	if colsOpenInd == -1 {
@@ -71,11 +74,10 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 		if err != nil {
 			return "", err
 		}
-		nextvalStr := strconv.FormatInt(nextval, 10)
 
 		// Format the VALUES clause content
 		originalValuesContent := query[valuesOpenInd+1 : valuesCloseInd]
-		newValuesContent := formatInsertValue(nextvalStr, originalValuesContent)
+		newValuesContent := formatInsertValue(nextval, originalValuesContent)
 
 		// Add the VALUES clause with the new column value
 		if first {
@@ -158,21 +160,52 @@ func findMatchingClosingParenthesis(query string, openPos int) int {
 }
 
 func InsertSequenceValue(ctx context.Context,
-	qrouter_query string,
+	query string,
 	ColumnSequenceMapping map[string]string,
 	idCache IdentityRouterCache,
 ) (string, error) {
 
-	query := qrouter_query
-
 	for colName, seqName := range ColumnSequenceMapping {
 
-		newQuery, err := RewriteReferenceRelationAutoIncInsert(query, colName, func() (int64, error) {
-			return idCache.NextVal(ctx, seqName)
+		newQuery, err := RewriteReferenceRelationAutoIncInsert(query, colName, func() (string, error) {
+			v, err := idCache.NextVal(ctx, seqName)
+			if err != nil {
+				return "", err
+			}
+			return strconv.FormatInt(v, 10), nil
 		})
 		if err != nil {
 			return "", err
 		}
+		query = newQuery
+	}
+
+	return query, nil
+}
+
+func InsertSequenceParamRef(ctx context.Context,
+	query string,
+	ColumnSequenceMapping map[string]string,
+	stmt lyx.Node,
+	def *prepstatement.PreparedStatementDefinition,
+) (string, error) {
+
+	for colName, seqName := range ColumnSequenceMapping {
+
+		newQuery, err := RewriteReferenceRelationAutoIncInsert(query, colName, func() (string, error) {
+			// what param ref is max for given query?
+
+			// analyze lyx statement
+			maxId := 2
+			def.OverwriteRemoveParamIds = map[uint32]struct{}{uint32(maxId): struct{}{}}
+			def.SeqName = seqName
+
+			return fmt.Sprintf("$%d", maxId), nil
+		})
+		if err != nil {
+			return "", err
+		}
+		def.Query = newQuery
 		query = newQuery
 	}
 

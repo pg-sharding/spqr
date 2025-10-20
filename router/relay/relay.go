@@ -658,6 +658,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			stmt := rst.qp.Stmt()
 
+			def := &prepstatement.PreparedStatementDefinition{
+				Name:          currentMsg.Name,
+				Query:         query,
+				ParameterOIDs: currentMsg.ParameterOIDs,
+			}
+
 			/* XXX: very stupid here - is query exactly like insert into ref_rel values()?*/
 			switch parsed := stmt.(type) {
 			case *lyx.Insert:
@@ -675,10 +681,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 								return err
 							}
 
-							if q, err := planner.InsertSequenceValue(ctx, query, rel.ColumnSequenceMapping, rst.Qr.IdRange()); err != nil {
+							if _, err := planner.InsertSequenceParamRef(ctx, query, rel.ColumnSequenceMapping, stmt, def); err != nil {
 								return err
 							} else {
-								query = q
 							}
 						}
 					}
@@ -692,11 +697,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			rst.routingDecisionPlan = p
 
-			rst.Client().StorePreparedStatement(&prepstatement.PreparedStatementDefinition{
-				Name:          currentMsg.Name,
-				Query:         query,
-				ParameterOIDs: currentMsg.ParameterOIDs,
-			})
+			rst.Client().StorePreparedStatement(def)
 
 			hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.Name)
 
@@ -747,6 +748,19 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			// or process it locally (set statement)
 
 			def := rst.Client().PreparedStatementDefinitionByName(currentMsg.PreparedStatement)
+
+			if def.OverwriteRemoveParamIds != nil {
+				// we did query overwrite for sole reason -
+				// to insert next sequence value.
+				// XXX: this needs a massive refactor later
+
+				v, err := rst.Qr.IdRange().NextVal(ctx, def.SeqName)
+				if err != nil {
+					return err
+				}
+
+				currentMsg.Parameters = append(currentMsg.Parameters, fmt.Appendf(nil, "%d", v))
+			}
 
 			if def == nil {
 				/* this prepared statement was not prepared by client */
