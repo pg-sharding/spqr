@@ -614,6 +614,15 @@ func CheckConstraints(ctx context.Context, conn *pgx.Conn, dsRels []string, rpRe
 	return false, conName, nil
 }
 
+func CheckHashExtension(ctx context.Context, conn *pgx.Conn) (bool, error) {
+	res := conn.QueryRow(ctx, "SELECT count(*) FROM pg_extension WHERE extname = 'spqrhash'")
+	count := 0
+	if err := res.Scan(&count); err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 // getEntriesCount retrieves the number of entries from a database table based on the provided condition.
 //
 // Parameters:

@@ -44,7 +44,7 @@ Feature: Redistribution test
     """
     Then command return code should be "0"
 
-  Scenario: REDISTRIBUTE KEY RANGE CHECK detects missing extension
+  Scenario: REDISTRIBUTE KEY RANGE CHECK detects missing postgres_fdw extension
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
@@ -77,6 +77,67 @@ Feature: Redistribution test
     """
     foreign-data wrapper \"postgres_fdw\" does not exist
     """
+  
+  Scenario: REDISTRIBUTE KEY RANGE CHECK detects missing spqrhash extension
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    DROP extension IF EXISTS spqrhash;
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard2"
+    """
+    DROP extension IF EXISTS spqrhash;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
+    """
+    Then command return code should be "1"
+    And command output should match regexp
+    """
+    extension \"spqrhash\" not installed on source shard
+    """
+  
+    When I run SQL on host "shard1"
+    """
+    CREATE EXTENSION spqrhash;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
+    """
+    Then command return code should be "1"
+    And command output should match regexp
+    """
+    extension \"spqrhash\" not installed on destination shard
+    """
+  
+    When I run SQL on host "shard2"
+    """
+    CREATE EXTENSION spqrhash;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK;
+    """
+    Then command return code should be "0"
 
   Scenario: REDISTRIBUTE KEY RANGE CHECK checks password correctness
     When I execute SQL on host "coordinator"
