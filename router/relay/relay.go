@@ -957,14 +957,13 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					return err
 				}
 
-				if rd.ParamDesc != nil {
-
-					desc := rd.ParamDesc
-
+				desc := rd.ParamDesc
+				if desc != nil {
 					// if we did overwrite something - remove our
 					// columns from output
 					for ind := range def.OverwriteRemoveParamIds {
-						desc.ParameterOIDs = slices.Delete(desc.ParameterOIDs, ind, ind)
+						// NB: ind are zero - indexed
+						desc.ParameterOIDs = slices.Delete(desc.ParameterOIDs, ind-1, ind)
 					}
 
 					if err := rst.Client().Send(desc); err != nil {
@@ -977,8 +976,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 						return err
 					}
 				} else {
-					if rd.RowDesc != nil {
-						if err := rst.Client().Send(rd.RowDesc); err != nil {
+					if desc != nil {
+						if err := rst.Client().Send(desc); err != nil {
 							return err
 						}
 					}
