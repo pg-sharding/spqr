@@ -749,6 +749,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			def := rst.Client().PreparedStatementDefinitionByName(currentMsg.PreparedStatement)
 
+			if def == nil {
+				/* this prepared statement was not prepared by client */
+				return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.PreparedStatement)
+			}
+
 			if def.OverwriteRemoveParamIds != nil {
 				// we did query overwrite for sole reason -
 				// to insert next sequence value.
@@ -760,11 +765,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				}
 
 				currentMsg.Parameters = append(currentMsg.Parameters, fmt.Appendf(nil, "%d", v))
-			}
-
-			if def == nil {
-				/* this prepared statement was not prepared by client */
-				return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.PreparedStatement)
 			}
 
 			// We implicitly assume that there is always Execute after Bind for the same portal.
