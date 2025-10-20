@@ -152,7 +152,7 @@ func TestMultiShardRouting(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		dh := session.NewDummyHandler(distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
@@ -277,7 +277,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		dh := session.NewDummyHandler(distribution)
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		tmp, err := pr.PlanQuery(context.TODO(), parserRes[0], dh)
+		tmp, err := pr.PlanQuery(context.TODO(), tt.query, parserRes[0], dh)
 
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
@@ -434,7 +434,7 @@ func TestRoutingByExpression(t *testing.T) {
 		dh := session.NewDummyHandler(distribution)
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		tmp, err := pr.PlanQuery(context.TODO(), parserRes[0], dh)
+		tmp, err := pr.PlanQuery(context.TODO(), tt.query, parserRes[0], dh)
 
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
@@ -498,9 +498,8 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 		dh := session.NewDummyHandler("dd")
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
-		pr.SetQuery(&tt.query)
 
-		tmp, err := pr.PlanQuery(context.TODO(), parserRes[0], dh)
+		tmp, err := pr.PlanQuery(context.TODO(), tt.query, parserRes[0], dh)
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
 		} else {
@@ -553,6 +552,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 			query: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
 			exp: &plan.DataRowFilter{
 				SubPlan: &plan.ScatterPlan{
+					OverwriteQuery: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
 					SubPlan: &plan.ScatterPlan{
 						SubPlan: &plan.ModifyTable{},
 					},
@@ -570,6 +570,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
 			exp: &plan.ScatterPlan{
+				OverwriteQuery: `INSERT INTO test_ref_rel VALUES(1) ;`,
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -638,14 +639,11 @@ func TestReferenceRelationRouting(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 		dh := session.NewDummyHandler("dd")
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
-		pr.SetQuery(&tt.query)
 
-		tmp, err := pr.PlanQuery(context.TODO(), parserRes[0], dh)
+		tmp, err := pr.PlanQuery(context.TODO(), tt.query, parserRes[0], dh)
 		if tt.err != nil {
-
 			assert.Equal(err, tt.err, tt.query)
 		} else {
-
 			assert.NotNil(tmp, tt.query)
 			tmp.SetStmt(nil) /* dont check stmt */
 
@@ -741,7 +739,7 @@ func TestComment(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		dh := session.NewDummyHandler(distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
@@ -1036,7 +1034,7 @@ func TestCTE(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		dh := session.NewDummyHandler(distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		if tt.err == nil {
@@ -1355,7 +1353,7 @@ func TestSingleShard(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		dh := session.NewDummyHandler(distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
@@ -1505,7 +1503,7 @@ func TestInsertOffsets(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		dh := session.NewDummyHandler(distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
@@ -1661,7 +1659,7 @@ func TestJoins(t *testing.T) {
 
 		dh := session.NewDummyHandler(distribution)
 
-		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		if tt.err != nil {
@@ -1761,7 +1759,7 @@ func TestUnnest(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		dh := session.NewDummyHandler(distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
@@ -1844,7 +1842,7 @@ func TestCopySingleShard(t *testing.T) {
 		dh := session.NewDummyHandler(distribution)
 		dh.SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, "BLOCK")
 
-		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
@@ -1929,7 +1927,7 @@ func TestCopyMultiShard(t *testing.T) {
 		dh.SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, "BLOCK")
 		dh.SetScatterQuery(false)
 
-		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
@@ -2009,7 +2007,7 @@ func TestSetStmt(t *testing.T) {
 
 		dh := session.NewDummyHandler(tt.distribution)
 
-		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
@@ -2129,7 +2127,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 						DataTypeSize: 1,
 					},
 				},
-				VirtualRowVals: [][]byte{[]byte{byte('t')}},
+				VirtualRowVals: [][][]byte{[][]byte{{byte('t')}}},
 			},
 			err: nil,
 		},
@@ -2194,7 +2192,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 						DataTypeSize: 1,
 					},
 				},
-				VirtualRowVals: [][]byte{{byte('f')}},
+				VirtualRowVals: [][][]byte{{{byte('f')}}},
 			},
 			err: nil,
 		},
@@ -2210,7 +2208,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 						DataTypeSize: 1,
 					},
 				},
-				VirtualRowVals: [][]byte{{byte('f')}},
+				VirtualRowVals: [][][]byte{{{byte('f')}}},
 			},
 			err: nil,
 		},
@@ -2238,7 +2236,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 						DataTypeSize: 4,
 					},
 				},
-				VirtualRowVals: [][]byte{[]byte("1")},
+				VirtualRowVals: [][][]byte{{[]byte("1")}},
 			},
 			err: nil,
 		},
@@ -2260,7 +2258,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 						DataTypeSize: -1,
 					},
 				},
-				VirtualRowVals: [][]byte{[]byte("Hello, world!")},
+				VirtualRowVals: [][][]byte{{[]byte("Hello, world!")}},
 			},
 			err: nil,
 		},
@@ -2331,7 +2329,7 @@ LIMIT 1000
 		assert.NoError(err, "query %s", tt.query)
 
 		dh := session.NewDummyHandler(tt.distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		if tt.err == nil {
@@ -2417,7 +2415,7 @@ func TestHashRouting(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		dh := session.NewDummyHandler(tt.distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, pr.Mgr())
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		if tt.err == nil {

@@ -2,12 +2,15 @@ package planner
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -15,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/pg-sharding/spqr/router/virtual"
 )
 
 func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *lyx.CreateTable) (plan.Plan, error) {
@@ -153,32 +157,7 @@ func PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	}
 }
 
-func insertSequenceValue(ctx context.Context,
-	_ *rmeta.RoutingMetadataContext,
-	qrouter_query *string,
-	rel *rrelation.ReferenceRelation,
-	idCache IdentityRouterCache,
-) error {
-
-	query := *qrouter_query
-
-	for colName, seqName := range rel.ColumnSequenceMapping {
-
-		newQuery, err := RewriteReferenceRelationAutoIncInsert(query, colName, func() (int64, error) {
-			return idCache.NextVal(ctx, seqName)
-		})
-		if err != nil {
-			return err
-		}
-		query = newQuery
-	}
-
-	*qrouter_query = query
-	return nil
-}
-
 func PlanReferenceRelationInsertValues(ctx context.Context,
-	qrouter_query *string,
 	rm *rmeta.RoutingMetadataContext,
 	columns []string,
 	rv *lyx.RangeVar,
@@ -194,13 +173,14 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 		return nil, err
 	}
 
-	if err := insertSequenceValue(ctx, rm, qrouter_query, rel, idCache); err != nil {
+	if q, err := InsertSequenceValue(ctx, rm.Query, rel.ColumnSequenceMapping, idCache); err != nil {
 		return nil, err
+	} else {
+		return &plan.ScatterPlan{
+			OverwriteQuery: q,
+			ExecTargets:    rel.ListStorageRoutes(),
+		}, nil
 	}
-
-	return &plan.ScatterPlan{
-		ExecTargets: rel.ListStorageRoutes(),
-	}, nil
 }
 
 func CalculateRoutingListTupleItemValue(
@@ -389,7 +369,87 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 	return tupleShards, nil
 }
 
-func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, allowRewrite bool) (plan.Plan, error) {
+func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataContext, fname string, args []lyx.Node) (plan.Plan, error) {
+	switch fname {
+	case virtual.VirtualShards:
+		p := &plan.VirtualPlan{
+			VirtualRowCols: []pgproto3.FieldDescription{
+				{
+					Name:                 []byte("shard name"),
+					DataTypeOID:          catalog.TEXTOID,
+					TypeModifier:         -1,
+					DataTypeSize:         1,
+					TableAttributeNumber: 0,
+					TableOID:             0,
+					Format:               0,
+				},
+			},
+		}
+		shs, err := rm.Mgr.ListShards(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, sh := range shs {
+			p.VirtualRowVals = append(p.VirtualRowVals, [][]byte{[]byte(sh.ID)})
+		}
+
+		return p, nil
+	case virtual.VirtualFuncHosts:
+		if rm.CSM == nil {
+			return nil, fmt.Errorf("spqr metadata uninitialized")
+		}
+		p := &plan.VirtualPlan{
+			VirtualRowCols: []pgproto3.FieldDescription{
+				{
+					Name:                 []byte("host"),
+					DataTypeOID:          catalog.TEXTOID,
+					TypeModifier:         -1,
+					DataTypeSize:         1,
+					TableAttributeNumber: 0,
+					TableOID:             0,
+					Format:               0,
+				},
+				{
+					Name:                 []byte("rw"),
+					DataTypeOID:          catalog.TEXTOID,
+					TypeModifier:         -1,
+					DataTypeSize:         1,
+					TableAttributeNumber: 0,
+					TableOID:             0,
+					Format:               0,
+				},
+			},
+		}
+
+		if len(args) == 1 {
+			var k string
+
+			switch vv := args[0].(type) {
+			case *lyx.AExprSConst:
+				k = vv.Value
+			default:
+				return nil, fmt.Errorf("incorrect argument type for %s", virtual.VirtualFuncHosts)
+			}
+
+			if v, ok := rm.CSM.InstanceHealthChecks()[k]; ok {
+				p.VirtualRowVals = append(p.VirtualRowVals,
+					[][]byte{[]byte(k),
+						fmt.Appendf(nil, "%v", v.CR.RW)})
+			} else {
+				return nil, fmt.Errorf("incorrect first argument for %s", virtual.VirtualFuncHosts)
+			}
+		} else {
+			return nil, fmt.Errorf("incorrect argument number for %s", virtual.VirtualFuncHosts)
+		}
+
+		return p, nil
+	}
+	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
+}
+
+func PlanDistributedQuery(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	stmt lyx.Node, allowRewrite bool) (plan.Plan, error) {
 
 	switch v := stmt.(type) {
 	/* TDB: comments? */
@@ -409,43 +469,75 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		return &plan.RandomDispatchPlan{}, nil
 
 	case *lyx.CreateSchema:
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 
 	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateTable:
 		return PlanCreateTable(ctx, rm, v)
 	case *lyx.Vacuum:
 		/* Send vacuum to each shard */
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.Analyze:
 		/* Send analyze to each shard */
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.Cluster:
 		/* Send cluster to each shard */
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.Index:
 		/*
 		 * Disallow to index on table which does not contain any sharding column
 		 */
 		// XXX: do it
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.CreateExtension:
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 
 	case *lyx.CreateRole, *lyx.CreateDatabase:
 		/* XXX: should we forbid under separate setting?  */
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.Copy:
 		return &plan.CopyPlan{}, nil
 	case *lyx.ValueClause:
-		return &plan.ScatterPlan{}, nil
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.Select:
 		/* Should be single-relation scan or values. Join to be supported */
 		if len(v.FromClause) == 0 {
+
+			// try to plan query, if query is virtual-only
+
+			// is query a single function call?
+
+			if len(v.TargetList) == 1 {
+				switch q := v.TargetList[0].(type) {
+				case *lyx.FuncApplication:
+					if strings.HasPrefix(q.Name, "__spqr__") {
+						return PlanVirtualFunctionCall(ctx, rm, q.Name, q.Args)
+					}
+				}
+			}
+
 			return &plan.ScatterPlan{}, nil
 		}
 

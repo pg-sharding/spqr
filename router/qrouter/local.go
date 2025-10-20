@@ -15,11 +15,17 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/plan"
+	"github.com/pg-sharding/spqr/router/planner"
 )
 
 type LocalQrouter struct {
 	ds    *topology.DataShard
 	ready *atomic.Bool
+}
+
+// IdRange implements QueryRouter.
+func (qr *LocalQrouter) IdRange() planner.IdentityRouterCache {
+	return nil
 }
 
 func (qr *LocalQrouter) Ready() bool {
@@ -80,7 +86,7 @@ func (l *LocalQrouter) AddDataShard(_ context.Context, ds *topology.DataShard) e
 }
 
 // TODO : unit tests
-func (l *LocalQrouter) PlanQuery(_ context.Context, _ lyx.Node, _ session.SessionParamsHolder) (plan.Plan, error) {
+func (l *LocalQrouter) PlanQuery(_ context.Context, _ string, _ lyx.Node, _ session.SessionParamsHolder) (plan.Plan, error) {
 	return &plan.ShardDispatchPlan{
 		ExecTarget: kr.ShardKey{
 			Name: l.ds.ID,

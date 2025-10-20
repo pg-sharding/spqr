@@ -7,7 +7,7 @@ require (
 	github.com/caio/go-tdigest v3.1.0+incompatible
 	github.com/containerd/errdefs v1.0.0
 	github.com/cucumber/godog v0.15.1
-	github.com/docker/docker v28.5.0+incompatible
+	github.com/docker/docker v28.5.1+incompatible
 	github.com/docker/go-connections v0.6.0
 	github.com/go-faster/city v1.0.1
 	github.com/go-ldap/ldap/v3 v3.4.12
@@ -20,7 +20,6 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pg-sharding/lyx v0.0.0-20250802034259-035f2510a593
 	github.com/rs/zerolog v1.34.0
-	github.com/samborkent/uuidv7 v0.0.0-20231110121620-f2e19d87e48b
 	github.com/sethvargo/go-retry v0.3.0
 	github.com/sevlyar/go-daemon v0.1.6
 	github.com/spaolacci/murmur3 v1.1.0
@@ -31,11 +30,11 @@ require (
 	github.com/xdg-go/scram v1.1.2
 	go.etcd.io/etcd/client/v3 v3.6.5
 	go.uber.org/mock v0.6.0
-	golang.org/x/crypto v0.42.0
+	golang.org/x/crypto v0.43.0
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 	golang.org/x/sync v0.17.0
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
-	google.golang.org/grpc v1.75.1
+	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -99,12 +98,12 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/net v0.43.0 // indirect
-	golang.org/x/sys v0.36.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
+	golang.org/x/net v0.45.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250804133106-a7a43d27e69b // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250804133106-a7a43d27e69b // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )

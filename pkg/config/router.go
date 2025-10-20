@@ -70,6 +70,8 @@ type Router struct {
 	WorldShardFallback bool `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
 	ShowNoticeMessages bool `json:"show_notice_messages" toml:"show_notice_messages" yaml:"show_notice_messages"`
 
+	NoticeMessageFormat string `json:"notice_message_format" toml:"notice_message_format" yaml:"notice_message_format"`
+
 	InitSQL            string `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
 	UseInitSQL         bool   `json:"use_init_sql" toml:"use_init_sql" yaml:"use_init_sql"`
 	ExitOnInitSQLError bool   `json:"exit_on_init_sql" toml:"exit_on_init_sql" yaml:"exit_on_init_sql"`
@@ -118,6 +120,7 @@ type QRouter struct {
 	EnhancedMultiShardProcessing bool                  `json:"enhanced_multishard_processing" toml:"enhanced_multishard_processing" yaml:"enhanced_multishard_processing"`
 	AlwaysCheckRules             bool                  `json:"always_check_rules" toml:"always_check_rules" yaml:"always_check_rules"`
 	StrictOperators              bool                  `json:"strict_operators" toml:"strict_operators" yaml:"strict_operators"`
+	PreferEngine                 string                `json:"prefer_engine" toml:"prefer_engine" yaml:"prefer_engine"`
 
 	/* XXX: for now, supported only for single-shard topology */
 	AutoRouteRoOnStandby bool `json:"auto_route_ro_on_standby" toml:"auto_route_ro_on_standby" yaml:"auto_route_ro_on_standby"`
@@ -244,6 +247,11 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 	/* init default_target_session_attrs as read-write if nothing else specified */
 	if rcfg.Qr.DefaultTSA == "" {
 		rcfg.Qr.DefaultTSA = TargetSessionAttrsSmartRW
+	}
+
+	/* init default notice message format if not specified */
+	if rcfg.NoticeMessageFormat == "" {
+		rcfg.NoticeMessageFormat = "{shard}@{host}"
 	}
 
 	configBytes, err := json.MarshalIndent(rcfg, "", "  ")

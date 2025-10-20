@@ -1,6 +1,7 @@
 package frontend
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -23,7 +24,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 	case *pgproto3.Terminate:
 		return nil
 	case *pgproto3.Sync:
-		if err := rst.ProcessExtendedBuffer(); err != nil {
+		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
 			return err
 		}
 
@@ -73,7 +74,6 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		qr.SetQuery(&q.String)
 		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
 			// this call completes relay, sends RFQ
 			return rst.ProcessSimpleQuery(q, true)
