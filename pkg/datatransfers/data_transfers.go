@@ -82,6 +82,7 @@ func createConnString(shardID string) string {
 // Returns:
 // - error: an error if the configuration cannot be loaded.
 func LoadConfig(path string) error {
+	spqrlog.Zero.Debug().Msg("called LoadConfig")
 	var err error
 	lock.Lock()
 	defer lock.Unlock()
