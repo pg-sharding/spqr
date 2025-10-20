@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -635,11 +636,11 @@ RETURNING meta.campaigns.id, meta.campaigns.uuid, meta.campaigns.title, meta.cam
 	} {
 		startV := tt.nextval
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := RewriteReferenceRelationAutoIncInsert(tt.query, tt.colname, func() (int64, error) {
+			result, err := RewriteReferenceRelationAutoIncInsert(tt.query, tt.colname, func() (string, error) {
 				ret := startV
 				startV++
 
-				return ret, nil
+				return fmt.Sprintf("%d", ret), nil
 			})
 
 			if tt.wantErr && err == nil {
@@ -662,10 +663,10 @@ RETURNING meta.campaigns.id, meta.campaigns.uuid, meta.campaigns.title, meta.cam
 func BenchmarkModifyQuery(b *testing.B) {
 	query := "INSERT INTO table_name (col1, col3) VALUES (1, 3);"
 	colname := "col2"
-	nextval := int64(42)
+	nextval := "42"
 
 	for b.Loop() {
-		_, _ = RewriteReferenceRelationAutoIncInsert(query, colname, func() (int64, error) {
+		_, _ = RewriteReferenceRelationAutoIncInsert(query, colname, func() (string, error) {
 			return nextval, nil
 		})
 	}
