@@ -683,7 +683,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 							if _, err := planner.InsertSequenceParamRef(ctx, query, rel.ColumnSequenceMapping, stmt, def); err != nil {
 								return err
-							} else {
 							}
 						}
 					}
@@ -959,7 +958,16 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				}
 
 				if rd.ParamDesc != nil {
-					if err := rst.Client().Send(rd.ParamDesc); err != nil {
+
+					desc := rd.ParamDesc
+
+					// if we did overwrite something - remove our
+					// columns from output
+					for ind := range def.OverwriteRemoveParamIds {
+						desc.ParameterOIDs = slices.Delete(desc.ParameterOIDs, ind, ind)
+					}
+
+					if err := rst.Client().Send(desc); err != nil {
 						return err
 					}
 				}
