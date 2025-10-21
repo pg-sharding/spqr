@@ -74,11 +74,11 @@ func TestQdb(t *testing.T) {
 		t.Run("happy path", func(t *testing.T) {
 			err := cleanupDb(ctx, db)
 			is.NoError(err)
-			sh := qdb.NewShard("sh1", []string{"denchik.rs", "reshke.ru"})
+			sh := qdb.NewShard("sh1", []string{"denchick.rs", "reshke.ru"})
 			err = db.AddShard(ctx, sh)
 			is.NoError(err)
 			actual, err := db.GetShard(ctx, "sh1")
-			expected := qdb.NewShard("sh1", []string{"denchik.rs", "reshke.ru"})
+			expected := qdb.NewShard("sh1", []string{"denchick.rs", "reshke.ru"})
 			is.Equal(actual, expected)
 		})
 
