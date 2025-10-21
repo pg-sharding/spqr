@@ -928,7 +928,6 @@ func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	return shards, nil
 }
 
-// TODO : unit tests
 func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).

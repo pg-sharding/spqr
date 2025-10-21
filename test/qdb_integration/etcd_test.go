@@ -75,7 +75,7 @@ func TestQdb(t *testing.T) {
 	err := setupTestSet(t)
 	is.NoError(err)
 	defer func() {
-		Down()
+		_ = Down()
 	}()
 	is.NoError(err)
 
@@ -92,17 +92,20 @@ func TestQdb(t *testing.T) {
 			err = db.AddShard(ctx, sh)
 			is.NoError(err)
 			actual, err := db.GetShard(ctx, "sh1")
+			is.NoError(err)
 			expected := qdb.NewShard("sh1", []string{"denchick.rs", "reshke.ru"})
 			is.Equal(actual, expected)
 		})
 
 		t.Run("fail", func(t *testing.T) {
 			err := cleanupDb(ctx, db)
+			is.NoError(err)
 			err = db.AddShard(ctx, qdb.NewShard("sh1", []string{"denchick.rs", "reshke.ru"}))
 			is.NoError(err)
 			err = db.AddShard(ctx, qdb.NewShard("sh1", []string{"bug.rs", "bug.ru"}))
 			is.Error(err)
 			actual, err := db.GetShard(ctx, "sh1")
+			is.NoError(err)
 			expected := qdb.NewShard("sh1", []string{"denchick.rs", "reshke.ru"})
 			is.Equal(actual, expected)
 		})
