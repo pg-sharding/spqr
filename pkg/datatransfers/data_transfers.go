@@ -82,6 +82,7 @@ func createConnString(shardID string) string {
 // Returns:
 // - error: an error if the configuration cannot be loaded.
 func LoadConfig(path string) error {
+	spqrlog.Zero.Debug().Msg("called LoadConfig")
 	var err error
 	lock.Lock()
 	defer lock.Unlock()
@@ -611,6 +612,15 @@ func CheckConstraints(ctx context.Context, conn *pgx.Conn, dsRels []string, rpRe
 		return false, "", err
 	}
 	return false, conName, nil
+}
+
+func CheckHashExtension(ctx context.Context, conn *pgx.Conn) (bool, error) {
+	res := conn.QueryRow(ctx, "SELECT count(*) FROM pg_extension WHERE extname = 'spqrhash'")
+	count := 0
+	if err := res.Scan(&count); err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 // getEntriesCount retrieves the number of entries from a database table based on the provided condition.

@@ -142,6 +142,15 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
+		if config.RouterConfig().WithCoordinator {
+			var err error
+			cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
+			if err != nil {
+				return err
+			}
+			log.Println("Running coordinator config:", cfgStr)
+		}
+
 		if console && daemonize {
 			return fmt.Errorf("simultaneous use of `console` and `daemonize`. Abort")
 		}
@@ -232,7 +241,7 @@ var runCmd = &cobra.Command{
 
 		app := app.NewApp(router)
 
-		if rcfgPath != "" {
+		if !config.RouterConfig().WithCoordinator && rcfgPath != "" {
 			if err := datatransfers.LoadConfig(rcfgPath); err != nil {
 				return err
 			}
@@ -240,12 +249,6 @@ var runCmd = &cobra.Command{
 		if config.RouterConfig().WithCoordinator {
 			go func() {
 				if err := func() error {
-					cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
-					if err != nil {
-						return err
-					}
-					log.Println("Running coordinator config:", cfgStr)
-
 					db, err := qdb.NewXQDB(qdbImpl)
 					if err != nil {
 						return err

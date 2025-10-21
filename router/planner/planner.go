@@ -11,7 +11,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -34,20 +33,7 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 			spqrlog.Zero.Debug().Str("relation", q.RelationName).Str("distribution", val).Msg("attaching relation")
 
 			if val == distributions.REPLICATED {
-
-				shs, err := rm.Mgr.ListShards(ctx)
-				if err != nil {
-					return nil, err
-				}
-				shardIds := []string{}
-				for _, sh := range shs {
-					shardIds = append(shardIds, sh.ID)
-				}
-				err = rm.Mgr.CreateReferenceRelation(ctx, &rrelation.ReferenceRelation{
-					TableName:     q.RelationName,
-					SchemaVersion: 1,
-					ShardIds:      shardIds,
-				}, nil)
+				err := rmeta.CreateReferenceRelation(ctx, rm.Mgr, q)
 				if err != nil {
 					return nil, err
 				}

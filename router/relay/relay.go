@@ -658,6 +658,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			stmt := rst.qp.Stmt()
 
+			def := &prepstatement.PreparedStatementDefinition{
+				Name:          currentMsg.Name,
+				Query:         query,
+				ParameterOIDs: currentMsg.ParameterOIDs,
+			}
+
 			/* XXX: very stupid here - is query exactly like insert into ref_rel values()?*/
 			switch parsed := stmt.(type) {
 			case *lyx.Insert:
@@ -675,10 +681,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 								return err
 							}
 
-							if q, err := planner.InsertSequenceValue(ctx, query, rel.ColumnSequenceMapping, rst.Qr.IdRange()); err != nil {
+							if _, err := planner.InsertSequenceParamRef(ctx, query, rel.ColumnSequenceMapping, stmt, def); err != nil {
 								return err
-							} else {
-								query = q
 							}
 						}
 					}
@@ -692,11 +696,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			rst.routingDecisionPlan = p
 
-			rst.Client().StorePreparedStatement(&prepstatement.PreparedStatementDefinition{
-				Name:          currentMsg.Name,
-				Query:         query,
-				ParameterOIDs: currentMsg.ParameterOIDs,
-			})
+			rst.Client().StorePreparedStatement(def)
 
 			hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.Name)
 
@@ -751,6 +751,19 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			if def == nil {
 				/* this prepared statement was not prepared by client */
 				return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.PreparedStatement)
+			}
+
+			if def.OverwriteRemoveParamIds != nil {
+				// we did query overwrite for sole reason -
+				// to insert next sequence value.
+				// XXX: this needs a massive refactor later
+
+				v, err := rst.Qr.IdRange().NextVal(ctx, def.SeqName)
+				if err != nil {
+					return err
+				}
+
+				currentMsg.Parameters = append(currentMsg.Parameters, fmt.Appendf(nil, "%d", v))
 			}
 
 			// We implicitly assume that there is always Execute after Bind for the same portal.
@@ -925,6 +938,13 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					Str("stmt-name", currentMsg.Name).
 					Msg("Describe prep statement")
 
+				def := rst.Client().PreparedStatementDefinitionByName(currentMsg.Name)
+
+				if def == nil {
+					/* this prepared statement was not prepared by client */
+					return spqrerror.Newf(spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS, "prepared statement \"%s\" does not exist", currentMsg.Name)
+				}
+
 				p, fin, err := rst.PrepareRandomDispatchExecutionSlice(rst.routingDecisionPlan)
 				if err != nil {
 					return err
@@ -937,8 +957,16 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					return err
 				}
 
-				if rd.ParamDesc != nil {
-					if err := rst.Client().Send(rd.ParamDesc); err != nil {
+				desc := rd.ParamDesc
+				if desc != nil {
+					// if we did overwrite something - remove our
+					// columns from output
+					for ind := range def.OverwriteRemoveParamIds {
+						// NB: ind are zero - indexed
+						desc.ParameterOIDs = slices.Delete(desc.ParameterOIDs, ind-1, ind)
+					}
+
+					if err := rst.Client().Send(desc); err != nil {
 						return err
 					}
 				}

@@ -8,6 +8,12 @@ type PreparedStatementDefinition struct {
 	Name          string
 	Query         string
 	ParameterOIDs []uint32
+	// if we did prepared statement override for any reason,
+	// store here some state to make client see what it actually wants
+
+	// XXX: Currently always one last column
+	OverwriteRemoveParamIds map[int]struct{}
+	SeqName                 string
 }
 
 type PreparedStatementDescriptor struct {

@@ -26,7 +26,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
 SPLIT KEY RANGE krid3 FROM krid1 BY 5;
     split key range    
 -----------------------
- key range id -> krid1
+ key range id -> krid3
  bound        ->      +
  
 (2 rows)
