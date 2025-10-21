@@ -90,9 +90,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 			return err
 		}
 		switch tstmt.Cmd {
-		case spqrparser.TaskGroupStr:
-			fallthrough
-		case spqrparser.RoutersStr:
+		case spqrparser.RoutersStr, spqrparser.TaskGroupStr:
 			conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
 				return err
