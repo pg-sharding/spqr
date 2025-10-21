@@ -78,6 +78,7 @@ contsraints
 coorctl
 coordctl
 copymap
+coreutils
 corporis
 cptr
 createsequence
@@ -395,6 +396,7 @@ ppp
 pppp
 PPu
 prepstatement
+procps
 proident
 protobuf
 protoc
