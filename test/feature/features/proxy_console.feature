@@ -244,3 +244,56 @@ Feature: Proxy console
         """
         router -\\u003e r2-regress_router_2:7000
         """
+    
+    Scenario: SHOW move_task is executed in coordinator
+        When I run SQL on host "router-admin"
+        """
+        CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+        CREATE KEY RANGE kr_from FROM 0 ROUTE TO sh1;
+        CREATE KEY RANGE kr_to FROM 20 ROUTE TO sh1;
+        """
+        Then command return code should be "0"
+        When I record in qdb move task group
+        """
+        {
+            "tasks":
+            [
+                {
+                "id":            "1",
+                "bound":         ["AgAAAAAAAAA="],
+                "state":         1
+                },
+                {
+                "id":            "2",
+                "bound":         ["FAAAAAAAAAA="],
+                "state":         0
+                }
+            ],
+            "shard_to_id":   "sh_to",
+            "kr_id_from":    "kr_from",
+            "kr_id_to":      "kr_to"
+        }
+        """
+        Then command return code should be "0"
+        When I run SQL on host "router-admin"
+        """
+        SHOW task_group
+        """
+        Then command return code should be "0"
+        And SQL result should match json_exactly
+        """
+        [
+            {
+                "State":                    "SPLIT",
+                "Bound":                    "1",
+                "Source key range ID":      "kr_from",
+                "Destination key range ID": "kr_to"
+            },
+            {
+                "State":                    "PLANNED",
+                "Bound":                    "10",
+                "Source key range ID":      "kr_from",
+                "Destination key range ID": "kr_to"
+            }
+        ]
+        """
