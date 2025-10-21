@@ -98,6 +98,9 @@ unittest:
 	go test -timeout 120s ./cmd/... ./pkg/... ./router/... ./coordinator/... ./yacc/console...
 	go test -race -count 20 -timeout 30s ./qdb/...
 
+qdbtest:
+	go test -timeout 120s ./test/qdb_integration/... 
+
 regress_local: proxy_2sh_run
 	./script/regress_local.sh
 

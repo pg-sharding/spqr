@@ -1,0 +1,18 @@
+services:
+  spqr_qdb_0_1: #the instance of etcd is hardcoded in integration test
+    image: 'quay.io/coreos/etcd:v3.6.4'
+    hostname: spqr_qdb_0_1
+    container_name: spqr_qdb_0_1
+    environment:
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_LOG_LEVEL: "error"
+    tmpfs: 
+      - "/etcd-data"
+    ports:
+      - "2379:2379"
+    networks:
+      - qdb_test_network
+    entrypoint: ["/usr/local/bin/etcd", "--advertise-client-urls", "http://spqr_qdb_0_1:2379", "--listen-client-urls", "http://0.0.0.0:2379"]
+networks:
+  qdb_test_network:
+    name: qdb_test_network

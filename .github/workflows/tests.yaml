@@ -24,6 +24,17 @@ jobs:
      - name: unit tests
        run: make unittest
 
+  qdb_interation:
+     name: qdb_interation
+     runs-on: ubuntu-latest
+     steps:
+
+     - name: Check out code
+       uses: actions/checkout@v5
+
+     - name: qdb_interation tests
+       run: make qdbtest
+
   stress:
     name: stress
     runs-on: ubuntu-latest
