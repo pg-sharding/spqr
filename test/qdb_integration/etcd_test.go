@@ -1,43 +1,57 @@
-package qdbintegration
+package qdb_integration_test
 
 import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/test/feature/testutil"
 	"github.com/stretchr/testify/assert"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 const (
-	EtcdPort    = 2379
-	TestTimeout = 10 * time.Second
+	EtcdPort        = 2379
+	TestTimeout     = 10 * time.Second
+	ComposerTimeout = 60
 )
 
-type testContext struct {
-	composer testutil.Composer
+func runCompose(args []string) error {
+	args2 := []string{}
+	args2 = append(args2, "compose", "-f", "docker-compose.yaml", "-p", "qdb_test")
+	args2 = append(args2, args...)
+	cmd := exec.Command("docker", args2...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to run 'docker %s': %s\n%s", strings.Join(args2, " "), err, out)
+	}
+	return nil
 }
 
-func setupTestSet(t *testing.T) (*testContext, error) {
+func Down() error {
+	return runCompose([]string{"down", "-v"})
+}
+
+func Up() error {
+	return runCompose([]string{"up", "-d", "--force-recreate", "-t", strconv.Itoa(ComposerTimeout)})
+}
+
+func setupTestSet(t *testing.T) error {
 	err := os.Setenv("DOCKER_API_VERSION", "1.48")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	t.Log("load etcd")
-	tctx := new(testContext)
-	tctx.composer, err = testutil.NewDockerComposer("spqr", "docker-compose.yaml")
+	err = Up()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	err = tctx.composer.Up(make([]string, 0))
-	if err != nil {
-		return nil, err
-	}
-	return tctx, nil
+	return nil
 }
 
 func cleanupDb(ctx context.Context, db *qdb.EtcdQDB) error {
@@ -58,10 +72,10 @@ func setupSubTest(ctx context.Context) (*qdb.EtcdQDB, error) {
 
 func TestQdb(t *testing.T) {
 	is := assert.New(t)
-	tctx, err := setupTestSet(t)
+	err := setupTestSet(t)
 	is.NoError(err)
 	defer func() {
-		tctx.composer.Down()
+		Down()
 	}()
 	is.NoError(err)
 
@@ -84,12 +98,12 @@ func TestQdb(t *testing.T) {
 
 		t.Run("fail", func(t *testing.T) {
 			err := cleanupDb(ctx, db)
-			err = db.AddShard(ctx, qdb.NewShard("sh1", []string{"denchik.rs", "reshke.ru"}))
+			err = db.AddShard(ctx, qdb.NewShard("sh1", []string{"denchick.rs", "reshke.ru"}))
 			is.NoError(err)
 			err = db.AddShard(ctx, qdb.NewShard("sh1", []string{"bug.rs", "bug.ru"}))
 			is.Error(err)
 			actual, err := db.GetShard(ctx, "sh1")
-			expected := qdb.NewShard("sh1", []string{"denchik.rs", "reshke.ru"})
+			expected := qdb.NewShard("sh1", []string{"denchick.rs", "reshke.ru"})
 			is.Equal(actual, expected)
 		})
 	})
