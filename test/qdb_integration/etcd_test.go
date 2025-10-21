@@ -3,6 +3,7 @@ package qdbintegration
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -22,8 +23,11 @@ type testContext struct {
 }
 
 func setupTestSet(t *testing.T) (*testContext, error) {
+	err := os.Setenv("DOCKER_API_VERSION", "1.48")
+	if err != nil {
+		return nil, err
+	}
 	t.Log("load etcd")
-	var err error
 	tctx := new(testContext)
 	tctx.composer, err = testutil.NewDockerComposer("spqr", "docker-compose.yaml")
 	if err != nil {
