@@ -1478,6 +1478,9 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 		return nil, fmt.Errorf("failed to get task group: %s", err)
 	}
 
+	if len(resp.Kvs) == 0 {
+		return nil, nil
+	}
 	var taskGroup *MoveTaskGroup
 	if err := json.Unmarshal(resp.Kvs[0].Value, &taskGroup); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal task group: %s", err)
@@ -1527,6 +1530,9 @@ func (q *EtcdQDB) GetMoveTaskGroupTotalKeys(ctx context.Context) (int64, error) 
 	resp, err := q.cli.Get(ctx, totalKeysPath)
 	if err != nil {
 		return -1, err
+	}
+	if resp.Count == 0 {
+		return 0, nil
 	}
 	res, err := strconv.ParseInt(string(resp.Kvs[0].Value), 10, 64)
 	if err != nil {
@@ -1609,6 +1615,9 @@ func (q *EtcdQDB) GetMoveTask(ctx context.Context) (*MoveTask, error) {
 		return nil, err
 	}
 	var task *MoveTask
+	if len(resp.Kvs) == 0 {
+		return nil, nil
+	}
 	if err := json.Unmarshal(resp.Kvs[0].Value, &task); err != nil {
 		return nil, err
 	}

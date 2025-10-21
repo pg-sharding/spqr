@@ -366,7 +366,10 @@ func MoveTaskToDb(task *MoveTask) *qdb.MoveTask {
 //
 // Returns:
 //   - *MoveTaskGroup: The converted MoveTaskGroup object.
-func TaskGroupFromDb(group *qdb.MoveTaskGroup, moveTask *qdb.MoveTask, totalKeys int64) (*MoveTaskGroup, error) {
+func TaskGroupFromDb(group *qdb.MoveTaskGroup, moveTask *qdb.MoveTask, totalKeys int64) *MoveTaskGroup {
+	if group == nil {
+		return nil
+	}
 	return &MoveTaskGroup{
 		Type:        SplitType(group.Type),
 		ShardToId:   group.ShardToId,
@@ -378,7 +381,7 @@ func TaskGroupFromDb(group *qdb.MoveTaskGroup, moveTask *qdb.MoveTask, totalKeys
 		Limit:       group.Limit,
 		CurrentTask: TaskFromDb(moveTask),
 		TotalKeys:   totalKeys,
-	}, nil
+	}
 }
 
 // TaskFromDb converts a qdb.MoveTask object to a MoveTask object.
@@ -391,6 +394,9 @@ func TaskGroupFromDb(group *qdb.MoveTaskGroup, moveTask *qdb.MoveTask, totalKeys
 // Returns:
 //   - *MoveTask: The converted MoveTask object.
 func TaskFromDb(task *qdb.MoveTask) *MoveTask {
+	if task == nil {
+		return nil
+	}
 	return &MoveTask{
 		ID:       task.ID,
 		KrIdTemp: task.KrIdTemp,

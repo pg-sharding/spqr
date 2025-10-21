@@ -424,7 +424,7 @@ func (lc *Coordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGro
 		return nil, err
 	}
 
-	return tasks.TaskGroupFromDb(group, task, totalKeys)
+	return tasks.TaskGroupFromDb(group, task, totalKeys), nil
 }
 
 // GetMoveTask retrieves the MoveTask from the coordinator's QDB.
