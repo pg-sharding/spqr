@@ -78,6 +78,7 @@ contsraints
 coorctl
 coordctl
 copymap
+coreutils
 corporis
 cptr
 createsequence
@@ -116,6 +117,7 @@ dolorem
 doloremque
 dotnet
 DOUBLEOID
+drb
 drel
 dserr
 dssd
@@ -394,6 +396,7 @@ ppp
 pppp
 PPu
 prepstatement
+procps
 proident
 protobuf
 protoc
@@ -489,6 +492,7 @@ shname
 shq
 shrid
 shrule
+stdbuf
 singleshard
 Smartphone
 spaolacci
