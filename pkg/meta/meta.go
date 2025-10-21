@@ -660,12 +660,11 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		if err != nil {
 			return err
 		}
-		colTypes := make([]string, 0)
 		kRange, err := mgr.GetKeyRange(ctx, taskGroup.KrIdFrom)
 		if err != nil {
 			return err
 		}
-		colTypes = kRange.ColumnTypes
+		colTypes := kRange.ColumnTypes
 		if err = mgr.RetryMoveTaskGroup(ctx); err != nil {
 			return err
 		}
@@ -888,12 +887,11 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
-		colTypes := make([]string, 0)
 		kRange, err := mngr.GetKeyRange(ctx, group.KrIdFrom)
 		if err != nil {
 			return err
 		}
-		colTypes = kRange.ColumnTypes
+		colTypes := kRange.ColumnTypes
 
 		return cli.MoveTaskGroup(ctx, group, colTypes)
 	case spqrparser.PreparedStatementsStr:
