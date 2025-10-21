@@ -90,15 +90,16 @@ type QDB interface {
 
 	// Task group
 	GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error)
-	WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, tasks []*MoveTask) error
-	UpdateMoveTaskGroupSetCurrentTask(ctx context.Context, taskIndex int) error
-	GetCurrentMoveTaskIndex(ctx context.Context) (int, error)
+	WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, totalKeys int64, moveTask *MoveTask) error
+	GetMoveTaskGroupTotalKeys(ctx context.Context) (int64, error)
+	UpdateMoveTaskGroupTotalKeys(ctx context.Context, totalKeys int64) error
 	RemoveMoveTaskGroup(ctx context.Context) error
 
 	// MOVE tasks
-	GetMoveTask(ctx context.Context, id string) (*MoveTask, error)
+	GetMoveTask(ctx context.Context) (*MoveTask, error)
+	WriteMoveTask(ctx context.Context, task *MoveTask) error
 	UpdateMoveTask(ctx context.Context, task *MoveTask) error
-	RemoveMoveTask(ctx context.Context, id string) error
+	RemoveMoveTask(ctx context.Context) error
 
 	// Redistribute tasks
 	GetRedistributeTask(ctx context.Context) (*RedistributeTask, error)

@@ -1074,14 +1074,15 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 	var taskGroup *tasks.MoveTaskGroup
 	if totalCount != 0 {
 		biggestRelName, coeff := qc.getBiggestRelation(relCount, totalCount)
-		biggestRel := ds.Relations[biggestRelName]
-		cond, err := kr.GetKRCondition(biggestRel, keyRange, nextBound, "")
-		if err != nil {
-			return err
-		}
-		taskGroup, err = qc.getMoveTasks(ctx, sourceConn, req, biggestRel, cond, coeff, ds)
-		if err != nil {
-			return err
+		taskGroup = &tasks.MoveTaskGroup{
+			KrIdFrom:  req.KrId,
+			KrIdTo:    req.DestKrId,
+			ShardToId: req.ShardId,
+			Type:      req.Type,
+			BoundRel:  biggestRelName,
+			Coeff:     coeff,
+			BatchSize: int64(req.BatchSize),
+			Limit:     req.Limit,
 		}
 	} else {
 		// If no keys, move the whole key range
@@ -1090,12 +1091,10 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 			KrIdTo:    req.DestKrId,
 			ShardToId: req.ShardId,
 			Type:      req.Type,
-			Tasks: []*tasks.MoveTask{
-				{
-					KrIdTemp: req.DestKrId,
-					State:    tasks.TaskPlanned,
-					Bound:    nil,
-				},
+			CurrentTask: &tasks.MoveTask{
+				KrIdTemp: req.DestKrId,
+				State:    tasks.TaskPlanned,
+				Bound:    nil,
 			},
 		}
 	}
@@ -1379,12 +1378,120 @@ ORDER BY (%s) %s;
 	}
 
 	return &tasks.MoveTaskGroup{
-		Tasks:     taskList,
 		KrIdFrom:  req.KrId,
 		KrIdTo:    req.DestKrId,
 		ShardToId: req.ShardId,
 		Type:      req.Type,
 	}, nil
+}
+
+func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.Conn, req *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, condition string, coeff float64, ds *distributions.Distribution) (*tasks.MoveTask, error) {
+	offset := req.BatchSize
+	if req.Limit > 0 && req.TotalKeys-req.Limit < req.BatchSize {
+		offset = req.TotalKeys - req.Limit
+	}
+
+	colsArr, err := rel.GetDistributionKeyColumns()
+	if err != nil {
+		return nil, err
+	}
+	columns := strings.Join(colsArr, ", ")
+	selectAsColumnsElems := make([]string, len(colsArr))
+	for i := range selectAsColumnsElems {
+		selectAsColumnsElems[i] = fmt.Sprintf("%s as col%d", colsArr[i], i)
+	}
+	selectAsColumns := strings.Join(selectAsColumnsElems, ", ")
+	sort := func() string {
+		switch req.Type {
+		case tasks.SplitLeft:
+			return "ASC"
+		case tasks.SplitRight:
+			fallthrough
+		default:
+			return "DESC"
+		}
+	}()
+	orderByClause := columns + " " + sort
+	t := time.Now()
+	countQuery := fmt.Sprintf("SELECT count(*) FROM %s WHERE %s", rel.GetFullName(), condition)
+	row := conn.QueryRow(ctx, countQuery)
+	count := int64(0)
+	if err := row.Scan(&count); err != nil {
+		return nil, spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get keys count: %s", err)
+	}
+	statistics.RecordShardOperation(time.Since(t))
+	// move whole key range
+	if count < offset {
+		return &tasks.MoveTask{
+			ID:       uuid.NewString(),
+			KrIdTemp: req.KrIdFrom,
+			State:    tasks.TaskPlanned,
+			Bound:    nil,
+		}, nil
+	}
+	query := fmt.Sprintf(`
+		SELECT %s FROM %s
+        WHERE %s
+		ORDER BY %s
+        LIMIT 1
+        OFFSET %d
+`,
+		selectAsColumns,
+		rel.GetFullName(),
+		condition,
+		orderByClause,
+		offset,
+	)
+	spqrlog.Zero.Debug().Str("query", query).Msg("get split bound")
+	t = time.Now()
+	row = conn.QueryRow(ctx, query)
+	statistics.RecordShardOperation(time.Since(t))
+	values := make([]string, len(rel.DistributionKey))
+	links := make([]any, len(values))
+
+	for i := range values {
+		links[i] = &values[i]
+	}
+	if err = row.Scan(links...); err != nil {
+		spqrlog.Zero.Error().Err(err).Str("rel", rel.Name).Msg("error getting move tasks")
+		return nil, err
+	}
+	for i, value := range values[:len(values)] {
+		spqrlog.Zero.Debug().Str("value", value).Int("index", i).Msg("got split bound")
+	}
+	bound := make([][]byte, len(colsArr))
+	for i, t := range ds.ColTypes {
+		switch t {
+		case qdb.ColumnTypeVarcharDeprecated:
+			fallthrough
+		case qdb.ColumnTypeUUID:
+			fallthrough
+		case qdb.ColumnTypeVarchar:
+			bound[i] = []byte(values[i])
+		case qdb.ColumnTypeVarcharHashed:
+			fallthrough
+		case qdb.ColumnTypeUinteger:
+			number, err := strconv.ParseUint(values[i], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			bound[i] = hashfunction.EncodeUInt64(number)
+		case qdb.ColumnTypeInteger:
+			number, err := strconv.ParseInt(values[i], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			bound[i] = make([]byte, binary.MaxVarintLen64)
+			binary.PutVarint(bound[i], number)
+		default:
+			return nil, fmt.Errorf("unknown column type: %s", t)
+		}
+	}
+	task := &tasks.MoveTask{ID: uuid.NewString(), KrIdTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound}
+	if req.TotalKeys == 0 {
+		task.KrIdTemp = req.KrIdTo
+	}
+	return task, nil
 }
 
 // TODO : unit tests
@@ -1429,8 +1536,67 @@ func (qc *ClusteredCoordinator) getNextKeyRange(ctx context.Context, keyRange *k
 // Returns:
 //   - error: An error if any occurred.
 func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
-	for taskGroup.CurrentTaskIndex < len(taskGroup.Tasks) {
-		task := taskGroup.Tasks[taskGroup.CurrentTaskIndex]
+	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KrIdFrom)
+	if err != nil {
+		return err
+	}
+	// Get connection to source shard's master
+	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	if err != nil {
+		return err
+	}
+	if _, ok := conns.ShardsData[keyRange.ShardID]; !ok {
+		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
+	}
+	sourceShardConn := conns.ShardsData[keyRange.ShardID]
+	sourceConn, err := datatransfers.GetMasterConnection(ctx, sourceShardConn)
+	if err != nil {
+		return err
+	}
+
+	ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
+	if err != nil {
+		return err
+	}
+
+	rel, ok := ds.Relations[taskGroup.BoundRel]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" not found in distribution \"%s\"", taskGroup.BoundRel, ds.Id)
+	}
+
+	for {
+		if taskGroup.CurrentTask == nil {
+			if err := sourceConn.Ping(ctx); err != nil {
+				sourceConn, err = datatransfers.GetMasterConnection(ctx, sourceShardConn)
+				if err != nil {
+					return fmt.Errorf("failed to resetup connection with source shard: %s", err)
+				}
+			}
+			// TODO: can be optimized, if updated in-memory instead of querying QDB
+			keyRange, err := qc.GetKeyRange(ctx, taskGroup.KrIdFrom)
+			if err != nil {
+				return err
+			}
+			nextRange, err := qc.getNextKeyRange(ctx, keyRange)
+			var nextBound kr.KeyRangeBound
+			if nextRange != nil {
+				nextBound = nextRange.LowerBound
+			}
+			if err != nil {
+				return err
+			}
+			cond, err := kr.GetKRCondition(rel, keyRange, nextBound, "")
+			newTask, err := qc.getNextMoveTask(ctx, sourceConn, taskGroup, rel, cond, taskGroup.Coeff, ds)
+			if err != nil {
+				return fmt.Errorf("failed to get new move task: %s", err)
+			}
+			if newTask != nil {
+				taskGroup.CurrentTask = newTask
+			} else {
+				break
+			}
+		}
+		task := taskGroup.CurrentTask
 		switch task.State {
 		case tasks.TaskPlanned:
 			if task.Bound == nil && taskGroup.KrIdTo == task.KrIdTemp {
@@ -1477,11 +1643,13 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 					return err
 				}
 			}
-			taskGroup.CurrentTaskIndex++
-			if err := qc.qdb.UpdateMoveTaskGroupSetCurrentTask(ctx, taskGroup.CurrentTaskIndex); err != nil {
-				return err
-			}
-			if err := qc.qdb.RemoveMoveTask(ctx, task.ID); err != nil {
+			taskGroup.CurrentTask = nil
+			// TODO: get exact key count here
+			taskGroup.TotalKeys += taskGroup.BatchSize
+			// TODO: wrap in transaction inside etcd
+			qc.qdb.UpdateMoveTaskGroupTotalKeys(ctx, taskGroup.TotalKeys)
+			qc.qdb.RemoveMoveTask(ctx)
+			if err := qc.qdb.RemoveMoveTask(ctx); err != nil {
 				return err
 			}
 		}

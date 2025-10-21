@@ -149,13 +149,15 @@ type MoveTask struct {
 }
 
 type MoveTaskGroup struct {
-	TaskIDs        []string
-	Type           int    `json:"type"`
-	ShardToId      string `json:"shard_to_id"`
-	KrIdFrom       string `json:"kr_id_from"`
-	KrIdTo         string `json:"kr_id_to"`
-	TotalTaskCount int
-	CurrentTaskInd int
+	Type      int     `json:"type"`
+	ShardToId string  `json:"shard_to_id"`
+	KrIdFrom  string  `json:"kr_id_from"`
+	KrIdTo    string  `json:"kr_id_to"`
+	BoundRel  string  `json:"rel"`
+	Coeff     float64 `json:"coeff"`
+	BatchSize int64   `json:"batch_size"`
+	Limit     int64   `json:"limit"`
+	// TotalKeys int64   `json:"total_keys"` // mb save separately
 }
 
 type RedistributeTask struct {

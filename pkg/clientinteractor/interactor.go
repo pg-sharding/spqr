@@ -648,30 +648,28 @@ func (pi *PSQLInteractor) MoveTaskGroup(_ context.Context, ts *tasks.MoveTaskGro
 		}
 	}
 
-	for _, task := range ts.Tasks {
-		if task == nil {
-			continue //the task may be removed while the command is being processed.
-		}
-		krData := []string{""}
-		if task.Bound != nil {
-			if len(task.Bound) != len(colTypes) {
-				err := fmt.Errorf("something wrong in task: %#v, columns: %#v", task, colTypes)
-				return err
-			}
-			kRange := kr.KeyRangeFromBytes(task.Bound, colTypes)
-			krData = kRange.SendRaw()
-		}
-		if err := pi.cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{
-				[]byte(tasks.TaskStateToStr(task.State)),
-				[]byte(strings.Join(krData, ";")),
-				[]byte(ts.KrIdFrom),
-				[]byte(ts.KrIdTo),
-			},
-		}); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
+	if ts.CurrentTask == nil {
+		return pi.CompleteMsg(0)
+	}
+	krData := []string{""}
+	if ts.CurrentTask.Bound != nil {
+		if len(ts.CurrentTask.Bound) != len(colTypes) {
+			err := fmt.Errorf("something wrong in task: %#v, columns: %#v", ts.CurrentTask, colTypes)
 			return err
 		}
+		kRange := kr.KeyRangeFromBytes(ts.CurrentTask.Bound, colTypes)
+		krData = kRange.SendRaw()
+	}
+	if err := pi.cl.Send(&pgproto3.DataRow{
+		Values: [][]byte{
+			[]byte(tasks.TaskStateToStr(ts.CurrentTask.State)),
+			[]byte(strings.Join(krData, ";")),
+			[]byte(ts.KrIdFrom),
+			[]byte(ts.KrIdTo),
+		},
+	}); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
 	}
 	return pi.CompleteMsg(0)
 }
