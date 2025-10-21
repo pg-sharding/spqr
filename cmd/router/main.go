@@ -11,8 +11,6 @@ import (
 	"path"
 	"runtime"
 	"runtime/pprof"
-	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 
@@ -69,6 +67,8 @@ var (
 		SilenceUsage:  false,
 		SilenceErrors: false,
 	}
+
+	startupOverrides Overrides
 )
 
 func init() {
@@ -113,11 +113,10 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run router",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfgStr, err := config.LoadRouterCfg(rcfgPath)
+		_, err := config.LoadRouterCfg(rcfgPath)
 		if err != nil {
 			return err
 		}
-		log.Println("Running config:", cfgStr)
 
 		if config.RouterConfig().EnableRoleSystem {
 			if config.RouterConfig().RolesFile == "" {
@@ -130,27 +129,17 @@ var runCmd = &cobra.Command{
 			log.Println("Running roles config:", rolesCfgStr)
 		}
 
-		if logLevel != "" {
-			config.RouterConfig().LogLevel = logLevel
-		}
+		startupOverrides = collectOverrides(rootCmd)
 
-		if prettyLogging {
-			config.RouterConfig().PrettyLogging = prettyLogging
-		}
-
-		if rootCmd.Flags().Changed("with-coordinator") {
-			config.RouterConfig().WithCoordinator = withCoord
+		if err := ApplyOverrides(config.RouterConfig(), startupOverrides, qdbImpl); err != nil {
+			return err
 		}
 
 		spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLogging)
 		spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
 
-		if cmd.Flags().Changed("use_coordinator_init") {
-			config.RouterConfig().UseCoordinatorInit = useCoordInit
-			if config.RouterConfig().UseInitSQL && useCoordInit {
-				config.RouterConfig().UseInitSQL = false
-				config.RouterConfig().MemqdbBackupPath = ""
-			}
+		if err := logEffectiveConfig(config.RouterConfig()); err != nil {
+			return err
 		}
 
 		if config.RouterConfig().WithCoordinator {
@@ -160,13 +149,6 @@ var runCmd = &cobra.Command{
 				return err
 			}
 			log.Println("Running coordinator config:", cfgStr)
-		}
-
-		if memqdbBackupPath != "" {
-			if qdbImpl == "etcd" {
-				return fmt.Errorf("cannot use memqdb-backup-path with etcdqdb")
-			}
-			config.RouterConfig().MemqdbBackupPath = memqdbBackupPath
 		}
 
 		if console && daemonize {
@@ -251,34 +233,6 @@ var runCmd = &cobra.Command{
 		config.RouterConfig().PgprotoDebug = config.RouterConfig().PgprotoDebug || pgprotoDebug
 		config.RouterConfig().ShowNoticeMessages = config.RouterConfig().ShowNoticeMessages || showNoticeMessages
 
-		if routerPort != 0 {
-			config.RouterConfig().RouterPort = strconv.FormatInt(int64(routerPort), 10)
-		}
-
-		if routerROPort != 0 {
-			config.RouterConfig().RouterROPort = strconv.FormatInt(int64(routerROPort), 10)
-		}
-
-		if adminPort != 0 {
-			config.RouterConfig().AdminConsolePort = strconv.FormatInt(int64(adminPort), 10)
-		}
-
-		if grpcPort != 0 {
-			config.RouterConfig().GrpcApiPort = strconv.FormatInt(int64(grpcPort), 10)
-		}
-
-		if defaultRouteBehaviour != "" {
-			if strings.ToLower(defaultRouteBehaviour) == "block" {
-				config.RouterConfig().Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourBlock
-			} else {
-				config.RouterConfig().Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourAllow
-			}
-		}
-
-		if rootCmd.Flags().Changed("enhanced_multishard_processing") {
-			config.RouterConfig().Qr.EnhancedMultiShardProcessing = enhancedMultishardProcessing
-		}
-
 		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"))
 		if err != nil {
 			return fmt.Errorf("router failed to start: %w", err)
@@ -355,8 +309,18 @@ var runCmd = &cobra.Command{
 					if err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("")
 					}
+
+					if err := ApplyOverrides(config.RouterConfig(), startupOverrides, qdbImpl); err != nil {
+						spqrlog.Zero.Error().Err(err).Msg("failed to re-apply CLI overrides on SIGHUP")
+					}
+
 					spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLogging)
 					spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
+
+					if err := logEffectiveConfig(config.RouterConfig()); err != nil {
+						spqrlog.Zero.Error().Err(err).Msg("failed to print running config")
+					}
+
 				case syscall.SIGINT, syscall.SIGTERM:
 					if cpuProfile {
 						// write profile

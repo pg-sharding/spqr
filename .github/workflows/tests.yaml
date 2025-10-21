@@ -24,9 +24,35 @@ jobs:
      - name: unit tests
        run: make unittest
 
+  cli-overrides:
+    name: cli_overrides
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - name: Install test deps
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y jq gawk coreutils procps
+
+      - name: Prepare postgres runtime dir for unix socket
+        run: |
+          set -euo pipefail
+          sudo mkdir -p /var/run/postgresql
+          sudo chmod 1777 /var/run/postgresql
+
+      - name: Run CLI override
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          make test-cli-overrides
+
   stress:
     name: stress
     runs-on: ubuntu-latest
+    needs: ['cli-overrides']
     steps:
 
       - name: Check out code
