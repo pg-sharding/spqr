@@ -545,7 +545,7 @@ func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyR
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("key range id -> %v", split.SourceID))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("key range id -> %v", split.Krid))}},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("bound        -> %s", string(split.Bound[0])))}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
