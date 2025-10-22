@@ -885,7 +885,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		})
 
 		return cli.ReferenceRelations(rrs)
-	case spqrparser.TaskGroupStr:
+	case spqrparser.TaskGroupsStr:
 		group, err := mngr.GetMoveTaskGroup(ctx)
 		if err != nil {
 			return err

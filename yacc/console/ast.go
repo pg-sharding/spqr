@@ -391,7 +391,7 @@ const (
 	StatusStr             = "status"
 	VersionStr            = "version"
 	RelationsStr          = "relations"
-	TaskGroupStr          = "task_group"
+	TaskGroupsStr         = "task_groups"
 	PreparedStatementsStr = "prepared_statements"
 	ReferenceRelationsStr = "reference_relations"
 	UnsupportedStr        = "unsupported"

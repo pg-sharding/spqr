@@ -588,7 +588,7 @@ Feature: Move recover test
     Then command return code should be "0"
     When I run SQL on host "coordinator"
     """
-    SHOW task_group
+    SHOW task_groups
     """
     Then command return code should be "0"
     And SQL result should match json_exactly

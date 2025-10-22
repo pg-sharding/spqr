@@ -277,7 +277,7 @@ Feature: Proxy console
         Then command return code should be "0"
         When I run SQL on host "router-admin"
         """
-        SHOW task_group
+        SHOW task_groups
         """
         Then command return code should be "0"
         And SQL result should match json_exactly
