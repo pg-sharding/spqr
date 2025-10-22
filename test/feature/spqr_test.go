@@ -694,7 +694,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 			return state != SERVICE_STATE_RUNNING
 		}
 	}
-	retryStop := testutil.Retry(checkNotRunningService, 2*time.Minute, time.Second)
+	retryStop := testutil.Retry(checkNotRunningService, time.Minute, time.Second)
 	if !retryStop {
 		return fmt.Errorf("timed out change state from 'running' %s", service)
 	}
@@ -1081,10 +1081,12 @@ func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
 		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal request")
 		return err
 	}
+	taskArr := make([]*qdb.MoveTask, len(taskGroup.Tasks))
+	for i, task := range taskGroup.Tasks {
+		taskArr[i] = tasks.MoveTaskToDb(task)
+	}
 
-	taskDb := tasks.MoveTaskToDb(taskGroup.CurrentTask)
-
-	return tctx.qdb.WriteMoveTaskGroup(context.TODO(), tasks.TaskGroupToDb(&taskGroup), taskGroup.TotalKeys, taskDb)
+	return tctx.qdb.WriteMoveTaskGroup(context.TODO(), tasks.TaskGroupToDb(&taskGroup), taskArr)
 }
 
 func (tctx *testContext) stepQDBShouldContainTx(key string) error {
