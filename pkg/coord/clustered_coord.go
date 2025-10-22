@@ -1432,7 +1432,7 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 			if err := sourceConn.Ping(ctx); err != nil {
 				sourceConn, err = datatransfers.GetMasterConnection(ctx, sourceShardConn)
 				if err != nil {
-					return fmt.Errorf("failed to resetup connection with source shard: %s", err)
+					return fmt.Errorf("failed to re-setup connection with source shard: %s", err)
 				}
 			}
 			// TODO: can be optimized, if updated in-memory instead of querying QDB
