@@ -789,6 +789,7 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 // Returns:
 // - error: an error if the unite operation encounters any issues.
 func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
+	spqrlog.Zero.Debug().Str("base id", uniteKeyRange.BaseKeyRangeId).Str("appendage id", uniteKeyRange.AppendageKeyRangeId).Msg("unite key ranges")
 	krBaseDb, err := lc.qdb.LockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId)
 	if err != nil {
 		return err

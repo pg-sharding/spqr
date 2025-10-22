@@ -694,7 +694,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 			return state != SERVICE_STATE_RUNNING
 		}
 	}
-	retryStop := testutil.Retry(checkNotRunningService, time.Minute, time.Second)
+	retryStop := testutil.Retry(checkNotRunningService, 2*time.Minute, time.Second)
 	if !retryStop {
 		return fmt.Errorf("timed out change state from 'running' %s", service)
 	}

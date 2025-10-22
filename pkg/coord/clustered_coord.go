@@ -1198,10 +1198,34 @@ func (*ClusteredCoordinator) getBiggestRelation(relCount map[string]int64, total
 	return maxRel, maxCount / float64(totalCount)
 }
 
-func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.Conn, req *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, condition string, coeff float64, ds *distributions.Distribution) (*tasks.MoveTask, error) {
-	offset := req.BatchSize
-	if req.Limit > 0 && req.TotalKeys-req.Limit < req.BatchSize {
-		offset = req.TotalKeys - req.Limit
+func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, coeff float64, ds *distributions.Distribution) (*tasks.MoveTask, error) {
+	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KrIdFrom)
+	krFound := true
+	if et, ok := err.(*spqrerror.SpqrError); ok && et.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
+		krFound = false
+		spqrlog.Zero.Debug().Str("key range", taskGroup.KrIdFrom).Msg("key range already moved")
+	}
+	if krFound && err != nil {
+		return nil, err
+	}
+	if !krFound {
+		return nil, nil
+	}
+	nextRange, err := qc.getNextKeyRange(ctx, keyRange)
+	var nextBound kr.KeyRangeBound
+	if nextRange != nil {
+		nextBound = nextRange.LowerBound
+	}
+	if err != nil {
+		return nil, err
+	}
+	condition, err := kr.GetKRCondition(rel, keyRange, nextBound, "")
+	if err != nil {
+		return nil, err
+	}
+	offset := taskGroup.BatchSize
+	if taskGroup.Limit > 0 && taskGroup.TotalKeys-taskGroup.Limit < taskGroup.BatchSize {
+		offset = taskGroup.TotalKeys - taskGroup.Limit
 	}
 
 	colsArr, err := rel.GetDistributionKeyColumns()
@@ -1215,7 +1239,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 	}
 	selectAsColumns := strings.Join(selectAsColumnsElems, ", ")
 	sort := func() string {
-		switch req.Type {
+		switch taskGroup.Type {
 		case tasks.SplitLeft:
 			return "ASC"
 		case tasks.SplitRight:
@@ -1234,12 +1258,17 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 	}
 	statistics.RecordShardOperation(time.Since(t))
 	// move whole key range
-	if count < offset {
+	if count <= offset {
 		return &tasks.MoveTask{
-			ID:       uuid.NewString(),
-			KrIdTemp: req.KrIdFrom,
-			State:    tasks.TaskPlanned,
-			Bound:    nil,
+			ID: uuid.NewString(),
+			KrIdTemp: func() string {
+				if taskGroup.TotalKeys > 0 {
+					return taskGroup.KrIdFrom
+				}
+				return taskGroup.KrIdTo
+			}(),
+			State: tasks.TaskPlanned,
+			Bound: nil,
 		}, nil
 	}
 	query := fmt.Sprintf(`
@@ -1300,9 +1329,23 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 			return nil, fmt.Errorf("unknown column type: %s", t)
 		}
 	}
+	if kr.CmpRangesEqual(kr.KeyRangeFromBytes(bound, keyRange.ColumnTypes).LowerBound, keyRange.LowerBound, keyRange.ColumnTypes) {
+		// move whole key range
+		return &tasks.MoveTask{
+			ID: uuid.NewString(),
+			KrIdTemp: func() string {
+				if taskGroup.TotalKeys > 0 {
+					return taskGroup.KrIdFrom
+				}
+				return taskGroup.KrIdTo
+			}(),
+			State: tasks.TaskPlanned,
+			Bound: nil,
+		}, nil
+	}
 	task := &tasks.MoveTask{ID: uuid.NewString(), KrIdTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound}
-	if req.TotalKeys == 0 {
-		task.KrIdTemp = req.KrIdTo
+	if taskGroup.TotalKeys == 0 {
+		task.KrIdTemp = taskGroup.KrIdTo
 	}
 	return task, nil
 }
@@ -1393,23 +1436,8 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 				}
 			}
 			// TODO: can be optimized, if updated in-memory instead of querying QDB
-			keyRange, err := qc.GetKeyRange(ctx, taskGroup.KrIdFrom)
-			if err != nil {
-				return err
-			}
-			nextRange, err := qc.getNextKeyRange(ctx, keyRange)
-			var nextBound kr.KeyRangeBound
-			if nextRange != nil {
-				nextBound = nextRange.LowerBound
-			}
-			if err != nil {
-				return err
-			}
-			cond, err := kr.GetKRCondition(rel, keyRange, nextBound, "")
-			if err != nil {
-				return err
-			}
-			newTask, err := qc.getNextMoveTask(ctx, sourceConn, taskGroup, rel, cond, taskGroup.Coeff, ds)
+
+			newTask, err := qc.getNextMoveTask(ctx, sourceConn, taskGroup, rel, taskGroup.Coeff, ds)
 			if err != nil {
 				return fmt.Errorf("failed to get new move task: %s", err)
 			}
@@ -1435,21 +1463,23 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 				}
 				break
 			}
-			if err := qc.Split(ctx, &kr.SplitKeyRange{
-				Bound:    task.Bound,
-				SourceID: taskGroup.KrIdFrom,
-				Krid:     task.KrIdTemp,
-				SplitLeft: func() bool {
-					switch taskGroup.Type {
-					case tasks.SplitLeft:
-						return true
-					case tasks.SplitRight:
-						fallthrough
-					default:
-						return false
-					}
-				}()}); err != nil {
-				return err
+			if task.Bound != nil {
+				if err := qc.Split(ctx, &kr.SplitKeyRange{
+					Bound:    task.Bound,
+					SourceID: taskGroup.KrIdFrom,
+					Krid:     task.KrIdTemp,
+					SplitLeft: func() bool {
+						switch taskGroup.Type {
+						case tasks.SplitLeft:
+							return true
+						case tasks.SplitRight:
+							fallthrough
+						default:
+							return false
+						}
+					}()}); err != nil {
+					return err
+				}
 			}
 			task.State = tasks.TaskSplit
 			if err := qc.UpdateMoveTask(ctx, task); err != nil {
