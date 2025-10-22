@@ -1,0 +1,49 @@
+# Build stage
+FROM golang:1.25-alpine AS builder
+RUN apk add --no-cache gcc musl-dev linux-headers make
+ENV CGO_ENABLED=1
+WORKDIR /spqr
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+COPY . .
+RUN cd /spqr && make build GIT_REVISION=devel SPQR_VERSION=devel
+
+# Runtime stage - lightweight Alpine
+FROM alpine:latest
+RUN apk add --no-cache ca-certificates
+
+# Copy binary from builder
+COPY --from=builder /spqr/spqr-router /usr/local/bin/spqr-router
+
+# Create directories for config and SSL
+RUN mkdir -p /etc/spqr/ssl /etc/spqr/config
+
+# Copy config and SSL files
+COPY docker/public/cfg.yaml /etc/spqr/config/router.yaml
+COPY docker/public/ssl/ /etc/spqr/ssl/
+
+# Create entrypoint script
+RUN chmod +x /usr/local/bin/spqr-router
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD spqr-router --version || exit 1
+
+# Expose ports
+# 5432 - PostgreSQL protocol
+# 7432 - Admin console
+# 7000 - gRPC API
+EXPOSE 5432 7432 7000
+
+# Environment variables with defaults
+ENV ROUTER_CONFIG=/etc/spqr/config/router.yaml \
+    COORDINATOR_CONFIG=/etc/spqr/config/coordinator.yaml \
+    ROUTER_HOST=localhost \
+    ROUTER_LOG=/var/log/spqr-router.log
+
+# Create entrypoint
+COPY docker/public/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -1,0 +1,38 @@
+version: '3.3'
+
+services:
+  spqr-router:
+    build:
+      context: ../..
+      dockerfile: docker/public/Dockerfile.spqr-router
+    image: spqr-router:latest
+    container_name: spqr-router
+    ports:
+      - "5432:5432"    # PostgreSQL protocol
+      - "7432:7432"    # Admin console
+      - "7000:7000"    # gRPC API
+    environment:
+      ROUTER_HOST: spqr-router
+      ROUTER_CONFIG: /etc/spqr/config/router.yaml
+      COORDINATOR_CONFIG: /etc/spqr/config/coordinator.yaml
+      ROUTER_LOG: /var/log/spqr-router.log
+    volumes:
+      - ./cfg.yaml:/etc/spqr/config/router.yaml:ro
+      - ./ssl:/etc/spqr/ssl:ro
+      - router-logs:/var/log
+    networks:
+      - spqr-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "spqr-router", "--version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  spqr-network:
+    driver: bridge
+
+volumes:
+  router-logs:
