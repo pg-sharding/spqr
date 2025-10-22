@@ -1,4 +1,4 @@
-package qdb_integration_test
+package etcdqdb_integration_test
 
 import (
 	"context"
@@ -23,7 +23,7 @@ const (
 
 func runCompose(args []string) error {
 	args2 := []string{}
-	args2 = append(args2, "compose", "-f", "docker-compose.yaml", "-p", "qdb_test")
+	args2 = append(args2, "compose", "-f", "docker-compose.yaml", "-p", "etcdqdb_test")
 	args2 = append(args2, args...)
 	cmd := exec.Command("docker", args2...)
 	out, err := cmd.CombinedOutput()

@@ -15,4 +15,4 @@ services:
     entrypoint: ["/usr/local/bin/etcd", "--advertise-client-urls", "http://spqr_qdb_0_1:2379", "--listen-client-urls", "http://0.0.0.0:2379"]
 networks:
   qdb_test_network:
-    name: qdb_test_network
+    name: etcdqdb_test_network

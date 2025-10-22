@@ -944,7 +944,9 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard \"%s\" not found", id)
 	}
 	if len(resp.Kvs) > 1 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "shard \"%s\" not found", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION,
+			"multiple metadata entries (%d) found for shard %q; expected exactly one",
+			len(resp.Kvs), id)
 	}
 
 	shardInfo := &Shard{
