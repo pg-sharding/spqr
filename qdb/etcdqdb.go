@@ -1512,7 +1512,7 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, 
 			return err
 		}
 
-		ops = append(ops, clientv3.OpPut(moveTaskPath, string(taskJson)))
+		ops = append(ops, clientv3.OpPut(moveTaskPath, string(taskJson)), clientv3.OpPut(moveTaskIDPath, task.ID))
 	}
 	txResp, err := q.cli.Txn(ctx).If(clientv3.Compare(clientv3.Version(taskGroupPath), "=", 0)).Then(ops...).Commit()
 	if err != nil {

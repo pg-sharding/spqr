@@ -1084,7 +1084,6 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 			Limit:     req.Limit,
 		}
 	} else {
-		// If no keys, move the whole key range
 		taskGroup = &tasks.MoveTaskGroup{
 			KrIdFrom:  req.KrId,
 			KrIdTo:    req.DestKrId,
@@ -1097,6 +1096,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 			},
 		}
 	}
+	spqrlog.Zero.Debug().Str("taskGroup", fmt.Sprintf("%#v", taskGroup)).Msg("got task group")
 
 	if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
 		return err
@@ -1372,13 +1372,20 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 		return err
 	}
 
-	rel, ok := ds.Relations[taskGroup.BoundRel]
-	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" not found in distribution \"%s\"", taskGroup.BoundRel, ds.Id)
+	var rel *distributions.DistributedRelation
+	if taskGroup.BoundRel != "" {
+		ok := false
+		rel, ok = ds.Relations[taskGroup.BoundRel]
+		if !ok {
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" not found in distribution \"%s\"", taskGroup.BoundRel, ds.Id)
+		}
 	}
 
 	for {
 		if taskGroup.CurrentTask == nil {
+			if taskGroup.BoundRel == "" {
+				break
+			}
 			if err := sourceConn.Ping(ctx); err != nil {
 				sourceConn, err = datatransfers.GetMasterConnection(ctx, sourceShardConn)
 				if err != nil {
@@ -1408,6 +1415,9 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 			}
 			if newTask != nil {
 				taskGroup.CurrentTask = newTask
+				if err := qc.qdb.WriteMoveTask(ctx, tasks.MoveTaskToDb(newTask)); err != nil {
+					return fmt.Errorf("failed to save move task: %s", err)
+				}
 			} else {
 				break
 			}
@@ -1464,9 +1474,6 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 			taskGroup.TotalKeys += taskGroup.BatchSize
 			// TODO: wrap in transaction inside etcd
 			if err := qc.qdb.UpdateMoveTaskGroupTotalKeys(ctx, taskGroup.TotalKeys); err != nil {
-				return err
-			}
-			if err := qc.qdb.RemoveMoveTask(ctx); err != nil {
 				return err
 			}
 			if err := qc.qdb.RemoveMoveTask(ctx); err != nil {
