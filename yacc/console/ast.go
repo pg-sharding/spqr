@@ -401,6 +401,7 @@ const (
 	MoveStatsStr          = "move_stats"
 	TsaCacheStr           = "tsa_cache"
 	Users                 = "users"
+	MoveTaskStr           = "move_task"
 )
 
 // not SHOW target

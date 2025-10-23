@@ -629,49 +629,48 @@ func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string) error
 //
 // Returns:
 // - error: An error if sending the tasks fails, otherwise nil.
-func (pi *PSQLInteractor) MoveTaskGroup(_ context.Context, ts *tasks.MoveTaskGroup, colTypes []string) error {
-	spqrlog.Zero.Debug().Msg("listing move tasks")
-	spqrlog.Zero.Debug().Strs("colTypes", colTypes).Msg("")
+func (pi *PSQLInteractor) MoveTaskGroup(_ context.Context, ts *tasks.MoveTaskGroup) error {
+	spqrlog.Zero.Debug().Msg("show move task group")
 
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			engine.TextOidFD("State"),
-			engine.TextOidFD("Bound"),
-			engine.TextOidFD("Source key range ID"),
-			engine.TextOidFD("Destination key range ID"),
-		},
-		},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
+	if err := pi.WriteHeader("Destination shard ID", "Source key range ID", "Destination key range ID"); err != nil {
+		return err
+	}
+	if ts == nil {
+		return pi.CompleteMsg(0)
+	}
+	if err := pi.WriteDataRow(ts.ShardToId, ts.KrIdFrom, ts.KrIdTo); err != nil {
+		return err
+	}
+	return pi.CompleteMsg(1)
+}
+
+func (pi *PSQLInteractor) MoveTask(_ context.Context, t *tasks.MoveTask, colTypes []string) error {
+	if err := pi.WriteHeader("Move task ID", "Temporary key range ID", "Bound", "State"); err != nil {
+		return err
 	}
 
-	if ts.CurrentTask == nil {
+	if t == nil {
 		return pi.CompleteMsg(0)
 	}
 	krData := []string{""}
-	if ts.CurrentTask.Bound != nil {
-		if len(ts.CurrentTask.Bound) != len(colTypes) {
-			err := fmt.Errorf("something wrong in task: %#v, columns: %#v", ts.CurrentTask, colTypes)
+	if t.Bound != nil {
+		if len(t.Bound) != len(colTypes) {
+			err := fmt.Errorf("something wrong in task: %#v, columns: %#v", t, colTypes)
 			return err
 		}
-		kRange := kr.KeyRangeFromBytes(ts.CurrentTask.Bound, colTypes)
+		kRange := kr.KeyRangeFromBytes(t.Bound, colTypes)
 		krData = kRange.SendRaw()
 	}
-	if err := pi.cl.Send(&pgproto3.DataRow{
-		Values: [][]byte{
-			[]byte(tasks.TaskStateToStr(ts.CurrentTask.State)),
-			[]byte(strings.Join(krData, ";")),
-			[]byte(ts.KrIdFrom),
-			[]byte(ts.KrIdTo),
-		},
-	}); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
+	if err := pi.WriteDataRow(
+		t.ID,
+		t.KrIdTemp,
+		strings.Join(krData, ";"),
+		tasks.TaskStateToStr(t.State),
+	); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to send move task data")
 		return err
 	}
-	return pi.CompleteMsg(0)
+	return pi.CompleteMsg(1)
 }
 
 // DropTaskGroup drops all tasks in the task group.

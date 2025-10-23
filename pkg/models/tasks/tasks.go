@@ -38,16 +38,16 @@ const (
 )
 
 type MoveTaskGroup struct {
-	ShardToId   string
-	KrIdFrom    string
-	KrIdTo      string
-	Type        SplitType
-	BoundRel    string
-	Coeff       float64
-	BatchSize   int64
-	Limit       int64
-	TotalKeys   int64
-	CurrentTask *MoveTask
+	ShardToId   string    `json:"shard_to_id"`
+	KrIdFrom    string    `json:"kr_id_from"`
+	KrIdTo      string    `json:"kr_id_to"`
+	Type        SplitType `json:"type"`
+	BoundRel    string    `json:"bound_rel"`
+	Coeff       float64   `json:"coeff"`
+	BatchSize   int64     `json:"batch_size"`
+	Limit       int64     `json:"limit"`
+	TotalKeys   int64     `json:"total_keys"`
+	CurrentTask *MoveTask `json:"task"`
 }
 
 type RedistributeTaskState int

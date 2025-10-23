@@ -753,23 +753,22 @@ Feature: Coordinator test
     When I record in qdb move task group
     """
     {
-        "tasks":
-        [
+            "shard_to_id":   "sh_to",
+            "kr_id_from":    "krid1",
+            "kr_id_to":      "krid2",
+            "type":          1,
+            "limit":         -1,
+            "coeff":         0.75,
+            "bound_rel":     "test",
+            "total_keys":    200,
+            "task":
             {
-              "id":            "1",
-              "bound":         ["AgAAAAAAAAA="],
-              "state":         1
-            },
-            {
-              "id":            "2",
-              "bound":         ["FAAAAAAAAAA="],
-              "state":         0
+                "id":            "2",
+                "kr_id_temp":    "temp_id",
+                "bound":         ["FAAAAAAAAAA="],
+                "state":         0
             }
-        ],
-        "shard_to_id":   "sh_to",
-        "kr_id_from":    "krid1",
-        "kr_id_to":      "krid2"
-    }
+        }
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator"
@@ -779,20 +778,25 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
-    [
-      {
-        "State":                    "SPLIT",
-        "Bound":                    "1",
+    [{
+        "Destination shard ID":     "sh_to",
         "Source key range ID":      "krid1",
         "Destination key range ID": "krid2"
-      },
-      {
+    }]
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW move_task
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+        "Move task ID":             "2",
         "State":                    "PLANNED",
         "Bound":                    "10",
-        "Source key range ID":      "krid1",
-        "Destination key range ID": "krid2"
-      }
-    ]
+        "Temporary key range ID":   "temp_id"
+    }]
     """
     When I run SQL on host "coordinator"
     """
@@ -802,6 +806,15 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     SHOW task_group
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW move_task
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
