@@ -1199,6 +1199,9 @@ func (*ClusteredCoordinator) getBiggestRelation(relCount map[string]int64, total
 }
 
 func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, coeff float64, ds *distributions.Distribution) (*tasks.MoveTask, error) {
+	if taskGroup.TotalKeys >= taskGroup.Limit {
+		return nil, nil
+	}
 	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KrIdFrom)
 	krFound := true
 	if et, ok := err.(*spqrerror.SpqrError); ok && et.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
@@ -1223,9 +1226,9 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 	if err != nil {
 		return nil, err
 	}
-	offset := taskGroup.BatchSize
-	if taskGroup.Limit > 0 && taskGroup.TotalKeys-taskGroup.Limit < taskGroup.BatchSize {
-		offset = taskGroup.TotalKeys - taskGroup.Limit
+	offset := int64(float64(taskGroup.BatchSize) * coeff)
+	if taskGroup.Limit > 0 && taskGroup.Limit-taskGroup.TotalKeys < taskGroup.BatchSize {
+		offset = int64(float64(taskGroup.Limit-taskGroup.TotalKeys) * coeff)
 	}
 
 	colsArr, err := rel.GetDistributionKeyColumns()
@@ -1435,7 +1438,6 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 					return fmt.Errorf("failed to re-setup connection with source shard: %s", err)
 				}
 			}
-			// TODO: can be optimized, if updated in-memory instead of querying QDB
 
 			newTask, err := qc.getNextMoveTask(ctx, sourceConn, taskGroup, rel, taskGroup.Coeff, ds)
 			if err != nil {
