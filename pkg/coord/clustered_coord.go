@@ -1230,6 +1230,9 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 	if taskGroup.Limit > 0 && taskGroup.Limit-taskGroup.TotalKeys < taskGroup.BatchSize {
 		offset = int64(float64(taskGroup.Limit-taskGroup.TotalKeys) * coeff)
 	}
+	if taskGroup.Type == tasks.SplitRight {
+		offset--
+	}
 
 	colsArr, err := rel.GetDistributionKeyColumns()
 	if err != nil {
