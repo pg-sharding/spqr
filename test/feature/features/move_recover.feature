@@ -568,9 +568,9 @@ Feature: Move recover test
         "kr_id_from":    "krid1",
         "kr_id_to":      "krid2",
         "type":          1,
-        "limit":         8,
+        "limit":         10,
         "coeff":         1,
-        "batch_size":    4,
+        "batch_size":    5,
         "bound_rel":     "xMove",
         "total_keys":    0,
         "task":
