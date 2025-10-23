@@ -182,7 +182,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ### __spqr__distribution_key
 
 The `__spqr__distribution_key` parameter is used to automatically add a new table to the SPQR metadata without having to go into the spqr console. This parameter can only be used with the `__spqr__auto_distribution` hint.
-
+Distributions with a single key column are now supported. The following key types are supported for automatic creation of distributed tables: integer, UUID, and varchar. Hashed distributions are currently not supported now for autocreate tables.
 ```sql
 CREATE TABLE orders (id int, item int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: id */;
 ```

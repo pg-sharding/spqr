@@ -808,3 +808,40 @@ Feature: Coordinator test
     """
     []
     """
+
+  Scenario: autocreate distributed relation
+    When I run SQL on host "router"
+    """
+    set __spqr__auto_distribution=ds1;
+    set __spqr__distribution_key=id;
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "router"
+    """
+    CREATE TABLE test1(id int, name text)
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "coordinator"
+    """
+    SHOW relations;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "Relation name": "test",
+        "Distribution ID": "ds1",
+        "Distribution key": "(\"id\", identity)",
+        "Schema name": "$search_path"
+      },
+      {
+        "Relation name": "test1",
+        "Distribution ID": "ds1",
+        "Distribution key": "(\"id\", identity)",
+        "Schema name": "$search_path"
+      }
+    ]
+    """
