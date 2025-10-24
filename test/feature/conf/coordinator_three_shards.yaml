@@ -10,3 +10,4 @@ frontend_rules:
     auth_rule:
       auth_method: clear_text
       password: password
+data_move_disable_triggers: true

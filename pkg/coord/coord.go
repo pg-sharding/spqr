@@ -411,19 +411,20 @@ func (lc *Coordinator) WriteBalancerTask(ctx context.Context, task *tasks.Balanc
 // - *tasks.MoveTaskGroup: the retrieved task group, or nil if an error occurred.
 // - error: an error if the retrieval process fails.
 func (lc *Coordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
-	groupDB, err := lc.qdb.GetMoveTaskGroup(ctx)
+	group, err := lc.qdb.GetMoveTaskGroup(ctx)
 	if err != nil {
 		return nil, err
 	}
-	taskMap := make(map[string]*qdb.MoveTask, len(groupDB.TaskIDs))
-	for _, id := range groupDB.TaskIDs[groupDB.CurrentTaskInd:] {
-		task, err := lc.qdb.GetMoveTask(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-		taskMap[id] = task
+	task, err := lc.qdb.GetMoveTask(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return tasks.TaskGroupFromDb(groupDB, taskMap)
+	totalKeys, err := lc.qdb.GetMoveTaskGroupTotalKeys(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return tasks.TaskGroupFromDb(group, task, totalKeys), nil
 }
 
 // GetMoveTask retrieves the MoveTask from the coordinator's QDB.
@@ -435,8 +436,8 @@ func (lc *Coordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGro
 // Returns:
 // - *tasks.MoveTask: the retrieved move task, or nil if an error occurred.
 // - error: an error if the retrieval process fails.
-func (qc *Coordinator) GetMoveTask(ctx context.Context, id string) (*tasks.MoveTask, error) {
-	task, err := qc.qdb.GetMoveTask(ctx, id)
+func (qc *Coordinator) GetMoveTask(ctx context.Context) (*tasks.MoveTask, error) {
+	task, err := qc.qdb.GetMoveTask(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -577,11 +578,7 @@ func (qc *Coordinator) ListKeyRanges(ctx context.Context, distribution string) (
 // Returns:
 // - error: an error if the write operation fails.
 func (qc *Coordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
-	taskList := make([]*qdb.MoveTask, len(taskGroup.Tasks))
-	for i, task := range taskGroup.Tasks {
-		taskList[i] = tasks.MoveTaskToDb(task)
-	}
-	if err := qc.qdb.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup), taskList); err != nil {
+	if err := qc.qdb.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup), taskGroup.TotalKeys, tasks.MoveTaskToDb(taskGroup.CurrentTask)); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to write move task group")
 		return err
 	}
@@ -792,6 +789,7 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 // Returns:
 // - error: an error if the unite operation encounters any issues.
 func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
+	spqrlog.Zero.Debug().Str("base id", uniteKeyRange.BaseKeyRangeId).Str("appendage id", uniteKeyRange.AppendageKeyRangeId).Msg("unite key ranges")
 	krBaseDb, err := lc.qdb.LockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId)
 	if err != nil {
 		return err

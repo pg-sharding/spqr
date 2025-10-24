@@ -194,6 +194,11 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			if _, err := ftx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
 				return fmt.Errorf("could not delete data: error deferring constraints: %s", err)
 			}
+			if config.CoordinatorConfig().DataMoveDisableTriggers {
+				if _, err := ftx.Exec(ctx, "SET session_replication_role = replica"); err != nil {
+					return fmt.Errorf("failed to disable triggers: %s", err)
+				}
+			}
 			for _, rel := range ds.Relations {
 				res := ftx.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = '%s'`, strings.ToLower(rel.Name), rel.GetSchema()))
 				fromTableExists := false
@@ -406,6 +411,11 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	}
 	if _, err := tx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: error deferring contraints: %s", err)
+	}
+	if config.CoordinatorConfig().DataMoveDisableTriggers {
+		if _, err := tx.Exec(ctx, "SET session_replication_role = replica"); err != nil {
+			return fmt.Errorf("failed to disable triggers: %s", err)
+		}
 	}
 	for _, rel := range ds.Relations {
 		krCondition, err := kr.GetKRCondition(rel, krg, upperBound, "")

@@ -3,7 +3,6 @@ package tasks
 import (
 	"fmt"
 
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 )
@@ -39,12 +38,16 @@ const (
 )
 
 type MoveTaskGroup struct {
-	ShardToId        string      `json:"shard_to_id"`
-	KrIdFrom         string      `json:"kr_id_from"`
-	KrIdTo           string      `json:"kr_id_to"`
-	Tasks            []*MoveTask `json:"tasks"`
-	Type             SplitType   `json:"type"`
-	CurrentTaskIndex int         `json:"cur_task_ind"`
+	ShardToId   string    `json:"shard_to_id"`
+	KrIdFrom    string    `json:"kr_id_from"`
+	KrIdTo      string    `json:"kr_id_to"`
+	Type        SplitType `json:"type"`
+	BoundRel    string    `json:"bound_rel"`
+	Coeff       float64   `json:"coeff"`
+	BatchSize   int64     `json:"batch_size"`
+	Limit       int64     `json:"limit"`
+	TotalKeys   int64     `json:"total_keys"`
+	CurrentTask *MoveTask `json:"task"`
 }
 
 type RedistributeTaskState int
@@ -75,17 +78,16 @@ func TaskGroupToProto(group *MoveTaskGroup) *protos.MoveTaskGroup {
 		return nil
 	}
 	return &protos.MoveTaskGroup{
-		Tasks: func() []*protos.MoveTask {
-			res := make([]*protos.MoveTask, len(group.Tasks))
-			for i, t := range group.Tasks {
-				res[i] = TaskToProto(t)
-			}
-			return res
-		}(),
+		CurrentTask:    TaskToProto(group.CurrentTask),
 		Type:           SplitTypeToProto(group.Type),
 		ShardIdTo:      group.ShardToId,
 		KeyRangeIdFrom: group.KrIdFrom,
 		KeyRangeIdTo:   group.KrIdTo,
+		Coeff:          group.Coeff,
+		Limit:          group.Limit,
+		TotalKeys:      group.TotalKeys,
+		BatchSize:      group.BatchSize,
+		BoundRel:       group.BoundRel,
 	}
 }
 
@@ -208,17 +210,16 @@ func TaskGroupFromProto(group *protos.MoveTaskGroup) *MoveTaskGroup {
 		return nil
 	}
 	return &MoveTaskGroup{
-		Tasks: func() []*MoveTask {
-			res := make([]*MoveTask, len(group.Tasks))
-			for i, t := range group.Tasks {
-				res[i] = TaskFromProto(t)
-			}
-			return res
-		}(),
-		Type:      SplitTypeFromProto(group.Type),
-		ShardToId: group.ShardIdTo,
-		KrIdFrom:  group.KeyRangeIdFrom,
-		KrIdTo:    group.KeyRangeIdTo,
+		CurrentTask: TaskFromProto(group.CurrentTask),
+		Type:        SplitTypeFromProto(group.Type),
+		ShardToId:   group.ShardIdTo,
+		KrIdFrom:    group.KeyRangeIdFrom,
+		KrIdTo:      group.KeyRangeIdTo,
+		Coeff:       group.Coeff,
+		Limit:       group.Limit,
+		TotalKeys:   group.TotalKeys,
+		BatchSize:   group.BatchSize,
+		BoundRel:    group.BoundRel,
 	}
 }
 
@@ -322,17 +323,14 @@ func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
 		return nil
 	}
 	return &qdb.MoveTaskGroup{
-		TaskIDs: func() []string {
-			res := make([]string, len(group.Tasks))
-			for i, task := range group.Tasks {
-				res[i] = task.ID
-			}
-			return res
-		}(),
 		Type:      int(group.Type),
 		ShardToId: group.ShardToId,
 		KrIdFrom:  group.KrIdFrom,
 		KrIdTo:    group.KrIdTo,
+		BoundRel:  group.BoundRel,
+		Coeff:     group.Coeff,
+		BatchSize: group.BatchSize,
+		Limit:     group.Limit,
 	}
 }
 
@@ -368,26 +366,22 @@ func MoveTaskToDb(task *MoveTask) *qdb.MoveTask {
 //
 // Returns:
 //   - *MoveTaskGroup: The converted MoveTaskGroup object.
-func TaskGroupFromDb(group *qdb.MoveTaskGroup, tasks map[string]*qdb.MoveTask) (*MoveTaskGroup, error) {
+func TaskGroupFromDb(group *qdb.MoveTaskGroup, moveTask *qdb.MoveTask, totalKeys int64) *MoveTaskGroup {
 	if group == nil {
-		return nil, nil
+		return nil
 	}
-	res := make([]*MoveTask, len(group.TaskIDs))
-	for i, id := range group.TaskIDs[group.CurrentTaskInd:] {
-		task, ok := tasks[id]
-		if !ok {
-			return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "task with ID \"%s\" not found", id)
-		}
-		res[i] = TaskFromDb(task)
-	}
-
 	return &MoveTaskGroup{
-		Tasks:     res,
-		Type:      SplitType(group.Type),
-		ShardToId: group.ShardToId,
-		KrIdFrom:  group.KrIdFrom,
-		KrIdTo:    group.KrIdTo,
-	}, nil
+		Type:        SplitType(group.Type),
+		ShardToId:   group.ShardToId,
+		KrIdFrom:    group.KrIdFrom,
+		KrIdTo:      group.KrIdTo,
+		BoundRel:    group.BoundRel,
+		Coeff:       group.Coeff,
+		BatchSize:   group.BatchSize,
+		Limit:       group.Limit,
+		CurrentTask: TaskFromDb(moveTask),
+		TotalKeys:   totalKeys,
+	}
 }
 
 // TaskFromDb converts a qdb.MoveTask object to a MoveTask object.
@@ -400,6 +394,9 @@ func TaskGroupFromDb(group *qdb.MoveTaskGroup, tasks map[string]*qdb.MoveTask) (
 // Returns:
 //   - *MoveTask: The converted MoveTask object.
 func TaskFromDb(task *qdb.MoveTask) *MoveTask {
+	if task == nil {
+		return nil
+	}
 	return &MoveTask{
 		ID:       task.ID,
 		KrIdTemp: task.KrIdTemp,
