@@ -152,8 +152,9 @@ func TestMultiShardRouting(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		dh := session.NewDummyHandler(distribution)
+		dh.SetPreferredEngine("", "")
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		tmp, _, err := pr.PlanQueryExtended(context.TODO(), rm, parserRes[0], dh)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1844,7 +1845,7 @@ func TestCopySingleShard(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		tmp, _, err := pr.PlanQueryExtended(context.TODO(), rm, parserRes[0], dh)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1928,7 +1929,7 @@ func TestCopyMultiShard(t *testing.T) {
 		dh.SetScatterQuery(false)
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		tmp, _, err := pr.PlanQueryExtended(context.TODO(), rm, parserRes[0], dh)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2008,7 +2009,7 @@ func TestSetStmt(t *testing.T) {
 		dh := session.NewDummyHandler(tt.distribution)
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		tmp, _, err := pr.PlanQueryExtended(context.TODO(), rm, parserRes[0], dh)
 
 		assert.NoError(err, "query %s", tt.query)
 

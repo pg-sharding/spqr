@@ -218,6 +218,17 @@ func (cl *PsqlClient) Distribution() string {
 	return cl.resolveVirtualStringParam(session.SPQR_DISTRIBUTION, "")
 }
 
+// PreferredEngine implements client.Client.
+func (cl *PsqlClient) PreferredEngine() string {
+	return cl.resolveVirtualStringParam(session.SPQR_DISTRIBUTION, "")
+}
+
+// SetPreferredEngine implements client.Client.
+func (cl *PsqlClient) SetPreferredEngine(level string, val string) {
+
+	cl.recordVirtualParam(level, session.SPQR_DISTRIBUTION, val)
+}
+
 // SetDistributedRelation implements RouterClient.
 func (cl *PsqlClient) SetDistributedRelation(level string, val string) {
 	cl.recordVirtualParam(level, session.SPQR_DISTRIBUTED_RELATION, val)

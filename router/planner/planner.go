@@ -457,7 +457,10 @@ func PlanDistributedQuery(ctx context.Context,
 
 	switch v := stmt.(type) {
 	/* TDB: comments? */
-
+	case *lyx.ValueClause:
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
 	case *lyx.Select:
 		/* Should be single-relation scan or values. Join to be supported */
 		if len(v.FromClause) == 0 {
@@ -626,7 +629,7 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 		return &plan.ScatterPlan{
 			IsDDL: true,
 		}, nil
-	case *lyx.Delete, *lyx.Update, *lyx.Select, *lyx.Insert:
+	case *lyx.Delete, *lyx.Update, *lyx.Select, *lyx.Insert, *lyx.ValueClause:
 		/* do not bother with those */
 		return nil, nil
 	case *lyx.Copy:
