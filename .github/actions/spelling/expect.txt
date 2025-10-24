@@ -25,6 +25,7 @@ ARRAYOID
 aspernatur
 astmt
 authed
+autocreate
 autotools
 basebackup
 bbc
