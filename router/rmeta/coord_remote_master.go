@@ -16,7 +16,7 @@ import (
 )
 
 // Returns master coordinator (Adapter to remote coordinator) with support of local coordinator.
-// Returns local coordinator in case router in nonclustered mode 
+// Returns local coordinator in case router in non clustered mode.
 //
 // Parameters:
 // - ctx: (context.Context): context
@@ -68,7 +68,7 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clau
 	masterCoordinator, close, err := getMasterCoordinator(ctx, localMngr)
 	defer func() {
 		if err := close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close master ccordiantor connection")
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close master coordiantor connection (case 0)")
 		}
 	}()
 	if err != nil {
@@ -135,7 +135,7 @@ func AlterDistributionAttach(ctx context.Context, localMngr meta.EntityMgr, clau
 	masterCoordinator, close, err := getMasterCoordinator(ctx, localMngr)
 	defer func() {
 		if err := close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close master ccordiantor connection")
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close master coordiantor connection (case 1)")
 		}
 	}()
 	if err != nil {
