@@ -31,7 +31,8 @@ type Coordinator struct {
 	EnableRoleSystem     bool            `json:"enable_role_system" toml:"enable_role_system" yaml:"enable_role_system"`
 	RolesFile            string          `json:"roles_file" toml:"roles_file" yaml:"roles_file"`
 
-	EtcdMaxSendBytes int `json:"etcd_max_send_bytes" toml:"etcd_max_send_bytes" yaml:"etcd_max_send_bytes"`
+	EtcdMaxSendBytes        int  `json:"etcd_max_send_bytes" toml:"etcd_max_send_bytes" yaml:"etcd_max_send_bytes"`
+	DataMoveDisableTriggers bool `json:"disable_trigers" toml:"disable_trigers" yaml:"disable_trigers"`
 }
 
 // LoadCoordinatorCfg loads the coordinator configuration from the specified file path.
