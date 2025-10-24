@@ -1525,89 +1525,9 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 	ro := true
 
-	switch node := stmt.(type) {
+	switch stmt.(type) {
 
 	/* TDB: comments? */
-
-	case *lyx.VariableSetStmt:
-		/* TBD: maybe skip all set stmts? */
-		/*
-		 * SET x = y etc., do not dispatch any statement to shards, just process this in router
-		 */
-		return &plan.RandomDispatchPlan{}, true, nil
-
-	case *lyx.VariableShowStmt:
-		/*
-		 if we want to reroute to execute this stmt, route to random shard
-		 XXX: support intelligent show support, without direct query dispatch
-		*/
-		return &plan.RandomDispatchPlan{}, true, nil
-
-	// XXX: need alter table which renames sharding column to non-sharding column check
-	case *lyx.CreateSchema:
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, false, nil
-	case *lyx.CreateExtension:
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, false, nil
-	case *lyx.Grant:
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, false, nil
-	case *lyx.CreateTable:
-		ds, err := planner.PlanCreateTable(ctx, rm, node)
-		if err != nil {
-			return nil, false, err
-		}
-		/*
-		 * Disallow to create table which does not contain any sharding column
-		 */
-		if err := planner.CheckTableIsRoutable(ctx, qr.Mgr(), node); err != nil {
-			return nil, false, err
-		}
-		return ds, false, nil
-	case *lyx.Vacuum:
-		/* Send vacuum to each shard */
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, false, nil
-	case *lyx.Analyze:
-		/* Send vacuum to each shard */
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, false, nil
-	case *lyx.Cluster:
-		/* Send vacuum to each shard */
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, false, nil
-	case *lyx.Index:
-		/*
-		 * Disallow to index on table which does not contain any sharding column
-		 */
-		// XXX: do it
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, false, nil
-
-	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
-		// support simple ddl commands, route them to every chard
-		// this is not fully ACID (not atomic at least)
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, false, nil
-		/*
-			 case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
-				 // forbid under separate setting
-				 return MultiMatchState{}, nil
-		*/
-	case *lyx.CreateRole, *lyx.CreateDatabase:
-		// forbid under separate setting
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, false, nil
 	case *lyx.Insert:
 		if err := qr.AnalyzeQueryV1(ctx, stmt, rm); err != nil {
 			return nil, false, err
@@ -1680,8 +1600,6 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		}
 		ro = false
 		pl = plan.Combine(pl, rs)
-	case *lyx.Copy:
-		return &plan.CopyPlan{}, false, nil
 	default:
 		return nil, false, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
@@ -1928,10 +1846,18 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, query string, stmt lyx.No
 	}
 
 	rm := rmeta.NewRoutingMetadataContext(sph, query, qr.csm, qr.mgr)
+
+	utilityPlan, err := planner.PlanUtility(ctx, rm, stmt)
+	if err != nil {
+		return nil, err
+	}
+	if utilityPlan != nil {
+		return utilityPlan, nil
+	}
+
 	var p plan.Plan
 	var ro bool
-	var err error
-	if config.RouterConfig().Qr.PreferEngine == "v2" {
+	if config.RouterConfig().Qr.PreferEngine == planner.EnhancedEngineVersion {
 		p, err = planner.PlanDistributedQuery(ctx, rm, stmt, true)
 		if err != nil {
 			return nil, err
