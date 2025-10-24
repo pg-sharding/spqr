@@ -23,7 +23,17 @@ jobs:
 
      - name: unit tests
        run: make unittest
+  etcdqdb_integration:
+     name: etcdqdb_integration
+     runs-on: ubuntu-latest
+     steps:
 
+     - name: Check out code
+       uses: actions/checkout@v5
+
+     - name: etcdqdb_integration tests
+       run: make etcdqdb_test
+       
   cli-overrides:
     name: cli_overrides
     runs-on: ubuntu-latest

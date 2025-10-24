@@ -919,7 +919,6 @@ func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	return shards, nil
 }
 
-// TODO : unit tests
 func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -935,16 +934,18 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	if len(resp.Kvs) == 0 {
 		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard \"%s\" not found", id)
 	}
+	if len(resp.Kvs) > 1 {
+		return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION,
+			"multiple metadata entries (%d) found for shard %q; expected exactly one",
+			len(resp.Kvs), id)
+	}
 
 	shardInfo := &Shard{
 		ID: id,
 	}
-
-	for _, shard := range resp.Kvs {
-		// The Port field is always for a while.
-		shardInfo.RawHosts = append(shardInfo.RawHosts, string(shard.Value))
+	if err := json.Unmarshal(resp.Kvs[0].Value, shardInfo); err != nil {
+		return nil, err
 	}
-
 	statistics.RecordQDBOperation("GetShard", time.Since(t))
 	return shardInfo, nil
 }

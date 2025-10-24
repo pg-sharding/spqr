@@ -564,6 +564,7 @@ timestamptz
 tlsconfig
 tlt
 TMINUS
+tmpfs
 tmpnum
 topbar
 TOPENBR
