@@ -149,7 +149,7 @@ This command is used to retrieve information about a specific entity of SPQR clu
 ```sql
 SHOW entity [WHERE where_clause]
 
-where entity is one of backend_connections, clients, databases, distributions, key_ranges, pools, prepared_statements, relations, routers, sequences, shards, status, task_groups, tsa_cache, users, version:
+where entity is one of backend_connections, clients, coordinator_address, databases, distributions, hosts, instance, is_read_only, key_ranges, move_stats, move_task, pools, prepared_statements, reference_relations, relations, routers, sequences, sharding_rules, shards, status, task_group, time_quantiles, tsa_cache, users, version:
 ```
 
 The`where_clause` is used to filter the results based on specific conditions. It allows you to specify criteria for selecting the information to be shown.
