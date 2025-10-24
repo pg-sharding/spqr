@@ -12,8 +12,19 @@ type DummySessionParamHandler struct {
 	behaviour    string
 	key          string
 
-	engineV2 bool
-	eo       string
+	engineV2     bool
+	preferEngine string
+	eo           string
+}
+
+// PreferredEngine implements SessionParamsHolder.
+func (t *DummySessionParamHandler) PreferredEngine() string {
+	return t.preferEngine
+}
+
+// SetPreferredEngine implements SessionParamsHolder.
+func (t *DummySessionParamHandler) SetPreferredEngine(level string, val string) {
+	t.preferEngine = val
 }
 
 // DistributedRelation implements SessionParamsHolder.

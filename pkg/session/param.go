@@ -31,6 +31,10 @@ type SessionParamsHolder interface {
 	SetDistributedRelation(level string, val string)
 	DistributedRelation() string
 
+	/*  XXX: developer option */
+	SetPreferredEngine(level string, val string)
+	PreferredEngine() string
+
 	SetShardingKey(level string, val string)
 	ShardingKey() string
 
@@ -81,6 +85,7 @@ const (
 	SPQR_MAINTAIN_PARAMS         = "__spqr__maintain_params"
 	SPQR_EXECUTE_ON              = "__spqr__execute_on"
 	SPQR_ENGINE_V2               = "__spqr__engine_v2"
+	SPQR_PREFERRED_ENGINE        = "__spqr__preferred_engine"
 	SPQR_COMMIT_STRATEGY         = "__spqr__commit_strategy"
 	SPQR_TARGET_SESSION_ATTRS    = "__spqr__target_session_attrs"
 

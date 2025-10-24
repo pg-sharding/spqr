@@ -21,6 +21,10 @@ import (
 	"github.com/pg-sharding/spqr/router/virtual"
 )
 
+const (
+	EnhancedEngineVersion = "v2"
+)
+
 func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *lyx.CreateTable) (plan.Plan, error) {
 	if val := rm.SPH.AutoDistribution(); val != "" {
 
@@ -453,70 +457,6 @@ func PlanDistributedQuery(ctx context.Context,
 
 	switch v := stmt.(type) {
 	/* TDB: comments? */
-
-	case *lyx.VariableSetStmt:
-		/* TBD: maybe skip all set stmts? */
-		/*
-		 * SET x = y etc., do not dispatch any statement to shards, just process this in router
-		 */
-		return &plan.RandomDispatchPlan{}, nil
-
-	case *lyx.VariableShowStmt:
-		/*
-		 if we want to reroute to execute this stmt, route to random shard
-		 XXX: support intelligent show support, without direct query dispatch
-		*/
-		return &plan.RandomDispatchPlan{}, nil
-
-	case *lyx.CreateSchema:
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, nil
-
-	// XXX: need alter table which renames sharding column to non-sharding column check
-	case *lyx.CreateTable:
-		return PlanCreateTable(ctx, rm, v)
-	case *lyx.Vacuum:
-		/* Send vacuum to each shard */
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, nil
-	case *lyx.Analyze:
-		/* Send analyze to each shard */
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, nil
-	case *lyx.Cluster:
-		/* Send cluster to each shard */
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, nil
-	case *lyx.Index:
-		/*
-		 * Disallow to index on table which does not contain any sharding column
-		 */
-		// XXX: do it
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, nil
-	case *lyx.CreateExtension:
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, nil
-	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
-		// support simple ddl commands, route them to every chard
-		// this is not fully ACID (not atomic at least)
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, nil
-
-	case *lyx.CreateRole, *lyx.CreateDatabase:
-		/* XXX: should we forbid under separate setting?  */
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, nil
-	case *lyx.Copy:
-		return &plan.CopyPlan{}, nil
 	case *lyx.ValueClause:
 		return &plan.ScatterPlan{
 			IsDDL: true,
@@ -601,4 +541,101 @@ func PlanDistributedQuery(ctx context.Context,
 	default:
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
+}
+
+func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {
+
+	switch node := stmt.(type) {
+
+	/* TDB: comments? */
+
+	case *lyx.VariableSetStmt:
+		/* TBD: maybe skip all set stmts? */
+		/*
+		 * SET x = y etc., do not dispatch any statement to shards, just process this in router
+		 */
+		return &plan.RandomDispatchPlan{}, nil
+
+	case *lyx.VariableShowStmt:
+		/*
+		 if we want to reroute to execute this stmt, route to random shard
+		 XXX: support intelligent show support, without direct query dispatch
+		*/
+		return &plan.RandomDispatchPlan{}, nil
+
+	// XXX: need alter table which renames sharding column to non-sharding column check
+	case *lyx.CreateSchema:
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+
+	case *lyx.CreateExtension:
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+	case *lyx.Grant:
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+	case *lyx.CreateTable:
+		ds, err := PlanCreateTable(ctx, rm, node)
+		if err != nil {
+			return nil, err
+		}
+		/*
+		 * Disallow to create table which does not contain any sharding column
+		 */
+		if err := CheckTableIsRoutable(ctx, rm.Mgr, node); err != nil {
+			return nil, err
+		}
+		return ds, nil
+	case *lyx.Vacuum:
+		/* Send vacuum to each shard */
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+	case *lyx.Analyze:
+		/* Send vacuum to each shard */
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+	case *lyx.Cluster:
+		/* Send vacuum to each shard */
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+	case *lyx.Index:
+		/*
+		 * Disallow to index on table which does not contain any sharding column
+		 */
+		// XXX: do it
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+
+	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
+		// support simple ddl commands, route them to every chard
+		// this is not fully ACID (not atomic at least)
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+		/*
+			 case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
+				 // forbid under separate setting
+				 return MultiMatchState{}, nil
+		*/
+	case *lyx.CreateRole, *lyx.CreateDatabase:
+		// forbid under separate setting
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+	case *lyx.Delete, *lyx.Update, *lyx.Select, *lyx.Insert, *lyx.ValueClause:
+		/* do not bother with those */
+		return nil, nil
+	case *lyx.Copy:
+		return &plan.CopyPlan{}, nil
+	default:
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+	}
+
 }
