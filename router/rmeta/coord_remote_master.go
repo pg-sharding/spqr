@@ -68,7 +68,7 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clau
 	masterCoordinator, close, err := getMasterCoordinator(ctx, localMngr)
 	defer func() {
 		if err := close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close master coordiantor connection (case 0)")
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close master coordinator connection (case 0)")
 		}
 	}()
 	if err != nil {
@@ -135,7 +135,7 @@ func AlterDistributionAttach(ctx context.Context, localMngr meta.EntityMgr, clau
 	masterCoordinator, close, err := getMasterCoordinator(ctx, localMngr)
 	defer func() {
 		if err := close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close master coordiantor connection (case 1)")
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close master coordinator connection (case 1)")
 		}
 	}()
 	if err != nil {
