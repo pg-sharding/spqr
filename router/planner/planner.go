@@ -21,35 +21,26 @@ import (
 	"github.com/pg-sharding/spqr/router/virtual"
 )
 
-func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *lyx.CreateTable) (plan.Plan, error) {
-	if val := rm.SPH.AutoDistribution(); val != "" {
+func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext,
+	createTableNode *lyx.CreateTable) (plan.Plan, error) {
+	if distributionId := rm.SPH.AutoDistribution(); distributionId != "" {
 
-		switch q := v.TableRv.(type) {
+		switch clauseNode := createTableNode.TableRv.(type) {
 		case *lyx.RangeVar:
 
 			/* pre-attach relation to its distribution
 			 * sic! this is not transactional nor abortable
 			 */
-			spqrlog.Zero.Debug().Str("relation", q.RelationName).Str("distribution", val).Msg("attaching relation")
+			spqrlog.Zero.Debug().Str("relation", clauseNode.RelationName).Str("distribution", distributionId).Msg("attaching relation")
 
-			if val == distributions.REPLICATED {
-				err := rmeta.CreateReferenceRelation(ctx, rm.Mgr, q)
+			if distributionId == distributions.REPLICATED {
+				err := rmeta.CreateReferenceRelation(ctx, rm.Mgr, clauseNode)
 				if err != nil {
 					return nil, err
 				}
 			} else {
-				if err := rm.Mgr.AlterDistributionAttach(ctx, val, []*distributions.DistributedRelation{
-					{
-						Name:               q.RelationName,
-						ReplicatedRelation: val == distributions.REPLICATED,
-						DistributionKey: []distributions.DistributionKeyEntry{
-							{
-								Column: rm.SPH.DistributionKey(),
-								/* support hash function here */
-							},
-						},
-					},
-				}); err != nil {
+				err := rmeta.AlterDistributionAttach(ctx, rm.Mgr, clauseNode, distributionId, rm.SPH.DistributionKey())
+				if err != nil {
 					return nil, err
 				}
 			}
@@ -59,7 +50,7 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 	/*
 	 * Disallow to create table which does not contain any sharding column
 	 */
-	if err := CheckTableIsRoutable(ctx, rm.Mgr, v); err != nil {
+	if err := CheckTableIsRoutable(ctx, rm.Mgr, createTableNode); err != nil {
 		return nil, err
 	}
 
