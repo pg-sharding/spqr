@@ -1497,16 +1497,6 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		return &plan.RandomDispatchPlan{}, false, nil
 	}
 
-	p, err := rm.ResolveRouteHint(ctx)
-
-	if err != nil {
-		return nil, false, err
-	}
-
-	if p != nil {
-		return p, false, nil
-	}
-
 	/*
 	* Currently, deparse only first query from multi-statement query msg (Enhance)
 	 */
@@ -1819,7 +1809,21 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 	}
 }
 
-func (qr *ProxyQrouter) PlanQueryExtended(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, bool, error) {
+func (qr *ProxyQrouter) PlanQueryExtended(
+	ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, bool, error) {
+
+	p, err := rm.ResolveRouteHint(ctx)
+
+	if err != nil {
+		return nil, false, err
+	}
+
+	if p != nil {
+		return p, false, nil
+	}
+
 	utilityPlan, err := planner.PlanUtility(ctx, rm, stmt)
 
 	if err != nil {
@@ -1829,7 +1833,6 @@ func (qr *ProxyQrouter) PlanQueryExtended(ctx context.Context, rm *rmeta.Routing
 		return utilityPlan, false, nil
 	}
 
-	var p plan.Plan
 	var ro bool
 	if sph.PreferredEngine() == planner.EnhancedEngineVersion {
 		p, err = planner.PlanDistributedQuery(ctx, rm, stmt, true)
@@ -1876,6 +1879,9 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, query string, stmt lyx.No
 	rm := rmeta.NewRoutingMetadataContext(sph, query, qr.csm, qr.mgr)
 
 	p, ro, err := qr.PlanQueryExtended(ctx, rm, stmt, sph)
+	if err != nil {
+		return nil, err
+	}
 
 	/* do init plan logic */
 	np, err := qr.InitExecutionTargets(ctx, rm, stmt, p, ro, sph)
