@@ -2,7 +2,6 @@ package rmeta
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/pg-sharding/lyx/lyx"
@@ -16,21 +15,36 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-var ErrNoRemoteCoordinator = errors.New("remote master coordinator not found")
+// Returns master coordinator (Adapter to remote coordinator) with support of local coordinator.
+// Returns local coordinator in case router in nonclustered mode 
+//
+// Parameters:
+// - ctx: (context.Context): context
+// - localCoordinator (meta.EntityMgr): Current (local) coordinator
+//
+// Returns:
+// - masterMngr (meta.EntityMgr) master coordinator
+// - close (func() error) function for closing master coordinator connection.
+// - error: An error when fails.
+func getMasterCoordinator(ctx context.Context,
+	localCoordinator meta.EntityMgr) (masterMngr meta.EntityMgr, close func() error, err error) {
+	noNeedClose := func() error { return nil }
 
-func getMasterCoordinatorConn(ctx context.Context, localCoordinator meta.EntityMgr) (*grpc.ClientConn, error) {
 	coordAddr, err := localCoordinator.GetCoordinator(ctx)
 	if err != nil {
-		return nil, err
+		return nil, noNeedClose, err
 	}
 	if coordAddr == "" {
-		return nil, ErrNoRemoteCoordinator
+		return localCoordinator, noNeedClose, nil
 	}
-	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	masterCoordinatorConn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, err
+		return nil, noNeedClose, err
 	}
-	return conn, nil
+	masterCoordinator := coord.NewAdapter(masterCoordinatorConn)
+	return masterCoordinator, func() error {
+		return masterCoordinatorConn.Close()
+	}, nil
 }
 
 // Create reference relation on master coordinator. Be careful, it's a network-based operation.
@@ -51,26 +65,20 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clau
 	for _, sh := range shs {
 		shardIds = append(shardIds, sh.ID)
 	}
+	masterCoordinator, close, err := getMasterCoordinator(ctx, localMngr)
+	defer func() {
+		if err := close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close master ccordiantor connection")
+		}
+	}()
+	if err != nil {
+		return err
+	}
 	newReferenceRelation := &rrelation.ReferenceRelation{
 		TableName:     clauseNode.RelationName,
 		SchemaVersion: 1,
 		ShardIds:      shardIds,
 	}
-	masterCoordinatorConn, err := getMasterCoordinatorConn(ctx, localMngr)
-	if err != nil {
-		if errors.Is(err, ErrNoRemoteCoordinator) {
-			return localMngr.CreateReferenceRelation(ctx, newReferenceRelation, nil)
-		} else {
-			return fmt.Errorf("can't get master coordinator: %s", err.Error())
-		}
-	}
-	defer func() {
-		if err := masterCoordinatorConn.Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-		}
-	}()
-
-	masterCoordinator := coord.NewAdapter(masterCoordinatorConn)
 	err = masterCoordinator.CreateReferenceRelation(ctx, newReferenceRelation, nil)
 	if err != nil {
 		return err
@@ -78,8 +86,8 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clau
 	return nil
 }
 
-func innerAlterDistributionAttach(ctx context.Context, mngr meta.EntityMgr,
-	distributionId string, rels []*distributions.DistributedRelation) error {
+func innerAlterDistributionAttach(ctx context.Context, mngr meta.EntityMgr, clauseNode *lyx.RangeVar,
+	distributionId string, distributionKey string) error {
 	distribution, err := mngr.GetDistribution(ctx, distributionId)
 	if err != nil {
 		return err
@@ -92,7 +100,19 @@ func innerAlterDistributionAttach(ctx context.Context, mngr meta.EntityMgr,
 		distribution.ColTypes[0] != qdb.ColumnTypeUUID {
 		return fmt.Errorf("automatic attach isn't supported for column key %s", distribution.ColTypes[0])
 	}
-	err = mngr.AlterDistributionAttach(ctx, distributionId, rels)
+	attachRelation := []*distributions.DistributedRelation{
+		{
+			Name:               clauseNode.RelationName,
+			ReplicatedRelation: false,
+			DistributionKey: []distributions.DistributionKeyEntry{
+				{
+					Column: distributionKey,
+					/* support hash function here */
+				},
+			},
+		},
+	}
+	err = mngr.AlterDistributionAttach(ctx, distributionId, attachRelation)
 	return err
 }
 
@@ -112,31 +132,15 @@ func AlterDistributionAttach(ctx context.Context, localMngr meta.EntityMgr, clau
 	if distributionId == distributions.REPLICATED {
 		return fmt.Errorf("can't attach distributed relation to REPLICATED distribution")
 	}
-	attachRelation := []*distributions.DistributedRelation{
-		{
-			Name:               clauseNode.RelationName,
-			ReplicatedRelation: false,
-			DistributionKey: []distributions.DistributionKeyEntry{
-				{
-					Column: distributionKey,
-					/* support hash function here */
-				},
-			},
-		},
-	}
-	masterCoordinatorConn, err := getMasterCoordinatorConn(ctx, localMngr)
-	if err != nil {
-		if errors.Is(err, ErrNoRemoteCoordinator) {
-			return innerAlterDistributionAttach(ctx, localMngr, distributionId, attachRelation)
-		} else {
-			return fmt.Errorf("can't get master coordinator: %s", err.Error())
-		}
-	}
+	masterCoordinator, close, err := getMasterCoordinator(ctx, localMngr)
 	defer func() {
-		if err := masterCoordinatorConn.Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+		if err := close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close master ccordiantor connection")
 		}
 	}()
-	return innerAlterDistributionAttach(ctx, coord.NewAdapter(masterCoordinatorConn),
-		distributionId, attachRelation)
+	if err != nil {
+		return err
+	}
+	return innerAlterDistributionAttach(ctx, masterCoordinator, clauseNode,
+		distributionId, distributionKey)
 }

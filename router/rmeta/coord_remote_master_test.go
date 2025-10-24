@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/qdb"
@@ -52,58 +53,41 @@ func TestAlterDistributionAttach(t *testing.T) {
 	ctx := context.Background()
 	is := assert.New(t)
 	for _, testData := range []struct {
-		dsId string
-		rel  []*distributions.DistributedRelation
-		err  error
+		dsId      string
+		rel       lyx.RangeVar
+		keyColumn string
+		err       error
 	}{
 		{
-			dsId: "ds_hashed",
-			rel: []*distributions.DistributedRelation{
-				{
-					Name: "rel",
-					DistributionKey: []distributions.DistributionKeyEntry{
-						{Column: "col1", HashFunction: "ident"},
-					},
-				},
-			},
-			err: fmt.Errorf("automatic attach isn't supported for column key uinteger"),
+			dsId:      "ds_hashed",
+			rel:       lyx.RangeVar{RelationName: "rel"},
+			keyColumn: "col1",
+			err:       fmt.Errorf("automatic attach isn't supported for column key uinteger"),
 		},
 		{
-			dsId: "ds1",
-			rel: []*distributions.DistributedRelation{
-				{
-					Name: "rel",
-					DistributionKey: []distributions.DistributionKeyEntry{
-						{Column: "col1"},
-					},
-				},
-			},
-			err: nil,
+			dsId:      "ds1",
+			rel:       lyx.RangeVar{RelationName: "rel"},
+			keyColumn: "col1",
+			err:       nil,
 		},
 		{
-			dsId: "ds_2keys",
-			rel: []*distributions.DistributedRelation{
-				{
-					Name: "rel",
-					DistributionKey: []distributions.DistributionKeyEntry{
-						{Column: "col1"},
-					},
-				},
-			},
-			err: fmt.Errorf("automatic attach is supported only for distribution with one column key"),
+			dsId:      "ds_2keys",
+			rel:       lyx.RangeVar{RelationName: "rel"},
+			keyColumn: "col1",
+			err:       fmt.Errorf("automatic attach is supported only for distribution with one column key"),
 		},
 	} {
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
 		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil)
-		err = innerAlterDistributionAttach(ctx, mngr, testData.dsId, testData.rel)
+		err = innerAlterDistributionAttach(ctx, mngr, &testData.rel, testData.dsId, testData.keyColumn)
 		if testData.err != nil {
 			is.EqualError(err, testData.err.Error())
 		} else {
 			is.NoError(err)
 			distr, err := mngr.GetDistribution(ctx, testData.dsId)
 			is.NoError(err)
-			_, ok := distr.Relations[testData.rel[0].Name]
+			_, ok := distr.Relations[testData.rel.RelationName]
 			is.True(ok)
 		}
 	}
