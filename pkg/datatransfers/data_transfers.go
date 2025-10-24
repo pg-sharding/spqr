@@ -195,7 +195,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				return fmt.Errorf("could not delete data: error deferring constraints: %s", err)
 			}
 			if config.CoordinatorConfig().DataMoveDisableTriggers {
-				if _, err := tx.Exec(ctx, "SET session_replication_role = replica"); err != nil {
+				if _, err := ftx.Exec(ctx, "SET session_replication_role = replica"); err != nil {
 					return fmt.Errorf("failed to disable triggers: %s", err)
 				}
 			}
