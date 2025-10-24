@@ -29,7 +29,8 @@ type MemQDB struct {
 	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
 	Coordinator          string                              `json:"coordinator"`
 	MoveTaskGroup        *MoveTaskGroup                      `json:"taskGroup"`
-	MoveTasks            map[string]*MoveTask                `json:"moveTasks"`
+	MoveTask             *MoveTask                           `json:"move_task"`
+	TotalKeys            int64                               `json:"total_keys"`
 	RedistributeTask     *RedistributeTask                   `json:"redistribute_ask"`
 	BalancerTask         *BalancerTask                       `json:"balancer_task"`
 	ReferenceRelations   map[string]*ReferenceRelation       `json:"reference_relations"`
@@ -943,24 +944,16 @@ func (q *MemQDB) GetMoveTaskGroup(_ context.Context) (*MoveTaskGroup, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	if q.MoveTaskGroup == nil {
-		return &MoveTaskGroup{
-			TaskIDs: []string{},
-		}, nil
-	}
 	return q.MoveTaskGroup, nil
 }
 
 // TODO: unit tests
-func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, group *MoveTaskGroup, tasks []*MoveTask) error {
+func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, group *MoveTaskGroup, totalKeys int64, moveTask *MoveTask) error {
 	spqrlog.Zero.Debug().Msg("memqdb: write task group")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	q.MoveTaskGroup = group
-	for _, task := range tasks {
-		q.MoveTasks[task.ID] = task
-	}
 	return nil
 }
 
@@ -974,36 +967,43 @@ func (q *MemQDB) RemoveMoveTaskGroup(_ context.Context) error {
 	return nil
 }
 
-// TODO: unit tests
-func (q *MemQDB) UpdateMoveTaskGroupSetCurrentTask(ctx context.Context, taskIndex int) error {
-	spqrlog.Zero.Debug().Msg("memqdb: update move task group: set current task index")
+func (q *MemQDB) GetMoveTaskGroupTotalKeys(_ context.Context) (int64, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get task group total keys")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.TotalKeys, nil
+}
+
+func (q *MemQDB) UpdateMoveTaskGroupTotalKeys(_ context.Context, totalKeys int64) error {
+	spqrlog.Zero.Debug().Msg("memqdb: get task group total keys")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.MoveTaskGroup.CurrentTaskInd = taskIndex
+	q.TotalKeys = totalKeys
 	return nil
 }
 
 // TODO: unit tests
-func (q *MemQDB) GetCurrentMoveTaskIndex(ctx context.Context) (int, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: get current move task index")
+func (q *MemQDB) GetMoveTask(ctx context.Context) (*MoveTask, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get move task")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.MoveTaskGroup.CurrentTaskInd, nil
+	return q.MoveTask, nil
 }
 
 // TODO: unit tests
-func (q *MemQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error) {
-	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: get move task")
-	q.mu.RLock()
-	defer q.mu.RUnlock()
+func (q *MemQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: write move task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	task, ok := q.MoveTasks[id]
-	if !ok {
-		return nil, fmt.Errorf("move task \"%s\" not found in QDB", id)
+	if q.MoveTask != nil {
+		return fmt.Errorf("failed to write move task: another task already exists")
 	}
-	return task, nil
+	q.MoveTask = task
+	return nil
 }
 
 // TODO: unit tests
@@ -1012,25 +1012,21 @@ func (q *MemQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if _, ok := q.MoveTasks[task.ID]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "move task \"%s\" not found", task.ID)
+	if q.MoveTask == nil || q.MoveTask.ID != task.ID {
+		return fmt.Errorf("failed to update move task: IDs differ")
 	}
 
-	q.MoveTasks[task.ID] = task
+	q.MoveTask = task
 	return nil
 }
 
 // TODO: unit tests
-func (q *MemQDB) RemoveMoveTask(ctx context.Context, id string) error {
-	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: remove move task")
-	q.mu.RLock()
-	defer q.mu.RUnlock()
+func (q *MemQDB) RemoveMoveTask(ctx context.Context) error {
+	spqrlog.Zero.Debug().Msg("memqdb: remove move task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	_, ok := q.MoveTasks[id]
-	if !ok {
-		return fmt.Errorf("move task \"%s\" not found in QDB", id)
-	}
-	delete(q.MoveTasks, id)
+	q.MoveTask = nil
 	return nil
 }
 

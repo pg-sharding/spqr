@@ -61,10 +61,8 @@ const (
 	shardsNamespace                = "/shards/"
 	relationMappingNamespace       = "/relation_mappings/"
 	taskGroupPath                  = "/move_task_group"
-	moveTaskIDsNamespace           = "/move_task_ids/"
-	moveTasksNamespace             = "/move_tasks/"
-	currentTaskIndexPath           = "/current_task_index"
-	moveTasksCountPath             = "/total_move_tasks"
+	moveTaskIDPath                 = "/move_task_id"
+	moveTaskPath                   = "/move_task"
 	redistributeTaskPath           = "/redistribute_task/"
 	balancerTaskPath               = "/balancer_task/"
 	transactionNamespace           = "/transfer_txs/"
@@ -72,6 +70,7 @@ const (
 	referenceRelationsNamespace    = "/reference_relations"
 	columnSequenceMappingNamespace = "/column_sequence_mappings/"
 	lockNamespace                  = "/lock"
+	totalKeysPath                  = "/total_keys"
 
 	CoordKeepAliveTtl = 3
 	coordLockKey      = "coordinator_exists"
@@ -123,14 +122,6 @@ func relationSequenceMappingNodePath(relName string) string {
 }
 func columnSequenceMappingNodePath(relName, colName string) string {
 	return path.Join(relationSequenceMappingNodePath(relName), colName)
-}
-
-func moveTaskNodePath(id string) string {
-	return path.Join(moveTasksNamespace, id)
-}
-
-func moveTaskIdNodePath(idx int) string {
-	return path.Join(moveTaskIDsNamespace, strconv.Itoa(idx))
 }
 
 func (q *EtcdQDB) Client() *clientv3.Client {
@@ -1482,46 +1473,17 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 
 	t := time.Now()
 
-	resp, err := q.cli.Get(ctx, taskGroupPath)
+	resp, err := q.cli.Get(ctx, taskGroupPath, clientv3.WithFirstKey()...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task group: %s", err)
 	}
 
 	if len(resp.Kvs) == 0 {
-		return &MoveTaskGroup{
-			TaskIDs: []string{},
-		}, nil
+		return nil, nil
 	}
-
 	var taskGroup *MoveTaskGroup
 	if err := json.Unmarshal(resp.Kvs[0].Value, &taskGroup); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal task group: %s", err)
-	}
-
-	resp, err = q.cli.Get(ctx, moveTaskIDsNamespace, clientv3.WithPrefix())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get task IDs: %s", err)
-	}
-	taskIDs := make([]string, len(resp.Kvs))
-	for _, kv := range resp.Kvs {
-		idx, err := strconv.Atoi(string(kv.Key)[len(moveTaskIDsNamespace):])
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse move task ID index \"%s\"", string(kv.Key))
-		}
-		if idx < 0 || idx >= len(taskIDs) {
-			return nil, fmt.Errorf("incorrect task ID index %d, task ID \"%s\"", idx, string(kv.Value))
-		}
-		taskIDs[idx] = string(kv.Value)
-	}
-	taskGroup.TaskIDs = taskIDs
-
-	resp, err = q.cli.Get(ctx, currentTaskIndexPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get current task idx: %s", err)
-	}
-	taskGroup.CurrentTaskInd, err = strconv.Atoi(string(resp.Kvs[0].Value))
-	if err != nil {
-		return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "failed to convert current task index to integer: %s", resp.Kvs[0].Value)
 	}
 
 	statistics.RecordQDBOperation("GetMoveTaskGroup", time.Since(t))
@@ -1529,7 +1491,7 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, tasks []*MoveTask) error {
+func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, totalKeys int64, task *MoveTask) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: write task group")
 
@@ -1542,19 +1504,15 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, 
 
 	ops := []clientv3.Op{
 		clientv3.OpPut(taskGroupPath, string(groupJson)),
-		clientv3.OpPut(moveTasksCountPath, fmt.Sprintf("%d", len(group.TaskIDs))),
-		clientv3.OpPut(currentTaskIndexPath, fmt.Sprintf("%d", group.CurrentTaskInd)),
+		clientv3.OpPut(totalKeysPath, fmt.Sprintf("%d", totalKeys)),
 	}
-	for i, id := range group.TaskIDs {
-		ops = append(ops, clientv3.OpPut(moveTaskIdNodePath(i), id))
-	}
-	for _, task := range tasks {
+	if task != nil {
 		taskJson, err := json.Marshal(task)
 		if err != nil {
 			return err
 		}
 
-		ops = append(ops, clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson)))
+		ops = append(ops, clientv3.OpPut(moveTaskPath, string(taskJson)), clientv3.OpPut(moveTaskIDPath, task.ID))
 	}
 	txResp, err := q.cli.Txn(ctx).If(clientv3.Compare(clientv3.Version(taskGroupPath), "=", 0)).Then(ops...).Commit()
 	if err != nil {
@@ -1568,22 +1526,25 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, 
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) UpdateMoveTaskGroupSetCurrentTask(ctx context.Context, taskIndex int) error {
-	_, err := q.cli.Put(ctx, currentTaskIndexPath, fmt.Sprintf("%d", taskIndex))
-	return err
-}
-
-// TODO: unit tests
-func (q *EtcdQDB) GetCurrentMoveTaskIndex(ctx context.Context) (int, error) {
-	resp, err := q.cli.Get(ctx, currentTaskIndexPath)
+func (q *EtcdQDB) GetMoveTaskGroupTotalKeys(ctx context.Context) (int64, error) {
+	resp, err := q.cli.Get(ctx, totalKeysPath)
 	if err != nil {
 		return -1, err
 	}
-	res, err := strconv.Atoi(string(resp.Kvs[0].Value))
+	if resp.Count == 0 {
+		return 0, nil
+	}
+	res, err := strconv.ParseInt(string(resp.Kvs[0].Value), 10, 64)
 	if err != nil {
 		return -1, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "failed to convert current task index to integer: %s", resp.Kvs[0].Value)
 	}
 	return res, nil
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) UpdateMoveTaskGroupTotalKeys(ctx context.Context, totalKeys int64) error {
+	_, err := q.cli.Put(ctx, totalKeysPath, strconv.FormatInt(totalKeys, 10))
+	return err
 }
 
 // TODO: unit tests
@@ -1592,51 +1553,72 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 		Msg("etcdqdb: remove task group")
 	t := time.Now()
 
-	if _, err := q.cli.Delete(ctx, currentTaskIndexPath); err != nil {
-		return fmt.Errorf("failed to delete current task index: %s", err)
-	}
-	if _, err := q.cli.Delete(ctx, moveTasksCountPath); err != nil {
-		return fmt.Errorf("failed to delete move tasks count: %s", err)
-	}
-	if _, err := q.cli.Delete(ctx, moveTaskIDsNamespace, clientv3.WithPrefix()); err != nil {
-		return fmt.Errorf("failed to delete move task ids: %s", err)
-	}
-	if _, err := q.cli.Delete(ctx, taskGroupPath); err != nil {
-		return fmt.Errorf("failed to delete move task group: %s", err)
+	if _, err := q.cli.Txn(ctx).Then(
+		clientv3.OpDelete(taskGroupPath),
+		clientv3.OpDelete(moveTaskPath),
+		clientv3.OpDelete(totalKeysPath),
+	).Commit(); err != nil {
+		return fmt.Errorf("failed to delete move task group metadata: %s", err)
 	}
 
 	statistics.RecordQDBOperation("RemoveMoveTaskGroup", time.Since(t))
 	return nil
 }
 
-func (q *EtcdQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
+func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
 	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: write move task")
-
-	res, err := q.cli.Get(ctx, moveTaskNodePath(task.ID), clientv3.WithCountOnly())
-	if err != nil {
-		return err
-	}
-	if res.Count == 0 {
-		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "move task \"%s\" not found", task.ID)
-	}
 
 	taskJson, err := json.Marshal(task)
 	if err != nil {
 		return err
 	}
+	resp, err := q.cli.Txn(ctx).
+		If(clientv3.Compare(clientv3.Version(moveTaskPath), "=", 0)).
+		Then(clientv3.OpPut(moveTaskPath, string(taskJson)),
+			clientv3.OpPut(moveTaskIDPath, task.ID)).
+		Commit()
 
-	_, err = q.cli.Put(ctx, moveTaskNodePath(task.ID), string(taskJson))
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to write move task: %s", err)
+	}
+	if !resp.Succeeded {
+		return fmt.Errorf("failed to write move task: another task already exists")
+	}
+	return nil
 }
 
-func (q *EtcdQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error) {
-	spqrlog.Zero.Debug().Str("id", id).Msg("etcdqdb: get move task")
+func (q *EtcdQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: write move task")
 
-	resp, err := q.cli.Get(ctx, moveTaskNodePath(id))
+	taskJson, err := json.Marshal(task)
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Txn(ctx).
+		If(clientv3.Compare(clientv3.Value(moveTaskIDPath), "=", task.ID)).
+		Then(clientv3.OpPut(moveTaskPath, string(taskJson))).
+		Commit()
+
+	if err != nil {
+		return fmt.Errorf("failed to update move task: %s", err)
+	}
+	if !resp.Succeeded {
+		return fmt.Errorf("failed to update move task: IDs differ")
+	}
+	return nil
+}
+
+func (q *EtcdQDB) GetMoveTask(ctx context.Context) (*MoveTask, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: get move task")
+
+	resp, err := q.cli.Get(ctx, moveTaskPath)
 	if err != nil {
 		return nil, err
 	}
 	var task *MoveTask
+	if len(resp.Kvs) == 0 {
+		return nil, nil
+	}
 	if err := json.Unmarshal(resp.Kvs[0].Value, &task); err != nil {
 		return nil, err
 	}
@@ -1644,10 +1626,10 @@ func (q *EtcdQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error)
 	return task, nil
 }
 
-func (q *EtcdQDB) RemoveMoveTask(ctx context.Context, id string) error {
-	spqrlog.Zero.Debug().Str("id", id).Msg("etcdqdb: remove move task")
+func (q *EtcdQDB) RemoveMoveTask(ctx context.Context) error {
+	spqrlog.Zero.Debug().Msg("etcdqdb: remove move task")
 
-	_, err := q.cli.Delete(ctx, moveTaskNodePath(id))
+	_, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(moveTaskPath), clientv3.OpDelete(moveTaskIDPath)).Commit()
 	return err
 }
 

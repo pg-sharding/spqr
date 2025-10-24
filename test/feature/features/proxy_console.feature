@@ -256,22 +256,21 @@ Feature: Proxy console
         When I record in qdb move task group
         """
         {
-            "tasks":
-            [
-                {
-                "id":            "1",
-                "bound":         ["AgAAAAAAAAA="],
-                "state":         1
-                },
-                {
-                "id":            "2",
-                "bound":         ["FAAAAAAAAAA="],
-                "state":         0
-                }
-            ],
             "shard_to_id":   "sh_to",
             "kr_id_from":    "kr_from",
-            "kr_id_to":      "kr_to"
+            "kr_id_to":      "kr_to",
+            "type":          1,
+            "limit":         -1,
+            "coeff":         0.75,
+            "bound_rel":     "test",
+            "total_keys":    200,
+            "task":
+            {
+                "id":            "2",
+                "kr_id_temp":    "temp_id",
+                "bound":         ["FAAAAAAAAAA="],
+                "state":         0
+            }
         }
         """
         Then command return code should be "0"
@@ -282,18 +281,23 @@ Feature: Proxy console
         Then command return code should be "0"
         And SQL result should match json_exactly
         """
-        [
-            {
-                "State":                    "SPLIT",
-                "Bound":                    "1",
-                "Source key range ID":      "kr_from",
-                "Destination key range ID": "kr_to"
-            },
-            {
-                "State":                    "PLANNED",
-                "Bound":                    "10",
-                "Source key range ID":      "kr_from",
-                "Destination key range ID": "kr_to"
-            }
-        ]
+        [{
+            "Destination shard ID":     "sh_to",
+            "Source key range ID":      "kr_from",
+            "Destination key range ID": "kr_to"
+        }]
+        """
+        When I run SQL on host "router-admin"
+        """
+        SHOW move_task
+        """
+        Then command return code should be "0"
+        And SQL result should match json_exactly
+        """
+        [{
+            "Move task ID":             "2",
+            "State":                    "PLANNED",
+            "Bound":                    "10",
+            "Temporary key range ID":   "temp_id"
+        }]
         """

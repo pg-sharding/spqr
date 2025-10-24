@@ -656,22 +656,14 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}
 		return cli.CompleteMsg(0)
 	case *spqrparser.RetryMoveTaskGroup:
+		if err := mgr.RetryMoveTaskGroup(ctx); err != nil {
+			return err
+		}
 		taskGroup, err := mgr.GetMoveTaskGroup(ctx)
 		if err != nil {
 			return err
 		}
-		colTypes := make([]string, 0)
-		if len(taskGroup.Tasks) > 0 {
-			kRange, err := mgr.GetKeyRange(ctx, taskGroup.KrIdFrom)
-			if err != nil {
-				return err
-			}
-			colTypes = kRange.ColumnTypes
-		}
-		if err = mgr.RetryMoveTaskGroup(ctx); err != nil {
-			return err
-		}
-		return cli.MoveTaskGroup(ctx, taskGroup, colTypes)
+		return cli.MoveTaskGroup(ctx, taskGroup)
 	case *spqrparser.SyncReferenceTables:
 		/* TODO: fix RelationSelector logic */
 		if err := mgr.SyncReferenceRelations(ctx, []*rfqn.RelationFQN{
@@ -890,16 +882,28 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
-		colTypes := make([]string, 0)
-		if len(group.Tasks) > 0 {
-			kRange, err := mngr.GetKeyRange(ctx, group.KrIdFrom)
-			if err != nil {
-				return err
-			}
-			colTypes = kRange.ColumnTypes
+		return cli.MoveTaskGroup(ctx, group)
+	case spqrparser.MoveTaskStr:
+		group, err := mngr.GetMoveTaskGroup(ctx)
+		if err != nil {
+			return err
 		}
-
-		return cli.MoveTaskGroup(ctx, group, colTypes)
+		if group == nil || group.CurrentTask == nil {
+			return cli.CompleteMsg(0)
+		}
+		task := group.CurrentTask
+		// Try to get either source or destination key range, as both may not exist in various stages of task group execution
+		keyRange, err := mngr.GetKeyRange(ctx, group.KrIdFrom)
+		if err != nil {
+			if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
+				var err2 error
+				keyRange, err2 = mngr.GetKeyRange(ctx, group.KrIdTo)
+				if err2 != nil {
+					return fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", group.KrIdFrom, err, group.KrIdTo, err2)
+				}
+			}
+		}
+		return cli.MoveTask(ctx, task, keyRange.ColumnTypes)
 	case spqrparser.PreparedStatementsStr:
 
 		var resp []shard.PreparedStatementsMgrDescriptor

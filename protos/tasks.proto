@@ -31,11 +31,16 @@ enum SplitType {
 }
 
 message MoveTaskGroup {
-  repeated MoveTask tasks = 1;
   SplitType type = 2;
   string shardIdTo = 4;
   string keyRangeIdFrom = 5;
   string keyRangeIdTo = 6;
+  MoveTask currentTask = 7;
+  string boundRel = 8;
+  double coeff = 9;
+  int64 batchSize = 10;
+  int64 limit = 11;
+  int64 totalKeys = 12;
 }
 
 message GetMoveTaskGroupReply {

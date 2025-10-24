@@ -467,7 +467,6 @@ rulemgr
 rulerouter
 runc
 RUnlock
-samborkent
 samehost
 samenet
 samerole

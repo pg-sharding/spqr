@@ -5,8 +5,6 @@ package spqr;
 
 option go_package = "spqr/proto";
 
-import "google/protobuf/empty.proto";
-
 message QualifiedName {
   string relationName = 1;
   string schema_name = 2;

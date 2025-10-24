@@ -564,25 +564,22 @@ Feature: Move recover test
     When I record in qdb move task group
     """
     {
-        "tasks":
-        [
-            {
-              "id":            "1",
-              "bound":         ["FAAAAAAAAAA="],
-              "state":         0,
-              "kr_id_temp":    "krid_temp1" 
-            },
-            {
-              "id":            "2",
-              "bound":         ["CgAAAAAAAAA="],
-              "state":         0,
-              "kr_id_temp":    "krid_temp2"
-            }
-        ],
         "shard_to_id":   "sh2",
         "kr_id_from":    "krid1",
         "kr_id_to":      "krid2",
-        "type":          1
+        "type":          1,
+        "limit":         10,
+        "coeff":         1,
+        "batch_size":    5,
+        "bound_rel":     "xMove",
+        "total_keys":    0,
+        "task":
+        {
+          "id":            "1",
+          "bound":         ["FAAAAAAAAAA="],
+          "state":         0,
+          "kr_id_temp":    "krid_temp1" 
+        }
     }
     """
     Then command return code should be "0"
@@ -593,20 +590,25 @@ Feature: Move recover test
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
-    [
-      {
+    [{
+        "Destination shard ID":     "sh2",
+        "Source key range ID":      "krid1",
+        "Destination key range ID": "krid2"
+    }]
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW move_task
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+        "Move task ID":             "1",
         "State":                    "PLANNED",
         "Bound":                    "10",
-        "Source key range ID":      "krid1",
-        "Destination key range ID": "krid2"
-      },
-      {
-        "State":                    "PLANNED",
-        "Bound":                    "5",
-        "Source key range ID":      "krid1",
-        "Destination key range ID": "krid2"
-      }
-    ]
+        "Temporary key range ID":   "krid_temp1"
+    }]
     """
     When I run SQL on host "shard1"
     """
