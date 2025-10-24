@@ -367,6 +367,16 @@ Feature: Coordinator test
     context deadline exceeded
     """
 
+    When I run SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid1NoExistS;
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    cant't lock non existent key range
+    """
+
+
   Scenario: Unite non-adjacent key ranges fails
     When I run SQL on host "coordinator"
     """

@@ -1115,6 +1115,9 @@ func (tctx *testContext) stepQDBShouldNotContainKRMoves() error {
 	if len(txs) == 0 {
 		return nil
 	}
+	for _, v := range txs {
+		log.Printf("txs '%#v'", v)
+	}
 	return fmt.Errorf("key range moves present")
 }
 
