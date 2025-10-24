@@ -666,6 +666,9 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		return cli.MoveTaskGroup(ctx, taskGroup)
 	case *spqrparser.SyncReferenceTables:
 		/* TODO: fix RelationSelector logic */
+		if stmt.RelationSelector == "*" {
+			return fmt.Errorf("SYNC REFERENCE TABLES/RELATIONS currently unsupported")
+		}
 		if err := mgr.SyncReferenceRelations(ctx, []*rfqn.RelationFQN{
 			{RelationName: stmt.RelationSelector},
 		}, stmt.ShardID); err != nil {
