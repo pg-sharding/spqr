@@ -1769,25 +1769,6 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 			return v, nil
 		}
 
-		if sph.EnhancedMultiShardProcessing() {
-			var err error
-			if v.SubPlan == nil {
-				switch stmt.(type) {
-				case *lyx.Select:
-				default:
-					/* XXX: very dirty hack */
-					v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, stmt, true)
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
-			if v.ExecTargets == nil {
-				v.ExecTargets = qr.DataShardsRoutes()
-			}
-			return v, nil
-		}
-
 		/*
 		* Here we have a chance for advanced multi-shard query processing.
 		* Try to build distributed plan, else scatter-out.
@@ -1845,6 +1826,28 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 
 		if err != nil {
 			return nil, false, err
+		}
+
+		switch v := p.(type) {
+		case *plan.ScatterPlan:
+			if sph.EnhancedMultiShardProcessing() {
+				var err error
+				if v.SubPlan == nil {
+					switch stmt.(type) {
+					case *lyx.Select:
+					default:
+						/* XXX: very dirty hack */
+						v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, stmt, true)
+						if err != nil {
+							return nil, false, err
+						}
+					}
+				}
+				if v.ExecTargets == nil {
+					v.ExecTargets = qr.DataShardsRoutes()
+				}
+				return v, ro, nil
+			}
 		}
 	}
 	return p, ro, nil
