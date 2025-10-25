@@ -1187,6 +1187,18 @@ func (mr *MockRouterClientMockRecorder) SetTsa(level, value any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTsa", reflect.TypeOf((*MockRouterClient)(nil).SetTsa), level, value)
 }
 
+// SetUsr mocks base method.
+func (m *MockRouterClient) SetUsr(arg0 string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetUsr", arg0)
+}
+
+// SetUsr indicates an expected call of SetUsr.
+func (mr *MockRouterClientMockRecorder) SetUsr(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUsr", reflect.TypeOf((*MockRouterClient)(nil).SetUsr), arg0)
+}
+
 // ShardingKey mocks base method.
 func (m *MockRouterClient) ShardingKey() string {
 	m.ctrl.T.Helper()

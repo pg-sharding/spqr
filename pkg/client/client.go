@@ -56,7 +56,9 @@ type Client interface {
 	StartupMessage() *pgproto3.StartupMessage
 
 	Usr() string
+	/* XXX: also maybe ROLE support is meaningful? */
 	DB() string
+
 	Send(msg pgproto3.BackendMessage) error
 	Receive() (pgproto3.FrontendMessage, error)
 
