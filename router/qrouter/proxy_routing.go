@@ -566,7 +566,7 @@ func (qr *ProxyQrouter) analyzeFromNode(ctx context.Context, node lyx.FromClause
 		Msg("analyzing from node")
 	switch q := node.(type) {
 	case *lyx.RangeVar:
-		if err := qr.processRangeNode(ctx, meta, q); err != nil {
+		if err := planner.ProcessRangeNode(ctx, meta, q); err != nil {
 			return err
 		}
 
@@ -587,30 +587,6 @@ func (qr *ProxyQrouter) analyzeFromNode(ctx context.Context, node lyx.FromClause
 	return nil
 }
 
-func (qr *ProxyQrouter) processRangeNode(ctx context.Context, meta *rmeta.RoutingMetadataContext, q *lyx.RangeVar) error {
-	qualName := rfqn.RelationFQNFromRangeRangeVar(q)
-
-	// CTE, skip
-	if meta.RFQNIsCTE(qualName) {
-		/* remember cte alias */
-		meta.CTEAliases[q.Alias] = qualName.RelationName
-		return nil
-	}
-
-	if _, err := meta.GetRelationDistribution(ctx, qualName); err != nil {
-		return err
-	}
-
-	if _, ok := meta.Rels[*qualName]; !ok {
-		meta.Rels[*qualName] = struct{}{}
-	}
-	if q.Alias != "" {
-		/* remember table alias */
-		meta.TableAliases[q.Alias] = *rfqn.RelationFQNFromRangeRangeVar(q)
-	}
-	return nil
-}
-
 func (qr *ProxyQrouter) planFromNode(ctx context.Context, node lyx.FromClauseNode, meta *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 	spqrlog.Zero.Debug().
 		Type("node-type", node).
@@ -621,9 +597,7 @@ func (qr *ProxyQrouter) planFromNode(ctx context.Context, node lyx.FromClauseNod
 	switch q := node.(type) {
 	case *lyx.RangeVar:
 
-		if err := qr.processRangeNode(ctx, meta, q); err != nil {
-			return nil, err
-		}
+		/* XXX: nothing, everything checked during analyze stage */
 
 	case *lyx.JoinExpr:
 		if tmp, err := qr.planFromNode(ctx, q.Rarg, meta); err != nil {
@@ -829,7 +803,10 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 			return nil
 		}
 
-		return qr.AnalyzeQueryV1(ctx, clause, rm)
+		if stmt.Where != nil {
+			return qr.analyzeWhereClause(ctx, stmt.Where, rm)
+		}
+		return nil
 
 	case *lyx.Delete:
 
@@ -851,7 +828,10 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 			return nil
 		}
 
-		return qr.AnalyzeQueryV1(ctx, clause, rm)
+		if stmt.Where != nil {
+			return qr.analyzeWhereClause(ctx, stmt.Where, rm)
+		}
+		return nil
 	}
 	return nil
 }
@@ -1519,9 +1499,6 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 	/* TDB: comments? */
 	case *lyx.Insert:
-		if err := qr.AnalyzeQueryV1(ctx, stmt, rm); err != nil {
-			return nil, false, err
-		}
 
 		rs, err := qr.planQueryV1(ctx, stmt, rm)
 		if err != nil {
@@ -1532,12 +1509,6 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 		pl = plan.Combine(pl, rs)
 	case *lyx.Select:
-
-		err := qr.AnalyzeQueryV1(ctx, stmt, rm)
-		if err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to analyze select query")
-			return nil, false, err
-		}
 
 		/*
 		 *  Sometimes we have problems with some cases. For example, if a client
@@ -1579,9 +1550,6 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		pl = plan.Combine(pl, p)
 
 	case *lyx.Delete, *lyx.Update:
-		if err := qr.AnalyzeQueryV1(ctx, stmt, rm); err != nil {
-			return nil, false, err
-		}
 		// UPDATE and/or DELETE, COPY stmts, which
 		// would be routed with their WHERE clause
 		rs, err := qr.planQueryV1(ctx, stmt, rm)
@@ -1831,6 +1799,11 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	}
 	if utilityPlan != nil {
 		return utilityPlan, false, nil
+	}
+
+	if err := qr.AnalyzeQueryV1(ctx, stmt, rm); err != nil {
+		spqrlog.Zero.Debug().Err(err).Msg("failed to analyze query")
+		return nil, false, err
 	}
 
 	var ro bool
