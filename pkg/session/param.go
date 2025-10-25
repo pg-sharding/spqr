@@ -72,6 +72,19 @@ type SessionParamsHolder interface {
 
 	BindParamFormatCodes() []int16
 	SetParamFormatCodes([]int16)
+
+	Params() map[string]string
+	SetParam(name, value string)
+	StartTx()
+	ResetAll()
+	Rollback()
+	Savepoint(name string)
+	CleanupStatementSet()
+	ResetParam(name string)
+	RollbackToSP(name string)
+	CommitActiveSet()
+
+	SetStartupParams(map[string]string)
 }
 
 const (

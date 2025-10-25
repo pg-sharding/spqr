@@ -2,6 +2,7 @@ package session
 
 import (
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
@@ -10,6 +11,13 @@ type SimpleSessionParamHandler struct {
 	localTxParamSet   map[string]string
 	statementParamSet map[string]string
 	activeParamSet    map[string]string
+
+	startupParameters map[string]string
+
+	savepointParamSet  map[string]map[string]string
+	savepointTxCounter map[string]int
+
+	txCnt int
 
 	/* target-session-attrs */
 	defaultTsa            string
@@ -23,6 +31,16 @@ type SimpleSessionParamHandler struct {
 
 	showNoticeMessages bool
 	maintain_params    bool
+}
+
+func copymap(params map[string]string) map[string]string {
+	ret := make(map[string]string)
+
+	for k, v := range params {
+		ret[k] = v
+	}
+
+	return ret
 }
 
 func (cl *SimpleSessionParamHandler) resolveVirtualBoolParam(name string, defaultVal bool) bool {
@@ -251,12 +269,162 @@ func (cl *SimpleSessionParamHandler) ResetTsa() {
 	cl.SetTsa(VirtualParamLevelTxBlock, cl.defaultTsa)
 }
 
-func NewSimpleHandler(t string, show_notice bool, ds string) SessionParamsHolder {
+/* TX management */
+
+func (cl *SimpleSessionParamHandler) CommitActiveSet() {
+	cl.beginTxParamSet = nil
+	cl.savepointParamSet = nil
+	cl.savepointTxCounter = nil
+	cl.statementParamSet = map[string]string{}
+	cl.localTxParamSet = map[string]string{}
+
+	cl.txCnt = 0
+}
+
+func (cl *SimpleSessionParamHandler) Params() map[string]string {
+	return cl.activeParamSet
+}
+
+func (cl *SimpleSessionParamHandler) SetParam(name, value string) {
+	spqrlog.Zero.Debug().
+		Str("name", name).
+		Str("value", value).
+		Msg("client param")
+	if name == "options" {
+		i := 0
+		j := 0
+		for i < len(value) {
+			if value[i] == ' ' {
+				i++
+				continue
+			}
+			if value[i] == '-' {
+				if i+2 == len(value) || value[i+1] != 'c' {
+					// bad
+					return
+				}
+			}
+			i += 3
+			j = i
+
+			opname := ""
+			opvalue := ""
+
+			for j < len(value) {
+				if value[j] == '=' {
+					j++
+					break
+				}
+				opname += string(value[j])
+				j++
+			}
+
+			for j < len(value) {
+				if value[j] == ' ' {
+					break
+				}
+				opvalue += string(value[j])
+				j++
+			}
+
+			if len(opname) == 0 || len(opvalue) == 0 {
+				// bad
+				return
+			}
+			i = j + 1
+
+			spqrlog.Zero.Debug().
+				Str("opname", opname).
+				Str("opvalue", opvalue).
+				Msg("parsed pgoption param")
+			cl.activeParamSet[opname] = opvalue
+		}
+
+	} else {
+		cl.activeParamSet[name] = value
+	}
+}
+
+func (cl *SimpleSessionParamHandler) ResetAll() {
+	cl.activeParamSet = cl.startupParameters
+	cl.statementParamSet = map[string]string{}
+	cl.localTxParamSet = map[string]string{}
+}
+
+func (cl *SimpleSessionParamHandler) RollbackToSP(name string) {
+	cl.activeParamSet = cl.savepointParamSet[name]
+	targetTxCnt := cl.savepointTxCounter[name]
+	for k := range cl.savepointParamSet {
+		if cl.savepointTxCounter[k] > targetTxCnt {
+			delete(cl.savepointTxCounter, k)
+			delete(cl.savepointParamSet, k)
+		}
+	}
+	/* XXX: not exactly correct with roolback to SP */
+	cl.statementParamSet = map[string]string{}
+	/* XXX: not exactly correct with roolback to SP */
+	cl.localTxParamSet = map[string]string{}
+
+	cl.txCnt = targetTxCnt + 1
+}
+
+func (cl *SimpleSessionParamHandler) ResetParam(name string) {
+	if val, ok := cl.startupParameters[name]; ok {
+		cl.activeParamSet[name] = val
+	} else {
+		delete(cl.activeParamSet, name)
+	}
+	spqrlog.Zero.Debug().
+		Interface("activeParamSet", cl.activeParamSet).
+		Msg("activeParamSet are now")
+}
+
+func (cl *SimpleSessionParamHandler) StartTx() {
+	cl.beginTxParamSet = copymap(cl.activeParamSet)
+	cl.savepointParamSet = nil
+	cl.savepointTxCounter = nil
+	cl.statementParamSet = map[string]string{}
+	cl.localTxParamSet = map[string]string{}
+	cl.txCnt = 0
+}
+
+func (cl *SimpleSessionParamHandler) CleanupStatementSet() {
+	cl.statementParamSet = map[string]string{}
+}
+
+func (cl *SimpleSessionParamHandler) Savepoint(name string) {
+	cl.savepointParamSet[name] = copymap(cl.activeParamSet)
+	cl.savepointTxCounter[name] = cl.txCnt
+	cl.txCnt++
+}
+
+func (cl *SimpleSessionParamHandler) Rollback() {
+	cl.activeParamSet = copymap(cl.beginTxParamSet)
+	cl.beginTxParamSet = nil
+	cl.savepointParamSet = nil
+	cl.savepointTxCounter = nil
+	cl.statementParamSet = map[string]string{}
+	cl.localTxParamSet = map[string]string{}
+
+	cl.txCnt = 0
+}
+
+func (cl *SimpleSessionParamHandler) SetStartupParams(m map[string]string) {
+	cl.startupParameters = m
+}
+
+func NewSimpleHandler(t string, show_notice bool, ds string, defaultRouteBehaviour string) SessionParamsHolder {
 	return &SimpleSessionParamHandler{
-		beginTxParamSet:       map[string]string{},
-		localTxParamSet:       map[string]string{},
-		statementParamSet:     map[string]string{},
-		activeParamSet:        map[string]string{},
+		beginTxParamSet:   map[string]string{},
+		localTxParamSet:   map[string]string{},
+		statementParamSet: map[string]string{},
+
+		startupParameters: map[string]string{},
+
+		activeParamSet: map[string]string{
+			SPQR_DISTRIBUTION:            "default",
+			SPQR_DEFAULT_ROUTE_BEHAVIOUR: defaultRouteBehaviour,
+		},
 		defaultTsa:            t,
 		showNoticeMessages:    show_notice,
 		defaultCommitStrategy: ds,

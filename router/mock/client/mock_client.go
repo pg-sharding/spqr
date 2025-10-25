@@ -1175,6 +1175,18 @@ func (mr *MockRouterClientMockRecorder) SetShowNoticeMsg(level, val any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShowNoticeMsg", reflect.TypeOf((*MockRouterClient)(nil).SetShowNoticeMsg), level, val)
 }
 
+// SetStartupParams mocks base method.
+func (m *MockRouterClient) SetStartupParams(arg0 map[string]string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetStartupParams", arg0)
+}
+
+// SetStartupParams indicates an expected call of SetStartupParams.
+func (mr *MockRouterClientMockRecorder) SetStartupParams(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStartupParams", reflect.TypeOf((*MockRouterClient)(nil).SetStartupParams), arg0)
+}
+
 // SetTsa mocks base method.
 func (m *MockRouterClient) SetTsa(level, value string) {
 	m.ctrl.T.Helper()
