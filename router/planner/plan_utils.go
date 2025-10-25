@@ -157,3 +157,27 @@ func CheckTableIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.Cre
 
 	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
 }
+
+func ProcessRangeNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, q *lyx.RangeVar) error {
+	qualName := rfqn.RelationFQNFromRangeRangeVar(q)
+
+	// CTE, skip
+	if rm.RFQNIsCTE(qualName) {
+		/* remember cte alias */
+		rm.CTEAliases[q.Alias] = qualName.RelationName
+		return nil
+	}
+
+	if _, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
+		return err
+	}
+
+	if _, ok := rm.Rels[*qualName]; !ok {
+		rm.Rels[*qualName] = struct{}{}
+	}
+	if q.Alias != "" {
+		/* remember table alias */
+		rm.TableAliases[q.Alias] = *rfqn.RelationFQNFromRangeRangeVar(q)
+	}
+	return nil
+}
