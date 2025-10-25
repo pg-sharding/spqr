@@ -6,9 +6,10 @@ type SessionParamsHolder interface {
 	GetTsa() tsa.TSA
 	SetTsa(level string, value string)
 
+	ResetTsa()
+
 	Usr() string
-	/* XXX: also maybe ROLE support is meaningful? */
-	DB() string
+	SetUsr(string)
 
 	// Get current session DRB
 	DefaultRouteBehaviour() string
@@ -31,10 +32,6 @@ type SessionParamsHolder interface {
 	SetDistributedRelation(level string, val string)
 	DistributedRelation() string
 
-	/*  XXX: developer option */
-	SetPreferredEngine(level string, val string)
-	PreferredEngine() string
-
 	SetShardingKey(level string, val string)
 	ShardingKey() string
 
@@ -48,6 +45,8 @@ type SessionParamsHolder interface {
 	SetMaintainParams(level string, val bool)
 	MaintainParams() bool
 
+	/* Query routing logic */
+
 	/* route hint always statement-level  */
 	SetScatterQuery(val bool)
 	ScatterQuery() bool
@@ -56,15 +55,36 @@ type SessionParamsHolder interface {
 	SetEnhancedMultiShardProcessing(level string, val bool)
 	EnhancedMultiShardProcessing() bool
 
+	/*  XXX: developer option */
+	SetPreferredEngine(level string, val string)
+	PreferredEngine() string
+
+	/* Distributed transactions */
+
 	/* route hint always tx-block-level */
 	SetCommitStrategy(value string)
 	CommitStrategy() string
+
+	/* Helpers for query binding */
 
 	BindParams() [][]byte
 	SetBindParams([][]byte)
 
 	BindParamFormatCodes() []int16
 	SetParamFormatCodes([]int16)
+
+	Params() map[string]string
+	SetParam(name, value string)
+	StartTx()
+	ResetAll()
+	Rollback()
+	Savepoint(name string)
+	CleanupStatementSet()
+	ResetParam(name string)
+	RollbackToSP(name string)
+	CommitActiveSet()
+
+	SetStartupParams(map[string]string)
 }
 
 const (

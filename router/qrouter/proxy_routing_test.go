@@ -151,7 +151,8 @@ func TestMultiShardRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		dh.SetPreferredEngine("", "")
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.PlanQueryExtended(context.TODO(), rm, parserRes[0], dh)
@@ -275,7 +276,8 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
 		tmp, err := pr.PlanQuery(context.TODO(), tt.query, parserRes[0], dh)
@@ -432,7 +434,8 @@ func TestRoutingByExpression(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
 		tmp, err := pr.PlanQuery(context.TODO(), tt.query, parserRes[0], dh)
@@ -497,7 +500,9 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		parserRes, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
-		dh := session.NewDummyHandler("dd")
+
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, "dd")
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
 		tmp, err := pr.PlanQuery(context.TODO(), tt.query, parserRes[0], dh)
@@ -638,7 +643,9 @@ func TestReferenceRelationRouting(t *testing.T) {
 		parserRes, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
-		dh := session.NewDummyHandler("dd")
+
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, "dd")
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
 		tmp, err := pr.PlanQuery(context.TODO(), tt.query, parserRes[0], dh)
@@ -739,7 +746,9 @@ func TestComment(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
@@ -1034,7 +1043,9 @@ func TestCTE(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
@@ -1353,7 +1364,9 @@ func TestSingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
@@ -1503,7 +1516,9 @@ func TestInsertOffsets(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
@@ -1658,7 +1673,8 @@ func TestJoins(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
@@ -1759,7 +1775,9 @@ func TestUnnest(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
@@ -1840,7 +1858,9 @@ func TestCopySingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
 		dh.SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, "BLOCK")
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
@@ -1924,7 +1944,9 @@ func TestCopyMultiShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
 		dh.SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, "BLOCK")
 		dh.SetScatterQuery(false)
 
@@ -2006,7 +2028,8 @@ func TestSetStmt(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(tt.distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, tt.distribution)
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.PlanQueryExtended(context.TODO(), rm, parserRes[0], dh)
@@ -2329,7 +2352,9 @@ LIMIT 1000
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(tt.distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, tt.distribution)
+
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
@@ -2415,7 +2440,9 @@ func TestHashRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(tt.distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, tt.distribution)
+
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
