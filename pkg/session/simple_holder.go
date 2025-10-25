@@ -13,7 +13,7 @@ type SimpleSessionParamHandler struct {
 
 	/* target-session-attrs */
 	defaultTsa            string
-	defaultCommitStratery string
+	defaultCommitStrategy string
 
 	usr string
 
@@ -132,7 +132,7 @@ func (cl *SimpleSessionParamHandler) SetCommitStrategy(val string) {
 }
 
 func (cl *SimpleSessionParamHandler) CommitStrategy() string {
-	return cl.resolveVirtualStringParam(SPQR_COMMIT_STRATEGY, cl.defaultCommitStratery)
+	return cl.resolveVirtualStringParam(SPQR_COMMIT_STRATEGY, cl.defaultCommitStrategy)
 }
 
 // SetAutoDistribution implements RouterClient.
@@ -259,6 +259,6 @@ func NewSimpleHandler(t string, show_notice bool, ds string) SessionParamsHolder
 		activeParamSet:        map[string]string{},
 		defaultTsa:            t,
 		showNoticeMessages:    show_notice,
-		defaultCommitStratery: ds,
+		defaultCommitStrategy: ds,
 	}
 }

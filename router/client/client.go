@@ -692,7 +692,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			return nil
 		}
 
-		cl.SessionParamsHolder.SetUsr(cl.Usr())
+		cl.SetUsr(cl.Usr())
 
 		if tlsconfig != nil && protoVer != conn.SSLREQ {
 			if err := cl.Send(
