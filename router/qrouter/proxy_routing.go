@@ -688,33 +688,30 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 
 	switch stmt := qstmt.(type) {
 	case *lyx.Select:
-		/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
-		if len(stmt.FromClause) == 0 && (stmt.LArg == nil || stmt.RArg == nil) {
-			for _, expr := range stmt.TargetList {
-				switch e := expr.(type) {
-				/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
-				case *lyx.FuncApplication:
-					for _, innerExp := range e.Args {
-						switch iE := innerExp.(type) {
-						case *lyx.Select:
-							if err := qr.AnalyzeQueryV1(ctx, iE, rm); err != nil {
-								return err
-							}
+
+		for _, expr := range stmt.TargetList {
+			switch e := expr.(type) {
+			/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
+			case *lyx.FuncApplication:
+				for _, innerExp := range e.Args {
+					switch iE := innerExp.(type) {
+					case *lyx.Select:
+						if err := qr.AnalyzeQueryV1(ctx, iE, rm); err != nil {
+							return err
 						}
 					}
-				/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
-				case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst:
+				}
+			/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
+			case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst:
+				/* Ok, skip analyze */
+			/* Special case for SELECT current_schema */
+			case *lyx.ColumnRef:
+				if e.ColName == "current_schema" {
 					return nil
-
-				/* Special case for SELECT current_schema */
-				case *lyx.ColumnRef:
-					if e.ColName == "current_schema" {
-						return nil
-					}
-				case *lyx.Select:
-					if err := qr.AnalyzeQueryV1(ctx, e, rm); err != nil {
-						return err
-					}
+				}
+			case *lyx.Select:
+				if err := qr.AnalyzeQueryV1(ctx, e, rm); err != nil {
+					return err
 				}
 			}
 		}
@@ -754,10 +751,7 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 
 		/* XXX: analyse where clause here, because it can contain col op subselect patterns */
 
-		if stmt.Where != nil {
-			return qr.analyzeWhereClause(ctx, stmt.Where, rm)
-		}
-		return nil
+		return qr.analyzeWhereClause(ctx, stmt.Where, rm)
 	case *lyx.Insert:
 
 		if stmt.WithClause != nil {
@@ -798,11 +792,6 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 			return err
 		}
 
-		clause := stmt.Where
-		if clause == nil {
-			return nil
-		}
-
 		if stmt.Where != nil {
 			return qr.analyzeWhereClause(ctx, stmt.Where, rm)
 		}
@@ -821,11 +810,6 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 
 		if err := analyseHelper(stmt.TableRef); err != nil {
 			return err
-		}
-
-		clause := stmt.Where
-		if clause == nil {
-			return nil
 		}
 
 		if stmt.Where != nil {
@@ -1087,7 +1071,6 @@ func (qr *ProxyQrouter) planTargetList(ctx context.Context, stmt *lyx.Select, rm
 				p = plan.Combine(p, &plan.RandomDispatchPlan{})
 			}
 		case *lyx.Select:
-
 			if tmp, err := qr.planQueryV1(ctx, e, rm); err != nil {
 				return nil, err
 			} else {
