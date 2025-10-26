@@ -25,7 +25,7 @@ SELECT i, (SELECT count(*) from table1) FROM table1 WHERE i = 101;
 
 
 -- with engine v2 this should NOT be dispatched
-SELECT i, (SELECT count(*) from ref_rel_1) FROM table1 WHERE i = 201;
+SELECT i, (SELECT count(*) from ref_rel_1) FROM table1 t WHERE t.i = 201;
 
 --SELECT i, (SELECT count(*) from table1) FROM ref_rel_1;
 

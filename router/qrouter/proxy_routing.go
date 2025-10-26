@@ -39,14 +39,15 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr lyx.Node, meta *rmeta.Ro
 	}
 }
 
-func (qr *ProxyQrouter) processConstExpr(alias, colname string, expr lyx.Node, meta *rmeta.RoutingMetadataContext) error {
-	resolvedRelation, err := meta.ResolveRelationByAlias(alias)
+func (qr *ProxyQrouter) processConstExpr(alias, colname string, expr lyx.Node, rm *rmeta.RoutingMetadataContext) error {
+	resolvedRelation, err := rm.ResolveRelationByAlias(alias)
+
 	if err != nil {
 		// failed to resolve relation, skip column
 		return nil
 	}
 
-	return qr.processConstExprOnRFQN(resolvedRelation, colname, []lyx.Node{expr}, meta)
+	return qr.processConstExprOnRFQN(resolvedRelation, colname, []lyx.Node{expr}, rm)
 }
 
 func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, exprs []lyx.Node, meta *rmeta.RoutingMetadataContext) error {
@@ -252,7 +253,9 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 }
 
 func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingMetadataContext) error {
-
+	if expr == nil {
+		return nil
+	}
 	spqrlog.Zero.Debug().
 		Interface("clause", expr).
 		Msg("analyzing select where clause")
@@ -301,10 +304,8 @@ func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, m
 				}
 
 			default:
-				if texpr.Right != nil {
-					if err := qr.analyzeWhereClause(ctx, texpr.Right, meta); err != nil {
-						return err
-					}
+				if err := qr.analyzeWhereClause(ctx, texpr.Right, meta); err != nil {
+					return err
 				}
 			}
 
@@ -313,15 +314,11 @@ func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, m
 				return err
 			}
 		default:
-			if texpr.Left != nil {
-				if err := qr.analyzeWhereClause(ctx, texpr.Left, meta); err != nil {
-					return err
-				}
+			if err := qr.analyzeWhereClause(ctx, texpr.Left, meta); err != nil {
+				return err
 			}
-			if texpr.Right != nil {
-				if err := qr.analyzeWhereClause(ctx, texpr.Right, meta); err != nil {
-					return err
-				}
+			if err := qr.analyzeWhereClause(ctx, texpr.Right, meta); err != nil {
+				return err
 			}
 		}
 	case *lyx.ColumnRef:
@@ -361,6 +358,9 @@ func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, m
 // routeByClause de-parses sharding column-value pair from Where clause of the query
 // TODO : unit tests
 func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingMetadataContext) (plan.Plan, error) {
+	if expr == nil {
+		return nil, nil
+	}
 
 	spqrlog.Zero.Debug().
 		Interface("clause", expr).
@@ -449,37 +449,31 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, expr lyx.Node, meta 
 				}
 
 			default:
-				if texpr.Left != nil {
-					if tmp, err := qr.planByQualExpr(ctx, texpr.Left, meta); err != nil {
-						return nil, err
-					} else {
-						p = plan.Combine(p, tmp)
-					}
-				}
-				if texpr.Right != nil {
-					if tmp, err := qr.planByQualExpr(ctx, texpr.Right, meta); err != nil {
-						return nil, err
-					} else {
-						p = plan.Combine(p, tmp)
-					}
-				}
-			}
-		case *lyx.Select:
-			return qr.planQueryV1(ctx, lft, meta)
-		default:
-			if texpr.Left != nil {
 				if tmp, err := qr.planByQualExpr(ctx, texpr.Left, meta); err != nil {
 					return nil, err
 				} else {
 					p = plan.Combine(p, tmp)
 				}
-			}
-			if texpr.Right != nil {
+
 				if tmp, err := qr.planByQualExpr(ctx, texpr.Right, meta); err != nil {
 					return nil, err
 				} else {
 					p = plan.Combine(p, tmp)
 				}
+			}
+		case *lyx.Select:
+			return qr.planQueryV1(ctx, lft, meta)
+		default:
+			if tmp, err := qr.planByQualExpr(ctx, texpr.Left, meta); err != nil {
+				return nil, err
+			} else {
+				p = plan.Combine(p, tmp)
+			}
+
+			if tmp, err := qr.planByQualExpr(ctx, texpr.Right, meta); err != nil {
+				return nil, err
+			} else {
+				p = plan.Combine(p, tmp)
 			}
 		}
 	case *lyx.ColumnRef:
@@ -566,7 +560,7 @@ func (qr *ProxyQrouter) analyzeFromNode(ctx context.Context, node lyx.FromClause
 		Msg("analyzing from node")
 	switch q := node.(type) {
 	case *lyx.RangeVar:
-		if err := qr.processRangeNode(ctx, meta, q); err != nil {
+		if err := planner.ProcessRangeNode(ctx, meta, q); err != nil {
 			return err
 		}
 
@@ -587,30 +581,6 @@ func (qr *ProxyQrouter) analyzeFromNode(ctx context.Context, node lyx.FromClause
 	return nil
 }
 
-func (qr *ProxyQrouter) processRangeNode(ctx context.Context, meta *rmeta.RoutingMetadataContext, q *lyx.RangeVar) error {
-	qualName := rfqn.RelationFQNFromRangeRangeVar(q)
-
-	// CTE, skip
-	if meta.RFQNIsCTE(qualName) {
-		/* remember cte alias */
-		meta.CTEAliases[q.Alias] = qualName.RelationName
-		return nil
-	}
-
-	if _, err := meta.GetRelationDistribution(ctx, qualName); err != nil {
-		return err
-	}
-
-	if _, ok := meta.Rels[*qualName]; !ok {
-		meta.Rels[*qualName] = struct{}{}
-	}
-	if q.Alias != "" {
-		/* remember table alias */
-		meta.TableAliases[q.Alias] = *rfqn.RelationFQNFromRangeRangeVar(q)
-	}
-	return nil
-}
-
 func (qr *ProxyQrouter) planFromNode(ctx context.Context, node lyx.FromClauseNode, meta *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 	spqrlog.Zero.Debug().
 		Type("node-type", node).
@@ -621,9 +591,7 @@ func (qr *ProxyQrouter) planFromNode(ctx context.Context, node lyx.FromClauseNod
 	switch q := node.(type) {
 	case *lyx.RangeVar:
 
-		if err := qr.processRangeNode(ctx, meta, q); err != nil {
-			return nil, err
-		}
+		/* XXX: nothing, everything checked during analyze stage */
 
 	case *lyx.JoinExpr:
 		if tmp, err := qr.planFromNode(ctx, q.Rarg, meta); err != nil {
@@ -637,13 +605,12 @@ func (qr *ProxyQrouter) planFromNode(ctx context.Context, node lyx.FromClauseNod
 			p = plan.Combine(p, tmp)
 		}
 
-		if q.JoinQual != nil {
-			if tmp, err := qr.planByQualExpr(ctx, q.JoinQual, meta); err != nil {
-				return nil, err
-			} else {
-				p = plan.Combine(p, tmp)
-			}
+		if tmp, err := qr.planByQualExpr(ctx, q.JoinQual, meta); err != nil {
+			return nil, err
+		} else {
+			p = plan.Combine(p, tmp)
 		}
+
 	case *lyx.SubSelect:
 		return qr.planQueryV1(ctx, q.Arg, meta)
 	default:
@@ -714,33 +681,30 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 
 	switch stmt := qstmt.(type) {
 	case *lyx.Select:
-		/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
-		if len(stmt.FromClause) == 0 && (stmt.LArg == nil || stmt.RArg == nil) {
-			for _, expr := range stmt.TargetList {
-				switch e := expr.(type) {
-				/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
-				case *lyx.FuncApplication:
-					for _, innerExp := range e.Args {
-						switch iE := innerExp.(type) {
-						case *lyx.Select:
-							if err := qr.AnalyzeQueryV1(ctx, iE, rm); err != nil {
-								return err
-							}
+
+		for _, expr := range stmt.TargetList {
+			actualExpr := expr
+			if rt, ok := expr.(*lyx.ResTarget); ok {
+				actualExpr = rt.Value
+			}
+
+			switch e := actualExpr.(type) {
+			/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
+			case *lyx.FuncApplication:
+				for _, innerExp := range e.Args {
+					switch iE := innerExp.(type) {
+					case *lyx.Select:
+						if err := qr.AnalyzeQueryV1(ctx, iE, rm); err != nil {
+							return err
 						}
 					}
-				/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
-				case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst:
-					return nil
-
-				/* Special case for SELECT current_schema */
-				case *lyx.ColumnRef:
-					if e.ColName == "current_schema" {
-						return nil
-					}
-				case *lyx.Select:
-					if err := qr.AnalyzeQueryV1(ctx, e, rm); err != nil {
-						return err
-					}
+				}
+			/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
+			case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst, *lyx.ColumnRef:
+				/* Ok, skip analyze */
+			case *lyx.Select:
+				if err := qr.AnalyzeQueryV1(ctx, e, rm); err != nil {
+					return err
 				}
 			}
 		}
@@ -749,16 +713,12 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 		 * analyse both recurse branches to populates the FromClause info,
 		 */
 
-		if stmt.LArg != nil {
-			if err := qr.AnalyzeQueryV1(ctx, stmt.LArg, rm); err != nil {
-				return err
-			}
+		if err := qr.AnalyzeQueryV1(ctx, stmt.LArg, rm); err != nil {
+			return err
 		}
 
-		if stmt.RArg != nil {
-			if err := qr.AnalyzeQueryV1(ctx, stmt.RArg, rm); err != nil {
-				return err
-			}
+		if err := qr.AnalyzeQueryV1(ctx, stmt.RArg, rm); err != nil {
+			return err
 		}
 
 		if stmt.WithClause != nil {
@@ -780,10 +740,7 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 
 		/* XXX: analyse where clause here, because it can contain col op subselect patterns */
 
-		if stmt.Where != nil {
-			return qr.analyzeWhereClause(ctx, stmt.Where, rm)
-		}
-		return nil
+		return qr.analyzeWhereClause(ctx, stmt.Where, rm)
 	case *lyx.Insert:
 
 		if stmt.WithClause != nil {
@@ -824,12 +781,7 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 			return err
 		}
 
-		clause := stmt.Where
-		if clause == nil {
-			return nil
-		}
-
-		return qr.AnalyzeQueryV1(ctx, clause, rm)
+		return qr.analyzeWhereClause(ctx, stmt.Where, rm)
 
 	case *lyx.Delete:
 
@@ -846,12 +798,7 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 			return err
 		}
 
-		clause := stmt.Where
-		if clause == nil {
-			return nil
-		}
-
-		return qr.AnalyzeQueryV1(ctx, clause, rm)
+		return qr.analyzeWhereClause(ctx, stmt.Where, rm)
 	}
 	return nil
 }
@@ -1107,7 +1054,6 @@ func (qr *ProxyQrouter) planTargetList(ctx context.Context, stmt *lyx.Select, rm
 				p = plan.Combine(p, &plan.RandomDispatchPlan{})
 			}
 		case *lyx.Select:
-
 			if tmp, err := qr.planQueryV1(ctx, e, rm); err != nil {
 				return nil, err
 			} else {
@@ -1131,6 +1077,11 @@ func (qr *ProxyQrouter) planQueryV1(
 	ctx context.Context,
 	qstmt lyx.Node,
 	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
+
+	if qstmt == nil {
+		return nil, nil
+	}
+
 	switch stmt := qstmt.(type) {
 	case *lyx.Select:
 
@@ -1147,7 +1098,6 @@ func (qr *ProxyQrouter) planQueryV1(
 
 			switch q := p.(type) {
 			case *plan.VirtualPlan:
-
 				return q, nil
 			}
 
@@ -1156,20 +1106,17 @@ func (qr *ProxyQrouter) planQueryV1(
 		 * Then try to route  both branches
 		 */
 
-		if stmt.LArg != nil {
-			if tmp, err := qr.planQueryV1(ctx, stmt.LArg, rm); err != nil {
-				return nil, err
-			} else {
-				p = plan.Combine(p, tmp)
-			}
+		if tmp, err := qr.planQueryV1(ctx, stmt.LArg, rm); err != nil {
+			return nil, err
+		} else {
+			p = plan.Combine(p, tmp)
 		}
-		if stmt.RArg != nil {
-			if tmp, err := qr.planQueryV1(ctx, stmt.RArg, rm); err != nil {
-				return nil, err
 
-			} else {
-				p = plan.Combine(p, tmp)
-			}
+		if tmp, err := qr.planQueryV1(ctx, stmt.RArg, rm); err != nil {
+			return nil, err
+
+		} else {
+			p = plan.Combine(p, tmp)
 		}
 
 		tmp, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
@@ -1519,9 +1466,6 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 	/* TDB: comments? */
 	case *lyx.Insert:
-		if err := qr.AnalyzeQueryV1(ctx, stmt, rm); err != nil {
-			return nil, false, err
-		}
 
 		rs, err := qr.planQueryV1(ctx, stmt, rm)
 		if err != nil {
@@ -1532,12 +1476,6 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 		pl = plan.Combine(pl, rs)
 	case *lyx.Select:
-
-		err := qr.AnalyzeQueryV1(ctx, stmt, rm)
-		if err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to analyze select query")
-			return nil, false, err
-		}
 
 		/*
 		 *  Sometimes we have problems with some cases. For example, if a client
@@ -1579,9 +1517,6 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		pl = plan.Combine(pl, p)
 
 	case *lyx.Delete, *lyx.Update:
-		if err := qr.AnalyzeQueryV1(ctx, stmt, rm); err != nil {
-			return nil, false, err
-		}
 		// UPDATE and/or DELETE, COPY stmts, which
 		// would be routed with their WHERE clause
 		rs, err := qr.planQueryV1(ctx, stmt, rm)
@@ -1831,6 +1766,11 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	}
 	if utilityPlan != nil {
 		return utilityPlan, false, nil
+	}
+
+	if err := qr.AnalyzeQueryV1(ctx, stmt, rm); err != nil {
+		spqrlog.Zero.Debug().Err(err).Msg("failed to analyze query")
+		return nil, false, err
 	}
 
 	var ro bool
