@@ -39,14 +39,15 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr lyx.Node, meta *rmeta.Ro
 	}
 }
 
-func (qr *ProxyQrouter) processConstExpr(alias, colname string, expr lyx.Node, meta *rmeta.RoutingMetadataContext) error {
-	resolvedRelation, err := meta.ResolveRelationByAlias(alias)
+func (qr *ProxyQrouter) processConstExpr(alias, colname string, expr lyx.Node, rm *rmeta.RoutingMetadataContext) error {
+	resolvedRelation, err := rm.ResolveRelationByAlias(alias)
+
 	if err != nil {
 		// failed to resolve relation, skip column
 		return nil
 	}
 
-	return qr.processConstExprOnRFQN(resolvedRelation, colname, []lyx.Node{expr}, meta)
+	return qr.processConstExprOnRFQN(resolvedRelation, colname, []lyx.Node{expr}, rm)
 }
 
 func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, exprs []lyx.Node, meta *rmeta.RoutingMetadataContext) error {
@@ -699,13 +700,8 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 					}
 				}
 			/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
-			case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst:
+			case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst, *lyx.ColumnRef:
 				/* Ok, skip analyze */
-			/* Special case for SELECT current_schema */
-			case *lyx.ColumnRef:
-				if e.ColName == "current_schema" {
-					return nil
-				}
 			case *lyx.Select:
 				if err := qr.AnalyzeQueryV1(ctx, e, rm); err != nil {
 					return err
@@ -717,16 +713,12 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 		 * analyse both recurse branches to populates the FromClause info,
 		 */
 
-		if stmt.LArg != nil {
-			if err := qr.AnalyzeQueryV1(ctx, stmt.LArg, rm); err != nil {
-				return err
-			}
+		if err := qr.AnalyzeQueryV1(ctx, stmt.LArg, rm); err != nil {
+			return err
 		}
 
-		if stmt.RArg != nil {
-			if err := qr.AnalyzeQueryV1(ctx, stmt.RArg, rm); err != nil {
-				return err
-			}
+		if err := qr.AnalyzeQueryV1(ctx, stmt.RArg, rm); err != nil {
+			return err
 		}
 
 		if stmt.WithClause != nil {
