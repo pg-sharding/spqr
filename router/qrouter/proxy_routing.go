@@ -252,7 +252,9 @@ func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMeta
 }
 
 func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingMetadataContext) error {
-
+	if expr == nil {
+		return nil
+	}
 	spqrlog.Zero.Debug().
 		Interface("clause", expr).
 		Msg("analyzing select where clause")
@@ -792,10 +794,7 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 			return err
 		}
 
-		if stmt.Where != nil {
-			return qr.analyzeWhereClause(ctx, stmt.Where, rm)
-		}
-		return nil
+		return qr.analyzeWhereClause(ctx, stmt.Where, rm)
 
 	case *lyx.Delete:
 
@@ -812,10 +811,7 @@ func (qr *ProxyQrouter) AnalyzeQueryV1(
 			return err
 		}
 
-		if stmt.Where != nil {
-			return qr.analyzeWhereClause(ctx, stmt.Where, rm)
-		}
-		return nil
+		return qr.analyzeWhereClause(ctx, stmt.Where, rm)
 	}
 	return nil
 }
