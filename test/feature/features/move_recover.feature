@@ -38,6 +38,7 @@ Feature: Move recover test
     """
     Then command return code should be "0"
     Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
     When I execute SQL on host "coordinator2"
     """
     SHOW routers
@@ -117,6 +118,7 @@ Feature: Move recover test
     """
     Then command return code should be "0"
     Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
     When I execute SQL on host "coordinator2"
     """
     SHOW routers
@@ -206,6 +208,7 @@ Feature: Move recover test
     """
     Then command return code should be "0"
     Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
     When I execute SQL on host "coordinator2"
     """
     SHOW routers
@@ -294,6 +297,7 @@ Feature: Move recover test
     """
     Then command return code should be "0"
     Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
     When I execute SQL on host "coordinator2"
     """
     SHOW routers
@@ -372,6 +376,7 @@ Feature: Move recover test
     """
     Then command return code should be "0"
     Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
     When I execute SQL on host "coordinator2"
     """
     SHOW routers
@@ -451,6 +456,7 @@ Feature: Move recover test
     """
     Then command return code should be "0"
     Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
     When I execute SQL on host "coordinator2"
     """
     SHOW routers
@@ -487,6 +493,7 @@ Feature: Move recover test
     """
     Then command return code should be "0"
     Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
     When I execute SQL on host "coordinator2"
     """
     SHOW routers
@@ -535,6 +542,7 @@ Feature: Move recover test
     """
     Then command return code should be "0"
     Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
     When I execute SQL on host "coordinator2"
     """
     SHOW routers

@@ -20,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"github.com/sethvargo/go-retry"
 
 	"github.com/cucumber/godog"
 	"github.com/jackc/pgx/v5"
@@ -1187,6 +1188,42 @@ func (tctx *testContext) stepCoordinatorShouldTakeControl(leader string) error {
 	return nil
 }
 
+func (tctx *testContext) stepIWaitForAllKeyRangeMovesToFinish(timeout int64) error {
+	const interval = time.Second
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(timeout)*time.Second)
+	defer cancel()
+	return retry.Do(ctx, retry.NewConstant(interval), func(ctx context.Context) error {
+		taskGroup, err := tctx.qdb.GetMoveTaskGroup(ctx)
+		if err != nil {
+			log.Printf("error getting move task group: %s", err)
+			return err
+		}
+		if taskGroup != nil {
+			log.Println("move task group present in qdb")
+			return retry.RetryableError(fmt.Errorf("move task group still present"))
+		}
+		moveTask, err := tctx.qdb.GetMoveTask(ctx)
+		if err != nil {
+			log.Printf("error getting move task: %s", err)
+			return err
+		}
+		if moveTask != nil {
+			log.Printf("move task with ID \"%s\" present in qdb\n", moveTask.ID)
+			return retry.RetryableError(fmt.Errorf("move task still present"))
+		}
+		krMoves, err := tctx.qdb.ListKeyRangeMoves(ctx)
+		if err != nil {
+			log.Printf("error getting key range moves: %s", err)
+			return err
+		}
+		if len(krMoves) > 0 {
+			log.Printf("%d key range moves still present in qbd", len(krMoves))
+			return retry.RetryableError(fmt.Errorf("key range moves still present"))
+		}
+		return nil
+	})
+}
+
 func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	tctx, err := newTestContext(t)
 	if err != nil {
@@ -1284,6 +1321,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
 	s.Step(`^I wait for host "([^"]*)" to respond$`, tctx.stepWaitPostgresqlToRespond)
 	s.Step(`^I wait for coordinator "([^"]*)" to take control$`, tctx.stepCoordinatorShouldTakeControl)
+	s.Step(`^I wait for "(\d+)" seconds for all key range moves to finish$`, tctx.stepIWaitForAllKeyRangeMovesToFinish)
 
 	// variable manipulation
 	s.Step(`^we save response row "([^"]*)" column "([^"]*)"$`, tctx.stepSaveResponseBodyAtPathAsJSON)
