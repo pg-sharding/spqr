@@ -1375,6 +1375,73 @@ func (q *EtcdQDB) AlterDistributedRelationSchema(ctx context.Context, id string,
 }
 
 // TODO : unit tests
+func (q *EtcdQDB) AlterReplicatedRelationSchema(ctx context.Context, dsID string, relName string, schemaName string) error {
+	spqrlog.Zero.Debug().
+		Str("relName", relName).
+		Str("schemaName", schemaName).
+		Msg("etcdqdb: alter replicated relation schema")
+
+	distribution, err := q.GetDistribution(ctx, dsID)
+	if err != nil {
+		return err
+	}
+
+	if _, ok := distribution.Relations[relName]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relName)
+	}
+	distribution.Relations[relName].SchemaName = schemaName
+	if ds, err := q.GetRelationDistribution(ctx, &rfqn.RelationFQN{RelationName: relName}); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relName)
+	} else if ds.ID != dsID {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relName, ds.ID, dsID)
+	}
+	rel, err := q.GetReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: relName})
+	if err != nil {
+		return fmt.Errorf("failed to get reference table: %s", err)
+	}
+	rel.SchemaName = schemaName
+	relJson, err := json.Marshal(rel)
+	if err != nil {
+		return fmt.Errorf("failed to marshal reference table: %s", err)
+	}
+
+	distrJson, err := json.Marshal(distribution)
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Txn(ctx).
+		If(
+			clientv3.Compare(clientv3.Version(distributionNodePath(distribution.ID)), "=", distribution.Version),
+		).
+		Then(
+			clientv3.OpPut(distributionNodePath(distribution.ID), string(distrJson)),
+			clientv3.OpPut(referenceRelationNodePath(relName), string(relJson)),
+		).
+		Else(
+			clientv3.OpGet(distributionNodePath(distribution.ID), clientv3.WithCountOnly()),
+		).
+		Commit()
+
+	if !resp.Succeeded {
+		if len(resp.Responses) < 1 {
+			return fmt.Errorf("unexpected (case 1) etcd create distribution '%s' response parts count=%d",
+				distribution.ID, len(resp.Responses))
+		} else {
+			rng := resp.Responses[0].GetResponseRange()
+			if len(rng.Kvs) < 1 {
+				return fmt.Errorf("unexpected (case 0) etcd create distribution '%s' response parts count=%d",
+					distribution.ID, len(rng.Kvs))
+			}
+			currentVersion := rng.Kvs[0].Version
+			return fmt.Errorf("distribution was changed '%s' current version is=%d",
+				distribution.ID, currentVersion)
+		}
+	}
+
+	return err
+}
+
+// TODO : unit tests
 func (q *EtcdQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []DistributionKeyEntry) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).

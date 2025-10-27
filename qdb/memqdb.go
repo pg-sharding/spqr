@@ -873,6 +873,33 @@ func (q *MemQDB) AlterDistributedRelationSchema(ctx context.Context, id string, 
 }
 
 // TODO : unit tests
+func (q *MemQDB) AlterReplicatedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
+	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: alter distributed relation schema")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	ds, ok := q.Distributions[id]
+	if !ok {
+		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
+	}
+	if dsID, ok := q.RelationDistribution[relName]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relName)
+	} else if dsID != id {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relName, dsID, id)
+	}
+
+	rel, ok := q.ReferenceRelations[relName]
+	if !ok {
+		return fmt.Errorf("reference relation \"%s\" not found", relName)
+	}
+
+	ds.Relations[relName].SchemaName = schemaName
+	rel.SchemaName = schemaName
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds), NewUpdateCommand(q.ReferenceRelations, relName, rel))
+}
+
+// TODO : unit tests
 func (q *MemQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []DistributionKeyEntry) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: alter distributed relation distribution key")
 	q.mu.Lock()
