@@ -451,92 +451,8 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				}
 
 				if strings.HasPrefix(name, "__spqr__") {
-					name := virtualParamTransformName(name)
-					value := strings.ToLower(val)
-
-					switch name {
-					case session.SPQR_DISTRIBUTION:
-						if q.IsLocal {
-							rst.Client().SetDistribution(session.VirtualParamLevelLocal, val)
-						} else {
-							rst.Client().SetDistribution(session.VirtualParamLevelTxBlock, val)
-						}
-					case session.SPQR_DISTRIBUTED_RELATION:
-						lvl := session.VirtualParamLevelTxBlock
-
-						if q.IsLocal {
-							lvl = session.VirtualParamLevelLocal
-						}
-
-						rst.Client().SetDistributedRelation(lvl, val)
-					case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-						lvl := session.VirtualParamLevelTxBlock
-
-						if q.IsLocal {
-							lvl = session.VirtualParamLevelLocal
-						}
-
-						rst.Client().SetDefaultRouteBehaviour(lvl, val)
-					case session.SPQR_SHARDING_KEY:
-						lvl := session.VirtualParamLevelTxBlock
-
-						if q.IsLocal {
-							lvl = session.VirtualParamLevelLocal
-						}
-
-						rst.Client().SetShardingKey(lvl, val)
-					case session.SPQR_REPLY_NOTICE:
-						lvl := session.VirtualParamLevelTxBlock
-
-						if q.IsLocal {
-							lvl = session.VirtualParamLevelLocal
-						}
-
-						if value == "on" || value == "true" {
-							rst.Client().SetShowNoticeMsg(lvl, true)
-						} else {
-							rst.Client().SetShowNoticeMsg(lvl, false)
-						}
-					case session.SPQR_MAINTAIN_PARAMS:
-						lvl := session.VirtualParamLevelTxBlock
-
-						if q.IsLocal {
-							lvl = session.VirtualParamLevelLocal
-						}
-
-						if value == "on" || value == "true" {
-							rst.Client().SetMaintainParams(lvl, true)
-						} else {
-							rst.Client().SetMaintainParams(lvl, false)
-						}
-					case session.SPQR_EXECUTE_ON:
-						if q.IsLocal {
-							rst.Client().SetExecuteOn(session.VirtualParamLevelLocal, val)
-						} else {
-							rst.Client().SetExecuteOn(session.VirtualParamLevelTxBlock, val)
-						}
-					case session.SPQR_TARGET_SESSION_ATTRS:
-						fallthrough
-					case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
-						fallthrough
-					case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-						if q.IsLocal {
-							rst.Client().SetTsa(session.VirtualParamLevelLocal, val)
-						} else {
-							rst.Client().SetTsa(session.VirtualParamLevelTxBlock, val)
-						}
-					case session.SPQR_ENGINE_V2:
-						switch value {
-						case "true", "on", "ok":
-							rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
-						case "false", "off", "no":
-							rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, false)
-						}
-					default:
-						rst.Client().SetParam(name, val)
-					}
-
-					if err := rst.Client().ReplyCommandComplete("SET"); err != nil {
+					ctx := context.TODO()
+					if err := rst.processSpqrHint(ctx, name, val, q.IsLocal); err != nil {
 						return nil, err
 					}
 				} else {
@@ -593,4 +509,101 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return nil, err
 	}
+}
+
+func (rst *RelayStateImpl) processSpqrHint(ctx context.Context, hintName string,
+	hintVal string, isLocal bool) error {
+	name := virtualParamTransformName(hintName)
+	value := strings.ToLower(hintVal)
+
+	switch name {
+	case session.SPQR_DISTRIBUTION:
+		if isLocal {
+			rst.Client().SetDistribution(session.VirtualParamLevelLocal, hintVal)
+		} else {
+			rst.Client().SetDistribution(session.VirtualParamLevelTxBlock, hintVal)
+		}
+	case session.SPQR_DISTRIBUTED_RELATION:
+		lvl := session.VirtualParamLevelTxBlock
+
+		if isLocal {
+			lvl = session.VirtualParamLevelLocal
+		}
+
+		rst.Client().SetDistributedRelation(lvl, hintVal)
+	case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
+		lvl := session.VirtualParamLevelTxBlock
+
+		if isLocal {
+			lvl = session.VirtualParamLevelLocal
+		}
+
+		rst.Client().SetDefaultRouteBehaviour(lvl, hintVal)
+	case session.SPQR_SHARDING_KEY:
+		lvl := session.VirtualParamLevelTxBlock
+
+		if isLocal {
+			lvl = session.VirtualParamLevelLocal
+		}
+
+		rst.Client().SetShardingKey(lvl, hintVal)
+	case session.SPQR_REPLY_NOTICE:
+		lvl := session.VirtualParamLevelTxBlock
+
+		if isLocal {
+			lvl = session.VirtualParamLevelLocal
+		}
+
+		if value == "on" || value == "true" {
+			rst.Client().SetShowNoticeMsg(lvl, true)
+		} else {
+			rst.Client().SetShowNoticeMsg(lvl, false)
+		}
+	case session.SPQR_MAINTAIN_PARAMS:
+		lvl := session.VirtualParamLevelTxBlock
+
+		if isLocal {
+			lvl = session.VirtualParamLevelLocal
+		}
+
+		if value == "on" || value == "true" {
+			rst.Client().SetMaintainParams(lvl, true)
+		} else {
+			rst.Client().SetMaintainParams(lvl, false)
+		}
+	case session.SPQR_EXECUTE_ON:
+		if isLocal {
+			rst.Client().SetExecuteOn(session.VirtualParamLevelLocal, hintVal)
+		} else {
+			rst.Client().SetExecuteOn(session.VirtualParamLevelTxBlock, hintVal)
+		}
+	case session.SPQR_TARGET_SESSION_ATTRS:
+		fallthrough
+	case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
+		fallthrough
+	case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
+		if isLocal {
+			rst.Client().SetTsa(session.VirtualParamLevelLocal, hintVal)
+		} else {
+			rst.Client().SetTsa(session.VirtualParamLevelTxBlock, hintVal)
+		}
+	case session.SPQR_ENGINE_V2:
+		switch value {
+		case "true", "on", "ok":
+			rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
+		case "false", "off", "no":
+			rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, false)
+		}
+	case session.SPQR_AUTO_DISTRIBUTION:
+		if _, err := rst.Qr.Mgr().GetDistribution(ctx, hintVal); err != nil &&
+			hintVal != distributions.REPLICATED {
+			return fmt.Errorf("SPQR invalid distribution '%s' for hint %s", hintVal, hintName)
+		} else {
+			rst.Client().SetParam(name, hintVal)
+		}
+	default:
+		rst.Client().SetParam(name, hintVal)
+	}
+
+	return rst.Client().ReplyCommandComplete("SET")
 }

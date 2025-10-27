@@ -271,3 +271,28 @@ Feature: Reference relation test
       }
     ]
     """
+
+    When I run SQL on host "router"
+    """
+    set __spqr__auto_distribution=REPLIC_TED;
+    """
+    Then command return code should be "1"
+    And command output should match regexp
+    """
+    SPQR invalid distribution 'REPLIC_TED' for hint __spqr__auto_distribution
+    """
+
+    When I run SQL on host "router"
+    """
+    SHOW __spqr__auto_distribution;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly 
+    """
+    [
+      {
+        "__spqr__auto_distribution": "REPLICATED"
+      }
+    ]
+    """
+
