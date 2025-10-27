@@ -205,7 +205,7 @@ jobs:
           echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
 
       - name: Download generatedFeatures
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: generated_tests
           path: ./test/feature/generatedFeatures
