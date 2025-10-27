@@ -1188,7 +1188,7 @@ func (tctx *testContext) stepCoordinatorShouldTakeControl(leader string) error {
 	return nil
 }
 
-func (tctx *testContext) stepIWaitForAllKeyRangeMovesToFinish(timeout int64) error {
+func (tctx *testContext) stepWaitForAllKeyRangeMovesToFinish(timeout int64) error {
 	const interval = time.Second
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(timeout)*time.Second)
 	defer cancel()
@@ -1321,7 +1321,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
 	s.Step(`^I wait for host "([^"]*)" to respond$`, tctx.stepWaitPostgresqlToRespond)
 	s.Step(`^I wait for coordinator "([^"]*)" to take control$`, tctx.stepCoordinatorShouldTakeControl)
-	s.Step(`^I wait for "(\d+)" seconds for all key range moves to finish$`, tctx.stepIWaitForAllKeyRangeMovesToFinish)
+	s.Step(`^I wait for "(\d+)" seconds for all key range moves to finish$`, tctx.stepWaitForAllKeyRangeMovesToFinish)
 
 	// variable manipulation
 	s.Step(`^we save response row "([^"]*)" column "([^"]*)"$`, tctx.stepSaveResponseBodyAtPathAsJSON)
