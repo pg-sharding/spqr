@@ -126,6 +126,7 @@ type Distribution struct {
 
 type ReferenceRelation struct {
 	TableName             string            `json:"table_name"`
+	SchemaName            string            `json:"schema_name"`
 	SchemaVersion         uint64            `json:"schema_version"`
 	ColumnSequenceMapping map[string]string `json:"column_sequence_mapping"`
 	ShardIds              []string          `json:"shard_ids"`

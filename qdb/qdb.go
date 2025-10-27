@@ -87,6 +87,7 @@ type QDB interface {
 	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
 	AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error
 	AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []DistributionKeyEntry) error
+	AlterReplicatedRelationSchema(ctx context.Context, dsID string, relName string, schemaName string) error
 
 	// Task group
 	GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error)

@@ -106,6 +106,7 @@ func RefRelationToProto(p *ReferenceRelation) *protos.ReferenceRelation {
 func RefRelationToDB(p *ReferenceRelation) *qdb.ReferenceRelation {
 	return &qdb.ReferenceRelation{
 		TableName:             p.TableName,
+		SchemaName:            p.SchemaName,
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.ColumnSequenceMapping,
 		ShardIds:              p.ShardIds,
@@ -115,6 +116,7 @@ func RefRelationToDB(p *ReferenceRelation) *qdb.ReferenceRelation {
 func RefRelationFromDB(p *qdb.ReferenceRelation) *ReferenceRelation {
 	return &ReferenceRelation{
 		TableName:             p.TableName,
+		SchemaName:            p.SchemaName,
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.ColumnSequenceMapping,
 		ShardIds:              p.ShardIds,

@@ -112,6 +112,9 @@ func (lc *Coordinator) AlterDistributedRelationDistributionKey(ctx context.Conte
 
 // AlterDistributedRelationSchema implements meta.EntityMgr.
 func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
+	if id == distributions.REPLICATED {
+		return lc.qdb.AlterReplicatedRelationSchema(ctx, distributions.REPLICATED, relName, schemaName)
+	}
 	return lc.qdb.AlterDistributedRelationSchema(ctx, id, relName, schemaName)
 }
 
