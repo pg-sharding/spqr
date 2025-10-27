@@ -456,11 +456,25 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		if toCount > 0 && fromCount != 0 {
 			return fmt.Errorf("key count on sender & receiver mismatch")
 		}
+		colRows, err := tx.Query(ctx, "SELECT column_name FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2", rel.GetSchema(), strings.ToLower(rel.Name))
+		if err != nil {
+			return fmt.Errorf("failed to get columns of table \"%s\": %s", rel.GetFullName(), err)
+		}
+		cols := make([]string, 0)
+		for colRows.Next() {
+			colName := ""
+			if err := colRows.Scan(&colName); err != nil {
+				return fmt.Errorf("error scanning column name: %s", err)
+			}
+			cols = append(cols, colName)
+		}
+		colNames := strings.Join(cols, ", ")
 		query := fmt.Sprintf(`
 					INSERT INTO %s
-					SELECT * FROM %s
+					SELECT %s FROM %s
 					WHERE %s
-`, relFullName, fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.Name)), krCondition)
+`, relFullName, colNames, fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.Name)), krCondition)
+		spqrlog.Zero.Error().Str("query", query).Msg("copying data")
 		_, err = tx.Exec(ctx, query)
 		if err != nil {
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
