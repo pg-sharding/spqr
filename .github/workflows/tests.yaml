@@ -23,7 +23,17 @@ jobs:
 
      - name: unit tests
        run: make unittest
+  etcdqdb_integration:
+     name: etcdqdb_integration
+     runs-on: ubuntu-latest
+     steps:
 
+     - name: Check out code
+       uses: actions/checkout@v5
+
+     - name: etcdqdb_integration tests
+       run: make etcdqdb_test
+       
   cli-overrides:
     name: cli_overrides
     runs-on: ubuntu-latest
@@ -146,7 +156,7 @@ jobs:
           echo "features=$(echo "{\"command\": $array}")" >> $GITHUB_OUTPUT
 
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: generated_tests
           path: |
@@ -205,7 +215,7 @@ jobs:
           echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
 
       - name: Download generatedFeatures
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: generated_tests
           path: ./test/feature/generatedFeatures

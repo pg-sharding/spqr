@@ -1095,12 +1095,6 @@ func (qr *ProxyQrouter) planQueryV1(
 			if err != nil {
 				return nil, err
 			}
-
-			switch q := p.(type) {
-			case *plan.VirtualPlan:
-				return q, nil
-			}
-
 		}
 		/*
 		 * Then try to route  both branches
@@ -1114,7 +1108,6 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		if tmp, err := qr.planQueryV1(ctx, stmt.RArg, rm); err != nil {
 			return nil, err
-
 		} else {
 			p = plan.Combine(p, tmp)
 		}

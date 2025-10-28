@@ -397,6 +397,20 @@ func (mr *MockQDBMockRecorder) AlterReferenceRelationStorage(ctx, relName, shs a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorage", reflect.TypeOf((*MockQDB)(nil).AlterReferenceRelationStorage), ctx, relName, shs)
 }
 
+// AlterReplicatedRelationSchema mocks base method.
+func (m *MockQDB) AlterReplicatedRelationSchema(ctx context.Context, dsID, relName, schemaName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterReplicatedRelationSchema", ctx, dsID, relName, schemaName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterReplicatedRelationSchema indicates an expected call of AlterReplicatedRelationSchema.
+func (mr *MockQDBMockRecorder) AlterReplicatedRelationSchema(ctx, dsID, relName, schemaName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReplicatedRelationSchema", reflect.TypeOf((*MockQDB)(nil).AlterReplicatedRelationSchema), ctx, dsID, relName, schemaName)
+}
+
 // AlterSequenceAttach mocks base method.
 func (m *MockQDB) AlterSequenceAttach(ctx context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error {
 	m.ctrl.T.Helper()
@@ -1270,6 +1284,20 @@ func (m *MockXQDB) AlterReferenceRelationStorage(ctx context.Context, relName *r
 func (mr *MockXQDBMockRecorder) AlterReferenceRelationStorage(ctx, relName, shs any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorage", reflect.TypeOf((*MockXQDB)(nil).AlterReferenceRelationStorage), ctx, relName, shs)
+}
+
+// AlterReplicatedRelationSchema mocks base method.
+func (m *MockXQDB) AlterReplicatedRelationSchema(ctx context.Context, dsID, relName, schemaName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterReplicatedRelationSchema", ctx, dsID, relName, schemaName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterReplicatedRelationSchema indicates an expected call of AlterReplicatedRelationSchema.
+func (mr *MockXQDBMockRecorder) AlterReplicatedRelationSchema(ctx, dsID, relName, schemaName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReplicatedRelationSchema", reflect.TypeOf((*MockXQDB)(nil).AlterReplicatedRelationSchema), ctx, dsID, relName, schemaName)
 }
 
 // AlterSequenceAttach mocks base method.

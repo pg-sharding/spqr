@@ -286,68 +286,6 @@ Feature: Redistribution test
     Then command return code should be "0"
     When I run SQL on host "coordinator" with timeout "150" seconds
     """
-    REDISTRIBUTE KEY RANGE kr2 TO sh2 BATCH SIZE 100;
-    """
-    Then command return code should be "0"
-    When I run SQL on host "shard1"
-    """
-    SELECT count(*) FROM xMove3
-    """
-    Then command return code should be "0"
-    And SQL result should match regexp
-    """
-    0
-    """
-    When I run SQL on host "shard2"
-    """
-    SELECT count(*) FROM xMove3
-    """
-    Then command return code should be "0"
-    And SQL result should match regexp
-    """
-    1000
-    """
-    When I run SQL on host "coordinator"
-    """
-    SHOW key_ranges;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [{
-      "Key range ID":"kr2",
-      "Distribution ID":"ds2",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
-    }]
-    """
-  
-
-  Scenario: REDISTRIBUTE KEY RANGE works with hashed distribution
-    When I execute SQL on host "coordinator"
-    """
-    CREATE DISTRIBUTION ds2 COLUMN TYPES VARCHAR HASH;
-    ALTER DISTRIBUTION ds2 ATTACH RELATION xMove3 DISTRIBUTION KEY w_id HASH FUNCTION MURMUR;
-    """
-    When I execute SQL on host "coordinator"
-    """
-    CREATE KEY RANGE kr2 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds2;
-    """
-    Then command return code should be "0"
-
-    When I run SQL on host "router"
-    """
-    CREATE TABLE xMove3(w_id TEXT, s TEXT);
-    """
-    Then command return code should be "0"
-    When I run SQL on host "shard1"
-    """
-    INSERT INTO xMove3 (w_id, s) SELECT cast (generate_series(0, 999) as text), 'sample text value';
-    """
-    Then command return code should be "0"
-    When I run SQL on host "coordinator" with timeout "150" seconds
-    """
     REDISTRIBUTE KEY RANGE kr2 TO sh2;
     """
     Then command return code should be "0"
@@ -868,7 +806,7 @@ Feature: Redistribution test
     }]
     """
   
-  Scenario: REDISTRIBUTE KEY RANGE works with hashed distribution
+  Scenario: REDISTRIBUTE KEY RANGE works with UUID column type
     When I execute SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds2 COLUMN TYPES UUID;
@@ -924,6 +862,67 @@ Feature: Redistribution test
       "Key range ID":"kr2",
       "Distribution ID":"ds2",
       "Lower bound":"'00000000-0000-0000-000000000000'",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+
+  Scenario: REDISTRIBUTE KEY RANGE works with mismatched schema on shards
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(s TEXT, w_id INT);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 100;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
       "Shard ID":"sh2",
       "Locked":"false"
     }]
