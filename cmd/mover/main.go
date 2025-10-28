@@ -164,6 +164,8 @@ func main() {
 
 	qdbKr, err := db.GetKeyRange(ctx, *krId)
 	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return
 	}
 
 	ds, err := db.GetDistribution(ctx, qdbKr.DistributionId)
@@ -174,6 +176,8 @@ func main() {
 
 	keyRange, err := kr.KeyRangeFromDB(qdbKr, ds.ColTypes)
 	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return
 	}
 
 	krs, err := db.ListKeyRanges(ctx, keyRange.Distribution)
