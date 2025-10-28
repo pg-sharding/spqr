@@ -155,7 +155,9 @@ func TestMultiShardRouting(t *testing.T) {
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		dh.SetPreferredEngine("", "")
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.PlanQueryExtended(context.TODO(), rm, parserRes[0], dh)
+		stmt := parserRes[0]
+		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
+		tmp, _, err := pr.PlanQueryExtended(context.TODO(), rm, stmt, dh)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -751,7 +753,7 @@ func TestComment(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 
-		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), parserRes[0], rm))
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, parserRes[0]))
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
@@ -1050,7 +1052,7 @@ func TestCTE(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 
-		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), parserRes[0], rm))
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, parserRes[0]))
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		if tt.err == nil {
@@ -1373,7 +1375,7 @@ func TestSingleShard(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 
-		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), parserRes[0], rm))
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, parserRes[0]))
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
@@ -1527,7 +1529,7 @@ func TestInsertOffsets(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 
-		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), parserRes[0], rm))
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, parserRes[0]))
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
@@ -1686,7 +1688,7 @@ func TestJoins(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 
-		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), parserRes[0], rm))
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, parserRes[0]))
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		if tt.err != nil {
@@ -1790,7 +1792,7 @@ func TestUnnest(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 
-		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), parserRes[0], rm))
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, parserRes[0]))
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		assert.NoError(err, "query %s", tt.query)
@@ -1877,7 +1879,9 @@ func TestCopySingleShard(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 
-		tmp, _, err := pr.PlanQueryExtended(context.TODO(), rm, parserRes[0], dh)
+		stmt := parserRes[0]
+		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
+		tmp, _, err := pr.PlanQueryExtended(context.TODO(), rm, stmt, dh)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1963,7 +1967,10 @@ func TestCopyMultiShard(t *testing.T) {
 		dh.SetScatterQuery(false)
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.PlanQueryExtended(context.TODO(), rm, parserRes[0], dh)
+
+		stmt := parserRes[0]
+		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
+		tmp, _, err := pr.PlanQueryExtended(context.TODO(), rm, stmt, dh)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2044,7 +2051,10 @@ func TestSetStmt(t *testing.T) {
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, tt.distribution)
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.PlanQueryExtended(context.TODO(), rm, parserRes[0], dh)
+
+		stmt := parserRes[0]
+		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
+		tmp, _, err := pr.PlanQueryExtended(context.TODO(), rm, stmt, dh)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2369,7 +2379,7 @@ LIMIT 1000
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 
-		_ = planner.AnalyzeQueryV1(context.TODO(), parserRes[0], rm)
+		_ = planner.AnalyzeQueryV1(context.TODO(), rm, parserRes[0])
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		if tt.err == nil {
@@ -2459,7 +2469,7 @@ func TestHashRouting(t *testing.T) {
 
 		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
 
-		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), parserRes[0], rm))
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, parserRes[0]))
 		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
 
 		if tt.err == nil {

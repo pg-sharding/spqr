@@ -903,11 +903,6 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		return utilityPlan, false, nil
 	}
 
-	if err := planner.AnalyzeQueryV1(ctx, stmt, rm); err != nil {
-		spqrlog.Zero.Debug().Err(err).Msg("failed to analyze query")
-		return nil, false, err
-	}
-
 	var ro bool
 	if sph.PreferredEngine() == planner.EnhancedEngineVersion {
 		p, err = planner.PlanDistributedQuery(ctx, rm, stmt, true)
@@ -956,6 +951,11 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, query string, stmt lyx.No
 	}
 
 	rm := rmeta.NewRoutingMetadataContext(sph, query, qr.csm, qr.mgr)
+
+	if err := planner.AnalyzeQueryV1(ctx, rm, stmt); err != nil {
+		spqrlog.Zero.Debug().Err(err).Msg("failed to analyze query")
+		return nil, err
+	}
 
 	p, ro, err := qr.PlanQueryExtended(ctx, rm, stmt, sph)
 	if err != nil {

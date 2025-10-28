@@ -98,7 +98,7 @@ func analyzeFromNode(ctx context.Context, node lyx.FromClauseNode, meta *rmeta.R
 	return nil
 }
 
-func analyzeWhereClause(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingMetadataContext) error {
+func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMetadataContext) error {
 	if expr == nil {
 		return nil
 	}
@@ -117,7 +117,7 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingM
 				/* TODO properly support subquery here */
 				/* SELECT * FROM t WHERE id IN (SELECT 1, 2) */
 
-				if err := AnalyzeQueryV1(ctx, q, meta); err != nil {
+				if err := AnalyzeQueryV1(ctx, rm, q); err != nil {
 					return err
 				}
 			}
@@ -144,26 +144,26 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingM
 						case *lyx.SubLink:
 
 							// ignore all errors.
-							return analyzeSelectStmt(ctx, argexpr.SubSelect, meta)
+							return analyzeSelectStmt(ctx, argexpr.SubSelect, rm)
 						}
 					}
 				}
 
 			default:
-				if err := analyzeWhereClause(ctx, texpr.Right, meta); err != nil {
+				if err := analyzeWhereClause(ctx, texpr.Right, rm); err != nil {
 					return err
 				}
 			}
 
 		case *lyx.Select:
-			if err := AnalyzeQueryV1(ctx, lft, meta); err != nil {
+			if err := AnalyzeQueryV1(ctx, rm, lft); err != nil {
 				return err
 			}
 		default:
-			if err := analyzeWhereClause(ctx, texpr.Left, meta); err != nil {
+			if err := analyzeWhereClause(ctx, texpr.Left, rm); err != nil {
 				return err
 			}
-			if err := analyzeWhereClause(ctx, texpr.Right, meta); err != nil {
+			if err := analyzeWhereClause(ctx, texpr.Right, rm); err != nil {
 				return err
 			}
 		}
@@ -189,7 +189,7 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingM
 				case *lyx.SubLink:
 
 					// ignore all errors.
-					return AnalyzeQueryV1(ctx, argexpr.SubSelect, meta)
+					return AnalyzeQueryV1(ctx, rm, argexpr.SubSelect)
 				}
 			}
 		}
@@ -203,8 +203,7 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingM
 
 func AnalyzeQueryV1(
 	ctx context.Context,
-	qstmt lyx.Node,
-	rm *rmeta.RoutingMetadataContext) error {
+	rm *rmeta.RoutingMetadataContext, qstmt lyx.Node) error {
 
 	spqrlog.Zero.Debug().
 		Interface("clause", qstmt).
@@ -243,7 +242,7 @@ func AnalyzeQueryV1(
 				for _, innerExp := range e.Args {
 					switch iE := innerExp.(type) {
 					case *lyx.Select:
-						if err := AnalyzeQueryV1(ctx, iE, rm); err != nil {
+						if err := AnalyzeQueryV1(ctx, rm, iE); err != nil {
 							return err
 						}
 					}
@@ -252,7 +251,7 @@ func AnalyzeQueryV1(
 			case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst, *lyx.ColumnRef:
 				/* Ok, skip analyze */
 			case *lyx.Select:
-				if err := AnalyzeQueryV1(ctx, e, rm); err != nil {
+				if err := AnalyzeQueryV1(ctx, rm, e); err != nil {
 					return err
 				}
 			}
@@ -262,18 +261,18 @@ func AnalyzeQueryV1(
 		 * analyse both recurse branches to populates the FromClause info,
 		 */
 
-		if err := AnalyzeQueryV1(ctx, stmt.LArg, rm); err != nil {
+		if err := AnalyzeQueryV1(ctx, rm, stmt.LArg); err != nil {
 			return err
 		}
 
-		if err := AnalyzeQueryV1(ctx, stmt.RArg, rm); err != nil {
+		if err := AnalyzeQueryV1(ctx, rm, stmt.RArg); err != nil {
 			return err
 		}
 
 		if stmt.WithClause != nil {
 			for _, cte := range stmt.WithClause {
 				rm.CteNames[cte.Name] = struct{}{}
-				if err := AnalyzeQueryV1(ctx, cte.SubQuery, rm); err != nil {
+				if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
 					return err
 				}
 			}
@@ -295,7 +294,7 @@ func AnalyzeQueryV1(
 		if stmt.WithClause != nil {
 			for _, cte := range stmt.WithClause {
 				rm.CteNames[cte.Name] = struct{}{}
-				if err := AnalyzeQueryV1(ctx, cte.SubQuery, rm); err != nil {
+				if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
 					return err
 				}
 			}
@@ -308,7 +307,7 @@ func AnalyzeQueryV1(
 			switch subS := selectStmt.(type) {
 			case *lyx.Select:
 				spqrlog.Zero.Debug().Msg("analyze insert stmt on select clause")
-				return AnalyzeQueryV1(ctx, subS, rm)
+				return AnalyzeQueryV1(ctx, rm, subS)
 			default:
 				return nil
 			}
@@ -320,7 +319,7 @@ func AnalyzeQueryV1(
 		if stmt.WithClause != nil {
 			for _, cte := range stmt.WithClause {
 				rm.CteNames[cte.Name] = struct{}{}
-				if err := AnalyzeQueryV1(ctx, cte.SubQuery, rm); err != nil {
+				if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
 					return err
 				}
 			}
@@ -337,7 +336,7 @@ func AnalyzeQueryV1(
 		if stmt.WithClause != nil {
 			for _, cte := range stmt.WithClause {
 				rm.CteNames[cte.Name] = struct{}{}
-				if err := AnalyzeQueryV1(ctx, cte.SubQuery, rm); err != nil {
+				if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
 					return err
 				}
 			}
