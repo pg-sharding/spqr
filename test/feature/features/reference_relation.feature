@@ -274,12 +274,12 @@ Feature: Reference relation test
 
     When I run SQL on host "router"
     """
-    set __spqr__auto_distribution=REPLIC_TED;
+    set __spqr__auto_distribution=REPLICATED1;
     """
     Then command return code should be "1"
     And command output should match regexp
     """
-    SPQR invalid distribution 'REPLIC_TED' for hint __spqr__auto_distribution
+    SPQR invalid distribution 'REPLICATED1' for hint __spqr__auto_distribution
     """
 
     When I run SQL on host "router"
