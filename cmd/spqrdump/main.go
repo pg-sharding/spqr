@@ -190,7 +190,10 @@ func DumpKeyRanges() error {
 			if err != nil {
 				return err
 			}
-			krCurr := kr.KeyRangeFromProto(krg, ds.Distribution.ColumnTypes)
+			krCurr, err := kr.KeyRangeFromProto(krg, ds.Distribution.ColumnTypes)
+			if err != nil {
+				return err
+			}
 			fmt.Println(decode.KeyRange(krCurr))
 		}
 	}

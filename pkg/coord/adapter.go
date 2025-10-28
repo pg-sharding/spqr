@@ -171,7 +171,7 @@ func (a *Adapter) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, e
 		return nil, err
 	}
 
-	return kr.KeyRangeFromProto(reply.KeyRangesInfo[0], ds.Distribution.ColumnTypes), nil
+	return kr.KeyRangeFromProto(reply.KeyRangesInfo[0], ds.Distribution.ColumnTypes)
 }
 
 // TODO : unit tests
@@ -202,7 +202,10 @@ func (a *Adapter) ListKeyRanges(ctx context.Context, distribution string) ([]*kr
 
 	krs := make([]*kr.KeyRange, len(reply.KeyRangesInfo))
 	for i, keyRange := range reply.KeyRangesInfo {
-		krs[i] = kr.KeyRangeFromProto(keyRange, ds.Distribution.ColumnTypes)
+		krs[i], err = kr.KeyRangeFromProto(keyRange, ds.Distribution.ColumnTypes)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return krs, nil
@@ -250,7 +253,10 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 		if err != nil {
 			return nil, err
 		}
-		krs[i] = kr.KeyRangeFromProto(keyRange, ds.Distribution.ColumnTypes)
+		krs[i], err = kr.KeyRangeFromProto(keyRange, ds.Distribution.ColumnTypes)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return krs, nil

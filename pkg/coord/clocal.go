@@ -160,7 +160,10 @@ func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRan
 		return err
 	}
 
-	var reqKr = kr.KeyRangeFromDB(krmv, ds.ColTypes)
+	reqKr, err := kr.KeyRangeFromDB(krmv, ds.ColTypes)
+	if err != nil {
+		return err
+	}
 	reqKr.ShardID = req.ShardId
 	return ops.ModifyKeyRangeWithChecks(ctx, lc.qdb, reqKr)
 }
@@ -225,7 +228,11 @@ func (lc *LocalInstanceMetadataMgr) ListAllKeyRanges(ctx context.Context) ([]*kr
 				cache[keyRange.DistributionId] = ds
 			}
 
-			ret = append(ret, kr.KeyRangeFromDB(keyRange, ds.ColTypes))
+			kRange, err := kr.KeyRangeFromDB(keyRange, ds.ColTypes)
+			if err != nil {
+				return nil, err
+			}
+			ret = append(ret, kRange)
 		}
 		return ret, nil
 	}

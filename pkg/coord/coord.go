@@ -272,16 +272,20 @@ func (lc *Coordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, er
 		return nil, err
 	}
 
-	keyr := make([]*kr.KeyRange, 0, len(keyRanges))
+	krs := make([]*kr.KeyRange, 0, len(keyRanges))
 	for _, keyRange := range keyRanges {
 		ds, err := lc.qdb.GetDistribution(ctx, keyRange.DistributionId)
 		if err != nil {
 			return nil, err
 		}
-		keyr = append(keyr, kr.KeyRangeFromDB(keyRange, ds.ColTypes))
+		kRange, err := kr.KeyRangeFromDB(keyRange, ds.ColTypes)
+		if err != nil {
+			return nil, err
+		}
+		krs = append(krs, kRange)
 	}
 
-	return keyr, nil
+	return krs, nil
 }
 
 func (lc *Coordinator) ListKeyRangeLocks(ctx context.Context) ([]string, error) {
@@ -540,7 +544,7 @@ func (qc *Coordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRan
 	if err != nil {
 		return nil, err
 	}
-	return kr.KeyRangeFromDB(krDb, ds.ColTypes), nil
+	return kr.KeyRangeFromDB(krDb, ds.ColTypes)
 }
 
 // TODO : unit tests
@@ -560,16 +564,20 @@ func (qc *Coordinator) ListKeyRanges(ctx context.Context, distribution string) (
 		return nil, err
 	}
 
-	keyr := make([]*kr.KeyRange, 0, len(keyRanges))
+	krs := make([]*kr.KeyRange, 0, len(keyRanges))
 	for _, keyRange := range keyRanges {
 		ds, err := qc.qdb.GetDistribution(ctx, keyRange.DistributionId)
 		if err != nil {
 			return nil, err
 		}
-		keyr = append(keyr, kr.KeyRangeFromDB(keyRange, ds.ColTypes))
+		kRange, err := kr.KeyRangeFromDB(keyRange, ds.ColTypes)
+		if err != nil {
+			return nil, err
+		}
+		krs = append(krs, kRange)
 	}
 
-	return keyr, nil
+	return krs, nil
 }
 
 // WriteMoveTaskGroup writes the given task group to the coordinator's QDB.
@@ -725,7 +733,7 @@ func (qc *Coordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr
 		return nil, err
 	}
 
-	return kr.KeyRangeFromDB(keyRangeDB, ds.ColTypes), nil
+	return kr.KeyRangeFromDB(keyRangeDB, ds.ColTypes)
 }
 
 // TODO : unit tests
@@ -814,8 +822,14 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		return err
 	}
 
-	krBase := kr.KeyRangeFromDB(krBaseDb, ds.ColTypes)
-	krAppendage := kr.KeyRangeFromDB(krAppendageDb, ds.ColTypes)
+	krBase, err := kr.KeyRangeFromDB(krBaseDb, ds.ColTypes)
+	if err != nil {
+		return err
+	}
+	krAppendage, err := kr.KeyRangeFromDB(krAppendageDb, ds.ColTypes)
+	if err != nil {
+		return err
+	}
 
 	if krBase.ShardID != krAppendage.ShardID {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges routing different shards")
@@ -897,9 +911,15 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return err
 	}
 
-	krOld := kr.KeyRangeFromDB(krOldDB, ds.ColTypes)
+	krOld, err := kr.KeyRangeFromDB(krOldDB, ds.ColTypes)
+	if err != nil {
+		return err
+	}
 
-	eph := kr.KeyRangeFromBytes(req.Bound, ds.ColTypes)
+	eph, err := kr.KeyRangeFromBytes(req.Bound, ds.ColTypes)
+	if err != nil {
+		return err
+	}
 
 	if kr.CmpRangesEqual(krOld.LowerBound, eph.LowerBound, ds.ColTypes) {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound equals lower of the key range")
@@ -919,7 +939,7 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		}
 	}
 
-	krTemp := kr.KeyRangeFromDB(
+	krTemp, err := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
 			// fix multidim case
 			LowerBound:     req.Bound,
@@ -929,6 +949,9 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		},
 		ds.ColTypes,
 	)
+	if err != nil {
+		return err
+	}
 
 	if err := ops.CreateKeyRangeWithChecks(ctx, qc.qdb, krTemp); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())

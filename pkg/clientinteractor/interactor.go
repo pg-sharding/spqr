@@ -488,7 +488,7 @@ func (pi *PSQLInteractor) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRa
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("bound -> %s", keyRange.SendRaw()[0]))}},
+		&pgproto3.DataRow{Values: [][]byte{fmt.Appendf(nil, "bound -> %s", keyRange.SendRaw()[0])}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -545,8 +545,8 @@ func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyR
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("key range id -> %v", split.Krid))}},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("bound        -> %s", string(split.Bound[0])))}},
+		&pgproto3.DataRow{Values: [][]byte{fmt.Appendf(nil, "key range id -> %v", split.Krid)}},
+		&pgproto3.DataRow{Values: [][]byte{fmt.Appendf(nil, "bound        -> %s", strings.ToLower(string(split.Bound[0])))}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -658,7 +658,10 @@ func (pi *PSQLInteractor) MoveTask(_ context.Context, t *tasks.MoveTask, colType
 			err := fmt.Errorf("something wrong in task: %#v, columns: %#v", t, colTypes)
 			return err
 		}
-		kRange := kr.KeyRangeFromBytes(t.Bound, colTypes)
+		kRange, err := kr.KeyRangeFromBytes(t.Bound, colTypes)
+		if err != nil {
+			return err
+		}
 		krData = kRange.SendRaw()
 	}
 	if err := pi.WriteDataRow(

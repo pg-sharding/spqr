@@ -1335,7 +1335,11 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 			return nil, fmt.Errorf("unknown column type: %s", t)
 		}
 	}
-	if kr.CmpRangesEqual(kr.KeyRangeFromBytes(bound, keyRange.ColumnTypes).LowerBound, keyRange.LowerBound, keyRange.ColumnTypes) {
+	boundKR, err := kr.KeyRangeFromBytes(bound, keyRange.ColumnTypes)
+	if err != nil {
+		return nil, err
+	}
+	if kr.CmpRangesEqual(boundKR.LowerBound, keyRange.LowerBound, keyRange.ColumnTypes) {
 		// move whole key range
 		return &tasks.MoveTask{
 			ID: uuid.NewString(),
@@ -1718,14 +1722,18 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		}
 
 		sort.Slice(krs, func(i, j int) bool {
-			l := kr.KeyRangeFromDB(krs[i], ds.ColTypes)
-			r := kr.KeyRangeFromDB(krs[j], ds.ColTypes)
+			l, _ := kr.KeyRangeFromDB(krs[i], ds.ColTypes)
+			r, _ := kr.KeyRangeFromDB(krs[j], ds.ColTypes)
 			return !kr.CmpRangesLess(l.LowerBound, r.LowerBound, ds.ColTypes)
 		})
 
 		for _, keyrange := range krs {
+			kRange, err := kr.KeyRangeFromDB(keyrange, ds.ColTypes)
+			if err != nil {
+				return err
+			}
 			resp, err := krClient.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{
-				KeyRangeInfo: kr.KeyRangeFromDB(keyrange, ds.ColTypes).ToProto(),
+				KeyRangeInfo: kRange.ToProto(),
 			})
 
 			if err != nil {
