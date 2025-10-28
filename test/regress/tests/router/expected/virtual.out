@@ -16,34 +16,41 @@ SELECT 'postgres is cool';
  postgres is cool
 (1 row)
 
+SET __spqr__target_session_attrs to 'read-only';
 SELECT pg_is_in_recovery();
  pg_is_in_recovery 
 -------------------
- f
+ t
 (1 row)
 
 SELECT __spqr__is_ready();
  __spqr__is_ready 
----------------
+------------------
  t
 (1 row)
 
 SELECT current_setting('transaction_read_only');
  current_setting 
 -----------------
- f
+ t
 (1 row)
 
 SELECT pg_is_in_recovery(), 1, 'kek';
  pg_is_in_recovery | ?column? | ?column? 
 -------------------+----------+----------
- f                 |        1 | kek
+ t                 |        1 | kek
 (1 row)
 
 SELECT CURRENT_USER;
  ?column? 
 ----------
  regress
+(1 row)
+
+select pg_is_in_recovery(), not pg_is_in_recovery(), __spqr__is_ready(), 1, 'a';
+ pg_is_in_recovery | pg_is_in_recovery | __spqr__is_ready | ?column? | ?column? 
+-------------------+-------------------+------------------+----------+----------
+ t                 | f                 | t                |        1 | a
 (1 row)
 
 set __spqr__preferred_engine to v2;
@@ -55,7 +62,6 @@ select __spqr__shards();
  sh3
  sh4
 (4 rows)
-
 
 --- XXX: support
 --- SELECT 1,2,3 UNION ALL SELECT 2,3,4;

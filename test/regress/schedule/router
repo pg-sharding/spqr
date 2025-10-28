@@ -33,6 +33,7 @@ test: engine_v2
 test: subplan
 test: subselects
 test: virtual_show
+test: virtual
 test: auto_distribution
 test: spqrguard
 test: negative_routing
