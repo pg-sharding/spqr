@@ -11,10 +11,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/tsa"
-	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/plan"
@@ -26,231 +24,6 @@ import (
 
 	"github.com/pg-sharding/lyx/lyx"
 )
-
-// DeparseExprShardingEntries deparses sharding column entries(column names or aliased column names)
-// e.g {fields:{string:{str:"a"}} fields:{string:{str:"i"}} for `WHERE a.i = 1`
-// returns alias and column name
-func (qr *ProxyQrouter) DeparseExprShardingEntries(expr lyx.Node, meta *rmeta.RoutingMetadataContext) (string, string, error) {
-	switch q := expr.(type) {
-	case *lyx.ColumnRef:
-		return q.TableAlias, q.ColName, nil
-	default:
-		return "", "", rerrors.ErrComplexQuery
-	}
-}
-
-func (qr *ProxyQrouter) processConstExpr(alias, colname string, expr lyx.Node, rm *rmeta.RoutingMetadataContext) error {
-	resolvedRelation, err := rm.ResolveRelationByAlias(alias)
-
-	if err != nil {
-		// failed to resolve relation, skip column
-		return nil
-	}
-
-	return qr.processConstExprOnRFQN(resolvedRelation, colname, []lyx.Node{expr}, rm)
-}
-
-func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, exprs []lyx.Node, meta *rmeta.RoutingMetadataContext) error {
-	off, tp := meta.GetDistributionKeyOffsetType(resolvedRelation, colname)
-	if off == -1 {
-		// column not from distr key
-		return nil
-	}
-
-	for _, expr := range exprs {
-		/* simple key-value pair */
-		if err := meta.ProcessSingleExpr(resolvedRelation, tp, colname, expr); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (qr *ProxyQrouter) computeRoutingExpr(
-	qualName *rfqn.RelationFQN,
-	rm *rmeta.RoutingMetadataContext,
-	rExpr *distributions.RoutingExpr,
-	hfName string,
-	queryParamsFormatCodes []int16,
-) ([]any, error) {
-
-	hf, err := hashfunction.HashFunctionByName(hfName)
-	if err != nil {
-		spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
-		return nil, err
-	}
-
-	var ret []any
-
-	var rec func(acc []byte, i int) error
-
-	rec = func(acc []byte, i int) error {
-
-		if i == len(rExpr.ColRefs) {
-			b, err := hashfunction.ApplyHashFunction(acc, qdb.ColumnTypeVarcharHashed, hf)
-			if err != nil {
-				return err
-			}
-			ret = append(ret, b)
-			return nil
-		}
-
-		if len(rm.ParamRefs[*qualName][rExpr.ColRefs[i].ColName]) == 0 && len(rm.Exprs[*qualName][rExpr.ColRefs[i].ColName]) == 0 {
-			return nil
-		}
-
-		vals, err := rm.ResolveValue(qualName, rExpr.ColRefs[i].ColName, queryParamsFormatCodes)
-		if err != nil {
-			return err
-		}
-
-		for _, v := range vals {
-
-			lExpr, err := hashfunction.ApplyNonIdentHashFunction(v, rExpr.ColRefs[i].ColType, hf)
-			if err != nil {
-				/* Is this ok? */
-				return err
-			}
-
-			buf := hashfunction.EncodeUInt64(uint64(lExpr))
-
-			localAcc := append(acc, buf...)
-
-			if err := rec(localAcc, i+1); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	if err := rec([]byte{}, 0); err != nil {
-		return nil, err
-	}
-
-	return ret, nil
-}
-
-func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext,
-	ds *distributions.Distribution, qualName *rfqn.RelationFQN, relation *distributions.DistributedRelation, tsa tsa.TSA) (plan.Plan, error) {
-
-	queryParamsFormatCodes := planner.GetParams(rm)
-
-	krs, err := qr.mgr.ListKeyRanges(ctx, ds.Id)
-	if err != nil {
-		return nil, err
-	}
-
-	var rec func(lvl int) error
-	var p plan.Plan = nil
-
-	compositeKey := make([]any, len(relation.DistributionKey))
-
-	rec = func(lvl int) error {
-
-		hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[lvl].HashFunction)
-		if err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
-			return err
-		}
-
-		if len(relation.DistributionKey[lvl].Column) == 0 {
-			// calculate routing expression
-
-			valList, err := qr.computeRoutingExpr(
-				qualName,
-				rm,
-				&relation.DistributionKey[lvl].Expr,
-				relation.DistributionKey[lvl].HashFunction,
-				queryParamsFormatCodes)
-
-			if err != nil {
-				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-				return err
-			}
-
-			for _, val := range valList {
-				compositeKey[lvl] = val
-
-				if lvl+1 == len(relation.DistributionKey) {
-					currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
-					if err != nil {
-						spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
-						return err
-					}
-
-					spqrlog.Zero.Debug().
-						Interface("current route", currroute).
-						Str("table", qualName.RelationName).
-						Msg("calculated route for table/cols")
-
-					p = plan.Combine(p, &plan.ShardDispatchPlan{
-						ExecTarget:         currroute,
-						TargetSessionAttrs: tsa,
-					})
-				} else {
-					if err := rec(lvl + 1); err != nil {
-						return err
-					}
-				}
-			}
-
-			return nil
-		}
-		col := relation.DistributionKey[lvl].Column
-
-		vals, err := rm.ResolveValue(qualName, col, queryParamsFormatCodes)
-
-		if err != nil {
-			/* Is this ok? */
-			return nil
-		}
-
-		/* TODO: correct support for composite keys here */
-
-		for _, val := range vals {
-			compositeKey[lvl], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[lvl], hf)
-
-			if err != nil {
-				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-				return err
-			}
-
-			spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[lvl]).Msg("applying hash function on key")
-
-			if lvl+1 == len(relation.DistributionKey) {
-				currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
-				if err != nil {
-					spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
-					return err
-				}
-
-				spqrlog.Zero.Debug().
-					Interface("current route", currroute).
-					Str("table", qualName.RelationName).
-					Msg("calculated route for table/cols")
-
-				p = plan.Combine(p, &plan.ShardDispatchPlan{
-					ExecTarget:         currroute,
-					TargetSessionAttrs: tsa,
-				})
-
-			} else {
-				if err := rec(lvl + 1); err != nil {
-					return err
-				}
-			}
-		}
-
-		return nil
-	}
-
-	if err := rec(0); err != nil {
-		return nil, err
-	}
-
-	return p, nil
-}
 
 // routeByClause de-parses sharding column-value pair from Where clause of the query
 // TODO : unit tests
@@ -275,7 +48,7 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, expr lyx.Node, meta 
 			switch q := texpr.SubLink.(type) {
 			case *lyx.AExprList:
 				for _, expr := range q.List {
-					if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
+					if err := planner.ProcessConstExpr(alias, colname, expr, meta); err != nil {
 						return nil, err
 					}
 				}
@@ -308,21 +81,21 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, expr lyx.Node, meta 
 
 				// TBD: postpone routing from here to root of parsing tree
 				// maybe extremely inefficient. Will be fixed in SPQR-2.0
-				if err := qr.processConstExpr(alias, colname, right, meta); err != nil {
+				if err := planner.ProcessConstExpr(alias, colname, right, meta); err != nil {
 					return nil, err
 				}
 
 			case *lyx.ColumnRef:
 				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
 				for _, v := range meta.AuxExprByColref(right) {
-					if err := qr.processConstExpr(alias, colname, v, meta); err != nil {
+					if err := planner.ProcessConstExpr(alias, colname, v, meta); err != nil {
 						return nil, err
 					}
 				}
 
 			case *lyx.AExprList:
 				for _, expr := range right.List {
-					if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
+					if err := planner.ProcessConstExpr(alias, colname, expr, meta); err != nil {
 						return nil, err
 					}
 				}
@@ -1042,52 +815,6 @@ func (qr *ProxyQrouter) planQueryV1(
 	return nil, nil
 }
 
-func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext, tsa tsa.TSA) (plan.Plan, error) {
-
-	var queryPlan plan.Plan
-	/*
-	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
-	 */
-
-	for qualName := range rm.Rels {
-		// TODO: check by whole RFQN
-		ds, err := rm.GetRelationDistribution(ctx, &qualName)
-		if err != nil {
-			return nil, err
-		} else if ds.Id == distributions.REPLICATED {
-			var shs []kr.ShardKey
-			if rmeta.IsRelationCatalog(&qualName) {
-				shs = nil
-			} else {
-				r, err := rm.Mgr.GetReferenceRelation(ctx, &qualName)
-				if err != nil {
-					return nil, err
-				}
-				shs = r.ListStorageRoutes()
-			}
-
-			queryPlan = plan.Combine(queryPlan, &plan.RandomDispatchPlan{
-				ExecTargets: shs,
-			})
-			continue
-		}
-
-		relation, exists := ds.TryGetRelation(&qualName)
-		if !exists {
-			return nil, fmt.Errorf("relation %s not found in distribution %s", qualName.RelationName, ds.Id)
-		}
-
-		tmp, err := qr.routingTuples(ctx, rm, ds, &qualName, relation, tsa)
-		if err != nil {
-			return nil, err
-		}
-
-		queryPlan = plan.Combine(queryPlan, tmp)
-	}
-
-	return queryPlan, nil
-}
-
 // Returns state, is read-only flag and err if any
 func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
@@ -1182,7 +909,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		return nil, false, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
 
-	tmp, err := qr.routeByTuples(ctx, rm, tsa)
+	tmp, err := planner.RouteByTuples(ctx, rm, tsa)
 	if err != nil {
 		return nil, false, err
 	}
