@@ -17,6 +17,8 @@ import (
 )
 
 type ProxyQrouter struct {
+	planner.QueryPlanner
+
 	mu sync.Mutex
 
 	ColumnMapping map[string]struct{}
@@ -102,6 +104,8 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []kr.ShardKey {
 	})
 	return ret
 }
+
+var _ planner.QueryPlanner = &ProxyQrouter{}
 
 func NewProxyRouter(shardMapping map[string]*config.Shard,
 	mgr meta.EntityMgr,
