@@ -46,6 +46,17 @@ SELECT CURRENT_USER;
  regress
 (1 row)
 
+set __spqr__preferred_engine to v2;
+select __spqr__shards();
+ shard name 
+------------
+ sh1
+ sh2
+ sh3
+ sh4
+(4 rows)
+
+
 --- XXX: support
 --- SELECT 1,2,3 UNION ALL SELECT 2,3,4;
 -- XXX:support

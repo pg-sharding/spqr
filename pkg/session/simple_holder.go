@@ -102,13 +102,12 @@ func (cl *SimpleSessionParamHandler) Distribution() string {
 
 // PreferredEngine implements client.Client.
 func (cl *SimpleSessionParamHandler) PreferredEngine() string {
-	return cl.resolveVirtualStringParam(SPQR_DISTRIBUTION, "")
+	return cl.resolveVirtualStringParam(SPQR_PREFERRED_ENGINE, "")
 }
 
 // SetPreferredEngine implements client.Client.
 func (cl *SimpleSessionParamHandler) SetPreferredEngine(level string, val string) {
-
-	cl.recordVirtualParam(level, SPQR_DISTRIBUTION, val)
+	cl.recordVirtualParam(level, SPQR_PREFERRED_ENGINE, val)
 }
 
 // SetDistributedRelation implements RouterClient.
