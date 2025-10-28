@@ -2223,7 +2223,8 @@ func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
 		resp, err := cl.DropSequence(context.TODO(), &proto.DropSequenceRequest{
-			Name: seqName,
+			Name:  seqName,
+			Force: force,
 		})
 		if err != nil {
 			return err

@@ -140,7 +140,7 @@ func (d *DistributionsServer) CurrVal(ctx context.Context, req *protos.CurrValRe
 }
 
 func (d *DistributionsServer) DropSequence(ctx context.Context, req *protos.DropSequenceRequest) (*emptypb.Empty, error) {
-	return nil, d.impl.DropSequence(ctx, req.Name, true)
+	return nil, d.impl.DropSequence(ctx, req.Name, req.Force)
 }
 
 func (d *DistributionsServer) ListRelationSequences(ctx context.Context, req *protos.ListRelationSequencesRequest) (*protos.ListRelationSequencesReply, error) {
