@@ -47,8 +47,12 @@ func (c *CoordinatorService) CreateKeyRange(ctx context.Context, request *protos
 	if err != nil {
 		return nil, err
 	}
+	protoKR, err := kr.KeyRangeFromProto(request.KeyRangeInfo, ds.ColTypes)
+	if err != nil {
+		return nil, err
+	}
 
-	err = c.impl.CreateKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo, ds.ColTypes))
+	err = c.impl.CreateKeyRange(ctx, protoKR)
 	if err != nil {
 		return nil, err
 	}

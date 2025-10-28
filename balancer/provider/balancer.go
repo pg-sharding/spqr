@@ -742,7 +742,11 @@ func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		keyRanges[krProto.DistributionId] = append(keyRanges[krProto.DistributionId], kr.KeyRangeFromProto(krProto, ds.Distribution.ColumnTypes))
+		kRange, err := kr.KeyRangeFromProto(krProto, ds.Distribution.ColumnTypes)
+		if err != nil {
+			return err
+		}
+		keyRanges[krProto.DistributionId] = append(keyRanges[krProto.DistributionId], kRange)
 	}
 	for _, krs := range keyRanges {
 		sort.Slice(krs, func(i, j int) bool {

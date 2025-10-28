@@ -164,8 +164,6 @@ func main() {
 
 	qdbKr, err := db.GetKeyRange(ctx, *krId)
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return
 	}
 
 	ds, err := db.GetDistribution(ctx, qdbKr.DistributionId)
@@ -174,7 +172,9 @@ func main() {
 		return
 	}
 
-	keyRange := kr.KeyRangeFromDB(qdbKr, ds.ColTypes)
+	keyRange, err := kr.KeyRangeFromDB(qdbKr, ds.ColTypes)
+	if err != nil {
+	}
 
 	krs, err := db.ListKeyRanges(ctx, keyRange.Distribution)
 	if err != nil {
@@ -185,7 +185,11 @@ func main() {
 	var nextKeyRange *kr.KeyRange
 
 	for _, currkr := range krs {
-		typedKr := kr.KeyRangeFromDB(currkr, ds.ColTypes)
+		typedKr, err := kr.KeyRangeFromDB(currkr, ds.ColTypes)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return
+		}
 		if kr.CmpRangesLess(keyRange.LowerBound, typedKr.LowerBound, ds.ColTypes) {
 			if nextKeyRange == nil || kr.CmpRangesLess(typedKr.LowerBound, nextKeyRange.LowerBound, ds.ColTypes) {
 				nextKeyRange = typedKr

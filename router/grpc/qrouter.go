@@ -334,7 +334,11 @@ func (l *LocalQrouterServer) CreateKeyRange(ctx context.Context, request *protos
 	if err != nil {
 		return nil, err
 	}
-	err = l.mgr.CreateKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo, ds.ColTypes))
+	kRange, err := kr.KeyRangeFromProto(request.KeyRangeInfo, ds.ColTypes)
+	if err != nil {
+		return nil, err
+	}
+	err = l.mgr.CreateKeyRange(ctx, kRange)
 	if err != nil {
 		return nil, err
 	}
