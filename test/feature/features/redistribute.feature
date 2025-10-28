@@ -814,13 +814,13 @@ Feature: Redistribution test
     """
     When I execute SQL on host "coordinator"
     """
-    CREATE KEY RANGE kr2 FROM '00000000-0000-0000-000000000000' ROUTE TO sh1 FOR DISTRIBUTION ds2;
+    CREATE KEY RANGE kr2 FROM '00000000-0000-0000-0000-000000000000' ROUTE TO sh1 FOR DISTRIBUTION ds2;
     """
     Then command return code should be "0"
 
     When I run SQL on host "router"
     """
-    CREATE TABLE xMove3(w_id TEXT, s TEXT);
+    CREATE TABLE xMove3(w_id uuid, s TEXT);
     """
     Then command return code should be "0"
     When I run SQL on host "shard1"
@@ -861,7 +861,7 @@ Feature: Redistribution test
     [{
       "Key range ID":"kr2",
       "Distribution ID":"ds2",
-      "Lower bound":"'00000000-0000-0000-000000000000'",
+      "Lower bound":"'00000000-0000-0000-0000-000000000000'",
       "Shard ID":"sh2",
       "Locked":"false"
     }]
