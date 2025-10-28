@@ -5,16 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/tsa"
-	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/plan"
@@ -22,239 +18,13 @@ import (
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
-	"github.com/pg-sharding/spqr/router/virtual"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
 
-// DeparseExprShardingEntries deparses sharding column entries(column names or aliased column names)
-// e.g {fields:{string:{str:"a"}} fields:{string:{str:"i"}} for `WHERE a.i = 1`
-// returns alias and column name
-func (qr *ProxyQrouter) DeparseExprShardingEntries(expr lyx.Node, meta *rmeta.RoutingMetadataContext) (string, string, error) {
-	switch q := expr.(type) {
-	case *lyx.ColumnRef:
-		return q.TableAlias, q.ColName, nil
-	default:
-		return "", "", rerrors.ErrComplexQuery
-	}
-}
-
-func (qr *ProxyQrouter) processConstExpr(alias, colname string, expr lyx.Node, rm *rmeta.RoutingMetadataContext) error {
-	resolvedRelation, err := rm.ResolveRelationByAlias(alias)
-
-	if err != nil {
-		// failed to resolve relation, skip column
-		return nil
-	}
-
-	return qr.processConstExprOnRFQN(resolvedRelation, colname, []lyx.Node{expr}, rm)
-}
-
-func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, exprs []lyx.Node, meta *rmeta.RoutingMetadataContext) error {
-	off, tp := meta.GetDistributionKeyOffsetType(resolvedRelation, colname)
-	if off == -1 {
-		// column not from distr key
-		return nil
-	}
-
-	for _, expr := range exprs {
-		/* simple key-value pair */
-		if err := meta.ProcessSingleExpr(resolvedRelation, tp, colname, expr); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (qr *ProxyQrouter) computeRoutingExpr(
-	qualName *rfqn.RelationFQN,
-	rm *rmeta.RoutingMetadataContext,
-	rExpr *distributions.RoutingExpr,
-	hfName string,
-	queryParamsFormatCodes []int16,
-) ([]any, error) {
-
-	hf, err := hashfunction.HashFunctionByName(hfName)
-	if err != nil {
-		spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
-		return nil, err
-	}
-
-	var ret []any
-
-	var rec func(acc []byte, i int) error
-
-	rec = func(acc []byte, i int) error {
-
-		if i == len(rExpr.ColRefs) {
-			b, err := hashfunction.ApplyHashFunction(acc, qdb.ColumnTypeVarcharHashed, hf)
-			if err != nil {
-				return err
-			}
-			ret = append(ret, b)
-			return nil
-		}
-
-		if len(rm.ParamRefs[*qualName][rExpr.ColRefs[i].ColName]) == 0 && len(rm.Exprs[*qualName][rExpr.ColRefs[i].ColName]) == 0 {
-			return nil
-		}
-
-		vals, err := rm.ResolveValue(qualName, rExpr.ColRefs[i].ColName, queryParamsFormatCodes)
-		if err != nil {
-			return err
-		}
-
-		for _, v := range vals {
-
-			lExpr, err := hashfunction.ApplyNonIdentHashFunction(v, rExpr.ColRefs[i].ColType, hf)
-			if err != nil {
-				/* Is this ok? */
-				return err
-			}
-
-			buf := hashfunction.EncodeUInt64(uint64(lExpr))
-
-			localAcc := append(acc, buf...)
-
-			if err := rec(localAcc, i+1); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	if err := rec([]byte{}, 0); err != nil {
-		return nil, err
-	}
-
-	return ret, nil
-}
-
-func (qr *ProxyQrouter) routingTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext,
-	ds *distributions.Distribution, qualName *rfqn.RelationFQN, relation *distributions.DistributedRelation, tsa tsa.TSA) (plan.Plan, error) {
-
-	queryParamsFormatCodes := planner.GetParams(rm)
-
-	krs, err := qr.mgr.ListKeyRanges(ctx, ds.Id)
-	if err != nil {
-		return nil, err
-	}
-
-	var rec func(lvl int) error
-	var p plan.Plan = nil
-
-	compositeKey := make([]any, len(relation.DistributionKey))
-
-	rec = func(lvl int) error {
-
-		hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[lvl].HashFunction)
-		if err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
-			return err
-		}
-
-		if len(relation.DistributionKey[lvl].Column) == 0 {
-			// calculate routing expression
-
-			valList, err := qr.computeRoutingExpr(
-				qualName,
-				rm,
-				&relation.DistributionKey[lvl].Expr,
-				relation.DistributionKey[lvl].HashFunction,
-				queryParamsFormatCodes)
-
-			if err != nil {
-				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-				return err
-			}
-
-			for _, val := range valList {
-				compositeKey[lvl] = val
-
-				if lvl+1 == len(relation.DistributionKey) {
-					currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
-					if err != nil {
-						spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
-						return err
-					}
-
-					spqrlog.Zero.Debug().
-						Interface("current route", currroute).
-						Str("table", qualName.RelationName).
-						Msg("calculated route for table/cols")
-
-					p = plan.Combine(p, &plan.ShardDispatchPlan{
-						ExecTarget:         currroute,
-						TargetSessionAttrs: tsa,
-					})
-				} else {
-					if err := rec(lvl + 1); err != nil {
-						return err
-					}
-				}
-			}
-
-			return nil
-		}
-		col := relation.DistributionKey[lvl].Column
-
-		vals, err := rm.ResolveValue(qualName, col, queryParamsFormatCodes)
-
-		if err != nil {
-			/* Is this ok? */
-			return nil
-		}
-
-		/* TODO: correct support for composite keys here */
-
-		for _, val := range vals {
-			compositeKey[lvl], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[lvl], hf)
-
-			if err != nil {
-				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-				return err
-			}
-
-			spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[lvl]).Msg("applying hash function on key")
-
-			if lvl+1 == len(relation.DistributionKey) {
-				currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
-				if err != nil {
-					spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
-					return err
-				}
-
-				spqrlog.Zero.Debug().
-					Interface("current route", currroute).
-					Str("table", qualName.RelationName).
-					Msg("calculated route for table/cols")
-
-				p = plan.Combine(p, &plan.ShardDispatchPlan{
-					ExecTarget:         currroute,
-					TargetSessionAttrs: tsa,
-				})
-
-			} else {
-				if err := rec(lvl + 1); err != nil {
-					return err
-				}
-			}
-		}
-
-		return nil
-	}
-
-	if err := rec(0); err != nil {
-		return nil, err
-	}
-
-	return p, nil
-}
-
 // routeByClause de-parses sharding column-value pair from Where clause of the query
 // TODO : unit tests
-func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, expr lyx.Node, meta *rmeta.RoutingMetadataContext) (plan.Plan, error) {
+func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, rm *rmeta.RoutingMetadataContext, expr lyx.Node) (plan.Plan, error) {
 	if expr == nil {
 		return nil, nil
 	}
@@ -275,7 +45,7 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, expr lyx.Node, meta 
 			switch q := texpr.SubLink.(type) {
 			case *lyx.AExprList:
 				for _, expr := range q.List {
-					if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
+					if err := planner.ProcessConstExpr(alias, colname, expr, rm); err != nil {
 						return nil, err
 					}
 				}
@@ -283,7 +53,7 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, expr lyx.Node, meta 
 				/* TODO properly support subquery here */
 				/* SELECT * FROM t WHERE id IN (SELECT 1, 2) */
 
-				return qr.planQueryV1(ctx, q, meta)
+				return qr.planQueryV1(ctx, rm, q)
 			}
 		}
 
@@ -308,21 +78,21 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, expr lyx.Node, meta 
 
 				// TBD: postpone routing from here to root of parsing tree
 				// maybe extremely inefficient. Will be fixed in SPQR-2.0
-				if err := qr.processConstExpr(alias, colname, right, meta); err != nil {
+				if err := planner.ProcessConstExpr(alias, colname, right, rm); err != nil {
 					return nil, err
 				}
 
 			case *lyx.ColumnRef:
 				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
-				for _, v := range meta.AuxExprByColref(right) {
-					if err := qr.processConstExpr(alias, colname, v, meta); err != nil {
+				for _, v := range rm.AuxExprByColref(right) {
+					if err := planner.ProcessConstExpr(alias, colname, v, rm); err != nil {
 						return nil, err
 					}
 				}
 
 			case *lyx.AExprList:
 				for _, expr := range right.List {
-					if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
+					if err := planner.ProcessConstExpr(alias, colname, expr, rm); err != nil {
 						return nil, err
 					}
 				}
@@ -340,34 +110,34 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, expr lyx.Node, meta 
 						case *lyx.SubLink:
 
 							// ignore all errors.
-							return qr.planQueryV1(ctx, argexpr.SubSelect, meta)
+							return qr.planQueryV1(ctx, rm, argexpr.SubSelect)
 						}
 					}
 				}
 
 			default:
-				if tmp, err := qr.planByQualExpr(ctx, texpr.Left, meta); err != nil {
+				if tmp, err := qr.planByQualExpr(ctx, rm, texpr.Left); err != nil {
 					return nil, err
 				} else {
 					p = plan.Combine(p, tmp)
 				}
 
-				if tmp, err := qr.planByQualExpr(ctx, texpr.Right, meta); err != nil {
+				if tmp, err := qr.planByQualExpr(ctx, rm, texpr.Right); err != nil {
 					return nil, err
 				} else {
 					p = plan.Combine(p, tmp)
 				}
 			}
 		case *lyx.Select:
-			return qr.planQueryV1(ctx, lft, meta)
+			return qr.planQueryV1(ctx, rm, lft)
 		default:
-			if tmp, err := qr.planByQualExpr(ctx, texpr.Left, meta); err != nil {
+			if tmp, err := qr.planByQualExpr(ctx, rm, texpr.Left); err != nil {
 				return nil, err
 			} else {
 				p = plan.Combine(p, tmp)
 			}
 
-			if tmp, err := qr.planByQualExpr(ctx, texpr.Right, meta); err != nil {
+			if tmp, err := qr.planByQualExpr(ctx, rm, texpr.Right); err != nil {
 				return nil, err
 			} else {
 				p = plan.Combine(p, tmp)
@@ -395,7 +165,7 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, expr lyx.Node, meta 
 				case *lyx.SubLink:
 
 					// ignore all errors.
-					return qr.planQueryV1(ctx, argexpr.SubSelect, meta)
+					return qr.planQueryV1(ctx, rm, argexpr.SubSelect)
 				}
 			}
 		}
@@ -407,7 +177,7 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, expr lyx.Node, meta 
 	return p, nil
 }
 
-func (qr *ProxyQrouter) planFromNode(ctx context.Context, node lyx.FromClauseNode, meta *rmeta.RoutingMetadataContext) (plan.Plan, error) {
+func (qr *ProxyQrouter) planFromNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, node lyx.FromClauseNode) (plan.Plan, error) {
 	spqrlog.Zero.Debug().
 		Type("node-type", node).
 		Msg("planning from node")
@@ -420,25 +190,25 @@ func (qr *ProxyQrouter) planFromNode(ctx context.Context, node lyx.FromClauseNod
 		/* XXX: nothing, everything checked during analyze stage */
 
 	case *lyx.JoinExpr:
-		if tmp, err := qr.planFromNode(ctx, q.Rarg, meta); err != nil {
+		if tmp, err := qr.planFromNode(ctx, rm, q.Rarg); err != nil {
 			return nil, err
 		} else {
 			p = plan.Combine(p, tmp)
 		}
-		if tmp, err := qr.planFromNode(ctx, q.Larg, meta); err != nil {
+		if tmp, err := qr.planFromNode(ctx, rm, q.Larg); err != nil {
 			return nil, err
 		} else {
 			p = plan.Combine(p, tmp)
 		}
 
-		if tmp, err := qr.planByQualExpr(ctx, q.JoinQual, meta); err != nil {
+		if tmp, err := qr.planByQualExpr(ctx, rm, q.JoinQual); err != nil {
 			return nil, err
 		} else {
 			p = plan.Combine(p, tmp)
 		}
 
 	case *lyx.SubSelect:
-		return qr.planQueryV1(ctx, q.Arg, meta)
+		return qr.planQueryV1(ctx, rm, q.Arg)
 	default:
 		// other cases to consider
 		// lateral join, natural, etc
@@ -448,12 +218,12 @@ func (qr *ProxyQrouter) planFromNode(ctx context.Context, node lyx.FromClauseNod
 }
 func (qr *ProxyQrouter) planFromClauseList(
 	ctx context.Context,
-	clause []lyx.FromClauseNode, meta *rmeta.RoutingMetadataContext) (plan.Plan, error) {
+	rm *rmeta.RoutingMetadataContext, clause []lyx.FromClauseNode) (plan.Plan, error) {
 
 	var p plan.Plan = nil
 
 	for _, node := range clause {
-		tmp, err := qr.planFromNode(ctx, node, meta)
+		tmp, err := qr.planFromNode(ctx, rm, node)
 		if err != nil {
 			return nil, err
 		}
@@ -478,254 +248,12 @@ func (qr *ProxyQrouter) planWithClauseV1(ctx context.Context, rm *rmeta.RoutingM
 				}
 			}
 		default:
-			if tmp, err := qr.planQueryV1(ctx, cte.SubQuery, rm); err != nil {
+			if tmp, err := qr.planQueryV1(ctx, rm, cte.SubQuery); err != nil {
 				return nil, err
 			} else {
 				p = plan.Combine(p, tmp)
 			}
 		}
-	}
-
-	return p, nil
-}
-
-func (qr *ProxyQrouter) planTargetList(ctx context.Context, stmt *lyx.Select, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
-	virtualRowCols := []pgproto3.FieldDescription{}
-	virtualRowVals := [][]byte{}
-
-	var p plan.Plan
-
-	for _, expr := range stmt.TargetList {
-		actualExpr := expr
-		colname := "?column?"
-		if rt, ok := expr.(*lyx.ResTarget); ok {
-			actualExpr = rt.Value
-			colname = rt.Name
-		}
-
-		switch e := actualExpr.(type) {
-		case *lyx.SVFOP_CURRENT_USER:
-			p = plan.Combine(p, &plan.VirtualPlan{})
-			virtualRowCols = append(virtualRowCols,
-				pgproto3.FieldDescription{
-					Name:                 []byte(colname),
-					DataTypeOID:          catalog.TEXTOID,
-					TypeModifier:         -1,
-					DataTypeSize:         -1,
-					TableAttributeNumber: 0,
-					TableOID:             0,
-					Format:               0,
-				})
-
-			virtualRowVals = append(virtualRowVals, []byte(rm.SPH.Usr()))
-
-		case *lyx.AExprNot:
-			/* inspect our arg. If this is pg_is_in_recovery, apply NOT */
-			switch arg := e.Arg.(type) {
-			case *lyx.FuncApplication:
-				if arg.Name == "pg_is_in_recovery" {
-					p = plan.Combine(p, &plan.VirtualPlan{})
-					virtualRowCols = append(virtualRowCols,
-						pgproto3.FieldDescription{
-							Name:                 []byte("pg_is_in_recovery"),
-							DataTypeOID:          catalog.ARRAYOID,
-							TypeModifier:         -1,
-							DataTypeSize:         1,
-							TableAttributeNumber: 0,
-							TableOID:             0,
-							Format:               0,
-						})
-
-					/* notice this sign */
-					if rm.SPH.GetTsa() != config.TargetSessionAttrsRW {
-						virtualRowVals = append(virtualRowVals, []byte{byte('f')})
-					} else {
-						virtualRowVals = append(virtualRowVals, []byte{byte('t')})
-					}
-					continue
-				}
-			}
-		/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
-		case *lyx.FuncApplication:
-
-			/* for queries, that need to access data on shard, ignore these "virtual" func.	 */
-			if e.Name == "pg_is_in_recovery" {
-				p = plan.Combine(p, &plan.VirtualPlan{})
-				virtualRowCols = append(virtualRowCols,
-					pgproto3.FieldDescription{
-						Name:                 []byte("pg_is_in_recovery"),
-						DataTypeOID:          catalog.ARRAYOID,
-						TypeModifier:         -1,
-						DataTypeSize:         1,
-						TableAttributeNumber: 0,
-						TableOID:             0,
-						Format:               0,
-					})
-
-				if rm.SPH.GetTsa() == config.TargetSessionAttrsRW {
-					virtualRowVals = append(virtualRowVals, []byte{byte('f')})
-				} else {
-					virtualRowVals = append(virtualRowVals, []byte{byte('t')})
-				}
-				continue
-			} else if e.Name == virtual.VirtualFuncIsReady {
-				p = plan.Combine(p, &plan.VirtualPlan{})
-				virtualRowCols = append(virtualRowCols,
-					pgproto3.FieldDescription{
-						Name:                 []byte(virtual.VirtualFuncIsReady),
-						DataTypeOID:          catalog.ARRAYOID,
-						TypeModifier:         -1,
-						DataTypeSize:         1,
-						TableAttributeNumber: 0,
-						TableOID:             0,
-						Format:               0,
-					})
-
-				if qr.Ready() {
-					virtualRowVals = append(virtualRowVals, []byte{byte('t')})
-				} else {
-					virtualRowVals = append(virtualRowVals, []byte{byte('f')})
-				}
-				continue
-			} else if e.Name == virtual.VirtualFuncHosts {
-				p = plan.Combine(p, &plan.VirtualPlan{})
-				virtualRowCols = append(virtualRowCols,
-					pgproto3.FieldDescription{
-						Name:                 []byte("host"),
-						DataTypeOID:          catalog.TEXTOID,
-						TypeModifier:         -1,
-						DataTypeSize:         1,
-						TableAttributeNumber: 0,
-						TableOID:             0,
-						Format:               0,
-					},
-					pgproto3.FieldDescription{
-						Name:                 []byte("rw"),
-						DataTypeOID:          catalog.TEXTOID,
-						TypeModifier:         -1,
-						DataTypeSize:         1,
-						TableAttributeNumber: 0,
-						TableOID:             0,
-						Format:               0,
-					},
-				)
-				if len(e.Args) == 1 {
-					var k string
-
-					switch vv := e.Args[0].(type) {
-					case *lyx.AExprSConst:
-						k = vv.Value
-					default:
-						return nil, fmt.Errorf("incorrect argument type for %s", virtual.VirtualFuncHosts)
-					}
-
-					if v, ok := qr.csm.InstanceHealthChecks()[k]; ok {
-						virtualRowVals = append(virtualRowVals,
-							[]byte(k), fmt.Appendf(nil, "%v", v.CR.RW))
-					} else {
-						return nil, fmt.Errorf("incorrect first argument for %s", virtual.VirtualFuncHosts)
-					}
-				} else {
-					return nil, fmt.Errorf("incorrect argument number for %s", virtual.VirtualFuncHosts)
-				}
-
-				continue
-			} else if e.Name == "current_setting" && len(e.Args) == 1 {
-				if val, ok := e.Args[0].(*lyx.AExprSConst); ok && val.Value == "transaction_read_only" {
-					p = plan.Combine(p, &plan.VirtualPlan{})
-					virtualRowCols = append(virtualRowCols,
-						pgproto3.FieldDescription{
-							Name:                 []byte("current_setting"),
-							DataTypeOID:          catalog.ARRAYOID,
-							TypeModifier:         -1,
-							DataTypeSize:         1,
-							TableAttributeNumber: 0,
-							TableOID:             0,
-							Format:               0,
-						})
-
-					if rm.SPH.GetTsa() == config.TargetSessionAttrsRW {
-						virtualRowVals = append(virtualRowVals, []byte{byte('f')})
-					} else {
-						virtualRowVals = append(virtualRowVals, []byte{byte('t')})
-					}
-					continue
-				}
-			}
-
-			if e.Name == "current_schema" || e.Name == "now" || e.Name == "set_config" || e.Name == "version" || e.Name == "current_setting" {
-				p = plan.Combine(p, &plan.RandomDispatchPlan{})
-				continue
-			}
-			deduced := false
-			for _, innerExp := range e.Args {
-				switch iE := innerExp.(type) {
-				case *lyx.Select:
-					if tmp, err := qr.planQueryV1(ctx, iE, rm); err != nil {
-						return nil, err
-					} else {
-						p = plan.Combine(p, tmp)
-						deduced = true
-					}
-				}
-			}
-			if !deduced {
-				/* very questionable. */
-				p = plan.Combine(p, &plan.RandomDispatchPlan{})
-			}
-		/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
-		case *lyx.AExprSConst:
-
-			p = plan.Combine(p, &plan.VirtualPlan{})
-			virtualRowCols = append(virtualRowCols,
-				pgproto3.FieldDescription{
-					Name:                 []byte(colname),
-					DataTypeOID:          catalog.TEXTOID,
-					TypeModifier:         -1,
-					DataTypeSize:         -1,
-					TableAttributeNumber: 0,
-					TableOID:             0,
-					Format:               0,
-				})
-
-			virtualRowVals = append(virtualRowVals, []byte(e.Value))
-
-		case *lyx.AExprIConst:
-
-			p = plan.Combine(p, &plan.VirtualPlan{})
-			virtualRowCols = append(virtualRowCols,
-				pgproto3.FieldDescription{
-					Name:                 []byte(colname),
-					DataTypeOID:          catalog.INT4OID,
-					TypeModifier:         -1,
-					DataTypeSize:         4,
-					TableAttributeNumber: 0,
-					TableOID:             0,
-					Format:               0,
-				})
-
-			virtualRowVals = append(virtualRowVals, fmt.Appendf(nil, "%d", e.Value))
-		case *lyx.AExprNConst, *lyx.AExprBConst:
-			p = plan.Combine(p, &plan.RandomDispatchPlan{})
-
-		/* Special case for SELECT current_schema */
-		case *lyx.ColumnRef:
-			if e.ColName == "current_schema" {
-				p = plan.Combine(p, &plan.RandomDispatchPlan{})
-			}
-		case *lyx.Select:
-			if tmp, err := qr.planQueryV1(ctx, e, rm); err != nil {
-				return nil, err
-			} else {
-				p = plan.Combine(p, tmp)
-			}
-		}
-	}
-
-	switch q := p.(type) {
-	case *plan.VirtualPlan:
-		q.VirtualRowCols = virtualRowCols
-		q.VirtualRowVals = [][][]byte{virtualRowVals}
 	}
 
 	return p, nil
@@ -735,8 +263,8 @@ func (qr *ProxyQrouter) planTargetList(ctx context.Context, stmt *lyx.Select, rm
 // May return nil routing state here - thats ok
 func (qr *ProxyQrouter) planQueryV1(
 	ctx context.Context,
-	qstmt lyx.Node,
-	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
+	rm *rmeta.RoutingMetadataContext,
+	qstmt lyx.Node) (plan.Plan, error) {
 
 	if qstmt == nil {
 		return nil, nil
@@ -751,7 +279,7 @@ func (qr *ProxyQrouter) planQueryV1(
 		if len(stmt.FromClause) == 0 && (stmt.LArg == nil || stmt.RArg == nil) {
 			var err error
 
-			p, err = qr.planTargetList(ctx, stmt, rm)
+			p, err = planner.PlanTargetList(ctx, rm, qr, stmt)
 			if err != nil {
 				return nil, err
 			}
@@ -760,13 +288,13 @@ func (qr *ProxyQrouter) planQueryV1(
 		 * Then try to route  both branches
 		 */
 
-		if tmp, err := qr.planQueryV1(ctx, stmt.LArg, rm); err != nil {
+		if tmp, err := qr.planQueryV1(ctx, rm, stmt.LArg); err != nil {
 			return nil, err
 		} else {
 			p = plan.Combine(p, tmp)
 		}
 
-		if tmp, err := qr.planQueryV1(ctx, stmt.RArg, rm); err != nil {
+		if tmp, err := qr.planQueryV1(ctx, rm, stmt.RArg); err != nil {
 			return nil, err
 		} else {
 			p = plan.Combine(p, tmp)
@@ -782,7 +310,7 @@ func (qr *ProxyQrouter) planQueryV1(
 		if stmt.FromClause != nil {
 			// collect table alias names, if any
 			// for single-table queries, process as usual
-			if tmp, err := qr.planFromClauseList(ctx, stmt.FromClause, rm); err != nil {
+			if tmp, err := qr.planFromClauseList(ctx, rm, stmt.FromClause); err != nil {
 				return nil, err
 			} else {
 				p = plan.Combine(p, tmp)
@@ -792,7 +320,7 @@ func (qr *ProxyQrouter) planQueryV1(
 		if stmt.Where != nil {
 			/* return plan from where clause and route on it */
 			/*  SELECT stmts, which would be routed with their WHERE clause */
-			tmp, err := qr.planByQualExpr(ctx, stmt.Where, rm)
+			tmp, err := qr.planByQualExpr(ctx, rm, stmt.Where)
 			if err != nil {
 				return nil, err
 			}
@@ -825,7 +353,7 @@ func (qr *ProxyQrouter) planQueryV1(
 		case *lyx.Select:
 			spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
 
-			p, _ = qr.planQueryV1(ctx, subS, rm)
+			p, _ = qr.planQueryV1(ctx, rm, subS)
 
 			/* try target list */
 			spqrlog.Zero.Debug().Msgf("routing insert stmt on target list:%T", p)
@@ -977,7 +505,7 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		tmp, err := qr.planByQualExpr(ctx, clause, rm)
+		tmp, err := qr.planByQualExpr(ctx, rm, clause)
 		if err != nil {
 			return nil, err
 		}
@@ -1024,7 +552,7 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		tmp, err := qr.planByQualExpr(ctx, clause, rm)
+		tmp, err := qr.planByQualExpr(ctx, rm, clause)
 		if err != nil {
 			return nil, err
 		}
@@ -1040,52 +568,6 @@ func (qr *ProxyQrouter) planQueryV1(
 	}
 
 	return nil, nil
-}
-
-func (qr *ProxyQrouter) routeByTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext, tsa tsa.TSA) (plan.Plan, error) {
-
-	var queryPlan plan.Plan
-	/*
-	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
-	 */
-
-	for qualName := range rm.Rels {
-		// TODO: check by whole RFQN
-		ds, err := rm.GetRelationDistribution(ctx, &qualName)
-		if err != nil {
-			return nil, err
-		} else if ds.Id == distributions.REPLICATED {
-			var shs []kr.ShardKey
-			if rmeta.IsRelationCatalog(&qualName) {
-				shs = nil
-			} else {
-				r, err := rm.Mgr.GetReferenceRelation(ctx, &qualName)
-				if err != nil {
-					return nil, err
-				}
-				shs = r.ListStorageRoutes()
-			}
-
-			queryPlan = plan.Combine(queryPlan, &plan.RandomDispatchPlan{
-				ExecTargets: shs,
-			})
-			continue
-		}
-
-		relation, exists := ds.TryGetRelation(&qualName)
-		if !exists {
-			return nil, fmt.Errorf("relation %s not found in distribution %s", qualName.RelationName, ds.Id)
-		}
-
-		tmp, err := qr.routingTuples(ctx, rm, ds, &qualName, relation, tsa)
-		if err != nil {
-			return nil, err
-		}
-
-		queryPlan = plan.Combine(queryPlan, tmp)
-	}
-
-	return queryPlan, nil
 }
 
 // Returns state, is read-only flag and err if any
@@ -1120,7 +602,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 	/* TDB: comments? */
 	case *lyx.Insert:
 
-		rs, err := qr.planQueryV1(ctx, stmt, rm)
+		rs, err := qr.planQueryV1(ctx, rm, stmt)
 		if err != nil {
 			return nil, false, err
 		}
@@ -1161,7 +643,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 			return &plan.RandomDispatchPlan{}, ro, nil
 		}
 
-		p, err := qr.planQueryV1(ctx, stmt, rm)
+		p, err := qr.planQueryV1(ctx, rm, stmt)
 
 		if err != nil {
 			return nil, false, err
@@ -1172,7 +654,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 	case *lyx.Delete, *lyx.Update:
 		// UPDATE and/or DELETE, COPY stmts, which
 		// would be routed with their WHERE clause
-		rs, err := qr.planQueryV1(ctx, stmt, rm)
+		rs, err := qr.planQueryV1(ctx, rm, stmt)
 		if err != nil {
 			return nil, false, err
 		}
@@ -1182,7 +664,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		return nil, false, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
 
-	tmp, err := qr.routeByTuples(ctx, rm, tsa)
+	tmp, err := planner.RouteByTuples(ctx, rm, tsa)
 	if err != nil {
 		return nil, false, err
 	}
@@ -1441,6 +923,10 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		}
 	}
 	return p, ro, nil
+}
+
+func (qr *ProxyQrouter) PlanQueryTopLevel(ctx context.Context, rm *rmeta.RoutingMetadataContext, s lyx.Node) (plan.Plan, error) {
+	return qr.planQueryV1(ctx, rm, s)
 }
 
 // TODO : unit tests

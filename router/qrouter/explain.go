@@ -13,7 +13,7 @@ import (
 
 // TODO : unit tests
 func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *lyx.Explain, cli *clientinteractor.PSQLInteractor) error {
-	meta := rmeta.NewRoutingMetadataContext(nil, "", nil, nil)
+	rm := rmeta.NewRoutingMetadataContext(nil, "", nil, nil)
 
 	switch node := stmt.Stmt.(type) {
 	case *lyx.VariableSetStmt:
@@ -51,21 +51,21 @@ func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *lyx.Explain, cli *cli
 		return cli.ReportStmtRoutedToAllShards(ctx)
 
 	case *lyx.Insert:
-		_, err := qr.planQueryV1(ctx, node, meta)
+		_, err := qr.planQueryV1(ctx, rm, node)
 		if err != nil {
 			return cli.ReportError(err)
 		}
 	default:
 		// SELECT, UPDATE and/or DELETE stmts, which
 		// would be routed with their WHERE clause
-		_, err := qr.planQueryV1(ctx, node, meta)
+		_, err := qr.planQueryV1(ctx, rm, node)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return cli.ReportError(err)
 		}
 	}
 
-	return ReportStmtDeparsedAttrs(ctx, cli, meta)
+	return ReportStmtDeparsedAttrs(ctx, cli, rm)
 }
 
 // TODO : unit tests
