@@ -161,6 +161,9 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 
 // TODO : unit tests
 func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*KeyRange, error) {
+	spqrlog.Zero.Debug().
+		Interface("nodePath", nodePath).
+		Msg("etcdqdb: fetch key range")
 	// caller ensures key is locked
 	raw, err := q.cli.Get(ctx, nodePath)
 	if err != nil {
@@ -399,7 +402,7 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 func (q *EtcdQDB) ListLockedKeyRanges(ctx context.Context) ([]string, error) {
 	spqrlog.Zero.Debug().
 		Str("key-range lock request", "").
-		Msg("etcdqdb: get list locked key range")
+		Msg("etcdqdb: list locked key ranges")
 	krLockNs := path.Join(lockNamespace, keyRangesNamespace)
 	resp, err := q.cli.Get(ctx, krLockNs, clientv3.WithPrefix())
 	result := make([]string, 0, len(resp.Kvs))
@@ -1497,7 +1500,7 @@ func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution
 func (q *EtcdQDB) CheckDistribution(ctx context.Context, id string) (bool, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
-		Msg("etcdqdb: get distribution by id")
+		Msg("etcdqdb: check for distribution")
 
 	resp, err := q.cli.Get(ctx, distributionNodePath(id), clientv3.WithCountOnly())
 	if err != nil {
@@ -1595,6 +1598,8 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, 
 
 // TODO: unit tests
 func (q *EtcdQDB) GetMoveTaskGroupTotalKeys(ctx context.Context) (int64, error) {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: get move task group total key count")
 	resp, err := q.cli.Get(ctx, totalKeysPath)
 	if err != nil {
 		return -1, err
@@ -1611,6 +1616,9 @@ func (q *EtcdQDB) GetMoveTaskGroupTotalKeys(ctx context.Context) (int64, error) 
 
 // TODO: unit tests
 func (q *EtcdQDB) UpdateMoveTaskGroupTotalKeys(ctx context.Context, totalKeys int64) error {
+	spqrlog.Zero.Debug().
+		Int64("count", totalKeys).
+		Msg("etcdqdb: update move task group total key count")
 	_, err := q.cli.Put(ctx, totalKeysPath, strconv.FormatInt(totalKeys, 10))
 	return err
 }
@@ -1656,7 +1664,7 @@ func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
 }
 
 func (q *EtcdQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
-	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: write move task")
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: update move task")
 
 	taskJson, err := json.Marshal(task)
 	if err != nil {
@@ -1957,6 +1965,9 @@ func (q *EtcdQDB) GetRelationSequence(ctx context.Context, relName *rfqn.Relatio
 }
 
 func (q *EtcdQDB) getSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
+	spqrlog.Zero.Debug().
+		Str("seqName", seqName).
+		Msg("etcdqdb: get columns attached to a sequence")
 	resp, err := q.cli.Get(ctx, columnSequenceMappingNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
@@ -1999,6 +2010,10 @@ func (q *EtcdQDB) CreateSequence(ctx context.Context, seqName string, initialVal
 }
 
 func (q *EtcdQDB) DropSequence(ctx context.Context, seqName string, force bool) error {
+	spqrlog.Zero.Debug().
+		Str("sequence", seqName).
+		Bool("force", force).
+		Msg("etcdqdb: drop sequence")
 	depends, err := q.getSequenceColumns(ctx, seqName)
 	if err != nil {
 		return err
@@ -2036,7 +2051,7 @@ func (q *EtcdQDB) ListSequences(ctx context.Context) ([]string, error) {
 }
 
 func (q *EtcdQDB) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*SequenceIdRange, error) {
-	spqrlog.Zero.Debug().Msg(fmt.Sprintf("etcdqdb: next id ranges, size=%d", rangeSize))
+	spqrlog.Zero.Debug().Str("seqName", seqName).Uint64("size", rangeSize).Msg("etcdqdb: next id ranges")
 
 	id := sequenceNodePath(seqName)
 	sess, err := concurrency.NewSession(q.cli)
@@ -2078,7 +2093,7 @@ func (q *EtcdQDB) NextRange(ctx context.Context, seqName string, rangeSize uint6
 }
 
 func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
-	spqrlog.Zero.Debug().Msg("etcdqdb: curr val")
+	spqrlog.Zero.Debug().Str("seqName", seqName).Msg("etcdqdb: curr val")
 
 	id := sequenceNodePath(seqName)
 	sess, err := concurrency.NewSession(q.cli)
