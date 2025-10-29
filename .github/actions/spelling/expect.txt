@@ -48,6 +48,7 @@ ccmsg
 Cfgs
 cillum
 CIn
+Citus
 cityhash
 clid
 clientinteractor
@@ -59,6 +60,7 @@ cmngr
 cnth
 codeql
 colname
+colocation
 colref
 colreflist
 coltypes
@@ -184,6 +186,7 @@ gomodtidy
 goooal
 gorm
 goyacc
+Greenplum
 gss
 gssapi
 GSSREQ
@@ -238,7 +241,6 @@ kcache
 kdb
 kdc
 kek
-keyr
 keyrange
 keyrangemgr
 keytab
@@ -384,9 +386,11 @@ PGUSER
 pgx
 pgxconn
 phandler
+pitr
 pkgclient
 Pmgr
 podman
+poolers
 poolmgr
 poolview
 porro
@@ -491,7 +495,6 @@ shname
 shq
 shrid
 shrule
-stdbuf
 singleshard
 Smartphone
 spaolacci
@@ -530,6 +533,7 @@ SSLREQ
 sspi
 sssssdss
 stchan
+stdbuf
 stdcopy
 stmtcache
 stmtlog
