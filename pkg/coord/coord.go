@@ -837,7 +837,6 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 	if krBase.Distribution != krAppendage.Distribution {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges of different distributions")
 	}
-	// TODO: check all types when composite keys are supported
 	krLeft, krRight := krBase, krAppendage
 	if kr.CmpRangesLess(krRight.LowerBound, krLeft.LowerBound, ds.ColTypes) {
 		krLeft, krRight = krRight, krLeft
