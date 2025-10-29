@@ -16,6 +16,7 @@ Feature: Redistribution test
     When I execute SQL on host "coordinator"
     """
     REGISTER ROUTER r1 ADDRESS regress_router:7000;
+    REGISTER ROUTER r2 ADDRESS regress_router_2:7000;
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
     """
@@ -62,6 +63,36 @@ Feature: Redistribution test
     1000
     """
     When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -132,6 +163,36 @@ Feature: Redistribution test
       "Locked":"false"
     }]
     """
+When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
 
   Scenario: REDISTRIBUTE KEY RANGE works with empty relation
     When I execute SQL on host "coordinator"
@@ -169,6 +230,36 @@ Feature: Redistribution test
     0
     """
     When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -260,6 +351,36 @@ Feature: Redistribution test
       "Locked":"false"
     }]
     """
+When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
   
 
   Scenario: REDISTRIBUTE KEY RANGE works with hashed distribution
@@ -308,6 +429,36 @@ Feature: Redistribution test
     1000
     """
     When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr2",
+      "Distribution ID":"ds2",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr2",
+      "Distribution ID":"ds2",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -374,6 +525,36 @@ Feature: Redistribution test
     1000
     """
     When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh3",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh3",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -463,6 +644,36 @@ Feature: Redistribution test
       "Locked":"false"
     }]
     """
+When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
     When I run command on host "router"
     """
     grep -v 'All good' check_router.log
@@ -524,6 +735,36 @@ Feature: Redistribution test
       "Locked":"false"
     }]
     """
+When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
   
   Scenario: REDISTRIBUTE KEY RANGE works with relations inside a schema
     When I execute SQL on host "coordinator"
@@ -569,6 +810,36 @@ Feature: Redistribution test
     1000
     """
     When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -662,6 +933,36 @@ Feature: Redistribution test
       "Locked":"false"
     }]
     """
+When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
 
   Scenario: REDISTRIBUTE KEY RANGE works with many keys on single distribution key
     When I execute SQL on host "coordinator"
@@ -704,6 +1005,36 @@ Feature: Redistribution test
     1500
     """
     When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -770,6 +1101,36 @@ Feature: Redistribution test
     \{"count":60\}
     """
     When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh1",
+      "Locked":"false"
+    },
+    {
+When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh1",
+      "Locked":"false"
+    },
+    {
+When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -866,6 +1227,36 @@ Feature: Redistribution test
       "Locked":"false"
     }]
     """
+When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr2",
+      "Distribution ID":"ds2",
+      "Lower bound":"'00000000-0000-0000-0000-000000000000'",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr2",
+      "Distribution ID":"ds2",
+      "Lower bound":"'00000000-0000-0000-0000-000000000000'",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
 
   Scenario: REDISTRIBUTE KEY RANGE works with mismatched schema on shards
     When I execute SQL on host "coordinator"
@@ -913,6 +1304,36 @@ Feature: Redistribution test
     1000
     """
     When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
