@@ -6,6 +6,7 @@ Feature: Coordinator test
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster.yaml
+    ROUTER_CONFIG_2=/spqr/test/feature/conf/router_cluster.yaml
     """
     Given cluster is up and running
     And host "coordinator2" is stopped
@@ -13,7 +14,8 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    REGISTER ROUTER r1 ADDRESS regress_router:7000
+    REGISTER ROUTER r1 ADDRESS regress_router:7000;
+    REGISTER ROUTER r2 ADDRESS regress_router_2:7000
     """
     Then command return code should be "0"
 
@@ -830,4 +832,94 @@ Feature: Coordinator test
     And SQL result should match json_exactly
     """
     []
+    """
+  
+  Scenario: REDISTRIBUTE KEY RANGE works when invoked from router
+    When I execute SQL on host "coordinator"
+    """
+    DROP KEY RANGE krid1;
+    DROP KEY RANGE krid2;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router-admin" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 100;
+    """
+    Then command return code should be "0"
+    And I wait for "150" seconds for all key range moves to finish
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
     """
