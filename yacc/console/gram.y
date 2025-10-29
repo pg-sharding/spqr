@@ -106,6 +106,7 @@ func randomHex(n int) (string, error) {
 	group_clause		   GroupByClause
 
 	retryMoveTaskGroup     *RetryMoveTaskGroup
+	stopMoveTaskGroup      *StopMoveTaskGroup
 
 	typedColRef         	TypedColRef
 	routingExpr				[]TypedColRef
@@ -273,6 +274,7 @@ func randomHex(n int) (string, error) {
 %type <routingExpr> routing_expr_column_list
 
 %type <retryMoveTaskGroup> retry_move_task_group
+%type <stopMoveTaskGroup> stop_move_task_group
 
 %start any_command
 
@@ -365,6 +367,10 @@ command:
 		setParseTree(yylex, $1)
 	} 
 	| retry_move_task_group
+	{
+		setParseTree(yylex, $1)
+	}
+	| stop_move_task_group
 	{
 		setParseTree(yylex, $1)
 	}
@@ -1289,6 +1295,12 @@ retry_move_task_group:
 	RETRY MOVE TASK GROUP 
 	{
 		$$ = &RetryMoveTaskGroup{}
+	}
+
+stop_move_task_group:
+	STOP MOVE TASK GROUP 
+	{
+		$$ = &StopMoveTaskGroup{}
 	}
 %%
 
