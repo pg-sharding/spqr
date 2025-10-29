@@ -1202,6 +1202,14 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 	if taskGroup.Limit > 0 && taskGroup.TotalKeys >= taskGroup.Limit {
 		return nil, nil
 	}
+	stop, err := qc.qdb.CheckMoveTaskGroupStopFlag(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check for stop flag: %s", err)
+	}
+	if stop {
+		spqrlog.Zero.Info().Msg("got stop flag, gracefully stopping move task group")
+		return nil, nil
+	}
 	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KrIdFrom)
 	krFound := true
 	if et, ok := err.(*spqrerror.SpqrError); ok && et.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
