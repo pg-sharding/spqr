@@ -29,6 +29,7 @@ type MemQDB struct {
 	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
 	Coordinator          string                              `json:"coordinator"`
 	MoveTaskGroup        *MoveTaskGroup                      `json:"taskGroup"`
+	stopMoveTaskGroup    bool                                `json:"stop_move_task_group"`
 	MoveTask             *MoveTask                           `json:"move_task"`
 	TotalKeys            int64                               `json:"total_keys"`
 	RedistributeTask     *RedistributeTask                   `json:"redistribute_ask"`
@@ -1009,6 +1010,14 @@ func (q *MemQDB) UpdateMoveTaskGroupTotalKeys(_ context.Context, totalKeys int64
 
 	q.TotalKeys = totalKeys
 	return nil
+}
+
+func (q *MemQDB) AddMoveTaskGroupStopFlag(ctx context.Context) error {
+	panic("implement me")
+}
+
+func (q *MemQDB) CheckMoveTaskGroupStopFlag(ctx context.Context) (bool, error) {
+	panic("implement me")
 }
 
 // TODO: unit tests

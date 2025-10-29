@@ -71,6 +71,7 @@ const (
 	columnSequenceMappingNamespace = "/column_sequence_mappings/"
 	lockNamespace                  = "/lock"
 	totalKeysPath                  = "/total_keys"
+	stopMoveTaskGroupPath          = "/stop_move_task_group"
 
 	CoordKeepAliveTtl = 3
 	coordLockKey      = "coordinator_exists"
@@ -1631,6 +1632,14 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 
 	statistics.RecordQDBOperation("RemoveMoveTaskGroup", time.Since(t))
 	return nil
+}
+
+func (q *EtcdQDB) AddMoveTaskGroupStopFlag(ctx context.Context) error {
+	panic("implement me")
+}
+
+func (q *EtcdQDB) CheckMoveTaskGroupStopFlag(ctx context.Context) (bool, error) {
+	panic("implement me")
 }
 
 func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
