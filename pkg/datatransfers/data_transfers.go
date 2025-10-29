@@ -410,12 +410,13 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not start transaction: %s", err)
 	}
-	if _, err := tx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: error deferring contraints: %s", err)
-	}
 	if config.CoordinatorConfig().DataMoveDisableTriggers {
 		if _, err := tx.Exec(ctx, "SET session_replication_role = replica"); err != nil {
 			return fmt.Errorf("failed to disable triggers: %s", err)
+		}
+	} else {
+		if _, err := tx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
+			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: error deferring contraints: %s", err)
 		}
 	}
 	for _, rel := range ds.Relations {
