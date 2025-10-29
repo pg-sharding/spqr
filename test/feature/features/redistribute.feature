@@ -77,7 +77,7 @@ Feature: Redistribution test
       "Locked":"false"
     }]
     """
-When I run SQL on host "router-admin"
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -92,7 +92,7 @@ When I run SQL on host "router-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router2-admin"
+    When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -163,7 +163,7 @@ When I run SQL on host "router2-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router-admin"
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -178,7 +178,7 @@ When I run SQL on host "router-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router2-admin"
+    When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -244,7 +244,7 @@ When I run SQL on host "router2-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router-admin"
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -259,7 +259,7 @@ When I run SQL on host "router-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router2-admin"
+    When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -351,7 +351,7 @@ When I run SQL on host "router2-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router-admin"
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -366,7 +366,7 @@ When I run SQL on host "router-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router2-admin"
+    When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -443,7 +443,7 @@ When I run SQL on host "router2-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router-admin"
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -458,7 +458,7 @@ When I run SQL on host "router-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router2-admin"
+    When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -539,7 +539,7 @@ When I run SQL on host "router2-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router-admin"
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -554,7 +554,7 @@ When I run SQL on host "router-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router2-admin"
+    When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -644,7 +644,7 @@ When I run SQL on host "router2-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router-admin"
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -659,7 +659,7 @@ When I run SQL on host "router-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router2-admin"
+    When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -735,7 +735,7 @@ When I run SQL on host "router2-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router-admin"
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -750,7 +750,7 @@ When I run SQL on host "router-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router2-admin"
+    When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -824,7 +824,7 @@ When I run SQL on host "router2-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router-admin"
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -839,7 +839,7 @@ When I run SQL on host "router-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router2-admin"
+    When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -933,7 +933,7 @@ When I run SQL on host "router2-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router-admin"
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -948,7 +948,7 @@ When I run SQL on host "router-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router2-admin"
+    When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -1019,7 +1019,7 @@ When I run SQL on host "router2-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router-admin"
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -1034,7 +1034,7 @@ When I run SQL on host "router-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router2-admin"
+    When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -1115,7 +1115,28 @@ When I run SQL on host "router2-admin"
       "Locked":"false"
     },
     {
-When I run SQL on host "router-admin"
+      "Key range ID":"kr2",
+      "Distribution ID":"ds1",
+      "Lower bound":"100",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    },
+    {
+      "Key range ID":"kr3",
+      "Distribution ID":"ds1",
+      "Lower bound":"150",
+      "Shard ID":"sh1",
+      "Locked":"false"
+    },
+    {
+      "Key range ID":"kr4",
+      "Distribution ID":"ds1",
+      "Lower bound":"90",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -1130,7 +1151,28 @@ When I run SQL on host "router-admin"
       "Locked":"false"
     },
     {
-When I run SQL on host "router2-admin"
+      "Key range ID":"kr2",
+      "Distribution ID":"ds1",
+      "Lower bound":"100",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    },
+    {
+      "Key range ID":"kr3",
+      "Distribution ID":"ds1",
+      "Lower bound":"150",
+      "Shard ID":"sh1",
+      "Locked":"false"
+    },
+    {
+      "Key range ID":"kr4",
+      "Distribution ID":"ds1",
+      "Lower bound":"90",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+    When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -1227,7 +1269,7 @@ When I run SQL on host "router2-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router-admin"
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -1242,7 +1284,7 @@ When I run SQL on host "router-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router2-admin"
+    When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
@@ -1318,7 +1360,7 @@ When I run SQL on host "router2-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router-admin"
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -1333,7 +1375,7 @@ When I run SQL on host "router-admin"
       "Locked":"false"
     }]
     """
-When I run SQL on host "router2-admin"
+    When I run SQL on host "router2-admin"
     """
     SHOW key_ranges;
     """
