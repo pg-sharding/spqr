@@ -940,6 +940,21 @@ func (mr *MockQDBMockRecorder) NextRange(ctx, seqName, rangeSize any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextRange", reflect.TypeOf((*MockQDB)(nil).NextRange), ctx, seqName, rangeSize)
 }
 
+// NoWaitLockKeyRange mocks base method.
+func (m *MockQDB) NoWaitLockKeyRange(ctx context.Context, id string) (*qdb.KeyRange, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NoWaitLockKeyRange", ctx, id)
+	ret0, _ := ret[0].(*qdb.KeyRange)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NoWaitLockKeyRange indicates an expected call of NoWaitLockKeyRange.
+func (mr *MockQDBMockRecorder) NoWaitLockKeyRange(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NoWaitLockKeyRange", reflect.TypeOf((*MockQDB)(nil).NoWaitLockKeyRange), ctx, id)
+}
+
 // RemoveBalancerTask mocks base method.
 func (m *MockQDB) RemoveBalancerTask(ctx context.Context) error {
 	m.ctrl.T.Helper()
@@ -1913,6 +1928,21 @@ func (m *MockXQDB) NextRange(ctx context.Context, seqName string, rangeSize uint
 func (mr *MockXQDBMockRecorder) NextRange(ctx, seqName, rangeSize any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextRange", reflect.TypeOf((*MockXQDB)(nil).NextRange), ctx, seqName, rangeSize)
+}
+
+// NoWaitLockKeyRange mocks base method.
+func (m *MockXQDB) NoWaitLockKeyRange(ctx context.Context, id string) (*qdb.KeyRange, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NoWaitLockKeyRange", ctx, id)
+	ret0, _ := ret[0].(*qdb.KeyRange)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NoWaitLockKeyRange indicates an expected call of NoWaitLockKeyRange.
+func (mr *MockXQDBMockRecorder) NoWaitLockKeyRange(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NoWaitLockKeyRange", reflect.TypeOf((*MockXQDB)(nil).NoWaitLockKeyRange), ctx, id)
 }
 
 // OpenRouter mocks base method.
