@@ -856,10 +856,9 @@ Feature: Coordinator test
     Then command return code should be "0"
     When I run SQL on host "router-admin" with timeout "150" seconds
     """
-    REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 100;
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 2000;
     """
     Then command return code should be "0"
-    And I wait for "150" seconds for all key range moves to finish
     When I run SQL on host "shard1"
     """
     SELECT count(*) FROM xMove
