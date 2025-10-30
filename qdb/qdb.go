@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	LockRetryStep = 500 //lock retry step in miliseconds
+	LockRetryStep = 500 //lock retry step in milliseconds
 )
 
 type ShardingSchemaKeeper interface {
