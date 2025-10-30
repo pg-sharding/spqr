@@ -670,11 +670,11 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		_ = cli.ReplyNotice(ctx, "Gracefully stopping task group")
 		return cli.CompleteMsg(0)
 	case *spqrparser.RetryMoveTaskGroup:
-		if err := mgr.RetryMoveTaskGroup(ctx); err != nil {
-			return err
-		}
 		taskGroup, err := mgr.GetMoveTaskGroup(ctx)
 		if err != nil {
+			return err
+		}
+		if err := mgr.RetryMoveTaskGroup(ctx); err != nil {
 			return err
 		}
 		return cli.MoveTaskGroup(ctx, taskGroup)

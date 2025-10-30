@@ -1407,6 +1407,9 @@ func (qc *ClusteredCoordinator) getNextKeyRange(ctx context.Context, keyRange *k
 // Returns:
 //   - error: An error if any occurred.
 func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
+	if taskGroup == nil {
+		return nil
+	}
 	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KrIdFrom)
 	if err != nil {
 		return err
