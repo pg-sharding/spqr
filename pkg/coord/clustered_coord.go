@@ -1442,7 +1442,7 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 		}
 	}
 
-	var delayedError *spqrerror.SpqrError
+	var delayedError error
 	for {
 		if taskGroup.CurrentTask == nil {
 			if taskGroup.BoundRel == "" {

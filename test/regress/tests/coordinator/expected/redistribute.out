@@ -71,7 +71,14 @@ RETRY MOVE TASK GROUP;
 ----------------------+---------------------+--------------------------
 (0 rows)
 
+RETRY TASK GROUP;
+ Destination shard ID | Source key range ID | Destination key range ID 
+----------------------+---------------------+--------------------------
+(0 rows)
+
 STOP MOVE TASK GROUP;
+NOTICE: No move task group found to stop
+STOP TASK GROUP;
 NOTICE: No move task group found to stop
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
