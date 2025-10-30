@@ -1245,7 +1245,7 @@ func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn
 		if taskGroup.Limit < 0 {
 			return cacheSize * taskGroup.BatchSize
 		}
-		return min(taskGroup.Limit, cacheSize*taskGroup.BatchSize)
+		return min(taskGroup.Limit-taskGroup.TotalKeys, cacheSize*taskGroup.BatchSize)
 	}()
 
 	colsArr, err := rel.GetDistributionKeyColumns()
@@ -1382,6 +1382,12 @@ ORDER BY (%s) %s;
 	}
 	if len(boundList) == 0 {
 		return nil, nil
+	}
+	if len(boundList) <= 1 && moveWhole {
+		boundList = [][][]byte{keyRange.Raw()}
+	} else if moveWhole {
+		// Avoid splitting key range by its own bound when moving the whole range
+		boundList[len(boundList)-1] = keyRange.Raw()
 	}
 	qc.bounds = boundList
 	qc.index = 1
