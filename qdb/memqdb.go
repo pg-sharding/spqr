@@ -982,6 +982,7 @@ func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, group *MoveTaskGroup, tot
 	defer q.mu.Unlock()
 
 	q.MoveTaskGroup = group
+	q.StopMoveTaskGroup = false
 	return nil
 }
 
@@ -992,6 +993,7 @@ func (q *MemQDB) RemoveMoveTaskGroup(_ context.Context) error {
 	defer q.mu.Unlock()
 
 	q.MoveTaskGroup = nil
+	q.StopMoveTaskGroup = false
 	return nil
 }
 
@@ -1013,11 +1015,20 @@ func (q *MemQDB) UpdateMoveTaskGroupTotalKeys(_ context.Context, totalKeys int64
 }
 
 func (q *MemQDB) AddMoveTaskGroupStopFlag(ctx context.Context) error {
-	panic("implement me")
+	spqrlog.Zero.Debug().Msg("memqdb: put task group stop flag")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.StopMoveTaskGroup = true
+	return nil
 }
 
 func (q *MemQDB) CheckMoveTaskGroupStopFlag(ctx context.Context) (bool, error) {
-	panic("implement me")
+	spqrlog.Zero.Debug().Msg("memqdb: put task group stop flag")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.StopMoveTaskGroup, nil
 }
 
 // TODO: unit tests

@@ -1574,6 +1574,7 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, 
 	ops := []clientv3.Op{
 		clientv3.OpPut(taskGroupPath, string(groupJson)),
 		clientv3.OpPut(totalKeysPath, fmt.Sprintf("%d", totalKeys)),
+		clientv3.OpDelete(stopMoveTaskGroupPath),
 	}
 	if task != nil {
 		taskJson, err := json.Marshal(task)
@@ -1626,6 +1627,7 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 		clientv3.OpDelete(taskGroupPath),
 		clientv3.OpDelete(moveTaskPath),
 		clientv3.OpDelete(totalKeysPath),
+		clientv3.OpDelete(stopMoveTaskGroupPath),
 	).Commit(); err != nil {
 		return fmt.Errorf("failed to delete move task group metadata: %s", err)
 	}
@@ -1635,11 +1637,29 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 }
 
 func (q *EtcdQDB) AddMoveTaskGroupStopFlag(ctx context.Context) error {
-	panic("implement me")
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: put task group stop flag")
+	t := time.Now()
+
+	_, err := q.cli.Put(ctx, stopMoveTaskGroupPath, "set")
+	if err != nil {
+		return err
+	}
+	statistics.RecordQDBOperation("AddMoveTaskGroupStopFlag", time.Since(t))
+	return nil
 }
 
 func (q *EtcdQDB) CheckMoveTaskGroupStopFlag(ctx context.Context) (bool, error) {
-	panic("implement me")
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: check for task group stop flag")
+	t := time.Now()
+
+	resp, err := q.cli.Get(ctx, stopMoveTaskGroupPath, clientv3.WithCountOnly())
+	if err != nil {
+		return false, err
+	}
+	statistics.RecordQDBOperation("CheckMoveTaskGroupStopFlag", time.Since(t))
+	return resp.Count > 0, nil
 }
 
 func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
