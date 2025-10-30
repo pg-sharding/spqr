@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -70,7 +71,7 @@ func setupSubTest(ctx context.Context) (*qdb.EtcdQDB, error) {
 	return db, nil
 }
 
-func TestQdb(t *testing.T) {
+func TestAddShard(t *testing.T) {
 	is := assert.New(t)
 	err := setupTestSet(t)
 	is.NoError(err)
@@ -108,6 +109,56 @@ func TestQdb(t *testing.T) {
 			is.NoError(err)
 			expected := qdb.NewShard("sh1", []string{"denchick.rs", "reshke.ru"})
 			is.Equal(actual, expected)
+		})
+	})
+
+}
+
+func TestLockUnlock(t *testing.T) {
+	is := assert.New(t)
+	err := setupTestSet(t)
+	is.NoError(err)
+	defer func() {
+		_ = Down()
+	}()
+	is.NoError(err)
+
+	t.Run("test UnLock", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.TODO(), TestTimeout)
+		defer cancel()
+		db, err := setupSubTest(ctx)
+		is.NoError(err)
+		t.Run("happy path", func(t *testing.T) {
+			err := cleanupDb(ctx, db)
+			is.NoError(err)
+			keyRange1 := qdb.KeyRange{
+				LowerBound:     [][]byte{[]byte("1111")},
+				ShardID:        "sh1",
+				KeyRangeID:     "krid1",
+				DistributionId: "ds1",
+			}
+			err = db.CreateKeyRange(ctx, &keyRange1)
+			is.NoError(err)
+			_, err = db.NoWaitLockKeyRange(ctx, keyRange1.KeyRangeID)
+			is.NoError(err)
+			err = db.UnlockKeyRange(ctx, keyRange1.KeyRangeID)
+			is.NoError(err)
+			_, err = db.CheckLockedKeyRange(ctx, keyRange1.KeyRangeID)
+			expectedErr := spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", keyRange1.KeyRangeID)
+			is.Equal(expectedErr, err)
+		})
+		t.Run("unlock on not locked kr", func(t *testing.T) {
+			err := cleanupDb(ctx, db)
+			is.NoError(err)
+			keyRange1 := qdb.KeyRange{
+				LowerBound:     [][]byte{[]byte("1111")},
+				ShardID:        "sh1",
+				KeyRangeID:     "krid1",
+				DistributionId: "ds1",
+			}
+			err = db.UnlockKeyRange(ctx, keyRange1.KeyRangeID)
+			expectedErr := spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %v unlocked", keyRange1.KeyRangeID)
+			is.Equal(expectedErr, err)
 		})
 	})
 

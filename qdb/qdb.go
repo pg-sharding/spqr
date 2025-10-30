@@ -8,6 +8,10 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
+const (
+	LockRetryStep = 500 //lock retry step in miliseconds
+)
+
 type ShardingSchemaKeeper interface {
 	// RecordKeyRangeMove persists start of key range movement in distributed storage
 	RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error

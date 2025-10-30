@@ -340,7 +340,7 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 func (q *EtcdQDB) NoWaitLockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().
 		Str("id", idKeyRange).
-		Msg("etcdqdb: lock key range (fast)")
+		Msg("etcdqdb: lock key range (nowait)")
 	t := time.Now()
 	kr, err := q.internalNoWaitLockKeyRange(ctx, idKeyRange)
 	statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
@@ -348,7 +348,6 @@ func (q *EtcdQDB) NoWaitLockKeyRange(ctx context.Context, idKeyRange string) (*K
 }
 
 func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
-
 	resp, err := q.cli.Txn(ctx).
 		If(
 			//check exists key range lock
@@ -416,7 +415,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, idKeyRange string) (*KeyRang
 
 	t := time.Now()
 	if kr, err := retry.DoValue(ctx, retry.WithMaxRetries(MaxLockRetry,
-		retry.NewFibonacci(500*time.Millisecond)),
+		retry.NewFibonacci(LockRetryStep*time.Millisecond)),
 		func(ctx context.Context) (*KeyRange, error) {
 			return q.internalNoWaitLockKeyRange(ctx, idKeyRange)
 		}); err != nil {
@@ -429,31 +428,27 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, idKeyRange string) (*KeyRang
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
+func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, idKeyRange string) error {
 	spqrlog.Zero.Debug().
-		Str("id", id).
+		Str("id", idKeyRange).
 		Msg("etcdqdb: unlock key range")
 
 	t := time.Now()
-
-	err := retry.Do(ctx, retry.NewFibonacci(500*time.Millisecond), func(ctx context.Context) error {
-		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(id)), clientv3.WithCountOnly())
-		if err != nil {
-			return retry.RetryableError(err)
-		}
-		switch resp.Count {
-		case 0:
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %v unlocked", id)
-		case 1:
-			_, err := q.cli.Delete(ctx, keyLockPath(keyRangeNodePath(id)))
-			if err != nil {
-				return retry.RetryableError(err)
-			}
-			return nil
-		default:
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "too much key ranges matched: %d", len(resp.Kvs))
-		}
-	})
+	resp, err := q.cli.Txn(ctx).
+		If(
+			//check exists key range lock
+			clientv3.Compare(clientv3.Version(keyLockPath(keyRangeNodePath(idKeyRange))), ">", 0),
+		).
+		Then(
+			clientv3.OpDelete(keyLockPath(keyRangeNodePath(idKeyRange))),
+		).
+		Commit()
+	if err != nil {
+		return retry.RetryableError(err)
+	}
+	if !resp.Succeeded {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %v unlocked", idKeyRange)
+	}
 	statistics.RecordQDBOperation("UnlockKeyRange", time.Since(t))
 	return err
 }
