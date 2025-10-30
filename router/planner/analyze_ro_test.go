@@ -1,10 +1,10 @@
-package qrouter_test
+package planner_test
 
 import (
 	"testing"
 
 	"github.com/pg-sharding/lyx/lyx"
-	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -75,7 +75,7 @@ func TestCheckRoOnlyQuery(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		act := qrouter.CheckRoOnlyQuery(parserRes[0])
+		act := planner.CheckRoOnlyQuery(parserRes[0])
 
 		assert.Equal(tt.exp, act, tt.query)
 	}

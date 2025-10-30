@@ -573,10 +573,10 @@ func (qr *ProxyQrouter) planQueryV1(
 // Returns state, is read-only flag and err if any
 func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
-	stmt lyx.Node, tsa tsa.TSA) (plan.Plan, bool, error) {
+	stmt lyx.Node, tsa tsa.TSA) (plan.Plan, error) {
 	if stmt == nil {
 		// empty statement
-		return &plan.RandomDispatchPlan{}, false, nil
+		return &plan.RandomDispatchPlan{}, nil
 	}
 
 	/*
@@ -595,8 +595,6 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 	 * known after this phase, as it can be Parse Step of Extended proto.
 	 */
 
-	ro := true
-
 	switch stmt.(type) {
 
 	/* TDB: comments? */
@@ -604,10 +602,8 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 		rs, err := qr.planQueryV1(ctx, rm, stmt)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
-
-		ro = false
 
 		pl = plan.Combine(pl, rs)
 	case *lyx.Select:
@@ -634,19 +630,19 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		}
 
 		if onlyCatalog && anyCatalog {
-			return &plan.RandomDispatchPlan{}, ro, nil
+			return &plan.RandomDispatchPlan{}, nil
 		}
 		if hasInfSchema && hasOtherSchema {
-			return nil, false, rerrors.ErrInformationSchemaCombinedQuery
+			return nil, rerrors.ErrInformationSchemaCombinedQuery
 		}
 		if hasInfSchema {
-			return &plan.RandomDispatchPlan{}, ro, nil
+			return &plan.RandomDispatchPlan{}, nil
 		}
 
 		p, err := qr.planQueryV1(ctx, rm, stmt)
 
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 
 		pl = plan.Combine(pl, p)
@@ -656,17 +652,16 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		// would be routed with their WHERE clause
 		rs, err := qr.planQueryV1(ctx, rm, stmt)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
-		ro = false
 		pl = plan.Combine(pl, rs)
 	default:
-		return nil, false, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
 
 	tmp, err := planner.RouteByTuples(ctx, rm, tsa)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	pl = plan.Combine(pl, tmp)
@@ -678,127 +673,16 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		}
 	}
 
-	return pl, ro, nil
-}
-
-/*
-* This function assumes that INSTEAD OF rules on selects in PostgreSQL are only RIR
- */
-func CheckRoOnlyQuery(stmt lyx.Node) bool {
-	switch v := stmt.(type) {
-	/*
-		*  XXX: should we be bit restrictive here than upstream?
-		There are some possible cases when values clause is NOT ro-query.
-		for example (as of now unsupported, but):
-
-				example/postgres M # values((with d as (insert into zz select 1 returning *) table d));
-				ERROR:  0A000: WITH clause containing a data-modifying statement must be at the top level
-				LINE 1: values((with d as (insert into zz select 1 returning *) table...
-				                     ^
-
-	*/
-	case *lyx.ValueClause:
-		for _, ve := range v.Values {
-			for _, e := range ve {
-				if !CheckRoOnlyQuery(e) {
-					return false
-				}
-			}
-		}
-
-		return true
-
-	case *lyx.AExprBConst, *lyx.AExprIConst, *lyx.EmptyQuery, *lyx.AExprNConst:
-		return true
-	case *lyx.ColumnRef:
-		return true
-	case *lyx.AExprOp:
-		return CheckRoOnlyQuery(v.Left) && CheckRoOnlyQuery(v.Right)
-	case *lyx.CommonTableExpr:
-		return CheckRoOnlyQuery(v.SubQuery)
-	case *lyx.Select:
-		if v.LArg != nil {
-			if !CheckRoOnlyQuery(v.LArg) {
-				return false
-			}
-		}
-
-		if v.RArg != nil {
-			if !CheckRoOnlyQuery(v.RArg) {
-				return false
-			}
-		}
-
-		for _, ch := range v.WithClause {
-			if !CheckRoOnlyQuery(ch) {
-				return false
-			}
-		}
-
-		/* XXX:
-
-		there can be sub-selects in from clause. Can they be non-readonly?
-
-		db1=# create table zz( i int);
-		CREATE TABLE
-		db1=# create function f () returns int as $$ insert into zz values(1) returning * $$ language sql;
-		CREATE FUNCTION
-		db1=# select * from zz, (select f());
-		 i | f
-		---+---
-		(0 rows)
-
-		db1=# table zz;
-		 i
-		---
-		 1
-		(1 row)
-		*/
-
-		for _, rte := range v.FromClause {
-			switch ch := rte.(type) {
-			case *lyx.JoinExpr, *lyx.RangeVar:
-				/* hope this is ro */
-			case *lyx.SubSelect:
-				if !CheckRoOnlyQuery(ch) {
-					return false
-				}
-			default:
-				/* We do not really expect here anything else */
-				return false
-			}
-		}
-
-		for _, tle := range v.TargetList {
-			switch v := tle.(type) {
-			case *lyx.Select:
-				if !CheckRoOnlyQuery(tle) {
-					return false
-				}
-			case *lyx.FuncApplication:
-				/* only allow white list of functions here */
-				switch v.Name {
-				case "now", "pg_is_in_recovery":
-					/* these cases ok */
-				default:
-					return false
-				}
-			}
-		}
-
-		return true
-	default:
-		return false
-	}
+	return pl, nil
 }
 
 func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
-	stmt lyx.Node, p plan.Plan, ro bool, sph session.SessionParamsHolder) (plan.Plan, error) {
+	stmt lyx.Node, p plan.Plan, sph session.SessionParamsHolder) (plan.Plan, error) {
 
 	switch v := p.(type) {
 	case *plan.DataRowFilter:
-		sp, err := qr.InitExecutionTargets(ctx, rm, stmt, v.SubPlan, ro, sph)
+		sp, err := qr.InitExecutionTargets(ctx, rm, stmt, v.SubPlan, sph)
 		if err != nil {
 			return nil, err
 		}
@@ -868,7 +752,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 		case "ALLOW":
 			fallthrough
 		default:
-			if ro {
+			if rm.IsRO() {
 				/* TODO: config options for this */
 				return v, nil
 			}
@@ -882,42 +766,40 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 func (qr *ProxyQrouter) PlanQueryExtended(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
-	stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, bool, error) {
+	stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
 
 	p, err := rm.ResolveRouteHint(ctx)
 
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	if p != nil {
-		return p, false, nil
+		return p, nil
 	}
 
 	utilityPlan, err := planner.PlanUtility(ctx, rm, stmt)
 
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	if utilityPlan != nil {
-		return utilityPlan, false, nil
+		return utilityPlan, nil
 	}
 
-	var ro bool
 	if sph.PreferredEngine() == planner.EnhancedEngineVersion {
 		p, err = planner.PlanDistributedQuery(ctx, rm, stmt, true)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
-		ro = false
 	} else {
-		p, ro, err = qr.RouteWithRules(ctx, rm, stmt, sph.GetTsa())
+		p, err = qr.RouteWithRules(ctx, rm, stmt, sph.GetTsa())
 
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 	}
-	return p, ro, nil
+	return p, nil
 }
 
 func (qr *ProxyQrouter) PlanQueryTopLevel(ctx context.Context, rm *rmeta.RoutingMetadataContext, s lyx.Node) (plan.Plan, error) {
@@ -927,17 +809,17 @@ func (qr *ProxyQrouter) PlanQueryTopLevel(ctx context.Context, rm *rmeta.Routing
 // TODO : unit tests
 func (qr *ProxyQrouter) PlanQuery(ctx context.Context, query string, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
 
+	ro := true
+
+	if config.RouterConfig().Qr.AutoRouteRoOnStandby {
+		ro = planner.CheckRoOnlyQuery(stmt)
+	}
+
 	if !config.RouterConfig().Qr.AlwaysCheckRules {
 		if len(config.RouterConfig().ShardMapping) == 1 {
 			firstShard := ""
 			for s := range config.RouterConfig().ShardMapping {
 				firstShard = s
-			}
-
-			ro := true
-
-			if config.RouterConfig().Qr.AutoRouteRoOnStandby {
-				ro = CheckRoOnlyQuery(stmt)
 			}
 
 			return &plan.ShardDispatchPlan{
@@ -952,18 +834,20 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, query string, stmt lyx.No
 
 	rm := rmeta.NewRoutingMetadataContext(sph, query, qr.csm, qr.mgr)
 
+	rm.SetRO(ro)
+
 	if err := planner.AnalyzeQueryV1(ctx, rm, stmt); err != nil {
 		spqrlog.Zero.Debug().Err(err).Msg("failed to analyze query")
 		return nil, err
 	}
 
-	p, ro, err := qr.PlanQueryExtended(ctx, rm, stmt, sph)
+	p, err := qr.PlanQueryExtended(ctx, rm, stmt, sph)
 	if err != nil {
 		return nil, err
 	}
 
 	/* do init plan logic */
-	np, err := qr.InitExecutionTargets(ctx, rm, stmt, p, ro, sph)
+	np, err := qr.InitExecutionTargets(ctx, rm, stmt, p, sph)
 	if err == nil {
 		np.SetStmt(stmt)
 	}
