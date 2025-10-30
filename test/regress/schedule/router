@@ -14,6 +14,7 @@ test: multicolumn
 test: error
 test: error2
 test: routing_hint
+test: collocation
 test: begin
 test: alter_distribution
 test: show_processing
