@@ -66,6 +66,8 @@ SHOW key_ranges;
  krid1        | sh2      | ds1             | 1           | false
 (1 row)
 
+STOP MOVE TASK GROUP;
+NOTICE: No move task group found to stop
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------
