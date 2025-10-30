@@ -1535,6 +1535,10 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
 	return qc.executeMoveTasks(ctx, taskGroup)
 }
 
+func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context) error {
+	return qc.qdb.AddMoveTaskGroupStopFlag(ctx)
+}
+
 // TODO : unit tests
 
 // RedistributeKeyRange moves the whole key range to another shard in batches

@@ -374,6 +374,11 @@ func (lc *Coordinator) RetryMoveTaskGroup(ctx context.Context) error {
 	panic("unimplemented")
 }
 
+// StopMoveTaskGroup implements meta.EntityMgr
+func (lc *Coordinator) StopMoveTaskGroup(ctx context.Context) error {
+	panic("unimplemented")
+}
+
 // SyncRouterCoordinatorAddress implements meta.EntityMgr.
 func (lc *Coordinator) SyncRouterCoordinatorAddress(ctx context.Context, router *topology.Router) error {
 	panic("unimplemented")

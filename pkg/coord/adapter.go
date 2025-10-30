@@ -1024,6 +1024,10 @@ func (a *Adapter) RetryMoveTaskGroup(ctx context.Context) error {
 	return err
 }
 
+func (a *Adapter) StopMoveTaskGroup(ctx context.Context) error {
+	return fmt.Errorf("not implemented")
+}
+
 // GetBalancerTask retrieves current balancer task from the system.
 //
 // Parameters:

@@ -41,6 +41,26 @@ func (m *MockQueryable) EXPECT() *MockQueryableMockRecorder {
 	return m.recorder
 }
 
+// Query mocks base method.
+func (m *MockQueryable) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, sql}
+	for _, a := range args {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Query", varargs...)
+	ret0, _ := ret[0].(pgx.Rows)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Query indicates an expected call of Query.
+func (mr *MockQueryableMockRecorder) Query(ctx, sql any, args ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, sql}, args...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockQueryable)(nil).Query), varargs...)
+}
+
 // QueryRow mocks base method.
 func (m *MockQueryable) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
 	m.ctrl.T.Helper()
