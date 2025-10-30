@@ -96,6 +96,8 @@ type QDB interface {
 	GetMoveTaskGroupTotalKeys(ctx context.Context) (int64, error)
 	UpdateMoveTaskGroupTotalKeys(ctx context.Context, totalKeys int64) error
 	RemoveMoveTaskGroup(ctx context.Context) error
+	AddMoveTaskGroupStopFlag(ctx context.Context) error
+	CheckMoveTaskGroupStopFlag(ctx context.Context) (bool, error)
 
 	// MOVE tasks
 	GetMoveTask(ctx context.Context) (*MoveTask, error)

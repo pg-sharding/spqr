@@ -499,6 +499,7 @@ singleshard
 Smartphone
 spaolacci
 spqr
+SPQRA
 SPQRC
 SPQRD
 spqrdump

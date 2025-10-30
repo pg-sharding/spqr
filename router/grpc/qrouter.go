@@ -568,6 +568,11 @@ func (l *LocalQrouterServer) RetryMoveTaskGroup(ctx context.Context, _ *emptypb.
 }
 
 // TODO: unit tests
+func (l *LocalQrouterServer) StopMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, l.mgr.StopMoveTaskGroup(ctx)
+}
+
+// TODO: unit tests
 func (l *LocalQrouterServer) GetBalancerTask(ctx context.Context, _ *emptypb.Empty) (*protos.GetBalancerTaskReply, error) {
 	task, err := l.mgr.GetBalancerTask(ctx)
 	if err != nil {

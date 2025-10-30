@@ -374,6 +374,10 @@ type RetryMoveTaskGroup struct{}
 
 func (*RetryMoveTaskGroup) iStatement() {}
 
+type StopMoveTaskGroup struct{}
+
+func (*StopMoveTaskGroup) iStatement() {}
+
 // The following constants represent SHOW statements.
 const (
 	DatabasesStr          = "databases"

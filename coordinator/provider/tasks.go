@@ -42,6 +42,14 @@ func (t TasksServer) RemoveMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) 
 	return nil, t.impl.RemoveMoveTaskGroup(ctx)
 }
 
+func (t TasksServer) RetryMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, t.impl.RetryMoveTaskGroup(ctx)
+}
+
+func (t TasksServer) StopMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, t.impl.StopMoveTaskGroup(ctx)
+}
+
 func (t TasksServer) GetBalancerTask(ctx context.Context, _ *emptypb.Empty) (*protos.GetBalancerTaskReply, error) {
 	task, err := t.impl.GetBalancerTask(ctx)
 	if err != nil {

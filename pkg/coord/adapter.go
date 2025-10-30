@@ -1024,9 +1024,31 @@ func (a *Adapter) RemoveMoveTaskGroup(ctx context.Context) error {
 	return err
 }
 
+// RetryMoveTaskGroup re-launches the current move task group.
+// If no move task group is currently being executed, then nothing is done.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+//
+// Returns:
+// - error: An error if the operation fails, otherwise nil.
 func (a *Adapter) RetryMoveTaskGroup(ctx context.Context) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	_, err := tasksService.RetryMoveTaskGroup(ctx, nil)
+	return err
+}
+
+// StopMoveTaskGroup gracefully stops the execution of current move task group.
+// When current move task is completed, move task group will be finished.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+//
+// Returns:
+// - error: An error if the operation fails, otherwise nil.
+func (a *Adapter) StopMoveTaskGroup(ctx context.Context) error {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	_, err := tasksService.StopMoveTaskGroup(ctx, nil)
 	return err
 }
 

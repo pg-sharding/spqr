@@ -3,49 +3,51 @@ package spqrerror
 import "fmt"
 
 const (
-	SPQR_UNEXPECTED          = "SPQRU"
-	SPQR_NO_DATASHARD        = "SPQRD"
-	SPQR_SKIP                = "SPQRE"
-	SPQR_COMPLEX_QUERY       = "SPQRC"
-	SPQR_FAILED_MATCH        = "SPQRF"
-	SPQR_SKIP_COLUMN         = "SPQRS"
-	SPQR_MISS_SHARDING_KEY   = "SPQRM"
-	SPQR_CROSS_SHARD_QUERY   = "SPQRX"
-	SPQR_ROUTING_ERROR       = "SPQRR"
-	SPQR_CONNECTION_ERROR    = "SPQRO"
-	SPQR_KEYRANGE_ERROR      = "SPQRK"
-	SPQR_SHARDING_RULE_ERROR = "SPQRH"
-	SPQR_TRANSFER_ERROR      = "SPQRT"
-	SPQR_OBJECT_NOT_EXIST    = "SPQRN"
-	SPQR_NOT_IMPLEMENTED     = "SPQRI"
-	SPQR_ROUTER_ERROR        = "SPQRL"
-	SPQR_METADATA_CORRUPTION = "SPQRZ"
-	SPQR_INVALID_REQUEST     = "SPQRJ"
-	SPQR_CONFIG_ERROR        = "SPQRM"
-	SPQR_SEQUENCE_ERROR      = "SPQRQ"
+	SPQR_UNEXPECTED           = "SPQRU"
+	SPQR_NO_DATASHARD         = "SPQRD"
+	SPQR_SKIP                 = "SPQRE"
+	SPQR_COMPLEX_QUERY        = "SPQRC"
+	SPQR_FAILED_MATCH         = "SPQRF"
+	SPQR_SKIP_COLUMN          = "SPQRS"
+	SPQR_MISS_SHARDING_KEY    = "SPQRM"
+	SPQR_CROSS_SHARD_QUERY    = "SPQRX"
+	SPQR_ROUTING_ERROR        = "SPQRR"
+	SPQR_CONNECTION_ERROR     = "SPQRO"
+	SPQR_KEYRANGE_ERROR       = "SPQRK"
+	SPQR_SHARDING_RULE_ERROR  = "SPQRH"
+	SPQR_TRANSFER_ERROR       = "SPQRT"
+	SPQR_OBJECT_NOT_EXIST     = "SPQRN"
+	SPQR_NOT_IMPLEMENTED      = "SPQRI"
+	SPQR_ROUTER_ERROR         = "SPQRL"
+	SPQR_METADATA_CORRUPTION  = "SPQRZ"
+	SPQR_INVALID_REQUEST      = "SPQRJ"
+	SPQR_CONFIG_ERROR         = "SPQRM"
+	SPQR_SEQUENCE_ERROR       = "SPQRQ"
+	SPQR_STOP_MOVE_TASK_GROUP = "SPQRA"
 
 	PG_PREPARED_STATEMENT_DOES_NOT_EXISTS = "26000"
 	PG_PORTAl_DOES_NOT_EXISTS             = "34000"
 )
 
 var existingErrorCodeMap = map[string]string{
-	SPQR_NO_DATASHARD:        "failed to match any datashard",
-	SPQR_SKIP:                "skip executing this query, wait for next",
-	SPQR_COMPLEX_QUERY:       "ComplexQuery",
-	SPQR_SKIP_COLUMN:         "SkipColumn",
-	SPQR_MISS_SHARDING_KEY:   "ShardingKeysMissing",
-	SPQR_CROSS_SHARD_QUERY:   "CrossShardQueryUnsupported",
-	SPQR_ROUTING_ERROR:       "Routing error",
-	SPQR_CONNECTION_ERROR:    "Connection error",
-	SPQR_KEYRANGE_ERROR:      "Keyrange error",
-	SPQR_SHARDING_RULE_ERROR: "Sharding rule error",
-	SPQR_TRANSFER_ERROR:      "Transfer error",
-	SPQR_OBJECT_NOT_EXIST:    "No object",
-	SPQR_NOT_IMPLEMENTED:     "Not implemented",
-	SPQR_ROUTER_ERROR:        "Router error",
-	SPQR_METADATA_CORRUPTION: "routing metadata corrupted",
-	SPQR_INVALID_REQUEST:     "Invalid Request",
-	SPQR_SEQUENCE_ERROR:      "Sequence error",
+	SPQR_NO_DATASHARD:         "failed to match any datashard",
+	SPQR_SKIP:                 "skip executing this query, wait for next",
+	SPQR_COMPLEX_QUERY:        "ComplexQuery",
+	SPQR_SKIP_COLUMN:          "SkipColumn",
+	SPQR_MISS_SHARDING_KEY:    "ShardingKeysMissing",
+	SPQR_CROSS_SHARD_QUERY:    "CrossShardQueryUnsupported",
+	SPQR_ROUTING_ERROR:        "Routing error",
+	SPQR_CONNECTION_ERROR:     "Connection error",
+	SPQR_KEYRANGE_ERROR:       "Keyrange error",
+	SPQR_SHARDING_RULE_ERROR:  "Sharding rule error",
+	SPQR_TRANSFER_ERROR:       "Transfer error",
+	SPQR_OBJECT_NOT_EXIST:     "No object",
+	SPQR_NOT_IMPLEMENTED:      "Not implemented",
+	SPQR_ROUTER_ERROR:         "Router error",
+	SPQR_METADATA_CORRUPTION:  "routing metadata corrupted",
+	SPQR_INVALID_REQUEST:      "Invalid Request",
+	SPQR_SEQUENCE_ERROR:       "Sequence error",
+	SPQR_STOP_MOVE_TASK_GROUP: "Task group stopped",
 }
 
 var ShardingRulesRemoved = New(SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR, see https://github.com/pg-sharding/spqr/blob/master/docs/Syntax.md")

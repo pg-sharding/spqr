@@ -796,6 +796,20 @@ func (mr *MockCoordinatorMockRecorder) Split(ctx, split any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Split", reflect.TypeOf((*MockCoordinator)(nil).Split), ctx, split)
 }
 
+// StopMoveTaskGroup mocks base method.
+func (m *MockCoordinator) StopMoveTaskGroup(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StopMoveTaskGroup", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StopMoveTaskGroup indicates an expected call of StopMoveTaskGroup.
+func (mr *MockCoordinatorMockRecorder) StopMoveTaskGroup(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).StopMoveTaskGroup), ctx)
+}
+
 // SyncReferenceRelations mocks base method.
 func (m *MockCoordinator) SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error {
 	m.ctrl.T.Helper()

@@ -29,6 +29,7 @@ type MemQDB struct {
 	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
 	Coordinator          string                              `json:"coordinator"`
 	MoveTaskGroup        *MoveTaskGroup                      `json:"taskGroup"`
+	StopMoveTaskGroup    bool                                `json:"stop_move_task_group"`
 	MoveTask             *MoveTask                           `json:"move_task"`
 	TotalKeys            int64                               `json:"total_keys"`
 	RedistributeTask     *RedistributeTask                   `json:"redistribute_ask"`
@@ -1003,6 +1004,7 @@ func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, group *MoveTaskGroup, tot
 	defer q.mu.Unlock()
 
 	q.MoveTaskGroup = group
+	q.StopMoveTaskGroup = false
 	return nil
 }
 
@@ -1013,9 +1015,11 @@ func (q *MemQDB) RemoveMoveTaskGroup(_ context.Context) error {
 	defer q.mu.Unlock()
 
 	q.MoveTaskGroup = nil
+	q.StopMoveTaskGroup = false
 	return nil
 }
 
+// TODO: unit tests
 func (q *MemQDB) GetMoveTaskGroupTotalKeys(_ context.Context) (int64, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get task group total keys")
 	q.mu.RLock()
@@ -1024,6 +1028,7 @@ func (q *MemQDB) GetMoveTaskGroupTotalKeys(_ context.Context) (int64, error) {
 	return q.TotalKeys, nil
 }
 
+// TODO: unit tests
 func (q *MemQDB) UpdateMoveTaskGroupTotalKeys(_ context.Context, totalKeys int64) error {
 	spqrlog.Zero.Debug().Msg("memqdb: get task group total keys")
 	q.mu.Lock()
@@ -1031,6 +1036,25 @@ func (q *MemQDB) UpdateMoveTaskGroupTotalKeys(_ context.Context, totalKeys int64
 
 	q.TotalKeys = totalKeys
 	return nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) AddMoveTaskGroupStopFlag(ctx context.Context) error {
+	spqrlog.Zero.Debug().Msg("memqdb: put task group stop flag")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.StopMoveTaskGroup = true
+	return nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) CheckMoveTaskGroupStopFlag(ctx context.Context) (bool, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: put task group stop flag")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.StopMoveTaskGroup, nil
 }
 
 // TODO: unit tests

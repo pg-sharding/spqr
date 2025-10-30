@@ -1560,6 +1560,40 @@ func TestRetryMoveTaskGroup(t *testing.T) {
 			exp:   &spqrparser.RetryMoveTaskGroup{},
 			err:   nil,
 		},
+		{
+			query: "RETRY TASK GROUP",
+			exp:   &spqrparser.RetryMoveTaskGroup{},
+			err:   nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
+func TestStopMoveTaskGroup(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "STOP MOVE TASK GROUP",
+			exp:   &spqrparser.StopMoveTaskGroup{},
+			err:   nil,
+		},
+		{
+			query: "STOP TASK GROUP",
+			exp:   &spqrparser.StopMoveTaskGroup{},
+			err:   nil,
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
