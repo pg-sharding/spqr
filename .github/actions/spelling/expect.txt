@@ -491,11 +491,11 @@ shname
 shq
 shrid
 shrule
-stdbuf
 singleshard
 Smartphone
 spaolacci
 spqr
+SPQRA
 SPQRC
 SPQRD
 spqrdump
@@ -530,6 +530,7 @@ SSLREQ
 sspi
 sssssdss
 stchan
+stdbuf
 stdcopy
 stmtcache
 stmtlog
