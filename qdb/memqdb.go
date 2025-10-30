@@ -149,6 +149,26 @@ func (q *MemQDB) DumpState() error {
 }
 
 // ==============================================================================
+//                               MISC
+// ==============================================================================
+
+func (q *MemQDB) dropKeyRangeCommands(krId string) []Command {
+	return []Command{
+		NewDeleteCommand(q.Krs, krId),
+		NewDeleteCommand(q.Freq, krId),
+		NewDeleteCommand(q.Locks, krId),
+	}
+}
+
+func (q *MemQDB) createKeyRangeCommands(keyRange *KeyRange) []Command {
+	return []Command{
+		NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRange),
+		NewUpdateCommand(q.Locks, keyRange.KeyRangeID, &sync.RWMutex{}),
+		NewUpdateCommand(q.Freq, keyRange.KeyRangeID, false),
+	}
+}
+
+// ==============================================================================
 //                               KEY RANGE MOVES
 // ==============================================================================
 
@@ -196,9 +216,7 @@ func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) error {
 		}
 	}
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRange),
-		NewUpdateCommand(q.Locks, keyRange.KeyRangeID, &sync.RWMutex{}),
-		NewUpdateCommand(q.Freq, keyRange.KeyRangeID, false))
+	return ExecuteCommands(q.DumpState, q.createKeyRangeCommands(keyRange)...)
 }
 
 func (q *MemQDB) GetKeyRange(_ context.Context, id string) (*KeyRange, error) {
@@ -244,8 +262,7 @@ func (q *MemQDB) DropKeyRange(_ context.Context, id string) error {
 	}
 	defer lock.Unlock()
 
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Krs, id),
-		NewDeleteCommand(q.Freq, id), NewDeleteCommand(q.Locks, id))
+	return ExecuteCommands(q.DumpState, q.dropKeyRangeCommands(id)...)
 }
 
 // TODO : unit tests
@@ -449,7 +466,7 @@ func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
 	spqrlog.Zero.Debug().
 		Str("id", krId).
 		Str("new id", krIdNew).
-		Msg("etcdqdb: rename key range")
+		Msg("memqdb: rename key range")
 
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -463,8 +480,10 @@ func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
 	}
 
 	kr.KeyRangeID = krIdNew
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Krs, krId), NewDeleteCommand(q.Locks, krId),
-		NewUpdateCommand(q.Krs, krIdNew, kr), NewUpdateCommand(q.Locks, krIdNew, &sync.RWMutex{}))
+	commands := make([]Command, 0)
+	commands = append(commands, q.dropKeyRangeCommands(krId)...)
+	commands = append(commands, q.createKeyRangeCommands(kr)...)
+	return ExecuteCommands(q.DumpState, commands...)
 }
 
 // ==============================================================================

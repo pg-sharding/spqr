@@ -610,6 +610,7 @@ func (qc *ClusteredCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID s
 
 		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
+			Str("key range ID", keyRangeID).
 			Msg("unlock key range response")
 
 		return err
@@ -850,7 +851,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 		case qdb.MoveKeyRangeComplete:
 			// unlock key range
 			if err := qc.UnlockKeyRange(ctx, req.Krid); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+				spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range")
 			}
 			if err := qc.db.DeleteKeyRangeMove(ctx, move.MoveId); err != nil {
 				return err
