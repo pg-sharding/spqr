@@ -96,7 +96,7 @@ func startNewSession(host string, port string, user string, db string,
 			"database": db,
 		},
 	}
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", host, port))
+	conn, err := net.Dial("tcp", net.JoinHostPort(host, port))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg(fmt.Sprintf("failed to establish connection to host %s:%s", host, port))
 	}
