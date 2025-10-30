@@ -653,3 +653,91 @@ Feature: Move recover test
     """
     8
     """
+
+    Scenario: Move task group graceful stop works
+    When I record in qdb move task group
+    """
+    {
+        "shard_to_id":   "sh2",
+        "kr_id_from":    "krid1",
+        "kr_id_to":      "krid2",
+        "type":          1,
+        "limit":         10,
+        "coeff":         1,
+        "batch_size":    5,
+        "bound_rel":     "xMove",
+        "total_keys":    0,
+        "task":
+        {
+          "id":            "1",
+          "bound":         ["FAAAAAAAAAA="],
+          "state":         0,
+          "kr_id_temp":    "krid_temp1" 
+        }
+    }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    SHOW task_group
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+        "Destination shard ID":     "sh2",
+        "Source key range ID":      "krid1",
+        "Destination key range ID": "krid2"
+    }]
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW move_task
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+        "Move task ID":             "1",
+        "State":                    "PLANNED",
+        "Bound":                    "10",
+        "Temporary key range ID":   "krid_temp1"
+    }]
+    """
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) SELECT generate_series(1, 10), 'sample data';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) SELECT generate_series(11, 12), 'sample data';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator" with timeout "120" seconds
+    """
+    STOP MOVE TASK GROUP;
+    RETRY MOVE TASK GROUP;
+    """
+    Then command return code should be "0"
+    And qdb should not contain key range moves
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    9
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    3
+    """

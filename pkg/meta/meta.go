@@ -655,7 +655,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			}
 		}
 		return cli.CompleteMsg(0)
-	case *spqrparser.RetryMoveTaskGroup:
+	case *spqrparser.StopMoveTaskGroup:
 		tg, err := mgr.GetMoveTaskGroup(ctx)
 		if err != nil {
 			return err
@@ -669,7 +669,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}
 		_ = cli.ReplyNotice(ctx, "Gracefully stopping task group")
 		return cli.CompleteMsg(0)
-	case *spqrparser.StopMoveTaskGroup:
+	case *spqrparser.RetryMoveTaskGroup:
 		if err := mgr.RetryMoveTaskGroup(ctx); err != nil {
 			return err
 		}
