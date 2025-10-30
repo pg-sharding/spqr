@@ -1636,6 +1636,7 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 	return nil
 }
 
+// TODO unit test
 func (q *EtcdQDB) AddMoveTaskGroupStopFlag(ctx context.Context) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: put task group stop flag")
@@ -1649,6 +1650,7 @@ func (q *EtcdQDB) AddMoveTaskGroupStopFlag(ctx context.Context) error {
 	return nil
 }
 
+// TODO unit test
 func (q *EtcdQDB) CheckMoveTaskGroupStopFlag(ctx context.Context) (bool, error) {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: check for task group stop flag")
@@ -1662,6 +1664,7 @@ func (q *EtcdQDB) CheckMoveTaskGroupStopFlag(ctx context.Context) (bool, error) 
 	return resp.Count > 0, nil
 }
 
+// TODO unit test
 func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
 	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: write move task")
 
@@ -1684,6 +1687,7 @@ func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
 	return nil
 }
 
+// TODO unit test
 func (q *EtcdQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
 	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: write move task")
 
@@ -1705,6 +1709,7 @@ func (q *EtcdQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
 	return nil
 }
 
+// TODO unit test
 func (q *EtcdQDB) GetMoveTask(ctx context.Context) (*MoveTask, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: get move task")
 
@@ -1723,6 +1728,7 @@ func (q *EtcdQDB) GetMoveTask(ctx context.Context) (*MoveTask, error) {
 	return task, nil
 }
 
+// TODO unit test
 func (q *EtcdQDB) RemoveMoveTask(ctx context.Context) error {
 	spqrlog.Zero.Debug().Msg("etcdqdb: remove move task")
 

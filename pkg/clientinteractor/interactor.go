@@ -1836,6 +1836,7 @@ func (pi *PSQLInteractor) TsaCache(ctx context.Context, cacheEntries map[pool.Ts
 	return pi.CompleteMsg(count)
 }
 
+// ReplyNotice sends notice message to client
 func (pi *PSQLInteractor) ReplyNotice(ctx context.Context, msg string) error {
 	return pi.cl.ReplyNotice(msg)
 }

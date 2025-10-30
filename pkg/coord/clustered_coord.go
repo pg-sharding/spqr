@@ -1206,6 +1206,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for stop flag: %s", err)
 	}
+	// TODO create special error type here, use it to stop redistribute/balancer tasks
 	if stop {
 		spqrlog.Zero.Info().Msg("got stop flag, gracefully stopping move task group")
 		return nil, nil
@@ -1527,6 +1528,14 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 	return qc.RemoveMoveTaskGroup(ctx)
 }
 
+// RetryMoveTaskGroup re-launches the current move task group.
+// If no move task group is currently being executed, then nothing is done.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+//
+// Returns:
+// - error: An error if the operation fails, otherwise nil.
 func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
 	taskGroup, err := qc.GetMoveTaskGroup(ctx)
 	if err != nil {
@@ -1535,6 +1544,14 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
 	return qc.executeMoveTasks(ctx, taskGroup)
 }
 
+// StopMoveTaskGroup gracefully stops the execution of current move task group.
+// When current move task is completed, move task group will be finished.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+//
+// Returns:
+// - error: An error if the operation fails, otherwise nil.
 func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context) error {
 	return qc.qdb.AddMoveTaskGroupStopFlag(ctx)
 }
