@@ -1296,11 +1296,22 @@ retry_move_task_group:
 	{
 		$$ = &RetryMoveTaskGroup{}
 	}
+	|
+	RETRY TASK GROUP 
+	{
+		$$ = &RetryMoveTaskGroup{}
+	}
+	
 
 stop_move_task_group:
 	STOP MOVE TASK GROUP 
 	{
 		$$ = &StopMoveTaskGroup{}
 	}
+	|
+	STOP TASK GROUP 
+	{
+		$$ = &StopMoveTaskGroup{}
+	} 
 %%
 

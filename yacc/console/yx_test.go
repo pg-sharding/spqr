@@ -1560,6 +1560,11 @@ func TestRetryMoveTaskGroup(t *testing.T) {
 			exp:   &spqrparser.RetryMoveTaskGroup{},
 			err:   nil,
 		},
+		{
+			query: "RETRY TASK GROUP",
+			exp:   &spqrparser.RetryMoveTaskGroup{},
+			err:   nil,
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
@@ -1581,6 +1586,11 @@ func TestStopMoveTaskGroup(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "STOP MOVE TASK GROUP",
+			exp:   &spqrparser.StopMoveTaskGroup{},
+			err:   nil,
+		},
+		{
+			query: "STOP TASK GROUP",
 			exp:   &spqrparser.StopMoveTaskGroup{},
 			err:   nil,
 		},
