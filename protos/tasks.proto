@@ -56,6 +56,7 @@ service MoveTasksService {
   rpc WriteMoveTaskGroup(WriteMoveTaskGroupRequest) returns(google.protobuf.Empty) {}
   rpc RemoveMoveTaskGroup(google.protobuf.Empty) returns(google.protobuf.Empty) {}
   rpc RetryMoveTaskGroup(google.protobuf.Empty) returns(google.protobuf.Empty) {}
+  rpc StopMoveTaskGroup(google.protobuf.Empty) returns(google.protobuf.Empty) {}
 }
 
 enum BalancerTaskStatus {

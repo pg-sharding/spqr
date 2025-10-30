@@ -1025,7 +1025,9 @@ func (a *Adapter) RetryMoveTaskGroup(ctx context.Context) error {
 }
 
 func (a *Adapter) StopMoveTaskGroup(ctx context.Context) error {
-	return fmt.Errorf("not implemented")
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	_, err := tasksService.StopMoveTaskGroup(ctx, nil)
+	return err
 }
 
 // GetBalancerTask retrieves current balancer task from the system.
