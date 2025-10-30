@@ -29,7 +29,7 @@ type MemQDB struct {
 	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
 	Coordinator          string                              `json:"coordinator"`
 	MoveTaskGroup        *MoveTaskGroup                      `json:"taskGroup"`
-	stopMoveTaskGroup    bool                                `json:"stop_move_task_group"`
+	StopMoveTaskGroup    bool                                `json:"stop_move_task_group"`
 	MoveTask             *MoveTask                           `json:"move_task"`
 	TotalKeys            int64                               `json:"total_keys"`
 	RedistributeTask     *RedistributeTask                   `json:"redistribute_ask"`
