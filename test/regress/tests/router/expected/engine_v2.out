@@ -52,11 +52,11 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__engine_v2 TO false;
 BEGIN;
 DELETE FROM table1; 
-ERROR:  client processing error: error processing query 'DELETE FROM table1;': failed to match any datashard, tx status ERROR
+ERROR:  client processing error: cannot route in an active transaction, tx status ERROR
 ROLLBACK;
 BEGIN;
 DELETE FROM table1 /* __spqr__engine_v2: off */;
-ERROR:  client processing error: error processing query 'DELETE FROM table1 /* __spqr__engine_v2: off */;': failed to match any datashard, tx status ERROR
+ERROR:  client processing error: cannot route in an active transaction, tx status ERROR
 ROLLBACK;
 -- should succeed
 BEGIN;
