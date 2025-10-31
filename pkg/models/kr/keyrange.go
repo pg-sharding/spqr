@@ -64,6 +64,8 @@ func (kr *KeyRange) InFuncSQL(attribInd int, raw []byte) error {
 			return err
 		}
 		kr.LowerBound[attribInd] = value
+	case qdb.ColumnTypeTimestamptz:
+		kr.LowerBound[attribInd] = string(raw)
 	}
 	return nil
 }
@@ -88,6 +90,8 @@ func (kr *KeyRange) InFunc(attribInd int, raw []byte) error {
 			return err
 		}
 		kr.LowerBound[attribInd] = value
+	case qdb.ColumnTypeTimestamptz:
+		kr.LowerBound[attribInd] = string(raw)
 	}
 	return nil
 }
@@ -108,6 +112,8 @@ func (kr *KeyRange) OutFunc(attribInd int) []byte {
 	case qdb.ColumnTypeVarchar:
 		fallthrough
 	case qdb.ColumnTypeUUID:
+		fallthrough
+	case qdb.ColumnTypeTimestamptz:
 		return []byte(kr.LowerBound[attribInd].(string))
 	}
 	return nil
@@ -153,6 +159,9 @@ func (kr *KeyRange) RecvFunc(attribInd int, val string) error {
 			return err
 		}
 		kr.LowerBound[attribInd] = strings.ToLower(val)
+	case qdb.ColumnTypeTimestamptz:
+		// Store timestamp as string (PostgreSQL accepts various timestamp formats)
+		kr.LowerBound[attribInd] = val
 
 	default:
 		return fmt.Errorf("unknown column type %s", kr.ColumnTypes[attribInd])
@@ -248,6 +257,8 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 			}
 		case qdb.ColumnTypeUUID:
 			fallthrough
+		case qdb.ColumnTypeTimestamptz:
+			fallthrough
 		case qdb.ColumnTypeVarchar:
 			i1 := bound[i].(string)
 			i2 := key[i].(string)
@@ -295,6 +306,8 @@ func CmpRangesEqual(bound KeyRangeBound, key KeyRangeBound, types []string) bool
 				return false
 			}
 		case qdb.ColumnTypeUUID:
+			fallthrough
+		case qdb.ColumnTypeTimestamptz:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
 			i1 := bound[i].(string)

@@ -186,6 +186,8 @@ func ParseBytesFromStringRepr(input []byte, ctype string) (any, error) {
 
 	case qdb.ColumnTypeUUID:
 		parsedInput = string(input)
+	case qdb.ColumnTypeTimestamptz:
+		parsedInput = string(input)
 	case qdb.ColumnTypeVarchar:
 		fallthrough
 	case qdb.ColumnTypeVarcharHashed:

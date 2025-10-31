@@ -1324,6 +1324,8 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 			fallthrough
 		case qdb.ColumnTypeUUID:
 			fallthrough
+		case qdb.ColumnTypeTimestamptz:
+			fallthrough
 		case qdb.ColumnTypeVarchar:
 			bound[i] = []byte(values[i])
 		case qdb.ColumnTypeVarcharHashed:

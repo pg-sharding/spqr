@@ -20,6 +20,9 @@ func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]
 		case qdb.ColumnTypeUUID:
 			val := string(bindParams[ind])
 			return val, nil
+		case qdb.ColumnTypeTimestamptz:
+			val := string(bindParams[ind])
+			return val, nil
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough
 		case qdb.ColumnTypeVarcharHashed:
@@ -68,6 +71,8 @@ func ParseResolveParamValue(paramCode int16, ind int, tp string, bindParams [][]
 	case xproto.FormatCodeText:
 		switch tp {
 		case qdb.ColumnTypeUUID:
+			fallthrough
+		case qdb.ColumnTypeTimestamptz:
 			fallthrough
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough
