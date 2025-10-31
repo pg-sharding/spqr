@@ -1391,7 +1391,7 @@ Feature: Redistribution test
     }]
     """
   
-  Scenario: REDISTRIBUTE KEY RANGE works with multiple moves
+  Scenario: REDISTRIBUTE KEY RANGE works when generating several batches of bounds
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
@@ -1408,7 +1408,7 @@ Feature: Redistribution test
     INSERT INTO xMove (w_id, s) SELECT generate_series(0, 299), 'sample text value';
     """
     Then command return code should be "0"
-    When I run SQL on host "coordinator" with timeout "1500" seconds
+    When I run SQL on host "coordinator" with timeout "150" seconds
     """
     REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 10;
     """
