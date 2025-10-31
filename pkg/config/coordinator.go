@@ -45,7 +45,7 @@ type Coordinator struct {
 //   - string: JSON-formatted config
 //   - error: An error if any occurred during the loading process.
 func LoadCoordinatorCfg(cfgPath string) (string, error) {
-	cfgCoordinator = Coordinator{
+	cCfg := Coordinator{
 		DataMoveBoundBatchSize: 10_000,
 	}
 	file, err := os.Open(cfgPath)
@@ -59,7 +59,7 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 		}
 	}(file)
 
-	if err := initCoordinatorConfig(file, cfgPath); err != nil {
+	if err := initCoordinatorConfig(file, cfgPath, &cCfg); err != nil {
 		return "", err
 	}
 
@@ -68,6 +68,7 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 		return "", err
 	}
 
+	cfgCoordinator = cCfg
 	return string(configBytes), nil
 }
 
@@ -79,16 +80,16 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 //
 // Returns:
 //   - error: an error if any occurred during the initialization process.
-func initCoordinatorConfig(file *os.File, filepath string) error {
+func initCoordinatorConfig(file *os.File, filepath string, cfg *Coordinator) error {
 	if strings.HasSuffix(filepath, ".toml") {
-		_, err := toml.NewDecoder(file).Decode(&cfgCoordinator)
+		_, err := toml.NewDecoder(file).Decode(&cfg)
 		return err
 	}
 	if strings.HasSuffix(filepath, ".yaml") {
-		return yaml.NewDecoder(file).Decode(&cfgCoordinator)
+		return yaml.NewDecoder(file).Decode(&cfg)
 	}
 	if strings.HasSuffix(filepath, ".json") {
-		return json.NewDecoder(file).Decode(&cfgCoordinator)
+		return json.NewDecoder(file).Decode(&cfg)
 	}
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", filepath)
 }
