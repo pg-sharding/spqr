@@ -11,3 +11,4 @@ frontend_rules:
       auth_method: clear_text
       password: password
 data_move_disable_triggers: true
+data_move_bound_batch_size: 10

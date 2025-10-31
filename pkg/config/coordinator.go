@@ -31,8 +31,9 @@ type Coordinator struct {
 	EnableRoleSystem     bool            `json:"enable_role_system" toml:"enable_role_system" yaml:"enable_role_system"`
 	RolesFile            string          `json:"roles_file" toml:"roles_file" yaml:"roles_file"`
 
-	EtcdMaxSendBytes        int  `json:"etcd_max_send_bytes" toml:"etcd_max_send_bytes" yaml:"etcd_max_send_bytes"`
-	DataMoveDisableTriggers bool `json:"data_move_disable_triggers" toml:"data_move_disable_triggers" yaml:"data_move_disable_triggers"`
+	EtcdMaxSendBytes        int   `json:"etcd_max_send_bytes" toml:"etcd_max_send_bytes" yaml:"etcd_max_send_bytes"`
+	DataMoveDisableTriggers bool  `json:"data_move_disable_triggers" toml:"data_move_disable_triggers" yaml:"data_move_disable_triggers"`
+	DataMoveBoundBatchSize  int64 `json:"data_move_bound_batch_size" toml:"data_move_bound_batch_size" yaml:"data_move_bound_batch_size"`
 }
 
 // LoadCoordinatorCfg loads the coordinator configuration from the specified file path.
@@ -44,6 +45,9 @@ type Coordinator struct {
 //   - string: JSON-formatted config
 //   - error: An error if any occurred during the loading process.
 func LoadCoordinatorCfg(cfgPath string) (string, error) {
+	cfgCoordinator = Coordinator{
+		DataMoveBoundBatchSize: 10_000,
+	}
 	file, err := os.Open(cfgPath)
 	if err != nil {
 		return "", err

@@ -1206,13 +1206,12 @@ func (*ClusteredCoordinator) getBiggestRelation(relCount map[string]int64, total
 }
 
 func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, coeff float64, ds *distributions.Distribution) ([][]byte, error) {
-	if qc.index < len(qc.bounds) {
+	if qc.bounds != nil && qc.index < len(qc.bounds) {
 		qc.index++
 		return qc.bounds[qc.index-1], nil
 	}
 
-	const cacheSize = int64(10_000)
-
+	spqrlog.Zero.Debug().Msg("generating new bounds batch")
 	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KrIdFrom)
 	krFound := true
 	if et, ok := err.(*spqrerror.SpqrError); ok && et.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
@@ -1240,6 +1239,8 @@ func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn
 
 	boundList := make([][][]byte, 0)
 	step := int64(math.Ceil(float64(taskGroup.BatchSize)*coeff - 1e-3))
+
+	cacheSize := config.CoordinatorConfig().DataMoveBoundBatchSize
 
 	limit := func() int64 {
 		if taskGroup.Limit < 0 {
