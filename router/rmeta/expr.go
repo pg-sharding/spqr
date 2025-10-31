@@ -1,4 +1,4 @@
-package planner
+package rmeta
 
 import (
 	"context"
@@ -8,19 +8,19 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
-	"github.com/pg-sharding/spqr/router/rmeta"
 )
 
-func routingTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext,
+func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 	ds *distributions.Distribution, qualName *rfqn.RelationFQN, relation *distributions.DistributedRelation, tsa tsa.TSA) (plan.Plan, error) {
 
-	queryParamsFormatCodes := GetParams(rm)
+	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
 	krs, err := rm.Mgr.ListKeyRanges(ctx, ds.Id)
 	if err != nil {
@@ -43,9 +43,8 @@ func routingTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		if len(relation.DistributionKey[lvl].Column) == 0 {
 			// calculate routing expression
 
-			valList, err := ComputeRoutingExpr(
+			valList, err := rm.ComputeRoutingExpr(
 				qualName,
-				rm,
 				&relation.DistributionKey[lvl].Expr,
 				relation.DistributionKey[lvl].HashFunction,
 				queryParamsFormatCodes)
@@ -138,7 +137,7 @@ func routingTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 	return p, nil
 }
 
-func RouteByTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext, tsa tsa.TSA) (plan.Plan, error) {
+func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA) (plan.Plan, error) {
 
 	var queryPlan plan.Plan
 	/*
@@ -152,7 +151,7 @@ func RouteByTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext, tsa ts
 			return nil, err
 		} else if ds.Id == distributions.REPLICATED {
 			var shs []kr.ShardKey
-			if rmeta.IsRelationCatalog(&qualName) {
+			if IsRelationCatalog(&qualName) {
 				shs = nil
 			} else {
 				r, err := rm.Mgr.GetReferenceRelation(ctx, &qualName)
@@ -173,7 +172,7 @@ func RouteByTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext, tsa ts
 			return nil, fmt.Errorf("relation %s not found in distribution %s", qualName.RelationName, ds.Id)
 		}
 
-		tmp, err := routingTuples(ctx, rm, ds, &qualName, relation, tsa)
+		tmp, err := rm.routingTuples(ctx, ds, &qualName, relation, tsa)
 		if err != nil {
 			return nil, err
 		}
@@ -184,8 +183,8 @@ func RouteByTuples(ctx context.Context, rm *rmeta.RoutingMetadataContext, tsa ts
 	return queryPlan, nil
 }
 
-func ProcessConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, exprs []lyx.Node, meta *rmeta.RoutingMetadataContext) error {
-	off, tp := meta.GetDistributionKeyOffsetType(resolvedRelation, colname)
+func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, exprs []lyx.Node) error {
+	off, tp := rm.GetDistributionKeyOffsetType(resolvedRelation, colname)
 	if off == -1 {
 		// column not from distr key
 		return nil
@@ -193,7 +192,7 @@ func ProcessConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, 
 
 	for _, expr := range exprs {
 		/* simple key-value pair */
-		if err := meta.ProcessSingleExpr(resolvedRelation, tp, colname, expr); err != nil {
+		if err := rm.ProcessSingleExpr(resolvedRelation, tp, colname, expr); err != nil {
 			return err
 		}
 	}
@@ -204,7 +203,7 @@ func ProcessConstExprOnRFQN(resolvedRelation *rfqn.RelationFQN, colname string, 
 // DeparseExprShardingEntries deparses sharding column entries(column names or aliased column names)
 // e.g {fields:{string:{str:"a"}} fields:{string:{str:"i"}} for `WHERE a.i = 1`
 // returns alias and column name
-func DeparseExprShardingEntries(expr lyx.Node, meta *rmeta.RoutingMetadataContext) (string, string, error) {
+func DeparseExprShardingEntries(expr lyx.Node) (string, string, error) {
 	switch q := expr.(type) {
 	case *lyx.ColumnRef:
 		return q.TableAlias, q.ColName, nil
@@ -213,7 +212,7 @@ func DeparseExprShardingEntries(expr lyx.Node, meta *rmeta.RoutingMetadataContex
 	}
 }
 
-func ProcessConstExpr(alias, colname string, expr lyx.Node, rm *rmeta.RoutingMetadataContext) error {
+func (rm *RoutingMetadataContext) ProcessConstExpr(alias, colname string, expr lyx.Node) error {
 	resolvedRelation, err := rm.ResolveRelationByAlias(alias)
 
 	if err != nil {
@@ -221,12 +220,11 @@ func ProcessConstExpr(alias, colname string, expr lyx.Node, rm *rmeta.RoutingMet
 		return nil
 	}
 
-	return ProcessConstExprOnRFQN(resolvedRelation, colname, []lyx.Node{expr}, rm)
+	return rm.ProcessConstExprOnRFQN(resolvedRelation, colname, []lyx.Node{expr})
 }
 
-func ComputeRoutingExpr(
+func (rm *RoutingMetadataContext) ComputeRoutingExpr(
 	qualName *rfqn.RelationFQN,
-	rm *rmeta.RoutingMetadataContext,
 	rExpr *distributions.RoutingExpr,
 	hfName string,
 	queryParamsFormatCodes []int16,

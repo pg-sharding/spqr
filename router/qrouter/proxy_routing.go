@@ -8,7 +8,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/tsa"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/session"
@@ -45,7 +44,7 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, rm *rmeta.RoutingMet
 			switch q := texpr.SubLink.(type) {
 			case *lyx.AExprList:
 				for _, expr := range q.List {
-					if err := planner.ProcessConstExpr(alias, colname, expr, rm); err != nil {
+					if err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
 						return nil, err
 					}
 				}
@@ -78,21 +77,21 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, rm *rmeta.RoutingMet
 
 				// TBD: postpone routing from here to root of parsing tree
 				// maybe extremely inefficient. Will be fixed in SPQR-2.0
-				if err := planner.ProcessConstExpr(alias, colname, right, rm); err != nil {
+				if err := rm.ProcessConstExpr(alias, colname, right); err != nil {
 					return nil, err
 				}
 
 			case *lyx.ColumnRef:
 				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
 				for _, v := range rm.AuxExprByColref(right) {
-					if err := planner.ProcessConstExpr(alias, colname, v, rm); err != nil {
+					if err := rm.ProcessConstExpr(alias, colname, v); err != nil {
 						return nil, err
 					}
 				}
 
 			case *lyx.AExprList:
 				for _, expr := range right.List {
-					if err := planner.ProcessConstExpr(alias, colname, expr, rm); err != nil {
+					if err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
 						return nil, err
 					}
 				}
@@ -573,7 +572,7 @@ func (qr *ProxyQrouter) planQueryV1(
 // Returns state, is read-only flag and err if any
 func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
-	stmt lyx.Node, tsa tsa.TSA) (plan.Plan, error) {
+	stmt lyx.Node) (plan.Plan, error) {
 	if stmt == nil {
 		// empty statement
 		return &plan.RandomDispatchPlan{}, nil
@@ -657,20 +656,6 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		pl = plan.Combine(pl, rs)
 	default:
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
-	}
-
-	tmp, err := planner.RouteByTuples(ctx, rm, tsa)
-	if err != nil {
-		return nil, err
-	}
-
-	pl = plan.Combine(pl, tmp)
-
-	// set up this variable if not yet
-	if pl == nil {
-		pl = &plan.ScatterPlan{
-			ExecTargets: qr.DataShardsRoutes(),
-		}
 	}
 
 	return pl, nil
@@ -793,11 +778,26 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 			return nil, err
 		}
 	} else {
-		p, err = qr.RouteWithRules(ctx, rm, stmt, sph.GetTsa())
+		p, err = qr.RouteWithRules(ctx, rm, stmt)
 
 		if err != nil {
 			return nil, err
 		}
+
+		tmp, err := rm.RouteByTuples(ctx, sph.GetTsa())
+		if err != nil {
+			return nil, err
+		}
+
+		p = plan.Combine(p, tmp)
+
+		// set up this variable if not yet
+		if p == nil {
+			p = &plan.ScatterPlan{
+				ExecTargets: qr.DataShardsRoutes(),
+			}
+		}
+
 	}
 	return p, nil
 }
