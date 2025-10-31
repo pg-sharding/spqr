@@ -193,7 +193,7 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 				}
 			}
 		}
-	case *lyx.AExprList:
+	case *lyx.AExprList, *lyx.AExprNot:
 		/* ok */
 	default:
 		return fmt.Errorf("analyze where clause, unknown expr %T: %w", expr, rerrors.ErrComplexQuery)
