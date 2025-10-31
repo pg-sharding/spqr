@@ -129,9 +129,6 @@ UPDATE table2 SET b = b + 1;
 
 SELECT * FROM table2 ORDER BY a /* __spqr__execute_on: sh1 */;
 
-
-
-
 DROP TABLE table1;
 DROP TABLE table2;
 DROP TABLE ref_rel_1;
@@ -139,52 +136,4 @@ DROP TABLE ref_rel_1;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
 DROP KEY RANGE ALL;
-
-
-
-
-
-WITH activations_count AS (
-  SELECT 
-    count(check_id_tab.check_id) AS activations_count, 
-    check_id_tab.campaign_id AS campaign_id 
-  FROM 
-    (
-      SELECT 
-    	1
-      FROM 
-        cashback.calculations AS detail_calc 
-        JOIN cashback.calculations AS final_calc ON detail_calc.operation_id = final_calc.operation_id 
-        AND detail_calc.mechanic = final_calc.mechanic 
-        AND final_calc.campaign_id IS NULL 
-      WHERE 
-        detail_calc.user_id = 'c411f63b-9492-4dc9-8563-69ba2bf92fa5' :: uuid 
-      GROUP BY 
-        final_calc.check_id, 
-        detail_calc.item_id, 
-        detail_calc.campaign_id, 
-        detail_calc.strategy_id 
-      HAVING 
-        sum(detail_calc.amount) > 0
-    ) AS check_id_tab 
-  GROUP BY 
-    check_id_tab.campaign_id
-) 
-SELECT 
-  DISTINCT ON (
-    cashback.calculations.campaign_id
-  ) cashback.calculations.campaign_id AS id, 
-  (
-    SELECT 
-      activations_count.activations_count 
-    FROM 
-      activations_count 
-    WHERE 
-      activations_count.campaign_id = cashback.calculations.campaign_id
-  ) AS "immediateActivationsCount"
-FROM 
-  cashback.calculations 
-  JOIN cashback.campaigns AS campaigns_1 ON cashback.calculations.campaign_id = campaigns_1.id 
-WHERE 
-  cashback.calculations.user_id = 'c411f63b-9492-4dc9-8563-69ba2bf92fa5' :: uuid 
 
