@@ -83,6 +83,15 @@ NOTICE: send query to shard(s) : sh1
 
 WITH s AS (
 	SELECT 1 FROM table1 WHERE i = 10
+) SELECT (select * from s), 2;
+NOTICE: send query to shard(s) : sh1
+ ?column? | ?column? 
+----------+----------
+          |        2
+(1 row)
+
+WITH s AS (
+	SELECT 1 FROM table1 WHERE i = 10
 ) SELECT 1 + 2;
 NOTICE: send query to shard(s) : sh1
  ?column? 

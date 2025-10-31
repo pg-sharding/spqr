@@ -230,6 +230,15 @@ func AnalyzeQueryV1(
 	switch stmt := qstmt.(type) {
 	case *lyx.Select:
 
+		if stmt.WithClause != nil {
+			for _, cte := range stmt.WithClause {
+				rm.CteNames[cte.Name] = struct{}{}
+				if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
+					return err
+				}
+			}
+		}
+
 		for _, expr := range stmt.TargetList {
 			actualExpr := expr
 			if rt, ok := expr.(*lyx.ResTarget); ok {
@@ -267,15 +276,6 @@ func AnalyzeQueryV1(
 
 		if err := AnalyzeQueryV1(ctx, rm, stmt.RArg); err != nil {
 			return err
-		}
-
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				rm.CteNames[cte.Name] = struct{}{}
-				if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
-					return err
-				}
-			}
 		}
 
 		if stmt.FromClause != nil {
