@@ -72,7 +72,7 @@ ROLLBACK;
 -- should fail
 BEGIN;
 DELETE FROM table1; 
-ERROR:  client processing error: error processing query 'DELETE FROM table1;': failed to match any datashard, tx status ERROR
+ERROR:  client processing error: cannot route in an active transaction, tx status ERROR
 ROLLBACK;
 -- now success
 SET __spqr__engine_v2 TO true;
