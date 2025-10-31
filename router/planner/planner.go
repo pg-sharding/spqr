@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/plan"
@@ -245,7 +246,7 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 		return nil, err
 	}
 
-	queryParamsFormatCodes := GetParams(rm)
+	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 	tupleShards := make([]kr.ShardKey, len(routingList))
 	relation := ds.GetRelation(qualName)
 

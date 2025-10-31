@@ -350,3 +350,114 @@ func AnalyzeQueryV1(
 	}
 	return nil
 }
+
+/*
+* This function assumes that INSTEAD OF rules on selects in PostgreSQL are only RIR
+ */
+func CheckRoOnlyQuery(stmt lyx.Node) bool {
+	switch v := stmt.(type) {
+	/*
+		*  XXX: should we be bit restrictive here than upstream?
+		There are some possible cases when values clause is NOT ro-query.
+		for example (as of now unsupported, but):
+
+				example/postgres M # values((with d as (insert into zz select 1 returning *) table d));
+				ERROR:  0A000: WITH clause containing a data-modifying statement must be at the top level
+				LINE 1: values((with d as (insert into zz select 1 returning *) table...
+				                     ^
+
+	*/
+	case *lyx.ValueClause:
+		for _, ve := range v.Values {
+			for _, e := range ve {
+				if !CheckRoOnlyQuery(e) {
+					return false
+				}
+			}
+		}
+
+		return true
+
+	case *lyx.AExprBConst, *lyx.AExprIConst, *lyx.EmptyQuery, *lyx.AExprNConst:
+		return true
+	case *lyx.ColumnRef:
+		return true
+	case *lyx.AExprOp:
+		return CheckRoOnlyQuery(v.Left) && CheckRoOnlyQuery(v.Right)
+	case *lyx.CommonTableExpr:
+		return CheckRoOnlyQuery(v.SubQuery)
+	case *lyx.Select:
+		if v.LArg != nil {
+			if !CheckRoOnlyQuery(v.LArg) {
+				return false
+			}
+		}
+
+		if v.RArg != nil {
+			if !CheckRoOnlyQuery(v.RArg) {
+				return false
+			}
+		}
+
+		for _, ch := range v.WithClause {
+			if !CheckRoOnlyQuery(ch) {
+				return false
+			}
+		}
+
+		/* XXX:
+
+		there can be sub-selects in from clause. Can they be non-readonly?
+
+		db1=# create table zz( i int);
+		CREATE TABLE
+		db1=# create function f () returns int as $$ insert into zz values(1) returning * $$ language sql;
+		CREATE FUNCTION
+		db1=# select * from zz, (select f());
+		 i | f
+		---+---
+		(0 rows)
+
+		db1=# table zz;
+		 i
+		---
+		 1
+		(1 row)
+		*/
+
+		for _, rte := range v.FromClause {
+			switch ch := rte.(type) {
+			case *lyx.JoinExpr, *lyx.RangeVar:
+				/* hope this is ro */
+			case *lyx.SubSelect:
+				if !CheckRoOnlyQuery(ch) {
+					return false
+				}
+			default:
+				/* We do not really expect here anything else */
+				return false
+			}
+		}
+
+		for _, tle := range v.TargetList {
+			switch v := tle.(type) {
+			case *lyx.Select:
+				if !CheckRoOnlyQuery(tle) {
+					return false
+				}
+			case *lyx.FuncApplication:
+				/* only allow white list of functions here */
+				switch v.Name {
+				case "now", "pg_is_in_recovery":
+					/* these cases ok */
+				default:
+					return false
+				}
+			}
+		}
+
+		return true
+	default:
+		return false
+	}
+}
