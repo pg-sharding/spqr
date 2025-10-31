@@ -9,11 +9,12 @@ import (
 )
 
 const (
-	MoveStatsTotalTime    = "total"
-	MoveStatsRouterTime   = "router"
-	MoveStatsShardTime    = "shard"
-	MoveStatsQDBPrefix    = "qdb"
-	MoveStatsQDBTotalTime = "qdb.Total"
+	MoveStatsTotalTime      = "total"
+	MoveStatsRouterTime     = "router"
+	MoveStatsShardPrefix    = "shard"
+	MoveStatsShardTotalTime = "shard.Total"
+	MoveStatsQDBPrefix      = "qdb"
+	MoveStatsQDBTotalTime   = "qdb.Total"
 )
 
 type statisticsInt struct {
@@ -102,13 +103,20 @@ func RecordRouterOperation(duration time.Duration) {
 	}
 }
 
-func RecordShardOperation(duration time.Duration) {
+func RecordShardOperation(stat string, duration time.Duration) {
 	if moveStatistics.MoveInProgress {
-		curValue, ok := moveStatistics.CurrentExecTimes.Load(MoveStatsShardTime)
+		statName := MoveStatsShardPrefix + "." + stat
+		curValue, ok := moveStatistics.CurrentExecTimes.Load(statName)
 		if ok {
-			moveStatistics.CurrentExecTimes.Store(MoveStatsShardTime, curValue.(time.Duration)+duration)
+			moveStatistics.CurrentExecTimes.Store(statName, curValue.(time.Duration)+duration)
 		} else {
-			moveStatistics.CurrentExecTimes.Store(MoveStatsShardTime, duration)
+			moveStatistics.CurrentExecTimes.Store(statName, duration)
+		}
+		curValue, ok = moveStatistics.CurrentExecTimes.Load(MoveStatsShardTotalTime)
+		if ok {
+			moveStatistics.CurrentExecTimes.Store(MoveStatsShardTotalTime, curValue.(time.Duration)+duration)
+		} else {
+			moveStatistics.CurrentExecTimes.Store(MoveStatsShardTotalTime, duration)
 		}
 	}
 }

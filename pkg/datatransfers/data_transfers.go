@@ -7,7 +7,9 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/pg-sharding/spqr/coordinator/statistics"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -177,17 +179,20 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	for tx != nil {
 		switch tx.Status {
 		case qdb.Planned:
+			t := time.Now()
 			// copy data of key range to receiving shard
 			if err = copyData(ctx, from, to, fromId, toId, krg, ds, upperBound); err != nil {
 				return err
 			}
 			tx.Status = qdb.DataCopied
 			err = db.RecordTransferTx(ctx, krg.ID, tx)
+			statistics.RecordShardOperation("copyData", time.Since(t))
 			if err != nil {
 				return err
 			}
 		case qdb.DataCopied:
 			// drop data from sending shard
+			t := time.Now()
 			ftx, err := from.Begin(ctx)
 			if err != nil {
 				return fmt.Errorf("could not delete data: could not begin transaction: %s", err)
@@ -221,6 +226,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			if err = ftx.Commit(ctx); err != nil {
 				return fmt.Errorf("could not delete data: could not commit transaction: %s", err)
 			}
+			statistics.RecordShardOperation("dropData", time.Since(t))
 			if err = db.RemoveTransferTx(ctx, krg.ID); err != nil {
 				return err
 			}
