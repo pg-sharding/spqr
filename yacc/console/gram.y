@@ -190,7 +190,7 @@ func randomHex(n int) (string, error) {
 
 %token<str> TASK GROUP
 
-%token<str> VARCHAR INTEGER INT TYPES UUID
+%token<str> VARCHAR INTEGER INT TYPES UUID TIMESTAMPTZ
 
 /* any operator */
 %token<str> OP
@@ -988,6 +988,8 @@ col_types_elem:
 		$$ = qdb.ColumnTypeUinteger
 	} | UUID {
 		$$ = qdb.ColumnTypeUUID
+	} | TIMESTAMPTZ {
+		$$ = qdb.ColumnTypeTimestamptz
 	}
 
 opt_default_shard:

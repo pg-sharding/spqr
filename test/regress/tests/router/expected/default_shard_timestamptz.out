@@ -1,0 +1,91 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+-- check that TIMESTAMPTZ type works with default shard
+CREATE DISTRIBUTION ds3 COLUMN TYPES timestamptz;
+    add distribution    
+------------------------
+ distribution id -> ds3
+(1 row)
+
+CREATE KEY RANGE kr2 FROM '2024-01-01T00:00:00Z' ROUTE TO sh2 FOR DISTRIBUTION ds3;
+ add key range 
+---------------
+ bound -> 2024-01-01T00:00:00Z
+(1 row)
+
+CREATE KEY RANGE kr1 FROM '2023-01-01T00:00:00Z' ROUTE TO sh1 FOR DISTRIBUTION ds3;
+ add key range 
+---------------
+ bound -> 2023-01-01T00:00:00Z
+(1 row)
+
+ALTER DISTRIBUTION ds3 ADD DEFAULT SHARD sh1;
+  create default shard  
+------------------------
+ distribution id -> ds3
+ shard id        -> sh1
+(2 rows)
+
+CREATE DISTRIBUTED RELATION def_sh_timestamptz DISTRIBUTION KEY id IN ds3;
+         attach table         
+------------------------------
+ relation name   -> def_sh_timestamptz
+ distribution id -> ds3
+(2 rows)
+
+\c regress
+CREATE TABLE def_sh_timestamptz(id TIMESTAMPTZ);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- Insert values that should route to default shard (less than first key range)
+INSERT INTO def_sh_timestamptz (id) VALUES ('2022-01-01T00:00:00Z');
+NOTICE: send query to shard(s) : sh1
+-- Insert values that should route to regular key ranges
+INSERT INTO def_sh_timestamptz (id) VALUES ('2023-01-01T00:00:00Z');
+NOTICE: send query to shard(s) : sh1
+INSERT INTO def_sh_timestamptz (id) VALUES ('2024-01-01T00:00:00Z');
+NOTICE: send query to shard(s) : sh2
+INSERT INTO def_sh_timestamptz (id) VALUES ('2025-01-01T00:00:00Z');
+NOTICE: send query to shard(s) : sh2
+SELECT * FROM def_sh_timestamptz ORDER BY id /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+                  id                  
+--------------------------------------
+ 2022-01-01 00:00:00+00
+ 2023-01-01 00:00:00+00
+(2 rows)
+
+SELECT * FROM def_sh_timestamptz ORDER BY id /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+                  id                  
+--------------------------------------
+ 2024-01-01 00:00:00+00
+ 2025-01-01 00:00:00+00
+(2 rows)
+
+DROP TABLE def_sh_timestamptz;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds3
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

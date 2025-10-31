@@ -82,6 +82,7 @@ var (
 	ColumnTypeInteger           = "integer"
 	ColumnTypeUinteger          = "uinteger"
 	ColumnTypeUUID              = "uuid"
+	ColumnTypeTimestamptz       = "timestamptz"
 )
 
 type TypedColRef struct {

@@ -41,6 +41,13 @@ func DefaultRangeLowerBound(colTypes []string) (kr.KeyRangeBound, error) {
 			lowerBound[i] = int64(math.MinInt64)
 		case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed:
 			lowerBound[i] = uint64(0)
+		case qdb.ColumnTypeUUID:
+			// Minimum UUID value (all zeros) - lexicographically smallest UUID
+			lowerBound[i] = "00000000-0000-0000-0000-000000000000"
+		case qdb.ColumnTypeTimestamptz:
+			// Minimum timestamp value (earliest valid ISO 8601 timestamp)
+			// This represents the earliest possible timestamp value
+			lowerBound[i] = "0001-01-01T00:00:00Z"
 		default:
 			return nil, fmt.Errorf("unsupported type '%v' for default key range", colType)
 		}

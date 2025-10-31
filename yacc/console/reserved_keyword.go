@@ -61,6 +61,7 @@ var reservedWords = map[string]int{
 	"int":          INT,
 	"integer":      INTEGER,
 	"uuid":         UUID,
+	"timestamptz":  TIMESTAMPTZ,
 	"alter":        ALTER,
 	"relation":     RELATION,
 	"relations":    RELATIONS,

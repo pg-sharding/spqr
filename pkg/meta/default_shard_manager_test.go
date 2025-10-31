@@ -1,7 +1,6 @@
 package meta_test
 
 import (
-	"fmt"
 	"math"
 	"testing"
 
@@ -29,8 +28,8 @@ func TestDefaultRangeLowerBound(t *testing.T) {
 				"integer",
 				"uuid",
 			},
-			expected:    nil,
-			expectedErr: fmt.Errorf("unsupported type '%v' for default key range", "uuid"),
+			expected:    kr.KeyRangeBound{"", int64(math.MinInt64), "00000000-0000-0000-0000-000000000000"},
+			expectedErr: nil,
 		},
 	} {
 		actual, actualErr := meta.DefaultRangeLowerBound(test.colTypes)

@@ -516,6 +516,8 @@ func CheckRelationKeys(ds *qdb.Distribution, rel *DistributedRelation) error {
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough
 		case qdb.ColumnTypeUUID:
+			fallthrough
+		case qdb.ColumnTypeTimestamptz:
 			if len(rel.DistributionKey[i].HashFunction) > 0 {
 				return fmt.Errorf("type %s of distribution %s does not support hashfunction to attach relation %s", colType, ds.ID, rel.GetFullName())
 			}
