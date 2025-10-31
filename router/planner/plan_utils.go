@@ -15,34 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
-	"github.com/pg-sharding/spqr/router/xproto"
 )
-
-func GetParams(rm *rmeta.RoutingMetadataContext) []int16 {
-	paramsFormatCodes := rm.SPH.BindParamFormatCodes()
-	var queryParamsFormatCodes []int16
-	paramsLen := len(rm.SPH.BindParams())
-
-	/* https://github.com/postgres/postgres/blob/c65bc2e1d14a2d4daed7c1921ac518f2c5ac3d17/src/backend/tcop/pquery.c#L664-L691 */ /* #no-spell-check-line */
-	if len(paramsFormatCodes) > 1 {
-		queryParamsFormatCodes = paramsFormatCodes
-	} else if len(paramsFormatCodes) == 1 {
-
-		/* single format specified, use for all columns */
-		queryParamsFormatCodes = make([]int16, paramsLen)
-
-		for i := range paramsLen {
-			queryParamsFormatCodes[i] = paramsFormatCodes[0]
-		}
-	} else {
-		/* use default format for all columns */
-		queryParamsFormatCodes = make([]int16, paramsLen)
-		for i := range paramsLen {
-			queryParamsFormatCodes[i] = xproto.FormatCodeText
-		}
-	}
-	return queryParamsFormatCodes
-}
 
 func ProcessInsertFromSelectOffsets(
 	ctx context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) (map[string]int, *rfqn.RelationFQN, error) {
