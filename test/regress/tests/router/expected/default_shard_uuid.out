@@ -1,0 +1,91 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+-- check that UUID type works with default shard
+CREATE DISTRIBUTION ds2 COLUMN TYPES uuid;
+    add distribution    
+------------------------
+ distribution id -> ds2
+(1 row)
+
+CREATE KEY RANGE kr2 FROM '88888888-8888-8888-8888-888888888888' ROUTE TO sh2 FOR DISTRIBUTION ds2;
+ add key range 
+---------------
+ bound -> 88888888-8888-8888-8888-888888888888
+(1 row)
+
+CREATE KEY RANGE kr1 FROM '00000000-0000-0000-0000-000000000001' ROUTE TO sh1 FOR DISTRIBUTION ds2;
+ add key range 
+---------------
+ bound -> 00000000-0000-0000-0000-000000000001
+(1 row)
+
+ALTER DISTRIBUTION ds2 ADD DEFAULT SHARD sh1;
+  create default shard  
+------------------------
+ distribution id -> ds2
+ shard id        -> sh1
+(2 rows)
+
+CREATE DISTRIBUTED RELATION def_sh_uuid DISTRIBUTION KEY id IN ds2;
+         attach table         
+------------------------------
+ relation name   -> def_sh_uuid
+ distribution id -> ds2
+(2 rows)
+
+\c regress
+CREATE TABLE def_sh_uuid(id UUID);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- Insert values that should route to default shard (less than first key range)
+INSERT INTO def_sh_uuid (id) VALUES ('00000000-0000-0000-0000-000000000000');
+NOTICE: send query to shard(s) : sh1
+-- Insert values that should route to regular key ranges
+INSERT INTO def_sh_uuid (id) VALUES ('00000000-0000-0000-0000-000000000001');
+NOTICE: send query to shard(s) : sh1
+INSERT INTO def_sh_uuid (id) VALUES ('88888888-8888-8888-8888-888888888888');
+NOTICE: send query to shard(s) : sh2
+INSERT INTO def_sh_uuid (id) VALUES ('FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF');
+NOTICE: send query to shard(s) : sh2
+SELECT * FROM def_sh_uuid ORDER BY id /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+                  id                  
+--------------------------------------
+ 00000000-0000-0000-0000-000000000000
+ 00000000-0000-0000-0000-000000000001
+(2 rows)
+
+SELECT * FROM def_sh_uuid ORDER BY id /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+                  id                  
+--------------------------------------
+ 88888888-8888-8888-8888-888888888888
+ ffffffff-ffff-ffff-ffff-ffffffffffff
+(2 rows)
+
+DROP TABLE def_sh_uuid;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds2
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

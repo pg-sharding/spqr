@@ -41,6 +41,9 @@ func DefaultRangeLowerBound(colTypes []string) (kr.KeyRangeBound, error) {
 			lowerBound[i] = int64(math.MinInt64)
 		case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed:
 			lowerBound[i] = uint64(0)
+		case qdb.ColumnTypeUUID:
+			// Minimum UUID value (all zeros) - lexicographically smallest UUID
+			lowerBound[i] = "00000000-0000-0000-0000-000000000000"
 		default:
 			return nil, fmt.Errorf("unsupported type '%v' for default key range", colType)
 		}
