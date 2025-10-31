@@ -1,7 +1,7 @@
 ARG codename=jammy
 FROM ubuntu:${codename}
 
-ARG POSTGRES_VERSION=13
+ARG POSTGRES_VERSION=17
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Israel
