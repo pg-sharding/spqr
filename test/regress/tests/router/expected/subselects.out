@@ -86,7 +86,7 @@ NOTICE: send query to shard(s) : sh3,sh4
 
 -- should dispatch to sh3
 SELECT i FROM table1 WHERE i = 201 AND NOT (SELECT false);
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh3
  i 
 ---
 (0 rows)
