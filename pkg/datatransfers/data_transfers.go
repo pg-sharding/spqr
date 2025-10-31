@@ -539,9 +539,9 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 		return err
 	}
 	query := fmt.Sprintf(`
-					INSERT INTO %s
+					INSERT INTO %s (%s)
 					SELECT %s FROM %s
-`, relFullName, strings.Join(cols, ", "), fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.TableName)))
+`, relFullName, strings.Join(cols, ", "), strings.Join(cols, ", "), fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.TableName)))
 	_, err = tx.Exec(ctx, query)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
