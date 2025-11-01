@@ -21,6 +21,15 @@ ALTER TABLE "table_2" RENAME TO "table_1";
 ALTER TABLE "tmp" RENAME TO "table_2";
 COMMIT;
 
+VACUUM table_1;
+VACUUM ANALYZE;
+
+VACUUM ANALYZE table_1;
+
+CREATE type et as enum ('a', 'b');
+
+DROP TYPE et;
+
 DROP SCHEMA sh1;
 
 DROP TABLE table_1 CASCADE;

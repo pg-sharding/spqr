@@ -11,6 +11,8 @@ show_notice_messages: false
 time_quantiles:
   - 0.75
 
+notice_message_format: '{shard}'
+
 world_shard_fallback: true
 router_mode: PROXY
 
