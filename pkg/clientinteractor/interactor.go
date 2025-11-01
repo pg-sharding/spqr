@@ -420,16 +420,7 @@ func (pi *PSQLInteractor) DropShard(id string) error {
 
 // TODO : unit tests
 
-// KeyRanges sends the row description message for key ranges, followed by data rows
-// containing details of each key range, and completes the message.
-//
-// Parameters:
-// - krs ([]*kr.KeyRange): The list of *kr.KeyRange objects containing the key range information.
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, locks []string) error {
-	vp := plan.KeyRangeVirtualPlan(krs, locks)
+func (pi *PSQLInteractor) replyVirtualPlan(vp *plan.VirtualPlan) error {
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: vp.VirtualRowCols},
@@ -448,7 +439,20 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, locks []string) error {
 			return err
 		}
 	}
-	return pi.CompleteMsg(0)
+	return pi.CompleteMsg(len(vp.VirtualRowVals))
+}
+
+// KeyRanges sends the row description message for key ranges, followed by data rows
+// containing details of each key range, and completes the message.
+//
+// Parameters:
+// - krs ([]*kr.KeyRange): The list of *kr.KeyRange objects containing the key range information.
+//
+// Returns:
+//   - error: An error if sending the messages fails, otherwise nil.
+func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, locks []string) error {
+	vp := plan.KeyRangeVirtualPlan(krs, locks)
+	return pi.replyVirtualPlan(vp)
 }
 
 // TODO : unit tests
