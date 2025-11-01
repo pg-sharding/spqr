@@ -816,13 +816,11 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 				return err
 			}
 
-			t := time.Now()
 			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db, qc)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 				return err
 			}
-			statistics.RecordShardOperation(time.Since(t))
 
 			// update key range
 			krg, err := qc.GetKeyRange(ctx, req.Krid)
@@ -1178,7 +1176,7 @@ func (*ClusteredCoordinator) getKeyStats(
 		relationCount[rel.Name] = count
 		totalCount += count
 	}
-	statistics.RecordShardOperation(time.Since(t))
+	statistics.RecordShardOperation("getKeyStats", time.Since(t))
 	return
 }
 
@@ -1334,7 +1332,7 @@ ORDER BY (%s) %s;
 	if err != nil {
 		return nil, err
 	}
-	statistics.RecordShardOperation(time.Since(t))
+	statistics.RecordShardOperation("getSplitBounds", time.Since(t))
 	var moveWhole bool
 	for rows.Next() {
 		values := make([]string, len(rel.DistributionKey)+1)
