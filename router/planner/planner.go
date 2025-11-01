@@ -841,6 +841,11 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 			IsDDL: true,
 		}, nil
 
+	case *lyx.DefineStmt:
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+
 	case *lyx.CreateExtension:
 		return &plan.ScatterPlan{
 			IsDDL: true,
@@ -861,16 +866,12 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 			return nil, err
 		}
 		return ds, nil
-	case *lyx.Vacuum:
+	case *lyx.VacuumStmt:
 		/* Send vacuum to each shard */
 		return &plan.ScatterPlan{
 			IsDDL: true,
 		}, nil
-	case *lyx.Analyze:
-		/* Send vacuum to each shard */
-		return &plan.ScatterPlan{
-			IsDDL: true,
-		}, nil
+
 	case *lyx.Cluster:
 		/* Send vacuum to each shard */
 		return &plan.ScatterPlan{
