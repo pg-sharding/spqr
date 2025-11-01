@@ -17,6 +17,7 @@ message MoveTask {
   string keyRangeIdTemp = 1;
   repeated bytes bound = 2;
   TaskStatus status = 3;
+  string TaskGroupID = 5;
 }
 
 enum JoinType {

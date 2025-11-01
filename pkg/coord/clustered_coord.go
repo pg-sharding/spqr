@@ -1604,7 +1604,7 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 			if err := qc.qdb.UpdateMoveTaskGroupTotalKeys(ctx, taskGroup.ID, taskGroup.TotalKeys); err != nil {
 				return err
 			}
-			if err := qc.qdb.RemoveMoveTask(ctx); err != nil {
+			if err := qc.qdb.RemoveMoveTask(ctx, task.ID); err != nil {
 				return err
 			}
 		}

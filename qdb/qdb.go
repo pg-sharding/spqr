@@ -101,10 +101,12 @@ type QDB interface {
 	CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error)
 
 	// MOVE tasks
-	GetMoveTask(ctx context.Context) (*MoveTask, error)
+	ListMoveTasks(ctx context.Context) (map[string]*MoveTask, error)
+	GetMoveTask(ctx context.Context, id string) (*MoveTask, error)
 	WriteMoveTask(ctx context.Context, task *MoveTask) error
 	UpdateMoveTask(ctx context.Context, task *MoveTask) error
-	RemoveMoveTask(ctx context.Context) error
+	RemoveMoveTask(ctx context.Context, id string) error
+	GetMoveTaskByGroup(ctx context.Context, taskGroupId string) (*MoveTask, error)
 
 	// Redistribute tasks
 	GetRedistributeTask(ctx context.Context) (*RedistributeTask, error)

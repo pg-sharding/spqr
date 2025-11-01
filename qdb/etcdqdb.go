@@ -61,8 +61,7 @@ const (
 	shardsNamespace                = "/shards/"
 	relationMappingNamespace       = "/relation_mappings/"
 	taskGroupsNamespace            = "/move_task_groups/"
-	moveTaskIDPath                 = "/move_task_id"
-	moveTaskPath                   = "/move_task"
+	moveTaskNamespace              = "/move_tasks/"
 	redistributeTaskPath           = "/redistribute_task/"
 	balancerTaskPath               = "/balancer_task/"
 	transactionNamespace           = "/transfer_txs/"
@@ -72,6 +71,7 @@ const (
 	lockNamespace                  = "/lock"
 	totalKeysNamespace             = "/total_keys/"
 	stopMoveTaskGroupNamespace     = "/stop_move_task_group/"
+	moveTaskByGroupNamespace       = "/group_move_tasks/"
 
 	CoordKeepAliveTtl = 3
 	coordLockKey      = "coordinator_exists"
@@ -138,6 +138,14 @@ func totalKeysNodePath(id string) string {
 
 func taskGroupStopFlagNodePath(id string) string {
 	return path.Join(stopMoveTaskGroupNamespace, id)
+}
+
+func moveTaskNodePath(id string) string {
+	return path.Join(moveTaskNamespace, id)
+}
+
+func moveTaskByGroupNodePath(taskGroupID string) string {
+	return path.Join(moveTaskByGroupNamespace, taskGroupID)
 }
 
 func (q *EtcdQDB) Client() *clientv3.Client {
@@ -1684,9 +1692,9 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, id string, group *Move
 			return err
 		}
 
-		ops = append(ops, clientv3.OpPut(moveTaskPath, string(taskJson)), clientv3.OpPut(moveTaskIDPath, task.ID))
+		ops = append(ops, clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson)))
 	}
-	txResp, err := q.cli.Txn(ctx).If(clientv3.Compare(clientv3.Version(taskGroupNodePath(id)), "=", 0)).Then(ops...).Commit()
+	txResp, err := q.cli.Txn(ctx).If(clientv3.Compare(clientv3.Version(taskGroupNodePath(id)), "=", 0), clientv3.Compare(clientv3.Version(moveTaskNodePath(task.ID)), "=", 0)).Then(ops...).Commit()
 	if err != nil {
 		return fmt.Errorf("failed to write move task group metadata: %s", err)
 	}
@@ -1727,6 +1735,7 @@ func (q *EtcdQDB) UpdateMoveTaskGroupTotalKeys(ctx context.Context, id string, t
 }
 
 // TODO: unit tests
+// TODO: drop move task
 func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -1735,7 +1744,6 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context, id string) error {
 
 	if _, err := q.cli.Txn(ctx).Then(
 		clientv3.OpDelete(taskGroupNodePath(id)),
-		clientv3.OpDelete(moveTaskPath),
 		clientv3.OpDelete(totalKeysNodePath(id)),
 		clientv3.OpDelete(taskGroupStopFlagNodePath(id)),
 	).Commit(); err != nil {
@@ -1744,6 +1752,28 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context, id string) error {
 
 	statistics.RecordQDBOperation("RemoveMoveTaskGroup", time.Since(t))
 	return nil
+}
+
+func (q *EtcdQDB) GetMoveTaskByGroup(ctx context.Context, taskGroupID string) (*MoveTask, error) {
+	spqrlog.Zero.Debug().
+		Str("id", taskGroupID).
+		Msg("etcdqdb: get move task by group")
+	t := time.Now()
+	defer statistics.RecordQDBOperation("GetMoveTaskIDByGroup", time.Since(t))
+
+	path := moveTaskByGroupNodePath(taskGroupID)
+	resp, err := q.cli.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	switch len(resp.Kvs) {
+	case 0:
+		return nil, nil
+	case 1:
+		return q.GetMoveTask(ctx, string(resp.Kvs[0].Value))
+	default:
+		return nil, fmt.Errorf("too many values by \"%s\" key", path)
+	}
 }
 
 // TODO unit test
@@ -1785,9 +1815,8 @@ func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
 		return err
 	}
 	resp, err := q.cli.Txn(ctx).
-		If(clientv3.Compare(clientv3.Version(moveTaskPath), "=", 0)).
-		Then(clientv3.OpPut(moveTaskPath, string(taskJson)),
-			clientv3.OpPut(moveTaskIDPath, task.ID)).
+		If(clientv3.Compare(clientv3.Version(moveTaskNodePath(task.ID)), "=", 0)).
+		Then(clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson))).
 		Commit()
 
 	if err != nil {
@@ -1808,8 +1837,8 @@ func (q *EtcdQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
 		return err
 	}
 	resp, err := q.cli.Txn(ctx).
-		If(clientv3.Compare(clientv3.Value(moveTaskIDPath), "=", task.ID)).
-		Then(clientv3.OpPut(moveTaskPath, string(taskJson))).
+		If(clientv3.Compare(clientv3.Value(moveTaskNodePath(task.ID)), "!=", 0)).
+		Then(clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson))).
 		Commit()
 
 	if err != nil {
@@ -1822,10 +1851,30 @@ func (q *EtcdQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
 }
 
 // TODO unit test
-func (q *EtcdQDB) GetMoveTask(ctx context.Context) (*MoveTask, error) {
+func (q *EtcdQDB) ListMoveTasks(ctx context.Context) (map[string]*MoveTask, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: list move tasks")
+
+	resp, err := q.cli.Get(ctx, moveTaskNamespace)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*MoveTask)
+	for _, kv := range resp.Kvs {
+		var task *MoveTask
+		if err := json.Unmarshal(kv.Value, &task); err != nil {
+			return nil, err
+		}
+		res[task.ID] = task
+	}
+
+	return res, nil
+}
+
+// TODO unit test
+func (q *EtcdQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: get move task")
 
-	resp, err := q.cli.Get(ctx, moveTaskPath)
+	resp, err := q.cli.Get(ctx, moveTaskNodePath(id))
 	if err != nil {
 		return nil, err
 	}
@@ -1841,10 +1890,10 @@ func (q *EtcdQDB) GetMoveTask(ctx context.Context) (*MoveTask, error) {
 }
 
 // TODO unit test
-func (q *EtcdQDB) RemoveMoveTask(ctx context.Context) error {
+func (q *EtcdQDB) RemoveMoveTask(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().Msg("etcdqdb: remove move task")
 
-	_, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(moveTaskPath), clientv3.OpDelete(moveTaskIDPath)).Commit()
+	_, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(moveTaskNodePath(id)), clientv3.OpDelete(moveTaskNodePath(id))).Commit()
 	return err
 }
 

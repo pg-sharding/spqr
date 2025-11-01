@@ -430,7 +430,7 @@ func (lc *Coordinator) ListMoveTaskGroups(ctx context.Context) (map[string]*task
 	res := map[string]*tasks.MoveTaskGroup{}
 	for id, tgDb := range taskGroupsDb {
 		// TODO get by id
-		task, err := lc.qdb.GetMoveTask(ctx)
+		task, err := lc.qdb.GetMoveTaskByGroup(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -457,7 +457,7 @@ func (lc *Coordinator) GetMoveTaskGroup(ctx context.Context, id string) (*tasks.
 	if err != nil {
 		return nil, err
 	}
-	task, err := lc.qdb.GetMoveTask(ctx)
+	task, err := lc.qdb.GetMoveTaskByGroup(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -478,8 +478,8 @@ func (lc *Coordinator) GetMoveTaskGroup(ctx context.Context, id string) (*tasks.
 // Returns:
 // - *tasks.MoveTask: the retrieved move task, or nil if an error occurred.
 // - error: an error if the retrieval process fails.
-func (qc *Coordinator) GetMoveTask(ctx context.Context) (*tasks.MoveTask, error) {
-	task, err := qc.qdb.GetMoveTask(ctx)
+func (qc *Coordinator) GetMoveTask(ctx context.Context, id string) (*tasks.MoveTask, error) {
+	task, err := qc.qdb.GetMoveTask(ctx, id)
 	if err != nil {
 		return nil, err
 	}

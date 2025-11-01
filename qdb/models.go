@@ -143,10 +143,11 @@ func NewDistribution(id string, coltypes []string) *Distribution {
 }
 
 type MoveTask struct {
-	ID       string
-	Bound    [][]byte `json:"bound"`
-	KrIdTemp string   `json:"kr_id_temp"`
-	State    int      `json:"state"`
+	ID          string
+	Bound       [][]byte `json:"bound"`
+	KrIdTemp    string   `json:"kr_id_temp"`
+	State       int      `json:"state"`
+	TaskGroupID string   `json:"task_group_id"`
 }
 
 type MoveTaskGroup struct {
