@@ -193,3 +193,46 @@ This command is used to invalidate the cache for a specific schema or the entire
 ```sql
 INVALIDATE CACHE
 ```
+
+### REGISTER ROUTER
+
+<Warning>This command is not available for installations without SPQR coordinator.</Warning>
+
+This command is used to register a router with the SPQR Coordinator. When a router is registered, the coordinator becomes aware of it and can manage it as part of the cluster.
+
+```sql
+REGISTER ROUTER <router_id> ADDRESS <address>
+```
+
+**Parameters:**
+- `<router_id>`: A unique identifier for the router. Can be a simple name or a quoted string (e.g., `r1` or `'r-1'`).
+- `<address>`: The network address of the router in the format `host:port` (e.g., `'localhost:6432'` or `'router-host:7432'`).
+
+**Example:**
+```sql
+REGISTER ROUTER r1 ADDRESS 'localhost:6432'
+```
+
+### UNREGISTER ROUTER
+
+<Warning>This command is not available for installations without SPQR coordinator.</Warning>
+
+This command is used to unregister a router from the SPQR Coordinator. This removes the router from the coordinator's management.
+
+```sql
+UNREGISTER ROUTER <router_id>
+UNREGISTER ROUTER ALL
+```
+
+**Parameters:**
+- `<router_id>`: The unique identifier of the router to unregister.
+- `ALL`: Special keyword to unregister all routers at once.
+
+**Examples:**
+```sql
+-- Unregister a specific router
+UNREGISTER ROUTER r1
+
+-- Unregister all routers
+UNREGISTER ROUTER ALL
+```
