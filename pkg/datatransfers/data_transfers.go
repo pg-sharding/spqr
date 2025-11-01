@@ -469,10 +469,10 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		}
 		colNames := strings.Join(cols, ", ")
 		query := fmt.Sprintf(`
-					INSERT INTO %s
+					INSERT INTO %s (%s)
 					SELECT %s FROM %s
 					WHERE %s
-`, relFullName, colNames, fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.Name)), krCondition)
+`, relFullName, colNames, colNames, fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.Name)), krCondition)
 		_, err = tx.Exec(ctx, query)
 		if err != nil {
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
