@@ -86,8 +86,9 @@ func (l *LocalQrouter) AddDataShard(_ context.Context, ds *topology.DataShard) e
 }
 
 // TODO : unit tests
-func (l *LocalQrouter) PlanQuery(_ context.Context, _ string, _ lyx.Node, _ session.SessionParamsHolder) (plan.Plan, error) {
+func (l *LocalQrouter) PlanQuery(_ context.Context, _ string, s lyx.Node, _ session.SessionParamsHolder) (plan.Plan, error) {
 	return &plan.ShardDispatchPlan{
+		PStmt: s,
 		ExecTarget: kr.ShardKey{
 			Name: l.ds.ID,
 		},
