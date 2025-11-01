@@ -451,14 +451,6 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().LockIterationTimeout, defaultLockCoordinatorTimeout))
 	}
 
-	if err := qc.finishRedistributeTasksInProgress(ctx); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("unable to finish redistribution tasks in progress")
-	}
-
-	if err := qc.finishMoveTasksInProgress(ctx); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("unable to finish move tasks in progress")
-	}
-
 	ranges, err := qc.db.ListAllKeyRanges(context.TODO())
 	if err != nil {
 		spqrlog.Zero.Error().
@@ -1079,6 +1071,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 	if totalCount != 0 {
 		biggestRelName, coeff := qc.getBiggestRelation(relCount, totalCount)
 		taskGroup = &tasks.MoveTaskGroup{
+			ID:        uuid.NewString(),
 			KrIdFrom:  req.KrId,
 			KrIdTo:    req.DestKrId,
 			ShardToId: req.ShardId,
@@ -1090,6 +1083,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 		}
 	} else {
 		taskGroup = &tasks.MoveTaskGroup{
+			ID:        uuid.NewString(),
 			KrIdFrom:  req.KrId,
 			KrIdTo:    req.DestKrId,
 			ShardToId: req.ShardId,
@@ -1397,7 +1391,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 	if taskGroup.Limit > 0 && taskGroup.TotalKeys >= taskGroup.Limit {
 		return nil, nil
 	}
-	stop, err := qc.qdb.CheckMoveTaskGroupStopFlag(ctx)
+	stop, err := qc.qdb.CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for stop flag: %s", err)
 	}
@@ -1607,7 +1601,7 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 			// TODO: get exact key count here
 			taskGroup.TotalKeys += taskGroup.BatchSize
 			// TODO: wrap in transaction inside etcd
-			if err := qc.qdb.UpdateMoveTaskGroupTotalKeys(ctx, taskGroup.TotalKeys); err != nil {
+			if err := qc.qdb.UpdateMoveTaskGroupTotalKeys(ctx, taskGroup.ID, taskGroup.TotalKeys); err != nil {
 				return err
 			}
 			if err := qc.qdb.RemoveMoveTask(ctx); err != nil {
@@ -1615,7 +1609,7 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 			}
 		}
 	}
-	if err := qc.RemoveMoveTaskGroup(ctx); err != nil {
+	if err := qc.RemoveMoveTaskGroup(ctx, taskGroup.ID); err != nil {
 		return err
 	}
 	return delayedError
@@ -1629,8 +1623,8 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
-	taskGroup, err := qc.GetMoveTaskGroup(ctx)
+func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id string) error {
+	taskGroup, err := qc.GetMoveTaskGroup(ctx, id)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get move task group: %s", err)
 	}
@@ -1645,8 +1639,8 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context) error {
-	return qc.qdb.AddMoveTaskGroupStopFlag(ctx)
+func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context, id string) error {
+	return qc.qdb.AddMoveTaskGroupStopFlag(ctx, id)
 }
 
 // TODO : unit tests
@@ -2402,41 +2396,6 @@ func (qc *ClusteredCoordinator) finishRedistributeTasksInProgress(ctx context.Co
 		return nil
 	}
 	return qc.executeRedistributeTask(ctx, tasks.RedistributeTaskFromDB(task))
-}
-
-func (qc *ClusteredCoordinator) finishMoveTasksInProgress(ctx context.Context) error {
-	taskGroup, err := qc.GetMoveTaskGroup(ctx)
-	if err != nil {
-		return err
-	}
-	if taskGroup == nil {
-		return nil
-	}
-	balancerTask, err := qc.GetBalancerTask(ctx)
-	if err != nil {
-		return err
-	}
-	if balancerTask != nil {
-		// If there is currently a balancer task running, we need to advance its state after moving the data
-		if err = qc.executeMoveTasks(ctx, taskGroup); err != nil {
-			if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
-				spqrlog.Zero.Info().Msg("finishing balancer task due to task group stopping")
-			} else {
-				return err
-			}
-		}
-		balancerTask.State = tasks.BalancerTaskMoved
-		return qc.WriteBalancerTask(ctx, balancerTask)
-	}
-	if err := qc.executeMoveTasks(ctx, taskGroup); err != nil {
-		if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
-			spqrlog.Zero.Info().Msg("task group stopped")
-			return nil
-		} else {
-			return err
-		}
-	}
-	return nil
 }
 
 func (qc *ClusteredCoordinator) IsReadOnly() bool {

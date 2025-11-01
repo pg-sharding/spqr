@@ -38,6 +38,7 @@ const (
 )
 
 type MoveTaskGroup struct {
+	ID          string    `json:"id"`
 	ShardToId   string    `json:"shard_to_id"`
 	KrIdFrom    string    `json:"kr_id_from"`
 	KrIdTo      string    `json:"kr_id_to"`
@@ -78,6 +79,7 @@ func TaskGroupToProto(group *MoveTaskGroup) *protos.MoveTaskGroup {
 		return nil
 	}
 	return &protos.MoveTaskGroup{
+		ID:             group.ID,
 		CurrentTask:    TaskToProto(group.CurrentTask),
 		Type:           SplitTypeToProto(group.Type),
 		ShardIdTo:      group.ShardToId,
@@ -210,6 +212,7 @@ func TaskGroupFromProto(group *protos.MoveTaskGroup) *MoveTaskGroup {
 		return nil
 	}
 	return &MoveTaskGroup{
+		ID:          group.ID,
 		CurrentTask: TaskFromProto(group.CurrentTask),
 		Type:        SplitTypeFromProto(group.Type),
 		ShardToId:   group.ShardIdTo,

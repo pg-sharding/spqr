@@ -158,7 +158,6 @@ type MoveTaskGroup struct {
 	Coeff     float64 `json:"coeff"`
 	BatchSize int64   `json:"batch_size"`
 	Limit     int64   `json:"limit"`
-	// TotalKeys int64   `json:"total_keys"` // mb save separately
 }
 
 type RedistributeTask struct {

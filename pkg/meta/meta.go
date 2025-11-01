@@ -198,7 +198,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 		return cli.DropShard(stmt.ID)
 	case *spqrparser.TaskGroupSelector:
-		if err := mngr.RemoveMoveTaskGroup(ctx); err != nil {
+		if err := mngr.RemoveMoveTaskGroup(ctx, stmt.ID); err != nil {
 			return err
 		}
 		return cli.DropTaskGroup(ctx)
@@ -656,7 +656,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}
 		return cli.CompleteMsg(0)
 	case *spqrparser.StopMoveTaskGroup:
-		tg, err := mgr.GetMoveTaskGroup(ctx)
+		tg, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
 		if err != nil {
 			return err
 		}
@@ -664,17 +664,17 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			_ = cli.ReplyNotice(ctx, "No move task group found to stop")
 			return cli.CompleteMsg(0)
 		}
-		if err := mgr.StopMoveTaskGroup(ctx); err != nil {
+		if err := mgr.StopMoveTaskGroup(ctx, stmt.ID); err != nil {
 			return err
 		}
 		_ = cli.ReplyNotice(ctx, "Gracefully stopping task group")
 		return cli.CompleteMsg(0)
 	case *spqrparser.RetryMoveTaskGroup:
-		taskGroup, err := mgr.GetMoveTaskGroup(ctx)
+		taskGroup, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
 		if err != nil {
 			return err
 		}
-		if err := mgr.RetryMoveTaskGroup(ctx); err != nil {
+		if err := mgr.RetryMoveTaskGroup(ctx, stmt.ID); err != nil {
 			return err
 		}
 		return cli.MoveTaskGroup(ctx, taskGroup)
@@ -895,7 +895,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		return cli.ReferenceRelations(rrs)
 	case spqrparser.TaskGroupStr:
-		group, err := mngr.GetMoveTaskGroup(ctx)
+		group, err := mngr.ListMoveTaskGroups(ctx)
 		if err != nil {
 			return err
 		}

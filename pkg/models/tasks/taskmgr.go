@@ -3,11 +3,12 @@ package tasks
 import "context"
 
 type TaskMgr interface {
-	GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error)
+	ListMoveTaskGroups(ctx context.Context) (map[string]*MoveTaskGroup, error)
+	GetMoveTaskGroup(ctx context.Context, id string) (*MoveTaskGroup, error)
 	WriteMoveTaskGroup(ctx context.Context, taskGroup *MoveTaskGroup) error
-	RemoveMoveTaskGroup(ctx context.Context) error
-	RetryMoveTaskGroup(ctx context.Context) error
-	StopMoveTaskGroup(ctx context.Context) error
+	RemoveMoveTaskGroup(ctx context.Context, id string) error
+	RetryMoveTaskGroup(ctx context.Context, id string) error
+	StopMoveTaskGroup(ctx context.Context, id string) error
 
 	GetBalancerTask(ctx context.Context) (*BalancerTask, error)
 	WriteBalancerTask(ctx context.Context, task *BalancerTask) error

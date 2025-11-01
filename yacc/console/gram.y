@@ -577,9 +577,9 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &ShardSelector{ID: $3}, CascadeDelete: $4}
 	}
-	| DROP TASK GROUP
+	| DROP TASK GROUP any_id
 	{
-		$$ = &Drop{Element: &TaskGroupSelector{}}
+		$$ = &Drop{Element: &TaskGroupSelector{ ID: $4 }}
 	}
 	| DROP SEQUENCE any_id
 	{
@@ -1292,26 +1292,26 @@ unregister_router_stmt:
 // move tasks
 
 retry_move_task_group:
-	RETRY MOVE TASK GROUP 
+	RETRY MOVE TASK GROUP any_id
 	{
-		$$ = &RetryMoveTaskGroup{}
+		$$ = &RetryMoveTaskGroup{ ID: $5 }
 	}
 	|
-	RETRY TASK GROUP 
+	RETRY TASK GROUP any_id
 	{
-		$$ = &RetryMoveTaskGroup{}
+		$$ = &RetryMoveTaskGroup{ ID: $4 }
 	}
 	
 
 stop_move_task_group:
-	STOP MOVE TASK GROUP 
+	STOP MOVE TASK GROUP any_id
 	{
-		$$ = &StopMoveTaskGroup{}
+		$$ = &StopMoveTaskGroup{ ID: $5 }
 	}
 	|
-	STOP TASK GROUP 
+	STOP TASK GROUP any_id
 	{
-		$$ = &StopMoveTaskGroup{}
+		$$ = &StopMoveTaskGroup{ ID: $4 }
 	} 
 %%
 

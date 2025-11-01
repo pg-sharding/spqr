@@ -91,13 +91,14 @@ type QDB interface {
 	AlterReplicatedRelationSchema(ctx context.Context, dsID string, relName string, schemaName string) error
 
 	// Task group
-	GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error)
-	WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, totalKeys int64, moveTask *MoveTask) error
-	GetMoveTaskGroupTotalKeys(ctx context.Context) (int64, error)
-	UpdateMoveTaskGroupTotalKeys(ctx context.Context, totalKeys int64) error
-	RemoveMoveTaskGroup(ctx context.Context) error
-	AddMoveTaskGroupStopFlag(ctx context.Context) error
-	CheckMoveTaskGroupStopFlag(ctx context.Context) (bool, error)
+	ListTaskGroups(ctx context.Context) (map[string]*MoveTaskGroup, error)
+	GetMoveTaskGroup(ctx context.Context, id string) (*MoveTaskGroup, error)
+	WriteMoveTaskGroup(ctx context.Context, id string, group *MoveTaskGroup, totalKeys int64, moveTask *MoveTask) error
+	GetMoveTaskGroupTotalKeys(ctx context.Context, id string) (int64, error)
+	UpdateMoveTaskGroupTotalKeys(ctx context.Context, id string, totalKeys int64) error
+	RemoveMoveTaskGroup(ctx context.Context, id string) error
+	AddMoveTaskGroupStopFlag(ctx context.Context, id string) error
+	CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error)
 
 	// MOVE tasks
 	GetMoveTask(ctx context.Context) (*MoveTask, error)

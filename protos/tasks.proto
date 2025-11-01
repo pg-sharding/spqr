@@ -31,6 +31,7 @@ enum SplitType {
 }
 
 message MoveTaskGroup {
+  string ID = 13;
   SplitType type = 2;
   string shardIdTo = 4;
   string keyRangeIdFrom = 5;
