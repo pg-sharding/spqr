@@ -421,7 +421,6 @@ func (pi *PSQLInteractor) DropShard(id string) error {
 // TODO : unit tests
 
 func (pi *PSQLInteractor) replyVirtualPlan(vp *plan.VirtualPlan) error {
-
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: vp.VirtualRowCols},
 	} {

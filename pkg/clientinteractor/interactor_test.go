@@ -616,7 +616,7 @@ func TestKeyRangesSuccess(t *testing.T) {
 		ca.EXPECT().Send(&firstRow),
 		ca.EXPECT().Send(&secondRow),
 		ca.EXPECT().Send(&thirdRow),
-		ca.EXPECT().Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 0")}),
+		ca.EXPECT().Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 3")}),
 		ca.EXPECT().Send(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}),
 	)
 
