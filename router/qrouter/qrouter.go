@@ -9,9 +9,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/router/cache"
-	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/planner"
 )
 

@@ -5,9 +5,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
-	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/server"
 )
 

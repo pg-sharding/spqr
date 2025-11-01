@@ -8,11 +8,11 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 )

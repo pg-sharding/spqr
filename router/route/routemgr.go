@@ -2,7 +2,7 @@ package route
 
 import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/router/plan"
+	"github.com/pg-sharding/spqr/pkg/plan"
 )
 
 type ExecutionSliceMgr interface {

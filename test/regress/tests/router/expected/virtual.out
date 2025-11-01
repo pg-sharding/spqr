@@ -1,3 +1,42 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE k4 FROM 301 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 301
+(1 row)
+
+CREATE KEY RANGE k3 FROM 201 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 201
+(1 row)
+
+CREATE KEY RANGE k2 FROM 101 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 101
+(1 row)
+
+CREATE KEY RANGE k1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
+(1 row)
+
+\c regress
 SELECT 1;
  ?column? 
 ----------
@@ -63,9 +102,37 @@ select __spqr__shards();
  sh4
 (4 rows)
 
+select __spqr__show('key_ranges');
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+--------------+----------+-----------------+-------------+--------
+ k1           | sh1      | ds1             | 1           | false
+ k2           | sh2      | ds1             | 101         | false
+ k3           | sh3      | ds1             | 201         | false
+ k4           | sh4      | ds1             | 301         | false
+(4 rows)
+
 --- XXX: support
 --- SELECT 1,2,3 UNION ALL SELECT 2,3,4;
 -- XXX:support
 --SHOW transaction_read_only;
 -- XXX: support ignore patterns to test this
 -- SELECT now(), 1;
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

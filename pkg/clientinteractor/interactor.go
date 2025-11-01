@@ -22,6 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -419,6 +420,27 @@ func (pi *PSQLInteractor) DropShard(id string) error {
 
 // TODO : unit tests
 
+func (pi *PSQLInteractor) replyVirtualPlan(vp *plan.VirtualPlan) error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: vp.VirtualRowCols},
+	} {
+		if err := pi.cl.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
+	for _, r := range vp.VirtualRowVals {
+		if err := pi.cl.Send(&pgproto3.DataRow{
+			Values: r,
+		}); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+	return pi.CompleteMsg(len(vp.VirtualRowVals))
+}
+
 // KeyRanges sends the row description message for key ranges, followed by data rows
 // containing details of each key range, and completes the message.
 //
@@ -428,46 +450,8 @@ func (pi *PSQLInteractor) DropShard(id string) error {
 // Returns:
 //   - error: An error if sending the messages fails, otherwise nil.
 func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, locks []string) error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			engine.TextOidFD("Key range ID"),
-			engine.TextOidFD("Shard ID"),
-			engine.TextOidFD("Distribution ID"),
-			engine.TextOidFD("Lower bound"),
-			engine.TextOidFD("Locked"),
-		},
-		},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	lockMap := make(map[string]string, len(locks))
-	for _, idKeyRange := range locks {
-		lockMap[idKeyRange] = "true"
-	}
-
-	for _, keyRange := range krs {
-		isLocked := "false"
-		if lockState, ok := lockMap[keyRange.ID]; ok {
-			isLocked = lockState
-		}
-		if err := pi.cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{
-				[]byte(keyRange.ID),
-				[]byte(keyRange.ShardID),
-				[]byte(keyRange.Distribution),
-				[]byte(strings.Join(keyRange.SendRaw(), ",")),
-				[]byte(isLocked),
-			},
-		}); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-	return pi.CompleteMsg(0)
+	vp := plan.KeyRangeVirtualPlan(krs, locks)
+	return pi.replyVirtualPlan(vp)
 }
 
 // TODO : unit tests

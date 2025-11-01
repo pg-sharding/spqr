@@ -13,14 +13,15 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/virtual"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
 const (
@@ -377,6 +378,33 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 
 func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataContext, fname string, args []lyx.Node) (plan.Plan, error) {
 	switch fname {
+	case virtual.VirtualShow:
+
+		/*  XXX: unite this code with client interactor internals */
+
+		if len(args) != 1 {
+			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualShow)
+		}
+
+		switch v := args[0].(type) {
+		case *lyx.AExprSConst:
+			switch v.Value {
+			case spqrparser.KeyRangesStr:
+				ranges, err := rm.Mgr.ListAllKeyRanges(ctx)
+				if err != nil {
+					return nil, err
+				}
+				locksKr, err := rm.Mgr.ListKeyRangeLocks(ctx)
+				if err != nil {
+					return nil, err
+				}
+				return plan.KeyRangeVirtualPlan(ranges, locksKr), nil
+			default:
+				return nil, rerrors.ErrComplexQuery
+			}
+		default:
+			return nil, rerrors.ErrComplexQuery
+		}
 	case virtual.VirtualShards:
 		p := &plan.VirtualPlan{
 			VirtualRowCols: []pgproto3.FieldDescription{
