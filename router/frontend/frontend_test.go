@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	mocksh "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -16,7 +17,6 @@ import (
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockqr "github.com/pg-sharding/spqr/router/mock/qrouter"
 	mocksrv "github.com/pg-sharding/spqr/router/mock/server"
-	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/statistics"
 

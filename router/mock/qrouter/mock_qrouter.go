@@ -16,9 +16,9 @@ import (
 	lyx "github.com/pg-sharding/lyx/lyx"
 	meta "github.com/pg-sharding/spqr/pkg/meta"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
+	plan "github.com/pg-sharding/spqr/pkg/plan"
 	session "github.com/pg-sharding/spqr/pkg/session"
 	cache "github.com/pg-sharding/spqr/router/cache"
-	plan "github.com/pg-sharding/spqr/router/plan"
 	planner "github.com/pg-sharding/spqr/router/planner"
 	gomock "go.uber.org/mock/gomock"
 )

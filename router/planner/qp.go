@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/pg-sharding/lyx/lyx"
-	"github.com/pg-sharding/spqr/router/plan"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/router/rmeta"
 )
 
