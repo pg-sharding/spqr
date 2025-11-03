@@ -368,8 +368,14 @@ func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 			},
 		}
 	} else {
-		var err error
-		queryPlan, err = rst.Qr.PlanQuery(context.TODO(), rst.qp.OriginQuery(), rst.qp.Stmt(), rst.Cl)
+		ctx := context.TODO()
+
+		rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.qp.OriginQuery(), rst.qp.Stmt())
+		if err != nil {
+			return nil, err
+		}
+
+		queryPlan, err = rst.Qr.PlanQuery(ctx, rm)
 
 		if err != nil {
 			return nil, fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)

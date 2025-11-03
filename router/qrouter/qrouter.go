@@ -13,10 +13,13 @@ import (
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/planner"
+	"github.com/pg-sharding/spqr/router/rmeta"
 )
 
 type QueryRouter interface {
-	PlanQuery(ctx context.Context, OriginQuery string, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error)
+	AnalyzeQuery(ctx context.Context,
+		sph session.SessionParamsHolder, query string, stmt lyx.Node) (*rmeta.RoutingMetadataContext, error)
+	PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error)
 
 	WorldShardsRoutes() []kr.ShardKey
 	DataShardsRoutes() []kr.ShardKey
@@ -30,6 +33,7 @@ type QueryRouter interface {
 	IdRange() planner.IdentityRouterCache
 
 	Mgr() meta.EntityMgr
+	CSM() connmgr.ConnectionStatMgr
 	SchemaCache() *cache.SchemaCache
 }
 
