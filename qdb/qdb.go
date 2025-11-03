@@ -8,7 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
-const (
+const LockRetryStep = 500 * time.Millisecond
 	LockRetryStep = 500 //lock retry step in milliseconds
 )
 
