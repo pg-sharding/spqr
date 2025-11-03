@@ -1,6 +1,9 @@
 name: release-docker-images
 
 on:
+  push:
+    branches:
+      - public-images-v2  # TEMPORARY: for testing, remove before merge
   release:
     types: [created, published]
   workflow_dispatch:
