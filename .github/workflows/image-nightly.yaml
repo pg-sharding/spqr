@@ -36,14 +36,12 @@ jobs:
         id: meta
         run: |
           GIT_REVISION=$(git rev-parse --short HEAD)
-          # Get last tag
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
-          # Get commit count since last tag
-          COMMIT_COUNT=$(git rev-list --count ${LAST_TAG}..HEAD 2>/dev/null || echo "0")
-          # Build version string: tag-count-hash
+          COMMIT_COUNT=$(git rev-list --count HEAD)
           SPQR_VERSION="${LAST_TAG#v}-${COMMIT_COUNT}-${GIT_REVISION}"
           BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           echo "git_revision=${GIT_REVISION}" >> $GITHUB_OUTPUT
+          echo "commit_count=${COMMIT_COUNT}" >> $GITHUB_OUTPUT
           echo "spqr_version=${SPQR_VERSION}" >> $GITHUB_OUTPUT
           echo "build_date=${BUILD_DATE}" >> $GITHUB_OUTPUT
 
