@@ -13,7 +13,7 @@ import (
 
 // TODO : unit tests
 func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *lyx.Explain, cli *clientinteractor.PSQLInteractor) error {
-	rm := rmeta.NewRoutingMetadataContext(nil, "", nil, nil)
+	rm := rmeta.NewRoutingMetadataContext(nil, "", nil, nil, nil)
 
 	switch node := stmt.Stmt.(type) {
 	case *lyx.VariableSetStmt:
