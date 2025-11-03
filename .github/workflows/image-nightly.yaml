@@ -1,4 +1,4 @@
-name: Docker Nightly Build
+name: release-nightly-image
 
 on:
   push:
@@ -36,7 +36,12 @@ jobs:
         id: meta
         run: |
           GIT_REVISION=$(git rev-parse --short HEAD)
-          SPQR_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+          # Get last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
+          # Get commit count since last tag
+          COMMIT_COUNT=$(git rev-list --count ${LAST_TAG}..HEAD 2>/dev/null || echo "0")
+          # Build version string: tag-count-hash
+          SPQR_VERSION="${LAST_TAG#v}-${COMMIT_COUNT}-${GIT_REVISION}"
           BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           echo "git_revision=${GIT_REVISION}" >> $GITHUB_OUTPUT
           echo "spqr_version=${SPQR_VERSION}" >> $GITHUB_OUTPUT
@@ -50,16 +55,16 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_NAME }}:nightly
-            ${{ env.IMAGE_NAME }}:nightly-${{ steps.meta.outputs.git_revision }}
+            ${{ env.IMAGE_NAME }}:nightly-${{ steps.meta.outputs.spqr_version }}
           build-args: |
             GIT_REVISION=${{ steps.meta.outputs.git_revision }}
-            SPQR_VERSION=${{ steps.meta.outputs.spqr_version }}-nightly
+            SPQR_VERSION=${{ steps.meta.outputs.spqr_version }}
           labels: |
             org.opencontainers.image.title=SPQR Router
             org.opencontainers.image.description=Stateless Postgres Query Router - Nightly Build
             org.opencontainers.image.url=https://github.com/pg-sharding/spqr
             org.opencontainers.image.source=https://github.com/pg-sharding/spqr
-            org.opencontainers.image.version=${{ steps.meta.outputs.spqr_version }}-nightly
+            org.opencontainers.image.version=${{ steps.meta.outputs.spqr_version }}
             org.opencontainers.image.created=${{ steps.meta.outputs.build_date }}
             org.opencontainers.image.revision=${{ steps.meta.outputs.git_revision }}
           cache-from: type=gha

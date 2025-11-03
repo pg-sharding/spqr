@@ -1,27 +1,56 @@
-name: Docker Release Build
-
-# on:
-#   release:
-#     types: [created, published]
-#   workflow_dispatch:
-#     inputs:
-#       tag:
-#         description: 'Release tag to build'
-#         required: true
-#         type: string
+name: release-docker-images
 
 on:
-  push:
-    branches:
-      - public-images-v2
+  release:
+    types: [created, published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build'
+        required: true
+        type: string
+
 
 env:
   REGISTRY: docker.io
   IMAGE_NAME: pgsharding/spqr-router
 
 jobs:
-  build-and-push-release:
+  build-packages:
+    name: Build Debian Packages
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v6
+        with:
+          go-version: ^1.25
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v5
+
+      - name: Get dependencies
+        run: |
+          go get -v -t -d ./...
+          if [ -f Gopkg.toml ]; then
+              curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+              dep ensure
+          fi
+          sudo apt update && sudo apt install -y debhelper
+      
+      - name: Set env
+        run: echo "TAG=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
+      - name: build package
+        run: |
+          make package
+          gh release upload ${TAG} $(echo ../* | tr ' ' '\n' | grep -v '^../spqr$' | tr '\n' ' ')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-docker-images:
+    name: Build and Push Docker Images
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -47,12 +76,15 @@ jobs:
         id: meta
         run: |
           GIT_REVISION=$(git rev-parse --short HEAD)
-          # Get version from tag, stripping 'v' prefix if present
+          
+          # Get tag from event
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TAG="${{ github.event.inputs.tag }}"
-          else
+          elif [ "${{ github.event_name }}" = "release" ]; then
             TAG="${GITHUB_REF#refs/tags/}"
           fi
+          
+          # Strip 'v' prefix for version
           SPQR_VERSION="${TAG#v}"
           BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           
@@ -118,13 +150,3 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
-
-      - name: Update Docker Hub description
-        uses: peter-evans/dockerhub-description@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: ${{ env.IMAGE_NAME }}
-          short-description: "Stateless Postgres Query Router - Production-ready PostgreSQL sharding"
-          readme-filepath: ./docker/README.md
-        continue-on-error: true
