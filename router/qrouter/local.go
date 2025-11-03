@@ -8,6 +8,7 @@ import (
 
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -16,11 +17,21 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/planner"
+	"github.com/pg-sharding/spqr/router/rmeta"
 )
 
 type LocalQrouter struct {
 	ds    *topology.DataShard
 	ready *atomic.Bool
+
+	rm *rmeta.RoutingMetadataContext
+}
+
+// AnalyzeQuery implements QueryRouter.
+func (qr *LocalQrouter) AnalyzeQuery(ctx context.Context, sph session.SessionParamsHolder, query string, stmt lyx.Node) (*rmeta.RoutingMetadataContext, error) {
+	/* outer code expect this */
+	qr.rm.Stmt = stmt
+	return qr.rm, nil
 }
 
 // IdRange implements QueryRouter.
@@ -52,6 +63,7 @@ func NewLocalQrouter(shardMapping map[string]*config.Shard) (*LocalQrouter, erro
 
 	l := &LocalQrouter{
 		ready: &atomic.Bool{},
+		rm:    &rmeta.RoutingMetadataContext{},
 	}
 
 	var name string
@@ -86,9 +98,9 @@ func (l *LocalQrouter) AddDataShard(_ context.Context, ds *topology.DataShard) e
 }
 
 // TODO : unit tests
-func (l *LocalQrouter) PlanQuery(_ context.Context, _ string, s lyx.Node, _ session.SessionParamsHolder) (plan.Plan, error) {
+func (l *LocalQrouter) PlanQuery(_ context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 	return &plan.ShardDispatchPlan{
-		PStmt: s,
+		PStmt: rm.Stmt,
 		ExecTarget: kr.ShardKey{
 			Name: l.ds.ID,
 		},
@@ -110,6 +122,10 @@ func (l *LocalQrouter) DataShardsRoutes() []kr.ShardKey {
 }
 
 func (l *LocalQrouter) Mgr() meta.EntityMgr {
+	return nil
+}
+
+func (l *LocalQrouter) CSM() connmgr.ConnectionStatMgr {
 	return nil
 }
 

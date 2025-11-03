@@ -11,7 +11,6 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/plan"
-	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/rerrors"
@@ -663,11 +662,11 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 
 func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
-	stmt lyx.Node, p plan.Plan, sph session.SessionParamsHolder) (plan.Plan, error) {
+	p plan.Plan) (plan.Plan, error) {
 
 	switch v := p.(type) {
 	case *plan.DataRowFilter:
-		sp, err := qr.InitExecutionTargets(ctx, rm, stmt, v.SubPlan, sph)
+		sp, err := qr.InitExecutionTargets(ctx, rm, v.SubPlan)
 		if err != nil {
 			return nil, err
 		}
@@ -708,14 +707,15 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 			return v, nil
 		}
 
-		if sph.EnhancedMultiShardProcessing() {
+		if rm.SPH.EnhancedMultiShardProcessing() {
 			var err error
 			if v.SubPlan == nil {
-				switch stmt.(type) {
+				switch rm.Stmt.(type) {
 				case *lyx.Select:
 				default:
 					/* XXX: very dirty hack */
-					v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, stmt, true)
+					/* Top level plan */
+					v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, rm.Stmt, true)
 					if err != nil {
 						return nil, err
 					}
@@ -731,7 +731,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 		* Here we have a chance for advanced multi-shard query processing.
 		* Try to build distributed plan, else scatter-out.
 		 */
-		switch strings.ToUpper(sph.DefaultRouteBehaviour()) {
+		switch strings.ToUpper(rm.SPH.DefaultRouteBehaviour()) {
 		case "BLOCK":
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 		case "ALLOW":
@@ -750,11 +750,9 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 
 func (qr *ProxyQrouter) PlanQueryExtended(
 	ctx context.Context,
-	rm *rmeta.RoutingMetadataContext,
-	stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
+	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
 	p, err := rm.ResolveRouteHint(ctx)
-
 	if err != nil {
 		return nil, err
 	}
@@ -763,7 +761,7 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		return p, nil
 	}
 
-	utilityPlan, err := planner.PlanUtility(ctx, rm, stmt)
+	utilityPlan, err := planner.PlanUtility(ctx, rm, rm.Stmt)
 
 	if err != nil {
 		return nil, err
@@ -772,19 +770,20 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		return utilityPlan, nil
 	}
 
-	if sph.PreferredEngine() == planner.EnhancedEngineVersion {
-		p, err = planner.PlanDistributedQuery(ctx, rm, stmt, true)
+	if rm.SPH.PreferredEngine() == planner.EnhancedEngineVersion {
+		p, err = planner.PlanDistributedQuery(ctx, rm, rm.Stmt, true)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		p, err = qr.RouteWithRules(ctx, rm, stmt)
+		/* Top level plan */
+		p, err = qr.RouteWithRules(ctx, rm, rm.Stmt)
 
 		if err != nil {
 			return nil, err
 		}
 
-		tmp, err := rm.RouteByTuples(ctx, sph.GetTsa())
+		tmp, err := rm.RouteByTuples(ctx, rm.SPH.GetTsa())
 		if err != nil {
 			return nil, err
 		}
@@ -807,13 +806,7 @@ func (qr *ProxyQrouter) PlanQueryTopLevel(ctx context.Context, rm *rmeta.Routing
 }
 
 // TODO : unit tests
-func (qr *ProxyQrouter) PlanQuery(ctx context.Context, query string, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
-
-	ro := true
-
-	if config.RouterConfig().Qr.AutoRouteRoOnStandby {
-		ro = planner.CheckRoOnlyQuery(stmt)
-	}
+func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
 	if !config.RouterConfig().Qr.AlwaysCheckRules {
 		if len(config.RouterConfig().ShardMapping) == 1 {
@@ -825,31 +818,22 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, query string, stmt lyx.No
 			return &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: firstShard,
-					RO:   ro,
+					RO:   rm.IsRO(),
 				},
-				PStmt: stmt,
+				PStmt: rm.Stmt,
 			}, nil
 		}
 	}
 
-	rm := rmeta.NewRoutingMetadataContext(sph, query, qr.csm, qr.mgr)
-
-	rm.SetRO(ro)
-
-	if err := planner.AnalyzeQueryV1(ctx, rm, stmt); err != nil {
-		spqrlog.Zero.Debug().Err(err).Msg("failed to analyze query")
-		return nil, err
-	}
-
-	p, err := qr.PlanQueryExtended(ctx, rm, stmt, sph)
+	p, err := qr.PlanQueryExtended(ctx, rm)
 	if err != nil {
 		return nil, err
 	}
 
 	/* do init plan logic */
-	np, err := qr.InitExecutionTargets(ctx, rm, stmt, p, sph)
+	np, err := qr.InitExecutionTargets(ctx, rm, p)
 	if err == nil {
-		np.SetStmt(stmt)
+		np.SetStmt(rm.Stmt)
 	}
 	return np, err
 }
