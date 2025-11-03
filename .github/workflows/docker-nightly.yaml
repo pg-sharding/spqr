@@ -1,0 +1,77 @@
+name: Docker Nightly Build
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: pgsharding/spqr-router
+
+jobs:
+  build-and-push-nightly:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        run: |
+          GIT_REVISION=$(git rev-parse --short HEAD)
+          SPQR_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+          BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          echo "git_revision=${GIT_REVISION}" >> $GITHUB_OUTPUT
+          echo "spqr_version=${SPQR_VERSION}" >> $GITHUB_OUTPUT
+          echo "build_date=${BUILD_DATE}" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:nightly
+            ${{ env.IMAGE_NAME }}:nightly-${{ steps.meta.outputs.git_revision }}
+          build-args: |
+            GIT_REVISION=${{ steps.meta.outputs.git_revision }}
+            SPQR_VERSION=${{ steps.meta.outputs.spqr_version }}-nightly
+          labels: |
+            org.opencontainers.image.title=SPQR Router
+            org.opencontainers.image.description=Stateless Postgres Query Router - Nightly Build
+            org.opencontainers.image.url=https://github.com/pg-sharding/spqr
+            org.opencontainers.image.source=https://github.com/pg-sharding/spqr
+            org.opencontainers.image.version=${{ steps.meta.outputs.spqr_version }}-nightly
+            org.opencontainers.image.created=${{ steps.meta.outputs.build_date }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.git_revision }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.IMAGE_NAME }}
+          short-description: "Stateless Postgres Query Router - Production-ready PostgreSQL sharding"
+          readme-filepath: ./docker/README.md
+        continue-on-error: true

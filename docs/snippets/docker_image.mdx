@@ -1,11 +1,16 @@
-```bash
-docker run \
-  -v </path/to/router.yaml> \
-  -e ROUTER_CONFIG=/router.yaml \
-  -e ROUTER_LOG=/dev/stdout \
-  -p 0.0.0.0:6432:6432/tcp \
-  -p :::6432:6432/tcp \
-  -p 0.0.0.0:7000:7000/tcp \
-  -p :::7000:7000/tcp \
-  pgsharding/spqr-router:latest
-```
+For the fastest experience, use our pre-built Docker image:
+
+**Available tags:**
+- `latest` - Latest stable release (recommended for production)
+- `stable` - Same as latest
+- `nightly` - Built from master branch (latest features)
+- `v1.2.3` - Specific version
+
+**Ports:**
+- `6432` - Router port (your app connects here)
+- `7432` - Admin console (configure sharding)
+- `7000` - gRPC API
+
+<Note>
+  You'll need to set up PostgreSQL shards and configure the router. See the [sharding setup](#setting-up-sharding) section below for complete instructions.
+</Note>
