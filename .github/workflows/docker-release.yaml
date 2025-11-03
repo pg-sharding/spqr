@@ -1,14 +1,20 @@
 name: Docker Release Build
 
+# on:
+#   release:
+#     types: [created, published]
+#   workflow_dispatch:
+#     inputs:
+#       tag:
+#         description: 'Release tag to build'
+#         required: true
+#         type: string
+
 on:
-  release:
-    types: [created, published]
+  push:
+    branches:
+      - public-images-v2
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag to build'
-        required: true
-        type: string
 
 env:
   REGISTRY: docker.io
