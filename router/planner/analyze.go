@@ -330,7 +330,6 @@ func AnalyzeQueryV1(
 		}
 
 		return analyzeWhereClause(ctx, stmt.Where, rm)
-
 	case *lyx.Delete:
 
 		if stmt.WithClause != nil {

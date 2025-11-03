@@ -178,8 +178,10 @@ func TestMultiShardRouting(t *testing.T) {
 		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
 		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		dh.SetPreferredEngine("", "")
-		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.CSM(), pr.Mgr())
 		stmt := parserRes[0]
+
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, stmt, pr.CSM(), pr.Mgr())
+
 		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
 		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
 
