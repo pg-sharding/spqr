@@ -415,7 +415,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, idKeyRange string) (*KeyRang
 
 	t := time.Now()
 	if kr, err := retry.DoValue(ctx, retry.WithMaxRetries(MaxLockRetry,
-		retry.NewFibonacci(LockRetryStep*time.Millisecond)),
+		retry.NewFibonacci(LockRetryStep)),
 		func(ctx context.Context) (*KeyRange, error) {
 			return q.internalNoWaitLockKeyRange(ctx, idKeyRange)
 		}); err != nil {
@@ -434,20 +434,9 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, idKeyRange string) error {
 		Msg("etcdqdb: unlock key range")
 
 	t := time.Now()
-	resp, err := q.cli.Txn(ctx).
-		If(
-			//check exists key range lock
-			clientv3.Compare(clientv3.Version(keyLockPath(keyRangeNodePath(idKeyRange))), ">", 0),
-		).
-		Then(
-			clientv3.OpDelete(keyLockPath(keyRangeNodePath(idKeyRange))),
-		).
-		Commit()
+	_, err := q.cli.Delete(ctx, keyLockPath(keyRangeNodePath(idKeyRange)))
 	if err != nil {
 		return retry.RetryableError(err)
-	}
-	if !resp.Succeeded {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %v unlocked", idKeyRange)
 	}
 	statistics.RecordQDBOperation("UnlockKeyRange", time.Since(t))
 	return err

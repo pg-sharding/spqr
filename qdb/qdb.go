@@ -3,14 +3,13 @@ package qdb
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
 const LockRetryStep = 500 * time.Millisecond
-	LockRetryStep = 500 //lock retry step in milliseconds
-)
 
 type ShardingSchemaKeeper interface {
 	// RecordKeyRangeMove persists start of key range movement in distributed storage

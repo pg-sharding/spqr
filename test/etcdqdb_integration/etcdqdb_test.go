@@ -147,19 +147,6 @@ func TestLockUnlock(t *testing.T) {
 			expectedErr := spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", keyRange1.KeyRangeID)
 			is.Equal(expectedErr, err)
 		})
-		t.Run("unlock on not locked kr", func(t *testing.T) {
-			err := cleanupDb(ctx, db)
-			is.NoError(err)
-			keyRange1 := qdb.KeyRange{
-				LowerBound:     [][]byte{[]byte("1111")},
-				ShardID:        "sh1",
-				KeyRangeID:     "krid1",
-				DistributionId: "ds1",
-			}
-			err = db.UnlockKeyRange(ctx, keyRange1.KeyRangeID)
-			expectedErr := spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %v unlocked", keyRange1.KeyRangeID)
-			is.Equal(expectedErr, err)
-		})
 	})
 
 }

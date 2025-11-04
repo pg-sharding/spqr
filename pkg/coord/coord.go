@@ -3,7 +3,6 @@ package coord
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -749,7 +748,7 @@ func (qc *Coordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr
 // Returns:
 // - error: an error if the unlock operation encounters any issues.
 func (qc *Coordinator) UnlockKeyRange(ctx context.Context, keyRangeID string) error {
-	return retry.Do(ctx, retry.NewFibonacci(qdb.LockRetryStep*time.Millisecond),
+	return retry.Do(ctx, retry.NewFibonacci(qdb.LockRetryStep),
 		func(ctx context.Context) error {
 			return qc.qdb.UnlockKeyRange(ctx, keyRangeID)
 		})
