@@ -541,7 +541,7 @@ services:
 
   spqr1:
     image: spqr:latest
-    command: spqr-router run --config /etc/spqr/config.yaml
+    command: spqr-router run --config /etc/spqr/config.yaml --qdb-endpoints etcd1:2379,etcd2:2379,etcd3:2379
     ports:
       - "6432:6432"  # Host port 6432 -> Container port 6432
       - "7432:7432"  # Host port 7432 -> Container port 7432
@@ -554,7 +554,7 @@ services:
 
   spqr2:
     image: spqr:latest
-    command: spqr-router run --config /etc/spqr/config.yaml
+    command: spqr-router run --config /etc/spqr/config.yaml --qdb-endpoints etcd1:2379,etcd2:2379,etcd3:2379
     ports:
       - "6433:6432"  # Host port 6433 -> Container port 6432
       - "7433:7432"  # Host port 7433 -> Container port 7432
@@ -567,7 +567,7 @@ services:
 
   spqr3:
     image: spqr:latest
-    command: spqr-router run --config /etc/spqr/config.yaml
+    command: spqr-router run --config /etc/spqr/config.yaml --qdb-endpoints etcd1:2379,etcd2:2379,etcd3:2379
     ports:
       - "6434:6432"  # Host port 6434 -> Container port 6432
       - "7434:7432"  # Host port 7434 -> Container port 7432
