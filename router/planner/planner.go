@@ -554,6 +554,7 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 
 				return p, nil
 			}
+
 			return &plan.ScatterPlan{}, nil
 		}
 
