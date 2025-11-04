@@ -8,6 +8,8 @@ For example, if you are sharding based on user IDs, the hash function will take 
 
 Hash-based sharding helps to evenly distribute the data and load across all shards, reducing the risk of hotspots and ensuring better performance and scalability. However, it can make range queries more complex, as the data for a given range of keys may be spread across multiple shards.
 
+SPQR also supports [composite (multi-column) sharding keys](/sharding/composite_keys) with hash functions, which is particularly useful when you have a low-cardinality first column combined with a high-cardinality second column.
+
 ![hashed](/images/balancing_hashed.png "hash-based approach")
 
 ## How to use it?

@@ -1,0 +1,206 @@
+---
+title: 'Composite Sharding Keys'
+description: 'Learn how to use multiple columns as sharding keys in SPQR'
+---
+
+## Overview
+
+SPQR supports composite sharding keys, which allow you to distribute data across shards using multiple columns instead of just a single column. This is useful when:
+
+- Your data has a natural multi-column partition key (e.g., tenant ID + user ID)
+- You need to distribute data more evenly across shards
+- Your queries typically filter by multiple columns together
+- You want to implement hierarchical sharding strategies
+
+## How It Works
+
+When using composite sharding keys, SPQR creates key ranges based on the combined values of all specified columns. The columns are compared in order (left to right) when determining which shard to route a query to, similar to how composite indexes work in PostgreSQL.
+
+For example, with a composite key of `(region_id, user_id)`:
+- Key `(1, 100)` comes before `(1, 200)` 
+- Key `(1, 500)` comes before `(2, 50)`
+- The first column is compared first, then the second column if the first is equal
+
+## Creating a Distribution with Composite Keys
+
+### Step 1: Define Column Types
+
+When creating a distribution with composite keys, specify the types for all columns that will be part of the sharding key:
+
+```sql
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer, integer;
+```
+
+You can mix different column types:
+
+```sql
+CREATE DISTRIBUTION ds2 COLUMN TYPES integer, varchar;
+```
+
+Supported column types include: `INTEGER`, `INT`, `VARCHAR`, and `UUID`.
+
+### Step 2: Create Key Ranges
+
+Create key ranges using comma-separated values that match your column types:
+
+```sql
+-- For two integer columns
+CREATE KEY RANGE FROM 0, 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 100, 0 ROUTE TO shard3 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 100, 100 ROUTE TO shard4 FOR DISTRIBUTION ds1;
+```
+
+For mixed types (integer and varchar):
+
+```sql
+-- For integer and varchar columns
+CREATE KEY RANGE FROM 0, 'aaaaa' ROUTE TO shard1 FOR DISTRIBUTION ds2;
+CREATE KEY RANGE FROM 0, 'zzzzz' ROUTE TO shard2 FOR DISTRIBUTION ds2;
+CREATE KEY RANGE FROM 100, 'aaaaa' ROUTE TO shard3 FOR DISTRIBUTION ds2;
+CREATE KEY RANGE FROM 100, 'zzzzz' ROUTE TO shard4 FOR DISTRIBUTION ds2;
+```
+
+### Step 3: Attach Tables
+
+Attach tables to the distribution by specifying multiple columns in the `DISTRIBUTION KEY` clause:
+
+```sql
+ALTER DISTRIBUTION ds1 ATTACH RELATION users DISTRIBUTION KEY region_id, user_id;
+```
+
+## Composite Keys with Hash Functions
+
+You can also use composite keys with hash-based sharding. This is particularly useful when you have a low-cardinality first column combined with a high-cardinality second column:
+
+```sql
+-- Create distribution with hash type for second column
+CREATE DISTRIBUTION ds1 COLUMN TYPES INT, VARCHAR hash;
+
+-- Create key ranges
+CREATE KEY RANGE FROM 0, 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 0, 2147483648 ROUTE TO shard2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 1, 0 ROUTE TO shard3 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 1, 2147483648 ROUTE TO shard4 FOR DISTRIBUTION ds1;
+
+-- Attach table with hash function
+ALTER DISTRIBUTION ds1 ATTACH RELATION events 
+  DISTRIBUTION KEY tenant_id, event_id 
+  HASH FUNCTION MURMUR;
+```
+
+Or using the shorter syntax:
+
+```sql
+CREATE DISTRIBUTED RELATION events 
+  DISTRIBUTION KEY tenant_id, event_id 
+  HASH FUNCTION MURMUR 
+  IN ds1;
+```
+
+## Query Routing
+
+When querying tables with composite sharding keys, SPQR can route queries to specific shards when all key columns are specified in the WHERE clause:
+
+```sql
+-- This query routes to a specific shard
+SELECT * FROM users WHERE region_id = 1 AND user_id = 100;
+
+-- This query also routes efficiently
+INSERT INTO users (region_id, user_id, name) 
+VALUES (1, 100, 'Alice');
+
+-- Update with composite key
+UPDATE users SET name = 'Bob' 
+WHERE region_id = 1 AND user_id = 100;
+```
+
+## COPY Command Support
+
+The COPY command works seamlessly with composite sharding keys. SPQR automatically routes each row to the appropriate shard based on the composite key values:
+
+```sql
+COPY users (region_id, user_id, name) FROM stdin;
+1	100	Alice
+1	200	Bob
+2	150	Charlie
+\.
+```
+
+The column order in COPY doesn't need to match the sharding key order - SPQR will extract the correct values:
+
+```sql
+-- Column order different from sharding key
+COPY users (name, user_id, region_id) FROM stdin;
+Alice	100	1
+Bob	200	1
+\.
+```
+
+## Example: E-commerce Multi-tenant Setup
+
+Here's a complete example of setting up a multi-tenant e-commerce database with composite sharding:
+
+```sql
+-- Connect to admin console
+\c spqr-console
+
+-- Create distribution for tenant + order sharding
+CREATE DISTRIBUTION orders_dist COLUMN TYPES integer, integer;
+
+-- Create key ranges to distribute across 4 shards
+CREATE KEY RANGE FROM 0, 0 ROUTE TO shard1 FOR DISTRIBUTION orders_dist;
+CREATE KEY RANGE FROM 0, 50000 ROUTE TO shard2 FOR DISTRIBUTION orders_dist;
+CREATE KEY RANGE FROM 100, 0 ROUTE TO shard3 FOR DISTRIBUTION orders_dist;
+CREATE KEY RANGE FROM 100, 50000 ROUTE TO shard4 FOR DISTRIBUTION orders_dist;
+
+-- Attach the orders table with composite key
+ALTER DISTRIBUTION orders_dist 
+  ATTACH RELATION orders 
+  DISTRIBUTION KEY tenant_id, order_id;
+
+-- Connect to router
+\c database
+
+-- Create the orders table
+CREATE TABLE orders (
+    tenant_id INT NOT NULL,
+    order_id INT NOT NULL,
+    customer_name VARCHAR(255),
+    order_date DATE,
+    total_amount DECIMAL(10, 2),
+    PRIMARY KEY (tenant_id, order_id)
+);
+
+-- Insert data for different tenants
+INSERT INTO orders (tenant_id, order_id, customer_name, order_date, total_amount)
+VALUES (1, 1001, 'John Doe', '2024-01-15', 150.00);
+
+INSERT INTO orders (tenant_id, order_id, customer_name, order_date, total_amount)
+VALUES (1, 1002, 'Jane Smith', '2024-01-16', 250.00);
+
+INSERT INTO orders (tenant_id, order_id, customer_name, order_date, total_amount)
+VALUES (100, 2001, 'Bob Johnson', '2024-01-17', 350.00);
+
+-- Query orders for a specific tenant
+SELECT * FROM orders 
+WHERE tenant_id = 1 AND order_id = 1001;
+```
+
+## Best Practices
+
+1. **Column Order Matters**: Choose the order of columns carefully. The first column should be the one most frequently used in your queries.
+
+2. **Cardinality Considerations**: For range-based sharding, consider using a lower-cardinality column first (e.g., tenant ID) followed by a higher-cardinality column (e.g., user ID or timestamp).
+
+3. **Hash Functions**: When using hash functions with composite keys, they are applied to the combination of all key columns, not individually.
+
+4. **Query Patterns**: Ensure your application queries include all composite key columns in WHERE clauses for optimal routing. Queries missing one or more key columns may need to be sent to multiple shards.
+
+5. **Primary Keys**: Consider making your composite sharding key part of your table's primary key to ensure data locality and query efficiency.
+
+## Limitations
+
+- Cross-shard queries that don't specify all sharding key columns will need to query multiple shards
+- The number of columns in a composite key should be kept reasonable (typically 2-3 columns)
+- All columns in the composite key must be specified when creating key ranges
