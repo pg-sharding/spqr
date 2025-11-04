@@ -85,7 +85,7 @@ BEGIN;
 SET __spqr__commit_strategy TO '2pc';
 INSERT INTO shard1_table (id, data) VALUES (1, 'data1');
 INSERT INTO shard2_table (id, data) VALUES (2, 'data2');
-COMMIT; /* __spqr__commit_strategy: 2pc */
+COMMIT;
 ```
 
 **Important Notes:**
