@@ -126,8 +126,11 @@ The router provides a PostgreSQL-compatible admin console with `SHOW` commands f
 
 **A:** The `__spqr__commit_strategy` hint defines the transaction commit mode:
 
-* `1pc` — one-phase commit (best effort)
-* `2pc` — two-phase commit (requires `/* __spqr__engine_v2: true */` and PostgreSQL `max_prepared_transactions` set).
+* `best-effort` — default mode, same as `1pc`
+* `1pc` — one-phase commit (commits each shard independently, no atomicity guarantees across shards)
+* `2pc` — two-phase commit (atomic commits across shards, requires `/* __spqr__engine_v2: true */` and PostgreSQL `max_prepared_transactions` > 0).
+
+For comprehensive information, see [Distributed Transactions](/features/distributed_transactions).
 
 **Q: How to use reference tables?**
 

@@ -110,6 +110,12 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 | `query_routing.always_check_rules`             | Whether to always check the routing rules for every query. This only makes sense in a single-shard deployment.           | `true`, `false`  |
 | `query_routing.auto_route_ro_on_standby`       | Whether to automatically route read-only queries to standby servers. Currently only supported for single-shard topology. | `true`, `false`  |
 
+## Transaction Settings
+
+| Setting                       | Description                                                                                                              | Possible Values                     |
+|-------------------------------|--------------------------------------------------------------------------------------------------------------------------|-------------------------------------|
+| `distributed_commit_strategy` | Default commit strategy for distributed transactions. Can be overridden per session with `__spqr__commit_strategy`. See [Distributed Transactions](/features/distributed_transactions) for details. | `best-effort`, `1pc`, `2pc` |
+
 ## Mode Settings
 
 | Setting          | Description                                           | Possible Values       |
