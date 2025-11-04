@@ -593,7 +593,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 	 * known after this phase, as it can be Parse Step of Extended proto.
 	 */
 
-	switch stmt.(type) {
+	switch qs := stmt.(type) {
 
 	/* TDB: comments? */
 	case *lyx.Insert:
@@ -653,6 +653,8 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 			return nil, err
 		}
 		pl = plan.Combine(pl, rs)
+	case *lyx.ExplainStmt:
+		return qr.RouteWithRules(ctx, rm, qs.Query)
 	default:
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
@@ -835,5 +837,6 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadata
 	if err == nil {
 		np.SetStmt(rm.Stmt)
 	}
+
 	return np, err
 }
