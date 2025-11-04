@@ -1,0 +1,221 @@
+---
+title: 'Bare Router with Init SQL'
+description: 'Simple SPQR deployment using init_sql for static sharding configuration'
+---
+
+The bare router deployment is the simplest way to run SPQR. It's ideal for testing, development, and scenarios where your sharding rules don't need to be updated dynamically.
+
+## Overview
+
+In this deployment mode:
+- You run `spqr-router` with an `init_sql` file
+- The router reads the sharding configuration from this local file on startup
+- No external coordinator or etcd cluster is required
+- You can run multiple router instances simultaneously
+- Each router instance operates independently
+
+## Prerequisites
+
+- SPQR router binary (`spqr-router`)
+- PostgreSQL shard instances
+- Init SQL file with your sharding configuration
+
+## Configuration
+
+### 1. Create Router Configuration File
+
+Create a YAML configuration file (e.g., `router.yaml`):
+
+```yaml router.yaml
+host: 'localhost'
+router_port: '6432'
+admin_console_port: '7432'
+grpc_api_port: '7001'
+
+# Enable init SQL mode
+use_init_sql: true
+init_sql: "/path/to/init.sql"
+exit_on_init_sql: true  # Exit if init SQL parsing fails
+
+router_mode: PROXY
+log_level: info
+
+frontend_rules:
+  - db: mydb
+    usr: myuser
+    pool_mode: TRANSACTION
+    auth_rule:
+      auth_method: ok
+
+backend_rules:
+  - db: mydb
+    usr: myuser
+    connection_limit: 100
+    pool_discard: false
+    pool_rollback: true
+
+shards:
+  shard1:
+    db: mydb
+    usr: myuser
+    pwd: password
+    type: DATA
+    hosts:
+      - 'shard1-host:5432'
+  shard2:
+    db: mydb
+    usr: myuser
+    pwd: password
+    type: DATA
+    hosts:
+      - 'shard2-host:5432'
+```
+
+### 2. Create Init SQL File
+
+Create an SQL file with your sharding configuration (e.g., `init.sql`):
+
+```sql init.sql
+-- Create a distribution for your sharding key
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+
+-- Attach tables to the distribution
+ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION order_items DISTRIBUTION KEY order_id;
+
+-- Define key ranges
+CREATE KEY RANGE krid1 FROM 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid2 FROM 10000 ROUTE TO shard2 FOR DISTRIBUTION ds1;
+```
+
+This configuration:
+- Creates a distribution named `ds1` for integer sharding keys
+- Associates the `orders` table (sharded by `id`) and `order_items` table (sharded by `order_id`)
+- Routes records with keys 0-9999 to `shard1` and 10000+ to `shard2`
+
+## Running the Router
+
+### Start the Router
+
+```bash
+spqr-router run --config ./router.yaml
+```
+
+The router will:
+1. Parse and execute the `init.sql` file
+2. Start listening on the configured ports
+3. Be ready to accept client connections
+
+### Verify the Setup
+
+Connect to the admin console to verify the configuration:
+
+```bash
+psql "host=localhost port=7432 dbname=mydb user=myuser sslmode=disable"
+```
+
+Check the configured shards and key ranges:
+
+```sql
+-- List all shards
+SHOW shards;
+
+-- List distributions
+SHOW distributions;
+
+-- List key ranges
+SHOW key_ranges;
+```
+
+## Connecting Clients
+
+Clients can now connect to the router:
+
+```bash
+psql "host=localhost port=6432 dbname=mydb user=myuser sslmode=disable"
+```
+
+The router will automatically route queries to the appropriate shard based on the sharding key.
+
+## Important Considerations
+
+### Static Configuration
+- Configuration changes require updating the `init.sql` file and restarting the router
+- No dynamic updates are possible while the router is running
+- Plan your sharding strategy carefully before deployment
+
+### Multiple Router Instances
+You can run multiple router instances for load balancing:
+
+```bash
+# Instance 1
+spqr-router run --config ./router1.yaml
+
+# Instance 2
+spqr-router run --config ./router2.yaml
+```
+
+Each instance will read from its own `init.sql` file. Ensure all routers use the same init SQL configuration to maintain consistency.
+
+### State Persistence
+
+By default, the router stores state in memory. To persist state across restarts, configure `memqdb_backup_path`:
+
+```yaml
+memqdb_backup_path: "/var/lib/spqr/memqdb_backup.state"
+```
+
+With this setting:
+- Router state is saved to the backup file
+- On restart, if the backup exists, it's loaded instead of `init.sql`
+- To reload from `init.sql`, delete the backup file before starting
+
+## Configuration Reference
+
+Key settings for bare router mode:
+
+| Setting | Description | Recommended Value |
+|---------|-------------|-------------------|
+| `use_init_sql` | Enable init SQL mode | `true` |
+| `init_sql` | Path to SQL initialization file | Path to your `init.sql` |
+| `exit_on_init_sql` | Exit if init SQL parsing fails | `true` (fail fast) |
+| `memqdb_backup_path` | State backup file path | Optional, for persistence |
+| `router_mode` | Router operation mode | `PROXY` |
+
+For complete configuration options, see the [Router Configuration](/configuration/router) reference.
+
+## Example Use Cases
+
+### Development Environment
+Perfect for local development where you need a quick SPQR setup without external dependencies.
+
+### Testing
+Ideal for automated tests where you want reproducible sharding configurations without the overhead of managing etcd.
+
+### Edge Deployments
+Suitable for edge locations where you want independent router instances without centralized coordination.
+
+## Limitations
+
+- **No dynamic updates**: Changing sharding rules requires router restart
+- **No centralized management**: Each router instance is independent
+- **Manual synchronization**: Multiple routers require manual configuration sync
+
+For production environments with dynamic configuration needs, consider the [Router + Coordinator](/deployment/router_coordinator) deployment mode.
+
+## Troubleshooting
+
+### Router fails to start
+- Check that the `init.sql` file path is correct and readable
+- Verify SQL syntax in `init.sql`
+- Check router logs for parsing errors
+
+### Configuration not applied
+- If `memqdb_backup_path` is set, delete the backup file to reload from `init.sql`
+- Ensure `use_init_sql: true` is set in router configuration
+- Verify the init SQL file contains valid SPQR commands
+
+### Cannot connect to shards
+- Verify shard hostnames and ports in router configuration
+- Ensure shards are running and accessible
+- Check authentication credentials match between router and shards

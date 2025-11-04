@@ -1,0 +1,90 @@
+---
+title: 'Deployment Overview'
+description: 'Understanding SPQR deployment modes and choosing the right one for your use case'
+---
+
+SPQR can be deployed in several different configurations depending on your requirements, infrastructure constraints, and operational needs. This guide will help you understand the different deployment modes and choose the right one for your use case.
+
+## Deployment Modes
+
+SPQR supports three main deployment architectures:
+
+<CardGroup cols={3}>
+  <Card
+    title="Bare Router with Init SQL"
+    icon="file-code"
+    href="/deployment/bare_router"
+  >
+    Simple deployment for testing and static configurations
+  </Card>
+  <Card
+    title="Router + Coordinator"
+    icon="network-wired"
+    href="/deployment/router_coordinator"
+  >
+    Production-ready setup with dynamic configuration
+  </Card>
+  <Card
+    title="SPQR Infra Mode"
+    icon="layer-group"
+    href="/deployment/spqrinfra"
+  >
+    Combined router + coordinator for resource efficiency
+  </Card>
+</CardGroup>
+
+## Choosing a Deployment Mode
+
+### Bare Router with Init SQL
+**Best for:**
+- Development and testing environments
+- Simple deployments with static sharding rules
+- Scenarios where metadata doesn't need to be updated dynamically
+- Quick proof-of-concept setups
+
+**Characteristics:**
+- No external dependencies (no etcd required)
+- Configuration from a local SQL file
+- Multiple router instances can run simultaneously
+- Each router restart reads configuration from file
+- No dynamic configuration updates
+
+### Router + Coordinator
+**Best for:**
+- Production environments
+- Deployments requiring dynamic configuration updates
+- Multi-router setups with centralized management
+- High-availability requirements
+
+**Characteristics:**
+- Centralized metadata management via Coordinator
+- Requires etcd cluster for QDB (Query Database)
+- Supports dynamic configuration updates
+- Routers must be registered/unregistered with Coordinator
+- Multiple routers share the same configuration
+
+### SPQR Infra Mode
+**Best for:**
+- Resource-constrained environments
+- Simplified operational overhead
+- Deployments where combining router and coordinator makes sense
+- Small to medium-scale production deployments
+
+**Characteristics:**
+- Single binary acts as both router and coordinator
+- Requires etcd cluster for coordination
+- Run an odd number of instances (1, 3, or 5) for consensus
+- Reduced CPU and memory footprint
+- Simplified deployment and management
+
+## Next Steps
+
+Choose the deployment mode that best fits your requirements and follow the detailed setup guide:
+
+- [Bare Router with Init SQL Setup →](/deployment/bare_router)
+- [Router + Coordinator Setup →](/deployment/router_coordinator)
+- [SPQR Infra Mode Setup →](/deployment/spqrinfra)
+
+For configuration details, see:
+- [Router Configuration](/configuration/router)
+- [Coordinator Configuration](/configuration/coordinator)
