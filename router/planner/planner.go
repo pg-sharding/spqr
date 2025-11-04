@@ -166,6 +166,13 @@ func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 		return nil, err
 	}
 	switch subPlan.(type) {
+	case *plan.VirtualPlan:
+		return &plan.ScatterPlan{
+			SubPlan: &plan.ModifyTable{
+				ExecTargets: shs,
+			},
+			ExecTargets: shs,
+		}, nil
 	case *plan.ScatterPlan:
 		return &plan.ScatterPlan{
 			SubPlan: &plan.ModifyTable{

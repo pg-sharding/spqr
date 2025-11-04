@@ -379,6 +379,7 @@ func (qr *ProxyQrouter) planQueryV1(
 								ExecTargets: rel.ListStorageRoutes(),
 							}, nil
 						}
+
 						// XXX: todo - check that sub select is not doing anything insane
 						switch p.(type) {
 						case *plan.VirtualPlan, *plan.ScatterPlan, *plan.RandomDispatchPlan:
@@ -609,6 +610,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		}
 
 		pl = plan.Combine(pl, rs)
+
 	case *lyx.Select:
 
 		/*
@@ -809,8 +811,8 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 				ExecTargets: qr.DataShardsRoutes(),
 			}
 		}
-
 	}
+
 	return p, nil
 }
 
