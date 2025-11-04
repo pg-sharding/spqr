@@ -538,12 +538,16 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 			/* Should we try to recurse here? */
 			/* try to run planner on target list  */
 
-			p, err := PlanTargetList(ctx, rm, plr, v)
-			if err != nil {
-				return nil, err
-			}
+			/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
+			if len(v.FromClause) == 0 && (v.LArg == nil || v.RArg == nil) && v.WithClause == nil {
+				p, err := PlanTargetList(ctx, rm, plr, v)
+				if err != nil {
+					return nil, err
+				}
 
-			return p, nil
+				return p, nil
+			}
+			return &plan.ScatterPlan{}, nil
 		}
 
 		if len(v.FromClause) > 1 {
