@@ -65,6 +65,7 @@ colocation
 colref
 colreflist
 coltypes
+commitcount
 commodi
 commodo
 condeferrable
