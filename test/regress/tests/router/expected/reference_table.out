@@ -427,6 +427,7 @@ SELECT __spqr__show('reference_relations');
  test_ref_rel_rel  | 1              | [sh1 sh2 sh3 sh4] | map[]
 (3 rows)
 
+SET __spqr__preferred_engine TO '';
 DROP TABLE test_ref_rel;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE sh1.test_ref_rel_rel;
