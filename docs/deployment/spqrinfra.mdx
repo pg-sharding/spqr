@@ -92,7 +92,11 @@ etcd --name node3 \
 
 ### 2. Configure SPQR Infra Instances
 
-Create configuration files for each SPQR Infra instance. Each instance needs unique ports but shares the same sharding configuration.
+Create configuration files for each SPQR Infra instance.
+
+<Note>
+When deploying on separate hosts, each instance can use the same ports. When deploying on the same host (for testing), each instance needs unique ports.
+</Note>
 
 **Instance 1 configuration (spqr-infra1.yaml):**
 ```yaml spqr-infra1.yaml
@@ -476,6 +480,10 @@ For complete configuration options, see:
 
 Here's a complete example using Docker Compose:
 
+<Note>
+In this Docker Compose example, all SPQR instances use the same internal ports (6432, 7432) but are mapped to different host ports (6432-6434, 7432-7434). Each instance uses the same configuration file since they run in separate containers.
+</Note>
+
 ```yaml docker-compose.yml
 version: '3.8'
 
@@ -519,10 +527,10 @@ services:
     image: spqr:latest
     command: spqr-router run --config /etc/spqr/config.yaml
     ports:
-      - "6432:6432"
-      - "7432:7432"
+      - "6432:6432"  # Host port 6432 -> Container port 6432
+      - "7432:7432"  # Host port 7432 -> Container port 7432
     volumes:
-      - ./spqr-infra1.yaml:/etc/spqr/config.yaml
+      - ./spqr-infra.yaml:/etc/spqr/config.yaml
     depends_on:
       - etcd1
       - etcd2
@@ -532,10 +540,10 @@ services:
     image: spqr:latest
     command: spqr-router run --config /etc/spqr/config.yaml
     ports:
-      - "6433:6433"
-      - "7433:7433"
+      - "6433:6432"  # Host port 6433 -> Container port 6432
+      - "7433:7432"  # Host port 7433 -> Container port 7432
     volumes:
-      - ./spqr-infra2.yaml:/etc/spqr/config.yaml
+      - ./spqr-infra.yaml:/etc/spqr/config.yaml
     depends_on:
       - etcd1
       - etcd2
@@ -545,14 +553,45 @@ services:
     image: spqr:latest
     command: spqr-router run --config /etc/spqr/config.yaml
     ports:
-      - "6434:6434"
-      - "7434:7434"
+      - "6434:6432"  # Host port 6434 -> Container port 6432
+      - "7434:7432"  # Host port 7434 -> Container port 7432
     volumes:
-      - ./spqr-infra3.yaml:/etc/spqr/config.yaml
+      - ./spqr-infra.yaml:/etc/spqr/config.yaml
     depends_on:
       - etcd1
       - etcd2
       - etcd3
+```
+
+**Shared configuration file (spqr-infra.yaml):**
+```yaml spqr-infra.yaml
+host: '0.0.0.0'
+
+# All instances use the same internal ports
+router_port: '6432'
+admin_console_port: '7432'
+grpc_api_port: '7010'
+
+with_coordinator: true
+router_mode: PROXY
+log_level: info
+
+frontend_rules:
+  - db: mydb
+    usr: myuser
+    pool_mode: TRANSACTION
+    auth_rule:
+      auth_method: ok
+
+backend_rules:
+  - db: mydb
+    usr: myuser
+    connection_limit: 100
+    pool_discard: false
+    pool_rollback: true
+    auth_rule:
+      auth_method: md5
+      password: backend_password
 ```
 
 Start the entire stack:
