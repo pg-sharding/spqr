@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
@@ -81,6 +82,25 @@ func HostsVirtualPlan(shards []*topology.DataShard, ihc map[string]tsa.CachedChe
 				})
 			}
 		}
+	}
+
+	return vp
+}
+
+func ReferenceRelationVirtualPlan(rrs []*rrelation.ReferenceRelation) *VirtualPlan {
+
+	vp := &VirtualPlan{}
+
+	vp.VirtualRowCols = GetVPHeader("table name", "schema version", "shards", "column sequence mapping")
+
+	for _, r := range rrs {
+
+		vp.VirtualRowVals = append(vp.VirtualRowVals, [][]byte{
+			[]byte(r.TableName),
+			fmt.Appendf(nil, "%d", r.SchemaVersion),
+			fmt.Appendf(nil, "%+v", r.ShardIds),
+			fmt.Appendf(nil, "%+v", r.ColumnSequenceMapping),
+		})
 	}
 
 	return vp

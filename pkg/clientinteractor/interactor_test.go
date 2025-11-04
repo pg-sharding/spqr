@@ -196,7 +196,7 @@ func TestGetColumnsMap(t *testing.T) {
 func TestSortableWithContext(t *testing.T) {
 	data := [][]string{[]string{"a", "b"}, []string{"b", "a"}}
 	rev_data := [][]string{[]string{"b", "a"}, []string{"a", "b"}}
-	sortable := clientinteractor.SortableWithContext{data, 0, clientinteractor.DESC}
+	sortable := engine.SortableWithContext{data, 0, engine.DESC}
 	sort.Sort(sortable)
 	assert.Equal(t, data, rev_data)
 }

@@ -919,15 +919,15 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 
 		switch ord.OptAscDesc.(type) {
 		case spqrparser.SortByAsc:
-			asc_desc = ASC
+			asc_desc = engine.ASC
 		case spqrparser.SortByDesc:
-			asc_desc = DESC
+			asc_desc = engine.DESC
 		case spqrparser.SortByDefault:
-			asc_desc = ASC
+			asc_desc = engine.ASC
 		default:
 			return fmt.Errorf("wrong sorting option (asc/desc)")
 		}
-		sortable := SortableWithContext{data, rowDesc[ord.Col.ColName], asc_desc}
+		sortable := engine.SortableWithContext{Data: data, Col_index: rowDesc[ord.Col.ColName], Order: asc_desc}
 		sort.Sort(sortable)
 	}
 	for i := range len(data) {
@@ -937,27 +937,6 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 		}
 	}
 	return pi.CompleteMsg(len(clients))
-}
-
-const (
-	ASC = iota
-	DESC
-)
-
-type SortableWithContext struct {
-	Data      [][]string
-	Col_index int
-	Order     int
-}
-
-func (a SortableWithContext) Len() int      { return len(a.Data) }
-func (a SortableWithContext) Swap(i, j int) { a.Data[i], a.Data[j] = a.Data[j], a.Data[i] }
-func (a SortableWithContext) Less(i, j int) bool {
-	if a.Order == ASC {
-		return a.Data[i][a.Col_index] < a.Data[j][a.Col_index]
-	} else {
-		return a.Data[i][a.Col_index] > a.Data[j][a.Col_index]
-	}
 }
 
 // TODO : unit tests
@@ -1051,7 +1030,7 @@ func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRa
 			},
 		},
 		},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("merge key ranges %v and %v", unite.BaseKeyRangeId, unite.AppendageKeyRangeId))}},
+		&pgproto3.DataRow{Values: [][]byte{fmt.Appendf(nil, "merge key ranges %v and %v", unite.BaseKeyRangeId, unite.AppendageKeyRangeId)}},
 		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
@@ -1629,21 +1608,8 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 }
 
 func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation) error {
-	if err := pi.WriteHeader("table name", "schema version", "shards", "column sequence mapping"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	for _, r := range rrs {
-		if err := pi.WriteDataRow(
-			r.TableName,
-			fmt.Sprintf("%d", r.SchemaVersion),
-			fmt.Sprintf("%+v", r.ShardIds),
-			fmt.Sprintf("%+v", r.ColumnSequenceMapping)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-	return pi.CompleteMsg(len(rrs))
+	vp := plan.ReferenceRelationVirtualPlan(rrs)
+	return pi.replyVirtualPlan(vp)
 }
 
 func (pi *PSQLInteractor) PreparedStatements(ctx context.Context, shs []shard.PreparedStatementsMgrDescriptor) error {
