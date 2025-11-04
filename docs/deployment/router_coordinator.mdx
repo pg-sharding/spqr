@@ -374,19 +374,28 @@ To migrate from bare router to coordinator mode:
 
 ```bash
 #!/bin/bash
+set -e
 
 # Start etcd
 etcd --listen-client-urls http://0.0.0.0:2379 \
      --advertise-client-urls http://localhost:2379 &
 
 # Wait for etcd to be ready
-sleep 2
+until etcdctl --endpoints=localhost:2379 endpoint health 2>/dev/null; do
+  echo "Waiting for etcd..."
+  sleep 1
+done
+echo "etcd is ready"
 
 # Start Coordinator
 spqr-coordinator run --config ./coordinator.yaml &
 
 # Wait for Coordinator to be ready
-sleep 2
+until pg_isready -h localhost -p 7002 -q; do
+  echo "Waiting for Coordinator..."
+  sleep 1
+done
+echo "Coordinator is ready"
 
 # Configure sharding (via psql commands to coordinator)
 psql "host=localhost port=7002 dbname=spqr_console user=admin" <<EOF
@@ -402,7 +411,11 @@ EOF
 spqr-router run --config ./router.yaml &
 
 # Wait for router to be ready
-sleep 2
+until pg_isready -h localhost -p 7432 -q; do
+  echo "Waiting for Router..."
+  sleep 1
+done
+echo "Router is ready"
 
 # Register Router
 psql "host=localhost port=7432 dbname=mydb user=myuser" <<EOF

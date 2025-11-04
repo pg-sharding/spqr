@@ -110,9 +110,6 @@ grpc_api_port: '7010'
 # Coordinator mode enabled
 with_coordinator: true
 
-# QDB (etcd) connection
-# This would typically be configured via command-line args or environment
-
 router_mode: PROXY
 log_level: info
 
@@ -134,7 +131,16 @@ backend_rules:
       password: backend_password
 ```
 
+<Note>
+The etcd connection is configured via command-line arguments when starting the router. See the startup commands below for details.
+</Note>
+
 **Instance 2 configuration (spqr-infra2.yaml):**
+
+<Note>
+Instances 2 and 3 use the same configuration as Instance 1, except for the port numbers. Keep the frontend and backend rules synchronized across all instances to ensure consistent behavior.
+</Note>
+
 ```yaml spqr-infra2.yaml
 host: '0.0.0.0'
 
@@ -200,18 +206,28 @@ backend_rules:
 
 ### 3. Start SPQR Infra Instances
 
-Start each instance with its configuration:
+Start each instance with its configuration and etcd connection details:
 
 ```bash
+# Define etcd cluster endpoints
+ETCD_ENDPOINTS="node1:2379,node2:2379,node3:2379"
+
 # Instance 1
-spqr-router run --config ./spqr-infra1.yaml &
+spqr-router run --config ./spqr-infra1.yaml \
+  --qdb-endpoints "$ETCD_ENDPOINTS" &
 
 # Instance 2
-spqr-router run --config ./spqr-infra2.yaml &
+spqr-router run --config ./spqr-infra2.yaml \
+  --qdb-endpoints "$ETCD_ENDPOINTS" &
 
 # Instance 3
-spqr-router run --config ./spqr-infra3.yaml &
+spqr-router run --config ./spqr-infra3.yaml \
+  --qdb-endpoints "$ETCD_ENDPOINTS" &
 ```
+
+<Note>
+The `--qdb-endpoints` flag specifies the etcd cluster endpoints. Alternatively, you can set the `QDB_ENDPOINTS` environment variable.
+</Note>
 
 The instances will:
 - Connect to the etcd cluster
