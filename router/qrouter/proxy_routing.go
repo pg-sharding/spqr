@@ -274,7 +274,7 @@ func (qr *ProxyQrouter) planQueryV1(
 		var p plan.Plan
 
 		/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
-		if len(stmt.FromClause) == 0 && (stmt.LArg == nil || stmt.RArg == nil) {
+		if len(stmt.FromClause) == 0 && (stmt.LArg == nil || stmt.RArg == nil) && stmt.WithClause == nil {
 			var err error
 
 			p, err = planner.PlanTargetList(ctx, rm, qr, stmt)
@@ -379,6 +379,7 @@ func (qr *ProxyQrouter) planQueryV1(
 								ExecTargets: rel.ListStorageRoutes(),
 							}, nil
 						}
+
 						// XXX: todo - check that sub select is not doing anything insane
 						switch p.(type) {
 						case *plan.VirtualPlan, *plan.ScatterPlan, *plan.RandomDispatchPlan:
@@ -490,7 +491,10 @@ func (qr *ProxyQrouter) planQueryV1(
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
-					tmp, err := planner.PlanDistributedQuery(ctx, rm, stmt, true)
+
+					plr := planner.PlannerV2{}
+
+					tmp, err := plr.PlanDistributedQuery(ctx, rm, stmt, true)
 					if err != nil {
 						return nil, err
 					}
@@ -537,7 +541,9 @@ func (qr *ProxyQrouter) planQueryV1(
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
-					tmp, err := planner.PlanDistributedQuery(ctx, rm, stmt, true)
+					plr := planner.PlannerV2{}
+
+					tmp, err := plr.PlanDistributedQuery(ctx, rm, stmt, true)
 					if err != nil {
 						return nil, err
 					}
@@ -604,6 +610,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		}
 
 		pl = plan.Combine(pl, rs)
+
 	case *lyx.Select:
 
 		/*
@@ -717,7 +724,10 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 				default:
 					/* XXX: very dirty hack */
 					/* Top level plan */
-					v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, rm.Stmt, true)
+
+					plr := planner.PlannerV2{}
+
+					v.SubPlan, err = plr.PlanDistributedQuery(ctx, rm, rm.Stmt, true)
 					if err != nil {
 						return nil, err
 					}
@@ -773,7 +783,10 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	}
 
 	if rm.SPH.PreferredEngine() == planner.EnhancedEngineVersion {
-		p, err = planner.PlanDistributedQuery(ctx, rm, rm.Stmt, true)
+
+		plr := planner.PlannerV2{}
+
+		p, err = plr.PlanDistributedQuery(ctx, rm, rm.Stmt, true)
 		if err != nil {
 			return nil, err
 		}
@@ -798,8 +811,8 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 				ExecTargets: qr.DataShardsRoutes(),
 			}
 		}
-
 	}
+
 	return p, nil
 }
 
