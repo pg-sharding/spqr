@@ -70,7 +70,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
 
       - name: Update Docker Hub description
-        uses: peter-evans/dockerhub-description@v3
+        uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
