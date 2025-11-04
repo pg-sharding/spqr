@@ -1,9 +1,9 @@
-name: release-nightly-image
+name: Docker Image Build
 
 on:
   push:
     branches:
-      - public-images-v2
+      - master  # Build on every push to master
   workflow_dispatch:
 
 env:
