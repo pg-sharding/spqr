@@ -497,13 +497,6 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 			return nil, err
 		}
-	case parser.ParseStateExplain:
-		return nil, rst.Client().Send(
-			&pgproto3.ErrorResponse{
-				Message:  "SPQR explain to be supported",
-				Severity: "ERROR",
-				Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
-			})
 	default:
 		err := rst.queryProc(comment, binderQ)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))

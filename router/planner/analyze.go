@@ -228,6 +228,8 @@ func AnalyzeQueryV1(
 	}
 
 	switch stmt := qstmt.(type) {
+	case *lyx.ExplainStmt:
+		return AnalyzeQueryV1(ctx, rm, stmt.Query)
 	case *lyx.Select:
 
 		if stmt.WithClause != nil {

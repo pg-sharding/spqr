@@ -82,11 +82,6 @@ type ParseStateExecute struct {
 	Name           string
 }
 
-type ParseStateExplain struct {
-	ParseState
-	Query lyx.Node
-}
-
 // TODO : unit tests
 func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	qp.query = query
@@ -137,11 +132,6 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	qp.state = ParseStateQuery{}
 
 	switch q := routerStmts[0].(type) {
-	case *lyx.Explain:
-		varStmt := ParseStateExplain{}
-		/* TODO: get query here*/
-		// varStmt.Query = q.Stmt
-		return varStmt, comment, nil
 	case *lyx.Execute:
 		varStmt := ParseStateExecute{}
 		varStmt.Name = q.Id
