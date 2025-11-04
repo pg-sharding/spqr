@@ -3,6 +3,7 @@ package planner
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -11,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
@@ -428,6 +430,24 @@ func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataConte
 
 				ihc := rm.CSM.InstanceHealthChecks()
 				return plan.HostsVirtualPlan(shards, ihc), nil
+			case spqrparser.ReferenceRelationsStr:
+
+				rrs, err := rm.Mgr.ListReferenceRelations(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				slices.SortFunc(rrs, func(a *rrelation.ReferenceRelation, b *rrelation.ReferenceRelation) int {
+					if a.TableName == b.TableName {
+						return 0
+					}
+					if a.TableName < b.TableName {
+						return -1
+					}
+					return 1
+				})
+
+				return plan.ReferenceRelationVirtualPlan(rrs), nil
 			default:
 				return nil, rerrors.ErrComplexQuery
 			}
