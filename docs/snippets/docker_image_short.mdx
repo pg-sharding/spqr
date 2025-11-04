@@ -1,0 +1,13 @@
+```bash
+# Pull the latest stable SPQR router image
+docker pull pgsharding/spqr-router:latest
+
+# Run with your configuration
+docker run -d \
+  --name spqr-router \
+  -v /path/to/router.yaml:/etc/spqr/router.yaml:ro \
+  -p 6432:6432 \
+  -p 7432:7432 \
+  -p 7000:7000 \
+  pgsharding/spqr-router:latest
+```
