@@ -490,7 +490,10 @@ func (qr *ProxyQrouter) planQueryV1(
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
-					tmp, err := planner.PlanDistributedQuery(ctx, rm, stmt, true)
+
+					plnr := planner.PlannerV2{}
+
+					tmp, err := plnr.PlanDistributedQuery(ctx, rm, stmt, true)
 					if err != nil {
 						return nil, err
 					}
@@ -537,7 +540,9 @@ func (qr *ProxyQrouter) planQueryV1(
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
-					tmp, err := planner.PlanDistributedQuery(ctx, rm, stmt, true)
+					plnr := planner.PlannerV2{}
+
+					tmp, err := plnr.PlanDistributedQuery(ctx, rm, stmt, true)
 					if err != nil {
 						return nil, err
 					}
@@ -717,7 +722,10 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 				default:
 					/* XXX: very dirty hack */
 					/* Top level plan */
-					v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, rm.Stmt, true)
+
+					plnr := planner.PlannerV2{}
+
+					v.SubPlan, err = plnr.PlanDistributedQuery(ctx, rm, rm.Stmt, true)
 					if err != nil {
 						return nil, err
 					}
@@ -773,7 +781,10 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	}
 
 	if rm.SPH.PreferredEngine() == planner.EnhancedEngineVersion {
-		p, err = planner.PlanDistributedQuery(ctx, rm, rm.Stmt, true)
+
+		plnr := planner.PlannerV2{}
+
+		p, err = plnr.PlanDistributedQuery(ctx, rm, rm.Stmt, true)
 		if err != nil {
 			return nil, err
 		}
