@@ -506,7 +506,7 @@ func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataConte
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 }
 
-func (plnr *PlannerV2) PlanDistributedQuery(ctx context.Context,
+func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	stmt lyx.Node, allowRewrite bool) (plan.Plan, error) {
 
@@ -517,7 +517,7 @@ func (plnr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 			IsDDL: true,
 		}, nil
 	case *lyx.ExplainStmt:
-		return plnr.PlanDistributedQuery(ctx, rm, v.Query, allowRewrite)
+		return plr.PlanDistributedQuery(ctx, rm, v.Query, allowRewrite)
 	case *lyx.Select:
 		/* Should be single-relation scan or values. Join to be supported */
 		if len(v.FromClause) == 0 {
@@ -538,7 +538,7 @@ func (plnr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 			/* Should we try to recurse here? */
 			/* try to run planner on target list  */
 
-			p, err := PlanTargetList(ctx, rm, plnr, v)
+			p, err := PlanTargetList(ctx, rm, plr, v)
 			if err != nil {
 				return nil, err
 			}
@@ -583,7 +583,7 @@ func (plnr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 	case *lyx.Insert:
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return plnr.PlanReferenceRelationModifyWithSubquery(ctx, rm, q, v.SubSelect, false, allowRewrite)
+			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, q, v.SubSelect, false, allowRewrite)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -591,7 +591,7 @@ func (plnr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 	case *lyx.Update:
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return plnr.PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true, allowRewrite)
+			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true, allowRewrite)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -599,7 +599,7 @@ func (plnr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 	case *lyx.Delete:
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return plnr.PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true, allowRewrite)
+			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true, allowRewrite)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
