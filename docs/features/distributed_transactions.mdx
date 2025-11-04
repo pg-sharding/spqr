@@ -250,7 +250,9 @@ SELECT version()
 ### Example 3: DDL Command on All Shards
 
 ```sql
--- Create a table on all shards
+-- Create a replicated table on all shards
+-- Note: __spqr__auto_distribution automatically adds the table to SPQR metadata
+-- See Routing Hints documentation for more details
 CREATE TABLE audit_log (
     id SERIAL PRIMARY KEY,
     event_time TIMESTAMP DEFAULT NOW(),
