@@ -718,47 +718,8 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*topology.DataSha
 }
 
 func (pi *PSQLInteractor) Hosts(ctx context.Context, shards []*topology.DataShard, ihc map[string]tsa.CachedCheckResult) error {
-	if err := pi.WriteHeader("shard", "host", "alive", "rw", "time"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	spqrlog.Zero.Debug().Msg("listing hosts and statuses")
-
-	for _, shard := range shards {
-		for _, h := range shard.Cfg.Hosts() {
-			hc, ok := ihc[h]
-			if !ok {
-				if err := pi.cl.Send(&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte(shard.ID),
-						[]byte(h),
-						[]byte("unknown"),
-						[]byte("unknown"),
-						[]byte("unknown"),
-					},
-				}); err != nil {
-					spqrlog.Zero.Error().Err(err).Msg("")
-					return err
-				}
-			} else {
-				if err := pi.cl.Send(&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte(shard.ID),
-						[]byte(h),
-						fmt.Appendf(nil, "%v", hc.CR.Alive),
-						fmt.Appendf(nil, "%v", hc.CR.RW),
-						fmt.Appendf(nil, "%v", hc.LastCheckTime),
-					},
-				}); err != nil {
-					spqrlog.Zero.Error().Err(err).Msg("")
-					return err
-				}
-			}
-		}
-	}
-
-	return pi.CompleteMsg(0)
+	vp := plan.HostsVirtualPlan(shards, ihc)
+	return pi.replyVirtualPlan(vp)
 }
 
 type TableDesc interface {

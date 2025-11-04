@@ -399,12 +399,23 @@ func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataConte
 					return nil, err
 				}
 				return plan.KeyRangeVirtualPlan(ranges, locksKr), nil
+			case spqrparser.HostsStr:
+
+				shards, err := rm.Mgr.ListShards(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				ihc := rm.CSM.InstanceHealthChecks()
+				return plan.HostsVirtualPlan(shards, ihc), nil
 			default:
 				return nil, rerrors.ErrComplexQuery
 			}
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
+
+		/*  De-support? use __spqr__show(shards)*/
 	case virtual.VirtualShards:
 		p := &plan.VirtualPlan{
 			VirtualRowCols: []pgproto3.FieldDescription{
@@ -509,6 +520,9 @@ func PlanDistributedQuery(ctx context.Context,
 					}
 				}
 			}
+
+			/* Should we try to recurse here? */
+			// p, err := PlanTargetList(ctx, rm, )
 
 			return &plan.ScatterPlan{}, nil
 		}
