@@ -37,6 +37,13 @@ You can mix different column types:
 CREATE DISTRIBUTION ds2 COLUMN TYPES integer, varchar;
 ```
 
+For hash-based distributions, append `hash` after the column type that should be hashed:
+
+```sql
+-- Hash the second column (useful for low-cardinality first column + high-cardinality second column)
+CREATE DISTRIBUTION ds3 COLUMN TYPES integer, varchar hash;
+```
+
 Supported column types include: `INTEGER`, `INT`, `VARCHAR`, and `UUID`.
 
 ### Step 2: Create Key Ranges

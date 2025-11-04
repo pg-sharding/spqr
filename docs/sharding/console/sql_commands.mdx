@@ -7,14 +7,14 @@ description: 'Create distributions, key ranges and tables and see cluster info'
 
 This command is used to create a new distribution with the specified name. Optionally, you can specify the column types for the distribution using the COLUMN TYPES clause. Optionally, you can specify a default shard for distribution using the "DEFAULT SHARD" clause.
 
-For composite sharding keys (multiple columns), specify multiple types separated by commas.
+For composite sharding keys (multiple columns), specify multiple types separated by commas. You can append `hash` after a column type to apply hash-based distribution to that column.
 
 ```sql
 CREATE DISTRIBUTION <distributionID> COLUMN TYPES <types> DEFAULT SHARD <shardId>
 
 where types is a comma-separated list of column types (e.g., "integer, varchar" for composite keys)
 
-where type is one of: VARCHAR, INTEGER, INT, UUID
+where type is one of: VARCHAR, INTEGER, INT, UUID, optionally followed by "hash" keyword
 
 where <shardId> is a default shard identifier. The <shardId> must exist.
 ```
@@ -25,11 +25,17 @@ where <shardId> is a default shard identifier. The <shardId> must exist.
 -- Single column distribution
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 
+-- Single column with hash
+CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;
+
 -- Composite key distribution with two columns
-CREATE DISTRIBUTION ds2 COLUMN TYPES integer, integer;
+CREATE DISTRIBUTION ds3 COLUMN TYPES integer, integer;
 
 -- Composite key with mixed types
-CREATE DISTRIBUTION ds3 COLUMN TYPES integer, varchar;
+CREATE DISTRIBUTION ds4 COLUMN TYPES integer, varchar;
+
+-- Composite key with hash on second column
+CREATE DISTRIBUTION ds5 COLUMN TYPES integer, varchar hash;
 ```
 
 ### DROP DISTRIBUTION
