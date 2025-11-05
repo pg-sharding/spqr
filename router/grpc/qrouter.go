@@ -541,9 +541,33 @@ func (l *LocalQrouterServer) GetCoordinator(ctx context.Context, _ *emptypb.Empt
 	return reply, err
 }
 
+func (l *LocalQrouterServer) ListMoveTasks(ctx context.Context, _ *emptypb.Empty) (*protos.MoveTasksReply, error) {
+	taskList, err := l.mgr.ListMoveTasks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tasksProto := make([]*protos.MoveTask, 0, len(taskList))
+	for _, taskProto := range taskList {
+		tasksProto = append(tasksProto, tasks.MoveTaskToProto(taskProto))
+	}
+	return &protos.MoveTasksReply{Tasks: tasksProto}, nil
+}
+
+func (l *LocalQrouterServer) ListMoveTaskGroups(ctx context.Context, _ *emptypb.Empty) (*protos.ListMoveTaskGroupsReply, error) {
+	groups, err := l.mgr.ListMoveTaskGroups(ctx)
+	if err != nil {
+		return nil, err
+	}
+	taskGroupsProto := make([]*protos.MoveTaskGroup, 0, len(groups))
+	for _, groupProto := range groups {
+		taskGroupsProto = append(taskGroupsProto, tasks.TaskGroupToProto(groupProto))
+	}
+	return &protos.ListMoveTaskGroupsReply{TaskGroups: taskGroupsProto}, nil
+}
+
 // TODO: unit tests
-func (l *LocalQrouterServer) GetMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*protos.GetMoveTaskGroupReply, error) {
-	group, err := l.mgr.GetMoveTaskGroup(ctx)
+func (l *LocalQrouterServer) GetMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.GetMoveTaskGroupReply, error) {
+	group, err := l.mgr.GetMoveTaskGroup(ctx, req.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -558,18 +582,18 @@ func (l *LocalQrouterServer) WriteMoveTaskGroup(ctx context.Context, request *pr
 }
 
 // TODO: unit tests
-func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, l.mgr.RemoveMoveTaskGroup(ctx)
+func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
+	return nil, l.mgr.RemoveMoveTaskGroup(ctx, req.ID)
 }
 
 // TODO: unit tests
-func (l *LocalQrouterServer) RetryMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, l.mgr.RetryMoveTaskGroup(ctx)
+func (l *LocalQrouterServer) RetryMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
+	return nil, l.mgr.RetryMoveTaskGroup(ctx, req.ID)
 }
 
 // TODO: unit tests
-func (l *LocalQrouterServer) StopMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, l.mgr.StopMoveTaskGroup(ctx)
+func (l *LocalQrouterServer) StopMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
+	return nil, l.mgr.StopMoveTaskGroup(ctx, req.ID)
 }
 
 // TODO: unit tests

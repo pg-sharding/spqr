@@ -8,10 +8,11 @@ import (
 )
 
 type MoveTask struct {
-	ID       string    `json:"id"`
-	Bound    [][]byte  `json:"bound"`
-	KrIdTemp string    `json:"kr_id_temp"`
-	State    TaskState `json:"state"`
+	ID          string    `json:"id"`
+	Bound       [][]byte  `json:"bound"`
+	KrIdTemp    string    `json:"kr_id_temp"`
+	State       TaskState `json:"state"`
+	TaskGroupID string    `json:"task_group_id"`
 }
 
 type TaskState int
@@ -38,6 +39,7 @@ const (
 )
 
 type MoveTaskGroup struct {
+	ID          string    `json:"id"`
 	ShardToId   string    `json:"shard_to_id"`
 	KrIdFrom    string    `json:"kr_id_from"`
 	KrIdTo      string    `json:"kr_id_to"`
@@ -78,7 +80,8 @@ func TaskGroupToProto(group *MoveTaskGroup) *protos.MoveTaskGroup {
 		return nil
 	}
 	return &protos.MoveTaskGroup{
-		CurrentTask:    TaskToProto(group.CurrentTask),
+		ID:             group.ID,
+		CurrentTask:    MoveTaskToProto(group.CurrentTask),
 		Type:           SplitTypeToProto(group.Type),
 		ShardIdTo:      group.ShardToId,
 		KeyRangeIdFrom: group.KrIdFrom,
@@ -91,7 +94,7 @@ func TaskGroupToProto(group *MoveTaskGroup) *protos.MoveTaskGroup {
 	}
 }
 
-// TaskToProto converts a MoveTask struct to a protos.MoveTask struct.
+// MoveTaskToProto converts a MoveTask struct to a protos.MoveTask struct.
 // It creates a new protos.MoveTask object and copies the values from the input object to the output object.
 //
 // Parameters:
@@ -99,7 +102,7 @@ func TaskGroupToProto(group *MoveTaskGroup) *protos.MoveTaskGroup {
 //
 // Returns:
 //   - *protos.MoveTask: The converted protos.MoveTask object.
-func TaskToProto(task *MoveTask) *protos.MoveTask {
+func MoveTaskToProto(task *MoveTask) *protos.MoveTask {
 	if task == nil {
 		return nil
 	}
@@ -108,6 +111,7 @@ func TaskToProto(task *MoveTask) *protos.MoveTask {
 		KeyRangeIdTemp: task.KrIdTemp,
 		Bound:          task.Bound,
 		Status:         TaskStateToProto(task.State),
+		TaskGroupID:    task.TaskGroupID,
 	}
 }
 
@@ -210,7 +214,8 @@ func TaskGroupFromProto(group *protos.MoveTaskGroup) *MoveTaskGroup {
 		return nil
 	}
 	return &MoveTaskGroup{
-		CurrentTask: TaskFromProto(group.CurrentTask),
+		ID:          group.ID,
+		CurrentTask: MoveTaskFromProto(group.CurrentTask),
 		Type:        SplitTypeFromProto(group.Type),
 		ShardToId:   group.ShardIdTo,
 		KrIdFrom:    group.KeyRangeIdFrom,
@@ -223,7 +228,7 @@ func TaskGroupFromProto(group *protos.MoveTaskGroup) *MoveTaskGroup {
 	}
 }
 
-// TaskFromProto converts a protos.MoveTask object to a MoveTask object.
+// MoveTaskFromProto converts a protos.MoveTask object to a MoveTask object.
 // It creates a new MoveTask object and copies the values from the input object to the output object.
 //
 // Parameters:
@@ -231,15 +236,16 @@ func TaskGroupFromProto(group *protos.MoveTaskGroup) *MoveTaskGroup {
 //
 // Returns:
 //   - *MoveTask: The converted MoveTask object.
-func TaskFromProto(task *protos.MoveTask) *MoveTask {
+func MoveTaskFromProto(task *protos.MoveTask) *MoveTask {
 	if task == nil {
 		return nil
 	}
 	return &MoveTask{
-		ID:       task.ID,
-		KrIdTemp: task.KeyRangeIdTemp,
-		Bound:    task.Bound,
-		State:    TaskStateFromProto(task.Status),
+		ID:          task.ID,
+		KrIdTemp:    task.KeyRangeIdTemp,
+		Bound:       task.Bound,
+		State:       TaskStateFromProto(task.Status),
+		TaskGroupID: task.TaskGroupID,
 	}
 }
 
@@ -348,10 +354,11 @@ func MoveTaskToDb(task *MoveTask) *qdb.MoveTask {
 		return nil
 	}
 	return &qdb.MoveTask{
-		ID:       task.ID,
-		KrIdTemp: task.KrIdTemp,
-		Bound:    task.Bound,
-		State:    int(task.State),
+		ID:          task.ID,
+		KrIdTemp:    task.KrIdTemp,
+		Bound:       task.Bound,
+		State:       int(task.State),
+		TaskGroupID: task.TaskGroupID,
 	}
 }
 
@@ -366,11 +373,12 @@ func MoveTaskToDb(task *MoveTask) *qdb.MoveTask {
 //
 // Returns:
 //   - *MoveTaskGroup: The converted MoveTaskGroup object.
-func TaskGroupFromDb(group *qdb.MoveTaskGroup, moveTask *qdb.MoveTask, totalKeys int64) *MoveTaskGroup {
+func TaskGroupFromDb(id string, group *qdb.MoveTaskGroup, moveTask *qdb.MoveTask, totalKeys int64) *MoveTaskGroup {
 	if group == nil {
 		return nil
 	}
 	return &MoveTaskGroup{
+		ID:          id,
 		Type:        SplitType(group.Type),
 		ShardToId:   group.ShardToId,
 		KrIdFrom:    group.KrIdFrom,
@@ -398,10 +406,11 @@ func TaskFromDb(task *qdb.MoveTask) *MoveTask {
 		return nil
 	}
 	return &MoveTask{
-		ID:       task.ID,
-		KrIdTemp: task.KrIdTemp,
-		Bound:    task.Bound,
-		State:    TaskState(task.State),
+		ID:          task.ID,
+		KrIdTemp:    task.KrIdTemp,
+		Bound:       task.Bound,
+		State:       TaskState(task.State),
+		TaskGroupID: task.TaskGroupID,
 	}
 }
 

@@ -256,6 +256,7 @@ Feature: Proxy console
         When I record in qdb move task group
         """
         {
+            "id":            "tgid1",
             "shard_to_id":   "sh_to",
             "kr_id_from":    "kr_from",
             "kr_id_to":      "kr_to",
@@ -282,6 +283,7 @@ Feature: Proxy console
         And SQL result should match json_exactly
         """
         [{
+            "Task group ID":            "tgid1",
             "Destination shard ID":     "sh_to",
             "Source key range ID":      "kr_from",
             "Destination key range ID": "kr_to"

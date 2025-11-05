@@ -25,8 +25,32 @@ func NewTasksServer(impl coordinator.Coordinator) *TasksServer {
 var _ protos.MoveTasksServiceServer = &TasksServer{}
 var _ protos.BalancerTaskServiceServer = &TasksServer{}
 
-func (t TasksServer) GetMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*protos.GetMoveTaskGroupReply, error) {
-	group, err := t.impl.GetMoveTaskGroup(ctx)
+func (t *TasksServer) ListMoveTasks(ctx context.Context, _ *emptypb.Empty) (*protos.MoveTasksReply, error) {
+	taskList, err := t.impl.ListMoveTasks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tasksProto := make([]*protos.MoveTask, 0, len(taskList))
+	for _, taskProto := range taskList {
+		tasksProto = append(tasksProto, tasks.MoveTaskToProto(taskProto))
+	}
+	return &protos.MoveTasksReply{Tasks: tasksProto}, nil
+}
+
+func (t *TasksServer) ListMoveTaskGroups(ctx context.Context, _ *emptypb.Empty) (*protos.ListMoveTaskGroupsReply, error) {
+	groups, err := t.impl.ListMoveTaskGroups(ctx)
+	if err != nil {
+		return nil, err
+	}
+	taskGroupsProto := make([]*protos.MoveTaskGroup, 0, len(groups))
+	for _, groupProto := range groups {
+		taskGroupsProto = append(taskGroupsProto, tasks.TaskGroupToProto(groupProto))
+	}
+	return &protos.ListMoveTaskGroupsReply{TaskGroups: taskGroupsProto}, nil
+}
+
+func (t TasksServer) GetMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.GetMoveTaskGroupReply, error) {
+	group, err := t.impl.GetMoveTaskGroup(ctx, req.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -38,16 +62,16 @@ func (t TasksServer) WriteMoveTaskGroup(ctx context.Context, request *protos.Wri
 	return nil, err
 }
 
-func (t TasksServer) RemoveMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, t.impl.RemoveMoveTaskGroup(ctx)
+func (t TasksServer) RemoveMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
+	return nil, t.impl.RemoveMoveTaskGroup(ctx, req.ID)
 }
 
-func (t TasksServer) RetryMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, t.impl.RetryMoveTaskGroup(ctx)
+func (t TasksServer) RetryMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
+	return nil, t.impl.RetryMoveTaskGroup(ctx, req.ID)
 }
 
-func (t TasksServer) StopMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, t.impl.StopMoveTaskGroup(ctx)
+func (t TasksServer) StopMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
+	return nil, t.impl.StopMoveTaskGroup(ctx, req.ID)
 }
 
 func (t TasksServer) GetBalancerTask(ctx context.Context, _ *emptypb.Empty) (*protos.GetBalancerTaskReply, error) {

@@ -978,17 +978,62 @@ func (a *Adapter) GetRelationDistribution(ctx context.Context, relationName *rfq
 	return distributions.DistributionFromProto(resp.Distribution)
 }
 
-// GetMoveTaskGroup retrieves the task group from the system.
+// ListMoveTasks retrieves all move tasks from the system.
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
 //
 // Returns:
+// - map[string]*tasks.MoveTask: Map of move task IDs to tasks themselves.
+// - error: An error if the retrieval of tasks fails, otherwise nil.
+func (a *Adapter) ListMoveTasks(ctx context.Context) (map[string]*tasks.MoveTask, error) {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	reply, err := tasksService.ListMoveTasks(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*tasks.MoveTask)
+	for _, taskProto := range reply.Tasks {
+		taskGroup := tasks.MoveTaskFromProto(taskProto)
+		res[taskGroup.ID] = taskGroup
+	}
+	return res, nil
+}
+
+// ListMoveTaskGroups retrieves all task groups from the system.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+//
+// Returns:
+// - map[string]*tasks.MoveTaskGroup: Map of task group IDs to task groups themselves.
+// - error: An error if the retrieval of task groups fails, otherwise nil.
+func (a *Adapter) ListMoveTaskGroups(ctx context.Context) (map[string]*tasks.MoveTaskGroup, error) {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	reply, err := tasksService.ListMoveTaskGroups(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*tasks.MoveTaskGroup)
+	for _, taskGroupProto := range reply.TaskGroups {
+		taskGroup := tasks.TaskGroupFromProto(taskGroupProto)
+		res[taskGroup.ID] = taskGroup
+	}
+	return res, nil
+}
+
+// GetMoveTaskGroup retrieves the task group from the system.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+// - id  (string): The ID of the task group to retrieve
+//
+// Returns:
 // - *tasks.MoveTaskGroup: The retrieved task group.
 // - error: An error if the retrieval of the task group fails, otherwise nil.
-func (a *Adapter) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
+func (a *Adapter) GetMoveTaskGroup(ctx context.Context, id string) (*tasks.MoveTaskGroup, error) {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
-	res, err := tasksService.GetMoveTaskGroup(ctx, nil)
+	res, err := tasksService.GetMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
 	if err != nil {
 		return nil, err
 	}
@@ -1015,12 +1060,13 @@ func (a *Adapter) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveT
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
+// - id  (string): The ID of the task group to remove.
 //
 // Returns:
 // - error: An error if the removal of the task group fails, otherwise nil.
-func (a *Adapter) RemoveMoveTaskGroup(ctx context.Context) error {
+func (a *Adapter) RemoveMoveTaskGroup(ctx context.Context, id string) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
-	_, err := tasksService.RemoveMoveTaskGroup(ctx, nil)
+	_, err := tasksService.RemoveMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
 	return err
 }
 
@@ -1029,12 +1075,13 @@ func (a *Adapter) RemoveMoveTaskGroup(ctx context.Context) error {
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
+// - id  (string): The ID of the task group to retry.
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (a *Adapter) RetryMoveTaskGroup(ctx context.Context) error {
+func (a *Adapter) RetryMoveTaskGroup(ctx context.Context, id string) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
-	_, err := tasksService.RetryMoveTaskGroup(ctx, nil)
+	_, err := tasksService.RetryMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
 	return err
 }
 
@@ -1043,12 +1090,13 @@ func (a *Adapter) RetryMoveTaskGroup(ctx context.Context) error {
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
+// - id  (string): The ID of the task group to stop.
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (a *Adapter) StopMoveTaskGroup(ctx context.Context) error {
+func (a *Adapter) StopMoveTaskGroup(ctx context.Context, id string) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
-	_, err := tasksService.StopMoveTaskGroup(ctx, nil)
+	_, err := tasksService.StopMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
 	return err
 }
 

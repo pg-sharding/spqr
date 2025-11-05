@@ -200,7 +200,9 @@ type ShardSelector struct {
 	ID string
 }
 
-type TaskGroupSelector struct{}
+type TaskGroupSelector struct {
+	ID string
+}
 
 func (*KeyRangeSelector) iDrop()          {}
 func (*ShardingRuleSelector) iDrop()      {}
@@ -370,11 +372,15 @@ type SequenceSelector struct {
 
 func (*SequenceSelector) iDrop() {}
 
-type RetryMoveTaskGroup struct{}
+type RetryMoveTaskGroup struct {
+	ID string
+}
 
 func (*RetryMoveTaskGroup) iStatement() {}
 
-type StopMoveTaskGroup struct{}
+type StopMoveTaskGroup struct {
+	ID string
+}
 
 func (*StopMoveTaskGroup) iStatement() {}
 
