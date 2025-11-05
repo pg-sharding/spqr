@@ -764,6 +764,7 @@ Feature: Coordinator test
     When I record in qdb move task group
     """
     {
+            "id":            "tgid1",
             "shard_to_id":   "sh_to",
             "kr_id_from":    "krid1",
             "kr_id_to":      "krid2",
@@ -777,7 +778,8 @@ Feature: Coordinator test
                 "id":            "2",
                 "kr_id_temp":    "temp_id",
                 "bound":         ["FAAAAAAAAAA="],
-                "state":         0
+                "state":         0,
+                "task_group_id": "tgid1"
             }
         }
     """
@@ -790,6 +792,7 @@ Feature: Coordinator test
     And SQL result should match json_exactly
     """
     [{
+        "Task group ID":            "tgid1",
         "Destination shard ID":     "sh_to",
         "Source key range ID":      "krid1",
         "Destination key range ID": "krid2"
@@ -811,7 +814,7 @@ Feature: Coordinator test
     """
     When I run SQL on host "coordinator"
     """
-    DROP TASK GROUP
+    DROP TASK GROUP tgid1;
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator"

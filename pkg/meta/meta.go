@@ -198,7 +198,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 		return cli.DropShard(stmt.ID)
 	case *spqrparser.TaskGroupSelector:
-		if err := mngr.RemoveMoveTaskGroup(ctx); err != nil {
+		if err := mngr.RemoveMoveTaskGroup(ctx, stmt.ID); err != nil {
 			return err
 		}
 		return cli.DropTaskGroup(ctx)
@@ -656,7 +656,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}
 		return cli.CompleteMsg(0)
 	case *spqrparser.StopMoveTaskGroup:
-		tg, err := mgr.GetMoveTaskGroup(ctx)
+		tg, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
 		if err != nil {
 			return err
 		}
@@ -664,17 +664,17 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			_ = cli.ReplyNotice(ctx, "No move task group found to stop")
 			return cli.CompleteMsg(0)
 		}
-		if err := mgr.StopMoveTaskGroup(ctx); err != nil {
+		if err := mgr.StopMoveTaskGroup(ctx, stmt.ID); err != nil {
 			return err
 		}
 		_ = cli.ReplyNotice(ctx, "Gracefully stopping task group")
 		return cli.CompleteMsg(0)
 	case *spqrparser.RetryMoveTaskGroup:
-		taskGroup, err := mgr.GetMoveTaskGroup(ctx)
+		taskGroup, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
 		if err != nil {
 			return err
 		}
-		if err := mgr.RetryMoveTaskGroup(ctx); err != nil {
+		if err := mgr.RetryMoveTaskGroup(ctx, stmt.ID); err != nil {
 			return err
 		}
 		return cli.MoveTaskGroup(ctx, taskGroup)
@@ -895,32 +895,53 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		return cli.ReferenceRelations(rrs)
 	case spqrparser.TaskGroupStr:
-		group, err := mngr.GetMoveTaskGroup(ctx)
+		group, err := mngr.ListMoveTaskGroups(ctx)
 		if err != nil {
 			return err
 		}
-		return cli.MoveTaskGroup(ctx, group)
+		return cli.MoveTaskGroups(ctx, group)
 	case spqrparser.MoveTaskStr:
-		group, err := mngr.GetMoveTaskGroup(ctx)
+		taskList, err := mngr.ListMoveTasks(ctx)
 		if err != nil {
 			return err
 		}
-		if group == nil || group.CurrentTask == nil {
+		if taskList == nil {
 			return cli.CompleteMsg(0)
 		}
-		task := group.CurrentTask
-		// Try to get either source or destination key range, as both may not exist in various stages of task group execution
-		keyRange, err := mngr.GetKeyRange(ctx, group.KrIdFrom)
-		if err != nil {
-			if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
-				var err2 error
-				keyRange, err2 = mngr.GetKeyRange(ctx, group.KrIdTo)
-				if err2 != nil {
-					return fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", group.KrIdFrom, err, group.KrIdTo, err2)
+
+		taskGroups := make(map[string]*tasks.MoveTaskGroup)
+		for _, task := range taskList {
+			group, err := mngr.GetMoveTaskGroup(ctx, task.TaskGroupID)
+			if err != nil {
+				return err
+			}
+			if group == nil {
+				return fmt.Errorf("task group for task \"%s\" not found", task.ID)
+			}
+			taskGroups[group.ID] = group
+		}
+
+		moveTasksDsID := make(map[string]string)
+		colTypes := make(map[string][]string)
+		for _, task := range taskList {
+			taskGroup, ok := taskGroups[task.TaskGroupID]
+			if !ok {
+				return fmt.Errorf("task group \"%s\" not found", task.TaskGroupID)
+			}
+			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+			if err != nil {
+				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
+					var err2 error
+					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
+					if err2 != nil {
+						return fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
+					}
 				}
 			}
+			moveTasksDsID[task.ID] = keyRange.Distribution
+			colTypes[keyRange.Distribution] = keyRange.ColumnTypes
 		}
-		return cli.MoveTask(ctx, task, keyRange.ColumnTypes)
+		return cli.MoveTasks(ctx, taskList, colTypes, moveTasksDsID)
 	case spqrparser.PreparedStatementsStr:
 
 		var resp []shard.PreparedStatementsMgrDescriptor

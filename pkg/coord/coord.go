@@ -374,12 +374,12 @@ func (lc *Coordinator) RenameKeyRange(ctx context.Context, krId string, krIdNew 
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.
-func (lc *Coordinator) RetryMoveTaskGroup(ctx context.Context) error {
+func (lc *Coordinator) RetryMoveTaskGroup(ctx context.Context, id string) error {
 	panic("unimplemented")
 }
 
 // StopMoveTaskGroup implements meta.EntityMgr
-func (lc *Coordinator) StopMoveTaskGroup(ctx context.Context) error {
+func (lc *Coordinator) StopMoveTaskGroup(ctx context.Context, id string) error {
 	panic("unimplemented")
 }
 
@@ -422,21 +422,50 @@ func (lc *Coordinator) WriteBalancerTask(ctx context.Context, task *tasks.Balanc
 // Returns:
 // - *tasks.MoveTaskGroup: the retrieved task group, or nil if an error occurred.
 // - error: an error if the retrieval process fails.
-func (lc *Coordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
-	group, err := lc.qdb.GetMoveTaskGroup(ctx)
+func (lc *Coordinator) ListMoveTaskGroups(ctx context.Context) (map[string]*tasks.MoveTaskGroup, error) {
+	taskGroupsDb, err := lc.qdb.ListTaskGroups(ctx)
 	if err != nil {
 		return nil, err
 	}
-	task, err := lc.qdb.GetMoveTask(ctx)
+	res := map[string]*tasks.MoveTaskGroup{}
+	for id, tgDb := range taskGroupsDb {
+		task, err := lc.qdb.GetMoveTaskByGroup(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		totalKeys, err := lc.qdb.GetMoveTaskGroupTotalKeys(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+
+		res[id] = tasks.TaskGroupFromDb(id, tgDb, task, totalKeys)
+	}
+	return res, nil
+}
+
+// GetMoveTaskGroup retrieves the MoveTask group from the local coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+//
+// Returns:
+// - *tasks.MoveTaskGroup: the retrieved task group, or nil if an error occurred.
+// - error: an error if the retrieval process fails.
+func (lc *Coordinator) GetMoveTaskGroup(ctx context.Context, id string) (*tasks.MoveTaskGroup, error) {
+	group, err := lc.qdb.GetMoveTaskGroup(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	totalKeys, err := lc.qdb.GetMoveTaskGroupTotalKeys(ctx)
+	task, err := lc.qdb.GetMoveTaskByGroup(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	totalKeys, err := lc.qdb.GetMoveTaskGroupTotalKeys(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return tasks.TaskGroupFromDb(group, task, totalKeys), nil
+	return tasks.TaskGroupFromDb(id, group, task, totalKeys), nil
 }
 
 // GetMoveTask retrieves the MoveTask from the coordinator's QDB.
@@ -448,12 +477,24 @@ func (lc *Coordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGro
 // Returns:
 // - *tasks.MoveTask: the retrieved move task, or nil if an error occurred.
 // - error: an error if the retrieval process fails.
-func (qc *Coordinator) GetMoveTask(ctx context.Context) (*tasks.MoveTask, error) {
-	task, err := qc.qdb.GetMoveTask(ctx)
+func (qc *Coordinator) GetMoveTask(ctx context.Context, id string) (*tasks.MoveTask, error) {
+	task, err := qc.qdb.GetMoveTask(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	return tasks.TaskFromDb(task), err
+}
+
+func (qc *Coordinator) ListMoveTasks(ctx context.Context) (map[string]*tasks.MoveTask, error) {
+	tasksDB, err := qc.qdb.ListMoveTasks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*tasks.MoveTask)
+	for id, taskDB := range tasksDB {
+		res[id] = tasks.TaskFromDb(taskDB)
+	}
+	return res, nil
 }
 
 // GetDistribution retrieves info about distribution from QDB
@@ -594,7 +635,8 @@ func (qc *Coordinator) ListKeyRanges(ctx context.Context, distribution string) (
 // Returns:
 // - error: an error if the write operation fails.
 func (qc *Coordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
-	if err := qc.qdb.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup), taskGroup.TotalKeys, tasks.MoveTaskToDb(taskGroup.CurrentTask)); err != nil {
+
+	if err := qc.qdb.WriteMoveTaskGroup(ctx, taskGroup.ID, tasks.TaskGroupToDb(taskGroup), taskGroup.TotalKeys, tasks.MoveTaskToDb(taskGroup.CurrentTask)); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to write move task group")
 		return err
 	}
@@ -620,8 +662,17 @@ func (qc *Coordinator) UpdateMoveTask(ctx context.Context, task *tasks.MoveTask)
 //
 // Returns:
 // - error: an error if the removal operation fails.
-func (qc *Coordinator) RemoveMoveTaskGroup(ctx context.Context) error {
-	return qc.qdb.RemoveMoveTaskGroup(ctx)
+func (qc *Coordinator) RemoveMoveTaskGroup(ctx context.Context, id string) error {
+	task, err := qc.qdb.GetMoveTaskByGroup(ctx, id)
+	if err != nil {
+		return err
+	}
+	if task != nil {
+		if err := qc.qdb.RemoveMoveTask(ctx, task.ID); err != nil {
+			return err
+		}
+	}
+	return qc.qdb.RemoveMoveTaskGroup(ctx, id)
 }
 
 // TODO : unit tests

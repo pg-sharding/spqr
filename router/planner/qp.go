@@ -14,3 +14,11 @@ type QueryPlanner interface {
 	// XXX: find a better place
 	Ready() bool
 }
+
+type DistributedPlanner interface {
+	QueryPlanner
+
+	PlanDistributedQuery(ctx context.Context,
+		rm *rmeta.RoutingMetadataContext,
+		stmt lyx.Node, allowRewrite bool) (plan.Plan, error)
+}

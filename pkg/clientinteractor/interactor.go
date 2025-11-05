@@ -613,51 +613,79 @@ func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string) error
 //
 // Returns:
 // - error: An error if sending the tasks fails, otherwise nil.
+func (pi *PSQLInteractor) MoveTaskGroups(_ context.Context, groups map[string]*tasks.MoveTaskGroup) error {
+	spqrlog.Zero.Debug().Msg("show move task group")
+
+	if err := pi.WriteHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID"); err != nil {
+		return err
+	}
+	if groups == nil {
+		return pi.CompleteMsg(0)
+	}
+	for _, ts := range groups {
+		if err := pi.WriteDataRow(ts.ID, ts.ShardToId, ts.KrIdFrom, ts.KrIdTo); err != nil {
+			return err
+		}
+	}
+	return pi.CompleteMsg(len(groups))
+}
+
 func (pi *PSQLInteractor) MoveTaskGroup(_ context.Context, ts *tasks.MoveTaskGroup) error {
 	spqrlog.Zero.Debug().Msg("show move task group")
 
-	if err := pi.WriteHeader("Destination shard ID", "Source key range ID", "Destination key range ID"); err != nil {
+	if err := pi.WriteHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID"); err != nil {
 		return err
 	}
 	if ts == nil {
 		return pi.CompleteMsg(0)
 	}
-	if err := pi.WriteDataRow(ts.ShardToId, ts.KrIdFrom, ts.KrIdTo); err != nil {
+	if err := pi.WriteDataRow(ts.ID, ts.ShardToId, ts.KrIdFrom, ts.KrIdTo); err != nil {
 		return err
 	}
 	return pi.CompleteMsg(1)
 }
 
-func (pi *PSQLInteractor) MoveTask(_ context.Context, t *tasks.MoveTask, colTypes []string) error {
+func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.MoveTask, dsIDColTypes map[string][]string, moveTaskDsID map[string]string) error {
 	if err := pi.WriteHeader("Move task ID", "Temporary key range ID", "Bound", "State"); err != nil {
 		return err
 	}
 
-	if t == nil {
+	if ts == nil {
 		return pi.CompleteMsg(0)
 	}
-	krData := []string{""}
-	if t.Bound != nil {
-		if len(t.Bound) != len(colTypes) {
-			err := fmt.Errorf("something wrong in task: %#v, columns: %#v", t, colTypes)
+	for _, task := range ts {
+		krData := []string{""}
+		if task.Bound != nil {
+			dsID, ok := moveTaskDsID[task.ID]
+			if !ok {
+				return fmt.Errorf("failed to reply move task data: distribution for task \"%s\" not found", task.ID)
+			}
+			moveTaskColTypes, ok := dsIDColTypes[dsID]
+			if !ok {
+				return fmt.Errorf("failed to reply move task data: column types for distribution \"%s\" not found", dsID)
+			}
+			if len(task.Bound) != len(moveTaskColTypes) {
+				err := fmt.Errorf("something wrong in task: %s, columns: %#v", task.ID, moveTaskColTypes)
+				return err
+			}
+			kRange, err := kr.KeyRangeFromBytes(task.Bound, moveTaskColTypes)
+			if err != nil {
+				return err
+			}
+			krData = kRange.SendRaw()
+		}
+		if err := pi.WriteDataRow(
+			task.ID,
+			task.KrIdTemp,
+			strings.Join(krData, ";"),
+			tasks.TaskStateToStr(task.State),
+		); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("Failed to send move task data")
 			return err
 		}
-		kRange, err := kr.KeyRangeFromBytes(t.Bound, colTypes)
-		if err != nil {
-			return err
-		}
-		krData = kRange.SendRaw()
+
 	}
-	if err := pi.WriteDataRow(
-		t.ID,
-		t.KrIdTemp,
-		strings.Join(krData, ";"),
-		tasks.TaskStateToStr(t.State),
-	); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to send move task data")
-		return err
-	}
-	return pi.CompleteMsg(1)
+	return pi.CompleteMsg(len(ts))
 }
 
 // DropTaskGroup drops all tasks in the task group.
@@ -919,15 +947,15 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 
 		switch ord.OptAscDesc.(type) {
 		case spqrparser.SortByAsc:
-			asc_desc = ASC
+			asc_desc = engine.ASC
 		case spqrparser.SortByDesc:
-			asc_desc = DESC
+			asc_desc = engine.DESC
 		case spqrparser.SortByDefault:
-			asc_desc = ASC
+			asc_desc = engine.ASC
 		default:
 			return fmt.Errorf("wrong sorting option (asc/desc)")
 		}
-		sortable := SortableWithContext{data, rowDesc[ord.Col.ColName], asc_desc}
+		sortable := engine.SortableWithContext{Data: data, Col_index: rowDesc[ord.Col.ColName], Order: asc_desc}
 		sort.Sort(sortable)
 	}
 	for i := range len(data) {
@@ -937,27 +965,6 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 		}
 	}
 	return pi.CompleteMsg(len(clients))
-}
-
-const (
-	ASC = iota
-	DESC
-)
-
-type SortableWithContext struct {
-	Data      [][]string
-	Col_index int
-	Order     int
-}
-
-func (a SortableWithContext) Len() int      { return len(a.Data) }
-func (a SortableWithContext) Swap(i, j int) { a.Data[i], a.Data[j] = a.Data[j], a.Data[i] }
-func (a SortableWithContext) Less(i, j int) bool {
-	if a.Order == ASC {
-		return a.Data[i][a.Col_index] < a.Data[j][a.Col_index]
-	} else {
-		return a.Data[i][a.Col_index] > a.Data[j][a.Col_index]
-	}
 }
 
 // TODO : unit tests
@@ -1051,7 +1058,7 @@ func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRa
 			},
 		},
 		},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("merge key ranges %v and %v", unite.BaseKeyRangeId, unite.AppendageKeyRangeId))}},
+		&pgproto3.DataRow{Values: [][]byte{fmt.Appendf(nil, "merge key ranges %v and %v", unite.BaseKeyRangeId, unite.AppendageKeyRangeId)}},
 		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
@@ -1629,21 +1636,8 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 }
 
 func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation) error {
-	if err := pi.WriteHeader("table name", "schema version", "shards", "column sequence mapping"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	for _, r := range rrs {
-		if err := pi.WriteDataRow(
-			r.TableName,
-			fmt.Sprintf("%d", r.SchemaVersion),
-			fmt.Sprintf("%+v", r.ShardIds),
-			fmt.Sprintf("%+v", r.ColumnSequenceMapping)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-	return pi.CompleteMsg(len(rrs))
+	vp := plan.ReferenceRelationVirtualPlan(rrs)
+	return pi.replyVirtualPlan(vp)
 }
 
 func (pi *PSQLInteractor) PreparedStatements(ctx context.Context, shs []shard.PreparedStatementsMgrDescriptor) error {

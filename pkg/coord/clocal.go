@@ -380,12 +380,12 @@ func (lc *LocalInstanceMetadataMgr) CurrVal(ctx context.Context, seqName string)
 }
 
 // RetryMoveTaskGroup implements meta.EntityMgr.
-func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context) error {
+func (lc *LocalInstanceMetadataMgr) RetryMoveTaskGroup(_ context.Context, _ string) error {
 	return ErrNotCoordinator
 }
 
 // StopMoveTaskGroup implements meta.EntityMgr.
-func (lc *LocalInstanceMetadataMgr) StopMoveTaskGroup(_ context.Context) error {
+func (lc *LocalInstanceMetadataMgr) StopMoveTaskGroup(_ context.Context, _ string) error {
 	return ErrNotCoordinator
 }
 

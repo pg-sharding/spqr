@@ -231,32 +231,6 @@ func (qr *ProxyQrouter) planFromClauseList(
 	return p, nil
 }
 
-func (qr *ProxyQrouter) planWithClauseV1(ctx context.Context, rm *rmeta.RoutingMetadataContext, WithClause []*lyx.CommonTableExpr) (plan.Plan, error) {
-	var p plan.Plan
-	for _, cte := range WithClause {
-		switch qq := cte.SubQuery.(type) {
-		case *lyx.ValueClause:
-			/* special case */
-			for _, vv := range qq.Values {
-				for i, name := range cte.NameList {
-					if i < len(cte.NameList) && i < len(vv) {
-						/* XXX: currently only one-tuple aux values supported */
-						rm.RecordAuxExpr(cte.Name, name, vv[i])
-					}
-				}
-			}
-		default:
-			if tmp, err := qr.planQueryV1(ctx, rm, cte.SubQuery); err != nil {
-				return nil, err
-			} else {
-				p = plan.Combine(p, tmp)
-			}
-		}
-	}
-
-	return p, nil
-}
-
 // TODO : unit tests
 // May return nil routing state here - thats ok
 func (qr *ProxyQrouter) planQueryV1(
@@ -274,7 +248,7 @@ func (qr *ProxyQrouter) planQueryV1(
 		var p plan.Plan
 
 		/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
-		if len(stmt.FromClause) == 0 && (stmt.LArg == nil || stmt.RArg == nil) {
+		if len(stmt.FromClause) == 0 && (stmt.LArg == nil || stmt.RArg == nil) && stmt.WithClause == nil {
 			var err error
 
 			p, err = planner.PlanTargetList(ctx, rm, qr, stmt)
@@ -298,7 +272,7 @@ func (qr *ProxyQrouter) planQueryV1(
 			p = plan.Combine(p, tmp)
 		}
 
-		tmp, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
+		tmp, err := planner.PlanWithClause(ctx, rm, qr, stmt.WithClause)
 		if err != nil {
 			return nil, err
 		}
@@ -336,7 +310,7 @@ func (qr *ProxyQrouter) planQueryV1(
 
 	case *lyx.Insert:
 
-		p, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
+		p, err := planner.PlanWithClause(ctx, rm, qr, stmt.WithClause)
 		if err != nil {
 			return nil, err
 		}
@@ -379,6 +353,7 @@ func (qr *ProxyQrouter) planQueryV1(
 								ExecTargets: rel.ListStorageRoutes(),
 							}, nil
 						}
+
 						// XXX: todo - check that sub select is not doing anything insane
 						switch p.(type) {
 						case *plan.VirtualPlan, *plan.ScatterPlan, *plan.RandomDispatchPlan:
@@ -471,7 +446,7 @@ func (qr *ProxyQrouter) planQueryV1(
 
 	case *lyx.Update:
 
-		p, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
+		p, err := planner.PlanWithClause(ctx, rm, qr, stmt.WithClause)
 		if err != nil {
 			return nil, err
 		}
@@ -490,7 +465,10 @@ func (qr *ProxyQrouter) planQueryV1(
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
-					tmp, err := planner.PlanDistributedQuery(ctx, rm, stmt, true)
+
+					plr := planner.PlannerV2{}
+
+					tmp, err := plr.PlanDistributedQuery(ctx, rm, stmt, true)
 					if err != nil {
 						return nil, err
 					}
@@ -518,7 +496,7 @@ func (qr *ProxyQrouter) planQueryV1(
 		return p, nil
 	case *lyx.Delete:
 
-		p, err := qr.planWithClauseV1(ctx, rm, stmt.WithClause)
+		p, err := planner.PlanWithClause(ctx, rm, qr, stmt.WithClause)
 		if err != nil {
 			return nil, err
 		}
@@ -537,7 +515,9 @@ func (qr *ProxyQrouter) planQueryV1(
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
-					tmp, err := planner.PlanDistributedQuery(ctx, rm, stmt, true)
+					plr := planner.PlannerV2{}
+
+					tmp, err := plr.PlanDistributedQuery(ctx, rm, stmt, true)
 					if err != nil {
 						return nil, err
 					}
@@ -604,6 +584,7 @@ func (qr *ProxyQrouter) RouteWithRules(ctx context.Context,
 		}
 
 		pl = plan.Combine(pl, rs)
+
 	case *lyx.Select:
 
 		/*
@@ -717,7 +698,10 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 				default:
 					/* XXX: very dirty hack */
 					/* Top level plan */
-					v.SubPlan, err = planner.PlanDistributedQuery(ctx, rm, rm.Stmt, true)
+
+					plr := planner.PlannerV2{}
+
+					v.SubPlan, err = plr.PlanDistributedQuery(ctx, rm, rm.Stmt, true)
 					if err != nil {
 						return nil, err
 					}
@@ -773,7 +757,10 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	}
 
 	if rm.SPH.PreferredEngine() == planner.EnhancedEngineVersion {
-		p, err = planner.PlanDistributedQuery(ctx, rm, rm.Stmt, true)
+
+		plr := planner.PlannerV2{}
+
+		p, err = plr.PlanDistributedQuery(ctx, rm, rm.Stmt, true)
 		if err != nil {
 			return nil, err
 		}
@@ -798,8 +785,8 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 				ExecTargets: qr.DataShardsRoutes(),
 			}
 		}
-
 	}
+
 	return p, nil
 }
 

@@ -28,16 +28,17 @@ type MemQDB struct {
 	Routers              map[string]*Router                  `json:"routers"`
 	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
 	Coordinator          string                              `json:"coordinator"`
-	MoveTaskGroup        *MoveTaskGroup                      `json:"taskGroup"`
-	StopMoveTaskGroup    bool                                `json:"stop_move_task_group"`
-	MoveTask             *MoveTask                           `json:"move_task"`
-	TotalKeys            int64                               `json:"total_keys"`
+	MoveTaskGroups       map[string]*MoveTaskGroup           `json:"taskGroup"`
+	StopMoveTaskGroup    map[string]bool                     `json:"stop_move_task_group"`
+	MoveTasks            map[string]*MoveTask                `json:"move_tasks"`
+	TotalKeys            map[string]int64                    `json:"total_keys"`
 	RedistributeTask     *RedistributeTask                   `json:"redistribute_ask"`
 	BalancerTask         *BalancerTask                       `json:"balancer_task"`
 	ReferenceRelations   map[string]*ReferenceRelation       `json:"reference_relations"`
 	Sequences            map[string]bool                     `json:"sequences"`
 	ColumnSequence       map[string]string                   `json:"column_sequence"`
 	SequenceToValues     map[string]int64                    `json:"sequence_to_values"`
+	TaskGroupMoveTaskID  map[string]string                   `json:"task_group_move_task"`
 	SequenceLock         sync.RWMutex
 
 	backupPath string
@@ -60,6 +61,10 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		ColumnSequence:       map[string]string{},
 		SequenceToValues:     map[string]int64{},
 		ReferenceRelations:   map[string]*ReferenceRelation{},
+		MoveTaskGroups:       map[string]*MoveTaskGroup{},
+		StopMoveTaskGroup:    map[string]bool{},
+		TotalKeys:            map[string]int64{},
+		MoveTasks:            map[string]*MoveTask{},
 
 		backupPath: backupPath,
 	}, nil
@@ -988,119 +993,190 @@ func (q *MemQDB) GetRelationDistribution(_ context.Context, relation *rfqn.Relat
 //                                   TASKS
 // ==============================================================================
 
-// TODO: unit tests
-func (q *MemQDB) GetMoveTaskGroup(_ context.Context) (*MoveTaskGroup, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: get task group")
+func (q *MemQDB) ListTaskGroups(_ context.Context) (map[string]*MoveTaskGroup, error) {
+	spqrlog.Zero.Debug().
+		Msg("memqdb: list task groups")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.MoveTaskGroup, nil
+	return q.MoveTaskGroups, nil
 }
 
 // TODO: unit tests
-func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, group *MoveTaskGroup, totalKeys int64, moveTask *MoveTask) error {
-	spqrlog.Zero.Debug().Msg("memqdb: write task group")
+func (q *MemQDB) GetMoveTaskGroup(_ context.Context, id string) (*MoveTaskGroup, error) {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("memqdb: get task group")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	group, ok := q.MoveTaskGroups[id]
+	if !ok {
+		return nil, nil
+	}
+	return group, nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, id string, group *MoveTaskGroup, totalKeys int64, moveTask *MoveTask) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("memqdb: write task group")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.MoveTaskGroup = group
-	q.StopMoveTaskGroup = false
+	q.MoveTaskGroups[id] = group
+	q.StopMoveTaskGroup[id] = false
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.MoveTaskGroups, id, group), NewUpdateCommand(q.StopMoveTaskGroup, id, false))
+}
+
+// TODO: unit tests
+func (q *MemQDB) RemoveMoveTaskGroup(_ context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("memqdb: remove task group")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	delete(q.MoveTaskGroups, id)
+	delete(q.StopMoveTaskGroup, id)
 	return nil
 }
 
 // TODO: unit tests
-func (q *MemQDB) RemoveMoveTaskGroup(_ context.Context) error {
-	spqrlog.Zero.Debug().Msg("memqdb: remove task group")
+func (q *MemQDB) GetMoveTaskGroupTotalKeys(_ context.Context, id string) (int64, error) {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("memqdb: get task group total keys")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	val, ok := q.TotalKeys[id]
+	if !ok {
+		return 0, nil
+	}
+	return val, nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) UpdateMoveTaskGroupTotalKeys(_ context.Context, id string, totalKeys int64) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("memqdb: get task group total keys")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.MoveTaskGroup = nil
-	q.StopMoveTaskGroup = false
+	q.TotalKeys[id] = totalKeys
 	return nil
 }
 
 // TODO: unit tests
-func (q *MemQDB) GetMoveTaskGroupTotalKeys(_ context.Context) (int64, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: get task group total keys")
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-
-	return q.TotalKeys, nil
-}
-
-// TODO: unit tests
-func (q *MemQDB) UpdateMoveTaskGroupTotalKeys(_ context.Context, totalKeys int64) error {
-	spqrlog.Zero.Debug().Msg("memqdb: get task group total keys")
+func (q *MemQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("memqdb: put task group stop flag")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.TotalKeys = totalKeys
+	q.StopMoveTaskGroup[id] = true
 	return nil
 }
 
 // TODO: unit tests
-func (q *MemQDB) AddMoveTaskGroupStopFlag(ctx context.Context) error {
-	spqrlog.Zero.Debug().Msg("memqdb: put task group stop flag")
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	q.StopMoveTaskGroup = true
-	return nil
-}
-
-// TODO: unit tests
-func (q *MemQDB) CheckMoveTaskGroupStopFlag(ctx context.Context) (bool, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: put task group stop flag")
+func (q *MemQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error) {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("memqdb: put task group stop flag")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.StopMoveTaskGroup, nil
+	val, ok := q.StopMoveTaskGroup[id]
+	if !ok {
+		return false, nil
+	}
+
+	return val, nil
 }
 
-// TODO: unit tests
-func (q *MemQDB) GetMoveTask(ctx context.Context) (*MoveTask, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: get move task")
+func (q *MemQDB) GetMoveTaskByGroup(_ context.Context, taskGroupID string) (*MoveTask, error) {
+	spqrlog.Zero.Debug().
+		Str("task group id", taskGroupID).
+		Msg("memqdb: get move task of a task group")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.MoveTask, nil
+	id, ok := q.TaskGroupMoveTaskID[taskGroupID]
+	if !ok {
+		return nil, nil
+	}
+	task, ok := q.MoveTasks[id]
+	if !ok {
+		return nil, fmt.Errorf("move task \"%s\" not found", id)
+	}
+	return task, nil
+}
+
+func (q *MemQDB) ListMoveTasks(_ context.Context) (map[string]*MoveTask, error) {
+	spqrlog.Zero.Debug().
+		Msg("memqdb: list move tasks")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.MoveTasks, nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error) {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("memqdb: get move task")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.MoveTasks[id], nil
 }
 
 // TODO: unit tests
 func (q *MemQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
-	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: write move task")
+	spqrlog.Zero.Debug().
+		Str("id", task.ID).
+		Msg("memqdb: write move task")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if q.MoveTask != nil {
+	if _, ok := q.MoveTasks[task.ID]; ok {
 		return fmt.Errorf("failed to write move task: another task already exists")
 	}
-	q.MoveTask = task
-	return nil
+	q.MoveTasks[task.ID] = task
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.MoveTasks, task.ID, task))
 }
 
 // TODO: unit tests
 func (q *MemQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
-	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: update move task")
+	spqrlog.Zero.Debug().
+		Str("id", task.ID).
+		Msg("memqdb: update move task")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if q.MoveTask == nil || q.MoveTask.ID != task.ID {
+	if _, ok := q.MoveTasks[task.ID]; !ok {
 		return fmt.Errorf("failed to update move task: IDs differ")
 	}
 
-	q.MoveTask = task
-	return nil
+	q.MoveTasks[task.ID] = task
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.MoveTasks, task.ID, task))
 }
 
 // TODO: unit tests
-func (q *MemQDB) RemoveMoveTask(ctx context.Context) error {
-	spqrlog.Zero.Debug().Msg("memqdb: remove move task")
+func (q *MemQDB) RemoveMoveTask(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("memqdb: remove move task")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.MoveTask = nil
-	return nil
+	delete(q.MoveTasks, id)
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.MoveTasks, id))
 }
 
 // TODO: unit tests

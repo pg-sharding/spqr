@@ -1075,7 +1075,6 @@ func (tctx *testContext) stepRecordQDBKRMove(body *godog.DocString) error {
 	return tctx.qdb.RecordKeyRangeMove(context.TODO(), &m)
 }
 
-// TODO use WriteMoveTaskGroupTransactional
 func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 	var taskGroup tasks.MoveTaskGroup
@@ -1086,7 +1085,7 @@ func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
 
 	taskDb := tasks.MoveTaskToDb(taskGroup.CurrentTask)
 
-	return tctx.qdb.WriteMoveTaskGroup(context.TODO(), tasks.TaskGroupToDb(&taskGroup), taskGroup.TotalKeys, taskDb)
+	return tctx.qdb.WriteMoveTaskGroup(context.TODO(), taskGroup.ID, tasks.TaskGroupToDb(&taskGroup), taskGroup.TotalKeys, taskDb)
 }
 
 func (tctx *testContext) stepQDBShouldContainTx(key string) error {
@@ -1206,22 +1205,22 @@ func (tctx *testContext) stepWaitForAllKeyRangeMovesToFinish(timeout int64) erro
 			log.Println("redistribute task present in qdb")
 			return retry.RetryableError(fmt.Errorf("redistribute task still present"))
 		}
-		taskGroup, err := tctx.qdb.GetMoveTaskGroup(ctx)
+		taskGroups, err := tctx.qdb.ListTaskGroups(ctx)
 		if err != nil {
 			log.Printf("error getting move task group: %s", err)
 			return err
 		}
-		if taskGroup != nil {
+		if len(taskGroups) > 0 {
 			log.Println("move task group present in qdb")
 			return retry.RetryableError(fmt.Errorf("move task group still present"))
 		}
-		moveTask, err := tctx.qdb.GetMoveTask(ctx)
+		moveTasks, err := tctx.qdb.ListMoveTasks(ctx)
 		if err != nil {
 			log.Printf("error getting move task: %s", err)
 			return err
 		}
-		if moveTask != nil {
-			log.Printf("move task with ID \"%s\" present in qdb\n", moveTask.ID)
+		if len(moveTasks) > 0 {
+			log.Printf("move tasks present in qdb\n")
 			return retry.RetryableError(fmt.Errorf("move task still present"))
 		}
 		krMoves, err := tctx.qdb.ListKeyRangeMoves(ctx)
@@ -1249,22 +1248,22 @@ func (tctx *testContext) stepQDBShouldNotContainTasks() error {
 		log.Println("redistribute task present in qdb")
 		return retry.RetryableError(fmt.Errorf("redistribute task still present"))
 	}
-	taskGroup, err := tctx.qdb.GetMoveTaskGroup(ctx)
+	taskGroups, err := tctx.qdb.ListTaskGroups(ctx)
 	if err != nil {
 		log.Printf("error getting move task group: %s", err)
 		return err
 	}
-	if taskGroup != nil {
+	if len(taskGroups) > 0 {
 		log.Println("move task group present in qdb")
 		return retry.RetryableError(fmt.Errorf("move task group still present"))
 	}
-	moveTask, err := tctx.qdb.GetMoveTask(ctx)
+	moveTasks, err := tctx.qdb.ListMoveTasks(ctx)
 	if err != nil {
 		log.Printf("error getting move task: %s", err)
 		return err
 	}
-	if moveTask != nil {
-		log.Printf("move task with ID \"%s\" present in qdb\n", moveTask.ID)
+	if len(moveTasks) > 0 {
+		log.Printf("move tasks present in qdb\n")
 		return retry.RetryableError(fmt.Errorf("move task still present"))
 	}
 	krMoves, err := tctx.qdb.ListKeyRangeMoves(ctx)

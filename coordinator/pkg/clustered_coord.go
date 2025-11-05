@@ -23,6 +23,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
+	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -224,7 +225,7 @@ const defaultLockCoordinatorTimeout = time.Second
 * Its method calls result in cluster-wide changes.
  */
 type ClusteredCoordinator struct {
-	Coordinator
+	coord.Coordinator
 	rmgr         rulemgr.RulesMgr
 	tlsconfig    *tls.Config
 	db           qdb.XQDB
@@ -355,7 +356,7 @@ func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*ClusteredCoor
 	}
 
 	return &ClusteredCoordinator{
-		Coordinator:  NewCoordinator(db),
+		Coordinator:  coord.NewCoordinator(db),
 		db:           db,
 		tlsconfig:    tlsconfig,
 		rmgr:         rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
@@ -449,14 +450,6 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		spqrlog.Zero.Error().Err(err).Msg("error getting qdb lock, retrying")
 
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().LockIterationTimeout, defaultLockCoordinatorTimeout))
-	}
-
-	if err := qc.finishRedistributeTasksInProgress(ctx); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("unable to finish redistribution tasks in progress")
-	}
-
-	if err := qc.finishMoveTasksInProgress(ctx); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("unable to finish move tasks in progress")
 	}
 
 	ranges, err := qc.db.ListAllKeyRanges(context.TODO())
@@ -956,7 +949,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		}
 	}
 
-	exists, err := qc.qdb.CheckDistribution(ctx, distributions.REPLICATED)
+	exists, err := qc.QDB().CheckDistribution(ctx, distributions.REPLICATED)
 	if err != nil {
 		return fmt.Errorf("error checking for replicated distribution: %s", err)
 	}
@@ -1079,6 +1072,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 	if totalCount != 0 {
 		biggestRelName, coeff := qc.getBiggestRelation(relCount, totalCount)
 		taskGroup = &tasks.MoveTaskGroup{
+			ID:        uuid.NewString(),
 			KrIdFrom:  req.KrId,
 			KrIdTo:    req.DestKrId,
 			ShardToId: req.ShardId,
@@ -1089,15 +1083,19 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 			Limit:     req.Limit,
 		}
 	} else {
+		tgID := uuid.NewString()
 		taskGroup = &tasks.MoveTaskGroup{
+			ID:        tgID,
 			KrIdFrom:  req.KrId,
 			KrIdTo:    req.DestKrId,
 			ShardToId: req.ShardId,
 			Type:      req.Type,
 			CurrentTask: &tasks.MoveTask{
-				KrIdTemp: req.DestKrId,
-				State:    tasks.TaskPlanned,
-				Bound:    nil,
+				ID:          uuid.NewString(),
+				TaskGroupID: tgID,
+				KrIdTemp:    req.DestKrId,
+				State:       tasks.TaskPlanned,
+				Bound:       nil,
 			},
 		}
 	}
@@ -1203,7 +1201,7 @@ func (*ClusteredCoordinator) getBiggestRelation(relCount map[string]int64, total
 	return maxRel, maxCount / float64(totalCount)
 }
 
-func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, coeff float64, ds *distributions.Distribution) ([][]byte, error) {
+func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, ds *distributions.Distribution) ([][]byte, error) {
 	if qc.bounds != nil && qc.index < len(qc.bounds) {
 		qc.index++
 		return qc.bounds[qc.index-1], nil
@@ -1236,7 +1234,7 @@ func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn
 	}
 
 	boundList := make([][][]byte, 0)
-	step := int64(math.Ceil(float64(taskGroup.BatchSize)*coeff - 1e-3))
+	step := int64(math.Ceil(float64(taskGroup.BatchSize)*taskGroup.Coeff - 1e-3))
 
 	cacheSize := config.CoordinatorConfig().DataMoveBoundBatchSize
 
@@ -1393,11 +1391,11 @@ ORDER BY (%s) %s;
 	return qc.bounds[0], nil
 }
 
-func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, coeff float64, ds *distributions.Distribution) (*tasks.MoveTask, error) {
+func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, ds *distributions.Distribution) (*tasks.MoveTask, error) {
 	if taskGroup.Limit > 0 && taskGroup.TotalKeys >= taskGroup.Limit {
 		return nil, nil
 	}
-	stop, err := qc.qdb.CheckMoveTaskGroupStopFlag(ctx)
+	stop, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx, taskGroup.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for stop flag: %s", err)
 	}
@@ -1418,7 +1416,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 	if !krFound {
 		return nil, nil
 	}
-	bound, err := qc.getNextBound(ctx, conn, taskGroup, rel, coeff, ds)
+	bound, err := qc.getNextBound(ctx, conn, taskGroup, rel, ds)
 	if err != nil {
 		return nil, err
 	}
@@ -1436,11 +1434,12 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 				}
 				return taskGroup.KrIdTo
 			}(),
-			State: tasks.TaskPlanned,
-			Bound: nil,
+			State:       tasks.TaskPlanned,
+			Bound:       nil,
+			TaskGroupID: taskGroup.ID,
 		}, nil
 	}
-	task := &tasks.MoveTask{ID: uuid.NewString(), KrIdTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound}
+	task := &tasks.MoveTask{ID: uuid.NewString(), KrIdTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound, TaskGroupID: taskGroup.ID}
 	if taskGroup.TotalKeys == 0 {
 		task.KrIdTemp = taskGroup.KrIdTo
 	}
@@ -1537,7 +1536,7 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 				}
 			}
 
-			newTask, err := qc.getNextMoveTask(ctx, sourceConn, taskGroup, rel, taskGroup.Coeff, ds)
+			newTask, err := qc.getNextMoveTask(ctx, sourceConn, taskGroup, rel, ds)
 			if err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
 					delayedError = te
@@ -1547,7 +1546,7 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 			}
 			if newTask != nil {
 				taskGroup.CurrentTask = newTask
-				if err := qc.qdb.WriteMoveTask(ctx, tasks.MoveTaskToDb(newTask)); err != nil {
+				if err := qc.QDB().WriteMoveTask(ctx, tasks.MoveTaskToDb(newTask)); err != nil {
 					return fmt.Errorf("failed to save move task: %s", err)
 				}
 			} else {
@@ -1607,15 +1606,15 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 			// TODO: get exact key count here
 			taskGroup.TotalKeys += taskGroup.BatchSize
 			// TODO: wrap in transaction inside etcd
-			if err := qc.qdb.UpdateMoveTaskGroupTotalKeys(ctx, taskGroup.TotalKeys); err != nil {
+			if err := qc.QDB().UpdateMoveTaskGroupTotalKeys(ctx, taskGroup.ID, taskGroup.TotalKeys); err != nil {
 				return err
 			}
-			if err := qc.qdb.RemoveMoveTask(ctx); err != nil {
+			if err := qc.QDB().RemoveMoveTask(ctx, task.ID); err != nil {
 				return err
 			}
 		}
 	}
-	if err := qc.RemoveMoveTaskGroup(ctx); err != nil {
+	if err := qc.RemoveMoveTaskGroup(ctx, taskGroup.ID); err != nil {
 		return err
 	}
 	return delayedError
@@ -1629,8 +1628,8 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
-	taskGroup, err := qc.GetMoveTaskGroup(ctx)
+func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id string) error {
+	taskGroup, err := qc.GetMoveTaskGroup(ctx, id)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get move task group: %s", err)
 	}
@@ -1645,8 +1644,8 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context) error {
-	return qc.qdb.AddMoveTaskGroupStopFlag(ctx)
+func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context, id string) error {
+	return qc.QDB().AddMoveTaskGroupStopFlag(ctx, id)
 }
 
 // TODO : unit tests
@@ -2391,52 +2390,6 @@ func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id 
 			Msg("detach relation response")
 		return nil
 	})
-}
-
-func (qc *ClusteredCoordinator) finishRedistributeTasksInProgress(ctx context.Context) error {
-	task, err := qc.db.GetRedistributeTask(ctx)
-	if err != nil {
-		return err
-	}
-	if task == nil {
-		return nil
-	}
-	return qc.executeRedistributeTask(ctx, tasks.RedistributeTaskFromDB(task))
-}
-
-func (qc *ClusteredCoordinator) finishMoveTasksInProgress(ctx context.Context) error {
-	taskGroup, err := qc.GetMoveTaskGroup(ctx)
-	if err != nil {
-		return err
-	}
-	if taskGroup == nil {
-		return nil
-	}
-	balancerTask, err := qc.GetBalancerTask(ctx)
-	if err != nil {
-		return err
-	}
-	if balancerTask != nil {
-		// If there is currently a balancer task running, we need to advance its state after moving the data
-		if err = qc.executeMoveTasks(ctx, taskGroup); err != nil {
-			if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
-				spqrlog.Zero.Info().Msg("finishing balancer task due to task group stopping")
-			} else {
-				return err
-			}
-		}
-		balancerTask.State = tasks.BalancerTaskMoved
-		return qc.WriteBalancerTask(ctx, balancerTask)
-	}
-	if err := qc.executeMoveTasks(ctx, taskGroup); err != nil {
-		if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
-			spqrlog.Zero.Info().Msg("task group stopped")
-			return nil
-		} else {
-			return err
-		}
-	}
-	return nil
 }
 
 func (qc *ClusteredCoordinator) IsReadOnly() bool {

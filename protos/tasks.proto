@@ -17,6 +17,19 @@ message MoveTask {
   string keyRangeIdTemp = 1;
   repeated bytes bound = 2;
   TaskStatus status = 3;
+  string TaskGroupID = 5;
+}
+
+message MoveTaskSelector {
+  string ID = 1;
+}
+
+message MoveTaskReply {
+  MoveTask task = 1;
+}
+
+message MoveTasksReply {
+  repeated MoveTask tasks = 1;
 }
 
 enum JoinType {
@@ -31,6 +44,7 @@ enum SplitType {
 }
 
 message MoveTaskGroup {
+  string ID = 13;
   SplitType type = 2;
   string shardIdTo = 4;
   string keyRangeIdFrom = 5;
@@ -47,16 +61,27 @@ message GetMoveTaskGroupReply {
   MoveTaskGroup taskGroup = 1;
 }
 
+message ListMoveTaskGroupsReply {
+  repeated MoveTaskGroup taskGroups = 1;
+}
+
 message WriteMoveTaskGroupRequest{
   MoveTaskGroup taskGroup = 1;
 }
 
+message MoveTaskGroupSelector {
+  string ID = 1;
+}
+
 service MoveTasksService {
-  rpc GetMoveTaskGroup(google.protobuf.Empty) returns (GetMoveTaskGroupReply) {}
+  rpc ListMoveTasks(google.protobuf.Empty) returns (MoveTasksReply) {}
+
+  rpc ListMoveTaskGroups(google.protobuf.Empty) returns (ListMoveTaskGroupsReply) {}
+  rpc GetMoveTaskGroup(MoveTaskGroupSelector) returns (GetMoveTaskGroupReply) {}
   rpc WriteMoveTaskGroup(WriteMoveTaskGroupRequest) returns(google.protobuf.Empty) {}
-  rpc RemoveMoveTaskGroup(google.protobuf.Empty) returns(google.protobuf.Empty) {}
-  rpc RetryMoveTaskGroup(google.protobuf.Empty) returns(google.protobuf.Empty) {}
-  rpc StopMoveTaskGroup(google.protobuf.Empty) returns(google.protobuf.Empty) {}
+  rpc RemoveMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
+  rpc RetryMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
+  rpc StopMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
 }
 
 enum BalancerTaskStatus {

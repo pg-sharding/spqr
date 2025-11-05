@@ -204,6 +204,7 @@ hotspots
 hst
 HTAP
 iana
+IDBy
 idi
 idj
 IDR
@@ -567,6 +568,7 @@ testdb
 testutil
 texpr
 textoid
+tgid
 timeb
 timestamptz
 tlsconfig
