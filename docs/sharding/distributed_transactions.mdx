@@ -3,9 +3,50 @@ title: 'Distributed Transactions'
 description: 'How to use two-phase commit and understand transaction commit strategies'
 ---
 
-SPQR provides three commit strategies for distributed transactions, controlled by the [default_commit_strategy](/configuration/router#transaction-settings) parameter.
+## Transaction Behavior
+
+### Default Route Behaviour
+
+[query_routing.default_route_behaviour](http://localhost:3001/configuration/router#query-routing-settings) parameter determines what happens when SPQR cannot route a query to a single shard:
+
+- `BLOCK`: Rejects queries that would need to execute on multiple shards (safer for consistency)
+- `ALLOW`: Permits multi-shard queries to execute (useful for DDL and administrative queries)
+
+```sql
+-- Default behavior blocks multi-shard queries
+DROP DATABASE prod;
+-- ERROR: client processing error: 'DROP DATABASE prod': failed to match any datashard.
+
+-- Allow multi-shard execution
+DROP DATABASE prod /* __spqr__default_route_behaviour: allow */;
+-- NOTICE: send query to shard(s) : shard1,shard2,shard3,shard4
+```
+
+Use Cases:
+- `BLOCK`: Production environments where you want strict control over shard access
+- `ALLOW`: Development, testing, or when executing DDL commands across all shards
+
+### Scatter Query
+
+`__spqr__scatter_query` routing hint is useful when you need to run a query across all shards, regardless of sharding key:
+
+```sql
+-- Execute on all shards
+SELECT COUNT(*) FROM users /* __spqr__scatter_query: true */;
+
+-- Can also be set at session level
+SET __spqr__scatter_query TO true;
+SELECT * FROM users; -- Executes on all shards
+RESET __spqr__scatter_query;
+```
+
+<Warning>
+Scatter queries do not provide consistent cross-shard snapshots, can have significant performance impact on large clusters, and should be used primarily for administrative or analytical purposes.
+</Warning>
 
 ## Commit Strategies
+
+SPQR provides three commit strategies for distributed transactions, controlled by the [default_commit_strategy](/configuration/router#transaction-settings) parameter.
 
 ### 1. One-Phase Commit
 
@@ -70,64 +111,7 @@ COMMIT;
 2PC requires a durable transaction coordinator that issues prepare/commit decisions and can recover them after failures; without a durable coordinator, prepared transactions may become orphaned and require manual intervention. SPQR's router currently acts as the ephemeral coordinator for multi-shard transactions but there is no separate persistent coordinator service implemented yet.
 </Warning>
 
-## Routing Parameters for Transaction Control
-
-### __spqr__default_route_behaviour
-
-Controls whether multi-shard queries are allowed.
-
-Values: `BLOCK`, `ALLOW`
-
-Default: Configured in router settings (`query_routing.default_route_behaviour`)
-
-This parameter determines what happens when SPQR cannot route a query to a single shard:
-
-- `BLOCK`: Rejects queries that would need to execute on multiple shards (safer for consistency)
-- `ALLOW`: Permits multi-shard queries to execute (useful for DDL and administrative queries)
-
-Example:
-```sql
--- Default behavior blocks multi-shard queries
-DROP DATABASE prod;
--- ERROR: client processing error: 'DROP DATABASE prod': failed to match any datashard.
-
--- Allow multi-shard execution
-DROP DATABASE prod /* __spqr__default_route_behaviour: allow */;
--- NOTICE: send query to shard(s) : shard1,shard2,shard3,shard4
-```
-
-Use Cases:
-- `BLOCK`: Production environments where you want strict control over shard access
-- `ALLOW`: Development, testing, or when executing DDL commands across all shards
-
-### __spqr__scatter_query
-
-Forces a query to execute on all shards in the cluster.
-
-Values: `true`, `false`
-
-Default: `false`
-
-This parameter is useful when you need to run a query across all shards, regardless of sharding key:
-
-Example:
-```sql
--- Execute on all shards
-SELECT COUNT(*) FROM users /* __spqr__scatter_query: true */;
-
--- Can also be set at session level
-SET __spqr__scatter_query TO true;
-SELECT * FROM users; -- Executes on all shards
-RESET __spqr__scatter_query;
-```
-
-<Warning>
-Scatter queries do not provide consistent cross-shard snapshots, can have significant performance impact on large clusters, and should be used primarily for administrative or analytical purposes.
-</Warning>
-
-## Transaction Behavior
-
-### Virtual Transactions
+## Virtual Queries
 
 When not connected to a shard, SPQR buffers transaction commands locally:
 
@@ -135,30 +119,15 @@ When not connected to a shard, SPQR buffers transaction commands locally:
 BEGIN;
 SET __spqr__commit_strategy TO '2pc';
 -- No shard connection yet, parameters buffered
+SET client_encoding = 'UTF8';
+-- Not yet
+SET standard_conforming_strings = on;
+-- Wait..
+SET DateStyle = ISO, MDY;
+-- Wait...
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+-- No shard connection yet, parameters buffered
+
 INSERT INTO users (id, name) VALUES (1, 'Alice'); -- Connection established here
 COMMIT;
-```
-
-### Transaction Block Level Parameters
-
-The `__spqr__commit_strategy` parameter is transaction-block-level, meaning:
-
-- Setting it within a transaction only affects that transaction
-- After `COMMIT` or `ROLLBACK`, the value reverts to the session-level setting
-
-Example:
-```sql
--- Session level
-SET __spqr__commit_strategy TO '2pc';
-SHOW __spqr__commit_strategy;
--- Output: 2pc
-
-BEGIN;
-SET __spqr__commit_strategy TO '1pc';
-SHOW __spqr__commit_strategy;
--- Output: 1pc
-ROLLBACK;
-
-SHOW __spqr__commit_strategy;
--- Output: 2pc (reverted to session level)
 ```
