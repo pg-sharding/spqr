@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"runtime"
+
+	_ "net/http/pprof"
 
 	"github.com/pg-sharding/spqr/coordinator/app"
 	"github.com/pg-sharding/spqr/pkg"
@@ -80,6 +83,10 @@ var rootCmd = &cobra.Command{
 		}
 
 		app := app.NewApp(coordinator)
+		// run pprof without wait group
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
 		return app.Run(true)
 	},
 }
