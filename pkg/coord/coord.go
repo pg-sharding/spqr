@@ -429,7 +429,6 @@ func (lc *Coordinator) ListMoveTaskGroups(ctx context.Context) (map[string]*task
 	}
 	res := map[string]*tasks.MoveTaskGroup{}
 	for id, tgDb := range taskGroupsDb {
-		// TODO get by id
 		task, err := lc.qdb.GetMoveTaskByGroup(ctx, id)
 		if err != nil {
 			return nil, err
@@ -439,7 +438,7 @@ func (lc *Coordinator) ListMoveTaskGroups(ctx context.Context) (map[string]*task
 			return nil, err
 		}
 
-		res[id] = tasks.TaskGroupFromDb(tgDb, task, totalKeys)
+		res[id] = tasks.TaskGroupFromDb(id, tgDb, task, totalKeys)
 	}
 	return res, nil
 }
@@ -466,7 +465,7 @@ func (lc *Coordinator) GetMoveTaskGroup(ctx context.Context, id string) (*tasks.
 		return nil, err
 	}
 
-	return tasks.TaskGroupFromDb(group, task, totalKeys), nil
+	return tasks.TaskGroupFromDb(id, group, task, totalKeys), nil
 }
 
 // GetMoveTask retrieves the MoveTask from the coordinator's QDB.

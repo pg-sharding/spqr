@@ -373,11 +373,12 @@ func MoveTaskToDb(task *MoveTask) *qdb.MoveTask {
 //
 // Returns:
 //   - *MoveTaskGroup: The converted MoveTaskGroup object.
-func TaskGroupFromDb(group *qdb.MoveTaskGroup, moveTask *qdb.MoveTask, totalKeys int64) *MoveTaskGroup {
+func TaskGroupFromDb(id string, group *qdb.MoveTaskGroup, moveTask *qdb.MoveTask, totalKeys int64) *MoveTaskGroup {
 	if group == nil {
 		return nil
 	}
 	return &MoveTaskGroup{
+		ID:          id,
 		Type:        SplitType(group.Type),
 		ShardToId:   group.ShardToId,
 		KrIdFrom:    group.KrIdFrom,

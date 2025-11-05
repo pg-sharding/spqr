@@ -1625,7 +1625,7 @@ func (q *EtcdQDB) ListTaskGroups(ctx context.Context) (map[string]*MoveTaskGroup
 	t := time.Now()
 	res := make(map[string]*MoveTaskGroup)
 
-	resp, err := q.cli.Get(ctx, taskGroupsNamespace)
+	resp, err := q.cli.Get(ctx, taskGroupsNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
@@ -1856,7 +1856,7 @@ func (q *EtcdQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
 func (q *EtcdQDB) ListMoveTasks(ctx context.Context) (map[string]*MoveTask, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list move tasks")
 
-	resp, err := q.cli.Get(ctx, moveTaskNamespace)
+	resp, err := q.cli.Get(ctx, moveTaskNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
