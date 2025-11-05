@@ -1082,16 +1082,19 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 			Limit:     req.Limit,
 		}
 	} else {
+		tgID := uuid.NewString()
 		taskGroup = &tasks.MoveTaskGroup{
-			ID:        uuid.NewString(),
+			ID:        tgID,
 			KrIdFrom:  req.KrId,
 			KrIdTo:    req.DestKrId,
 			ShardToId: req.ShardId,
 			Type:      req.Type,
 			CurrentTask: &tasks.MoveTask{
-				KrIdTemp: req.DestKrId,
-				State:    tasks.TaskPlanned,
-				Bound:    nil,
+				ID:          uuid.NewString(),
+				TaskGroupID: tgID,
+				KrIdTemp:    req.DestKrId,
+				State:       tasks.TaskPlanned,
+				Bound:       nil,
 			},
 		}
 	}
@@ -1197,7 +1200,7 @@ func (*ClusteredCoordinator) getBiggestRelation(relCount map[string]int64, total
 	return maxRel, maxCount / float64(totalCount)
 }
 
-func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, coeff float64, ds *distributions.Distribution) ([][]byte, error) {
+func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, ds *distributions.Distribution) ([][]byte, error) {
 	if qc.bounds != nil && qc.index < len(qc.bounds) {
 		qc.index++
 		return qc.bounds[qc.index-1], nil
@@ -1230,7 +1233,7 @@ func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn
 	}
 
 	boundList := make([][][]byte, 0)
-	step := int64(math.Ceil(float64(taskGroup.BatchSize)*coeff - 1e-3))
+	step := int64(math.Ceil(float64(taskGroup.BatchSize)*taskGroup.Coeff - 1e-3))
 
 	cacheSize := config.CoordinatorConfig().DataMoveBoundBatchSize
 
@@ -1387,7 +1390,7 @@ ORDER BY (%s) %s;
 	return qc.bounds[0], nil
 }
 
-func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, coeff float64, ds *distributions.Distribution) (*tasks.MoveTask, error) {
+func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, ds *distributions.Distribution) (*tasks.MoveTask, error) {
 	if taskGroup.Limit > 0 && taskGroup.TotalKeys >= taskGroup.Limit {
 		return nil, nil
 	}
@@ -1412,7 +1415,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 	if !krFound {
 		return nil, nil
 	}
-	bound, err := qc.getNextBound(ctx, conn, taskGroup, rel, coeff, ds)
+	bound, err := qc.getNextBound(ctx, conn, taskGroup, rel, ds)
 	if err != nil {
 		return nil, err
 	}
@@ -1430,11 +1433,12 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 				}
 				return taskGroup.KrIdTo
 			}(),
-			State: tasks.TaskPlanned,
-			Bound: nil,
+			State:       tasks.TaskPlanned,
+			Bound:       nil,
+			TaskGroupID: taskGroup.ID,
 		}, nil
 	}
-	task := &tasks.MoveTask{ID: uuid.NewString(), KrIdTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound}
+	task := &tasks.MoveTask{ID: uuid.NewString(), KrIdTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound, TaskGroupID: taskGroup.ID}
 	if taskGroup.TotalKeys == 0 {
 		task.KrIdTemp = taskGroup.KrIdTo
 	}
@@ -1531,7 +1535,7 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 				}
 			}
 
-			newTask, err := qc.getNextMoveTask(ctx, sourceConn, taskGroup, rel, taskGroup.Coeff, ds)
+			newTask, err := qc.getNextMoveTask(ctx, sourceConn, taskGroup, rel, ds)
 			if err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
 					delayedError = te

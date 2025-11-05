@@ -587,7 +587,8 @@ Feature: Move recover test
           "id":            "1",
           "bound":         ["FAAAAAAAAAA="],
           "state":         0,
-          "kr_id_temp":    "krid_temp1" 
+          "kr_id_temp":    "krid_temp1",
+          "task_group_id": "tgid1"
         }
     }
     """
@@ -675,7 +676,7 @@ Feature: Move recover test
           "id":            "1",
           "bound":         ["FAAAAAAAAAA="],
           "state":         0,
-          "kr_id_temp":    "krid_temp1" 
+          "kr_id_temp":    "krid_temp1"
         }
     }
     """

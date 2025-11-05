@@ -1680,6 +1680,9 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, id string, group *Move
 	if err != nil {
 		return err
 	}
+	cmp := []clientv3.Cmp{
+		clientv3.Compare(clientv3.Version(taskGroupNodePath(id)), "=", 0),
+	}
 
 	ops := []clientv3.Op{
 		clientv3.OpPut(taskGroupNodePath(id), string(groupJson)),
@@ -1692,9 +1695,13 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, id string, group *Move
 			return err
 		}
 
-		ops = append(ops, clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson)))
+		ops = append(ops,
+			clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson)),
+			clientv3.OpPut(moveTaskByGroupNodePath(id), task.ID),
+		)
+		cmp = append(cmp, clientv3.Compare(clientv3.Version(moveTaskNodePath(task.ID)), "=", 0))
 	}
-	txResp, err := q.cli.Txn(ctx).If(clientv3.Compare(clientv3.Version(taskGroupNodePath(id)), "=", 0), clientv3.Compare(clientv3.Version(moveTaskNodePath(task.ID)), "=", 0)).Then(ops...).Commit()
+	txResp, err := q.cli.Txn(ctx).If(cmp...).Then(ops...).Commit()
 	if err != nil {
 		return fmt.Errorf("failed to write move task group metadata: %s", err)
 	}
@@ -1816,16 +1823,36 @@ func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
 	if err != nil {
 		return err
 	}
+	taskGroupID := task.TaskGroupID
 	resp, err := q.cli.Txn(ctx).
-		If(clientv3.Compare(clientv3.Version(moveTaskNodePath(task.ID)), "=", 0)).
-		Then(clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson))).
+		If(
+			clientv3.Compare(clientv3.Version(moveTaskNodePath(task.ID)), "=", 0),
+			clientv3.Compare(clientv3.Version(taskGroupNodePath(taskGroupID)), "!=", 0),
+		).
+		Then(
+			clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson)),
+			clientv3.OpPut(moveTaskByGroupNodePath(taskGroupID), task.ID),
+		).
+		Else(
+			clientv3.OpGet(moveTaskNodePath(task.ID), clientv3.WithCountOnly()),
+			clientv3.OpGet(taskGroupNodePath(taskGroupID), clientv3.WithCountOnly()),
+		).
 		Commit()
 
 	if err != nil {
 		return fmt.Errorf("failed to write move task: %s", err)
 	}
 	if !resp.Succeeded {
-		return fmt.Errorf("failed to write move task: another task already exists")
+		if len(resp.Responses) != 2 {
+			return fmt.Errorf("unexpected response count: write move task \"%s\" response parts count=%d", task.ID, len(resp.Responses))
+		}
+		if resp.Responses[0].GetResponseRange().Count > 0 {
+			return fmt.Errorf("failed to write move task \"%s\": move task already exists", task.ID)
+		}
+		if resp.Responses[1].GetResponseRange().Count == 0 {
+			return fmt.Errorf("failed to write move task \"%s\": task group \"%s\" does not exist", task.ID, taskGroupID)
+		}
+		return fmt.Errorf("failed to write move task \"%s\": tx precondition failed, reason unknown", task.ID)
 	}
 	return nil
 }
@@ -1895,7 +1922,12 @@ func (q *EtcdQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error)
 func (q *EtcdQDB) RemoveMoveTask(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().Msg("etcdqdb: remove move task")
 
-	_, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(moveTaskNodePath(id)), clientv3.OpDelete(moveTaskNodePath(id))).Commit()
+	task, err := q.GetMoveTask(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	_, err = q.cli.Txn(ctx).Then(clientv3.OpDelete(moveTaskNodePath(id)), clientv3.OpDelete(moveTaskByGroupNodePath(task.TaskGroupID))).Commit()
 	return err
 }
 
