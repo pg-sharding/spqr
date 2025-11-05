@@ -663,6 +663,15 @@ func (qc *Coordinator) UpdateMoveTask(ctx context.Context, task *tasks.MoveTask)
 // Returns:
 // - error: an error if the removal operation fails.
 func (qc *Coordinator) RemoveMoveTaskGroup(ctx context.Context, id string) error {
+	task, err := qc.qdb.GetMoveTaskByGroup(ctx, id)
+	if err != nil {
+		return err
+	}
+	if task != nil {
+		if err := qc.qdb.RemoveMoveTask(ctx, task.ID); err != nil {
+			return err
+		}
+	}
 	return qc.qdb.RemoveMoveTaskGroup(ctx, id)
 }
 

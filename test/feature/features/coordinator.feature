@@ -778,7 +778,8 @@ Feature: Coordinator test
                 "id":            "2",
                 "kr_id_temp":    "temp_id",
                 "bound":         ["FAAAAAAAAAA="],
-                "state":         0
+                "state":         0,
+                "task_group_id": "tgid1"
             }
         }
     """
@@ -813,7 +814,7 @@ Feature: Coordinator test
     """
     When I run SQL on host "coordinator"
     """
-    DROP TASK GROUP
+    DROP TASK GROUP tgid1;
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator"

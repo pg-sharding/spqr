@@ -915,6 +915,9 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			if err != nil {
 				return err
 			}
+			if group == nil {
+				return fmt.Errorf("task group for task \"%s\" not found", task.ID)
+			}
 			taskGroups[group.ID] = group
 		}
 
