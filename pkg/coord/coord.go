@@ -486,6 +486,18 @@ func (qc *Coordinator) GetMoveTask(ctx context.Context, id string) (*tasks.MoveT
 	return tasks.TaskFromDb(task), err
 }
 
+func (qc *Coordinator) ListMoveTasks(ctx context.Context) (map[string]*tasks.MoveTask, error) {
+	tasksDB, err := qc.qdb.ListMoveTasks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*tasks.MoveTask)
+	for id, taskDB := range tasksDB {
+		res[id] = tasks.TaskFromDb(taskDB)
+	}
+	return res, nil
+}
+
 // GetDistribution retrieves info about distribution from QDB
 // TODO: unit tests
 func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
