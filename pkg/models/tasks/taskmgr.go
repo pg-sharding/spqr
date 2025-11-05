@@ -10,6 +10,8 @@ type TaskMgr interface {
 	RetryMoveTaskGroup(ctx context.Context, id string) error
 	StopMoveTaskGroup(ctx context.Context, id string) error
 
+	ListMoveTasks(ctx context.Context) (map[string]*MoveTask, error)
+
 	GetBalancerTask(ctx context.Context) (*BalancerTask, error)
 	WriteBalancerTask(ctx context.Context, task *BalancerTask) error
 	RemoveBalancerTask(ctx context.Context) error

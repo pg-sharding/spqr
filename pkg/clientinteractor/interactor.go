@@ -629,51 +629,79 @@ func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string) error
 //
 // Returns:
 // - error: An error if sending the tasks fails, otherwise nil.
+func (pi *PSQLInteractor) MoveTaskGroups(_ context.Context, groups map[string]*tasks.MoveTaskGroup) error {
+	spqrlog.Zero.Debug().Msg("show move task group")
+
+	if err := pi.WriteHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID"); err != nil {
+		return err
+	}
+	if groups == nil {
+		return pi.CompleteMsg(0)
+	}
+	for _, ts := range groups {
+		if err := pi.WriteDataRow(ts.ID, ts.ShardToId, ts.KrIdFrom, ts.KrIdTo); err != nil {
+			return err
+		}
+	}
+	return pi.CompleteMsg(len(groups))
+}
+
 func (pi *PSQLInteractor) MoveTaskGroup(_ context.Context, ts *tasks.MoveTaskGroup) error {
 	spqrlog.Zero.Debug().Msg("show move task group")
 
-	if err := pi.WriteHeader("Destination shard ID", "Source key range ID", "Destination key range ID"); err != nil {
+	if err := pi.WriteHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID"); err != nil {
 		return err
 	}
 	if ts == nil {
 		return pi.CompleteMsg(0)
 	}
-	if err := pi.WriteDataRow(ts.ShardToId, ts.KrIdFrom, ts.KrIdTo); err != nil {
+	if err := pi.WriteDataRow(ts.ID, ts.ShardToId, ts.KrIdFrom, ts.KrIdTo); err != nil {
 		return err
 	}
 	return pi.CompleteMsg(1)
 }
 
-func (pi *PSQLInteractor) MoveTask(_ context.Context, t *tasks.MoveTask, colTypes []string) error {
+func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.MoveTask, dsIDColTypes map[string][]string, moveTaskDsID map[string]string) error {
 	if err := pi.WriteHeader("Move task ID", "Temporary key range ID", "Bound", "State"); err != nil {
 		return err
 	}
 
-	if t == nil {
+	if ts == nil {
 		return pi.CompleteMsg(0)
 	}
-	krData := []string{""}
-	if t.Bound != nil {
-		if len(t.Bound) != len(colTypes) {
-			err := fmt.Errorf("something wrong in task: %#v, columns: %#v", t, colTypes)
+	for _, task := range ts {
+		krData := []string{""}
+		if task.Bound != nil {
+			dsID, ok := moveTaskDsID[task.ID]
+			if !ok {
+				return fmt.Errorf("failed to reply move task data: distribution for task \"%s\" not found", task.ID)
+			}
+			moveTaskColTypes, ok := dsIDColTypes[dsID]
+			if !ok {
+				return fmt.Errorf("failed to reply move task data: column types for distribution \"%s\" not found", dsID)
+			}
+			if len(task.Bound) != len(moveTaskColTypes) {
+				err := fmt.Errorf("something wrong in task: %s, columns: %#v", task.ID, moveTaskColTypes)
+				return err
+			}
+			kRange, err := kr.KeyRangeFromBytes(task.Bound, moveTaskColTypes)
+			if err != nil {
+				return err
+			}
+			krData = kRange.SendRaw()
+		}
+		if err := pi.WriteDataRow(
+			task.ID,
+			task.KrIdTemp,
+			strings.Join(krData, ";"),
+			tasks.TaskStateToStr(task.State),
+		); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("Failed to send move task data")
 			return err
 		}
-		kRange, err := kr.KeyRangeFromBytes(t.Bound, colTypes)
-		if err != nil {
-			return err
-		}
-		krData = kRange.SendRaw()
+
 	}
-	if err := pi.WriteDataRow(
-		t.ID,
-		t.KrIdTemp,
-		strings.Join(krData, ";"),
-		tasks.TaskStateToStr(t.State),
-	); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to send move task data")
-		return err
-	}
-	return pi.CompleteMsg(1)
+	return pi.CompleteMsg(len(ts))
 }
 
 // DropTaskGroup drops all tasks in the task group.
