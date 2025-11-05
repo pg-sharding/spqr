@@ -62,6 +62,7 @@
                     "pages": [
                         "features/sharding",
                         "features/reference_tables",
+                        "features/distributed_transactions",
                         "features/pooling",
                         "features/fault_tolerance",
                         "features/data_balancing",
@@ -94,6 +95,7 @@
                         "sharding/sharded_tables",
                         "sharding/reference_tables",
                         "sharding/composite_keys",
+                        "sharding/distributed_transactions",
                         {
                             "group": "Cluster Components",
                             "pages": [

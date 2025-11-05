@@ -106,7 +106,11 @@ SELECT pg_is_in_recovery() /* target-session-attrs: read-only */;
 
 ### __spqr__default_route_behaviour
 
-Whether to explicitly block multishard queries. Overload for [query_routing.default_route_behaviour](/configuration/router#feature-flags).
+Controls whether multi-shard queries are allowed or blocked. Overload for [query_routing.default_route_behaviour](/configuration/router#feature-flags).
+
+Possible values:
+- `BLOCK` - Rejects queries that cannot be routed to a single shard (default in most configurations)
+- `ALLOW` - Permits multi-shard query execution
 
 ```sql
 DROP DATABASE prod;
@@ -115,6 +119,13 @@ ERROR:  client processing error: 'DROP DATABASE prod': failed to match any datas
 DROP DATABASE prod /* __spqr__default_route_behaviour: allow */;
 NOTICE: send query to shard(s) : shard1,shard2,shard3,shard4
 ```
+
+This parameter is particularly useful for:
+- DDL commands that need to run on all shards
+- Administrative queries
+- Development and testing scenarios
+
+For more details on transaction control, see [Distributed Transactions](/sharding/distributed_transactions).
 
 ### __spqr__execute_on
 
@@ -189,20 +200,54 @@ CREATE TABLE orders (id int, item int) /* __spqr__auto_distribution: ds1, __spqr
 
 ### __spqr__scatter_query
 
-The `__spqr__scatter_query` parameter is used to indicate that the query should be sent to all shards in the cluster.
+Forces a query to execute on all shards in the cluster, regardless of the sharding key.
+
+Possible values:
+- `true` - Execute query on all shards
+- `false` - Normal routing behavior (default)
 
 ```sql
 SELECT * FROM users /* __spqr__scatter_query: true */;
+
+-- Can also be set at session level
+SET __spqr__scatter_query TO true;
 ```
+
+<Warning>
+Scatter queries do not provide consistent cross-shard snapshots and can have significant performance impact. Use primarily for administrative or analytical purposes.
+</Warning>
+
+For more details, see [Distributed Transactions](/sharding/distributed_transactions).
 
 ### __spqr__commit_strategy
 
-The `__spqr__commit_strategy` parameter is used to specify the commit strategy for a distributed transaction. Possible values are `1pc` and `2pc`. `best-effort` is an alias for `1pc`.
-`2pc` mode only works when the `__spqr_engine_v2` hint is enabled. Additionally, `2pc` requires setting the [max_prepared_transactions](https://www.postgresql.org/docs/current/runtime-config-resource.html#GUC-MAX-PREPARED-TRANSACTIONS) parameter on all shards that take part in a transaction.
+Specifies the commit strategy for distributed transactions. This parameter is critical for ensuring data consistency when transactions span multiple shards.
+
+Possible values:
+- `best-effort` (default) - One-phase commit with no coordination between shards
+- `1pc` - Alias for `best-effort`
+- `2pc` - Two-phase commit with atomicity guarantees across shards
+
+Requirements for 2PC:
+- Enable `__spqr__engine_v2` hint
+- Set [max_prepared_transactions](https://www.postgresql.org/docs/current/runtime-config-resource.html#GUC-MAX-PREPARED-TRANSACTIONS) > 0 on all shards
+
+Examples:
 ```sql
-SELECT * FROM users /* __spqr__commit_strategy: 1pc */ WHERE id = 123;
+-- Session-level setting
+SET __spqr__commit_strategy TO '2pc';
+
+-- Statement-level hint
+BEGIN;
+INSERT INTO users (id, name) VALUES (1, 'Alice') /* __spqr__commit_strategy: 2pc */;
+COMMIT;
 ```
 
+How it works:
+- 1pc/best-effort: Commits each shard independently. Fast but no atomicity across shards.
+- 2pc: Uses PostgreSQL's prepared transactions to ensure all-or-nothing commits across shards.
+
+For comprehensive information about transaction strategies, including when to use each mode, see [Distributed Transactions](/sharding/distributed_transactions).
 
 ### __spqr__preferred_engine
 

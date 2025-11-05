@@ -1,0 +1,23 @@
+---
+title: 'Distributed Transactions'
+---
+
+SPQR supports distributed transactions across multiple shards with different commit strategies.
+
+The `__spqr__commit_strategy` parameter controls how transactions are committed:
+
+- `best-effort` or `1pc` - One-phase commit with no coordination between shards
+- `2pc` - Two-phase commit with atomicity guarantees across shards
+
+For atomic cross-shard transactions, use two-phase commit (2PC). Set `__spqr__commit_strategy` to `2pc` and ensure `max_prepared_transactions` > 0 on all shards.
+
+```sql
+SET __spqr__commit_strategy TO '2pc';
+
+BEGIN;
+INSERT INTO shard1_table (id, data) VALUES (1, 'data1');
+INSERT INTO shard2_table (id, data) VALUES (2, 'data2');
+COMMIT; -- Atomically commits across shards
+```
+
+See [Distributed Transactions](/sharding/distributed_transactions) for detailed information on commit strategies, requirements, and best practices.
