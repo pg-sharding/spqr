@@ -1839,7 +1839,7 @@ func (q *EtcdQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
 		return err
 	}
 	resp, err := q.cli.Txn(ctx).
-		If(clientv3.Compare(clientv3.Value(moveTaskNodePath(task.ID)), "!=", 0)).
+		If(clientv3.Compare(clientv3.Version(moveTaskNodePath(task.ID)), "!=", 0)).
 		Then(clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson))).
 		Commit()
 

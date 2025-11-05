@@ -634,7 +634,7 @@ Feature: Move recover test
     Then command return code should be "0"
     When I run SQL on host "coordinator" with timeout "120" seconds
     """
-    RETRY MOVE TASK GROUP
+    RETRY MOVE TASK GROUP tgid1
     """
     Then command return code should be "0"
     When I run SQL on host "shard1"
@@ -722,12 +722,12 @@ Feature: Move recover test
     Then command return code should be "0"
     When I run SQL on host "coordinator" with timeout "120" seconds
     """
-    STOP MOVE TASK GROUP;
+    STOP MOVE TASK GROUP tgid1;
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator" with timeout "120" seconds
     """
-    RETRY MOVE TASK GROUP;
+    RETRY MOVE TASK GROUP tgid1;
     """
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
