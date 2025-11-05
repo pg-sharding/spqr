@@ -1759,7 +1759,6 @@ func (q *EtcdQDB) GetMoveTaskByGroup(ctx context.Context, taskGroupID string) (*
 		Str("id", taskGroupID).
 		Msg("etcdqdb: get move task by group")
 	t := time.Now()
-	defer statistics.RecordQDBOperation("GetMoveTaskIDByGroup", time.Since(t))
 
 	path := moveTaskByGroupNodePath(taskGroupID)
 	resp, err := q.cli.Get(ctx, path)
@@ -1768,10 +1767,13 @@ func (q *EtcdQDB) GetMoveTaskByGroup(ctx context.Context, taskGroupID string) (*
 	}
 	switch len(resp.Kvs) {
 	case 0:
+		statistics.RecordQDBOperation("GetMoveTaskIDByGroup", time.Since(t))
 		return nil, nil
 	case 1:
+		statistics.RecordQDBOperation("GetMoveTaskIDByGroup", time.Since(t))
 		return q.GetMoveTask(ctx, string(resp.Kvs[0].Value))
 	default:
+		statistics.RecordQDBOperation("GetMoveTaskIDByGroup", time.Since(t))
 		return nil, fmt.Errorf("too many values by \"%s\" key", path)
 	}
 }

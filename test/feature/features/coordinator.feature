@@ -764,6 +764,7 @@ Feature: Coordinator test
     When I record in qdb move task group
     """
     {
+            "id":            "tgid1",
             "shard_to_id":   "sh_to",
             "kr_id_from":    "krid1",
             "kr_id_to":      "krid2",
@@ -790,6 +791,7 @@ Feature: Coordinator test
     And SQL result should match json_exactly
     """
     [{
+        "Task group ID":            "tgid1",
         "Destination shard ID":     "sh_to",
         "Source key range ID":      "krid1",
         "Destination key range ID": "krid2"

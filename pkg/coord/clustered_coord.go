@@ -2387,17 +2387,6 @@ func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id 
 	})
 }
 
-func (qc *ClusteredCoordinator) finishRedistributeTasksInProgress(ctx context.Context) error {
-	task, err := qc.db.GetRedistributeTask(ctx)
-	if err != nil {
-		return err
-	}
-	if task == nil {
-		return nil
-	}
-	return qc.executeRedistributeTask(ctx, tasks.RedistributeTaskFromDB(task))
-}
-
 func (qc *ClusteredCoordinator) IsReadOnly() bool {
 	return !qc.acquiredLock
 }
