@@ -23,6 +23,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
+	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -224,7 +225,7 @@ const defaultLockCoordinatorTimeout = time.Second
 * Its method calls result in cluster-wide changes.
  */
 type ClusteredCoordinator struct {
-	Coordinator
+	coord.Coordinator
 	rmgr         rulemgr.RulesMgr
 	tlsconfig    *tls.Config
 	db           qdb.XQDB
@@ -355,7 +356,7 @@ func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*ClusteredCoor
 	}
 
 	return &ClusteredCoordinator{
-		Coordinator:  NewCoordinator(db),
+		Coordinator:  coord.NewCoordinator(db),
 		db:           db,
 		tlsconfig:    tlsconfig,
 		rmgr:         rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
@@ -956,7 +957,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		}
 	}
 
-	exists, err := qc.qdb.CheckDistribution(ctx, distributions.REPLICATED)
+	exists, err := qc.QDB().CheckDistribution(ctx, distributions.REPLICATED)
 	if err != nil {
 		return fmt.Errorf("error checking for replicated distribution: %s", err)
 	}
@@ -1397,7 +1398,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 	if taskGroup.Limit > 0 && taskGroup.TotalKeys >= taskGroup.Limit {
 		return nil, nil
 	}
-	stop, err := qc.qdb.CheckMoveTaskGroupStopFlag(ctx)
+	stop, err := qc.QDB().CheckMoveTaskGroupStopFlag(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for stop flag: %s", err)
 	}
@@ -1547,7 +1548,7 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 			}
 			if newTask != nil {
 				taskGroup.CurrentTask = newTask
-				if err := qc.qdb.WriteMoveTask(ctx, tasks.MoveTaskToDb(newTask)); err != nil {
+				if err := qc.QDB().WriteMoveTask(ctx, tasks.MoveTaskToDb(newTask)); err != nil {
 					return fmt.Errorf("failed to save move task: %s", err)
 				}
 			} else {
@@ -1607,10 +1608,10 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 			// TODO: get exact key count here
 			taskGroup.TotalKeys += taskGroup.BatchSize
 			// TODO: wrap in transaction inside etcd
-			if err := qc.qdb.UpdateMoveTaskGroupTotalKeys(ctx, taskGroup.TotalKeys); err != nil {
+			if err := qc.QDB().UpdateMoveTaskGroupTotalKeys(ctx, taskGroup.TotalKeys); err != nil {
 				return err
 			}
-			if err := qc.qdb.RemoveMoveTask(ctx); err != nil {
+			if err := qc.QDB().RemoveMoveTask(ctx); err != nil {
 				return err
 			}
 		}
@@ -1646,7 +1647,7 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context) error {
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
 func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context) error {
-	return qc.qdb.AddMoveTaskGroupStopFlag(ctx)
+	return qc.QDB().AddMoveTaskGroupStopFlag(ctx)
 }
 
 // TODO : unit tests

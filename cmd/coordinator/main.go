@@ -6,9 +6,9 @@ import (
 	"runtime"
 
 	"github.com/pg-sharding/spqr/coordinator/app"
+	coord "github.com/pg-sharding/spqr/coordinator/pkg"
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/spf13/cobra"
