@@ -6,8 +6,7 @@ SPQR supports distributed transactions across multiple shards with different com
 
 The `__spqr__commit_strategy` parameter controls how transactions are committed:
 
-- `best-effort` (default) - One-phase commit with no coordination between shards
-- `1pc` - Alias for `best-effort`
+- `best-effort` or `1pc` - One-phase commit with no coordination between shards
 - `2pc` - Two-phase commit with atomicity guarantees across shards
 
 For atomic cross-shard transactions, use two-phase commit (2PC). Set `__spqr__commit_strategy` to `2pc` and ensure `max_prepared_transactions` > 0 on all shards.

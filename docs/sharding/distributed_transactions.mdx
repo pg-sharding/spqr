@@ -7,7 +7,7 @@ description: 'How to use two-phase commit and understand transaction commit stra
 
 ### Default Route Behaviour
 
-[query_routing.default_route_behaviour](http://localhost:3001/configuration/router#query-routing-settings) parameter determines what happens when SPQR cannot route a query to a single shard:
+[query_routing.default_route_behaviour](/configuration/router#query-routing-settings) parameter determines what happens when SPQR cannot route a query to a single shard:
 
 - `BLOCK`: Rejects queries that would need to execute on multiple shards (safer for consistency)
 - `ALLOW`: Permits multi-shard queries to execute (useful for DDL and administrative queries)
