@@ -3,37 +3,25 @@ title: 'Composite Sharding Keys'
 description: 'Learn how to use multiple columns as sharding keys in SPQR'
 ---
 
-## Overview
 
-SPQR supports composite sharding keys, which allow you to distribute data across shards using multiple columns instead of just a single column. This is useful when:
+SPQR supports composite sharding keys, which are multiple columns used as sharding keys. This is useful for:
 
-- Your data has a natural multi-column partition key (e.g., tenant ID + user ID)
-- You need to distribute data more evenly across shards
-- Your queries typically filter by multiple columns together
-- You want to implement time-series sharding strategies
-
-## How It Works
+- When your data has a natural multi-column partition key, such as `tenant_id + user_id`.
+- Geographic data.
+- Implementing time-series sharding strategies.
 
 When using composite sharding keys, SPQR creates key ranges based on the combined values of all specified columns. The columns are compared in order (left to right) when determining which shard to route a query to, similar to how [composite indexes work in PostgreSQL](https://www.postgresql.org/docs/current/indexes-multicolumn.html).
 
-For example, with a composite key of `(region_id, user_id)`:
-- Key `(1, 100)` comes before `(1, 200)` 
-- Key `(1, 500)` comes before `(2, 50)`
-- The first column is compared first, then the second column if the first is equal
-
-## Creating a Distribution with Composite Keys
+## Example
 
 To set up composite sharding keys, specify multiple column types when creating the distribution:
 
 ```sql
 -- Two integer columns
-CREATE DISTRIBUTION ds1 COLUMN TYPES integer, integer;
-
--- Mixed types
-CREATE DISTRIBUTION ds2 COLUMN TYPES integer, varchar;
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer, varchar;
 
 -- With hash on second column
-CREATE DISTRIBUTION ds3 COLUMN TYPES integer, varchar hash;
+CREATE DISTRIBUTION ds2 COLUMN TYPES integer, varchar hash;
 ```
 
 Create key ranges with comma-separated values:
@@ -50,9 +38,7 @@ Attach tables with multiple columns in the `DISTRIBUTION KEY` clause:
 ALTER DISTRIBUTION ds1 ATTACH RELATION users DISTRIBUTION KEY region_id, user_id;
 ```
 
-## Composite Keys with Hash Functions
-
-You can also use composite keys with hash-based sharding. This is particularly useful when you have a low-cardinality first column combined with a high-cardinality second column:
+You can also use composite keys with hash-based sharding:
 
 ```sql
 -- Create distribution with hash type for second column
@@ -70,51 +56,12 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION events
   HASH FUNCTION MURMUR;
 ```
 
-Or using the shorter syntax:
-
-```sql
-CREATE DISTRIBUTED RELATION events 
-  DISTRIBUTION KEY tenant_id, event_id 
-  HASH FUNCTION MURMUR 
-  IN ds1;
-```
-
-## Query Routing
-
-SPQR routes queries to specific shards when all key columns are specified:
-
-```sql
--- Routes to a specific shard
-SELECT * FROM users WHERE region_id = 1 AND user_id = 100;
-
-INSERT INTO users (region_id, user_id, name) VALUES (1, 100, 'Alice');
-
-UPDATE users SET name = 'Bob' WHERE region_id = 1 AND user_id = 100;
-```
-
-The COPY command also works with composite keys:
-
-```sql
-COPY users (region_id, user_id, name) FROM stdin;
-1	100	Alice
-1	200	Bob
-\.
-```
-
 ## Best Practices
 
 1. **Column Order Matters**: Choose the order of columns carefully. The first column should be the one most frequently used in your queries.
 
 2. **Cardinality Considerations**: For range-based sharding, consider using a lower-cardinality column first (e.g., tenant ID) followed by a higher-cardinality column (e.g., user ID or timestamp).
 
-3. **Hash Functions**: When using hash functions with composite keys, they are applied to the combination of all key columns, not individually.
+3. **Hash Functions**: When using hash functions with composite keys, they are applied individually to each column.
 
-4. **Query Patterns**: Ensure your application queries include all composite key columns in WHERE clauses for optimal routing. Queries missing one or more key columns may need to be sent to multiple shards.
-
-5. **Primary Keys**: Consider making your composite sharding key part of your table's primary key to ensure data locality and query efficiency.
-
-## Limitations
-
-- Cross-shard queries that don't specify all sharding key columns will need to query multiple shards
-- The number of columns in a composite key should be kept reasonable (typically 2-3 columns)
-- All columns in the composite key must be specified when creating key ranges
+4. **Query Patterns**: Ensure your application queries include all composite key columns in WHERE clauses. Queries missing one or more key columns may be rejected.

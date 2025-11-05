@@ -91,9 +91,9 @@
                         "welcome/get_started",
                         "sharding/ranged",
                         "sharding/hashed",
-                        "sharding/composite_keys",
                         "sharding/sharded_tables",
                         "sharding/reference_tables",
+                        "sharding/composite_keys",
                         {
                             "group": "Cluster Components",
                             "pages": [
