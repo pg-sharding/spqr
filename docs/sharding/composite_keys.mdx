@@ -14,7 +14,7 @@ SPQR supports composite sharding keys, which allow you to distribute data across
 
 ## How It Works
 
-When using composite sharding keys, SPQR creates key ranges based on the combined values of all specified columns. The columns are compared in order (left to right) when determining which shard to route a query to, similar to how composite indexes work in PostgreSQL.
+When using composite sharding keys, SPQR creates key ranges based on the combined values of all specified columns. The columns are compared in order (left to right) when determining which shard to route a query to, similar to how [composite indexes work in PostgreSQL](https://www.postgresql.org/docs/current/indexes-multicolumn.html).
 
 For example, with a composite key of `(region_id, user_id)`:
 - Key `(1, 100)` comes before `(1, 200)` 
@@ -23,54 +23,28 @@ For example, with a composite key of `(region_id, user_id)`:
 
 ## Creating a Distribution with Composite Keys
 
-### Step 1: Define Column Types
-
-When creating a distribution with composite keys, specify the types for all columns that will be part of the sharding key:
+To set up composite sharding keys, specify multiple column types when creating the distribution:
 
 ```sql
+-- Two integer columns
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer, integer;
-```
 
-You can mix different column types:
-
-```sql
+-- Mixed types
 CREATE DISTRIBUTION ds2 COLUMN TYPES integer, varchar;
-```
 
-For hash-based distributions, append `hash` after the column type that should be hashed:
-
-```sql
--- Hash the second column (useful for low-cardinality first column + high-cardinality second column)
+-- With hash on second column
 CREATE DISTRIBUTION ds3 COLUMN TYPES integer, varchar hash;
 ```
 
-Supported column types include: `INTEGER`, `INT`, `VARCHAR`, and `UUID`.
-
-### Step 2: Create Key Ranges
-
-Create key ranges using comma-separated values that match your column types:
+Create key ranges with comma-separated values:
 
 ```sql
--- For two integer columns
 CREATE KEY RANGE FROM 0, 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE FROM 100, 0 ROUTE TO shard3 FOR DISTRIBUTION ds1;
-CREATE KEY RANGE FROM 100, 100 ROUTE TO shard4 FOR DISTRIBUTION ds1;
 ```
 
-For mixed types (integer and varchar):
-
-```sql
--- For integer and varchar columns
-CREATE KEY RANGE FROM 0, 'aaaaa' ROUTE TO shard1 FOR DISTRIBUTION ds2;
-CREATE KEY RANGE FROM 0, 'zzzzz' ROUTE TO shard2 FOR DISTRIBUTION ds2;
-CREATE KEY RANGE FROM 100, 'aaaaa' ROUTE TO shard3 FOR DISTRIBUTION ds2;
-CREATE KEY RANGE FROM 100, 'zzzzz' ROUTE TO shard4 FOR DISTRIBUTION ds2;
-```
-
-### Step 3: Attach Tables
-
-Attach tables to the distribution by specifying multiple columns in the `DISTRIBUTION KEY` clause:
+Attach tables with multiple columns in the `DISTRIBUTION KEY` clause:
 
 ```sql
 ALTER DISTRIBUTION ds1 ATTACH RELATION users DISTRIBUTION KEY region_id, user_id;
@@ -107,91 +81,24 @@ CREATE DISTRIBUTED RELATION events
 
 ## Query Routing
 
-When querying tables with composite sharding keys, SPQR can route queries to specific shards when all key columns are specified in the WHERE clause:
+SPQR routes queries to specific shards when all key columns are specified:
 
 ```sql
--- This query routes to a specific shard
+-- Routes to a specific shard
 SELECT * FROM users WHERE region_id = 1 AND user_id = 100;
 
--- This query also routes efficiently
-INSERT INTO users (region_id, user_id, name) 
-VALUES (1, 100, 'Alice');
+INSERT INTO users (region_id, user_id, name) VALUES (1, 100, 'Alice');
 
--- Update with composite key
-UPDATE users SET name = 'Bob' 
-WHERE region_id = 1 AND user_id = 100;
+UPDATE users SET name = 'Bob' WHERE region_id = 1 AND user_id = 100;
 ```
 
-## COPY Command Support
-
-The COPY command works seamlessly with composite sharding keys. SPQR automatically routes each row to the appropriate shard based on the composite key values:
+The COPY command also works with composite keys:
 
 ```sql
 COPY users (region_id, user_id, name) FROM stdin;
 1	100	Alice
 1	200	Bob
-2	150	Charlie
 \.
-```
-
-The column order in COPY doesn't need to match the sharding key order - SPQR will extract the correct values:
-
-```sql
--- Column order different from sharding key
-COPY users (name, user_id, region_id) FROM stdin;
-Alice	100	1
-Bob	200	1
-\.
-```
-
-## Example: E-commerce Multi-tenant Setup
-
-Here's a complete example of setting up a multi-tenant e-commerce database with composite sharding:
-
-```sql
--- Connect to admin console
-\c spqr-console
-
--- Create distribution for tenant + order sharding
-CREATE DISTRIBUTION orders_dist COLUMN TYPES integer, integer;
-
--- Create key ranges to distribute across 4 shards
-CREATE KEY RANGE FROM 0, 0 ROUTE TO shard1 FOR DISTRIBUTION orders_dist;
-CREATE KEY RANGE FROM 0, 50000 ROUTE TO shard2 FOR DISTRIBUTION orders_dist;
-CREATE KEY RANGE FROM 100, 0 ROUTE TO shard3 FOR DISTRIBUTION orders_dist;
-CREATE KEY RANGE FROM 100, 50000 ROUTE TO shard4 FOR DISTRIBUTION orders_dist;
-
--- Attach the orders table with composite key
-ALTER DISTRIBUTION orders_dist 
-  ATTACH RELATION orders 
-  DISTRIBUTION KEY tenant_id, order_id;
-
--- Connect to router
-\c database
-
--- Create the orders table
-CREATE TABLE orders (
-    tenant_id INT NOT NULL,
-    order_id INT NOT NULL,
-    customer_name VARCHAR(255),
-    order_date DATE,
-    total_amount DECIMAL(10, 2),
-    PRIMARY KEY (tenant_id, order_id)
-);
-
--- Insert data for different tenants
-INSERT INTO orders (tenant_id, order_id, customer_name, order_date, total_amount)
-VALUES (1, 1001, 'John Doe', '2024-01-15', 150.00);
-
-INSERT INTO orders (tenant_id, order_id, customer_name, order_date, total_amount)
-VALUES (1, 1002, 'Jane Smith', '2024-01-16', 250.00);
-
-INSERT INTO orders (tenant_id, order_id, customer_name, order_date, total_amount)
-VALUES (100, 2001, 'Bob Johnson', '2024-01-17', 350.00);
-
--- Query orders for a specific tenant
-SELECT * FROM orders 
-WHERE tenant_id = 1 AND order_id = 1001;
 ```
 
 ## Best Practices
