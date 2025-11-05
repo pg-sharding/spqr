@@ -628,7 +628,7 @@ workloadlog
 workloadreplay
 worldmock
 wrongpassword
-Xact
+xact
 Xcpbs
 xerrors
 xjoin
