@@ -95,6 +95,7 @@
                         "sharding/sharded_tables",
                         "sharding/reference_tables",
                         "sharding/composite_keys",
+                        "sharding/distributed_transactions",
                         {
                             "group": "Cluster Components",
                             "pages": [
