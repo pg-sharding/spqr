@@ -1,11 +1,11 @@
 ---
-title: 'Router + Coordinator Setup'
+title: 'Router + Coordinator'
 description: 'Production-ready SPQR deployment with dynamic configuration management'
 ---
 
-The Router + Coordinator deployment is the recommended setup for production environments. It provides centralized metadata management, dynamic configuration updates, and support for multiple router instances.
-
 ## Overview
+
+The Router + Coordinator deployment is the **recommended** setup for production environments. It provides centralized metadata management, dynamic configuration updates, and support for multiple router instances.
 
 In this deployment mode:
 - A **Coordinator** manages the sharding metadata and configuration
@@ -14,43 +14,11 @@ In this deployment mode:
 - Routers must be registered and unregistered with the Coordinator
 - Configuration can be updated dynamically without router restarts
 
-## Architecture
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Client    │────▶│   Router 1  │     │   Router 2  │
-└─────────────┘     └──────┬──────┘     └──────┬──────┘
-                           │                   │
-                           │  Register/Sync    │
-                           ▼                   ▼
-                    ┌──────────────────────────────┐
-                    │      Coordinator             │
-                    └──────────┬───────────────────┘
-                               │
-                               ▼
-                    ┌──────────────────┐
-                    │   QDB (etcd)     │
-                    └──────────────────┘
-                               │
-                ┌──────────────┼──────────────┐
-                ▼              ▼              ▼
-           ┌────────┐    ┌────────┐    ┌────────┐
-           │ Shard1 │    │ Shard2 │    │ Shard3 │
-           └────────┘    └────────┘    └────────┘
-```
-
-## Prerequisites
-
-- SPQR router binary (`spqr-router`)
-- SPQR coordinator binary (`spqr-coordinator`)
-- etcd cluster (3 or 5 nodes recommended for production)
-- PostgreSQL shard instances
-
-## Setup Steps
+## Setup
 
 ### 1. Deploy etcd Cluster
 
-First, set up an etcd cluster to serve as the QDB. For production, use a 3 or 5-node cluster.
+Set up an etcd cluster to serve as the QDB. For production, use a 3 or 5-node cluster.
 
 **Example: Single-node etcd (for testing)**
 ```bash
@@ -58,23 +26,19 @@ etcd --listen-client-urls http://0.0.0.0:2379 \
      --advertise-client-urls http://localhost:2379
 ```
 
-**For production**, follow the [etcd clustering guide](https://etcd.io/docs/latest/op-guide/clustering/).
+For production, follow the [etcd clustering guide](https://etcd.io/docs/latest/op-guide/clustering/).
 
 ### 2. Configure the Coordinator
 
-Create a coordinator configuration file (e.g., `coordinator.yaml`):
+Create a coordinator configuration file:
 
 ```yaml coordinator.yaml
 host: 'localhost'
 coordinator_port: '7002'
 grpc_api_port: '7003'
-
-# QDB connection
 qdb_addr: 'localhost:2379'
-
 log_level: info
 
-# Frontend rules for admin console access
 frontend_rules:
   - db: spqr_console
     usr: admin
@@ -86,17 +50,12 @@ frontend_rules:
 ### 3. Start the Coordinator
 
 ```bash
-spqr-coordinator run --config ./coordinator.yaml
+spqr-coordinator run --config coordinator.yaml
 ```
 
-The Coordinator will:
-- Connect to the etcd cluster
-- Start listening for router registrations
-- Provide an admin console for configuration
+### 4. Configure Sharding Rules
 
-### 4. Configure Initial Sharding Rules
-
-Connect to the Coordinator's admin console to set up your sharding configuration:
+Connect to the Coordinator's admin console:
 
 ```bash
 psql "host=localhost port=7002 dbname=spqr_console user=admin sslmode=disable"
@@ -105,25 +64,21 @@ psql "host=localhost port=7002 dbname=spqr_console user=admin sslmode=disable"
 Configure your sharding setup:
 
 ```sql
--- Add shard information
 ADD SHARD shard1 WITH HOSTS 'shard1-host:5432';
 ADD SHARD shard2 WITH HOSTS 'shard2-host:5432';
 
--- Create distribution
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 
--- Attach tables
 ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
 ALTER DISTRIBUTION ds1 ATTACH RELATION order_items DISTRIBUTION KEY order_id;
 
--- Create key ranges
 CREATE KEY RANGE krid1 FROM 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid2 FROM 10000 ROUTE TO shard2 FOR DISTRIBUTION ds1;
 ```
 
 ### 5. Configure the Router
 
-Create a router configuration file (e.g., `router.yaml`):
+Create a router configuration file:
 
 ```yaml router.yaml
 host: 'localhost'
@@ -131,9 +86,7 @@ router_port: '6432'
 admin_console_port: '7432'
 grpc_api_port: '7010'
 
-# Enable coordinator mode
 with_coordinator: true
-
 router_mode: PROXY
 log_level: info
 
@@ -153,19 +106,17 @@ backend_rules:
     auth_rule:
       auth_method: md5
       password: backend_password
-
-# Coordinator connection is configured via environment or gRPC
 ```
 
 ### 6. Start the Router
 
 ```bash
-spqr-router run --config ./router.yaml
+spqr-router run --config router.yaml
 ```
 
 ### 7. Register the Router
 
-Connect to the router's admin console to register it with the Coordinator:
+Connect to the router's admin console:
 
 ```bash
 psql "host=localhost port=7432 dbname=mydb user=myuser sslmode=disable"
@@ -177,23 +128,21 @@ Register the router:
 REGISTER ROUTER router1 ADDRESS 'localhost:7010';
 ```
 
-The router is now registered and will:
-- Receive configuration from the Coordinator
-- Stay synchronized with metadata updates
-- Report its status to the Coordinator
+### 8. Connect
+
+Clients can now connect to the router:
+
+```bash
+psql "host=localhost port=6432 dbname=mydb user=myuser sslmode=disable"
+```
 
 ## Managing the Deployment
 
 ### Adding More Routers
 
-To scale horizontally, add more router instances:
-
-1. Create a new router configuration with different ports
-2. Start the new router instance
-3. Register it with the Coordinator using a unique router ID
+Create a new router configuration with different ports, start it, and register:
 
 ```sql
--- On the new router's admin console
 REGISTER ROUTER router2 ADDRESS 'localhost:7011';
 ```
 
@@ -202,10 +151,7 @@ REGISTER ROUTER router2 ADDRESS 'localhost:7011';
 All configuration changes are made through the Coordinator's admin console:
 
 ```sql
--- Add a new shard
 ADD SHARD shard3 WITH HOSTS 'shard3-host:5432';
-
--- Create a new key range
 CREATE KEY RANGE krid3 FROM 20000 ROUTE TO shard3 FOR DISTRIBUTION ds1;
 ```
 
@@ -213,10 +159,9 @@ Changes are automatically propagated to all registered routers.
 
 ### Unregistering a Router
 
-Before shutting down a router, unregister it:
+Before shutting down a router:
 
 ```sql
--- On the Coordinator's admin console
 UNREGISTER ROUTER router1;
 ```
 
@@ -226,30 +171,22 @@ Or unregister all routers:
 UNREGISTER ROUTER ALL;
 ```
 
-## Monitoring and Operations
+## Monitoring
 
 ### Check Router Status
 
 On the Coordinator's admin console:
 
 ```sql
--- List all registered routers
 SHOW routers;
-
--- View router details
 SHOW router router1;
 ```
 
 ### View Configuration
 
 ```sql
--- List all shards
 SHOW shards;
-
--- List distributions
 SHOW distributions;
-
--- List key ranges
 SHOW key_ranges;
 ```
 
@@ -258,171 +195,12 @@ SHOW key_ranges;
 On a router's admin console:
 
 ```sql
--- Check connection to coordinator
 SHOW status;
-
--- Verify shard connectivity
 SHOW shards;
 ```
 
-## High Availability Considerations
-
-### etcd Cluster
-- Deploy 3 or 5 etcd nodes for fault tolerance
-- Use persistent storage for etcd data
-- Monitor etcd cluster health
-- Configure proper backup and restore procedures
-
-### Coordinator
-- Run multiple Coordinator instances behind a load balancer
-- Each Coordinator connects to the same etcd cluster
-- Use health checks to detect Coordinator failures
-
-### Routers
-- Deploy multiple router instances for load balancing
-- Use connection pooling at the application layer
-- Configure health checks and automatic failover
-- Set appropriate connection limits per router
-
 ## Configuration Reference
 
-### Coordinator Settings
-
-| Setting | Description | Example |
-|---------|-------------|---------|
-| `coordinator_port` | Port for admin console | `7002` |
-| `grpc_api_port` | Port for gRPC API | `7003` |
-| `qdb_addr` | etcd cluster address | `localhost:2379` |
-
-For complete options, see [Coordinator Configuration](/configuration/coordinator).
-
-### Router Settings
-
-| Setting | Description | Example |
-|---------|-------------|---------|
-| `with_coordinator` | Enable coordinator mode | `true` |
-| `router_port` | Port for client connections | `6432` |
-| `admin_console_port` | Port for admin console | `7432` |
-| `grpc_api_port` | Port for gRPC (used in registration) | `7010` |
-
-For complete options, see [Router Configuration](/configuration/router).
-
-## Production Best Practices
-
-### Security
-- Use TLS for all connections (router-client, router-shard, router-coordinator)
-- Implement authentication for admin consoles
-- Restrict network access to coordinator and etcd
-- Use different passwords for different components
-
-### Resource Planning
-- Monitor router CPU and memory usage
-- Scale routers based on connection count and query throughput
-- Size etcd cluster appropriately for metadata volume
-- Plan for network bandwidth between routers and shards
-
-### Operational Procedures
-- Document router registration/unregistration procedures
-- Implement monitoring and alerting for all components
-- Create runbooks for common failure scenarios
-- Test disaster recovery procedures
-
-### Configuration Management
-- Version control all configuration files
-- Use infrastructure-as-code for deployments
-- Implement change management for sharding rule updates
-- Document the sharding scheme and key range assignments
-
-## Troubleshooting
-
-### Router Cannot Connect to Coordinator
-- Verify Coordinator is running and accessible
-- Check network connectivity and firewall rules
-- Verify gRPC port configuration
-- Check Coordinator logs for connection errors
-
-### Router Registration Fails
-- Ensure router gRPC API port is accessible
-- Verify router address is correct in REGISTER command
-- Check if router ID is unique
-- Review router and Coordinator logs
-
-### Configuration Not Synchronized
-- Verify router is registered successfully
-- Check etcd cluster health
-- Review Coordinator logs for sync errors
-- Ensure QDB connection is stable
-
-### etcd Connection Issues
-- Verify etcd cluster is running
-- Check `qdb_addr` configuration
-- Test etcd connectivity: `etcdctl --endpoints=localhost:2379 endpoint health`
-- Review etcd cluster logs
-
-## Migration from Bare Router
-
-To migrate from bare router to coordinator mode:
-
-1. Set up etcd cluster and Coordinator
-2. Import existing configuration to Coordinator via admin console
-3. Stop bare routers one by one
-4. Start new routers with `with_coordinator: true`
-5. Register each new router with the Coordinator
-6. Verify all routers are synchronized
-
-## Example: Complete Setup Script
-
-```bash
-#!/bin/bash
-set -e
-
-# Start etcd
-etcd --listen-client-urls http://0.0.0.0:2379 \
-     --advertise-client-urls http://localhost:2379 &
-
-# Wait for etcd to be ready
-until etcdctl --endpoints=localhost:2379 endpoint health 2>/dev/null; do
-  echo "Waiting for etcd..."
-  sleep 1
-done
-echo "etcd is ready"
-
-# Start Coordinator
-spqr-coordinator run --config ./coordinator.yaml &
-
-# Wait for Coordinator to be ready
-until pg_isready -h localhost -p 7002 -q; do
-  echo "Waiting for Coordinator..."
-  sleep 1
-done
-echo "Coordinator is ready"
-
-# Configure sharding (via psql commands to coordinator)
-psql "host=localhost port=7002 dbname=spqr_console user=admin" <<EOF
-ADD SHARD shard1 WITH HOSTS 'localhost:5432';
-ADD SHARD shard2 WITH HOSTS 'localhost:5433';
-CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
-CREATE KEY RANGE krid1 FROM 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
-CREATE KEY RANGE krid2 FROM 10000 ROUTE TO shard2 FOR DISTRIBUTION ds1;
-EOF
-
-# Start Router
-spqr-router run --config ./router.yaml &
-
-# Wait for router to be ready
-until pg_isready -h localhost -p 7432 -q; do
-  echo "Waiting for Router..."
-  sleep 1
-done
-echo "Router is ready"
-
-# Register Router
-psql "host=localhost port=7432 dbname=mydb user=myuser" <<EOF
-REGISTER ROUTER router1 ADDRESS 'localhost:7010';
-EOF
-
-echo "SPQR Router + Coordinator setup complete!"
-```
-
-This deployment mode provides the foundation for a scalable, production-ready SPQR cluster with centralized management and dynamic configuration capabilities.
+For complete options:
+- [Router Configuration](/configuration/router)
+- [Coordinator Configuration](/configuration/coordinator)

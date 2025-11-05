@@ -3,65 +3,22 @@ title: 'SPQR Infra Mode'
 description: 'Combined router and coordinator deployment for resource efficiency'
 ---
 
-SPQR Infra mode is a special deployment configuration where each `spqr-router` instance acts as both a router and a coordinator in a single binary. This mode is ideal when you want to save CPU and memory resources or simplify your deployment architecture.
-
 ## Overview
+
+SPQR Infra mode is a special deployment where each `spqr-router` instance acts as **both a router and a coordinator** in a single binary. This mode is ideal when you want to save CPU and memory resources or simplify your deployment architecture.
 
 In SPQR Infra mode:
 - A single `spqr-router` binary provides both routing and coordination functions
 - Multiple instances form a distributed consensus group
-- An etcd cluster is still required for distributed state
+- An etcd cluster is required for distributed state
 - You should run an odd number of instances (1, 3, or 5)
 - Reduced operational overhead compared to separate router and coordinator deployments
 
-## Architecture
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Client    │────▶│  SPQR Infra │────▶│  SPQR Infra │
-└─────────────┘     │  Instance 1 │     │  Instance 2 │
-                    │ (Router +   │     │ (Router +   │
-                    │ Coordinator)│     │ Coordinator)│
-                    └──────┬──────┘     └──────┬──────┘
-                           │                   │
-                           │    Consensus      │
-                           ▼                   ▼
-                    ┌──────────────────────────────┐
-                    │      QDB (etcd cluster)      │
-                    └──────────────────────────────┘
-                               │
-                ┌──────────────┼──────────────┐
-                ▼              ▼              ▼
-           ┌────────┐    ┌────────┐    ┌────────┐
-           │ Shard1 │    │ Shard2 │    │ Shard3 │
-           └────────┘    └────────┘    └────────┘
-```
-
-## When to Use SPQR Infra Mode
-
-### Best For:
-- **Resource-constrained environments** where running separate routers and coordinators is expensive
-- **Simplified deployments** where you want to minimize the number of components
-- **Small to medium-scale** production deployments
-- **Edge or remote locations** with limited infrastructure
-
-### Not Recommended For:
-- Very high-scale deployments where you need many routers but few coordinators
-- Scenarios requiring independent scaling of routing and coordination layers
-- When you need to minimize blast radius by isolating router and coordinator failures
-
-## Prerequisites
-
-- SPQR router binary (`spqr-router`)
-- etcd cluster (3 or 5 nodes recommended)
-- PostgreSQL shard instances
-- Understanding that you need an odd number of SPQR Infra instances
-
-## Setup Steps
+## Setup
 
 ### 1. Deploy etcd Cluster
 
-Set up an etcd cluster for distributed state management:
+Set up an etcd cluster for distributed state management. For production, use a 3 or 5-node cluster.
 
 **Example: 3-node etcd cluster**
 ```bash
@@ -90,102 +47,25 @@ etcd --name node3 \
      --initial-cluster node1=http://node1:2380,node2=http://node2:2380,node3=http://node3:2380
 ```
 
-### 2. Configure SPQR Infra Instances
+### 2. Configure SPQR Infra Instance
 
-Create configuration files for each SPQR Infra instance.
+Create a configuration file:
 
 <Note>
 When deploying on separate hosts, each instance can use the same ports. When deploying on the same host (for testing), each instance needs unique ports.
 </Note>
 
-**Instance 1 configuration (spqr-infra1.yaml):**
-```yaml spqr-infra1.yaml
+```yaml spqr-infra.yaml
 host: '0.0.0.0'
 
-# Router ports
 router_port: '6432'
 admin_console_port: '7432'
 grpc_api_port: '7010'
 
-# Coordinator mode enabled
-with_coordinator: true
-
-router_mode: PROXY
-log_level: info
-
-frontend_rules:
-  - db: mydb
-    usr: myuser
-    pool_mode: TRANSACTION
-    auth_rule:
-      auth_method: ok
-
-backend_rules:
-  - db: mydb
-    usr: myuser
-    connection_limit: 100
-    pool_discard: false
-    pool_rollback: true
-    auth_rule:
-      auth_method: md5
-      password: backend_password
-```
-
-<Note>
-The etcd connection is configured via command-line arguments when starting the router. See the startup commands below for details.
-</Note>
-
-**Instance 2 configuration (spqr-infra2.yaml):**
-
-<Note>
-Instances 2 and 3 use the same configuration as Instance 1, except for the port numbers. Keep the frontend and backend rules synchronized across all instances to ensure consistent behavior.
-</Note>
-
-```yaml spqr-infra2.yaml
-host: '0.0.0.0'
-
-# Different ports from instance 1
-router_port: '6433'
-admin_console_port: '7433'
-grpc_api_port: '7011'
-
 with_coordinator: true
 router_mode: PROXY
 log_level: info
 
-# Same frontend and backend rules as instance 1
-frontend_rules:
-  - db: mydb
-    usr: myuser
-    pool_mode: TRANSACTION
-    auth_rule:
-      auth_method: ok
-
-backend_rules:
-  - db: mydb
-    usr: myuser
-    connection_limit: 100
-    pool_discard: false
-    pool_rollback: true
-    auth_rule:
-      auth_method: md5
-      password: backend_password
-```
-
-**Instance 3 configuration (spqr-infra3.yaml):**
-```yaml spqr-infra3.yaml
-host: '0.0.0.0'
-
-# Different ports from instances 1 and 2
-router_port: '6434'
-admin_console_port: '7434'
-grpc_api_port: '7012'
-
-with_coordinator: true
-router_mode: PROXY
-log_level: info
-
-# Same frontend and backend rules as instances 1 and 2
 frontend_rules:
   - db: mydb
     usr: myuser
@@ -206,22 +86,22 @@ backend_rules:
 
 ### 3. Start SPQR Infra Instances
 
-Start each instance with its configuration and etcd connection details:
+Start each instance with etcd connection details:
 
 ```bash
 # Define etcd cluster endpoints
 ETCD_ENDPOINTS="node1:2379,node2:2379,node3:2379"
 
 # Instance 1
-spqr-router run --config ./spqr-infra1.yaml \
+spqr-router run --config spqr-infra.yaml \
   --qdb-endpoints "$ETCD_ENDPOINTS" &
 
-# Instance 2
-spqr-router run --config ./spqr-infra2.yaml \
+# Instance 2 (different ports if on same host)
+spqr-router run --config spqr-infra.yaml \
   --qdb-endpoints "$ETCD_ENDPOINTS" &
 
-# Instance 3
-spqr-router run --config ./spqr-infra3.yaml \
+# Instance 3 (different ports if on same host)
+spqr-router run --config spqr-infra.yaml \
   --qdb-endpoints "$ETCD_ENDPOINTS" &
 ```
 
@@ -229,15 +109,9 @@ spqr-router run --config ./spqr-infra3.yaml \
 The `--qdb-endpoints` flag specifies the etcd cluster endpoints. Alternatively, you can set the `QDB_ENDPOINTS` environment variable.
 </Note>
 
-The instances will:
-- Connect to the etcd cluster
-- Form a distributed coordination group
-- Start accepting client connections on their router ports
-- Provide admin consoles for configuration
-
 ### 4. Configure Sharding Rules
 
-Connect to any instance's admin console to configure sharding:
+Connect to any instance's admin console:
 
 ```bash
 psql "host=localhost port=7432 dbname=mydb user=myuser sslmode=disable"
@@ -246,27 +120,31 @@ psql "host=localhost port=7432 dbname=mydb user=myuser sslmode=disable"
 Set up your sharding configuration:
 
 ```sql
--- Add shards
 ADD SHARD shard1 WITH HOSTS 'shard1-host:5432';
 ADD SHARD shard2 WITH HOSTS 'shard2-host:5432';
 
--- Create distribution
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 
--- Attach tables
 ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
 ALTER DISTRIBUTION ds1 ATTACH RELATION order_items DISTRIBUTION KEY order_id;
 
--- Create key ranges
 CREATE KEY RANGE krid1 FROM 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid2 FROM 10000 ROUTE TO shard2 FOR DISTRIBUTION ds1;
 ```
 
 The configuration will be synchronized across all instances via the etcd cluster.
 
+### 5. Connect
+
+Clients can connect to any router instance:
+
+```bash
+psql "host=localhost port=6432 dbname=mydb user=myuser sslmode=disable"
+```
+
 ## Load Balancing
 
-Since all instances provide routing functionality, distribute client connections across them using:
+Distribute client connections across instances using:
 
 ### DNS Round-Robin
 Configure DNS to return multiple A records for your SPQR service name.
@@ -274,7 +152,6 @@ Configure DNS to return multiple A records for your SPQR service name.
 ### HAProxy/nginx
 Use a load balancer to distribute connections:
 
-**HAProxy example:**
 ```haproxy
 frontend spqr_frontend
     bind *:6432
@@ -286,218 +163,62 @@ backend spqr_routers
     balance roundrobin
     option tcp-check
     server spqr1 host1:6432 check
-    server spqr2 host2:6433 check
-    server spqr3 host3:6434 check
+    server spqr2 host2:6432 check
+    server spqr3 host3:6432 check
 ```
-
-### Application-Level Connection Pooling
-Configure your application's connection pool with multiple SPQR instance endpoints.
 
 ## Instance Count Recommendations
 
 ### Single Instance (1)
-- **Use for:** Development, testing, or very simple deployments
-- **Limitations:** No high availability, single point of failure
-- **Resources:** Minimal resource usage
+- Development, testing, or very simple deployments
+- No high availability, single point of failure
 
-### Three Instances (3)
-- **Use for:** Small to medium production deployments
-- **Benefits:** Tolerates 1 instance failure, good balance of availability and resource usage
-- **Resources:** Moderate resource usage
-- **Recommended** for most production deployments
+### Three Instances (3) - **Recommended**
+- Small to medium production deployments
+- Tolerates 1 instance failure
+- Good balance of availability and resource usage
 
 ### Five Instances (5)
-- **Use for:** Larger production deployments requiring higher availability
-- **Benefits:** Tolerates 2 instance failures, better load distribution
-- **Resources:** Higher resource usage
-- **Best for** critical applications with strict availability requirements
+- Larger production deployments
+- Tolerates 2 instance failures
+- Best for critical applications with strict availability requirements
 
-## Monitoring and Management
+<Note>
+Always maintain an odd number of instances (1, 3, or 5) for proper consensus.
+</Note>
+
+## Monitoring
 
 ### Check Instance Status
 
 On any instance's admin console:
 
 ```sql
--- View cluster health
 SHOW status;
-
--- List all shards
 SHOW shards;
-
--- View distributions and key ranges
 SHOW distributions;
 SHOW key_ranges;
 ```
 
 ### Verify etcd Connection
 
-Check that all instances can communicate with etcd:
-
 ```bash
-# From any instance host
 etcdctl --endpoints=node1:2379,node2:2379,node3:2379 endpoint health
 ```
 
 ### Monitor Instance Health
 
-Implement health checks for each instance:
-
 ```bash
-# Check if instance is accepting connections
 pg_isready -h localhost -p 6432
-
-# Connect to admin console
 psql "host=localhost port=7432 dbname=mydb user=myuser sslmode=disable" -c "SHOW status"
 ```
 
-## Scaling Operations
-
-### Adding an Instance
-
-To add a new instance to the cluster:
-
-1. Create a configuration file with unique ports
-2. Ensure it points to the same etcd cluster
-3. Start the new instance
-4. It will automatically join the cluster and sync configuration
-
-### Removing an Instance
-
-To remove an instance:
-
-1. Stop sending client traffic to the instance (update load balancer)
-2. Wait for existing connections to drain
-3. Shut down the instance
-4. The remaining instances will continue operating
-
-<Note>
-Always maintain an odd number of instances (1, 3, or 5) for proper consensus.
-</Note>
-
-## High Availability Considerations
-
-### etcd Cluster
-- Use a 3 or 5-node etcd cluster
-- Monitor etcd cluster health continuously
-- Implement backup and restore procedures for etcd data
-- Use persistent storage for etcd
-
-### SPQR Infra Instances
-- Deploy instances across different availability zones or failure domains
-- Monitor instance health and automatic restart on failure
-- Configure appropriate resource limits (CPU, memory)
-- Implement connection limits to prevent resource exhaustion
-
-### Network
-- Ensure low-latency connections between instances and etcd
-- Use redundant network paths where possible
-- Monitor network partition scenarios
-
-## Resource Planning
-
-### CPU
-Each SPQR Infra instance needs CPU for:
-- Query routing and parsing
-- Coordination logic
-- Network I/O
-
-**Estimate:** 2-4 CPU cores per instance for typical workloads
-
-### Memory
-Memory is needed for:
-- Connection pooling
-- Query result buffering
-- Metadata caching
-
-**Estimate:** 4-8 GB RAM per instance, depending on connection count
-
-### Comparison with Separate Router + Coordinator
-
-**SPQR Infra Mode (3 instances):**
-- 3 processes total
-- ~6-12 CPU cores
-- ~12-24 GB RAM
-
-**Separate Router + Coordinator (3 routers + 1 coordinator):**
-- 4 processes total
-- ~8-16 CPU cores
-- ~16-32 GB RAM
-
-**Savings:** ~25-30% in resource usage with SPQR Infra mode
-
-## Configuration Reference
-
-Key settings for SPQR Infra mode:
-
-| Setting | Description | Value |
-|---------|-------------|-------|
-| `with_coordinator` | Enable coordinator mode | `true` (required) |
-| `router_port` | Port for client connections | Unique per instance |
-| `admin_console_port` | Port for admin console | Unique per instance |
-| `grpc_api_port` | Port for gRPC API | Unique per instance |
-
-For complete configuration options, see:
-- [Router Configuration](/configuration/router)
-- [Coordinator Configuration](/configuration/coordinator)
-
-## Production Best Practices
-
-### Deployment
-- Use container orchestration (Kubernetes, Docker Swarm) for automated management
-- Implement rolling updates for zero-downtime deployments
-- Use infrastructure-as-code for reproducible deployments
-
-### Security
-- Enable TLS for all connections
-- Implement authentication for admin consoles
-- Use network policies to restrict access
-- Regularly update and patch SPQR binaries
-
-### Operations
-- Monitor all instances with centralized logging and metrics
-- Set up alerts for instance failures and degraded performance
-- Document operational procedures (adding/removing instances, handling failures)
-- Test disaster recovery scenarios regularly
-
-### Configuration Management
-- Version control all configuration files
-- Use consistent configuration across all instances
-- Implement change management for sharding rule updates
-- Test configuration changes in a staging environment first
-
-## Troubleshooting
-
-### Instance Cannot Start
-- Check port conflicts with other services
-- Verify etcd cluster is accessible
-- Review instance logs for startup errors
-- Ensure configuration file is valid YAML
-
-### Configuration Not Synchronized
-- Verify all instances connect to the same etcd cluster
-- Check etcd cluster health
-- Review instance logs for sync errors
-- Ensure network connectivity between instances and etcd
-
-### Instance Isolated from Cluster
-- Check network connectivity to etcd
-- Verify firewall rules allow etcd communication
-- Review etcd cluster member list
-- Check instance logs for connection errors
-
-### Performance Issues
-- Monitor CPU and memory usage on instances
-- Check connection pool utilization
-- Review query patterns for inefficiencies
-- Consider scaling to more instances
-
-## Example: Docker Compose Setup
+## Docker Compose Example
 
 Here's a complete example using Docker Compose:
 
 <Note>
-In this Docker Compose example, all SPQR instances use the same internal ports (6432, 7432) but are mapped to different host ports (6432-6434, 7432-7434). Each instance uses the same configuration file since they run in separate containers.
+All SPQR instances use the same internal ports (6432, 7432) but are mapped to different host ports (6432-6434, 7432-7434).
 </Note>
 
 ```yaml docker-compose.yml
@@ -543,8 +264,8 @@ services:
     image: spqr:latest
     command: spqr-router run --config /etc/spqr/config.yaml --qdb-endpoints etcd1:2379,etcd2:2379,etcd3:2379
     ports:
-      - "6432:6432"  # Host port 6432 -> Container port 6432
-      - "7432:7432"  # Host port 7432 -> Container port 7432
+      - "6432:6432"
+      - "7432:7432"
     volumes:
       - ./spqr-infra.yaml:/etc/spqr/config.yaml
     depends_on:
@@ -556,8 +277,8 @@ services:
     image: spqr:latest
     command: spqr-router run --config /etc/spqr/config.yaml --qdb-endpoints etcd1:2379,etcd2:2379,etcd3:2379
     ports:
-      - "6433:6432"  # Host port 6433 -> Container port 6432
-      - "7433:7432"  # Host port 7433 -> Container port 7432
+      - "6433:6432"
+      - "7433:7432"
     volumes:
       - ./spqr-infra.yaml:/etc/spqr/config.yaml
     depends_on:
@@ -569,8 +290,8 @@ services:
     image: spqr:latest
     command: spqr-router run --config /etc/spqr/config.yaml --qdb-endpoints etcd1:2379,etcd2:2379,etcd3:2379
     ports:
-      - "6434:6432"  # Host port 6434 -> Container port 6432
-      - "7434:7432"  # Host port 7434 -> Container port 7432
+      - "6434:6432"
+      - "7434:7432"
     volumes:
       - ./spqr-infra.yaml:/etc/spqr/config.yaml
     depends_on:
@@ -579,41 +300,14 @@ services:
       - etcd3
 ```
 
-**Shared configuration file (spqr-infra.yaml):**
-```yaml spqr-infra.yaml
-host: '0.0.0.0'
-
-# All instances use the same internal ports
-router_port: '6432'
-admin_console_port: '7432'
-grpc_api_port: '7010'
-
-with_coordinator: true
-router_mode: PROXY
-log_level: info
-
-frontend_rules:
-  - db: mydb
-    usr: myuser
-    pool_mode: TRANSACTION
-    auth_rule:
-      auth_method: ok
-
-backend_rules:
-  - db: mydb
-    usr: myuser
-    connection_limit: 100
-    pool_discard: false
-    pool_rollback: true
-    auth_rule:
-      auth_method: md5
-      password: backend_password
-```
-
-Start the entire stack:
+Start the stack:
 
 ```bash
 docker-compose up -d
 ```
 
-This SPQR Infra mode deployment provides an efficient, simplified architecture for production use while maintaining high availability and dynamic configuration capabilities.
+## Configuration Reference
+
+For complete options:
+- [Router Configuration](/configuration/router)
+- [Coordinator Configuration](/configuration/coordinator)
