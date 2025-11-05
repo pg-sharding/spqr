@@ -1,0 +1,67 @@
+---
+title: 'Composite Sharding Keys'
+description: 'Learn how to use multiple columns as sharding keys in SPQR'
+---
+
+
+SPQR supports composite sharding keys, which are multiple columns used as sharding keys. This is useful for:
+
+- When your data has a natural multi-column partition key, such as `tenant_id + user_id`.
+- Geographic data.
+- Implementing time-series sharding strategies.
+
+When using composite sharding keys, SPQR creates key ranges based on the combined values of all specified columns. The columns are compared in order (left to right) when determining which shard to route a query to, similar to how [composite indexes work in PostgreSQL](https://www.postgresql.org/docs/current/indexes-multicolumn.html).
+
+## Example
+
+To set up composite sharding keys, specify multiple column types when creating the distribution:
+
+```sql
+-- Two integer columns
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer, varchar;
+
+-- With hash on second column
+CREATE DISTRIBUTION ds2 COLUMN TYPES integer, varchar hash;
+```
+
+Create key ranges with comma-separated values:
+
+```sql
+CREATE KEY RANGE FROM 0, 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 100, 0 ROUTE TO shard3 FOR DISTRIBUTION ds1;
+```
+
+Attach tables with multiple columns in the `DISTRIBUTION KEY` clause:
+
+```sql
+ALTER DISTRIBUTION ds1 ATTACH RELATION users DISTRIBUTION KEY region_id, user_id;
+```
+
+You can also use composite keys with hash-based sharding:
+
+```sql
+-- Create distribution with hash type for second column
+CREATE DISTRIBUTION ds1 COLUMN TYPES INT, VARCHAR hash;
+
+-- Create key ranges
+CREATE KEY RANGE FROM 0, 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 0, 2147483648 ROUTE TO shard2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 1, 0 ROUTE TO shard3 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 1, 2147483648 ROUTE TO shard4 FOR DISTRIBUTION ds1;
+
+-- Attach table with hash function
+ALTER DISTRIBUTION ds1 ATTACH RELATION events 
+  DISTRIBUTION KEY tenant_id, event_id 
+  HASH FUNCTION MURMUR;
+```
+
+## Best Practices
+
+1. **Column Order Matters**: Choose the order of columns carefully. The first column should be the one most frequently used in your queries.
+
+2. **Cardinality Considerations**: For range-based sharding, consider using a lower-cardinality column first (e.g., tenant ID) followed by a higher-cardinality column (e.g., user ID or timestamp).
+
+3. **Hash Functions**: When using hash functions with composite keys, they are applied individually to each column.
+
+4. **Query Patterns**: Ensure your application queries include all composite key columns in WHERE clauses. Queries missing one or more key columns may be rejected.

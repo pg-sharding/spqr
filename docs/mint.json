@@ -93,6 +93,7 @@
                         "sharding/hashed",
                         "sharding/sharded_tables",
                         "sharding/reference_tables",
+                        "sharding/composite_keys",
                         {
                             "group": "Cluster Components",
                             "pages": [
