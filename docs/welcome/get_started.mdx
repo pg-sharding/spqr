@@ -24,8 +24,14 @@ First, you need to configure the rules by which the router will decide which of 
 
 For this purpose, SPQR has an **administrative console**. This is an app that works by PostgreSQL protocol and you can connect to it by usual psql. You can find the console port in your config file.
 
+<Note>
+If you're using the Docker setup from this guide, the admin console is not exposed by default. You'll need to either:
+1. Add `- "7432:7432"` to the router ports in docker-compose.yaml, or
+2. Connect to the router container and use localhost:7432 from inside
+</Note>
+
 ```sql
-➜  psql "host=localhost sslmode=disable user=demo dbname=demo port=7432"
+➜  psql "host=localhost sslmode=disable user=user1 dbname=db1 port=7432"
 SPQR router admin console
 Here you can set up your own routing rules
 ------------------------------------------------
@@ -35,12 +41,14 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 psql (14.5 (Homebrew), server console)
 Type "help" to get help.
 
-demo=> SHOW shards;
+db1=> SHOW shards;
   listing data shards  
 -----------------------
- datashard with ID shard1
- datashard with ID shard2
-(2 rows)
+ datashard with ID sh1
+ datashard with ID sh2
+ datashard with ID sh3
+ datashard with ID sh4
+(4 rows)
 ```
 
 To make all things work, the router needs to know the following:
@@ -53,8 +61,8 @@ To make all things work, the router needs to know the following:
 Let's create a distribution first:
 
 ```sql
-➜ psql "host=localhost sslmode=disable user=demo dbname=demo port=7432"
-demo=> CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+➜ psql "host=localhost sslmode=disable user=user1 dbname=db1 port=7432"
+db1=> CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
          add distribution         
 ----------------------------------
  created distribution with id ds1
@@ -64,13 +72,13 @@ demo=> CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 The next step is to specify a list of tables and columns.
 
 ```sql
-demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
+db1=> ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
                  attach table               
 --------------------------------------------
  attached relation orders to distribution ds1
 (1 row)
 
-demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION items DISTRIBUTION KEY order_id;
+db1=> ALTER DISTRIBUTION ds1 ATTACH RELATION items DISTRIBUTION KEY order_id;
                  attach table                 
 ----------------------------------------------
  attached relation items to distribution ds1
@@ -80,13 +88,13 @@ demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION items DISTRIBUTION KEY order_id;
 And at the end specify a list of ranges: which values to route to which shard. Note: The right bound is infinity if there are no key ranges.
 
 ```sql
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
          add key range          
 --------------------------------
  created key range with bound 1
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 1000 ROUTE TO shard2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 1000 ROUTE TO sh2 FOR DISTRIBUTION ds1;
             add key range          
 -----------------------------------
  created key range with bound 1000
@@ -99,39 +107,43 @@ Here we go! You can play with some SELECTs or INSERTs.
 
 Now we can connect to proxy a.k.a. router and play with it. Please use psql again, but this time connect to a different port.
 
+<Note>
+If you're using the Docker setup from this guide, the router port 6432 is mapped to 8432 on your host machine. Use port 8432 to connect from your host.
+</Note>
+
 ```bash
-➜ psql "host=localhost sslmode=disable user=demo dbname=demo port=6432"
+➜ psql "host=localhost sslmode=disable user=user1 dbname=db1 port=8432"
 psql (13.3, server 9.6.22)
 Type "help" for help.
 
-demo=> CREATE TABLE orders (
+db1=> CREATE TABLE orders (
     id SERIAL NOT NULL PRIMARY KEY,
     customer_id INT,
     order_date DATE
 );
-NOTICE: send query to shard(s) : shard01,shard02
+NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
 
-demo=> CREATE TABLE items (
+db1=> CREATE TABLE items (
     id SERIAL NOT NULL PRIMARY KEY,
     order_id SERIAL NOT NULL,
     name VARCHAR
 );
-NOTICE: send query to shard(s) : shard01,shard02
+NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
 ```
 
 Then, populate it with an order:
 
 ```bash
-demo=> BEGIN;
+db1=> BEGIN;
 BEGIN
-demo=> INSERT INTO orders (id, customer_id, order_data) VALUES (777, 123456, '2024-01-08');
-NOTICE: send query to shard(s) : shard01
+db1=> INSERT INTO orders (id, customer_id, order_date) VALUES (777, 123456, '2024-01-08');
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-demo=> INSERT INTO items (id, order_id, name) VALUES (1, 777, 'elephant');
+db1=> INSERT INTO items (id, order_id, name) VALUES (1, 777, 'elephant');
 INSERT 0 1
-demo=> COMMIT;
+db1=> COMMIT;
 COMMIT
 ```
 
@@ -140,21 +152,21 @@ COMMIT
 The order can be found on the first shard:
 
 ```bash
-demo=> SELECT * FROM orders WHERE id = 777;
-NOTICE: send query to shard(s) : shard01
-  id  | customer_id | order_data 
-------+-------------+--------------
-  777 |   123456    | '2024-01-08'
+db1=> SELECT * FROM orders WHERE id = 777;
+NOTICE: send query to shard(s) : sh1
+  id  | customer_id | order_date 
+------+-------------+------------
+  777 |   123456    | 2024-01-08
 (1 row)
 ```
 
 SPQR can handle such queries as `SELECT * FROM table` but we don't recommend using it. This feature is implemented in a non-transactional way.
 
 ```bash
-demo=> SELECT * FROM orders;
-NOTICE: send query to shard(s) : shard01,shard02
-  id  | customer_id | order_data 
-------+-------------+--------------
-  777 |   123456    | '2024-01-08'
+db1=> SELECT * FROM orders;
+NOTICE: send query to shard(s) : sh1,sh2
+  id  | customer_id | order_date 
+------+-------------+------------
+  777 |   123456    | 2024-01-08
 (1 row)
 ```
