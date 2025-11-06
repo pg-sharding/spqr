@@ -188,7 +188,16 @@ func processDrop(ctx context.Context,
 			if err := mngr.DropDistribution(ctx, stmt.ID); err != nil {
 				return nil, err
 			}
-			return cli.DropDistribution(ctx, []string{stmt.ID})
+
+			tts := &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("drop distribution"),
+			}
+
+			tts.Raw = append(tts.Raw, [][]byte{
+				fmt.Appendf(nil, "distribution id -> %s", stmt.ID),
+			})
+
+			return tts, nil
 		}
 
 		dss, err := mngr.ListDistributions(ctx)
@@ -210,9 +219,9 @@ func processDrop(ctx context.Context,
 			}
 		}
 
-		tts := &tupleslot.TupleTableSlot{}
-
-		tts.Desc = engine.GetVPHeader("drop distribution")
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("drop distribution"),
+		}
 
 		for _, id := range ret {
 			tts.Raw = append(tts.Raw, [][]byte{

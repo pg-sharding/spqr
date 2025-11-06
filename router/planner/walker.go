@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/virtual"
 )
@@ -248,8 +249,10 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 
 	switch q := p.(type) {
 	case *plan.VirtualPlan:
-		q.TTS.Desc = virtualRowCols
-		q.TTS.Raw = [][][]byte{virtualRowVals}
+		q.TTS = &tupleslot.TupleTableSlot{
+			Desc: virtualRowCols,
+			Raw:  [][][]byte{virtualRowVals},
+		}
 	}
 
 	return p, nil
