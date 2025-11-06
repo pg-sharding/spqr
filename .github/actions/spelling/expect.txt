@@ -586,6 +586,7 @@ tsa
 TSEMICOLON
 tstmt
 tupleslot
+tupletableslot
 twopc
 TXACT
 txactive
