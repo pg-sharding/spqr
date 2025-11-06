@@ -401,7 +401,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return nil, err
 		}
 
-		/* XXX: can we already make this more SQL complient?  */
+		/* XXX: can we already make this more SQL compliant?  */
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("create reference table"),
 			Raw: [][][]byte{
