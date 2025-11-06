@@ -826,17 +826,35 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		if err := mgr.UnregisterRouter(ctx, stmt.ID); err != nil {
 			return err
 		}
-		return cli.UnregisterRouter(stmt.ID)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("unregister router"),
+			Raw:  [][][]byte{{fmt.Appendf(nil, "router id -> %s", stmt.ID)}},
+		}
+
+		return cli.ReplyTTS(tts)
 	case *spqrparser.Lock:
 		if _, err := mgr.LockKeyRange(ctx, stmt.KeyRangeID); err != nil {
 			return err
 		}
-		return cli.LockKeyRange(ctx, stmt.KeyRangeID)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("lock key range"),
+			Raw:  [][][]byte{{fmt.Appendf(nil, "key range id -> %v", stmt.KeyRangeID)}},
+		}
+
+		return cli.ReplyTTS(tts)
 	case *spqrparser.Unlock:
 		if err := mgr.UnlockKeyRange(ctx, stmt.KeyRangeID); err != nil {
 			return err
 		}
-		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("unlock key range"),
+			Raw:  [][][]byte{{fmt.Appendf(nil, "key range id -> %v", stmt.KeyRangeID)}},
+		}
+
+		return cli.ReplyTTS(tts)
 	case *spqrparser.Kill:
 		return ProcessKill(ctx, stmt, mgr, ci, cli)
 	case *spqrparser.SplitKeyRange:
@@ -911,7 +929,16 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}, stmt.ShardID); err != nil {
 			return err
 		}
-		return cli.SyncReferenceRelations([]string{stmt.RelationSelector}, stmt.ShardID)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("relation", "shard"),
+			Raw: [][][]byte{{
+				fmt.Appendf(nil, "%v", stmt.RelationSelector),
+				fmt.Appendf(nil, "%v", stmt.ShardID),
+			}},
+		}
+
+		return cli.ReplyTTS(tts)
 	default:
 		return ErrUnknownCoordinatorCommand
 	}

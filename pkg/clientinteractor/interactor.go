@@ -92,24 +92,6 @@ type PSQLInteractor struct {
 	cl client.Client
 }
 
-func (pi *PSQLInteractor) SyncReferenceRelations(s []string, d string) error {
-	if err := pi.WriteHeader("relation", "shard"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	for _, id := range s {
-		if err := pi.WriteDataRow(
-			fmt.Sprintf("%v", id),
-
-			fmt.Sprintf("%v", d)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(len(s))
-}
-
 func (pi *PSQLInteractor) CoordinatorAddr(ctx context.Context, addr string) error {
 	if err := pi.WriteHeader("coordinator address"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -428,70 +410,6 @@ func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyR
 	return pi.CompleteMsg(0)
 }
 
-// TODO : unit tests
-
-// LockKeyRange sends the row description message for locking a key range with the specified ID,
-// followed by a data row indicating the locking of the key range, and completes the message.
-//
-// Parameters:
-// - ctx (context.Context): The context parameter.
-// - krid (string): The ID of the key range to be locked (string).
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) LockKeyRange(ctx context.Context, krid string) error {
-	if err := pi.WriteHeader("lock key range"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{
-			[]byte(fmt.Sprintf("key range id -> %v", krid))},
-		},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// UnlockKeyRange sends the row description message for unlocking a key range with the specified ID,
-// followed by a data row indicating the unlocking of the key range, and completes the message.
-//
-// Parameters:
-// - ctx (context.Context): The context parameter.
-// - krid (string): The ID of the key range to be unlocked (string).
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string) error {
-	if err := pi.WriteHeader("unlock key range"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{
-			[]byte(
-				fmt.Sprintf("key range id -> %v", krid)),
-		},
-		},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
 // MoveTaskGroup sends the list of move tasks to the client.
 //
 // Parameters:
@@ -523,9 +441,6 @@ func (pi *PSQLInteractor) MoveTaskGroup(_ context.Context, ts *tasks.MoveTaskGro
 	if err := pi.WriteHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID"); err != nil {
 		return err
 	}
-	if ts == nil {
-		return pi.CompleteMsg(0)
-	}
 	if err := pi.WriteDataRow(ts.ID, ts.ShardToId, ts.KrIdFrom, ts.KrIdTo); err != nil {
 		return err
 	}
@@ -537,9 +452,6 @@ func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.Move
 		return err
 	}
 
-	if ts == nil {
-		return pi.CompleteMsg(0)
-	}
 	for _, task := range ts {
 		krData := []string{""}
 		if task.Bound != nil {
@@ -980,29 +892,6 @@ func (pi *PSQLInteractor) Routers(resp []*topology.Router) error {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// UnregisterRouter unregisters a router with the specified ID.
-//
-// Parameters:
-// - id (string): The ID of the router to unregister.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) UnregisterRouter(id string) error {
-	if err := pi.WriteHeader("unregister router"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("router id -> %s", id)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
 	}
 
 	return pi.CompleteMsg(0)
