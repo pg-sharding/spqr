@@ -435,18 +435,6 @@ func (pi *PSQLInteractor) MoveTaskGroups(_ context.Context, groups map[string]*t
 	return pi.CompleteMsg(len(groups))
 }
 
-func (pi *PSQLInteractor) MoveTaskGroup(_ context.Context, ts *tasks.MoveTaskGroup) error {
-	spqrlog.Zero.Debug().Msg("show move task group")
-
-	if err := pi.WriteHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID"); err != nil {
-		return err
-	}
-	if err := pi.WriteDataRow(ts.ID, ts.ShardToId, ts.KrIdFrom, ts.KrIdTo); err != nil {
-		return err
-	}
-	return pi.CompleteMsg(1)
-}
-
 func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.MoveTask, dsIDColTypes map[string][]string, moveTaskDsID map[string]string) error {
 	if err := pi.WriteHeader("Move task ID", "Temporary key range ID", "Bound", "State"); err != nil {
 		return err

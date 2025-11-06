@@ -918,7 +918,14 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		if err := mgr.RetryMoveTaskGroup(ctx, stmt.ID); err != nil {
 			return err
 		}
-		return cli.MoveTaskGroup(ctx, taskGroup)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID"),
+		}
+		if taskGroup != nil {
+			tts.WriteDataRow(taskGroup.ID, taskGroup.ShardToId, taskGroup.KrIdFrom, taskGroup.KrIdTo)
+		}
+		return cli.ReplyTTS(tts)
 	case *spqrparser.SyncReferenceTables:
 		/* TODO: fix RelationSelector logic */
 		if stmt.RelationSelector == "*" {
