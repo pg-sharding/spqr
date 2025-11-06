@@ -386,7 +386,7 @@ func createNonReplicatedDistribution(ctx context.Context,
 //
 // Returns:
 // - error: An error if the creation encounters any issues.
-func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.ReferenceRelationDefinition:
 
@@ -475,7 +475,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return nil, err
 		}
 		if defaultKr := DefaultKeyRangeId(ds); stmt.KeyRangeID == defaultKr {
-			err := fmt.Errorf("Error kay range %s is reserved", defaultKr)
+			err := fmt.Errorf("key range %s is reserved", defaultKr)
 			spqrlog.Zero.Error().Err(err).Msg("failed to create key range")
 			return nil, err
 		}
@@ -729,7 +729,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}
 		return cli.ReplyTTS(tts)
 	case *spqrparser.Create:
-		tts, err := processCreate(ctx, stmt.Element, mgr)
+		tts, err := ProcessCreate(ctx, stmt.Element, mgr)
 		if err != nil {
 			return cli.ReportError(err)
 		}
