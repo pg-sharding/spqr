@@ -25,7 +25,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/port"
@@ -367,19 +366,6 @@ func (pi *PSQLInteractor) ReplyTTS(tts *tupleslot.TupleTableSlot) error {
 	return pi.CompleteMsg(len(tts.Raw))
 }
 
-// KeyRanges sends the row description message for key ranges, followed by data rows
-// containing details of each key range, and completes the message.
-//
-// Parameters:
-// - krs ([]*kr.KeyRange): The list of *kr.KeyRange objects containing the key range information.
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, locks []string) error {
-	vp := engine.KeyRangeVirtualRelationScan(krs, locks)
-	return pi.ReplyTTS(vp)
-}
-
 // TODO : unit tests
 
 // SplitKeyRange sends the row description message for splitting a key range, followed by a data row
@@ -473,43 +459,6 @@ func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.Move
 
 	}
 	return pi.CompleteMsg(len(ts))
-}
-
-// TODO : unit tests
-
-// Shards lists the data shards.
-//
-// Parameters:
-// - ctx (context.Context): The context parameter.
-// - shards ([]*topology.DataShard): The list of data shards to be listed.
-//
-// Returns:
-// - error: An error if there was a problem listing the data shards.
-func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*topology.DataShard) error {
-	if err := pi.WriteHeader("shard"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	spqrlog.Zero.Debug().Msg("listing shards")
-
-	for _, shard := range shards {
-		if err := pi.cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{
-				[]byte(shard.ID),
-			},
-		}); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-func (pi *PSQLInteractor) Hosts(ctx context.Context, shards []*topology.DataShard, ihc map[string]tsa.CachedCheckResult) error {
-	vp := engine.HostsVirtualRelationScan(shards, ihc)
-	return pi.ReplyTTS(vp)
 }
 
 type TableDesc interface {
@@ -1241,33 +1190,6 @@ func (pi *PSQLInteractor) Users(ctx context.Context) error {
 		}
 	}
 	return pi.CompleteMsg(len(berules))
-}
-
-// TsaCache outputs TSA cache entries showing the target session attributes cache status
-func (pi *PSQLInteractor) TsaCache(ctx context.Context, cacheEntries map[pool.TsaKey]pool.CachedEntry) error {
-	if err := pi.WriteHeader("tsa", "host", "az", "alive", "match", "reason", "last_check_time"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	count := 0
-	for key, entry := range cacheEntries {
-		if err := pi.WriteDataRow(
-			string(key.Tsa),
-			key.Host,
-			key.AZ,
-			fmt.Sprintf("%v", entry.Result.Alive),
-			fmt.Sprintf("%v", entry.Result.Match),
-			entry.Result.Reason,
-			entry.LastCheckTime.Format(time.RFC3339),
-		); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-		count++
-	}
-
-	return pi.CompleteMsg(count)
 }
 
 // ReplyNotice sends notice message to client

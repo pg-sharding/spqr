@@ -642,6 +642,8 @@ func TestKeyRangesSuccess(t *testing.T) {
 		},
 	}
 	krLocks := []string{"krid2"}
-	err := interactor.KeyRanges(keyRanges, krLocks)
+
+	vp := engine.KeyRangeVirtualRelationScan(keyRanges, krLocks)
+	err := interactor.ReplyTTS(vp)
 	assert.Nil(t, err)
 }

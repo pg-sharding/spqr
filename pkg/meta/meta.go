@@ -1035,7 +1035,20 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
-		return cli.Shards(ctx, shards)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("shard"),
+		}
+
+		for _, shard := range shards {
+			tts.Raw = append(tts.Raw,
+				[][]byte{
+					[]byte(shard.ID),
+				},
+			)
+		}
+
+		return cli.ReplyTTS(tts)
 	case spqrparser.HostsStr:
 		shards, err := mngr.ListShards(ctx)
 		if err != nil {
@@ -1044,7 +1057,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		ihc := ci.InstanceHealthChecks()
 
-		return cli.Hosts(ctx, shards, ihc)
+		tts := engine.HostsVirtualRelationScan(shards, ihc)
+		return cli.ReplyTTS(tts)
 	case spqrparser.KeyRangesStr:
 		ranges, err := mngr.ListAllKeyRanges(ctx)
 		if err != nil {
@@ -1054,7 +1068,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
-		return cli.KeyRanges(ranges, locksKr)
+		tts := engine.KeyRangeVirtualRelationScan(ranges, locksKr)
+		return cli.ReplyTTS(tts)
 	case spqrparser.RoutersStr:
 		resp, err := mngr.ListRouters(ctx)
 		if err != nil {
@@ -1242,7 +1257,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.Users(ctx)
 	case spqrparser.TsaCacheStr:
 		cacheEntries := ci.TsaCacheEntries()
-		return cli.TsaCache(ctx, cacheEntries)
+		return cli.ReplyTTS(engine.TSAVirtualRelationScan(cacheEntries))
 	default:
 		return ErrUnknownCoordinatorCommand
 	}
