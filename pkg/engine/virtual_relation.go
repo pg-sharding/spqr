@@ -3,11 +3,13 @@ package engine
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -101,6 +103,29 @@ func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.Tuple
 			fmt.Appendf(nil, "%+v", r.ShardIds),
 			fmt.Appendf(nil, "%+v", r.ColumnSequenceMapping),
 		})
+	}
+
+	return tts
+}
+
+func TSAVirtualRelationScan(cacheEntries map[pool.TsaKey]pool.CachedEntry) *tupleslot.TupleTableSlot {
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("tsa", "host", "az", "alive", "match", "reason", "last_check_time"),
+	}
+
+	count := 0
+	for key, entry := range cacheEntries {
+		tts.Raw = append(tts.Raw, [][]byte{
+			[]byte(key.Tsa),
+			[]byte(key.Host),
+			[]byte(key.AZ),
+			fmt.Appendf(nil, "%v", entry.Result.Alive),
+			fmt.Appendf(nil, "%v", entry.Result.Match),
+			[]byte(entry.Result.Reason),
+			[]byte(entry.LastCheckTime.Format(time.RFC3339)),
+		})
+		count++
 	}
 
 	return tts
