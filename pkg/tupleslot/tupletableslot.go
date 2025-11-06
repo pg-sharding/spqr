@@ -9,3 +9,11 @@ type TupleTableSlot struct {
 
 	Raw [][][]byte
 }
+
+func (tts *TupleTableSlot) WriteDataRow(msgs ...string) {
+	vals := make([][]byte, 0)
+	for _, msg := range msgs {
+		vals = append(vals, []byte(msg))
+	}
+	tts.Raw = append(tts.Raw, vals)
+}
