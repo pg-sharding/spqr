@@ -932,42 +932,6 @@ func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRa
 	return nil
 }
 
-// TODO : unit tests
-
-// MoveKeyRange moves a key range to a specific shard in the PSQL client.
-//
-// Parameters:
-// - _ (context.Context): The context for the operation.
-// - move (*kr.MoveKeyRange): The key range and shard information for the move operation.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) MoveKeyRange(_ context.Context, move *kr.MoveKeyRange) error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			{
-				Name:                 []byte("move key range"),
-				TableOID:             0,
-				TableAttributeNumber: 0,
-				DataTypeOID:          25,
-				DataTypeSize:         -1,
-				TypeModifier:         -1,
-				Format:               0,
-			},
-		},
-		},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("move key range %v to shard %v", move.Krid, move.ShardId))}},
-		&pgproto3.CommandComplete{},
-		&pgproto3.ReadyForQuery{},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-		}
-	}
-
-	return nil
-}
-
 // RedistributeKeyRange moves key range to a specified shard in the PSQL client.
 // Data moves are done by batches of the given size.
 //
@@ -1046,31 +1010,6 @@ func (pi *PSQLInteractor) UnregisterRouter(id string) error {
 
 // TODO : unit tests
 
-// RegisterRouter registers a router with the specified ID and address.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-// - id (string): The ID of the router to register.
-// - addr (string): The address of the router to register.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) RegisterRouter(ctx context.Context, id string, addr string) error {
-	if err := pi.WriteHeader("register router"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("router -> %s-%s", id, addr)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
 // AlterDistributionAttach attaches tables to a distribution in the PSQL client.
 //
 // Parameters:
@@ -1114,36 +1053,6 @@ func (pi *PSQLInteractor) AlterDistributionAttach(ctx context.Context, id string
 // - error: An error if any occurred during the operation.
 func (pi *PSQLInteractor) AlterDistributionDetach(_ context.Context, id string, relName string) error {
 	if err := pi.WriteHeader("detach relation"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("relation name   -> %s", relName)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("distribution id -> %s", id)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// AlterDistributedRelation alters metadata for a distributed relation in the PSQL client.
-//
-// Parameters:
-// - _ (context.Context): The context for the operation. (Unused)
-// - id (string): The ID of the distribution to alter the relation of.
-// - relName (string): The name of the relation to alter.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) AlterDistributedRelation(_ context.Context, id string, relName string) error {
-	if err := pi.WriteHeader("alter relation"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
