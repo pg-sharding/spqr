@@ -248,8 +248,8 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 
 	switch q := p.(type) {
 	case *plan.VirtualPlan:
-		q.VirtualRowCols = virtualRowCols
-		q.VirtualRowVals = [][][]byte{virtualRowVals}
+		q.TTS.Desc = virtualRowCols
+		q.TTS.Raw = [][][]byte{virtualRowVals}
 	}
 
 	return p, nil

@@ -897,7 +897,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 						// send to the client
 						if err := rst.Client().Send(&pgproto3.RowDescription{
-							Fields: q.VirtualRowCols,
+							Fields: q.TTS.Desc,
 						}); err != nil {
 							return err
 						}

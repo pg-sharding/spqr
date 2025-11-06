@@ -22,11 +22,11 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
-	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/statistics"
@@ -420,9 +420,9 @@ func (pi *PSQLInteractor) DropShard(id string) error {
 
 // TODO : unit tests
 
-func (pi *PSQLInteractor) replyVirtualPlan(vp *plan.VirtualPlan) error {
+func (pi *PSQLInteractor) replyVirtualPlan(tts *tupleslot.TupleTableSlot) error {
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.RowDescription{Fields: vp.VirtualRowCols},
+		&pgproto3.RowDescription{Fields: tts.Desc},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -430,7 +430,7 @@ func (pi *PSQLInteractor) replyVirtualPlan(vp *plan.VirtualPlan) error {
 		}
 	}
 
-	for _, r := range vp.VirtualRowVals {
+	for _, r := range tts.Raw {
 		if err := pi.cl.Send(&pgproto3.DataRow{
 			Values: r,
 		}); err != nil {
@@ -438,7 +438,7 @@ func (pi *PSQLInteractor) replyVirtualPlan(vp *plan.VirtualPlan) error {
 			return err
 		}
 	}
-	return pi.CompleteMsg(len(vp.VirtualRowVals))
+	return pi.CompleteMsg(len(tts.Raw))
 }
 
 // KeyRanges sends the row description message for key ranges, followed by data rows
@@ -450,7 +450,7 @@ func (pi *PSQLInteractor) replyVirtualPlan(vp *plan.VirtualPlan) error {
 // Returns:
 //   - error: An error if sending the messages fails, otherwise nil.
 func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, locks []string) error {
-	vp := plan.KeyRangeVirtualPlan(krs, locks)
+	vp := engine.KeyRangeVirtualRelationScan(krs, locks)
 	return pi.replyVirtualPlan(vp)
 }
 
@@ -746,7 +746,7 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*topology.DataSha
 }
 
 func (pi *PSQLInteractor) Hosts(ctx context.Context, shards []*topology.DataShard, ihc map[string]tsa.CachedCheckResult) error {
-	vp := plan.HostsVirtualPlan(shards, ihc)
+	vp := engine.HostsVirtualRelationScan(shards, ihc)
 	return pi.replyVirtualPlan(vp)
 }
 
@@ -1263,6 +1263,7 @@ func (pi *PSQLInteractor) StopTraceMessages(ctx context.Context) error {
 // Returns:
 // - error: An error if any occurred during the operation.
 func (pi *PSQLInteractor) DropKeyRange(ctx context.Context, ids []string) error {
+
 	if err := pi.WriteHeader("drop key range"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
@@ -1636,7 +1637,7 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 }
 
 func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation) error {
-	vp := plan.ReferenceRelationVirtualPlan(rrs)
+	vp := engine.ReferenceRelationsScan(rrs)
 	return pi.replyVirtualPlan(vp)
 }
 

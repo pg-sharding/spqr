@@ -1,30 +1,31 @@
-package plan
+package engine
 
 import (
 	"fmt"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 )
 
 func GetVPHeader(stmts ...string) []pgproto3.FieldDescription {
 	var desc []pgproto3.FieldDescription
 	for _, stmt := range stmts {
-		desc = append(desc, engine.TextOidFD(stmt))
+		desc = append(desc, TextOidFD(stmt))
 	}
 	return desc
 }
 
-func KeyRangeVirtualPlan(krs []*kr.KeyRange, locks []string) *VirtualPlan {
-	vp := &VirtualPlan{}
+func KeyRangeVirtualRelationScan(krs []*kr.KeyRange, locks []string) *tupleslot.TupleTableSlot {
 
-	vp.VirtualRowCols = GetVPHeader("Key range ID", "Shard ID", "Distribution ID", "Lower bound", "Locked")
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("Key range ID", "Shard ID", "Distribution ID", "Lower bound", "Locked"),
+	}
 
 	lockMap := make(map[string]string, len(locks))
 	for _, idKeyRange := range locks {
@@ -37,7 +38,7 @@ func KeyRangeVirtualPlan(krs []*kr.KeyRange, locks []string) *VirtualPlan {
 			isLocked = lockState
 		}
 
-		vp.VirtualRowVals = append(vp.VirtualRowVals, [][]byte{
+		tts.Raw = append(tts.Raw, [][]byte{
 			[]byte(keyRange.ID),
 			[]byte(keyRange.ShardID),
 			[]byte(keyRange.Distribution),
@@ -46,14 +47,14 @@ func KeyRangeVirtualPlan(krs []*kr.KeyRange, locks []string) *VirtualPlan {
 		})
 	}
 
-	return vp
+	return tts
 }
 
-func HostsVirtualPlan(shards []*topology.DataShard, ihc map[string]tsa.CachedCheckResult) *VirtualPlan {
+func HostsVirtualRelationScan(shards []*topology.DataShard, ihc map[string]tsa.CachedCheckResult) *tupleslot.TupleTableSlot {
 
-	vp := &VirtualPlan{}
-
-	vp.VirtualRowCols = GetVPHeader("shard", "host", "alive", "rw", "time")
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("shard", "host", "alive", "rw", "time"),
+	}
 
 	spqrlog.Zero.Debug().Msg("listing hosts and statuses")
 
@@ -62,7 +63,7 @@ func HostsVirtualPlan(shards []*topology.DataShard, ihc map[string]tsa.CachedChe
 			hc, ok := ihc[h]
 			if !ok {
 
-				vp.VirtualRowVals = append(vp.VirtualRowVals, [][]byte{
+				tts.Raw = append(tts.Raw, [][]byte{
 					[]byte(shard.ID),
 					[]byte(h),
 					[]byte("unknown"),
@@ -72,7 +73,7 @@ func HostsVirtualPlan(shards []*topology.DataShard, ihc map[string]tsa.CachedChe
 
 			} else {
 
-				vp.VirtualRowVals = append(vp.VirtualRowVals, [][]byte{
+				tts.Raw = append(tts.Raw, [][]byte{
 
 					[]byte(shard.ID),
 					[]byte(h),
@@ -84,18 +85,17 @@ func HostsVirtualPlan(shards []*topology.DataShard, ihc map[string]tsa.CachedChe
 		}
 	}
 
-	return vp
+	return tts
 }
 
-func ReferenceRelationVirtualPlan(rrs []*rrelation.ReferenceRelation) *VirtualPlan {
+func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.TupleTableSlot {
 
-	vp := &VirtualPlan{}
-
-	vp.VirtualRowCols = GetVPHeader("table name", "schema version", "shards", "column sequence mapping")
-
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("table name", "schema version", "shards", "column sequence mapping"),
+	}
 	for _, r := range rrs {
 
-		vp.VirtualRowVals = append(vp.VirtualRowVals, [][]byte{
+		tts.Raw = append(tts.Raw, [][]byte{
 			[]byte(r.TableName),
 			fmt.Appendf(nil, "%d", r.SchemaVersion),
 			fmt.Appendf(nil, "%+v", r.ShardIds),
@@ -103,5 +103,5 @@ func ReferenceRelationVirtualPlan(rrs []*rrelation.ReferenceRelation) *VirtualPl
 		})
 	}
 
-	return vp
+	return tts
 }
