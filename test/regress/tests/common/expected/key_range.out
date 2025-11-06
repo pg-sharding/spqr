@@ -1,3 +1,10 @@
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
@@ -28,9 +35,11 @@ SHOW key_ranges;
 (2 rows)
 
 DROP KEY RANGE ALL;
- drop key range 
-----------------
-(0 rows)
+    drop key range     
+-----------------------
+ key range id -> krid1
+ key range id -> krid2
+(2 rows)
 
 -- intersecting key range
 CREATE KEY RANGE krid3 FROM -50 ROUTE TO sh1 FOR DISTRIBUTION ds1;
