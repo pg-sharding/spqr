@@ -664,10 +664,11 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 			Desc: engine.GetVPHeader("alter relation"),
 			Raw: [][][]byte{
 				{
-					fmt.Appendf(nil, "relation name   -> %s", dsId),
+					fmt.Appendf(nil, "distribution id -> %s", dsId),
 				},
+
 				{
-					fmt.Appendf(nil, "distribution id -> %s", qName.String()),
+					fmt.Appendf(nil, "relation name   -> %s", qName.String()),
 				},
 			},
 		}
@@ -685,10 +686,11 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 			Desc: engine.GetVPHeader("alter relation"),
 			Raw: [][][]byte{
 				{
-					fmt.Appendf(nil, "relation name   -> %s", dsId),
+					fmt.Appendf(nil, "distribution id -> %s", dsId),
 				},
+
 				{
-					fmt.Appendf(nil, "distribution id -> %s", qName.String()),
+					fmt.Appendf(nil, "relation name   -> %s", qName.String()),
 				},
 			},
 		}

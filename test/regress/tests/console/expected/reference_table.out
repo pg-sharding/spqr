@@ -28,8 +28,8 @@ ERROR:  request is unprocessable in router
 ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 SCHEMA my_schema;
           alter relation          
 ----------------------------------
- relation name   -> my_schema.zz2
  distribution id -> REPLICATED
+ relation name   -> my_schema.zz2
 (2 rows)
 
 ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 DISTRIBUTION KEY id;
