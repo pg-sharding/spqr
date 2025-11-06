@@ -5,17 +5,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
-	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/qdb"
-	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/mock/gomock"
 )
 
 const MemQDBPath = ""
@@ -48,9 +43,6 @@ func prepareDB(ctx context.Context) (*qdb.MemQDB, error) {
 
 func TestNoManualCreateDefaultShardKeyRange(t *testing.T) {
 	ctx := context.Background()
-	ctrl := gomock.NewController(t)
-	ca := mockcl.NewMockRouterClient(ctrl)
-	interactor := clientinteractor.NewPSQLInteractor(ca)
 	statement := spqrparser.KeyRangeDefinition{
 		ShardID:      "sh1",
 		KeyRangeID:   "ds1.DEFAULT",
@@ -65,14 +57,9 @@ func TestNoManualCreateDefaultShardKeyRange(t *testing.T) {
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil)
-	gomock.InOrder(
-		ca.EXPECT().Send(&pgproto3.ErrorResponse{Severity: "ERROR",
-			Message: "Error kay range ds1.DEFAULT is reserved",
-		}),
-		ca.EXPECT().Send(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}),
-	)
-	res := meta.ProcessCreate(ctx, &statement, mngr, interactor)
-	assert.Nil(t, res)
+	//
+	_, err = meta.ProcessCreate(ctx, &statement, mngr)
+	assert.ErrorContains(t, err, "ds1.DEFAULT is reserved")
 }
 
 func TestCreteDistrWithDefaultShardSuccess(t *testing.T) {

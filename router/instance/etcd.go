@@ -67,12 +67,12 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 		}
 	}
 
-	rrels, err := etcdConn.ListReferenceRelations(ctx)
+	ref_rels, err := etcdConn.ListReferenceRelations(ctx)
 	if err != nil {
 		return err
 	}
 
-	for _, rr := range rrels {
+	for _, rr := range ref_rels {
 		entries := []*rrelation.AutoIncrementEntry{}
 
 		for c, seq := range rr.ColumnSequenceMapping {

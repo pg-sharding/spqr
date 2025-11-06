@@ -2,9 +2,9 @@ package meta
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/pg-sharding/spqr/coordinator/statistics"
 	"github.com/pg-sharding/spqr/pkg/catalog"
@@ -386,7 +386,7 @@ func createNonReplicatedDistribution(ctx context.Context,
 //
 // Returns:
 // - error: An error if the creation encounters any issues.
-func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
+func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.ReferenceRelationDefinition:
 
@@ -398,76 +398,126 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 
 		if err := mngr.CreateReferenceRelation(ctx, r, rrelation.ReferenceRelationEntriesFromSQL(stmt.AutoIncrementEntries)); err != nil {
-			return cli.ReportError(err)
+			return nil, err
 		}
 
-		return cli.CreateReferenceRelation(ctx, r)
+		/* XXX: can we already make this more SQL compliant?  */
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("create reference table"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "table    -> %s", r.TableName),
+				},
+				{
+					fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIds, ",")),
+				},
+			},
+		}
+
+		return tts, nil
 
 	case *spqrparser.DistributionDefinition:
 		if stmt.ID == "default" {
-			return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "You cannot create a \"default\" distribution, \"default\" is a reserved word")
+			return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "You cannot create a \"default\" distribution, \"default\" is a reserved word")
 		}
 		if stmt.Replicated {
 			if distribution, err := createReplicatedDistribution(ctx, mngr); err != nil {
-				return cli.ReportError(err)
+				return nil, err
 			} else {
-				return cli.AddDistribution(ctx, distribution)
+				tts := &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("add distribution"),
+					Raw: [][][]byte{
+						{
+							fmt.Appendf(nil, "distribution id -> %s", distribution.ID()),
+						},
+					},
+				}
+
+				return tts, nil
 			}
 		} else {
 			distribution, createError := createNonReplicatedDistribution(ctx, *stmt, mngr)
 			if createError != nil {
-				return cli.ReportError(createError)
+				return nil, createError
 			} else {
-				return cli.AddDistribution(ctx, distribution)
+
+				tts := &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("add distribution"),
+					Raw: [][][]byte{
+						{
+							fmt.Appendf(nil, "distribution id -> %s", distribution.ID()),
+						},
+					},
+				}
+
+				return tts, nil
 			}
 		}
 	case *spqrparser.ShardingRuleDefinition:
-		return cli.ReportError(spqrerror.ShardingRulesRemoved)
+		return nil, spqrerror.ShardingRulesRemoved
 	case *spqrparser.KeyRangeDefinition:
 		if stmt.Distribution.ID == "default" {
 			list, err := mngr.ListDistributions(ctx)
 			if err != nil {
-				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "error while selecting list of distributions")
+				return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "error while selecting list of distributions")
 			}
 			if len(list) == 0 {
-				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "you don't have any distributions")
+				return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "you don't have any distributions")
 			}
 			if len(list) > 1 {
-				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "distributions count not equal one, use FOR DISTRIBUTION syntax")
+				return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "distributions count not equal one, use FOR DISTRIBUTION syntax")
 			}
 			stmt.Distribution.ID = list[0].Id
 		}
 		ds, err := mngr.GetDistribution(ctx, stmt.Distribution.ID)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
-			return cli.ReportError(err)
+			return nil, err
 		}
 		if defaultKr := DefaultKeyRangeId(ds); stmt.KeyRangeID == defaultKr {
-			errorStr := fmt.Sprintf("Error kay range %s is reserved", defaultKr)
-			spqrlog.Zero.Error().Err(err).Msg(errorStr)
-			return cli.ReportError(errors.New(errorStr))
+			err := fmt.Errorf("key range %s is reserved", defaultKr)
+			spqrlog.Zero.Error().Err(err).Msg("failed to create key range")
+			return nil, err
 		}
 		req, err := kr.KeyRangeFromSQL(stmt, ds.ColTypes)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
-			return cli.ReportError(err)
+			return nil, err
 		}
 		if err := mngr.CreateKeyRange(ctx, req); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
-			return cli.ReportError(err)
+			return nil, err
 		}
-		return cli.CreateKeyRange(ctx, req)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("add key range"),
+			Raw: [][][]byte{
+				{fmt.Appendf(nil, "bound -> %s", req.SendRaw()[0])},
+			},
+		}
+
+		return tts, nil
 	case *spqrparser.ShardDefinition:
 		dataShard := topology.NewDataShard(stmt.Id, &config.Shard{
 			RawHosts: stmt.Hosts,
 			Type:     config.DataShard,
 		})
 		if err := mngr.AddDataShard(ctx, dataShard); err != nil {
-			return err
+			return nil, err
 		}
-		return cli.AddShard(dataShard)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("add shard"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "shard id -> %s", dataShard.ID),
+				},
+			},
+		}
+
+		return tts, nil
 	default:
-		return ErrUnknownCoordinatorCommand
+		return nil, ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -642,16 +692,36 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			return fmt.Errorf("cannot save workload from here")
 		}
 		writer.StartLogging(stmt.All, stmt.Client)
-		return cli.StartTraceMessages(ctx)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("start trace messages"),
+			Raw: [][][]byte{
+				{
+					[]byte("START TRACE MESSAGES"),
+				},
+			},
+		}
+
+		return cli.ReplyTTS(tts)
 	case *spqrparser.StopTraceStmt:
 		if writer == nil {
-			return fmt.Errorf("cannot save workload from here")
+			return cli.ReportError(fmt.Errorf("cannot save workload from here"))
 		}
 		err := writer.StopLogging()
 		if err != nil {
 			return err
 		}
-		return cli.StopTraceMessages(ctx)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("stop trace messages"),
+			Raw: [][][]byte{
+				{
+					[]byte("STOP TRASCE MESSAGES"),
+				},
+			},
+		}
+
+		return cli.ReplyTTS(tts)
 	case *spqrparser.Drop:
 		tts, err := processDrop(ctx, stmt.Element, stmt.CascadeDelete, mgr)
 		if err != nil {
@@ -659,7 +729,11 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}
 		return cli.ReplyTTS(tts)
 	case *spqrparser.Create:
-		return processCreate(ctx, stmt.Element, mgr, cli)
+		tts, err := ProcessCreate(ctx, stmt.Element, mgr)
+		if err != nil {
+			return cli.ReportError(err)
+		}
+		return cli.ReplyTTS(tts)
 	case *spqrparser.MoveKeyRange:
 		move := &kr.MoveKeyRange{
 			ShardId: stmt.DestShardID,
