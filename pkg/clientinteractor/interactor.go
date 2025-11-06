@@ -22,11 +22,11 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
-	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/statistics"
@@ -392,37 +392,11 @@ func (pi *PSQLInteractor) AddShard(shard *topology.DataShard) error {
 
 // TODO : unit tests
 
-// DropShard sends the row description message for dropping a shard, followed by a data row
-// indicating the dropping of the specified shard, and completes the message.
-//
-// Parameters:
-// - id (string): The ID of the shard to be dropped (string).
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) DropShard(id string) error {
-	if err := pi.WriteHeader("drop shard"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("shard id -> %s", id))}},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
 // TODO : unit tests
 
-func (pi *PSQLInteractor) replyVirtualPlan(vp *plan.VirtualPlan) error {
+func (pi *PSQLInteractor) ReplyTTS(tts *tupleslot.TupleTableSlot) error {
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.RowDescription{Fields: vp.VirtualRowCols},
+		&pgproto3.RowDescription{Fields: tts.Desc},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -430,7 +404,7 @@ func (pi *PSQLInteractor) replyVirtualPlan(vp *plan.VirtualPlan) error {
 		}
 	}
 
-	for _, r := range vp.VirtualRowVals {
+	for _, r := range tts.Raw {
 		if err := pi.cl.Send(&pgproto3.DataRow{
 			Values: r,
 		}); err != nil {
@@ -438,7 +412,7 @@ func (pi *PSQLInteractor) replyVirtualPlan(vp *plan.VirtualPlan) error {
 			return err
 		}
 	}
-	return pi.CompleteMsg(len(vp.VirtualRowVals))
+	return pi.CompleteMsg(len(tts.Raw))
 }
 
 // KeyRanges sends the row description message for key ranges, followed by data rows
@@ -450,8 +424,8 @@ func (pi *PSQLInteractor) replyVirtualPlan(vp *plan.VirtualPlan) error {
 // Returns:
 //   - error: An error if sending the messages fails, otherwise nil.
 func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, locks []string) error {
-	vp := plan.KeyRangeVirtualPlan(krs, locks)
-	return pi.replyVirtualPlan(vp)
+	vp := engine.KeyRangeVirtualRelationScan(krs, locks)
+	return pi.ReplyTTS(vp)
 }
 
 // TODO : unit tests
@@ -688,31 +662,6 @@ func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.Move
 	return pi.CompleteMsg(len(ts))
 }
 
-// DropTaskGroup drops all tasks in the task group.
-//
-// Parameters:
-// - _ (context.Context): The context parameter.
-//
-// Returns:
-// - error: An error if there was a problem dropping the tasks.
-func (pi *PSQLInteractor) DropTaskGroup(_ context.Context) error {
-	if err := pi.WriteHeader("drop task group"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte("dropped all tasks")}},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
 // TODO : unit tests
 
 // Shards lists the data shards.
@@ -746,8 +695,8 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*topology.DataSha
 }
 
 func (pi *PSQLInteractor) Hosts(ctx context.Context, shards []*topology.DataShard, ihc map[string]tsa.CachedCheckResult) error {
-	vp := plan.HostsVirtualPlan(shards, ihc)
-	return pi.replyVirtualPlan(vp)
+	vp := engine.HostsVirtualRelationScan(shards, ihc)
+	return pi.ReplyTTS(vp)
 }
 
 type TableDesc interface {
@@ -1255,29 +1204,6 @@ func (pi *PSQLInteractor) StopTraceMessages(ctx context.Context) error {
 
 // TODO : unit tests
 
-// StopTraceMessages stops tracing of messages in the PSQL client.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) DropKeyRange(ctx context.Context, ids []string) error {
-	if err := pi.WriteHeader("drop key range"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, id := range ids {
-		if err := pi.WriteDataRow(fmt.Sprintf("key range id -> %s", id)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
 // TODO : unit tests
 
 // AddDistribution adds a distribution to the PSQL client.
@@ -1298,46 +1224,6 @@ func (pi *PSQLInteractor) AddDistribution(ctx context.Context, ks *distributions
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// DropDistribution drops distributions with the specified IDs in the PSQL client.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-// - ids ([]string): The list of distribution IDs to drop.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) DropDistribution(ctx context.Context, ids []string) error {
-	if err := pi.WriteHeader("drop distribution"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, id := range ids {
-		if err := pi.WriteDataRow(fmt.Sprintf("distribution id -> %s", id)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-func (pi *PSQLInteractor) DropReferenceRelation(ctx context.Context, id string) error {
-	if err := pi.WriteHeader("drop reference table"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("table -> %s", id)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
 	return pi.CompleteMsg(0)
 }
 
@@ -1636,8 +1522,8 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 }
 
 func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation) error {
-	vp := plan.ReferenceRelationVirtualPlan(rrs)
-	return pi.replyVirtualPlan(vp)
+	vp := engine.ReferenceRelationsScan(rrs)
+	return pi.ReplyTTS(vp)
 }
 
 func (pi *PSQLInteractor) PreparedStatements(ctx context.Context, shs []shard.PreparedStatementsMgrDescriptor) error {
@@ -1669,28 +1555,6 @@ func (pi *PSQLInteractor) Sequences(ctx context.Context, seqs []string, sequence
 		}
 	}
 	return pi.CompleteMsg(len(seqs))
-}
-
-// DropSequence drops sequence with a given name.
-//
-// Parameters:
-// - _ (context.Context): The context parameter.
-// - name (string): Name of the sequence
-//
-// Returns:
-// - error: An error if there was a problem dropping the sequence.
-func (pi *PSQLInteractor) DropSequence(_ context.Context, name string) error {
-	if err := pi.WriteHeader("drop sequence"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("sequence -> %s", name)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
 }
 
 func (pi *PSQLInteractor) IsReadOnly(ctx context.Context, ro bool) error {

@@ -1,12 +1,11 @@
 package plan
 
 import (
-	"github.com/jackc/pgx/v5/pgproto3"
-
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 )
 
 type Plan interface {
@@ -127,10 +126,10 @@ var _ Plan = &RandomDispatchPlan{}
 type VirtualPlan struct {
 	Plan
 
-	stmt           lyx.Node
-	VirtualRowCols []pgproto3.FieldDescription
-	VirtualRowVals [][][]byte
-	SubPlan        Plan
+	stmt lyx.Node
+
+	TTS     *tupleslot.TupleTableSlot
+	SubPlan Plan
 }
 
 func (vp *VirtualPlan) ExecutionTargets() []kr.ShardKey {

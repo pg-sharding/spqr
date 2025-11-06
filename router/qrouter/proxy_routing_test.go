@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/qrouter"
@@ -2235,16 +2236,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT NOT pg_is_in_recovery();",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					{
-						Name:         []byte("pg_is_in_recovery"),
-						DataTypeOID:  catalog.ARRAYOID,
-						TypeModifier: -1,
-						DataTypeSize: 1,
+				TTS: &tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("pg_is_in_recovery"),
+							DataTypeOID:  catalog.ARRAYOID,
+							TypeModifier: -1,
+							DataTypeSize: 1,
+						},
 					},
-				},
-				VirtualRowVals: [][][]byte{[][]byte{{byte('t')}}},
-			},
+					Raw: [][][]byte{[][]byte{{byte('t')}}},
+				}},
 			err: nil,
 		},
 
@@ -2288,15 +2290,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT pg_is_in_recovery();",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					{
-						Name:         []byte("pg_is_in_recovery"),
-						DataTypeOID:  catalog.ARRAYOID,
-						TypeModifier: -1,
-						DataTypeSize: 1,
+				TTS: &tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("pg_is_in_recovery"),
+							DataTypeOID:  catalog.ARRAYOID,
+							TypeModifier: -1,
+							DataTypeSize: 1,
+						},
 					},
+					Raw: [][][]byte{{{byte('f')}}},
 				},
-				VirtualRowVals: [][][]byte{{{byte('f')}}},
 			},
 			err: nil,
 		},
@@ -2304,15 +2308,18 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT __spqr__is_ready();",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					{
-						Name:         []byte("__spqr__is_ready"),
-						DataTypeOID:  catalog.ARRAYOID,
-						TypeModifier: -1,
-						DataTypeSize: 1,
+				TTS: &tupleslot.TupleTableSlot{
+
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("__spqr__is_ready"),
+							DataTypeOID:  catalog.ARRAYOID,
+							TypeModifier: -1,
+							DataTypeSize: 1,
+						},
 					},
+					Raw: [][][]byte{{{byte('f')}}},
 				},
-				VirtualRowVals: [][][]byte{{{byte('f')}}},
 			},
 			err: nil,
 		},
@@ -2332,15 +2339,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT 1;",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					{
-						Name:         []byte("?column?"),
-						DataTypeOID:  catalog.INT4OID,
-						TypeModifier: -1,
-						DataTypeSize: 4,
+				TTS: &tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("?column?"),
+							DataTypeOID:  catalog.INT4OID,
+							TypeModifier: -1,
+							DataTypeSize: 4,
+						},
 					},
+					Raw: [][][]byte{{[]byte("1")}},
 				},
-				VirtualRowVals: [][][]byte{{[]byte("1")}},
 			},
 			err: nil,
 		},
@@ -2354,15 +2363,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT 'Hello, world!'",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					pgproto3.FieldDescription{
-						Name:         []byte("?column?"),
-						DataTypeOID:  catalog.TEXTOID,
-						TypeModifier: -1,
-						DataTypeSize: -1,
+				TTS: &tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						pgproto3.FieldDescription{
+							Name:         []byte("?column?"),
+							DataTypeOID:  catalog.TEXTOID,
+							TypeModifier: -1,
+							DataTypeSize: -1,
+						},
 					},
+					Raw: [][][]byte{{[]byte("Hello, world!")}},
 				},
-				VirtualRowVals: [][][]byte{{[]byte("Hello, world!")}},
 			},
 			err: nil,
 		},

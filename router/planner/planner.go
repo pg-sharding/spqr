@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
+	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -17,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -398,7 +400,7 @@ func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node
 	return tupleShards, nil
 }
 
-func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataContext, fname string, args []lyx.Node) (plan.Plan, error) {
+func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataContext, fname string, args []lyx.Node) (*tupleslot.TupleTableSlot, error) {
 	switch fname {
 	case virtual.VirtualShow:
 
@@ -420,7 +422,7 @@ func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataConte
 				if err != nil {
 					return nil, err
 				}
-				return plan.KeyRangeVirtualPlan(ranges, locksKr), nil
+				return engine.KeyRangeVirtualRelationScan(ranges, locksKr), nil
 			case spqrparser.HostsStr:
 
 				shards, err := rm.Mgr.ListShards(ctx)
@@ -429,7 +431,7 @@ func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataConte
 				}
 
 				ihc := rm.CSM.InstanceHealthChecks()
-				return plan.HostsVirtualPlan(shards, ihc), nil
+				return engine.HostsVirtualRelationScan(shards, ihc), nil
 			case spqrparser.ReferenceRelationsStr:
 
 				rrs, err := rm.Mgr.ListReferenceRelations(ctx)
@@ -447,7 +449,7 @@ func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataConte
 					return 1
 				})
 
-				return plan.ReferenceRelationVirtualPlan(rrs), nil
+				return engine.ReferenceRelationsScan(rrs), nil
 			default:
 				return nil, rerrors.ErrComplexQuery
 			}
@@ -457,8 +459,8 @@ func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataConte
 
 		/*  De-support? use __spqr__show(shards)*/
 	case virtual.VirtualShards:
-		p := &plan.VirtualPlan{
-			VirtualRowCols: []pgproto3.FieldDescription{
+		tts := &tupleslot.TupleTableSlot{
+			Desc: []pgproto3.FieldDescription{
 				{
 					Name:                 []byte("shard name"),
 					DataTypeOID:          catalog.TEXTOID,
@@ -470,21 +472,23 @@ func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataConte
 				},
 			},
 		}
+
 		shs, err := rm.Mgr.ListShards(ctx)
 		if err != nil {
 			return nil, err
 		}
 		for _, sh := range shs {
-			p.VirtualRowVals = append(p.VirtualRowVals, [][]byte{[]byte(sh.ID)})
+			tts.Raw = append(tts.Raw, [][]byte{[]byte(sh.ID)})
 		}
 
-		return p, nil
+		return tts, nil
 	case virtual.VirtualFuncHosts:
 		if rm.CSM == nil {
 			return nil, fmt.Errorf("spqr metadata uninitialized")
 		}
-		p := &plan.VirtualPlan{
-			VirtualRowCols: []pgproto3.FieldDescription{
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: []pgproto3.FieldDescription{
 				{
 					Name:                 []byte("host"),
 					DataTypeOID:          catalog.TEXTOID,
@@ -517,7 +521,7 @@ func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataConte
 			}
 
 			if v, ok := rm.CSM.InstanceHealthChecks()[k]; ok {
-				p.VirtualRowVals = append(p.VirtualRowVals,
+				tts.Raw = append(tts.Raw,
 					[][]byte{[]byte(k),
 						fmt.Appendf(nil, "%v", v.CR.RW)})
 			} else {
@@ -527,7 +531,7 @@ func PlanVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataConte
 			return nil, fmt.Errorf("incorrect argument number for %s", virtual.VirtualFuncHosts)
 		}
 
-		return p, nil
+		return tts, nil
 	}
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 }
@@ -556,7 +560,13 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 				switch q := v.TargetList[0].(type) {
 				case *lyx.FuncApplication:
 					if strings.HasPrefix(q.Name, "__spqr__") {
-						return PlanVirtualFunctionCall(ctx, rm, q.Name, q.Args)
+						tts, err := MetadataVirtualFunctionCall(ctx, rm, q.Name, q.Args)
+						if err != nil {
+							return nil, err
+						}
+						return &plan.VirtualPlan{
+							TTS: tts,
+						}, nil
 					}
 				}
 			}

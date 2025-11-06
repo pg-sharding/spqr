@@ -674,17 +674,14 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 			/* only send row description for simple proto case */
 
 			if expectRowDesc {
-
 				if err := s.Client().Send(&pgproto3.RowDescription{
-					Fields: q.VirtualRowCols,
+					Fields: q.TTS.Desc,
 				}); err != nil {
 					return err
 				}
-
 			}
 
-			for _, vals := range q.VirtualRowVals {
-
+			for _, vals := range q.TTS.Raw {
 				if err := s.Client().Send(&pgproto3.DataRow{
 					Values: vals,
 				}); err != nil {
