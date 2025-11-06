@@ -15,4 +15,5 @@ func (tts *TupleTableSlot) WriteDataRow(msgs ...string) {
 	for _, msg := range msgs {
 		vals = append(vals, []byte(msg))
 	}
+	tts.Raw = append(tts.Raw, vals)
 }
