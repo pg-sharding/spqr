@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
+	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -22,6 +23,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
@@ -64,25 +66,50 @@ var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 //
 // Returns:
 // - error: An error if drop operation fails, otherwise nil.
-func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
+func processDrop(ctx context.Context,
+	dstmt spqrparser.Statement,
+	isCascade bool, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := dstmt.(type) {
 	case *spqrparser.KeyRangeSelector:
 		if stmt.KeyRangeID == "*" {
+			krs, err := mngr.ListAllKeyRanges(ctx)
+			if err != nil {
+				return nil, err
+			}
 			if err := mngr.DropKeyRangeAll(ctx); err != nil {
-				return cli.ReportError(err)
+				return nil, err
 			} else {
-				return cli.DropKeyRange(ctx, []string{})
+				tts := &tupleslot.TupleTableSlot{}
+
+				tts.Desc = engine.GetVPHeader("drop key range")
+
+				for _, k := range krs {
+					tts.Raw = append(tts.Raw, [][]byte{
+						fmt.Appendf(nil, "key range id -> %s", k.ID),
+					})
+				}
+
+				return tts, err
 			}
 		} else {
 			spqrlog.Zero.Debug().Str("kr", stmt.KeyRangeID).Msg("parsed drop")
 			err := mngr.DropKeyRange(ctx, stmt.KeyRangeID)
 			if err != nil {
-				return cli.ReportError(err)
+				return nil, err
 			}
-			return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID})
+
+			tts := &tupleslot.TupleTableSlot{}
+
+			tts.Desc = engine.GetVPHeader("drop key range")
+
+			tts.Raw = append(tts.Raw, [][]byte{
+				fmt.Appendf(nil, "key range id -> %s", stmt.KeyRangeID),
+			})
+
+			return tts, err
 		}
 	case *spqrparser.ShardingRuleSelector:
-		return cli.ReportError(spqrerror.ShardingRulesRemoved)
+		return nil, spqrerror.ShardingRulesRemoved
 	case *spqrparser.ReferenceRelationSelector:
 		/* XXX: fix reference relation selector to support schema-qualified names */
 		relName := &rfqn.RelationFQN{
@@ -91,18 +118,29 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 
 		seqs, err := mngr.ListRelationSequences(ctx, relName)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, seq := range seqs {
 			if err := mngr.DropSequence(ctx, seq, true); err != nil {
-				return err
+				return nil, err
 			}
 		}
 
 		if err := mngr.DropReferenceRelation(ctx, relName); err != nil {
-			return err
+			return nil, err
 		}
-		return cli.DropReferenceRelation(ctx, stmt.ID)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("drop reference relation"),
+		}
+
+		tts.Raw = [][][]byte{
+			[][]byte{
+				fmt.Appendf(nil, "relation -> %s", stmt.ID),
+			},
+		}
+
+		return tts, nil
 	case *spqrparser.DistributionSelector:
 		var krs []*kr.KeyRange
 		var err error
@@ -111,72 +149,82 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 
 			krs, err = mngr.ListAllKeyRanges(ctx)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		} else {
 
 			krs, err = mngr.ListKeyRanges(ctx, stmt.ID)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 
 		if len(krs) != 0 && !isCascade {
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop distribution %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop distribution %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
 		}
 
 		for _, kr := range krs {
 			err = mngr.DropKeyRange(ctx, kr.ID)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 
 		if stmt.ID != "*" {
 			ds, err := mngr.GetDistribution(ctx, stmt.ID)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			if len(ds.Relations) != 0 && !isCascade {
-				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID)
+				return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID)
 			}
 
 			for _, rel := range ds.Relations {
 				qualifiedName := &rfqn.RelationFQN{RelationName: rel.Name, SchemaName: rel.SchemaName}
 				if err := mngr.AlterDistributionDetach(ctx, ds.Id, qualifiedName); err != nil {
-					return err
+					return nil, err
 				}
 			}
 			if err := mngr.DropDistribution(ctx, stmt.ID); err != nil {
-				return cli.ReportError(err)
+				return nil, err
 			}
 			return cli.DropDistribution(ctx, []string{stmt.ID})
 		}
 
 		dss, err := mngr.ListDistributions(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		ret := make([]string, 0)
 		for _, ds := range dss {
 			if ds.Id != "default" {
 				if len(ds.Relations) != 0 && !isCascade {
-					return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", ds.Id)
+					return nil, spqrerror.NewWithHint(spqrerror.SPQR_INVALID_REQUEST, fmt.Sprintf("cannot drop distribution %s because there are relations attached to it", ds.Id), "HINT: Use DROP ... CASCADE to detach relations automatically.")
 				}
 				ret = append(ret, ds.ID())
 				err = mngr.DropDistribution(ctx, ds.Id)
 				if err != nil {
-					return err
+					return nil, err
 				}
 			}
 		}
 
-		return cli.DropDistribution(ctx, ret)
+		tts := &tupleslot.TupleTableSlot{}
+
+		tts.Desc = engine.GetVPHeader("drop distribution")
+
+		for _, id := range ret {
+			tts.Raw = append(tts.Raw, [][]byte{
+				fmt.Appendf(nil, "distribution id -> %s", id),
+			})
+		}
+
+		return tts, nil
 	case *spqrparser.ShardSelector:
 		krs, err := mngr.ListAllKeyRanges(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		shardKrs := make([]*kr.KeyRange, 0, len(krs))
 		for _, kr := range krs {
@@ -185,30 +233,56 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			}
 		}
 		if len(shardKrs) != 0 && !isCascade {
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop shard %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop shard %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
 		}
 		for _, kr := range shardKrs {
 			if err := mngr.DropKeyRange(ctx, kr.ID); err != nil {
-				return err
+				return nil, err
 			}
 		}
 
 		if err := mngr.DropShard(ctx, stmt.ID); err != nil {
-			return err
+			return nil, err
 		}
-		return cli.DropShard(stmt.ID)
+		tts := &tupleslot.TupleTableSlot{}
+
+		tts.Desc = engine.GetVPHeader("drop shard")
+		tts.Raw = append(tts.Raw, [][]byte{
+			fmt.Appendf(nil, "shard id -> %s", stmt.ID),
+		})
+
+		return tts, nil
 	case *spqrparser.TaskGroupSelector:
 		if err := mngr.RemoveMoveTaskGroup(ctx, stmt.ID); err != nil {
-			return err
+			return nil, err
 		}
-		return cli.DropTaskGroup(ctx)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("Drop task group"),
+		}
+
+		tts.Raw = append(tts.Raw, [][]byte{
+			fmt.Appendf(nil, "task group id -> %s", stmt.ID),
+		})
+
+		return tts, nil
 	case *spqrparser.SequenceSelector:
 		if err := mngr.DropSequence(ctx, stmt.Name, false); err != nil {
-			return err
+			return nil, err
 		}
-		return cli.DropSequence(ctx, stmt.Name)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("drop sequence"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "sequence -> %s", stmt.Name),
+				},
+			},
+		}
+
+		return tts, nil
 	default:
-		return fmt.Errorf("unknown drop statement")
+		return nil, fmt.Errorf("unknown drop statement")
 	}
 }
 
@@ -570,7 +644,11 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}
 		return cli.StopTraceMessages(ctx)
 	case *spqrparser.Drop:
-		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, mgr, cli)
+		tts, err := processDrop(ctx, stmt.Element, stmt.CascadeDelete, mgr)
+		if err != nil {
+			return cli.ReportError(err)
+		}
+		return cli.ReplyTTS(tts)
 	case *spqrparser.Create:
 		return processCreate(ctx, stmt.Element, mgr, cli)
 	case *spqrparser.MoveKeyRange:
