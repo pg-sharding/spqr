@@ -44,6 +44,31 @@ Many routing hints can override corresponding configuration settings from the ro
 
 This means a transaction-level SET will override all other settings, SQL comment hints will override session-level SET and config defaults, and session-level SET will override only config file defaults.
 
+**Example demonstrating priority:**
+
+```sql
+-- Assume router config has: query_routing.default_route_behaviour = "BLOCK"
+
+-- Session-level SET overrides config
+db1=# SET __spqr__default_route_behaviour TO 'ALLOW';
+db1=# DROP TABLE temp;  -- Will execute on all shards (ALLOW from session SET)
+
+-- SQL comment overrides session-level SET
+db1=# DROP TABLE temp2 /* __spqr__default_route_behaviour: BLOCK */;
+ERROR:  -- Blocked because SQL comment takes priority
+
+-- Transaction-level SET has highest priority
+db1=# BEGIN;
+db1=*# SET __spqr__default_route_behaviour TO 'BLOCK';
+db1=*# DROP TABLE temp3;  -- Blocked (transaction SET)
+db1=*# DROP TABLE temp4 /* __spqr__default_route_behaviour: ALLOW */;  
+db1=*# -- Still blocked! Transaction SET overrides SQL comment
+db1=*# ROLLBACK;
+
+-- After rollback, session SET is still active
+db1=# DROP TABLE temp5;  -- Executes on all shards (session SET still ALLOW)
+```
+
 For settings that can be overridden by hints, see the individual hint descriptions below which indicate the corresponding router config setting.
 
 ## Example
