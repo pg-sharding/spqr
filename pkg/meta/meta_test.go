@@ -59,7 +59,7 @@ func TestNoManualCreateDefaultShardKeyRange(t *testing.T) {
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil)
 	//
 	_, err = meta.ProcessCreate(ctx, &statement, mngr)
-	assert.ErrorContainsf(t, err, err.Error(), "ds1.DEFAULT is reserved")
+	assert.ErrorContains(t, err, "ds1.DEFAULT is reserved")
 }
 
 func TestCreteDistrWithDefaultShardSuccess(t *testing.T) {
