@@ -594,7 +594,20 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			return err
 		}
 		qName := rfqn.RelationFQN{RelationName: stmt.Relation.Name, SchemaName: stmt.Relation.SchemaName}
-		return cli.AlterDistributedRelation(ctx, dsId, qName.String())
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("alter relation"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "relation name   -> %s", dsId),
+				},
+				{
+					fmt.Appendf(nil, "distribution id -> %s", qName.String()),
+				},
+			},
+		}
+
+		return cli.ReplyTTS(tts)
 	case *spqrparser.DropDefaultShard:
 		if distribution, err := mngr.GetDistribution(ctx, dsId); err != nil {
 			return err
@@ -617,7 +630,11 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			return cli.MakeSimpleResponse(ctx, manager.SuccessCreateResponse(stmt.Shard))
 		}
 	case *spqrparser.AlterRelationV2:
-		return processAlterRelation(ctx, stmt.Element, mngr, cli, dsId, stmt.RelationName)
+		tts, err := processAlterRelation(ctx, stmt.Element, mngr, dsId, stmt.RelationName)
+		if err != nil {
+			return cli.ReportError(err)
+		}
+		return cli.ReplyTTS(tts)
 	default:
 		return ErrUnknownCoordinatorCommand
 	}
@@ -635,21 +652,52 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor, dsId string, relName string) error {
+func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, dsId string, relName string) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AlterRelationSchema:
 		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, relName, stmt.SchemaName); err != nil {
-			return err
+			return nil, err
 		}
 		qName := rfqn.RelationFQN{RelationName: relName, SchemaName: stmt.SchemaName}
-		return cli.AlterDistributedRelation(ctx, dsId, qName.String())
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("alter relation"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "distribution id -> %s", dsId),
+				},
+
+				{
+					fmt.Appendf(nil, "relation name   -> %s", qName.String()),
+				},
+			},
+		}
+
+		return tts, nil
 	case *spqrparser.AlterRelationDistributionKey:
 		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relName, distributions.DistributionKeyFromSQL(stmt.DistributionKey)); err != nil {
-			return err
+			return nil, err
 		}
-		return cli.AlterDistributedRelation(ctx, dsId, relName)
+
+		/* Schema name? */
+		qName := rfqn.RelationFQN{RelationName: relName}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("alter relation"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "distribution id -> %s", dsId),
+				},
+
+				{
+					fmt.Appendf(nil, "relation name   -> %s", qName.String()),
+				},
+			},
+		}
+
+		return tts, nil
 	default:
-		return fmt.Errorf("unexpected 'ALTER RELATION' request type %T", stmt)
+		return nil, fmt.Errorf("unexpected 'ALTER RELATION' request type %T", stmt)
 	}
 }
 
@@ -744,7 +792,14 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			return cli.ReportError(err)
 		}
 
-		return cli.MoveKeyRange(ctx, move)
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("move key range"),
+			Raw: [][][]byte{
+				{fmt.Appendf(nil, "move key range %v to shard %v", move.Krid, move.ShardId)},
+			},
+		}
+
+		return cli.ReplyTTS(tts)
 	case *spqrparser.RegisterRouter:
 		newRouter := &topology.Router{
 			ID:      stmt.ID,
@@ -759,7 +814,14 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			return err
 		}
 
-		return cli.RegisterRouter(ctx, stmt.ID, stmt.Addr)
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("register router"),
+			Raw: [][][]byte{
+				{fmt.Appendf(nil, "router -> %s-%s", stmt.ID, stmt.Addr)},
+			},
+		}
+
+		return cli.ReplyTTS(tts)
 	case *spqrparser.UnregisterRouter:
 		if err := mgr.UnregisterRouter(ctx, stmt.ID); err != nil {
 			return err
