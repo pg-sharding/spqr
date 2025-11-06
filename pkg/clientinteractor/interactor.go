@@ -364,36 +364,6 @@ func (pi *PSQLInteractor) Quantiles(_ context.Context) error {
 
 // TODO : unit tests
 
-// AddShard sends the row description message for adding a data shard, followed by a data row
-// indicating the creation of the specified data shard, and completes the message.
-//
-// Parameters:
-// - shard (*topology.DataShard): The topology.DataShard object to be added.
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) AddShard(shard *topology.DataShard) error {
-	if err := pi.WriteHeader("add shard"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("shard id -> %s", shard.ID))}},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// TODO : unit tests
-
 func (pi *PSQLInteractor) ReplyTTS(tts *tupleslot.TupleTableSlot) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: tts.Desc},
@@ -426,63 +396,6 @@ func (pi *PSQLInteractor) ReplyTTS(tts *tupleslot.TupleTableSlot) error {
 func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, locks []string) error {
 	vp := engine.KeyRangeVirtualRelationScan(krs, locks)
 	return pi.ReplyTTS(vp)
-}
-
-// TODO : unit tests
-
-// CreateKeyRange sends the row description message for adding a key range, followed by a data row
-// indicating the creation of the specified key range, and completes the message.
-//
-// Parameters:
-// - ctx (context.Context): The context parameter.
-// - keyRange (*kr.KeyRange): The *kr.KeyRange object to be created.
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
-	if err := pi.WriteHeader("add key range"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{fmt.Appendf(nil, "bound -> %s", keyRange.SendRaw()[0])}},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// CreateReferenceRelation sends the row description message for adding a reference relation, followed by a data row
-// indicating the creation of the specified key range, and completes the message.
-//
-// Parameters:
-// - ctx (context.Context): The context parameter.
-// - rrel (*rrelation.ReferenceRelation): The relation object to be created.
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) CreateReferenceRelation(ctx context.Context, rrel *rrelation.ReferenceRelation) error {
-	if err := pi.WriteHeader("create reference table"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("table    -> %s", rrel.TableName))}},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("shard id -> %s", strings.Join(rrel.ShardIds, ",")))}},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
 }
 
 // TODO : unit tests
@@ -1153,77 +1066,6 @@ func (pi *PSQLInteractor) RegisterRouter(ctx context.Context, id string, addr st
 		return err
 	}
 
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// StartTraceMessages initiates tracing of messages in the PSQL client.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) StartTraceMessages(ctx context.Context) error {
-	if err := pi.WriteHeader("start trace messages"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow("START TRACE MESSAGES"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// StopTraceMessages stops tracing of messages in the PSQL client.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) StopTraceMessages(ctx context.Context) error {
-	if err := pi.WriteHeader("stop trace messages"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow("STOP TRASCE MESSAGES"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// TODO : unit tests
-
-// AddDistribution adds a distribution to the PSQL client.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-// - ks (*distributions.Distribution): The distribution to add.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) AddDistribution(ctx context.Context, ks *distributions.Distribution) error {
-	if err := pi.WriteHeader("add distribution"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("distribution id -> %s", ks.ID())); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
 	return pi.CompleteMsg(0)
 }
 
