@@ -29,9 +29,9 @@ SHOW SEQUENCES;
 DROP SEQUENCE t1_id;
 ERROR:  column "t1.id" is attached to sequence
 DROP REFERENCE RELATION t1;
- drop reference table 
-----------------------
- table -> t1
+ drop reference relation 
+-------------------------
+ relation -> t1
 (1 row)
 
 SHOW sequences;
@@ -55,9 +55,9 @@ CREATE DISTRIBUTION ds COLUMN TYPES integer;
 ALTER DISTRIBUTION ds ATTACH RELATION t2 DISTRIBUTION KEY id AUTO INCREMENT id1;
 ERROR:  sequence are supported for replicated relations only
 DROP REFERENCE RELATION t;
- drop reference table 
-----------------------
- table -> t
+ drop reference relation 
+-------------------------
+ relation -> t
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;
