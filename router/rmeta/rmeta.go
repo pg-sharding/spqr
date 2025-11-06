@@ -11,10 +11,10 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 
@@ -54,14 +54,26 @@ type RoutingMetadataContext struct {
 	CSM   connmgr.ConnectionStatMgr
 	Mgr   meta.EntityMgr
 	Query string
+	Stmt  lyx.Node
 
 	AuxValues map[AuxValuesKey][]lyx.Node
+
+	/* Is query proven to be read-only? */
+	ro bool
 
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
 }
 
+func (rm *RoutingMetadataContext) SetRO(ro bool) {
+	rm.ro = ro
+}
+
+func (rm *RoutingMetadataContext) IsRO() bool {
+	return rm.ro
+}
+
 func NewRoutingMetadataContext(sph session.SessionParamsHolder,
-	query string, csm connmgr.ConnectionStatMgr, mgr meta.EntityMgr) *RoutingMetadataContext {
+	query string, stmt lyx.Node, csm connmgr.ConnectionStatMgr, mgr meta.EntityMgr) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
 		Rels:          map[rfqn.RelationFQN]struct{}{},
 		CteNames:      map[string]struct{}{},
@@ -75,6 +87,8 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 		CSM:           csm,
 		Mgr:           mgr,
 		Query:         query,
+		Stmt:          stmt,
+		ro:            false,
 	}
 }
 
@@ -85,6 +99,9 @@ var CatalogDistribution = distributions.Distribution{
 }
 
 func IsRelationCatalog(resolvedRelation *rfqn.RelationFQN) bool {
+	if resolvedRelation.SchemaName == "information_schema" {
+		return true
+	}
 	return len(resolvedRelation.RelationName) >= 3 && resolvedRelation.RelationName[0:3] == "pg_"
 }
 
@@ -159,10 +176,6 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, r
 	}
 
 	if IsRelationCatalog(resolvedRelation) {
-		return &CatalogDistribution, nil
-	}
-
-	if resolvedRelation.SchemaName == "information_schema" {
 		return &CatalogDistribution, nil
 	}
 

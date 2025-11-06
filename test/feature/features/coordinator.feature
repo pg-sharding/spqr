@@ -6,6 +6,7 @@ Feature: Coordinator test
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster.yaml
+    ROUTER_CONFIG_2=/spqr/test/feature/conf/router_cluster.yaml
     """
     Given cluster is up and running
     And host "coordinator2" is stopped
@@ -13,7 +14,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    REGISTER ROUTER r1 ADDRESS regress_router:7000
+    REGISTER ROUTER r1 ADDRESS regress_router:7000;
     """
     Then command return code should be "0"
 
@@ -366,6 +367,16 @@ Feature: Coordinator test
     """
     context deadline exceeded
     """
+
+    When I run SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid1NoExistS;
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    cant't lock non existent key range
+    """
+
 
   Scenario: Unite non-adjacent key ranges fails
     When I run SQL on host "coordinator"
@@ -753,6 +764,7 @@ Feature: Coordinator test
     When I record in qdb move task group
     """
     {
+            "id":            "tgid1",
             "shard_to_id":   "sh_to",
             "kr_id_from":    "krid1",
             "kr_id_to":      "krid2",
@@ -766,7 +778,8 @@ Feature: Coordinator test
                 "id":            "2",
                 "kr_id_temp":    "temp_id",
                 "bound":         ["FAAAAAAAAAA="],
-                "state":         0
+                "state":         0,
+                "task_group_id": "tgid1"
             }
         }
     """
@@ -779,6 +792,7 @@ Feature: Coordinator test
     And SQL result should match json_exactly
     """
     [{
+        "Task group ID":            "tgid1",
         "Destination shard ID":     "sh_to",
         "Source key range ID":      "krid1",
         "Destination key range ID": "krid2"
@@ -800,7 +814,7 @@ Feature: Coordinator test
     """
     When I run SQL on host "coordinator"
     """
-    DROP TASK GROUP
+    DROP TASK GROUP tgid1;
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator"
@@ -821,40 +835,93 @@ Feature: Coordinator test
     """
     []
     """
-
-  Scenario: autocreate distributed relation
-    When I run SQL on host "router"
+  
+  Scenario: REDISTRIBUTE KEY RANGE works when invoked from router
+    When I execute SQL on host "coordinator"
     """
-    set __spqr__auto_distribution=ds1;
-    set __spqr__distribution_key=id;
-    """
-    Then command return code should be "0"
-
-    When I run SQL on host "router"
-    """
-    CREATE TABLE test1(id int, name text)
+    REGISTER ROUTER r2 ADDRESS regress_router_2:7000;
+    DROP KEY RANGE krid1;
+    DROP KEY RANGE krid2;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
     """
     Then command return code should be "0"
 
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router-admin" with timeout "150" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 2000;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
     When I run SQL on host "coordinator"
     """
-    SHOW relations;
+    SHOW key_ranges;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
-    [
-      {
-        "Relation name": "test",
-        "Distribution ID": "ds1",
-        "Distribution key": "(\"id\", identity)",
-        "Schema name": "$search_path"
-      },
-      {
-        "Relation name": "test1",
-        "Distribution ID": "ds1",
-        "Distribution key": "(\"id\", identity)",
-        "Schema name": "$search_path"
-      }
-    ]
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh2",
+      "Locked":"false"
+    }]
     """

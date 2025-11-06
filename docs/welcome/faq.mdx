@@ -1,0 +1,322 @@
+---
+title: 'FAQ'
+description: 'Frequently Asked Questions'
+---
+
+## General Questions
+
+**Q: When should SPQR be used, and when is it not a good fit?**
+
+**A:**
+
+**Use SPQR when:**
+
+* Your data no longer fits on a single PostgreSQL instance (> several TB).
+* You experience performance degradation in reads/writes, and vertical scaling has reached its limits.
+* You need to “cool down” part of your data without losing availability.
+* Your database is already sharded and you need automated re-sharding.
+* Recommended to start sharding when you have >40 CPU cores, >4 hosts, or >600 GB of data.
+
+**SPQR is not suitable when:**
+
+* You have complex queries involving multiple shards (e.g., cross-shard JOINs).
+* Transactions modify data across multiple shards.
+* You need OLAP workloads — use **Greenplum** instead.
+
+**Q: Are JSONB and large objects supported?**
+
+**A:** Yes. SPQR is fully compatible with PostgreSQL data types, including JSONB. Keep in mind that large objects can impact network performance.
+
+**Q: How does SPQR differ from other solutions (Citus, ShardingSphere, Neon, Vitess, YDB)?**
+
+**A:**
+
+* **License:** SPQR uses the open PostgreSQL license.
+* **Simplicity:** SPQR is built to solve a single, focused problem — routing application queries to shards.
+* **Performance:** SPQR is optimized for minimal overhead.
+
+**Q: What technologies is SPQR built on, and how is it configured?**
+
+**A:** SPQR is written in **Go** and works directly at the **PostgreSQL protocol** level.
+Sharding rules are stored in **etcd**, a distributed key-value store providing consistent, low-latency coordination.
+Rules are configured via an **administrative console** (PostgreSQL-compatible protocol).
+
+**Q: Can SPQR be used with other systems and cloud databases?**
+
+**A:** Yes! SPQR is compatible with managed PostgreSQL databases (Yandex Managed PostgreSQL, AWS RDS, etc.).
+You can even use **Neon** as a shard for data storage while SPQR routes queries between them.
+
+**Q: How to ensure SPQR high availability?**
+
+**A:**
+
+* Deploy at least **3 routers** in different availability zones.
+* Set up alerts for metrics (CPU, connections, errors).
+* Use HA-managed services for shards (Odyssey/PgBouncer as connection poolers, PgConsul/Patroni for HA management).
+
+**Q: What happens under high load?**
+
+**A:** It depends on the workload type.
+Example: 95% writes, 5% reads.
+If the router’s configuration parameter [`default_target_session_attrs`](https://pg-sharding.tech/configuration/router#query-routing-settings) = `read-only`, read queries are distributed among replicas.
+If a replica becomes unresponsive (`SELECT pg_is_in_recovery();` timeout), SPQR stops sending queries to it and periodically checks its status in the background. Once it’s healthy again, traffic resumes automatically.
+
+**Q: Are there risks of duplicated queries when using a load balancer in front of SPQR?**
+
+**A:** Yes. If a client disconnects and the load balancer retries the query, SPQR treats it as a new one — potentially causing duplication (e.g., `INSERT`).
+Use **idempotent operations** or implement deduplication at the application layer.
+
+**Q: How to set up backups?**
+
+**A:** Full **PITR** (Point-In-Time Recovery) for the SPQR cluster consists of shard PITRs plus a backup of SPQR metadata stored in etcd.
+We recommend using **WAL-G** for this purpose.
+
+**Q: How to diagnose issues and collect statistics?**
+
+**A:** Enable debug logging in the router config and use `/* __spqr__reply_notice = true */` for detailed error messages.
+The router provides a PostgreSQL-compatible admin console with `SHOW` commands for metrics (e.g., `SHOW clients WHERE dbname = testdb;` or `SHOW shards;`).
+
+**Q: How to configure logging and tracing?**
+
+**A:** Use the following router parameters:
+
+* `log_level` — debug, info, warning, error, fatal
+* `pretty_logging` — enables structured output
+* `pgproto_debug` — detailed PostgreSQL protocol logging
+* `notice_message_format` — configures NOTICE message formatting
+  Tracing is available through the `with_jaeger` flag in `feature_flags`, and latency metrics are available via `time_quantiles`.
+
+## Transactions
+
+**Q: How does SPQR process SQL queries?**
+
+**A:** SPQR handles queries differently depending on their type and context:
+
+1. **Regular queries:** SPQR parses the query, identifies the target table, column, and key value, then matches it to pre-defined sharding rules (range or hash). It routes the query to the corresponding shard.
+2. **Queries with routing hints:** Query routing can be influenced by special hints (provided as SQL comments or router settings).
+3. **Transactions:** When `BEGIN TRANSACTION` is received, SPQR buffers subsequent statements (like `SET` commands) in memory.
+   The entire transaction is sent to a specific shard only when the target shard can be determined unambiguously.
+
+**Q: How are multi-shard transactions handled?**
+
+**A:** For atomic cross-shard transactions, use **two-phase commit (2PC):**
+
+1. At session start: `SET __spqr__commit_strategy TO '2pc'`.
+2. Or add `/* __spqr__commit_strategy: 2pc */` to your `COMMIT`.
+3. Ensure `max_prepared_transactions` > 0 on all shards.
+   *Note:* Without 2PC, changes may be partially applied.
+
+**Q: Can queries spanning multiple shards be executed?**
+
+**A:** Yes, but with limitations:
+
+* For cross-shard operations, use `/*__spqr__engine_v2: true*/`.
+* `COPY` operations are allowed with `/*__spqr__allow_multishard: true*/`.
+* Transactions modifying multiple shards are **not supported**.
+
+**Q: How to explicitly route a query to a specific shard?**
+
+**A:** SPQR supports virtual parameters (hints), set via SQL comments or `SET` statements:
+
+* `__spqr__execute_on` — target specific shard
+* `__spqr__distribution` — choose routing distribution
+* `__spqr__scatter_query` — broadcast query to all shards
+
+**Q: What commit strategies are supported?**
+
+**A:** The `__spqr__commit_strategy` hint defines the transaction commit mode:
+
+* `best-effort` — default mode, same as `1pc`
+* `1pc` — one-phase commit (commits each shard independently, no atomicity guarantees across shards)
+* `2pc` — two-phase commit (atomic commits across shards, requires `/* __spqr__engine_v2: true */` and PostgreSQL `max_prepared_transactions` > 0).
+
+For comprehensive information, see [Distributed Transactions](/sharding/distributed_transactions).
+
+**Q: How to use reference tables?**
+
+**A:** Reference tables are replicated across all shards.
+Create them with:
+
+```sql
+CREATE REFERENCE TABLE table_name (...);
+```
+
+or via:
+
+```sql
+CREATE DISTRIBUTION ds_repl COLUMN TYPES ... REPLICATED;
+ALTER DISTRIBUTION ds_repl ATTACH RELATION table_name ...;
+```
+
+Data automatically replicates to all shards. Use `/* __spqr__engine_v2: true */` for writes.
+
+**Q: Can related tables be sharded by the same key?**
+
+**A:** Yes — SPQR allows colocating related data on the same shard, enabling efficient intra-shard JOINs.
+
+**Q: Does SPQR support distributed sequences?**
+
+**A:** Yes — via `CREATE REFERENCE TABLE ... AUTO INCREMENT`. SPQR guarantees globally unique IDs.
+
+**Q: How are queries without a sharding key handled?**
+
+**A:** By default, multi-shard queries (without a key) are **forbidden**.
+You can enable them with `/* __spqr__scatter_query: true */`.
+Results from all shards are merged, but consistency is not guaranteed.
+
+## Connections and Authentication
+
+**Q: How to connect to SPQR?**
+
+**A:** SPQR uses the standard PostgreSQL protocol — applications see it as a regular PostgreSQL cluster.
+You can connect via `psql` or any PostgreSQL driver using the router’s host and port.
+The admin console runs on a separate port (defined by `admin_console_port`), e.g.:
+
+```bash
+psql host=localhost sslmode=require user=demo dbname=demo port=6432
+```
+
+**Q: How do session and transaction pooling work?**
+
+**A:** SPQR supports pooling modes similar to Odyssey/PgBouncer.
+Configured via `pool_mode` in frontend rules:
+
+* `SESSION` — a client session is bound to one backend connection
+* `TRANSACTION` — connection is released to the pool after each transaction
+
+**Q: What options exist for connection routing control?**
+
+**A:** See [Routing hints](https://pg-sharding.tech/routing/hints).
+
+**Q: Are external drivers (pgx, JDBC, etc.) supported?**
+
+**A:** Yes. SPQR speaks the PostgreSQL wire protocol, so most drivers are compatible.
+However, some versions of **pgx** may hang during connection initialization — test your driver setup and report issues to SPQR developers.
+
+## Performance
+
+**Q: How does SPQR performance compare to vanilla PostgreSQL?**
+
+**A:**
+
+* SPQR shows **~10–30% performance drop** depending on workload type compared to vanilla PostgreSQL.
+* Optimization work is ongoing.
+
+**Q: What hardware resources are required for routers and coordinators?**
+
+**A:** It depends on workload.
+For high RPS (100K+), use strong CPUs (e.g., Intel Ice Lake) and >=16 GB RAM.
+Example configurations for ~20,000 RPS:
+
+**Minimal:**
+
+* 3 routers × 4 vCPU, 16 GB RAM
+* 3 coordinators × 1 vCPU, 4 GB RAM
+* **Total:** 15 vCPU, 60 GB RAM
+
+**Optimal:**
+
+* 3 routers × 4 vCPU, 16 GB RAM
+* 3 coordinators × 2 vCPU, 8 GB RAM
+* **Total:** 18 vCPU, 72 GB RAM
+
+**With headroom:**
+
+* 5 routers × 4 vCPU, 16 GB RAM
+* 3 coordinators × 2 vCPU, 8 GB RAM
+* **Total:** 26 vCPU, 104 GB RAM
+
+## Data Migration and Rebalancing
+
+**Q: How to shard an existing database?**
+
+**A:** Steps:
+
+1. Connect your current cluster as the first shard.
+2. Define sharding keys for your tables.
+3. Create key ranges covering the entire key space.
+4. Add new shards to the config and move data using `REDISTRIBUTE KEY RANGE`.
+
+**Q: How to configure application connections to SPQR?**
+
+**A:**
+
+* Use standard PostgreSQL drivers (e.g., `pgx`).
+* Specify all routers in your configuration for load balancing.
+
+**Q: How to shard by a composite key (multiple columns)?**
+
+**A:**
+
+```sql
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer, varchar;  
+ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY user_id, order_date; 
+```
+
+**Q: How to create a default shard for unassigned keys?**
+
+**A:**
+
+```sql
+ALTER DISTRIBUTION {distribution_id} ADD DEFAULT SHARD {shard};
+```
+
+**Q: How to add a new shard and rebalance data?**
+
+**A:**
+
+1. Add a new shard in `router.yaml` / `coordinator.yaml` or via `ADD SHARD`.
+2. Reassign key ranges using:
+
+   * `SPLIT KEY RANGE` — split range
+   * `MOVE KEY RANGE` — move range (locks data)
+   * `REDISTRIBUTE KEY RANGE` — automatic migration
+3. Use `SYNC REFERENCE TABLES` to copy reference tables.
+
+Rebalancing can be **automatic** (based on CPU/disk load, ε-split) or **manual**.
+
+**Q: What data types are supported for sharding?**
+
+**A:**
+
+* Integer (`int`, `bigint`)
+* String (`varchar`)
+* UUID
+* Hash functions: `CITY`, `MURMUR` (for integers only) — **custom hash functions are not supported**
+* Composite keys
+
+**Q: Are JOINs between shards supported?**
+
+**A:** No. JOINs are only allowed within a single shard.
+To handle related data, use **colocation** (store related tables on the same shard via a shared key).
+
+**Q: How does SPQR manage connection limits?**
+
+**A:** Connection-level limits (rate limits, user quotas) are planned but not yet implemented.
+
+**Q: Does SPQR provide query deduplication or retry policy?**
+
+**A:** Not yet. If a client disconnects and retries, SPQR treats it as a new query.
+Configurable retry strategies are planned.
+
+**Q: When I see `error processing query ... : syntax error`, what should I do?**
+
+**A:** This usually indicates an internal SPQR parser issue rather than an actual SQL syntax error.
+
+**1. Report it to SPQR developers:**
+
+* Include the full query text
+* SPQR and PostgreSQL versions
+* Sharding configuration
+
+**2. Temporary workaround:**
+
+* Check your query against SPQR documentation
+* Simplify the query (split it, remove complex constructs)
+
+**Why does this happen?**
+SPQR uses its own SQL parser, which may not fully support:
+
+* Rare PostgreSQL operators
+* Nonstandard syntax
+* Custom functions

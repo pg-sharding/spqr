@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -44,6 +45,10 @@ func (r *ReferenceRelation) GetSchema() string {
 
 func (r *ReferenceRelation) GetFullName() string {
 	return fmt.Sprintf("%s.%s", r.GetSchema(), strings.ToLower(r.TableName))
+}
+
+func (r *ReferenceRelation) QualifiedName() rfqn.RelationFQN {
+	return rfqn.RelationFQN{RelationName: r.TableName, SchemaName: r.GetSchema()}
 }
 
 func ReferenceRelationEntriesFromSQL(inEntries []*spqrparser.AutoIncrementEntry) []*AutoIncrementEntry {
@@ -106,6 +111,7 @@ func RefRelationToProto(p *ReferenceRelation) *protos.ReferenceRelation {
 func RefRelationToDB(p *ReferenceRelation) *qdb.ReferenceRelation {
 	return &qdb.ReferenceRelation{
 		TableName:             p.TableName,
+		SchemaName:            p.SchemaName,
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.ColumnSequenceMapping,
 		ShardIds:              p.ShardIds,
@@ -115,6 +121,7 @@ func RefRelationToDB(p *ReferenceRelation) *qdb.ReferenceRelation {
 func RefRelationFromDB(p *qdb.ReferenceRelation) *ReferenceRelation {
 	return &ReferenceRelation{
 		TableName:             p.TableName,
+		SchemaName:            p.SchemaName,
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.ColumnSequenceMapping,
 		ShardIds:              p.ShardIds,

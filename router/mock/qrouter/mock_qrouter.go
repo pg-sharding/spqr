@@ -14,12 +14,14 @@ import (
 	reflect "reflect"
 
 	lyx "github.com/pg-sharding/lyx/lyx"
+	connmgr "github.com/pg-sharding/spqr/pkg/connmgr"
 	meta "github.com/pg-sharding/spqr/pkg/meta"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
+	plan "github.com/pg-sharding/spqr/pkg/plan"
 	session "github.com/pg-sharding/spqr/pkg/session"
 	cache "github.com/pg-sharding/spqr/router/cache"
-	plan "github.com/pg-sharding/spqr/router/plan"
 	planner "github.com/pg-sharding/spqr/router/planner"
+	rmeta "github.com/pg-sharding/spqr/router/rmeta"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -45,6 +47,35 @@ func NewMockQueryRouter(ctrl *gomock.Controller) *MockQueryRouter {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockQueryRouter) EXPECT() *MockQueryRouterMockRecorder {
 	return m.recorder
+}
+
+// AnalyzeQuery mocks base method.
+func (m *MockQueryRouter) AnalyzeQuery(ctx context.Context, sph session.SessionParamsHolder, query string, stmt lyx.Node) (*rmeta.RoutingMetadataContext, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AnalyzeQuery", ctx, sph, query, stmt)
+	ret0, _ := ret[0].(*rmeta.RoutingMetadataContext)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AnalyzeQuery indicates an expected call of AnalyzeQuery.
+func (mr *MockQueryRouterMockRecorder) AnalyzeQuery(ctx, sph, query, stmt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AnalyzeQuery", reflect.TypeOf((*MockQueryRouter)(nil).AnalyzeQuery), ctx, sph, query, stmt)
+}
+
+// CSM mocks base method.
+func (m *MockQueryRouter) CSM() connmgr.ConnectionStatMgr {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CSM")
+	ret0, _ := ret[0].(connmgr.ConnectionStatMgr)
+	return ret0
+}
+
+// CSM indicates an expected call of CSM.
+func (mr *MockQueryRouterMockRecorder) CSM() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CSM", reflect.TypeOf((*MockQueryRouter)(nil).CSM))
 }
 
 // DataShardsRoutes mocks base method.
@@ -118,18 +149,18 @@ func (mr *MockQueryRouterMockRecorder) Mgr() *gomock.Call {
 }
 
 // PlanQuery mocks base method.
-func (m *MockQueryRouter) PlanQuery(ctx context.Context, OriginQuery string, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
+func (m *MockQueryRouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PlanQuery", ctx, OriginQuery, stmt, sph)
+	ret := m.ctrl.Call(m, "PlanQuery", ctx, rm)
 	ret0, _ := ret[0].(plan.Plan)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // PlanQuery indicates an expected call of PlanQuery.
-func (mr *MockQueryRouterMockRecorder) PlanQuery(ctx, OriginQuery, stmt, sph any) *gomock.Call {
+func (mr *MockQueryRouterMockRecorder) PlanQuery(ctx, rm any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PlanQuery", reflect.TypeOf((*MockQueryRouter)(nil).PlanQuery), ctx, OriginQuery, stmt, sph)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PlanQuery", reflect.TypeOf((*MockQueryRouter)(nil).PlanQuery), ctx, rm)
 }
 
 // Ready mocks base method.

@@ -88,6 +88,16 @@ NOTICE: send query to shard(s) : sh4
 ---+---+---
 (0 rows)
 
+explain (COSTS OFF ) SELECT * FROM xx_insert_rel WHERE a = 1 ORDER BY 1,2,3;
+NOTICE: send query to shard(s) : sh1
+           QUERY PLAN            
+---------------------------------
+ Sort
+   Sort Key: b, c
+   ->  Seq Scan on xx_insert_rel
+         Filter: (a = 1)
+(4 rows)
+
 DROP TABLE xx_insert_rel;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console

@@ -7,11 +7,14 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/pg-sharding/spqr/coordinator/statistics"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/router/rfqn"
 
 	pgx "github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
@@ -176,17 +179,20 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	for tx != nil {
 		switch tx.Status {
 		case qdb.Planned:
+			t := time.Now()
 			// copy data of key range to receiving shard
 			if err = copyData(ctx, from, to, fromId, toId, krg, ds, upperBound); err != nil {
 				return err
 			}
 			tx.Status = qdb.DataCopied
 			err = db.RecordTransferTx(ctx, krg.ID, tx)
+			statistics.RecordShardOperation("copyData", time.Since(t))
 			if err != nil {
 				return err
 			}
 		case qdb.DataCopied:
 			// drop data from sending shard
+			t := time.Now()
 			ftx, err := from.Begin(ctx)
 			if err != nil {
 				return fmt.Errorf("could not delete data: could not begin transaction: %s", err)
@@ -220,6 +226,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			if err = ftx.Commit(ctx); err != nil {
 				return fmt.Errorf("could not delete data: could not commit transaction: %s", err)
 			}
+			statistics.RecordShardOperation("dropData", time.Since(t))
 			if err = db.RemoveTransferTx(ctx, krg.ID); err != nil {
 				return err
 			}
@@ -456,11 +463,16 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		if toCount > 0 && fromCount != 0 {
 			return fmt.Errorf("key count on sender & receiver mismatch")
 		}
+		cols, err := getTableColumns(ctx, tx, rfqn.RelationFQN{RelationName: strings.ToLower(rel.Name), SchemaName: rel.GetSchema()})
+		if err != nil {
+			return err
+		}
+		colNames := strings.Join(cols, ", ")
 		query := fmt.Sprintf(`
-					INSERT INTO %s
-					SELECT * FROM %s
+					INSERT INTO %s (%s)
+					SELECT %s FROM %s
 					WHERE %s
-`, relFullName, fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.Name)), krCondition)
+`, relFullName, colNames, colNames, fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.Name)), krCondition)
 		_, err = tx.Exec(ctx, query)
 		if err != nil {
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
@@ -523,19 +535,49 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	if toCount > 0 && fromCount != 0 {
 		return fmt.Errorf("key count on sender & receiver mismatch")
 	}
+	tx, err := to.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("could not start transaction to copy reference table data: %s", err)
+	}
+
+	cols, err := getTableColumns(ctx, tx, rfqn.RelationFQN{RelationName: strings.ToLower(rel.TableName), SchemaName: rel.GetSchema()})
+	if err != nil {
+		return err
+	}
 	query := fmt.Sprintf(`
-					INSERT INTO %s
-					SELECT * FROM %s
-`, relFullName, fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.TableName)))
-	_, err = to.Exec(ctx, query)
+					INSERT INTO %s (%s)
+					SELECT %s FROM %s
+`, relFullName, strings.Join(cols, ", "), strings.Join(cols, ", "), fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.TableName)))
+	_, err = tx.Exec(ctx, query)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
+	}
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("could not commit transaction: %s", err)
 	}
 
 	return nil
 }
 
+func getTableColumns(ctx context.Context, db Queryable, rfqn rfqn.RelationFQN) ([]string, error) {
+	cols := make([]string, 0)
+	colRows, err := db.Query(ctx, "SELECT column_name FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2", rfqn.SchemaName, strings.ToLower(rfqn.RelationName))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get columns of table \"%s\": %s", rfqn.String(), err)
+	}
+	for colRows.Next() {
+		colName := ""
+		if err := colRows.Scan(&colName); err != nil {
+			return nil, fmt.Errorf("error scanning column name: %s", err)
+		}
+		cols = append(cols, colName)
+	}
+	return cols, nil
+}
+
 type Queryable interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 

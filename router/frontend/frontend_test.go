@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
 	mocksh "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -16,7 +16,6 @@ import (
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockqr "github.com/pg-sharding/spqr/router/mock/qrouter"
 	mocksrv "github.com/pg-sharding/spqr/router/mock/server"
-	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/statistics"
 
@@ -113,12 +112,9 @@ func TestFrontendSimple(t *testing.T) {
 
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 
-	qr.EXPECT().PlanQuery(gomock.Any(), gomock.Any(), &lyx.Select{
-		TargetList: []lyx.Node{
-			&lyx.AExprIConst{Value: 1},
-		},
-		Where: &lyx.AExprEmpty{},
-	}, gomock.Any()).Return(&plan.ShardDispatchPlan{
+	qr.EXPECT().AnalyzeQuery(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+
+	qr.EXPECT().PlanQuery(gomock.Any(), gomock.Any()).Return(&plan.ShardDispatchPlan{
 		ExecTarget: kr.ShardKey{
 			Name: "sh1",
 		},

@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -19,7 +20,6 @@ import (
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
-	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
@@ -342,7 +342,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 	return &pgcopy.CopyState{
 		Delimiter:      delimiter,
 		Krs:            krs,
-		RM:             rmeta.NewRoutingMetadataContext(s.cl, "", nil /*XXX: fix this*/, mgr),
+		RM:             rmeta.NewRoutingMetadataContext(s.cl, "", nil /*XXX: fix this*/, nil, mgr),
 		Ds:             ds,
 		Drel:           dRel,
 		HashFunc:       hashFunc,
@@ -674,17 +674,14 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 			/* only send row description for simple proto case */
 
 			if expectRowDesc {
-
 				if err := s.Client().Send(&pgproto3.RowDescription{
-					Fields: q.VirtualRowCols,
+					Fields: q.TTS.Desc,
 				}); err != nil {
 					return err
 				}
-
 			}
 
-			for _, vals := range q.VirtualRowVals {
-
+			for _, vals := range q.TTS.Raw {
 				if err := s.Client().Send(&pgproto3.DataRow{
 					Values: vals,
 				}); err != nil {

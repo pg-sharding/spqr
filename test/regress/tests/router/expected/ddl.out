@@ -53,6 +53,16 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ALTER TABLE "tmp" RENAME TO "table_2";
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COMMIT;
+VACUUM table_1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+VACUUM ANALYZE;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+VACUUM ANALYZE table_1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE type et as enum ('a', 'b');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TYPE et;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP SCHEMA sh1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE table_1 CASCADE;

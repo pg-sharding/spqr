@@ -7,16 +7,22 @@ import (
 
 	"sync/atomic"
 
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/session"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/planner"
+	"github.com/pg-sharding/spqr/router/rmeta"
 )
 
 type ProxyQrouter struct {
+	planner.QueryPlanner
+
 	mu sync.Mutex
 
 	ColumnMapping map[string]struct{}
@@ -35,6 +41,27 @@ type ProxyQrouter struct {
 
 	initialized *atomic.Bool
 	ready       *atomic.Bool
+}
+
+// AnalyzeQuery implements QueryRouter.
+func (qr *ProxyQrouter) AnalyzeQuery(ctx context.Context,
+	sph session.SessionParamsHolder, query string, stmt lyx.Node) (*rmeta.RoutingMetadataContext, error) {
+
+	ro := true
+
+	if config.RouterConfig().Qr.AutoRouteRoOnStandby {
+		ro = planner.CheckRoOnlyQuery(stmt)
+	}
+
+	rm := rmeta.NewRoutingMetadataContext(sph, query, stmt, qr.csm, qr.mgr)
+
+	rm.SetRO(ro)
+
+	if err := planner.AnalyzeQueryV1(ctx, rm, rm.Stmt); err != nil {
+		spqrlog.Zero.Debug().Err(err).Msg("failed to analyze query")
+		return nil, err
+	}
+	return rm, nil
 }
 
 // IdRange implements QueryRouter.
@@ -62,6 +89,10 @@ func (qr *ProxyQrouter) SetReady(ready bool) {
 
 func (qr *ProxyQrouter) Mgr() meta.EntityMgr {
 	return qr.mgr
+}
+
+func (qr *ProxyQrouter) CSM() connmgr.ConnectionStatMgr {
+	return qr.csm
 }
 
 func (qr *ProxyQrouter) SchemaCache() *cache.SchemaCache {
@@ -102,6 +133,8 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []kr.ShardKey {
 	})
 	return ret
 }
+
+var _ planner.QueryPlanner = &ProxyQrouter{}
 
 func NewProxyRouter(shardMapping map[string]*config.Shard,
 	mgr meta.EntityMgr,

@@ -60,9 +60,8 @@ const (
 	routersNamespace               = "/routers/"
 	shardsNamespace                = "/shards/"
 	relationMappingNamespace       = "/relation_mappings/"
-	taskGroupPath                  = "/move_task_group"
-	moveTaskIDPath                 = "/move_task_id"
-	moveTaskPath                   = "/move_task"
+	taskGroupsNamespace            = "/move_task_groups/"
+	moveTaskNamespace              = "/move_tasks/"
 	redistributeTaskPath           = "/redistribute_task/"
 	balancerTaskPath               = "/balancer_task/"
 	transactionNamespace           = "/transfer_txs/"
@@ -70,11 +69,15 @@ const (
 	referenceRelationsNamespace    = "/reference_relations"
 	columnSequenceMappingNamespace = "/column_sequence_mappings/"
 	lockNamespace                  = "/lock"
-	totalKeysPath                  = "/total_keys"
+	totalKeysNamespace             = "/total_keys/"
+	stopMoveTaskGroupNamespace     = "/stop_move_task_group/"
+	moveTaskByGroupNamespace       = "/group_move_tasks/"
 
 	CoordKeepAliveTtl = 3
 	coordLockKey      = "coordinator_exists"
 	sequenceSpace     = "sequence_space"
+
+	MaxLockRetry = 7
 )
 
 func keyLockPath(key string) string {
@@ -120,8 +123,29 @@ func sequenceNodePath(key string) string {
 func relationSequenceMappingNodePath(relName string) string {
 	return path.Join(columnSequenceMappingNamespace, relName)
 }
+
 func columnSequenceMappingNodePath(relName, colName string) string {
 	return path.Join(relationSequenceMappingNodePath(relName), colName)
+}
+
+func taskGroupNodePath(id string) string {
+	return path.Join(taskGroupsNamespace, id)
+}
+
+func totalKeysNodePath(id string) string {
+	return path.Join(totalKeysNamespace, id)
+}
+
+func taskGroupStopFlagNodePath(id string) string {
+	return path.Join(stopMoveTaskGroupNamespace, id)
+}
+
+func moveTaskNodePath(id string) string {
+	return path.Join(moveTaskNamespace, id)
+}
+
+func moveTaskByGroupNodePath(taskGroupID string) string {
+	return path.Join(moveTaskByGroupNamespace, taskGroupID)
 }
 
 func (q *EtcdQDB) Client() *clientv3.Client {
@@ -161,6 +185,9 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 
 // TODO : unit tests
 func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*KeyRange, error) {
+	spqrlog.Zero.Debug().
+		Interface("nodePath", nodePath).
+		Msg("etcdqdb: fetch key range")
 	// caller ensures key is locked
 	raw, err := q.cli.Get(ctx, nodePath)
 	if err != nil {
@@ -332,38 +359,95 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	return ret, nil
 }
 
-// TODO : unit tests
-func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error) {
+func (q *EtcdQDB) NoWaitLockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().
-		Str("id", id).
+		Str("id", idKeyRange).
+		Msg("etcdqdb: lock key range (fast)")
+	t := time.Now()
+	kr, err := q.internalNoWaitLockKeyRange(ctx, idKeyRange)
+	statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
+	return kr, err
+}
+
+func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
+
+	resp, err := q.cli.Txn(ctx).
+		If(
+			//check exists key range lock
+			clientv3.Compare(clientv3.Version(keyLockPath(keyRangeNodePath(idKeyRange))), "=", 0),
+			//check exists key range
+			clientv3.Compare(clientv3.Version(keyRangeNodePath(idKeyRange)), ">", 0),
+		).
+		Then(
+			clientv3.OpPut(keyLockPath(keyRangeNodePath(idKeyRange)), "locked"),
+			clientv3.OpGet(keyRangeNodePath(idKeyRange)),
+		).
+		Else(
+			clientv3.OpGet(keyLockPath(keyRangeNodePath(idKeyRange)), clientv3.WithCountOnly()),
+			clientv3.OpGet(keyRangeNodePath(idKeyRange), clientv3.WithCountOnly()),
+		).
+		Commit()
+	if err != nil {
+		return nil, err
+	}
+	if !resp.Succeeded {
+		if len(resp.Responses) != 2 {
+			return nil, fmt.Errorf("unexpected (case 0) etcd lock '%s' response parts count=%d",
+				idKeyRange, len(resp.Responses))
+		}
+		if resp.Responses[1].GetResponseRange().Count == 0 {
+			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "cant't lock non existent key range %v", idKeyRange)
+		}
+		spqrlog.Zero.Debug().
+			Str("id", idKeyRange).
+			Msg(fmt.Sprintf("unsuccessful lock '%s' LS:%d, KR:%d", idKeyRange, resp.Responses[0], resp.Responses[1]))
+		return nil, retry.RetryableError(spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", idKeyRange))
+	} else {
+		if len(resp.Responses) != 2 {
+			return nil, fmt.Errorf("unexpected (case 1) etcd lock '%s' response parts count=%d",
+				idKeyRange, len(resp.Responses))
+		} else {
+			rng := resp.Responses[1].GetResponseRange()
+			if len(rng.Kvs) != 1 {
+				return nil, fmt.Errorf("unexpected (case 2) etcd lock '%s' response parts count=%d",
+					idKeyRange, len(rng.Kvs))
+			}
+			if rng.Kvs[0] == nil {
+				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 0)",
+					idKeyRange)
+			}
+			kv := rng.Kvs[0].Value
+			if kv == nil {
+				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 1)",
+					idKeyRange)
+			}
+			keyRange := KeyRange{}
+			if err := json.Unmarshal(kv, &keyRange); err != nil {
+				return nil, err
+			}
+			return &keyRange, nil
+		}
+	}
+}
+
+// TODO : unit tests
+func (q *EtcdQDB) LockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
+	spqrlog.Zero.Debug().
+		Str("id", idKeyRange).
 		Msg("etcdqdb: lock key range")
 
 	t := time.Now()
-
-	if err := retry.Do(ctx, retry.WithMaxRetries(7, retry.NewFibonacci(500*time.Millisecond)), func(ctx context.Context) error {
-		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(id)), clientv3.WithCountOnly())
-		if err != nil {
-			return retry.RetryableError(err)
-		}
-		switch resp.Count {
-		case 0:
-			_, err := q.cli.Put(ctx, keyLockPath(keyRangeNodePath(id)), "locked")
-			if err != nil {
-				return retry.RetryableError(err)
-			}
-
-			return nil
-		case 1:
-			return retry.RetryableError(spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id))
-		default:
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "too much key ranges matched: %d", len(resp.Kvs))
-		}
-	}); err != nil {
+	if kr, err := retry.DoValue(ctx, retry.WithMaxRetries(MaxLockRetry,
+		retry.NewFibonacci(500*time.Millisecond)),
+		func(ctx context.Context) (*KeyRange, error) {
+			return q.internalNoWaitLockKeyRange(ctx, idKeyRange)
+		}); err != nil {
 		statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
 		return nil, err
+	} else {
+		statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
+		return kr, nil
 	}
-	statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
-	return q.GetKeyRange(ctx, id)
 }
 
 // TODO : unit tests
@@ -399,7 +483,7 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 func (q *EtcdQDB) ListLockedKeyRanges(ctx context.Context) ([]string, error) {
 	spqrlog.Zero.Debug().
 		Str("key-range lock request", "").
-		Msg("etcdqdb: get list locked key range")
+		Msg("etcdqdb: list locked key ranges")
 	krLockNs := path.Join(lockNamespace, keyRangesNamespace)
 	resp, err := q.cli.Get(ctx, krLockNs, clientv3.WithPrefix())
 	result := make([]string, 0, len(resp.Kvs))
@@ -919,7 +1003,6 @@ func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	return shards, nil
 }
 
-// TODO : unit tests
 func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -935,16 +1018,18 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	if len(resp.Kvs) == 0 {
 		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard \"%s\" not found", id)
 	}
+	if len(resp.Kvs) > 1 {
+		return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION,
+			"multiple metadata entries (%d) found for shard %q; expected exactly one",
+			len(resp.Kvs), id)
+	}
 
 	shardInfo := &Shard{
 		ID: id,
 	}
-
-	for _, shard := range resp.Kvs {
-		// The Port field is always for a while.
-		shardInfo.RawHosts = append(shardInfo.RawHosts, string(shard.Value))
+	if err := json.Unmarshal(resp.Kvs[0].Value, shardInfo); err != nil {
+		return nil, err
 	}
-
 	statistics.RecordQDBOperation("GetShard", time.Since(t))
 	return shardInfo, nil
 }
@@ -1001,7 +1086,7 @@ func (q *EtcdQDB) GetReferenceRelation(ctx context.Context, relName *rfqn.Relati
 	}
 
 	if len(resp.Kvs) == 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution \"%s\" not found", tableName)
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "replicated relation \"%s\" not found", tableName)
 	}
 
 	var refRel *ReferenceRelation
@@ -1375,6 +1460,73 @@ func (q *EtcdQDB) AlterDistributedRelationSchema(ctx context.Context, id string,
 }
 
 // TODO : unit tests
+func (q *EtcdQDB) AlterReplicatedRelationSchema(ctx context.Context, dsID string, relName string, schemaName string) error {
+	spqrlog.Zero.Debug().
+		Str("relName", relName).
+		Str("schemaName", schemaName).
+		Msg("etcdqdb: alter replicated relation schema")
+
+	distribution, err := q.GetDistribution(ctx, dsID)
+	if err != nil {
+		return err
+	}
+
+	if _, ok := distribution.Relations[relName]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relName)
+	}
+	distribution.Relations[relName].SchemaName = schemaName
+	if ds, err := q.GetRelationDistribution(ctx, &rfqn.RelationFQN{RelationName: relName}); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relName)
+	} else if ds.ID != dsID {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relName, ds.ID, dsID)
+	}
+	rel, err := q.GetReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: relName})
+	if err != nil {
+		return fmt.Errorf("failed to get reference table: %s", err)
+	}
+	rel.SchemaName = schemaName
+	relJson, err := json.Marshal(rel)
+	if err != nil {
+		return fmt.Errorf("failed to marshal reference table: %s", err)
+	}
+
+	distrJson, err := json.Marshal(distribution)
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Txn(ctx).
+		If(
+			clientv3.Compare(clientv3.Version(distributionNodePath(distribution.ID)), "=", distribution.Version),
+		).
+		Then(
+			clientv3.OpPut(distributionNodePath(distribution.ID), string(distrJson)),
+			clientv3.OpPut(referenceRelationNodePath(relName), string(relJson)),
+		).
+		Else(
+			clientv3.OpGet(distributionNodePath(distribution.ID), clientv3.WithCountOnly()),
+		).
+		Commit()
+
+	if !resp.Succeeded {
+		if len(resp.Responses) < 1 {
+			return fmt.Errorf("unexpected (case 1) etcd create distribution '%s' response parts count=%d",
+				distribution.ID, len(resp.Responses))
+		} else {
+			rng := resp.Responses[0].GetResponseRange()
+			if len(rng.Kvs) < 1 {
+				return fmt.Errorf("unexpected (case 0) etcd create distribution '%s' response parts count=%d",
+					distribution.ID, len(rng.Kvs))
+			}
+			currentVersion := rng.Kvs[0].Version
+			return fmt.Errorf("distribution was changed '%s' current version is=%d",
+				distribution.ID, currentVersion)
+		}
+	}
+
+	return err
+}
+
+// TODO : unit tests
 func (q *EtcdQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []DistributionKeyEntry) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -1429,7 +1581,7 @@ func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution
 func (q *EtcdQDB) CheckDistribution(ctx context.Context, id string) (bool, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
-		Msg("etcdqdb: get distribution by id")
+		Msg("etcdqdb: check for distribution")
 
 	resp, err := q.cli.Get(ctx, distributionNodePath(id), clientv3.WithCountOnly())
 	if err != nil {
@@ -1466,14 +1618,40 @@ func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName *rfqn.Rel
 //                                    TASKS
 // ==============================================================================
 
-// TODO: unit tests
-func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) {
+func (q *EtcdQDB) ListTaskGroups(ctx context.Context) (map[string]*MoveTaskGroup, error) {
 	spqrlog.Zero.Debug().
+		Msg("etcdqdb: list task groups")
+
+	t := time.Now()
+	res := make(map[string]*MoveTaskGroup)
+
+	resp, err := q.cli.Get(ctx, taskGroupsNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+	for _, kv := range resp.Kvs {
+		id := string(kv.Key)[len(taskGroupsNamespace):]
+		var task *MoveTaskGroup
+		if err := json.Unmarshal(kv.Value, &task); err != nil {
+			return nil, err
+		}
+		spqrlog.Zero.Debug().Str("id", id).Msg("got task group")
+		res[id] = task
+	}
+
+	statistics.RecordQDBOperation("ListTaskGroups", time.Since(t))
+	return res, nil
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context, id string) (*MoveTaskGroup, error) {
+	spqrlog.Zero.Debug().
+		Str("id", id).
 		Msg("etcdqdb: get task group")
 
 	t := time.Now()
 
-	resp, err := q.cli.Get(ctx, taskGroupPath, clientv3.WithFirstKey()...)
+	resp, err := q.cli.Get(ctx, taskGroupNodePath(id), clientv3.WithFirstKey()...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task group: %s", err)
 	}
@@ -1491,8 +1669,9 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, totalKeys int64, task *MoveTask) error {
+func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, id string, group *MoveTaskGroup, totalKeys int64, task *MoveTask) error {
 	spqrlog.Zero.Debug().
+		Str("id", id).
 		Msg("etcdqdb: write task group")
 
 	t := time.Now()
@@ -1501,10 +1680,14 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, 
 	if err != nil {
 		return err
 	}
+	cmp := []clientv3.Cmp{
+		clientv3.Compare(clientv3.Version(taskGroupNodePath(id)), "=", 0),
+	}
 
 	ops := []clientv3.Op{
-		clientv3.OpPut(taskGroupPath, string(groupJson)),
-		clientv3.OpPut(totalKeysPath, fmt.Sprintf("%d", totalKeys)),
+		clientv3.OpPut(taskGroupNodePath(id), string(groupJson)),
+		clientv3.OpPut(totalKeysNodePath(id), fmt.Sprintf("%d", totalKeys)),
+		clientv3.OpDelete(taskGroupStopFlagNodePath(id)),
 	}
 	if task != nil {
 		taskJson, err := json.Marshal(task)
@@ -1512,9 +1695,13 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, 
 			return err
 		}
 
-		ops = append(ops, clientv3.OpPut(moveTaskPath, string(taskJson)), clientv3.OpPut(moveTaskIDPath, task.ID))
+		ops = append(ops,
+			clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson)),
+			clientv3.OpPut(moveTaskByGroupNodePath(id), task.ID),
+		)
+		cmp = append(cmp, clientv3.Compare(clientv3.Version(moveTaskNodePath(task.ID)), "=", 0))
 	}
-	txResp, err := q.cli.Txn(ctx).If(clientv3.Compare(clientv3.Version(taskGroupPath), "=", 0)).Then(ops...).Commit()
+	txResp, err := q.cli.Txn(ctx).If(cmp...).Then(ops...).Commit()
 	if err != nil {
 		return fmt.Errorf("failed to write move task group metadata: %s", err)
 	}
@@ -1526,8 +1713,11 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup, 
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) GetMoveTaskGroupTotalKeys(ctx context.Context) (int64, error) {
-	resp, err := q.cli.Get(ctx, totalKeysPath)
+func (q *EtcdQDB) GetMoveTaskGroupTotalKeys(ctx context.Context, id string) (int64, error) {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: get move task group total key count")
+	resp, err := q.cli.Get(ctx, totalKeysNodePath(id))
 	if err != nil {
 		return -1, err
 	}
@@ -1542,21 +1732,27 @@ func (q *EtcdQDB) GetMoveTaskGroupTotalKeys(ctx context.Context) (int64, error) 
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) UpdateMoveTaskGroupTotalKeys(ctx context.Context, totalKeys int64) error {
-	_, err := q.cli.Put(ctx, totalKeysPath, strconv.FormatInt(totalKeys, 10))
+func (q *EtcdQDB) UpdateMoveTaskGroupTotalKeys(ctx context.Context, id string, totalKeys int64) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Int64("count", totalKeys).
+		Msg("etcdqdb: update move task group total key count")
+	_, err := q.cli.Put(ctx, totalKeysNodePath(id), strconv.FormatInt(totalKeys, 10))
 	return err
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
+// TODO: drop move task
+func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
+		Str("id", id).
 		Msg("etcdqdb: remove task group")
 	t := time.Now()
 
 	if _, err := q.cli.Txn(ctx).Then(
-		clientv3.OpDelete(taskGroupPath),
-		clientv3.OpDelete(moveTaskPath),
-		clientv3.OpDelete(totalKeysPath),
+		clientv3.OpDelete(taskGroupNodePath(id)),
+		clientv3.OpDelete(totalKeysNodePath(id)),
+		clientv3.OpDelete(taskGroupStopFlagNodePath(id)),
 	).Commit(); err != nil {
 		return fmt.Errorf("failed to delete move task group metadata: %s", err)
 	}
@@ -1565,6 +1761,61 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 	return nil
 }
 
+func (q *EtcdQDB) GetMoveTaskByGroup(ctx context.Context, taskGroupID string) (*MoveTask, error) {
+	spqrlog.Zero.Debug().
+		Str("id", taskGroupID).
+		Msg("etcdqdb: get move task by group")
+	t := time.Now()
+
+	path := moveTaskByGroupNodePath(taskGroupID)
+	resp, err := q.cli.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	switch len(resp.Kvs) {
+	case 0:
+		statistics.RecordQDBOperation("GetMoveTaskIDByGroup", time.Since(t))
+		return nil, nil
+	case 1:
+		statistics.RecordQDBOperation("GetMoveTaskIDByGroup", time.Since(t))
+		return q.GetMoveTask(ctx, string(resp.Kvs[0].Value))
+	default:
+		statistics.RecordQDBOperation("GetMoveTaskIDByGroup", time.Since(t))
+		return nil, fmt.Errorf("too many values by \"%s\" key", path)
+	}
+}
+
+// TODO unit test
+func (q *EtcdQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: put task group stop flag")
+	t := time.Now()
+
+	_, err := q.cli.Put(ctx, taskGroupStopFlagNodePath(id), "set")
+	if err != nil {
+		return err
+	}
+	statistics.RecordQDBOperation("AddMoveTaskGroupStopFlag", time.Since(t))
+	return nil
+}
+
+// TODO unit test
+func (q *EtcdQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error) {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: check for task group stop flag")
+	t := time.Now()
+
+	resp, err := q.cli.Get(ctx, taskGroupStopFlagNodePath(id), clientv3.WithCountOnly())
+	if err != nil {
+		return false, err
+	}
+	statistics.RecordQDBOperation("CheckMoveTaskGroupStopFlag", time.Since(t))
+	return resp.Count > 0, nil
+}
+
+// TODO unit test
 func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
 	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: write move task")
 
@@ -1572,31 +1823,51 @@ func (q *EtcdQDB) WriteMoveTask(ctx context.Context, task *MoveTask) error {
 	if err != nil {
 		return err
 	}
+	taskGroupID := task.TaskGroupID
 	resp, err := q.cli.Txn(ctx).
-		If(clientv3.Compare(clientv3.Version(moveTaskPath), "=", 0)).
-		Then(clientv3.OpPut(moveTaskPath, string(taskJson)),
-			clientv3.OpPut(moveTaskIDPath, task.ID)).
+		If(
+			clientv3.Compare(clientv3.Version(moveTaskNodePath(task.ID)), "=", 0),
+			clientv3.Compare(clientv3.Version(taskGroupNodePath(taskGroupID)), "!=", 0),
+		).
+		Then(
+			clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson)),
+			clientv3.OpPut(moveTaskByGroupNodePath(taskGroupID), task.ID),
+		).
+		Else(
+			clientv3.OpGet(moveTaskNodePath(task.ID), clientv3.WithCountOnly()),
+			clientv3.OpGet(taskGroupNodePath(taskGroupID), clientv3.WithCountOnly()),
+		).
 		Commit()
 
 	if err != nil {
 		return fmt.Errorf("failed to write move task: %s", err)
 	}
 	if !resp.Succeeded {
-		return fmt.Errorf("failed to write move task: another task already exists")
+		if len(resp.Responses) != 2 {
+			return fmt.Errorf("unexpected response count: write move task \"%s\" response parts count=%d", task.ID, len(resp.Responses))
+		}
+		if resp.Responses[0].GetResponseRange().Count > 0 {
+			return fmt.Errorf("failed to write move task \"%s\": move task already exists", task.ID)
+		}
+		if resp.Responses[1].GetResponseRange().Count == 0 {
+			return fmt.Errorf("failed to write move task \"%s\": task group \"%s\" does not exist", task.ID, taskGroupID)
+		}
+		return fmt.Errorf("failed to write move task \"%s\": tx precondition failed, reason unknown", task.ID)
 	}
 	return nil
 }
 
+// TODO unit test
 func (q *EtcdQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
-	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: write move task")
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("etcdqdb: update move task")
 
 	taskJson, err := json.Marshal(task)
 	if err != nil {
 		return err
 	}
 	resp, err := q.cli.Txn(ctx).
-		If(clientv3.Compare(clientv3.Value(moveTaskIDPath), "=", task.ID)).
-		Then(clientv3.OpPut(moveTaskPath, string(taskJson))).
+		If(clientv3.Compare(clientv3.Version(moveTaskNodePath(task.ID)), "!=", 0)).
+		Then(clientv3.OpPut(moveTaskNodePath(task.ID), string(taskJson))).
 		Commit()
 
 	if err != nil {
@@ -1608,10 +1879,31 @@ func (q *EtcdQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
 	return nil
 }
 
-func (q *EtcdQDB) GetMoveTask(ctx context.Context) (*MoveTask, error) {
+// TODO unit test
+func (q *EtcdQDB) ListMoveTasks(ctx context.Context) (map[string]*MoveTask, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: list move tasks")
+
+	resp, err := q.cli.Get(ctx, moveTaskNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*MoveTask)
+	for _, kv := range resp.Kvs {
+		var task *MoveTask
+		if err := json.Unmarshal(kv.Value, &task); err != nil {
+			return nil, err
+		}
+		res[task.ID] = task
+	}
+
+	return res, nil
+}
+
+// TODO unit test
+func (q *EtcdQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: get move task")
 
-	resp, err := q.cli.Get(ctx, moveTaskPath)
+	resp, err := q.cli.Get(ctx, moveTaskNodePath(id))
 	if err != nil {
 		return nil, err
 	}
@@ -1626,10 +1918,16 @@ func (q *EtcdQDB) GetMoveTask(ctx context.Context) (*MoveTask, error) {
 	return task, nil
 }
 
-func (q *EtcdQDB) RemoveMoveTask(ctx context.Context) error {
+// TODO unit test
+func (q *EtcdQDB) RemoveMoveTask(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().Msg("etcdqdb: remove move task")
 
-	_, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(moveTaskPath), clientv3.OpDelete(moveTaskIDPath)).Commit()
+	task, err := q.GetMoveTask(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	_, err = q.cli.Txn(ctx).Then(clientv3.OpDelete(moveTaskNodePath(id)), clientv3.OpDelete(moveTaskByGroupNodePath(task.TaskGroupID))).Commit()
 	return err
 }
 
@@ -1889,6 +2187,9 @@ func (q *EtcdQDB) GetRelationSequence(ctx context.Context, relName *rfqn.Relatio
 }
 
 func (q *EtcdQDB) getSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
+	spqrlog.Zero.Debug().
+		Str("seqName", seqName).
+		Msg("etcdqdb: get columns attached to a sequence")
 	resp, err := q.cli.Get(ctx, columnSequenceMappingNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
@@ -1931,6 +2232,10 @@ func (q *EtcdQDB) CreateSequence(ctx context.Context, seqName string, initialVal
 }
 
 func (q *EtcdQDB) DropSequence(ctx context.Context, seqName string, force bool) error {
+	spqrlog.Zero.Debug().
+		Str("sequence", seqName).
+		Bool("force", force).
+		Msg("etcdqdb: drop sequence")
 	depends, err := q.getSequenceColumns(ctx, seqName)
 	if err != nil {
 		return err
@@ -1968,7 +2273,7 @@ func (q *EtcdQDB) ListSequences(ctx context.Context) ([]string, error) {
 }
 
 func (q *EtcdQDB) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*SequenceIdRange, error) {
-	spqrlog.Zero.Debug().Msg(fmt.Sprintf("etcdqdb: next id ranges, size=%d", rangeSize))
+	spqrlog.Zero.Debug().Str("seqName", seqName).Uint64("size", rangeSize).Msg("etcdqdb: next id ranges")
 
 	id := sequenceNodePath(seqName)
 	sess, err := concurrency.NewSession(q.cli)
@@ -2010,7 +2315,7 @@ func (q *EtcdQDB) NextRange(ctx context.Context, seqName string, rangeSize uint6
 }
 
 func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
-	spqrlog.Zero.Debug().Msg("etcdqdb: curr val")
+	spqrlog.Zero.Debug().Str("seqName", seqName).Msg("etcdqdb: curr val")
 
 	id := sequenceNodePath(seqName)
 	sess, err := concurrency.NewSession(q.cli)

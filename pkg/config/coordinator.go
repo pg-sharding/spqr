@@ -31,8 +31,9 @@ type Coordinator struct {
 	EnableRoleSystem     bool            `json:"enable_role_system" toml:"enable_role_system" yaml:"enable_role_system"`
 	RolesFile            string          `json:"roles_file" toml:"roles_file" yaml:"roles_file"`
 
-	EtcdMaxSendBytes        int  `json:"etcd_max_send_bytes" toml:"etcd_max_send_bytes" yaml:"etcd_max_send_bytes"`
-	DataMoveDisableTriggers bool `json:"data_move_disable_triggers" toml:"data_move_disable_triggers" yaml:"data_move_disable_triggers"`
+	EtcdMaxSendBytes        int   `json:"etcd_max_send_bytes" toml:"etcd_max_send_bytes" yaml:"etcd_max_send_bytes"`
+	DataMoveDisableTriggers bool  `json:"data_move_disable_triggers" toml:"data_move_disable_triggers" yaml:"data_move_disable_triggers"`
+	DataMoveBoundBatchSize  int64 `json:"data_move_bound_batch_size" toml:"data_move_bound_batch_size" yaml:"data_move_bound_batch_size"`
 }
 
 // LoadCoordinatorCfg loads the coordinator configuration from the specified file path.
@@ -44,6 +45,9 @@ type Coordinator struct {
 //   - string: JSON-formatted config
 //   - error: An error if any occurred during the loading process.
 func LoadCoordinatorCfg(cfgPath string) (string, error) {
+	cCfg := Coordinator{
+		DataMoveBoundBatchSize: 10_000,
+	}
 	file, err := os.Open(cfgPath)
 	if err != nil {
 		return "", err
@@ -55,7 +59,7 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 		}
 	}(file)
 
-	if err := initCoordinatorConfig(file, cfgPath); err != nil {
+	if err := initCoordinatorConfig(file, cfgPath, &cCfg); err != nil {
 		return "", err
 	}
 
@@ -64,6 +68,7 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 		return "", err
 	}
 
+	cfgCoordinator = cCfg
 	return string(configBytes), nil
 }
 
@@ -75,16 +80,16 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 //
 // Returns:
 //   - error: an error if any occurred during the initialization process.
-func initCoordinatorConfig(file *os.File, filepath string) error {
+func initCoordinatorConfig(file *os.File, filepath string, cfg *Coordinator) error {
 	if strings.HasSuffix(filepath, ".toml") {
-		_, err := toml.NewDecoder(file).Decode(&cfgCoordinator)
+		_, err := toml.NewDecoder(file).Decode(&cfg)
 		return err
 	}
 	if strings.HasSuffix(filepath, ".yaml") {
-		return yaml.NewDecoder(file).Decode(&cfgCoordinator)
+		return yaml.NewDecoder(file).Decode(&cfg)
 	}
 	if strings.HasSuffix(filepath, ".json") {
-		return json.NewDecoder(file).Decode(&cfgCoordinator)
+		return json.NewDecoder(file).Decode(&cfg)
 	}
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", filepath)
 }

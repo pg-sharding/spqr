@@ -390,18 +390,18 @@ func (mr *MockEntityMgrMockRecorder) GetKeyRange(ctx, krId any) *gomock.Call {
 }
 
 // GetMoveTaskGroup mocks base method.
-func (m *MockEntityMgr) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
+func (m *MockEntityMgr) GetMoveTaskGroup(ctx context.Context, id string) (*tasks.MoveTaskGroup, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMoveTaskGroup", ctx)
+	ret := m.ctrl.Call(m, "GetMoveTaskGroup", ctx, id)
 	ret0, _ := ret[0].(*tasks.MoveTaskGroup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMoveTaskGroup indicates an expected call of GetMoveTaskGroup.
-func (mr *MockEntityMgrMockRecorder) GetMoveTaskGroup(ctx any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) GetMoveTaskGroup(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).GetMoveTaskGroup), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).GetMoveTaskGroup), ctx, id)
 }
 
 // GetReferenceRelation mocks base method.
@@ -507,6 +507,36 @@ func (m *MockEntityMgr) ListKeyRanges(ctx context.Context, distribution string) 
 func (mr *MockEntityMgrMockRecorder) ListKeyRanges(ctx, distribution any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListKeyRanges", reflect.TypeOf((*MockEntityMgr)(nil).ListKeyRanges), ctx, distribution)
+}
+
+// ListMoveTaskGroups mocks base method.
+func (m *MockEntityMgr) ListMoveTaskGroups(ctx context.Context) (map[string]*tasks.MoveTaskGroup, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMoveTaskGroups", ctx)
+	ret0, _ := ret[0].(map[string]*tasks.MoveTaskGroup)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMoveTaskGroups indicates an expected call of ListMoveTaskGroups.
+func (mr *MockEntityMgrMockRecorder) ListMoveTaskGroups(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMoveTaskGroups", reflect.TypeOf((*MockEntityMgr)(nil).ListMoveTaskGroups), ctx)
+}
+
+// ListMoveTasks mocks base method.
+func (m *MockEntityMgr) ListMoveTasks(ctx context.Context) (map[string]*tasks.MoveTask, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMoveTasks", ctx)
+	ret0, _ := ret[0].(map[string]*tasks.MoveTask)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMoveTasks indicates an expected call of ListMoveTasks.
+func (mr *MockEntityMgrMockRecorder) ListMoveTasks(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMoveTasks", reflect.TypeOf((*MockEntityMgr)(nil).ListMoveTasks), ctx)
 }
 
 // ListReferenceRelations mocks base method.
@@ -685,17 +715,17 @@ func (mr *MockEntityMgrMockRecorder) RemoveBalancerTask(ctx any) *gomock.Call {
 }
 
 // RemoveMoveTaskGroup mocks base method.
-func (m *MockEntityMgr) RemoveMoveTaskGroup(ctx context.Context) error {
+func (m *MockEntityMgr) RemoveMoveTaskGroup(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveMoveTaskGroup", ctx)
+	ret := m.ctrl.Call(m, "RemoveMoveTaskGroup", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RemoveMoveTaskGroup indicates an expected call of RemoveMoveTaskGroup.
-func (mr *MockEntityMgrMockRecorder) RemoveMoveTaskGroup(ctx any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) RemoveMoveTaskGroup(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RemoveMoveTaskGroup), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RemoveMoveTaskGroup), ctx, id)
 }
 
 // RenameKeyRange mocks base method.
@@ -713,17 +743,17 @@ func (mr *MockEntityMgrMockRecorder) RenameKeyRange(ctx, krId, krIdNew any) *gom
 }
 
 // RetryMoveTaskGroup mocks base method.
-func (m *MockEntityMgr) RetryMoveTaskGroup(ctx context.Context) error {
+func (m *MockEntityMgr) RetryMoveTaskGroup(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx)
+	ret := m.ctrl.Call(m, "RetryMoveTaskGroup", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RetryMoveTaskGroup indicates an expected call of RetryMoveTaskGroup.
-func (mr *MockEntityMgrMockRecorder) RetryMoveTaskGroup(ctx any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) RetryMoveTaskGroup(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RetryMoveTaskGroup), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RetryMoveTaskGroup), ctx, id)
 }
 
 // ShareKeyRange mocks base method.
@@ -752,6 +782,20 @@ func (m *MockEntityMgr) Split(ctx context.Context, split *kr.SplitKeyRange) erro
 func (mr *MockEntityMgrMockRecorder) Split(ctx, split any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Split", reflect.TypeOf((*MockEntityMgr)(nil).Split), ctx, split)
+}
+
+// StopMoveTaskGroup mocks base method.
+func (m *MockEntityMgr) StopMoveTaskGroup(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StopMoveTaskGroup", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StopMoveTaskGroup indicates an expected call of StopMoveTaskGroup.
+func (mr *MockEntityMgrMockRecorder) StopMoveTaskGroup(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).StopMoveTaskGroup), ctx, id)
 }
 
 // SyncReferenceRelations mocks base method.

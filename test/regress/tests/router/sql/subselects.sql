@@ -26,6 +26,9 @@ SELECT 1, (SELECT i FROM table1 WHERE i = 201);
 -- should dispatch to sh3 and sh4 (TODO: parallel processing)
 SELECT 1, (SELECT i FROM table1 WHERE i = 201), (SELECT i FROM table1 WHERE i = 301);
 
+-- should dispatch to sh3
+SELECT i FROM table1 WHERE i = 201 AND NOT (SELECT false);
+
 DROP TABLE table1;
 DROP TABLE ref_rel_1;
 

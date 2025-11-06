@@ -106,6 +106,7 @@ func randomHex(n int) (string, error) {
 	group_clause		   GroupByClause
 
 	retryMoveTaskGroup     *RetryMoveTaskGroup
+	stopMoveTaskGroup      *StopMoveTaskGroup
 
 	typedColRef         	TypedColRef
 	routingExpr				[]TypedColRef
@@ -273,6 +274,7 @@ func randomHex(n int) (string, error) {
 %type <routingExpr> routing_expr_column_list
 
 %type <retryMoveTaskGroup> retry_move_task_group
+%type <stopMoveTaskGroup> stop_move_task_group
 
 %start any_command
 
@@ -365,6 +367,10 @@ command:
 		setParseTree(yylex, $1)
 	} 
 	| retry_move_task_group
+	{
+		setParseTree(yylex, $1)
+	}
+	| stop_move_task_group
 	{
 		setParseTree(yylex, $1)
 	}
@@ -571,9 +577,9 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &ShardSelector{ID: $3}, CascadeDelete: $4}
 	}
-	| DROP TASK GROUP
+	| DROP TASK GROUP any_id
 	{
-		$$ = &Drop{Element: &TaskGroupSelector{}}
+		$$ = &Drop{Element: &TaskGroupSelector{ ID: $4 }}
 	}
 	| DROP SEQUENCE any_id
 	{
@@ -1286,9 +1292,26 @@ unregister_router_stmt:
 // move tasks
 
 retry_move_task_group:
-	RETRY MOVE TASK GROUP 
+	RETRY MOVE TASK GROUP any_id
 	{
-		$$ = &RetryMoveTaskGroup{}
+		$$ = &RetryMoveTaskGroup{ ID: $5 }
 	}
+	|
+	RETRY TASK GROUP any_id
+	{
+		$$ = &RetryMoveTaskGroup{ ID: $4 }
+	}
+	
+
+stop_move_task_group:
+	STOP MOVE TASK GROUP any_id
+	{
+		$$ = &StopMoveTaskGroup{ ID: $5 }
+	}
+	|
+	STOP TASK GROUP any_id
+	{
+		$$ = &StopMoveTaskGroup{ ID: $4 }
+	} 
 %%
 

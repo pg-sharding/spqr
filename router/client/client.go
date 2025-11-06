@@ -12,7 +12,6 @@ import (
 	"github.com/caio/go-tdigest"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
-	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/spaolacci/murmur3"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -36,6 +35,7 @@ type RouterClient interface {
 	client.Client
 	prepstatement.PreparedStatementMapper
 
+	session.SessionParamsHolder
 	Server() server.Server
 	/* functions for operation with client's server */
 
@@ -65,21 +65,13 @@ type RouterClient interface {
 }
 
 type PsqlClient struct {
-	beginTxParamSet   map[string]string
-	localTxParamSet   map[string]string
-	statementParamSet map[string]string
-	activeParamSet    map[string]string
-
-	savepointParamSet  map[string]map[string]string
-	savepointTxCounter map[string]int
-
+	session.SessionParamsHolder
 	/* cancel */
 	csm *pgproto3.CancelRequest
 
 	cancel_pid uint32
 	cancel_key uint32
 
-	txCnt         int
 	ReplyClientId bool
 
 	rule *config.FrontendRule
@@ -90,21 +82,10 @@ type PsqlClient struct {
 	prepStmts     map[string]*prepstatement.PreparedStatementDefinition
 	prepStmtsHash map[string]uint64
 
-	/* target-session-attrs */
-	defaultTsa string
-
 	be *pgproto3.Backend
 
 	startupMsg *pgproto3.StartupMessage
-
-	bindParams [][]byte
-
-	paramCodes []int16
-
-	showNoticeMessages bool
-	maintain_params    bool
-
-	id uint
+	id         uint
 
 	cacheCC pgproto3.CommandComplete
 
@@ -171,189 +152,6 @@ func (r *PsqlClient) RecordStartTime(statType statistics.StatisticsType, t time.
 	}
 }
 
-func (cl *PsqlClient) resolveVirtualBoolParam(name string, defaultVal bool) bool {
-	if val, ok := cl.localTxParamSet[name]; ok {
-		return val == "ok"
-	}
-	if val, ok := cl.statementParamSet[name]; ok {
-		return val == "ok"
-	}
-	if val, ok := cl.activeParamSet[name]; ok {
-		return val == "ok"
-	}
-	return defaultVal
-}
-
-func (cl *PsqlClient) recordVirtualParam(level string, name string, val string) {
-	switch level {
-	case session.VirtualParamLevelLocal:
-		cl.localTxParamSet[name] = val
-	case session.VirtualParamLevelStatement:
-		cl.statementParamSet[name] = val
-	default:
-		cl.activeParamSet[name] = val
-	}
-}
-
-func (cl *PsqlClient) resolveVirtualStringParam(name string, defaultVal string) string {
-	if val, ok := cl.localTxParamSet[name]; ok {
-		return val
-	}
-	if val, ok := cl.statementParamSet[name]; ok {
-		return val
-	}
-	if val, ok := cl.activeParamSet[name]; ok {
-		return val
-	}
-	return defaultVal
-}
-
-// SetDistribution implements RouterClient.
-func (cl *PsqlClient) SetDistribution(level string, val string) {
-	cl.recordVirtualParam(level, session.SPQR_DISTRIBUTION, val)
-}
-
-// Distribution implements RouterClient.
-func (cl *PsqlClient) Distribution() string {
-	return cl.resolveVirtualStringParam(session.SPQR_DISTRIBUTION, "")
-}
-
-// SetDistributedRelation implements RouterClient.
-func (cl *PsqlClient) SetDistributedRelation(level string, val string) {
-	cl.recordVirtualParam(level, session.SPQR_DISTRIBUTED_RELATION, val)
-}
-
-// DistributedRelation implements RouterClient.
-func (cl *PsqlClient) DistributedRelation() string {
-	return cl.resolveVirtualStringParam(session.SPQR_DISTRIBUTED_RELATION, "")
-}
-
-// SetExecuteOn implements RouterClient.
-func (cl *PsqlClient) SetExecuteOn(level string, val string) {
-	cl.recordVirtualParam(level, session.SPQR_EXECUTE_ON, val)
-}
-
-// ExecuteOn implements RouterClient.
-func (cl *PsqlClient) ExecuteOn() string {
-	return cl.resolveVirtualStringParam(session.SPQR_EXECUTE_ON, "")
-}
-
-// SetExecuteOn implements RouterClient.
-func (cl *PsqlClient) SetEnhancedMultiShardProcessing(level string, val bool) {
-	if val {
-		cl.recordVirtualParam(level, session.SPQR_ENGINE_V2, "ok")
-	} else {
-		cl.recordVirtualParam(level, session.SPQR_ENGINE_V2, "no")
-	}
-}
-
-// ExecuteOn implements RouterClient.
-func (cl *PsqlClient) EnhancedMultiShardProcessing() bool {
-	return cl.resolveVirtualBoolParam(session.SPQR_ENGINE_V2, config.RouterConfig().Qr.EnhancedMultiShardProcessing)
-}
-
-func (cl *PsqlClient) SetCommitStrategy(val string) {
-	cl.recordVirtualParam(session.VirtualParamLevelTxBlock, session.SPQR_COMMIT_STRATEGY, val)
-}
-
-func (cl *PsqlClient) CommitStrategy() string {
-	return cl.resolveVirtualStringParam(session.SPQR_COMMIT_STRATEGY, twopc.COMMIT_STRATEGY_1PC)
-}
-
-// SetAutoDistribution implements RouterClient.
-func (cl *PsqlClient) SetAutoDistribution(val string) {
-	cl.recordVirtualParam(session.VirtualParamLevelStatement, session.SPQR_AUTO_DISTRIBUTION, val)
-}
-
-// AutoDistribution implements RouterClient.
-func (cl *PsqlClient) AutoDistribution() string {
-	return cl.resolveVirtualStringParam(session.SPQR_AUTO_DISTRIBUTION, "")
-}
-
-// SetDistributionKey implements RouterClient.
-func (cl *PsqlClient) SetDistributionKey(val string) {
-	cl.recordVirtualParam(session.VirtualParamLevelStatement, session.SPQR_DISTRIBUTION_KEY, val)
-}
-
-// DistributionKey implements RouterClient.
-func (cl *PsqlClient) DistributionKey() string {
-	return cl.resolveVirtualStringParam(session.SPQR_DISTRIBUTION_KEY, "")
-}
-
-// MaintainParams implements RouterClient.
-func (cl *PsqlClient) MaintainParams() bool {
-	return cl.maintain_params
-}
-
-// SetMaintainParams implements RouterClient.
-func (cl *PsqlClient) SetMaintainParams(level string, val bool) {
-	cl.maintain_params = val
-}
-
-// SetShowNoticeMsg implements client.Client.
-func (cl *PsqlClient) SetShowNoticeMsg(level string, val bool) {
-	cl.showNoticeMessages = val
-}
-
-// ShowNoticeMsg implements RouterClient.
-func (cl *PsqlClient) ShowNoticeMsg() bool {
-	return cl.showNoticeMessages
-}
-
-// BindParamFormatCodes implements RouterClient.
-func (cl *PsqlClient) BindParamFormatCodes() []int16 {
-	return cl.paramCodes
-}
-
-// SetParamFormatCodes implements RouterClient.
-func (cl *PsqlClient) SetParamFormatCodes(paramCodes []int16) {
-	cl.paramCodes = paramCodes
-}
-
-// BindParams implements RouterClient.
-func (cl *PsqlClient) BindParams() [][]byte {
-	return cl.bindParams
-}
-
-// SetBindParams implements RouterClient.
-func (cl *PsqlClient) SetBindParams(p [][]byte) {
-	cl.bindParams = p
-}
-
-// SetShardingKey implements RouterClient.
-func (cl *PsqlClient) SetShardingKey(level string, k string) {
-	cl.recordVirtualParam(level, session.SPQR_SHARDING_KEY, k)
-}
-
-// ShardingKey implements RouterClient.
-func (cl *PsqlClient) ShardingKey() string {
-	return cl.resolveVirtualStringParam(session.SPQR_SHARDING_KEY, "")
-}
-
-// SetDefaultRouteBehaviour implements RouterClient.
-func (cl *PsqlClient) SetDefaultRouteBehaviour(level string, b string) {
-	cl.recordVirtualParam(level, session.SPQR_DEFAULT_ROUTE_BEHAVIOUR, b)
-}
-
-// DefaultRouteBehaviour implements RouterClient.
-func (cl *PsqlClient) DefaultRouteBehaviour() string {
-	return cl.resolveVirtualStringParam(session.SPQR_DEFAULT_ROUTE_BEHAVIOUR, "")
-}
-
-// ScatterQuery implements RouterClient.
-func (cl *PsqlClient) ScatterQuery() bool {
-	return cl.resolveVirtualBoolParam(session.SPQR_SCATTER_QUERY, false)
-}
-
-// SetScatterQuery implements RouterClient.
-func (cl *PsqlClient) SetScatterQuery(val bool) {
-	if val {
-		cl.recordVirtualParam(session.VirtualParamLevelStatement, session.SPQR_SCATTER_QUERY, "ok")
-	} else {
-		cl.recordVirtualParam(session.VirtualParamLevelStatement, session.SPQR_SCATTER_QUERY, "no")
-	}
-}
-
 func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, instanceDefaultTsa string) RouterClient {
 	var target_session_attrs string
 	if instanceDefaultTsa != "" {
@@ -367,20 +165,14 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		target_session_attrs = config.TargetSessionAttrsPS
 	}
 
-	cl := &PsqlClient{
-		activeParamSet: map[string]string{
-			session.SPQR_DISTRIBUTION:            "default",
-			session.SPQR_DEFAULT_ROUTE_BEHAVIOUR: defaultRouteBehaviour,
-		},
-		statementParamSet: map[string]string{},
-		localTxParamSet:   map[string]string{},
-		conn:              pgconn,
-		startupMsg:        &pgproto3.StartupMessage{},
-		prepStmts:         map[string]*prepstatement.PreparedStatementDefinition{},
-		prepStmtsHash:     map[string]uint64{},
-		defaultTsa:        target_session_attrs,
+	sh := session.NewSimpleHandler(target_session_attrs, showNoticeMessages, twopc.COMMIT_STRATEGY_1PC, defaultRouteBehaviour)
 
-		showNoticeMessages: showNoticeMessages,
+	cl := &PsqlClient{
+		SessionParamsHolder: sh,
+		conn:                pgconn,
+		startupMsg:          &pgproto3.StartupMessage{},
+		prepStmts:           map[string]*prepstatement.PreparedStatementDefinition{},
+		prepStmtsHash:       map[string]uint64{},
 
 		serverP: atomic.Pointer[server.Server]{},
 	}
@@ -407,72 +199,6 @@ func (cl *PsqlClient) GetCancelKey() uint32 {
 
 func (cl *PsqlClient) SetAuthType(t uint32) error {
 	return cl.be.SetAuthType(t)
-}
-
-func copymap(params map[string]string) map[string]string {
-	ret := make(map[string]string)
-
-	for k, v := range params {
-		ret[k] = v
-	}
-
-	return ret
-}
-
-func (cl *PsqlClient) StartTx() {
-	cl.beginTxParamSet = copymap(cl.activeParamSet)
-	cl.savepointParamSet = nil
-	cl.savepointTxCounter = nil
-	cl.statementParamSet = map[string]string{}
-	cl.localTxParamSet = map[string]string{}
-	cl.txCnt = 0
-}
-
-func (cl *PsqlClient) CommitActiveSet() {
-	cl.beginTxParamSet = nil
-	cl.savepointParamSet = nil
-	cl.savepointTxCounter = nil
-	cl.statementParamSet = map[string]string{}
-	cl.localTxParamSet = map[string]string{}
-	cl.txCnt = 0
-}
-
-func (cl *PsqlClient) CleanupStatementSet() {
-	cl.statementParamSet = map[string]string{}
-}
-
-func (cl *PsqlClient) Savepoint(name string) {
-	cl.savepointParamSet[name] = copymap(cl.activeParamSet)
-	cl.savepointTxCounter[name] = cl.txCnt
-	cl.txCnt++
-}
-
-func (cl *PsqlClient) Rollback() {
-	cl.activeParamSet = copymap(cl.beginTxParamSet)
-	cl.beginTxParamSet = nil
-	cl.savepointParamSet = nil
-	cl.savepointTxCounter = nil
-	cl.statementParamSet = map[string]string{}
-	cl.localTxParamSet = map[string]string{}
-
-	cl.txCnt = 0
-}
-
-func (cl *PsqlClient) RollbackToSP(name string) {
-	cl.activeParamSet = cl.savepointParamSet[name]
-	targetTxCnt := cl.savepointTxCounter[name]
-	for k := range cl.savepointParamSet {
-		if cl.savepointTxCounter[k] > targetTxCnt {
-			delete(cl.savepointTxCounter, k)
-			delete(cl.savepointParamSet, k)
-		}
-	}
-	/* XXX: not exactly correct with roolback to SP */
-	cl.statementParamSet = map[string]string{}
-	/* XXX: not exactly correct with roolback to SP */
-	cl.localTxParamSet = map[string]string{}
-
-	cl.txCnt = targetTxCnt + 1
 }
 
 func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
@@ -504,12 +230,6 @@ func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
 	return query
 }
 
-func (cl *PsqlClient) ResetAll() {
-	cl.activeParamSet = cl.startupMsg.Parameters
-	cl.statementParamSet = map[string]string{}
-	cl.localTxParamSet = map[string]string{}
-}
-
 func (cl *PsqlClient) StorePreparedStatement(d *prepstatement.PreparedStatementDefinition) {
 	hash := murmur3.Sum64([]byte(d.Query))
 	cl.prepStmts[d.Name] = d
@@ -532,77 +252,6 @@ func (cl *PsqlClient) PreparedStatementDefinitionByName(name string) *prepstatem
 
 func (cl *PsqlClient) PreparedStatementQueryHashByName(name string) uint64 {
 	return cl.prepStmtsHash[name]
-}
-
-func (cl *PsqlClient) ResetParam(name string) {
-	if val, ok := cl.startupMsg.Parameters[name]; ok {
-		cl.activeParamSet[name] = val
-	} else {
-		delete(cl.activeParamSet, name)
-	}
-	spqrlog.Zero.Debug().
-		Interface("activeParamSet", cl.activeParamSet).
-		Msg("activeParamSet are now")
-}
-
-func (cl *PsqlClient) SetParam(name, value string) {
-	spqrlog.Zero.Debug().
-		Str("name", name).
-		Str("value", value).
-		Msg("client param")
-	if name == "options" {
-		i := 0
-		j := 0
-		for i < len(value) {
-			if value[i] == ' ' {
-				i++
-				continue
-			}
-			if value[i] == '-' {
-				if i+2 == len(value) || value[i+1] != 'c' {
-					// bad
-					return
-				}
-			}
-			i += 3
-			j = i
-
-			opname := ""
-			opvalue := ""
-
-			for j < len(value) {
-				if value[j] == '=' {
-					j++
-					break
-				}
-				opname += string(value[j])
-				j++
-			}
-
-			for j < len(value) {
-				if value[j] == ' ' {
-					break
-				}
-				opvalue += string(value[j])
-				j++
-			}
-
-			if len(opname) == 0 || len(opvalue) == 0 {
-				// bad
-				return
-			}
-			i = j + 1
-
-			spqrlog.Zero.Debug().
-				Str("opname", opname).
-				Str("opvalue", opvalue).
-				Msg("parsed pgoption param")
-			cl.activeParamSet[opname] = opvalue
-		}
-
-	} else {
-		cl.activeParamSet[name] = value
-	}
 }
 
 func (cl *PsqlClient) Reply(msg string) error {
@@ -665,7 +314,7 @@ func (cl *PsqlClient) ReplyNotice(message string) error {
 }
 
 func (cl *PsqlClient) ReplyDebugNotice(msg string) error {
-	if v, ok := cl.activeParamSet["client_min_messages"]; !ok {
+	if v, ok := cl.Params()["client_min_messages"]; !ok {
 		return nil
 	} else {
 		if v != "notice" {
@@ -883,6 +532,9 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		if cl.DB() == pingRoute && cl.Usr() == pingRoute {
 			return nil
 		}
+
+		cl.SetUsr(cl.Usr())
+		cl.SetStartupParams(sm.Parameters)
 
 		if tlsconfig != nil && protoVer != conn.SSLREQ {
 			if err := cl.Send(
@@ -1108,10 +760,6 @@ func (cl *PsqlClient) Close() error {
 	return cl.conn.Close()
 }
 
-func (cl *PsqlClient) Params() map[string]string {
-	return cl.activeParamSet
-}
-
 func (cl *PsqlClient) replyErrMsgHint(msg string, code string, hint string, s txstatus.TXStatus) error {
 	var clErrMsg string
 
@@ -1195,28 +843,6 @@ func (cl *PsqlClient) Shutdown() error {
 	_ = cl.Unroute()
 
 	return cl.conn.Close()
-}
-
-func (cl *PsqlClient) GetTsa() tsa.TSA {
-	return tsa.TSA(cl.resolveVirtualStringParam(session.SPQR_TARGET_SESSION_ATTRS, cl.defaultTsa))
-}
-
-func (cl *PsqlClient) SetTsa(level string, s string) {
-	switch s {
-	case config.TargetSessionAttrsAny,
-		config.TargetSessionAttrsPS,
-		config.TargetSessionAttrsPR,
-		config.TargetSessionAttrsRW,
-		config.TargetSessionAttrsSmartRW,
-		config.TargetSessionAttrsRO:
-		cl.recordVirtualParam(level, session.SPQR_TARGET_SESSION_ATTRS, s)
-	default:
-		// XXX: else error out!
-	}
-}
-
-func (cl *PsqlClient) ResetTsa() {
-	cl.SetTsa(session.VirtualParamLevelTxBlock, cl.defaultTsa)
 }
 
 func (cl *PsqlClient) CancelMsg() *pgproto3.CancelRequest {

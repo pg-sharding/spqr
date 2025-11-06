@@ -126,6 +126,7 @@ type Distribution struct {
 
 type ReferenceRelation struct {
 	TableName             string            `json:"table_name"`
+	SchemaName            string            `json:"schema_name"`
 	SchemaVersion         uint64            `json:"schema_version"`
 	ColumnSequenceMapping map[string]string `json:"column_sequence_mapping"`
 	ShardIds              []string          `json:"shard_ids"`
@@ -142,10 +143,11 @@ func NewDistribution(id string, coltypes []string) *Distribution {
 }
 
 type MoveTask struct {
-	ID       string
-	Bound    [][]byte `json:"bound"`
-	KrIdTemp string   `json:"kr_id_temp"`
-	State    int      `json:"state"`
+	ID          string
+	Bound       [][]byte `json:"bound"`
+	KrIdTemp    string   `json:"kr_id_temp"`
+	State       int      `json:"state"`
+	TaskGroupID string   `json:"task_group_id"`
 }
 
 type MoveTaskGroup struct {
@@ -157,7 +159,6 @@ type MoveTaskGroup struct {
 	Coeff     float64 `json:"coeff"`
 	BatchSize int64   `json:"batch_size"`
 	Limit     int64   `json:"limit"`
-	// TotalKeys int64   `json:"total_keys"` // mb save separately
 }
 
 type RedistributeTask struct {

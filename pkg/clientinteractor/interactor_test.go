@@ -196,7 +196,7 @@ func TestGetColumnsMap(t *testing.T) {
 func TestSortableWithContext(t *testing.T) {
 	data := [][]string{[]string{"a", "b"}, []string{"b", "a"}}
 	rev_data := [][]string{[]string{"b", "a"}, []string{"a", "b"}}
-	sortable := clientinteractor.SortableWithContext{data, 0, clientinteractor.DESC}
+	sortable := engine.SortableWithContext{Data: data, Col_index: 0, Order: engine.DESC}
 	sort.Sort(sortable)
 	assert.Equal(t, data, rev_data)
 }
@@ -616,7 +616,7 @@ func TestKeyRangesSuccess(t *testing.T) {
 		ca.EXPECT().Send(&firstRow),
 		ca.EXPECT().Send(&secondRow),
 		ca.EXPECT().Send(&thirdRow),
-		ca.EXPECT().Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 0")}),
+		ca.EXPECT().Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 3")}),
 		ca.EXPECT().Send(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}),
 	)
 
@@ -642,6 +642,8 @@ func TestKeyRangesSuccess(t *testing.T) {
 		},
 	}
 	krLocks := []string{"krid2"}
-	err := interactor.KeyRanges(keyRanges, krLocks)
+
+	vp := engine.KeyRangeVirtualRelationScan(keyRanges, krLocks)
+	err := interactor.ReplyTTS(vp)
 	assert.Nil(t, err)
 }

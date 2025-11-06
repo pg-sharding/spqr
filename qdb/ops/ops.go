@@ -30,7 +30,10 @@ func CreateKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 
 	var nearestKr *kr.KeyRange = nil
 	for _, v := range existsKrids {
-		eph := kr.KeyRangeFromBytes(v.LowerBound, keyRange.ColumnTypes)
+		eph, err := kr.KeyRangeFromBytes(v.LowerBound, keyRange.ColumnTypes)
+		if err != nil {
+			return err
+		}
 		if kr.CmpRangesLessEqual(eph.LowerBound, keyRange.LowerBound, keyRange.ColumnTypes) {
 			if nearestKr == nil || kr.CmpRangesLess(nearestKr.LowerBound, eph.LowerBound, nearestKr.ColumnTypes) {
 				nearestKr = eph
@@ -71,7 +74,10 @@ func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 			continue
 		}
 
-		eph := kr.KeyRangeFromBytes(v.LowerBound, keyRange.ColumnTypes)
+		eph, err := kr.KeyRangeFromBytes(v.LowerBound, keyRange.ColumnTypes)
+		if err != nil {
+			return err
+		}
 		if kr.CmpRangesEqual(keyRange.LowerBound, eph.LowerBound, keyRange.ColumnTypes) {
 			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}

@@ -13,9 +13,10 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rerrors"
@@ -33,6 +34,30 @@ func getIdentityMngr(lc meta.EntityMgr) planner.IdentityRouterCache {
 	identityMgr := planner.NewIdentityRouterCache(uint64(config.RouterConfig().IdentityRangeSize),
 		&seqMngr)
 	return identityMgr
+}
+
+func planHelper(ctx context.Context, qr *qrouter.ProxyQrouter, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
+
+	p, err := qr.RouteWithRules(ctx, rm, stmt)
+
+	if err != nil {
+		return nil, err
+	}
+
+	tmp, err := rm.RouteByTuples(ctx, sph.GetTsa())
+	if err != nil {
+		return nil, err
+	}
+
+	p = plan.Combine(p, tmp)
+
+	// set up this variable if not yet
+	if p == nil {
+		p = &plan.ScatterPlan{
+			ExecTargets: qr.DataShardsRoutes(),
+		}
+	}
+	return p, err
 }
 
 func TestMultiShardRouting(t *testing.T) {
@@ -151,9 +176,15 @@ func TestMultiShardRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+		dh.SetPreferredEngine("", "")
+		stmt := parserRes[0]
+
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, stmt, pr.CSM(), pr.Mgr())
+
+		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
+		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -274,10 +305,15 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		tmp, err := pr.PlanQuery(context.TODO(), tt.query, parserRes[0], dh)
+		rm, err := pr.AnalyzeQuery(context.TODO(), dh, tt.query, parserRes[0])
+
+		assert.NoError(err, tt.query)
+
+		tmp, err := pr.PlanQuery(context.TODO(), rm)
 
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
@@ -431,10 +467,15 @@ func TestRoutingByExpression(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		tmp, err := pr.PlanQuery(context.TODO(), tt.query, parserRes[0], dh)
+		rm, err := pr.AnalyzeQuery(context.TODO(), dh, tt.query, parserRes[0])
+
+		assert.NoError(err, tt.query)
+
+		tmp, err := pr.PlanQuery(context.TODO(), rm)
 
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
@@ -496,10 +537,17 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		parserRes, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
-		dh := session.NewDummyHandler("dd")
+
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, "dd")
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		tmp, err := pr.PlanQuery(context.TODO(), tt.query, parserRes[0], dh)
+		rm, err := pr.AnalyzeQuery(context.TODO(), dh, tt.query, parserRes[0])
+
+		assert.NoError(err, tt.query)
+
+		tmp, err := pr.PlanQuery(context.TODO(), rm)
+
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
 		} else {
@@ -637,10 +685,17 @@ func TestReferenceRelationRouting(t *testing.T) {
 		parserRes, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
-		dh := session.NewDummyHandler("dd")
+
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, "dd")
 		dh.SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
 
-		tmp, err := pr.PlanQuery(context.TODO(), tt.query, parserRes[0], dh)
+		rm, err := pr.AnalyzeQuery(context.TODO(), dh, tt.query, parserRes[0])
+
+		assert.NoError(err, tt.query)
+
+		tmp, err := pr.PlanQuery(context.TODO(), rm)
+
 		if tt.err != nil {
 			assert.Equal(err, tt.err, tt.query)
 		} else {
@@ -738,9 +793,15 @@ func TestComment(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
+		stmt := parserRes[0]
+
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, stmt, pr.CSM(), pr.Mgr())
+
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
+		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1033,9 +1094,15 @@ func TestCTE(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
+		stmt := parserRes[0]
+
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, stmt, pr.CSM(), pr.Mgr())
+
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
+		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
 
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
@@ -1352,9 +1419,15 @@ func TestSingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
+		stmt := parserRes[0]
+
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, stmt, pr.CSM(), pr.Mgr())
+
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
+		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1502,9 +1575,15 @@ func TestInsertOffsets(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
+		stmt := parserRes[0]
+
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, stmt, pr.CSM(), pr.Mgr())
+
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
+		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1657,10 +1736,15 @@ func TestJoins(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
 
-		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		stmt := parserRes[0]
+
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, stmt, pr.CSM(), pr.Mgr())
+
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
+		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
 
 		if tt.err != nil {
 			assert.Equal(tt.err, err, "query %s", tt.query)
@@ -1758,9 +1842,15 @@ func TestUnnest(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
+		stmt := parserRes[0]
+
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, stmt, pr.CSM(), pr.Mgr())
+
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
+		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1839,12 +1929,16 @@ func TestCopySingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
 		dh.SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, "BLOCK")
 
-		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
+		stmt := parserRes[0]
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, stmt, pr.CSM(), pr.Mgr())
 
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
+		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1923,12 +2017,18 @@ func TestCopyMultiShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, distribution)
+
 		dh.SetDefaultRouteBehaviour(session.VirtualParamLevelTxBlock, "BLOCK")
 		dh.SetScatterQuery(false)
 
-		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		stmt := parserRes[0]
+
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, stmt, pr.CSM(), pr.Mgr())
+
+		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
+		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2005,10 +2105,14 @@ func TestSetStmt(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(tt.distribution)
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, tt.distribution)
 
-		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		stmt := parserRes[0]
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, stmt, pr.CSM(), pr.Mgr())
+
+		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
+		tmp, err := pr.PlanQueryExtended(context.TODO(), rm)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2089,6 +2193,19 @@ func TestRouteWithRules_Select(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query:        "SELECT * FROM information_schema.columns;",
+			distribution: distribution.ID,
+			exp:          &plan.RandomDispatchPlan{},
+			err:          nil,
+		},
+
+		{
+			query:        "SELECT * FROM information_schema.sequences;",
+			distribution: distribution.ID,
+			exp:          &plan.RandomDispatchPlan{},
+			err:          nil,
+		},
+		{
 			query:        "select * from documents where id in (select 2);",
 			distribution: distribution.ID,
 			exp: &plan.ScatterPlan{
@@ -2119,31 +2236,20 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT NOT pg_is_in_recovery();",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					{
-						Name:         []byte("pg_is_in_recovery"),
-						DataTypeOID:  catalog.ARRAYOID,
-						TypeModifier: -1,
-						DataTypeSize: 1,
+				TTS: &tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("pg_is_in_recovery"),
+							DataTypeOID:  catalog.ARRAYOID,
+							TypeModifier: -1,
+							DataTypeSize: 1,
+						},
 					},
-				},
-				VirtualRowVals: [][][]byte{[][]byte{{byte('t')}}},
-			},
+					Raw: [][][]byte{[][]byte{{byte('t')}}},
+				}},
 			err: nil,
 		},
-		{
-			query:        "SELECT * FROM information_schema.columns;",
-			distribution: distribution.ID,
-			exp:          &plan.RandomDispatchPlan{},
-			err:          nil,
-		},
 
-		{
-			query:        "SELECT * FROM information_schema.sequences;",
-			distribution: distribution.ID,
-			exp:          &plan.RandomDispatchPlan{},
-			err:          nil,
-		},
 		{
 			query:        "SELECT * FROM information_schema.columns JOIN tt ON true",
 			distribution: distribution.ID,
@@ -2184,15 +2290,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT pg_is_in_recovery();",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					{
-						Name:         []byte("pg_is_in_recovery"),
-						DataTypeOID:  catalog.ARRAYOID,
-						TypeModifier: -1,
-						DataTypeSize: 1,
+				TTS: &tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("pg_is_in_recovery"),
+							DataTypeOID:  catalog.ARRAYOID,
+							TypeModifier: -1,
+							DataTypeSize: 1,
+						},
 					},
+					Raw: [][][]byte{{{byte('f')}}},
 				},
-				VirtualRowVals: [][][]byte{{{byte('f')}}},
 			},
 			err: nil,
 		},
@@ -2200,15 +2308,18 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT __spqr__is_ready();",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					{
-						Name:         []byte("__spqr__is_ready"),
-						DataTypeOID:  catalog.ARRAYOID,
-						TypeModifier: -1,
-						DataTypeSize: 1,
+				TTS: &tupleslot.TupleTableSlot{
+
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("__spqr__is_ready"),
+							DataTypeOID:  catalog.ARRAYOID,
+							TypeModifier: -1,
+							DataTypeSize: 1,
+						},
 					},
+					Raw: [][][]byte{{{byte('f')}}},
 				},
-				VirtualRowVals: [][][]byte{{{byte('f')}}},
 			},
 			err: nil,
 		},
@@ -2228,15 +2339,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT 1;",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					{
-						Name:         []byte("?column?"),
-						DataTypeOID:  catalog.INT4OID,
-						TypeModifier: -1,
-						DataTypeSize: 4,
+				TTS: &tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("?column?"),
+							DataTypeOID:  catalog.INT4OID,
+							TypeModifier: -1,
+							DataTypeSize: 4,
+						},
 					},
+					Raw: [][][]byte{{[]byte("1")}},
 				},
-				VirtualRowVals: [][][]byte{{[]byte("1")}},
 			},
 			err: nil,
 		},
@@ -2250,15 +2363,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT 'Hello, world!'",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					pgproto3.FieldDescription{
-						Name:         []byte("?column?"),
-						DataTypeOID:  catalog.TEXTOID,
-						TypeModifier: -1,
-						DataTypeSize: -1,
+				TTS: &tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						pgproto3.FieldDescription{
+							Name:         []byte("?column?"),
+							DataTypeOID:  catalog.TEXTOID,
+							TypeModifier: -1,
+							DataTypeSize: -1,
+						},
 					},
+					Raw: [][][]byte{{[]byte("Hello, world!")}},
 				},
-				VirtualRowVals: [][][]byte{{[]byte("Hello, world!")}},
 			},
 			err: nil,
 		},
@@ -2328,9 +2443,15 @@ LIMIT 1000
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(tt.distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, tt.distribution)
+
+		stmt := parserRes[0]
+
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, stmt, pr.CSM(), pr.Mgr())
+
+		_ = planner.AnalyzeQueryV1(context.TODO(), rm, stmt)
+		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
 
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
@@ -2414,9 +2535,15 @@ func TestHashRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		dh := session.NewDummyHandler(tt.distribution)
-		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, nil, pr.Mgr())
-		tmp, _, err := pr.RouteWithRules(context.TODO(), rm, parserRes[0], dh.GetTsa())
+		dh := session.NewSimpleHandler(config.TargetSessionAttrsRW, false, "", "")
+		dh.SetDistribution(session.VirtualParamLevelTxBlock, tt.distribution)
+
+		stmt := parserRes[0]
+
+		rm := rmeta.NewRoutingMetadataContext(dh, tt.query, stmt, pr.CSM(), pr.Mgr())
+
+		assert.NoError(planner.AnalyzeQueryV1(context.TODO(), rm, stmt))
+		tmp, err := planHelper(context.TODO(), pr, rm, stmt, dh)
 
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)

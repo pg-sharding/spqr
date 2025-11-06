@@ -299,6 +299,20 @@ func (m *MockQDB) EXPECT() *MockQDBMockRecorder {
 	return m.recorder
 }
 
+// AddMoveTaskGroupStopFlag mocks base method.
+func (m *MockQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddMoveTaskGroupStopFlag", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddMoveTaskGroupStopFlag indicates an expected call of AddMoveTaskGroupStopFlag.
+func (mr *MockQDBMockRecorder) AddMoveTaskGroupStopFlag(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMoveTaskGroupStopFlag", reflect.TypeOf((*MockQDB)(nil).AddMoveTaskGroupStopFlag), ctx, id)
+}
+
 // AddShard mocks base method.
 func (m *MockQDB) AddShard(ctx context.Context, shard *qdb.Shard) error {
 	m.ctrl.T.Helper()
@@ -397,6 +411,20 @@ func (mr *MockQDBMockRecorder) AlterReferenceRelationStorage(ctx, relName, shs a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorage", reflect.TypeOf((*MockQDB)(nil).AlterReferenceRelationStorage), ctx, relName, shs)
 }
 
+// AlterReplicatedRelationSchema mocks base method.
+func (m *MockQDB) AlterReplicatedRelationSchema(ctx context.Context, dsID, relName, schemaName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterReplicatedRelationSchema", ctx, dsID, relName, schemaName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterReplicatedRelationSchema indicates an expected call of AlterReplicatedRelationSchema.
+func (mr *MockQDBMockRecorder) AlterReplicatedRelationSchema(ctx, dsID, relName, schemaName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReplicatedRelationSchema", reflect.TypeOf((*MockQDB)(nil).AlterReplicatedRelationSchema), ctx, dsID, relName, schemaName)
+}
+
 // AlterSequenceAttach mocks base method.
 func (m *MockQDB) AlterSequenceAttach(ctx context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error {
 	m.ctrl.T.Helper()
@@ -439,6 +467,21 @@ func (m *MockQDB) CheckLockedKeyRange(ctx context.Context, id string) (*qdb.KeyR
 func (mr *MockQDBMockRecorder) CheckLockedKeyRange(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckLockedKeyRange", reflect.TypeOf((*MockQDB)(nil).CheckLockedKeyRange), ctx, id)
+}
+
+// CheckMoveTaskGroupStopFlag mocks base method.
+func (m *MockQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckMoveTaskGroupStopFlag", ctx, id)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckMoveTaskGroupStopFlag indicates an expected call of CheckMoveTaskGroupStopFlag.
+func (mr *MockQDBMockRecorder) CheckMoveTaskGroupStopFlag(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckMoveTaskGroupStopFlag", reflect.TypeOf((*MockQDB)(nil).CheckMoveTaskGroupStopFlag), ctx, id)
 }
 
 // CreateDistribution mocks base method.
@@ -657,48 +700,63 @@ func (mr *MockQDBMockRecorder) GetKeyRange(ctx, id any) *gomock.Call {
 }
 
 // GetMoveTask mocks base method.
-func (m *MockQDB) GetMoveTask(ctx context.Context) (*qdb.MoveTask, error) {
+func (m *MockQDB) GetMoveTask(ctx context.Context, id string) (*qdb.MoveTask, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMoveTask", ctx)
+	ret := m.ctrl.Call(m, "GetMoveTask", ctx, id)
 	ret0, _ := ret[0].(*qdb.MoveTask)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMoveTask indicates an expected call of GetMoveTask.
-func (mr *MockQDBMockRecorder) GetMoveTask(ctx any) *gomock.Call {
+func (mr *MockQDBMockRecorder) GetMoveTask(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTask", reflect.TypeOf((*MockQDB)(nil).GetMoveTask), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTask", reflect.TypeOf((*MockQDB)(nil).GetMoveTask), ctx, id)
+}
+
+// GetMoveTaskByGroup mocks base method.
+func (m *MockQDB) GetMoveTaskByGroup(ctx context.Context, taskGroupId string) (*qdb.MoveTask, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMoveTaskByGroup", ctx, taskGroupId)
+	ret0, _ := ret[0].(*qdb.MoveTask)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMoveTaskByGroup indicates an expected call of GetMoveTaskByGroup.
+func (mr *MockQDBMockRecorder) GetMoveTaskByGroup(ctx, taskGroupId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskByGroup", reflect.TypeOf((*MockQDB)(nil).GetMoveTaskByGroup), ctx, taskGroupId)
 }
 
 // GetMoveTaskGroup mocks base method.
-func (m *MockQDB) GetMoveTaskGroup(ctx context.Context) (*qdb.MoveTaskGroup, error) {
+func (m *MockQDB) GetMoveTaskGroup(ctx context.Context, id string) (*qdb.MoveTaskGroup, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMoveTaskGroup", ctx)
+	ret := m.ctrl.Call(m, "GetMoveTaskGroup", ctx, id)
 	ret0, _ := ret[0].(*qdb.MoveTaskGroup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMoveTaskGroup indicates an expected call of GetMoveTaskGroup.
-func (mr *MockQDBMockRecorder) GetMoveTaskGroup(ctx any) *gomock.Call {
+func (mr *MockQDBMockRecorder) GetMoveTaskGroup(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroup", reflect.TypeOf((*MockQDB)(nil).GetMoveTaskGroup), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroup", reflect.TypeOf((*MockQDB)(nil).GetMoveTaskGroup), ctx, id)
 }
 
 // GetMoveTaskGroupTotalKeys mocks base method.
-func (m *MockQDB) GetMoveTaskGroupTotalKeys(ctx context.Context) (int64, error) {
+func (m *MockQDB) GetMoveTaskGroupTotalKeys(ctx context.Context, id string) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMoveTaskGroupTotalKeys", ctx)
+	ret := m.ctrl.Call(m, "GetMoveTaskGroupTotalKeys", ctx, id)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMoveTaskGroupTotalKeys indicates an expected call of GetMoveTaskGroupTotalKeys.
-func (mr *MockQDBMockRecorder) GetMoveTaskGroupTotalKeys(ctx any) *gomock.Call {
+func (mr *MockQDBMockRecorder) GetMoveTaskGroupTotalKeys(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroupTotalKeys", reflect.TypeOf((*MockQDB)(nil).GetMoveTaskGroupTotalKeys), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroupTotalKeys", reflect.TypeOf((*MockQDB)(nil).GetMoveTaskGroupTotalKeys), ctx, id)
 }
 
 // GetRedistributeTask mocks base method.
@@ -836,6 +894,21 @@ func (mr *MockQDBMockRecorder) ListLockedKeyRanges(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLockedKeyRanges", reflect.TypeOf((*MockQDB)(nil).ListLockedKeyRanges), ctx)
 }
 
+// ListMoveTasks mocks base method.
+func (m *MockQDB) ListMoveTasks(ctx context.Context) (map[string]*qdb.MoveTask, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMoveTasks", ctx)
+	ret0, _ := ret[0].(map[string]*qdb.MoveTask)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMoveTasks indicates an expected call of ListMoveTasks.
+func (mr *MockQDBMockRecorder) ListMoveTasks(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMoveTasks", reflect.TypeOf((*MockQDB)(nil).ListMoveTasks), ctx)
+}
+
 // ListReferenceRelations mocks base method.
 func (m *MockQDB) ListReferenceRelations(ctx context.Context) ([]*qdb.ReferenceRelation, error) {
 	m.ctrl.T.Helper()
@@ -896,6 +969,21 @@ func (mr *MockQDBMockRecorder) ListShards(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListShards", reflect.TypeOf((*MockQDB)(nil).ListShards), ctx)
 }
 
+// ListTaskGroups mocks base method.
+func (m *MockQDB) ListTaskGroups(ctx context.Context) (map[string]*qdb.MoveTaskGroup, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListTaskGroups", ctx)
+	ret0, _ := ret[0].(map[string]*qdb.MoveTaskGroup)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListTaskGroups indicates an expected call of ListTaskGroups.
+func (mr *MockQDBMockRecorder) ListTaskGroups(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTaskGroups", reflect.TypeOf((*MockQDB)(nil).ListTaskGroups), ctx)
+}
+
 // LockKeyRange mocks base method.
 func (m *MockQDB) LockKeyRange(ctx context.Context, id string) (*qdb.KeyRange, error) {
 	m.ctrl.T.Helper()
@@ -926,6 +1014,21 @@ func (mr *MockQDBMockRecorder) NextRange(ctx, seqName, rangeSize any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextRange", reflect.TypeOf((*MockQDB)(nil).NextRange), ctx, seqName, rangeSize)
 }
 
+// NoWaitLockKeyRange mocks base method.
+func (m *MockQDB) NoWaitLockKeyRange(ctx context.Context, id string) (*qdb.KeyRange, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NoWaitLockKeyRange", ctx, id)
+	ret0, _ := ret[0].(*qdb.KeyRange)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NoWaitLockKeyRange indicates an expected call of NoWaitLockKeyRange.
+func (mr *MockQDBMockRecorder) NoWaitLockKeyRange(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NoWaitLockKeyRange", reflect.TypeOf((*MockQDB)(nil).NoWaitLockKeyRange), ctx, id)
+}
+
 // RemoveBalancerTask mocks base method.
 func (m *MockQDB) RemoveBalancerTask(ctx context.Context) error {
 	m.ctrl.T.Helper()
@@ -941,31 +1044,31 @@ func (mr *MockQDBMockRecorder) RemoveBalancerTask(ctx any) *gomock.Call {
 }
 
 // RemoveMoveTask mocks base method.
-func (m *MockQDB) RemoveMoveTask(ctx context.Context) error {
+func (m *MockQDB) RemoveMoveTask(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveMoveTask", ctx)
+	ret := m.ctrl.Call(m, "RemoveMoveTask", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RemoveMoveTask indicates an expected call of RemoveMoveTask.
-func (mr *MockQDBMockRecorder) RemoveMoveTask(ctx any) *gomock.Call {
+func (mr *MockQDBMockRecorder) RemoveMoveTask(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMoveTask", reflect.TypeOf((*MockQDB)(nil).RemoveMoveTask), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMoveTask", reflect.TypeOf((*MockQDB)(nil).RemoveMoveTask), ctx, id)
 }
 
 // RemoveMoveTaskGroup mocks base method.
-func (m *MockQDB) RemoveMoveTaskGroup(ctx context.Context) error {
+func (m *MockQDB) RemoveMoveTaskGroup(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveMoveTaskGroup", ctx)
+	ret := m.ctrl.Call(m, "RemoveMoveTaskGroup", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RemoveMoveTaskGroup indicates an expected call of RemoveMoveTaskGroup.
-func (mr *MockQDBMockRecorder) RemoveMoveTaskGroup(ctx any) *gomock.Call {
+func (mr *MockQDBMockRecorder) RemoveMoveTaskGroup(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMoveTaskGroup", reflect.TypeOf((*MockQDB)(nil).RemoveMoveTaskGroup), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMoveTaskGroup", reflect.TypeOf((*MockQDB)(nil).RemoveMoveTaskGroup), ctx, id)
 }
 
 // RemoveRedistributeTask mocks base method.
@@ -1067,17 +1170,17 @@ func (mr *MockQDBMockRecorder) UpdateMoveTask(ctx, task any) *gomock.Call {
 }
 
 // UpdateMoveTaskGroupTotalKeys mocks base method.
-func (m *MockQDB) UpdateMoveTaskGroupTotalKeys(ctx context.Context, totalKeys int64) error {
+func (m *MockQDB) UpdateMoveTaskGroupTotalKeys(ctx context.Context, id string, totalKeys int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateMoveTaskGroupTotalKeys", ctx, totalKeys)
+	ret := m.ctrl.Call(m, "UpdateMoveTaskGroupTotalKeys", ctx, id, totalKeys)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateMoveTaskGroupTotalKeys indicates an expected call of UpdateMoveTaskGroupTotalKeys.
-func (mr *MockQDBMockRecorder) UpdateMoveTaskGroupTotalKeys(ctx, totalKeys any) *gomock.Call {
+func (mr *MockQDBMockRecorder) UpdateMoveTaskGroupTotalKeys(ctx, id, totalKeys any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMoveTaskGroupTotalKeys", reflect.TypeOf((*MockQDB)(nil).UpdateMoveTaskGroupTotalKeys), ctx, totalKeys)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMoveTaskGroupTotalKeys", reflect.TypeOf((*MockQDB)(nil).UpdateMoveTaskGroupTotalKeys), ctx, id, totalKeys)
 }
 
 // WriteBalancerTask mocks base method.
@@ -1109,17 +1212,17 @@ func (mr *MockQDBMockRecorder) WriteMoveTask(ctx, task any) *gomock.Call {
 }
 
 // WriteMoveTaskGroup mocks base method.
-func (m *MockQDB) WriteMoveTaskGroup(ctx context.Context, group *qdb.MoveTaskGroup, totalKeys int64, moveTask *qdb.MoveTask) error {
+func (m *MockQDB) WriteMoveTaskGroup(ctx context.Context, id string, group *qdb.MoveTaskGroup, totalKeys int64, moveTask *qdb.MoveTask) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteMoveTaskGroup", ctx, group, totalKeys, moveTask)
+	ret := m.ctrl.Call(m, "WriteMoveTaskGroup", ctx, id, group, totalKeys, moveTask)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // WriteMoveTaskGroup indicates an expected call of WriteMoveTaskGroup.
-func (mr *MockQDBMockRecorder) WriteMoveTaskGroup(ctx, group, totalKeys, moveTask any) *gomock.Call {
+func (mr *MockQDBMockRecorder) WriteMoveTaskGroup(ctx, id, group, totalKeys, moveTask any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteMoveTaskGroup", reflect.TypeOf((*MockQDB)(nil).WriteMoveTaskGroup), ctx, group, totalKeys, moveTask)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteMoveTaskGroup", reflect.TypeOf((*MockQDB)(nil).WriteMoveTaskGroup), ctx, id, group, totalKeys, moveTask)
 }
 
 // WriteRedistributeTask mocks base method.
@@ -1158,6 +1261,20 @@ func NewMockXQDB(ctrl *gomock.Controller) *MockXQDB {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockXQDB) EXPECT() *MockXQDBMockRecorder {
 	return m.recorder
+}
+
+// AddMoveTaskGroupStopFlag mocks base method.
+func (m *MockXQDB) AddMoveTaskGroupStopFlag(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddMoveTaskGroupStopFlag", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddMoveTaskGroupStopFlag indicates an expected call of AddMoveTaskGroupStopFlag.
+func (mr *MockXQDBMockRecorder) AddMoveTaskGroupStopFlag(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMoveTaskGroupStopFlag", reflect.TypeOf((*MockXQDB)(nil).AddMoveTaskGroupStopFlag), ctx, id)
 }
 
 // AddRouter mocks base method.
@@ -1272,6 +1389,20 @@ func (mr *MockXQDBMockRecorder) AlterReferenceRelationStorage(ctx, relName, shs 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorage", reflect.TypeOf((*MockXQDB)(nil).AlterReferenceRelationStorage), ctx, relName, shs)
 }
 
+// AlterReplicatedRelationSchema mocks base method.
+func (m *MockXQDB) AlterReplicatedRelationSchema(ctx context.Context, dsID, relName, schemaName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterReplicatedRelationSchema", ctx, dsID, relName, schemaName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterReplicatedRelationSchema indicates an expected call of AlterReplicatedRelationSchema.
+func (mr *MockXQDBMockRecorder) AlterReplicatedRelationSchema(ctx, dsID, relName, schemaName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReplicatedRelationSchema", reflect.TypeOf((*MockXQDB)(nil).AlterReplicatedRelationSchema), ctx, dsID, relName, schemaName)
+}
+
 // AlterSequenceAttach mocks base method.
 func (m *MockXQDB) AlterSequenceAttach(ctx context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error {
 	m.ctrl.T.Helper()
@@ -1314,6 +1445,21 @@ func (m *MockXQDB) CheckLockedKeyRange(ctx context.Context, id string) (*qdb.Key
 func (mr *MockXQDBMockRecorder) CheckLockedKeyRange(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckLockedKeyRange", reflect.TypeOf((*MockXQDB)(nil).CheckLockedKeyRange), ctx, id)
+}
+
+// CheckMoveTaskGroupStopFlag mocks base method.
+func (m *MockXQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckMoveTaskGroupStopFlag", ctx, id)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckMoveTaskGroupStopFlag indicates an expected call of CheckMoveTaskGroupStopFlag.
+func (mr *MockXQDBMockRecorder) CheckMoveTaskGroupStopFlag(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckMoveTaskGroupStopFlag", reflect.TypeOf((*MockXQDB)(nil).CheckMoveTaskGroupStopFlag), ctx, id)
 }
 
 // CloseRouter mocks base method.
@@ -1588,48 +1734,63 @@ func (mr *MockXQDBMockRecorder) GetKeyRange(ctx, id any) *gomock.Call {
 }
 
 // GetMoveTask mocks base method.
-func (m *MockXQDB) GetMoveTask(ctx context.Context) (*qdb.MoveTask, error) {
+func (m *MockXQDB) GetMoveTask(ctx context.Context, id string) (*qdb.MoveTask, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMoveTask", ctx)
+	ret := m.ctrl.Call(m, "GetMoveTask", ctx, id)
 	ret0, _ := ret[0].(*qdb.MoveTask)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMoveTask indicates an expected call of GetMoveTask.
-func (mr *MockXQDBMockRecorder) GetMoveTask(ctx any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) GetMoveTask(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTask", reflect.TypeOf((*MockXQDB)(nil).GetMoveTask), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTask", reflect.TypeOf((*MockXQDB)(nil).GetMoveTask), ctx, id)
+}
+
+// GetMoveTaskByGroup mocks base method.
+func (m *MockXQDB) GetMoveTaskByGroup(ctx context.Context, taskGroupId string) (*qdb.MoveTask, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMoveTaskByGroup", ctx, taskGroupId)
+	ret0, _ := ret[0].(*qdb.MoveTask)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMoveTaskByGroup indicates an expected call of GetMoveTaskByGroup.
+func (mr *MockXQDBMockRecorder) GetMoveTaskByGroup(ctx, taskGroupId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskByGroup", reflect.TypeOf((*MockXQDB)(nil).GetMoveTaskByGroup), ctx, taskGroupId)
 }
 
 // GetMoveTaskGroup mocks base method.
-func (m *MockXQDB) GetMoveTaskGroup(ctx context.Context) (*qdb.MoveTaskGroup, error) {
+func (m *MockXQDB) GetMoveTaskGroup(ctx context.Context, id string) (*qdb.MoveTaskGroup, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMoveTaskGroup", ctx)
+	ret := m.ctrl.Call(m, "GetMoveTaskGroup", ctx, id)
 	ret0, _ := ret[0].(*qdb.MoveTaskGroup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMoveTaskGroup indicates an expected call of GetMoveTaskGroup.
-func (mr *MockXQDBMockRecorder) GetMoveTaskGroup(ctx any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) GetMoveTaskGroup(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroup", reflect.TypeOf((*MockXQDB)(nil).GetMoveTaskGroup), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroup", reflect.TypeOf((*MockXQDB)(nil).GetMoveTaskGroup), ctx, id)
 }
 
 // GetMoveTaskGroupTotalKeys mocks base method.
-func (m *MockXQDB) GetMoveTaskGroupTotalKeys(ctx context.Context) (int64, error) {
+func (m *MockXQDB) GetMoveTaskGroupTotalKeys(ctx context.Context, id string) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMoveTaskGroupTotalKeys", ctx)
+	ret := m.ctrl.Call(m, "GetMoveTaskGroupTotalKeys", ctx, id)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMoveTaskGroupTotalKeys indicates an expected call of GetMoveTaskGroupTotalKeys.
-func (mr *MockXQDBMockRecorder) GetMoveTaskGroupTotalKeys(ctx any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) GetMoveTaskGroupTotalKeys(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroupTotalKeys", reflect.TypeOf((*MockXQDB)(nil).GetMoveTaskGroupTotalKeys), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroupTotalKeys", reflect.TypeOf((*MockXQDB)(nil).GetMoveTaskGroupTotalKeys), ctx, id)
 }
 
 // GetRedistributeTask mocks base method.
@@ -1797,6 +1958,21 @@ func (mr *MockXQDBMockRecorder) ListLockedKeyRanges(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLockedKeyRanges", reflect.TypeOf((*MockXQDB)(nil).ListLockedKeyRanges), ctx)
 }
 
+// ListMoveTasks mocks base method.
+func (m *MockXQDB) ListMoveTasks(ctx context.Context) (map[string]*qdb.MoveTask, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMoveTasks", ctx)
+	ret0, _ := ret[0].(map[string]*qdb.MoveTask)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMoveTasks indicates an expected call of ListMoveTasks.
+func (mr *MockXQDBMockRecorder) ListMoveTasks(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMoveTasks", reflect.TypeOf((*MockXQDB)(nil).ListMoveTasks), ctx)
+}
+
 // ListReferenceRelations mocks base method.
 func (m *MockXQDB) ListReferenceRelations(ctx context.Context) ([]*qdb.ReferenceRelation, error) {
 	m.ctrl.T.Helper()
@@ -1857,6 +2033,21 @@ func (mr *MockXQDBMockRecorder) ListShards(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListShards", reflect.TypeOf((*MockXQDB)(nil).ListShards), ctx)
 }
 
+// ListTaskGroups mocks base method.
+func (m *MockXQDB) ListTaskGroups(ctx context.Context) (map[string]*qdb.MoveTaskGroup, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListTaskGroups", ctx)
+	ret0, _ := ret[0].(map[string]*qdb.MoveTaskGroup)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListTaskGroups indicates an expected call of ListTaskGroups.
+func (mr *MockXQDBMockRecorder) ListTaskGroups(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTaskGroups", reflect.TypeOf((*MockXQDB)(nil).ListTaskGroups), ctx)
+}
+
 // LockKeyRange mocks base method.
 func (m *MockXQDB) LockKeyRange(ctx context.Context, id string) (*qdb.KeyRange, error) {
 	m.ctrl.T.Helper()
@@ -1885,6 +2076,21 @@ func (m *MockXQDB) NextRange(ctx context.Context, seqName string, rangeSize uint
 func (mr *MockXQDBMockRecorder) NextRange(ctx, seqName, rangeSize any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextRange", reflect.TypeOf((*MockXQDB)(nil).NextRange), ctx, seqName, rangeSize)
+}
+
+// NoWaitLockKeyRange mocks base method.
+func (m *MockXQDB) NoWaitLockKeyRange(ctx context.Context, id string) (*qdb.KeyRange, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NoWaitLockKeyRange", ctx, id)
+	ret0, _ := ret[0].(*qdb.KeyRange)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NoWaitLockKeyRange indicates an expected call of NoWaitLockKeyRange.
+func (mr *MockXQDBMockRecorder) NoWaitLockKeyRange(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NoWaitLockKeyRange", reflect.TypeOf((*MockXQDB)(nil).NoWaitLockKeyRange), ctx, id)
 }
 
 // OpenRouter mocks base method.
@@ -1944,31 +2150,31 @@ func (mr *MockXQDBMockRecorder) RemoveBalancerTask(ctx any) *gomock.Call {
 }
 
 // RemoveMoveTask mocks base method.
-func (m *MockXQDB) RemoveMoveTask(ctx context.Context) error {
+func (m *MockXQDB) RemoveMoveTask(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveMoveTask", ctx)
+	ret := m.ctrl.Call(m, "RemoveMoveTask", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RemoveMoveTask indicates an expected call of RemoveMoveTask.
-func (mr *MockXQDBMockRecorder) RemoveMoveTask(ctx any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) RemoveMoveTask(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMoveTask", reflect.TypeOf((*MockXQDB)(nil).RemoveMoveTask), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMoveTask", reflect.TypeOf((*MockXQDB)(nil).RemoveMoveTask), ctx, id)
 }
 
 // RemoveMoveTaskGroup mocks base method.
-func (m *MockXQDB) RemoveMoveTaskGroup(ctx context.Context) error {
+func (m *MockXQDB) RemoveMoveTaskGroup(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveMoveTaskGroup", ctx)
+	ret := m.ctrl.Call(m, "RemoveMoveTaskGroup", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RemoveMoveTaskGroup indicates an expected call of RemoveMoveTaskGroup.
-func (mr *MockXQDBMockRecorder) RemoveMoveTaskGroup(ctx any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) RemoveMoveTaskGroup(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMoveTaskGroup", reflect.TypeOf((*MockXQDB)(nil).RemoveMoveTaskGroup), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMoveTaskGroup", reflect.TypeOf((*MockXQDB)(nil).RemoveMoveTaskGroup), ctx, id)
 }
 
 // RemoveRedistributeTask mocks base method.
@@ -2112,17 +2318,17 @@ func (mr *MockXQDBMockRecorder) UpdateMoveTask(ctx, task any) *gomock.Call {
 }
 
 // UpdateMoveTaskGroupTotalKeys mocks base method.
-func (m *MockXQDB) UpdateMoveTaskGroupTotalKeys(ctx context.Context, totalKeys int64) error {
+func (m *MockXQDB) UpdateMoveTaskGroupTotalKeys(ctx context.Context, id string, totalKeys int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateMoveTaskGroupTotalKeys", ctx, totalKeys)
+	ret := m.ctrl.Call(m, "UpdateMoveTaskGroupTotalKeys", ctx, id, totalKeys)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateMoveTaskGroupTotalKeys indicates an expected call of UpdateMoveTaskGroupTotalKeys.
-func (mr *MockXQDBMockRecorder) UpdateMoveTaskGroupTotalKeys(ctx, totalKeys any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) UpdateMoveTaskGroupTotalKeys(ctx, id, totalKeys any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMoveTaskGroupTotalKeys", reflect.TypeOf((*MockXQDB)(nil).UpdateMoveTaskGroupTotalKeys), ctx, totalKeys)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMoveTaskGroupTotalKeys", reflect.TypeOf((*MockXQDB)(nil).UpdateMoveTaskGroupTotalKeys), ctx, id, totalKeys)
 }
 
 // WriteBalancerTask mocks base method.
@@ -2154,17 +2360,17 @@ func (mr *MockXQDBMockRecorder) WriteMoveTask(ctx, task any) *gomock.Call {
 }
 
 // WriteMoveTaskGroup mocks base method.
-func (m *MockXQDB) WriteMoveTaskGroup(ctx context.Context, group *qdb.MoveTaskGroup, totalKeys int64, moveTask *qdb.MoveTask) error {
+func (m *MockXQDB) WriteMoveTaskGroup(ctx context.Context, id string, group *qdb.MoveTaskGroup, totalKeys int64, moveTask *qdb.MoveTask) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteMoveTaskGroup", ctx, group, totalKeys, moveTask)
+	ret := m.ctrl.Call(m, "WriteMoveTaskGroup", ctx, id, group, totalKeys, moveTask)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // WriteMoveTaskGroup indicates an expected call of WriteMoveTaskGroup.
-func (mr *MockXQDBMockRecorder) WriteMoveTaskGroup(ctx, group, totalKeys, moveTask any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) WriteMoveTaskGroup(ctx, id, group, totalKeys, moveTask any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteMoveTaskGroup", reflect.TypeOf((*MockXQDB)(nil).WriteMoveTaskGroup), ctx, group, totalKeys, moveTask)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteMoveTaskGroup", reflect.TypeOf((*MockXQDB)(nil).WriteMoveTaskGroup), ctx, id, group, totalKeys, moveTask)
 }
 
 // WriteRedistributeTask mocks base method.

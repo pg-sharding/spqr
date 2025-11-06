@@ -20,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"github.com/sethvargo/go-retry"
 
 	"github.com/cucumber/godog"
 	"github.com/jackc/pgx/v5"
@@ -51,6 +52,7 @@ const (
 	postgresqlConnectTimeout        = 60 * time.Second
 	postgresqlInitialConnectTimeout = 30 * time.Second
 	postgresqlQueryTimeout          = 10 * time.Second
+	qdbQueriesTimeout               = 30 * time.Second
 
 	spqrQdbHost             = "qdb01"
 	checkCoordinatorTimeout = 15 * time.Second
@@ -1073,7 +1075,6 @@ func (tctx *testContext) stepRecordQDBKRMove(body *godog.DocString) error {
 	return tctx.qdb.RecordKeyRangeMove(context.TODO(), &m)
 }
 
-// TODO use WriteMoveTaskGroupTransactional
 func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 	var taskGroup tasks.MoveTaskGroup
@@ -1084,7 +1085,7 @@ func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
 
 	taskDb := tasks.MoveTaskToDb(taskGroup.CurrentTask)
 
-	return tctx.qdb.WriteMoveTaskGroup(context.TODO(), tasks.TaskGroupToDb(&taskGroup), taskGroup.TotalKeys, taskDb)
+	return tctx.qdb.WriteMoveTaskGroup(context.TODO(), taskGroup.ID, tasks.TaskGroupToDb(&taskGroup), taskGroup.TotalKeys, taskDb)
 }
 
 func (tctx *testContext) stepQDBShouldContainTx(key string) error {
@@ -1114,6 +1115,9 @@ func (tctx *testContext) stepQDBShouldNotContainKRMoves() error {
 	}
 	if len(txs) == 0 {
 		return nil
+	}
+	for _, v := range txs {
+		log.Printf("txs '%#v'", v)
 	}
 	return fmt.Errorf("key range moves present")
 }
@@ -1183,6 +1187,93 @@ func (tctx *testContext) stepCoordinatorShouldTakeControl(leader string) error {
 	retryRes := testutil.Retry(tctx.checkCoordinatorInQDBFunc(leader), time.Minute, time.Second)
 	if !retryRes {
 		return fmt.Errorf("timed out waiting for \"%s\" to take control", leader)
+	}
+	return nil
+}
+
+func (tctx *testContext) stepWaitForAllKeyRangeMovesToFinish(timeout int64) error {
+	const interval = time.Second
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(timeout)*time.Second)
+	defer cancel()
+	return retry.Do(ctx, retry.NewConstant(interval), func(ctx context.Context) error {
+		redistributeTask, err := tctx.qdb.GetRedistributeTask(ctx)
+		if err != nil {
+			log.Printf("error getting redistribute task: %s", err)
+			return err
+		}
+		if redistributeTask != nil {
+			log.Println("redistribute task present in qdb")
+			return retry.RetryableError(fmt.Errorf("redistribute task still present"))
+		}
+		taskGroups, err := tctx.qdb.ListTaskGroups(ctx)
+		if err != nil {
+			log.Printf("error getting move task group: %s", err)
+			return err
+		}
+		if len(taskGroups) > 0 {
+			log.Println("move task group present in qdb")
+			return retry.RetryableError(fmt.Errorf("move task group still present"))
+		}
+		moveTasks, err := tctx.qdb.ListMoveTasks(ctx)
+		if err != nil {
+			log.Printf("error getting move task: %s", err)
+			return err
+		}
+		if len(moveTasks) > 0 {
+			log.Printf("move tasks present in qdb\n")
+			return retry.RetryableError(fmt.Errorf("move task still present"))
+		}
+		krMoves, err := tctx.qdb.ListKeyRangeMoves(ctx)
+		if err != nil {
+			log.Printf("error getting key range moves: %s", err)
+			return err
+		}
+		if len(krMoves) > 0 {
+			log.Printf("%d key range moves still present in qbd", len(krMoves))
+			return retry.RetryableError(fmt.Errorf("key range moves still present"))
+		}
+		return nil
+	})
+}
+
+func (tctx *testContext) stepQDBShouldNotContainTasks() error {
+	ctx, cancel := context.WithTimeout(context.TODO(), qdbQueriesTimeout)
+	defer cancel()
+	redistributeTask, err := tctx.qdb.GetRedistributeTask(ctx)
+	if err != nil {
+		log.Printf("error getting redistribute task: %s", err)
+		return err
+	}
+	if redistributeTask != nil {
+		log.Println("redistribute task present in qdb")
+		return retry.RetryableError(fmt.Errorf("redistribute task still present"))
+	}
+	taskGroups, err := tctx.qdb.ListTaskGroups(ctx)
+	if err != nil {
+		log.Printf("error getting move task group: %s", err)
+		return err
+	}
+	if len(taskGroups) > 0 {
+		log.Println("move task group present in qdb")
+		return retry.RetryableError(fmt.Errorf("move task group still present"))
+	}
+	moveTasks, err := tctx.qdb.ListMoveTasks(ctx)
+	if err != nil {
+		log.Printf("error getting move task: %s", err)
+		return err
+	}
+	if len(moveTasks) > 0 {
+		log.Printf("move tasks present in qdb\n")
+		return retry.RetryableError(fmt.Errorf("move task still present"))
+	}
+	krMoves, err := tctx.qdb.ListKeyRangeMoves(ctx)
+	if err != nil {
+		log.Printf("error getting key range moves: %s", err)
+		return err
+	}
+	if len(krMoves) > 0 {
+		log.Printf("%d key range moves still present in qbd", len(krMoves))
+		return retry.RetryableError(fmt.Errorf("key range moves still present"))
 	}
 	return nil
 }
@@ -1284,6 +1375,8 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
 	s.Step(`^I wait for host "([^"]*)" to respond$`, tctx.stepWaitPostgresqlToRespond)
 	s.Step(`^I wait for coordinator "([^"]*)" to take control$`, tctx.stepCoordinatorShouldTakeControl)
+	s.Step(`^I wait for "(\d+)" seconds for all key range moves to finish$`, tctx.stepWaitForAllKeyRangeMovesToFinish)
+	s.Step(`^qdb should not contain transfer tasks$`, tctx.stepQDBShouldNotContainTasks)
 
 	// variable manipulation
 	s.Step(`^we save response row "([^"]*)" column "([^"]*)"$`, tctx.stepSaveResponseBodyAtPathAsJSON)

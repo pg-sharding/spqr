@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 
@@ -21,7 +22,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
-	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
@@ -368,8 +368,14 @@ func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 			},
 		}
 	} else {
-		var err error
-		queryPlan, err = rst.Qr.PlanQuery(context.TODO(), rst.qp.OriginQuery(), rst.qp.Stmt(), rst.Cl)
+		ctx := context.TODO()
+
+		rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.qp.OriginQuery(), rst.qp.Stmt())
+		if err != nil {
+			return nil, err
+		}
+
+		queryPlan, err = rst.Qr.PlanQuery(ctx, rm)
 
 		if err != nil {
 			return nil, fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
@@ -891,7 +897,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 						// send to the client
 						if err := rst.Client().Send(&pgproto3.RowDescription{
-							Fields: q.VirtualRowCols,
+							Fields: q.TTS.Desc,
 						}); err != nil {
 							return err
 						}

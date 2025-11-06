@@ -44,7 +44,7 @@ func CmpRangesLessStringsDeprecated(bound string, key string) bool {
 	return len(bound) < len(key)
 }
 
-func (kr *KeyRange) InFuncSQL(attribInd int, raw []byte) {
+func (kr *KeyRange) InFuncSQL(attribInd int, raw []byte) error {
 	switch kr.ColumnTypes[attribInd] {
 	case qdb.ColumnTypeInteger:
 		n, _ := binary.Varint(raw)
@@ -59,11 +59,16 @@ func (kr *KeyRange) InFuncSQL(attribInd int, raw []byte) {
 	case qdb.ColumnTypeVarchar:
 		kr.LowerBound[attribInd] = string(raw)
 	case qdb.ColumnTypeUUID:
-		kr.LowerBound[attribInd] = strings.ToLower(string(raw))
+		value := strings.ToLower(string(raw))
+		if err := uuid.Validate(value); err != nil {
+			return err
+		}
+		kr.LowerBound[attribInd] = value
 	}
+	return nil
 }
 
-func (kr *KeyRange) InFunc(attribInd int, raw []byte) {
+func (kr *KeyRange) InFunc(attribInd int, raw []byte) error {
 	switch kr.ColumnTypes[attribInd] {
 	case qdb.ColumnTypeInteger:
 		n, _ := binary.Varint(raw)
@@ -78,8 +83,13 @@ func (kr *KeyRange) InFunc(attribInd int, raw []byte) {
 	case qdb.ColumnTypeVarchar:
 		kr.LowerBound[attribInd] = string(raw)
 	case qdb.ColumnTypeUUID:
-		kr.LowerBound[attribInd] = string(raw)
+		value := strings.ToLower(string(raw))
+		if err := uuid.Validate(value); err != nil {
+			return err
+		}
+		kr.LowerBound[attribInd] = value
 	}
+	return nil
 }
 
 func (kr *KeyRange) OutFunc(attribInd int) []byte {
@@ -139,10 +149,10 @@ func (kr *KeyRange) RecvFunc(attribInd int, val string) error {
 			return err
 		}
 	case qdb.ColumnTypeUUID:
-		kr.LowerBound[attribInd] = strings.ToLower(val)
 		if err := uuid.Validate(strings.ToLower(val)); err != nil {
 			return err
 		}
+		kr.LowerBound[attribInd] = strings.ToLower(val)
 
 	default:
 		return fmt.Errorf("unknown column type %s", kr.ColumnTypes[attribInd])
@@ -327,7 +337,7 @@ func CmpRangesLessEqual(bound KeyRangeBound, key KeyRangeBound, types []string) 
 //   - *KeyRange: A pointer to the new KeyRange object.
 //
 // TODO : unit tests
-func KeyRangeFromDB(krdb *qdb.KeyRange, colTypes []string) *KeyRange {
+func KeyRangeFromDB(krdb *qdb.KeyRange, colTypes []string) (*KeyRange, error) {
 	kr := &KeyRange{
 		ShardID:      krdb.ShardID,
 		ID:           krdb.KeyRangeID,
@@ -338,10 +348,12 @@ func KeyRangeFromDB(krdb *qdb.KeyRange, colTypes []string) *KeyRange {
 	}
 
 	for i := range len(colTypes) {
-		kr.InFunc(i, krdb.LowerBound[i])
+		if err := kr.InFunc(i, krdb.LowerBound[i]); err != nil {
+			return nil, err
+		}
 	}
 
-	return kr
+	return kr, nil
 }
 
 // KeyRangeFromSQL converts a spqrparser.KeyRangeDefinition into a KeyRange.
@@ -374,13 +386,15 @@ func KeyRangeFromSQL(krsql *spqrparser.KeyRangeDefinition, colTypes []string) (*
 	}
 
 	for i := range len(colTypes) {
-		kr.InFuncSQL(i, krsql.LowerBound.Pivots[i])
+		if err := kr.InFuncSQL(i, krsql.LowerBound.Pivots[i]); err != nil {
+			return nil, err
+		}
 	}
 
 	return kr, nil
 }
 
-func KeyRangeFromBytes(val [][]byte, colTypes []string) *KeyRange {
+func KeyRangeFromBytes(val [][]byte, colTypes []string) (*KeyRange, error) {
 
 	kr := &KeyRange{
 		ColumnTypes: colTypes,
@@ -389,10 +403,12 @@ func KeyRangeFromBytes(val [][]byte, colTypes []string) *KeyRange {
 	}
 
 	for i := range len(colTypes) {
-		kr.InFunc(i, val[i])
+		if err := kr.InFunc(i, val[i]); err != nil {
+			return nil, err
+		}
 	}
 
-	return kr
+	return kr, nil
 }
 
 // KeyRangeFromProto converts a protobuf KeyRangeInfo to a KeyRange object.
@@ -407,9 +423,9 @@ func KeyRangeFromBytes(val [][]byte, colTypes []string) *KeyRange {
 //   - *KeyRange: A pointer to the new KeyRange object.
 //
 // TODO : unit tests
-func KeyRangeFromProto(krproto *proto.KeyRangeInfo, colTypes []string) *KeyRange {
+func KeyRangeFromProto(krproto *proto.KeyRangeInfo, colTypes []string) (*KeyRange, error) {
 	if krproto == nil {
-		return nil
+		return nil, nil
 	}
 	kr := &KeyRange{
 		ShardID:      krproto.ShardId,
@@ -419,15 +435,14 @@ func KeyRangeFromProto(krproto *proto.KeyRangeInfo, colTypes []string) *KeyRange
 
 		LowerBound: make(KeyRangeBound, len(colTypes)),
 	}
-	//if len(colTypes) != len(krsql.LowerBound.Pivots) {
-	//	return nil, fmt.Errorf("number of columns mismatches with distribution")
-	//}
 
 	for i := range len(colTypes) {
-		kr.InFunc(i, krproto.Bound.Values[i])
+		if err := kr.InFunc(i, krproto.Bound.Values[i]); err != nil {
+			return nil, err
+		}
 	}
 
-	return kr
+	return kr, nil
 }
 
 // ToDB converts the KeyRange struct to a qdb.KeyRange struct.

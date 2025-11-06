@@ -7,14 +7,35 @@ description: 'Create distributions, key ranges and tables and see cluster info'
 
 This command is used to create a new distribution with the specified name. Optionally, you can specify the column types for the distribution using the COLUMN TYPES clause. Optionally, you can specify a default shard for distribution using the "DEFAULT SHARD" clause.
 
+For composite sharding keys (multiple columns), specify multiple types separated by commas. You can append `hash` after a column type to apply hash-based distribution to that column.
+
 ```sql
 CREATE DISTRIBUTION <distributionID> COLUMN TYPES <types> DEFAULT SHARD <shardId>
 
-where types is a comma-separated list of column types
+where types is a comma-separated list of column types (e.g., "integer, varchar" for composite keys)
 
-where type is one of: VARCHAR, INTEGER, INT, UUID
+where type is one of: VARCHAR, INTEGER, INT, UUID, optionally followed by "hash" keyword
 
 where <shardId> is a default shard identifier. The <shardId> must exist.
+```
+
+**Examples:**
+
+```sql
+-- Single column distribution
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+
+-- Single column with hash
+CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;
+
+-- Composite key distribution with two columns
+CREATE DISTRIBUTION ds3 COLUMN TYPES integer, integer;
+
+-- Composite key with mixed types
+CREATE DISTRIBUTION ds4 COLUMN TYPES integer, varchar;
+
+-- Composite key with hash on second column
+CREATE DISTRIBUTION ds5 COLUMN TYPES integer, varchar hash;
 ```
 
 ### DROP DISTRIBUTION
@@ -29,11 +50,28 @@ DROP DISTRIBUTION <distribution_name> [CASCADE]
 
 This command is used to alter an existing distribution. You can attach one or more [relations](/sharding/sharded_tables) to the distribution using the ATTACH RELATION clause.
 
+For composite sharding keys, specify multiple column names separated by commas in the DISTRIBUTION KEY clause.
+
 ```sql
 ALTER DISTRIBUTION <distribution_name> ATTACH RELATION <relation_name> [, <relation_name> ...] 
 DISTRIBUTION KEY <keys> [HASH FUNCTION <hash_function_name>]
 
+where keys is a comma-separated list of column names (e.g., "col1, col2" for composite keys)
+
 where hash_function_name is one of: IDENTITY, MURMUR, CITY
+```
+
+**Examples:**
+
+```sql
+-- Single column sharding key
+ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY order_id;
+
+-- Composite sharding key with two columns
+ALTER DISTRIBUTION ds2 ATTACH RELATION users DISTRIBUTION KEY tenant_id, user_id;
+
+-- Composite key with hash function
+ALTER DISTRIBUTION ds3 ATTACH RELATION events DISTRIBUTION KEY region_id, event_id HASH FUNCTION MURMUR;
 ```
 
 ### ALTER DISTRIBUTION DETACH RELATION
@@ -84,13 +122,30 @@ DROP SEQUENCE t1_id;
 
 ### CREATE KEY RANGE
 
-This command is used to create a new key range. Since the key space is an ordered set, it is enough to specify only one end of the range
+This command is used to create a new key range. Since the key space is an ordered set, it is enough to specify only one end of the range.
+
+For composite sharding keys, specify multiple values separated by commas that correspond to each column in the distribution.
 
 ```sql
 CREATE KEY RANGE [ <keyRangeID> ]
 FROM <lowerBound>
 ROUTE TO <shardID> 
 FOR DISTRIBUTION <distributionID>
+
+where lowerBound is a single value or comma-separated values for composite keys (e.g., "100, 'value'" for a two-column key)
+```
+
+**Examples:**
+
+```sql
+-- Single column key range
+CREATE KEY RANGE krid1 FROM 1000 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+
+-- Composite key range with two integers
+CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;
+
+-- Composite key range with integer and varchar
+CREATE KEY RANGE krid3 FROM 100, 'aaaaa' ROUTE TO shard3 FOR DISTRIBUTION ds3;
 ```
 
 ### DROP KEY RANGE
@@ -149,7 +204,7 @@ This command is used to retrieve information about a specific entity of SPQR clu
 ```sql
 SHOW entity [WHERE where_clause]
 
-where entity is one of backend_connections, clients, databases, distributions, key_ranges, pools, prepared_statements, relations, routers, sequences, shards, status, task_groups, tsa_cache, users, version:
+where entity is one of backend_connections, clients, coordinator_address, databases, distributions, hosts, instance, is_read_only, key_ranges, move_stats, move_task, pools, prepared_statements, reference_relations, relations, routers, sequences, sharding_rules, shards, status, task_group, time_quantiles, tsa_cache, users, version:
 ```
 
 The`where_clause` is used to filter the results based on specific conditions. It allows you to specify criteria for selecting the information to be shown.
@@ -192,4 +247,47 @@ This command is used to invalidate the cache for a specific schema or the entire
 
 ```sql
 INVALIDATE CACHE
+```
+
+### REGISTER ROUTER
+
+<Warning>This command is not available for installations without SPQR coordinator.</Warning>
+
+This command is used to register a router with the SPQR Coordinator. When a router is registered, the coordinator becomes aware of it and can manage it as part of the cluster.
+
+```sql
+REGISTER ROUTER <router_id> ADDRESS <address>
+```
+
+**Parameters:**
+- `<router_id>`: A unique identifier for the router. Can be a simple name or a quoted string (e.g., `r1` or `'r-1'`).
+- `<address>`: The network address of the router in the format `host:port` (e.g., `'localhost:6432'` or `'router-host:7432'`).
+
+**Example:**
+```sql
+REGISTER ROUTER r1 ADDRESS 'localhost:6432'
+```
+
+### UNREGISTER ROUTER
+
+<Warning>This command is not available for installations without SPQR coordinator.</Warning>
+
+This command is used to unregister a router from the SPQR Coordinator. This removes the router from the coordinator's management.
+
+```sql
+UNREGISTER ROUTER <router_id>
+UNREGISTER ROUTER ALL
+```
+
+**Parameters:**
+- `<router_id>`: The unique identifier of the router to unregister.
+- `ALL`: Special keyword to unregister all routers at once.
+
+**Examples:**
+```sql
+-- Unregister a specific router
+UNREGISTER ROUTER r1
+
+-- Unregister all routers
+UNREGISTER ROUTER ALL
 ```

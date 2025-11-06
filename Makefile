@@ -1,6 +1,7 @@
 GIT_REVISION=`git rev-parse --short HEAD`
+GIT_COMMIT_COUNT=`git rev-list --count HEAD`
 SPQR_VERSION=`git describe --tags --abbrev=0`
-LDFLAGS=-ldflags "-X github.com/pg-sharding/spqr/pkg.GitRevision=${GIT_REVISION} -X github.com/pg-sharding/spqr/pkg.SpqrVersion=${SPQR_VERSION}"
+LDFLAGS=-ldflags "-X github.com/pg-sharding/spqr/pkg.GitRevision=${GIT_REVISION} -X github.com/pg-sharding/spqr/pkg.SpqrVersion=${SPQR_VERSION} -X github.com/pg-sharding/spqr/pkg.GitCommitCount=${GIT_COMMIT_COUNT}"
 GCFLAGS=-gcflags=all="-N -l"
 GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor | grep -v yacc | grep -v .git)
 
@@ -103,6 +104,9 @@ test-cli-overrides: build_router
 unittest:
 	go test -timeout 120s ./cmd/... ./pkg/... ./router/... ./coordinator/... ./yacc/console...
 	go test -race -count 20 -timeout 30s ./qdb/...
+
+etcdqdb_test:
+	go test -timeout 120s ./test/etcdqdb_integration/... 
 
 regress_local: proxy_2sh_run
 	./script/regress_local.sh

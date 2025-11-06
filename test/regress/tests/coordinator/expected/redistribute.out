@@ -66,6 +66,20 @@ SHOW key_ranges;
  krid1        | sh2      | ds1             | 1           | false
 (1 row)
 
+RETRY MOVE TASK GROUP tgid;
+ Task group ID | Destination shard ID | Source key range ID | Destination key range ID 
+---------------+----------------------+---------------------+--------------------------
+(0 rows)
+
+RETRY TASK GROUP tgid;
+ Task group ID | Destination shard ID | Source key range ID | Destination key range ID 
+---------------+----------------------+---------------------+--------------------------
+(0 rows)
+
+STOP MOVE TASK GROUP tgid;
+NOTICE: No move task group found to stop
+STOP TASK GROUP tgid;
+NOTICE: No move task group found to stop
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------

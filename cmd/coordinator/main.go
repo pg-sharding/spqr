@@ -3,12 +3,16 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"runtime"
 
+	_ "net/http/pprof"
+
 	"github.com/pg-sharding/spqr/coordinator/app"
+	coord "github.com/pg-sharding/spqr/coordinator/pkg"
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/coord"
+
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/spf13/cobra"
@@ -80,6 +84,10 @@ var rootCmd = &cobra.Command{
 		}
 
 		app := app.NewApp(coordinator)
+		// run pprof without wait group
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
 		return app.Run(true)
 	},
 }

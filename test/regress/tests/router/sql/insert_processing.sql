@@ -27,6 +27,8 @@ SELECT * FROM xx_insert_rel ORDER BY 1,2,3 /* __spqr__execute_on: sh2 */;
 SELECT * FROM xx_insert_rel ORDER BY 1,2,3 /* __spqr__execute_on: sh3 */;
 SELECT * FROM xx_insert_rel ORDER BY 1,2,3 /* __spqr__execute_on: sh4 */;
 
+explain (COSTS OFF ) SELECT * FROM xx_insert_rel WHERE a = 1 ORDER BY 1,2,3;
+
 DROP TABLE xx_insert_rel;
 
 \c spqr-console

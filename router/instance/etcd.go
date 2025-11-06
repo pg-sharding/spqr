@@ -50,25 +50,29 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 		}
 
 		sort.Slice(krs, func(i, j int) bool {
-			l := kr.KeyRangeFromDB(krs[i], d.ColTypes)
-			r := kr.KeyRangeFromDB(krs[j], d.ColTypes)
+			l, _ := kr.KeyRangeFromDB(krs[i], d.ColTypes)
+			r, _ := kr.KeyRangeFromDB(krs[j], d.ColTypes)
 			return !kr.CmpRangesLess(l.LowerBound, r.LowerBound, d.ColTypes)
 		})
 
 		for _, ckr := range krs {
-			if err := r.Console().Mgr().CreateKeyRange(ctx, kr.KeyRangeFromDB(ckr, d.ColTypes)); err != nil {
+			kRange, err := kr.KeyRangeFromDB(ckr, d.ColTypes)
+			if err != nil {
+				return err
+			}
+			if err := r.Console().Mgr().CreateKeyRange(ctx, kRange); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
 				return err
 			}
 		}
 	}
 
-	rrels, err := etcdConn.ListReferenceRelations(ctx)
+	ref_rels, err := etcdConn.ListReferenceRelations(ctx)
 	if err != nil {
 		return err
 	}
 
-	for _, rr := range rrels {
+	for _, rr := range ref_rels {
 		entries := []*rrelation.AutoIncrementEntry{}
 
 		for c, seq := range rr.ColumnSequenceMapping {

@@ -28,18 +28,18 @@ import (
 // - error: An error when fails.
 func getMasterCoordinator(ctx context.Context,
 	localCoordinator meta.EntityMgr) (masterMngr meta.EntityMgr, close func() error, err error) {
-	noNeedClose := func() error { return nil }
+	noNeedToClose := func() error { return nil }
 
 	coordAddr, err := localCoordinator.GetCoordinator(ctx)
 	if err != nil {
-		return nil, noNeedClose, err
+		return nil, noNeedToClose, err
 	}
 	if coordAddr == "" {
-		return localCoordinator, noNeedClose, nil
+		return localCoordinator, noNeedToClose, nil
 	}
 	masterCoordinatorConn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, noNeedClose, err
+		return nil, noNeedToClose, err
 	}
 	masterCoordinator := coord.NewAdapter(masterCoordinatorConn)
 	return masterCoordinator, func() error {

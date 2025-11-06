@@ -8,6 +8,8 @@ For example, if you are sharding a database of user records by user ID, you migh
 
 This method allows for efficient range queries, as all the data within a specific range is located on the same shard. However, it can lead to uneven distribution of data and load between key ranges.
 
+SPQR also supports [composite (multi-column) sharding keys](/sharding/composite_keys) for more complex range-based sharding scenarios, such as sharding by tenant ID and user ID together.
+
 ![ranged](/images/balancing_ranged.png "range-based approach")
 
 ## How to use it?

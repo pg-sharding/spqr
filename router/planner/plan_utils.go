@@ -10,38 +10,108 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
-	"github.com/pg-sharding/spqr/router/xproto"
 )
 
-func GetParams(rm *rmeta.RoutingMetadataContext) []int16 {
-	paramsFormatCodes := rm.SPH.BindParamFormatCodes()
-	var queryParamsFormatCodes []int16
-	paramsLen := len(rm.SPH.BindParams())
+func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {
 
-	/* https://github.com/postgres/postgres/blob/c65bc2e1d14a2d4daed7c1921ac518f2c5ac3d17/src/backend/tcop/pquery.c#L664-L691 */ /* #no-spell-check-line */
-	if len(paramsFormatCodes) > 1 {
-		queryParamsFormatCodes = paramsFormatCodes
-	} else if len(paramsFormatCodes) == 1 {
+	switch node := stmt.(type) {
 
-		/* single format specified, use for all columns */
-		queryParamsFormatCodes = make([]int16, paramsLen)
+	/* TDB: comments? */
 
-		for i := range paramsLen {
-			queryParamsFormatCodes[i] = paramsFormatCodes[0]
+	case *lyx.VariableSetStmt:
+		/* TBD: maybe skip all set stmts? */
+		/*
+		 * SET x = y etc., do not dispatch any statement to shards, just process this in router
+		 */
+		return &plan.RandomDispatchPlan{}, nil
+
+	case *lyx.VariableShowStmt:
+		/*
+		 if we want to reroute to execute this stmt, route to random shard
+		 XXX: support intelligent show support, without direct query dispatch
+		*/
+		return &plan.RandomDispatchPlan{}, nil
+
+	// XXX: need alter table which renames sharding column to non-sharding column check
+	case *lyx.CreateSchema:
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+
+	case *lyx.DefineStmt:
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+
+	case *lyx.CreateExtension:
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+	case *lyx.Grant:
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+	case *lyx.CreateTable:
+		ds, err := PlanCreateTable(ctx, rm, node)
+		if err != nil {
+			return nil, err
 		}
-	} else {
-		/* use default format for all columns */
-		queryParamsFormatCodes = make([]int16, paramsLen)
-		for i := range paramsLen {
-			queryParamsFormatCodes[i] = xproto.FormatCodeText
+		/*
+		 * Disallow to create table which does not contain any sharding column
+		 */
+		if err := CheckTableIsRoutable(ctx, rm.Mgr, node); err != nil {
+			return nil, err
 		}
+		return ds, nil
+	case *lyx.VacuumStmt:
+		/* Send vacuum to each shard */
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+
+	case *lyx.Cluster:
+		/* Send vacuum to each shard */
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+	case *lyx.Index:
+		/*
+		 * Disallow to index on table which does not contain any sharding column
+		 */
+		// XXX: do it
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+
+	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
+		// support simple ddl commands, route them to every chard
+		// this is not fully ACID (not atomic at least)
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+		/*
+			 case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
+				 // forbid under separate setting
+				 return MultiMatchState{}, nil
+		*/
+	case *lyx.CreateRole, *lyx.CreateDatabase:
+		// forbid under separate setting
+		return &plan.ScatterPlan{
+			IsDDL: true,
+		}, nil
+	case *lyx.Delete, *lyx.Update, *lyx.Select, *lyx.Insert, *lyx.ValueClause, *lyx.ExplainStmt:
+		/* do not bother with those */
+		return nil, nil
+	case *lyx.Copy:
+		return &plan.CopyPlan{}, nil
+	default:
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
-	return queryParamsFormatCodes
 }
 
 func ProcessInsertFromSelectOffsets(
@@ -156,4 +226,28 @@ func CheckTableIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.Cre
 	}
 
 	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
+}
+
+func ProcessRangeNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, q *lyx.RangeVar) error {
+	qualName := rfqn.RelationFQNFromRangeRangeVar(q)
+
+	// CTE, skip
+	if rm.RFQNIsCTE(qualName) {
+		/* remember cte alias */
+		rm.CTEAliases[q.Alias] = qualName.RelationName
+		return nil
+	}
+
+	if _, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
+		return err
+	}
+
+	if _, ok := rm.Rels[*qualName]; !ok {
+		rm.Rels[*qualName] = struct{}{}
+	}
+	if q.Alias != "" {
+		/* remember table alias */
+		rm.TableAliases[q.Alias] = *rfqn.RelationFQNFromRangeRangeVar(q)
+	}
+	return nil
 }

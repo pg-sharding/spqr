@@ -57,11 +57,47 @@ SPLIT KEY RANGE krid4 FROM krid1 BY 50;
 ERROR:  failed to split because bound intersects with "krid2" key range
 SPLIT KEY RANGE krid4 FROM krid2 BY 5;
 ERROR:  failed to split because bound is out of key range
+CREATE DISTRIBUTION ds2 COLUMN TYPES UUID;
+    add distribution    
+------------------------
+ distribution id -> ds2
+(1 row)
+
+-- invalid value
+CREATE KEY RANGE krid5 FROM '0000-0000' ROUTE TO sh1 FOR DISTRIBUTION ds2;
+ERROR:  invalid UUID length: 9
+-- correct create
+CREATE KEY RANGE krid5 FROM '00000000-0000-0000-0000-000000000000' ROUTE TO sh1 FOR DISTRIBUTION ds2;
+                  add key range                  
+-------------------------------------------------
+ bound -> '00000000-0000-0000-0000-000000000000'
+(1 row)
+
+-- correct split
+SPLIT KEY RANGE krid6 FROM krid5 BY 'FF000000-0000-0000-0000-000000000000';
+                   split key range                    
+------------------------------------------------------
+ key range id -> krid6
+ bound        -> ff000000-0000-0000-0000-000000000000
+(2 rows)
+
+-- intersecting key range
+SPLIT KEY RANGE krid7 FROM krid5 BY 'FF000000-0000-0000-0000-F00000000000';
+ERROR:  failed to split because bound intersects with "krid6" key range
+-- lowercase
+SPLIT KEY RANGE krid7 FROM krid5 BY 'fe000000-0000-0000-0000-000000000000';
+                   split key range                    
+------------------------------------------------------
+ key range id -> krid7
+ bound        -> fe000000-0000-0000-0000-000000000000
+(2 rows)
+
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------
  distribution id -> ds1
-(1 row)
+ distribution id -> ds2
+(2 rows)
 
 DROP KEY RANGE ALL;
  drop key range 

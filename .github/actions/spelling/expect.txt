@@ -6,6 +6,7 @@ abracadabras
 abracadabrav
 ACCC
 accusantium
+addgroup
 addprinc
 adipiscing
 adminpassword
@@ -49,6 +50,7 @@ ccmsg
 Cfgs
 cillum
 CIn
+Citus
 cityhash
 clid
 clientinteractor
@@ -60,9 +62,11 @@ cmngr
 cnth
 codeql
 colname
+colocation
 colref
 colreflist
 coltypes
+commitcount
 commodi
 commodo
 condeferrable
@@ -113,6 +117,7 @@ distrib
 distrr
 distrs
 dmgr
+dockerhub
 dolore
 dolorem
 doloremque
@@ -185,6 +190,7 @@ gomodtidy
 goooal
 gorm
 goyacc
+Greenplum
 gss
 gssapi
 GSSREQ
@@ -199,6 +205,7 @@ hotspots
 hst
 HTAP
 iana
+IDBy
 idi
 idj
 IDR
@@ -239,7 +246,6 @@ kcache
 kdb
 kdc
 kek
-keyr
 keyrange
 keyrangemgr
 keytab
@@ -385,9 +391,11 @@ PGUSER
 pgx
 pgxconn
 phandler
+pitr
 pkgclient
 Pmgr
 podman
+poolers
 poolmgr
 poolview
 porro
@@ -492,11 +500,11 @@ shname
 shq
 shrid
 shrule
-stdbuf
 singleshard
 Smartphone
 spaolacci
 spqr
+SPQRA
 SPQRC
 SPQRD
 spqrdump
@@ -531,6 +539,7 @@ SSLREQ
 sspi
 sssssdss
 stchan
+stdbuf
 stdcopy
 stmtcache
 stmtlog
@@ -560,11 +569,13 @@ testdb
 testutil
 texpr
 textoid
+tgid
 timeb
 timestamptz
 tlsconfig
 tlt
 TMINUS
+tmpfs
 tmpnum
 topbar
 TOPENBR
@@ -575,6 +586,8 @@ TRASCE
 tsa
 TSEMICOLON
 tstmt
+tupleslot
+tupletableslot
 twopc
 TXACT
 txactive
@@ -618,7 +631,7 @@ workloadlog
 workloadreplay
 worldmock
 wrongpassword
-Xact
+xact
 Xcpbs
 xerrors
 xjoin

@@ -25,6 +25,18 @@ WITH s AS (
 
 WITH s AS (
 	SELECT 1 FROM table1 WHERE i = 10
+) SELECT 1;
+
+WITH s AS (
+	SELECT 1 FROM table1 WHERE i = 10
+) SELECT (select * from s), 2;
+
+WITH s AS (
+	SELECT 1 FROM table1 WHERE i = 10
+) SELECT 1 + 2;
+
+WITH s AS (
+	SELECT 1 FROM table1 WHERE i = 10
 ), s2 AS (SELECT * FROM s) TABLE s2;
 
 WITH s AS (
@@ -124,3 +136,4 @@ DROP TABLE ref_rel_1;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
 DROP KEY RANGE ALL;
+

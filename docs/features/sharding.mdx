@@ -4,16 +4,25 @@ title: 'Sharding'
 
 The router knows that some tables have been [split into shards](/sharding/sharded_tables). If possible, the router tries to determine on the first transaction statement to which shard this transaction should be sent.
 
+SPQR supports both single-column and [composite (multi-column) sharding keys](/sharding/composite_keys).
+
 ```sql
--- This query should works with properly sharding rules
+-- This query works with properly configured sharding rules
 INSERT INTO test(id, age) VALUES (10, 16);
 ```
 
 But you can explicitly specify a shard or a sharding key in a comment request
 
 ```sql
--- But if you want to explicitly pass sharding key, you can do it like this
+-- If you want to explicitly pass sharding key, you can do it like this
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30*/;
+```
+
+For composite sharding keys, specify all key values separated by commas:
+
+```sql
+-- Explicit composite sharding key
+INSERT INTO users(tenant_id, user_id, name) VALUES (1, 100, 'Alice') /*__spqr__sharding_key: 1, 100*/;
 ```
 
 You can set a [default shard](/sharding/default_shard) for distribution. If there is a default shard, the router routes the query to that shard for an existing route.

@@ -65,7 +65,7 @@ NOTICE: send query to shard(s) : sh2
 -- TODO: test this
 --SELECT i, (SELECT count(*) from ref_rel_1) FROM ref_rel_1;
 -- with engine v2 this should NOT be dispatched
-SELECT i, (SELECT count(*) from ref_rel_1) FROM table1 WHERE i = 201;
+SELECT i, (SELECT count(*) from ref_rel_1) FROM table1 t WHERE t.i = 201;
 NOTICE: send query to shard(s) : sh3
  i | count 
 ---+-------
