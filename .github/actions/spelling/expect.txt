@@ -585,6 +585,7 @@ TRASCE
 tsa
 TSEMICOLON
 tstmt
+tupleslot
 twopc
 TXACT
 txactive
