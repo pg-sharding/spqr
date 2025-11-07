@@ -379,8 +379,9 @@ func TestBackendConnections(t *testing.T) {
 		Cmd:     spqrparser.BackendConnectionsStr,
 		GroupBy: spqrparser.GroupByClauseEmpty{},
 	}
-	err := interactor.BackendConnections(ctx, shards, cmd)
+	tts, err := interactor.BackendConnections(ctx, shards, cmd)
 	assert.Nil(t, err)
+	assert.Nil(t, interactor.ReplyTTS(tts))
 }
 
 func TestBackendConnectionsWhere(t *testing.T) {
@@ -433,9 +434,10 @@ func TestBackendConnectionsWhere(t *testing.T) {
 		},
 		GroupBy: spqrparser.GroupByClauseEmpty{},
 	}
-	err := interactor.BackendConnections(ctx, shards, cmd)
 
+	tts, err := interactor.BackendConnections(ctx, shards, cmd)
 	assert.Nil(t, err)
+	assert.Nil(t, interactor.ReplyTTS(tts))
 }
 
 func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
@@ -475,8 +477,10 @@ func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
 		Cmd:     spqrparser.BackendConnectionsStr,
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
 	}
-	err := interactor.BackendConnections(ctx, shards, cmd)
+
+	tts, err := interactor.BackendConnections(ctx, shards, cmd)
 	assert.Nil(t, err)
+	assert.Nil(t, interactor.ReplyTTS(tts))
 }
 func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -515,8 +519,10 @@ func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 		Cmd:     spqrparser.BackendConnectionsStr,
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
 	}
-	err := interactor.BackendConnections(ctx, shards, cmd)
+
+	tts, err := interactor.BackendConnections(ctx, shards, cmd)
 	assert.Nil(t, err)
+	assert.Nil(t, interactor.ReplyTTS(tts))
 }
 
 func TestBackendConnectionsGroupByFail(t *testing.T) {
@@ -534,7 +540,7 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 		Cmd:     spqrparser.BackendConnectionsStr,
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "someColumn"}}},
 	}
-	err := interactor.BackendConnections(ctx, shards, cmd)
+	_, err := interactor.BackendConnections(ctx, shards, cmd)
 	assert.ErrorContains(err, "not found column 'someColumn' for group by statement")
 }
 

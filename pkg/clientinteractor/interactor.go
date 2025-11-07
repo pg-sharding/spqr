@@ -14,10 +14,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
-	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -93,37 +91,11 @@ type PSQLInteractor struct {
 }
 
 func (pi *PSQLInteractor) CoordinatorAddr(ctx context.Context, addr string) error {
-	if err := pi.WriteHeader("coordinator address"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
+	tts := &tupleslot.TupleTableSlot{
+		Desc: engine.GetVPHeader("coordinator address"),
 	}
-	if err := pi.WriteDataRow(
-		fmt.Sprintf("%v", addr)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(1)
-}
-
-// TODO refactor it to make more user-friendly
-func (pi *PSQLInteractor) Instance(ctx context.Context, ci connmgr.ConnectionMgr) error {
-	if err := pi.WriteHeader(
-		"total tcp connection count",
-		"total cancel requests",
-		"active tcp connections"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	if err := pi.WriteDataRow(
-		fmt.Sprintf("%v", ci.TotalTcpCount()),
-		fmt.Sprintf("%v", ci.TotalCancelCount()),
-		fmt.Sprintf("%v", ci.ActiveTcpCount())); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(1)
+	tts.WriteDataRow(fmt.Sprintf("%v", addr))
+	return pi.ReplyTTS(tts)
 }
 
 // NewPSQLInteractor creates a new instance of the PSQLInteractor struct.
@@ -1012,7 +984,7 @@ func (pi *PSQLInteractor) KillBackend(id uint) error {
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.ShardHostCtl, stmt *spqrparser.Show) error {
+func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.ShardHostCtl, stmt *spqrparser.Show) (*tupleslot.TupleTableSlot, error) {
 
 	var filteredShards []shard.ShardHostCtl
 
@@ -1025,7 +997,7 @@ func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.Shar
 
 		match, err := engine.MatchRow(row, rowDesc, stmt.Where)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if !match {
 			continue
@@ -1041,11 +1013,14 @@ func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.Shar
 		for _, col := range gb.Col {
 			groupByCols = append(groupByCols, col.ColName)
 		}
-		return groupBy(shs, BackendConnectionsGetters, groupByCols, pi)
+		tts, err := groupBy(shs, BackendConnectionsGetters, groupByCols)
+		if err != nil {
+			return nil, err
+		}
+		return tts, nil
 	case spqrparser.GroupByClauseEmpty:
-		if err := pi.WriteHeader(BackendConnectionsHeaders...); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader(BackendConnectionsHeaders...),
 		}
 
 		for _, sh := range shs {
@@ -1053,97 +1028,18 @@ func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.Shar
 			for _, header := range BackendConnectionsHeaders {
 				vals = append(vals, BackendConnectionsGetters[header](sh))
 			}
-			if err := pi.WriteDataRow(vals...); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
-				return err
-			}
+			tts.WriteDataRow(vals...)
 		}
 
-		return pi.CompleteMsg(len(shs))
+		return tts, nil
 	default:
-		return spqrerror.NewByCode(spqrerror.SPQR_INVALID_REQUEST)
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_INVALID_REQUEST)
 	}
-}
-
-// TODO unit tests
-
-// Relations sends information about attached relations that satisfy conditions in WHERE-clause
-// Relations writes relation information to the PSQL client based on the given distribution-to-relations map and condition.
-//
-// Parameters:
-// - dsToRels (map[string][]*distributions.DistributedRelation): The map of distribution names to their corresponding distributed relations.
-// - condition (spqrparser.WhereClauseNode): The condition for filtering the relations.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.DistributedRelation, condition spqrparser.WhereClauseNode) error {
-	if err := pi.WriteHeader("Relation name", "Distribution ID", "Distribution key", "Schema name"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error sending header")
-		return err
-	}
-
-	/* XXX: make sort support in outer abstraction layer */
-	dss := make([]string, len(dsToRels))
-	i := 0
-	for ds := range dsToRels {
-		dss[i] = ds
-		i++
-	}
-	sort.Strings(dss)
-
-	c := 0
-	index := map[string]int{"distribution_id": 0}
-	for _, ds := range dss {
-		rels := dsToRels[ds]
-		sort.Slice(rels, func(i, j int) bool {
-			return rels[i].Name < rels[j].Name
-		})
-		if ok, err := engine.MatchRow([][]byte{[]byte(ds)}, index, condition); err != nil {
-			return err
-		} else if !ok {
-			continue
-		}
-		for _, rel := range rels {
-			dsKey := make([]string, len(rel.DistributionKey))
-			for i, e := range rel.DistributionKey {
-				t, err := hashfunction.HashFunctionByName(e.HashFunction)
-				if err != nil {
-					return err
-				}
-				dsKey[i] = fmt.Sprintf("(\"%s\", %s)", e.Column, hashfunction.ToString(t))
-			}
-			schema := rel.SchemaName
-			if schema == "" {
-				schema = "$search_path"
-			}
-			if err := pi.WriteDataRow(rel.Name, ds, strings.Join(dsKey, ","), schema); err != nil {
-				return err
-			}
-			c++
-		}
-	}
-	return pi.CompleteMsg(c)
 }
 
 func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation) error {
 	vp := engine.ReferenceRelationsScan(rrs)
 	return pi.ReplyTTS(vp)
-}
-
-func (pi *PSQLInteractor) PreparedStatements(ctx context.Context, shs []shard.PreparedStatementsMgrDescriptor) error {
-	if err := pi.WriteHeader("name", "backend_id", "hash", "query"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, sh := range shs {
-		if err := pi.WriteDataRow(sh.Name, fmt.Sprintf("%d", sh.ServerId), fmt.Sprintf("%d", sh.Hash), sh.Query); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(len(shs))
 }
 
 func (pi *PSQLInteractor) Sequences(ctx context.Context, seqs []string, sequenceVals []int64) error {
@@ -1234,7 +1130,7 @@ func (pi *PSQLInteractor) ReplyNotice(ctx context.Context, msg string) error {
 // - pi *PSQLInteractor:  output object
 // Returns:
 // - error: An error if there was a problem dropping the sequence.
-func groupBy[T any](values []T, getters map[string]toString[T], groupByCols []string, pi *PSQLInteractor) error {
+func groupBy[T any](values []T, getters map[string]toString[T], groupByCols []string) (*tupleslot.TupleTableSlot, error) {
 	groups := make(map[string][]T)
 	for _, value := range values {
 		key := ""
@@ -1242,7 +1138,7 @@ func groupBy[T any](values []T, getters map[string]toString[T], groupByCols []st
 			if getFun, ok := getters[groupByCol]; ok {
 				key = fmt.Sprintf("%s:-:%s", key, getFun(value))
 			} else {
-				return fmt.Errorf("not found column '%s' for group by statement", groupByCol)
+				return nil, fmt.Errorf("not found column '%s' for group by statement", groupByCol)
 			}
 		}
 		groups[key] = append(groups[key], value)
@@ -1252,12 +1148,6 @@ func groupBy[T any](values []T, getters map[string]toString[T], groupByCols []st
 	for _, groupByCol := range groupByCols {
 		colDescs = append(colDescs, engine.TextOidFD(groupByCol))
 	}
-	if err := pi.cl.Send(&pgproto3.RowDescription{
-		Fields: append(colDescs, engine.IntOidFD("count")),
-	}); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Could not write header for backend connections")
-		return err
-	}
 
 	keys := make([]string, 0, len(groups))
 	for groupKey := range groups {
@@ -1265,12 +1155,15 @@ func groupBy[T any](values []T, getters map[string]toString[T], groupByCols []st
 	}
 	sort.Strings(keys)
 
+	tts := &tupleslot.TupleTableSlot{
+		Desc: append(colDescs, engine.IntOidFD("count")),
+	}
+
 	for _, key := range keys {
 		group := groups[key]
 		cols := strings.Split(key, ":-:")[1:]
-		if err := pi.WriteDataRow(append(cols, fmt.Sprintf("%d", len(group)))...); err != nil {
-			return err
-		}
+
+		tts.WriteDataRow(append(cols, fmt.Sprintf("%d", len(group)))...)
 	}
-	return pi.CompleteMsg(len(groups))
+	return tts, nil
 }
