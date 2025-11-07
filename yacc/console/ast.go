@@ -1,6 +1,9 @@
 package spqrparser
 
-import "github.com/pg-sharding/spqr/router/rfqn"
+import (
+	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/router/rfqn"
+)
 
 type ColumnRef struct {
 	TableAlias string
@@ -35,33 +38,9 @@ type GroupBy struct {
 	GroupByClause
 	Col []ColumnRef
 }
-
-type WhereClauseNode interface {
-}
-
-type WhereClauseEmpty struct {
-	WhereClauseNode
-}
-
-type WhereClauseLeaf struct {
-	WhereClauseNode
-
-	Op     string
-	ColRef ColumnRef
-	Value  string
-}
-
-type WhereClauseOp struct {
-	WhereClauseNode
-
-	Op    string
-	Left  WhereClauseNode
-	Right WhereClauseNode
-}
-
 type Show struct {
 	Cmd     string
-	Where   WhereClauseNode
+	Where   lyx.Node
 	Order   OrderClause
 	GroupBy GroupByClause
 }
@@ -453,9 +432,6 @@ func (*ShardingRuleDefinition) iStatement()      {}
 func (*KeyRangeDefinition) iStatement()          {}
 func (*ShardDefinition) iStatement()             {}
 func (*Kill) iStatement()                        {}
-func (*WhereClauseLeaf) iStatement()             {}
-func (*WhereClauseEmpty) iStatement()            {}
-func (*WhereClauseOp) iStatement()               {}
 func (*Invalidate) iStatement()                  {}
 func (*SyncReferenceTables) iStatement()         {}
 
