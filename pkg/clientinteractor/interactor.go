@@ -614,12 +614,13 @@ func GetColumnsMap(desc TableDesc) map[string]int {
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientInfo, query *spqrparser.Show) error {
+func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientInfo, query *spqrparser.Show) (*tupleslot.TupleTableSlot, error) {
 	desc := ClientDesc{}
 	header := desc.GetHeader()
-	rowDesc := GetColumnsMap(desc)
+
 	condition := query.Where
-	order := query.Order
+	rowDesc := GetColumnsMap(desc)
+
 	var data [][][]byte
 	for _, cl := range clients {
 		if len(cl.Shards()) > 0 {
@@ -631,7 +632,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 
 				match, err := engine.MatchRow(row, rowDesc, condition)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				if !match {
 					continue
@@ -643,7 +644,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 
 			match, err := engine.MatchRow(row, rowDesc, condition)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			if !match {
 				continue
@@ -651,8 +652,27 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 
 			data = append(data, row)
 		}
-
 	}
+
+	data, err := ProcessOrderBy(data, GetColumnsMap(desc), query.Order)
+	if err != nil {
+		return nil, err
+	}
+
+	var descRow []pgproto3.FieldDescription
+	for _, stmt := range header {
+		descRow = append(descRow, engine.TextOidFD(stmt))
+	}
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: descRow,
+		Raw:  data,
+	}
+
+	return tts, nil
+}
+
+func ProcessOrderBy(data [][][]byte, colOrder map[string]int, order spqrparser.OrderClause) ([][][]byte, error) {
 	switch order.(type) {
 	case spqrparser.Order:
 		ord := order.(spqrparser.Order)
@@ -666,33 +686,22 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 		case spqrparser.SortByDefault:
 			asc_desc = engine.ASC
 		default:
-			return fmt.Errorf("wrong sorting option (asc/desc)")
+			return nil, fmt.Errorf("wrong sorting option (asc/desc)")
 		}
 		/*XXX: very hacky*/
 		op, err := engine.SearchSysCacheOperator(catalog.TEXTOID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		sortable := engine.SortableWithContext{
 			Data:      data,
-			Col_index: rowDesc[ord.Col.ColName],
+			Col_index: colOrder[ord.Col.ColName],
 			Order:     asc_desc,
 			Op:        op,
 		}
 		sort.Sort(sortable)
 	}
-
-	var descRow []pgproto3.FieldDescription
-	for _, stmt := range header {
-		descRow = append(descRow, engine.TextOidFD(stmt))
-	}
-
-	tts := &tupleslot.TupleTableSlot{
-		Desc: descRow,
-		Raw:  data,
-	}
-
-	return pi.ReplyTTS(tts)
+	return data, nil
 }
 
 // TODO : unit tests

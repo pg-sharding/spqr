@@ -1088,7 +1088,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 
-		return cli.Clients(ctx, resp, stmt)
+		tts, err := cli.Clients(ctx, resp, stmt)
+		if err != nil {
+			return err
+		}
+		return cli.ReplyTTS(tts)
+
 	case spqrparser.PoolsStr:
 		var respPools []pool.Pool
 		if err := ci.ForEachPool(func(p pool.Pool) error {
