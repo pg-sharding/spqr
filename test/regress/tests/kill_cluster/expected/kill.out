@@ -1,0 +1,6 @@
+UNREGISTER ROUTER ALL;
+ unregister router 
+-------------------
+ router id -> *
+(1 row)
+

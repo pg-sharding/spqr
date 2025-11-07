@@ -1,0 +1,90 @@
+host: ''
+router_port: '6432'
+admin_console_port: '7432'
+grpc_api_port: '7000'
+router_mode: PROXY
+log_level: debug
+time_quantiles_str:
+  - "0.75"
+  - "0.90"
+  - "0.999"
+  - "0.9999"
+world_shard_fallback: true
+show_notice_messages: true
+use_coordinator_init: true
+notice_message_format: "{shard}"
+query_routing:
+    enhanced_multishard_processing: true
+frontend_tls:
+  key_file: /etc/spqr/ssl/server.key
+  cert_file: /etc/spqr/ssl/server.crt
+  sslmode: require
+frontend_rules:
+  - db: regress
+    usr: regress
+    pool_mode: TRANSACTION
+    auth_rule:
+      auth_method: ok
+  - pool_mode: TRANSACTION
+    pool_default: true
+    pool_prepared_statement: false
+    auth_rule:
+      auth_method: ok
+shards:
+  sh1:
+    db: regress
+    usr: regress
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'spqr_shard_1:6432'
+      - 'spqr_shard_1_replica:6432'
+  sh2:
+    db: regress
+    usr: regress
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'spqr_shard_2:6432'
+      - 'spqr_shard_2_replica:6432'
+  sh3:
+    db: regress
+    usr: regress
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'spqr_shard_3:6432'
+      - 'spqr_shard_3_replica:6432'
+  sh4:
+    db: regress
+    usr: regress
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'spqr_shard_4:6432'
+      - 'spqr_shard_4_replica:6432'
+
+backend_rules:
+  - db: regress
+    usr: regress
+    connection_limit: 50
+    pool_discard: true
+    pool_rollback: true
+    auth_rules:
+      sh1:
+        auth_method: md5
+        password: 12345678
+      sh2:
+        auth_method: md5
+        password: 12345678
+      sh3:
+        auth_method: md5
+        password: 12345678
+      sh4:
+        auth_method: md5
+        password: 12345678
+schema_cache_backend_rule:
+  usr: regress
+  db: regress
+  pool_discard: true
+  pool_rollback: true

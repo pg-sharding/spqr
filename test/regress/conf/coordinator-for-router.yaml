@@ -1,0 +1,16 @@
+host: regress_coordinator
+coordinator_port: 7002
+grpc_api_port: 7003
+qdb_addr: '[regress_qdb_0_1]:2379'
+log_level: debug
+shard_data: '/spqr/test/regress/conf/shard_data.yaml'
+frontend_rules:
+  - db: regress
+    usr: regress
+    auth_rule:
+      auth_method: ok
+frontend_tls:
+  key_file: /etc/spqr/ssl/server.key
+  cert_file: /etc/spqr/ssl/server.crt
+  sslmode: require
+data_move_disable_triggers: true

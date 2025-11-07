@@ -1,4 +1,5 @@
 FROM spqr-base-image-debug
 EXPOSE 2345
-
+COPY ./docker/router/ssl/localhost.crt /etc/spqr/ssl/server.crt
+COPY ./docker/router/ssl/localhost.key /etc/spqr/ssl/server.key
 CMD /go/bin/dlv --listen=:2345 --headless=true --log=true --accept-multiclient --log-output=rpc,dap --check-go-version=true exec /spqr/spqr-coordinator -- -c ${COORDINATOR_CONFIG}
