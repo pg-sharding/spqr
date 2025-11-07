@@ -77,6 +77,15 @@
                     ]
                 },
                 {
+                    "group": "Deployment Guide",
+                    "pages": [
+                        "deployment/overview",
+                        "deployment/bare_router",
+                        "deployment/router_coordinator",
+                        "deployment/spqrinfra"
+                    ]
+                },
+                {
                     "group": "Configuration Guide",
                     "pages": [
                         "configuration/router",

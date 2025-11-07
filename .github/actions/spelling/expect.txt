@@ -323,7 +323,9 @@ multierr
 multishard
 munakoiso
 murmurhash
+mydb
 mylogs
+myuser
 myworkloadlog
 NALMm
 nconn
@@ -459,6 +461,7 @@ rmeta
 rmgr
 rollbacked
 roolback
+roundrobin
 routable
 routemgr
 routerparser
@@ -473,6 +476,7 @@ rrelation
 rrouter
 rulemgr
 rulerouter
+runbooks
 runc
 RUnlock
 samehost
@@ -514,6 +518,7 @@ spqrguard
 SPQRH
 spqrhash
 SPQRI
+spqrinfra
 SPQRJ
 SPQRK
 SPQRL
@@ -610,6 +615,7 @@ unconfigured
 underyling
 unmarshalling
 unrecognised
+Unregistering
 unregisters
 unregistration
 unroute
