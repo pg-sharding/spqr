@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	pkgclient "github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/engine"
 	mock "github.com/pg-sharding/spqr/pkg/mock/clientinteractor"
@@ -38,7 +39,7 @@ import (
 func TestSimpleWhere(t *testing.T) {
 	assert := assert.New(t)
 
-	row := []string{"1", "2", "3"}
+	row := [][]byte{[]byte("1"), []byte("2"), []byte("3")}
 	rowDesc := map[string]int{
 		"a": 0,
 		"b": 1,
@@ -66,7 +67,7 @@ func TestSimpleWhere(t *testing.T) {
 func TestSimpleNoMatchWhere(t *testing.T) {
 	assert := assert.New(t)
 
-	row := []string{"1", "2", "3"}
+	row := [][]byte{[]byte("1"), []byte("2"), []byte("3")}
 	rowDesc := map[string]int{
 		"a": 0,
 		"b": 1,
@@ -94,7 +95,7 @@ func TestSimpleNoMatchWhere(t *testing.T) {
 func TestAndNoMatchWhere(t *testing.T) {
 	assert := assert.New(t)
 
-	row := []string{"1", "2", "3"}
+	row := [][]byte{[]byte("1"), []byte("2"), []byte("3")}
 	rowDesc := map[string]int{
 		"a": 0,
 		"b": 1,
@@ -130,7 +131,7 @@ func TestAndNoMatchWhere(t *testing.T) {
 func TestOrMatchWhere(t *testing.T) {
 	assert := assert.New(t)
 
-	row := []string{"1", "2", "3"}
+	row := [][]byte{[]byte("1"), []byte("2"), []byte("3")}
 	rowDesc := map[string]int{
 		"a": 0,
 		"b": 1,
@@ -194,9 +195,17 @@ func TestGetColumnsMap(t *testing.T) {
 }
 
 func TestSortableWithContext(t *testing.T) {
-	data := [][]string{[]string{"a", "b"}, []string{"b", "a"}}
-	rev_data := [][]string{[]string{"b", "a"}, []string{"a", "b"}}
-	sortable := engine.SortableWithContext{Data: data, Col_index: 0, Order: engine.DESC}
+	data := [][][]byte{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("a")}}
+	rev_data := [][][]byte{{[]byte("b"), []byte("a")}, {[]byte("a"), []byte("b")}}
+	/*XXX: very hacky*/
+	op, err := engine.SearchSysCacheOperator(catalog.TEXTOID)
+	assert.NoError(t, err)
+
+	sortable := engine.SortableWithContext{
+		Data:      data,
+		Col_index: 0,
+		Order:     engine.DESC,
+		Op:        op}
 	sort.Sort(sortable)
 	assert.Equal(t, data, rev_data)
 }

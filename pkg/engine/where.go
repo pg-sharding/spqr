@@ -19,7 +19,7 @@ import (
 // Returns:
 // - bool: True if the row matches the condition, false otherwise.
 // - error: An error if there was a problem evaluating the condition.
-func MatchRow(row []string, nameToIndex map[string]int, condition spqrparser.WhereClauseNode) (bool, error) {
+func MatchRow(row [][]byte, nameToIndex map[string]int, condition spqrparser.WhereClauseNode) (bool, error) {
 	if condition == nil {
 		return true, nil
 	}
@@ -64,7 +64,8 @@ func MatchRow(row []string, nameToIndex map[string]int, condition spqrparser.Whe
 			if !ok {
 				return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "column %s does not exist", where.ColRef.ColName)
 			}
-			return row[i] == where.Value, nil
+			/*XXX: use operator here */
+			return string(row[i]) == where.Value, nil
 		default:
 			return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "not supported operation %s", where.Op)
 		}

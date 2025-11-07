@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg"
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
@@ -487,14 +488,18 @@ type ClientDesc struct {
 //   - Quantiles ([]float64): The quantiles of time statistics for the client.
 //   - TimeQuantileRouter (float64): The time quantile for the router.
 //   - TimeQuantileShard (float64): The time quantile for the shard.
-func (ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) []string {
+func (ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) [][]byte {
 	quantiles := statistics.GetQuantiles()
-	rowData := []string{fmt.Sprintf("%d", cl.ID()), cl.Usr(), cl.DB(), hostname, rAddr}
+	rowData := [][]byte{
+		fmt.Appendf(nil, "%d", cl.ID()),
+		[]byte(cl.Usr()),
+		[]byte(cl.DB()),
+		[]byte(hostname), []byte(rAddr)}
 
 	for _, el := range *quantiles {
-		rowData = append(rowData, fmt.Sprintf("%.2fms",
+		rowData = append(rowData, fmt.Appendf(nil, "%.2fms",
 			statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, el, cl)))
-		rowData = append(rowData, fmt.Sprintf("%.2fms",
+		rowData = append(rowData, fmt.Appendf(nil, "%.2fms",
 			statistics.GetTimeQuantile(statistics.StatisticsTypeShard, el, cl)))
 	}
 	return rowData
@@ -550,10 +555,11 @@ type BackendDesc struct {
 //   - Quantiles ([]float64): The quantiles of time statistics for the client.
 //   - TimeQuantileRouter (float64): The time quantile for the router.
 //   - TimeQuantileShard (float64): The time quantile for the shard.
-func (BackendDesc) GetRow(sh shard.ShardHostCtl) []string {
-	var rowData []string
+func (BackendDesc) GetRow(sh shard.ShardHostCtl) [][]byte {
+	var rowData [][]byte
 	for _, header := range BackendConnectionsHeaders {
-		rowData = append(rowData, BackendConnectionsGetters[header](sh))
+		/* XXX: fix that */
+		rowData = append(rowData, []byte(BackendConnectionsGetters[header](sh)))
 	}
 
 	return rowData
@@ -614,11 +620,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 	rowDesc := GetColumnsMap(desc)
 	condition := query.Where
 	order := query.Order
-	if err := pi.WriteHeader(header...); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	var data [][]string
+	var data [][][]byte
 	for _, cl := range clients {
 		if len(cl.Shards()) > 0 {
 			for _, sh := range cl.Shards() {
@@ -666,16 +668,31 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 		default:
 			return fmt.Errorf("wrong sorting option (asc/desc)")
 		}
-		sortable := engine.SortableWithContext{Data: data, Col_index: rowDesc[ord.Col.ColName], Order: asc_desc}
-		sort.Sort(sortable)
-	}
-	for i := range len(data) {
-		if err := pi.WriteDataRow(data[i]...); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
+		/*XXX: very hacky*/
+		op, err := engine.SearchSysCacheOperator(catalog.TEXTOID)
+		if err != nil {
 			return err
 		}
+		sortable := engine.SortableWithContext{
+			Data:      data,
+			Col_index: rowDesc[ord.Col.ColName],
+			Order:     asc_desc,
+			Op:        op,
+		}
+		sort.Sort(sortable)
 	}
-	return pi.CompleteMsg(len(clients))
+
+	var descRow []pgproto3.FieldDescription
+	for _, stmt := range header {
+		descRow = append(descRow, engine.TextOidFD(stmt))
+	}
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: descRow,
+		Raw:  data,
+	}
+
+	return pi.ReplyTTS(tts)
 }
 
 // TODO : unit tests
@@ -1056,6 +1073,7 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 		return err
 	}
 
+	/* XXX: make sort support in outer abstraction layer */
 	dss := make([]string, len(dsToRels))
 	i := 0
 	for ds := range dsToRels {
@@ -1071,7 +1089,7 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 		sort.Slice(rels, func(i, j int) bool {
 			return rels[i].Name < rels[j].Name
 		})
-		if ok, err := engine.MatchRow([]string{ds}, index, condition); err != nil {
+		if ok, err := engine.MatchRow([][]byte{[]byte(ds)}, index, condition); err != nil {
 			return err
 		} else if !ok {
 			continue
