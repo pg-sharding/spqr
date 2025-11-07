@@ -1029,7 +1029,11 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 
-		return cli.BackendConnections(ctx, resp, stmt)
+		tts, err := cli.BackendConnections(ctx, resp, stmt)
+		if err != nil {
+			return err
+		}
+		return cli.ReplyTTS(tts)
 	case spqrparser.ShardsStr:
 		shards, err := mngr.ListShards(ctx)
 		if err != nil {
@@ -1105,7 +1109,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		return cli.Pools(ctx, respPools)
 	case spqrparser.InstanceStr:
-		return cli.Instance(ctx, ci)
+		tts := engine.InstanceVirtualRelationScan(ctx, ci)
+		return cli.ReplyTTS(tts)
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
 	case spqrparser.CoordinatorAddrStr:
@@ -1153,7 +1158,11 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			}
 		}
 
-		return cli.Relations(dsToRels, stmt.Where)
+		tts, err := engine.RelationsVirtualRelationScan(dsToRels, stmt.Where)
+		if err != nil {
+			return err
+		}
+		return cli.ReplyTTS(tts)
 	case spqrparser.ReferenceRelationsStr:
 		rrs, err := mngr.ListReferenceRelations(ctx)
 		if err != nil {
@@ -1229,7 +1238,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 
-		return cli.PreparedStatements(ctx, resp)
+		tts := engine.PreparedStatementsVirtualRelationScan(ctx, resp)
+		return cli.ReplyTTS(tts)
 	case spqrparser.QuantilesStr:
 		return cli.Quantiles(ctx)
 	case spqrparser.SequencesStr:
