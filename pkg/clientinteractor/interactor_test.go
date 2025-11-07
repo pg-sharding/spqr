@@ -269,13 +269,15 @@ func TestClientsOrderBy(t *testing.T) {
 	ca.EXPECT().ID().AnyTimes()
 	ca.EXPECT().Usr().AnyTimes()
 	ca.EXPECT().DB().AnyTimes()
-	err := interactor.Clients(context.TODO(), ci, &spqrparser.Show{
+	tts, err := interactor.Clients(context.TODO(), ci, &spqrparser.Show{
 		Cmd:   spqrparser.ClientsStr,
 		Where: spqrparser.WhereClauseEmpty{},
 		Order: spqrparser.Order{OptAscDesc: spqrparser.SortByAsc{},
 			Col: spqrparser.ColumnRef{ColName: "user"}},
 	})
 	assert.Nil(t, err)
+
+	assert.Nil(t, interactor.ReplyTTS(tts))
 }
 
 func genShard(ctrl *gomock.Controller, host string, shardName string, shardId uint) shard.ShardHostCtl {
