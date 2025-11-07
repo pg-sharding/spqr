@@ -1,0 +1,9 @@
+Set up an etcd cluster to serve as the QDB. For production, we recommend using a 3-node cluster.
+
+**Example: Single-node etcd (for testing)**
+```bash
+etcd --listen-client-urls http://0.0.0.0:2379 \
+     --advertise-client-urls http://localhost:2379
+```
+
+For production, follow the [etcd clustering guide](https://etcd.io/docs/latest/op-guide/clustering/).

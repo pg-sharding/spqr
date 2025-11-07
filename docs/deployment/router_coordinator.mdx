@@ -3,6 +3,8 @@ title: 'Router + Coordinator'
 description: 'Production-ready SPQR deployment with dynamic configuration management'
 ---
 
+import EtcdExampleSetup from '/snippets/etcd_example_setup.mdx';
+
 ## Overview
 
 The Router + Coordinator deployment is the **recommended** setup for production environments. It provides centralized metadata management, dynamic configuration updates, and support for multiple router instances.
@@ -18,15 +20,7 @@ In this deployment mode:
 
 ### 1. Deploy etcd Cluster
 
-Set up an etcd cluster to serve as the QDB. For production, use a 3 or 5-node cluster.
-
-**Example: Single-node etcd (for testing)**
-```bash
-etcd --listen-client-urls http://0.0.0.0:2379 \
-     --advertise-client-urls http://localhost:2379
-```
-
-For production, follow the [etcd clustering guide](https://etcd.io/docs/latest/op-guide/clustering/).
+<EtcdExampleSetup />
 
 ### 2. Configure the Coordinator
 
@@ -50,7 +44,7 @@ frontend_rules:
 ### 3. Start the Coordinator
 
 ```bash
-spqr-coordinator run --config coordinator.yaml
+spqr-coordinator --config coordinator.yaml
 ```
 
 ### 4. Configure Sharding Rules
@@ -58,7 +52,7 @@ spqr-coordinator run --config coordinator.yaml
 Connect to the Coordinator's admin console:
 
 ```bash
-psql "host=localhost port=7002 dbname=spqr_console user=admin sslmode=disable"
+psql "host=localhost port=7002 dbname=spqr_console user=spqr-console sslmode=disable"
 ```
 
 Configure your sharding setup:
@@ -104,7 +98,7 @@ backend_rules:
     pool_discard: false
     pool_rollback: true
     auth_rule:
-      auth_method: md5
+      auth_method: clear_text
       password: backend_password
 ```
 
@@ -116,15 +110,10 @@ spqr-router run --config router.yaml
 
 ### 7. Register the Router
 
-Connect to the router's admin console:
+Connect to the coordinator’s admin console and register the router:
 
 ```bash
-psql "host=localhost port=7432 dbname=mydb user=myuser sslmode=disable"
-```
-
-Register the router:
-
-```sql
+psql "host=localhost port=7002 dbname=spqr-console user=spqr-console sslmode=disable"
 REGISTER ROUTER router1 ADDRESS 'localhost:7010';
 ```
 
@@ -179,24 +168,9 @@ On the Coordinator's admin console:
 
 ```sql
 SHOW routers;
-SHOW router router1;
-```
-
-### View Configuration
-
-```sql
 SHOW shards;
 SHOW distributions;
 SHOW key_ranges;
-```
-
-### Verify Router Connectivity
-
-On a router's admin console:
-
-```sql
-SHOW status;
-SHOW shards;
 ```
 
 ## Configuration Reference

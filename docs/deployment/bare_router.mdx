@@ -91,7 +91,7 @@ spqr-router run --config router.yaml
 Connect to the admin console to verify the configuration:
 
 ```bash
-psql "host=localhost port=7432 dbname=mydb user=myuser sslmode=disable"
+psql "host=localhost port=6432 dbname=spqr-console user=spqr-console sslmode=disable"
 ```
 
 Check the configured shards and key ranges:
