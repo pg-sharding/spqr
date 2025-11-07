@@ -112,7 +112,7 @@ db1=# SHOW __spqr__commit_strategy;
 ### __spqr__engine_v2
 Enables v2 routing engine functionality. This hint is currently under development and may be removed in future updates.
 
-**Config setting:** This hint overrides the [`query_routing.enhanced_multishard_processing`](/configuration/router#query-routing-settings) router configuration setting.
+<Tip>This hint overrides the [`query_routing.enhanced_multishard_processing`](/configuration/router#query-routing-settings) router configuration setting.</Tip>
 
 ```sql
 SET __spqr__engine_v2 TO on;
@@ -122,9 +122,9 @@ SET __spqr__engine_v2 TO on;
 
 The `target-session-attrs` parameter in PostgreSQL is used to specify the desired session state when connecting to a database. It is particularly useful in scenarios with multiple servers and failover configurations, where you want to ensure your session connects to the server with the desired role or state.
 
-**Config setting:** This hint overrides the [`query_routing.default_target_session_attrs`](/configuration/router#query-routing-settings) router configuration setting.
+<Tip>This hint overrides the [`query_routing.default_target_session_attrs`](/configuration/router#query-routing-settings) router configuration setting.</Tip>
 
-**Aliases:** `target_session_attrs` and `target-session-attrs` are both aliases for `__spqr__target_session_attrs`.
+<Note>`target_session_attrs` and `target-session-attrs` are both aliases for `__spqr__target_session_attrs`.</Note>
 
 Possible values for `target-session-attrs`:
 
@@ -151,7 +151,7 @@ SELECT pg_is_in_recovery() /* target-session-attrs: read-only */;
 
 Controls whether multi-shard queries are allowed or blocked.
 
-**Config setting:** This hint overrides the [`query_routing.default_route_behaviour`](/configuration/router#query-routing-settings) router configuration setting.
+<Tip>This hint overrides the [`query_routing.default_route_behaviour`](/configuration/router#query-routing-settings) router configuration setting.</Tip>
 
 Possible values:
 - `BLOCK` - Rejects queries that cannot be routed to a single shard (default in most configurations)
@@ -176,7 +176,7 @@ For more details on transaction control, see [Distributed Transactions](/shardin
 
 The `__spqr__execute_on` parameter is used to specify the shard on which a query should be executed.
 
-**Config setting:** This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.
+<Note>This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.</Note>
 
 ```sql
 SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: shard2 */;
@@ -186,7 +186,7 @@ SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: shard2 */;
 
 Whether to show notice messages.
 
-**Config setting:** This hint overrides the [`show_notice_messages`](/configuration/router#debug-settings) router configuration setting. 
+<Tip>This hint overrides the [`show_notice_messages`](/configuration/router#debug-settings) router configuration setting.</Tip>
 
 ```sql
 SET __spqr__reply_notice TO true;
@@ -198,7 +198,7 @@ NOTICE: send query to shard(s) : sh1
 
 The `__spqr__sharding_key` explicitly pass the sharding key to the SPQR Router.
 
-**Config setting:** This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.
+<Note>This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.</Note>
 
 ```sql
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30*/;
@@ -208,7 +208,7 @@ INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30*/;
 
 The `__spqr__distribution` explicitly specify which distribution the SPQR router should use for query routing.
 
-**Config setting:** This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.
+<Note>This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.</Note>
 
 ```sql
 DELETE FROM users WHERE name = 'denchick'
@@ -219,7 +219,7 @@ DELETE FROM users WHERE name = 'denchick'
 
 The `__spqr__distributed_relation` is name of distributed relation in context of which query meant to be executed. Is takes effect when distribution contains both CITY and MURMUR hash based sharding
 
-**Config setting:** This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.
+<Note>This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.</Note>
 
 ```sql
 DELETE FROM users WHERE name = 'denchick'
@@ -231,7 +231,7 @@ DELETE FROM users WHERE name = 'denchick'
 
 The `__spqr__auto_distribution` parameter is used to automatically adding new table in SPQR metadata without going into the spqr-console.
 
-**Config setting:** This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.
+<Note>This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.</Note>
 
 ```sql
 CREATE TABLE tax_rates (
@@ -251,7 +251,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 
 The `__spqr__distribution_key` parameter is used to automatically add a new table to the SPQR metadata without having to go into the spqr console. This parameter can only be used with the `__spqr__auto_distribution` hint.
 
-**Config setting:** This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.
+<Note>This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.</Note>
 
 ```sql
 CREATE TABLE orders (id int, item int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: id */;
@@ -261,7 +261,7 @@ CREATE TABLE orders (id int, item int) /* __spqr__auto_distribution: ds1, __spqr
 
 Forces a query to execute on all shards in the cluster, regardless of the sharding key.
 
-**Config setting:** This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.
+<Note>This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.</Note>
 
 Possible values:
 - `true` - Execute query on all shards
@@ -284,7 +284,7 @@ For more details, see [Distributed Transactions](/sharding/distributed_transacti
 
 Specifies the commit strategy for distributed transactions. This parameter is critical for ensuring data consistency when transactions span multiple shards.
 
-**Config setting:** This hint overrides the [`default_commit_strategy`](/configuration/router#transaction-settings) router configuration setting.
+<Tip>This hint overrides the [`default_commit_strategy`](/configuration/router#transaction-settings) router configuration setting.</Tip>
 
 Possible values:
 - `best-effort` (default) - One-phase commit with no coordination between shards
@@ -316,6 +316,6 @@ For comprehensive information about transaction strategies, including when to us
 
 This is developer-only option. Only possible value currently is 'v2'
 
-**Config setting:** This is a runtime-only hint with no corresponding router configuration setting. It is intended for internal development use only.
+<Note>This is a runtime-only hint with no corresponding router configuration setting. It is intended for internal development use only.</Note>
 
 
