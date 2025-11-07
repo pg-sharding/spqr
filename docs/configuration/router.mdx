@@ -100,15 +100,15 @@ Map of string to Shard objects. Refer to the `Shard` struct in the [pkg/config/r
 
 Query routing settings are nested under the `query_routing` configuration key and control how queries are routed across shards.
 
-<Note>Many of these settings can be overridden at runtime using [routing hints](/routing/hints). See the individual setting descriptions for details on which hints can override them and the priority order.</Note>
+<Note>Many of these settings can be overridden at runtime using [routing hints](/routing/hints).</Note>
 
 Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/router.go) file for the most up-to-date configuration options.
 
 | Setting                                        | Description                                                                                                              | Possible Values  | Overridable by Hint |
 |------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|------------------|---------------------|
-| `query_routing.default_route_behaviour`        | Whether to explicitly block multishard queries. Can be overridden by the [`__spqr__default_route_behaviour`](/routing/hints#__spqr__default_route_behaviour) hint. | `BLOCK`, `ALLOW` | Yes |
-| `query_routing.default_target_session_attrs`   | Default [target_session_attrs](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-TARGET-SESSION-ATTRS) for connections. Can be overridden by the [`__spqr__target_session_attrs`](/routing/hints#__spqr__target_session_attrs) hint. | `read-write`, `smart-read-write`, `read-only`, `prefer-standby`, `any` | Yes |
-| `query_routing.enhanced_multishard_processing` | Whether to enable enhanced processing for multishard queries. Can be overridden by the [`__spqr__engine_v2`](/routing/hints#__spqr__engine_v2) hint. | `true`, `false`  | Yes |
+| `query_routing.default_route_behaviour`        | Whether to explicitly block multishard queries. Can be overridden by the [__spqr__default_route_behaviour](/routing/hints#spqr-default-route-behaviour) hint. | `BLOCK`, `ALLOW` | Yes |
+| `query_routing.default_target_session_attrs`   | Default [target_session_attrs](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-TARGET-SESSION-ATTRS) for connections. Can be overridden by the [__spqr__target_session_attrs](/routing/hints#spqr-target-session-attrs) hint. | `read-write`, `smart-read-write`, `read-only`, `prefer-standby`, `any` | Yes |
+| `query_routing.enhanced_multishard_processing` | Whether to enable enhanced processing for multishard queries. Can be overridden by the [__spqr__engine_v2](/routing/hints#spqr-engine-v2) hint. | `true`, `false`  | Yes |
 | `query_routing.always_check_rules`             | Whether to always check the routing rules for every query. This only makes sense in a single-shard deployment.           | `true`, `false`  | No |
 | `query_routing.auto_route_ro_on_standby`       | Whether to automatically route read-only queries to standby servers. Currently only supported for single-shard topology. | `true`, `false`  | No |
 
@@ -116,7 +116,7 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 
 | Setting                   | Description                                                                                                              | Possible Values                     | Overridable by Hint |
 |---------------------------|--------------------------------------------------------------------------------------------------------------------------|-------------------------------------|---------------------|
-| `default_commit_strategy` | Default commit strategy for distributed transactions. Can be overridden per session with the [`__spqr__commit_strategy`](/routing/hints#__spqr__commit_strategy) hint. See [Distributed Transactions](/sharding/distributed_transactions) for details. | `best-effort`, `1pc`, `2pc` | Yes |
+| `default_commit_strategy` | Default commit strategy for distributed transactions. Can be overridden per session with the [__spqr__commit_strategy](/routing/hints#spqr-commit-strategy) hint. See [Distributed Transactions](/sharding/distributed_transactions) for details. | `best-effort`, `1pc`, `2pc` | Yes |
 
 ## Mode Settings
 
@@ -130,7 +130,7 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 
 | Setting          | Description                                           | Possible Values    | Overridable by Hint |
 |------------------|-------------------------------------------------------|--------------------|---------------------|
-| `show_notice_messages` | Whether to show notice messages. Can be overridden by the [`__spqr__reply_notice`](/routing/hints#__spqr__reply_notice) hint. | `true`, `false`    | Yes |
+| `show_notice_messages` | Whether to show notice messages. Can be overridden by the [__spqr__reply_notice](/routing/hints#spqr-reply-notice) hint. | `true`, `false`    | Yes |
 | `notice_message_format` | Format template for notice messages. Supported placeholders: `{shard}`, `{host}`, `{hostname}`, `{port}`, `{user}`, `{db}`, `{pid}`, `{az}`, `{id}`, `{tx_status}`, `{tx_served}`. Default: `"{shard}@{host}"`. Examples: `"{shard}"`, `"{host}"`, `"{shard}@{hostname}:{port}"`, `"{shard}@{host} (user={user}, db={db})"` | Any valid template string | No |
 | `pid_file_name`  | The file name to store the process ID.                | Any valid filepath | No |
 | `log_file_name`  | The file name for logging output.                     | Any valid filepath | No |

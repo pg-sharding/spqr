@@ -22,18 +22,7 @@ The SPQR router supports runtime hints and behavior configuration parameters. Th
     RESET __spqr__default_route_behaviour;
     ```
 
-### Scope and Priority
-
-When you define a virtual parameter using an SQL comment inside a query, its effect is limited to that specific query only.
-
-Using the SET statement to define a virtual parameter will take effect when the transaction block is bound. The value of the virtual parameter will be session-wide if no explicit transaction is initiated.
-
-To put it simply:
-
-- SQL comment = affects only one query
-- SET statement = affects the whole session (unless a transaction is active)
-
-### Priority Order
+### Scope and priority
 
 Many routing hints can override corresponding configuration settings from the router config file. When multiple sources define the same parameter, SPQR uses the following priority order (highest to lowest):
 
@@ -41,35 +30,6 @@ Many routing hints can override corresponding configuration settings from the ro
 2. **SQL comment hints** - Hints specified as SQL comments in the query (e.g., `/* __spqr__execute_on: shard2 */`)
 3. **Session-level SET** - SET statements executed outside a transaction
 4. **Router configuration** - Default values from the router config file (e.g., `query_routing.default_route_behaviour`)
-
-This means a transaction-level SET will override all other settings, SQL comment hints will override session-level SET and config defaults, and session-level SET will override only config file defaults.
-
-**Example demonstrating priority:**
-
-```sql
--- Assume router config has: query_routing.default_route_behaviour = "BLOCK"
-
--- Session-level SET overrides config
-db1=# SET __spqr__default_route_behaviour TO 'ALLOW';
-db1=# DROP TABLE temp;  -- Will execute on all shards (ALLOW from session SET)
-
--- SQL comment overrides session-level SET
-db1=# DROP TABLE temp2 /* __spqr__default_route_behaviour: BLOCK */;
-ERROR:  -- Blocked because SQL comment takes priority
-
--- Transaction-level SET has highest priority
-db1=# BEGIN;
-db1=*# SET __spqr__default_route_behaviour TO 'BLOCK';
-db1=*# DROP TABLE temp3;  -- Blocked (transaction SET)
-db1=*# DROP TABLE temp4 /* __spqr__default_route_behaviour: ALLOW */;  
-db1=*# -- Still blocked! Transaction SET overrides SQL comment
-db1=*# ROLLBACK;
-
--- After rollback, session SET is still active
-db1=# DROP TABLE temp5;  -- Executes on all shards (session SET still ALLOW)
-```
-
-For settings that can be overridden by hints, see the individual hint descriptions below which indicate the corresponding router config setting.
 
 ## Example
 
