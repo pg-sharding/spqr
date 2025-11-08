@@ -7,6 +7,7 @@
 ^\Qgo.sum\E$
 ^docker/router/ssl/
 ^yacc/console/gram.go$
+^yacc/console/gram.y$
 ^yacc/console/lex.rl$
 ^yacc/console/Makefile$
 ^go.sum$
