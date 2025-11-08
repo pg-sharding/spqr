@@ -153,11 +153,9 @@ exercitationem
 expd
 extldflags
 FAFBFF
-fdw
 feauter
 feda
 FFCCAC
-ffd
 fffffffffffe
 FFFFFFFFFFFFFFFF
 filerow
@@ -167,6 +165,7 @@ forwardable
 frmp
 frrule
 frsm
+ftts
 frules
 fugiat
 gcflags

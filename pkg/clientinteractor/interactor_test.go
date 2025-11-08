@@ -281,8 +281,9 @@ func TestClientsOrderBy(t *testing.T) {
 	}
 
 	tts, err := interactor.Clients(context.TODO(), ci)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	ftts, err := engine.FilterRows(tts, shw.Where)
+	assert.NoError(t, err)
 
 	assert.Nil(t, interactor.ReplyTTS(ftts))
 }
