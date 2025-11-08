@@ -59,7 +59,7 @@ func MatchRow(row [][]byte, nameToIndex map[string]int, condition lyx.Node) (boo
 			if !ok {
 				return true, spqrerror.New(spqrerror.SPQR_COMPLEX_QUERY, "left operand is not a column ref")
 			}
-			cv, ok := where.Left.(*lyx.AExprSConst)
+			cv, ok := where.Right.(*lyx.AExprSConst)
 			if !ok {
 				return true, spqrerror.New(spqrerror.SPQR_COMPLEX_QUERY, "right operand is not a string const")
 			}

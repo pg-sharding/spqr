@@ -220,7 +220,10 @@ func TestNestedWhere(t *testing.T) {
 					Left: &lyx.AExprOp{
 						Op: "=",
 						Left: &lyx.ColumnRef{
-							ColName: "usr",
+							ColName: "user",
+						},
+						Right: &lyx.AExprSConst{
+							Value: "usr1",
 						},
 					},
 					Right: &lyx.AExprOp{
@@ -228,6 +231,9 @@ func TestNestedWhere(t *testing.T) {
 						Op: "=",
 						Left: &lyx.ColumnRef{
 							ColName: "dbname",
+						},
+						Right: &lyx.AExprSConst{
+							Value: "db1",
 						},
 					},
 				},

@@ -287,8 +287,15 @@ func randomHex(n int) (string, error) {
 %type <stopMoveTaskGroup> stop_move_task_group
 
 
-
-
+%left		OR
+%left		AND
+%right		NOT
+%nonassoc	TLESS TGREATER TEQ
+%left		OP OPERATOR	/* multi-character ops and user-defined operators */
+%left		TPLUS TMINUS
+%left		TMUL 
+%left		TSQOPENBR TSQCLOSEBR
+%left		TOPENBR TCLOSEBR
 
 
 %start any_command
