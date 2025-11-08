@@ -1029,11 +1029,17 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 
-		tts, err := cli.BackendConnections(ctx, resp, stmt)
+		tts, err := cli.BackendConnections(resp, stmt.Where)
 		if err != nil {
 			return err
 		}
-		return cli.ReplyTTS(tts)
+
+		resTTS, err := engine.GroupBy(tts, stmt.GroupBy)
+		if err != nil {
+			return err
+		}
+
+		return cli.ReplyTTS(resTTS)
 	case spqrparser.ShardsStr:
 		shards, err := mngr.ListShards(ctx)
 		if err != nil {

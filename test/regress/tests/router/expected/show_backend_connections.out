@@ -80,7 +80,7 @@ SHOW backend_connections GROUP BY hostname;
 (8 rows)
 
 SHOW backend_connections GROUP BY unknown;
-ERROR:  not found column 'unknown' for group by statement
+ERROR:  failed to resolve 'unknown' column offset
 SHOW backend_connections GROUP BY user, hostname;
   user   |         hostname          | count 
 ---------+---------------------------+-------
@@ -95,7 +95,7 @@ SHOW backend_connections GROUP BY user, hostname;
 (8 rows)
 
 SHOW backend_connections GROUP BY user, unknown;
-ERROR:  not found column 'unknown' for group by statement
+ERROR:  failed to resolve 'unknown' column offset
 SHOW backend_connections GROUP BY ;
 ERROR:  syntax error
 \c regress

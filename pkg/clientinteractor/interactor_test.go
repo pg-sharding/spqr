@@ -373,7 +373,7 @@ func TestBackendConnections(t *testing.T) {
 	)
 
 	interactor := clientinteractor.NewPSQLInteractor(ca)
-	ctx := context.Background()
+
 	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h1", "sh1", 5),
 		genShard(ctrl, "h2", "sh2", 6),
@@ -383,9 +383,14 @@ func TestBackendConnections(t *testing.T) {
 		Cmd:     spqrparser.BackendConnectionsStr,
 		GroupBy: spqrparser.GroupByClauseEmpty{},
 	}
-	tts, err := interactor.BackendConnections(ctx, shards, cmd)
+
+	tts, err := interactor.BackendConnections(shards, cmd.Where)
 	assert.Nil(t, err)
-	assert.Nil(t, interactor.ReplyTTS(tts))
+
+	resTTS, err := engine.GroupBy(tts, cmd.GroupBy)
+	assert.Nil(t, err)
+
+	assert.Nil(t, interactor.ReplyTTS(resTTS))
 }
 
 func TestBackendConnectionsWhere(t *testing.T) {
@@ -421,7 +426,6 @@ func TestBackendConnectionsWhere(t *testing.T) {
 	)
 
 	interactor := clientinteractor.NewPSQLInteractor(ca)
-	ctx := context.Background()
 	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h1", "sh1", 5),
 		genShard(ctrl, "h2", "sh2", 6),
@@ -439,9 +443,13 @@ func TestBackendConnectionsWhere(t *testing.T) {
 		GroupBy: spqrparser.GroupByClauseEmpty{},
 	}
 
-	tts, err := interactor.BackendConnections(ctx, shards, cmd)
+	tts, err := interactor.BackendConnections(shards, cmd.Where)
 	assert.Nil(t, err)
-	assert.Nil(t, interactor.ReplyTTS(tts))
+
+	resTTS, err := engine.GroupBy(tts, cmd.GroupBy)
+	assert.Nil(t, err)
+
+	assert.Nil(t, interactor.ReplyTTS(resTTS))
 }
 
 func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
@@ -471,7 +479,6 @@ func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
 	)
 
 	interactor := clientinteractor.NewPSQLInteractor(ca)
-	ctx := context.Background()
 	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h2", "sh2", 1),
 		genShard(ctrl, "h1", "sh1", 2),
@@ -482,9 +489,13 @@ func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
 	}
 
-	tts, err := interactor.BackendConnections(ctx, shards, cmd)
+	tts, err := interactor.BackendConnections(shards, cmd.Where)
 	assert.Nil(t, err)
-	assert.Nil(t, interactor.ReplyTTS(tts))
+
+	resTTS, err := engine.GroupBy(tts, cmd.GroupBy)
+	assert.Nil(t, err)
+
+	assert.Nil(t, interactor.ReplyTTS(resTTS))
 }
 func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -513,7 +524,7 @@ func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 	)
 
 	interactor := clientinteractor.NewPSQLInteractor(ca)
-	ctx := context.Background()
+
 	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h1", "sh1", 1),
 		genShard(ctrl, "h1", "sh3", 2),
@@ -524,9 +535,13 @@ func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
 	}
 
-	tts, err := interactor.BackendConnections(ctx, shards, cmd)
+	tts, err := interactor.BackendConnections(shards, cmd.Where)
 	assert.Nil(t, err)
-	assert.Nil(t, interactor.ReplyTTS(tts))
+
+	resTTS, err := engine.GroupBy(tts, cmd.GroupBy)
+	assert.Nil(t, err)
+
+	assert.Nil(t, interactor.ReplyTTS(resTTS))
 }
 
 func TestBackendConnectionsGroupByFail(t *testing.T) {
@@ -534,7 +549,6 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
 	interactor := clientinteractor.NewPSQLInteractor(ca)
-	ctx := context.Background()
 	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h1", "sh1", 1),
 		genShard(ctrl, "h2", "sh2", 2),
@@ -544,8 +558,11 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 		Cmd:     spqrparser.BackendConnectionsStr,
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "someColumn"}}},
 	}
-	_, err := interactor.BackendConnections(ctx, shards, cmd)
-	assert.ErrorContains(err, "not found column 'someColumn' for group by statement")
+	tts, err := interactor.BackendConnections(shards, cmd.Where)
+	assert.NoError(err)
+	_, err = engine.GroupBy(tts, cmd.GroupBy)
+
+	assert.ErrorContains(err, "failed to resolve 'someColumn' column offset")
 }
 
 func TestMakeSimpleResponseWithData(t *testing.T) {
