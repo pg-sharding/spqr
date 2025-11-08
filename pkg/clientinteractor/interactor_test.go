@@ -12,11 +12,11 @@ import (
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	pkgclient "github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/engine"
-	mock "github.com/pg-sharding/spqr/pkg/mock/clientinteractor"
 	mockinst "github.com/pg-sharding/spqr/pkg/mock/conn"
 	mockshard "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/qdb"
 	"go.uber.org/mock/gomock"
@@ -190,12 +190,12 @@ func TestGetColumnsMap(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
-			tableDescMock := mock.NewMockTableDesc(ctrl)
-			tableDescMock.EXPECT().GetHeader().Return(testCase.header)
-			assert.Equal(testCase.expectedMap, clientinteractor.GetColumnsMap(tableDescMock))
+			tupleDesc := tupleslot.TupleDesc(
+				engine.GetVPHeader(testCase.header...))
+
+			assert.Equal(testCase.expectedMap, tupleDesc.GetColumnsMap())
 		})
 	}
-
 }
 
 func TestSortableWithContext(t *testing.T) {
@@ -273,15 +273,18 @@ func TestClientsOrderBy(t *testing.T) {
 	ca.EXPECT().ID().AnyTimes()
 	ca.EXPECT().Usr().AnyTimes()
 	ca.EXPECT().DB().AnyTimes()
-	tts, err := interactor.Clients(context.TODO(), ci, &spqrparser.Show{
+	shw := &spqrparser.Show{
 		Cmd:   spqrparser.ClientsStr,
 		Where: &lyx.AExprEmpty{},
 		Order: spqrparser.Order{OptAscDesc: spqrparser.SortByAsc{},
 			Col: spqrparser.ColumnRef{ColName: "user"}},
-	})
-	assert.Nil(t, err)
+	}
 
-	assert.Nil(t, interactor.ReplyTTS(tts))
+	tts, err := interactor.Clients(context.TODO(), ci)
+	assert.Nil(t, err)
+	ftts, err := engine.FilterRows(tts, shw.Where)
+
+	assert.Nil(t, interactor.ReplyTTS(ftts))
 }
 
 func genShard(ctrl *gomock.Controller, host string, shardName string, shardId uint) shard.ShardHostCtl {
@@ -384,11 +387,14 @@ func TestBackendConnections(t *testing.T) {
 		GroupBy: spqrparser.GroupByClauseEmpty{},
 	}
 
-	tts, err := interactor.BackendConnections(shards, cmd.Where)
-	assert.Nil(t, err)
+	tts, err := interactor.BackendConnections(shards)
+	assert.NoError(t, err)
 
-	resTTS, err := engine.GroupBy(tts, cmd.GroupBy)
-	assert.Nil(t, err)
+	ftts, err := engine.FilterRows(tts, cmd.Where)
+	assert.NoError(t, err)
+
+	resTTS, err := engine.GroupBy(ftts, cmd.GroupBy)
+	assert.NoError(t, err)
 
 	assert.Nil(t, interactor.ReplyTTS(resTTS))
 }
@@ -443,11 +449,14 @@ func TestBackendConnectionsWhere(t *testing.T) {
 		GroupBy: spqrparser.GroupByClauseEmpty{},
 	}
 
-	tts, err := interactor.BackendConnections(shards, cmd.Where)
-	assert.Nil(t, err)
+	tts, err := interactor.BackendConnections(shards)
+	assert.NoError(t, err)
 
-	resTTS, err := engine.GroupBy(tts, cmd.GroupBy)
-	assert.Nil(t, err)
+	ftts, err := engine.FilterRows(tts, cmd.Where)
+	assert.NoError(t, err)
+
+	resTTS, err := engine.GroupBy(ftts, cmd.GroupBy)
+	assert.NoError(t, err)
 
 	assert.Nil(t, interactor.ReplyTTS(resTTS))
 }
@@ -489,14 +498,18 @@ func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
 	}
 
-	tts, err := interactor.BackendConnections(shards, cmd.Where)
-	assert.Nil(t, err)
+	tts, err := interactor.BackendConnections(shards)
+	assert.NoError(t, err)
 
-	resTTS, err := engine.GroupBy(tts, cmd.GroupBy)
-	assert.Nil(t, err)
+	ftts, err := engine.FilterRows(tts, cmd.Where)
+	assert.NoError(t, err)
 
-	assert.Nil(t, interactor.ReplyTTS(resTTS))
+	resTTS, err := engine.GroupBy(ftts, cmd.GroupBy)
+	assert.NoError(t, err)
+
+	assert.NoError(t, interactor.ReplyTTS(resTTS))
 }
+
 func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
@@ -535,13 +548,16 @@ func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
 	}
 
-	tts, err := interactor.BackendConnections(shards, cmd.Where)
-	assert.Nil(t, err)
+	tts, err := interactor.BackendConnections(shards)
+	assert.NoError(t, err)
 
-	resTTS, err := engine.GroupBy(tts, cmd.GroupBy)
-	assert.Nil(t, err)
+	ftts, err := engine.FilterRows(tts, cmd.Where)
+	assert.NoError(t, err)
 
-	assert.Nil(t, interactor.ReplyTTS(resTTS))
+	resTTS, err := engine.GroupBy(ftts, cmd.GroupBy)
+	assert.NoError(t, err)
+
+	assert.NoError(t, interactor.ReplyTTS(resTTS))
 }
 
 func TestBackendConnectionsGroupByFail(t *testing.T) {
@@ -558,9 +574,13 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 		Cmd:     spqrparser.BackendConnectionsStr,
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "someColumn"}}},
 	}
-	tts, err := interactor.BackendConnections(shards, cmd.Where)
+	tts, err := interactor.BackendConnections(shards)
 	assert.NoError(err)
-	_, err = engine.GroupBy(tts, cmd.GroupBy)
+
+	ftts, err := engine.FilterRows(tts, cmd.Where)
+	assert.NoError(err)
+
+	_, err = engine.GroupBy(ftts, cmd.GroupBy)
 
 	assert.ErrorContains(err, "failed to resolve 'someColumn' column offset")
 }
