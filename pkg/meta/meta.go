@@ -1029,7 +1029,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 
-		tts, err := cli.BackendConnections(resp, stmt.Where)
+		tts, err := cli.BackendConnections(resp)
+		if err != nil {
+			return err
+		}
+
+		tts, err = engine.FilterRows(tts, stmt.Where)
 		if err != nil {
 			return err
 		}
@@ -1098,10 +1103,21 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 
-		tts, err := cli.Clients(ctx, resp, stmt)
+		tts, err := cli.Clients(ctx, resp)
 		if err != nil {
 			return err
 		}
+
+		tts, err = engine.FilterRows(tts, stmt.Where)
+		if err != nil {
+			return err
+		}
+
+		tts.Raw, err = clientinteractor.ProcessOrderBy(tts.Raw, tts.Desc.GetColumnsMap(), stmt.Order)
+		if err != nil {
+			return err
+		}
+
 		return cli.ReplyTTS(tts)
 
 	case spqrparser.PoolsStr:

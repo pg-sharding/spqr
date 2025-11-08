@@ -5,6 +5,7 @@ import (
 
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 )
 
 // TODO : unit tests
@@ -76,4 +77,25 @@ func MatchRow(row [][]byte, nameToIndex map[string]int, condition lyx.Node) (boo
 	default:
 		return false, nil
 	}
+}
+
+func FilterRows(tts *tupleslot.TupleTableSlot, where lyx.Node) (*tupleslot.TupleTableSlot, error) {
+
+	var filtRows [][][]byte
+
+	for _, row := range tts.Raw {
+
+		match, err := MatchRow(row, tts.Desc.GetColumnsMap(), where)
+		if err != nil {
+			return nil, err
+		}
+		if !match {
+			continue
+		}
+
+		filtRows = append(filtRows, row)
+	}
+
+	tts.Raw = filtRows
+	return tts, nil
 }
