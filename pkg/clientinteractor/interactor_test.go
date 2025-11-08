@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	pkgclient "github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/engine"
@@ -45,10 +46,10 @@ func TestSimpleWhere(t *testing.T) {
 		"b": 1,
 		"c": 2,
 	}
-	where := spqrparser.WhereClauseLeaf{
-		Op:     "=",
-		ColRef: spqrparser.ColumnRef{ColName: "a"},
-		Value:  "1",
+	where := &lyx.AExprOp{
+		Op:    "=",
+		Left:  &lyx.ColumnRef{ColName: "a"},
+		Right: &lyx.AExprSConst{Value: "1"},
 	}
 	expected := true
 
@@ -73,10 +74,11 @@ func TestSimpleNoMatchWhere(t *testing.T) {
 		"b": 1,
 		"c": 2,
 	}
-	where := spqrparser.WhereClauseLeaf{
-		Op:     "=",
-		ColRef: spqrparser.ColumnRef{ColName: "a"},
-		Value:  "2",
+
+	where := &lyx.AExprOp{
+		Op:    "=",
+		Left:  &lyx.ColumnRef{ColName: "a"},
+		Right: &lyx.AExprSConst{Value: "2"},
 	}
 	expected := false
 
@@ -101,17 +103,17 @@ func TestAndNoMatchWhere(t *testing.T) {
 		"b": 1,
 		"c": 2,
 	}
-	where := spqrparser.WhereClauseOp{
+	where := &lyx.AExprOp{
 		Op: "and",
-		Left: spqrparser.WhereClauseLeaf{
-			Op:     "=",
-			ColRef: spqrparser.ColumnRef{ColName: "b"},
-			Value:  "2",
+		Left: &lyx.AExprOp{
+			Op:    "=",
+			Left:  &lyx.ColumnRef{ColName: "b"},
+			Right: &lyx.AExprSConst{Value: "2"},
 		},
-		Right: spqrparser.WhereClauseLeaf{
-			Op:     "=",
-			ColRef: spqrparser.ColumnRef{ColName: "a"},
-			Value:  "2",
+		Right: &lyx.AExprOp{
+			Op:    "=",
+			Left:  &lyx.ColumnRef{ColName: "a"},
+			Right: &lyx.AExprSConst{Value: "2"},
 		},
 	}
 	expected := false
@@ -137,19 +139,21 @@ func TestOrMatchWhere(t *testing.T) {
 		"b": 1,
 		"c": 2,
 	}
-	where := spqrparser.WhereClauseOp{
+
+	where := &lyx.AExprOp{
 		Op: "or",
-		Left: spqrparser.WhereClauseLeaf{
-			Op:     "=",
-			ColRef: spqrparser.ColumnRef{ColName: "a"},
-			Value:  "2",
+		Left: &lyx.AExprOp{
+			Op:    "=",
+			Left:  &lyx.ColumnRef{ColName: "a"},
+			Right: &lyx.AExprSConst{Value: "2"},
 		},
-		Right: spqrparser.WhereClauseLeaf{
-			Op:     "=",
-			ColRef: spqrparser.ColumnRef{ColName: "b"},
-			Value:  "2",
+		Right: &lyx.AExprOp{
+			Op:    "=",
+			Left:  &lyx.ColumnRef{ColName: "b"},
+			Right: &lyx.AExprSConst{Value: "2"},
 		},
 	}
+
 	expected := true
 
 	actual, err := engine.MatchRow(row, rowDesc, where)
@@ -271,7 +275,7 @@ func TestClientsOrderBy(t *testing.T) {
 	ca.EXPECT().DB().AnyTimes()
 	tts, err := interactor.Clients(context.TODO(), ci, &spqrparser.Show{
 		Cmd:   spqrparser.ClientsStr,
-		Where: spqrparser.WhereClauseEmpty{},
+		Where: &lyx.AExprEmpty{},
 		Order: spqrparser.Order{OptAscDesc: spqrparser.SortByAsc{},
 			Col: spqrparser.ColumnRef{ColName: "user"}},
 	})
@@ -425,11 +429,11 @@ func TestBackendConnectionsWhere(t *testing.T) {
 	}
 	cmd := &spqrparser.Show{
 		Cmd: spqrparser.BackendConnectionsStr,
-		Where: spqrparser.WhereClauseLeaf{
-			ColRef: spqrparser.ColumnRef{
+		Where: &lyx.AExprOp{
+			Left: &lyx.ColumnRef{
 				ColName: "hostname",
 			},
-			Value: "h2",
+			Right: &lyx.AExprSConst{Value: "h2"},
 			Op:    "=",
 		},
 		GroupBy: spqrparser.GroupByClauseEmpty{},

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -19,7 +20,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
-	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
 func GetVPHeader(stmts ...string) []pgproto3.FieldDescription {
@@ -178,7 +178,7 @@ func PreparedStatementsVirtualRelationScan(ctx context.Context, shs []shard.Prep
 // - error: An error if any occurred during the operation.
 func RelationsVirtualRelationScan(
 	dsToRels map[string][]*distributions.DistributedRelation,
-	condition spqrparser.WhereClauseNode) (*tupleslot.TupleTableSlot, error) {
+	condition lyx.Node) (*tupleslot.TupleTableSlot, error) {
 
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader("Relation name", "Distribution ID", "Distribution key", "Schema name"),

@@ -85,4 +85,5 @@ var reservedWords = map[string]int{
 	"retry":        RETRY,
 	"sync":         SYNC,
 	"default":      DEFAULT,
+	"not":          NOT,
 }
