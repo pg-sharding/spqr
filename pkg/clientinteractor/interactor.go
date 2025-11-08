@@ -30,9 +30,6 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
-type toString[T any] func(s T) string
-type BackendGetter func(sh shard.ShardHostCtl) string
-
 func GetRouter(sh shard.ShardHostCtl) string {
 	router := "no data"
 	s, ok := sh.(shard.CoordShardinfo)

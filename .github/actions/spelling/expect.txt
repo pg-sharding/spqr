@@ -11,16 +11,13 @@ addprinc
 adipiscing
 adminpassword
 AExpr
-afe
 aliasname
 aliqua
 aliquip
 amet
 anyerr
-AOk
 appdefaults
 APREQ
-aqo
 argexpr
 ARRAYOID
 aspernatur
@@ -28,11 +25,8 @@ astmt
 authed
 autotools
 basebackup
-bbc
 bcad
-bcc
 BConst
-bda
 bebc
 bemp
 Benro
@@ -43,12 +37,10 @@ cachedchecker
 caio
 CANCELREQ
 canreq
-ccb
 ccfg
 ccmsg
 Cfgs
 cillum
-CIn
 Citus
 cityhash
 clid
@@ -86,8 +78,6 @@ coreutils
 corporis
 cptr
 createsequence
-Cta
-ctl
 ctsa
 cupidatat
 currkr
@@ -102,8 +92,6 @@ datname
 dbpool
 dbtpcc
 dbutils
-dcd
-ddl
 debhelper
 debian
 denchick
@@ -122,7 +110,6 @@ dolorem
 doloremque
 dotnet
 DOUBLEOID
-drb
 drel
 dserr
 dssd
@@ -130,9 +117,7 @@ dstmt
 Duis
 dumbo
 ebff
-eda
 edabaf
-eec
 eefc
 efef
 eiusmod
@@ -142,7 +127,6 @@ Elts
 emptypb
 enim
 entrieslist
-epn
 errdefs
 errhint
 eshkere
