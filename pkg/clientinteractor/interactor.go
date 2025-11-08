@@ -986,10 +986,10 @@ func (pi *PSQLInteractor) KillBackend(id uint) error {
 // - error: An error if any occurred during the operation.
 func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.ShardHostCtl, stmt *spqrparser.Show) (*tupleslot.TupleTableSlot, error) {
 
-	var filteredShards []shard.ShardHostCtl
-
 	var desc BackendDesc
 	rowDesc := GetColumnsMap(desc)
+
+	var filtRows [][][]byte
 
 	for _, sh := range shs {
 
@@ -1002,10 +1002,15 @@ func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.Shar
 		if !match {
 			continue
 		}
-		filteredShards = append(filteredShards, sh)
+
+		filtRows = append(filtRows, row)
 	}
 
-	shs = filteredShards
+	tts := &tupleslot.TupleTableSlot{
+		Desc: engine.GetVPHeader(BackendConnectionsHeaders...),
+	}
+
+	tts.Raw = filtRows
 
 	switch gb := stmt.GroupBy.(type) {
 	case spqrparser.GroupBy:
@@ -1013,24 +1018,12 @@ func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.Shar
 		for _, col := range gb.Col {
 			groupByCols = append(groupByCols, col.ColName)
 		}
-		tts, err := groupBy(shs, BackendConnectionsGetters, groupByCols)
+		tts, err := groupBy(tts, groupByCols)
 		if err != nil {
 			return nil, err
 		}
 		return tts, nil
 	case spqrparser.GroupByClauseEmpty:
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader(BackendConnectionsHeaders...),
-		}
-
-		for _, sh := range shs {
-			vals := make([]string, 0)
-			for _, header := range BackendConnectionsHeaders {
-				vals = append(vals, BackendConnectionsGetters[header](sh))
-			}
-			tts.WriteDataRow(vals...)
-		}
-
 		return tts, nil
 	default:
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_INVALID_REQUEST)
@@ -1130,18 +1123,19 @@ func (pi *PSQLInteractor) ReplyNotice(ctx context.Context, msg string) error {
 // - pi *PSQLInteractor:  output object
 // Returns:
 // - error: An error if there was a problem dropping the sequence.
-func groupBy[T any](values []T, getters map[string]toString[T], groupByCols []string) (*tupleslot.TupleTableSlot, error) {
-	groups := make(map[string][]T)
-	for _, value := range values {
+func groupBy(tts *tupleslot.TupleTableSlot, groupByCols []string) (*tupleslot.TupleTableSlot, error) {
+	groups := make(map[string][][][]byte)
+	for _, row := range tts.Raw {
 		key := ""
 		for _, groupByCol := range groupByCols {
-			if getFun, ok := getters[groupByCol]; ok {
-				key = fmt.Sprintf("%s:-:%s", key, getFun(value))
-			} else {
-				return nil, fmt.Errorf("not found column '%s' for group by statement", groupByCol)
+			off, err := tts.ColNameOffset(groupByCol)
+			if err != nil {
+				return nil, err
 			}
+			key = fmt.Sprintf("%s:-:%s", key, string(row[off]))
+
 		}
-		groups[key] = append(groups[key], value)
+		groups[key] = append(groups[key], row)
 	}
 
 	colDescs := make([]pgproto3.FieldDescription, 0, len(groupByCols)+1)
@@ -1155,7 +1149,7 @@ func groupBy[T any](values []T, getters map[string]toString[T], groupByCols []st
 	}
 	sort.Strings(keys)
 
-	tts := &tupleslot.TupleTableSlot{
+	outtts := &tupleslot.TupleTableSlot{
 		Desc: append(colDescs, engine.IntOidFD("count")),
 	}
 
@@ -1163,7 +1157,7 @@ func groupBy[T any](values []T, getters map[string]toString[T], groupByCols []st
 		group := groups[key]
 		cols := strings.Split(key, ":-:")[1:]
 
-		tts.WriteDataRow(append(cols, fmt.Sprintf("%d", len(group)))...)
+		outtts.WriteDataRow(append(cols, fmt.Sprintf("%d", len(group)))...)
 	}
-	return tts, nil
+	return outtts, nil
 }
