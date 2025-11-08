@@ -4,14 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg"
-	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/engine"
@@ -21,7 +18,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
-	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -29,15 +25,6 @@ import (
 	"github.com/pg-sharding/spqr/router/statistics"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
-
-func GetRouter(sh shard.ShardHostCtl) string {
-	router := "no data"
-	s, ok := sh.(shard.CoordShardinfo)
-	if ok {
-		router = s.Router()
-	}
-	return router
-}
 
 type Interactor interface {
 	ProcClient(ctx context.Context, nconn net.Conn, pt port.RouterPortType) error
@@ -402,106 +389,6 @@ func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.Move
 
 // TODO : unit tests
 
-// Clients retrieves client information based on provided client information, filtering conditions and writes the data to the PSQL client.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-// - clients ([]client.ClientInfo): The list of client information to process.
-// - condition (spqrparser.WhereClauseNode): The condition to filter the client information.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientInfo) (*tupleslot.TupleTableSlot, error) {
-
-	quantiles := statistics.GetQuantiles()
-	headers := []string{
-		"client_id", "user", "dbname", "server_id", "router_address",
-	}
-	for _, el := range *quantiles {
-		headers = append(headers, fmt.Sprintf("router_time_%g", el))
-		headers = append(headers, fmt.Sprintf("shard_time_%g", el))
-	}
-
-	header := engine.GetVPHeader(headers...)
-
-	tts := &tupleslot.TupleTableSlot{
-		Desc: header,
-	}
-
-	getRow := func(cl client.Client, hostname string, rAddr string) [][]byte {
-		quantiles := statistics.GetQuantiles()
-		rowData := [][]byte{
-			fmt.Appendf(nil, "%d", cl.ID()),
-			[]byte(cl.Usr()),
-			[]byte(cl.DB()),
-			[]byte(hostname), []byte(rAddr)}
-
-		for _, el := range *quantiles {
-			rowData = append(rowData, fmt.Appendf(nil, "%.2fms",
-				statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, el, cl)))
-			rowData = append(rowData, fmt.Appendf(nil, "%.2fms",
-				statistics.GetTimeQuantile(statistics.StatisticsTypeShard, el, cl)))
-		}
-		return rowData
-	}
-
-	var data [][][]byte
-	for _, cl := range clients {
-		if len(cl.Shards()) > 0 {
-			for _, sh := range cl.Shards() {
-				if sh == nil {
-					continue
-				}
-				row := getRow(cl, sh.Instance().Hostname(), cl.RAddr())
-
-				data = append(data, row)
-			}
-		} else {
-			row := getRow(cl, "no backend connection", cl.RAddr())
-
-			data = append(data, row)
-		}
-	}
-
-	tts.Raw = data
-
-	return tts, nil
-}
-
-func ProcessOrderBy(data [][][]byte, colOrder map[string]int, order spqrparser.OrderClause) ([][][]byte, error) {
-	switch order.(type) {
-	case spqrparser.Order:
-		ord := order.(spqrparser.Order)
-		var asc_desc int
-
-		switch ord.OptAscDesc.(type) {
-		case spqrparser.SortByAsc:
-			asc_desc = engine.ASC
-		case spqrparser.SortByDesc:
-			asc_desc = engine.DESC
-		case spqrparser.SortByDefault:
-			asc_desc = engine.ASC
-		default:
-			return nil, fmt.Errorf("wrong sorting option (asc/desc)")
-		}
-		/*XXX: very hacky*/
-		op, err := engine.SearchSysCacheOperator(catalog.TEXTOID)
-		if err != nil {
-			return nil, err
-		}
-		sortable := engine.SortableWithContext{
-			Data:      data,
-			Col_index: colOrder[ord.Col.ColName],
-			Order:     asc_desc,
-			Op:        op,
-		}
-		sort.Sort(sortable)
-	}
-	return data, nil
-}
-
-// TODO : unit tests
-
 // Distributions sends distribution data to the PSQL client.
 //
 // Parameters:
@@ -797,62 +684,6 @@ func (pi *PSQLInteractor) KillBackend(id uint) error {
 		return err
 	}
 	return pi.CompleteMsg(0)
-}
-
-var BackendConnectionsHeaders = []string{
-	"backend connection id",
-	"router",
-	"shard key name",
-	"hostname",
-	"pid",
-	"user",
-	"dbname",
-	"sync",
-	"tx_served",
-	"tx status",
-	"is stale",
-	"created at",
-}
-
-// BackendConnections writes backend connection information to the PSQL client.
-//
-// Parameters:
-// - _ (context.Context): The context for the operation.
-// - shs ([]shard.Shardinfo): The list of shard information.
-// - stmt (*spqrparser.Show): The query itself.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) BackendConnections(shs []shard.ShardHostCtl) (*tupleslot.TupleTableSlot, error) {
-
-	tts := &tupleslot.TupleTableSlot{
-
-		Desc: engine.GetVPHeader(BackendConnectionsHeaders...),
-	}
-
-	var rows [][][]byte
-
-	for _, sh := range shs {
-
-		rows = append(rows, [][]byte{
-			fmt.Appendf(nil, "%d", sh.ID()),
-			[]byte(GetRouter(sh)),
-			[]byte(sh.ShardKeyName()),
-			[]byte(sh.InstanceHostname()),
-			fmt.Appendf(nil, "%d", sh.Pid()),
-			[]byte(sh.Usr()),
-			[]byte(sh.DB()),
-			[]byte(strconv.FormatInt(sh.Sync(), 10)),
-			[]byte(strconv.FormatInt(sh.TxServed(), 10)),
-			[]byte(sh.TxStatus().String()),
-			[]byte(strconv.FormatBool(sh.IsStale())),
-			[]byte(sh.CreatedAt().UTC().Format(time.RFC3339)),
-		})
-	}
-
-	tts.Raw = rows
-
-	return tts, nil
 }
 
 func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation) error {

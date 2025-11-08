@@ -280,7 +280,7 @@ func TestClientsOrderBy(t *testing.T) {
 			Col: spqrparser.ColumnRef{ColName: "user"}},
 	}
 
-	tts, err := interactor.Clients(context.TODO(), ci)
+	tts, err := engine.ClientsVirtualRelationScan(context.TODO(), ci)
 	assert.NoError(t, err)
 	ftts, err := engine.FilterRows(tts, shw.Where)
 	assert.NoError(t, err)
@@ -314,7 +314,7 @@ func TestBackendConnections(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
 	var desc []pgproto3.FieldDescription
-	for _, header := range clientinteractor.BackendConnectionsHeaders {
+	for _, header := range engine.BackendConnectionsHeaders {
 		desc = append(desc, engine.TextOidFD(header))
 	}
 
@@ -388,7 +388,7 @@ func TestBackendConnections(t *testing.T) {
 		GroupBy: spqrparser.GroupByClauseEmpty{},
 	}
 
-	tts, err := interactor.BackendConnections(shards)
+	tts, err := engine.BackendConnectionsVirtualRelationScan(shards)
 	assert.NoError(t, err)
 
 	ftts, err := engine.FilterRows(tts, cmd.Where)
@@ -404,7 +404,7 @@ func TestBackendConnectionsWhere(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
 	var desc []pgproto3.FieldDescription
-	for _, header := range clientinteractor.BackendConnectionsHeaders {
+	for _, header := range engine.BackendConnectionsHeaders {
 		desc = append(desc, engine.TextOidFD(header))
 	}
 
@@ -450,7 +450,7 @@ func TestBackendConnectionsWhere(t *testing.T) {
 		GroupBy: spqrparser.GroupByClauseEmpty{},
 	}
 
-	tts, err := interactor.BackendConnections(shards)
+	tts, err := engine.BackendConnectionsVirtualRelationScan(shards)
 	assert.NoError(t, err)
 
 	ftts, err := engine.FilterRows(tts, cmd.Where)
@@ -499,7 +499,7 @@ func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
 	}
 
-	tts, err := interactor.BackendConnections(shards)
+	tts, err := engine.BackendConnectionsVirtualRelationScan(shards)
 	assert.NoError(t, err)
 
 	ftts, err := engine.FilterRows(tts, cmd.Where)
@@ -549,7 +549,7 @@ func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
 	}
 
-	tts, err := interactor.BackendConnections(shards)
+	tts, err := engine.BackendConnectionsVirtualRelationScan(shards)
 	assert.NoError(t, err)
 
 	ftts, err := engine.FilterRows(tts, cmd.Where)
@@ -564,8 +564,6 @@ func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 func TestBackendConnectionsGroupByFail(t *testing.T) {
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
-	ca := mockcl.NewMockRouterClient(ctrl)
-	interactor := clientinteractor.NewPSQLInteractor(ca)
 	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h1", "sh1", 1),
 		genShard(ctrl, "h2", "sh2", 2),
@@ -575,7 +573,7 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 		Cmd:     spqrparser.BackendConnectionsStr,
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "someColumn"}}},
 	}
-	tts, err := interactor.BackendConnections(shards)
+	tts, err := engine.BackendConnectionsVirtualRelationScan(shards)
 	assert.NoError(err)
 
 	ftts, err := engine.FilterRows(tts, cmd.Where)

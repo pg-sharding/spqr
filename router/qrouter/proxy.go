@@ -35,7 +35,7 @@ type ProxyQrouter struct {
 	cfg *config.QRouter
 
 	mgr          meta.EntityMgr
-	csm          connmgr.ConnectionStatMgr
+	csm          connmgr.ConnectionMgr
 	schemaCache  *cache.SchemaCache
 	idRangeCache planner.IdentityRouterCache
 
@@ -91,7 +91,7 @@ func (qr *ProxyQrouter) Mgr() meta.EntityMgr {
 	return qr.mgr
 }
 
-func (qr *ProxyQrouter) CSM() connmgr.ConnectionStatMgr {
+func (qr *ProxyQrouter) CSM() connmgr.ConnectionMgr {
 	return qr.csm
 }
 
@@ -138,7 +138,7 @@ var _ planner.QueryPlanner = &ProxyQrouter{}
 
 func NewProxyRouter(shardMapping map[string]*config.Shard,
 	mgr meta.EntityMgr,
-	csm connmgr.ConnectionStatMgr,
+	csm connmgr.ConnectionMgr,
 	qcfg *config.QRouter,
 	cache *cache.SchemaCache,
 	idRangeCache planner.IdentityRouterCache,
