@@ -19,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb/ops"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"github.com/sethvargo/go-retry"
 )
 
 type Coordinator struct {
@@ -785,7 +786,7 @@ func (qc *Coordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr
 	}
 	ds, err := qc.qdb.GetDistribution(ctx, keyRangeDB.DistributionId)
 	if err != nil {
-		_ = qc.qdb.UnlockKeyRange(ctx, keyRangeID)
+		_ = qc.UnlockKeyRange(ctx, keyRangeID)
 		return nil, err
 	}
 
@@ -803,7 +804,10 @@ func (qc *Coordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr
 // Returns:
 // - error: an error if the unlock operation encounters any issues.
 func (qc *Coordinator) UnlockKeyRange(ctx context.Context, keyRangeID string) error {
-	return qc.qdb.UnlockKeyRange(ctx, keyRangeID)
+	return retry.Do(ctx, retry.NewFibonacci(qdb.LockRetryStep),
+		func(ctx context.Context) error {
+			return qc.qdb.UnlockKeyRange(ctx, keyRangeID)
+		})
 }
 
 // TODO : unit tests
@@ -863,7 +867,9 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 	}
 
 	defer func() {
-		if err := lc.qdb.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId); err != nil {
+		// TODO: after convert unite command into etcd transaction we no need in embracing "lock" "unlock".
+		// We'll just check existing lock at the start.
+		if err := lc.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}()
@@ -947,14 +953,16 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.Krid)
 	}
 
-	krOldDB, err := qc.qdb.LockKeyRange(ctx, req.SourceID)
+	krOldDB, err := qc.qdb.NoWaitLockKeyRange(ctx, req.SourceID)
 	if err != nil {
 		return err
 	}
 
 	if !req.SplitLeft {
+		// TODO: after convert split command into etcd transaction we no need in embracing "lock" "unlock".
+		// We'll just check existing lock at the start.
 		defer func() {
-			if err := qc.qdb.UnlockKeyRange(ctx, req.SourceID); err != nil {
+			if err := qc.UnlockKeyRange(ctx, req.SourceID); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 			}
 		}()

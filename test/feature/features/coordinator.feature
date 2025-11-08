@@ -356,7 +356,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    context deadline exceeded
+    key range krid1 is locked
     """
 
     When I run SQL on host "coordinator"
