@@ -20,7 +20,7 @@ func (tts *TupleTableSlot) ColNameOffset(n string) (int, error) {
 			return i, nil
 		}
 	}
-	return -1, fmt.Errorf("failed to resolve %s column offset", n)
+	return -1, fmt.Errorf("failed to resolve '%s' column offset", n)
 }
 
 func (tts *TupleTableSlot) WriteDataRow(msgs ...string) {

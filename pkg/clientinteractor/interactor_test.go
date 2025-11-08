@@ -562,7 +562,7 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 	assert.NoError(err)
 	_, err = engine.GroupBy(tts, cmd.GroupBy)
 
-	assert.ErrorContains(err, "failed to resolve someColumn column offset")
+	assert.ErrorContains(err, "failed to resolve 'someColumn' column offset")
 }
 
 func TestMakeSimpleResponseWithData(t *testing.T) {
