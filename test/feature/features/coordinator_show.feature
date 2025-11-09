@@ -20,7 +20,7 @@ Feature: Coordinator show clients, pools and backend_connections
         Then command return code should be "0"
         And SQL result should match regexp
         """ 
-        r1-[regress_router]:7000(.|\n)*r2-[regress_router_2]:7000
+        r1-\[regress_router\]:7000(.|\n)*r2-\[regress_router_2\]:7000
         """
         Given I execute SQL on host "router"
         """
@@ -41,7 +41,7 @@ Feature: Coordinator show clients, pools and backend_connections
         Then command return code should be "0"
         And SQL result should not match regexp
         """
-        r1-[regress_router]:7000(.|\n)*r2-[regress_router_2]:7000
+        r1-\[regress_router\]:7000(.|\n)*r2-\[regress_router_2\]:7000
         """
         When I run SQL on host "coordinator"
         """
