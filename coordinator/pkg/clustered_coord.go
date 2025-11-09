@@ -2083,9 +2083,44 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 	}
 }
 
-// TODO : unit tests
 func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
-	return qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.RawHosts))
+	if err := qc.Coordinator.AddDataShard(ctx, shard); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := proto.NewShardServiceClient(cc)
+		resp, err := cl.AddDataShard(context.TODO(),
+			&proto.AddShardRequest{Shard: topology.DataShardToProto(shard)})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("add shard response")
+		return nil
+	})
+}
+
+func (qc *ClusteredCoordinator) DropShard(ctx context.Context, shardId string) error {
+	if err := qc.Coordinator.DropShard(ctx, shardId); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := proto.NewShardServiceClient(cc)
+		resp, err := cl.DropDataShard(context.TODO(),
+			&proto.ShardRequest{Id: shardId})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("drop shard response")
+		return nil
+	})
 }
 
 func (qc *ClusteredCoordinator) AddWorldShard(_ context.Context, _ *topology.DataShard) error {

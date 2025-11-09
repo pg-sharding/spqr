@@ -367,13 +367,14 @@ const file_protos_shard_proto_rawDesc = "" +
 	"\x0fAddShardRequest\x12!\n" +
 	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"9\n" +
 	"\x14AddWorldShardRequest\x12!\n" +
-	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard2\x89\x02\n" +
+	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard2\xc8\x02\n" +
 	"\fShardService\x12=\n" +
 	"\n" +
 	"ListShards\x12\x16.google.protobuf.Empty\x1a\x15.spqr.ListShardsReply\"\x00\x12?\n" +
 	"\fAddDataShard\x12\x15.spqr.AddShardRequest\x1a\x16.google.protobuf.Empty\"\x00\x12E\n" +
 	"\rAddWorldShard\x12\x1a.spqr.AddWorldShardRequest\x1a\x16.google.protobuf.Empty\"\x00\x122\n" +
-	"\bGetShard\x12\x12.spqr.ShardRequest\x1a\x10.spqr.ShardReply\"\x00B\fZ\n" +
+	"\bGetShard\x12\x12.spqr.ShardRequest\x1a\x10.spqr.ShardReply\"\x00\x12=\n" +
+	"\rDropDataShard\x12\x12.spqr.ShardRequest\x1a\x16.google.protobuf.Empty\"\x00B\fZ\n" +
 	"spqr/protob\x06proto3"
 
 var (
@@ -408,12 +409,14 @@ var file_protos_shard_proto_depIdxs = []int32{
 	5, // 5: spqr.ShardService.AddDataShard:input_type -> spqr.AddShardRequest
 	6, // 6: spqr.ShardService.AddWorldShard:input_type -> spqr.AddWorldShardRequest
 	3, // 7: spqr.ShardService.GetShard:input_type -> spqr.ShardRequest
-	4, // 8: spqr.ShardService.ListShards:output_type -> spqr.ListShardsReply
-	7, // 9: spqr.ShardService.AddDataShard:output_type -> google.protobuf.Empty
-	7, // 10: spqr.ShardService.AddWorldShard:output_type -> google.protobuf.Empty
-	2, // 11: spqr.ShardService.GetShard:output_type -> spqr.ShardReply
-	8, // [8:12] is the sub-list for method output_type
-	4, // [4:8] is the sub-list for method input_type
+	3, // 8: spqr.ShardService.DropDataShard:input_type -> spqr.ShardRequest
+	4, // 9: spqr.ShardService.ListShards:output_type -> spqr.ListShardsReply
+	7, // 10: spqr.ShardService.AddDataShard:output_type -> google.protobuf.Empty
+	7, // 11: spqr.ShardService.AddWorldShard:output_type -> google.protobuf.Empty
+	2, // 12: spqr.ShardService.GetShard:output_type -> spqr.ShardReply
+	7, // 13: spqr.ShardService.DropDataShard:output_type -> google.protobuf.Empty
+	9, // [9:14] is the sub-list for method output_type
+	4, // [4:9] is the sub-list for method input_type
 	4, // [4:4] is the sub-list for extension type_name
 	4, // [4:4] is the sub-list for extension extendee
 	0, // [0:4] is the sub-list for field type_name

@@ -21,6 +21,7 @@ service ShardService {
   rpc AddDataShard (AddShardRequest) returns (google.protobuf.Empty) {}
   rpc AddWorldShard (AddWorldShardRequest) returns (google.protobuf.Empty) {}
   rpc GetShard (ShardRequest) returns (ShardReply) {}
+  rpc DropDataShard (ShardRequest) returns (google.protobuf.Empty) {}
 }
 
 message ShardReply {

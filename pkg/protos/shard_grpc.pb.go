@@ -24,6 +24,7 @@ const (
 	ShardService_AddDataShard_FullMethodName  = "/spqr.ShardService/AddDataShard"
 	ShardService_AddWorldShard_FullMethodName = "/spqr.ShardService/AddWorldShard"
 	ShardService_GetShard_FullMethodName      = "/spqr.ShardService/GetShard"
+	ShardService_DropDataShard_FullMethodName = "/spqr.ShardService/DropDataShard"
 )
 
 // ShardServiceClient is the client API for ShardService service.
@@ -34,6 +35,7 @@ type ShardServiceClient interface {
 	AddDataShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	AddWorldShard(ctx context.Context, in *AddWorldShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetShard(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*ShardReply, error)
+	DropDataShard(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type shardServiceClient struct {
@@ -84,6 +86,16 @@ func (c *shardServiceClient) GetShard(ctx context.Context, in *ShardRequest, opt
 	return out, nil
 }
 
+func (c *shardServiceClient) DropDataShard(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ShardService_DropDataShard_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ShardServiceServer is the server API for ShardService service.
 // All implementations must embed UnimplementedShardServiceServer
 // for forward compatibility.
@@ -92,6 +104,7 @@ type ShardServiceServer interface {
 	AddDataShard(context.Context, *AddShardRequest) (*emptypb.Empty, error)
 	AddWorldShard(context.Context, *AddWorldShardRequest) (*emptypb.Empty, error)
 	GetShard(context.Context, *ShardRequest) (*ShardReply, error)
+	DropDataShard(context.Context, *ShardRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedShardServiceServer()
 }
 
@@ -113,6 +126,9 @@ func (UnimplementedShardServiceServer) AddWorldShard(context.Context, *AddWorldS
 }
 func (UnimplementedShardServiceServer) GetShard(context.Context, *ShardRequest) (*ShardReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetShard not implemented")
+}
+func (UnimplementedShardServiceServer) DropDataShard(context.Context, *ShardRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DropDataShard not implemented")
 }
 func (UnimplementedShardServiceServer) mustEmbedUnimplementedShardServiceServer() {}
 func (UnimplementedShardServiceServer) testEmbeddedByValue()                      {}
@@ -207,6 +223,24 @@ func _ShardService_GetShard_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ShardService_DropDataShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShardRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ShardServiceServer).DropDataShard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ShardService_DropDataShard_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ShardServiceServer).DropDataShard(ctx, req.(*ShardRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ShardService_ServiceDesc is the grpc.ServiceDesc for ShardService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -229,6 +263,10 @@ var ShardService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetShard",
 			Handler:    _ShardService_GetShard_Handler,
+		},
+		{
+			MethodName: "DropDataShard",
+			Handler:    _ShardService_DropDataShard_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

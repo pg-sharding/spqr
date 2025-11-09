@@ -303,3 +303,37 @@ Feature: Proxy console
             "Temporary key range ID":   "temp_id"
         }]
         """
+
+    Scenario: add and drop shard on router-admin
+        When I run SQL on host "router-admin"
+        """
+        CREATE SHARD sh5 WITH HOSTS klepov:6432;
+        """
+        Then command return code should be "0"
+
+        When I run SQL on host "router-admin"
+        """
+        SHOW shards;
+        """
+        Then command return code should be "0"
+        And SQL result should match json_exactly
+        """
+        [{"shard":"sh1"}, {"shard":"sh2"} ,{"shard":"sh5"}]
+        """
+
+        When I run SQL on host "router-admin"
+        """
+        DROP SHARD sh5;
+        """
+        Then command return code should be "0"
+
+        When I run SQL on host "router-admin"
+        """
+        SHOW shards;
+        """
+        Then command return code should be "0"
+        And SQL result should match json_exactly
+        """
+        [{"shard":"sh1"}, {"shard":"sh2"}]
+        """
+
