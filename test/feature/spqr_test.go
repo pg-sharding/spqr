@@ -966,7 +966,6 @@ func (tctx *testContext) stepSQLResultShouldMatch(matcher string, body *godog.Do
 
 func (tctx *testContext) stepIExecuteSql(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
-	query = strings.Replace(query, "\"", "", 2)
 
 	err := tctx.executePostgresql(host, query)
 	return err
