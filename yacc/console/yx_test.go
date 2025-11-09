@@ -43,7 +43,7 @@ func TestSimple(t *testing.T) {
 		},
 
 		{
-			query: "\nSHOW \n relations \n\n;;",
+			query: "\nSHOW \n relations \n\n;",
 			exp: &spqrparser.Show{
 				Cmd:     spqrparser.RelationsStr,
 				Where:   &lyx.AExprEmpty{},
