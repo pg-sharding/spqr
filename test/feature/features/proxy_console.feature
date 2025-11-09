@@ -303,7 +303,7 @@ Feature: Proxy console
             "Temporary key range ID":   "temp_id"
         }]
         """
-
+    
     Scenario: add and drop shard on router-admin
         When I run SQL on host "router-admin"
         """
@@ -336,4 +336,4 @@ Feature: Proxy console
         """
         [{"shard":"sh1"}, {"shard":"sh2"}]
         """
-
+    

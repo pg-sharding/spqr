@@ -646,7 +646,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterMoveTasksServiceServer(server, lqr)
 	protos.RegisterBalancerTaskServiceServer(server, lqr)
 	protos.RegisterReferenceRelationsServiceServer(server, lqr)
-	protos.RegisterShardServiceServer(server,lqr)
+	protos.RegisterShardServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}

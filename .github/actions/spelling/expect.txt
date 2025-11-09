@@ -78,6 +78,8 @@ coreutils
 corporis
 cptr
 createsequence
+ctl
+Ctl
 ctsa
 cupidatat
 currkr
