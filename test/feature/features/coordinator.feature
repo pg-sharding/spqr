@@ -123,7 +123,7 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    router -\\u003e r2-[regress_router]:7000
+    router -\u003e r2-[regress_router]:7000
     """
 
   Scenario: Register 2 routers with same address fails
@@ -142,7 +142,7 @@ Feature: Coordinator test
     """
     Then SQL result should match regexp
     """
-    router -\\u003e r1-regress_router:7000
+    router -\u003e r1-regress_router:7000
     """
 
   Scenario: Register 2 routers with same id fails
@@ -161,7 +161,7 @@ Feature: Coordinator test
     """
     Then SQL result should match regexp
     """
-    router -\\u003e r1-regress_router:7000
+    router -\u003e r1-regress_router:7000
     """
 
   Scenario: Register router with invalid address fails
@@ -590,7 +590,7 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    router -\\u003e r1-regress_router:7000
+    router -\u003e r1-regress_router:7000
     """
 
     #
