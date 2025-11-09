@@ -134,7 +134,7 @@ Feature: Coordinator test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    router with address regress_router:7000 already exists
+    router with address \[regress_router\]:7000 already exists
     """
     When I run SQL on host "coordinator"
     """
@@ -142,7 +142,7 @@ Feature: Coordinator test
     """
     Then SQL result should match regexp
     """
-    router -\\u003e r1-regress_router:7000
+    router -\\u003e r1-\[regress_router\]:7000
     """
 
   Scenario: Register 2 routers with same id fails
@@ -161,7 +161,7 @@ Feature: Coordinator test
     """
     Then SQL result should match regexp
     """
-    router -\\u003e r1-regress_router:7000
+    router -\\u003e r1-\[regress_router\]:7000
     """
 
   Scenario: Register router with invalid address fails
