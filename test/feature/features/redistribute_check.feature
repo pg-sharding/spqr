@@ -15,7 +15,7 @@ Feature: Redistribution test
 
     When I execute SQL on host "coordinator"
     """
-    REGISTER ROUTER r1 ADDRESS "regress_router:7000";
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
     """

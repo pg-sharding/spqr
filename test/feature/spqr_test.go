@@ -528,9 +528,9 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 	}
 
 	// sqlx is not used now. try remove split
-	queries := strings.Split(query, ";")
+	queries := strings.SplitSeq(query, ";")
 
-	for _, q := range queries {
+	for q := range queries {
 		q = strings.TrimSpace(q)
 		if q == "" {
 			continue
@@ -966,7 +966,6 @@ func (tctx *testContext) stepSQLResultShouldMatch(matcher string, body *godog.Do
 
 func (tctx *testContext) stepIExecuteSql(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
-	query = strings.Replace(query, "\"", "", 2)
 
 	err := tctx.executePostgresql(host, query)
 	return err

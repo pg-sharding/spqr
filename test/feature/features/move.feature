@@ -402,7 +402,7 @@ Feature: Move test
   Scenario: MOVE KEY RANGE works with hashed int keys, murmur3 hash
     When I execute SQL on host "coordinator"
     """
-    REGISTER ROUTER r1 ADDRESS "regress_router:7000";
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
     CREATE DISTRIBUTION ds2 COLUMN TYPES INTEGER HASH;
     ADD KEY RANGE krid4 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds2;
     ADD KEY RANGE krid5 FROM 1073741824 ROUTE TO sh1 FOR DISTRIBUTION ds2;
@@ -523,7 +523,7 @@ Feature: Move test
   Scenario: MOVE KEY RANGE works with hashed string keys, murmur3 hash
     When I execute SQL on host "coordinator"
     """
-    REGISTER ROUTER r1 ADDRESS "regress_router:7000";
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
     CREATE DISTRIBUTION ds2 COLUMN TYPES VARCHAR HASH;
     ADD KEY RANGE krid4 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds2;
     ADD KEY RANGE krid5 FROM 1073741824 ROUTE TO sh1 FOR DISTRIBUTION ds2;
@@ -638,7 +638,7 @@ Feature: Move test
   Scenario: MOVE KEY RANGE works with hashed int keys, city hash
     When I execute SQL on host "coordinator"
     """
-    REGISTER ROUTER r1 ADDRESS "regress_router:7000";
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
     CREATE DISTRIBUTION ds2 COLUMN TYPES INTEGER HASH;
     ADD KEY RANGE krid4 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds2;
     ADD KEY RANGE krid5 FROM 1073741824 ROUTE TO sh1 FOR DISTRIBUTION ds2;
@@ -759,7 +759,7 @@ Feature: Move test
   Scenario: MOVE KEY RANGE works with hashed string keys, city hash
     When I execute SQL on host "coordinator"
     """
-    REGISTER ROUTER r1 ADDRESS "regress_router:7000";
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
     CREATE DISTRIBUTION ds2 COLUMN TYPES VARCHAR HASH;
     ADD KEY RANGE krid4 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds2;
     ADD KEY RANGE krid5 FROM 1073741824 ROUTE TO sh1 FOR DISTRIBUTION ds2;

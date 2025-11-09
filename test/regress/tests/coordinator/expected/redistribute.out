@@ -1,7 +1,7 @@
-REGISTER ROUTER r1 ADDRESS "regress_router:7000";
-         register router          
-----------------------------------
- router -> r1-regress_router:7000
+REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
+          register router           
+------------------------------------
+ router -> r1-[regress_router]:7000
 (1 row)
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;

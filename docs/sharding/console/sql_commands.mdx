@@ -261,11 +261,11 @@ REGISTER ROUTER <router_id> ADDRESS <address>
 
 **Parameters:**
 - `<router_id>`: A unique identifier for the router. Can be a simple name or a quoted string (e.g., `r1` or `'r-1'`).
-- `<address>`: The network address of the router in the format `host:port` (e.g., `'localhost:6432'` or `'router-host:7432'`).
+- `<address>`: The network address of the router in the format `host:port` (e.g., `'[localhost]:6432'` or `'[router-host]:7432'`).
 
 **Example:**
 ```sql
-REGISTER ROUTER r1 ADDRESS 'localhost:6432'
+REGISTER ROUTER r1 ADDRESS '[localhost]:6432'
 ```
 
 ### UNREGISTER ROUTER

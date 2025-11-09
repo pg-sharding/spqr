@@ -9,7 +9,7 @@ Feature: Mover test
     
     When I execute SQL on host "coordinator"
     """
-    REGISTER ROUTER r1 ADDRESS "regress_router:7000";
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     ADD KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
     ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;

@@ -1,1 +1,1 @@
-REGISTER ROUTER r1 ADDRESS "regress_router:7000";
+REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
