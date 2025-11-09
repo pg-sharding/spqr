@@ -3,17 +3,15 @@ package planner
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
-	"github.com/pg-sharding/spqr/pkg/engine"
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
@@ -412,47 +410,12 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 
 		switch v := args[0].(type) {
 		case *lyx.AExprSConst:
-			switch v.Value {
-			case spqrparser.KeyRangesStr:
-				ranges, err := rm.Mgr.ListAllKeyRanges(ctx)
-				if err != nil {
-					return nil, err
-				}
-				locksKr, err := rm.Mgr.ListKeyRangeLocks(ctx)
-				if err != nil {
-					return nil, err
-				}
-				return engine.KeyRangeVirtualRelationScan(ranges, locksKr), nil
-			case spqrparser.HostsStr:
-
-				shards, err := rm.Mgr.ListShards(ctx)
-				if err != nil {
-					return nil, err
-				}
-
-				ihc := rm.CSM.InstanceHealthChecks()
-				return engine.HostsVirtualRelationScan(shards, ihc), nil
-			case spqrparser.ReferenceRelationsStr:
-
-				rrs, err := rm.Mgr.ListReferenceRelations(ctx)
-				if err != nil {
-					return nil, err
-				}
-
-				slices.SortFunc(rrs, func(a *rrelation.ReferenceRelation, b *rrelation.ReferenceRelation) int {
-					if a.TableName == b.TableName {
-						return 0
-					}
-					if a.TableName < b.TableName {
-						return -1
-					}
-					return 1
-				})
-
-				return engine.ReferenceRelationsScan(rrs), nil
-			default:
-				return nil, rerrors.ErrComplexQuery
-			}
+			return meta.ProcessShowExtended(ctx, &spqrparser.Show{
+				Cmd:     v.Value,
+				Where:   &lyx.AExprEmpty{},
+				Order:   nil,
+				GroupBy: nil,
+			}, rm.Mgr, rm.CSM, true)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}

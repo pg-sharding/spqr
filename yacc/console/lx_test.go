@@ -28,7 +28,7 @@ func TestSimpleLex(t *testing.T) {
 			err:   nil,
 		},
 		{
-			query: "START TRACE CLIENT 9df3bj3",
+			query: `START TRACE CLIENT "9df3bj3"`,
 			exp:   []int{spqrparser.START, spqrparser.TRACE, spqrparser.CLIENT, spqrparser.IDENT},
 			err:   nil,
 		},
@@ -42,6 +42,7 @@ func TestSimpleLex(t *testing.T) {
 			exp:   []int{spqrparser.KILL, spqrparser.CLIENT, spqrparser.ICONST, spqrparser.TSEMICOLON},
 			err:   nil,
 		},
+
 		{
 			query: "SHOW clients where user = 'usr1' or dbname = 'db1';",
 			exp: []int{
@@ -51,6 +52,36 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.TEQ,
 				spqrparser.SCONST,
 				spqrparser.OR,
+				spqrparser.IDENT,
+				spqrparser.TEQ,
+				spqrparser.SCONST,
+				spqrparser.TSEMICOLON,
+			},
+			err: nil,
+		},
+
+		{
+			query: `SHOW clients where user = 'usr1' or "dbname" = 'db1';`,
+			exp: []int{
+				spqrparser.SHOW, spqrparser.IDENT,
+				spqrparser.WHERE,
+				spqrparser.IDENT,
+				spqrparser.TEQ,
+				spqrparser.SCONST,
+				spqrparser.OR,
+				spqrparser.IDENT,
+				spqrparser.TEQ,
+				spqrparser.SCONST,
+				spqrparser.TSEMICOLON,
+			},
+			err: nil,
+		},
+
+		{
+			query: `SHOW relations WHERE "Distribution ID" = 'ds1';`,
+			exp: []int{
+				spqrparser.SHOW, spqrparser.RELATIONS,
+				spqrparser.WHERE,
 				spqrparser.IDENT,
 				spqrparser.TEQ,
 				spqrparser.SCONST,
@@ -256,7 +287,7 @@ func TestSimpleLex(t *testing.T) {
 			},
 		},
 		{
-			query: "CREATE SHARD sh1 WITH HOSTS localhost:6432",
+			query: `CREATE SHARD sh1 WITH HOSTS "localhost:6432"`,
 			exp: []int{
 				spqrparser.CREATE,
 				spqrparser.SHARD,
@@ -267,7 +298,7 @@ func TestSimpleLex(t *testing.T) {
 			},
 		},
 		{
-			query: "CREATE SHARD sh1 WITH HOSTS localhost:6432, other_host:7432",
+			query: `CREATE SHARD sh1 WITH HOSTS "localhost:6432", "other_host:7432"`,
 			exp: []int{
 				spqrparser.CREATE,
 				spqrparser.SHARD,

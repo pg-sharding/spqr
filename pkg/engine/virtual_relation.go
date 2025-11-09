@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -20,6 +21,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
+	"github.com/pg-sharding/spqr/router/statistics"
 )
 
 func GetVPHeader(stmts ...string) []pgproto3.FieldDescription {
@@ -177,8 +179,7 @@ func PreparedStatementsVirtualRelationScan(ctx context.Context, shs []shard.Prep
 // Returns:
 // - error: An error if any occurred during the operation.
 func RelationsVirtualRelationScan(
-	dsToRels map[string][]*distributions.DistributedRelation,
-	condition lyx.Node) (*tupleslot.TupleTableSlot, error) {
+	dsToRels map[string][]*distributions.DistributedRelation) (*tupleslot.TupleTableSlot, error) {
 
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader("Relation name", "Distribution ID", "Distribution key", "Schema name"),
@@ -194,17 +195,8 @@ func RelationsVirtualRelationScan(
 	sort.Strings(dss)
 
 	c := 0
-	index := map[string]int{"distribution_id": 0}
 	for _, ds := range dss {
 		rels := dsToRels[ds]
-		sort.Slice(rels, func(i, j int) bool {
-			return rels[i].Name < rels[j].Name
-		})
-		if ok, err := MatchRow([][]byte{[]byte(ds)}, index, condition); err != nil {
-			return nil, err
-		} else if !ok {
-			continue
-		}
 		for _, rel := range rels {
 			dsKey := make([]string, len(rel.DistributionKey))
 			for i, e := range rel.DistributionKey {
@@ -222,5 +214,137 @@ func RelationsVirtualRelationScan(
 			c++
 		}
 	}
+	return tts, nil
+}
+
+var BackendConnectionsHeaders = []string{
+	"backend connection id",
+	"router",
+	"shard key name",
+	"hostname",
+	"pid",
+	"user",
+	"dbname",
+	"sync",
+	"tx_served",
+	"tx status",
+	"is stale",
+	"created at",
+}
+
+// BackendConnections writes backend connection information to the PSQL client.
+//
+// Parameters:
+// - _ (context.Context): The context for the operation.
+// - shs ([]shard.Shardinfo): The list of shard information.
+// - stmt (*spqrparser.Show): The query itself.
+//
+// Returns:
+// - error: An error if any occurred during the operation.
+func BackendConnectionsVirtualRelationScan(shs []shard.ShardHostCtl) (*tupleslot.TupleTableSlot, error) {
+
+	getRouter := func(sh shard.ShardHostCtl) string {
+		router := "no data"
+		s, ok := sh.(shard.CoordShardinfo)
+		if ok {
+			router = s.Router()
+		}
+		return router
+	}
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader(BackendConnectionsHeaders...),
+	}
+
+	var rows [][][]byte
+
+	for _, sh := range shs {
+
+		rows = append(rows, [][]byte{
+			fmt.Appendf(nil, "%d", sh.ID()),
+			[]byte(getRouter(sh)),
+			[]byte(sh.ShardKeyName()),
+			[]byte(sh.InstanceHostname()),
+			fmt.Appendf(nil, "%d", sh.Pid()),
+			[]byte(sh.Usr()),
+			[]byte(sh.DB()),
+			[]byte(strconv.FormatInt(sh.Sync(), 10)),
+			[]byte(strconv.FormatInt(sh.TxServed(), 10)),
+			[]byte(sh.TxStatus().String()),
+			[]byte(strconv.FormatBool(sh.IsStale())),
+			[]byte(sh.CreatedAt().UTC().Format(time.RFC3339)),
+		})
+	}
+
+	tts.Raw = rows
+
+	return tts, nil
+}
+
+// TODO : unit tests
+
+// Clients retrieves client information based on provided client information, filtering conditions and writes the data to the PSQL client.
+//
+// Parameters:
+// - ctx (context.Context): The context for the operation.
+// - clients ([]client.ClientInfo): The list of client information to process.
+// - condition (spqrparser.WhereClauseNode): The condition to filter the client information.
+//
+// Returns:
+// - error: An error if any occurred during the operation.
+func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo) (*tupleslot.TupleTableSlot, error) {
+
+	quantiles := statistics.GetQuantiles()
+	headers := []string{
+		"client_id", "user", "dbname", "server_id", "router_address",
+	}
+	for _, el := range *quantiles {
+		headers = append(headers, fmt.Sprintf("router_time_%g", el))
+		headers = append(headers, fmt.Sprintf("shard_time_%g", el))
+	}
+
+	header := GetVPHeader(headers...)
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: header,
+	}
+
+	getRow := func(cl client.Client, hostname string, rAddr string) [][]byte {
+		quantiles := statistics.GetQuantiles()
+		rowData := [][]byte{
+			fmt.Appendf(nil, "%d", cl.ID()),
+			[]byte(cl.Usr()),
+			[]byte(cl.DB()),
+			[]byte(hostname), []byte(rAddr)}
+
+		for _, el := range *quantiles {
+			rowData = append(rowData, fmt.Appendf(nil, "%.2fms",
+				statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, el, cl)))
+			rowData = append(rowData, fmt.Appendf(nil, "%.2fms",
+				statistics.GetTimeQuantile(statistics.StatisticsTypeShard, el, cl)))
+		}
+		return rowData
+	}
+
+	var data [][][]byte
+	for _, cl := range clients {
+		if len(cl.Shards()) > 0 {
+			for _, sh := range cl.Shards() {
+				if sh == nil {
+					continue
+				}
+				row := getRow(cl, sh.Instance().Hostname(), cl.RAddr())
+
+				data = append(data, row)
+			}
+		} else {
+			row := getRow(cl, "no backend connection", cl.RAddr())
+
+			data = append(data, row)
+		}
+	}
+
+	tts.Raw = data
+
 	return tts, nil
 }
