@@ -13,7 +13,7 @@ Feature: Sequence test
 
     When I run SQL on host "coordinator"
     """
-    REGISTER ROUTER r1 ADDRESS "regress_router:7000";
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
     """
     Then command return code should be "0"
 
