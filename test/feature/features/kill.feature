@@ -22,7 +22,7 @@ Feature: Kill client test
       {
         "client_id":"**IGNORE**",
         "dbname":"regress",
-        "router_address":"regress_router:7000",
+        "router_address":"[regress_router]:7000",
         "server_id":"no backend connection",
         "user":"regress"
       }

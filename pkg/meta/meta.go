@@ -734,6 +734,8 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 	}
 
 	switch stmt := tstmt.(type) {
+	case nil:
+		return cli.CompleteMsg(0)
 	case *spqrparser.TraceStmt:
 		if writer == nil {
 			return fmt.Errorf("cannot save workload from here")

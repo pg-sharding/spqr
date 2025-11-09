@@ -528,9 +528,9 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 	}
 
 	// sqlx is not used now. try remove split
-	queries := strings.Split(query, ";")
+	queries := strings.SplitSeq(query, ";")
 
-	for _, q := range queries {
+	for q := range queries {
 		q = strings.TrimSpace(q)
 		if q == "" {
 			continue

@@ -82,22 +82,22 @@ Feature: Coordinator show clients, pools and backend_connections
         [
             {
                 "dbname":"regress",
-                "router_address":"regress_router:7000",
+                "router_address":"[regress_router]:7000",
                 "user":"regress"
             },
             {
                 "dbname":"regress",
-                "router_address":"regress_router:7000",
+                "router_address":"[regress_router]:7000",
                 "user":"regress"
             },
             {
                 "dbname":"regress",
-                "router_address":"regress_router_2:7000",
+                "router_address":"[regress_router_2]:7000",
                 "user":"regress"
             },
             {
                 "dbname":"regress",
-                "router_address":"regress_router_2:7000",
+                "router_address":"[regress_router_2]:7000",
                 "user":"regress"
             }
         ]
@@ -114,22 +114,22 @@ Feature: Coordinator show clients, pools and backend_connections
         [
             {
                 "dbname":"regress",
-                "router_address":"regress_router:7000",
+                "router_address":"[regress_router]:7000",
                 "user":"regress"
             },
             {
                 "dbname":"regress",
-                "router_address":"regress_router:7000",
+                "router_address":"[regress_router]:7000",
                 "user":"regress"
             },
             {
                 "dbname":"regress",
-                "router_address":"regress_router_2:7000",
+                "router_address":"[regress_router_2]:7000",
                 "user":"regress"
             },
             {
                 "dbname":"regress",
-                "router_address":"regress_router_2:7000",
+                "router_address":"[regress_router_2]:7000",
                 "user":"regress"
             }
         ]
@@ -153,12 +153,12 @@ Feature: Coordinator show clients, pools and backend_connections
         [
             {
                 "dbname":"regress",
-                "router_address":"regress_router_2:7000",
+                "router_address":"[regress_router_2]:7000",
                 "user":"regress"
             },
             {
                 "dbname":"regress",
-                "router_address":"regress_router_2:7000",
+                "router_address":"[regress_router_2]:7000",
                 "user":"regress"
             }
         ]

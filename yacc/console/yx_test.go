@@ -11,6 +11,55 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
+func TestSimple(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	/*  */
+	for _, tt := range []tcase{
+		{
+			query: "\nSHOW relations",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.RelationsStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+
+		{
+			query: "\nSHOW \n relations",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.RelationsStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+
+		{
+			query: "\nSHOW \n relations \n\n;;",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.RelationsStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
 func TestSimpleTrace(t *testing.T) {
 	assert := assert.New(t)
 
