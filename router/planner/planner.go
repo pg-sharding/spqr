@@ -508,7 +508,7 @@ func (plr *PlannerV2) RetrieveTuples(ctx context.Context,
 			return tts, err
 		}
 	}
-	/* other cases usupported */
+	/* other cases unsupported */
 	return nil, nil
 }
 
