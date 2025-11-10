@@ -86,4 +86,7 @@ var reservedWords = map[string]int{
 	"sync":         SYNC,
 	"default":      DEFAULT,
 	"not":          NOT,
+	"order":        ORDER,
+	"asc":          ASC,
+	"desc":         DESC,
 }

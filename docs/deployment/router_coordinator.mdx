@@ -114,7 +114,7 @@ Connect to the coordinator’s admin console and register the router:
 
 ```bash
 psql "host=localhost port=7002 dbname=spqr-console user=spqr-console sslmode=disable"
-REGISTER ROUTER router1 ADDRESS 'localhost:7010';
+REGISTER ROUTER router1 ADDRESS '[localhost]:7010';
 ```
 
 ### 8. Connect
@@ -132,7 +132,7 @@ psql "host=localhost port=6432 dbname=mydb user=myuser sslmode=disable"
 Create a new router configuration with different ports, start it, and register:
 
 ```sql
-REGISTER ROUTER router2 ADDRESS 'localhost:7011';
+REGISTER ROUTER router2 ADDRESS '[localhost]:7011';
 ```
 
 ### Updating Configuration Dynamically

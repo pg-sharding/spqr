@@ -25,8 +25,8 @@ Feature: Proxy console
         When I run SQL on host "router-admin"
         """
         UNREGISTER ROUTER ALL;
-        REGISTER ROUTER r1 ADDRESS regress_router:7000;
-        REGISTER ROUTER r2 ADDRESS regress_router_2:7000;
+        REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
+        REGISTER ROUTER r2 ADDRESS "[regress_router_2]:7000";
         """
         Then command return code should be "0"
 
@@ -238,11 +238,11 @@ Feature: Proxy console
         """
         Then SQL result should match regexp
         """
-        router -\\u003e r1-regress_router:7000
+        router -\\u003e r1-\[regress_router\]:7000
         """
         And SQL result should match regexp
         """
-        router -\\u003e r2-regress_router_2:7000
+        router -\\u003e r2-\[regress_router_2\]:7000
         """
     
     Scenario: SHOW move_task is executed in coordinator

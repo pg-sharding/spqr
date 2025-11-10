@@ -33,14 +33,14 @@ type QueryRouter interface {
 	IdRange() planner.IdentityRouterCache
 
 	Mgr() meta.EntityMgr
-	CSM() connmgr.ConnectionStatMgr
+	CSM() connmgr.ConnectionMgr
 	SchemaCache() *cache.SchemaCache
 }
 
 func NewQrouter(qtype config.RouterMode,
 	shardMapping map[string]*config.Shard,
 	mgr meta.EntityMgr,
-	csm connmgr.ConnectionStatMgr,
+	csm connmgr.ConnectionMgr,
 	qcfg *config.QRouter,
 	cache *cache.SchemaCache,
 	idRangeCache planner.IdentityRouterCache,

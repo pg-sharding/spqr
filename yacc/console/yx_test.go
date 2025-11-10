@@ -11,6 +11,55 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
+func TestSimple(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	/*  */
+	for _, tt := range []tcase{
+		{
+			query: "\nSHOW relations",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.RelationsStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+
+		{
+			query: "\nSHOW \n relations",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.RelationsStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+
+		{
+			query: "\nSHOW \n relations \n\n;",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.RelationsStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
 func TestSimpleTrace(t *testing.T) {
 	assert := assert.New(t)
 
@@ -190,6 +239,23 @@ func TestSimpleWhere(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: `SHOW relations WHERE "Distribution ID" = 'ds1';`,
+			exp: &spqrparser.Show{
+				Cmd: spqrparser.RelationsStr,
+				Where: &lyx.AExprOp{
+					Left: &lyx.ColumnRef{
+						ColName: "Distribution ID",
+					},
+					Right: &lyx.AExprSConst{
+						Value: "ds1",
+					},
+					Op: "=",
+				},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
@@ -278,6 +344,41 @@ func TestGroupBy(t *testing.T) {
 				Cmd:     spqrparser.BackendConnectionsStr,
 				Where:   &lyx.AExprEmpty{},
 				GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "user"}, {ColName: "dbname"}}},
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
+func TestOrderBy(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "SHOW backend_connections ORDER BY hostname;",
+			exp: &spqrparser.Show{
+				Cmd: spqrparser.BackendConnectionsStr,
+
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+				Order: &spqrparser.Order{
+					Col:        spqrparser.ColumnRef{ColName: "hostname"},
+					OptAscDesc: &spqrparser.SortByDefault{},
+				},
 			},
 			err: nil,
 		},
@@ -536,14 +637,14 @@ func TestRegisterRouter(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: `REGISTER ROUTER r1 ADDRESS someRandomHost:1234`,
+			query: `REGISTER ROUTER r1 ADDRESS "someRandomHost:1234"`,
 			exp: &spqrparser.RegisterRouter{
 				ID:   "r1",
 				Addr: "someRandomHost:1234",
 			},
 		},
 		{
-			query: `REGISTER ROUTER 'r-1' ADDRESS someRandomHost:1234`,
+			query: `REGISTER ROUTER 'r-1' ADDRESS "someRandomHost:1234"`,
 			exp: &spqrparser.RegisterRouter{
 				ID:   "r-1",
 				Addr: "someRandomHost:1234",
@@ -1443,7 +1544,7 @@ func TestShard(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "CREATE SHARD sh1 WITH HOSTS localhost:6432;",
+			query: `CREATE SHARD sh1 WITH HOSTS "localhost:6432";`,
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ShardDefinition{
 					Id:    "sh1",
@@ -1453,7 +1554,7 @@ func TestShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "CREATE SHARD sh1 WITH HOSTS localhost:6432, other_hosts:6432;",
+			query: `CREATE SHARD sh1 WITH HOSTS "localhost:6432", "other_hosts:6432";`,
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ShardDefinition{
 					Id: "sh1",

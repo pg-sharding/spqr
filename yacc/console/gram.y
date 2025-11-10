@@ -312,6 +312,10 @@ semicolon_opt:
 
 
 command:
+	{
+		$$ = nil
+	}
+	|
 	add_stmt
 	{
 		setParseTree(yylex, $1)

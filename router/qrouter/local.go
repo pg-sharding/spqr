@@ -125,7 +125,7 @@ func (l *LocalQrouter) Mgr() meta.EntityMgr {
 	return nil
 }
 
-func (l *LocalQrouter) CSM() connmgr.ConnectionStatMgr {
+func (l *LocalQrouter) CSM() connmgr.ConnectionMgr {
 	return nil
 }
 
