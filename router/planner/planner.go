@@ -499,6 +499,19 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 	return nil, fmt.Errorf("unknown virtual spqr function: %s", fname)
 }
 
+func (plr *PlannerV2) RetrieveTuples(ctx context.Context,
+	rm *rmeta.RoutingMetadataContext, n lyx.Node) (*tupleslot.TupleTableSlot, error) {
+	switch q := n.(type) {
+	case *lyx.FuncApplication:
+		if strings.HasPrefix(q.Name, "__spqr__") {
+			tts, err := MetadataVirtualFunctionCall(ctx, rm, q.Name, q.Args)
+			return tts, err
+		}
+	}
+	/* other cases usupported */
+	return nil, nil
+}
+
 func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
 	stmt lyx.Node, allowRewrite bool) (plan.Plan, error) {
@@ -520,17 +533,16 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 			// is query a single function call?
 
 			if len(v.TargetList) == 1 {
-				switch q := v.TargetList[0].(type) {
-				case *lyx.FuncApplication:
-					if strings.HasPrefix(q.Name, "__spqr__") {
-						tts, err := MetadataVirtualFunctionCall(ctx, rm, q.Name, q.Args)
-						if err != nil {
-							return nil, err
-						}
-						return &plan.VirtualPlan{
-							TTS: tts,
-						}, nil
-					}
+
+				tts, err := plr.RetrieveTuples(ctx, rm, v.TargetList[0])
+				if err != nil {
+					return nil, err
+				}
+
+				if tts != nil {
+					return &plan.VirtualPlan{
+						TTS: tts,
+					}, nil
 				}
 			}
 
@@ -548,6 +560,26 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 			}
 
 			return &plan.ScatterPlan{}, nil
+		}
+
+		/* Special case for `select * from __spqr__show('obj')` */
+
+		if len(v.FromClause) == 1 {
+
+			switch q := v.FromClause[0].(type) {
+			case *lyx.SubSelect:
+				tts, err := plr.RetrieveTuples(ctx, rm, q.Arg)
+				if err != nil {
+					return nil, err
+				}
+				if tts != nil {
+					return &plan.VirtualPlan{
+						TTS: tts,
+					}, nil
+				}
+			default:
+				break
+			}
 		}
 
 		if len(v.FromClause) > 1 {

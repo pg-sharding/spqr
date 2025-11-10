@@ -140,6 +140,7 @@ SELECT FROM test_distr_ref_rel a, test_ref_rel_part b WHERE a.id = 233;
 
 SET __spqr__preferred_engine TO v2;
 SELECT __spqr__show('reference_relations');
+SELECT * FROM __spqr__show('reference_relations');
 SET __spqr__preferred_engine TO '';
 
 DROP TABLE test_ref_rel;
