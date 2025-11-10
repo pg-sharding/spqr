@@ -181,7 +181,7 @@ Feature: Coordinator test
     Then SQL result should match json_exactly
     """
     [{
-      "show routers":"router -\u003e r1-\[regress_router\]:7000",
+      "show routers":"router -\u003e r1-[regress_router]:7000",
       "status":"OPENED"
     }]
     """
