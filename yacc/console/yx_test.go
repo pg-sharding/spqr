@@ -1895,6 +1895,15 @@ func TestKill(t *testing.T) {
 		},
 
 		{
+			query: `kill client "824636929312";`,
+			exp: &spqrparser.Kill{
+				Cmd:    spqrparser.ClientStr,
+				Target: 824636929312,
+			},
+			err: nil,
+		},
+
+		{
 			query: "kill backend 824636929313;",
 			exp: &spqrparser.Kill{
 				Cmd:    spqrparser.BackendStr,
