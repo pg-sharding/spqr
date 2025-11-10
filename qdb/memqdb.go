@@ -20,7 +20,8 @@ type MemQDB struct {
 	mu sync.RWMutex
 
 	Locks                map[string]*sync.RWMutex            `json:"locks"`
-	Krs                  map[string]*KeyRange                `json:"krs"`
+	Freq                 map[string]bool                     `json:"freq"`
+	Krs                  map[string]*internalKeyRange        `json:"krs"`
 	Shards               map[string]*Shard                   `json:"shards"`
 	Distributions        map[string]*Distribution            `json:"distributions"`
 	RelationDistribution map[string]string                   `json:"relation_distribution"`
@@ -48,8 +49,8 @@ var _ XQDB = &MemQDB{}
 
 func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
-		// Freq:                 map[string]bool{},
-		Krs:                  map[string]*KeyRange{},
+		Freq:                 map[string]bool{},
+		Krs:                  map[string]*internalKeyRange{},
 		Locks:                map[string]*sync.RWMutex{},
 		Shards:               map[string]*Shard{},
 		Distributions:        map[string]*Distribution{},
@@ -98,9 +99,9 @@ func RestoreQDB(backupPath string) (*MemQDB, error) {
 	}
 	err = json.Unmarshal(data, qdb)
 
-	for id, kRange := range qdb.Krs {
-		if kRange.Locked {
-			qdb.Locks[id].Lock()
+	for kr, locked := range qdb.Freq {
+		if locked {
+			qdb.Locks[kr].Lock()
 		}
 	}
 
@@ -160,14 +161,16 @@ func (q *MemQDB) DumpState() error {
 func (q *MemQDB) dropKeyRangeCommands(krId string) []Command {
 	return []Command{
 		NewDeleteCommand(q.Krs, krId),
+		NewDeleteCommand(q.Freq, krId),
 		NewDeleteCommand(q.Locks, krId),
 	}
 }
 
 func (q *MemQDB) createKeyRangeCommands(keyRange *KeyRange) []Command {
 	return []Command{
-		NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRange),
+		NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRangeToInternal(keyRange)),
 		NewUpdateCommand(q.Locks, keyRange.KeyRangeID, &sync.RWMutex{}),
+		NewUpdateCommand(q.Freq, keyRange.KeyRangeID, keyRange.Locked),
 	}
 }
 
@@ -227,12 +230,16 @@ func (q *MemQDB) GetKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	krs, ok := q.Krs[id]
+	kRangeInt, ok := q.Krs[id]
 	if !ok {
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "there is no key range %s", id)
 	}
+	isLocked := false
+	if v, ok := q.Freq[id]; ok {
+		isLocked = v
+	}
 
-	return krs, nil
+	return keyRangeFromInternal(kRangeInt, isLocked), nil
 }
 
 // TODO : unit tests
@@ -241,7 +248,7 @@ func (q *MemQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRange))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRangeToInternal(keyRange)))
 }
 
 // TODO : unit tests
@@ -304,7 +311,11 @@ func (q *MemQDB) ListKeyRanges(_ context.Context, distribution string) ([]*KeyRa
 
 	for _, el := range q.Krs {
 		if el.DistributionId == distribution {
-			ret = append(ret, el)
+			isLocked := false
+			if v, ok := q.Freq[el.KeyRangeID]; ok {
+				isLocked = v
+			}
+			ret = append(ret, keyRangeFromInternal(el, isLocked))
 		}
 	}
 
@@ -321,10 +332,13 @@ func (q *MemQDB) ListAllKeyRanges(_ context.Context) ([]*KeyRange, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	var ret []*KeyRange
-
+	ret := make([]*KeyRange, 0, len(q.Krs))
 	for _, el := range q.Krs {
-		ret = append(ret, el)
+		isLocked := false
+		if v, ok := q.Freq[el.KeyRangeID]; ok {
+			isLocked = v
+		}
+		ret = append(ret, keyRangeFromInternal(el, isLocked))
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
@@ -358,17 +372,16 @@ func (q *MemQDB) NoWaitLockKeyRange(ctx context.Context, id string) (*KeyRange, 
 // TODO : unit tests
 func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: lock key range")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 	defer spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: exit: lock key range")
 
-	kRange, ok := q.Krs[id]
+	krs, ok := q.Krs[id]
 	if !ok {
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range '%s' does not exist", id)
 	}
-	kRange.Locked = true
 
-	err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Krs, id, kRange),
+	err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, true),
 		NewCustomCommand(func() error {
 			if lock, ok := q.Locks[id]; ok {
 				return q.TryLockKeyRange(lock, id, false)
@@ -384,25 +397,21 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 		return nil, err
 	}
 
-	return kRange, nil
+	return keyRangeFromInternal(krs, true), nil
 }
 
 // TODO : unit tests
 func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: unlock key range")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 	defer spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: exit: unlock key range")
 
-	kRange, ok := q.Krs[id]
-	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %s not found", id)
-	} else if !kRange.Locked {
+	if !q.Freq[id] {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", id)
 	}
-	kRange.Locked = false
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Krs, id, kRange),
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, false),
 		NewCustomCommand(func() error {
 			if lock, ok := q.Locks[id]; ok {
 				lock.Unlock()
@@ -422,9 +431,9 @@ func (q *MemQDB) ListLockedKeyRanges(ctx context.Context) ([]string, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	result := make([]string, 0, len(q.Locks))
-	for _, kRange := range q.Krs {
-		if kRange.Locked {
-			result = append(result, kRange.KeyRangeID)
+	for lk, v := range q.Freq {
+		if v {
+			result = append(result, lk)
 		}
 	}
 	return result, nil
@@ -436,16 +445,16 @@ func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange,
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	kRange, err := q.GetKeyRange(ctx, id)
+	krs, err := q.GetKeyRange(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	if !kRange.Locked {
+	if !q.Freq[id] {
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", id)
 	}
 
-	return kRange, nil
+	return krs, nil
 }
 
 // TODO : unit tests
@@ -479,7 +488,7 @@ func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	kRange, ok := q.Krs[krId]
+	kr, ok := q.Krs[krId]
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' not found", krId))
 	}
@@ -487,10 +496,10 @@ func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
 	}
 
-	kRange.KeyRangeID = krIdNew
+	kr.KeyRangeID = krIdNew
 	commands := make([]Command, 0)
 	commands = append(commands, q.dropKeyRangeCommands(krId)...)
-	commands = append(commands, q.createKeyRangeCommands(kRange)...)
+	commands = append(commands, q.createKeyRangeCommands(keyRangeFromInternal(kr, false))...)
 	return ExecuteCommands(q.DumpState, commands...)
 }
 
