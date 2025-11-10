@@ -199,11 +199,10 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) fetchKeyRange(ctx context.Context, krId string) (*KeyRange, error) {
+func (q *EtcdQDB) fetchKeyRange(ctx context.Context, krNodePath string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().
-		Interface("krId", krId).
+		Interface("path", krNodePath).
 		Msg("etcdqdb: fetch key range")
-	krNodePath := keyRangeNodePath(krId)
 
 	resp, err := q.cli.Txn(ctx).
 		If(clientv3.Compare(clientv3.Version(krNodePath), "!=", 0)).
@@ -211,13 +210,13 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, krId string) (*KeyRange, er
 		Commit()
 
 	if err != nil {
-		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to fetch key range \"%s\": failed to commit transaction: %s", krId, err)
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to fetch key range at \"%s\": failed to commit transaction: %s", krNodePath, err)
 	}
 	if !resp.Succeeded {
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "no key range found at %v", krNodePath)
 	}
 	if len(resp.Responses) != 2 {
-		return nil, fmt.Errorf("failed to fetch key range \"%s\": unexpected etcd response count %d", krId, len(resp.Responses))
+		return nil, fmt.Errorf("failed to fetch key range at \"%s\": unexpected etcd response count %d", krNodePath, len(resp.Responses))
 	}
 	kRange := &internalKeyRange{}
 	if err := json.Unmarshal(resp.Responses[0].GetResponseRange().Kvs[0].Value, &kRange); err != nil {
