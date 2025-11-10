@@ -146,7 +146,7 @@ Feature: Coordinator show clients, pools and backend_connections
         Then command return code should be "0"
         And SQL result should not match regexp
         """
-        regress_router:7000
+        \[regress_router\]:7000
         """
         And SQL result should match json
         """
@@ -176,7 +176,7 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
-                "router":"regress_router:7000",
+                "router":"[regress_router]:7000",
                 "shard key name":"sh2",
                 "user":"regress"
             }
@@ -188,7 +188,7 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
-                "router":"regress_router_2:7000",
+                "router":"[regress_router_2]:7000",
                 "shard key name":"sh2",
                 "user":"regress"
             }
@@ -200,7 +200,7 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
-                "router":"regress_router_2:7000",
+                "router":"[regress_router_2]:7000",
                 "shard key name":"sh1",
                 "user":"regress"
             }
@@ -212,7 +212,7 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
-                "router":"regress_router:7000",
+                "router":"[regress_router]:7000",
                 "shard key name":"sh1",
                 "user":"regress"
             }
@@ -231,7 +231,7 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
-                "router":"regress_router:7000",
+                "router":"[regress_router]:7000",
                 "shard key name":"sh2",
                 "user":"regress"
             }
@@ -243,7 +243,7 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
-                "router":"regress_router_2:7000",
+                "router":"[regress_router_2]:7000",
                 "shard key name":"sh2",
                 "user":"regress"
             }
@@ -255,7 +255,7 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
-                "router":"regress_router_2:7000",
+                "router":"[regress_router_2]:7000",
                 "shard key name":"sh1",
                 "user":"regress"
             }
@@ -267,7 +267,7 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
-                "router":"regress_router:7000",
+                "router":"[regress_router]:7000",
                 "shard key name":"sh1",
                 "user":"regress"
             }
@@ -294,7 +294,7 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
-                "router":"regress_router_2:7000",
+                "router":"[regress_router_2]:7000",
                 "shard key name":"sh1",
                 "user":"regress"
             }
@@ -306,7 +306,7 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
-                "router":"regress_router_2:7000",
+                "router":"[regress_router_2]:7000",
                 "shard key name":"sh2",
                 "user":"regress"
             }
