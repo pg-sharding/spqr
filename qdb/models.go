@@ -13,6 +13,15 @@ type ShardKey struct {
 }
 
 type KeyRange struct {
+	LowerBound     [][]byte
+	ShardID        string
+	KeyRangeID     string
+	DistributionId string
+	Locked         bool
+}
+
+// Do not marshal Locked field
+type internalKeyRange struct {
 	LowerBound     [][]byte `json:"from"`
 	ShardID        string   `json:"shard_id"`
 	KeyRangeID     string   `json:"key_range_id"`
@@ -208,4 +217,23 @@ func NewRangeBySize(currentRight int64, rangeSize uint64) (*SequenceIdRange, err
 		return nil, fmt.Errorf("invalid (case 2) id-range request: current=%d, request for=%d", currentRight, rangeSize)
 	}
 	return NewSequenceIdRange(currentRight, newRight)
+}
+
+func keyRangeToInternal(keyRange *KeyRange) *internalKeyRange {
+	return &internalKeyRange{
+		LowerBound:     keyRange.LowerBound,
+		ShardID:        keyRange.ShardID,
+		KeyRangeID:     keyRange.KeyRangeID,
+		DistributionId: keyRange.DistributionId,
+	}
+}
+
+func keyRangeFromInternal(keyRange *internalKeyRange, locked bool) *KeyRange {
+	return &KeyRange{
+		LowerBound:     keyRange.LowerBound,
+		ShardID:        keyRange.ShardID,
+		KeyRangeID:     keyRange.KeyRangeID,
+		DistributionId: keyRange.DistributionId,
+		Locked:         locked,
+	}
 }

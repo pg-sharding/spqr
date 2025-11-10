@@ -1841,15 +1841,18 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		if err != nil {
 			return err
 		}
-
-		sort.Slice(krs, func(i, j int) bool {
-			l, _ := kr.KeyRangeFromDB(krs[i], ds.ColTypes)
-			r, _ := kr.KeyRangeFromDB(krs[j], ds.ColTypes)
-			return !kr.CmpRangesLess(l.LowerBound, r.LowerBound, ds.ColTypes)
+		krsInt := make([]*kr.KeyRange, len(krs))
+		for i, kRange := range krs {
+			krsInt[i], err = kr.KeyRangeFromDB(kRange, ds.ColTypes)
+			if err != nil {
+				return err
+			}
+		}
+		sort.Slice(krsInt, func(i, j int) bool {
+			return !kr.CmpRangesLess(krsInt[i].LowerBound, krsInt[j].LowerBound, ds.ColTypes)
 		})
 
-		for _, keyrange := range krs {
-			kRange, err := kr.KeyRangeFromDB(keyrange, ds.ColTypes)
+		for _, kRange := range krsInt {
 			if err != nil {
 				return err
 			}
