@@ -54,8 +54,8 @@ type QDB interface {
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
 	DropKeyRange(ctx context.Context, id string) error
 	DropKeyRangeAll(ctx context.Context) error
-	ListKeyRanges(_ context.Context, distribution string) ([]*KeyRange, error) // TODO: maybe consider creating service struct pairing key range with its lock state
-	ListAllKeyRanges(_ context.Context) ([]*KeyRange, error)
+	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)
+	ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error)
 	NoWaitLockKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	LockKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	UnlockKeyRange(ctx context.Context, id string) error
