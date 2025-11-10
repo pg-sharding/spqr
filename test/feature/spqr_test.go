@@ -401,7 +401,7 @@ func (tctx *testContext) getPostgresqlConnection(user, host string) (*sql.DB, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to get postgresql addr %s: %s", host, err)
 	}
-	db, err = tctx.connectPostgresql(addr, user, postgresqlConnectTimeout)
+	db, err = tctx.connectPostgresqlWithCredentials(user, shardPassword, addr, postgresqlConnectTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to postgresql %s: %s", host, err)
 	}
@@ -919,7 +919,7 @@ func (tctx *testContext) stepIRunSQLOnHostWithTimeout(host string, timeout int, 
 func (tctx *testContext) stepIRunSQLOnHostAsUser(host string, user string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(host, user, query, postgresqlQueryTimeout, make([]interface{}, 0))
+	_, err := tctx.queryPostgresql(host, user, query, postgresqlQueryTimeout, make([]any, 0))
 	return err
 }
 
