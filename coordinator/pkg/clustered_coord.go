@@ -334,27 +334,6 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 }
 
 func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*ClusteredCoordinator, error) {
-	if config.CoordinatorConfig().ShardDataCfg != "" {
-		shards, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
-		if err != nil {
-			return nil, err
-		}
-
-		if shards != nil {
-			for id, cfg := range shards.ShardsData {
-				if _, err := db.GetShard(context.TODO(), id); err == nil {
-					spqrlog.Zero.Debug().
-						Str("shard", id).
-						Msg("already exists. creating shard skipped")
-					continue
-				}
-				if err := db.AddShard(context.TODO(), qdb.NewShard(id, cfg.Hosts)); err != nil {
-					return nil, err
-				}
-			}
-		}
-	}
-
 	return &ClusteredCoordinator{
 		Coordinator:  coord.NewCoordinator(db),
 		db:           db,
@@ -450,6 +429,32 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		spqrlog.Zero.Error().Err(err).Msg("error getting qdb lock, retrying")
 
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().LockIterationTimeout, defaultLockCoordinatorTimeout))
+	}
+
+	// sync shards
+	if config.CoordinatorConfig().ShardDataCfg != "" {
+		shards, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+		if err != nil {
+			spqrlog.Zero.Error().
+				Err(err).
+				Msg("failed to load shard data config")
+		}
+
+		if shards != nil {
+			for id, cfg := range shards.ShardsData {
+				if _, err := qc.db.GetShard(context.TODO(), id); err == nil {
+					spqrlog.Zero.Debug().
+						Str("shard", id).
+						Msg("already exists. creating shard skipped")
+					continue
+				}
+				if err := qc.db.AddShard(context.TODO(), qdb.NewShard(id, cfg.Hosts)); err != nil {
+					spqrlog.Zero.Error().
+						Err(err).
+						Msg("failed to add shard")
+				}
+			}
+		}
 	}
 
 	ranges, err := qc.db.ListAllKeyRanges(context.TODO())
