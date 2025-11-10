@@ -2,6 +2,7 @@ package console
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/catalog"
@@ -64,8 +65,8 @@ func NewLocalInstanceConsole(mgr meta.EntityMgr, rrouter rulerouter.RuleRouter, 
 func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rclient.RouterClient, gc catalog.GrantChecker) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
+		spqrlog.Zero.Error().Str("query", q).Err(err).Msg("failed to parse query")
+		return fmt.Errorf("failed to parse query %s", q)
 	}
 
 	spqrlog.Zero.Debug().
