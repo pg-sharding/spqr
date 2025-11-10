@@ -6,23 +6,31 @@ Create GitHub release via https://github.com/pg-sharding/spqr/releases
 
 SPQR automatically publishes Docker images to `pgsharding/spqr-router` on Docker Hub https://github.com/pg-sharding/spqr/pull/1681.
 
-By default all public images are nightly. When you want to mark a nightly build as a stable release:
+Promote a nightly build with the helper script:
+
+```bash
+./script/promote-nightly.sh nightly-2.8.0-1777-e2479243
+```
+
+The script logs in to Docker Hub, retags the nightly image to `latest`, `stable`, and the derived version (e.g. `2.8.0`), then pushes the tags.
+
+Manual flow (if you prefer):
 
 ```bash
 # 1. Pull the nightly image you want to promote
-docker pull pgsharding/spqr-router:nightly-2.7.3-1751-07a36a95
+docker pull pgsharding/spqr-router:nightly-2.8.0-1777-e2479243
 
 # 2. Login to Docker Hub
 docker login -u pgsharding
 
 # 3. Tag it as latest and versioned release
-docker tag pgsharding/spqr-router:nightly-2.7.3-1751-07a36a95 pgsharding/spqr-router:latest
-docker tag pgsharding/spqr-router:nightly-2.7.3-1751-07a36a95 pgsharding/spqr-router:2.7.3
-docker tag pgsharding/spqr-router:nightly-2.7.3-1751-07a36a95 pgsharding/spqr-router:stable
+docker tag pgsharding/spqr-router:nightly-2.8.0-1777-e2479243 pgsharding/spqr-router:latest
+docker tag pgsharding/spqr-router:nightly-2.8.0-1777-e2479243 pgsharding/spqr-router:2.8.0
+docker tag pgsharding/spqr-router:nightly-2.8.0-1777-e2479243 pgsharding/spqr-router:stable
 
 # 4. Push the new tags
 docker push pgsharding/spqr-router:latest
-docker push pgsharding/spqr-router:2.7.3
+docker push pgsharding/spqr-router:2.8.0
 docker push pgsharding/spqr-router:stable
 ```
 
