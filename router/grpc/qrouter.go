@@ -261,6 +261,10 @@ func (l *LocalQrouterServer) GetRelationDistribution(ctx context.Context, reques
 	return &protos.GetRelationDistributionReply{Distribution: distributions.DistributionToProto(ds)}, err
 }
 
+func (l *LocalQrouterServer) ListRouters(ctx context.Context, _ *emptypb.Empty) (*protos.ListRoutersReply, error) {
+	return nil, fmt.Errorf("not a coordinator")
+}
+
 // TODO : unit tests
 func (l *LocalQrouterServer) OpenRouter(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	l.qr.Initialize()

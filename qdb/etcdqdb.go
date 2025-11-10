@@ -80,7 +80,7 @@ const (
 	MaxLockRetry = 7
 )
 
-func keyRangeLockPath(key string) string {
+func LockPath(key string) string {
 	return path.Join(lockNamespace, key)
 }
 
@@ -148,6 +148,10 @@ func moveTaskByGroupNodePath(taskGroupID string) string {
 	return path.Join(moveTaskByGroupNamespace, taskGroupID)
 }
 
+func keyRangeLockNamespace() string {
+	return path.Join(lockNamespace, keyRangesNamespace)
+}
+
 func (q *EtcdQDB) Client() *clientv3.Client {
 	return q.cli
 }
@@ -203,7 +207,7 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, krId string) (*KeyRange, er
 
 	resp, err := q.cli.Txn(ctx).
 		If(clientv3.Compare(clientv3.Version(krNodePath), "!=", 0)).
-		Then(clientv3.OpGet(krNodePath), clientv3.OpGet(keyRangeLockPath(krId))).
+		Then(clientv3.OpGet(krNodePath), clientv3.OpGet(LockPath(krNodePath))).
 		Commit()
 
 	if err != nil {
@@ -322,6 +326,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, distribution string) ([]*Ke
 
 	spqrlog.Zero.Debug().
 		Str("distribution", distribution).
+		Int("key ranges count", len(keyRanges)).
 		Msg("etcdqdb: list key ranges")
 
 	statistics.RecordQDBOperation("ListKeyRanges", time.Since(t))
@@ -334,7 +339,7 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 
 	t := time.Now()
 
-	resp, err := q.cli.Txn(ctx).Then(clientv3.OpGet(keyRangesNamespace, clientv3.WithPrefix()), clientv3.OpGet(lockNamespace, clientv3.WithPrefix())).Commit()
+	resp, err := q.cli.Txn(ctx).Then(clientv3.OpGet(keyRangesNamespace, clientv3.WithPrefix()), clientv3.OpGet(keyRangeLockNamespace(), clientv3.WithPrefix())).Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -344,8 +349,9 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	krDbs := resp.Responses[0].GetResponseRange().Kvs
 	locks := make(map[string]bool)
 	for _, kv := range resp.Responses[1].GetResponseRange().Kvs {
-		id := string(kv.Key[len(lockNamespace)+1:])
+		id := string(kv.Key[len(keyRangeLockNamespace())+1:])
 		locks[id] = string(kv.Value) == "locked"
+		spqrlog.Zero.Debug().Str("key", string(kv.Key)).Str("id", id).Str("value", string(kv.Value)).Msg("got lock")
 	}
 
 	keyRanges := make([]*KeyRange, 0, len(krDbs))
@@ -390,16 +396,16 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, idKeyRange str
 	resp, err := q.cli.Txn(ctx).
 		If(
 			//check exists key range lock
-			clientv3.Compare(clientv3.Version(keyRangeLockPath(keyRangeNodePath(idKeyRange))), "=", 0),
+			clientv3.Compare(clientv3.Version(LockPath(keyRangeNodePath(idKeyRange))), "=", 0),
 			//check exists key range
 			clientv3.Compare(clientv3.Version(keyRangeNodePath(idKeyRange)), ">", 0),
 		).
 		Then(
-			clientv3.OpPut(keyRangeLockPath(keyRangeNodePath(idKeyRange)), "locked"),
+			clientv3.OpPut(LockPath(keyRangeNodePath(idKeyRange)), "locked"),
 			clientv3.OpGet(keyRangeNodePath(idKeyRange)),
 		).
 		Else(
-			clientv3.OpGet(keyRangeLockPath(keyRangeNodePath(idKeyRange)), clientv3.WithCountOnly()),
+			clientv3.OpGet(LockPath(keyRangeNodePath(idKeyRange)), clientv3.WithCountOnly()),
 			clientv3.OpGet(keyRangeNodePath(idKeyRange), clientv3.WithCountOnly()),
 		).
 		Commit()
@@ -437,11 +443,11 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, idKeyRange str
 				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 1)",
 					idKeyRange)
 			}
-			keyRange := KeyRange{}
+			keyRange := &internalKeyRange{}
 			if err := json.Unmarshal(kv, &keyRange); err != nil {
 				return nil, err
 			}
-			return &keyRange, nil
+			return keyRangeFromInternal(keyRange, true), nil
 		}
 	}
 }
@@ -473,7 +479,7 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, idKeyRange string) error {
 		Msg("etcdqdb: unlock key range")
 
 	t := time.Now()
-	_, err := q.cli.Delete(ctx, keyRangeLockPath(keyRangeNodePath(idKeyRange)))
+	_, err := q.cli.Delete(ctx, LockPath(keyRangeNodePath(idKeyRange)))
 	if err != nil {
 		return retry.RetryableError(err)
 	}
@@ -549,7 +555,7 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 		return err
 	}
 
-	_, err = q.cli.Delete(ctx, keyRangeLockPath(keyRangeNodePath(krId)))
+	_, err = q.cli.Delete(ctx, LockPath(keyRangeNodePath(krId)))
 	if err != nil {
 		return err
 	}

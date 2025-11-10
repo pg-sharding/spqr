@@ -1,5 +1,5 @@
 Feature: Router bootstrap test
-  Scenario: Move task group retry works
+  Scenario: Key range lock is synced to router
     Given cluster is up and running
     And host "coordinator2" is stopped
     And host "coordinator2" is started
@@ -28,7 +28,7 @@ Feature: Router bootstrap test
     """
     When I run SQL on host "coordinator"
     """
-    REGISTER ROUTER r1 ADDRESS regress_router:7000;
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
     """
     Then command return code should be "0"
     When I run SQL on host "router-admin"
