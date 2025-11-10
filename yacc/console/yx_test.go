@@ -322,9 +322,10 @@ func TestGroupBy(t *testing.T) {
 	assert := assert.New(t)
 
 	type tcase struct {
-		query string
-		exp   spqrparser.Statement
-		err   error
+		query  string
+		errmsg string
+		exp    spqrparser.Statement
+		err    error
 	}
 
 	for _, tt := range []tcase{
@@ -347,13 +348,22 @@ func TestGroupBy(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query:  "SHOW backend_connections GROUP BY ",
+			exp:    nil,
+			errmsg: "syntax error",
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
 
-		assert.NoError(err, "query %s", tt.query)
+		if tt.errmsg != "" {
+			assert.ErrorContains(err, tt.errmsg, tt.query)
+		} else {
+			assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+			assert.Equal(tt.exp, tmp, "query %s", tt.query)
+		}
 	}
 }
 
