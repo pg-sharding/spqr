@@ -7,7 +7,7 @@ SPQR (Stateless Postgres Query Router) is a production-ready system for horizont
 ## Technology Stack
 
 - **Language**: Go 1.25.0
-- **Database**: PostgreSQL (versions 13-17 supported)
+- **Database**: SPQR acts as a proxy between applications and PostgreSQL clusters (shards). It supports any PostgreSQL version. Testing is performed against PostgreSQL versions 13-17.
 - **Testing**: Standard Go testing, godog for BDD, Docker Compose for integration tests
 - **Build Tool**: Make
 - **Linting**: golangci-lint
@@ -75,15 +75,29 @@ SPQR (Stateless Postgres Query Router) is a production-ready system for horizont
 
 ```bash
 make deps          # Download dependencies
-make build         # Build all components
-make build_router  # Build specific component
+make build         # Build all components: router, coordinator, balancer, mover, worldmock, workloadreplay, spqr-dump, and coordctl
+make build_router  # Build router component
+make build_coordinator  # Build coordinator component
+make build_balancer     # Build balancer component
+make build_coorctl      # Build coordctl (coordinator control CLI)
+make build_mover        # Build mover component
+make build_worldmock    # Build worldmock component
+make build_workloadreplay  # Build workloadreplay component
+make build_spqrdump     # Build spqr-dump component
 ```
 
 ### Running
 
 ```bash
-make run           # Quick Docker-based example
-spqr-router run --config path-to-config.yaml
+make run                                      # Quick Docker-based example with router, coordinator, and shards
+spqr-router run --config router-config.yaml  # Run router with config file
+spqr-coordinator run --config coord-config.yaml  # Run coordinator with config file
+spqr-balancer run --config balancer-config.yaml  # Run balancer with config file
+coorctl                                       # Coordinator control CLI tool
+
+# Example configs are in examples/ directory:
+# - router.yaml, coordinator.yaml, balancer.yaml
+# - 2shardproxy.yaml, 4shardproxy.yaml for multi-shard setups
 ```
 
 ### Linting
@@ -112,6 +126,7 @@ make lint          # Run golangci-lint
 
 - Distributes connections across router instances
 - Monitors router health and availability
+- Note: Balancer is now part of the coordinator but temporarily supported as a separate executable
 
 ### Key Packages
 
@@ -139,12 +154,19 @@ make lint          # Run golangci-lint
 3. Verify the fix with tests
 4. Check for similar issues in related code
 
-### Modifying Database Schema
+### Modifying Metadata Schema
 
-1. Update schema definitions
-2. Add migration logic if needed
-3. Update tests to reflect schema changes
-4. Test with all supported PostgreSQL versions
+SPQR does not connect to databases as a typical application. It acts as a proxy between applications and PostgreSQL shards.
+
+For sharding metadata management:
+1. SPQR has its own metadata database called QDB (Query Database)
+2. QDB implementations: `memqdb.go` (in-memory) or `etcdqdb.go` (ETCD-backed)
+3. The ETCD cluster stores metadata that coordinators and routers use
+4. When modifying metadata schema:
+   - Update QDB interface and implementations
+   - Add migration logic if needed
+   - Update tests to reflect schema changes
+   - Test with both memqdb and etcdqdb implementations
 
 ## Dependencies
 
@@ -208,6 +230,6 @@ All checks must pass in CI before merging.
 
 ## Resources
 
-- [Documentation](https://pg-sharding.tech)
+- [Documentation](https://docs.pg-sharding.tech)
 - [Telegram Chat](https://t.me/+jMGhyjwicpI3ZWQy)
 - [GitHub Issues](https://github.com/pg-sharding/spqr/issues)
