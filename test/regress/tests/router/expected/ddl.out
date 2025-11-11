@@ -45,6 +45,9 @@ CREATE TABLE table_1(id INT PRIMARY KEY);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE table_2(id INT PRIMARY KEY);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+/* Test that this DDL sipmly scatters out */
+CREATE TYPE enum_name AS ENUM ('value1', 'value2', 'value3');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 BEGIN;
 ALTER TABLE "table_1" RENAME TO "tmp" /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
