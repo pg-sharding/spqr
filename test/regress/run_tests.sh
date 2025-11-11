@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 export PGDATABASE=regress
 export PGUSER=regress
 export PGSSLMODE=allow
