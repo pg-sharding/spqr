@@ -1,8 +1,8 @@
 package qdb
 
 import (
-	"maps"
 	"fmt"
+	"maps"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
@@ -84,9 +84,7 @@ func (c *DropCommand[T]) Do() error {
 }
 
 func (c *DropCommand[T]) Undo() error {
-	for k, v := range c.copy {
-		c.m[k] = v
-	}
+	maps.Copy(c.m, c.copy)
 	return nil
 }
 
