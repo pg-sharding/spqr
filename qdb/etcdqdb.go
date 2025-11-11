@@ -252,7 +252,7 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 
 	t := time.Now()
 
-	rawKeyRange, err := json.Marshal(keyRange)
+	rawKeyRange, err := json.Marshal(keyRangeToInternal(keyRange))
 	if err != nil {
 		return err
 	}
