@@ -1174,9 +1174,9 @@ func (tctx *testContext) checkCoordinatorInQDBFunc(expected string) func() bool 
 		defer cancel()
 		log.Printf("try send command ListRouters to %s\n", addr)
 		if _, err = client.ListRouters(ctx, nil); err == nil {
-			log.Printf("got list routers from %s: successfully", addr)
+			log.Printf("listed routers from %s: successfully", addr)
 		} else {
-			log.Printf("can't get list routers. error: %s", err.Error())
+			log.Printf("can't list routers. error: %s", err.Error())
 		}
 		return err == nil
 	}
