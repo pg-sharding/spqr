@@ -16,7 +16,7 @@ CREATE TABLE table_1(id INT PRIMARY KEY);
 CREATE TABLE table_2(id INT PRIMARY KEY);
 
 
-/* Test that this DDL sipmly scatters out */
+/* Test that this DDL simply scatters out */
 CREATE TYPE enum_name AS ENUM ('value1', 'value2', 'value3');
 
 BEGIN;
