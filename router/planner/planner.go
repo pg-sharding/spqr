@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -591,8 +592,35 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 				return nil, rerrors.ErrComplexQuery
 			} else if ds.Id != distributions.REPLICATED {
 
-				/* XXX: support some simple patterns here?  */
-				return nil, rerrors.ErrComplexQuery
+				switch q := v.SubSelect.(type) {
+				case *lyx.ValueClause:
+					if v.WithClause != nil {
+						return nil, rerrors.ErrComplexQuery
+					}
+
+					shs, err := PlanDistributedRelationInsert(ctx, q.Values, rm, v)
+					if err != nil {
+						return nil, err
+					}
+					/* XXX: give change for engine v2 to rewrite queries */
+					for _, sh := range shs {
+						if sh.Name != shs[0].Name {
+							return nil, rerrors.ErrComplexQuery
+						}
+					}
+
+					if len(shs) > 0 {
+						return &plan.ShardDispatchPlan{
+							ExecTarget:         shs[0],
+							TargetSessionAttrs: config.TargetSessionAttrsRW,
+						}, nil
+					}
+					return nil, rerrors.ErrComplexQuery
+
+				default:
+					/* XXX: support some simple patterns here?  */
+					return nil, rerrors.ErrComplexQuery
+				}
 			}
 
 			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, v.SubSelect, allowRewrite)

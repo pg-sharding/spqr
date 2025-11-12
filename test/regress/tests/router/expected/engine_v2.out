@@ -99,6 +99,31 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  302
 (13 rows)
 
+-- should all succeed
+INSERT INTO table1 (id) VALUES(50),(51);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO table1 (id) VALUES(150),(151);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO table1 (id) VALUES(250),(251);
+NOTICE: send query to shard(s) : sh3
+INSERT INTO table1 (id) VALUES(350),(351);
+NOTICE: send query to shard(s) : sh4
+WITH a AS (SELECT 1) INSERT INTO table1 (id) VALUES(52),(53);
+NOTICE: send query to shard(s) : sh1
+TRUNCATE table1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- disable v1 logic, now CTE fails
+SET __spqr__preferred_engine to 'v2';
+INSERT INTO table1 (id) VALUES(50),(51);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO table1 (id) VALUES(150),(151);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO table1 (id) VALUES(250),(251);
+NOTICE: send query to shard(s) : sh3
+INSERT INTO table1 (id) VALUES(350),(351);
+NOTICE: send query to shard(s) : sh4
+WITH a AS (SELECT 1) INSERT INTO table1 (id) VALUES(52),(53);
+ERROR:  client processing error: error processing query 'WITH a AS (SELECT 1) INSERT INTO table1 (id) VALUES(52),(53);': too complex query to route, tx status IDLE
 DROP TABLE table1 CASCADE;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
