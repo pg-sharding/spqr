@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,67 +11,20 @@ import (
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
-	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
-	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/pool"
-	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/pkg/tsa"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/statistics"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
-
-type toString[T any] func(s T) string
-type BackendGetter func(sh shard.ShardHostCtl) string
-
-func GetRouter(sh shard.ShardHostCtl) string {
-	router := "no data"
-	s, ok := sh.(shard.CoordShardinfo)
-	if ok {
-		router = s.Router()
-	}
-	return router
-}
-
-var BackendConnectionsHeaders = []string{
-	"backend connection id",
-	"router",
-	"shard key name",
-	"hostname",
-	"pid",
-	"user",
-	"dbname",
-	"sync",
-	"tx_served",
-	"tx status",
-	"is stale",
-	"created at",
-}
-
-var BackendConnectionsGetters = map[string]toString[shard.ShardHostCtl]{
-	BackendConnectionsHeaders[0]:  func(sh shard.ShardHostCtl) string { return fmt.Sprintf("%d", sh.ID()) },
-	BackendConnectionsHeaders[1]:  GetRouter,
-	BackendConnectionsHeaders[2]:  func(sh shard.ShardHostCtl) string { return sh.ShardKeyName() },
-	BackendConnectionsHeaders[3]:  func(sh shard.ShardHostCtl) string { return sh.InstanceHostname() },
-	BackendConnectionsHeaders[4]:  func(sh shard.ShardHostCtl) string { return fmt.Sprintf("%d", sh.Pid()) },
-	BackendConnectionsHeaders[5]:  func(sh shard.ShardHostCtl) string { return sh.Usr() },
-	BackendConnectionsHeaders[6]:  func(sh shard.ShardHostCtl) string { return sh.DB() },
-	BackendConnectionsHeaders[7]:  func(sh shard.ShardHostCtl) string { return strconv.FormatInt(sh.Sync(), 10) },
-	BackendConnectionsHeaders[8]:  func(sh shard.ShardHostCtl) string { return strconv.FormatInt(sh.TxServed(), 10) },
-	BackendConnectionsHeaders[9]:  func(sh shard.ShardHostCtl) string { return sh.TxStatus().String() },
-	BackendConnectionsHeaders[10]: func(sh shard.ShardHostCtl) string { return strconv.FormatBool(sh.IsStale()) },
-	BackendConnectionsHeaders[11]: func(s shard.ShardHostCtl) string { return s.CreatedAt().UTC().Format(time.RFC3339) },
-}
 
 type Interactor interface {
 	ProcClient(ctx context.Context, nconn net.Conn, pt port.RouterPortType) error
@@ -92,56 +43,12 @@ type PSQLInteractor struct {
 	cl client.Client
 }
 
-func (pi *PSQLInteractor) SyncReferenceRelations(s []string, d string) error {
-	if err := pi.WriteHeader("relation", "shard"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	for _, id := range s {
-		if err := pi.WriteDataRow(
-			fmt.Sprintf("%v", id),
-
-			fmt.Sprintf("%v", d)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(len(s))
-}
-
 func (pi *PSQLInteractor) CoordinatorAddr(ctx context.Context, addr string) error {
-	if err := pi.WriteHeader("coordinator address"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
+	tts := &tupleslot.TupleTableSlot{
+		Desc: engine.GetVPHeader("coordinator address"),
 	}
-	if err := pi.WriteDataRow(
-		fmt.Sprintf("%v", addr)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(1)
-}
-
-// TODO refactor it to make more user-friendly
-func (pi *PSQLInteractor) Instance(ctx context.Context, ci connmgr.ConnectionMgr) error {
-	if err := pi.WriteHeader(
-		"total tcp connection count",
-		"total cancel requests",
-		"active tcp connections"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	if err := pi.WriteDataRow(
-		fmt.Sprintf("%v", ci.TotalTcpCount()),
-		fmt.Sprintf("%v", ci.TotalCancelCount()),
-		fmt.Sprintf("%v", ci.ActiveTcpCount())); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(1)
+	tts.WriteDataRow(fmt.Sprintf("%v", addr))
+	return pi.ReplyTTS(tts)
 }
 
 // NewPSQLInteractor creates a new instance of the PSQLInteractor struct.
@@ -364,22 +271,9 @@ func (pi *PSQLInteractor) Quantiles(_ context.Context) error {
 
 // TODO : unit tests
 
-// AddShard sends the row description message for adding a data shard, followed by a data row
-// indicating the creation of the specified data shard, and completes the message.
-//
-// Parameters:
-// - shard (*topology.DataShard): The topology.DataShard object to be added.
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) AddShard(shard *topology.DataShard) error {
-	if err := pi.WriteHeader("add shard"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
+func (pi *PSQLInteractor) ReplyTTS(tts *tupleslot.TupleTableSlot) error {
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("shard id -> %s", shard.ID))}},
+		&pgproto3.RowDescription{Fields: tts.Desc},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -387,50 +281,7 @@ func (pi *PSQLInteractor) AddShard(shard *topology.DataShard) error {
 		}
 	}
 
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// DropShard sends the row description message for dropping a shard, followed by a data row
-// indicating the dropping of the specified shard, and completes the message.
-//
-// Parameters:
-// - id (string): The ID of the shard to be dropped (string).
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) DropShard(id string) error {
-	if err := pi.WriteHeader("drop shard"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("shard id -> %s", id))}},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-func (pi *PSQLInteractor) replyVirtualPlan(vp *plan.VirtualPlan) error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.RowDescription{Fields: vp.VirtualRowCols},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	for _, r := range vp.VirtualRowVals {
+	for _, r := range tts.Raw {
 		if err := pi.cl.Send(&pgproto3.DataRow{
 			Values: r,
 		}); err != nil {
@@ -438,77 +289,7 @@ func (pi *PSQLInteractor) replyVirtualPlan(vp *plan.VirtualPlan) error {
 			return err
 		}
 	}
-	return pi.CompleteMsg(len(vp.VirtualRowVals))
-}
-
-// KeyRanges sends the row description message for key ranges, followed by data rows
-// containing details of each key range, and completes the message.
-//
-// Parameters:
-// - krs ([]*kr.KeyRange): The list of *kr.KeyRange objects containing the key range information.
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, locks []string) error {
-	vp := plan.KeyRangeVirtualPlan(krs, locks)
-	return pi.replyVirtualPlan(vp)
-}
-
-// TODO : unit tests
-
-// CreateKeyRange sends the row description message for adding a key range, followed by a data row
-// indicating the creation of the specified key range, and completes the message.
-//
-// Parameters:
-// - ctx (context.Context): The context parameter.
-// - keyRange (*kr.KeyRange): The *kr.KeyRange object to be created.
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
-	if err := pi.WriteHeader("add key range"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{fmt.Appendf(nil, "bound -> %s", keyRange.SendRaw()[0])}},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// CreateReferenceRelation sends the row description message for adding a reference relation, followed by a data row
-// indicating the creation of the specified key range, and completes the message.
-//
-// Parameters:
-// - ctx (context.Context): The context parameter.
-// - rrel (*rrelation.ReferenceRelation): The relation object to be created.
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) CreateReferenceRelation(ctx context.Context, rrel *rrelation.ReferenceRelation) error {
-	if err := pi.WriteHeader("create reference table"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("table    -> %s", rrel.TableName))}},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("shard id -> %s", strings.Join(rrel.ShardIds, ",")))}},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
+	return pi.CompleteMsg(len(tts.Raw))
 }
 
 // TODO : unit tests
@@ -531,70 +312,6 @@ func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyR
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.DataRow{Values: [][]byte{fmt.Appendf(nil, "key range id -> %v", split.Krid)}},
 		&pgproto3.DataRow{Values: [][]byte{fmt.Appendf(nil, "bound        -> %s", strings.ToLower(string(split.Bound[0])))}},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// LockKeyRange sends the row description message for locking a key range with the specified ID,
-// followed by a data row indicating the locking of the key range, and completes the message.
-//
-// Parameters:
-// - ctx (context.Context): The context parameter.
-// - krid (string): The ID of the key range to be locked (string).
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) LockKeyRange(ctx context.Context, krid string) error {
-	if err := pi.WriteHeader("lock key range"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{
-			[]byte(fmt.Sprintf("key range id -> %v", krid))},
-		},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// UnlockKeyRange sends the row description message for unlocking a key range with the specified ID,
-// followed by a data row indicating the unlocking of the key range, and completes the message.
-//
-// Parameters:
-// - ctx (context.Context): The context parameter.
-// - krid (string): The ID of the key range to be unlocked (string).
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string) error {
-	if err := pi.WriteHeader("unlock key range"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{
-			[]byte(
-				fmt.Sprintf("key range id -> %v", krid)),
-		},
-		},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -630,29 +347,11 @@ func (pi *PSQLInteractor) MoveTaskGroups(_ context.Context, groups map[string]*t
 	return pi.CompleteMsg(len(groups))
 }
 
-func (pi *PSQLInteractor) MoveTaskGroup(_ context.Context, ts *tasks.MoveTaskGroup) error {
-	spqrlog.Zero.Debug().Msg("show move task group")
-
-	if err := pi.WriteHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID"); err != nil {
-		return err
-	}
-	if ts == nil {
-		return pi.CompleteMsg(0)
-	}
-	if err := pi.WriteDataRow(ts.ID, ts.ShardToId, ts.KrIdFrom, ts.KrIdTo); err != nil {
-		return err
-	}
-	return pi.CompleteMsg(1)
-}
-
 func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.MoveTask, dsIDColTypes map[string][]string, moveTaskDsID map[string]string) error {
 	if err := pi.WriteHeader("Move task ID", "Temporary key range ID", "Bound", "State"); err != nil {
 		return err
 	}
 
-	if ts == nil {
-		return pi.CompleteMsg(0)
-	}
 	for _, task := range ts {
 		krData := []string{""}
 		if task.Bound != nil {
@@ -686,285 +385,6 @@ func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.Move
 
 	}
 	return pi.CompleteMsg(len(ts))
-}
-
-// DropTaskGroup drops all tasks in the task group.
-//
-// Parameters:
-// - _ (context.Context): The context parameter.
-//
-// Returns:
-// - error: An error if there was a problem dropping the tasks.
-func (pi *PSQLInteractor) DropTaskGroup(_ context.Context) error {
-	if err := pi.WriteHeader("drop task group"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte("dropped all tasks")}},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// Shards lists the data shards.
-//
-// Parameters:
-// - ctx (context.Context): The context parameter.
-// - shards ([]*topology.DataShard): The list of data shards to be listed.
-//
-// Returns:
-// - error: An error if there was a problem listing the data shards.
-func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*topology.DataShard) error {
-	if err := pi.WriteHeader("shard"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	spqrlog.Zero.Debug().Msg("listing shards")
-
-	for _, shard := range shards {
-		if err := pi.cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{
-				[]byte(shard.ID),
-			},
-		}); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-func (pi *PSQLInteractor) Hosts(ctx context.Context, shards []*topology.DataShard, ihc map[string]tsa.CachedCheckResult) error {
-	vp := plan.HostsVirtualPlan(shards, ihc)
-	return pi.replyVirtualPlan(vp)
-}
-
-type TableDesc interface {
-	GetHeader() []string
-}
-
-type ClientDesc struct {
-}
-
-// TODO : unit tests
-
-// GetRow retrieves a row of data for a given client, hostname, and rAddr.
-//
-// Parameters:
-// - cl (client.Client): The client object.
-// - hostname (string): The hostname.
-// - rAddr (string): The rAddr.
-//
-// Returns:
-// - []string: The row data, which consists of the following elements:
-//   - ID (int): The ID of the client.
-//   - Usr (string): The user of the client.
-//   - DB (string): The database of the client.
-//   - Hostname (string): The hostname.
-//   - RAddr (string): The rAddr.
-//   - Quantiles ([]float64): The quantiles of time statistics for the client.
-//   - TimeQuantileRouter (float64): The time quantile for the router.
-//   - TimeQuantileShard (float64): The time quantile for the shard.
-func (ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) []string {
-	quantiles := statistics.GetQuantiles()
-	rowData := []string{fmt.Sprintf("%d", cl.ID()), cl.Usr(), cl.DB(), hostname, rAddr}
-
-	for _, el := range *quantiles {
-		rowData = append(rowData, fmt.Sprintf("%.2fms",
-			statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, el, cl)))
-		rowData = append(rowData, fmt.Sprintf("%.2fms",
-			statistics.GetTimeQuantile(statistics.StatisticsTypeShard, el, cl)))
-	}
-	return rowData
-}
-
-// TODO : unit tests
-
-// GetHeader returns the header row for the client description.
-//
-// Parameters:
-// - None.
-//
-// Returns:
-// - []string: The header row, which consists of the following elements:
-//   - "client_id" (string): The ID of the client.
-//   - "user" (string): The user of the client.
-//   - "dbname" (string): The database of the client.
-//   - "server_id" (string): The server ID.
-//   - "router_address" (string): The router address.
-//   - "router_time_<quantile>" (string): The header for the quantile time for the router.
-//   - "shard_time_<quantile>" (string): The header for the quantile time for the shard.
-func (ClientDesc) GetHeader() []string {
-	quantiles := statistics.GetQuantiles()
-	headers := []string{
-		"client_id", "user", "dbname", "server_id", "router_address",
-	}
-	for _, el := range *quantiles {
-		headers = append(headers, fmt.Sprintf("router_time_%g", el))
-		headers = append(headers, fmt.Sprintf("shard_time_%g", el))
-	}
-	return headers
-}
-
-type BackendDesc struct {
-}
-
-// TODO : unit tests
-
-// GetRow retrieves a row of data for a given client, hostname, and rAddr.
-//
-// Parameters:
-// - cl (client.Client): The client object.
-// - hostname (string): The hostname.
-// - rAddr (string): The rAddr.
-//
-// Returns:
-// - []string: The row data, which consists of the following elements:
-//   - ID (int): The ID of the client.
-//   - Usr (string): The user of the client.
-//   - DB (string): The database of the client.
-//   - Hostname (string): The hostname.
-//   - RAddr (string): The rAddr.
-//   - Quantiles ([]float64): The quantiles of time statistics for the client.
-//   - TimeQuantileRouter (float64): The time quantile for the router.
-//   - TimeQuantileShard (float64): The time quantile for the shard.
-func (BackendDesc) GetRow(sh shard.ShardHostCtl) []string {
-	var rowData []string
-	for _, header := range BackendConnectionsHeaders {
-		rowData = append(rowData, BackendConnectionsGetters[header](sh))
-	}
-
-	return rowData
-}
-
-// TODO : unit tests
-
-// GetHeader returns the header row for the client description.
-//
-// Parameters:
-// - None.
-//
-// Returns:
-// - []string: The header row, which consists of the following elements:
-//   - "client_id" (string): The ID of the client.
-//   - "user" (string): The user of the client.
-//   - "dbname" (string): The database of the client.
-//   - "server_id" (string): The server ID.
-//   - "router_address" (string): The router address.
-//   - "router_time_<quantile>" (string): The header for the quantile time for the router.
-//   - "shard_time_<quantile>" (string): The header for the quantile time for the shard.
-func (BackendDesc) GetHeader() []string {
-	return BackendConnectionsHeaders
-}
-
-// GetColumnsMap generates a map that maps column names to their respective indices in the table description header.
-//
-// Parameters:
-// - desc (TableDesc): The table description.
-//
-// Returns:
-// - map[string]int: A map that maps column names to their respective indices in the table description header.
-func GetColumnsMap(desc TableDesc) map[string]int {
-	header := desc.GetHeader()
-	columns := make(map[string]int, len(header))
-	i := 0
-	for _, key := range header {
-		columns[key] = i
-		i++
-	}
-	return columns
-}
-
-// TODO : unit tests
-
-// Clients retrieves client information based on provided client information, filtering conditions and writes the data to the PSQL client.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-// - clients ([]client.ClientInfo): The list of client information to process.
-// - condition (spqrparser.WhereClauseNode): The condition to filter the client information.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientInfo, query *spqrparser.Show) error {
-	desc := ClientDesc{}
-	header := desc.GetHeader()
-	rowDesc := GetColumnsMap(desc)
-	condition := query.Where
-	order := query.Order
-	if err := pi.WriteHeader(header...); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	var data [][]string
-	for _, cl := range clients {
-		if len(cl.Shards()) > 0 {
-			for _, sh := range cl.Shards() {
-				if sh == nil {
-					continue
-				}
-				row := desc.GetRow(cl, sh.Instance().Hostname(), cl.RAddr())
-
-				match, err := engine.MatchRow(row, rowDesc, condition)
-				if err != nil {
-					return err
-				}
-				if !match {
-					continue
-				}
-				data = append(data, row)
-			}
-		} else {
-			row := desc.GetRow(cl, "no backend connection", cl.RAddr())
-
-			match, err := engine.MatchRow(row, rowDesc, condition)
-			if err != nil {
-				return err
-			}
-			if !match {
-				continue
-			}
-
-			data = append(data, row)
-		}
-
-	}
-	switch order.(type) {
-	case spqrparser.Order:
-		ord := order.(spqrparser.Order)
-		var asc_desc int
-
-		switch ord.OptAscDesc.(type) {
-		case spqrparser.SortByAsc:
-			asc_desc = engine.ASC
-		case spqrparser.SortByDesc:
-			asc_desc = engine.DESC
-		case spqrparser.SortByDefault:
-			asc_desc = engine.ASC
-		default:
-			return fmt.Errorf("wrong sorting option (asc/desc)")
-		}
-		sortable := engine.SortableWithContext{Data: data, Col_index: rowDesc[ord.Col.ColName], Order: asc_desc}
-		sort.Sort(sortable)
-	}
-	for i := range len(data) {
-		if err := pi.WriteDataRow(data[i]...); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-	return pi.CompleteMsg(len(clients))
 }
 
 // TODO : unit tests
@@ -1070,42 +490,6 @@ func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRa
 	return nil
 }
 
-// TODO : unit tests
-
-// MoveKeyRange moves a key range to a specific shard in the PSQL client.
-//
-// Parameters:
-// - _ (context.Context): The context for the operation.
-// - move (*kr.MoveKeyRange): The key range and shard information for the move operation.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) MoveKeyRange(_ context.Context, move *kr.MoveKeyRange) error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			{
-				Name:                 []byte("move key range"),
-				TableOID:             0,
-				TableAttributeNumber: 0,
-				DataTypeOID:          25,
-				DataTypeSize:         -1,
-				TypeModifier:         -1,
-				Format:               0,
-			},
-		},
-		},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("move key range %v to shard %v", move.Krid, move.ShardId))}},
-		&pgproto3.CommandComplete{},
-		&pgproto3.ReadyForQuery{},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-		}
-	}
-
-	return nil
-}
-
 // RedistributeKeyRange moves key range to a specified shard in the PSQL client.
 // Data moves are done by batches of the given size.
 //
@@ -1161,188 +545,6 @@ func (pi *PSQLInteractor) Routers(resp []*topology.Router) error {
 
 // TODO : unit tests
 
-// UnregisterRouter unregisters a router with the specified ID.
-//
-// Parameters:
-// - id (string): The ID of the router to unregister.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) UnregisterRouter(id string) error {
-	if err := pi.WriteHeader("unregister router"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("router id -> %s", id)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// RegisterRouter registers a router with the specified ID and address.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-// - id (string): The ID of the router to register.
-// - addr (string): The address of the router to register.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) RegisterRouter(ctx context.Context, id string, addr string) error {
-	if err := pi.WriteHeader("register router"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("router -> %s-%s", id, addr)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// StartTraceMessages initiates tracing of messages in the PSQL client.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) StartTraceMessages(ctx context.Context) error {
-	if err := pi.WriteHeader("start trace messages"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow("START TRACE MESSAGES"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// StopTraceMessages stops tracing of messages in the PSQL client.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) StopTraceMessages(ctx context.Context) error {
-	if err := pi.WriteHeader("stop trace messages"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow("STOP TRASCE MESSAGES"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// StopTraceMessages stops tracing of messages in the PSQL client.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) DropKeyRange(ctx context.Context, ids []string) error {
-	if err := pi.WriteHeader("drop key range"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, id := range ids {
-		if err := pi.WriteDataRow(fmt.Sprintf("key range id -> %s", id)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// AddDistribution adds a distribution to the PSQL client.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-// - ks (*distributions.Distribution): The distribution to add.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) AddDistribution(ctx context.Context, ks *distributions.Distribution) error {
-	if err := pi.WriteHeader("add distribution"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("distribution id -> %s", ks.ID())); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// DropDistribution drops distributions with the specified IDs in the PSQL client.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-// - ids ([]string): The list of distribution IDs to drop.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) DropDistribution(ctx context.Context, ids []string) error {
-	if err := pi.WriteHeader("drop distribution"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, id := range ids {
-		if err := pi.WriteDataRow(fmt.Sprintf("distribution id -> %s", id)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-func (pi *PSQLInteractor) DropReferenceRelation(ctx context.Context, id string) error {
-	if err := pi.WriteHeader("drop reference table"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("table -> %s", id)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
 // AlterDistributionAttach attaches tables to a distribution in the PSQL client.
 //
 // Parameters:
@@ -1386,36 +588,6 @@ func (pi *PSQLInteractor) AlterDistributionAttach(ctx context.Context, id string
 // - error: An error if any occurred during the operation.
 func (pi *PSQLInteractor) AlterDistributionDetach(_ context.Context, id string, relName string) error {
 	if err := pi.WriteHeader("detach relation"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("relation name   -> %s", relName)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("distribution id -> %s", id)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// AlterDistributedRelation alters metadata for a distributed relation in the PSQL client.
-//
-// Parameters:
-// - _ (context.Context): The context for the operation. (Unused)
-// - id (string): The ID of the distribution to alter the relation of.
-// - relName (string): The name of the relation to alter.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) AlterDistributedRelation(_ context.Context, id string, relName string) error {
-	if err := pi.WriteHeader("alter relation"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
@@ -1514,146 +686,9 @@ func (pi *PSQLInteractor) KillBackend(id uint) error {
 	return pi.CompleteMsg(0)
 }
 
-// BackendConnections writes backend connection information to the PSQL client.
-//
-// Parameters:
-// - _ (context.Context): The context for the operation.
-// - shs ([]shard.Shardinfo): The list of shard information.
-// - stmt (*spqrparser.Show): The query itself.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.ShardHostCtl, stmt *spqrparser.Show) error {
-
-	var filteredShards []shard.ShardHostCtl
-
-	var desc BackendDesc
-	rowDesc := GetColumnsMap(desc)
-
-	for _, sh := range shs {
-
-		row := desc.GetRow(sh)
-
-		match, err := engine.MatchRow(row, rowDesc, stmt.Where)
-		if err != nil {
-			return err
-		}
-		if !match {
-			continue
-		}
-		filteredShards = append(filteredShards, sh)
-	}
-
-	shs = filteredShards
-
-	switch gb := stmt.GroupBy.(type) {
-	case spqrparser.GroupBy:
-		groupByCols := []string{}
-		for _, col := range gb.Col {
-			groupByCols = append(groupByCols, col.ColName)
-		}
-		return groupBy(shs, BackendConnectionsGetters, groupByCols, pi)
-	case spqrparser.GroupByClauseEmpty:
-		if err := pi.WriteHeader(BackendConnectionsHeaders...); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-
-		for _, sh := range shs {
-			vals := make([]string, 0)
-			for _, header := range BackendConnectionsHeaders {
-				vals = append(vals, BackendConnectionsGetters[header](sh))
-			}
-			if err := pi.WriteDataRow(vals...); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
-				return err
-			}
-		}
-
-		return pi.CompleteMsg(len(shs))
-	default:
-		return spqrerror.NewByCode(spqrerror.SPQR_INVALID_REQUEST)
-	}
-}
-
-// TODO unit tests
-
-// Relations sends information about attached relations that satisfy conditions in WHERE-clause
-// Relations writes relation information to the PSQL client based on the given distribution-to-relations map and condition.
-//
-// Parameters:
-// - dsToRels (map[string][]*distributions.DistributedRelation): The map of distribution names to their corresponding distributed relations.
-// - condition (spqrparser.WhereClauseNode): The condition for filtering the relations.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.DistributedRelation, condition spqrparser.WhereClauseNode) error {
-	if err := pi.WriteHeader("Relation name", "Distribution ID", "Distribution key", "Schema name"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error sending header")
-		return err
-	}
-
-	dss := make([]string, len(dsToRels))
-	i := 0
-	for ds := range dsToRels {
-		dss[i] = ds
-		i++
-	}
-	sort.Strings(dss)
-
-	c := 0
-	index := map[string]int{"distribution_id": 0}
-	for _, ds := range dss {
-		rels := dsToRels[ds]
-		sort.Slice(rels, func(i, j int) bool {
-			return rels[i].Name < rels[j].Name
-		})
-		if ok, err := engine.MatchRow([]string{ds}, index, condition); err != nil {
-			return err
-		} else if !ok {
-			continue
-		}
-		for _, rel := range rels {
-			dsKey := make([]string, len(rel.DistributionKey))
-			for i, e := range rel.DistributionKey {
-				t, err := hashfunction.HashFunctionByName(e.HashFunction)
-				if err != nil {
-					return err
-				}
-				dsKey[i] = fmt.Sprintf("(\"%s\", %s)", e.Column, hashfunction.ToString(t))
-			}
-			schema := rel.SchemaName
-			if schema == "" {
-				schema = "$search_path"
-			}
-			if err := pi.WriteDataRow(rel.Name, ds, strings.Join(dsKey, ","), schema); err != nil {
-				return err
-			}
-			c++
-		}
-	}
-	return pi.CompleteMsg(c)
-}
-
 func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation) error {
-	vp := plan.ReferenceRelationVirtualPlan(rrs)
-	return pi.replyVirtualPlan(vp)
-}
-
-func (pi *PSQLInteractor) PreparedStatements(ctx context.Context, shs []shard.PreparedStatementsMgrDescriptor) error {
-	if err := pi.WriteHeader("name", "backend_id", "hash", "query"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, sh := range shs {
-		if err := pi.WriteDataRow(sh.Name, fmt.Sprintf("%d", sh.ServerId), fmt.Sprintf("%d", sh.Hash), sh.Query); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(len(shs))
+	vp := engine.ReferenceRelationsScan(rrs)
+	return pi.ReplyTTS(vp)
 }
 
 func (pi *PSQLInteractor) Sequences(ctx context.Context, seqs []string, sequenceVals []int64) error {
@@ -1669,28 +704,6 @@ func (pi *PSQLInteractor) Sequences(ctx context.Context, seqs []string, sequence
 		}
 	}
 	return pi.CompleteMsg(len(seqs))
-}
-
-// DropSequence drops sequence with a given name.
-//
-// Parameters:
-// - _ (context.Context): The context parameter.
-// - name (string): Name of the sequence
-//
-// Returns:
-// - error: An error if there was a problem dropping the sequence.
-func (pi *PSQLInteractor) DropSequence(_ context.Context, name string) error {
-	if err := pi.WriteHeader("drop sequence"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("sequence -> %s", name)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
 }
 
 func (pi *PSQLInteractor) IsReadOnly(ctx context.Context, ro bool) error {
@@ -1751,85 +764,7 @@ func (pi *PSQLInteractor) Users(ctx context.Context) error {
 	return pi.CompleteMsg(len(berules))
 }
 
-// TsaCache outputs TSA cache entries showing the target session attributes cache status
-func (pi *PSQLInteractor) TsaCache(ctx context.Context, cacheEntries map[pool.TsaKey]pool.CachedEntry) error {
-	if err := pi.WriteHeader("tsa", "host", "az", "alive", "match", "reason", "last_check_time"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	count := 0
-	for key, entry := range cacheEntries {
-		if err := pi.WriteDataRow(
-			string(key.Tsa),
-			key.Host,
-			key.AZ,
-			fmt.Sprintf("%v", entry.Result.Alive),
-			fmt.Sprintf("%v", entry.Result.Match),
-			entry.Result.Reason,
-			entry.LastCheckTime.Format(time.RFC3339),
-		); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-		count++
-	}
-
-	return pi.CompleteMsg(count)
-}
-
 // ReplyNotice sends notice message to client
 func (pi *PSQLInteractor) ReplyNotice(ctx context.Context, msg string) error {
 	return pi.cl.ReplyNotice(msg)
-}
-
-// Outputs groupBy get list values and counts its 'groupByCol' property.
-// 'groupByCol' sorted in grouped result by string key ASC mode
-//
-// Parameters:
-// - values []T: list of objects for grouping
-// - getters (map[string]toString[T]): getters which gets object property as string
-// - groupByCol string: property names for counting
-// - pi *PSQLInteractor:  output object
-// Returns:
-// - error: An error if there was a problem dropping the sequence.
-func groupBy[T any](values []T, getters map[string]toString[T], groupByCols []string, pi *PSQLInteractor) error {
-	groups := make(map[string][]T)
-	for _, value := range values {
-		key := ""
-		for _, groupByCol := range groupByCols {
-			if getFun, ok := getters[groupByCol]; ok {
-				key = fmt.Sprintf("%s:-:%s", key, getFun(value))
-			} else {
-				return fmt.Errorf("not found column '%s' for group by statement", groupByCol)
-			}
-		}
-		groups[key] = append(groups[key], value)
-	}
-
-	colDescs := make([]pgproto3.FieldDescription, 0, len(groupByCols)+1)
-	for _, groupByCol := range groupByCols {
-		colDescs = append(colDescs, engine.TextOidFD(groupByCol))
-	}
-	if err := pi.cl.Send(&pgproto3.RowDescription{
-		Fields: append(colDescs, engine.IntOidFD("count")),
-	}); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Could not write header for backend connections")
-		return err
-	}
-
-	keys := make([]string, 0, len(groups))
-	for groupKey := range groups {
-		keys = append(keys, groupKey)
-	}
-	sort.Strings(keys)
-
-	for _, key := range keys {
-		group := groups[key]
-		cols := strings.Split(key, ":-:")[1:]
-		if err := pi.WriteDataRow(append(cols, fmt.Sprintf("%d", len(group)))...); err != nil {
-			return err
-		}
-	}
-	return pi.CompleteMsg(len(groups))
 }

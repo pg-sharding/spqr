@@ -11,13 +11,38 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid2 FROM 40 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 40
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 30 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 30
+(1 row)
+
+SHOW key_ranges;
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+--------------+----------+-----------------+-------------+--------
+ krid1        | sh1      | ds1             | 30          | false
+ krid2        | sh1      | ds1             | 40          | false
+(2 rows)
+
+CREATE DISTRIBUTION ds2 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds2
+(1 row)
+
+CREATE KEY RANGE krid22 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds2;
  add key range 
 ---------------
  bound -> 11
 (1 row)
 
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid21 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds2;
  add key range 
 ---------------
  bound -> 1
@@ -26,15 +51,67 @@ CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 SHOW key_ranges;
  Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
 --------------+----------+-----------------+-------------+--------
- krid1        | sh1      | ds1             | 1           | false
- krid2        | sh1      | ds1             | 11          | false
-(2 rows)
+ krid1        | sh1      | ds1             | 30          | false
+ krid2        | sh1      | ds1             | 40          | false
+ krid21       | sh1      | ds2             | 1           | false
+ krid22       | sh1      | ds2             | 11          | false
+(4 rows)
+
+CREATE KEY RANGE krid4 FROM 20 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 20
+(1 row)
+
+CREATE KEY RANGE krid3 FROM 10 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 10
+(1 row)
+
+SHOW key_ranges ORDER BY "Lower bound" ASC;
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+--------------+----------+-----------------+-------------+--------
+ krid21       | sh1      | ds2             | 1           | false
+ krid3        | sh4      | ds1             | 10          | false
+ krid22       | sh1      | ds2             | 11          | false
+ krid4        | sh3      | ds1             | 20          | false
+ krid1        | sh1      | ds1             | 30          | false
+ krid2        | sh1      | ds1             | 40          | false
+(6 rows)
+
+SHOW key_ranges ORDER BY "Lower bound" DESC;
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+--------------+----------+-----------------+-------------+--------
+ krid2        | sh1      | ds1             | 40          | false
+ krid1        | sh1      | ds1             | 30          | false
+ krid4        | sh3      | ds1             | 20          | false
+ krid22       | sh1      | ds2             | 11          | false
+ krid3        | sh4      | ds1             | 10          | false
+ krid21       | sh1      | ds2             | 1           | false
+(6 rows)
+
+SHOW key_ranges WHERE "Distribution ID" = 'ds1';
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+--------------+----------+-----------------+-------------+--------
+ krid1        | sh1      | ds1             | 30          | false
+ krid2        | sh1      | ds1             | 40          | false
+ krid3        | sh4      | ds1             | 10          | false
+ krid4        | sh3      | ds1             | 20          | false
+(4 rows)
+
+SHOW key_ranges WHERE "Shard ID" = 'sh3';
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+--------------+----------+-----------------+-------------+--------
+ krid4        | sh3      | ds1             | 20          | false
+(1 row)
 
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------
  distribution id -> ds1
-(1 row)
+ distribution id -> ds2
+(2 rows)
 
 DROP KEY RANGE ALL;
  drop key range 

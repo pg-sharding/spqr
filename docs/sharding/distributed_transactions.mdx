@@ -1,0 +1,133 @@
+---
+title: 'Distributed Transactions'
+description: 'How to use two-phase commit and understand transaction commit strategies'
+---
+
+## Transaction Behavior
+
+### Default Route Behaviour
+
+[query_routing.default_route_behaviour](/configuration/router#query-routing-settings) parameter determines what happens when SPQR cannot route a query to a single shard:
+
+- `BLOCK`: Rejects queries that would need to execute on multiple shards (safer for consistency)
+- `ALLOW`: Permits multi-shard queries to execute (useful for DDL and administrative queries)
+
+```sql
+-- Default behavior blocks multi-shard queries
+DROP DATABASE prod;
+-- ERROR: client processing error: 'DROP DATABASE prod': failed to match any datashard.
+
+-- Allow multi-shard execution
+DROP DATABASE prod /* __spqr__default_route_behaviour: allow */;
+-- NOTICE: send query to shard(s) : shard1,shard2,shard3,shard4
+```
+
+Use Cases:
+- `BLOCK`: Production environments where you want strict control over shard access
+- `ALLOW`: Development, testing, or when executing DDL commands across all shards
+
+### Scatter Query
+
+`__spqr__scatter_query` routing hint is useful when you need to run a query across all shards, regardless of sharding key:
+
+```sql
+-- Execute on all shards
+SELECT COUNT(*) FROM users /* __spqr__scatter_query: true */;
+
+-- Can also be set at session level
+SET __spqr__scatter_query TO true;
+SELECT * FROM users; -- Executes on all shards
+RESET __spqr__scatter_query;
+```
+
+<Warning>
+Scatter queries do not provide consistent cross-shard snapshots, can have significant performance impact on large clusters, and should be used primarily for administrative or analytical purposes.
+</Warning>
+
+## Commit Strategies
+
+SPQR provides three commit strategies for distributed transactions, controlled by the [default_commit_strategy](/configuration/router#transaction-settings) parameter.
+
+### 1. One-Phase Commit
+
+Value: `1pc` (alias: `best-effort`)
+
+This is the default commit strategy. In this mode transactions are committed on each shard independently with no coordination between shards and is best used for **single-shard** transactions **or** when **eventual consistency** is acceptable.
+
+<Warning>
+If a transaction spans multiple shards, partial commits are possible if one shard fails.
+</Warning>
+
+```sql
+-- You may explicitly set if needed
+-- SET __spqr__commit_strategy TO '1pc';
+BEGIN;
+INSERT INTO users (id, name) VALUES (1, 'Alice');
+INSERT INTO orders (id, user_id) VALUES (100, 1);
+COMMIT;
+```
+
+### 2. Two-Phase Commit (2PC)
+<Warning>
+To use 2PC, you need to ensure the following:
+- Set [max_prepared_transactions](https://www.postgresql.org/docs/current/runtime-config-resource.html#GUC-MAX-PREPARED-TRANSACTIONS) on each shard.
+- Enable [enhanced_multishard_processing](/configuration/router#query-routing-settings).
+</Warning>
+
+Two-phase commit ensures atomicity across multiple shards using [PostgreSQL's prepared transaction](https://www.postgresql.org/docs/current/sql-prepare-transaction.html) feature.
+
+How 2PC Works:
+
+1. Prepare Phase: SPQR sends `PREPARE TRANSACTION` to all involved shards with a unique transaction ID
+2. Commit Phase: If all shards successfully prepare, SPQR sends `COMMIT PREPARED` to each shard
+3. Rollback on Failure: If any shard fails to prepare, SPQR rolls back the entire transaction
+
+Example:
+```sql
+-- Session-level setting
+SET __spqr__commit_strategy TO '2pc';
+
+BEGIN;
+-- Multi-shard transaction
+INSERT INTO shard1_table (id, data) VALUES (1, 'data1');
+INSERT INTO shard2_table (id, data) VALUES (2, 'data2');
+COMMIT; -- Uses 2PC automatically
+```
+
+Or use it for a specific transaction:
+```sql
+BEGIN;
+SET __spqr__commit_strategy TO '2pc';
+INSERT INTO shard1_table (id, data) VALUES (1, 'data1');
+INSERT INTO shard2_table (id, data) VALUES (2, 'data2');
+COMMIT;
+```
+
+<Note>
+2PC provides atomicity but has performance overhead. Prepared transactions consume resources on shards until committed or rolled back. Monitor prepared transactions with `pg_prepared_xacts` on each shard and configure `max_prepared_transactions` based on your expected concurrent transaction volume.
+</Note>
+
+<Warning>
+2PC requires a durable transaction coordinator that issues prepare/commit decisions and can recover them after failures; without a durable coordinator, prepared transactions may become orphaned and require manual intervention. SPQR's router currently acts as the ephemeral coordinator for multi-shard transactions but there is no separate persistent coordinator service implemented yet.
+</Warning>
+
+## Virtual Queries
+
+When not connected to a shard, SPQR buffers transaction commands locally:
+
+```sql
+BEGIN;
+SET __spqr__commit_strategy TO '2pc';
+-- No shard connection yet, parameters buffered
+SET client_encoding = 'UTF8';
+-- Not yet
+SET standard_conforming_strings = on;
+-- Wait..
+SET DateStyle = ISO, MDY;
+-- Wait...
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+-- No shard connection yet, parameters buffered
+
+INSERT INTO users (id, name) VALUES (1, 'Alice'); -- Connection established here
+COMMIT;
+```

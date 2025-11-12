@@ -552,12 +552,12 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	return txt, nil
 }
 
-func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, q plan.Plan, doFinalizeTx, attachedCopy bool) error {
+func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, qd *ExecutorState) error {
 
 	var leftoverMsgData []byte
 	ctx := context.TODO()
 
-	stmt := q.Stmt()
+	stmt := qd.P.Stmt()
 	if stmt == nil {
 		return fmt.Errorf("failed to prepare copy context")
 	}
@@ -565,7 +565,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, q plan.Pla
 	if !ok {
 		return fmt.Errorf("failed to prepare copy context")
 	}
-	cps, err := s.ProcCopyPrepare(ctx, mgr, cs, attachedCopy)
+	cps, err := s.ProcCopyPrepare(ctx, mgr, cs, qd.attachedCopy)
 	if err != nil {
 		return err
 	}
@@ -588,7 +588,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, q plan.Pla
 			if txt, err := s.ProcCopyComplete(cpMsg); err != nil {
 				return err
 			} else {
-				if doFinalizeTx {
+				if qd.doFinalizeTx {
 					if txt == txstatus.TXACT {
 						return s.ExecCommitTx("COMMIT")
 					}
@@ -604,25 +604,14 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, q plan.Pla
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error {
+func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *ExecutorState, mgr meta.EntityMgr, replyCl bool, expectRowDesc bool) error {
 
 	/* XXX: refactor this */
-	expectRowDesc := false
-
-	switch qd.Msg.(type) {
-	case *pgproto3.Query:
-		expectRowDesc = true
-		// ok
-	case *pgproto3.Sync:
-		// ok
-	default:
-		return rerrors.ErrExecutorSyncLost
-	}
+	qd.expectRowDesc = expectRowDesc
+	qd.attachedCopy = false
+	qd.doFinalizeTx = false
 
 	serv := s.Client().Server()
-
-	doFinalizeTx := false
-	attachedCopy := false
 
 	switch qd.P.(type) {
 	case *plan.VirtualPlan:
@@ -631,7 +620,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 			return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 		}
 
-		attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
+		qd.attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
 
 		if p := qd.P; p != nil {
 
@@ -646,7 +635,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 						if err := s.DeploySliceTransactionQuery(serv, "BEGIN"); err != nil {
 							return err
 						}
-						doFinalizeTx = true
+						qd.doFinalizeTx = true
 					}
 				}
 			}
@@ -662,6 +651,13 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 			return err
 		}
 	}
+	return nil
+}
+
+// TODO : unit tests
+func (s *QueryStateExecutorImpl) ExecuteSlice(qd *ExecutorState, mgr meta.EntityMgr, replyCl bool) error {
+
+	serv := s.Client().Server()
 
 	switch q := qd.P.(type) {
 	case *plan.VirtualPlan:
@@ -673,18 +669,15 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 
 			/* only send row description for simple proto case */
 
-			if expectRowDesc {
-
+			if qd.expectRowDesc {
 				if err := s.Client().Send(&pgproto3.RowDescription{
-					Fields: q.VirtualRowCols,
+					Fields: q.TTS.Desc,
 				}); err != nil {
 					return err
 				}
-
 			}
 
-			for _, vals := range q.VirtualRowVals {
-
+			for _, vals := range q.TTS.Raw {
 				if err := s.Client().Send(&pgproto3.DataRow{
 					Values: vals,
 				}); err != nil {
@@ -722,7 +715,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 				return err
 			}
 
-			return s.copyFromExecutor(mgr, qd.P, doFinalizeTx, attachedCopy)
+			return s.copyFromExecutor(mgr, qd)
 		default:
 			return server.ErrMultiShardSyncBroken
 		}
@@ -747,7 +740,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 				return err
 			}
 
-			return s.copyFromExecutor(mgr, qd.P, doFinalizeTx, attachedCopy)
+			return s.copyFromExecutor(mgr, qd)
 		case *pgproto3.DataRow:
 			if replyCl {
 				switch v := qd.P.(type) {
@@ -791,7 +784,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 				}
 			}
 		case *pgproto3.RowDescription:
-			if expectRowDesc {
+			if qd.expectRowDesc {
 				if replyCl {
 					err = s.Client().Send(msg)
 					if err != nil {

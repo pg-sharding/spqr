@@ -3,12 +3,16 @@
 package spqrparser
 
 import (
+	"fmt"
+	"strconv"
+
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/binary"
 	"strings"
 	"math"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
@@ -98,7 +102,8 @@ func randomHex(n int) (string, error) {
 
     colref                 ColumnRef
 	colreflist			   []ColumnRef
-    where                  WhereClauseNode
+    where                  lyx.Node
+	expr				   lyx.Node
 
 	order_clause 		   OrderClause
 	opt_asc_desc		   OptAscDesc
@@ -127,7 +132,8 @@ func randomHex(n int) (string, error) {
 // SQL
 %token <str> WHERE OR AND
 
-%type< where> where_clause where_clause_seq
+%type< where> where_clause
+%type<expr> AexprConst a_expr c_expr
 
 // '='
 %token<str> TEQ
@@ -153,11 +159,17 @@ func randomHex(n int) (string, error) {
 %token<str> TMINUS
 // '+'
 %token<str> TPLUS
+// '*'
+%token<str> TMUL
+
+// '<' '>'
+%token<str> TLESS TGREATER 
+
 
 // '(' & ')', '[' & ']'
 %token<str> TOPENBR TCLOSEBR TOPENSQBR  TCLOSESQBR
 
-%type<str> operator where_operator
+%token<str> NOT
 
 %type<colref> ColRef
 %type<colreflist> ColRef_list
@@ -165,7 +177,6 @@ func randomHex(n int) (string, error) {
 %type<str> any_val any_id shard_id
 
 %type<uinteger> any_uint
-
 // CMDS
 %type <statement> command
 
@@ -276,6 +287,18 @@ func randomHex(n int) (string, error) {
 %type <retryMoveTaskGroup> retry_move_task_group
 %type <stopMoveTaskGroup> stop_move_task_group
 
+
+%left		OR
+%left		AND
+%right		NOT
+%nonassoc	TLESS TGREATER TEQ
+%left		OP OPERATOR	/* multi-character ops and user-defined operators */
+%left		TPLUS TMINUS
+%left		TMUL 
+%left		TSQOPENBR TSQCLOSEBR
+%left		TOPENBR TCLOSEBR
+
+
 %start any_command
 
 %%
@@ -290,6 +313,10 @@ semicolon_opt:
 
 
 command:
+	{
+		$$ = nil
+	}
+	|
 	add_stmt
 	{
 		setParseTree(yylex, $1)
@@ -446,24 +473,6 @@ qualified_name:
 		$$ = &rfqn.RelationFQN{RelationName: $3, SchemaName: $1}
 	}
 
-
-operator:
-    OP {
-        $$ = $1
-    } | AND {
-        $$ = "AND"
-    } | OR {
-        $$ = "OR"
-    }
-
-where_operator:
-    OP {
-        $$ = $1
-    } | TEQ {
-        $$ = "="
-    }
-
-
 ColRef:
     any_id {
         $$ = ColumnRef{
@@ -482,32 +491,155 @@ ColRef_list:
     } 
 
 
-where_clause_seq:
-    TOPENBR where_clause_seq TCLOSEBR {
-        $$ = $2
-    } | ColRef where_operator any_val
-    {
-        $$ = WhereClauseLeaf {
-            ColRef:     $1,
-			Op:         $2,
-            Value:      $3,
-        }
-    }
-    | where_clause_seq operator where_clause_seq
-    {
-        $$ = WhereClauseOp{
-            Op: $2,
-            Left: $1,
-            Right: $3,
-        }
-    }
+/*
+ * Constants
+ */
+AexprConst: 
+	SCONST {
+		$$ = &lyx.AExprSConst{
+			Value: $1,
+		}
+	} |
+	ICONST {
+		$$ = &lyx.AExprSConst{
+			Value: fmt.Sprintf("%+v", $1),
+		}
+	}
+
+/*
+ * Productions that can be used in both a_expr and b_expr.
+ *
+ * Note: productions that refer recursively to a_expr or b_expr mostly
+ * cannot appear here.	However, it's OK to refer to a_exprs that occur
+ * inside parentheses, such as function arguments; that cannot introduce
+ * ambiguity to the b_expr syntax.
+ */
+c_expr:	
+			AexprConst
+				{ $$ = $1; }
+            | TOPENBR a_expr TCLOSEBR {
+                $$ = $2
+			}
+
+a_expr:		
+            c_expr									{ $$ = $1; }
+			|
+			IDENT {
+				/* column ref */
+				$$ = &lyx.ColumnRef{
+					TableAlias: "",
+					ColName: $1,
+				}
+			}
+
+		/*
+		 * These operators must be called out explicitly in order to make use
+		 * of bison's automatic operator-precedence handling.  All other
+		 * operator names are handled by the generic productions using "Op",
+		 * below; and all those operators will have the same precedence.
+		 *
+		 * If you add more explicitly-known operators, be sure to add them
+		 * also to b_expr and to the MathOp list below.
+		 */
+            |
+			 TPLUS a_expr					%prec TMINUS
+				{ $$ = $2 }
+			| TMINUS a_expr					%prec TMINUS
+					{ $$ = $2 }
+			| a_expr TPLUS a_expr
+				{
+                     $$ = &lyx.AExprOp{
+                        Left: $1,
+                        Right: $3,
+                        Op: $2,
+                    } 
+                }
+			| a_expr TMINUS a_expr
+				{
+                     $$ = &lyx.AExprOp{
+                        Left: $1,
+                        Right: $3,
+                        Op: $2,
+                    } 
+                }
+			| a_expr TMUL a_expr
+				{
+                     $$ = &lyx.AExprOp{
+                        Left: $1,
+                        Right: $3,
+                        Op: $2,
+                    } 
+                }
+			
+			| a_expr TLESS a_expr
+					{
+                     $$ = &lyx.AExprOp{
+                        Left: $1,
+                        Right: $3,
+                        Op: $2,
+                    } 
+                }
+			| a_expr TGREATER a_expr
+				{
+                     $$ = &lyx.AExprOp{
+                        Left: $1,
+                        Right: $3,
+                        Op: $2,
+                    } 
+                }
+			| a_expr TEQ a_expr					%prec OP
+				{
+                     $$ = &lyx.AExprOp{
+                        Left: $1,
+                        Right: $3,
+                        Op: $2,
+                    } 
+                }
+			// | a_expr TNOT_EQUALS a_expr
+			// 	{
+            //          $$ = &lyx.AExprOp{
+            //             Left: $1,
+            //             Right: $3,
+            //             Op: $2,
+            //         } 
+            //     }
+			| a_expr OP a_expr				%prec OP
+				{
+                     $$ = &lyx.AExprOp{
+                        Left: $1,
+                        Right: $3,
+                        Op: $2,
+                    } 
+                }
+
+			| a_expr AND a_expr
+				{
+                     $$ = &lyx.AExprOp{
+                        Left: $1,
+                        Right: $3,
+                        Op: $2,
+                    } 
+                }
+			| a_expr OR a_expr
+				{
+                     $$ = &lyx.AExprOp{
+                        Left: $1,
+                        Right: $3,
+                        Op: $2,
+                    } 
+                }
+			| NOT a_expr
+				{
+                     $$ = &lyx.AExprNot{Arg:$2}
+                }
+
 
 where_clause:
     /* empty */
     {
-        $$ = WhereClauseEmpty{}
+        $$ = &lyx.AExprEmpty{}
     }
-    | WHERE where_clause_seq
+    | WHERE a_expr
     {
         $$ = $2
     }
@@ -1197,6 +1329,12 @@ kill_stmt:
 	KILL kill_statement_type any_uint
 	{
 		$$ = &Kill{Cmd: $2, Target: $3}
+	} |	KILL kill_statement_type IDENT
+	{
+		n, err := strconv.ParseUint($3, 10, 64)
+		if err == nil {
+			$$ = &Kill{Cmd: $2, Target: uint(n)}
+		}
 	}
 
 

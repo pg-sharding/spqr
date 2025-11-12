@@ -63,7 +63,6 @@ codeql
 colname
 colocation
 colref
-colreflist
 coltypes
 commitcount
 commodi
@@ -141,7 +140,6 @@ elit
 Elts
 emptypb
 enim
-entrieslist
 epn
 errdefs
 errhint
@@ -168,6 +166,7 @@ frmp
 frrule
 frsm
 frules
+ftts
 fugiat
 gcflags
 getconn
@@ -256,7 +255,6 @@ kinit
 Kirill
 kpass
 krb
-krbound
 krdb
 krid
 kridi
@@ -323,7 +321,9 @@ multierr
 multishard
 munakoiso
 murmurhash
+mydb
 mylogs
+myuser
 myworkloadlog
 NALMm
 nconn
@@ -448,6 +448,7 @@ reshke
 retcode
 retmsg
 retst
+retryable
 reuseport
 rfqn
 RFQNIs
@@ -468,7 +469,6 @@ rowmap
 rport
 rqdn
 rqfn
-rrel
 rrelation
 rrouter
 rulemgr
@@ -498,7 +498,6 @@ shkey
 shname
 shq
 shrid
-shrule
 singleshard
 Smartphone
 spaolacci
@@ -514,6 +513,7 @@ spqrguard
 SPQRH
 spqrhash
 SPQRI
+spqrinfra
 SPQRJ
 SPQRK
 SPQRL
@@ -542,9 +542,7 @@ stdbuf
 stdcopy
 stmtcache
 stmtlog
-stoptrace
 stretchr
-strlist
 subplan
 subquery
 subselects
@@ -552,6 +550,7 @@ suscipit
 SVFOP
 SVGID
 sysbench
+syscache
 tableref
 targ
 taskmgr
@@ -580,11 +579,12 @@ topbar
 TOPENBR
 TOPENSQBR
 tpcc
-TPLUS
 TRASCE
 tsa
 TSEMICOLON
 tstmt
+tupleslot
+tupletableslot
 twopc
 TXACT
 txactive
@@ -598,7 +598,6 @@ txstatus
 txtstatus
 uber
 uinteger
-uintegerlist
 Uints
 ullam
 ullamco
@@ -607,6 +606,7 @@ unconfigured
 underyling
 unmarshalling
 unrecognised
+Unregistering
 unregisters
 unregistration
 unroute
@@ -628,7 +628,7 @@ workloadlog
 workloadreplay
 worldmock
 wrongpassword
-Xact
+xact
 Xcpbs
 xerrors
 xjoin

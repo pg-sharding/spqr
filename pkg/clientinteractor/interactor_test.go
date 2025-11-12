@@ -8,13 +8,15 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	pkgclient "github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/engine"
-	mock "github.com/pg-sharding/spqr/pkg/mock/clientinteractor"
 	mockinst "github.com/pg-sharding/spqr/pkg/mock/conn"
 	mockshard "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/qdb"
 	"go.uber.org/mock/gomock"
@@ -38,16 +40,16 @@ import (
 func TestSimpleWhere(t *testing.T) {
 	assert := assert.New(t)
 
-	row := []string{"1", "2", "3"}
+	row := [][]byte{[]byte("1"), []byte("2"), []byte("3")}
 	rowDesc := map[string]int{
 		"a": 0,
 		"b": 1,
 		"c": 2,
 	}
-	where := spqrparser.WhereClauseLeaf{
-		Op:     "=",
-		ColRef: spqrparser.ColumnRef{ColName: "a"},
-		Value:  "1",
+	where := &lyx.AExprOp{
+		Op:    "=",
+		Left:  &lyx.ColumnRef{ColName: "a"},
+		Right: &lyx.AExprSConst{Value: "1"},
 	}
 	expected := true
 
@@ -66,16 +68,17 @@ func TestSimpleWhere(t *testing.T) {
 func TestSimpleNoMatchWhere(t *testing.T) {
 	assert := assert.New(t)
 
-	row := []string{"1", "2", "3"}
+	row := [][]byte{[]byte("1"), []byte("2"), []byte("3")}
 	rowDesc := map[string]int{
 		"a": 0,
 		"b": 1,
 		"c": 2,
 	}
-	where := spqrparser.WhereClauseLeaf{
-		Op:     "=",
-		ColRef: spqrparser.ColumnRef{ColName: "a"},
-		Value:  "2",
+
+	where := &lyx.AExprOp{
+		Op:    "=",
+		Left:  &lyx.ColumnRef{ColName: "a"},
+		Right: &lyx.AExprSConst{Value: "2"},
 	}
 	expected := false
 
@@ -94,23 +97,23 @@ func TestSimpleNoMatchWhere(t *testing.T) {
 func TestAndNoMatchWhere(t *testing.T) {
 	assert := assert.New(t)
 
-	row := []string{"1", "2", "3"}
+	row := [][]byte{[]byte("1"), []byte("2"), []byte("3")}
 	rowDesc := map[string]int{
 		"a": 0,
 		"b": 1,
 		"c": 2,
 	}
-	where := spqrparser.WhereClauseOp{
+	where := &lyx.AExprOp{
 		Op: "and",
-		Left: spqrparser.WhereClauseLeaf{
-			Op:     "=",
-			ColRef: spqrparser.ColumnRef{ColName: "b"},
-			Value:  "2",
+		Left: &lyx.AExprOp{
+			Op:    "=",
+			Left:  &lyx.ColumnRef{ColName: "b"},
+			Right: &lyx.AExprSConst{Value: "2"},
 		},
-		Right: spqrparser.WhereClauseLeaf{
-			Op:     "=",
-			ColRef: spqrparser.ColumnRef{ColName: "a"},
-			Value:  "2",
+		Right: &lyx.AExprOp{
+			Op:    "=",
+			Left:  &lyx.ColumnRef{ColName: "a"},
+			Right: &lyx.AExprSConst{Value: "2"},
 		},
 	}
 	expected := false
@@ -130,25 +133,27 @@ func TestAndNoMatchWhere(t *testing.T) {
 func TestOrMatchWhere(t *testing.T) {
 	assert := assert.New(t)
 
-	row := []string{"1", "2", "3"}
+	row := [][]byte{[]byte("1"), []byte("2"), []byte("3")}
 	rowDesc := map[string]int{
 		"a": 0,
 		"b": 1,
 		"c": 2,
 	}
-	where := spqrparser.WhereClauseOp{
+
+	where := &lyx.AExprOp{
 		Op: "or",
-		Left: spqrparser.WhereClauseLeaf{
-			Op:     "=",
-			ColRef: spqrparser.ColumnRef{ColName: "a"},
-			Value:  "2",
+		Left: &lyx.AExprOp{
+			Op:    "=",
+			Left:  &lyx.ColumnRef{ColName: "a"},
+			Right: &lyx.AExprSConst{Value: "2"},
 		},
-		Right: spqrparser.WhereClauseLeaf{
-			Op:     "=",
-			ColRef: spqrparser.ColumnRef{ColName: "b"},
-			Value:  "2",
+		Right: &lyx.AExprOp{
+			Op:    "=",
+			Left:  &lyx.ColumnRef{ColName: "b"},
+			Right: &lyx.AExprSConst{Value: "2"},
 		},
 	}
+
 	expected := true
 
 	actual, err := engine.MatchRow(row, rowDesc, where)
@@ -185,18 +190,26 @@ func TestGetColumnsMap(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
-			tableDescMock := mock.NewMockTableDesc(ctrl)
-			tableDescMock.EXPECT().GetHeader().Return(testCase.header)
-			assert.Equal(testCase.expectedMap, clientinteractor.GetColumnsMap(tableDescMock))
+			tupleDesc := tupleslot.TupleDesc(
+				engine.GetVPHeader(testCase.header...))
+
+			assert.Equal(testCase.expectedMap, tupleDesc.GetColumnsMap())
 		})
 	}
-
 }
 
 func TestSortableWithContext(t *testing.T) {
-	data := [][]string{[]string{"a", "b"}, []string{"b", "a"}}
-	rev_data := [][]string{[]string{"b", "a"}, []string{"a", "b"}}
-	sortable := engine.SortableWithContext{Data: data, Col_index: 0, Order: engine.DESC}
+	data := [][][]byte{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("a")}}
+	rev_data := [][][]byte{{[]byte("b"), []byte("a")}, {[]byte("a"), []byte("b")}}
+	/*XXX: very hacky*/
+	op, err := engine.SearchSysCacheOperator(catalog.TEXTOID)
+	assert.NoError(t, err)
+
+	sortable := engine.SortableWithContext{
+		Data:      data,
+		Col_index: 0,
+		Order:     engine.DESC,
+		Op:        op}
 	sort.Sort(sortable)
 	assert.Equal(t, data, rev_data)
 }
@@ -260,13 +273,19 @@ func TestClientsOrderBy(t *testing.T) {
 	ca.EXPECT().ID().AnyTimes()
 	ca.EXPECT().Usr().AnyTimes()
 	ca.EXPECT().DB().AnyTimes()
-	err := interactor.Clients(context.TODO(), ci, &spqrparser.Show{
+	shw := &spqrparser.Show{
 		Cmd:   spqrparser.ClientsStr,
-		Where: spqrparser.WhereClauseEmpty{},
+		Where: &lyx.AExprEmpty{},
 		Order: spqrparser.Order{OptAscDesc: spqrparser.SortByAsc{},
 			Col: spqrparser.ColumnRef{ColName: "user"}},
-	})
-	assert.Nil(t, err)
+	}
+
+	tts, err := engine.ClientsVirtualRelationScan(context.TODO(), ci)
+	assert.NoError(t, err)
+	ftts, err := engine.FilterRows(tts, shw.Where)
+	assert.NoError(t, err)
+
+	assert.Nil(t, interactor.ReplyTTS(ftts))
 }
 
 func genShard(ctrl *gomock.Controller, host string, shardName string, shardId uint) shard.ShardHostCtl {
@@ -295,7 +314,7 @@ func TestBackendConnections(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
 	var desc []pgproto3.FieldDescription
-	for _, header := range clientinteractor.BackendConnectionsHeaders {
+	for _, header := range engine.BackendConnectionsHeaders {
 		desc = append(desc, engine.TextOidFD(header))
 	}
 
@@ -358,7 +377,7 @@ func TestBackendConnections(t *testing.T) {
 	)
 
 	interactor := clientinteractor.NewPSQLInteractor(ca)
-	ctx := context.Background()
+
 	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h1", "sh1", 5),
 		genShard(ctrl, "h2", "sh2", 6),
@@ -368,15 +387,24 @@ func TestBackendConnections(t *testing.T) {
 		Cmd:     spqrparser.BackendConnectionsStr,
 		GroupBy: spqrparser.GroupByClauseEmpty{},
 	}
-	err := interactor.BackendConnections(ctx, shards, cmd)
-	assert.Nil(t, err)
+
+	tts, err := engine.BackendConnectionsVirtualRelationScan(shards)
+	assert.NoError(t, err)
+
+	ftts, err := engine.FilterRows(tts, cmd.Where)
+	assert.NoError(t, err)
+
+	resTTS, err := engine.GroupBy(ftts, cmd.GroupBy)
+	assert.NoError(t, err)
+
+	assert.Nil(t, interactor.ReplyTTS(resTTS))
 }
 
 func TestBackendConnectionsWhere(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
 	var desc []pgproto3.FieldDescription
-	for _, header := range clientinteractor.BackendConnectionsHeaders {
+	for _, header := range engine.BackendConnectionsHeaders {
 		desc = append(desc, engine.TextOidFD(header))
 	}
 
@@ -405,7 +433,6 @@ func TestBackendConnectionsWhere(t *testing.T) {
 	)
 
 	interactor := clientinteractor.NewPSQLInteractor(ca)
-	ctx := context.Background()
 	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h1", "sh1", 5),
 		genShard(ctrl, "h2", "sh2", 6),
@@ -413,18 +440,26 @@ func TestBackendConnectionsWhere(t *testing.T) {
 	}
 	cmd := &spqrparser.Show{
 		Cmd: spqrparser.BackendConnectionsStr,
-		Where: spqrparser.WhereClauseLeaf{
-			ColRef: spqrparser.ColumnRef{
+		Where: &lyx.AExprOp{
+			Left: &lyx.ColumnRef{
 				ColName: "hostname",
 			},
-			Value: "h2",
+			Right: &lyx.AExprSConst{Value: "h2"},
 			Op:    "=",
 		},
 		GroupBy: spqrparser.GroupByClauseEmpty{},
 	}
-	err := interactor.BackendConnections(ctx, shards, cmd)
 
-	assert.Nil(t, err)
+	tts, err := engine.BackendConnectionsVirtualRelationScan(shards)
+	assert.NoError(t, err)
+
+	ftts, err := engine.FilterRows(tts, cmd.Where)
+	assert.NoError(t, err)
+
+	resTTS, err := engine.GroupBy(ftts, cmd.GroupBy)
+	assert.NoError(t, err)
+
+	assert.Nil(t, interactor.ReplyTTS(resTTS))
 }
 
 func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
@@ -454,7 +489,6 @@ func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
 	)
 
 	interactor := clientinteractor.NewPSQLInteractor(ca)
-	ctx := context.Background()
 	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h2", "sh2", 1),
 		genShard(ctrl, "h1", "sh1", 2),
@@ -464,9 +498,19 @@ func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
 		Cmd:     spqrparser.BackendConnectionsStr,
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
 	}
-	err := interactor.BackendConnections(ctx, shards, cmd)
-	assert.Nil(t, err)
+
+	tts, err := engine.BackendConnectionsVirtualRelationScan(shards)
+	assert.NoError(t, err)
+
+	ftts, err := engine.FilterRows(tts, cmd.Where)
+	assert.NoError(t, err)
+
+	resTTS, err := engine.GroupBy(ftts, cmd.GroupBy)
+	assert.NoError(t, err)
+
+	assert.NoError(t, interactor.ReplyTTS(resTTS))
 }
+
 func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
@@ -494,7 +538,7 @@ func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 	)
 
 	interactor := clientinteractor.NewPSQLInteractor(ca)
-	ctx := context.Background()
+
 	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h1", "sh1", 1),
 		genShard(ctrl, "h1", "sh3", 2),
@@ -504,16 +548,22 @@ func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 		Cmd:     spqrparser.BackendConnectionsStr,
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
 	}
-	err := interactor.BackendConnections(ctx, shards, cmd)
-	assert.Nil(t, err)
+
+	tts, err := engine.BackendConnectionsVirtualRelationScan(shards)
+	assert.NoError(t, err)
+
+	ftts, err := engine.FilterRows(tts, cmd.Where)
+	assert.NoError(t, err)
+
+	resTTS, err := engine.GroupBy(ftts, cmd.GroupBy)
+	assert.NoError(t, err)
+
+	assert.NoError(t, interactor.ReplyTTS(resTTS))
 }
 
 func TestBackendConnectionsGroupByFail(t *testing.T) {
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
-	ca := mockcl.NewMockRouterClient(ctrl)
-	interactor := clientinteractor.NewPSQLInteractor(ca)
-	ctx := context.Background()
 	shards := []shard.ShardHostCtl{
 		genShard(ctrl, "h1", "sh1", 1),
 		genShard(ctrl, "h2", "sh2", 2),
@@ -523,8 +573,15 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 		Cmd:     spqrparser.BackendConnectionsStr,
 		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "someColumn"}}},
 	}
-	err := interactor.BackendConnections(ctx, shards, cmd)
-	assert.ErrorContains(err, "not found column 'someColumn' for group by statement")
+	tts, err := engine.BackendConnectionsVirtualRelationScan(shards)
+	assert.NoError(err)
+
+	ftts, err := engine.FilterRows(tts, cmd.Where)
+	assert.NoError(err)
+
+	_, err = engine.GroupBy(ftts, cmd.GroupBy)
+
+	assert.ErrorContains(err, "failed to resolve 'someColumn' column offset")
 }
 
 func TestMakeSimpleResponseWithData(t *testing.T) {
@@ -642,6 +699,8 @@ func TestKeyRangesSuccess(t *testing.T) {
 		},
 	}
 	krLocks := []string{"krid2"}
-	err := interactor.KeyRanges(keyRanges, krLocks)
+
+	vp := engine.KeyRangeVirtualRelationScan(keyRanges, krLocks)
+	err := interactor.ReplyTTS(vp)
 	assert.Nil(t, err)
 }

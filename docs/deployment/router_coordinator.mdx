@@ -1,0 +1,180 @@
+---
+title: 'Router + Coordinator'
+description: 'Production-ready SPQR deployment with dynamic configuration management'
+---
+
+import EtcdExampleSetup from '/snippets/etcd_example_setup.mdx';
+
+## Overview
+
+The Router + Coordinator deployment is the **recommended** setup for production environments. It provides centralized metadata management, dynamic configuration updates, and support for multiple router instances.
+
+In this deployment mode:
+- A **Coordinator** manages the sharding metadata and configuration
+- **QDB (etcd cluster)** stores the cluster metadata persistently
+- Multiple **Routers** connect to the Coordinator and share the same configuration
+- Routers must be registered and unregistered with the Coordinator
+- Configuration can be updated dynamically without router restarts
+
+## Setup
+
+### 1. Deploy etcd Cluster
+
+<EtcdExampleSetup />
+
+### 2. Configure the Coordinator
+
+Create a coordinator configuration file:
+
+```yaml coordinator.yaml
+host: 'localhost'
+coordinator_port: '7002'
+grpc_api_port: '7003'
+qdb_addr: 'localhost:2379'
+log_level: info
+
+frontend_rules:
+  - db: spqr_console
+    usr: admin
+    auth_rule:
+      auth_method: ok
+      password: your_admin_password
+```
+
+### 3. Start the Coordinator
+
+```bash
+spqr-coordinator --config coordinator.yaml
+```
+
+### 4. Configure Sharding Rules
+
+Connect to the Coordinator's admin console:
+
+```bash
+psql "host=localhost port=7002 dbname=spqr_console user=spqr-console sslmode=disable"
+```
+
+Configure your sharding setup:
+
+```sql
+ADD SHARD shard1 WITH HOSTS 'shard1-host:5432';
+ADD SHARD shard2 WITH HOSTS 'shard2-host:5432';
+
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION order_items DISTRIBUTION KEY order_id;
+
+CREATE KEY RANGE krid1 FROM 0 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid2 FROM 10000 ROUTE TO shard2 FOR DISTRIBUTION ds1;
+```
+
+### 5. Configure the Router
+
+Create a router configuration file:
+
+```yaml router.yaml
+host: 'localhost'
+router_port: '6432'
+admin_console_port: '7432'
+grpc_api_port: '7010'
+
+with_coordinator: true
+router_mode: PROXY
+log_level: info
+
+frontend_rules:
+  - db: mydb
+    usr: myuser
+    pool_mode: TRANSACTION
+    auth_rule:
+      auth_method: ok
+
+backend_rules:
+  - db: mydb
+    usr: myuser
+    connection_limit: 100
+    pool_discard: false
+    pool_rollback: true
+    auth_rule:
+      auth_method: clear_text
+      password: backend_password
+```
+
+### 6. Start the Router
+
+```bash
+spqr-router run --config router.yaml
+```
+
+### 7. Register the Router
+
+Connect to the coordinator’s admin console and register the router:
+
+```bash
+psql "host=localhost port=7002 dbname=spqr-console user=spqr-console sslmode=disable"
+REGISTER ROUTER router1 ADDRESS '[localhost]:7010';
+```
+
+### 8. Connect
+
+Clients can now connect to the router:
+
+```bash
+psql "host=localhost port=6432 dbname=mydb user=myuser sslmode=disable"
+```
+
+## Managing the Deployment
+
+### Adding More Routers
+
+Create a new router configuration with different ports, start it, and register:
+
+```sql
+REGISTER ROUTER router2 ADDRESS '[localhost]:7011';
+```
+
+### Updating Configuration Dynamically
+
+All configuration changes are made through the Coordinator's admin console:
+
+```sql
+ADD SHARD shard3 WITH HOSTS 'shard3-host:5432';
+CREATE KEY RANGE krid3 FROM 20000 ROUTE TO shard3 FOR DISTRIBUTION ds1;
+```
+
+Changes are automatically propagated to all registered routers.
+
+### Unregistering a Router
+
+Before shutting down a router:
+
+```sql
+UNREGISTER ROUTER router1;
+```
+
+Or unregister all routers:
+
+```sql
+UNREGISTER ROUTER ALL;
+```
+
+## Monitoring
+
+### Check Router Status
+
+On the Coordinator's admin console:
+
+```sql
+SHOW routers;
+SHOW shards;
+SHOW distributions;
+SHOW key_ranges;
+```
+
+## Configuration Reference
+
+For complete options:
+- [Router Configuration](/configuration/router)
+- [Coordinator Configuration](/configuration/coordinator)

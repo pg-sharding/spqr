@@ -62,6 +62,25 @@ ROLLBACK;
 
 SELECT id FROM table1 ORDER BY id;
 
+-- should all succeed
+INSERT INTO table1 (id) VALUES(50),(51);
+INSERT INTO table1 (id) VALUES(150),(151);
+INSERT INTO table1 (id) VALUES(250),(251);
+INSERT INTO table1 (id) VALUES(350),(351);
+WITH a AS (SELECT 1) INSERT INTO table1 (id) VALUES(52),(53);
+
+TRUNCATE table1;
+
+
+-- disable v1 logic, now CTE fails
+SET __spqr__preferred_engine to 'v2';
+
+INSERT INTO table1 (id) VALUES(50),(51);
+INSERT INTO table1 (id) VALUES(150),(151);
+INSERT INTO table1 (id) VALUES(250),(251);
+INSERT INTO table1 (id) VALUES(350),(351);
+WITH a AS (SELECT 1) INSERT INTO table1 (id) VALUES(52),(53);
+
 DROP TABLE table1 CASCADE;
 
 \c spqr-console

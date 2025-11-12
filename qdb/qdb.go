@@ -3,10 +3,13 @@ package qdb
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
+
+const LockRetryStep = 500 * time.Millisecond
 
 type ShardingSchemaKeeper interface {
 	// RecordKeyRangeMove persists start of key range movement in distributed storage
@@ -51,8 +54,8 @@ type QDB interface {
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
 	DropKeyRange(ctx context.Context, id string) error
 	DropKeyRangeAll(ctx context.Context) error
-	ListKeyRanges(_ context.Context, distribution string) ([]*KeyRange, error)
-	ListAllKeyRanges(_ context.Context) ([]*KeyRange, error)
+	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)
+	ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error)
 	NoWaitLockKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	LockKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	UnlockKeyRange(ctx context.Context, id string) error

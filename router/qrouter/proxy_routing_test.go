@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/qrouter"
@@ -1231,14 +1232,17 @@ func TestSingleShard(t *testing.T) {
 
 	for _, tt := range []tcase{
 
+		{
+			query: "SELECT * FROM xxtt1 a WHERE i IN (1,11,111)",
+			exp: &plan.ScatterPlan{
+				ExecTargets: []kr.ShardKey{
+					{Name: "sh1"},
+					{Name: "sh2"},
+				},
+			},
+			err: nil,
+		},
 		/* TODO: fix */
-		// /* should not be routed to one shard */
-		// {
-		// 	query: "SELECT * FROM xxtt1 a WHERE i IN (1,11,111)",
-		// 	exp:   plan.MultiMatchState{},
-		// 	err:   nil,
-		// },
-
 		// {
 		// 	query: `INSERT INTO t (i, b, c) SELECT 1,2,3 UNION ALL SELECT 2, 3, 4;`,
 		// 	exp:   plan.ShardDispatchPlan{},
@@ -2235,16 +2239,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT NOT pg_is_in_recovery();",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					{
-						Name:         []byte("pg_is_in_recovery"),
-						DataTypeOID:  catalog.ARRAYOID,
-						TypeModifier: -1,
-						DataTypeSize: 1,
+				TTS: &tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("pg_is_in_recovery"),
+							DataTypeOID:  catalog.ARRAYOID,
+							TypeModifier: -1,
+							DataTypeSize: 1,
+						},
 					},
-				},
-				VirtualRowVals: [][][]byte{[][]byte{{byte('t')}}},
-			},
+					Raw: [][][]byte{[][]byte{{byte('t')}}},
+				}},
 			err: nil,
 		},
 
@@ -2288,15 +2293,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT pg_is_in_recovery();",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					{
-						Name:         []byte("pg_is_in_recovery"),
-						DataTypeOID:  catalog.ARRAYOID,
-						TypeModifier: -1,
-						DataTypeSize: 1,
+				TTS: &tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("pg_is_in_recovery"),
+							DataTypeOID:  catalog.ARRAYOID,
+							TypeModifier: -1,
+							DataTypeSize: 1,
+						},
 					},
+					Raw: [][][]byte{{{byte('f')}}},
 				},
-				VirtualRowVals: [][][]byte{{{byte('f')}}},
 			},
 			err: nil,
 		},
@@ -2304,15 +2311,18 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT __spqr__is_ready();",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					{
-						Name:         []byte("__spqr__is_ready"),
-						DataTypeOID:  catalog.ARRAYOID,
-						TypeModifier: -1,
-						DataTypeSize: 1,
+				TTS: &tupleslot.TupleTableSlot{
+
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("__spqr__is_ready"),
+							DataTypeOID:  catalog.ARRAYOID,
+							TypeModifier: -1,
+							DataTypeSize: 1,
+						},
 					},
+					Raw: [][][]byte{{{byte('f')}}},
 				},
-				VirtualRowVals: [][][]byte{{{byte('f')}}},
 			},
 			err: nil,
 		},
@@ -2332,15 +2342,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT 1;",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					{
-						Name:         []byte("?column?"),
-						DataTypeOID:  catalog.INT4OID,
-						TypeModifier: -1,
-						DataTypeSize: 4,
+				TTS: &tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("?column?"),
+							DataTypeOID:  catalog.INT4OID,
+							TypeModifier: -1,
+							DataTypeSize: 4,
+						},
 					},
+					Raw: [][][]byte{{[]byte("1")}},
 				},
-				VirtualRowVals: [][][]byte{{[]byte("1")}},
 			},
 			err: nil,
 		},
@@ -2354,15 +2366,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT 'Hello, world!'",
 			distribution: distribution.ID,
 			exp: &plan.VirtualPlan{
-				VirtualRowCols: []pgproto3.FieldDescription{
-					pgproto3.FieldDescription{
-						Name:         []byte("?column?"),
-						DataTypeOID:  catalog.TEXTOID,
-						TypeModifier: -1,
-						DataTypeSize: -1,
+				TTS: &tupleslot.TupleTableSlot{
+					Desc: []pgproto3.FieldDescription{
+						pgproto3.FieldDescription{
+							Name:         []byte("?column?"),
+							DataTypeOID:  catalog.TEXTOID,
+							TypeModifier: -1,
+							DataTypeSize: -1,
+						},
 					},
+					Raw: [][][]byte{{[]byte("Hello, world!")}},
 				},
-				VirtualRowVals: [][][]byte{{[]byte("Hello, world!")}},
 			},
 			err: nil,
 		},
@@ -2405,28 +2419,17 @@ LIMIT 1000
 			err:          nil,
 		},
 
-		// TODO rewrite routeByClause to support this
-		// {
-		// 	query:        "SELECT * FROM users WHERE '5f57cd31-806f-4789-a6fa-1d959ec4c64a' = id;",
-		// 	distribution: distribution.ID,
-		// 	exp: plan.ShardDispatchPlan{
-		// 		Route: &plan.DataShardRoute{
-		// 			Shkey: kr.ShardKey{
-		// 				Name: "sh1",
-		// 			},
-		// 			MatchedKr: &kr.KeyRange{
-		// 				ID:           "id1",
-		// 				ShardID:      "sh1",
-		// 				Distribution: distribution.ID,
-		// 				LowerBound:   []any{"00000000-0000-0000-0000-000000000000"},
-		// 				ColumnTypes:  []string{qdb.ColumnTypeVarchar},
-		// 			},
-		// 		},
-		//
-		//		TargetSessionAttrs: config.TargetSessionAttrsRW,
-		// 	},
-		// 	err: nil,
-		// },
+		{
+			query:        "SELECT * FROM users WHERE '5f57cd31-806f-4789-a6fa-1d959ec4c64a' = id;",
+			distribution: distribution.ID,
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+			err: nil,
+		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 
