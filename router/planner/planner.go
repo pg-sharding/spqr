@@ -93,48 +93,9 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 
 func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
-	q *lyx.RangeVar, subquery lyx.Node,
-	allowDistr bool,
+	qualName *rfqn.RelationFQN, subquery lyx.Node,
+
 	allowRewrite bool) (plan.Plan, error) {
-
-	qualName := &rfqn.RelationFQN{
-		RelationName: q.RelationName,
-		SchemaName:   q.SchemaName,
-	}
-
-	if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
-		return nil, rerrors.ErrComplexQuery
-	} else if ds.Id != distributions.REPLICATED {
-		if allowDistr {
-			if subquery == nil {
-				return &plan.ScatterPlan{
-					SubPlan: &plan.ModifyTable{
-						ExecTargets: nil,
-					},
-					ExecTargets: nil,
-				}, nil
-			} else {
-				subPlan, err := p.PlanDistributedQuery(ctx, rm, subquery, allowRewrite)
-				if err != nil {
-					return nil, err
-				}
-				/* XXX: fix that */
-				switch subPlan.(type) {
-				case *plan.ScatterPlan:
-					return &plan.ScatterPlan{
-						SubPlan: &plan.ModifyTable{
-							ExecTargets: nil,
-						},
-						ExecTargets: nil,
-					}, nil
-				default:
-					return nil, rerrors.ErrComplexQuery
-				}
-			}
-		} else {
-			return nil, rerrors.ErrComplexQuery
-		}
-	}
 
 	var shs []kr.ShardKey
 
@@ -620,7 +581,21 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 	case *lyx.Insert:
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, q, v.SubSelect, false, allowRewrite)
+
+			qualName := &rfqn.RelationFQN{
+				RelationName: q.RelationName,
+				SchemaName:   q.SchemaName,
+			}
+
+			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
+				return nil, rerrors.ErrComplexQuery
+			} else if ds.Id != distributions.REPLICATED {
+
+				/* XXX: support some simple patterns here?  */
+				return nil, rerrors.ErrComplexQuery
+			}
+
+			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, v.SubSelect, allowRewrite)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -628,7 +603,23 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 	case *lyx.Update:
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true, allowRewrite)
+			qualName := &rfqn.RelationFQN{
+				RelationName: q.RelationName,
+				SchemaName:   q.SchemaName,
+			}
+
+			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
+				return nil, rerrors.ErrComplexQuery
+			} else if ds.Id != distributions.REPLICATED {
+				return &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{
+						ExecTargets: nil,
+					},
+					ExecTargets: nil,
+				}, nil
+			}
+
+			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -636,7 +627,23 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 	case *lyx.Delete:
 		switch q := v.TableRef.(type) {
 		case *lyx.RangeVar:
-			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, q, nil, true, allowRewrite)
+
+			qualName := &rfqn.RelationFQN{
+				RelationName: q.RelationName,
+				SchemaName:   q.SchemaName,
+			}
+
+			if ds, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
+				return nil, rerrors.ErrComplexQuery
+			} else if ds.Id != distributions.REPLICATED {
+				return &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{
+						ExecTargets: nil,
+					},
+					ExecTargets: nil,
+				}, nil
+			}
+			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
