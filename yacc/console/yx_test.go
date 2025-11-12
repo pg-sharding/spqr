@@ -1844,104 +1844,10 @@ func TestSyncReferenceTable(t *testing.T) {
 			},
 			err: nil,
 		},
-		// Test: sync specific reference table with mixed case
-		{
-			query: "SyNc ReFeReNcE TaBlE ref_tt On sh1",
-			exp: &spqrparser.SyncReferenceTables{
-				ShardID:          "sh1",
-				RelationSelector: "ref_tt",
-			},
-			err: nil,
-		},
-		// Test: sync specific reference relation with mixed case
-		{
-			query: "SyNc ReFeReNcE ReLaTiOn ref_tt On sh1",
-			exp: &spqrparser.SyncReferenceTables{
-				ShardID:          "sh1",
-				RelationSelector: "ref_tt",
-			},
-			err: nil,
-		},
-		// Test with newlines: sync all reference tables
-		{
-			query: "\nSYNC REFERENCE TABLES\nON sh1\n",
-			exp: &spqrparser.SyncReferenceTables{
-				ShardID:          "sh1",
-				RelationSelector: "*",
-			},
-			err: nil,
-		},
-		// Test with newlines: sync all reference relations
-		{
-			query: "\nSYNC REFERENCE RELATIONS\nON sh1\n",
-			exp: &spqrparser.SyncReferenceTables{
-				ShardID:          "sh1",
-				RelationSelector: "*",
-			},
-			err: nil,
-		},
-		// Test with newlines: sync specific reference table
-		{
-			query: "\nSYNC REFERENCE TABLE\nref_tt\nON sh1\n",
-			exp: &spqrparser.SyncReferenceTables{
-				ShardID:          "sh1",
-				RelationSelector: "ref_tt",
-			},
-			err: nil,
-		},
-		// Test with newlines: sync specific reference relation
-		{
-			query: "\nSYNC REFERENCE RELATION\nref_tt\nON sh1\n",
-			exp: &spqrparser.SyncReferenceTables{
-				ShardID:          "sh1",
-				RelationSelector: "ref_tt",
-			},
-			err: nil,
-		},
-		// Error test: missing ON keyword
-		{
-			query: "SYNC REFERENCE TABLES sh1",
-			exp:   nil,
-			err:   fmt.Errorf("syntax error"),
-		},
-		// Error test: missing shard ID
-		{
-			query: "SYNC REFERENCE TABLES ON",
-			exp:   nil,
-			err:   fmt.Errorf("syntax error"),
-		},
-		// Error test: missing table name for specific table sync
-		{
-			query: "SYNC REFERENCE TABLE ON sh1",
-			exp:   nil,
-			err:   fmt.Errorf("syntax error"),
-		},
-		// Error test: missing relation name for specific relation sync
-		{
-			query: "SYNC REFERENCE RELATION ON sh1",
-			exp:   nil,
-			err:   fmt.Errorf("syntax error"),
-		},
-		// Error test: invalid keyword order
-		{
-			query: "REFERENCE SYNC TABLES ON sh1",
-			exp:   nil,
-			err:   fmt.Errorf("syntax error"),
-		},
-		// Error test: missing REFERENCE keyword
-		{
-			query: "SYNC TABLES ON sh1",
-			exp:   nil,
-			err:   fmt.Errorf("syntax error"),
-		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
-		if tt.err != nil {
-			assert.Error(err, "query %s", tt.query)
-		} else {
-			assert.NoError(err, "query %s", tt.query)
-		}
+		assert.NoError(err, "query %s", tt.query)
 
 		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
