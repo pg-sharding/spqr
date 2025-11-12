@@ -591,7 +591,7 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 				return nil, rerrors.ErrComplexQuery
 			} else if ds.Id != distributions.REPLICATED {
 
-				/* XXX: suport some simple patterns here?  */
+				/* XXX: support some simple patterns here?  */
 				return nil, rerrors.ErrComplexQuery
 			}
 
