@@ -29,11 +29,18 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
 		}
 	}
 
-	return rst.qse.ExecuteSlice(
-		&QueryDesc{
-			Msg: pgsync,
-			P:   rst.bindQueryPlan, /*  ugh... fix this someday */
-		}, rst.Qr.Mgr(), true)
+	es := &ExecutorState{
+		Msg: pgsync,
+		P:   rst.bindQueryPlan, /*  ugh... fix this someday */
+	}
+
+	replyClient := true
+
+	if err := rst.qse.ExecuteSlicePrepare(es, rst.Qr.Mgr(), replyClient, false); err != nil {
+		return err
+	}
+
+	return rst.qse.ExecuteSlice(es, rst.Qr.Mgr(), replyClient)
 }
 
 func gangMemberDeployPreparedStatement(shard shard.ShardHostInstance, hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {

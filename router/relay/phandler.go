@@ -14,9 +14,13 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 )
 
-type QueryDesc struct {
+type ExecutorState struct {
 	Msg pgproto3.FrontendMessage
 	P   plan.Plan
+
+	doFinalizeTx  bool
+	attachedCopy  bool
+	expectRowDesc bool
 }
 
 // Execute required command via
@@ -38,7 +42,8 @@ type QueryStateExecutor interface {
 	ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error)
 	ProcCopyComplete(query pgproto3.FrontendMessage) (txstatus.TXStatus, error)
 
-	ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error
+	ExecuteSlice(qd *ExecutorState, mgr meta.EntityMgr, replyCl bool) error
+	ExecuteSlicePrepare(qd *ExecutorState, mgr meta.EntityMgr, replyCl bool, expectRowDesc bool) error
 
 	ExecSet(rst RelayStateMgr, query, name, value string) error
 	ExecReset(rst RelayStateMgr, query, name string) error
