@@ -20,7 +20,7 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 )
 
-// routeByClause de-parses sharding column-value pair from Where clause of the query
+// planByQualExpr de-parses sharding column-value pair from Where clause of the query
 // TODO : unit tests
 func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, rm *rmeta.RoutingMetadataContext, expr lyx.Node) (plan.Plan, error) {
 	if expr == nil {
@@ -62,8 +62,34 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, rm *rmeta.RoutingMet
 				return p, nil
 			}
 		}
-
+		if texpr.Op == "=" {
+			if rcol, ok := texpr.Right.(*lyx.ColumnRef); ok {
+				switch texpr.Left.(type) {
+				case *lyx.ParamRef, *lyx.AExprSConst, *lyx.AExprIConst:
+					if err := rm.ProcessConstExpr(rcol.TableAlias, rcol.ColName, texpr.Left); err != nil {
+						return nil, err
+					}
+					return p, nil
+				}
+			}
+		}
 		switch lft := texpr.Left.(type) {
+
+		/* simple key-value pair in const = id form */
+		case *lyx.ParamRef, *lyx.AExprSConst, *lyx.AExprIConst:
+			// else  error out?
+
+			/* simple key-value pair */
+			switch right := texpr.Right.(type) {
+			case *lyx.ColumnRef:
+
+				alias, colname := right.TableAlias, right.ColName
+				// TBD: postpone routing from here to root of parsing tree
+				// maybe extremely inefficient. Will be fixed in SPQR-3.0/engine v2
+				if err := rm.ProcessConstExpr(alias, colname, lft); err != nil {
+					return nil, err
+				}
+			}
 		/* lyx.ResTarget is unexpected here */
 		case *lyx.ColumnRef:
 
@@ -75,7 +101,7 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, rm *rmeta.RoutingMet
 				// else  error out?
 
 				// TBD: postpone routing from here to root of parsing tree
-				// maybe extremely inefficient. Will be fixed in SPQR-2.0
+				// maybe extremely inefficient. Will be fixed in SPQR-3.0/engine v2
 				if err := rm.ProcessConstExpr(alias, colname, right); err != nil {
 					return nil, err
 				}
