@@ -516,6 +516,7 @@ func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.
 		result, err = tctx.doPostgresqlQuery(db, q, timeout, args)
 		tctx.commandRetcode = 0
 		tctx.sqlQueryResult = result
+		log.Printf("query error(1) %#v\n", err)
 		if err != nil {
 			tctx.commandRetcode = 1
 			tctx.commandOutput = err.Error()
@@ -1389,8 +1390,6 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 }
 
 func TestSpqr(t *testing.T) {
-	//os.Setenv("GODOG_FEATURE_DIR", "generatedFeatures")
-	//os.Setenv("GODOG_FEATURE", "reload.feature")
 	paths := make([]string, 0)
 	featureDir := "features"
 	if feauterDirEnv, ok := os.LookupEnv("GODOG_FEATURE_DIR"); ok {
