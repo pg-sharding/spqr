@@ -19,6 +19,7 @@ Feature: Config reloading works
     """
     Then command return code should be "0"
     And I wait for host "shard1" to respond
+
     When I run SQL on host "router" as user "regress2"
     """
     SELECT 1 /* __spqr__execute_on: sh1 */
