@@ -296,3 +296,55 @@ Feature: Reference relation test
     ]
     """
 
+  Scenario: SYNC REFERENCE commands
+    #
+    # Test SYNC REFERENCE command variations
+    #
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster.yaml
+    """
+    Given cluster is up and running
+    And host "coordinator2" is stopped
+    And host "coordinator2" is started
+
+    When I run SQL on host "coordinator"
+    """
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE sync_test ON sh1, sh2;
+    """
+    Then command return code should be "0"
+
+    # Test SYNC REFERENCE TABLE with specific table
+    When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE TABLE sync_test ON sh1;
+    """
+    Then command return code should be "0"
+
+    # Test SYNC REFERENCE RELATION with specific relation
+    When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE RELATION sync_test ON sh2;
+    """
+    Then command return code should be "0"
+
+    # Test SYNC REFERENCE TABLES (all tables) - currently unsupported
+    When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE TABLES ON sh1;
+    """
+    Then command return code should be "1"
+
+    # Test SYNC REFERENCE RELATIONS (all relations) - currently unsupported
+    When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE RELATIONS ON sh2;
+    """
+    Then command return code should be "1"
+
