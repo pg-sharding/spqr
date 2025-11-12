@@ -1646,6 +1646,7 @@ func TestSyncReferenceTable(t *testing.T) {
 	}
 
 	for _, tt := range []tcase{
+		// Basic test: sync all reference tables on a shard
 		{
 			query: "SYNC REFERENCE TABLES ON sh1",
 			exp: &spqrparser.SyncReferenceTables{
@@ -1654,6 +1655,52 @@ func TestSyncReferenceTable(t *testing.T) {
 			},
 			err: nil,
 		},
+		// Test with RELATIONS keyword instead of TABLES
+		{
+			query: "SYNC REFERENCE RELATIONS ON sh1",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "*",
+			},
+			err: nil,
+		},
+		// Test: sync all reference tables on a shard with semicolon
+		{
+			query: "SYNC REFERENCE TABLES ON sh1;",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "*",
+			},
+			err: nil,
+		},
+		// Test: sync all reference relations on a shard with semicolon
+		{
+			query: "SYNC REFERENCE RELATIONS ON sh1;",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "*",
+			},
+			err: nil,
+		},
+		// Test: sync all reference tables on a shard with quoted shard ID
+		{
+			query: "SYNC REFERENCE TABLES ON 'shard-1'",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "shard-1",
+				RelationSelector: "*",
+			},
+			err: nil,
+		},
+		// Test: sync all reference relations on a shard with quoted shard ID
+		{
+			query: "SYNC REFERENCE RELATIONS ON 'shard-2'",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "shard-2",
+				RelationSelector: "*",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference table on a shard
 		{
 			query: "SYNC REFERENCE TABLE ref_tt ON sh1",
 			exp: &spqrparser.SyncReferenceTables{
@@ -1662,10 +1709,239 @@ func TestSyncReferenceTable(t *testing.T) {
 			},
 			err: nil,
 		},
+		// Test: sync specific reference relation on a shard
+		{
+			query: "SYNC REFERENCE RELATION ref_tt ON sh1",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "ref_tt",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference table on a shard with semicolon
+		{
+			query: "SYNC REFERENCE TABLE ref_tt ON sh1;",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "ref_tt",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference relation on a shard with semicolon
+		{
+			query: "SYNC REFERENCE RELATION ref_tt ON sh1;",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "ref_tt",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference table with quoted table name
+		{
+			query: "SYNC REFERENCE TABLE 'ref_table' ON sh1",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "ref_table",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference relation with quoted relation name
+		{
+			query: "SYNC REFERENCE RELATION 'ref_relation' ON sh1",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "ref_relation",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference table with quoted shard ID
+		{
+			query: "SYNC REFERENCE TABLE ref_tt ON 'shard-1'",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "shard-1",
+				RelationSelector: "ref_tt",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference relation with quoted shard ID
+		{
+			query: "SYNC REFERENCE RELATION ref_tt ON 'shard-2'",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "shard-2",
+				RelationSelector: "ref_tt",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference table with both quoted identifiers
+		{
+			query: "SYNC REFERENCE TABLE 'my_ref_table' ON 'my_shard'",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "my_shard",
+				RelationSelector: "my_ref_table",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference relation with both quoted identifiers
+		{
+			query: "SYNC REFERENCE RELATION 'my_ref_relation' ON 'my_shard'",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "my_shard",
+				RelationSelector: "my_ref_relation",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference table with double-quoted table name
+		{
+			query: `SYNC REFERENCE TABLE "ref_table" ON sh1`,
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "ref_table",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference relation with double-quoted relation name
+		{
+			query: `SYNC REFERENCE RELATION "ref_relation" ON sh1`,
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "ref_relation",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference table with double-quoted shard ID
+		{
+			query: `SYNC REFERENCE TABLE ref_tt ON "shard-1"`,
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "shard-1",
+				RelationSelector: "ref_tt",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference relation with double-quoted shard ID
+		{
+			query: `SYNC REFERENCE RELATION ref_tt ON "shard-2"`,
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "shard-2",
+				RelationSelector: "ref_tt",
+			},
+			err: nil,
+		},
+		// Test: sync all reference tables with uppercase keywords
+		{
+			query: "SYNC REFERENCE TABLES ON SH1",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "SH1",
+				RelationSelector: "*",
+			},
+			err: nil,
+		},
+		// Test: sync all reference relations with uppercase keywords
+		{
+			query: "SYNC REFERENCE RELATIONS ON SH2",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "SH2",
+				RelationSelector: "*",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference table with mixed case
+		{
+			query: "SyNc ReFeReNcE TaBlE ref_tt On sh1",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "ref_tt",
+			},
+			err: nil,
+		},
+		// Test: sync specific reference relation with mixed case
+		{
+			query: "SyNc ReFeReNcE ReLaTiOn ref_tt On sh1",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "ref_tt",
+			},
+			err: nil,
+		},
+		// Test with newlines: sync all reference tables
+		{
+			query: "\nSYNC REFERENCE TABLES\nON sh1\n",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "*",
+			},
+			err: nil,
+		},
+		// Test with newlines: sync all reference relations
+		{
+			query: "\nSYNC REFERENCE RELATIONS\nON sh1\n",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "*",
+			},
+			err: nil,
+		},
+		// Test with newlines: sync specific reference table
+		{
+			query: "\nSYNC REFERENCE TABLE\nref_tt\nON sh1\n",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "ref_tt",
+			},
+			err: nil,
+		},
+		// Test with newlines: sync specific reference relation
+		{
+			query: "\nSYNC REFERENCE RELATION\nref_tt\nON sh1\n",
+			exp: &spqrparser.SyncReferenceTables{
+				ShardID:          "sh1",
+				RelationSelector: "ref_tt",
+			},
+			err: nil,
+		},
+		// Error test: missing ON keyword
+		{
+			query: "SYNC REFERENCE TABLES sh1",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
+		// Error test: missing shard ID
+		{
+			query: "SYNC REFERENCE TABLES ON",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
+		// Error test: missing table name for specific table sync
+		{
+			query: "SYNC REFERENCE TABLE ON sh1",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
+		// Error test: missing relation name for specific relation sync
+		{
+			query: "SYNC REFERENCE RELATION ON sh1",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
+		// Error test: invalid keyword order
+		{
+			query: "REFERENCE SYNC TABLES ON sh1",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
+		// Error test: missing REFERENCE keyword
+		{
+			query: "SYNC TABLES ON sh1",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
-		assert.NoError(err, "query %s", tt.query)
+		if tt.err != nil {
+			assert.Error(err, "query %s", tt.query)
+		} else {
+			assert.NoError(err, "query %s", tt.query)
+		}
 
 		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
