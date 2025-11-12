@@ -286,11 +286,13 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 			P:   nil,
 		}
 
-		if err := rst.qse.ExecuteSlicePrepare(es, rst.Qr.Mgr(), true, true); err != nil {
+		replyClient := false
+
+		if err := rst.qse.ExecuteSlicePrepare(es, rst.Qr.Mgr(), replyClient, true); err != nil {
 			return err
 		}
 
-		return rst.qse.ExecuteSlice(es, rst.Qr.Mgr(), false)
+		return rst.qse.ExecuteSlice(es, rst.Qr.Mgr(), replyClient)
 	}
 
 	return nil
