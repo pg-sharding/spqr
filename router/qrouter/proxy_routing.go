@@ -62,17 +62,6 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, rm *rmeta.RoutingMet
 				return p, nil
 			}
 		}
-		if texpr.Op == "=" {
-			if rcol, ok := texpr.Right.(*lyx.ColumnRef); ok {
-				switch texpr.Left.(type) {
-				case *lyx.ParamRef, *lyx.AExprSConst, *lyx.AExprIConst:
-					if err := rm.ProcessConstExpr(rcol.TableAlias, rcol.ColName, texpr.Left); err != nil {
-						return nil, err
-					}
-					return p, nil
-				}
-			}
-		}
 		switch lft := texpr.Left.(type) {
 
 		/* simple key-value pair in const = id form */
