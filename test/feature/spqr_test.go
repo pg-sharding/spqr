@@ -308,7 +308,7 @@ func (tctx *testContext) trySetupConnectionRouter(user, service string) (*sql.DB
 	if err != nil {
 		return nil, fmt.Errorf("failed to get router addr %s: %s", routerService, err)
 	}
-	dbRouter, err := tctx.connectPostgresql(addrRouter, shardUser, postgresqlInitialConnectTimeout)
+	dbRouter, err := tctx.connectPostgresql(addrRouter, user, postgresqlInitialConnectTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to SPQR router %s: %s", routerService, err)
 	}
@@ -322,7 +322,7 @@ func (tctx *testContext) trySetupConnectionRouter(user, service string) (*sql.DB
 	if err != nil {
 		return nil, fmt.Errorf("failed to get router addr %s: %s", adminService, err)
 	}
-	dbAdm, err := tctx.connectRouterConsoleWithCredentials(shardUser, shardPassword, addrAdmin, postgresqlInitialConnectTimeout)
+	dbAdm, err := tctx.connectRouterConsoleWithCredentials(user, shardPassword, addrAdmin, postgresqlInitialConnectTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to SPQR router %s: %s", adminService, err)
 	}
