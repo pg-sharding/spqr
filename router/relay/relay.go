@@ -280,10 +280,17 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 			Uint("client", rst.Client().ID()).
 			Str("query", query.String).
 			Msg("setting params for client")
-		return rst.qse.ExecuteSlice(&QueryDesc{
+
+		es := &ExecutorState{
 			Msg: query,
 			P:   nil,
-		}, rst.Qr.Mgr(), false)
+		}
+
+		if err := rst.qse.ExecuteSlicePrepare(es, rst.Qr.Mgr(), true, true); err != nil {
+			return err
+		}
+
+		return rst.qse.ExecuteSlice(es, rst.Qr.Mgr(), false)
 	}
 
 	return nil
@@ -1259,9 +1266,16 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		q.String = qs
 	}
 
+	es := &ExecutorState{
+		Msg: q,
+		P:   rst.routingDecisionPlan, /*  ugh... fix this someday */
+	}
+
+	if err := rst.qse.ExecuteSlicePrepare(
+		es, rst.Qr.Mgr(), replyCl, true); err != nil {
+		return err
+	}
+
 	return rst.qse.ExecuteSlice(
-		&QueryDesc{
-			Msg: q,
-			P:   rst.routingDecisionPlan, /*  ugh... fix this someday */
-		}, rst.Qr.Mgr(), replyCl)
+		es, rst.Qr.Mgr(), replyCl)
 }
