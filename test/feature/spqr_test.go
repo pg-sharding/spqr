@@ -516,7 +516,6 @@ func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.
 		result, err = tctx.doPostgresqlQuery(db, q, timeout, args)
 		tctx.commandRetcode = 0
 		tctx.sqlQueryResult = result
-		log.Printf("query error(1) %#v\n", err)
 		if err != nil {
 			tctx.commandRetcode = 1
 			tctx.commandOutput = err.Error()
