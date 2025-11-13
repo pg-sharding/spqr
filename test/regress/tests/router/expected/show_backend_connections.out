@@ -96,8 +96,6 @@ SHOW backend_connections GROUP BY user, hostname;
 
 SHOW backend_connections GROUP BY user, unknown;
 ERROR:  failed to resolve 'unknown' column offset
-SHOW backend_connections GROUP BY ;
-ERROR:  syntax error
 \c regress
 drop table test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

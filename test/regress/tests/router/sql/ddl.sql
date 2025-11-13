@@ -15,6 +15,10 @@ CREATE SCHEMA sh1;
 CREATE TABLE table_1(id INT PRIMARY KEY);
 CREATE TABLE table_2(id INT PRIMARY KEY);
 
+
+/* Test that this DDL simply scatters out */
+CREATE TYPE enum_name AS ENUM ('value1', 'value2', 'value3');
+
 BEGIN;
 ALTER TABLE "table_1" RENAME TO "tmp" /* __spqr__engine_v2: true */;
 ALTER TABLE "table_2" RENAME TO "table_1";

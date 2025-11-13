@@ -2,6 +2,7 @@ package qdb
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
@@ -75,9 +76,7 @@ type DropCommand[T any] struct {
 
 func (c *DropCommand[T]) Do() error {
 	c.copy = make(map[string]T)
-	for k, v := range c.m {
-		c.copy[k] = v
-	}
+	maps.Copy(c.copy, c.m)
 	for k := range c.m {
 		delete(c.m, k)
 	}
@@ -85,9 +84,7 @@ func (c *DropCommand[T]) Do() error {
 }
 
 func (c *DropCommand[T]) Undo() error {
-	for k, v := range c.copy {
-		c.m[k] = v
-	}
+	maps.Copy(c.m, c.copy)
 	return nil
 }
 
