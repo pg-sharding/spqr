@@ -111,6 +111,15 @@ select __spqr__show('key_ranges');
  k4           | sh4      | ds1             | 301         | false
 (4 rows)
 
+SELECT * FROM __spqr__show('key_ranges');
+ Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+--------------+----------+-----------------+-------------+--------
+ k1           | sh1      | ds1             | 1           | false
+ k2           | sh2      | ds1             | 101         | false
+ k3           | sh3      | ds1             | 201         | false
+ k4           | sh4      | ds1             | 301         | false
+(4 rows)
+
 SELECT 1;
  ?column? 
 ----------

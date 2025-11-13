@@ -62,14 +62,14 @@ CREATE REFERENCE RELATION z_rf;
 SHOW relations;
  Relation name | Distribution ID |           Distribution key            | Schema name  
 ---------------+-----------------+---------------------------------------+--------------
- z_rf          | REPLICATED      |                                       | $search_path
  a             | ds1             | ("a_id", identity)                    | $search_path
- d             | ds1             | ("d_id", identity)                    | $search_path
- c             | ds2             | ("c_id_1", identity),("c_id_2", city) | $search_path
  b             | ds3             | ("b_id", murmur)                      | $search_path
+ c             | ds2             | ("c_id_1", identity),("c_id_2", city) | $search_path
+ d             | ds1             | ("d_id", identity)                    | $search_path
+ z_rf          | REPLICATED      |                                       | $search_path
 (5 rows)
 
-SHOW relations WHERE distribution_id = 'ds1';
+SHOW relations WHERE "Distribution ID" = 'ds1';
  Relation name | Distribution ID |  Distribution key  | Schema name  
 ---------------+-----------------+--------------------+--------------
  a             | ds1             | ("a_id", identity) | $search_path

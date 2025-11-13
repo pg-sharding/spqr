@@ -1232,14 +1232,17 @@ func TestSingleShard(t *testing.T) {
 
 	for _, tt := range []tcase{
 
+		{
+			query: "SELECT * FROM xxtt1 a WHERE i IN (1,11,111)",
+			exp: &plan.ScatterPlan{
+				ExecTargets: []kr.ShardKey{
+					{Name: "sh1"},
+					{Name: "sh2"},
+				},
+			},
+			err: nil,
+		},
 		/* TODO: fix */
-		// /* should not be routed to one shard */
-		// {
-		// 	query: "SELECT * FROM xxtt1 a WHERE i IN (1,11,111)",
-		// 	exp:   plan.MultiMatchState{},
-		// 	err:   nil,
-		// },
-
 		// {
 		// 	query: `INSERT INTO t (i, b, c) SELECT 1,2,3 UNION ALL SELECT 2, 3, 4;`,
 		// 	exp:   plan.ShardDispatchPlan{},
@@ -2416,28 +2419,17 @@ LIMIT 1000
 			err:          nil,
 		},
 
-		// TODO rewrite routeByClause to support this
-		// {
-		// 	query:        "SELECT * FROM users WHERE '5f57cd31-806f-4789-a6fa-1d959ec4c64a' = id;",
-		// 	distribution: distribution.ID,
-		// 	exp: plan.ShardDispatchPlan{
-		// 		Route: &plan.DataShardRoute{
-		// 			Shkey: kr.ShardKey{
-		// 				Name: "sh1",
-		// 			},
-		// 			MatchedKr: &kr.KeyRange{
-		// 				ID:           "id1",
-		// 				ShardID:      "sh1",
-		// 				Distribution: distribution.ID,
-		// 				LowerBound:   []any{"00000000-0000-0000-0000-000000000000"},
-		// 				ColumnTypes:  []string{qdb.ColumnTypeVarchar},
-		// 			},
-		// 		},
-		//
-		//		TargetSessionAttrs: config.TargetSessionAttrsRW,
-		// 	},
-		// 	err: nil,
-		// },
+		{
+			query:        "SELECT * FROM users WHERE '5f57cd31-806f-4789-a6fa-1d959ec4c64a' = id;",
+			distribution: distribution.ID,
+			exp: &plan.ShardDispatchPlan{
+				ExecTarget: kr.ShardKey{
+					Name: "sh1",
+				},
+				TargetSessionAttrs: config.TargetSessionAttrsRW,
+			},
+			err: nil,
+		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 

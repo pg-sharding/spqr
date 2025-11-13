@@ -51,7 +51,7 @@ type RoutingMetadataContext struct {
 
 	SPH session.SessionParamsHolder
 
-	CSM   connmgr.ConnectionStatMgr
+	CSM   connmgr.ConnectionMgr
 	Mgr   meta.EntityMgr
 	Query string
 	Stmt  lyx.Node
@@ -73,7 +73,7 @@ func (rm *RoutingMetadataContext) IsRO() bool {
 }
 
 func NewRoutingMetadataContext(sph session.SessionParamsHolder,
-	query string, stmt lyx.Node, csm connmgr.ConnectionStatMgr, mgr meta.EntityMgr) *RoutingMetadataContext {
+	query string, stmt lyx.Node, csm connmgr.ConnectionMgr, mgr meta.EntityMgr) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
 		Rels:          map[rfqn.RelationFQN]struct{}{},
 		CteNames:      map[string]struct{}{},

@@ -1,0 +1,223 @@
+services:
+    # regress-mdb-image:
+    #     image: regress-mdb-image
+    #     build:
+    #         context: https://github.com/pg-sharding/cpg.git#${MDB_BRANCH:-MDB_16_6_no_aqo}
+    #         dockerfile: docker/regress/Dockerfile
+
+    # shard-image-mdb:
+    #     build:
+    #         context: ../..
+    #         dockerfile: docker/shard/Dockerfile.mdb
+    #     depends_on:
+    #         - regress-mdb-image
+    
+    x-shard-common:
+        &shard-common
+        image: ${SHARD_IMAGE:-spqr-shard-image}
+        # depends_on:
+            # - shard-image-mdb
+
+    shard1:
+        <<: *shard-common
+        environment: &shard-env-common
+            POSTGRES_USER: regress
+            POSTGRES_DB: regress
+        ports:
+            - "7432:6432"
+        hostname: spqr_shard_1
+        container_name: spqr_shard_1
+        healthcheck: &shard-primary-healthcheck
+            test: 'pg_isready -p 6432 -U regress -d regress'
+            interval: 10s
+            timeout: 3s
+            retries: 50
+        networks:
+            - regress_coord_network   
+    shard1-replica:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_1
+        ports:
+            - "7532:6432"
+        hostname: spqr_shard_1_replica
+        container_name: spqr_shard_1_replica
+        healthcheck: &shard-replica-healthcheck
+            <<: *shard-primary-healthcheck
+            start_interval: 20s
+            start_period: 60s
+        networks:
+            - regress_coord_network
+    shard2:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+        ports:
+            - "7433:6432"
+        hostname: spqr_shard_2
+        container_name: spqr_shard_2
+        healthcheck:
+          <<: *shard-primary-healthcheck
+        networks:
+            - regress_coord_network   
+    shard2-replica:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_2
+        ports:
+            - "7533:6432"
+        hostname: spqr_shard_2_replica
+        container_name: spqr_shard_2_replica
+        healthcheck:
+          <<: *shard-replica-healthcheck
+        networks:
+            - regress_coord_network
+    shard3:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+        ports:
+            - "7434:6432"
+        hostname: spqr_shard_3
+        container_name: spqr_shard_3
+        healthcheck:
+          <<: *shard-primary-healthcheck
+        networks:
+            - regress_coord_network
+    shard3-replica:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_3
+        ports:
+            - "7534:6432"
+        hostname: spqr_shard_3_replica
+        container_name: spqr_shard_3_replica
+        healthcheck:
+          <<: *shard-replica-healthcheck
+        networks:
+            - regress_coord_network
+    shard4:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+        ports:
+            - "7435:6432"
+        hostname: spqr_shard_4
+        container_name: spqr_shard_4
+        healthcheck:
+          <<: *shard-primary-healthcheck
+        networks:
+            - regress_coord_network
+    shard4-replica:
+        <<: *shard-common
+        environment:
+            <<: *shard-env-common
+            PG_MASTER: spqr_shard_4
+        ports:
+            - "7535:6432"
+        hostname: spqr_shard_4_replica
+        container_name: spqr_shard_4_replica
+        healthcheck:
+          <<: *shard-replica-healthcheck
+        networks:
+            - regress_coord_network
+    pooler:
+        build:
+            dockerfile: ./docker/router/Dockerfile
+            context: ../../
+        ports:
+            - "6433:6432"
+        environment:
+            - ROUTER_CONFIG=/spqr/test/regress/conf/localrouter.yaml
+            - ROUTER_LOG=/var/log/spqr-router.log
+        hostname: regress_pooler
+        container_name: regress_pooler
+        depends_on:
+            shard1:
+                condition: service_healthy
+        networks:
+            - regress_coord_network
+    router:
+        build:
+            dockerfile: ./docker/router/Dockerfile
+            context: ../../
+        ports:
+            - "7000:7000"
+            - "6432:6432"
+            - "17432:7432"
+        environment:
+            - ROUTER_CONFIG=/spqr/test/regress/conf/router-with-coordinator.yaml
+            - ROUTER_LOG=/var/log/spqr-router.log
+            - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator-for-router.yaml
+        hostname: regress_router
+        container_name: regress_router
+        depends_on:
+            shard1:
+                condition: service_healthy
+            shard2:
+                condition: service_healthy
+            shard3:
+                condition: service_healthy
+            shard4:
+                condition: service_healthy
+            shard1-replica:
+                condition: service_healthy
+            shard2-replica:
+                condition: service_healthy
+            shard3-replica:
+                condition: service_healthy
+            shard4-replica:
+                condition: service_healthy
+        networks:
+            - regress_coord_network
+    coordinator:
+        build:
+            dockerfile: ./docker/coordinator/Dockerfile
+            context: ../../
+        ports:
+            - "7002:7002"
+            - "7003:7003"
+        environment:
+            - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator-for-router.yaml
+        hostname: regress_coordinator
+        container_name: regress_coordinator
+        depends_on:
+            - router
+            - qdb01
+        networks:
+            - regress_coord_network
+
+    qdb01:
+        image: 'quay.io/coreos/etcd:v3.6.4'
+        hostname: regress_qdb_0_1
+        container_name: regress_qdb_0_1
+        environment:
+            ALLOW_NONE_AUTHENTICATION: "yes"
+            ETCD_LOG_LEVEL: "error"
+        tmpfs: 
+          - "/etcd-data"
+        ports:
+            - "2379:2379"
+        entrypoint: ["/usr/local/bin/etcd", "--advertise-client-urls", "http://regress_qdb_0_1:2379", "--listen-client-urls", "http://0.0.0.0:2379"]
+        networks:
+            - regress_coord_network
+
+    regress:
+        build:
+            dockerfile: ./Dockerfile_coord
+            context: .
+        hostname: regress_tests_coord
+        container_name: regress_tests_coord
+        depends_on:
+            - router
+            - coordinator
+            - pooler
+            # - regress-mdb-image
+        networks:
+            - regress_coord_network
+networks:
+  regress_coord_network:
+    name: regress_coord_network

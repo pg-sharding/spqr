@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,17 +11,13 @@ import (
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
-	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
-	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -31,48 +25,6 @@ import (
 	"github.com/pg-sharding/spqr/router/statistics"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
-
-type toString[T any] func(s T) string
-type BackendGetter func(sh shard.ShardHostCtl) string
-
-func GetRouter(sh shard.ShardHostCtl) string {
-	router := "no data"
-	s, ok := sh.(shard.CoordShardinfo)
-	if ok {
-		router = s.Router()
-	}
-	return router
-}
-
-var BackendConnectionsHeaders = []string{
-	"backend connection id",
-	"router",
-	"shard key name",
-	"hostname",
-	"pid",
-	"user",
-	"dbname",
-	"sync",
-	"tx_served",
-	"tx status",
-	"is stale",
-	"created at",
-}
-
-var BackendConnectionsGetters = map[string]toString[shard.ShardHostCtl]{
-	BackendConnectionsHeaders[0]:  func(sh shard.ShardHostCtl) string { return fmt.Sprintf("%d", sh.ID()) },
-	BackendConnectionsHeaders[1]:  GetRouter,
-	BackendConnectionsHeaders[2]:  func(sh shard.ShardHostCtl) string { return sh.ShardKeyName() },
-	BackendConnectionsHeaders[3]:  func(sh shard.ShardHostCtl) string { return sh.InstanceHostname() },
-	BackendConnectionsHeaders[4]:  func(sh shard.ShardHostCtl) string { return fmt.Sprintf("%d", sh.Pid()) },
-	BackendConnectionsHeaders[5]:  func(sh shard.ShardHostCtl) string { return sh.Usr() },
-	BackendConnectionsHeaders[6]:  func(sh shard.ShardHostCtl) string { return sh.DB() },
-	BackendConnectionsHeaders[7]:  func(sh shard.ShardHostCtl) string { return strconv.FormatInt(sh.Sync(), 10) },
-	BackendConnectionsHeaders[8]:  func(sh shard.ShardHostCtl) string { return strconv.FormatInt(sh.TxServed(), 10) },
-	BackendConnectionsHeaders[9]:  func(sh shard.ShardHostCtl) string { return sh.TxStatus().String() },
-	BackendConnectionsHeaders[10]: func(sh shard.ShardHostCtl) string { return strconv.FormatBool(sh.IsStale()) },
-	BackendConnectionsHeaders[11]: func(s shard.ShardHostCtl) string { return s.CreatedAt().UTC().Format(time.RFC3339) },
-}
 
 type Interactor interface {
 	ProcClient(ctx context.Context, nconn net.Conn, pt port.RouterPortType) error
@@ -92,37 +44,11 @@ type PSQLInteractor struct {
 }
 
 func (pi *PSQLInteractor) CoordinatorAddr(ctx context.Context, addr string) error {
-	if err := pi.WriteHeader("coordinator address"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
+	tts := &tupleslot.TupleTableSlot{
+		Desc: engine.GetVPHeader("coordinator address"),
 	}
-	if err := pi.WriteDataRow(
-		fmt.Sprintf("%v", addr)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(1)
-}
-
-// TODO refactor it to make more user-friendly
-func (pi *PSQLInteractor) Instance(ctx context.Context, ci connmgr.ConnectionMgr) error {
-	if err := pi.WriteHeader(
-		"total tcp connection count",
-		"total cancel requests",
-		"active tcp connections"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	if err := pi.WriteDataRow(
-		fmt.Sprintf("%v", ci.TotalTcpCount()),
-		fmt.Sprintf("%v", ci.TotalCancelCount()),
-		fmt.Sprintf("%v", ci.ActiveTcpCount())); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(1)
+	tts.WriteDataRow(fmt.Sprintf("%v", addr))
+	return pi.ReplyTTS(tts)
 }
 
 // NewPSQLInteractor creates a new instance of the PSQLInteractor struct.
@@ -461,223 +387,6 @@ func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.Move
 	return pi.CompleteMsg(len(ts))
 }
 
-type TableDesc interface {
-	GetHeader() []string
-}
-
-type ClientDesc struct {
-}
-
-// TODO : unit tests
-
-// GetRow retrieves a row of data for a given client, hostname, and rAddr.
-//
-// Parameters:
-// - cl (client.Client): The client object.
-// - hostname (string): The hostname.
-// - rAddr (string): The rAddr.
-//
-// Returns:
-// - []string: The row data, which consists of the following elements:
-//   - ID (int): The ID of the client.
-//   - Usr (string): The user of the client.
-//   - DB (string): The database of the client.
-//   - Hostname (string): The hostname.
-//   - RAddr (string): The rAddr.
-//   - Quantiles ([]float64): The quantiles of time statistics for the client.
-//   - TimeQuantileRouter (float64): The time quantile for the router.
-//   - TimeQuantileShard (float64): The time quantile for the shard.
-func (ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) []string {
-	quantiles := statistics.GetQuantiles()
-	rowData := []string{fmt.Sprintf("%d", cl.ID()), cl.Usr(), cl.DB(), hostname, rAddr}
-
-	for _, el := range *quantiles {
-		rowData = append(rowData, fmt.Sprintf("%.2fms",
-			statistics.GetTimeQuantile(statistics.StatisticsTypeRouter, el, cl)))
-		rowData = append(rowData, fmt.Sprintf("%.2fms",
-			statistics.GetTimeQuantile(statistics.StatisticsTypeShard, el, cl)))
-	}
-	return rowData
-}
-
-// TODO : unit tests
-
-// GetHeader returns the header row for the client description.
-//
-// Parameters:
-// - None.
-//
-// Returns:
-// - []string: The header row, which consists of the following elements:
-//   - "client_id" (string): The ID of the client.
-//   - "user" (string): The user of the client.
-//   - "dbname" (string): The database of the client.
-//   - "server_id" (string): The server ID.
-//   - "router_address" (string): The router address.
-//   - "router_time_<quantile>" (string): The header for the quantile time for the router.
-//   - "shard_time_<quantile>" (string): The header for the quantile time for the shard.
-func (ClientDesc) GetHeader() []string {
-	quantiles := statistics.GetQuantiles()
-	headers := []string{
-		"client_id", "user", "dbname", "server_id", "router_address",
-	}
-	for _, el := range *quantiles {
-		headers = append(headers, fmt.Sprintf("router_time_%g", el))
-		headers = append(headers, fmt.Sprintf("shard_time_%g", el))
-	}
-	return headers
-}
-
-type BackendDesc struct {
-}
-
-// TODO : unit tests
-
-// GetRow retrieves a row of data for a given client, hostname, and rAddr.
-//
-// Parameters:
-// - cl (client.Client): The client object.
-// - hostname (string): The hostname.
-// - rAddr (string): The rAddr.
-//
-// Returns:
-// - []string: The row data, which consists of the following elements:
-//   - ID (int): The ID of the client.
-//   - Usr (string): The user of the client.
-//   - DB (string): The database of the client.
-//   - Hostname (string): The hostname.
-//   - RAddr (string): The rAddr.
-//   - Quantiles ([]float64): The quantiles of time statistics for the client.
-//   - TimeQuantileRouter (float64): The time quantile for the router.
-//   - TimeQuantileShard (float64): The time quantile for the shard.
-func (BackendDesc) GetRow(sh shard.ShardHostCtl) []string {
-	var rowData []string
-	for _, header := range BackendConnectionsHeaders {
-		rowData = append(rowData, BackendConnectionsGetters[header](sh))
-	}
-
-	return rowData
-}
-
-// TODO : unit tests
-
-// GetHeader returns the header row for the client description.
-//
-// Parameters:
-// - None.
-//
-// Returns:
-// - []string: The header row, which consists of the following elements:
-//   - "client_id" (string): The ID of the client.
-//   - "user" (string): The user of the client.
-//   - "dbname" (string): The database of the client.
-//   - "server_id" (string): The server ID.
-//   - "router_address" (string): The router address.
-//   - "router_time_<quantile>" (string): The header for the quantile time for the router.
-//   - "shard_time_<quantile>" (string): The header for the quantile time for the shard.
-func (BackendDesc) GetHeader() []string {
-	return BackendConnectionsHeaders
-}
-
-// GetColumnsMap generates a map that maps column names to their respective indices in the table description header.
-//
-// Parameters:
-// - desc (TableDesc): The table description.
-//
-// Returns:
-// - map[string]int: A map that maps column names to their respective indices in the table description header.
-func GetColumnsMap(desc TableDesc) map[string]int {
-	header := desc.GetHeader()
-	columns := make(map[string]int, len(header))
-	i := 0
-	for _, key := range header {
-		columns[key] = i
-		i++
-	}
-	return columns
-}
-
-// TODO : unit tests
-
-// Clients retrieves client information based on provided client information, filtering conditions and writes the data to the PSQL client.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-// - clients ([]client.ClientInfo): The list of client information to process.
-// - condition (spqrparser.WhereClauseNode): The condition to filter the client information.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientInfo, query *spqrparser.Show) error {
-	desc := ClientDesc{}
-	header := desc.GetHeader()
-	rowDesc := GetColumnsMap(desc)
-	condition := query.Where
-	order := query.Order
-	if err := pi.WriteHeader(header...); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	var data [][]string
-	for _, cl := range clients {
-		if len(cl.Shards()) > 0 {
-			for _, sh := range cl.Shards() {
-				if sh == nil {
-					continue
-				}
-				row := desc.GetRow(cl, sh.Instance().Hostname(), cl.RAddr())
-
-				match, err := engine.MatchRow(row, rowDesc, condition)
-				if err != nil {
-					return err
-				}
-				if !match {
-					continue
-				}
-				data = append(data, row)
-			}
-		} else {
-			row := desc.GetRow(cl, "no backend connection", cl.RAddr())
-
-			match, err := engine.MatchRow(row, rowDesc, condition)
-			if err != nil {
-				return err
-			}
-			if !match {
-				continue
-			}
-
-			data = append(data, row)
-		}
-
-	}
-	switch order.(type) {
-	case spqrparser.Order:
-		ord := order.(spqrparser.Order)
-		var asc_desc int
-
-		switch ord.OptAscDesc.(type) {
-		case spqrparser.SortByAsc:
-			asc_desc = engine.ASC
-		case spqrparser.SortByDesc:
-			asc_desc = engine.DESC
-		case spqrparser.SortByDefault:
-			asc_desc = engine.ASC
-		default:
-			return fmt.Errorf("wrong sorting option (asc/desc)")
-		}
-		sortable := engine.SortableWithContext{Data: data, Col_index: rowDesc[ord.Col.ColName], Order: asc_desc}
-		sort.Sort(sortable)
-	}
-	for i := range len(data) {
-		if err := pi.WriteDataRow(data[i]...); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-	return pi.CompleteMsg(len(clients))
-}
-
 // TODO : unit tests
 
 // Distributions sends distribution data to the PSQL client.
@@ -977,146 +686,9 @@ func (pi *PSQLInteractor) KillBackend(id uint) error {
 	return pi.CompleteMsg(0)
 }
 
-// BackendConnections writes backend connection information to the PSQL client.
-//
-// Parameters:
-// - _ (context.Context): The context for the operation.
-// - shs ([]shard.Shardinfo): The list of shard information.
-// - stmt (*spqrparser.Show): The query itself.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.ShardHostCtl, stmt *spqrparser.Show) error {
-
-	var filteredShards []shard.ShardHostCtl
-
-	var desc BackendDesc
-	rowDesc := GetColumnsMap(desc)
-
-	for _, sh := range shs {
-
-		row := desc.GetRow(sh)
-
-		match, err := engine.MatchRow(row, rowDesc, stmt.Where)
-		if err != nil {
-			return err
-		}
-		if !match {
-			continue
-		}
-		filteredShards = append(filteredShards, sh)
-	}
-
-	shs = filteredShards
-
-	switch gb := stmt.GroupBy.(type) {
-	case spqrparser.GroupBy:
-		groupByCols := []string{}
-		for _, col := range gb.Col {
-			groupByCols = append(groupByCols, col.ColName)
-		}
-		return groupBy(shs, BackendConnectionsGetters, groupByCols, pi)
-	case spqrparser.GroupByClauseEmpty:
-		if err := pi.WriteHeader(BackendConnectionsHeaders...); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-
-		for _, sh := range shs {
-			vals := make([]string, 0)
-			for _, header := range BackendConnectionsHeaders {
-				vals = append(vals, BackendConnectionsGetters[header](sh))
-			}
-			if err := pi.WriteDataRow(vals...); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
-				return err
-			}
-		}
-
-		return pi.CompleteMsg(len(shs))
-	default:
-		return spqrerror.NewByCode(spqrerror.SPQR_INVALID_REQUEST)
-	}
-}
-
-// TODO unit tests
-
-// Relations sends information about attached relations that satisfy conditions in WHERE-clause
-// Relations writes relation information to the PSQL client based on the given distribution-to-relations map and condition.
-//
-// Parameters:
-// - dsToRels (map[string][]*distributions.DistributedRelation): The map of distribution names to their corresponding distributed relations.
-// - condition (spqrparser.WhereClauseNode): The condition for filtering the relations.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.DistributedRelation, condition spqrparser.WhereClauseNode) error {
-	if err := pi.WriteHeader("Relation name", "Distribution ID", "Distribution key", "Schema name"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error sending header")
-		return err
-	}
-
-	dss := make([]string, len(dsToRels))
-	i := 0
-	for ds := range dsToRels {
-		dss[i] = ds
-		i++
-	}
-	sort.Strings(dss)
-
-	c := 0
-	index := map[string]int{"distribution_id": 0}
-	for _, ds := range dss {
-		rels := dsToRels[ds]
-		sort.Slice(rels, func(i, j int) bool {
-			return rels[i].Name < rels[j].Name
-		})
-		if ok, err := engine.MatchRow([]string{ds}, index, condition); err != nil {
-			return err
-		} else if !ok {
-			continue
-		}
-		for _, rel := range rels {
-			dsKey := make([]string, len(rel.DistributionKey))
-			for i, e := range rel.DistributionKey {
-				t, err := hashfunction.HashFunctionByName(e.HashFunction)
-				if err != nil {
-					return err
-				}
-				dsKey[i] = fmt.Sprintf("(\"%s\", %s)", e.Column, hashfunction.ToString(t))
-			}
-			schema := rel.SchemaName
-			if schema == "" {
-				schema = "$search_path"
-			}
-			if err := pi.WriteDataRow(rel.Name, ds, strings.Join(dsKey, ","), schema); err != nil {
-				return err
-			}
-			c++
-		}
-	}
-	return pi.CompleteMsg(c)
-}
-
 func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation) error {
 	vp := engine.ReferenceRelationsScan(rrs)
 	return pi.ReplyTTS(vp)
-}
-
-func (pi *PSQLInteractor) PreparedStatements(ctx context.Context, shs []shard.PreparedStatementsMgrDescriptor) error {
-	if err := pi.WriteHeader("name", "backend_id", "hash", "query"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, sh := range shs {
-		if err := pi.WriteDataRow(sh.Name, fmt.Sprintf("%d", sh.ServerId), fmt.Sprintf("%d", sh.Hash), sh.Query); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(len(shs))
 }
 
 func (pi *PSQLInteractor) Sequences(ctx context.Context, seqs []string, sequenceVals []int64) error {
@@ -1195,55 +767,4 @@ func (pi *PSQLInteractor) Users(ctx context.Context) error {
 // ReplyNotice sends notice message to client
 func (pi *PSQLInteractor) ReplyNotice(ctx context.Context, msg string) error {
 	return pi.cl.ReplyNotice(msg)
-}
-
-// Outputs groupBy get list values and counts its 'groupByCol' property.
-// 'groupByCol' sorted in grouped result by string key ASC mode
-//
-// Parameters:
-// - values []T: list of objects for grouping
-// - getters (map[string]toString[T]): getters which gets object property as string
-// - groupByCol string: property names for counting
-// - pi *PSQLInteractor:  output object
-// Returns:
-// - error: An error if there was a problem dropping the sequence.
-func groupBy[T any](values []T, getters map[string]toString[T], groupByCols []string, pi *PSQLInteractor) error {
-	groups := make(map[string][]T)
-	for _, value := range values {
-		key := ""
-		for _, groupByCol := range groupByCols {
-			if getFun, ok := getters[groupByCol]; ok {
-				key = fmt.Sprintf("%s:-:%s", key, getFun(value))
-			} else {
-				return fmt.Errorf("not found column '%s' for group by statement", groupByCol)
-			}
-		}
-		groups[key] = append(groups[key], value)
-	}
-
-	colDescs := make([]pgproto3.FieldDescription, 0, len(groupByCols)+1)
-	for _, groupByCol := range groupByCols {
-		colDescs = append(colDescs, engine.TextOidFD(groupByCol))
-	}
-	if err := pi.cl.Send(&pgproto3.RowDescription{
-		Fields: append(colDescs, engine.IntOidFD("count")),
-	}); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Could not write header for backend connections")
-		return err
-	}
-
-	keys := make([]string, 0, len(groups))
-	for groupKey := range groups {
-		keys = append(keys, groupKey)
-	}
-	sort.Strings(keys)
-
-	for _, key := range keys {
-		group := groups[key]
-		cols := strings.Split(key, ":-:")[1:]
-		if err := pi.WriteDataRow(append(cols, fmt.Sprintf("%d", len(group)))...); err != nil {
-			return err
-		}
-	}
-	return pi.CompleteMsg(len(groups))
 }

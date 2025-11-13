@@ -35,7 +35,7 @@ set __spqr__preferred_engine to v2;
 select __spqr__shards();
 
 select __spqr__show('key_ranges');
-
+SELECT * FROM __spqr__show('key_ranges');
 
 SELECT 1;
 

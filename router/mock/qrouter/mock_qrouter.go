@@ -65,10 +65,10 @@ func (mr *MockQueryRouterMockRecorder) AnalyzeQuery(ctx, sph, query, stmt any) *
 }
 
 // CSM mocks base method.
-func (m *MockQueryRouter) CSM() connmgr.ConnectionStatMgr {
+func (m *MockQueryRouter) CSM() connmgr.ConnectionMgr {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CSM")
-	ret0, _ := ret[0].(connmgr.ConnectionStatMgr)
+	ret0, _ := ret[0].(connmgr.ConnectionMgr)
 	return ret0
 }
 

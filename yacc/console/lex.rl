@@ -53,13 +53,19 @@ func (lex *Lexer) Lex(lval *yySymType) int {
 
         sconst = '\'' (any-'\'')* '\'';
         # not equal, minus, brackers, etc
-        identifier	=	(print - space - op_chars - '\'' - ';' - ',' - '(' - ')' - '[' - ']' - '.')*;
-
-        qidentifier	=	'"' identifier '"';
 
         horiz_space	= [ \t\f];
         newline		=	[\n\r];
         non_newline	=	[^\n\r];
+        dquote      =   ["];
+
+        # XXX: very hacky hack for shard hosts spec
+        ident_start	=	[A-Za-z\200-\377_] - ':';
+        ident_cont	=	[A-Za-z\200-\377_0-9$];
+
+        identifier	=	ident_start ident_cont*;
+
+        qidentifier	=	dquote (any - newline - dquote)* dquote ;
 
         sql_comment = '-''-' non_newline*;
         c_style_comment = '/''*' (any - '*''/')* '*''/';
@@ -112,6 +118,9 @@ func (lex *Lexer) Lex(lval *yySymType) int {
             '-' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TMINUS; fbreak;};
             '+' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TPLUS; fbreak;};
             '.' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TDOT; fbreak;};
+            '*' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TMUL; fbreak;};
+            '<' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TLESS; fbreak;};
+            '>' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TGREATER; fbreak;};
 
             operator => {
                 lval.str = string(lex.data[lex.ts:lex.te]); tok = int(OP);    
