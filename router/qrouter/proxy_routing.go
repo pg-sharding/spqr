@@ -421,6 +421,7 @@ func (qr *ProxyQrouter) planQueryV1(
 				} else if rs {
 					/* If reference relation, use planner v2 */
 					p, err := planner.PlanReferenceRelationInsertValues(ctx, rm, stmt.Columns, rf, subS, qr.idRangeCache)
+
 					if err != nil {
 						return nil, err
 					}
@@ -822,7 +823,6 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadata
 			return &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: firstShard,
-					RO:   rm.IsRO(),
 				},
 				PStmt: rm.Stmt,
 			}, nil
