@@ -283,6 +283,7 @@ libldap
 libp
 libpam
 libpq
+Linting
 localrouter
 logdir
 logproxy
@@ -447,8 +448,8 @@ resharding
 reshke
 retcode
 retmsg
-retst
 retryable
+retst
 reuseport
 rfqn
 RFQNIs
