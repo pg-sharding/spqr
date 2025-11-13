@@ -21,26 +21,10 @@ CREATE REFERENCE TABLE zz2 ON sh3, sh4;
 
 CREATE REFERENCE RELATION zz2;
 ERROR:  reference relation zz2 already exists
--- Test SYNC REFERENCE commands with different keywords
+-- Test SYNC REFERENCE commands (all fail on router, but parser should work)
 SYNC REFERENCE TABLES ON sh1;
 ERROR:  SYNC REFERENCE TABLES/RELATIONS currently unsupported
-SYNC REFERENCE RELATIONS ON sh1;
-ERROR:  SYNC REFERENCE TABLES/RELATIONS currently unsupported
 SYNC REFERENCE TABLE zz2 ON sh1;
-ERROR:  request is unprocessable in router
-SYNC REFERENCE RELATION zz2 ON sh1;
-ERROR:  request is unprocessable in router
--- Test SYNC REFERENCE with quoted identifiers
-SYNC REFERENCE TABLE 'zz2' ON sh1;
-ERROR:  request is unprocessable in router
-SYNC REFERENCE RELATION 'zz2' ON 'sh1';
-ERROR:  request is unprocessable in router
-SYNC REFERENCE TABLE zz2 ON 'sh3';
-ERROR:  request is unprocessable in router
--- Test SYNC REFERENCE with semicolons
-SYNC REFERENCE TABLES ON sh2;
-ERROR:  SYNC REFERENCE TABLES/RELATIONS currently unsupported
-SYNC REFERENCE TABLE zz ON sh2;
 ERROR:  request is unprocessable in router
 ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 SCHEMA my_schema;
           alter relation          

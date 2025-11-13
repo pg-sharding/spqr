@@ -296,9 +296,9 @@ Feature: Reference relation test
     ]
     """
 
-  Scenario: SYNC REFERENCE commands
+  Scenario: SYNC REFERENCE TABLE functionality
     #
-    # Test SYNC REFERENCE command variations
+    # Test that SYNC REFERENCE TABLE actually syncs data to a new shard
     #
     Given cluster environment is
     """
@@ -314,37 +314,85 @@ Feature: Reference relation test
     """
     Then command return code should be "0"
 
+    # Create reference table on sh1 only initially
     When I run SQL on host "coordinator"
     """
-    CREATE REFERENCE TABLE sync_test ON sh1, sh2;
+    CREATE REFERENCE TABLE sync_test ON sh1;
     """
     Then command return code should be "0"
 
-    # Test SYNC REFERENCE TABLE with specific table
+    # Create the actual table and insert data on sh1
+    When I execute SQL on host "router"
+    """
+    SET __spqr__engine_v2 TO on;
+    set __spqr__execute_on to sh1;
+    CREATE TABLE sync_test(id int, name text);
+    INSERT INTO sync_test (id, name) VALUES(1, 'test1');
+    INSERT INTO sync_test (id, name) VALUES(2, 'test2');
+    """
+    Then command return code should be "0"
+    
+    # Verify data exists on sh1
+    When I run SQL on host "router"
+    """
+    set __spqr__execute_on to sh1; 
+    SELECT id, name FROM sync_test ORDER BY id;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+        {
+            "id": 1,
+            "name": "test1"
+        },
+        {
+            "id": 2,
+            "name": "test2"
+        }
+    ]
+    """
+
+    # Verify data does NOT exist on sh2 yet
+    When I run SQL on host "router"
+    """
+    set __spqr__execute_on to sh2; 
+    SELECT id, name FROM sync_test ORDER BY id;
+    """
+    Then command return code should be "1"
+
+    # Now sync the reference table to sh2 using SYNC REFERENCE TABLE
     When I run SQL on host "coordinator"
     """
-    SYNC REFERENCE TABLE sync_test ON sh1;
+    SYNC REFERENCE TABLE sync_test ON sh2;
     """
     Then command return code should be "0"
 
-    # Test SYNC REFERENCE RELATION with specific relation
-    When I run SQL on host "coordinator"
+    # Verify data now exists on sh2
+    When I run SQL on host "router"
     """
-    SYNC REFERENCE RELATION sync_test ON sh2;
+    set __spqr__execute_on to sh2; 
+    SELECT id, name FROM sync_test ORDER BY id;
     """
     Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+        {
+            "id": 1,
+            "name": "test1"
+        },
+        {
+            "id": 2,
+            "name": "test2"
+        }
+    ]
+    """
 
     # Test SYNC REFERENCE TABLES (all tables) - currently unsupported
     When I run SQL on host "coordinator"
     """
     SYNC REFERENCE TABLES ON sh1;
-    """
-    Then command return code should be "1"
-
-    # Test SYNC REFERENCE RELATIONS (all relations) - currently unsupported
-    When I run SQL on host "coordinator"
-    """
-    SYNC REFERENCE RELATIONS ON sh2;
     """
     Then command return code should be "1"
 
