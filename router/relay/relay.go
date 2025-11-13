@@ -1282,11 +1282,14 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		rst.routingDecisionPlan = queryPlan
 	}
 
+<<<<<<< HEAD
 	// rewrite query
 	if qs := rst.routingDecisionPlan.GetQuery(""); qs != "" {
 		q.String = qs
 	}
 
+=======
+>>>>>>> Refactor `rewrite query` support for reference relation modification
 	es := &ExecutorState{
 		Msg: q,
 		P:   rst.routingDecisionPlan, /*  ugh... fix this someday */

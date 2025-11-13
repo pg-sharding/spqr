@@ -39,7 +39,11 @@ func DispatchPlan(qd *ExecutorState, serv server.Server, cl client.RouterClient,
 			}
 		} else {
 			for _, targ := range et {
-				if err := serv.SendShard(qd.Msg, targ); err != nil {
+				msg := qd.Msg
+				if ovMsg := qd.P.GetGangMemberMsg(targ); ovMsg != nil {
+					msg = ovMsg
+				}
+				if err := serv.SendShard(msg, targ); err != nil {
 					return err
 				}
 			}

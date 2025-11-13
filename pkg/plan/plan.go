@@ -1,6 +1,9 @@
 package plan
 
 import (
+	"maps"
+
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -12,7 +15,7 @@ type Plan interface {
 	Stmt() lyx.Node
 	SetStmt(lyx.Node)
 	ExecutionTargets() []kr.ShardKey
-	GetQuery(sh string) string
+	GetGangMemberMsg(sh kr.ShardKey) pgproto3.FrontendMessage
 }
 
 type ScatterPlan struct {
@@ -25,7 +28,7 @@ type ScatterPlan struct {
 	IsDDL  bool
 	Forced bool
 
-	OverwriteQuery string
+	OverwriteQuery map[string]pgproto3.FrontendMessage
 	/* Empty means execute everywhere */
 	ExecTargets []kr.ShardKey
 }
@@ -42,8 +45,11 @@ func (sp *ScatterPlan) SetStmt(n lyx.Node) {
 	sp.stmt = n
 }
 
-func (s *ScatterPlan) GetQuery(string) string {
-	return s.OverwriteQuery
+func (s *ScatterPlan) GetGangMemberMsg(sh kr.ShardKey) pgproto3.FrontendMessage {
+	if msg, ok := s.OverwriteQuery[sh.Name]; ok {
+		return msg
+	}
+	return nil
 }
 
 var _ Plan = &ScatterPlan{}
@@ -66,8 +72,8 @@ func (sp *ModifyTable) SetStmt(n lyx.Node) {
 	sp.stmt = n
 }
 
-func (s *ModifyTable) GetQuery(string) string {
-	return ""
+func (s *ModifyTable) GetGangMemberMsg(kr.ShardKey) pgproto3.FrontendMessage {
+	return nil
 }
 
 var _ Plan = &ModifyTable{}
@@ -92,8 +98,8 @@ func (sp *ShardDispatchPlan) SetStmt(n lyx.Node) {
 	sp.PStmt = n
 }
 
-func (s *ShardDispatchPlan) GetQuery(string) string {
-	return ""
+func (s *ShardDispatchPlan) GetGangMemberMsg(kr.ShardKey) pgproto3.FrontendMessage {
+	return nil
 }
 
 var _ Plan = &ShardDispatchPlan{}
@@ -117,8 +123,8 @@ func (sp *RandomDispatchPlan) SetStmt(n lyx.Node) {
 	sp.stmt = n
 }
 
-func (s *RandomDispatchPlan) GetQuery(string) string {
-	return ""
+func (s *RandomDispatchPlan) GetGangMemberMsg(kr.ShardKey) pgproto3.FrontendMessage {
+	return nil
 }
 
 var _ Plan = &RandomDispatchPlan{}
@@ -144,8 +150,8 @@ func (sp *VirtualPlan) SetStmt(n lyx.Node) {
 	sp.stmt = n
 }
 
-func (s *VirtualPlan) GetQuery(string) string {
-	return ""
+func (s *VirtualPlan) GetGangMemberMsg(kr.ShardKey) pgproto3.FrontendMessage {
+	return nil
 }
 
 var _ Plan = &VirtualPlan{}
@@ -170,11 +176,11 @@ func (sp *DataRowFilter) SetStmt(n lyx.Node) {
 	sp.stmt = n
 }
 
-func (s *DataRowFilter) GetQuery(sh string) string {
+func (s *DataRowFilter) GetGangMemberMsg(sh kr.ShardKey) pgproto3.FrontendMessage {
 	if s.SubPlan == nil {
-		return ""
+		return nil
 	}
-	return s.SubPlan.GetQuery(sh)
+	return s.SubPlan.GetGangMemberMsg(sh)
 }
 
 var _ Plan = &DataRowFilter{}
@@ -198,8 +204,8 @@ func (sp *CopyPlan) SetStmt(n lyx.Node) {
 	sp.stmt = n
 }
 
-func (s *CopyPlan) GetQuery(string) string {
-	return ""
+func (s *CopyPlan) GetGangMemberMsg(kr.ShardKey) pgproto3.FrontendMessage {
+	return nil
 }
 
 var _ Plan = &CopyPlan{}
@@ -270,14 +276,16 @@ func Combine(p1, p2 Plan) Plan {
 	case *VirtualPlan:
 		return p2
 	case *ScatterPlan:
-		rs := p1.GetQuery("")
-		if rs == "" {
-			// XXX: is this bad?
-			rs = p2.GetQuery("")
+		merged := make(map[string]pgproto3.FrontendMessage)
+		maps.Copy(merged, shq1.OverwriteQuery)
+		// XXX: is this bad?
+		switch shq2 := p2.(type) {
+		case *ScatterPlan:
+			maps.Copy(merged, shq2.OverwriteQuery)
 		}
 
 		return &ScatterPlan{
-			OverwriteQuery: rs,
+			OverwriteQuery: merged,
 			ExecTargets:    mergeExecTargets(p1.ExecutionTargets(), p2.ExecutionTargets()),
 		}
 	case *RandomDispatchPlan:
