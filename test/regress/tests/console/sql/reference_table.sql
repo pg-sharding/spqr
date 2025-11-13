@@ -4,6 +4,7 @@ CREATE REFERENCE TABLE zz2 ON sh3, sh4;
 
 CREATE REFERENCE RELATION zz2;
 
+-- Test SYNC REFERENCE commands (all fail on router, but parser should work)
 SYNC REFERENCE TABLES ON sh1;
 SYNC REFERENCE TABLE zz2 ON sh1;
 
