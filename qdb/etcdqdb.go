@@ -73,9 +73,10 @@ const (
 	stopMoveTaskGroupNamespace     = "/stop_move_task_group/"
 	moveTaskByGroupNamespace       = "/group_move_tasks/"
 
-	CoordKeepAliveTtl = 3
-	coordLockKey      = "coordinator_exists"
-	sequenceSpace     = "sequence_space"
+	CoordKeepAliveTtl  = 3
+	coordLockKey       = "coordinator_exists"
+	sequenceSpace      = "sequence_space"
+	transactionRequest = "transaction_request"
 
 	MaxLockRetry = 7
 )
@@ -2343,4 +2344,62 @@ func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
 	}
 
 	return nextval, err
+}
+
+func packEtcdCommands(operations []QdbStatement) ([]clientv3.Op, error) {
+	etcdOperations := make([]clientv3.Op, len(operations))
+	for index, v := range operations {
+		switch v.CmdType {
+		case CMD_PUT:
+			etcdOperations[index] = clientv3.OpPut(v.Key, v.Value)
+		case CMD_DELETE:
+			etcdOperations[index] = clientv3.OpDelete(v.Key)
+		default:
+			return nil, fmt.Errorf("not found operation type: %d", v.CmdType)
+		}
+	}
+	return etcdOperations, nil
+}
+
+func (q *EtcdQDB) ExecNoTransaction(ctx context.Context, operations []QdbStatement) error {
+	etcdOperations, err := packEtcdCommands(operations)
+	if err != nil {
+		return err
+	}
+	_, err = q.cli.Txn(ctx).Then(etcdOperations...).Commit()
+	return err
+}
+
+func (q *EtcdQDB) CommitTransaction(ctx context.Context, transaction *QdbTransaction) error {
+	if transaction == nil {
+		return fmt.Errorf("cant't commit empty transaction")
+	}
+	if err := transaction.Validate(); err != nil {
+		return fmt.Errorf("invalid transaction %s: %w", transaction.Id(), err)
+	}
+	etcdOperations, err := packEtcdCommands(transaction.commands)
+	if err != nil {
+		return err
+	}
+	etcdOperations = append(etcdOperations, clientv3.OpDelete(transactionRequest))
+	resp, err := q.cli.Txn(ctx).
+		If(clientv3.Compare(clientv3.Value(transactionRequest), "=", transaction.transactionId.String())).
+		Then(etcdOperations...).
+		Commit()
+
+	if err != nil {
+		return fmt.Errorf("failed to commit transaction: %s", transaction.Id())
+	}
+	if !resp.Succeeded {
+		return fmt.Errorf("transaction '%s' cann't be committed", transaction.Id())
+	}
+	return nil
+}
+
+func (q *EtcdQDB) BeginTransaction(ctx context.Context, transaction *QdbTransaction) error {
+	if transaction == nil {
+		return fmt.Errorf("cant't begin empty transaction")
+	}
+	_, err := q.cli.Put(ctx, transactionRequest, transaction.transactionId.String())
+	return err
 }

@@ -150,3 +150,169 @@ func TestLockUnlock(t *testing.T) {
 	})
 
 }
+
+func TestTransactions(t *testing.T) {
+	is := assert.New(t)
+	err := setupTestSet(t)
+	is.NoError(err)
+	defer func() {
+		_ = Down()
+	}()
+	is.NoError(err)
+	t.Run("test Begin tran", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.TODO(), TestTimeout)
+		defer cancel()
+		db, err := setupSubTest(ctx)
+		is.NoError(err)
+		t.Run("simple begin tran success", func(t *testing.T) {
+			tran, err := qdb.NewTransaction()
+			is.NoError(err)
+			err = db.BeginTransaction(ctx, tran)
+			is.NoError(err)
+			result, err := db.Client().Get(ctx, "transaction_request")
+			is.NoError(err)
+			is.Equal(tran.Id().String(), string(result.Kvs[0].Value))
+		})
+		t.Run("2 begin tran success", func(t *testing.T) {
+			tran1, err := qdb.NewTransaction()
+			is.NoError(err)
+			err = db.BeginTransaction(ctx, tran1)
+			is.NoError(err)
+			tran2, err := qdb.NewTransaction()
+			is.NoError(err)
+			err = db.BeginTransaction(ctx, tran2)
+			is.NoError(err)
+			result, err := db.Client().Get(ctx, "transaction_request")
+			is.NoError(err)
+			is.Equal(tran2.Id().String(), string(result.Kvs[0].Value))
+		})
+	})
+	t.Run("test exec no tran", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.TODO(), TestTimeout)
+		defer cancel()
+		db, err := setupSubTest(ctx)
+		is.NoError(err)
+		t.Run("happy path", func(t *testing.T) {
+			statements := []qdb.QdbStatement{
+				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
+				{CmdType: qdb.CMD_PUT, Key: "test2", Value: "val2"},
+				{CmdType: qdb.CMD_DELETE, Key: "test3"},
+			}
+			err := db.ExecNoTransaction(ctx, statements)
+			is.NoError(err)
+			//check execution
+			result, err := db.Client().Get(ctx, "test1")
+			is.NoError(err)
+			is.Equal("val1", string(result.Kvs[0].Value))
+			result, err = db.Client().Get(ctx, "test2")
+			is.NoError(err)
+			is.Equal("val2", string(result.Kvs[0].Value))
+			result, err = db.Client().Get(ctx, "test3")
+			is.NoError(err)
+			is.Equal(0, len(result.Kvs))
+		})
+		t.Run("2 sequential runs", func(t *testing.T) {
+			//run1
+			statements := []qdb.QdbStatement{
+				{CmdType: qdb.CMD_PUT, Key: "test3", Value: "val3"},
+			}
+			err := db.ExecNoTransaction(ctx, statements)
+			is.NoError(err)
+			//check execution 1
+			result, err := db.Client().Get(ctx, "test3")
+			is.NoError(err)
+			is.Equal("val3", string(result.Kvs[0].Value))
+			//run2
+			statements = []qdb.QdbStatement{
+				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
+				{CmdType: qdb.CMD_DELETE, Key: "test3"},
+			}
+			err = db.ExecNoTransaction(ctx, statements)
+			is.NoError(err)
+			//check execution 2
+			result, err = db.Client().Get(ctx, "test1")
+			is.NoError(err)
+			is.Equal("val1", string(result.Kvs[0].Value))
+			result, err = db.Client().Get(ctx, "test3")
+			is.NoError(err)
+			is.Equal(0, len(result.Kvs))
+		})
+	})
+	t.Run("test commit tran", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.TODO(), TestTimeout)
+		defer cancel()
+		db, err := setupSubTest(ctx)
+		is.NoError(err)
+		t.Run("happy path commit tran", func(t *testing.T) {
+			tran, err := qdb.NewTransaction()
+			is.NoError(err)
+			err = db.BeginTransaction(ctx, tran)
+			is.NoError(err)
+			statements := []qdb.QdbStatement{
+				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
+				{CmdType: qdb.CMD_PUT, Key: "test2", Value: "val2"},
+				{CmdType: qdb.CMD_DELETE, Key: "test3"},
+			}
+			err = tran.Append(statements)
+			is.NoError(err)
+			err = db.CommitTransaction(ctx, tran)
+			is.NoError(err)
+			//check execution
+			result, err := db.Client().Get(ctx, "test1")
+			is.NoError(err)
+			is.Equal("val1", string(result.Kvs[0].Value))
+			result, err = db.Client().Get(ctx, "test2")
+			is.NoError(err)
+			is.Equal("val2", string(result.Kvs[0].Value))
+			result, err = db.Client().Get(ctx, "test3")
+			is.NoError(err)
+			is.Equal(0, len(result.Kvs))
+		})
+		t.Run("fail commit tran after begin another tran", func(t *testing.T) {
+			tran1, err := qdb.NewTransaction()
+			is.NoError(err)
+			err = db.BeginTransaction(ctx, tran1)
+			is.NoError(err)
+			statements := []qdb.QdbStatement{
+				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
+			}
+			err = tran1.Append(statements)
+			is.NoError(err)
+			tran2, err := qdb.NewTransaction()
+			is.NoError(err)
+			err = db.BeginTransaction(ctx, tran2)
+			is.NoError(err)
+
+			err = db.CommitTransaction(ctx, tran1)
+			is.EqualError(err, fmt.Sprintf("transaction '%s' cann't be committed", tran1.Id()))
+		})
+		t.Run("suddenly there was a boxwood", func(t *testing.T) {
+			tran1, err := qdb.NewTransaction()
+			is.NoError(err)
+			err = db.BeginTransaction(ctx, tran1)
+			is.NoError(err)
+			statements := []qdb.QdbStatement{
+				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
+			}
+			err = tran1.Append(statements)
+			is.NoError(err)
+			_, err = db.Client().Delete(ctx, "transaction_request")
+			is.NoError(err)
+
+			err = db.CommitTransaction(ctx, tran1)
+			is.EqualError(err, fmt.Sprintf("transaction '%s' cann't be committed", tran1.Id()))
+		})
+
+		t.Run("fails invalid tran", func(t *testing.T) {
+			tran1, err := qdb.NewTransaction()
+			is.NoError(err)
+			err = db.BeginTransaction(ctx, tran1)
+			is.NoError(err)
+			statements := []qdb.QdbStatement{}
+			_ = tran1.Append(statements) //handling this error was skipped intentionally
+			err = db.CommitTransaction(ctx, tran1)
+			is.EqualError(err, fmt.Sprintf("invalid transaction %s: transaction %s haven't statements", tran1.Id(), tran1.Id()))
+		})
+
+	})
+}

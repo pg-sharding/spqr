@@ -134,6 +134,11 @@ type QDB interface {
 	NextRange(ctx context.Context, seqName string, rangeSize uint64) (*SequenceIdRange, error)
 	CurrVal(ctx context.Context, seqName string) (int64, error)
 	DropSequence(ctx context.Context, seqName string, force bool) error
+
+	//batch execution
+	ExecNoTransaction(ctx context.Context, operations []QdbStatement) error
+	CommitTransaction(ctx context.Context, transaction *QdbTransaction) error
+	BeginTransaction(ctx context.Context, transaction *QdbTransaction) error
 }
 
 // XQDB means extended QDB

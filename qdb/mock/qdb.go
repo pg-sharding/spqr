@@ -439,6 +439,20 @@ func (mr *MockQDBMockRecorder) AlterSequenceAttach(ctx, seqName, relName, colNam
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterSequenceAttach", reflect.TypeOf((*MockQDB)(nil).AlterSequenceAttach), ctx, seqName, relName, colName)
 }
 
+// BeginTransaction mocks base method.
+func (m *MockQDB) BeginTransaction(ctx context.Context, transaction *qdb.QdbTransaction) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeginTransaction", ctx, transaction)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BeginTransaction indicates an expected call of BeginTransaction.
+func (mr *MockQDBMockRecorder) BeginTransaction(ctx, transaction any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginTransaction", reflect.TypeOf((*MockQDB)(nil).BeginTransaction), ctx, transaction)
+}
+
 // CheckDistribution mocks base method.
 func (m *MockQDB) CheckDistribution(ctx context.Context, id string) (bool, error) {
 	m.ctrl.T.Helper()
@@ -482,6 +496,20 @@ func (m *MockQDB) CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bo
 func (mr *MockQDBMockRecorder) CheckMoveTaskGroupStopFlag(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckMoveTaskGroupStopFlag", reflect.TypeOf((*MockQDB)(nil).CheckMoveTaskGroupStopFlag), ctx, id)
+}
+
+// CommitTransaction mocks base method.
+func (m *MockQDB) CommitTransaction(ctx context.Context, transaction *qdb.QdbTransaction) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CommitTransaction", ctx, transaction)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CommitTransaction indicates an expected call of CommitTransaction.
+func (mr *MockQDBMockRecorder) CommitTransaction(ctx, transaction any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitTransaction", reflect.TypeOf((*MockQDB)(nil).CommitTransaction), ctx, transaction)
 }
 
 // CreateDistribution mocks base method.
@@ -637,6 +665,20 @@ func (m *MockQDB) DropShard(ctx context.Context, shardID string) error {
 func (mr *MockQDBMockRecorder) DropShard(ctx, shardID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropShard", reflect.TypeOf((*MockQDB)(nil).DropShard), ctx, shardID)
+}
+
+// ExecNoTransaction mocks base method.
+func (m *MockQDB) ExecNoTransaction(ctx context.Context, operations []qdb.QdbStatement) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExecNoTransaction", ctx, operations)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ExecNoTransaction indicates an expected call of ExecNoTransaction.
+func (mr *MockQDBMockRecorder) ExecNoTransaction(ctx, operations any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecNoTransaction", reflect.TypeOf((*MockQDB)(nil).ExecNoTransaction), ctx, operations)
 }
 
 // GetBalancerTask mocks base method.
@@ -835,18 +877,18 @@ func (mr *MockQDBMockRecorder) GetShard(ctx, shardID any) *gomock.Call {
 }
 
 // ListAllKeyRanges mocks base method.
-func (m *MockQDB) ListAllKeyRanges(arg0 context.Context) ([]*qdb.KeyRange, error) {
+func (m *MockQDB) ListAllKeyRanges(ctx context.Context) ([]*qdb.KeyRange, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAllKeyRanges", arg0)
+	ret := m.ctrl.Call(m, "ListAllKeyRanges", ctx)
 	ret0, _ := ret[0].([]*qdb.KeyRange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAllKeyRanges indicates an expected call of ListAllKeyRanges.
-func (mr *MockQDBMockRecorder) ListAllKeyRanges(arg0 any) *gomock.Call {
+func (mr *MockQDBMockRecorder) ListAllKeyRanges(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllKeyRanges", reflect.TypeOf((*MockQDB)(nil).ListAllKeyRanges), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllKeyRanges", reflect.TypeOf((*MockQDB)(nil).ListAllKeyRanges), ctx)
 }
 
 // ListDistributions mocks base method.
@@ -865,18 +907,18 @@ func (mr *MockQDBMockRecorder) ListDistributions(ctx any) *gomock.Call {
 }
 
 // ListKeyRanges mocks base method.
-func (m *MockQDB) ListKeyRanges(arg0 context.Context, distribution string) ([]*qdb.KeyRange, error) {
+func (m *MockQDB) ListKeyRanges(ctx context.Context, distribution string) ([]*qdb.KeyRange, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListKeyRanges", arg0, distribution)
+	ret := m.ctrl.Call(m, "ListKeyRanges", ctx, distribution)
 	ret0, _ := ret[0].([]*qdb.KeyRange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListKeyRanges indicates an expected call of ListKeyRanges.
-func (mr *MockQDBMockRecorder) ListKeyRanges(arg0, distribution any) *gomock.Call {
+func (mr *MockQDBMockRecorder) ListKeyRanges(ctx, distribution any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListKeyRanges", reflect.TypeOf((*MockQDB)(nil).ListKeyRanges), arg0, distribution)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListKeyRanges", reflect.TypeOf((*MockQDB)(nil).ListKeyRanges), ctx, distribution)
 }
 
 // ListLockedKeyRanges mocks base method.
@@ -1417,6 +1459,20 @@ func (mr *MockXQDBMockRecorder) AlterSequenceAttach(ctx, seqName, relName, colNa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterSequenceAttach", reflect.TypeOf((*MockXQDB)(nil).AlterSequenceAttach), ctx, seqName, relName, colName)
 }
 
+// BeginTransaction mocks base method.
+func (m *MockXQDB) BeginTransaction(ctx context.Context, transaction *qdb.QdbTransaction) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeginTransaction", ctx, transaction)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BeginTransaction indicates an expected call of BeginTransaction.
+func (mr *MockXQDBMockRecorder) BeginTransaction(ctx, transaction any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginTransaction", reflect.TypeOf((*MockXQDB)(nil).BeginTransaction), ctx, transaction)
+}
+
 // CheckDistribution mocks base method.
 func (m *MockXQDB) CheckDistribution(ctx context.Context, id string) (bool, error) {
 	m.ctrl.T.Helper()
@@ -1474,6 +1530,20 @@ func (m *MockXQDB) CloseRouter(ctx context.Context, rID string) error {
 func (mr *MockXQDBMockRecorder) CloseRouter(ctx, rID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseRouter", reflect.TypeOf((*MockXQDB)(nil).CloseRouter), ctx, rID)
+}
+
+// CommitTransaction mocks base method.
+func (m *MockXQDB) CommitTransaction(ctx context.Context, transaction *qdb.QdbTransaction) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CommitTransaction", ctx, transaction)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CommitTransaction indicates an expected call of CommitTransaction.
+func (mr *MockXQDBMockRecorder) CommitTransaction(ctx, transaction any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitTransaction", reflect.TypeOf((*MockXQDB)(nil).CommitTransaction), ctx, transaction)
 }
 
 // CreateDistribution mocks base method.
@@ -1671,6 +1741,20 @@ func (m *MockXQDB) DropShard(ctx context.Context, shardID string) error {
 func (mr *MockXQDBMockRecorder) DropShard(ctx, shardID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropShard", reflect.TypeOf((*MockXQDB)(nil).DropShard), ctx, shardID)
+}
+
+// ExecNoTransaction mocks base method.
+func (m *MockXQDB) ExecNoTransaction(ctx context.Context, operations []qdb.QdbStatement) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExecNoTransaction", ctx, operations)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ExecNoTransaction indicates an expected call of ExecNoTransaction.
+func (mr *MockXQDBMockRecorder) ExecNoTransaction(ctx, operations any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecNoTransaction", reflect.TypeOf((*MockXQDB)(nil).ExecNoTransaction), ctx, operations)
 }
 
 // GetBalancerTask mocks base method.
@@ -1884,18 +1968,18 @@ func (mr *MockXQDBMockRecorder) GetTransferTx(ctx, key any) *gomock.Call {
 }
 
 // ListAllKeyRanges mocks base method.
-func (m *MockXQDB) ListAllKeyRanges(arg0 context.Context) ([]*qdb.KeyRange, error) {
+func (m *MockXQDB) ListAllKeyRanges(ctx context.Context) ([]*qdb.KeyRange, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAllKeyRanges", arg0)
+	ret := m.ctrl.Call(m, "ListAllKeyRanges", ctx)
 	ret0, _ := ret[0].([]*qdb.KeyRange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAllKeyRanges indicates an expected call of ListAllKeyRanges.
-func (mr *MockXQDBMockRecorder) ListAllKeyRanges(arg0 any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) ListAllKeyRanges(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllKeyRanges", reflect.TypeOf((*MockXQDB)(nil).ListAllKeyRanges), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllKeyRanges", reflect.TypeOf((*MockXQDB)(nil).ListAllKeyRanges), ctx)
 }
 
 // ListDistributions mocks base method.
@@ -1929,18 +2013,18 @@ func (mr *MockXQDBMockRecorder) ListKeyRangeMoves(ctx any) *gomock.Call {
 }
 
 // ListKeyRanges mocks base method.
-func (m *MockXQDB) ListKeyRanges(arg0 context.Context, distribution string) ([]*qdb.KeyRange, error) {
+func (m *MockXQDB) ListKeyRanges(ctx context.Context, distribution string) ([]*qdb.KeyRange, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListKeyRanges", arg0, distribution)
+	ret := m.ctrl.Call(m, "ListKeyRanges", ctx, distribution)
 	ret0, _ := ret[0].([]*qdb.KeyRange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListKeyRanges indicates an expected call of ListKeyRanges.
-func (mr *MockXQDBMockRecorder) ListKeyRanges(arg0, distribution any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) ListKeyRanges(ctx, distribution any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListKeyRanges", reflect.TypeOf((*MockXQDB)(nil).ListKeyRanges), arg0, distribution)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListKeyRanges", reflect.TypeOf((*MockXQDB)(nil).ListKeyRanges), ctx, distribution)
 }
 
 // ListLockedKeyRanges mocks base method.
