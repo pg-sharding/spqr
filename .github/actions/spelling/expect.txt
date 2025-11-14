@@ -581,6 +581,7 @@ TOPENBR
 TOPENSQBR
 tpcc
 TRASCE
+tran
 tsa
 TSEMICOLON
 tstmt
