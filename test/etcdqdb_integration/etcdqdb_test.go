@@ -253,7 +253,8 @@ func TestTransactions(t *testing.T) {
 				{CmdType: qdb.CMD_PUT, Key: "test2", Value: "val2"},
 				{CmdType: qdb.CMD_DELETE, Key: "test3"},
 			}
-			tran.Append(statements)
+			err = tran.Append(statements)
+			is.NoError(err)
 			err = db.CommitTransaction(ctx, tran)
 			is.NoError(err)
 			//check execution
@@ -275,8 +276,8 @@ func TestTransactions(t *testing.T) {
 			statements := []qdb.QdbStatement{
 				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
 			}
-			tran1.Append(statements)
-
+			err = tran1.Append(statements)
+			is.NoError(err)
 			tran2, err := qdb.NewTransaction()
 			is.NoError(err)
 			err = db.BeginTransaction(ctx, tran2)
@@ -293,8 +294,8 @@ func TestTransactions(t *testing.T) {
 			statements := []qdb.QdbStatement{
 				{CmdType: qdb.CMD_PUT, Key: "test1", Value: "val1"},
 			}
-			tran1.Append(statements)
-
+			err = tran1.Append(statements)
+			is.NoError(err)
 			_, err = db.Client().Delete(ctx, "transaction_request")
 			is.NoError(err)
 
@@ -308,8 +309,7 @@ func TestTransactions(t *testing.T) {
 			err = db.BeginTransaction(ctx, tran1)
 			is.NoError(err)
 			statements := []qdb.QdbStatement{}
-			tran1.Append(statements)
-
+			_ = tran1.Append(statements) //handling this error was skipped intentionally
 			err = db.CommitTransaction(ctx, tran1)
 			is.EqualError(err, fmt.Sprintf("invalid transaction %s: transaction %s haven't statements", tran1.Id(), tran1.Id()))
 		})
