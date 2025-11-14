@@ -302,7 +302,7 @@ func TestTransactions(t *testing.T) {
 			is.EqualError(err, fmt.Sprintf("transaction '%s' cann't be committed", tran1.Id()))
 		})
 
-		t.Run("fais invalid tran", func(t *testing.T) {
+		t.Run("fails invalid tran", func(t *testing.T) {
 			tran1, err := qdb.NewTransaction()
 			is.NoError(err)
 			err = db.BeginTransaction(ctx, tran1)

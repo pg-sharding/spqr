@@ -1368,13 +1368,13 @@ func (q *MemQDB) CurrVal(_ context.Context, seqName string) (int64, error) {
 }
 
 func (q *MemQDB) ExecNoTransaction(ctx context.Context, stmts []QdbStatement) error {
-	return fmt.Errorf("ExecNoTransaction not implemented for memdb")
+	return fmt.Errorf("ExecNoTransaction not implemented for MemQDB")
 }
 
 func (q *MemQDB) CommitTransaction(ctx context.Context, transaction *QdbTransaction) error {
-	return fmt.Errorf("ExecTransaction not implemented for memdb")
+	return fmt.Errorf("ExecTransaction not implemented for MemQDB")
 }
 
 func (q *MemQDB) BeginTransaction(ctx context.Context, transaction *QdbTransaction) error {
-	return fmt.Errorf("BeginTransaction not implemented for memdb")
+	return fmt.Errorf("BeginTransaction not implemented for MemQDB")
 }
