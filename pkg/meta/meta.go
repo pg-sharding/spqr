@@ -3,7 +3,6 @@ package meta
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/pg-sharding/spqr/coordinator/statistics"
@@ -735,6 +734,8 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 	}
 
 	switch stmt := tstmt.(type) {
+	case nil:
+		return cli.CompleteMsg(0)
 	case *spqrparser.TraceStmt:
 		if writer == nil {
 			return fmt.Errorf("cannot save workload from here")
@@ -1004,6 +1005,171 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, ci 
 
 // TODO : unit tests
 
+func ProcessShowExtended(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connmgr.ConnectionMgr, ro bool) (*tupleslot.TupleTableSlot, error) {
+	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process extended show statement")
+
+	var tts *tupleslot.TupleTableSlot
+	var err error
+
+	switch stmt.Cmd {
+	case spqrparser.BackendConnectionsStr:
+		var resp []shard.ShardHostCtl
+		if err := ci.ForEach(func(sh shard.ShardHostCtl) error {
+			// apply filters
+			resp = append(resp, sh)
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+
+		tts, err = engine.BackendConnectionsVirtualRelationScan(resp)
+		if err != nil {
+			return nil, err
+		}
+
+	case spqrparser.ShardsStr:
+		shards, err := mngr.ListShards(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		tts = &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("shard"),
+		}
+
+		for _, shard := range shards {
+			tts.Raw = append(tts.Raw,
+				[][]byte{
+					[]byte(shard.ID),
+				},
+			)
+		}
+
+	case spqrparser.HostsStr:
+		shards, err := mngr.ListShards(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		tts = engine.HostsVirtualRelationScan(shards, ci.InstanceHealthChecks())
+
+	case spqrparser.KeyRangesStr:
+		ranges, err := mngr.ListAllKeyRanges(ctx)
+		if err != nil {
+			return nil, err
+		}
+		locksKr, err := mngr.ListKeyRangeLocks(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts = engine.KeyRangeVirtualRelationScan(ranges, locksKr)
+	case spqrparser.InstanceStr:
+		tts = engine.InstanceVirtualRelationScan(ctx, ci)
+
+	case spqrparser.ClientsStr:
+		var resp []client.ClientInfo
+		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
+			resp = append(resp, client)
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+
+		tts, err = engine.ClientsVirtualRelationScan(ctx, resp)
+		if err != nil {
+			return nil, err
+		}
+	case spqrparser.RelationsStr:
+		dss, err := mngr.ListDistributions(ctx)
+		if err != nil {
+			return nil, err
+		}
+		dsToRels := make(map[string][]*distributions.DistributedRelation)
+		for _, ds := range dss {
+			if _, ok := dsToRels[ds.Id]; ok {
+				return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "Duplicate values on \"%s\" distribution ID", ds.Id)
+			}
+			dsToRels[ds.Id] = make([]*distributions.DistributedRelation, 0)
+			for _, rel := range ds.Relations {
+				dsToRels[ds.Id] = append(dsToRels[ds.Id], rel)
+			}
+		}
+
+		tts, err = engine.RelationsVirtualRelationScan(dsToRels)
+		if err != nil {
+			return nil, err
+		}
+
+		/* XXX: remove this hack */
+		if stmt.Order == nil {
+			stmt.Order = &spqrparser.Order{
+				Col: spqrparser.ColumnRef{ColName: "table name"},
+			}
+		}
+
+	case spqrparser.ReferenceRelationsStr:
+		rrs, err := mngr.ListReferenceRelations(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		tts = engine.ReferenceRelationsScan(rrs)
+
+		/* XXX: remove this hack */
+		if stmt.Order == nil {
+			stmt.Order = &spqrparser.Order{
+				Col: spqrparser.ColumnRef{ColName: "table name"},
+			}
+		}
+
+	case spqrparser.PreparedStatementsStr:
+
+		var resp []shard.PreparedStatementsMgrDescriptor
+		if err := ci.ForEach(func(sh shard.ShardHostCtl) error {
+			resp = append(resp, sh.ListPreparedStatements()...)
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+
+		tts = engine.PreparedStatementsVirtualRelationScan(ctx, resp)
+
+	case spqrparser.TsaCacheStr:
+		if ci == nil {
+			return nil, ErrUnknownCoordinatorCommand
+		}
+
+		cacheEntries := ci.TsaCacheEntries()
+		tts = engine.TSAVirtualRelationScan(cacheEntries)
+	default:
+		return nil, ErrUnknownCoordinatorCommand
+	}
+
+	if stmt.Where != nil {
+		tts, err = engine.FilterRows(tts, stmt.Where)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if stmt.GroupBy != nil {
+
+		tts, err = engine.GroupBy(tts, stmt.GroupBy)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if stmt.Order != nil {
+		tts.Raw, err = engine.ProcessOrderBy(tts.Raw, tts.Desc.GetColumnsMap(), stmt.Order)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return tts, nil
+}
+
 // ProcessShow processes the SHOW statement and returns an error if any issue occurs.
 //
 // Parameters:
@@ -1017,69 +1183,8 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, ci 
 // - error: An error if the operation encounters any issues.
 func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connmgr.ConnectionMgr, cli *clientinteractor.PSQLInteractor, ro bool) error {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
+
 	switch stmt.Cmd {
-	case spqrparser.BackendConnectionsStr:
-
-		var resp []shard.ShardHostCtl
-		if err := ci.ForEach(func(sh shard.ShardHostCtl) error {
-			// apply filters
-			resp = append(resp, sh)
-			return nil
-		}); err != nil {
-			return err
-		}
-
-		tts, err := cli.BackendConnections(resp, stmt.Where)
-		if err != nil {
-			return err
-		}
-
-		resTTS, err := engine.GroupBy(tts, stmt.GroupBy)
-		if err != nil {
-			return err
-		}
-
-		return cli.ReplyTTS(resTTS)
-	case spqrparser.ShardsStr:
-		shards, err := mngr.ListShards(ctx)
-		if err != nil {
-			return err
-		}
-
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("shard"),
-		}
-
-		for _, shard := range shards {
-			tts.Raw = append(tts.Raw,
-				[][]byte{
-					[]byte(shard.ID),
-				},
-			)
-		}
-
-		return cli.ReplyTTS(tts)
-	case spqrparser.HostsStr:
-		shards, err := mngr.ListShards(ctx)
-		if err != nil {
-			return err
-		}
-
-		ihc := ci.InstanceHealthChecks()
-
-		tts := engine.HostsVirtualRelationScan(shards, ihc)
-		return cli.ReplyTTS(tts)
-	case spqrparser.KeyRangesStr:
-		ranges, err := mngr.ListAllKeyRanges(ctx)
-		if err != nil {
-			return err
-		}
-		locksKr, err := mngr.ListKeyRangeLocks(ctx)
-		if err != nil {
-			return err
-		}
-		tts := engine.KeyRangeVirtualRelationScan(ranges, locksKr)
-		return cli.ReplyTTS(tts)
 	case spqrparser.RoutersStr:
 		resp, err := mngr.ListRouters(ctx)
 		if err != nil {
@@ -1089,20 +1194,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.Routers(resp)
 	case spqrparser.ShardingRules:
 		return cli.ReportError(spqrerror.ShardingRulesRemoved)
-	case spqrparser.ClientsStr:
-		var resp []client.ClientInfo
-		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
-			resp = append(resp, client)
-			return nil
-		}); err != nil {
-			return err
-		}
-
-		tts, err := cli.Clients(ctx, resp, stmt)
-		if err != nil {
-			return err
-		}
-		return cli.ReplyTTS(tts)
 
 	case spqrparser.PoolsStr:
 		var respPools []pool.Pool
@@ -1114,9 +1205,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Pools(ctx, respPools)
-	case spqrparser.InstanceStr:
-		tts := engine.InstanceVirtualRelationScan(ctx, ci)
-		return cli.ReplyTTS(tts)
+
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
 	case spqrparser.CoordinatorAddrStr:
@@ -1148,44 +1237,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			defShardIDs = append(defShardIDs, shID)
 		}
 		return cli.Distributions(ctx, dss, defShardIDs)
-	case spqrparser.RelationsStr:
-		dss, err := mngr.ListDistributions(ctx)
-		if err != nil {
-			return err
-		}
-		dsToRels := make(map[string][]*distributions.DistributedRelation)
-		for _, ds := range dss {
-			if _, ok := dsToRels[ds.Id]; ok {
-				return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "Duplicate values on \"%s\" distribution ID", ds.Id)
-			}
-			dsToRels[ds.Id] = make([]*distributions.DistributedRelation, 0)
-			for _, rel := range ds.Relations {
-				dsToRels[ds.Id] = append(dsToRels[ds.Id], rel)
-			}
-		}
 
-		tts, err := engine.RelationsVirtualRelationScan(dsToRels, stmt.Where)
-		if err != nil {
-			return err
-		}
-		return cli.ReplyTTS(tts)
-	case spqrparser.ReferenceRelationsStr:
-		rrs, err := mngr.ListReferenceRelations(ctx)
-		if err != nil {
-			return err
-		}
-
-		slices.SortFunc(rrs, func(a *rrelation.ReferenceRelation, b *rrelation.ReferenceRelation) int {
-			if a.TableName == b.TableName {
-				return 0
-			}
-			if a.TableName < b.TableName {
-				return -1
-			}
-			return 1
-		})
-
-		return cli.ReferenceRelations(rrs)
 	case spqrparser.TaskGroupStr:
 		group, err := mngr.ListMoveTaskGroups(ctx)
 		if err != nil {
@@ -1234,18 +1286,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			colTypes[keyRange.Distribution] = keyRange.ColumnTypes
 		}
 		return cli.MoveTasks(ctx, taskList, colTypes, moveTasksDsID)
-	case spqrparser.PreparedStatementsStr:
 
-		var resp []shard.PreparedStatementsMgrDescriptor
-		if err := ci.ForEach(func(sh shard.ShardHostCtl) error {
-			resp = append(resp, sh.ListPreparedStatements()...)
-			return nil
-		}); err != nil {
-			return err
-		}
-
-		tts := engine.PreparedStatementsVirtualRelationScan(ctx, resp)
-		return cli.ReplyTTS(tts)
 	case spqrparser.QuantilesStr:
 		return cli.Quantiles(ctx)
 	case spqrparser.SequencesStr:
@@ -1276,11 +1317,13 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.MoveStats(ctx, stats)
 	case spqrparser.Users:
 		return cli.Users(ctx)
-	case spqrparser.TsaCacheStr:
-		cacheEntries := ci.TsaCacheEntries()
-		return cli.ReplyTTS(engine.TSAVirtualRelationScan(cacheEntries))
+
 	default:
-		return ErrUnknownCoordinatorCommand
+		tts, err := ProcessShowExtended(ctx, stmt, mngr, ci, ro)
+		if err != nil {
+			return err
+		}
+		return cli.ReplyTTS(tts)
 	}
 }
 

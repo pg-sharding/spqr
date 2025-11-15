@@ -1,10 +1,3 @@
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
@@ -53,7 +46,7 @@ LOCK KEY RANGE krid1;
 (1 row)
 
 SPLIT KEY RANGE krid4 FROM krid1 BY 5;
-ERROR:  key range krid1 is locked
+ERROR:  retryable: key range krid1 is locked
 UNLOCK KEY RANGE krid1;
    unlock key range    
 -----------------------
@@ -85,7 +78,7 @@ SPLIT KEY RANGE krid6 FROM krid5 BY 'FF000000-0000-0000-0000-000000000000';
                    split key range                    
 ------------------------------------------------------
  key range id -> krid6
- bound        -> FF000000-0000-0000-0000-000000000000
+ bound        -> ff000000-0000-0000-0000-000000000000
 (2 rows)
 
 -- intersecting key range

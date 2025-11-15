@@ -24,8 +24,6 @@ SHOW backend_connections GROUP BY user, hostname;
 
 SHOW backend_connections GROUP BY user, unknown;
 
-SHOW backend_connections GROUP BY ;
-
 \c regress
 
 drop table test;

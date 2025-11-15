@@ -63,7 +63,6 @@ codeql
 colname
 colocation
 colref
-colreflist
 coltypes
 commitcount
 commodi
@@ -141,7 +140,6 @@ elit
 Elts
 emptypb
 enim
-entrieslist
 epn
 errdefs
 errhint
@@ -168,6 +166,7 @@ frmp
 frrule
 frsm
 frules
+ftts
 fugiat
 gcflags
 getconn
@@ -256,7 +255,6 @@ kinit
 Kirill
 kpass
 krb
-krbound
 krdb
 krid
 kridi
@@ -285,6 +283,7 @@ libldap
 libp
 libpam
 libpq
+Linting
 localrouter
 logdir
 logproxy
@@ -449,6 +448,7 @@ resharding
 reshke
 retcode
 retmsg
+retryable
 retst
 reuseport
 rfqn
@@ -461,7 +461,6 @@ rmeta
 rmgr
 rollbacked
 roolback
-roundrobin
 routable
 routemgr
 routerparser
@@ -471,12 +470,10 @@ rowmap
 rport
 rqdn
 rqfn
-rrel
 rrelation
 rrouter
 rulemgr
 rulerouter
-runbooks
 runc
 RUnlock
 samehost
@@ -502,7 +499,6 @@ shkey
 shname
 shq
 shrid
-shrule
 singleshard
 Smartphone
 spaolacci
@@ -547,9 +543,7 @@ stdbuf
 stdcopy
 stmtcache
 stmtlog
-stoptrace
 stretchr
-strlist
 subplan
 subquery
 subselects
@@ -586,7 +580,6 @@ topbar
 TOPENBR
 TOPENSQBR
 tpcc
-TPLUS
 TRASCE
 tsa
 TSEMICOLON
@@ -606,7 +599,6 @@ txstatus
 txtstatus
 uber
 uinteger
-uintegerlist
 Uints
 ullam
 ullamco
