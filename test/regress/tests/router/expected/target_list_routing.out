@@ -82,7 +82,7 @@ NOTICE: send query to shard(s) : sh1
        24 |       26
 (1 row)
 
-/* test quated sconsts. XXX: find a better place for that */
+/* test quoted sconsts. XXX: find a better place for that */
 SELECT 'a=b, "a=b", '' c '' '' '' ', 'a=b, "a=b", '' c ''''''' /* __spqr__.execute_on: sh3 */;
         ?column?        |      ?column?       
 ------------------------+---------------------

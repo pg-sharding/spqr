@@ -26,7 +26,7 @@ select (select sum(j) from sh2.tlt1 where i = 112), (select sum(j) from sh2.tlt1
 select  coalesce((select sum(j) from sh2.tlt1 where i = 1), 0), coalesce((select sum(j) from sh2.tlt1 where i = 2 and j not in (select 12)), 0);
 
 
-/* test quated sconsts. XXX: find a better place for that */
+/* test quoted sconsts. XXX: find a better place for that */
 
 SELECT 'a=b, "a=b", '' c '' '' '' ', 'a=b, "a=b", '' c ''''''' /* __spqr__.execute_on: sh3 */;
 
