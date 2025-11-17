@@ -82,6 +82,13 @@ NOTICE: send query to shard(s) : sh1
        24 |       26
 (1 row)
 
+/* test quated sconsts. XXX: find a better place for that */
+SELECT 'a=b, "a=b", '' c '' '' '' ', 'a=b, "a=b", '' c ''''''' /* __spqr__.execute_on: sh3 */;
+        ?column?        |      ?column?       
+------------------------+---------------------
+ a=b, "a=b", ' c ' ' '  | a=b, "a=b", ' c '''
+(1 row)
+
 DROP SCHEMA sh2 CASCADE;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
