@@ -2070,7 +2070,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 		case *pgproto3.Query:
 			tstmt, err := spqrparser.Parse(v.String)
 			if err != nil {
-				_ = cli.ReportError(err)
+				_ = cli.ReportError(fmt.Errorf("failed to parse query \"%s\": %w", v.String, err))
 				continue
 			}
 
