@@ -79,12 +79,12 @@ func TestMemqdbRacing(t *testing.T) {
 			_ = memqdb.BeginTransaction(ctx, tran1)
 		},
 		func() {
-			bts1, err := json.Marshal(mockDistribution)
+			dataDistribution1, err := json.Marshal(mockDistribution)
 			if err != nil {
 				panic("cant unmarshal distribution case(0)!")
 			}
 			commands := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(bts1), Extension: qdb.MapDistributions},
+				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
 			}
 			err = memqdb.ExecNoTransaction(ctx, commands)
 		},
@@ -93,12 +93,12 @@ func TestMemqdbRacing(t *testing.T) {
 			if err != nil {
 				panic("can't create transaction structure (case0)!")
 			}
-			bts1, err := json.Marshal(mockDistribution)
+			dataDistribution1, err := json.Marshal(mockDistribution)
 			if err != nil {
 				panic("cant unmarshal distribution case(1)!")
 			}
 			commands := []qdb.QdbStatement{
-				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(bts1), Extension: qdb.MapDistributions},
+				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
 			}
 			err = tran.Append(commands)
 			if err != nil {

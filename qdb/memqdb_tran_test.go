@@ -131,6 +131,7 @@ func TestMemQdbTransactions(t *testing.T) {
 	t.Run("test commit tran", func(t *testing.T) {
 		t.Run("happy path commit tran", func(t *testing.T) {
 			memqdb, err := NewMemQDB("")
+			is.NoError(err)
 			tran, err := NewTransaction()
 			is.NoError(err)
 			err = memqdb.BeginTransaction(ctx, tran)
@@ -149,6 +150,7 @@ func TestMemQdbTransactions(t *testing.T) {
 		})
 		t.Run("fail commit tran after begin another tran", func(t *testing.T) {
 			memqdb, err := NewMemQDB("")
+			is.NoError(err)
 			tran1, err := NewTransaction()
 			is.NoError(err)
 			err = memqdb.BeginTransaction(ctx, tran1)
@@ -170,6 +172,7 @@ func TestMemQdbTransactions(t *testing.T) {
 		})
 		t.Run("fails invalid tran", func(t *testing.T) {
 			memqdb, err := NewMemQDB("")
+			is.NoError(err)
 			tran1, err := NewTransaction()
 			is.NoError(err)
 			err = memqdb.BeginTransaction(ctx, tran1)
