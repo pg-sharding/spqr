@@ -1374,14 +1374,14 @@ func (q *MemQDB) CurrVal(_ context.Context, seqName string) (int64, error) {
 	return next, nil
 }
 
-func (q *MemQDB) toRelationDistributionOper(stmt QdbStatement) (Command, error) {
+func (q *MemQDB) toRelationDistributionOperation(stmt QdbStatement) (Command, error) {
 	switch stmt.CmdType {
 	case CMD_DELETE:
 		return NewDeleteCommand(q.RelationDistribution, stmt.Key), nil
 	case CMD_PUT:
 		return NewUpdateCommand(q.RelationDistribution, stmt.Key, stmt.Value), nil
 	default:
-		return nil, fmt.Errorf("unsupported memDB cmd %d (case 0)", stmt.CmdType)
+		return nil, fmt.Errorf("unsupported memqdb cmd %d (case 0)", stmt.CmdType)
 	}
 }
 func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
@@ -1396,41 +1396,41 @@ func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
 			return NewUpdateCommand(q.Distributions, stmt.Key, &distr), nil
 		}
 	default:
-		return nil, fmt.Errorf("unsupported memDB cmd %d (case 0)", stmt.CmdType)
+		return nil, fmt.Errorf("unsupported memqdb cmd %d (case 0)", stmt.CmdType)
 	}
 }
 
-func (q *MemQDB) packMemdbCommands(operations []QdbStatement) ([]Command, error) {
-	memOprs := make([]Command, 0, len(operations))
+func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error) {
+	memOperations := make([]Command, 0, len(operations))
 	for _, stmt := range operations {
 		switch stmt.Extension {
 		case MapRelationDistribution:
-			if operation, err := q.toRelationDistributionOper(stmt); err != nil {
+			if operation, err := q.toRelationDistributionOperation(stmt); err != nil {
 				return nil, err
 			} else {
-				memOprs = append(memOprs, operation)
+				memOperations = append(memOperations, operation)
 			}
 		case MapDistributions:
 			if operation, err := q.toDistributions(stmt); err != nil {
 				return nil, err
 			} else {
-				memOprs = append(memOprs, operation)
+				memOperations = append(memOperations, operation)
 			}
 		default:
-			return nil, fmt.Errorf("Not implemented for transaction memdb part %s", stmt.Extension)
+			return nil, fmt.Errorf("not implemented for transaction memqdb part %s", stmt.Extension)
 		}
 	}
-	return memOprs, nil
+	return memOperations, nil
 }
 
 func (q *MemQDB) ExecNoTransaction(ctx context.Context, operations []QdbStatement) error {
 	spqrlog.Zero.Debug().Msg("memqdb: exec chunk commands without transaction")
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if memOprs, err := q.packMemdbCommands(operations); err != nil {
+	if memOperations, err := q.packMemqdbCommands(operations); err != nil {
 		return err
 	} else {
-		return ExecuteCommands(q.DumpState, memOprs...)
+		return ExecuteCommands(q.DumpState, memOperations...)
 	}
 }
 
@@ -1448,10 +1448,10 @@ func (q *MemQDB) CommitTransaction(ctx context.Context, transaction *QdbTransact
 	if transaction.Id() != q.activeTransaction {
 		return fmt.Errorf("transaction '%s' cann't be committed", transaction.Id())
 	}
-	if memOprs, err := q.packMemdbCommands(transaction.commands); err != nil {
+	if memOperations, err := q.packMemqdbCommands(transaction.commands); err != nil {
 		return err
 	} else {
-		return ExecuteCommands(q.DumpState, memOprs...)
+		return ExecuteCommands(q.DumpState, memOperations...)
 	}
 }
 
@@ -1460,7 +1460,7 @@ func (q *MemQDB) BeginTransaction(_ context.Context, transaction *QdbTransaction
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if transaction == nil {
-		return fmt.Errorf("empty transction is not supported")
+		return fmt.Errorf("empty transaction is not supported")
 	}
 	q.activeTransaction = transaction.Id()
 	return nil
