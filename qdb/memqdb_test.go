@@ -86,7 +86,7 @@ func TestMemqdbRacing(t *testing.T) {
 			commands := []qdb.QdbStatement{
 				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
 			}
-			err = memqdb.ExecNoTransaction(ctx, commands)
+			_ = memqdb.ExecNoTransaction(ctx, commands)
 		},
 		func() {
 			tran, err := qdb.NewTransaction()
