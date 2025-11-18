@@ -1,4 +1,3 @@
-
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;
 ERROR:  you don't have any distributions
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;

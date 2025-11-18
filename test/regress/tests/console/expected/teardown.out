@@ -1,4 +1,3 @@
-
 DROP KEY RANGE ALL;
  drop key range 
 ----------------

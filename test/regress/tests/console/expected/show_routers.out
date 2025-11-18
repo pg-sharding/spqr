@@ -1,4 +1,3 @@
-
 SHOW routers;
    show routers   | status 
 ------------------+--------

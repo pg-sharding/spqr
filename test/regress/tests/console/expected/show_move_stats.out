@@ -1,4 +1,3 @@
-
 SHOW move_stats;
  statistic | time 
 -----------+------

@@ -1,4 +1,3 @@
-
 create distribution ds1 column types int hash;
     add distribution    
 ------------------------
