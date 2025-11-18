@@ -1019,7 +1019,7 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	}
 
 	if len(resp.Kvs) == 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard \"%s\" not found", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "unknown shard %s", id)
 	}
 	if len(resp.Kvs) > 1 {
 		return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION,
@@ -1117,7 +1117,7 @@ func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relName *rf
 
 	switch len(resp.Kvs) {
 	case 0:
-		return spqrerror.New(spqrerror.SPQR_SHARDING_RULE_ERROR, "no such reference relation present in qdb")
+		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "reference relation \"%s\" not found", relName.String())
 	case 1:
 
 		var rrs *ReferenceRelation
