@@ -1,10 +1,4 @@
 
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 SHOW users;
   user   | dbname  | connection_limit | connection_retries | connection_timeout | keep_alive | tcp_user_timeout 
 ---------+---------+------------------+--------------------+--------------------+------------+------------------

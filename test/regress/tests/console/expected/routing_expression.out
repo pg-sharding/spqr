@@ -1,10 +1,4 @@
 
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 create distribution ds1 column types int hash;
     add distribution    
 ------------------------
