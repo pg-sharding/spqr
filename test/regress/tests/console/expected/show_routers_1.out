@@ -1,5 +1,5 @@
 SHOW routers;
-   show routers   | status 
-------------------+--------
+ show routers | status 
+--------------+--------
 (0 rows)
 

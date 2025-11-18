@@ -2,6 +2,7 @@ package console
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/catalog"
@@ -65,7 +66,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		spqrlog.Zero.Error().Str("query", q).Err(err).Msg("failed to parse query")
-		return err
+		return fmt.Errorf("failed to parse query \"%s\": %w", q, err)
 	}
 
 	spqrlog.Zero.Debug().

@@ -1,5 +1,5 @@
 SHOW clients;
- client_id | user | dbname | server_id | router_address
+ client_id | user | dbname | server_id | router_address 
 -----------+------+--------+-----------+----------------
 (0 rows)
 
