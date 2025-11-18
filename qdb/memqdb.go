@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	// maps of MemQDB as `extensions` of QdbStatement
 	MapRelationDistribution = "RelationDistribution"
 	MapDistributions        = "Distributions"
 )
@@ -1381,7 +1382,7 @@ func (q *MemQDB) toRelationDistributionOperation(stmt QdbStatement) (Command, er
 	case CMD_PUT:
 		return NewUpdateCommand(q.RelationDistribution, stmt.Key, stmt.Value), nil
 	default:
-		return nil, fmt.Errorf("unsupported memqdb cmd %d (case 0)", stmt.CmdType)
+		return nil, fmt.Errorf("unsupported memqdb cmd %d (relation distribution)", stmt.CmdType)
 	}
 }
 func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
@@ -1396,7 +1397,7 @@ func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
 			return NewUpdateCommand(q.Distributions, stmt.Key, &distr), nil
 		}
 	default:
-		return nil, fmt.Errorf("unsupported memqdb cmd %d (case 0)", stmt.CmdType)
+		return nil, fmt.Errorf("unsupported memqdb cmd %d (distributions)", stmt.CmdType)
 	}
 }
 

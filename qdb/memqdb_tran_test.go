@@ -50,7 +50,7 @@ func TestPackMemqdbCommands(t *testing.T) {
 			{CmdType: CMD_PUT, Key: distribution2.ID, Value: string(dataDistribution2), Extension: "testMap1"},
 		}
 		_, err := memqdb.packMemqdbCommands(commands)
-		is.Error(err, "Not implemented for transaction memqdb part testMap1")
+		is.EqualError(err, "not implemented for transaction memqdb part testMap1")
 	})
 }
 
