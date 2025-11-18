@@ -9,10 +9,16 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/rfqn"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+)
+
+const (
+	MapRelationDistribution = "RelationDistribution"
+	MapDistributions        = "Distributions"
 )
 
 type MemQDB struct {
@@ -41,7 +47,8 @@ type MemQDB struct {
 	TaskGroupMoveTaskID  map[string]string                   `json:"task_group_move_task"`
 	SequenceLock         sync.RWMutex
 
-	backupPath string
+	backupPath        string
+	activeTransaction uuid.UUID
 	/* caches */
 }
 
@@ -1367,14 +1374,94 @@ func (q *MemQDB) CurrVal(_ context.Context, seqName string) (int64, error) {
 	return next, nil
 }
 
-func (q *MemQDB) ExecNoTransaction(ctx context.Context, stmts []QdbStatement) error {
-	return fmt.Errorf("ExecNoTransaction not implemented for MemQDB")
+func (q *MemQDB) toRelationDistributionOper(stmt QdbStatement) (Command, error) {
+	switch stmt.CmdType {
+	case CMD_DELETE:
+		return NewDeleteCommand(q.RelationDistribution, stmt.Key), nil
+	case CMD_PUT:
+		return NewUpdateCommand(q.RelationDistribution, stmt.Key, stmt.Value), nil
+	default:
+		return nil, fmt.Errorf("unsupported memDB cmd %d (case 0)", stmt.CmdType)
+	}
+}
+func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
+	switch stmt.CmdType {
+	case CMD_DELETE:
+		return NewDeleteCommand(q.Distributions, stmt.Key), nil
+	case CMD_PUT:
+		var distr Distribution
+		if err := json.Unmarshal([]byte(stmt.Value), &distr); err != nil {
+			return nil, err
+		} else {
+			return NewUpdateCommand(q.Distributions, stmt.Key, &distr), nil
+		}
+	default:
+		return nil, fmt.Errorf("unsupported memDB cmd %d (case 0)", stmt.CmdType)
+	}
+}
+
+func (q *MemQDB) packMemdbCommands(operations []QdbStatement) ([]Command, error) {
+	memOprs := make([]Command, 0, len(operations))
+	for _, stmt := range operations {
+		switch stmt.Extension {
+		case MapRelationDistribution:
+			if operation, err := q.toRelationDistributionOper(stmt); err != nil {
+				return nil, err
+			} else {
+				memOprs = append(memOprs, operation)
+			}
+		case MapDistributions:
+			if operation, err := q.toDistributions(stmt); err != nil {
+				return nil, err
+			} else {
+				memOprs = append(memOprs, operation)
+			}
+		default:
+			return nil, fmt.Errorf("Not implemented for transaction memdb part %s", stmt.Extension)
+		}
+	}
+	return memOprs, nil
+}
+
+func (q *MemQDB) ExecNoTransaction(ctx context.Context, operations []QdbStatement) error {
+	spqrlog.Zero.Debug().Msg("memqdb: exec chunk commands without transaction")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if memOprs, err := q.packMemdbCommands(operations); err != nil {
+		return err
+	} else {
+		return ExecuteCommands(q.DumpState, memOprs...)
+	}
 }
 
 func (q *MemQDB) CommitTransaction(ctx context.Context, transaction *QdbTransaction) error {
-	return fmt.Errorf("ExecTransaction not implemented for MemQDB")
+	spqrlog.Zero.Debug().Msg("memqdb: exec transaction")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if transaction == nil {
+		return fmt.Errorf("cant't commit empty transaction")
+	}
+	if err := transaction.Validate(); err != nil {
+		return fmt.Errorf("invalid transaction %s: %w", transaction.Id(), err)
+	}
+	if transaction.Id() != q.activeTransaction {
+		return fmt.Errorf("transaction '%s' cann't be committed", transaction.Id())
+	}
+	if memOprs, err := q.packMemdbCommands(transaction.commands); err != nil {
+		return err
+	} else {
+		return ExecuteCommands(q.DumpState, memOprs...)
+	}
 }
 
-func (q *MemQDB) BeginTransaction(ctx context.Context, transaction *QdbTransaction) error {
-	return fmt.Errorf("BeginTransaction not implemented for MemQDB")
+func (q *MemQDB) BeginTransaction(_ context.Context, transaction *QdbTransaction) error {
+	spqrlog.Zero.Debug().Msg("memqdb: begin transaction")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if transaction == nil {
+		return fmt.Errorf("empty transction is not supported")
+	}
+	q.activeTransaction = transaction.Id()
+	return nil
 }
