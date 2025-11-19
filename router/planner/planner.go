@@ -647,7 +647,14 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 				}, nil
 			}
 
-			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			p, err := plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			if v.Returning != nil {
+				return &plan.DataRowFilter{
+					SubPlan:     p,
+					FilterIndex: 0,
+				}, nil
+			}
+			return p, err
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -671,7 +678,15 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 					ExecTargets: nil,
 				}, nil
 			}
-			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+
+			p, err := plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			if v.Returning != nil {
+				return &plan.DataRowFilter{
+					SubPlan:     p,
+					FilterIndex: 0,
+				}, nil
+			}
+			return p, err
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
