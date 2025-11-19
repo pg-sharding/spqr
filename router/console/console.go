@@ -2,7 +2,6 @@ package console
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -47,8 +46,6 @@ type LocalInstanceConsole struct {
 }
 
 var _ Console = &LocalInstanceConsole{}
-
-var ErrNoRemoteCoordinator = errors.New("remote master coordinator not found")
 
 func distributedMgr(ctx context.Context, localCoordinator meta.EntityMgr) (meta.EntityMgr, func(), error) {
 
