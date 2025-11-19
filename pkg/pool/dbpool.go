@@ -387,7 +387,6 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 	spqrlog.Zero.Debug().
 		Uint("client", clid).
 		Str("shard", key.Name).
-		Bool("RO", key.RO).
 		Str("effective tsa", string(effectiveTargetSessionAttrs)).
 		Msg("acquiring new instance connection for client to shard with target session attrs")
 

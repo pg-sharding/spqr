@@ -116,7 +116,6 @@ func (l *LocalQrouter) DataShardsRoutes() []kr.ShardKey {
 	return []kr.ShardKey{
 		{
 			Name: l.ds.ID,
-			RO:   false,
 		},
 	}
 }
