@@ -124,6 +124,14 @@ TRUNCATE test_ref_rel;
 
 INSERT INTO test_ref_rel VALUES(1,3),(2,4),(3,-1) RETURNING *;
 
+BEGIN;
+-- To not interfere below results
+update test_ref_rel
+set i = 11
+where i <= 3 and j < 0
+returning i, j;
+ROLLBACK;
+
 -- check data on partially distributed reference relation
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
