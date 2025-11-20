@@ -1265,7 +1265,7 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 
 	ctx := context.TODO()
 	if rst.poolMgr.ValidateSliceChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
-		rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.qp.OriginQuery(), rst.qp.Stmt())
+		rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, q.String, rst.qp.Stmt())
 		if err != nil {
 			return err
 		}
@@ -1291,6 +1291,8 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		Msg: q,
 		P:   rst.routingDecisionPlan, /*  ugh... fix this someday */
 	}
+	/* FIX this */
+	es.P.SetStmt(rst.qp.Stmt())
 
 	if err := rst.qse.ExecuteSlicePrepare(
 		es, rst.Qr.Mgr(), replyCl, true); err != nil {
