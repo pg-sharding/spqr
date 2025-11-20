@@ -807,8 +807,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				ctx := context.TODO()
 
 				if rst.poolMgr.ValidateSliceChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
-					spqrlog.Zero.Debug().Bool("engine v2", rst.Client().EnhancedMultiShardProcessing()).Msg("checking transaction expand possibility")
-
 					rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.qp.OriginQuery(), rst.qp.Stmt())
 					if err != nil {
 						return err
@@ -822,8 +820,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					}
 
 					rst.routingDecisionPlan = queryPlan
-					rst.bindQueryPlan = queryPlan
 				}
+
+				rst.bindQueryPlan = rst.routingDecisionPlan
 
 				// hold route if appropriate
 
@@ -1108,8 +1107,6 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateSliceChange(rst) {
-		spqrlog.Zero.Debug().Bool("engine v2", rst.Client().EnhancedMultiShardProcessing()).Msg("checking transaction expand possibility")
-
 		if rst.Client().EnhancedMultiShardProcessing() {
 			/* With engine v2 we can expand transaction on more targets */
 			/* TODO: XXX */
@@ -1268,8 +1265,6 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 
 	ctx := context.TODO()
 	if rst.poolMgr.ValidateSliceChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
-		spqrlog.Zero.Debug().Bool("engine v2", rst.Client().EnhancedMultiShardProcessing()).Msg("checking transaction expand possibility")
-
 		rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.qp.OriginQuery(), rst.qp.Stmt())
 		if err != nil {
 			return err
