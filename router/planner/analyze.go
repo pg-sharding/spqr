@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/rerrors"
@@ -98,6 +99,7 @@ func analyzeFromNode(ctx context.Context, node lyx.FromClauseNode, meta *rmeta.R
 	return nil
 }
 
+/* XXX: Keep this in sync with `planByQualExpr`` */
 func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMetadataContext) error {
 	if expr == nil {
 		return nil
@@ -110,9 +112,18 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 	/* lyx.ResTarget is unexpected here */
 	case *lyx.AExprIn:
 
-		switch texpr.Expr.(type) {
+		switch lft := texpr.Expr.(type) {
 		case *lyx.ColumnRef:
+
+			alias, colname := lft.TableAlias, lft.ColName
+
 			switch q := texpr.SubLink.(type) {
+			case *lyx.AExprList:
+				for _, expr := range q.List {
+					if err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
+						return err
+					}
+				}
 			case *lyx.Select:
 				/* TODO properly support subquery here */
 				/* SELECT * FROM t WHERE id IN (SELECT 1, 2) */
@@ -125,11 +136,58 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 
 	case *lyx.AExprOp:
 
+		if config.RouterConfig().Qr.StrictOperators {
+			if texpr.Op != "=" {
+				return nil
+			}
+		}
+
 		switch lft := texpr.Left.(type) {
-		case *lyx.ColumnRef:
+		/* simple key-value pair in const = id form */
+		case *lyx.ParamRef, *lyx.AExprSConst, *lyx.AExprIConst:
+			// else  error out?
+
 			/* simple key-value pair */
 			switch right := texpr.Right.(type) {
+			case *lyx.ColumnRef:
 
+				alias, colname := right.TableAlias, right.ColName
+				// TBD: postpone routing from here to root of parsing tree
+				// maybe extremely inefficient. Will be fixed in SPQR-3.0/engine v2
+				if err := rm.ProcessConstExpr(alias, colname, lft); err != nil {
+					return err
+				}
+			}
+		/* lyx.ResTarget is unexpected here */
+		case *lyx.ColumnRef:
+
+			alias, colname := lft.TableAlias, lft.ColName
+
+			/* simple key-value pair */
+			switch right := texpr.Right.(type) {
+			case *lyx.ParamRef, *lyx.AExprSConst, *lyx.AExprIConst:
+				// else  error out?
+
+				// TBD: postpone routing from here to root of parsing tree
+				// maybe extremely inefficient. Will be fixed in SPQR-3.0/engine v2
+				if err := rm.ProcessConstExpr(alias, colname, right); err != nil {
+					return err
+				}
+
+			case *lyx.ColumnRef:
+				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
+				for _, v := range rm.AuxExprByColref(right) {
+					if err := rm.ProcessConstExpr(alias, colname, v); err != nil {
+						return err
+					}
+				}
+
+			case *lyx.AExprList:
+				for _, expr := range right.List {
+					if err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
+						return err
+					}
+				}
 			case *lyx.FuncApplication:
 				// there are several types of queries like DELETE FROM rel WHERE colref = func_application
 				// and func_application is actually routable statement.
@@ -150,6 +208,9 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 				}
 
 			default:
+				if err := analyzeWhereClause(ctx, texpr.Left, rm); err != nil {
+					return err
+				}
 				if err := analyzeWhereClause(ctx, texpr.Right, rm); err != nil {
 					return err
 				}
