@@ -15,24 +15,25 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
 
 	/* Case when no describe stmt was issued before Execute+Sync*/
 
+	es := &ExecutorState{
+		Msg: bind,
+		P:   rst.bindQueryPlan, /*  ugh... fix this someday */
+	}
 	switch rst.bindQueryPlan.(type) {
 	case *plan.VirtualPlan:
 	default:
-		for _, sh := range rst.Client().Server().Datashards() {
-			/* this is pretty ugly but lets just do it */
-			if err := sh.Send(bind); err != nil {
-				return err
-			}
-			if err := sh.Send(pgexec); err != nil {
-				return err
-			}
+		/* this is pretty ugly but lets just do it */
+		if err := DispatchPlan(es, rst.Client().Server(), rst.Client(), false); err != nil {
+			return err
+		}
+		es.Msg = pgexec
+
+		if err := DispatchPlan(es, rst.Client().Server(), rst.Client(), false); err != nil {
+			return err
 		}
 	}
 
-	es := &ExecutorState{
-		Msg: pgsync,
-		P:   rst.bindQueryPlan, /*  ugh... fix this someday */
-	}
+	es.Msg = pgsync
 
 	replyClient := true
 

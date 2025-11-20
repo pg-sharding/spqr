@@ -1687,6 +1687,182 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "begin;",
+				},
+
+				&pgproto3.Parse{
+					Name:  "stmtcache_sr_ms_2",
+					Query: "INSERT INTO t (id) VALUES($1);",
+				},
+
+				&pgproto3.Describe{
+					Name:       "stmtcache_sr_ms_2",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_ms_2",
+					Parameters: [][]byte{
+						[]byte("1"),
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_ms_2",
+					Parameters: [][]byte{
+						[]byte("101"),
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_ms_2",
+					Parameters: [][]byte{
+						[]byte("1"),
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: `SELECT * FROM t /*__spqr__execute_on: sh1 */`,
+				},
+
+				&pgproto3.Query{
+					String: `SELECT * FROM t /*__spqr__execute_on: sh2 */`,
+				},
+
+				&pgproto3.Query{
+					String: "ROLLBACK;",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{
+						23,
+					},
+				},
+
+				&pgproto3.NoData{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("id"),
+							DataTypeOID:          23,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+							TableAttributeNumber: 1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 2"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("id"),
+							DataTypeOID:          23,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+							TableAttributeNumber: 1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("101"),
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 2"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
 					Name:  "stmtcache_sr_1_tt",
 					Query: "BEGIN",
