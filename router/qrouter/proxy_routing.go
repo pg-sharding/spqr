@@ -35,18 +35,10 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, rm *rmeta.RoutingMet
 	switch texpr := expr.(type) {
 	case *lyx.AExprIn:
 
-		switch lft := texpr.Expr.(type) {
+		switch texpr.Expr.(type) {
 		case *lyx.ColumnRef:
 
-			alias, colname := lft.TableAlias, lft.ColName
-
 			switch q := texpr.SubLink.(type) {
-			case *lyx.AExprList:
-				for _, expr := range q.List {
-					if err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
-						return nil, err
-					}
-				}
 			case *lyx.Select:
 				/* TODO properly support subquery here */
 				/* SELECT * FROM t WHERE id IN (SELECT 1, 2) */
@@ -63,52 +55,11 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, rm *rmeta.RoutingMet
 			}
 		}
 		switch lft := texpr.Left.(type) {
-
-		/* simple key-value pair in const = id form */
-		case *lyx.ParamRef, *lyx.AExprSConst, *lyx.AExprIConst:
-			// else  error out?
-
-			/* simple key-value pair */
-			switch right := texpr.Right.(type) {
-			case *lyx.ColumnRef:
-
-				alias, colname := right.TableAlias, right.ColName
-				// TBD: postpone routing from here to root of parsing tree
-				// maybe extremely inefficient. Will be fixed in SPQR-3.0/engine v2
-				if err := rm.ProcessConstExpr(alias, colname, lft); err != nil {
-					return nil, err
-				}
-			}
 		/* lyx.ResTarget is unexpected here */
 		case *lyx.ColumnRef:
 
-			alias, colname := lft.TableAlias, lft.ColName
-
 			/* simple key-value pair */
 			switch right := texpr.Right.(type) {
-			case *lyx.ParamRef, *lyx.AExprSConst, *lyx.AExprIConst:
-				// else  error out?
-
-				// TBD: postpone routing from here to root of parsing tree
-				// maybe extremely inefficient. Will be fixed in SPQR-3.0/engine v2
-				if err := rm.ProcessConstExpr(alias, colname, right); err != nil {
-					return nil, err
-				}
-
-			case *lyx.ColumnRef:
-				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
-				for _, v := range rm.AuxExprByColref(right) {
-					if err := rm.ProcessConstExpr(alias, colname, v); err != nil {
-						return nil, err
-					}
-				}
-
-			case *lyx.AExprList:
-				for _, expr := range right.List {
-					if err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
-						return nil, err
-					}
-				}
 			case *lyx.FuncApplication:
 				// there are several types of queries like DELETE FROM rel WHERE colref = func_application
 				// and func_application is actually routable statement.
@@ -182,7 +133,7 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, rm *rmeta.RoutingMet
 				}
 			}
 		}
-	case *lyx.AExprNot:
+	case *lyx.AExprNot, *lyx.AExprList:
 		// swallow
 	default:
 		return nil, fmt.Errorf("route by clause, unknown expr %T: %w", expr, rerrors.ErrComplexQuery)
@@ -294,32 +245,28 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		p = plan.Combine(p, tmp)
 
-		if stmt.FromClause != nil {
-			// collect table alias names, if any
-			// for single-table queries, process as usual
-			if tmp, err := qr.planFromClauseList(ctx, rm, stmt.FromClause); err != nil {
-				return nil, err
-			} else {
-				p = plan.Combine(p, tmp)
-			}
-		}
-
-		if stmt.Where != nil {
-			/* return plan from where clause and route on it */
-			/*  SELECT stmts, which would be routed with their WHERE clause */
-			tmp, err := qr.planByQualExpr(ctx, rm, stmt.Where)
-			if err != nil {
-				return nil, err
-			}
-			switch tmp.(type) {
-			case *plan.VirtualPlan:
-				if stmt.FromClause != nil {
-					/* de-virtualize */
-					tmp = nil
-				}
-			}
+		// collect table alias names, if any
+		// for single-table queries, process as usual
+		if tmp, err := qr.planFromClauseList(ctx, rm, stmt.FromClause); err != nil {
+			return nil, err
+		} else {
 			p = plan.Combine(p, tmp)
 		}
+
+		/* return plan from where clause and route on it */
+		/*  SELECT stmts, which would be routed with their WHERE clause */
+		tmp, err = qr.planByQualExpr(ctx, rm, stmt.Where)
+		if err != nil {
+			return nil, err
+		}
+		switch tmp.(type) {
+		case *plan.VirtualPlan:
+			if stmt.FromClause != nil {
+				/* de-virtualize */
+				tmp = nil
+			}
+		}
+		p = plan.Combine(p, tmp)
 
 		return p, nil
 
