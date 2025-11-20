@@ -133,7 +133,7 @@ func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, rm *rmeta.RoutingMet
 				}
 			}
 		}
-	case *lyx.AExprNot:
+	case *lyx.AExprNot, *lyx.AExprList:
 		// swallow
 	default:
 		return nil, fmt.Errorf("route by clause, unknown expr %T: %w", expr, rerrors.ErrComplexQuery)
