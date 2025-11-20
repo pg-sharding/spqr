@@ -1691,6 +1691,10 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 					String: "begin;",
 				},
 
+				&pgproto3.Query{
+					String: "SET __spqr__engine_v2 to TRUE;",
+				},
+
 				&pgproto3.Parse{
 					Name:  "stmtcache_sr_ms_2",
 					Query: "INSERT INTO t (id) VALUES($1);",
@@ -1747,6 +1751,13 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXACT),
@@ -1845,7 +1856,7 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 				},
 
 				&pgproto3.CommandComplete{
-					CommandTag: []byte("SELECT 2"),
+					CommandTag: []byte("SELECT 1"),
 				},
 
 				&pgproto3.ReadyForQuery{
