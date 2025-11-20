@@ -1831,6 +1831,7 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 
 				&pgproto3.CommandComplete{
 					// XXX: FIX	CommandTag: []byte("SELECT 2"),
+					CommandTag: []byte{},
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -1857,6 +1858,7 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 
 				&pgproto3.CommandComplete{
 					// XXX: FIX	CommandTag: []byte("SELECT 1"),
+					CommandTag: []byte{},
 				},
 
 				&pgproto3.ReadyForQuery{
