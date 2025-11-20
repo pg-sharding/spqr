@@ -2,7 +2,6 @@ package qrouter
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -19,127 +18,6 @@ import (
 
 	"github.com/pg-sharding/lyx/lyx"
 )
-
-// planByQualExpr de-parses sharding column-value pair from Where clause of the query
-// TODO : unit tests
-func (qr *ProxyQrouter) planByQualExpr(ctx context.Context, rm *rmeta.RoutingMetadataContext, expr lyx.Node) (plan.Plan, error) {
-	if expr == nil {
-		return nil, nil
-	}
-
-	spqrlog.Zero.Debug().
-		Interface("clause", expr).
-		Msg("planning select where clause")
-
-	var p plan.Plan = nil
-	switch texpr := expr.(type) {
-	case *lyx.AExprIn:
-
-		switch texpr.Expr.(type) {
-		case *lyx.ColumnRef:
-
-			switch q := texpr.SubLink.(type) {
-			case *lyx.Select:
-				/* TODO properly support subquery here */
-				/* SELECT * FROM t WHERE id IN (SELECT 1, 2) */
-
-				return qr.planQueryV1(ctx, rm, q)
-			}
-		}
-
-	case *lyx.AExprOp:
-
-		if config.RouterConfig().Qr.StrictOperators {
-			if texpr.Op != "=" {
-				return p, nil
-			}
-		}
-		switch lft := texpr.Left.(type) {
-		/* lyx.ResTarget is unexpected here */
-		case *lyx.ColumnRef:
-
-			/* simple key-value pair */
-			switch right := texpr.Right.(type) {
-			case *lyx.FuncApplication:
-				// there are several types of queries like DELETE FROM rel WHERE colref = func_application
-				// and func_application is actually routable statement.
-				// ANY(ARRAY(subselect)) if one type.
-
-				if strings.ToLower(right.Name) == "any" {
-					if len(right.Args) > 0 {
-						// maybe we should consider not only first arg.
-						// however, consider only it
-
-						switch argexpr := right.Args[0].(type) {
-						case *lyx.SubLink:
-
-							// ignore all errors.
-							return qr.planQueryV1(ctx, rm, argexpr.SubSelect)
-						}
-					}
-				}
-
-			default:
-				if tmp, err := qr.planByQualExpr(ctx, rm, texpr.Left); err != nil {
-					return nil, err
-				} else {
-					p = plan.Combine(p, tmp)
-				}
-
-				if tmp, err := qr.planByQualExpr(ctx, rm, texpr.Right); err != nil {
-					return nil, err
-				} else {
-					p = plan.Combine(p, tmp)
-				}
-			}
-		case *lyx.Select:
-			return qr.planQueryV1(ctx, rm, lft)
-		default:
-			if tmp, err := qr.planByQualExpr(ctx, rm, texpr.Left); err != nil {
-				return nil, err
-			} else {
-				p = plan.Combine(p, tmp)
-			}
-
-			if tmp, err := qr.planByQualExpr(ctx, rm, texpr.Right); err != nil {
-				return nil, err
-			} else {
-				p = plan.Combine(p, tmp)
-			}
-		}
-	case *lyx.ColumnRef:
-		/* colref = colref case, skip */
-	case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprBConst, *lyx.AExprNConst, *lyx.ParamRef:
-		/* should not happen */
-	case *lyx.AExprEmpty:
-		/*skip*/
-	case *lyx.Select:
-		/* in engine v2 we skip subplans */
-	case *lyx.FuncApplication:
-		// there are several types of queries like DELETE FROM rel WHERE colref = func_application
-		// and func_application is actually routable statement.
-		// ANY(ARRAY(subselect)) if one type.
-
-		if strings.ToLower(texpr.Name) == "any" {
-			if len(texpr.Args) > 0 {
-				// maybe we should consider not only first arg.
-				// however, consider only it
-
-				switch argexpr := texpr.Args[0].(type) {
-				case *lyx.SubLink:
-
-					// ignore all errors.
-					return qr.planQueryV1(ctx, rm, argexpr.SubSelect)
-				}
-			}
-		}
-	case *lyx.AExprNot, *lyx.AExprList:
-		// swallow
-	default:
-		return nil, fmt.Errorf("route by clause, unknown expr %T: %w", expr, rerrors.ErrComplexQuery)
-	}
-	return p, nil
-}
 
 func (qr *ProxyQrouter) planFromNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, node lyx.FromClauseNode) (plan.Plan, error) {
 	spqrlog.Zero.Debug().
@@ -160,12 +38,6 @@ func (qr *ProxyQrouter) planFromNode(ctx context.Context, rm *rmeta.RoutingMetad
 			p = plan.Combine(p, tmp)
 		}
 		if tmp, err := qr.planFromNode(ctx, rm, q.Larg); err != nil {
-			return nil, err
-		} else {
-			p = plan.Combine(p, tmp)
-		}
-
-		if tmp, err := qr.planByQualExpr(ctx, rm, q.JoinQual); err != nil {
 			return nil, err
 		} else {
 			p = plan.Combine(p, tmp)
@@ -252,21 +124,6 @@ func (qr *ProxyQrouter) planQueryV1(
 		} else {
 			p = plan.Combine(p, tmp)
 		}
-
-		/* return plan from where clause and route on it */
-		/*  SELECT stmts, which would be routed with their WHERE clause */
-		tmp, err = qr.planByQualExpr(ctx, rm, stmt.Where)
-		if err != nil {
-			return nil, err
-		}
-		switch tmp.(type) {
-		case *plan.VirtualPlan:
-			if stmt.FromClause != nil {
-				/* de-virtualize */
-				tmp = nil
-			}
-		}
-		p = plan.Combine(p, tmp)
 
 		return p, nil
 
@@ -443,18 +300,6 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		tmp, err := qr.planByQualExpr(ctx, rm, clause)
-		if err != nil {
-			return nil, err
-		}
-		switch tmp.(type) {
-		case *plan.VirtualPlan:
-			if stmt.TableRef != nil {
-				/* de-virtualize */
-				tmp = nil
-			}
-		}
-		p = plan.Combine(p, tmp)
 		return p, nil
 	case *lyx.Delete:
 
@@ -492,18 +337,6 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		tmp, err := qr.planByQualExpr(ctx, rm, clause)
-		if err != nil {
-			return nil, err
-		}
-		switch tmp.(type) {
-		case *plan.VirtualPlan:
-			if stmt.TableRef != nil {
-				/* de-virtualize */
-				tmp = nil
-			}
-		}
-		p = plan.Combine(p, tmp)
 		return p, nil
 	}
 
