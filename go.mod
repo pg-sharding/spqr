@@ -30,7 +30,7 @@ require (
 	github.com/xdg-go/scram v1.1.2
 	go.etcd.io/etcd/client/v3 v3.6.6
 	go.uber.org/mock v0.6.0
-	golang.org/x/crypto v0.44.0
+	golang.org/x/crypto v0.45.0
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 	golang.org/x/sync v0.18.0
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
@@ -98,7 +98,7 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/net v0.46.1-0.20251013234738-63d1a5100f82 // indirect
+	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
