@@ -245,32 +245,28 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		p = plan.Combine(p, tmp)
 
-		if stmt.FromClause != nil {
-			// collect table alias names, if any
-			// for single-table queries, process as usual
-			if tmp, err := qr.planFromClauseList(ctx, rm, stmt.FromClause); err != nil {
-				return nil, err
-			} else {
-				p = plan.Combine(p, tmp)
-			}
-		}
-
-		if stmt.Where != nil {
-			/* return plan from where clause and route on it */
-			/*  SELECT stmts, which would be routed with their WHERE clause */
-			tmp, err := qr.planByQualExpr(ctx, rm, stmt.Where)
-			if err != nil {
-				return nil, err
-			}
-			switch tmp.(type) {
-			case *plan.VirtualPlan:
-				if stmt.FromClause != nil {
-					/* de-virtualize */
-					tmp = nil
-				}
-			}
+		// collect table alias names, if any
+		// for single-table queries, process as usual
+		if tmp, err := qr.planFromClauseList(ctx, rm, stmt.FromClause); err != nil {
+			return nil, err
+		} else {
 			p = plan.Combine(p, tmp)
 		}
+
+		/* return plan from where clause and route on it */
+		/*  SELECT stmts, which would be routed with their WHERE clause */
+		tmp, err = qr.planByQualExpr(ctx, rm, stmt.Where)
+		if err != nil {
+			return nil, err
+		}
+		switch tmp.(type) {
+		case *plan.VirtualPlan:
+			if stmt.FromClause != nil {
+				/* de-virtualize */
+				tmp = nil
+			}
+		}
+		p = plan.Combine(p, tmp)
 
 		return p, nil
 

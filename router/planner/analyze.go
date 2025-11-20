@@ -72,25 +72,30 @@ func analyzeSelectStmt(ctx context.Context, selectStmt lyx.Node, meta *rmeta.Rou
 
 // TODO : unit tests
 // analyzes from clause
-func analyzeFromNode(ctx context.Context, node lyx.FromClauseNode, meta *rmeta.RoutingMetadataContext) error {
+func analyzeFromNode(ctx context.Context, node lyx.FromClauseNode, rm *rmeta.RoutingMetadataContext) error {
 	spqrlog.Zero.Debug().
 		Type("node-type", node).
 		Msg("analyzing from node")
 	switch q := node.(type) {
 	case *lyx.RangeVar:
-		if err := ProcessRangeNode(ctx, meta, q); err != nil {
+		if err := ProcessRangeNode(ctx, rm, q); err != nil {
 			return err
 		}
 
 	case *lyx.JoinExpr:
-		if err := analyzeFromNode(ctx, q.Rarg, meta); err != nil {
+		if err := analyzeFromNode(ctx, q.Rarg, rm); err != nil {
 			return err
 		}
-		if err := analyzeFromNode(ctx, q.Larg, meta); err != nil {
+		if err := analyzeFromNode(ctx, q.Larg, rm); err != nil {
 			return err
 		}
+
+		if err := analyzeWhereClause(ctx, q.JoinQual, rm); err != nil {
+			return err
+		}
+
 	case *lyx.SubSelect:
-		return analyzeSelectStmt(ctx, q.Arg, meta)
+		return analyzeSelectStmt(ctx, q.Arg, rm)
 	default:
 		// other cases to consider
 		// lateral join, natural, etc
@@ -262,6 +267,30 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 	return nil
 }
 
+func AnalyzeWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, WithClause []*lyx.CommonTableExpr) error {
+	for _, cte := range WithClause {
+		rm.CteNames[cte.Name] = struct{}{}
+		switch qq := cte.SubQuery.(type) {
+		case *lyx.ValueClause:
+			/* special case */
+			for _, vv := range qq.Values {
+				for i, name := range cte.NameList {
+					if i < len(cte.NameList) && i < len(vv) {
+						/* XXX: currently only one-tuple aux values supported */
+						rm.RecordAuxExpr(cte.Name, name, vv[i])
+					}
+				}
+			}
+		default:
+			if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func AnalyzeQueryV1(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext, qstmt lyx.Node) error {
@@ -293,13 +322,8 @@ func AnalyzeQueryV1(
 		return AnalyzeQueryV1(ctx, rm, stmt.Query)
 	case *lyx.Select:
 
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				rm.CteNames[cte.Name] = struct{}{}
-				if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
-					return err
-				}
-			}
+		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
+			return err
 		}
 
 		for _, expr := range stmt.TargetList {
@@ -341,12 +365,10 @@ func AnalyzeQueryV1(
 			return err
 		}
 
-		if stmt.FromClause != nil {
-			// collect table alias names, if any
-			// for single-table queries, process as usual
-			if err := analyzeFromClauseList(ctx, stmt.FromClause, rm); err != nil {
-				return err
-			}
+		// collect table alias names, if any
+		// for single-table queries, process as usual
+		if err := analyzeFromClauseList(ctx, stmt.FromClause, rm); err != nil {
+			return err
 		}
 
 		/* XXX: analyse where clause here, because it can contain col op subselect patterns */
@@ -354,13 +376,8 @@ func AnalyzeQueryV1(
 		return analyzeWhereClause(ctx, stmt.Where, rm)
 	case *lyx.Insert:
 
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				rm.CteNames[cte.Name] = struct{}{}
-				if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
-					return err
-				}
-			}
+		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
+			return err
 		}
 
 		if err := analyseHelper(stmt.TableRef); err != nil {
@@ -379,13 +396,8 @@ func AnalyzeQueryV1(
 		return nil
 	case *lyx.Update:
 
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				rm.CteNames[cte.Name] = struct{}{}
-				if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
-					return err
-				}
-			}
+		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
+			return err
 		}
 
 		if err := analyseHelper(stmt.TableRef); err != nil {
@@ -395,13 +407,8 @@ func AnalyzeQueryV1(
 		return analyzeWhereClause(ctx, stmt.Where, rm)
 	case *lyx.Delete:
 
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				rm.CteNames[cte.Name] = struct{}{}
-				if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
-					return err
-				}
-			}
+		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
+			return err
 		}
 
 		if err := analyseHelper(stmt.TableRef); err != nil {
