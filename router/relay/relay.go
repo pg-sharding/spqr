@@ -805,8 +805,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				// Do not respond with BindComplete, as the relay step should take care of itself.
 				queryPlan, err := rst.PrepareExecutionSlice(rst.routingDecisionPlan)
 
-				spqrlog.Zero.Debug().Msgf("queryPlan %+v %T", queryPlan, queryPlan)
-
 				if err != nil {
 					return err
 				}
