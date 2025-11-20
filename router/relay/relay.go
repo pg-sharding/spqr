@@ -26,15 +26,16 @@ import (
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rfqn"
-	"github.com/pg-sharding/spqr/router/route"
+	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/slice"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"golang.org/x/exp/slices"
 )
 
 type RelayStateMgr interface {
 	poolmgr.ConnectionKeeper
-	route.ExecutionSliceMgr
+	slice.ExecutionSliceMgr
 
 	QueryExecutor() QueryStateExecutor
 	QueryRouter() qrouter.QueryRouter
@@ -48,7 +49,11 @@ type RelayStateMgr interface {
 	Close() error
 	Client() client.RouterClient
 
-	PrepareExecutionSlice(plan.Plan) (plan.Plan, error)
+	PrepareExecutionSlice(
+		ctx context.Context,
+		rm *rmeta.RoutingMetadataContext,
+		prevPlan plan.Plan) (plan.Plan, error)
+
 	PrepareRandomDispatchExecutionSlice(plan.Plan) (plan.Plan, func() error, error)
 	PrepareTargetDispatchExecutionSlice(hintPlan plan.Plan) error
 
@@ -351,7 +356,7 @@ func (rst *RelayStateImpl) expandRoutes(routes []kr.ShardKey) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
+func (rst *RelayStateImpl) CreateSlicedPlan(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
 	if config.RouterConfig().WithJaeger {
@@ -377,12 +382,8 @@ func (rst *RelayStateImpl) CreateSlicePlan() (plan.Plan, error) {
 			},
 		}
 	} else {
-		ctx := context.TODO()
 
-		rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.qp.OriginQuery(), rst.qp.Stmt())
-		if err != nil {
-			return nil, err
-		}
+		var err error
 
 		queryPlan, err = rst.Qr.PlanQuery(ctx, rm)
 
@@ -802,15 +803,27 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				rst.Client().SetParamFormatCodes(currentMsg.ParameterFormatCodes)
 				rst.saveBind.ResultFormatCodes = currentMsg.ResultFormatCodes
 				rst.saveBind.Parameters = currentMsg.Parameters
-				// Do not respond with BindComplete, as the relay step should take care of itself.
-				queryPlan, err := rst.PrepareExecutionSlice(rst.routingDecisionPlan)
 
-				if err != nil {
-					return err
+				ctx := context.TODO()
+
+				if rst.poolMgr.ValidateSliceChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
+					spqrlog.Zero.Debug().Bool("engine v2", rst.Client().EnhancedMultiShardProcessing()).Msg("checking transaction expand possibility")
+
+					rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.qp.OriginQuery(), rst.qp.Stmt())
+					if err != nil {
+						return err
+					}
+
+					// Do not respond with BindComplete, as the relay step should take care of itself.
+					queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
+
+					if err != nil {
+						return err
+					}
+
+					rst.routingDecisionPlan = queryPlan
+					rst.bindQueryPlan = queryPlan
 				}
-
-				rst.routingDecisionPlan = queryPlan
-				rst.bindQueryPlan = queryPlan
 
 				// hold route if appropriate
 
@@ -1081,7 +1094,8 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 var _ RelayStateMgr = &RelayStateImpl{}
 
 // TODO : unit tests
-func (rst *RelayStateImpl) PrepareExecutionSlice(prevPlan plan.Plan) (plan.Plan, error) {
+func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.RoutingMetadataContext, prevPlan plan.Plan) (plan.Plan, error) {
+
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Str("user", rst.Client().Usr()).
@@ -1100,7 +1114,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(prevPlan plan.Plan) (plan.Plan,
 			/* With engine v2 we can expand transaction on more targets */
 			/* TODO: XXX */
 
-			q, err := rst.CreateSlicePlan()
+			q, err := rst.CreateSlicedPlan(ctx, rm)
 			if err != nil {
 				return nil, err
 			}
@@ -1123,7 +1137,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(prevPlan plan.Plan) (plan.Plan,
 		return prevPlan, nil
 	}
 
-	q, err := rst.CreateSlicePlan()
+	q, err := rst.CreateSlicedPlan(ctx, rm)
 
 	switch err {
 	case nil:
@@ -1252,19 +1266,29 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 
 func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error {
 
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Msg("relay step: process message buf for client")
-	queryPlan, err := rst.PrepareExecutionSlice(rst.routingDecisionPlan)
-	if err != nil {
-		/* some critical connection issue, client processing cannot be competed.
-		* empty our msg buf */
-		return err
+	ctx := context.TODO()
+	if rst.poolMgr.ValidateSliceChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
+		spqrlog.Zero.Debug().Bool("engine v2", rst.Client().EnhancedMultiShardProcessing()).Msg("checking transaction expand possibility")
+
+		rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.qp.OriginQuery(), rst.qp.Stmt())
+		if err != nil {
+			return err
+		}
+
+		// Do not respond with BindComplete, as the relay step should take care of itself.
+		queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
+
+		if err != nil {
+			/* some critical connection issue, client processing cannot be competed.
+			* empty our msg buf */
+			return err
+		}
+
+		rst.routingDecisionPlan = queryPlan
 	}
-	rst.routingDecisionPlan = queryPlan
 
 	// rewrite query
-	if qs := queryPlan.GetQuery(""); qs != "" {
+	if qs := rst.routingDecisionPlan.GetQuery(""); qs != "" {
 		q.String = qs
 	}
 
