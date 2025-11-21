@@ -357,6 +357,63 @@ func TestMemQDB_NextVal(t *testing.T) {
 	assert.Equal(expectedValue, idRange.Right)
 }
 
+func TestMemQDB_DropKeyRange(t *testing.T) {
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+
+	keyRange1 := &qdb.KeyRange{
+		KeyRangeID:     "krid1",
+		LowerBound:     [][]byte{[]byte("1")},
+		ShardID:        "sh1",
+		DistributionId: "ds1",
+	}
+	assert.NoError(memqdb.CreateKeyRange(ctx, keyRange1))
+
+	_, ok := memqdb.Krs["krid1"]
+	assert.True(ok)
+	lock, ok := memqdb.Locks["krid1"]
+	assert.True(ok)
+	assert.NotNil(lock)
+
+	assert.NoError(memqdb.DropKeyRange(ctx, "krid1"))
+	_, ok = memqdb.Krs["krid1"]
+	assert.False(ok)
+
+	assert.NoError(memqdb.DropKeyRange(ctx, "krid1"))
+
+	keyRange2 := &qdb.KeyRange{
+		KeyRangeID:     "krid2",
+		LowerBound:     [][]byte{[]byte("2")},
+		ShardID:        "sh1",
+		DistributionId: "ds1",
+	}
+	assert.NoError(memqdb.CreateKeyRange(ctx, keyRange2))
+	delete(memqdb.Locks, "krid2")
+	err = memqdb.DropKeyRange(ctx, "krid2")
+	assert.Error(err)
+	assert.Contains(err.Error(), "no lock in MemQDB")
+
+	keyRange3 := &qdb.KeyRange{
+		KeyRangeID:     "krid3",
+		LowerBound:     [][]byte{[]byte("3")},
+		ShardID:        "sh1",
+		DistributionId: "ds1",
+	}
+	assert.NoError(memqdb.CreateKeyRange(ctx, keyRange3))
+	memqdb.Locks["krid3"].Lock()
+	defer memqdb.Locks["krid3"].Unlock()
+	err = memqdb.DropKeyRange(ctx, "krid3")
+	assert.Error(err)
+	assert.Contains(err.Error(), "is locked")
+}
+
 func TestMemQDB_RenameKeyRange(t *testing.T) {
 	assert := assert.New(t)
 
