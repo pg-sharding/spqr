@@ -2,6 +2,7 @@ package qdb_test
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"testing"
 
@@ -70,6 +71,45 @@ func TestMemqdbRacing(t *testing.T) {
 		},
 		func() { _ = memqdb.UpdateKeyRange(ctx, mockKeyRange) },
 		func() { _ = memqdb.DeleteRouter(ctx, mockRouter.ID) },
+		func() {
+			tran1, err := qdb.NewTransaction()
+			if err != nil {
+				panic("cann't create transaction structure (begin transaction test)!")
+			}
+			_ = memqdb.BeginTransaction(ctx, tran1)
+		},
+		func() {
+			dataDistribution1, err := json.Marshal(mockDistribution)
+			if err != nil {
+				panic("cann't unmarshal distribution (exec no transaction test)!")
+			}
+			commands := []qdb.QdbStatement{
+				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
+			}
+			_ = memqdb.ExecNoTransaction(ctx, commands)
+		},
+		func() {
+			tran, err := qdb.NewTransaction()
+			if err != nil {
+				panic("can't create transaction structure (commit transaction test)!")
+			}
+			dataDistribution1, err := json.Marshal(mockDistribution)
+			if err != nil {
+				panic("cann't unmarshal distribution case(1)!")
+			}
+			commands := []qdb.QdbStatement{
+				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
+			}
+			err = tran.Append(commands)
+			if err != nil {
+				panic("fail append commands to transaction!")
+			}
+			err = memqdb.BeginTransaction(ctx, tran)
+			if err != nil {
+				panic("cann't begin transaction!")
+			}
+			_ = memqdb.ExecNoTransaction(ctx, commands)
+		},
 	}
 	for range 1000 {
 		for _, m := range methods {
