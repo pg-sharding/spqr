@@ -19,7 +19,7 @@ jobs:
      steps:
 
      - name: Check out code
-       uses: actions/checkout@v5
+       uses: actions/checkout@v6
 
      - name: unit tests
        run: make unittest
@@ -29,7 +29,7 @@ jobs:
      steps:
 
      - name: Check out code
-       uses: actions/checkout@v5
+       uses: actions/checkout@v6
 
      - name: etcdqdb_integration tests
        run: make etcdqdb_test
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install test deps
         run: |
@@ -66,7 +66,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: stress tests
         run: make stress
@@ -86,7 +86,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Run tests
         run: |
@@ -109,7 +109,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Run tests
         run: make gorm_regress
@@ -120,7 +120,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Run tests
         run: make jdbc_regress
@@ -131,7 +131,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Run tests
         run: make xproto_regress
@@ -147,7 +147,7 @@ jobs:
         run: docker --version
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - id: step1
         run: |
@@ -205,7 +205,7 @@ jobs:
       - name: Check Docker Version
         run: docker --version
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Update env
         run: |
