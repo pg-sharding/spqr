@@ -226,7 +226,9 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 
 	state := conn.GetState()
 	if !conn.WaitForStateChange(ctx, state) {
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection after timeout")
+		}
 		return nil, fmt.Errorf("connection to router %s did not become ready within timeout", r.Address)
 	}
 
