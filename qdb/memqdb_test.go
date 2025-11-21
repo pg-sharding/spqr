@@ -357,6 +357,46 @@ func TestMemQDB_NextVal(t *testing.T) {
 	assert.Equal(expectedValue, idRange.Right)
 }
 
+func TestMemQDB_RenameKeyRange(t *testing.T) {
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+
+	initKeyRange := &qdb.KeyRange{
+		KeyRangeID:     "krid1",
+		LowerBound:     [][]byte{[]byte("1")},
+		ShardID:        "sh1",
+		DistributionId: "ds1",
+	}
+	assert.NoError(memqdb.CreateKeyRange(ctx, initKeyRange))
+
+	assert.NoError(memqdb.RenameKeyRange(ctx, "krid1", "krid2"))
+
+	_, ok := memqdb.Krs["krid1"]
+	assert.False(ok)
+	_, ok = memqdb.Krs["krid2"]
+	assert.True(ok)
+	assert.Equal("krid2", memqdb.Krs["krid2"].KeyRangeID)
+
+	assert.Error(memqdb.RenameKeyRange(ctx, "krid1", "krid3"))
+
+	otherKeyRange := &qdb.KeyRange{
+		KeyRangeID:     "krid3",
+		LowerBound:     [][]byte{[]byte("3")},
+		ShardID:        "sh1",
+		DistributionId: "ds1",
+	}
+	assert.NoError(memqdb.CreateKeyRange(ctx, otherKeyRange))
+
+	assert.Error(memqdb.RenameKeyRange(ctx, "krid2", "krid3"))
+}
+
 func TestRestoreQDB_EmptyPath(t *testing.T) {
 	assert := assert.New(t)
 
