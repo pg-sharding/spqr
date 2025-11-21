@@ -213,8 +213,9 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 	spqrlog.Zero.Debug().
 		Str("router-id", r.ID).
 		Msg("dialing router")
-	// TODO: add creds
-	return grpc.NewClient(r.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	return grpc.NewClient(r.Address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
 }
 
 const defaultWatchRouterTimeout = time.Second
@@ -254,6 +255,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 	for {
 		// TODO check we are still coordinator
 		if !qc.acquiredLock {
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 
@@ -270,6 +272,10 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 		// we have to open it ones, keep and update before the iteration
 		for _, r := range routers {
 			if err := func() error {
+				// Create bounded context for this router's operations
+				routerCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				defer cancel()
+
 				internalR := &topology.Router{
 					ID:      r.ID,
 					Address: r.Address,
@@ -288,7 +294,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 
 				rrClient := proto.NewTopologyServiceClient(cc)
 
-				resp, err := rrClient.GetRouterStatus(ctx, nil)
+				resp, err := rrClient.GetRouterStatus(routerCtx, nil)
 				if err != nil {
 					return err
 				}
@@ -296,12 +302,12 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 				switch resp.Status {
 				case proto.RouterStatus_CLOSED:
 					spqrlog.Zero.Debug().Msg("router is closed")
-					if err := qc.SyncRouterCoordinatorAddress(ctx, internalR); err != nil {
+					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
 						return err
 					}
 
 					/* Mark router as opened in qdb */
-					err := qc.db.CloseRouter(ctx, internalR.ID)
+					err := qc.db.CloseRouter(routerCtx, internalR.ID)
 					if err != nil {
 						return err
 					}
@@ -310,12 +316,12 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 					spqrlog.Zero.Debug().Msg("router is opened")
 
 					/* TODO: check router metadata consistency */
-					if err := qc.SyncRouterCoordinatorAddress(ctx, internalR); err != nil {
+					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
 						return err
 					}
 
 					/* Mark router as opened in qdb */
-					err := qc.db.OpenRouter(ctx, internalR.ID)
+					err := qc.db.OpenRouter(routerCtx, internalR.ID)
 					if err != nil {
 						return err
 					}
