@@ -214,25 +214,8 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 		Str("router-id", r.ID).
 		Msg("dialing router")
 
-	conn, err := grpc.NewClient(r.Address,
+	return grpc.NewClient(r.Address,
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, err
-	}
-
-	// Test connection readiness with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	state := conn.GetState()
-	if !conn.WaitForStateChange(ctx, state) {
-		if err := conn.Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection after timeout")
-		}
-		return nil, fmt.Errorf("connection to router %s did not become ready within timeout", r.Address)
-	}
-
-	return conn, nil
 }
 
 const defaultWatchRouterTimeout = time.Second
