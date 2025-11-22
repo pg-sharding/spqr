@@ -51,7 +51,7 @@ SHOW key_ranges;
 (1 row)
 
 REDISTRIBUTE KEY RANGE krid1 TO sh1 BATCH SIZE -1;
-ERROR:  syntax error
+ERROR:  failed to parse query "REDISTRIBUTE KEY RANGE krid1 TO sh1 BATCH SIZE -1;": syntax error
 REDISTRIBUTE KEY RANGE krid1 TO sh2;
     redistribute key range     
 -------------------------------

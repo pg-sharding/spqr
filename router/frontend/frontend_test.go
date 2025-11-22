@@ -88,6 +88,7 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().BindParams().AnyTimes()
 
 	cl.EXPECT().ShardingKey().AnyTimes()
+	cl.EXPECT().EnhancedMultiShardProcessing().AnyTimes()
 	cl.EXPECT().SetShardingKey(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().ID().AnyTimes()

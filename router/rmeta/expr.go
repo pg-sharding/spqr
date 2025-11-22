@@ -94,6 +94,7 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 		/* TODO: correct support for composite keys here */
 
 		for _, val := range vals {
+
 			compositeKey[lvl], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[lvl], hf)
 
 			if err != nil {

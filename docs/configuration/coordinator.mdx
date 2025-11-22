@@ -12,21 +12,27 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 
 ## Coordinator Settings
 
-| Setting                  | Description                                                        | Possible Values        |
-|--------------------------|--------------------------------------------------------------------|------------------------|
-| `log_level`              | The level of logging output.                                       | `debug`, `info`, `warning`, `error`, `fatal`|
-| `pretty_logging`         | Whether to write logs in an colorized, human-friendly format.      | `true`, `false`        |
-| `qdb_addr`               | the address of the QDB server                                      | Any valid address      |
-| `host`                   | The host address the coordinator listens on.                       | Any valid hostname     |
-| `coordinator_port`       | The port number for the coordinator.                               | Any valid port number  |
-| `grpc_api_port`          | The port number for the gRPC API.                                  | Any valid port number  |
-| `auth`                   | See [auth.mdx](./auth)                                             | Object of `AuthCfg`    |
-| `frontend_tls`           | See [auth.mdx](./auth)                                             | Object of `TLSConfig`  |
-| `frontend_rules`         | The rules for frontend connections.                                | List of `FrontendRule` |
-| `use_systemd_notifier`   | Whether to use systemd notifier.                                   | `true`, `false`        |
-| `systemd_notifier_debug` | Whether to run systemd notifier in debug mode.                     | `true`, `false`        |
-| `enable_role_system`     | Whether to enable the [role-based access control system](./roles). | `true`, `false`        |
-| `roles_file`             | The file path to the [roles](./roles) configuration.               | Any valid file path    |
+| Setting                    | Description                                                                                  | Possible Values                               |
+|----------------------------|----------------------------------------------------------------------------------------------|-----------------------------------------------|
+| `log_level`                | The level of logging output.                                                                 | `debug`, `info`, `warning`, `error`, `fatal`  |
+| `pretty_logging`           | Whether to write logs in an colorized, human-friendly format.                                | `true`, `false`                               |
+| `qdb_addr`                 | The address of the QDB server.                                                               | Any valid address                             |
+| `host`                     | The host address the coordinator listens on.                                                 | Any valid hostname                            |
+| `coordinator_port`         | The port number for the coordinator.                                                         | Any valid port number                         |
+| `grpc_api_port`            | The port number for the gRPC API.                                                            | Any valid port number                         |
+| `auth`                     | See [auth.mdx](./auth).                                                                      | Object of `AuthCfg`                           |
+| `frontend_tls`             | See [auth.mdx](./auth).                                                                      | Object of `TLSConfig`                         |
+| `frontend_rules`           | The rules for frontend connections.                                                          | List of `FrontendRule`                        |
+| `shard_data`               | Path to shard metadata used for data moves and distribution.                                 | Any valid file path                           |
+| `use_systemd_notifier`     | Whether to use systemd notifier.                                                             | `true`, `false`                               |
+| `systemd_notifier_debug`   | Whether to run systemd notifier in debug mode.                                               | `true`, `false`                               |
+| `iteration_timeout`        | Delay between retries when the coordinator iterates over topology or lock operations.        | Duration string (for example `500ms`, `1s`)   |
+| `lock_iteration_timeout`   | Timeout for a single attempt to acquire coordination locks before retrying.                  | Duration string (for example `500ms`, `1s`)   |
+| `enable_role_system`       | Whether to enable the [role-based access control system](./roles).                           | `true`, `false`                               |
+| `roles_file`               | The file path to the [roles](./roles) configuration.                                         | Any valid file path                           |
+| `etcd_max_send_bytes`      | Maximum request size in bytes that the etcd client (QDB implementation) is allowed to send. | Integer (bytes), use `0` for the etcd default |
+| `data_move_disable_triggers` | Disable triggers during data move operations to speed up copying/deleting data.              | `true`, `false`                               |
+| `data_move_bound_batch_size` | Maximum number of rows fetched per batch when bounded data moves are executed. Default `10000`. | Positive integer                              |
 
 ## Frontend Rules
 
@@ -34,8 +40,14 @@ Frontend rule is a specification of how clients connect to the admin console.
 
 Refer to the `FrontendRule` struct in the [pkg/config/rules.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/rules.go) file for the most up-to-date configuration options.
 
-| Setting                   | Description                                                                    | Possible Values          |
-|---------------------------|--------------------------------------------------------------------------------|--------------------------|
-| `db`                      | The database name to which the rule applies                                    | Any valid database name  |
-| `usr`                     | The user name for which the rule is applicable                                 | Any valid username       |
-| `auth_rule`               | See [General Auth Settings](./auth.go)                                         | Object of `AuthCfg`      |
+| Setting                     | Description                                                                                           | Possible Values                |
+|-----------------------------|-------------------------------------------------------------------------------------------------------|--------------------------------|
+| `db`                        | The database name to which the rule applies.                                                          | Any valid database name        |
+| `usr`                       | The user name for which the rule is applicable.                                                       | Any valid username             |
+| `auth_rule`                 | See [General Auth Settings](./auth.go).                                                               | Object of `AuthCfg`            |
+| `search_path`               | Search path sent to the backend.                                                                      | String                         |
+| `pool_mode`                 | Pooling mode value (ignored by coordinator but kept for compatibility with router configuration).    | See router pooling modes       |
+| `pool_discard`              | Whether to discard pooled connections after use (ignored by coordinator).                            | `true`, `false`                |
+| `pool_rollback`             | Whether to issue `ROLLBACK` on pooled connections (ignored by coordinator).                          | `true`, `false`                |
+| `pool_prepared_statement`   | Whether to reuse prepared statements in the pool (ignored by coordinator).                           | `true`, `false`                |
+| `pool_default`              | Whether the rule should be used as the default pool configuration for incoming connections.          | `true`, `false`                |

@@ -52,7 +52,7 @@ RUN git clone https://github.com/munakoiso/pg_comment_stats.git && \
     make && make install && \
     cd .. && git clone https://github.com/pg-sharding/spqrguard.git && \
     cd spqrguard && \
-    make USE_PGXS=1 && make install && \
+    make USE_PGXS=1 install && \
     cd .. && git clone https://github.com/pg-sharding/spqrhash.git && \
     cd spqrhash && \
     make install

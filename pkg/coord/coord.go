@@ -3,6 +3,7 @@ package coord
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -53,7 +54,11 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*r
 		}
 		fromShard := rel.ShardIds[0]
 
-		destShards := append(rel.ShardIds, destShard)
+		// XXX: should we ignore the command/error here?
+		destShards := rel.ShardIds
+		if !slices.Contains(rel.ShardIds, destShard) {
+			destShards = append(rel.ShardIds, destShard)
+		}
 
 		if err = datatransfers.SyncReferenceRelation(ctx, fromShard, destShard, rel, lc.qdb); err != nil {
 			return err

@@ -1,0 +1,5 @@
+SHOW time_quantiles
+ quantile_type | time, ms 
+---------------+----------
+(0 rows)
+

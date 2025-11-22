@@ -19,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/console"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
@@ -56,7 +57,7 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 			spqrlog.Zero.Debug().Str("relation", q.RelationName).Str("distribution", val).Msg("attaching relation")
 
 			if val == distributions.REPLICATED {
-				err := rmeta.CreateReferenceRelation(ctx, rm.Mgr, q)
+				err := console.CreateReferenceRelation(ctx, rm.Mgr, q)
 				if err != nil {
 					return nil, err
 				}
@@ -647,7 +648,14 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 				}, nil
 			}
 
-			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			p, err := plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			if v.Returning != nil {
+				return &plan.DataRowFilter{
+					SubPlan:     p,
+					FilterIndex: 0,
+				}, nil
+			}
+			return p, err
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -671,7 +679,15 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 					ExecTargets: nil,
 				}, nil
 			}
-			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+
+			p, err := plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			if v.Returning != nil {
+				return &plan.DataRowFilter{
+					SubPlan:     p,
+					FilterIndex: 0,
+				}, nil
+			}
+			return p, err
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}

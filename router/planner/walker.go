@@ -261,23 +261,10 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 func PlanWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr QueryPlanner, WithClause []*lyx.CommonTableExpr) (plan.Plan, error) {
 	var p plan.Plan
 	for _, cte := range WithClause {
-		switch qq := cte.SubQuery.(type) {
-		case *lyx.ValueClause:
-			/* special case */
-			for _, vv := range qq.Values {
-				for i, name := range cte.NameList {
-					if i < len(cte.NameList) && i < len(vv) {
-						/* XXX: currently only one-tuple aux values supported */
-						rm.RecordAuxExpr(cte.Name, name, vv[i])
-					}
-				}
-			}
-		default:
-			if tmp, err := plr.PlanQueryTopLevel(ctx, rm, cte.SubQuery); err != nil {
-				return nil, err
-			} else {
-				p = plan.Combine(p, tmp)
-			}
+		if tmp, err := plr.PlanQueryTopLevel(ctx, rm, cte.SubQuery); err != nil {
+			return nil, err
+		} else {
+			p = plan.Combine(p, tmp)
 		}
 	}
 
