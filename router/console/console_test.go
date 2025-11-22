@@ -26,6 +26,4 @@ func TestSequencesCommandRoutesToCoordinator(t *testing.T) {
 			t.Error("Found empty command in coordinator commands list")
 		}
 	}
-
-	t.Logf("Verified %d commands route to coordinator: %v", len(coordinatorCommands), coordinatorCommands)
 }
