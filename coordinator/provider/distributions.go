@@ -7,6 +7,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -40,7 +42,7 @@ func (d *DistributionsServer) CreateDistribution(ctx context.Context, req *proto
 func (d *DistributionsServer) DropDistribution(ctx context.Context, req *protos.DropDistributionRequest) (*emptypb.Empty, error) {
 	for _, id := range req.GetIds() {
 		if err := d.impl.DropDistribution(ctx, id); err != nil {
-			return nil, err
+			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
 	return nil, nil
@@ -69,11 +71,14 @@ func (d *DistributionsServer) AlterDistributionAttach(ctx context.Context, req *
 		var err error
 		res[i], err = distributions.DistributedRelationFromProto(rel)
 		if err != nil {
-			return nil, err
+			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 	}
 
-	return nil, d.impl.AlterDistributionAttach(ctx, req.GetId(), res)
+	if err := d.impl.AlterDistributionAttach(ctx, req.GetId(), res); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return nil, nil
 }
 
 func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *protos.AlterDistributionDetachRequest) (*emptypb.Empty, error) {
@@ -89,9 +94,12 @@ func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *
 func (d *DistributionsServer) AlterDistributedRelation(ctx context.Context, req *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
 	ds, err := distributions.DistributedRelationFromProto(req.GetRelation())
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	return nil, d.impl.AlterDistributedRelation(ctx, req.GetId(), ds)
+	if err := d.impl.AlterDistributedRelation(ctx, req.GetId(), ds); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return nil, nil
 }
 
 func (d *DistributionsServer) AlterDistributedRelationSchema(ctx context.Context, req *protos.AlterDistributedRelationSchemaRequest) (*emptypb.Empty, error) {
@@ -103,13 +111,16 @@ func (d *DistributionsServer) AlterDistributedRelationDistributionKey(ctx contex
 	if err != nil {
 		return nil, err
 	}
-	return nil, d.impl.AlterDistributedRelationDistributionKey(ctx, req.GetId(), req.GetRelationName(), key)
+	if err = d.impl.AlterDistributedRelationDistributionKey(ctx, req.GetId(), req.GetRelationName(), key); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return nil, nil
 }
 
 func (d *DistributionsServer) GetDistribution(ctx context.Context, req *protos.GetDistributionRequest) (*protos.GetDistributionReply, error) {
 	ds, err := d.impl.GetDistribution(ctx, req.GetId())
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.NotFound, err.Error())
 	}
 	return &protos.GetDistributionReply{Distribution: distributions.DistributionToProto(ds)}, nil
 }
@@ -140,7 +151,10 @@ func (d *DistributionsServer) CurrVal(ctx context.Context, req *protos.CurrValRe
 }
 
 func (d *DistributionsServer) DropSequence(ctx context.Context, req *protos.DropSequenceRequest) (*emptypb.Empty, error) {
-	return nil, d.impl.DropSequence(ctx, req.Name, req.Force)
+	if err := d.impl.DropSequence(ctx, req.Name, req.Force); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return nil, nil
 }
 
 func (d *DistributionsServer) ListRelationSequences(ctx context.Context, req *protos.ListRelationSequencesRequest) (*protos.ListRelationSequencesReply, error) {

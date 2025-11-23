@@ -11,6 +11,8 @@ import (
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type CoordinatorService struct {
@@ -45,16 +47,16 @@ func (c *CoordinatorService) DropKeyRange(ctx context.Context, request *protos.D
 func (c *CoordinatorService) CreateKeyRange(ctx context.Context, request *protos.CreateKeyRangeRequest) (*protos.ModifyReply, error) {
 	ds, err := c.impl.GetDistribution(ctx, request.KeyRangeInfo.DistributionId)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.NotFound, err.Error())
 	}
 	protoKR, err := kr.KeyRangeFromProto(request.KeyRangeInfo, ds.ColTypes)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	err = c.impl.CreateKeyRange(ctx, protoKR)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &protos.ModifyReply{}, nil
@@ -91,7 +93,7 @@ func (c *CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.
 	}
 
 	if err := c.impl.Split(ctx, splitKR); err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &protos.ModifyReply{}, nil
@@ -174,7 +176,8 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 		BaseKeyRangeId:      request.GetBaseId(),
 		AppendageKeyRangeId: request.GetAppendageId(),
 	}); err != nil {
-		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges: %s", err.Error())
+		spqrError := spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges: %s", err.Error())
+		return nil, status.Error(codes.Internal, spqrError.Error())
 	}
 
 	return &protos.ModifyReply{}, nil

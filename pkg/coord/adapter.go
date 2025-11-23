@@ -89,7 +89,7 @@ func (a *Adapter) SyncReferenceRelations(ctx context.Context, ids []*rfqn.Relati
 		Relations: qRels,
 		ShardId:   destShard,
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // AlterReferenceRelationStorage implements meta.EntityMgr.
@@ -104,7 +104,7 @@ func (a *Adapter) CreateReferenceRelation(ctx context.Context, r *rrelation.Refe
 		Relation: rrelation.RefRelationToProto(r),
 		Entries:  rrelation.AutoIncrementEntriesToProto(entry),
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
@@ -119,7 +119,7 @@ func (a *Adapter) DropReferenceRelation(ctx context.Context, relName *rfqn.Relat
 			},
 		},
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // ListReferenceRelations implements meta.EntityMgr.
@@ -191,13 +191,13 @@ func (a *Adapter) ListKeyRanges(ctx context.Context, distribution string) ([]*kr
 		Distribution: distribution,
 	})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 
 	dc := proto.NewDistributionServiceClient(a.conn)
 	ds, err := dc.GetDistribution(ctx, &proto.GetDistributionRequest{Id: distribution})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 
 	krs := make([]*kr.KeyRange, len(reply.KeyRangesInfo))
@@ -277,7 +277,8 @@ func (a *Adapter) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	_, err := c.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{
 		KeyRangeInfo: kr.ToProto(),
 	})
-	return err
+
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -365,7 +366,7 @@ func (a *Adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 				NewId:     split.Krid,
 				SplitLeft: split.SplitLeft,
 			})
-			return err
+			return spqrerror.CleanGrpcError(err)
 		}
 	}
 
@@ -423,7 +424,7 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 		BaseId:      unite.BaseKeyRangeId,
 		AppendageId: unite.AppendageKeyRangeId,
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -822,7 +823,7 @@ func (a *Adapter) DropDistribution(ctx context.Context, id string) error {
 		Ids: []string{id},
 	})
 
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -849,7 +850,7 @@ func (a *Adapter) AlterDistributionAttach(ctx context.Context, id string, rels [
 		Relations: dRels,
 	})
 
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -869,7 +870,7 @@ func (a *Adapter) AlterDistributedRelation(ctx context.Context, id string, rel *
 		Id:       id,
 		Relation: distributions.DistributedRelationToProto(rel),
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // AlterDistributedRelationSchema alters the sequence name of a distributed relation.
@@ -909,7 +910,7 @@ func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, i
 		RelationName:    relName,
 		DistributionKey: distributions.DistributionKeyToProto(distributionKey),
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // AlterDistributionDetach detaches a relation from a distribution using the provided ID and relation name.
@@ -950,7 +951,7 @@ func (a *Adapter) GetDistribution(ctx context.Context, id string) (*distribution
 		Id: id,
 	})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 
 	return distributions.DistributionFromProto(resp.Distribution)
@@ -1191,7 +1192,7 @@ func (a *Adapter) DropSequence(ctx context.Context, seqName string, force bool) 
 		Name:  seqName,
 		Force: force,
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 func (a *Adapter) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
