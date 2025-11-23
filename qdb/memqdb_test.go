@@ -3,6 +3,7 @@ package qdb_test
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"sync"
@@ -368,6 +369,7 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
 	assert.NoError(err)
 
+	// Basic drop
 	keyRange1 := &qdb.KeyRange{
 		KeyRangeID:     "krid1",
 		LowerBound:     [][]byte{[]byte("1")},
@@ -376,18 +378,22 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 	}
 	assert.NoError(memqdb.CreateKeyRange(ctx, keyRange1))
 
-	_, ok := memqdb.Krs["krid1"]
+	kr1, ok := memqdb.Krs["krid1"]
 	assert.True(ok)
-	lock, ok := memqdb.Locks["krid1"]
+	assert.Equal("krid1", kr1.KeyRangeID)
+	_, ok = memqdb.Locks["krid1"]
 	assert.True(ok)
-	assert.NotNil(lock)
 
 	assert.NoError(memqdb.DropKeyRange(ctx, "krid1"))
 	_, ok = memqdb.Krs["krid1"]
 	assert.False(ok)
+	_, ok = memqdb.Locks["krid1"]
+	assert.False(ok)
 
+	// Drop non-existent KR
 	assert.NoError(memqdb.DropKeyRange(ctx, "krid1"))
 
+	// Lock missing
 	keyRange2 := &qdb.KeyRange{
 		KeyRangeID:     "krid2",
 		LowerBound:     [][]byte{[]byte("2")},
@@ -395,11 +401,19 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 		DistributionId: "ds1",
 	}
 	assert.NoError(memqdb.CreateKeyRange(ctx, keyRange2))
+
 	delete(memqdb.Locks, "krid2")
 	err = memqdb.DropKeyRange(ctx, "krid2")
 	assert.Error(err)
 	assert.Contains(err.Error(), "no lock in MemQDB")
 
+	kr2, ok := memqdb.Krs["krid2"]
+	assert.True(ok)
+	assert.Equal("krid2", kr2.KeyRangeID)
+	_, ok = memqdb.Locks["krid2"]
+	assert.False(ok)
+
+	// KR locked
 	keyRange3 := &qdb.KeyRange{
 		KeyRangeID:     "krid3",
 		LowerBound:     [][]byte{[]byte("3")},
@@ -407,11 +421,21 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 		DistributionId: "ds1",
 	}
 	assert.NoError(memqdb.CreateKeyRange(ctx, keyRange3))
-	memqdb.Locks["krid3"].Lock()
-	defer memqdb.Locks["krid3"].Unlock()
+
+	kr3, ok := memqdb.Krs["krid3"]
+	assert.True(ok)
+	assert.Equal("krid3", kr3.KeyRangeID)
+	lock3, ok := memqdb.Locks["krid3"]
+	assert.True(ok)
+
+	lock3.Lock()
+	defer lock3.Unlock()
 	err = memqdb.DropKeyRange(ctx, "krid3")
 	assert.Error(err)
 	assert.Contains(err.Error(), "is locked")
+
+	_, ok = memqdb.Krs["krid3"]
+	assert.True(ok)
 }
 
 func TestMemQDB_RenameKeyRange(t *testing.T) {
@@ -433,16 +457,35 @@ func TestMemQDB_RenameKeyRange(t *testing.T) {
 	}
 	assert.NoError(memqdb.CreateKeyRange(ctx, initKeyRange))
 
+	_, ok := memqdb.Krs["krid1"]
+	assert.True(ok)
+
+	origLock := memqdb.Locks["krid1"]
+
+	// Basic rename
 	assert.NoError(memqdb.RenameKeyRange(ctx, "krid1", "krid2"))
 
-	_, ok := memqdb.Krs["krid1"]
+	_, ok = memqdb.Krs["krid1"]
 	assert.False(ok)
-	_, ok = memqdb.Krs["krid2"]
+	krNew, ok := memqdb.Krs["krid2"]
 	assert.True(ok)
-	assert.Equal("krid2", memqdb.Krs["krid2"].KeyRangeID)
+	assert.Equal("krid2", krNew.KeyRangeID)
+	assert.Equal([][]byte{[]byte("1")}, krNew.LowerBound)
+	assert.Equal("sh1", krNew.ShardID)
+	assert.Equal("ds1", krNew.DistributionId)
 
+	_, ok = memqdb.Locks["krid1"]
+	assert.False(ok)
+	newLock, ok := memqdb.Locks["krid2"]
+	assert.True(ok)
+	assert.Equal(origLock, newLock)
+
+	// Rename non-existent KR
+	prev := maps.Clone(memqdb.Krs)
 	assert.Error(memqdb.RenameKeyRange(ctx, "krid1", "krid3"))
+	assert.Equal(prev, memqdb.Krs)
 
+	// Rename to existing KR
 	otherKeyRange := &qdb.KeyRange{
 		KeyRangeID:     "krid3",
 		LowerBound:     [][]byte{[]byte("3")},
@@ -452,6 +495,14 @@ func TestMemQDB_RenameKeyRange(t *testing.T) {
 	assert.NoError(memqdb.CreateKeyRange(ctx, otherKeyRange))
 
 	assert.Error(memqdb.RenameKeyRange(ctx, "krid2", "krid3"))
+
+	kr2, ok := memqdb.Krs["krid2"]
+	assert.True(ok)
+	assert.Equal("krid2", kr2.KeyRangeID)
+	assert.Equal([][]byte{[]byte("1")}, kr2.LowerBound)
+	kr3, ok := memqdb.Krs["krid3"]
+	assert.True(ok)
+	assert.Equal("krid3", kr3.KeyRangeID)
 }
 
 func TestRestoreQDB_EmptyPath(t *testing.T) {
