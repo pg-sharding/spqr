@@ -16,6 +16,8 @@ CREATE TABLE xx_insert_rel(a INT, b INT, c INT);
 
 INSERT INTO xx_insert_rel (a, b, c) VALUES(1,2,3),(2,3,4), (3,4,5);
 INSERT INTO xx_insert_rel (a, b, c) VALUES(1,2,3),(2,3,4), (300,4,5);
+INSERT INTO xx_insert_rel (a, b, c) VALUES(100,2,3),(201,3,4), (301,4,5) ON CONFLICT DO NOTHING;
+INSERT INTO xx_insert_rel (a, b, c) VALUES(200,2,3),(201,3,4), (301,4,5) RETURNING *;
 INSERT INTO xx_insert_rel (a, b, c) SELECT 1,2,3;
 INSERT INTO xx_insert_rel (a, b, c) SELECT 101,201,301;
 INSERT INTO xx_insert_rel (a, b, c) SELECT 201,a,301 FROM unnest(ARRAY[110]) a;;
