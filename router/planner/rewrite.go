@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
@@ -100,6 +101,10 @@ func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.Sc
 			Name: sh,
 		})
 	}
+
+	sort.Slice(p.ExecTargets, func(i, j int) bool {
+		return p.ExecTargets[i].Name < p.ExecTargets[j].Name
+	})
 
 	p.OverwriteQuery = mp
 
