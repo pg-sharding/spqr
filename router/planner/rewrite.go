@@ -3,6 +3,7 @@ package planner
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -161,11 +162,15 @@ func findMatchingClosingParenthesis(query string, openPos int) int {
 
 func InsertSequenceValue(ctx context.Context,
 	query string,
+	columns []string,
 	ColumnSequenceMapping map[string]string,
 	idCache IdentityRouterCache,
 ) (string, error) {
 
 	for colName, seqName := range ColumnSequenceMapping {
+		if slices.Contains(columns, colName) {
+			continue
+		}
 
 		newQuery, err := RewriteReferenceRelationAutoIncInsert(query, colName, func() (string, error) {
 			v, err := idCache.NextVal(ctx, seqName)

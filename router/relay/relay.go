@@ -1282,11 +1282,6 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		rst.routingDecisionPlan = queryPlan
 	}
 
-	// rewrite query
-	if qs := rst.routingDecisionPlan.GetQuery(""); qs != "" {
-		q.String = qs
-	}
-
 	es := &ExecutorState{
 		Msg: q,
 		P:   rst.routingDecisionPlan, /*  ugh... fix this someday */
