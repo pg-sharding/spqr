@@ -170,11 +170,9 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 		return nil, err
 	}
 
-	mp := map[string]pgproto3.FrontendMessage{}
+	mp := map[string]string{}
 	for _, sh := range rel.ListStorageRoutes() {
-		mp[sh.Name] = &pgproto3.Query{
-			String: q,
-		}
+		mp[sh.Name] = q
 	}
 
 	return &plan.ScatterPlan{

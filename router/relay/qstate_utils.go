@@ -3,6 +3,7 @@ package relay
 import (
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/server"
 )
@@ -40,8 +41,11 @@ func DispatchPlan(qd *ExecutorState, serv server.Server, cl client.RouterClient,
 		} else {
 			for _, targ := range et {
 				msg := qd.Msg
-				if ovMsg := qd.P.GetGangMemberMsg(targ); ovMsg != nil {
-					msg = ovMsg
+				if vmsg, ok := msg.(*pgproto3.Query); ok {
+					if ovMsg := qd.P.GetGangMemberMsg(targ); ovMsg != "" {
+						/* Uh, oh, this is very ugly hack */
+						vmsg.String = ovMsg
+					}
 				}
 				if err := serv.SendShard(msg, targ); err != nil {
 					return err

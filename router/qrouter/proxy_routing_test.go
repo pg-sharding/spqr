@@ -409,7 +409,7 @@ func TestRoutingByExpression(t *testing.T) {
 			WITH vals(x,y) AS (VALUES(5, 'jidw'), (100, 'jidw'))
 			SELECT * FROM distrr_mm_test d JOIN vals v ON d.id1 = v.x AND d.id2 = v.y;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]pgproto3.FrontendMessage{},
+				OverwriteQuery: map[string]string{},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh2",
@@ -540,13 +540,9 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel (i) VALUES (1), (2);`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]pgproto3.FrontendMessage{
-					"sh1": &pgproto3.Query{
-						String: `INSERT INTO test_ref_rel (id1, i) VALUES (11, 1), (12, 2);`,
-					},
-					"sh2": &pgproto3.Query{
-						String: `INSERT INTO test_ref_rel (id1, i) VALUES (11, 1), (12, 2);`,
-					},
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO test_ref_rel (id1, i) VALUES (11, 1), (12, 2);`,
+					"sh2": `INSERT INTO test_ref_rel (id1, i) VALUES (11, 1), (12, 2);`,
 				},
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{
@@ -645,7 +641,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 			query: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
 			exp: &plan.DataRowFilter{
 				SubPlan: &plan.ScatterPlan{
-					OverwriteQuery: map[string]pgproto3.FrontendMessage{},
+					OverwriteQuery: map[string]string{},
 					SubPlan: &plan.ScatterPlan{
 						SubPlan: &plan.ModifyTable{},
 					},
@@ -663,7 +659,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]pgproto3.FrontendMessage{},
+				OverwriteQuery: map[string]string{},
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -681,7 +677,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `WITH data as (VALUES(1)) INSERT INTO test_ref_rel SELECT * FROM data;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]pgproto3.FrontendMessage{},
+				OverwriteQuery: map[string]string{},
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -699,7 +695,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 			/* XXX: with (proper) engine v2, this should we 2-slice split-update plan */
 			query: `UPDATE test_ref_rel SET i = i + 1 ;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]pgproto3.FrontendMessage{},
+				OverwriteQuery: map[string]string{},
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -716,7 +712,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `DELETE FROM test_ref_rel WHERE i = 2;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]pgproto3.FrontendMessage{},
+				OverwriteQuery: map[string]string{},
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -1284,7 +1280,7 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "SELECT * FROM xxtt1 a WHERE i IN (1,11,111)",
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]pgproto3.FrontendMessage{},
+				OverwriteQuery: map[string]string{},
 				ExecTargets: []kr.ShardKey{
 					{Name: "sh1"},
 					{Name: "sh2"},
