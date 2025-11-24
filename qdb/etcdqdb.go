@@ -2189,7 +2189,7 @@ func (q *EtcdQDB) GetRelationSequence(ctx context.Context, relName *rfqn.Relatio
 	return ret, nil
 }
 
-func (q *EtcdQDB) getSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
+func (q *EtcdQDB) GetSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
 	spqrlog.Zero.Debug().
 		Str("seqName", seqName).
 		Msg("etcdqdb: get columns attached to a sequence")
@@ -2239,16 +2239,9 @@ func (q *EtcdQDB) DropSequence(ctx context.Context, seqName string, force bool) 
 		Str("sequence", seqName).
 		Bool("force", force).
 		Msg("etcdqdb: drop sequence")
-	depends, err := q.getSequenceColumns(ctx, seqName)
-	if err != nil {
-		return err
-	}
-	if len(depends) != 0 && !force {
-		return spqrerror.Newf(spqrerror.SPQR_SEQUENCE_ERROR, "column %q is attached to sequence", depends[0])
-	}
 
 	key := sequenceNodePath(seqName)
-	_, err = q.cli.Delete(ctx, key)
+	_, err := q.cli.Delete(ctx, key)
 	return err
 }
 

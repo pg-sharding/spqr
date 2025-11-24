@@ -275,6 +275,14 @@ func processDrop(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.SequenceSelector:
+		depends, err := mngr.GetSequenceColumns(ctx, stmt.Name)
+		if err != nil {
+			return nil, err
+		}
+		if len(depends) > 0 && !isCascade {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop sequence %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.Name)
+		}
+
 		if err := mngr.DropSequence(ctx, stmt.Name, false); err != nil {
 			return nil, err
 		}

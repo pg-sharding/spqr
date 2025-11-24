@@ -205,17 +205,17 @@ func (mr *MockCoordinatorMockRecorder) CreateDistribution(ctx, ds any) *gomock.C
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockCoordinator) CreateKeyRange(ctx context.Context, arg1 *kr.KeyRange) error {
+func (m *MockCoordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, arg1)
+	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, kr)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateKeyRange indicates an expected call of CreateKeyRange.
-func (mr *MockCoordinatorMockRecorder) CreateKeyRange(ctx, arg1 any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) CreateKeyRange(ctx, kr any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockCoordinator)(nil).CreateKeyRange), ctx, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockCoordinator)(nil).CreateKeyRange), ctx, kr)
 }
 
 // CreateReferenceRelation mocks base method.
@@ -434,6 +434,21 @@ func (m *MockCoordinator) GetRelationDistribution(ctx context.Context, relation_
 func (mr *MockCoordinatorMockRecorder) GetRelationDistribution(ctx, relation_name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationDistribution", reflect.TypeOf((*MockCoordinator)(nil).GetRelationDistribution), ctx, relation_name)
+}
+
+// GetSequenceColumns mocks base method.
+func (m *MockCoordinator) GetSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSequenceColumns", ctx, seqName)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSequenceColumns indicates an expected call of GetSequenceColumns.
+func (mr *MockCoordinatorMockRecorder) GetSequenceColumns(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSequenceColumns", reflect.TypeOf((*MockCoordinator)(nil).GetSequenceColumns), ctx, seqName)
 }
 
 // GetShard mocks base method.

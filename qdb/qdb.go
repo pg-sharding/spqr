@@ -141,6 +141,7 @@ type QDB interface {
 	NextRange(ctx context.Context, seqName string, rangeSize uint64) (*SequenceIdRange, error)
 	CurrVal(ctx context.Context, seqName string) (int64, error)
 	DropSequence(ctx context.Context, seqName string, force bool) error
+	GetSequenceColumns(ctx context.Context, seqName string) ([]string, error)
 }
 
 /* XXX: note that this is data-plane two phase transaction state,

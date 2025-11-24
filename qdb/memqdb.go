@@ -1298,6 +1298,16 @@ func (q *MemQDB) AlterSequenceDetachRelation(_ context.Context, relName *rfqn.Re
 	return nil
 }
 
+func (q *MemQDB) GetSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
+	depends := []string{}
+	for col, seq := range q.ColumnSequence {
+		if seq == seqName {
+			depends = append(depends, col)
+		}
+	}
+	return depends, nil
+}
+
 func (q *MemQDB) DropSequence(ctx context.Context, seqName string, force bool) error {
 	for col, colSeq := range q.ColumnSequence {
 		if colSeq == seqName && !force {
