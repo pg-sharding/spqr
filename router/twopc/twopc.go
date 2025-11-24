@@ -46,7 +46,7 @@ func ExecuteTwoPhaseCommit(clid uint, s server.Server) error {
 	}
 
 	if config.RouterConfig().EnableICP {
-		if err := icp.CheckControlPoint(icp.TwoPhaseDecigionCP); err != nil {
+		if err := icp.CheckControlPoint(icp.TwoPhaseDesigionCP); err != nil {
 			spqrlog.Zero.Info().Uint("client", clid).Str("txid", txid).Err(err).Msg("error while checking control point")
 		}
 	}
@@ -60,6 +60,8 @@ func ExecuteTwoPhaseCommit(clid uint, s server.Server) error {
 
 		if err != nil {
 			/* assert st == txtstatus.TXERR? */
+			/* XXX: We now should discard all connection
+			* and let recovery algorithm complete tx */
 			s.SetTxStatus(txstatus.TXStatus(txstatus.TXERR))
 			return err
 		}
