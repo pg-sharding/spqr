@@ -109,7 +109,7 @@ func (d *DistributionsServer) AlterDistributedRelationDistributionKey(ctx contex
 func (d *DistributionsServer) GetDistribution(ctx context.Context, req *protos.GetDistributionRequest) (*protos.GetDistributionReply, error) {
 	ds, err := d.impl.GetDistribution(ctx, req.GetId())
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	return &protos.GetDistributionReply{Distribution: distributions.DistributionToProto(ds)}, nil
 }
