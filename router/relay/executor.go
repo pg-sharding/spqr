@@ -563,7 +563,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, qd *Execut
 	}
 	cs, ok := stmt.(*lyx.Copy)
 	if !ok {
-		return fmt.Errorf("failed to prepare copy context")
+		return fmt.Errorf("failed to prepare copy context, not a copy statement")
 	}
 	cps, err := s.ProcCopyPrepare(ctx, mgr, cs, qd.attachedCopy)
 	if err != nil {

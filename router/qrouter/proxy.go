@@ -57,9 +57,11 @@ func (qr *ProxyQrouter) AnalyzeQuery(ctx context.Context,
 
 	rm.SetRO(ro)
 
-	if err := planner.AnalyzeQueryV1(ctx, rm, rm.Stmt); err != nil {
-		spqrlog.Zero.Debug().Err(err).Msg("failed to analyze query")
-		return nil, err
+	if sph.ExecuteOn() == "" {
+		if err := planner.AnalyzeQueryV1(ctx, rm, rm.Stmt); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to analyze query")
+			return nil, err
+		}
 	}
 	return rm, nil
 }

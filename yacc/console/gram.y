@@ -84,6 +84,9 @@ func randomHex(n int) (string, error) {
 	alter_distribution     *AlterDistribution
 	distributed_relation   *DistributedRelation
 	alter_default_shard    *AlterDefaultShard
+
+	/* ICP */
+	icp						*InstanceControlPoint
 	
 	relations              []*DistributedRelation
 	relation               *DistributedRelation
@@ -201,7 +204,11 @@ func randomHex(n int) (string, error) {
 
 %token<str> TASK GROUP
 
+/* types */
 %token<str> VARCHAR INTEGER INT TYPES UUID
+
+/* ICP */
+%token<str> CONTROL POINT
 
 /* any operator */
 %token<str> OP
@@ -248,6 +255,8 @@ func randomHex(n int) (string, error) {
 
 %type<alter> alter_stmt create_distributed_relation_stmt
 %type<alter_distribution> distribution_alter_stmt
+
+%type<icp> icp_stmt
 
 %type<invalidate> invalidate_stmt
 %type<sync_reference_tables> sync_reference_tables_stmt
@@ -406,6 +415,9 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| create_distributed_relation_stmt
+	{
+		setParseTree(yylex, $1)
+	} | icp_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -1451,5 +1463,23 @@ stop_move_task_group:
 	{
 		$$ = &StopMoveTaskGroup{ ID: $4 }
 	} 
+
+
+/* Control Points */
+
+icp_stmt:
+	ATTACH CONTROL POINT SCONST {
+		$$ = &InstanceControlPoint {
+			Name: string($4),
+			Enable: true,
+		}
+	} | 
+	DETACH CONTROL POINT SCONST {
+		$$ = &InstanceControlPoint {
+			Name: string($4),
+			Enable: false,
+		}
+	}
+
 %%
 

@@ -1,0 +1,15 @@
+SHOW clients;
+ client_id | user | dbname | server_id | router_address 
+-----------+------+--------+-----------+----------------
+(0 rows)
+
+SHOW clients WHERE server_id = spqr_shard_1:6432;
+ client_id | user | dbname | server_id | router_address 
+-----------+------+--------+-----------+----------------
+(0 rows)
+
+SHOW clients WHERE server_id = nonexistent:6432 OR dbname = regress;
+ client_id | user | dbname | server_id | router_address 
+-----------+------+--------+-----------+----------------
+(0 rows)
+

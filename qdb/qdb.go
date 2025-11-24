@@ -35,6 +35,12 @@ type TopologyKeeper interface {
 	OpenRouter(ctx context.Context, rID string) error
 	// CloseRouter changes the state of the router to offline, making it unavailable for query execution.
 	CloseRouter(ctx context.Context, rID string) error
+
+	// Shards
+	AddShard(ctx context.Context, shard *Shard) error
+	ListShards(ctx context.Context) ([]*Shard, error)
+	GetShard(ctx context.Context, shardID string) (*Shard, error)
+	DropShard(ctx context.Context, shardID string) error
 }
 
 // Keep track of the status of the two-phase data move transaction.
@@ -42,6 +48,13 @@ type DistributedXactKeeper interface {
 	RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error
 	GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error)
 	RemoveTransferTx(ctx context.Context, key string) error
+}
+
+type TXManager interface {
+	//batch execution
+	ExecNoTransaction(ctx context.Context, operations []QdbStatement) error
+	CommitTransaction(ctx context.Context, transaction *QdbTransaction) error
+	BeginTransaction(ctx context.Context, transaction *QdbTransaction) error
 }
 
 // QDB is a generic interface used by both the coordinator and the router.
@@ -63,12 +76,6 @@ type QDB interface {
 	ListLockedKeyRanges(ctx context.Context) ([]string, error)
 	ShareKeyRange(id string) error
 	RenameKeyRange(ctx context.Context, krId, ktIdNew string) error
-
-	// Shards
-	AddShard(ctx context.Context, shard *Shard) error
-	ListShards(ctx context.Context) ([]*Shard, error)
-	GetShard(ctx context.Context, shardID string) (*Shard, error)
-	DropShard(ctx context.Context, shardID string) error
 
 	// Distribution management
 	CreateDistribution(ctx context.Context, distr *Distribution) error
@@ -134,11 +141,23 @@ type QDB interface {
 	NextRange(ctx context.Context, seqName string, rangeSize uint64) (*SequenceIdRange, error)
 	CurrVal(ctx context.Context, seqName string) (int64, error)
 	DropSequence(ctx context.Context, seqName string, force bool) error
+}
 
-	//batch execution
-	ExecNoTransaction(ctx context.Context, operations []QdbStatement) error
-	CommitTransaction(ctx context.Context, transaction *QdbTransaction) error
-	BeginTransaction(ctx context.Context, transaction *QdbTransaction) error
+/* XXX: note that this is data-plane two phase transaction state,
+* not control-plane transfer task state */
+const (
+	TwoPhaseInitState = "TwoPhaseTxState"
+	TwoPhaseP1        = "PrepareDone"
+	TwoPhaseP2        = "Done"
+)
+
+// Distributed (2pc) commit state keeper.
+// Could be ether local storage or ETCD
+type DCStateKeeper interface {
+	TopologyKeeper
+
+	RecordTwoPhaseMembers(id string, shards []string)
+	ChangeTxStatus(id string, state string)
 }
 
 // XQDB means extended QDB
@@ -151,6 +170,7 @@ type XQDB interface {
 	// data move state
 	ShardingSchemaKeeper
 	DistributedXactKeeper
+	TXManager
 
 	TryCoordinatorLock(ctx context.Context, addr string) error
 }
@@ -159,6 +179,16 @@ func NewXQDB(qdbType string) (XQDB, error) {
 	switch qdbType {
 	case "etcd":
 		return NewEtcdQDB(config.CoordinatorConfig().QdbAddr, config.CoordinatorConfig().EtcdMaxSendBytes)
+	case "mem":
+		return NewMemQDB("")
+	default:
+		return nil, fmt.Errorf("qdb implementation %s is invalid", qdbType)
+	}
+}
+
+func NewDataPlaneTwoPhaseStateKeeper(qdbType string) (DCStateKeeper, error) {
+	switch qdbType {
+	/* ETCD to be supported */
 	case "mem":
 		return NewMemQDB("")
 	default:
