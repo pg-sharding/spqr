@@ -6,13 +6,13 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type CoordinatorService struct {
@@ -47,16 +47,16 @@ func (c *CoordinatorService) DropKeyRange(ctx context.Context, request *protos.D
 func (c *CoordinatorService) CreateKeyRange(ctx context.Context, request *protos.CreateKeyRangeRequest) (*protos.ModifyReply, error) {
 	ds, err := c.impl.GetDistribution(ctx, request.KeyRangeInfo.DistributionId)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, err.Error())
+		return nil, err
 	}
 	protoKR, err := kr.KeyRangeFromProto(request.KeyRangeInfo, ds.ColTypes)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, err
 	}
 
 	err = c.impl.CreateKeyRange(ctx, protoKR)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
 	return &protos.ModifyReply{}, nil
@@ -93,7 +93,7 @@ func (c *CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.
 	}
 
 	if err := c.impl.Split(ctx, splitKR); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
 	return &protos.ModifyReply{}, nil

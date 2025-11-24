@@ -6,8 +6,6 @@ import (
 	"github.com/pg-sharding/spqr/coordinator"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/router/rfqn"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	rrelations "github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -29,7 +27,7 @@ func (rr *ReferenceRelationServer) CreateReferenceRelations(ctx context.Context,
 	if err := rr.impl.CreateReferenceRelation(ctx,
 		rrelations.RefRelationFromProto(req.Relation),
 		rrelations.AutoIncrementEntriesFromProto(req.Entries)); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 	return nil, nil
 }
