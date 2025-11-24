@@ -9,7 +9,7 @@ import (
 )
 
 // TODO : unit tests
-func CreateKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {
+func CreateKeyRangeWithChecks(ctx context.Context, qdb qdb.XQDB, keyRange *kr.KeyRange) error {
 	if _, err := qdb.GetShard(ctx, keyRange.ShardID); err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func CreateKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 }
 
 // TODO : unit tests
-func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {
+func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.XQDB, keyRange *kr.KeyRange) error {
 	_, err := qdb.CheckLockedKeyRange(ctx, keyRange.ID)
 	if err != nil {
 		return err
