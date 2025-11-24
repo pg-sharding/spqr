@@ -164,7 +164,7 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	q, err := InsertSequenceValue(ctx, rm.Query, rel.ColumnSequenceMapping, idCache)
+	q, err := InsertSequenceValue(ctx, rm.Query, columns, rel.ColumnSequenceMapping, idCache)
 
 	if err != nil {
 		return nil, err
