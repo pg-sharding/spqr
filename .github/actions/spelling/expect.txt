@@ -624,6 +624,7 @@ Vitess
 Volkov
 voluptate
 voluptatem
+vmsg
 Warningf
 WMma
 workloadlog
