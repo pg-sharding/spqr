@@ -719,7 +719,7 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 					Values: [][]byte{
 						{0x31, 0x31, 0x32},
 						{0x31, 0x32, 0x32},
-						{0x33},
+						{0x32},
 					},
 				},
 
@@ -727,7 +727,7 @@ func TestSimpleReferenceRelationAutoinc(t *testing.T) {
 					Values: [][]byte{
 						{0x31, 0x31, 0x33},
 						{0x31, 0x32, 0x32},
-						{0x35},
+						{0x33},
 					},
 				},
 
