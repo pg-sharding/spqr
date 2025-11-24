@@ -1054,10 +1054,6 @@ func (lc *Coordinator) ListRelationSequences(ctx context.Context, rel *rfqn.Rela
 	return lc.qdb.GetRelationSequence(ctx, rel)
 }
 
-func (lc *Coordinator) GetSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
-	return lc.qdb.GetSequenceColumns(ctx, seqName)
-}
-
 func (lc *Coordinator) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
 	return lc.qdb.GetSequenceRelations(ctx, seqName)
 }

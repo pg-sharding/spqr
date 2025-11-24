@@ -2189,30 +2189,6 @@ func (q *EtcdQDB) GetRelationSequence(ctx context.Context, relName *rfqn.Relatio
 	return ret, nil
 }
 
-func (q *EtcdQDB) GetSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
-	spqrlog.Zero.Debug().
-		Str("seqName", seqName).
-		Msg("etcdqdb: get columns attached to a sequence")
-	resp, err := q.cli.Get(ctx, columnSequenceMappingNamespace, clientv3.WithPrefix())
-	if err != nil {
-		return nil, err
-	}
-
-	cols := []string{}
-	for _, kv := range resp.Kvs {
-		if string(kv.Value) != seqName {
-			continue
-		}
-
-		s := strings.Split(string(kv.Key), "/")
-		colName := s[len(s)-1]
-		relName := s[len(s)-2]
-		cols = append(cols, fmt.Sprintf("%s.%s", relName, colName))
-	}
-
-	return cols, nil
-}
-
 func (q *EtcdQDB) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
 	spqrlog.Zero.Debug().
 		Str("seqName", seqName).

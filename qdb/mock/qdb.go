@@ -929,21 +929,6 @@ func (mr *MockQDBMockRecorder) GetRelationSequence(ctx, relName any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationSequence", reflect.TypeOf((*MockQDB)(nil).GetRelationSequence), ctx, relName)
 }
 
-// GetSequenceColumns mocks base method.
-func (m *MockQDB) GetSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSequenceColumns", ctx, seqName)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetSequenceColumns indicates an expected call of GetSequenceColumns.
-func (mr *MockQDBMockRecorder) GetSequenceColumns(ctx, seqName any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSequenceColumns", reflect.TypeOf((*MockQDB)(nil).GetSequenceColumns), ctx, seqName)
-}
-
 // GetSequenceRelations mocks base method.
 func (m *MockQDB) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
 	m.ctrl.T.Helper()
@@ -2208,21 +2193,6 @@ func (m *MockXQDB) GetRelationSequence(ctx context.Context, relName *rfqn.Relati
 func (mr *MockXQDBMockRecorder) GetRelationSequence(ctx, relName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationSequence", reflect.TypeOf((*MockXQDB)(nil).GetRelationSequence), ctx, relName)
-}
-
-// GetSequenceColumns mocks base method.
-func (m *MockXQDB) GetSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSequenceColumns", ctx, seqName)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetSequenceColumns indicates an expected call of GetSequenceColumns.
-func (mr *MockXQDBMockRecorder) GetSequenceColumns(ctx, seqName any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSequenceColumns", reflect.TypeOf((*MockXQDB)(nil).GetSequenceColumns), ctx, seqName)
 }
 
 // GetSequenceRelations mocks base method.

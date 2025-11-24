@@ -436,21 +436,6 @@ func (mr *MockCoordinatorMockRecorder) GetRelationDistribution(ctx, relation_nam
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationDistribution", reflect.TypeOf((*MockCoordinator)(nil).GetRelationDistribution), ctx, relation_name)
 }
 
-// GetSequenceColumns mocks base method.
-func (m *MockCoordinator) GetSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSequenceColumns", ctx, seqName)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetSequenceColumns indicates an expected call of GetSequenceColumns.
-func (mr *MockCoordinatorMockRecorder) GetSequenceColumns(ctx, seqName any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSequenceColumns", reflect.TypeOf((*MockCoordinator)(nil).GetSequenceColumns), ctx, seqName)
-}
-
 // GetSequenceRelations mocks base method.
 func (m *MockCoordinator) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
 	m.ctrl.T.Helper()
