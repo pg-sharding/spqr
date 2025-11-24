@@ -46,6 +46,7 @@ type MemQDB struct {
 }
 
 var _ XQDB = &MemQDB{}
+var _ DCStateKeeper = &MemQDB{}
 
 func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
@@ -1377,4 +1378,15 @@ func (q *MemQDB) CommitTransaction(ctx context.Context, transaction *QdbTransact
 
 func (q *MemQDB) BeginTransaction(ctx context.Context, transaction *QdbTransaction) error {
 	return fmt.Errorf("BeginTransaction not implemented for MemQDB")
+}
+
+// ChangeTxStatus implements DCStateKeeper.
+func (q *MemQDB) ChangeTxStatus(id string, state string) {
+	panic("unimplemented")
+}
+
+// RecordTwoPhaseMembers implements DCStateKeeper.
+// XXX: check that all members are valid spqr shards
+func (q *MemQDB) RecordTwoPhaseMembers(id string, shards []string) {
+	panic("unimplemented")
 }
