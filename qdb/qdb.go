@@ -142,6 +142,8 @@ type QDB interface {
 	CurrVal(ctx context.Context, seqName string) (int64, error)
 	DropSequence(ctx context.Context, seqName string, force bool) error
 	GetSequenceColumns(ctx context.Context, seqName string) ([]string, error)
+	GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error)
+	AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error
 }
 
 /* XXX: note that this is data-plane two phase transaction state,

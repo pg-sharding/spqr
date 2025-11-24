@@ -2213,6 +2213,29 @@ func (q *EtcdQDB) GetSequenceColumns(ctx context.Context, seqName string) ([]str
 	return cols, nil
 }
 
+func (q *EtcdQDB) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
+	spqrlog.Zero.Debug().
+		Str("seqName", seqName).
+		Msg("etcdqdb: get columns attached to a sequence")
+	resp, err := q.cli.Get(ctx, columnSequenceMappingNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	rels := []*rfqn.RelationFQN{}
+	for _, kv := range resp.Kvs {
+		if string(kv.Value) != seqName {
+			continue
+		}
+
+		s := strings.Split(string(kv.Key), "/")
+		relName := s[len(s)-2]
+		rels = append(rels, &rfqn.RelationFQN{RelationName: relName})
+	}
+
+	return rels, nil
+}
+
 func (q *EtcdQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) error {
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).

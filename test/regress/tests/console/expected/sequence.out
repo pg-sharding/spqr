@@ -15,15 +15,15 @@ CREATE REFERENCE TABLE t1 AUTO INCREMENT id;
 CREATE REFERENCE TABLE t2 AUTO INCREMENT id;
    create reference table    
 -----------------------------
- table    -> t1
+ table    -> t2
  shard id -> sh1,sh2,sh3,sh4
 (2 rows)
 
 SHOW SEQUENCES;
  name  | value 
 -------+-------
- t2_id | 0
  t1_id | 0
+ t2_id | 0
  t_id  | 0
 (3 rows)
 
@@ -37,8 +37,8 @@ DROP REFERENCE RELATION t1;
 (1 row)
 
 SHOW sequences;
- name | value 
-------+-------
+ name  | value 
+-------+-------
  t2_id | 0
  t_id  | 0
 (2 rows)

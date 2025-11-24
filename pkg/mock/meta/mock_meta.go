@@ -449,6 +449,21 @@ func (mr *MockEntityMgrMockRecorder) GetSequenceColumns(ctx, seqName any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSequenceColumns", reflect.TypeOf((*MockEntityMgr)(nil).GetSequenceColumns), ctx, seqName)
 }
 
+// GetSequenceRelations mocks base method.
+func (m *MockEntityMgr) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSequenceRelations", ctx, seqName)
+	ret0, _ := ret[0].([]*rfqn.RelationFQN)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSequenceRelations indicates an expected call of GetSequenceRelations.
+func (mr *MockEntityMgrMockRecorder) GetSequenceRelations(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSequenceRelations", reflect.TypeOf((*MockEntityMgr)(nil).GetSequenceRelations), ctx, seqName)
+}
+
 // GetShard mocks base method.
 func (m *MockEntityMgr) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
 	m.ctrl.T.Helper()
