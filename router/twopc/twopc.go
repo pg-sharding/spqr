@@ -46,7 +46,7 @@ func ExecuteTwoPhaseCommit(clid uint, s server.Server) error {
 	}
 
 	if config.RouterConfig().EnableICP {
-		if err := icp.CheckControlPoint(icp.TwoPhaseDesigionCP); err != nil {
+		if err := icp.CheckControlPoint(icp.TwoPhaseDecisionCP); err != nil {
 			spqrlog.Zero.Info().Uint("client", clid).Str("txid", txid).Err(err).Msg("error while checking control point")
 		}
 	}
