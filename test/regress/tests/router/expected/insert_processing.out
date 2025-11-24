@@ -50,7 +50,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xx_insert_rel (a, b, c) VALUES(1,2,3),(2,3,4), (3,4,5);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx_insert_rel (a, b, c) VALUES(1,2,3),(2,3,4), (300,4,5);
-ERROR:  client processing error: error processing query 'INSERT INTO xx_insert_rel (a, b, c) VALUES(1,2,3),(2,3,4), (300,4,5);': too complex query to route, tx status IDLE
+NOTICE: send query to shard(s) : sh1,sh4
 INSERT INTO xx_insert_rel (a, b, c) SELECT 1,2,3;
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx_insert_rel (a, b, c) SELECT 101,201,301;
@@ -64,9 +64,11 @@ NOTICE: send query to shard(s) : sh1
 ---+---+---
  1 | 2 | 3
  1 | 2 | 3
+ 1 | 2 | 3
+ 2 | 3 | 4
  2 | 3 | 4
  3 | 4 | 5
-(4 rows)
+(6 rows)
 
 SELECT * FROM xx_insert_rel ORDER BY 1,2,3 /* __spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2
@@ -84,9 +86,10 @@ NOTICE: send query to shard(s) : sh3
 
 SELECT * FROM xx_insert_rel ORDER BY 1,2,3 /* __spqr__execute_on: sh4 */;
 NOTICE: send query to shard(s) : sh4
- a | b | c 
----+---+---
-(0 rows)
+  a  | b | c 
+-----+---+---
+ 300 | 4 | 5
+(1 row)
 
 explain (COSTS OFF ) SELECT * FROM xx_insert_rel WHERE a = 1 ORDER BY 1,2,3;
 NOTICE: send query to shard(s) : sh1

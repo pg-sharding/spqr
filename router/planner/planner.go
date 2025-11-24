@@ -214,7 +214,11 @@ func CalculateRoutingListTupleItemValue(
 	return v, nil
 }
 
-func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node, rm *rmeta.RoutingMetadataContext, stmt *lyx.Insert) ([]kr.ShardKey, error) {
+func PlanDistributedRelationInsert(
+	ctx context.Context,
+	routingList [][]lyx.Node,
+	rm *rmeta.RoutingMetadataContext,
+	stmt *lyx.Insert) ([]kr.ShardKey, error) {
 
 	insertColsPos, qualName, err := ProcessInsertFromSelectOffsets(ctx, stmt, rm)
 	if err != nil {

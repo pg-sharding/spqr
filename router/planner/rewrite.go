@@ -9,8 +9,114 @@ import (
 	"unicode"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 )
+
+func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
+	// Find the position of the opening parenthesis for the column list
+	colsOpenInd := strings.Index(query, "(")
+	if colsOpenInd == -1 {
+		return nil, fmt.Errorf("invalid query: missing column list")
+	}
+
+	// Find the position of the closing parenthesis for the column list using balanced parentheses
+	colsCloseInd := findMatchingClosingParenthesis(query, colsOpenInd)
+	if colsCloseInd == -1 {
+		return nil, fmt.Errorf("invalid query: missing closing parenthesis in column list")
+	}
+
+	p := &plan.ScatterPlan{}
+
+	// Find the VALUES keyword
+	valuesKeywordStart := strings.Index(strings.ToUpper(query[colsCloseInd:]), "VALUES")
+	if valuesKeywordStart == -1 {
+		return nil, fmt.Errorf("invalid query: missing VALUES clause")
+	}
+	valuesKeywordStart += colsCloseInd
+
+	// Find and process each VALUES clause
+	pos := valuesKeywordStart + 6
+
+	mp := map[string]string{}
+	frst := map[string]bool{}
+	for _, sh := range shs {
+		frst[sh.Name] = true
+		mp[sh.Name] = query[:pos] + " " /* add one space to make query pretty */
+	}
+
+	valIndx := 0
+
+	for {
+		// Skip whitespace
+		for pos < len(query) && unicode.IsSpace(rune(query[pos])) {
+			pos++
+		}
+
+		if pos >= len(query) {
+			break
+		}
+
+		// Look for opening parenthesis of VALUES clause
+		if query[pos] != '(' {
+			// If not a parenthesis and we've processed at least one VALUES clause, we're done
+			if valIndx == len(shs) {
+				break
+			}
+			return nil, fmt.Errorf("invalid query: expected opening parenthesis for VALUES clause")
+		}
+
+		// Find matching closing parenthesis for this VALUES clause
+		valuesOpenInd := pos
+		valuesCloseInd := findMatchingClosingParenthesis(query, valuesOpenInd)
+		if valuesCloseInd == -1 {
+			return nil, fmt.Errorf("invalid query: missing closing parenthesis in VALUES clause")
+		}
+
+		// Format the VALUES clause content
+		if !frst[shs[valIndx].Name] {
+			mp[shs[valIndx].Name] += ", "
+		}
+
+		mp[shs[valIndx].Name] += query[valuesOpenInd : valuesCloseInd+1]
+
+		// Move past this VALUES clause
+		pos = valuesCloseInd + 1
+
+		// Skip whitespace and look for comma
+		whitespaceStart := pos
+		for pos < len(query) && unicode.IsSpace(rune(query[pos])) {
+			pos++
+		}
+
+		if pos >= len(query) || query[pos] != ',' {
+			// No more VALUES clauses, preserve the whitespace and add remaining query
+			if whitespaceStart < len(query) {
+				for sh := range mp {
+					mp[sh] += query[whitespaceStart:]
+				}
+			}
+			break
+		}
+
+		// Skip the comma
+		pos++
+
+		frst[shs[valIndx].Name] = false
+		valIndx++
+	}
+
+	for sh := range frst {
+		p.ExecTargets = append(p.ExecTargets, kr.ShardKey{
+			Name: sh,
+		})
+	}
+
+	p.OverwriteQuery = mp
+
+	return p, nil
+}
 
 func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextvalGen func() (string, error)) (string, error) {
 	// Find the position of the opening parenthesis for the column list
