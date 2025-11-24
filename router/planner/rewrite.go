@@ -15,26 +15,14 @@ import (
 )
 
 func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
-	// Find the position of the opening parenthesis for the column list
-	colsOpenInd := strings.Index(query, "(")
-	if colsOpenInd == -1 {
-		return nil, fmt.Errorf("invalid query: missing column list")
-	}
-
-	// Find the position of the closing parenthesis for the column list using balanced parentheses
-	colsCloseInd := findMatchingClosingParenthesis(query, colsOpenInd)
-	if colsCloseInd == -1 {
-		return nil, fmt.Errorf("invalid query: missing closing parenthesis in column list")
-	}
 
 	p := &plan.ScatterPlan{}
 
 	// Find the VALUES keyword
-	valuesKeywordStart := strings.Index(strings.ToUpper(query[colsCloseInd:]), "VALUES")
+	valuesKeywordStart := strings.Index(strings.ToUpper(query), "VALUES")
 	if valuesKeywordStart == -1 {
 		return nil, fmt.Errorf("invalid query: missing VALUES clause")
 	}
-	valuesKeywordStart += colsCloseInd
 
 	// Find and process each VALUES clause
 	pos := valuesKeywordStart + 6

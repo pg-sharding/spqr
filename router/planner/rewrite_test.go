@@ -704,6 +704,34 @@ func TestModifyDistributedInsertQuery(t *testing.T) {
 
 		{
 			name:  "BatchInsert",
+			query: "INSERT INTO test_table VALUES (1, 2), (101, 102);",
+			shs: []kr.ShardKey{
+				{
+					Name: "sh1",
+				},
+				{
+					Name: "sh2",
+				},
+			},
+			expected: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO test_table VALUES (1, 2);`,
+					"sh2": `INSERT INTO test_table VALUES (101, 102);`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			wantErr: false,
+		},
+
+		{
+			name:  "BatchInsert",
 			query: "INSERT INTO test_table (col1, col2) VALUES (1, 2), (101, 102), (200, 2), (330,3), (4404, 4);",
 			shs: []kr.ShardKey{
 				{
