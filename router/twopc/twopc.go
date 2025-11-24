@@ -5,6 +5,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -41,6 +43,12 @@ func ExecuteTwoPhaseCommit(clid uint, s server.Server) error {
 		}
 
 		s.SetTxStatus(txstatus.TXStatus(st))
+	}
+
+	if config.RouterConfig().EnableICP {
+		if err := icp.CheckControlPoint(icp.TwoPhaseDecigionCP); err != nil {
+			spqrlog.Zero.Info().Uint("client", clid).Str("txid", txid).Err(err).Msg("error while checking control point")
+		}
 	}
 
 	spqrlog.Zero.Info().Uint("client", clid).Str("txid", txid).Msg("first phase succeeded")
