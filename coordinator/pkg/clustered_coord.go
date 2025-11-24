@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,6 +49,7 @@ import (
 	"github.com/pg-sharding/spqr/router/route"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -235,6 +237,9 @@ type ClusteredCoordinator struct {
 
 	bounds [][][]byte
 	index  int
+
+	routerConnCache map[string]*grpc.ClientConn
+	routerConnMutex sync.RWMutex
 }
 
 func (qc *ClusteredCoordinator) QDB() qdb.QDB {
@@ -246,6 +251,49 @@ func (qc *ClusteredCoordinator) Cache() *cache.SchemaCache {
 }
 
 var _ coordinator.Coordinator = &ClusteredCoordinator{}
+
+// getOrCreateRouterConn returns a cached connection or creates a new one.
+func (qc *ClusteredCoordinator) getOrCreateRouterConn(r *topology.Router) (*grpc.ClientConn, error) {
+	qc.routerConnMutex.RLock()
+	conn, exists := qc.routerConnCache[r.ID]
+	qc.routerConnMutex.RUnlock()
+
+	if exists {
+		// Check if connection is still valid
+		state := conn.GetState()
+		if state == connectivity.Ready || state == connectivity.Idle {
+			return conn, nil
+		}
+		// Connection is not healthy, remove it and create a new one
+		qc.routerConnMutex.Lock()
+		delete(qc.routerConnCache, r.ID)
+		qc.routerConnMutex.Unlock()
+		_ = conn.Close()
+	}
+
+	// Create new connection
+	conn, err := DialRouter(r)
+	if err != nil {
+		return nil, err
+	}
+
+	qc.routerConnMutex.Lock()
+	qc.routerConnCache[r.ID] = conn
+	qc.routerConnMutex.Unlock()
+
+	return conn, nil
+}
+
+// closeRouterConn closes and removes a router connection from cache
+func (qc *ClusteredCoordinator) closeRouterConn(routerID string) {
+	qc.routerConnMutex.Lock()
+	defer qc.routerConnMutex.Unlock()
+
+	if conn, exists := qc.routerConnCache[routerID]; exists {
+		_ = conn.Close()
+		delete(qc.routerConnCache, routerID)
+	}
+}
 
 // watchRouters traverse routers one check if they are opened
 // for clients. If not, initialize metadata and open router
@@ -267,9 +315,12 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 			continue
 		}
 
-		// TODO we have to rewrite this code
-		// instead of opening new connections to each router
-		// we have to open it ones, keep and update before the iteration
+		// Build set of current router IDs for cleanup
+		currentRouterIDs := make(map[string]bool, len(routers))
+		for _, r := range routers {
+			currentRouterIDs[r.ID] = true
+		}
+
 		for _, r := range routers {
 			if err := func() error {
 				// Create bounded context for this router's operations
@@ -281,21 +332,19 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 					Address: r.Address,
 				}
 
-				cc, err := DialRouter(internalR)
+				cc, err := qc.getOrCreateRouterConn(internalR)
 				if err != nil {
+					// If connection failed, clean it up and return error
+					qc.closeRouterConn(internalR.ID)
 					return err
 				}
-
-				defer func() {
-					if err := cc.Close(); err != nil {
-						spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-					}
-				}()
 
 				rrClient := proto.NewTopologyServiceClient(cc)
 
 				resp, err := rrClient.GetRouterStatus(routerCtx, nil)
 				if err != nil {
+					// Connection error - close and remove from cache so we reconnect next time
+					qc.closeRouterConn(internalR.ID)
 					return err
 				}
 
@@ -335,19 +384,33 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 			}
 		}
 
+		// Clean up connections for routers that no longer exist
+		qc.routerConnMutex.Lock()
+		for routerID := range qc.routerConnCache {
+			if !currentRouterIDs[routerID] {
+				spqrlog.Zero.Debug().Str("router-id", routerID).Msg("cleaning up connection for removed router")
+				if conn := qc.routerConnCache[routerID]; conn != nil {
+					_ = conn.Close()
+				}
+				delete(qc.routerConnCache, routerID)
+			}
+		}
+		qc.routerConnMutex.Unlock()
+
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().IterationTimeout, defaultWatchRouterTimeout))
 	}
 }
 
 func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*ClusteredCoordinator, error) {
 	return &ClusteredCoordinator{
-		Coordinator:  coord.NewCoordinator(db),
-		db:           db,
-		tlsconfig:    tlsconfig,
-		rmgr:         rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
-		acquiredLock: false,
-		bounds:       make([][][]byte, 0),
-		index:        0,
+		Coordinator:     coord.NewCoordinator(db),
+		db:              db,
+		tlsconfig:       tlsconfig,
+		rmgr:            rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
+		acquiredLock:    false,
+		bounds:          make([][][]byte, 0),
+		index:           0,
+		routerConnCache: make(map[string]*grpc.ClientConn),
 	}, nil
 }
 
