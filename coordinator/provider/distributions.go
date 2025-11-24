@@ -7,8 +7,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/router/rfqn"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -111,7 +109,7 @@ func (d *DistributionsServer) AlterDistributedRelationDistributionKey(ctx contex
 func (d *DistributionsServer) GetDistribution(ctx context.Context, req *protos.GetDistributionRequest) (*protos.GetDistributionReply, error) {
 	ds, err := d.impl.GetDistribution(ctx, req.GetId())
 	if err != nil {
-		return nil, status.Error(codes.NotFound, err.Error())
+		return nil, nil
 	}
 	return &protos.GetDistributionReply{Distribution: distributions.DistributionToProto(ds)}, nil
 }

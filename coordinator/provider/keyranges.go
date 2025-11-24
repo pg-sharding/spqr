@@ -6,8 +6,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pg-sharding/spqr/coordinator"
@@ -176,8 +174,7 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 		BaseKeyRangeId:      request.GetBaseId(),
 		AppendageKeyRangeId: request.GetAppendageId(),
 	}); err != nil {
-		spqrError := spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges: %s", err.Error())
-		return nil, status.Error(codes.Internal, spqrError.Error())
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges: %s", err.Error())
 	}
 
 	return &protos.ModifyReply{}, nil
