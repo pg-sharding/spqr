@@ -4,17 +4,17 @@ import "fmt"
 
 /* Known control point list */
 const (
-	TwoPhaseDesigionCP = "2pc_desigion_cp"
+	TwoPhaseDecisionCP = "2pc_decision_cp"
 )
 
 /* XXX: store name -> action? */
 var (
-	cpsMp = map[string]struct{}{TwoPhaseDesigionCP: {}}
+	cpsMp = map[string]struct{}{TwoPhaseDecisionCP: {}}
 )
 
 func DefineICP(name string) error {
 	switch name {
-	case TwoPhaseDesigionCP:
+	case TwoPhaseDecisionCP:
 		/* OK */
 		cpsMp[name] = struct{}{}
 		return nil
