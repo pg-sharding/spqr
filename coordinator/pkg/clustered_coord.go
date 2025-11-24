@@ -240,6 +240,14 @@ type ClusteredCoordinator struct {
 
 	routerConnCache map[string]*grpc.ClientConn
 	routerConnMutex sync.RWMutex
+
+	// Track last known router states to avoid redundant syncs
+	routerStates      map[string]proto.RouterStatus
+	routerStatesMutex sync.RWMutex
+
+	// Track last coordinator address sync time per router
+	lastCoordSync      map[string]time.Time
+	lastCoordSyncMutex sync.RWMutex
 }
 
 func (qc *ClusteredCoordinator) QDB() qdb.QDB {
@@ -289,6 +297,51 @@ func (qc *ClusteredCoordinator) closeRouterConn(routerID string) {
 		_ = conn.Close()
 		delete(qc.routerConnCache, routerID)
 	}
+}
+
+// shouldSyncCoordinatorAddress determines if we should sync coordinator address for a router.
+// Only sync when:
+// - Router status changed (to handle state transitions)
+// - More than 5 minutes elapsed since last sync (to handle coordinator failover)
+// - First time seeing this router (no previous sync record)
+func (qc *ClusteredCoordinator) shouldSyncCoordinatorAddress(routerID string, currentStatus proto.RouterStatus) bool {
+	qc.routerStatesMutex.RLock()
+	lastStatus, statusExists := qc.routerStates[routerID]
+	qc.routerStatesMutex.RUnlock()
+
+	// First time seeing this router - must sync
+	if !statusExists {
+		return true
+	}
+
+	// Status changed - must sync
+	if lastStatus != currentStatus {
+		return true
+	}
+
+	// Check if enough time has passed since last sync
+	qc.lastCoordSyncMutex.RLock()
+	lastSync, syncExists := qc.lastCoordSync[routerID]
+	qc.lastCoordSyncMutex.RUnlock()
+
+	// Never synced before - must sync
+	if !syncExists {
+		return true
+	}
+
+	// Sync every 5 minutes to handle coordinator failover scenarios
+	return time.Since(lastSync) > 5*time.Minute
+}
+
+// markCoordinatorAddressSynced records that we synced coordinator address and updates router state
+func (qc *ClusteredCoordinator) markCoordinatorAddressSynced(routerID string, status proto.RouterStatus) {
+	qc.lastCoordSyncMutex.Lock()
+	qc.lastCoordSync[routerID] = time.Now()
+	qc.lastCoordSyncMutex.Unlock()
+
+	qc.routerStatesMutex.Lock()
+	qc.routerStates[routerID] = status
+	qc.routerStatesMutex.Unlock()
 }
 
 // watchRouters traverse routers one check if they are opened
@@ -342,14 +395,20 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 					return err
 				}
 
+				// Only sync coordinator address when necessary
+				shouldSync := qc.shouldSyncCoordinatorAddress(internalR.ID, resp.Status)
+
 				switch resp.Status {
 				case proto.RouterStatus_CLOSED:
 					spqrlog.Zero.Debug().Msg("router is closed")
-					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
-						return err
+					if shouldSync {
+						if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
+							return err
+						}
+						qc.markCoordinatorAddressSynced(internalR.ID, resp.Status)
 					}
 
-					/* Mark router as opened in qdb */
+					/* Mark router as closed in qdb */
 					err := qc.db.CloseRouter(routerCtx, internalR.ID)
 					if err != nil {
 						return err
@@ -359,8 +418,11 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 					spqrlog.Zero.Debug().Msg("router is opened")
 
 					/* TODO: check router metadata consistency */
-					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
-						return err
+					if shouldSync {
+						if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
+							return err
+						}
+						qc.markCoordinatorAddressSynced(internalR.ID, resp.Status)
 					}
 
 					/* Mark router as opened in qdb */
@@ -378,7 +440,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 			}
 		}
 
-		// Clean up connections for routers that no longer exist
+		// Clean up connections and state for routers that no longer exist
 		qc.routerConnMutex.RLock()
 		var staleConnIDs []string
 		for routerID := range qc.routerConnCache {
@@ -392,6 +454,23 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 			spqrlog.Zero.Debug().Str("router-id", routerID).Msg("cleaning up connection for removed router")
 			qc.closeRouterConn(routerID)
 		}
+
+		// Clean up state tracking for removed routers
+		qc.routerStatesMutex.Lock()
+		for routerID := range qc.routerStates {
+			if !currentRouterIDs[routerID] {
+				delete(qc.routerStates, routerID)
+			}
+		}
+		qc.routerStatesMutex.Unlock()
+
+		qc.lastCoordSyncMutex.Lock()
+		for routerID := range qc.lastCoordSync {
+			if !currentRouterIDs[routerID] {
+				delete(qc.lastCoordSync, routerID)
+			}
+		}
+		qc.lastCoordSyncMutex.Unlock()
 
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().IterationTimeout, defaultWatchRouterTimeout))
 	}
@@ -407,6 +486,8 @@ func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*ClusteredCoor
 		bounds:          make([][][]byte, 0),
 		index:           0,
 		routerConnCache: make(map[string]*grpc.ClientConn),
+		routerStates:    make(map[string]proto.RouterStatus),
+		lastCoordSync:   make(map[string]time.Time),
 	}, nil
 }
 
