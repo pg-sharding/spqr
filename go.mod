@@ -27,7 +27,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
-	github.com/xdg-go/scram v1.1.2
+	github.com/xdg-go/scram v1.2.0
 	go.etcd.io/etcd/client/v3 v3.6.6
 	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.45.0
