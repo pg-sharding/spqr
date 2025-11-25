@@ -363,6 +363,13 @@ type StopMoveTaskGroup struct {
 
 func (*StopMoveTaskGroup) iStatement() {}
 
+type InstanceControlPoint struct {
+	Name   string
+	Enable bool
+}
+
+func (*InstanceControlPoint) iStatement() {}
+
 // The following constants represent SHOW statements.
 const (
 	DatabasesStr          = "databases"

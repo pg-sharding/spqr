@@ -165,6 +165,7 @@ forwardable
 frmp
 frrule
 frsm
+frst
 frules
 ftts
 fugiat
@@ -624,6 +625,7 @@ Vitess
 Volkov
 voluptate
 voluptatem
+vmsg
 Warningf
 WMma
 workloadlog

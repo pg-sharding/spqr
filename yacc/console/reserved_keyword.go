@@ -5,6 +5,7 @@ var reservedWords = map[string]int{
 	"kill":         KILL,
 	"column":       COLUMN,
 	"columns":      COLUMNS,
+	"control":      CONTROL,
 	"shard":        SHARD,
 	"shards":       SHARDS,
 	"rule":         RULE,
@@ -89,4 +90,5 @@ var reservedWords = map[string]int{
 	"order":        ORDER,
 	"asc":          ASC,
 	"desc":         DESC,
+	"point":        POINT,
 }

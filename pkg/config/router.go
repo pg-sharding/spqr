@@ -112,6 +112,8 @@ type Router struct {
 	IdentityRangeSize    uint64 `json:"identity_range_size" toml:"identity_range_size" yaml:"identity_range_size"`
 
 	LogMinDurationStatement time.Duration `json:"log_min_duration_statement" toml:"log_min_duration_statement" yaml:"log_min_duration_statement"`
+
+	EnableICP bool `json:"enable_icp" toml:"enable_icp" yaml:"enable_icp"`
 }
 
 type QRouter struct {

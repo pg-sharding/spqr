@@ -164,15 +164,21 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	q, err := InsertSequenceValue(ctx, rm.Query, columns, rel.ColumnSequenceMapping, idCache)
 
-	if q, err := InsertSequenceValue(ctx, rm.Query, rel.ColumnSequenceMapping, idCache); err != nil {
+	if err != nil {
 		return nil, err
-	} else {
-		return &plan.ScatterPlan{
-			OverwriteQuery: q,
-			ExecTargets:    rel.ListStorageRoutes(),
-		}, nil
 	}
+
+	mp := map[string]string{}
+	for _, sh := range rel.ListStorageRoutes() {
+		mp[sh.Name] = q
+	}
+
+	return &plan.ScatterPlan{
+		OverwriteQuery: mp,
+		ExecTargets:    rel.ListStorageRoutes(),
+	}, nil
 }
 
 func CalculateRoutingListTupleItemValue(
@@ -208,7 +214,11 @@ func CalculateRoutingListTupleItemValue(
 	return v, nil
 }
 
-func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node, rm *rmeta.RoutingMetadataContext, stmt *lyx.Insert) ([]kr.ShardKey, error) {
+func PlanDistributedRelationInsert(
+	ctx context.Context,
+	routingList [][]lyx.Node,
+	rm *rmeta.RoutingMetadataContext,
+	stmt *lyx.Insert) ([]kr.ShardKey, error) {
 
 	insertColsPos, qualName, err := ProcessInsertFromSelectOffsets(ctx, stmt, rm)
 	if err != nil {

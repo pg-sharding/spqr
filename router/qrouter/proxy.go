@@ -108,7 +108,6 @@ func (qr *ProxyQrouter) DataShardsRoutes() []kr.ShardKey {
 	for _, el := range rc {
 		rv = append(rv, kr.ShardKey{
 			Name: el.ID,
-			RO:   false,
 		})
 	}
 	return rv
@@ -124,7 +123,6 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []kr.ShardKey {
 	for name := range qr.WorldShardCfgs {
 		ret = append(ret, kr.ShardKey{
 			Name: name,
-			RO:   false,
 		})
 	}
 

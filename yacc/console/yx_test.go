@@ -1923,3 +1923,43 @@ func TestKill(t *testing.T) {
 		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
+
+func TestICP(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "attach control point 'p1'",
+			exp: &spqrparser.InstanceControlPoint{
+				Name:   "p1",
+				Enable: true,
+			},
+			err: nil,
+		},
+		{
+			query: "detach control point 'p1'",
+			exp: &spqrparser.InstanceControlPoint{
+				Name:   "p1",
+				Enable: false,
+			},
+			err: nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+		} else {
+			assert.Error(err, "query %s", tt.query)
+		}
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
