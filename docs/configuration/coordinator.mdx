@@ -28,8 +28,8 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 | `systemd_notifier_debug`   | Whether to run systemd notifier in debug mode.                                               | `true`, `false`                               |
 | `iteration_timeout`        | Sleep duration between watchRouters iterations. Controls how frequently the coordinator checks router status and syncs metadata. Default `1s`. | Duration string (e.g., `1s`, `5m`, `10m`)   |
 | `lock_iteration_timeout`   | Sleep duration between attempts to acquire the coordinator lock when starting up. Default `1s`. | Duration string (e.g., `500ms`, `1s`, `5s`)   |
-| `router_keepalive_time`    | Interval for sending gRPC keepalive pings to routers. Prevents idle connection closure by network intermediaries. Default `30s`. | Duration string (for example `15s`, `30s`, `1m`) |
-| `router_keepalive_timeout` | Time to wait for keepalive ping response before considering connection dead. Default `20s`.  | Duration string (for example `10s`, `20s`)    |
+| `router_keepalive_time`    | Interval for sending gRPC keepalive pings to routers. Prevents idle connection closure by network intermediaries. Default `30s`. | Duration string (e.g., `15s`, `30s`, `1m`) |
+| `router_keepalive_timeout` | Time to wait for keepalive ping response before considering connection dead. Default `20s`.  | Duration string (e.g., `10s`, `20s`)    |
 | `enable_role_system`       | Whether to enable the [role-based access control system](./roles).                           | `true`, `false`                               |
 | `roles_file`               | The file path to the [roles](./roles) configuration.                                         | Any valid file path                           |
 | `etcd_max_send_bytes`      | Maximum request size in bytes that the etcd client (QDB implementation) is allowed to send. | Integer (bytes), use `0` for the etcd default |
