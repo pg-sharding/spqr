@@ -330,8 +330,6 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 
 				cc, err := qc.getOrCreateRouterConn(internalR)
 				if err != nil {
-					// If connection failed, clean it up and return error
-					qc.closeRouterConn(internalR.ID)
 					return err
 				}
 
@@ -381,17 +379,19 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 		}
 
 		// Clean up connections for routers that no longer exist
-		qc.routerConnMutex.Lock()
+		qc.routerConnMutex.RLock()
+		var staleConnIDs []string
 		for routerID := range qc.routerConnCache {
 			if !currentRouterIDs[routerID] {
-				spqrlog.Zero.Debug().Str("router-id", routerID).Msg("cleaning up connection for removed router")
-				if conn := qc.routerConnCache[routerID]; conn != nil {
-					_ = conn.Close()
-				}
-				delete(qc.routerConnCache, routerID)
+				staleConnIDs = append(staleConnIDs, routerID)
 			}
 		}
-		qc.routerConnMutex.Unlock()
+		qc.routerConnMutex.RUnlock()
+
+		for _, routerID := range staleConnIDs {
+			spqrlog.Zero.Debug().Str("router-id", routerID).Msg("cleaning up connection for removed router")
+			qc.closeRouterConn(routerID)
+		}
 
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().IterationTimeout, defaultWatchRouterTimeout))
 	}
