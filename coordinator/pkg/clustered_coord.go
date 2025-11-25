@@ -254,9 +254,10 @@ var _ coordinator.Coordinator = &ClusteredCoordinator{}
 
 // getOrCreateRouterConn returns a cached connection or creates a new one.
 func (qc *ClusteredCoordinator) getOrCreateRouterConn(r *topology.Router) (*grpc.ClientConn, error) {
-	qc.routerConnMutex.RLock()
+	qc.routerConnMutex.Lock()
+	defer qc.routerConnMutex.Unlock()
+
 	conn, exists := qc.routerConnCache[r.ID]
-	qc.routerConnMutex.RUnlock()
 
 	if exists {
 		// Check if connection is still valid
@@ -264,11 +265,9 @@ func (qc *ClusteredCoordinator) getOrCreateRouterConn(r *topology.Router) (*grpc
 		if state == connectivity.Ready || state == connectivity.Idle {
 			return conn, nil
 		}
-		// Connection is not healthy, remove it and create a new one
-		qc.routerConnMutex.Lock()
-		delete(qc.routerConnCache, r.ID)
-		qc.routerConnMutex.Unlock()
+		// Connection is not healthy, close and remove it
 		_ = conn.Close()
+		delete(qc.routerConnCache, r.ID)
 	}
 
 	// Create new connection
@@ -277,10 +276,7 @@ func (qc *ClusteredCoordinator) getOrCreateRouterConn(r *topology.Router) (*grpc
 		return nil, err
 	}
 
-	qc.routerConnMutex.Lock()
 	qc.routerConnCache[r.ID] = conn
-	qc.routerConnMutex.Unlock()
-
 	return conn, nil
 }
 
