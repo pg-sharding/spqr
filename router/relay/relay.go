@@ -676,6 +676,13 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			stmt := rst.qp.Stmt()
 
+			rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, query, stmt)
+			if err != nil {
+				return err
+			}
+
+			rst.savedRM[currentMsg.Name] = rm
+
 			def := &prepstatement.PreparedStatementDefinition{
 				Name:          currentMsg.Name,
 				Query:         query,
@@ -751,13 +758,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			if err := fin(); err != nil {
 				return err
 			}
-
-			rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.qp.OriginQuery(), rst.qp.Stmt())
-			if err != nil {
-				return err
-			}
-
-			rst.savedRM[currentMsg.Name] = rm
 
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, currentMsg.Query, time.Since(startTime))
 		case *pgproto3.Bind:
