@@ -264,9 +264,6 @@ var runCmd = &cobra.Command{
 						return err
 					}
 
-					// TODO: Add signal handling for graceful shutdown and call coordinator.Close()
-					// to properly cleanup cached router connections
-
 					app := coordApp.NewApp(coordinator)
 					return app.Run(false)
 				}(); err != nil {
