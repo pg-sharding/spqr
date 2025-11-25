@@ -73,6 +73,16 @@ func (a *Adapter) GetReferenceRelation(ctx context.Context, relName *rfqn.Relati
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetReferenceRelation not implemented")
 }
 
+// GetSequenceColumns implements meta.EntityMgr.
+func (a *Adapter) GetSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetSequenceColumns not implemented")
+}
+
+// GetSequenceColumns implements meta.EntityMgr.
+func (a *Adapter) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetSequenceRelations not implemented")
+}
+
 // SyncReferenceRelations implements meta.EntityMgr.
 func (a *Adapter) SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error {
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
