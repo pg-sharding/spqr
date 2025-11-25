@@ -607,18 +607,13 @@ func (qc *ClusteredCoordinator) traverseRouters(ctx context.Context, cb func(cc 
 			}
 
 			// TODO: run cb`s async
-			cc, err := DialRouter(&topology.Router{
+			cc, err := qc.getOrCreateRouterConn(&topology.Router{
 				ID:      rtr.ID,
 				Address: rtr.Addr(),
 			})
 			if err != nil {
 				return err
 			}
-			defer func() {
-				if err := cc.Close(); err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-				}
-			}()
 
 			if err := cb(cc); err != nil {
 				spqrlog.Zero.Debug().Err(err).Str("router id", rtr.ID).Msg("traverse routers")
@@ -1878,15 +1873,10 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		Str("address", qRouter.Address).
 		Msg("qdb coordinator: sync router metadata")
 
-	cc, err := DialRouter(qRouter)
+	cc, err := qc.getOrCreateRouterConn(qRouter)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := cc.Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-		}
-	}()
 
 	// Configure distributions
 	dsCl := proto.NewDistributionServiceClient(cc)
@@ -1993,15 +1983,10 @@ func (qc *ClusteredCoordinator) SyncRouterCoordinatorAddress(ctx context.Context
 		Str("address", qRouter.Address).
 		Msg("qdb coordinator: sync coordinator address")
 
-	cc, err := DialRouter(qRouter)
+	cc, err := qc.getOrCreateRouterConn(qRouter)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := cc.Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-		}
-	}()
 
 	/* Update current coordinator address. */
 	/* Todo: check that router metadata is in sync. */
