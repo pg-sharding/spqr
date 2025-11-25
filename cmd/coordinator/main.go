@@ -83,6 +83,9 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
+		// TODO: Add signal handling for graceful shutdown and call coordinator.Close()
+		// to properly cleanup cached router connections
+
 		app := app.NewApp(coordinator)
 		// run pprof without wait group
 		go func() {

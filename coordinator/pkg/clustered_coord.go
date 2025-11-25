@@ -291,6 +291,29 @@ func (qc *ClusteredCoordinator) closeRouterConn(routerID string) {
 	}
 }
 
+// Close cleanly shuts down the coordinator and closes all cached router connections.
+// This method should be called when the coordinator is shutting down to prevent connection leaks.
+func (qc *ClusteredCoordinator) Close() error {
+	qc.routerConnMutex.Lock()
+	defer qc.routerConnMutex.Unlock()
+
+	spqrlog.Zero.Info().
+		Int("connection-count", len(qc.routerConnCache)).
+		Msg("closing coordinator router connection cache")
+
+	for routerID, conn := range qc.routerConnCache {
+		if err := conn.Close(); err != nil {
+			spqrlog.Zero.Warn().
+				Err(err).
+				Str("router-id", routerID).
+				Msg("error closing router connection")
+		}
+		delete(qc.routerConnCache, routerID)
+	}
+
+	return nil
+}
+
 // watchRouters traverse routers one check if they are opened
 // for clients. If not, initialize metadata and open router
 // TODO : unit tests
