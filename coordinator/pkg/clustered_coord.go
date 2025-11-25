@@ -51,6 +51,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 type grpcConnMgr struct {
@@ -216,8 +217,21 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 		Str("router-id", r.ID).
 		Msg("dialing router")
 
+	// Configure keepalive to prevent connection closure during long idle periods
+	// Network intermediaries (load balancers, firewalls) typically close idle connections after 60s-5min
+	// Default: 30s keepalive ensures connections survive even aggressive timeouts (e.g., AWS ELB 60s default)
+	keepaliveTime := config.ValueOrDefaultDuration(config.CoordinatorConfig().RouterKeepaliveTime, 30*time.Second)
+	keepaliveTimeout := config.ValueOrDefaultDuration(config.CoordinatorConfig().RouterKeepaliveTimeout, 20*time.Second)
+
+	keepaliveParams := keepalive.ClientParameters{
+		Time:                keepaliveTime,    // Send keepalive ping interval
+		Timeout:             keepaliveTimeout, // Wait for ping ack before considering connection dead
+		PermitWithoutStream: true,             // Allow pings even when no active RPCs
+	}
+
 	return grpc.NewClient(r.Address,
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithKeepaliveParams(keepaliveParams))
 }
 
 const defaultWatchRouterTimeout = time.Second
