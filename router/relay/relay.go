@@ -106,6 +106,7 @@ type RelayStateImpl struct {
 	savedPortalDesc map[string]*PortalDesc
 
 	parseCache map[string]ParseCacheEntry
+	savedRM    map[string]*rmeta.RoutingMetadataContext
 
 	// buffer of messages to process on Sync request
 	xBuf []pgproto3.FrontendMessage
@@ -143,6 +144,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		saveBind:            pgproto3.Bind{},
 		savedPortalDesc:     map[string]*PortalDesc{},
 		parseCache:          map[string]ParseCacheEntry{},
+		savedRM:             map[string]*rmeta.RoutingMetadataContext{},
 		unnamedPortalExists: false,
 	}
 }
@@ -674,6 +676,13 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			stmt := rst.qp.Stmt()
 
+			rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, query, stmt)
+			if err != nil {
+				return err
+			}
+
+			rst.savedRM[currentMsg.Name] = rm
+
 			def := &prepstatement.PreparedStatementDefinition{
 				Name:          currentMsg.Name,
 				Query:         query,
@@ -749,6 +758,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			if err := fin(); err != nil {
 				return err
 			}
+
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, currentMsg.Query, time.Since(startTime))
 		case *pgproto3.Bind:
 			startTime := time.Now()
@@ -795,6 +805,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
 				rst.saveBind.DestinationPortal = currentMsg.DestinationPortal
 
+				rm := rst.savedRM[currentMsg.PreparedStatement]
+
 				hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.PreparedStatement)
 
 				rst.saveBind.PreparedStatement = fmt.Sprintf("%d", hash)
@@ -807,10 +819,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				ctx := context.TODO()
 
 				if rst.poolMgr.ValidateSliceChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
-					rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.qp.OriginQuery(), rst.qp.Stmt())
-					if err != nil {
-						return err
-					}
 
 					// Do not respond with BindComplete, as the relay step should take care of itself.
 					queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
