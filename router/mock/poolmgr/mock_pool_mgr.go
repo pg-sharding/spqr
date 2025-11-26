@@ -190,31 +190,31 @@ func (mr *MockPoolMgrMockRecorder) TXEndCB(rst any) *gomock.Call {
 }
 
 // UnRouteCB mocks base method.
-func (m *MockPoolMgr) UnRouteCB(arg0 client.RouterClient, sh []kr.ShardKey) error {
+func (m *MockPoolMgr) UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnRouteCB", arg0, sh)
+	ret := m.ctrl.Call(m, "UnRouteCB", client, sh)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UnRouteCB indicates an expected call of UnRouteCB.
-func (mr *MockPoolMgrMockRecorder) UnRouteCB(arg0, sh any) *gomock.Call {
+func (mr *MockPoolMgrMockRecorder) UnRouteCB(client, sh any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnRouteCB", reflect.TypeOf((*MockPoolMgr)(nil).UnRouteCB), arg0, sh)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnRouteCB", reflect.TypeOf((*MockPoolMgr)(nil).UnRouteCB), client, sh)
 }
 
 // UnRouteWithError mocks base method.
-func (m *MockPoolMgr) UnRouteWithError(arg0 client.RouterClient, sh []kr.ShardKey, errmsg error) error {
+func (m *MockPoolMgr) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnRouteWithError", arg0, sh, errmsg)
+	ret := m.ctrl.Call(m, "UnRouteWithError", client, sh, errmsg)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UnRouteWithError indicates an expected call of UnRouteWithError.
-func (mr *MockPoolMgrMockRecorder) UnRouteWithError(arg0, sh, errmsg any) *gomock.Call {
+func (mr *MockPoolMgrMockRecorder) UnRouteWithError(client, sh, errmsg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnRouteWithError", reflect.TypeOf((*MockPoolMgr)(nil).UnRouteWithError), arg0, sh, errmsg)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnRouteWithError", reflect.TypeOf((*MockPoolMgr)(nil).UnRouteWithError), client, sh, errmsg)
 }
 
 // ValidateSliceChange mocks base method.

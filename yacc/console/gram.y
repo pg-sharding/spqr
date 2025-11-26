@@ -725,9 +725,9 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &TaskGroupSelector{ ID: $4 }}
 	}
-	| DROP SEQUENCE any_id
+	| DROP SEQUENCE any_id opt_cascade
 	{
-		$$ = &Drop{Element: &SequenceSelector{Name: $3}}
+		$$ = &Drop{Element: &SequenceSelector{Name: $3}, CascadeDelete: $4}
 	}
 	| DROP REFERENCE table_or_relation any_id
 	{

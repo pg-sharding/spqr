@@ -342,6 +342,14 @@ func TestSimpleLex(t *testing.T) {
 			},
 		},
 		{
+			query: "DROP SEQUENCE seq",
+			exp: []int{
+				spqrparser.DROP,
+				spqrparser.SEQUENCE,
+				spqrparser.IDENT,
+			},
+		},
+		{
 			query: "CREATE DISTRIBUTION ds1 DEFAULT shard1",
 			exp: []int{
 				spqrparser.CREATE,

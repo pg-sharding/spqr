@@ -2189,7 +2189,7 @@ func (q *EtcdQDB) GetRelationSequence(ctx context.Context, relName *rfqn.Relatio
 	return ret, nil
 }
 
-func (q *EtcdQDB) getSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
+func (q *EtcdQDB) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
 	spqrlog.Zero.Debug().
 		Str("seqName", seqName).
 		Msg("etcdqdb: get columns attached to a sequence")
@@ -2198,19 +2198,18 @@ func (q *EtcdQDB) getSequenceColumns(ctx context.Context, seqName string) ([]str
 		return nil, err
 	}
 
-	cols := []string{}
+	rels := []*rfqn.RelationFQN{}
 	for _, kv := range resp.Kvs {
 		if string(kv.Value) != seqName {
 			continue
 		}
 
 		s := strings.Split(string(kv.Key), "/")
-		colName := s[len(s)-1]
 		relName := s[len(s)-2]
-		cols = append(cols, fmt.Sprintf("%s.%s", relName, colName))
+		rels = append(rels, &rfqn.RelationFQN{RelationName: relName})
 	}
 
-	return cols, nil
+	return rels, nil
 }
 
 func (q *EtcdQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) error {
@@ -2239,16 +2238,9 @@ func (q *EtcdQDB) DropSequence(ctx context.Context, seqName string, force bool) 
 		Str("sequence", seqName).
 		Bool("force", force).
 		Msg("etcdqdb: drop sequence")
-	depends, err := q.getSequenceColumns(ctx, seqName)
-	if err != nil {
-		return err
-	}
-	if len(depends) != 0 && !force {
-		return spqrerror.Newf(spqrerror.SPQR_SEQUENCE_ERROR, "column %q is attached to sequence", depends[0])
-	}
 
 	key := sequenceNodePath(seqName)
-	_, err = q.cli.Delete(ctx, key)
+	_, err := q.cli.Delete(ctx, key)
 	return err
 }
 

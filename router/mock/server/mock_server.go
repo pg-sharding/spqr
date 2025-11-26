@@ -48,17 +48,17 @@ func (m *MockServer) EXPECT() *MockServerMockRecorder {
 }
 
 // AddDataShard mocks base method.
-func (m *MockServer) AddDataShard(clid uint, shardKey kr.ShardKey, arg2 tsa.TSA) error {
+func (m *MockServer) AddDataShard(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddDataShard", clid, shardKey, arg2)
+	ret := m.ctrl.Call(m, "AddDataShard", clid, shardKey, tsa)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddDataShard indicates an expected call of AddDataShard.
-func (mr *MockServerMockRecorder) AddDataShard(clid, shardKey, arg2 any) *gomock.Call {
+func (mr *MockServerMockRecorder) AddDataShard(clid, shardKey, tsa any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDataShard", reflect.TypeOf((*MockServer)(nil).AddDataShard), clid, shardKey, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDataShard", reflect.TypeOf((*MockServer)(nil).AddDataShard), clid, shardKey, tsa)
 }
 
 // Cancel mocks base method.
@@ -104,17 +104,17 @@ func (mr *MockServerMockRecorder) Datashards() *gomock.Call {
 }
 
 // ExpandDataShard mocks base method.
-func (m *MockServer) ExpandDataShard(clid uint, shkey kr.ShardKey, arg2 tsa.TSA, deployTX bool) error {
+func (m *MockServer) ExpandDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExpandDataShard", clid, shkey, arg2, deployTX)
+	ret := m.ctrl.Call(m, "ExpandDataShard", clid, shkey, tsa, deployTX)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ExpandDataShard indicates an expected call of ExpandDataShard.
-func (mr *MockServerMockRecorder) ExpandDataShard(clid, shkey, arg2, deployTX any) *gomock.Call {
+func (mr *MockServerMockRecorder) ExpandDataShard(clid, shkey, tsa, deployTX any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpandDataShard", reflect.TypeOf((*MockServer)(nil).ExpandDataShard), clid, shkey, arg2, deployTX)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpandDataShard", reflect.TypeOf((*MockServer)(nil).ExpandDataShard), clid, shkey, tsa, deployTX)
 }
 
 // HasPrepareStatement mocks base method.

@@ -1053,3 +1053,11 @@ func (lc *Coordinator) ListSequences(ctx context.Context) ([]string, error) {
 func (lc *Coordinator) ListRelationSequences(ctx context.Context, rel *rfqn.RelationFQN) (map[string]string, error) {
 	return lc.qdb.GetRelationSequence(ctx, rel)
 }
+
+func (lc *Coordinator) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
+	return lc.qdb.GetSequenceRelations(ctx, seqName)
+}
+
+func (lc *Coordinator) AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error {
+	return lc.qdb.AlterSequenceDetachRelation(ctx, rel)
+}
