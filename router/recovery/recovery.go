@@ -58,11 +58,13 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 			return err
 		}
 
-		serv.Instance().Send(&pgproto3.Query{
+		if err := serv.Instance().Send(&pgproto3.Query{
 			String: `
 				SELECT gid FROM pg_prepared_xacts;
 			`,
-		})
+		}); err != nil {
+			return err
+		}
 
 		gids := []string{}
 

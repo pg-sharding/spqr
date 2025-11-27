@@ -422,7 +422,7 @@ var runCmd = &cobra.Command{
 			wg.Done()
 		}(wg)
 
-		/* should we run two phase watchgod? */
+		/* should we run two phase watchdog? */
 		if config.RouterConfig().EnableTwoPhaseWD {
 			wg.Add(1)
 
