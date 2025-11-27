@@ -14,6 +14,7 @@ import (
 	rgrpc "github.com/pg-sharding/spqr/router/grpc"
 	"github.com/pg-sharding/spqr/router/instance"
 	"github.com/pg-sharding/spqr/router/port"
+	"github.com/pg-sharding/spqr/router/recovery"
 	"google.golang.org/grpc"
 )
 
@@ -138,4 +139,21 @@ func (app *App) ServiceUnixSocket(ctx context.Context) error {
 
 	<-ctx.Done()
 	return nil
+}
+
+func (app *App) ServeWD(ctx context.Context) error {
+
+	wd := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule)
+	for {
+		select {
+		case <-ctx.Done():
+			spqrlog.Zero.Info().Msg("recovery watchdog done")
+			return nil
+		default:
+			err := wd.RecoverDistributedTx()
+			if err != nil {
+				spqrlog.Zero.Error().Err(err)
+			}
+		}
+	}
 }

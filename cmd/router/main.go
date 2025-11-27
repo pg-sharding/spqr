@@ -422,6 +422,22 @@ var runCmd = &cobra.Command{
 			wg.Done()
 		}(wg)
 
+		/* should we run two phase watchgod? */
+		if config.RouterConfig().EnableTwoPhaseWD {
+			wg.Add(1)
+
+			/* XXX: configure more that one watchdog? */
+
+			go func(wg *sync.WaitGroup) {
+				err := app.ServeWD(ctx)
+				if err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("failed to serve recovery watchdog")
+					errCh <- err
+				}
+				wg.Done()
+			}(wg)
+		}
+
 		// run pprof without wait group
 		go func() {
 			log.Println(http.ListenAndServe("localhost:6060", nil))
