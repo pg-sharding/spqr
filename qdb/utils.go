@@ -22,11 +22,29 @@ func closeSession(sess *concurrency.Session) {
 	}
 }
 
+var (
+	local *MemQDB = nil
+)
+
 func GetQDB() (*MemQDB, error) {
+	if local != nil {
+		return local, nil
+	}
+
 	if config.RouterConfig().MemqdbBackupPath != "" {
 		db, err := RestoreQDB(config.RouterConfig().MemqdbBackupPath)
+		if err != nil {
+			return nil, err
+		}
 
-		return db, err
+		local = db
+		return local, err
 	}
-	return NewMemQDB(config.RouterConfig().MemqdbBackupPath)
+	db, err := NewMemQDB(config.RouterConfig().MemqdbBackupPath)
+	if err != nil {
+		return nil, err
+	}
+
+	local = db
+	return local, err
 }
