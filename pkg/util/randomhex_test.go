@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"encoding/hex"
@@ -7,7 +7,7 @@ import (
 
 func TestRandomHexLength(t *testing.T) {
 	n := 16
-	got, err := randomHex(n)
+	got, err := RandomHex(n)
 	if err != nil {
 		t.Fatalf("randomHex(%d) returned error: %v", n, err)
 	}
@@ -20,7 +20,7 @@ func TestRandomHexLength(t *testing.T) {
 
 func TestRandomHexIsValidHex(t *testing.T) {
 	n := 8
-	got, err := randomHex(n)
+	got, err := RandomHex(n)
 	if err != nil {
 		t.Fatalf("randomHex(%d) returned error: %v", n, err)
 	}
@@ -31,7 +31,7 @@ func TestRandomHexIsValidHex(t *testing.T) {
 }
 
 func TestRandomHexZeroLength(t *testing.T) {
-	got, err := randomHex(0)
+	got, err := RandomHex(0)
 	if err != nil {
 		t.Fatalf("randomHex(0) returned error: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestRandomHexNotAllEqual(t *testing.T) {
 
 	values := make([]string, 0, count)
 	for i := 0; i < count; i++ {
-		v, err := randomHex(n)
+		v, err := RandomHex(n)
 		if err != nil {
 			t.Fatalf("randomHex(%d) returned error on iteration %d: %v", n, i, err)
 		}
