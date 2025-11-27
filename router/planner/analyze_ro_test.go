@@ -71,7 +71,7 @@ func TestCheckRoOnlyQuery(t *testing.T) {
 		},
 	} {
 
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 

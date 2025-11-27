@@ -673,7 +673,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			}
 
 			/* XXX: check that we have reference relation insert here */
-
 			stmt := rst.qp.Stmt()
 
 			rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, query, stmt)
@@ -1062,6 +1061,10 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 
 	state, comm, err := rst.qp.Parse(query)
 
+	if err != nil {
+		return nil, "", err
+	}
+
 	switch stm := rst.qp.Stmt().(type) {
 	case *lyx.Insert:
 		// load columns from information schema
@@ -1081,7 +1084,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 		}
 	}
 
-	if err == nil && doCaching {
+	if doCaching {
 		stmt := rst.qp.Stmt()
 		/* only cache specific type of queries */
 		switch stmt.(type) {
@@ -1095,7 +1098,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 	}
 
 	rst.plainQ = query
-	return state, comm, err
+	return state, comm, nil
 }
 
 var _ RelayStateMgr = &RelayStateImpl{}
