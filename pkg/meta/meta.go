@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/engine"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -750,6 +751,37 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 	switch stmt := tstmt.(type) {
 	case nil:
 		return cli.CompleteMsg(0)
+	case *spqrparser.InstanceControlPoint:
+		/* create control point */
+		if stmt.Enable {
+			err := icp.DefineICP(stmt.Name)
+			if err != nil {
+				return cli.ReportError(err)
+			}
+		} else {
+			err := icp.ResetICP(stmt.Name)
+			if err != nil {
+				return cli.ReportError(err)
+			}
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("control point"),
+		}
+		if stmt.Enable {
+			tts.Raw = [][][]byte{
+				{
+					[]byte("ATTACH CONTROL POINT"),
+				},
+			}
+		} else {
+			tts.Raw = [][][]byte{
+				{
+					[]byte("DETACH CONTROL POINT"),
+				},
+			}
+		}
+
+		return cli.ReplyTTS(tts)
 	case *spqrparser.TraceStmt:
 		if writer == nil {
 			return fmt.Errorf("cannot save workload from here")
