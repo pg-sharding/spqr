@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"sync"
+	"time"
 
 	reuse "github.com/libp2p/go-reuseport"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -143,7 +144,12 @@ func (app *App) ServiceUnixSocket(ctx context.Context) error {
 
 func (app *App) ServeWD(ctx context.Context) error {
 
-	wd := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule)
+	wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule)
+
+	if err != nil {
+		return err
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -154,6 +160,9 @@ func (app *App) ServeWD(ctx context.Context) error {
 			if err != nil {
 				spqrlog.Zero.Error().Err(err)
 			}
+
+			/* wait for some period of time */
+			time.Sleep(config.ValueOrDefaultDuration(config.RouterConfig().WatchdogSleepInterval, time.Second))
 		}
 	}
 }

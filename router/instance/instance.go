@@ -74,20 +74,8 @@ func (r *InstanceImpl) Initialize() bool {
 var _ RouterInstance = &InstanceImpl{}
 
 func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
-	var db *qdb.MemQDB
-	var err error
 
-	if config.RouterConfig().MemqdbBackupPath != "" {
-		db, err = qdb.RestoreQDB(config.RouterConfig().MemqdbBackupPath)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		db, err = qdb.NewMemQDB(config.RouterConfig().MemqdbBackupPath)
-		if err != nil {
-			return nil, err
-		}
-	}
+	db, err := qdb.GetQDB()
 
 	cache := cache.NewSchemaCache(config.RouterConfig().ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
 	lc := coord.NewLocalInstanceMetadataMgr(db, cache)

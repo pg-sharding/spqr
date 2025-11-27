@@ -6,20 +6,20 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type TwoPCWatchDog struct {
-	m  meta.EntityMgr
+	d  qdb.XQDB
 	be *config.BackendRule
 	p  pool.MultiShardTSAPool
 }
 
-func NewTwoPCWatchDog(be *config.BackendRule) *TwoPCWatchDog {
+func NewTwoPCWatchDog(be *config.BackendRule) (*TwoPCWatchDog, error) {
 	wd := &TwoPCWatchDog{
 		be: be,
 	}
@@ -30,14 +30,19 @@ func NewTwoPCWatchDog(be *config.BackendRule) *TwoPCWatchDog {
 
 	wd.p.SetRule(wd.be)
 
-	return wd
+	db, err := qdb.GetQDB()
+	if err != nil {
+		return nil, err
+	}
+	wd.d = db
+
+	return wd, nil
 }
 
 func (d *TwoPCWatchDog) RecoverDistributedTx() error {
-
 	ctx := context.TODO()
 
-	shs, err := d.m.ListShards(ctx)
+	shs, err := d.d.ListShards(ctx)
 	if err != nil {
 		return err
 	}

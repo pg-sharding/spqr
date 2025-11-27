@@ -118,7 +118,8 @@ type Router struct {
 	EnableICP        bool `json:"enable_icp" toml:"enable_icp" yaml:"enable_icp"`
 	EnableTwoPhaseWD bool `json:"enable_2pc_watchdog" toml:"enable_2pc_watchdog" yaml:"enable_2pc_watchdog"`
 
-	WatchdogBackendRule *BackendRule `json:"watchdog_backend_rule" toml:"watchdog_backend_rule" yaml:"watchdog_backend_rule"`
+	WatchdogBackendRule   *BackendRule  `json:"watchdog_backend_rule" toml:"watchdog_backend_rule" yaml:"watchdog_backend_rule"`
+	WatchdogSleepInterval time.Duration `json:"watchdog_sleep_interval" toml:"watchdog_sleep_interval" yaml:"watchdog_sleep_interval"`
 }
 
 type QRouter struct {
