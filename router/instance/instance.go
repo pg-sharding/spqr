@@ -76,6 +76,9 @@ var _ RouterInstance = &InstanceImpl{}
 func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 
 	db, err := qdb.GetQDB()
+	if err != nil {
+		return nil, err
+	}
 
 	cache := cache.NewSchemaCache(config.RouterConfig().ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
 	lc := coord.NewLocalInstanceMetadataMgr(db, cache)
