@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
@@ -116,9 +117,12 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	qp.stmt = nil
 	spqrlog.Zero.Debug().Str("query", query).Msg("parsing client query")
 
-	routerStmts, err := lyx.Parse(query)
+	routerStmts, errpos, err := lyx.Parse(query)
 	if err != nil {
-		return nil, comment, err
+		return nil, comment, &spqrerror.SpqrError{
+			Err:      err,
+			Position: int32(errpos),
+		}
 	}
 	if routerStmts == nil || routerStmts[0] == nil {
 		qp.state = ParseStateEmptyQuery{}

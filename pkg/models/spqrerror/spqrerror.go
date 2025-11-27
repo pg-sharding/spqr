@@ -74,6 +74,7 @@ type SpqrError struct {
 	Err error
 
 	ErrorCode string
+	Position  int32
 	ErrHint   string
 }
 
