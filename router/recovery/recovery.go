@@ -63,6 +63,8 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 				SELECT gid FROM pg_prepared_xacts;
 			`,
 		}); err != nil {
+			/* Be tidy, return acquired connection. */
+			_ = d.p.Discard(serv)
 			return err
 		}
 
@@ -91,10 +93,15 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 				}
 			}
 		}(); err != nil {
+			/* Be tidy, return acquired connection. */
+			_ = d.p.Discard(serv)
 			return err
 		}
 
 		spqrlog.Zero.Debug().Str("shard", sh.ID).Strs("gids", gids).Msg("found unfinished tx on shard")
+		if err := d.p.Put(serv); err != nil {
+			return err
+		}
 	}
 
 	return nil
