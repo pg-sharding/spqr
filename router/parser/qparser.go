@@ -117,11 +117,11 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	qp.stmt = nil
 	spqrlog.Zero.Debug().Str("query", query).Msg("parsing client query")
 
-	routerStmts, errpos, err := lyx.Parse(query)
+	routerStmts, pos, err := lyx.Parse(query)
 	if err != nil {
 		return nil, comment, &spqrerror.SpqrError{
 			Err:      err,
-			Position: int32(errpos),
+			Position: int32(pos),
 		}
 	}
 	if routerStmts == nil || routerStmts[0] == nil {
