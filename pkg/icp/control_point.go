@@ -12,7 +12,7 @@ const (
 
 /* XXX: store name -> action? */
 var (
-	/* Lets keep it simple - perfomance does not matter here */
+	/* Lets keep it simple - performance does not matter here */
 	mu    sync.Mutex
 	cpsMp = map[string]struct{}{}
 )
