@@ -98,8 +98,8 @@ shards:
       - 'localhost:5653'
 
 watchdog_backend_rule:
-  usr: regress
-  db: regress
+  usr: user1
+  db: db1
   pool_discard: true
   pool_rollback: true
 
