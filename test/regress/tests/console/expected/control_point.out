@@ -1,0 +1,19 @@
+-- Test ATTACH CONTROL POINT command
+ATTACH CONTROL POINT '2pc_decision_cp';
+    control point     
+----------------------
+ ATTACH CONTROL POINT
+(1 row)
+
+-- Test DETACH CONTROL POINT command
+DETACH CONTROL POINT '2pc_decision_cp';
+    control point     
+----------------------
+ DETACH CONTROL POINT
+(1 row)
+
+-- Test error case: unknown control point
+ATTACH CONTROL POINT 'unknown_cp';
+ERROR:  unknown control point name unknown_cp
+DETACH CONTROL POINT 'unknown_cp';
+ERROR:  unknown control point name unknown_cp
