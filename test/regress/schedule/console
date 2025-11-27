@@ -21,3 +21,4 @@ test: reference_table
 test: show_users
 test: show_tsa_cache
 test: routing_expression
+test: control_point
