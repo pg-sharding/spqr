@@ -3,6 +3,7 @@ package qdb
 import (
 	"context"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"go.etcd.io/etcd/client/v3/concurrency"
 )
@@ -19,4 +20,13 @@ func closeSession(sess *concurrency.Session) {
 	if err := sess.Close(); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 	}
+}
+
+func GetQDB() (*MemQDB, error) {
+	if config.RouterConfig().MemqdbBackupPath != "" {
+		db, err := RestoreQDB(config.RouterConfig().MemqdbBackupPath)
+
+		return db, err
+	}
+	return NewMemQDB(config.RouterConfig().MemqdbBackupPath)
 }

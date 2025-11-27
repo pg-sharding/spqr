@@ -97,6 +97,14 @@ shards:
       - 'localhost:5553'
       - 'localhost:5653'
 
+watchdog_backend_rule:
+  usr: regress
+  db: regress
+  pool_discard: true
+  pool_rollback: true
+
+enable_2pc_watchdog: true
+
 schema_cache_backend_rule:
   usr: regress
   db: regress
