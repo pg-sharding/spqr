@@ -172,7 +172,7 @@ func TestMultiShardRouting(t *testing.T) {
 			exp:   &plan.RandomDispatchPlan{},
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -301,7 +301,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 			err:   rerrors.ErrComplexQuery,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -464,7 +464,7 @@ func TestRoutingByExpression(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -576,7 +576,7 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -727,7 +727,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 			},
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -834,7 +834,7 @@ func TestComment(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1135,7 +1135,7 @@ func TestCTE(t *testing.T) {
 			},
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1464,7 +1464,7 @@ func TestSingleShard(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1620,7 +1620,7 @@ func TestInsertOffsets(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1781,7 +1781,7 @@ func TestJoins(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1887,7 +1887,7 @@ func TestUnnest(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1974,7 +1974,7 @@ func TestCopySingleShard(t *testing.T) {
 			err:   nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2062,7 +2062,7 @@ func TestCopyMultiShard(t *testing.T) {
 			err:   nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2150,7 +2150,7 @@ func TestSetStmt(t *testing.T) {
 			err:          nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2477,7 +2477,7 @@ LIMIT 1000
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2569,7 +2569,7 @@ func TestHashRouting(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2658,7 +2658,7 @@ func TestCheckTableIsRoutable(t *testing.T) {
 		},
 		{
 			query: "create table table1 (id1 int)",
-			err:   fmt.Errorf("create table stmt ignored: no sharding rule columns found"),
+			err:   fmt.Errorf("create table stmt ignored: no matching distribution found"),
 		},
 		{
 			query: "create table schema2.table2 (id int, dat varchar)",
@@ -2669,7 +2669,7 @@ func TestCheckTableIsRoutable(t *testing.T) {
 			err:   fmt.Errorf("distribution for relation \"schema2.table2Err\" not found"),
 		},
 	} {
-		stmt, err := lyx.Parse(tt.query)
+		stmt, _, err := lyx.Parse(tt.query)
 		assert.NoError(err)
 		switch node := stmt[0].(type) {
 		case *lyx.CreateTable:

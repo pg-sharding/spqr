@@ -10,7 +10,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
@@ -27,7 +26,6 @@ import (
 
 type LocalQrouterServer struct {
 	protos.UnimplementedKeyRangeServiceServer
-	protos.UnimplementedShardingRulesServiceServer
 	protos.UnimplementedRouterServiceServer
 	protos.UnimplementedTopologyServiceServer
 	protos.UnimplementedClientInfoServiceServer
@@ -318,21 +316,6 @@ func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.M
 	}
 
 	return &protos.ModifyReply{}, nil
-}
-
-// TODO : unit tests
-func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*emptypb.Empty, error) {
-	return nil, spqrerror.ShardingRulesRemoved
-}
-
-// TODO : unit tests
-func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
-	return nil, spqrerror.ShardingRulesRemoved
-}
-
-// TODO : unit tests
-func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *protos.DropShardingRuleRequest) (*emptypb.Empty, error) {
-	return nil, spqrerror.ShardingRulesRemoved
 }
 
 // TODO : unit tests
@@ -656,7 +639,6 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	reflection.Register(server)
 
 	protos.RegisterKeyRangeServiceServer(server, lqr)
-	protos.RegisterShardingRulesServiceServer(server, lqr)
 	protos.RegisterRouterServiceServer(server, lqr)
 	protos.RegisterTopologyServiceServer(server, lqr)
 	protos.RegisterClientInfoServiceServer(server, lqr)
@@ -670,7 +652,6 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
-var _ protos.ShardingRulesServiceServer = &LocalQrouterServer{}
 var _ protos.RouterServiceServer = &LocalQrouterServer{}
 var _ protos.ClientInfoServiceServer = &LocalQrouterServer{}
 var _ protos.BackendConnectionsServiceServer = &LocalQrouterServer{}

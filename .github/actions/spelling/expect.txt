@@ -159,6 +159,7 @@ ffd
 fffffffffffe
 FFFFFFFFFFFFFFFF
 filerow
+firewalls
 fmtcheck
 forumsys
 forwardable
@@ -204,6 +205,7 @@ hotspots
 hst
 HTAP
 iana
+icp
 IDBy
 idi
 idj
@@ -463,11 +465,11 @@ rmgr
 rollbacked
 roolback
 routable
-routemgr
 routerparser
 routerproto
 routingstate
 rowmap
+RPCs
 rport
 rqdn
 rqfn
@@ -581,8 +583,8 @@ topbar
 TOPENBR
 TOPENSQBR
 tpcc
-TRASCE
 tran
+TRASCE
 tsa
 TSEMICOLON
 tstmt
@@ -622,10 +624,10 @@ vasya
 velit
 vguoyguoygoyy
 Vitess
+vmsg
 Volkov
 voluptate
 voluptatem
-vmsg
 Warningf
 WMma
 workloadlog

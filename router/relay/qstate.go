@@ -61,8 +61,6 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
 		}
 
-		err = fmt.Errorf("client processing error: '%v': %w, tx status %s", query, err, rst.QueryExecutor().TxStatus().String())
-
 		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
 			// TODO: figure out if we need this
 			// _ = rst.UnrouteRoutes(rst.ActiveShards())

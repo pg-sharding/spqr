@@ -697,17 +697,17 @@ func (mr *MockRouterClientMockRecorder) ReplyErr(errmsg any) *gomock.Call {
 }
 
 // ReplyErrMsg mocks base method.
-func (m *MockRouterClient) ReplyErrMsg(e, c string, s txstatus.TXStatus) error {
+func (m *MockRouterClient) ReplyErrMsg(e, c string, p int32, s txstatus.TXStatus) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReplyErrMsg", e, c, s)
+	ret := m.ctrl.Call(m, "ReplyErrMsg", e, c, p, s)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReplyErrMsg indicates an expected call of ReplyErrMsg.
-func (mr *MockRouterClientMockRecorder) ReplyErrMsg(e, c, s any) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) ReplyErrMsg(e, c, p, s any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErrMsg", reflect.TypeOf((*MockRouterClient)(nil).ReplyErrMsg), e, c, s)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErrMsg", reflect.TypeOf((*MockRouterClient)(nil).ReplyErrMsg), e, c, p, s)
 }
 
 // ReplyErrMsgByCode mocks base method.
