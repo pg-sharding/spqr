@@ -45,7 +45,7 @@ type EntityMgr interface {
 	tasks.TaskMgr
 	sequences.SequenceMgr
 	rrelation.ReferenceRelationMgr
-	mtran.TransactioMgr
+	mtran.TransactionMgr
 
 	ShareKeyRange(id string) error
 

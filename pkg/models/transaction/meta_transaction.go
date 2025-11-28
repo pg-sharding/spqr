@@ -9,7 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-type TransactioMgr interface {
+type TransactionMgr interface {
 	// Execute chunk of commands as atomic operation
 	// TODO: remove after transaction system will be implemented at all
 	ExecNoTran(ctx context.Context, chunk *MetaTransactionChunk) error
@@ -72,7 +72,7 @@ const (
 func NewMetaTransactionChunk(gossipRequests []*proto.MetaTransactionGossipCommand,
 	qdbStatements []qdb.QdbStatement) (*MetaTransactionChunk, error) {
 	if len(qdbStatements) == 0 {
-		return nil, fmt.Errorf("transaction chunk must have a qdb statetment (create chunk)")
+		return nil, fmt.Errorf("transaction chunk must have a qdb statement (create chunk)")
 	} else {
 		return &MetaTransactionChunk{
 			GossipRequests: gossipRequests,
@@ -84,11 +84,11 @@ func NewMetaTransactionChunk(gossipRequests []*proto.MetaTransactionGossipComman
 func (tc *MetaTransactionChunk) Append(gossipRequests []*proto.MetaTransactionGossipCommand,
 	qdbStatements []qdb.QdbStatement) error {
 	if len(qdbStatements) == 0 {
-		return fmt.Errorf("transaction chunk must have a qdb statetment (case 1)")
+		return fmt.Errorf("transaction chunk must have a qdb statement (case 1)")
 	} else {
 		for _, req := range gossipRequests {
 			if gossipType := GetGossipRequestType(req); gossipType == GR_UNKNOWN {
-				return fmt.Errorf("invalid meta gossp command request")
+				return fmt.Errorf("invalid meta gossip command request")
 			}
 		}
 		tc.GossipRequests = append(tc.GossipRequests, gossipRequests...)

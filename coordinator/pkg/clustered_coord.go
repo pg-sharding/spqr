@@ -2475,7 +2475,7 @@ func gossipMetaChanges(ctx context.Context, gossip *proto.MetaTransactionGossipR
 		resp, err := cl.ApplyMeta(ctx, gossip)
 		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
-			Msg("seng meta transaction gossip")
+			Msg("send meta transaction gossip")
 		return err
 	}
 }
