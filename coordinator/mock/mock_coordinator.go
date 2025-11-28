@@ -19,6 +19,7 @@ import (
 	rrelation "github.com/pg-sharding/spqr/pkg/models/rrelation"
 	tasks "github.com/pg-sharding/spqr/pkg/models/tasks"
 	topology "github.com/pg-sharding/spqr/pkg/models/topology"
+	meta_transaction "github.com/pg-sharding/spqr/pkg/models/transaction"
 	qdb "github.com/pg-sharding/spqr/qdb"
 	cache "github.com/pg-sharding/spqr/router/cache"
 	port "github.com/pg-sharding/spqr/router/port"
@@ -176,6 +177,21 @@ func (mr *MockCoordinatorMockRecorder) BatchMoveKeyRange(ctx, req any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockCoordinator)(nil).BatchMoveKeyRange), ctx, req)
 }
 
+// BeginTran mocks base method.
+func (m *MockCoordinator) BeginTran(ctx context.Context) (*meta_transaction.MetaTransaction, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeginTran", ctx)
+	ret0, _ := ret[0].(*meta_transaction.MetaTransaction)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BeginTran indicates an expected call of BeginTran.
+func (mr *MockCoordinatorMockRecorder) BeginTran(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginTran", reflect.TypeOf((*MockCoordinator)(nil).BeginTran), ctx)
+}
+
 // Cache mocks base method.
 func (m *MockCoordinator) Cache() *cache.SchemaCache {
 	m.ctrl.T.Helper()
@@ -188,6 +204,20 @@ func (m *MockCoordinator) Cache() *cache.SchemaCache {
 func (mr *MockCoordinatorMockRecorder) Cache() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cache", reflect.TypeOf((*MockCoordinator)(nil).Cache))
+}
+
+// CommitTran mocks base method.
+func (m *MockCoordinator) CommitTran(ctx context.Context, transaction *meta_transaction.MetaTransaction) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CommitTran", ctx, transaction)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CommitTran indicates an expected call of CommitTran.
+func (mr *MockCoordinatorMockRecorder) CommitTran(ctx, transaction any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitTran", reflect.TypeOf((*MockCoordinator)(nil).CommitTran), ctx, transaction)
 }
 
 // CreateDistribution mocks base method.
@@ -205,17 +235,17 @@ func (mr *MockCoordinatorMockRecorder) CreateDistribution(ctx, ds any) *gomock.C
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockCoordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+func (m *MockCoordinator) CreateKeyRange(ctx context.Context, arg1 *kr.KeyRange) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, kr)
+	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateKeyRange indicates an expected call of CreateKeyRange.
-func (mr *MockCoordinatorMockRecorder) CreateKeyRange(ctx, kr any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) CreateKeyRange(ctx, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockCoordinator)(nil).CreateKeyRange), ctx, kr)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockCoordinator)(nil).CreateKeyRange), ctx, arg1)
 }
 
 // CreateReferenceRelation mocks base method.
@@ -329,6 +359,20 @@ func (m *MockCoordinator) DropShard(ctx context.Context, id string) error {
 func (mr *MockCoordinatorMockRecorder) DropShard(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropShard", reflect.TypeOf((*MockCoordinator)(nil).DropShard), ctx, id)
+}
+
+// ExecNoTran mocks base method.
+func (m *MockCoordinator) ExecNoTran(ctx context.Context, chunk *meta_transaction.MetaTransactionChunk) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExecNoTran", ctx, chunk)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ExecNoTran indicates an expected call of ExecNoTran.
+func (mr *MockCoordinatorMockRecorder) ExecNoTran(ctx, chunk any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecNoTran", reflect.TypeOf((*MockCoordinator)(nil).ExecNoTran), ctx, chunk)
 }
 
 // GetBalancerTask mocks base method.

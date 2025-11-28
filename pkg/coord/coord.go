@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
@@ -1060,4 +1061,29 @@ func (lc *Coordinator) GetSequenceRelations(ctx context.Context, seqName string)
 
 func (lc *Coordinator) AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error {
 	return lc.qdb.AlterSequenceDetachRelation(ctx, rel)
+}
+
+func (lc *Coordinator) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionChunk) error {
+	if len(chunk.GossipRequests) > 0 {
+		return fmt.Errorf("gossip requests is supported in clustered mode only")
+	}
+	return lc.qdb.ExecNoTransaction(ctx, chunk.QdbStatements)
+}
+
+func (lc *Coordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
+	if len(transaction.Operations.GossipRequests) > 0 {
+		return fmt.Errorf("gossip requests is supported in clustered mode only")
+	}
+	return lc.qdb.CommitTransaction(ctx, mtran.ToQdbTransaction(transaction))
+}
+
+func (lc *Coordinator) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error) {
+	if qdbTran, err := qdb.NewTransaction(); err != nil {
+		return nil, err
+	} else {
+		if err := lc.qdb.BeginTransaction(ctx, qdbTran); err != nil {
+			return nil, err
+		}
+		return mtran.NewMetaTransaction(*qdbTran), nil
+	}
 }
