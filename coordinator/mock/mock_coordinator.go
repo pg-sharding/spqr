@@ -247,6 +247,20 @@ func (mr *MockCoordinatorMockRecorder) CurrVal(ctx, seqName any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrVal", reflect.TypeOf((*MockCoordinator)(nil).CurrVal), ctx, seqName)
 }
 
+// DCStateKeeper mocks base method.
+func (m *MockCoordinator) DCStateKeeper() qdb.DCStateKeeper {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DCStateKeeper")
+	ret0, _ := ret[0].(qdb.DCStateKeeper)
+	return ret0
+}
+
+// DCStateKeeper indicates an expected call of DCStateKeeper.
+func (mr *MockCoordinatorMockRecorder) DCStateKeeper() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DCStateKeeper", reflect.TypeOf((*MockCoordinator)(nil).DCStateKeeper))
+}
+
 // DropDistribution mocks base method.
 func (m *MockCoordinator) DropDistribution(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()

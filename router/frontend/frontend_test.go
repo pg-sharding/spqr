@@ -33,6 +33,11 @@ func TestFrontendSimpleEOF(t *testing.T) {
 
 	cl := mockcl.NewMockRouterClient(ctrl)
 	qr := mockqr.NewMockQueryRouter(ctrl)
+
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+	mmgr.EXPECT().DCStateKeeper().AnyTimes().Return(nil)
+	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
+
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
@@ -59,6 +64,7 @@ func TestFrontendSimple(t *testing.T) {
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
 
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+	mmgr.EXPECT().DCStateKeeper().AnyTimes().Return(nil)
 
 	frrule := &config.FrontendRule{
 		DB:  "db1",
@@ -172,6 +178,7 @@ func TestFrontendXProto(t *testing.T) {
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
 
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+	mmgr.EXPECT().DCStateKeeper().AnyTimes().Return(nil)
 
 	frrule := &config.FrontendRule{
 		DB:       "db1",

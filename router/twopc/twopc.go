@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/server"
 )
 
@@ -20,7 +21,7 @@ const (
 	COMMIT_STRATEGY_2PC = "2pc"
 )
 
-func ExecuteTwoPhaseCommit(clid uint, s server.Server) error {
+func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) error {
 
 	/*
 	* go along first phase
@@ -29,11 +30,23 @@ func ExecuteTwoPhaseCommit(clid uint, s server.Server) error {
 	if err != nil {
 		return err
 	}
-	txid := uid7.String()
+	gid := uid7.String()
+
+	/* Store our intentions in state keeper */
+	/* XXX: we actaully accept nil as valid DCStateKeeper, so be carefull */
+	shs := []string{}
+
+	for _, dsh := range s.Datashards() {
+		shs = append(shs, dsh.SHKey().Name)
+	}
+
+	if q != nil {
+		q.RecordTwoPhaseMembers(gid, shs)
+	}
 
 	for _, dsh := range s.Datashards() {
 		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
-			String: fmt.Sprintf(`PREPARE TRANSACTION '%s'`, txid),
+			String: fmt.Sprintf(`PREPARE TRANSACTION '%s'`, gid),
 		}, txstatus.TXIDLE)
 
 		if err != nil {
@@ -47,15 +60,20 @@ func ExecuteTwoPhaseCommit(clid uint, s server.Server) error {
 
 	if config.RouterConfig().EnableICP {
 		if err := icp.CheckControlPoint(icp.TwoPhaseDecisionCP); err != nil {
-			spqrlog.Zero.Info().Uint("client", clid).Str("txid", txid).Err(err).Msg("error while checking control point")
+			spqrlog.Zero.Info().Uint("client", clid).Str("txid", gid).Err(err).Msg("error while checking control point")
 		}
 	}
 
-	spqrlog.Zero.Info().Uint("client", clid).Str("txid", txid).Msg("first phase succeeded")
+	/* XXX: we actaully accept nil as valid DCStateKeeper, so be carefull */
+	if q != nil {
+		q.ChangeTxStatus(gid, qdb.TwoPhaseCommitting)
+	}
+
+	spqrlog.Zero.Info().Uint("client", clid).Str("txid", gid).Msg("first phase succeeded")
 
 	for _, dsh := range s.Datashards() {
 		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
-			String: fmt.Sprintf(`COMMIT PREPARED '%s'`, txid),
+			String: fmt.Sprintf(`COMMIT PREPARED '%s'`, gid),
 		}, txstatus.TXIDLE)
 
 		if err != nil {

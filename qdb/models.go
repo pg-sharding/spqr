@@ -237,3 +237,16 @@ func keyRangeFromInternal(keyRange *internalKeyRange, locked bool) *KeyRange {
 		Locked:         locked,
 	}
 }
+
+const (
+	TwoPhaseInit       = "2pc_init"
+	TwoPhaseReject     = "2pc_reject"
+	TwoPhaseCommitting = "2pc_committing"
+)
+
+type TwoPCInfo struct {
+	Gid       string   `json:"gid"`
+	SHardsIds []string `json:"shard_ids"`
+
+	State string `json:"state"`
+}

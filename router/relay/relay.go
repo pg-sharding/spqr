@@ -136,7 +136,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 	return &RelayStateImpl{
 		activeShards:        nil,
 		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(client),
+		qse:                 NewQueryStateExecutor(qr.Mgr().DCStateKeeper(), client),
 		Qr:                  qr,
 		Cl:                  client,
 		poolMgr:             manager,

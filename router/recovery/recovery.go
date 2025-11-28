@@ -83,7 +83,12 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 					return nil
 				case *pgproto3.DataRow:
 					/* process */
-					gids = append(gids, string(v.Values[0]))
+					gid := string(v.Values[0])
+
+					/* Recheck gid status */
+
+					gids = append(gids, gid)
+
 				case *pgproto3.CommandComplete:
 					/* ok */
 				case *pgproto3.RowDescription:
