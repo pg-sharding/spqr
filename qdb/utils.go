@@ -26,7 +26,7 @@ var (
 	local *MemQDB = nil
 )
 
-func GetQDB() (*MemQDB, error) {
+func GetMemQDB() (*MemQDB, error) {
 	if local != nil {
 		return local, nil
 	}

@@ -75,7 +75,7 @@ var _ RouterInstance = &InstanceImpl{}
 
 func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 
-	db, err := qdb.GetQDB()
+	db, err := qdb.GetMemQDB()
 	if err != nil {
 		return nil, err
 	}
