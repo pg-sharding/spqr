@@ -1387,9 +1387,11 @@ func (mr *MockDCStateKeeperMockRecorder) AddShard(ctx, shard any) *gomock.Call {
 }
 
 // ChangeTxStatus mocks base method.
-func (m *MockDCStateKeeper) ChangeTxStatus(id, state string) {
+func (m *MockDCStateKeeper) ChangeTxStatus(id, state string) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "ChangeTxStatus", id, state)
+	ret := m.ctrl.Call(m, "ChangeTxStatus", id, state)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // ChangeTxStatus indicates an expected call of ChangeTxStatus.
@@ -1514,9 +1516,11 @@ func (mr *MockDCStateKeeperMockRecorder) OpenRouter(ctx, rID any) *gomock.Call {
 }
 
 // RecordTwoPhaseMembers mocks base method.
-func (m *MockDCStateKeeper) RecordTwoPhaseMembers(id string, shards []string) {
+func (m *MockDCStateKeeper) RecordTwoPhaseMembers(id string, shards []string) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RecordTwoPhaseMembers", id, shards)
+	ret := m.ctrl.Call(m, "RecordTwoPhaseMembers", id, shards)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // RecordTwoPhaseMembers indicates an expected call of RecordTwoPhaseMembers.

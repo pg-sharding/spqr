@@ -413,7 +413,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 
 func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*ClusteredCoordinator, error) {
 	return &ClusteredCoordinator{
-		Coordinator:     coord.NewCoordinator(db),
+		Coordinator:     coord.NewCoordinator(db, nil),
 		db:              db,
 		tlsconfig:       tlsconfig,
 		rmgr:            rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),

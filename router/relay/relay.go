@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/opentracing/opentracing-go"
@@ -133,10 +134,18 @@ func (rst *RelayStateImpl) UnholdRouting() {
 }
 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr) RelayStateMgr {
+	mgr := qr.Mgr()
+	var d qdb.DCStateKeeper
+
+	/* in case of local router, mgr can be nil */
+	if mgr != nil {
+		d = mgr.DCStateKeeper()
+	}
+
 	return &RelayStateImpl{
 		activeShards:        nil,
 		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(client),
+		qse:                 NewQueryStateExecutor(d, client),
 		Qr:                  qr,
 		Cl:                  client,
 		poolMgr:             manager,
@@ -516,8 +525,6 @@ func (rst *RelayStateImpl) Connect() error {
 }
 
 func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
-	statistics.RecordFinishedTransaction(time.Now(), rst.Client())
-
 	rst.unnamedPortalExists = false
 
 	spqrlog.Zero.Debug().
@@ -536,7 +543,13 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 			}
 		}
 
-		return rst.poolMgr.TXEndCB(rst)
+		if err := rst.poolMgr.TXEndCB(rst); err != nil {
+			return err
+		}
+
+		statistics.RecordFinishedTransaction(time.Now(), rst.Client())
+
+		return nil
 	case txstatus.TXERR:
 		fallthrough
 	case txstatus.TXACT:

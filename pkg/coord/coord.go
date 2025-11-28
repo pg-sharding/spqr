@@ -25,13 +25,15 @@ import (
 
 type Coordinator struct {
 	qdb qdb.XQDB
+	dcs qdb.DCStateKeeper
 }
 
 var _ meta.EntityMgr = &Coordinator{}
 
-func NewCoordinator(qdb qdb.XQDB) Coordinator {
+func NewCoordinator(q qdb.XQDB, d qdb.DCStateKeeper) Coordinator {
 	return Coordinator{
-		qdb: qdb,
+		qdb: q,
+		dcs: d,
 	}
 }
 
@@ -345,6 +347,12 @@ func (lc *Coordinator) NextRange(ctx context.Context, seqName string, rangeSize 
 // QDB implements meta.EntityMgr.
 func (lc *Coordinator) QDB() qdb.QDB {
 	return lc.qdb
+}
+
+// DCStateKeeper implements meta.EntityMgr.
+func (lc *Coordinator) DCStateKeeper() qdb.DCStateKeeper {
+	/* this is actually used by router, so we have to provide one */
+	return lc.dcs
 }
 
 // RedistributeKeyRange implements meta.EntityMgr.

@@ -158,8 +158,8 @@ const (
 type DCStateKeeper interface {
 	TopologyKeeper
 
-	RecordTwoPhaseMembers(id string, shards []string)
-	ChangeTxStatus(id string, state string)
+	RecordTwoPhaseMembers(id string, shards []string) error
+	ChangeTxStatus(id string, state string) error
 }
 
 // XQDB means extended QDB

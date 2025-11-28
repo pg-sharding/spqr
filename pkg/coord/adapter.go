@@ -50,6 +50,10 @@ func (a *Adapter) QDB() qdb.QDB {
 	panic("Adapter.QDB not implemented")
 }
 
+func (a *Adapter) DCStateKeeper() qdb.DCStateKeeper {
+	panic("Adapter.DCStateKeeper not implemented")
+}
+
 func (a *Adapter) Cache() *cache.SchemaCache {
 	panic("Adapter.Cache not implemented")
 }

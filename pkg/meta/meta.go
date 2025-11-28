@@ -48,6 +48,7 @@ type EntityMgr interface {
 	ShareKeyRange(id string) error
 
 	QDB() qdb.QDB
+	DCStateKeeper() qdb.DCStateKeeper
 	Cache() *cache.SchemaCache
 }
 

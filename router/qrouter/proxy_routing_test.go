@@ -86,7 +86,7 @@ func TestMultiShardRouting(t *testing.T) {
 		},
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -246,7 +246,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -394,7 +394,7 @@ func TestRoutingByExpression(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -522,7 +522,7 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		},
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -627,7 +627,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -811,7 +811,7 @@ func TestComment(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -921,7 +921,7 @@ func TestCTE(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1264,7 +1264,7 @@ func TestSingleShard(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1549,7 +1549,7 @@ func TestInsertOffsets(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1703,7 +1703,7 @@ func TestJoins(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1852,7 +1852,7 @@ func TestUnnest(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1956,7 +1956,7 @@ func TestCopySingleShard(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2044,7 +2044,7 @@ func TestCopyMultiShard(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2119,7 +2119,7 @@ func TestSetStmt(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2229,7 +2229,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2545,7 +2545,7 @@ func TestHashRouting(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2631,7 +2631,7 @@ func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error
 		return nil, err
 	}
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	router, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
