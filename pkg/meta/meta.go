@@ -108,8 +108,6 @@ func processDrop(ctx context.Context,
 
 			return tts, err
 		}
-	case *spqrparser.ShardingRuleSelector:
-		return nil, spqrerror.ShardingRulesRemoved
 	case *spqrparser.ReferenceRelationSelector:
 		/* XXX: fix reference relation selector to support schema-qualified names */
 		relName := &rfqn.RelationFQN{
@@ -467,8 +465,6 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 				return tts, nil
 			}
 		}
-	case *spqrparser.ShardingRuleDefinition:
-		return nil, spqrerror.ShardingRulesRemoved
 	case *spqrparser.KeyRangeDefinition:
 		if stmt.Distribution.ID == "default" {
 			list, err := mngr.ListDistributions(ctx)
@@ -1238,9 +1234,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Routers(resp)
-	case spqrparser.ShardingRules:
-		return cli.ReportError(spqrerror.ShardingRulesRemoved)
-
 	case spqrparser.PoolsStr:
 		var respPools []pool.Pool
 		if err := ci.ForEachPool(func(p pool.Pool) error {

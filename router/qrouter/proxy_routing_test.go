@@ -2658,7 +2658,7 @@ func TestCheckTableIsRoutable(t *testing.T) {
 		},
 		{
 			query: "create table table1 (id1 int)",
-			err:   fmt.Errorf("create table stmt ignored: no sharding rule columns found"),
+			err:   fmt.Errorf("create table stmt ignored: no matching distribution found"),
 		},
 		{
 			query: "create table schema2.table2 (id int, dat varchar)",
