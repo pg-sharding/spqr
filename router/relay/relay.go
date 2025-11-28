@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/opentracing/opentracing-go"
@@ -133,10 +134,18 @@ func (rst *RelayStateImpl) UnholdRouting() {
 }
 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr) RelayStateMgr {
+	mgr := qr.Mgr()
+	var d qdb.DCStateKeeper
+
+	/* in case of locai router, mgr can be nil */
+	if mgr != nil {
+		d = mgr.DCStateKeeper()
+	}
+
 	return &RelayStateImpl{
 		activeShards:        nil,
 		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(qr.Mgr().DCStateKeeper(), client),
+		qse:                 NewQueryStateExecutor(d, client),
 		Qr:                  qr,
 		Cl:                  client,
 		poolMgr:             manager,

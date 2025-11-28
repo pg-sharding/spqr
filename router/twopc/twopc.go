@@ -33,7 +33,7 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) (txs
 	gid := uid7.String()
 
 	/* Store our intentions in state keeper */
-	/* XXX: we actaully accept nil as valid DCStateKeeper, so be carefull */
+	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	shs := []string{}
 
 	for _, dsh := range s.Datashards() {
@@ -41,7 +41,9 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) (txs
 	}
 
 	if q != nil {
-		q.RecordTwoPhaseMembers(gid, shs)
+		if err := q.RecordTwoPhaseMembers(gid, shs); err != nil {
+			return txstatus.TXERR, err
+		}
 	}
 
 	retST := txstatus.TXERR
@@ -65,9 +67,11 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) (txs
 		}
 	}
 
-	/* XXX: we actaully accept nil as valid DCStateKeeper, so be carefull */
+	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
-		q.ChangeTxStatus(gid, qdb.TwoPhaseCommitting)
+		if err := q.ChangeTxStatus(gid, qdb.TwoPhaseCommitting); err != nil {
+			return txstatus.TXERR, err
+		}
 	}
 
 	spqrlog.Zero.Info().Uint("client", clid).Str("txid", gid).Msg("first phase succeeded")
@@ -84,10 +88,9 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) (txs
 			return txstatus.TXERR, err
 		}
 
-		txst := txstatus.TXStatus(st)
-		spqrlog.Zero.Info().Uint("client", clid).Str("status", txst.String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
+		spqrlog.Zero.Info().Uint("client", clid).Str("status", txstatus.TXStatus(st).String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
 
-		retST = txst
+		retST = txstatus.TXStatus(st)
 	}
 
 	return retST, nil
