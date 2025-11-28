@@ -8,8 +8,6 @@ var reservedWords = map[string]int{
 	"control":      CONTROL,
 	"shard":        SHARD,
 	"shards":       SHARDS,
-	"rule":         RULE,
-	"sharding":     SHARDING,
 	"create":       CREATE,
 	"add":          ADD,
 	"key":          KEY,

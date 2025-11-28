@@ -90,18 +90,6 @@ type DistributionDefinition struct {
 	DefaultShard         string
 }
 
-type ShardingRuleDefinition struct {
-	ID           string
-	TableName    string
-	Entries      []ShardingRuleEntry
-	Distribution string
-}
-
-type ShardingRuleEntry struct {
-	Column       string
-	HashFunction string
-}
-
 type ReferenceRelationDefinition struct {
 	TableName            *rfqn.RelationFQN
 	AutoIncrementEntries []*AutoIncrementEntry
@@ -132,7 +120,6 @@ type ShardDefinition struct {
 func (*KeyRangeDefinition) iCreate()          {}
 func (*ShardDefinition) iCreate()             {}
 func (*DistributionDefinition) iCreate()      {}
-func (*ShardingRuleDefinition) iCreate()      {}
 func (*ReferenceRelationDefinition) iCreate() {}
 
 type SplitKeyRange struct {
@@ -429,7 +416,6 @@ func (*SplitKeyRange) iStatement()               {}
 func (*UniteKeyRange) iStatement()               {}
 func (*DistributionDefinition) iStatement()      {}
 func (*ReferenceRelationDefinition) iStatement() {}
-func (*ShardingRuleDefinition) iStatement()      {}
 func (*KeyRangeDefinition) iStatement()          {}
 func (*ShardDefinition) iStatement()             {}
 func (*Kill) iStatement()                        {}

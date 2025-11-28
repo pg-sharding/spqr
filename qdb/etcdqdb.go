@@ -1117,7 +1117,7 @@ func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relName *rf
 
 	switch len(resp.Kvs) {
 	case 0:
-		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "reference relation \"%s\" not found", relName.String())
+		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", relName.String())
 	case 1:
 
 		var rrs *ReferenceRelation
@@ -1139,7 +1139,7 @@ func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relName *rf
 
 		return err
 	default:
-		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much reference relations matched: %d", len(resp.Kvs))
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much reference relations matched: %d", len(resp.Kvs))
 	}
 }
 
@@ -1159,7 +1159,7 @@ func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.Relat
 
 	switch len(resp.Kvs) {
 	case 0:
-		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "reference relation \"%s\" not found", relName.String())
+		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", relName.String())
 	case 1:
 
 		var rrs *ReferenceRelation
@@ -1180,7 +1180,7 @@ func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.Relat
 		_, err = q.cli.Delete(ctx, relationMappingNodePath(tableName))
 		return err
 	default:
-		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much reference relations matched: %d", len(resp.Kvs))
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much reference relations matched: %d", len(resp.Kvs))
 	}
 }
 
@@ -1311,7 +1311,7 @@ func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 
 	switch len(resp.Kvs) {
 	case 0:
-		return spqrerror.New(spqrerror.SPQR_SHARDING_RULE_ERROR, "no such distribution present in qdb")
+		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution present in qdb")
 	case 1:
 
 		var distrib *Distribution
@@ -1338,7 +1338,7 @@ func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 
 		return nil
 	default:
-		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much distributions matched: %d", len(resp.Kvs))
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much distributions matched: %d", len(resp.Kvs))
 	}
 }
 

@@ -24,7 +24,6 @@ import (
 
 type LocalQrouterServer struct {
 	protos.UnimplementedKeyRangeServiceServer
-	protos.UnimplementedShardingRulesServiceServer
 	protos.UnimplementedRouterServiceServer
 	protos.UnimplementedTopologyServiceServer
 	protos.UnimplementedClientInfoServiceServer
@@ -620,7 +619,6 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	reflection.Register(server)
 
 	protos.RegisterKeyRangeServiceServer(server, lqr)
-	protos.RegisterShardingRulesServiceServer(server, lqr)
 	protos.RegisterRouterServiceServer(server, lqr)
 	protos.RegisterTopologyServiceServer(server, lqr)
 	protos.RegisterClientInfoServiceServer(server, lqr)
@@ -633,7 +631,6 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
-var _ protos.ShardingRulesServiceServer = &LocalQrouterServer{}
 var _ protos.RouterServiceServer = &LocalQrouterServer{}
 var _ protos.ClientInfoServiceServer = &LocalQrouterServer{}
 var _ protos.BackendConnectionsServiceServer = &LocalQrouterServer{}
