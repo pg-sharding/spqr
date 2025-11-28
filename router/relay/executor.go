@@ -138,9 +138,13 @@ func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
 	serv := s.cl.Server()
 
 	if s.cl.CommitStrategy() == twopc.COMMIT_STRATEGY_2PC && len(serv.Datashards()) > 1 {
-		if err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl.ID(), serv); err != nil {
+		if st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl.ID(), serv); err != nil {
 			return err
+		} else {
+			// serv.SetTxStatus(st)
+			s.SetTxStatus(st)
 		}
+
 	} else {
 		if err := s.deployTxStatusInternal(serv,
 			&pgproto3.Query{String: query}, txstatus.TXIDLE); err != nil {

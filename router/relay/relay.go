@@ -516,8 +516,6 @@ func (rst *RelayStateImpl) Connect() error {
 }
 
 func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
-	statistics.RecordFinishedTransaction(time.Now(), rst.Client())
-
 	rst.unnamedPortalExists = false
 
 	spqrlog.Zero.Debug().
@@ -536,7 +534,13 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 			}
 		}
 
-		return rst.poolMgr.TXEndCB(rst)
+		if err := rst.poolMgr.TXEndCB(rst); err != nil {
+			return err
+		}
+
+		statistics.RecordFinishedTransaction(time.Now(), rst.Client())
+
+		return nil
 	case txstatus.TXERR:
 		fallthrough
 	case txstatus.TXACT:

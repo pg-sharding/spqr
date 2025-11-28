@@ -21,14 +21,14 @@ const (
 	COMMIT_STRATEGY_2PC = "2pc"
 )
 
-func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) error {
+func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) (txstatus.TXStatus, error) {
 
 	/*
 	* go along first phase
 	 */
 	uid7, err := uuid.NewV7()
 	if err != nil {
-		return err
+		return txstatus.TXERR, err
 	}
 	gid := uid7.String()
 
@@ -44,6 +44,8 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) erro
 		q.RecordTwoPhaseMembers(gid, shs)
 	}
 
+	retST := txstatus.TXERR
+
 	for _, dsh := range s.Datashards() {
 		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
 			String: fmt.Sprintf(`PREPARE TRANSACTION '%s'`, gid),
@@ -51,11 +53,10 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) erro
 
 		if err != nil {
 			/* assert st == txtstatus.TXERR? */
-			s.SetTxStatus(txstatus.TXStatus(txstatus.TXERR))
-			return err
+			return txstatus.TXERR, err
 		}
 
-		s.SetTxStatus(txstatus.TXStatus(st))
+		retST = st
 	}
 
 	if config.RouterConfig().EnableICP {
@@ -80,12 +81,14 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) erro
 			/* assert st == txtstatus.TXERR? */
 			/* XXX: We now should discard all connection
 			* and let recovery algorithm complete tx */
-			s.SetTxStatus(txstatus.TXStatus(txstatus.TXERR))
-			return err
+			return txstatus.TXERR, err
 		}
 
-		s.SetTxStatus(txstatus.TXStatus(st))
+		txst := txstatus.TXStatus(st)
+		spqrlog.Zero.Info().Uint("client", clid).Str("status", txst.String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
+
+		retST = txst
 	}
 
-	return nil
+	return retST, nil
 }
