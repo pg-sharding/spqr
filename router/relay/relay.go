@@ -137,7 +137,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 	mgr := qr.Mgr()
 	var d qdb.DCStateKeeper
 
-	/* in case of locai router, mgr can be nil */
+	/* in case of local router, mgr can be nil */
 	if mgr != nil {
 		d = mgr.DCStateKeeper()
 	}
