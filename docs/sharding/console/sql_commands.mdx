@@ -120,6 +120,38 @@ DROP SEQUENCE t1_id;
 (1 row)
 ```
 
+### SYNC REFERENCE TABLE
+
+<Warning>This command is not available for installations without SPQR coordinator.</Warning>
+
+This command is used to synchronize a [reference table](/sharding/reference_tables) to a target shard. It copies all data from the reference table on existing shards to the specified destination shard.
+
+This is useful when:
+- Adding a new shard to the cluster and needing to populate it with reference table data
+- A shard is out of sync and needs to be updated with the latest reference table data
+- Recovering reference table data on a shard after a failure
+
+```sql
+SYNC REFERENCE TABLE <table_name> ON <shard_id>
+```
+
+**Parameters:**
+- `<table_name>`: The name of the reference table to synchronize
+- `<shard_id>`: The identifier of the destination shard where data will be copied
+
+**Example:**
+```sql
+-- First create a reference table on some shards
+CREATE REFERENCE TABLE tax_rates ON sh1, sh2;
+
+-- Later, sync it to another shard (e.g., after adding sh3 to the cluster)
+SYNC REFERENCE TABLE tax_rates ON sh3;
+```
+
+**Note:** 
+- The reference table must already be created in SPQR metadata and the table structure must exist on the destination shard before running this command.
+- `SYNC REFERENCE TABLES` (plural) to sync all reference tables at once is currently not supported.
+
 ### CREATE KEY RANGE
 
 This command is used to create a new key range. Since the key space is an ordered set, it is enough to specify only one end of the range.
