@@ -39,7 +39,6 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_ROUTING_ERROR:        "Routing error",
 	SPQR_CONNECTION_ERROR:     "Connection error",
 	SPQR_KEYRANGE_ERROR:       "Keyrange error",
-	SPQR_SHARDING_RULE_ERROR:  "Sharding rule error",
 	SPQR_TRANSFER_ERROR:       "Transfer error",
 	SPQR_OBJECT_NOT_EXIST:     "No object",
 	SPQR_NOT_IMPLEMENTED:      "Not implemented",
@@ -49,8 +48,6 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_SEQUENCE_ERROR:       "Sequence error",
 	SPQR_STOP_MOVE_TASK_GROUP: "Task group stopped",
 }
-
-var ShardingRulesRemoved = New(SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR, see https://github.com/pg-sharding/spqr/blob/master/docs/Syntax.md")
 
 // GetMessageByCode returns the error message associated with the provided error code.
 // If the error code is not found in the existingErrorCodeMap, the function returns "Unexpected error".

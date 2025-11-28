@@ -156,7 +156,8 @@ func SelectRandomDispatchPlan(routes []kr.ShardKey) (plan.Plan, error) {
 	}, nil
 }
 
-// CheckTableIsRoutable Given table create statement, check if it is routable with some sharding rule
+// CheckTableIsRoutable Given table create statement,
+// check if it is routable with some distribution rule
 // TODO : unit tests
 func CheckTableIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.CreateTable) error {
 	var err error
@@ -189,9 +190,9 @@ func CheckTableIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.Cre
 	}
 
 	entries := make(map[string]struct{})
-	/* Collect sharding rule entries list from create statement */
+	/* Collect column entries list from create statement */
 	for _, elt := range node.TableElts {
-		// hashing function name unneeded for sharding rules matching purpose
+		// hashing function name unneeded for column matching purpose
 		switch q := elt.(type) {
 		case *lyx.TableElt:
 			entries[q.ColName] = struct{}{}
@@ -225,7 +226,7 @@ func CheckTableIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.Cre
 		return nil
 	}
 
-	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
+	return fmt.Errorf("create table stmt ignored: no matching distribution found")
 }
 
 func ProcessRangeNode(ctx context.Context, rm *rmeta.RoutingMetadataContext, q *lyx.RangeVar) error {

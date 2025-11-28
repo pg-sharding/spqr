@@ -98,7 +98,6 @@ func randomHex(n int) (string, error) {
 	distrKeyEntry          DistributionKeyEntry
 	aiEntry                *AutoIncrementEntry
 
-	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
 	distribution_selector  *DistributionSelector
 	aiEntrieslist          []*AutoIncrementEntry
@@ -214,7 +213,6 @@ func randomHex(n int) (string, error) {
 %token<str> OP
 
 
-%type<sharding_rule_selector> sharding_rule_stmt
 %type<key_range_selector> key_range_stmt
 %type<distribution_selector> distribution_select_stmt
 
@@ -232,24 +230,19 @@ func randomHex(n int) (string, error) {
 
 %type<qname> qualified_name
 %type <ds> distribution_define_stmt
-%type <sharding_rule> sharding_rule_define_stmt
 %type <kr> key_range_define_stmt
 %type <shard> shard_define_stmt
 
-%type<entrieslist> sharding_rule_argument_list
 %type<dEntrieslist> distribution_key_argument_list
 %type<aiEntrieslist> opt_auto_increment
 %type<aiEntrieslist> auto_inc_argument_list
 %type<uinteger> opt_auto_increment_start_clause
-%type<shruleEntry> sharding_rule_entry
 %type<str> opt_schema_name
 %type<distribution_selector> opt_distribution_selector
 
 %type<distrKeyEntry> distribution_key_entry routing_expr
 %type<aiEntry> auto_increment_entry
 
-%type<str> sharding_rule_table_clause
-%type<str> sharding_rule_column_clause
 %type<str> opt_hash_function_clause hash_function_clause
 %type<str> hash_function_name
 
@@ -701,14 +694,6 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
 	}
-	| DROP sharding_rule_stmt
-	{
-		$$ = &Drop{Element: $2}
-	}
-	| DROP SHARDING RULE ALL
-	{
-		$$ = &Drop{Element: &ShardingRuleSelector{ID: `*`}}
-	}
 	| DROP distribution_select_stmt opt_cascade
 	{
 		$$ = &Drop{Element: $2, CascadeDelete: $3}
@@ -741,11 +726,6 @@ drop_stmt:
 add_stmt:
 	// TODO: drop
 	ADD distribution_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	ADD sharding_rule_define_stmt
 	{
 		$$ = &Create{Element: $2}
 	}
@@ -1006,11 +986,6 @@ create_stmt:
 		$$ = &Create{Element: $2}
 	}
 	|
-	CREATE sharding_rule_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	}
-	|
 	CREATE key_range_define_stmt
 	{
 		$$ = &Create{Element: $2}
@@ -1141,54 +1116,6 @@ opt_default_shard:
 		$$ = ""
 	}
 
-sharding_rule_define_stmt:
-	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list opt_distribution_selector
-	{
-	}
-	|
-	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list opt_distribution_selector
-	{
-	}
-
-sharding_rule_argument_list: sharding_rule_entry
-    {
-      $$ = make([]ShardingRuleEntry, 0)
-      $$ = append($$, $1)
-    }
-    |
-    sharding_rule_argument_list sharding_rule_entry
-    {
-      $$ = append($1, $2)
-    }
-
-sharding_rule_entry:
-	sharding_rule_column_clause opt_hash_function_clause
-	{
-		$$ = ShardingRuleEntry{
-			Column: $1,
-			HashFunction: $2,
-		}
-	}
-
-sharding_rule_table_clause:
-	TABLE any_id
-	{
-       $$ = $2
-    }
-	| /*EMPTY*/	{ $$ = ""; }
-
-sharding_rule_column_clause:
-	COLUMN any_id
-	{
-		$$ = $2
-	}
-	|
-	COLUMNS any_id
-	{
-		$$ = $2
-	}/* to be backward-compatable*/
-
-
 hash_function_name:
 	IDENTITY {
 		$$ = "identity"
@@ -1311,12 +1238,6 @@ unlock_stmt:
 	UNLOCK key_range_stmt
 	{
 		$$ = &Unlock{KeyRangeID: $2.KeyRangeID}
-	}
-
-sharding_rule_stmt:
-	SHARDING RULE any_id
-	{
-		$$ =&ShardingRuleSelector{ID: $3}
 	}
 
 key_range_stmt:

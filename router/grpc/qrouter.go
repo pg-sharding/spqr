@@ -10,7 +10,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
@@ -315,21 +314,6 @@ func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.M
 	}
 
 	return &protos.ModifyReply{}, nil
-}
-
-// TODO : unit tests
-func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*emptypb.Empty, error) {
-	return nil, spqrerror.ShardingRulesRemoved
-}
-
-// TODO : unit tests
-func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
-	return nil, spqrerror.ShardingRulesRemoved
-}
-
-// TODO : unit tests
-func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *protos.DropShardingRuleRequest) (*emptypb.Empty, error) {
-	return nil, spqrerror.ShardingRulesRemoved
 }
 
 // TODO : unit tests

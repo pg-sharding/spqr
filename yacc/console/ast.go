@@ -163,10 +163,6 @@ type KeyRangeSelector struct {
 	KeyRangeID string
 }
 
-type ShardingRuleSelector struct {
-	ID string
-}
-
 type DistributionSelector struct {
 	ID string
 }
@@ -184,7 +180,6 @@ type TaskGroupSelector struct {
 }
 
 func (*KeyRangeSelector) iDrop()          {}
-func (*ShardingRuleSelector) iDrop()      {}
 func (*DistributionSelector) iDrop()      {}
 func (*ReferenceRelationSelector) iDrop() {}
 func (*ShardSelector) iDrop()             {}
@@ -419,7 +414,6 @@ type Statement interface {
 func (*Show) iStatement()                        {}
 func (*Set) iStatement()                         {}
 func (*KeyRangeSelector) iStatement()            {}
-func (*ShardingRuleSelector) iStatement()        {}
 func (*DistributionSelector) iStatement()        {}
 func (*ReferenceRelationSelector) iStatement()   {}
 func (*ShardSelector) iStatement()               {}
