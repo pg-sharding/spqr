@@ -677,9 +677,6 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 	return err
 }
 
-// TODO : unit tests
-// TODO : implement
-
 // AddDataShard adds a data shard to the system.
 //
 // Parameters:
@@ -689,11 +686,10 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 // Returns:
 // - error: An error if the data shard addition fails, otherwise nil.
 func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "addDataShard not implemented")
+	client := proto.NewShardServiceClient(a.conn)
+	_, err := client.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(shard)})
+	return err
 }
-
-// TODO : unit tests
-// TODO : implement
 
 // DropShard drops a data shard from the system.
 //
@@ -704,7 +700,9 @@ func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) e
 // Returns:
 // - error: An error if the data shard drop fails, otherwise nil.
 func (a *Adapter) DropShard(ctx context.Context, shardId string) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DropShard not implemented")
+	client := proto.NewShardServiceClient(a.conn)
+	_, err := client.DropDataShard(ctx, &proto.ShardRequest{Id: shardId})
+	return err
 }
 
 // TODO : unit tests

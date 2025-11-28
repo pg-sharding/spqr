@@ -123,6 +123,10 @@ func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.A
 	return nil, nil
 }
 
+func (l *LocalQrouterServer) DropDataShard(ctx context.Context, request *protos.ShardRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropShard(ctx, request.Id)
+}
+
 func (l *LocalQrouterServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
 	panic("LocalQrouterServer.AddWorldShard not implemented")
 }
@@ -628,6 +632,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterMoveTasksServiceServer(server, lqr)
 	protos.RegisterBalancerTaskServiceServer(server, lqr)
 	protos.RegisterReferenceRelationsServiceServer(server, lqr)
+	protos.RegisterShardServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
