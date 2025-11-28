@@ -118,7 +118,7 @@ func ToNoGossipTransaction(transaction *MetaTransaction) *MetaTransaction {
 	}
 }
 
-// Checks algebraic type MetaTransactionGossipCommand and returns the comman type
+// Checks algebraic type MetaTransactionGossipCommand and returns the command type
 // or GR_UNKNOWN if check failed
 //
 // Parameters:
