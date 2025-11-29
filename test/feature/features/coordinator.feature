@@ -576,6 +576,12 @@ Feature: Coordinator test
     ]
     """
 
+    When I run SQL on host "router"
+    """
+    INSERT INTO test(id, name) VALUES(1000, 'random') /* __spqr__execute_on: sh3 */;
+    """
+    Then command return code should be "0"    
+
     When I run SQL on host "coordinator"
     """
     DROP SHARD sh1 CASCADE;

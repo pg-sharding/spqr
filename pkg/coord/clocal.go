@@ -198,10 +198,7 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 		Str("node", ds.ID).
 		Msg("adding datashard node in local coordinator")
 
-	return lc.qdb.AddShard(ctx, &qdb.Shard{
-		ID:       ds.ID,
-		RawHosts: ds.Cfg.RawHosts,
-	})
+	return lc.Coordinator.AddDataShard(ctx, ds)
 }
 
 // TODO : unit tests
