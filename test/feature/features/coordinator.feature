@@ -553,12 +553,61 @@ Feature: Coordinator test
     ]
     """
 
+    When I run SQL on host "router-admin"
+    """
+    SHOW shards;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "shard":"sh1"
+      },
+      {
+        "shard":"sh2"
+      },
+      {
+        "shard":"sh3"
+      },
+      {
+        "shard":"sh4"
+      }
+    ]
+    """
+
+    When I run SQL on host "router"
+    """
+    INSERT INTO test(id, name) VALUES(1000, 'random') /* __spqr__execute_on: sh3 */;
+    """
+    Then command return code should be "0"    
+
     When I run SQL on host "coordinator"
     """
     DROP SHARD sh1 CASCADE;
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator"
+    """
+    SHOW shards;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "shard":"sh2"
+      },
+      {
+        "shard":"sh3"
+      },
+      {
+        "shard":"sh4"
+      }
+    ]
+    """
+
+    When I run SQL on host "router-admin"
     """
     SHOW shards;
     """
