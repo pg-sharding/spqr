@@ -116,17 +116,17 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 	for _, gid := range gids {
 		/* Try to acquire lock on this GID lifecycle
 		* management. We expecting failure here if
-		* one of those events happends:
+		* one of those events happens:
 		* 1) TX has alive owner (regular backend running first or second
 			phase of 2PC)
-		* 2) QDB/DCStateKepper implementation allow non-single-point-of true (basically,
-		* when DCStateKepper in router-local mem-QDB, not etcd)
+		* 2) QDB/DCStateKeeper implementation allow non-single-point-of true (basically,
+		* when DCStateKeeper in router-local mem-QDB, not etcd)
 		* 3) another recovery routine raced with us and won the race.
 		*/
 
 		if d.d.AcquireTxOwnership(gid) {
 			/* Try to fix things  */
-			if err := d.Recover2PCTX(gid); err != nil {
+			if err := d.Recover2PhaseCommitTX(gid); err != nil {
 				spqrlog.Zero.Debug().Str("gid", gid).Err(err).Msg("error recovering unfinished tx")
 			}
 		}
@@ -229,7 +229,7 @@ func (d *TwoPCWatchDog) executeRollbackShards(shs []string, gid string) error {
 	return nil
 }
 
-func (d *TwoPCWatchDog) Recover2PCTX(gid string) error {
+func (d *TwoPCWatchDog) Recover2PhaseCommitTX(gid string) error {
 	/* Always be tidy */
 	defer d.d.ReleaseTxOwnership(gid)
 
