@@ -245,5 +245,5 @@ type TwoPCInfo struct {
 	State string `json:"state"`
 
 	/* ephemeral part of state */
-	Locked bool
+	Locked bool `json:"-"`
 }

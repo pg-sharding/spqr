@@ -148,7 +148,7 @@ type QDB interface {
 /* XXX: note that this is data-plane two phase transaction state,
 * not control-plane transfer task state */
 const (
-	TwoPhaseInitState  = "TwoPhaseTxState"
+	TwoPhaseInitState  = "TxInitState"
 	TwoPhaseP1         = "PrepareDone"
 	TwoPhaseP2         = "Done"
 	TwoPhaseP2Rejected = "DoneRejected"

@@ -135,7 +135,7 @@ func (d *TwoPCWatchDog) RecoverDistributedTx() error {
 	return nil
 }
 
-func (d *TwoPCWatchDog) CheckTXOnShards(serv shard.ShardHostInstance, gid string) (bool, error) {
+func (d *TwoPCWatchDog) CheckTXShards(serv shard.ShardHostInstance, gid string) (bool, error) {
 	if err := serv.Send(&pgproto3.Query{
 		String: fmt.Sprintf("SELECT EXISTS(SELECT * FROM pg_prepared_xacts WHERE gid = '%s')", gid),
 	}); err != nil {
@@ -169,7 +169,7 @@ func (d *TwoPCWatchDog) executeCommitShards(shs []string, gid string) error {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
-		if res, err := d.CheckTXOnShards(serv, gid); err != nil {
+		if res, err := d.CheckTXShards(serv, gid); err != nil {
 			return err
 		} else if !res {
 			/* tx already committed */
@@ -213,7 +213,7 @@ func (d *TwoPCWatchDog) executeRollbackShards(shs []string, gid string) error {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
-		if res, err := d.CheckTXOnShards(serv, gid); err != nil {
+		if res, err := d.CheckTXShards(serv, gid); err != nil {
 			return err
 		} else if !res {
 			/* tx already committed */
@@ -248,6 +248,8 @@ func (d *TwoPCWatchDog) Recover2PhaseCommitTX(gid string) error {
 			return err
 		}
 		return d.d.ChangeTxStatus(gid, qdb.TwoPhaseP2)
+	case qdb.TwoPhaseP2Rejected, qdb.TwoPhaseP2:
+		return nil
 	default:
 		return fmt.Errorf("unexpected 2pc state: %s", status)
 	}

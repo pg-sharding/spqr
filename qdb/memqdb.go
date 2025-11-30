@@ -1512,11 +1512,12 @@ func (q *MemQDB) AcquireTxOwnership(id string) bool {
 	return false
 }
 
-func (q *MemQDB) ReleaseTxOwnership(id string) {
+func (q *MemQDB) ReleaseTxOwnership(gid string) {
+	spqrlog.Zero.Debug().Str("gid", gid).Msg("memqdb: ReleaseTxOwnership")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if info, ok := q.TwoPhaseTx[id]; ok {
+	if info, ok := q.TwoPhaseTx[gid]; ok {
 		info.Locked = false
 	}
 }
