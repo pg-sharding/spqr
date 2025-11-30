@@ -44,7 +44,7 @@ type TopologyKeeper interface {
 }
 
 // Keep track of the status of the two-phase data move transaction.
-type DistributedXactKeeper interface {
+type TransferXactKeeper interface {
 	RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error
 	GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error)
 	RemoveTransferTx(ctx context.Context, key string) error
@@ -148,9 +148,10 @@ type QDB interface {
 /* XXX: note that this is data-plane two phase transaction state,
 * not control-plane transfer task state */
 const (
-	TwoPhaseInitState = "TwoPhaseTxState"
-	TwoPhaseP1        = "PrepareDone"
-	TwoPhaseP2        = "Done"
+	TwoPhaseInitState  = "TwoPhaseTxState"
+	TwoPhaseP1         = "PrepareDone"
+	TwoPhaseP2         = "Done"
+	TwoPhaseP2Rejected = "DoneRejected"
 )
 
 // Distributed (2pc) commit state keeper.
@@ -158,8 +159,14 @@ const (
 type DCStateKeeper interface {
 	TopologyKeeper
 
-	RecordTwoPhaseMembers(id string, shards []string) error
-	ChangeTxStatus(id string, state string) error
+	RecordTwoPhaseMembers(gid string, shards []string) error
+	ChangeTxStatus(gid string, state string) error
+
+	AcquireTxOwnership(gid string) bool
+	ReleaseTxOwnership(gid string)
+
+	TXStatus(gid string) string
+	TXCohortShards(gid string) []string
 }
 
 // XQDB means extended QDB
@@ -171,7 +178,7 @@ type XQDB interface {
 	TopologyKeeper
 	// data move state
 	ShardingSchemaKeeper
-	DistributedXactKeeper
+	TransferXactKeeper
 	TXManager
 
 	TryCoordinatorLock(ctx context.Context, addr string) error
