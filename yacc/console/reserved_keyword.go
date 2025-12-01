@@ -89,4 +89,7 @@ var reservedWords = map[string]int{
 	"asc":          ASC,
 	"desc":         DESC,
 	"point":        POINT,
+	"wait":         WAIT,
+	"seconds":      SECONDS,
+	"panic":        PANIC,
 }

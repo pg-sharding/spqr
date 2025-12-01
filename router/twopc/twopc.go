@@ -83,6 +83,12 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) (txs
 
 	spqrlog.Zero.Info().Uint("client", clid).Str("txid", gid).Msg("first phase succeeded")
 
+	if config.RouterConfig().EnableICP {
+		if err := icp.CheckControlPoint(icp.TwoPhaseDecisionCP2); err != nil {
+			spqrlog.Zero.Info().Uint("client", clid).Str("txid", gid).Err(err).Msg("error while checking control point")
+		}
+	}
+
 	for _, dsh := range s.Datashards() {
 		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
 			String: fmt.Sprintf(`COMMIT PREPARED '%s'`, gid),
