@@ -1961,7 +1961,7 @@ func TestICP(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "attach control point 'p1' wait 10 seconds",
+			query: "attach control point 'p1' wait",
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: true,
