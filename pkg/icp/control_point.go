@@ -3,32 +3,65 @@ package icp
 import (
 	"fmt"
 	"sync"
+	"time"
+
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
 /* Known control point list */
 const (
-	TwoPhaseDecisionCP = "2pc_decision_cp"
+	TwoPhaseDecisionCP  = "2pc_decision_cp"
+	TwoPhaseDecisionCP2 = "2pc_after_decision_cp"
 )
 
 /* XXX: store name -> action? */
 var (
 	/* Lets keep it simple - performance does not matter here */
 	mu    sync.Mutex
-	cpsMp = map[string]struct{}{}
+	cpsMp = map[string]func(){}
 )
 
-func DefineICP(name string) error {
+var (
+	defaultPanicAction = func() {
+		panic("reached control point")
+	}
+
+	defaultSleepAction = func() {
+		time.Sleep(1 * time.Minute)
+	}
+)
+
+func getAction(A *spqrparser.ICPointAction) func() {
+	switch A.Act {
+	case "panic":
+		return defaultPanicAction
+	case "sleep":
+		if A.Timeout == time.Duration(0) {
+			return defaultSleepAction
+		}
+		return func() {
+			time.Sleep(A.Timeout)
+		}
+	default:
+		return defaultPanicAction
+	}
+}
+
+func DefineICP(name string, A *spqrparser.ICPointAction) error {
 	mu.Lock()
 	defer mu.Unlock()
 
 	switch name {
-	case TwoPhaseDecisionCP:
+	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2:
 		/* OK */
-		cpsMp[name] = struct{}{}
-		return nil
+	default:
+		return fmt.Errorf("unknown control point name %s", name)
 	}
 
-	return fmt.Errorf("unknown control point name %s", name)
+	/* OK */
+	cpsMp[name] = getAction(A)
+
+	return nil
 }
 
 func ResetICP(name string) error {
@@ -50,8 +83,8 @@ func CheckControlPoint(name string) error {
 	defer mu.Unlock()
 
 	/* XXX: support more behaviour modes */
-	if _, ok := cpsMp[name]; ok {
-		panic(fmt.Sprintf("reached control point %s", name))
+	if act, ok := cpsMp[name]; ok {
+		act()
 	}
 	return nil
 }
