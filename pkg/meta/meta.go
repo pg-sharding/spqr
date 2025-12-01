@@ -751,7 +751,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 	case *spqrparser.InstanceControlPoint:
 		/* create control point */
 		if stmt.Enable {
-			err := icp.DefineICP(stmt.Name)
+			err := icp.DefineICP(stmt.Name, stmt.A)
 			if err != nil {
 				return cli.ReportError(err)
 			}
