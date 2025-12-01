@@ -534,14 +534,7 @@ Feature: Coordinator test
       },
       {
         "shard":"sh3",
-        "host":"spqr_shard_1:6432",
-        "alive":"unknown",
-        "rw":"unknown",
-        "time":"unknown"
-      },
-      {
-        "shard":"sh4",
-        "host":"spqr_shard_2:6432",
+        "host":"spqr_shard_3:6432",
         "alive":"unknown",
         "rw":"unknown",
         "time":"unknown"
