@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 
+	_ "go.uber.org/automaxprocs/maxprocs"
+
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 
 	"github.com/jackc/pgx/v5"
