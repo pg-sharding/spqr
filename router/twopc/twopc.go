@@ -44,6 +44,13 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) (txs
 		if err := q.RecordTwoPhaseMembers(gid, shs); err != nil {
 			return txstatus.TXERR, err
 		}
+
+		/* From this point, 2PC GID is visible for other actors,
+		* including external clients running qdb inspect queries and
+		* recovery goroutines. We are holding lock on this GID while alive.
+		 */
+
+		defer q.ReleaseTxOwnership(gid)
 	}
 
 	retST := txstatus.TXERR
@@ -69,12 +76,18 @@ func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) (txs
 
 	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
 	if q != nil {
-		if err := q.ChangeTxStatus(gid, qdb.TwoPhaseCommitting); err != nil {
+		if err := q.ChangeTxStatus(gid, qdb.TwoPhaseP2); err != nil {
 			return txstatus.TXERR, err
 		}
 	}
 
 	spqrlog.Zero.Info().Uint("client", clid).Str("txid", gid).Msg("first phase succeeded")
+
+	if config.RouterConfig().EnableICP {
+		if err := icp.CheckControlPoint(icp.TwoPhaseDecisionCP2); err != nil {
+			spqrlog.Zero.Info().Uint("client", clid).Str("txid", gid).Err(err).Msg("error while checking control point")
+		}
+	}
 
 	for _, dsh := range s.Datashards() {
 		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
