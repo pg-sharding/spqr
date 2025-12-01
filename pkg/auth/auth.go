@@ -317,7 +317,7 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		}
 		defer func() {
 			if err := conn.Close(); err != nil {
-				spqrlog.Zero.Info().Err(err).Msg("failed to close LDAP connection")
+				spqrlog.Zero.Error().Err(err).Msg("failed to close LDAP connection")
 			}
 		}()
 
