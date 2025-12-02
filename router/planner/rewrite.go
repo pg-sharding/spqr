@@ -17,7 +17,9 @@ import (
 
 func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
 
-	p := &plan.ScatterPlan{}
+	p := &plan.ScatterPlan{
+		SubPlan: &plan.ModifyTable{},
+	}
 
 	// Find the VALUES keyword
 	valuesKeywordStart := strings.Index(strings.ToUpper(query), "VALUES")
