@@ -361,6 +361,8 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				fallthrough
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
 				ReplyVirtualParamState(rst.Client(), "target session attrs", []byte(rst.Client().GetTsa()))
+			case session.SPQR_PREFERRED_ENGINE:
+				ReplyVirtualParamState(rst.Client(), "preferred engine", []byte(rst.Client().PreferredEngine()))
 			default:
 
 				if strings.HasPrefix(param, "__spqr__") {
