@@ -151,6 +151,8 @@ SELECT __spqr__show('reference_relations');
 SELECT * FROM __spqr__show('reference_relations');
 SET __spqr__preferred_engine TO '';
 
+SELECT __spqr__show('reference_relations') /*  __spqr__preferred_engine: v2 */;
+
 DROP TABLE test_ref_rel;
 DROP TABLE sh1.test_ref_rel_rel;
 DROP SCHEMA sh1;
