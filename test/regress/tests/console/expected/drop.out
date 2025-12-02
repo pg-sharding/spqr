@@ -46,7 +46,7 @@ SHOW key_ranges;
  krid2        | sh2      | ds1             | 11          | false
 (1 row)
 
-CREATE SHARD sh1 WITH HOSTS spqr_shard_1:6432,spqr_shard_1_replica:6432;
+CREATE SHARD sh1 WITH HOSTS "spqr_shard_1:6432","spqr_shard_1_replica:6432";
     add shard    
 -----------------
  shard id -> sh1
