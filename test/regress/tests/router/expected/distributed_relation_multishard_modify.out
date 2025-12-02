@@ -93,7 +93,7 @@ NOTICE: send query to shard(s) : sh1
 INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx')/* __spqr__engine_v2: false */;
 NOTICE: send query to shard(s) : sh1,sh2
 INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx') /* __spqr__engine_v2: true */;
-ERROR:  client processing error: error processing query 'INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx') /* __spqr__engine_v2: true */;': too complex query to route, tx status IDLE
+NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE distrr_mm_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console

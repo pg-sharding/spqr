@@ -291,14 +291,42 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "INSERT INTO distrr_mm_test VALUES (3), (34) /* __spqr__engine_v2: true */;",
-			exp:   nil,
-			err:   rerrors.ErrComplexQuery,
+			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: false */;",
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO distrr_mm_test (id) VALUES (3) /* __spqr__engine_v2: false */;`,
+					"sh2": `INSERT INTO distrr_mm_test (id) VALUES (34) /* __spqr__engine_v2: false */;`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
 		},
 		{
 			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: true */;",
-			exp:   nil,
-			err:   rerrors.ErrComplexQuery,
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO distrr_mm_test (id) VALUES (3) /* __spqr__engine_v2: true */;`,
+					"sh2": `INSERT INTO distrr_mm_test (id) VALUES (34) /* __spqr__engine_v2: true */;`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
 		},
 	} {
 		parserRes, _, err := lyx.Parse(tt.query)
@@ -318,6 +346,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
 		} else {
+			assert.NotNil(tmp, tt.query)
 			tmp.SetStmt(nil) /* dont check stmt */
 
 			assert.NoError(err, "query %s", tt.query)
