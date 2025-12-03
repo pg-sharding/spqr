@@ -200,12 +200,16 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 		Str("node", ds.ID).
 		Msg("adding datashard node in local coordinator")
 
-	lc.shardMapping[ds.ID] = ds.Cfg
+	if config.RouterConfig().ManagedShardsByCoordinator {
+		lc.shardMapping[ds.ID] = ds.Cfg
+	}
 	return lc.Coordinator.AddDataShard(ctx, ds)
 }
 
 func (lc *LocalInstanceMetadataMgr) DropShard(ctx context.Context, shardId string) error {
-	delete(lc.shardMapping, shardId)
+	if config.RouterConfig().ManagedShardsByCoordinator {
+		delete(lc.shardMapping, shardId)
+	}
 	return lc.qdb.DropShard(ctx, shardId)
 }
 

@@ -8,7 +8,8 @@ time_quantiles:
   - 0.75
 world_shard_fallback: true
 show_notice_messages: true
-use_coordinator_init: true
+use_coordinator_init: false
+manage_shards_by_coordinator: true
 frontend_rules:
   - db: regress
     usr: regress

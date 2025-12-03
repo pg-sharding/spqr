@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -31,28 +32,28 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 	}()
 
 	/* Initialize shards */
-	shards, err := etcdConn.ListShards(ctx)
-	if err != nil {
-		return err
-	}
-	_, err = r.Console().Mgr().ListShards(ctx)
-	if err != nil {
-		return err
-	}
-	/* Drop old shards */
-	/*
+	if config.RouterConfig().ManagedShardsByCoordinator {
+		shards, err := etcdConn.ListShards(ctx)
+		if err != nil {
+			return err
+		}
+		routerShards, err := r.Console().Mgr().ListShards(ctx)
+		if err != nil {
+			return err
+		}
+		/* Drop old shards */
 		for _, sh := range routerShards {
 			if err := r.Console().Mgr().DropShard(ctx, sh.ID); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
 				return err
 			}
 		}
-	*/
-	/* Add shards from coordinator */
-	for _, sh := range shards {
-		if err := r.Console().Mgr().AddDataShard(ctx, topology.DataShardFromDB(sh)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
-			return err
+		/* Add shards from coordinator */
+		for _, sh := range shards {
+			if err := r.Console().Mgr().AddDataShard(ctx, topology.DataShardFromDB(sh)); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
+				return err
+			}
 		}
 	}
 
