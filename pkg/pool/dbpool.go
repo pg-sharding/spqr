@@ -7,6 +7,7 @@ import (
 	"net"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -40,6 +41,10 @@ type DBPool struct {
 	cache        *DbpoolCache
 	ShuffleHosts bool
 	PreferAZ     string
+
+	AcquireRetryCount int
+
+	recheckTCP bool
 
 	// Background health checking
 	healthCheckCtx    context.Context
@@ -240,6 +245,17 @@ func (s *DBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Hos
 	return s.pool.ConnectionHost(clid, shardKey, host)
 }
 
+func TCPisConnected(conn net.Conn) bool {
+	f, err := conn.(*net.TCPConn).File()
+	if err != nil {
+		return false
+	}
+
+	b := []byte{0}
+	_, _, err = syscall.Recvfrom(int(f.Fd()), b, syscall.MSG_PEEK|syscall.MSG_DONTWAIT)
+	return err != nil
+}
+
 // traverseHostsMatchCB traverses the list of hosts and invokes the provided callback function
 // for each host until the callback returns true. It returns the shard that satisfies the callback
 // condition. If no shard satisfies the condition, it returns nil.
@@ -256,17 +272,54 @@ func (s *DBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Hos
 // TODO : unit tests
 func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config.Host, cb func(shard.ShardHostInstance) bool, tsa tsa.TSA) shard.ShardHostInstance {
 	for _, host := range hosts {
-		sh, err := s.pool.ConnectionHost(clid, key, host)
-		if err != nil {
 
-			s.cache.MarkUnmatched(tsa, host.Address, host.AZ, false, err.Error())
+		/* XXX: Retries? */
 
-			spqrlog.Zero.Error().
-				Err(err).
-				Str("host", host.Address).
-				Str("az", host.AZ).
-				Uint("client", clid).
-				Msg("failed to get connection to host for client")
+		var sh shard.ShardHostInstance
+		var err error
+
+		for retry := 0; retry < s.AcquireRetryCount; retry++ {
+			sh, err = s.pool.ConnectionHost(clid, key, host)
+			if err != nil {
+
+				s.cache.MarkUnmatched(tsa, host.Address, host.AZ, false, err.Error())
+
+				spqrlog.Zero.Error().
+					Err(err).
+					Str("host", host.Address).
+					Str("az", host.AZ).
+					Uint("client", clid).
+					Int("retry", retry).
+					Msg("failed to get connection to host for client")
+				continue
+			}
+
+			/* Bail out quickly, if told so */
+			if !s.recheckTCP {
+				break
+			}
+
+			/* recheck connection */
+			if TCPisConnected(sh.Instance().Conn()) {
+				break
+			} else {
+				spqrlog.Zero.Error().
+					Err(err).
+					Str("host", host.Address).
+					Str("az", host.AZ).
+					Uint("client", clid).
+					Int("retry", retry).
+					Msg("rechecking connection unsuccessfull, droppring")
+				if err := s.pool.Discard(sh); err != nil {
+					/* Uhh, this may be fatal.. */
+					return nil
+				}
+			}
+		}
+		/* sh == nil should be equivalent for err != nil check here
+		* err != nil means we got error acquiring connections every of
+		* `AcquireRetryCount` times  */
+		if sh == nil {
 			continue
 		}
 
@@ -638,6 +691,8 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 		shardMapping:      mapping,
 		ShuffleHosts:      true,
 		PreferAZ:          preferAZ,
+		AcquireRetryCount: config.ValueOrDefaultInt(config.RouterConfig().DbpoolAcquireRetryCount, DefaultAcquireRetryCount),
+		recheckTCP:/* default is false */ config.RouterConfig().DefaultRecheckTCPAliveness,
 		checker:           tsa.NewCachedTSAChecker(),
 		deadCheckInterval: config.ValueOrDefaultDuration(config.RouterConfig().DbpoolDeadCheckInterval, DefaultDeadCheckInterval),
 	}
