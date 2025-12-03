@@ -309,7 +309,7 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 					Str("az", host.AZ).
 					Uint("client", clid).
 					Int("retry", retry).
-					Msg("rechecking connection un-successfull, dropping")
+					Msg("rechecking connection unsuccessful, dropping")
 				if err := s.pool.Discard(sh); err != nil {
 					/* Uhh, this may be fatal.. */
 					return nil
