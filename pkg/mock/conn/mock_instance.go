@@ -11,6 +11,7 @@ package mock
 
 import (
 	tls "crypto/tls"
+	net "net"
 	reflect "reflect"
 
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
@@ -82,6 +83,20 @@ func (m *MockDBInstance) Close() error {
 func (mr *MockDBInstanceMockRecorder) Close() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockDBInstance)(nil).Close))
+}
+
+// Conn mocks base method.
+func (m *MockDBInstance) Conn() net.Conn {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Conn")
+	ret0, _ := ret[0].(net.Conn)
+	return ret0
+}
+
+// Conn indicates an expected call of Conn.
+func (mr *MockDBInstanceMockRecorder) Conn() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Conn", reflect.TypeOf((*MockDBInstance)(nil).Conn))
 }
 
 // Hostname mocks base method.

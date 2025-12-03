@@ -19,6 +19,8 @@ func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.Startu
 		shardMapping:      mapping,
 		checker:           tsa.NewCachedTSACheckerWithDuration(tsaRecheckDuration),
 		deadCheckInterval: 0, // Disabled for testing
+		AcquireRetryCount: 1,
+		recheckTCP:        false,
 	}
 
 	// Create cache with cleanup functionality (5 minute max age)
@@ -34,6 +36,8 @@ func NewDBPoolWithAllocator(mapping map[string]*config.Shard, startupParams *sta
 		shardMapping:      mapping,
 		checker:           tsa.NewCachedTSAChecker(),
 		deadCheckInterval: 0, // Disabled for testing
+		AcquireRetryCount: 1,
+		recheckTCP:        false,
 	}
 
 	// Create cache with cleanup functionality (5 minute max age)
