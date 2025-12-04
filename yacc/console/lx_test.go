@@ -46,7 +46,7 @@ func TestSimpleLex(t *testing.T) {
 		{
 			query: "SHOW clients where user = 'usr1' or dbname = 'db1';",
 			exp: []int{
-				spqrparser.SHOW, spqrparser.IDENT,
+				spqrparser.SHOW, spqrparser.CLIENTS,
 				spqrparser.WHERE,
 				spqrparser.IDENT,
 				spqrparser.TEQ,
@@ -63,7 +63,7 @@ func TestSimpleLex(t *testing.T) {
 		{
 			query: `SHOW clients where user = 'usr1' or "dbname" = 'db1';`,
 			exp: []int{
-				spqrparser.SHOW, spqrparser.IDENT,
+				spqrparser.SHOW, spqrparser.CLIENTS,
 				spqrparser.WHERE,
 				spqrparser.IDENT,
 				spqrparser.TEQ,

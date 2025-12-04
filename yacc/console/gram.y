@@ -195,6 +195,7 @@ func randomHex(n int) (string, error) {
 %token <str> RETRY
 %token <str> DISTRIBUTED IN ON
 %token <str> DEFAULT
+%token <str> STALE CLIENTS
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -657,7 +658,7 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ClientsStr, StatusStr, DistributionsStr, CoordinatorAddrStr, VersionStr, ReferenceRelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users, MoveTaskStr:
+		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, StatusStr, DistributionsStr, CoordinatorAddrStr, VersionStr, ReferenceRelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users, MoveTaskStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -667,6 +668,8 @@ show_statement_type:
 	} | HOSTS {
 		$$ = $1
 	} | SHARDS {
+		$$ = $1
+	} | CLIENTS {
 		$$ = $1
 	}
 
@@ -1326,6 +1329,11 @@ invalidate_stmt:
 	{
 		$$ = &Invalidate{
 			Target: BackendConnectionsInvalidateTarget,
+		}
+	} | INVALIDATE STALE CLIENTS
+	{
+		$$ = &Invalidate{
+			Target: StaleClientsInvalidateTarget,
 		}
 	}
 

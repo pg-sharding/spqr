@@ -195,6 +195,7 @@ type Kill struct {
 type InvalidateCacheTarget string
 
 const (
+	StaleClientsInvalidateTarget       = InvalidateCacheTarget("STALE CLIENTS")
 	BackendConnectionsInvalidateTarget = InvalidateCacheTarget("BACKENDS")
 	SchemaCacheInvalidateTarget        = InvalidateCacheTarget("SCHEMA CACHE")
 )
