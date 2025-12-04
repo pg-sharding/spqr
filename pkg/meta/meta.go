@@ -1125,7 +1125,7 @@ func ProcessShowExtended(ctx context.Context, stmt *spqrparser.Show, mngr Entity
 		var resp []client.ClientInfo
 		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
 			resp = append(resp, client)
-			/* XXX: should we do this un-conditionaly or under separate setting? */
+			/* XXX: should we do this un-conditionally  or under separate setting? */
 			if !netutil.TCP_CheckAliveness(client.Conn()) {
 				if err := client.Cancel(); err != nil {
 					return err
