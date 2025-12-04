@@ -16,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -296,7 +297,7 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 
 	quantiles := statistics.GetQuantiles()
 	headers := []string{
-		"client_id", "user", "dbname", "server_id", "router_address",
+		"client_id", "user", "dbname", "server_id", "router_address", "is_alive",
 	}
 	for _, el := range *quantiles {
 		headers = append(headers, fmt.Sprintf("router_time_%g", el))
@@ -315,7 +316,9 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 			fmt.Appendf(nil, "%d", cl.ID()),
 			[]byte(cl.Usr()),
 			[]byte(cl.DB()),
-			[]byte(hostname), []byte(rAddr)}
+			[]byte(hostname),
+			[]byte(rAddr),
+			[]byte(fmt.Sprintf("%v", netutil.TCPisConnected(cl.Conn())))}
 
 		for _, el := range *quantiles {
 			rowData = append(rowData, fmt.Appendf(nil, "%.2fms",

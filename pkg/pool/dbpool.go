@@ -7,13 +7,13 @@ import (
 	"net"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/datashard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/startup"
@@ -245,17 +245,6 @@ func (s *DBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Hos
 	return s.pool.ConnectionHost(clid, shardKey, host)
 }
 
-func TCPisConnected(conn net.Conn) bool {
-	f, err := conn.(*net.TCPConn).File()
-	if err != nil {
-		return false
-	}
-
-	b := []byte{0}
-	_, _, err = syscall.Recvfrom(int(f.Fd()), b, syscall.MSG_PEEK|syscall.MSG_DONTWAIT)
-	return err != nil
-}
-
 // traverseHostsMatchCB traverses the list of hosts and invokes the provided callback function
 // for each host until the callback returns true. It returns the shard that satisfies the callback
 // condition. If no shard satisfies the condition, it returns nil.
@@ -300,7 +289,7 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 			}
 
 			/* recheck connection */
-			if TCPisConnected(sh.Instance().Conn()) {
+			if netutil.TCPisConnected(sh.Instance().Conn()) {
 				break
 			} else {
 				spqrlog.Zero.Error().
