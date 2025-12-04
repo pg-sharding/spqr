@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package spqr;
+
+option go_package = "spqr/proto";
+import "google/protobuf/empty.proto";
+import "protos/distribution_entities.proto";
+import "protos/key_range.proto";
+
+
+message CreateDistributionGossip {
+  repeated Distribution distributions = 1;
+}
+
+message CreateKeyRangeGossip {
+  KeyRangeInfo key_range_info = 1;
+}
+
+// This is an algebraic type. At the same time, only one command can be non-null.
+message MetaTransactionGossipCommand {
+  CreateDistributionGossip createDistribution = 1;
+  CreateKeyRangeGossip createKeyRange = 2;
+}
+
+message MetaTransactionGossipRequest {
+  repeated MetaTransactionGossipCommand commands = 1;
+}
+
+service MetaTransactionGossipService {
+  rpc ApplyMeta(MetaTransactionGossipRequest) returns (google.protobuf.Empty) {}
+}
+
+message QdbTransactionCmd {
+  int32 command = 1;
+  string key = 2;
+  string value = 3;
+  string extension = 4;
+}
+
+message MetaTransactionReply {
+    string transactionId = 1;
+    repeated QdbTransactionCmd cmdList = 2;
+    repeated MetaTransactionGossipCommand metaCmdList = 3;
+}
+
+message MetaTransactionRequest {
+    string transactionId = 1;
+    repeated QdbTransactionCmd cmdList = 2;
+    repeated MetaTransactionGossipCommand metaCmdList = 3;
+}
+
+message ExecNoTranRequest {
+    repeated QdbTransactionCmd cmdList = 1;
+    repeated MetaTransactionGossipCommand metaCmdList = 2;
+}
+
+service MetaTransactionService {
+  rpc ExecNoTran(ExecNoTranRequest) returns (google.protobuf.Empty) {}
+  rpc CommitTran(MetaTransactionRequest) returns (google.protobuf.Empty) {}
+  rpc BeginTran(google.protobuf.Empty) returns (MetaTransactionReply) {}
+}

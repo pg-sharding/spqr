@@ -12,9 +12,11 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rulerouter"
@@ -34,6 +36,7 @@ type LocalQrouterServer struct {
 	protos.UnimplementedShardServiceServer
 	protos.UnimplementedBalancerTaskServiceServer
 	protos.UnimplementedReferenceRelationsServiceServer
+	protos.UnimplementedMetaTransactionGossipServiceServer
 
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
@@ -608,6 +611,23 @@ func (l *LocalQrouterServer) DropSequence(ctx context.Context, request *protos.D
 	return nil, err
 }
 
+func (l *LocalQrouterServer) ApplyMeta(ctx context.Context, request *protos.MetaTransactionGossipRequest) (*emptypb.Empty, error) {
+	toExecuteCmds := make([]qdb.QdbStatement, 0, len(request.Commands))
+	for _, gossipCommand := range request.Commands {
+		cmdType := mtran.GetGossipRequestType(gossipCommand)
+		switch cmdType {
+		// TODO: run handlers converting gossip commands to chunk with qdb commands
+		default:
+			return nil, fmt.Errorf("invalid meta gossip request:%d", cmdType)
+		}
+	}
+	if chunkCmd, err := mtran.NewMetaTransactionChunk(nil, toExecuteCmds); err != nil {
+		return nil, err
+	} else {
+		return nil, l.mgr.ExecNoTran(ctx, chunkCmd)
+	}
+}
+
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
 
 	lqr := &LocalQrouterServer{
@@ -628,6 +648,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterMoveTasksServiceServer(server, lqr)
 	protos.RegisterBalancerTaskServiceServer(server, lqr)
 	protos.RegisterReferenceRelationsServiceServer(server, lqr)
+	protos.RegisterMetaTransactionGossipServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
@@ -640,3 +661,4 @@ var _ protos.MoveTasksServiceServer = &LocalQrouterServer{}
 var _ protos.BalancerTaskServiceServer = &LocalQrouterServer{}
 var _ protos.ShardServiceServer = &LocalQrouterServer{}
 var _ protos.ReferenceRelationsServiceServer = &LocalQrouterServer{}
+var _ protos.MetaTransactionGossipServiceServer = &LocalQrouterServer{}

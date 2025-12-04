@@ -22,298 +22,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type TypedColRef struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ColumnName    string                 `protobuf:"bytes,1,opt,name=columnName,proto3" json:"columnName,omitempty"`
-	ColumnType    string                 `protobuf:"bytes,2,opt,name=columnType,proto3" json:"columnType,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TypedColRef) Reset() {
-	*x = TypedColRef{}
-	mi := &file_protos_distribution_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TypedColRef) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TypedColRef) ProtoMessage() {}
-
-func (x *TypedColRef) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TypedColRef.ProtoReflect.Descriptor instead.
-func (*TypedColRef) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *TypedColRef) GetColumnName() string {
-	if x != nil {
-		return x.ColumnName
-	}
-	return ""
-}
-
-func (x *TypedColRef) GetColumnType() string {
-	if x != nil {
-		return x.ColumnType
-	}
-	return ""
-}
-
-type RoutingExpr struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ColRefs       []*TypedColRef         `protobuf:"bytes,1,rep,name=colRefs,proto3" json:"colRefs,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RoutingExpr) Reset() {
-	*x = RoutingExpr{}
-	mi := &file_protos_distribution_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RoutingExpr) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RoutingExpr) ProtoMessage() {}
-
-func (x *RoutingExpr) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RoutingExpr.ProtoReflect.Descriptor instead.
-func (*RoutingExpr) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *RoutingExpr) GetColRefs() []*TypedColRef {
-	if x != nil {
-		return x.ColRefs
-	}
-	return nil
-}
-
-type DistributionKeyEntry struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Column        string                 `protobuf:"bytes,1,opt,name=column,proto3" json:"column,omitempty"`
-	HashFunction  string                 `protobuf:"bytes,2,opt,name=hashFunction,proto3" json:"hashFunction,omitempty"`
-	Expr          *RoutingExpr           `protobuf:"bytes,3,opt,name=Expr,proto3" json:"Expr,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DistributionKeyEntry) Reset() {
-	*x = DistributionKeyEntry{}
-	mi := &file_protos_distribution_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DistributionKeyEntry) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DistributionKeyEntry) ProtoMessage() {}
-
-func (x *DistributionKeyEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DistributionKeyEntry.ProtoReflect.Descriptor instead.
-func (*DistributionKeyEntry) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *DistributionKeyEntry) GetColumn() string {
-	if x != nil {
-		return x.Column
-	}
-	return ""
-}
-
-func (x *DistributionKeyEntry) GetHashFunction() string {
-	if x != nil {
-		return x.HashFunction
-	}
-	return ""
-}
-
-func (x *DistributionKeyEntry) GetExpr() *RoutingExpr {
-	if x != nil {
-		return x.Expr
-	}
-	return nil
-}
-
-type DistributedRelation struct {
-	state              protoimpl.MessageState  `protogen:"open.v1"`
-	Name               string                  `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	DistributionKey    []*DistributionKeyEntry `protobuf:"bytes,2,rep,name=distributionKey,proto3" json:"distributionKey,omitempty"`
-	ReplicatedRelation bool                    `protobuf:"varint,3,opt,name=ReplicatedRelation,proto3" json:"ReplicatedRelation,omitempty"`
-	SequenceColumns    map[string]string       `protobuf:"bytes,4,rep,name=sequenceColumns,proto3" json:"sequenceColumns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	SchemaName         string                  `protobuf:"bytes,5,opt,name=schema_name,json=schemaName,proto3" json:"schema_name,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
-}
-
-func (x *DistributedRelation) Reset() {
-	*x = DistributedRelation{}
-	mi := &file_protos_distribution_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DistributedRelation) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DistributedRelation) ProtoMessage() {}
-
-func (x *DistributedRelation) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DistributedRelation.ProtoReflect.Descriptor instead.
-func (*DistributedRelation) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *DistributedRelation) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *DistributedRelation) GetDistributionKey() []*DistributionKeyEntry {
-	if x != nil {
-		return x.DistributionKey
-	}
-	return nil
-}
-
-func (x *DistributedRelation) GetReplicatedRelation() bool {
-	if x != nil {
-		return x.ReplicatedRelation
-	}
-	return false
-}
-
-func (x *DistributedRelation) GetSequenceColumns() map[string]string {
-	if x != nil {
-		return x.SequenceColumns
-	}
-	return nil
-}
-
-func (x *DistributedRelation) GetSchemaName() string {
-	if x != nil {
-		return x.SchemaName
-	}
-	return ""
-}
-
-type Distribution struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ColumnTypes   []string               `protobuf:"bytes,2,rep,name=ColumnTypes,proto3" json:"ColumnTypes,omitempty"`
-	Relations     []*DistributedRelation `protobuf:"bytes,3,rep,name=relations,proto3" json:"relations,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Distribution) Reset() {
-	*x = Distribution{}
-	mi := &file_protos_distribution_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Distribution) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Distribution) ProtoMessage() {}
-
-func (x *Distribution) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Distribution.ProtoReflect.Descriptor instead.
-func (*Distribution) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *Distribution) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *Distribution) GetColumnTypes() []string {
-	if x != nil {
-		return x.ColumnTypes
-	}
-	return nil
-}
-
-func (x *Distribution) GetRelations() []*DistributedRelation {
-	if x != nil {
-		return x.Relations
-	}
-	return nil
-}
-
 type CreateDistributionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Distributions []*Distribution        `protobuf:"bytes,1,rep,name=distributions,proto3" json:"distributions,omitempty"`
@@ -323,7 +31,7 @@ type CreateDistributionRequest struct {
 
 func (x *CreateDistributionRequest) Reset() {
 	*x = CreateDistributionRequest{}
-	mi := &file_protos_distribution_proto_msgTypes[5]
+	mi := &file_protos_distribution_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -335,7 +43,7 @@ func (x *CreateDistributionRequest) String() string {
 func (*CreateDistributionRequest) ProtoMessage() {}
 
 func (x *CreateDistributionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[5]
+	mi := &file_protos_distribution_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -348,7 +56,7 @@ func (x *CreateDistributionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateDistributionRequest.ProtoReflect.Descriptor instead.
 func (*CreateDistributionRequest) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{5}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *CreateDistributionRequest) GetDistributions() []*Distribution {
@@ -367,7 +75,7 @@ type ListDistributionsReply struct {
 
 func (x *ListDistributionsReply) Reset() {
 	*x = ListDistributionsReply{}
-	mi := &file_protos_distribution_proto_msgTypes[6]
+	mi := &file_protos_distribution_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -379,7 +87,7 @@ func (x *ListDistributionsReply) String() string {
 func (*ListDistributionsReply) ProtoMessage() {}
 
 func (x *ListDistributionsReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[6]
+	mi := &file_protos_distribution_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -392,7 +100,7 @@ func (x *ListDistributionsReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDistributionsReply.ProtoReflect.Descriptor instead.
 func (*ListDistributionsReply) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{6}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ListDistributionsReply) GetDistributions() []*Distribution {
@@ -411,7 +119,7 @@ type DropDistributionRequest struct {
 
 func (x *DropDistributionRequest) Reset() {
 	*x = DropDistributionRequest{}
-	mi := &file_protos_distribution_proto_msgTypes[7]
+	mi := &file_protos_distribution_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -423,7 +131,7 @@ func (x *DropDistributionRequest) String() string {
 func (*DropDistributionRequest) ProtoMessage() {}
 
 func (x *DropDistributionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[7]
+	mi := &file_protos_distribution_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -436,7 +144,7 @@ func (x *DropDistributionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DropDistributionRequest.ProtoReflect.Descriptor instead.
 func (*DropDistributionRequest) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{7}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *DropDistributionRequest) GetIds() []string {
@@ -456,7 +164,7 @@ type AlterDistributionAttachRequest struct {
 
 func (x *AlterDistributionAttachRequest) Reset() {
 	*x = AlterDistributionAttachRequest{}
-	mi := &file_protos_distribution_proto_msgTypes[8]
+	mi := &file_protos_distribution_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -468,7 +176,7 @@ func (x *AlterDistributionAttachRequest) String() string {
 func (*AlterDistributionAttachRequest) ProtoMessage() {}
 
 func (x *AlterDistributionAttachRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[8]
+	mi := &file_protos_distribution_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -481,7 +189,7 @@ func (x *AlterDistributionAttachRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AlterDistributionAttachRequest.ProtoReflect.Descriptor instead.
 func (*AlterDistributionAttachRequest) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{8}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AlterDistributionAttachRequest) GetId() string {
@@ -508,7 +216,7 @@ type AlterDistributionDetachRequest struct {
 
 func (x *AlterDistributionDetachRequest) Reset() {
 	*x = AlterDistributionDetachRequest{}
-	mi := &file_protos_distribution_proto_msgTypes[9]
+	mi := &file_protos_distribution_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -520,7 +228,7 @@ func (x *AlterDistributionDetachRequest) String() string {
 func (*AlterDistributionDetachRequest) ProtoMessage() {}
 
 func (x *AlterDistributionDetachRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[9]
+	mi := &file_protos_distribution_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -533,7 +241,7 @@ func (x *AlterDistributionDetachRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AlterDistributionDetachRequest.ProtoReflect.Descriptor instead.
 func (*AlterDistributionDetachRequest) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{9}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AlterDistributionDetachRequest) GetId() string {
@@ -561,7 +269,7 @@ type AlterDistributedRelationSchemaRequest struct {
 
 func (x *AlterDistributedRelationSchemaRequest) Reset() {
 	*x = AlterDistributedRelationSchemaRequest{}
-	mi := &file_protos_distribution_proto_msgTypes[10]
+	mi := &file_protos_distribution_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -573,7 +281,7 @@ func (x *AlterDistributedRelationSchemaRequest) String() string {
 func (*AlterDistributedRelationSchemaRequest) ProtoMessage() {}
 
 func (x *AlterDistributedRelationSchemaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[10]
+	mi := &file_protos_distribution_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -586,7 +294,7 @@ func (x *AlterDistributedRelationSchemaRequest) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use AlterDistributedRelationSchemaRequest.ProtoReflect.Descriptor instead.
 func (*AlterDistributedRelationSchemaRequest) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{10}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AlterDistributedRelationSchemaRequest) GetId() string {
@@ -621,7 +329,7 @@ type AlterDistributedRelationDistributionKeyRequest struct {
 
 func (x *AlterDistributedRelationDistributionKeyRequest) Reset() {
 	*x = AlterDistributedRelationDistributionKeyRequest{}
-	mi := &file_protos_distribution_proto_msgTypes[11]
+	mi := &file_protos_distribution_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -633,7 +341,7 @@ func (x *AlterDistributedRelationDistributionKeyRequest) String() string {
 func (*AlterDistributedRelationDistributionKeyRequest) ProtoMessage() {}
 
 func (x *AlterDistributedRelationDistributionKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[11]
+	mi := &file_protos_distribution_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -646,7 +354,7 @@ func (x *AlterDistributedRelationDistributionKeyRequest) ProtoReflect() protoref
 
 // Deprecated: Use AlterDistributedRelationDistributionKeyRequest.ProtoReflect.Descriptor instead.
 func (*AlterDistributedRelationDistributionKeyRequest) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{11}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AlterDistributedRelationDistributionKeyRequest) GetId() string {
@@ -680,7 +388,7 @@ type AlterDistributedRelationRequest struct {
 
 func (x *AlterDistributedRelationRequest) Reset() {
 	*x = AlterDistributedRelationRequest{}
-	mi := &file_protos_distribution_proto_msgTypes[12]
+	mi := &file_protos_distribution_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -692,7 +400,7 @@ func (x *AlterDistributedRelationRequest) String() string {
 func (*AlterDistributedRelationRequest) ProtoMessage() {}
 
 func (x *AlterDistributedRelationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[12]
+	mi := &file_protos_distribution_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -705,7 +413,7 @@ func (x *AlterDistributedRelationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AlterDistributedRelationRequest.ProtoReflect.Descriptor instead.
 func (*AlterDistributedRelationRequest) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{12}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AlterDistributedRelationRequest) GetId() string {
@@ -731,7 +439,7 @@ type GetDistributionRequest struct {
 
 func (x *GetDistributionRequest) Reset() {
 	*x = GetDistributionRequest{}
-	mi := &file_protos_distribution_proto_msgTypes[13]
+	mi := &file_protos_distribution_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -743,7 +451,7 @@ func (x *GetDistributionRequest) String() string {
 func (*GetDistributionRequest) ProtoMessage() {}
 
 func (x *GetDistributionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[13]
+	mi := &file_protos_distribution_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -756,7 +464,7 @@ func (x *GetDistributionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDistributionRequest.ProtoReflect.Descriptor instead.
 func (*GetDistributionRequest) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{13}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetDistributionRequest) GetId() string {
@@ -775,7 +483,7 @@ type GetDistributionReply struct {
 
 func (x *GetDistributionReply) Reset() {
 	*x = GetDistributionReply{}
-	mi := &file_protos_distribution_proto_msgTypes[14]
+	mi := &file_protos_distribution_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -787,7 +495,7 @@ func (x *GetDistributionReply) String() string {
 func (*GetDistributionReply) ProtoMessage() {}
 
 func (x *GetDistributionReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[14]
+	mi := &file_protos_distribution_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -800,7 +508,7 @@ func (x *GetDistributionReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDistributionReply.ProtoReflect.Descriptor instead.
 func (*GetDistributionReply) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{14}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetDistributionReply) GetDistribution() *Distribution {
@@ -820,7 +528,7 @@ type GetRelationDistributionRequest struct {
 
 func (x *GetRelationDistributionRequest) Reset() {
 	*x = GetRelationDistributionRequest{}
-	mi := &file_protos_distribution_proto_msgTypes[15]
+	mi := &file_protos_distribution_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -832,7 +540,7 @@ func (x *GetRelationDistributionRequest) String() string {
 func (*GetRelationDistributionRequest) ProtoMessage() {}
 
 func (x *GetRelationDistributionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[15]
+	mi := &file_protos_distribution_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -845,7 +553,7 @@ func (x *GetRelationDistributionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRelationDistributionRequest.ProtoReflect.Descriptor instead.
 func (*GetRelationDistributionRequest) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{15}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetRelationDistributionRequest) GetName() string {
@@ -871,7 +579,7 @@ type GetRelationDistributionReply struct {
 
 func (x *GetRelationDistributionReply) Reset() {
 	*x = GetRelationDistributionReply{}
-	mi := &file_protos_distribution_proto_msgTypes[16]
+	mi := &file_protos_distribution_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -883,7 +591,7 @@ func (x *GetRelationDistributionReply) String() string {
 func (*GetRelationDistributionReply) ProtoMessage() {}
 
 func (x *GetRelationDistributionReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[16]
+	mi := &file_protos_distribution_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -896,7 +604,7 @@ func (x *GetRelationDistributionReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRelationDistributionReply.ProtoReflect.Descriptor instead.
 func (*GetRelationDistributionReply) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{16}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetRelationDistributionReply) GetDistribution() *Distribution {
@@ -916,7 +624,7 @@ type NextRangeRequest struct {
 
 func (x *NextRangeRequest) Reset() {
 	*x = NextRangeRequest{}
-	mi := &file_protos_distribution_proto_msgTypes[17]
+	mi := &file_protos_distribution_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -928,7 +636,7 @@ func (x *NextRangeRequest) String() string {
 func (*NextRangeRequest) ProtoMessage() {}
 
 func (x *NextRangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[17]
+	mi := &file_protos_distribution_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -941,7 +649,7 @@ func (x *NextRangeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NextRangeRequest.ProtoReflect.Descriptor instead.
 func (*NextRangeRequest) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{17}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *NextRangeRequest) GetSeq() string {
@@ -968,7 +676,7 @@ type NextRangeReply struct {
 
 func (x *NextRangeReply) Reset() {
 	*x = NextRangeReply{}
-	mi := &file_protos_distribution_proto_msgTypes[18]
+	mi := &file_protos_distribution_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -980,7 +688,7 @@ func (x *NextRangeReply) String() string {
 func (*NextRangeReply) ProtoMessage() {}
 
 func (x *NextRangeReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[18]
+	mi := &file_protos_distribution_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -993,7 +701,7 @@ func (x *NextRangeReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NextRangeReply.ProtoReflect.Descriptor instead.
 func (*NextRangeReply) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{18}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *NextRangeReply) GetLeft() int64 {
@@ -1019,7 +727,7 @@ type CurrValRequest struct {
 
 func (x *CurrValRequest) Reset() {
 	*x = CurrValRequest{}
-	mi := &file_protos_distribution_proto_msgTypes[19]
+	mi := &file_protos_distribution_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1031,7 +739,7 @@ func (x *CurrValRequest) String() string {
 func (*CurrValRequest) ProtoMessage() {}
 
 func (x *CurrValRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[19]
+	mi := &file_protos_distribution_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1044,7 +752,7 @@ func (x *CurrValRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CurrValRequest.ProtoReflect.Descriptor instead.
 func (*CurrValRequest) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{19}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *CurrValRequest) GetSeq() string {
@@ -1063,7 +771,7 @@ type CurrValReply struct {
 
 func (x *CurrValReply) Reset() {
 	*x = CurrValReply{}
-	mi := &file_protos_distribution_proto_msgTypes[20]
+	mi := &file_protos_distribution_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1075,7 +783,7 @@ func (x *CurrValReply) String() string {
 func (*CurrValReply) ProtoMessage() {}
 
 func (x *CurrValReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[20]
+	mi := &file_protos_distribution_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1088,7 +796,7 @@ func (x *CurrValReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CurrValReply.ProtoReflect.Descriptor instead.
 func (*CurrValReply) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{20}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *CurrValReply) GetValue() int64 {
@@ -1107,7 +815,7 @@ type ListSequencesReply struct {
 
 func (x *ListSequencesReply) Reset() {
 	*x = ListSequencesReply{}
-	mi := &file_protos_distribution_proto_msgTypes[21]
+	mi := &file_protos_distribution_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1119,7 +827,7 @@ func (x *ListSequencesReply) String() string {
 func (*ListSequencesReply) ProtoMessage() {}
 
 func (x *ListSequencesReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[21]
+	mi := &file_protos_distribution_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1132,7 +840,7 @@ func (x *ListSequencesReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSequencesReply.ProtoReflect.Descriptor instead.
 func (*ListSequencesReply) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{21}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListSequencesReply) GetNames() []string {
@@ -1152,7 +860,7 @@ type DropSequenceRequest struct {
 
 func (x *DropSequenceRequest) Reset() {
 	*x = DropSequenceRequest{}
-	mi := &file_protos_distribution_proto_msgTypes[22]
+	mi := &file_protos_distribution_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1164,7 +872,7 @@ func (x *DropSequenceRequest) String() string {
 func (*DropSequenceRequest) ProtoMessage() {}
 
 func (x *DropSequenceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[22]
+	mi := &file_protos_distribution_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1177,7 +885,7 @@ func (x *DropSequenceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DropSequenceRequest.ProtoReflect.Descriptor instead.
 func (*DropSequenceRequest) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{22}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *DropSequenceRequest) GetName() string {
@@ -1204,7 +912,7 @@ type ListRelationSequencesRequest struct {
 
 func (x *ListRelationSequencesRequest) Reset() {
 	*x = ListRelationSequencesRequest{}
-	mi := &file_protos_distribution_proto_msgTypes[23]
+	mi := &file_protos_distribution_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1216,7 +924,7 @@ func (x *ListRelationSequencesRequest) String() string {
 func (*ListRelationSequencesRequest) ProtoMessage() {}
 
 func (x *ListRelationSequencesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[23]
+	mi := &file_protos_distribution_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1229,7 +937,7 @@ func (x *ListRelationSequencesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRelationSequencesRequest.ProtoReflect.Descriptor instead.
 func (*ListRelationSequencesRequest) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{23}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ListRelationSequencesRequest) GetName() string {
@@ -1255,7 +963,7 @@ type ListRelationSequencesReply struct {
 
 func (x *ListRelationSequencesReply) Reset() {
 	*x = ListRelationSequencesReply{}
-	mi := &file_protos_distribution_proto_msgTypes[24]
+	mi := &file_protos_distribution_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1267,7 +975,7 @@ func (x *ListRelationSequencesReply) String() string {
 func (*ListRelationSequencesReply) ProtoMessage() {}
 
 func (x *ListRelationSequencesReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_distribution_proto_msgTypes[24]
+	mi := &file_protos_distribution_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1280,7 +988,7 @@ func (x *ListRelationSequencesReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRelationSequencesReply.ProtoReflect.Descriptor instead.
 func (*ListRelationSequencesReply) Descriptor() ([]byte, []int) {
-	return file_protos_distribution_proto_rawDescGZIP(), []int{24}
+	return file_protos_distribution_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ListRelationSequencesReply) GetColumnSequences() map[string]string {
@@ -1294,34 +1002,7 @@ var File_protos_distribution_proto protoreflect.FileDescriptor
 
 const file_protos_distribution_proto_rawDesc = "" +
 	"\n" +
-	"\x19protos/distribution.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1bprotos/qualified_name.proto\"M\n" +
-	"\vTypedColRef\x12\x1e\n" +
-	"\n" +
-	"columnName\x18\x01 \x01(\tR\n" +
-	"columnName\x12\x1e\n" +
-	"\n" +
-	"columnType\x18\x02 \x01(\tR\n" +
-	"columnType\":\n" +
-	"\vRoutingExpr\x12+\n" +
-	"\acolRefs\x18\x01 \x03(\v2\x11.spqr.TypedColRefR\acolRefs\"y\n" +
-	"\x14DistributionKeyEntry\x12\x16\n" +
-	"\x06column\x18\x01 \x01(\tR\x06column\x12\"\n" +
-	"\fhashFunction\x18\x02 \x01(\tR\fhashFunction\x12%\n" +
-	"\x04Expr\x18\x03 \x01(\v2\x11.spqr.RoutingExprR\x04Expr\"\xde\x02\n" +
-	"\x13DistributedRelation\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12D\n" +
-	"\x0fdistributionKey\x18\x02 \x03(\v2\x1a.spqr.DistributionKeyEntryR\x0fdistributionKey\x12.\n" +
-	"\x12ReplicatedRelation\x18\x03 \x01(\bR\x12ReplicatedRelation\x12X\n" +
-	"\x0fsequenceColumns\x18\x04 \x03(\v2..spqr.DistributedRelation.SequenceColumnsEntryR\x0fsequenceColumns\x12\x1f\n" +
-	"\vschema_name\x18\x05 \x01(\tR\n" +
-	"schemaName\x1aB\n" +
-	"\x14SequenceColumnsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"y\n" +
-	"\fDistribution\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
-	"\vColumnTypes\x18\x02 \x03(\tR\vColumnTypes\x127\n" +
-	"\trelations\x18\x03 \x03(\v2\x19.spqr.DistributedRelationR\trelations\"U\n" +
+	"\x19protos/distribution.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1bprotos/qualified_name.proto\x1a\x1dprotos/meta_transaction.proto\x1a\"protos/distribution_entities.proto\"U\n" +
 	"\x19CreateDistributionRequest\x128\n" +
 	"\rdistributions\x18\x01 \x03(\v2\x12.spqr.DistributionR\rdistributions\"R\n" +
 	"\x16ListDistributionsReply\x128\n" +
@@ -1414,88 +1095,80 @@ func file_protos_distribution_proto_rawDescGZIP() []byte {
 	return file_protos_distribution_proto_rawDescData
 }
 
-var file_protos_distribution_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_protos_distribution_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_protos_distribution_proto_goTypes = []any{
-	(*TypedColRef)(nil),                                    // 0: spqr.TypedColRef
-	(*RoutingExpr)(nil),                                    // 1: spqr.RoutingExpr
-	(*DistributionKeyEntry)(nil),                           // 2: spqr.DistributionKeyEntry
-	(*DistributedRelation)(nil),                            // 3: spqr.DistributedRelation
-	(*Distribution)(nil),                                   // 4: spqr.Distribution
-	(*CreateDistributionRequest)(nil),                      // 5: spqr.CreateDistributionRequest
-	(*ListDistributionsReply)(nil),                         // 6: spqr.ListDistributionsReply
-	(*DropDistributionRequest)(nil),                        // 7: spqr.DropDistributionRequest
-	(*AlterDistributionAttachRequest)(nil),                 // 8: spqr.AlterDistributionAttachRequest
-	(*AlterDistributionDetachRequest)(nil),                 // 9: spqr.AlterDistributionDetachRequest
-	(*AlterDistributedRelationSchemaRequest)(nil),          // 10: spqr.AlterDistributedRelationSchemaRequest
-	(*AlterDistributedRelationDistributionKeyRequest)(nil), // 11: spqr.AlterDistributedRelationDistributionKeyRequest
-	(*AlterDistributedRelationRequest)(nil),                // 12: spqr.AlterDistributedRelationRequest
-	(*GetDistributionRequest)(nil),                         // 13: spqr.GetDistributionRequest
-	(*GetDistributionReply)(nil),                           // 14: spqr.GetDistributionReply
-	(*GetRelationDistributionRequest)(nil),                 // 15: spqr.GetRelationDistributionRequest
-	(*GetRelationDistributionReply)(nil),                   // 16: spqr.GetRelationDistributionReply
-	(*NextRangeRequest)(nil),                               // 17: spqr.NextRangeRequest
-	(*NextRangeReply)(nil),                                 // 18: spqr.NextRangeReply
-	(*CurrValRequest)(nil),                                 // 19: spqr.CurrValRequest
-	(*CurrValReply)(nil),                                   // 20: spqr.CurrValReply
-	(*ListSequencesReply)(nil),                             // 21: spqr.ListSequencesReply
-	(*DropSequenceRequest)(nil),                            // 22: spqr.DropSequenceRequest
-	(*ListRelationSequencesRequest)(nil),                   // 23: spqr.ListRelationSequencesRequest
-	(*ListRelationSequencesReply)(nil),                     // 24: spqr.ListRelationSequencesReply
-	nil,                                                    // 25: spqr.DistributedRelation.SequenceColumnsEntry
-	nil,                                                    // 26: spqr.ListRelationSequencesReply.ColumnSequencesEntry
-	(*QualifiedName)(nil),                                  // 27: spqr.QualifiedName
-	(*emptypb.Empty)(nil),                                  // 28: google.protobuf.Empty
+	(*CreateDistributionRequest)(nil),                      // 0: spqr.CreateDistributionRequest
+	(*ListDistributionsReply)(nil),                         // 1: spqr.ListDistributionsReply
+	(*DropDistributionRequest)(nil),                        // 2: spqr.DropDistributionRequest
+	(*AlterDistributionAttachRequest)(nil),                 // 3: spqr.AlterDistributionAttachRequest
+	(*AlterDistributionDetachRequest)(nil),                 // 4: spqr.AlterDistributionDetachRequest
+	(*AlterDistributedRelationSchemaRequest)(nil),          // 5: spqr.AlterDistributedRelationSchemaRequest
+	(*AlterDistributedRelationDistributionKeyRequest)(nil), // 6: spqr.AlterDistributedRelationDistributionKeyRequest
+	(*AlterDistributedRelationRequest)(nil),                // 7: spqr.AlterDistributedRelationRequest
+	(*GetDistributionRequest)(nil),                         // 8: spqr.GetDistributionRequest
+	(*GetDistributionReply)(nil),                           // 9: spqr.GetDistributionReply
+	(*GetRelationDistributionRequest)(nil),                 // 10: spqr.GetRelationDistributionRequest
+	(*GetRelationDistributionReply)(nil),                   // 11: spqr.GetRelationDistributionReply
+	(*NextRangeRequest)(nil),                               // 12: spqr.NextRangeRequest
+	(*NextRangeReply)(nil),                                 // 13: spqr.NextRangeReply
+	(*CurrValRequest)(nil),                                 // 14: spqr.CurrValRequest
+	(*CurrValReply)(nil),                                   // 15: spqr.CurrValReply
+	(*ListSequencesReply)(nil),                             // 16: spqr.ListSequencesReply
+	(*DropSequenceRequest)(nil),                            // 17: spqr.DropSequenceRequest
+	(*ListRelationSequencesRequest)(nil),                   // 18: spqr.ListRelationSequencesRequest
+	(*ListRelationSequencesReply)(nil),                     // 19: spqr.ListRelationSequencesReply
+	nil,                                                    // 20: spqr.ListRelationSequencesReply.ColumnSequencesEntry
+	(*Distribution)(nil),                                   // 21: spqr.Distribution
+	(*DistributedRelation)(nil),                            // 22: spqr.DistributedRelation
+	(*QualifiedName)(nil),                                  // 23: spqr.QualifiedName
+	(*DistributionKeyEntry)(nil),                           // 24: spqr.DistributionKeyEntry
+	(*emptypb.Empty)(nil),                                  // 25: google.protobuf.Empty
 }
 var file_protos_distribution_proto_depIdxs = []int32{
-	0,  // 0: spqr.RoutingExpr.colRefs:type_name -> spqr.TypedColRef
-	1,  // 1: spqr.DistributionKeyEntry.Expr:type_name -> spqr.RoutingExpr
-	2,  // 2: spqr.DistributedRelation.distributionKey:type_name -> spqr.DistributionKeyEntry
-	25, // 3: spqr.DistributedRelation.sequenceColumns:type_name -> spqr.DistributedRelation.SequenceColumnsEntry
-	3,  // 4: spqr.Distribution.relations:type_name -> spqr.DistributedRelation
-	4,  // 5: spqr.CreateDistributionRequest.distributions:type_name -> spqr.Distribution
-	4,  // 6: spqr.ListDistributionsReply.distributions:type_name -> spqr.Distribution
-	3,  // 7: spqr.AlterDistributionAttachRequest.relations:type_name -> spqr.DistributedRelation
-	27, // 8: spqr.AlterDistributionDetachRequest.relNames:type_name -> spqr.QualifiedName
-	2,  // 9: spqr.AlterDistributedRelationDistributionKeyRequest.distributionKey:type_name -> spqr.DistributionKeyEntry
-	3,  // 10: spqr.AlterDistributedRelationRequest.relation:type_name -> spqr.DistributedRelation
-	4,  // 11: spqr.GetDistributionReply.distribution:type_name -> spqr.Distribution
-	4,  // 12: spqr.GetRelationDistributionReply.distribution:type_name -> spqr.Distribution
-	26, // 13: spqr.ListRelationSequencesReply.columnSequences:type_name -> spqr.ListRelationSequencesReply.ColumnSequencesEntry
-	5,  // 14: spqr.DistributionService.CreateDistribution:input_type -> spqr.CreateDistributionRequest
-	7,  // 15: spqr.DistributionService.DropDistribution:input_type -> spqr.DropDistributionRequest
-	28, // 16: spqr.DistributionService.ListDistributions:input_type -> google.protobuf.Empty
-	8,  // 17: spqr.DistributionService.AlterDistributionAttach:input_type -> spqr.AlterDistributionAttachRequest
-	9,  // 18: spqr.DistributionService.AlterDistributionDetach:input_type -> spqr.AlterDistributionDetachRequest
-	12, // 19: spqr.DistributionService.AlterDistributedRelation:input_type -> spqr.AlterDistributedRelationRequest
-	10, // 20: spqr.DistributionService.AlterDistributedRelationSchema:input_type -> spqr.AlterDistributedRelationSchemaRequest
-	11, // 21: spqr.DistributionService.AlterDistributedRelationDistributionKey:input_type -> spqr.AlterDistributedRelationDistributionKeyRequest
-	13, // 22: spqr.DistributionService.GetDistribution:input_type -> spqr.GetDistributionRequest
-	15, // 23: spqr.DistributionService.GetRelationDistribution:input_type -> spqr.GetRelationDistributionRequest
-	17, // 24: spqr.DistributionService.NextRange:input_type -> spqr.NextRangeRequest
-	19, // 25: spqr.DistributionService.CurrVal:input_type -> spqr.CurrValRequest
-	28, // 26: spqr.DistributionService.ListSequences:input_type -> google.protobuf.Empty
-	23, // 27: spqr.DistributionService.ListRelationSequences:input_type -> spqr.ListRelationSequencesRequest
-	22, // 28: spqr.DistributionService.DropSequence:input_type -> spqr.DropSequenceRequest
-	28, // 29: spqr.DistributionService.CreateDistribution:output_type -> google.protobuf.Empty
-	28, // 30: spqr.DistributionService.DropDistribution:output_type -> google.protobuf.Empty
-	6,  // 31: spqr.DistributionService.ListDistributions:output_type -> spqr.ListDistributionsReply
-	28, // 32: spqr.DistributionService.AlterDistributionAttach:output_type -> google.protobuf.Empty
-	28, // 33: spqr.DistributionService.AlterDistributionDetach:output_type -> google.protobuf.Empty
-	28, // 34: spqr.DistributionService.AlterDistributedRelation:output_type -> google.protobuf.Empty
-	28, // 35: spqr.DistributionService.AlterDistributedRelationSchema:output_type -> google.protobuf.Empty
-	28, // 36: spqr.DistributionService.AlterDistributedRelationDistributionKey:output_type -> google.protobuf.Empty
-	14, // 37: spqr.DistributionService.GetDistribution:output_type -> spqr.GetDistributionReply
-	16, // 38: spqr.DistributionService.GetRelationDistribution:output_type -> spqr.GetRelationDistributionReply
-	18, // 39: spqr.DistributionService.NextRange:output_type -> spqr.NextRangeReply
-	20, // 40: spqr.DistributionService.CurrVal:output_type -> spqr.CurrValReply
-	21, // 41: spqr.DistributionService.ListSequences:output_type -> spqr.ListSequencesReply
-	24, // 42: spqr.DistributionService.ListRelationSequences:output_type -> spqr.ListRelationSequencesReply
-	28, // 43: spqr.DistributionService.DropSequence:output_type -> google.protobuf.Empty
-	29, // [29:44] is the sub-list for method output_type
-	14, // [14:29] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	21, // 0: spqr.CreateDistributionRequest.distributions:type_name -> spqr.Distribution
+	21, // 1: spqr.ListDistributionsReply.distributions:type_name -> spqr.Distribution
+	22, // 2: spqr.AlterDistributionAttachRequest.relations:type_name -> spqr.DistributedRelation
+	23, // 3: spqr.AlterDistributionDetachRequest.relNames:type_name -> spqr.QualifiedName
+	24, // 4: spqr.AlterDistributedRelationDistributionKeyRequest.distributionKey:type_name -> spqr.DistributionKeyEntry
+	22, // 5: spqr.AlterDistributedRelationRequest.relation:type_name -> spqr.DistributedRelation
+	21, // 6: spqr.GetDistributionReply.distribution:type_name -> spqr.Distribution
+	21, // 7: spqr.GetRelationDistributionReply.distribution:type_name -> spqr.Distribution
+	20, // 8: spqr.ListRelationSequencesReply.columnSequences:type_name -> spqr.ListRelationSequencesReply.ColumnSequencesEntry
+	0,  // 9: spqr.DistributionService.CreateDistribution:input_type -> spqr.CreateDistributionRequest
+	2,  // 10: spqr.DistributionService.DropDistribution:input_type -> spqr.DropDistributionRequest
+	25, // 11: spqr.DistributionService.ListDistributions:input_type -> google.protobuf.Empty
+	3,  // 12: spqr.DistributionService.AlterDistributionAttach:input_type -> spqr.AlterDistributionAttachRequest
+	4,  // 13: spqr.DistributionService.AlterDistributionDetach:input_type -> spqr.AlterDistributionDetachRequest
+	7,  // 14: spqr.DistributionService.AlterDistributedRelation:input_type -> spqr.AlterDistributedRelationRequest
+	5,  // 15: spqr.DistributionService.AlterDistributedRelationSchema:input_type -> spqr.AlterDistributedRelationSchemaRequest
+	6,  // 16: spqr.DistributionService.AlterDistributedRelationDistributionKey:input_type -> spqr.AlterDistributedRelationDistributionKeyRequest
+	8,  // 17: spqr.DistributionService.GetDistribution:input_type -> spqr.GetDistributionRequest
+	10, // 18: spqr.DistributionService.GetRelationDistribution:input_type -> spqr.GetRelationDistributionRequest
+	12, // 19: spqr.DistributionService.NextRange:input_type -> spqr.NextRangeRequest
+	14, // 20: spqr.DistributionService.CurrVal:input_type -> spqr.CurrValRequest
+	25, // 21: spqr.DistributionService.ListSequences:input_type -> google.protobuf.Empty
+	18, // 22: spqr.DistributionService.ListRelationSequences:input_type -> spqr.ListRelationSequencesRequest
+	17, // 23: spqr.DistributionService.DropSequence:input_type -> spqr.DropSequenceRequest
+	25, // 24: spqr.DistributionService.CreateDistribution:output_type -> google.protobuf.Empty
+	25, // 25: spqr.DistributionService.DropDistribution:output_type -> google.protobuf.Empty
+	1,  // 26: spqr.DistributionService.ListDistributions:output_type -> spqr.ListDistributionsReply
+	25, // 27: spqr.DistributionService.AlterDistributionAttach:output_type -> google.protobuf.Empty
+	25, // 28: spqr.DistributionService.AlterDistributionDetach:output_type -> google.protobuf.Empty
+	25, // 29: spqr.DistributionService.AlterDistributedRelation:output_type -> google.protobuf.Empty
+	25, // 30: spqr.DistributionService.AlterDistributedRelationSchema:output_type -> google.protobuf.Empty
+	25, // 31: spqr.DistributionService.AlterDistributedRelationDistributionKey:output_type -> google.protobuf.Empty
+	9,  // 32: spqr.DistributionService.GetDistribution:output_type -> spqr.GetDistributionReply
+	11, // 33: spqr.DistributionService.GetRelationDistribution:output_type -> spqr.GetRelationDistributionReply
+	13, // 34: spqr.DistributionService.NextRange:output_type -> spqr.NextRangeReply
+	15, // 35: spqr.DistributionService.CurrVal:output_type -> spqr.CurrValReply
+	16, // 36: spqr.DistributionService.ListSequences:output_type -> spqr.ListSequencesReply
+	19, // 37: spqr.DistributionService.ListRelationSequences:output_type -> spqr.ListRelationSequencesReply
+	25, // 38: spqr.DistributionService.DropSequence:output_type -> google.protobuf.Empty
+	24, // [24:39] is the sub-list for method output_type
+	9,  // [9:24] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_protos_distribution_proto_init() }
@@ -1504,13 +1177,15 @@ func file_protos_distribution_proto_init() {
 		return
 	}
 	file_protos_qualified_name_proto_init()
+	file_protos_meta_transaction_proto_init()
+	file_protos_distribution_entities_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_distribution_proto_rawDesc), len(file_protos_distribution_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   27,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
