@@ -20,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -928,7 +929,18 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		switch stmt.Target {
 		case spqrparser.SchemaCacheInvalidateTarget:
 			mgr.Cache().Reset()
-
+		case spqrparser.StaleClientsInvalidateTarget:
+			cnt := 0
+			if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
+				if !netutil.TCPisConnected(cl.Conn()) {
+					cnt++
+					return cl.Cancel()
+				}
+				return nil
+			}); err != nil {
+				return cli.ReportError(err)
+			}
+			return cli.CompleteMsg(cnt)
 		case spqrparser.BackendConnectionsInvalidateTarget:
 			if err := ci.ForEachPool(func(p pool.Pool) error {
 				return p.ForEach(func(sh shard.ShardHostCtl) error {
@@ -936,7 +948,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 					return nil
 				})
 			}); err != nil {
-				return err
+				return cli.ReportError(err)
 			}
 		}
 		return cli.CompleteMsg(0)
@@ -1245,7 +1257,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Pools(ctx, respPools)
-
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
 	case spqrparser.CoordinatorAddrStr:
