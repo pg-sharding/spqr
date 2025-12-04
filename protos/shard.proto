@@ -19,6 +19,7 @@ message ShardInfo {
 service ShardService {
   rpc ListShards (google.protobuf.Empty) returns (ListShardsReply) {}
   rpc AddDataShard (AddShardRequest) returns (google.protobuf.Empty) {}
+  rpc DropShard (DropShardRequest) returns (google.protobuf.Empty) {}
   rpc AddWorldShard (AddWorldShardRequest) returns (google.protobuf.Empty) {}
   rpc GetShard (ShardRequest) returns (ShardReply) {}
 }
@@ -41,4 +42,8 @@ message AddShardRequest {
 
 message AddWorldShardRequest {
   Shard shard = 1;
+}
+
+message DropShardRequest {
+  string id = 1;
 }
