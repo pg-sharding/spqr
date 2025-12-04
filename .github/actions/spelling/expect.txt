@@ -337,6 +337,7 @@ NConst
 Neque
 netchecker
 netconn
+netutil
 Newf
 Nofity
 noid

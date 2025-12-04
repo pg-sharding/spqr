@@ -14,8 +14,8 @@ func TCPisConnected(conn net.Conn) bool {
 	b := []byte{0}
 	/* Note we are doing this syscall without any additional synchronization
 	* This should not however induce any harm. MSG_PEEK makes sure subsequent read will
-	* still receive some bytes, and we use MSG_DONTWAIT to not make this check time-cosuming
-	* because we are not interected in result anyways  */
+	* still receive some bytes, and we use MSG_DONTWAIT to not make this check time-consuming
+	* because we are not interested in result anyways  */
 	_, _, err = syscall.Recvfrom(int(f.Fd()), b, syscall.MSG_PEEK|syscall.MSG_DONTWAIT)
 	return err != nil
 }
