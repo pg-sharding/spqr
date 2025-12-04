@@ -1,10 +1,3 @@
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 CREATE REFERENCE TABLE t AUTO INCREMENT id;
    create reference table    
 -----------------------------
@@ -19,15 +12,24 @@ CREATE REFERENCE TABLE t1 AUTO INCREMENT id;
  shard id -> sh1,sh2,sh3,sh4
 (2 rows)
 
+CREATE REFERENCE TABLE t2 AUTO INCREMENT id;
+   create reference table    
+-----------------------------
+ table    -> t2
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
 SHOW SEQUENCES;
  name  | value 
 -------+-------
  t1_id | 0
+ t2_id | 0
  t_id  | 0
-(2 rows)
+(3 rows)
 
 DROP SEQUENCE t1_id;
-ERROR:  column "t1.id" is attached to sequence
+ERROR:  cannot drop sequence t1_id because other objects depend on it
+HINT: Use DROP ... CASCADE to drop the dependent objects too.
 DROP REFERENCE RELATION t1;
  drop reference relation 
 -------------------------
@@ -35,15 +37,22 @@ DROP REFERENCE RELATION t1;
 (1 row)
 
 SHOW sequences;
- name | value 
-------+-------
- t_id | 0
-(1 row)
+ name  | value 
+-------+-------
+ t2_id | 0
+ t_id  | 0
+(2 rows)
 
 DROP SEQUENCE t1_id;
    drop sequence   
 -------------------
  sequence -> t1_id
+(1 row)
+
+DROP SEQUENCE t2_id CASCADE;
+   drop sequence   
+-------------------
+ sequence -> t2_id
 (1 row)
 
 CREATE DISTRIBUTION ds COLUMN TYPES integer;

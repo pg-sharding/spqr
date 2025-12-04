@@ -26,6 +26,7 @@ ARRAYOID
 aspernatur
 astmt
 authed
+automaxprocs
 autotools
 basebackup
 bbc
@@ -159,12 +160,14 @@ ffd
 fffffffffffe
 FFFFFFFFFFFFFFFF
 filerow
+firewalls
 fmtcheck
 forumsys
 forwardable
 frmp
 frrule
 frsm
+frst
 frules
 ftts
 fugiat
@@ -203,6 +206,7 @@ hotspots
 hst
 HTAP
 iana
+icp
 IDBy
 idi
 idj
@@ -290,6 +294,7 @@ logproxy
 lol
 lsb
 lval
+maxprocs
 maxuint
 mcol
 mdblocales
@@ -332,6 +337,7 @@ NConst
 Neque
 netchecker
 netconn
+netutil
 Newf
 Nofity
 noid
@@ -462,11 +468,10 @@ rmgr
 rollbacked
 roolback
 routable
-routemgr
-routerparser
 routerproto
 routingstate
 rowmap
+RPCs
 rport
 rqdn
 rqfn
@@ -498,7 +503,6 @@ shardproxy
 shkey
 shname
 shq
-shrid
 singleshard
 Smartphone
 spaolacci
@@ -511,7 +515,6 @@ SPQRE
 spqrerror
 SPQRF
 spqrguard
-SPQRH
 spqrhash
 SPQRI
 spqrinfra
@@ -580,8 +583,8 @@ topbar
 TOPENBR
 TOPENSQBR
 tpcc
-TRASCE
 tran
+TRASCE
 tsa
 TSEMICOLON
 tstmt
@@ -621,6 +624,7 @@ vasya
 velit
 vguoyguoygoyy
 Vitess
+vmsg
 Volkov
 voluptate
 voluptatem

@@ -3,6 +3,7 @@ package spqrparser_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -1908,6 +1909,85 @@ func TestKill(t *testing.T) {
 			exp: &spqrparser.Kill{
 				Cmd:    spqrparser.BackendStr,
 				Target: 824636929313,
+			},
+			err: nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+		} else {
+			assert.Error(err, "query %s", tt.query)
+		}
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
+func TestICP(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "attach control point 'p1'",
+			exp: &spqrparser.InstanceControlPoint{
+				Name:   "p1",
+				Enable: true,
+				A: &spqrparser.ICPointAction{
+					Act: "panic",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "attach control point 'p1' wait 10 seconds",
+			exp: &spqrparser.InstanceControlPoint{
+				Name:   "p1",
+				Enable: true,
+				A: &spqrparser.ICPointAction{
+					Act: "sleep",
+
+					Timeout: time.Duration(10 * time.Second),
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "attach control point 'p1' wait",
+			exp: &spqrparser.InstanceControlPoint{
+				Name:   "p1",
+				Enable: true,
+				A: &spqrparser.ICPointAction{
+					Act:     "sleep",
+					Timeout: time.Duration(1 * time.Minute),
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "attach control point 'p1' panic",
+			exp: &spqrparser.InstanceControlPoint{
+				Name:   "p1",
+				Enable: true,
+				A: &spqrparser.ICPointAction{
+					Act: "panic",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "detach control point 'p1'",
+			exp: &spqrparser.InstanceControlPoint{
+				Name:   "p1",
+				Enable: false,
 			},
 			err: nil,
 		},

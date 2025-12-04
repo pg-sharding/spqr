@@ -1019,7 +1019,7 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	}
 
 	if len(resp.Kvs) == 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard \"%s\" not found", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "unknown shard %s", id)
 	}
 	if len(resp.Kvs) > 1 {
 		return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION,
@@ -1117,7 +1117,7 @@ func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relName *rf
 
 	switch len(resp.Kvs) {
 	case 0:
-		return spqrerror.New(spqrerror.SPQR_SHARDING_RULE_ERROR, "no such reference relation present in qdb")
+		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", relName.String())
 	case 1:
 
 		var rrs *ReferenceRelation
@@ -1139,7 +1139,7 @@ func (q *EtcdQDB) AlterReferenceRelationStorage(ctx context.Context, relName *rf
 
 		return err
 	default:
-		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much reference relations matched: %d", len(resp.Kvs))
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much reference relations matched: %d", len(resp.Kvs))
 	}
 }
 
@@ -1159,7 +1159,7 @@ func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.Relat
 
 	switch len(resp.Kvs) {
 	case 0:
-		return spqrerror.New(spqrerror.SPQR_SHARDING_RULE_ERROR, "no such reference relation present in qdb")
+		return spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "reference relation \"%s\" not found", relName.String())
 	case 1:
 
 		var rrs *ReferenceRelation
@@ -1180,7 +1180,7 @@ func (q *EtcdQDB) DropReferenceRelation(ctx context.Context, relName *rfqn.Relat
 		_, err = q.cli.Delete(ctx, relationMappingNodePath(tableName))
 		return err
 	default:
-		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much reference relations matched: %d", len(resp.Kvs))
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much reference relations matched: %d", len(resp.Kvs))
 	}
 }
 
@@ -1311,7 +1311,7 @@ func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 
 	switch len(resp.Kvs) {
 	case 0:
-		return spqrerror.New(spqrerror.SPQR_SHARDING_RULE_ERROR, "no such distribution present in qdb")
+		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution present in qdb")
 	case 1:
 
 		var distrib *Distribution
@@ -1338,7 +1338,7 @@ func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 
 		return nil
 	default:
-		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much distributions matched: %d", len(resp.Kvs))
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "too much distributions matched: %d", len(resp.Kvs))
 	}
 }
 
@@ -2189,7 +2189,7 @@ func (q *EtcdQDB) GetRelationSequence(ctx context.Context, relName *rfqn.Relatio
 	return ret, nil
 }
 
-func (q *EtcdQDB) getSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
+func (q *EtcdQDB) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
 	spqrlog.Zero.Debug().
 		Str("seqName", seqName).
 		Msg("etcdqdb: get columns attached to a sequence")
@@ -2198,19 +2198,18 @@ func (q *EtcdQDB) getSequenceColumns(ctx context.Context, seqName string) ([]str
 		return nil, err
 	}
 
-	cols := []string{}
+	rels := []*rfqn.RelationFQN{}
 	for _, kv := range resp.Kvs {
 		if string(kv.Value) != seqName {
 			continue
 		}
 
 		s := strings.Split(string(kv.Key), "/")
-		colName := s[len(s)-1]
 		relName := s[len(s)-2]
-		cols = append(cols, fmt.Sprintf("%s.%s", relName, colName))
+		rels = append(rels, &rfqn.RelationFQN{RelationName: relName})
 	}
 
-	return cols, nil
+	return rels, nil
 }
 
 func (q *EtcdQDB) CreateSequence(ctx context.Context, seqName string, initialValue int64) error {
@@ -2239,16 +2238,9 @@ func (q *EtcdQDB) DropSequence(ctx context.Context, seqName string, force bool) 
 		Str("sequence", seqName).
 		Bool("force", force).
 		Msg("etcdqdb: drop sequence")
-	depends, err := q.getSequenceColumns(ctx, seqName)
-	if err != nil {
-		return err
-	}
-	if len(depends) != 0 && !force {
-		return spqrerror.Newf(spqrerror.SPQR_SEQUENCE_ERROR, "column %q is attached to sequence", depends[0])
-	}
 
 	key := sequenceNodePath(seqName)
-	_, err = q.cli.Delete(ctx, key)
+	_, err := q.cli.Delete(ctx, key)
 	return err
 }
 

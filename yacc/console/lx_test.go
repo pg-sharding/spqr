@@ -172,12 +172,11 @@ func TestSimpleLex(t *testing.T) {
 			},
 		},
 		{
-			query: "CREATE DISTRIBUTION db1 SHARDING COLUMN TYPES varchar, varchar, uuid",
+			query: "CREATE DISTRIBUTION db1 COLUMN TYPES varchar, varchar, uuid",
 			exp: []int{
 				spqrparser.CREATE,
 				spqrparser.DISTRIBUTION,
 				spqrparser.IDENT,
-				spqrparser.SHARDING,
 				spqrparser.COLUMN,
 				spqrparser.TYPES,
 				spqrparser.VARCHAR,
@@ -331,6 +330,14 @@ func TestSimpleLex(t *testing.T) {
 			exp: []int{
 				spqrparser.INVALIDATE,
 				spqrparser.CACHE,
+			},
+		},
+		{
+			query: "DROP SEQUENCE seq",
+			exp: []int{
+				spqrparser.DROP,
+				spqrparser.SEQUENCE,
+				spqrparser.IDENT,
 			},
 		},
 		{

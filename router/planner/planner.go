@@ -19,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/console"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
@@ -56,7 +57,7 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 			spqrlog.Zero.Debug().Str("relation", q.RelationName).Str("distribution", val).Msg("attaching relation")
 
 			if val == distributions.REPLICATED {
-				err := rmeta.CreateReferenceRelation(ctx, rm.Mgr, q)
+				err := console.CreateReferenceRelation(ctx, rm.Mgr, q)
 				if err != nil {
 					return nil, err
 				}
@@ -163,15 +164,21 @@ func PlanReferenceRelationInsertValues(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	q, err := InsertSequenceValue(ctx, rm.Query, columns, rel.ColumnSequenceMapping, idCache)
 
-	if q, err := InsertSequenceValue(ctx, rm.Query, rel.ColumnSequenceMapping, idCache); err != nil {
+	if err != nil {
 		return nil, err
-	} else {
-		return &plan.ScatterPlan{
-			OverwriteQuery: q,
-			ExecTargets:    rel.ListStorageRoutes(),
-		}, nil
 	}
+
+	mp := map[string]string{}
+	for _, sh := range rel.ListStorageRoutes() {
+		mp[sh.Name] = q
+	}
+
+	return &plan.ScatterPlan{
+		OverwriteQuery: mp,
+		ExecTargets:    rel.ListStorageRoutes(),
+	}, nil
 }
 
 func CalculateRoutingListTupleItemValue(
@@ -207,7 +214,11 @@ func CalculateRoutingListTupleItemValue(
 	return v, nil
 }
 
-func PlanDistributedRelationInsert(ctx context.Context, routingList [][]lyx.Node, rm *rmeta.RoutingMetadataContext, stmt *lyx.Insert) ([]kr.ShardKey, error) {
+func PlanDistributedRelationInsert(
+	ctx context.Context,
+	routingList [][]lyx.Node,
+	rm *rmeta.RoutingMetadataContext,
+	stmt *lyx.Insert) ([]kr.ShardKey, error) {
 
 	insertColsPos, qualName, err := ProcessInsertFromSelectOffsets(ctx, stmt, rm)
 	if err != nil {
@@ -605,6 +616,10 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 					/* XXX: give change for engine v2 to rewrite queries */
 					for _, sh := range shs {
 						if sh.Name != shs[0].Name {
+							/* try to rewrite, but only for simple protocol */
+							if len(rm.ParamRefs) == 0 {
+								return RewriteDistributedRelBatchInsert(rm.Query, shs)
+							}
 							return nil, rerrors.ErrComplexQuery
 						}
 					}
@@ -647,7 +662,14 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 				}, nil
 			}
 
-			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			p, err := plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			if v.Returning != nil {
+				return &plan.DataRowFilter{
+					SubPlan:     p,
+					FilterIndex: 0,
+				}, nil
+			}
+			return p, err
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
@@ -671,7 +693,15 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 					ExecTargets: nil,
 				}, nil
 			}
-			return plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+
+			p, err := plr.PlanReferenceRelationModifyWithSubquery(ctx, rm, qualName, nil, allowRewrite)
+			if v.Returning != nil {
+				return &plan.DataRowFilter{
+					SubPlan:     p,
+					FilterIndex: 0,
+				}, nil
+			}
+			return p, err
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}

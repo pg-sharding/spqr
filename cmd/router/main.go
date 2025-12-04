@@ -14,6 +14,8 @@ import (
 	"sync"
 	"syscall"
 
+	_ "go.uber.org/automaxprocs/maxprocs"
+
 	coordApp "github.com/pg-sharding/spqr/coordinator/app"
 	coord "github.com/pg-sharding/spqr/coordinator/pkg"
 	"github.com/pg-sharding/spqr/pkg"
@@ -421,6 +423,22 @@ var runCmd = &cobra.Command{
 			}
 			wg.Done()
 		}(wg)
+
+		/* should we run two phase watchdog? */
+		if config.RouterConfig().EnableTwoPhaseWD {
+			wg.Add(1)
+
+			/* XXX: configure more that one watchdog? */
+
+			go func(wg *sync.WaitGroup) {
+				err := app.ServeWD(ctx)
+				if err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("failed to serve recovery watchdog")
+					errCh <- err
+				}
+				wg.Done()
+			}(wg)
+		}
 
 		// run pprof without wait group
 		go func() {

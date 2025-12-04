@@ -245,6 +245,20 @@ func (mr *MockEntityMgrMockRecorder) CurrVal(ctx, seqName any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrVal", reflect.TypeOf((*MockEntityMgr)(nil).CurrVal), ctx, seqName)
 }
 
+// DCStateKeeper mocks base method.
+func (m *MockEntityMgr) DCStateKeeper() qdb.DCStateKeeper {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DCStateKeeper")
+	ret0, _ := ret[0].(qdb.DCStateKeeper)
+	return ret0
+}
+
+// DCStateKeeper indicates an expected call of DCStateKeeper.
+func (mr *MockEntityMgrMockRecorder) DCStateKeeper() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DCStateKeeper", reflect.TypeOf((*MockEntityMgr)(nil).DCStateKeeper))
+}
+
 // DropDistribution mocks base method.
 func (m *MockEntityMgr) DropDistribution(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
@@ -432,6 +446,21 @@ func (m *MockEntityMgr) GetRelationDistribution(ctx context.Context, relation_na
 func (mr *MockEntityMgrMockRecorder) GetRelationDistribution(ctx, relation_name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationDistribution", reflect.TypeOf((*MockEntityMgr)(nil).GetRelationDistribution), ctx, relation_name)
+}
+
+// GetSequenceRelations mocks base method.
+func (m *MockEntityMgr) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSequenceRelations", ctx, seqName)
+	ret0, _ := ret[0].([]*rfqn.RelationFQN)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSequenceRelations indicates an expected call of GetSequenceRelations.
+func (mr *MockEntityMgrMockRecorder) GetSequenceRelations(ctx, seqName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSequenceRelations", reflect.TypeOf((*MockEntityMgr)(nil).GetSequenceRelations), ctx, seqName)
 }
 
 // GetShard mocks base method.

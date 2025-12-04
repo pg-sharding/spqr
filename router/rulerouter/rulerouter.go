@@ -211,7 +211,11 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 			PoolMode: config.PoolModeVirtual,
 		}
 		if err := cl.AssignRule(rule); err != nil {
-			_ = cl.ReplyErrMsg("failed to assign rule", spqrerror.SPQR_ROUTING_ERROR, txstatus.TXIDLE)
+			_ = cl.ReplyErrMsg(
+				"failed to assign rule",
+				spqrerror.SPQR_ROUTING_ERROR,
+				0,
+				txstatus.TXIDLE)
 			return nil, err
 		}
 	}
@@ -296,7 +300,11 @@ func (r *RuleRouterImpl) preRouteInitializedClientAdm(cl rclient.RouterClient) (
 		Msg("console client routed")
 
 	if err := cl.AssignRule(frRule); err != nil {
-		_ = cl.ReplyErrMsg("failed to assign rule", spqrerror.SPQR_ROUTING_ERROR, txstatus.TXIDLE)
+		_ = cl.ReplyErrMsg(
+			"failed to assign rule",
+			spqrerror.SPQR_ROUTING_ERROR,
+			0,
+			txstatus.TXIDLE)
 		return nil, err
 	}
 

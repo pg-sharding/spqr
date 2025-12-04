@@ -80,18 +80,21 @@ demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION items DISTRIBUTION KEY order_id;
 And at the end specify a list of ranges: which values to route to which shard. Note: The right bound is infinity if there are no key ranges.
 
 ```sql
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO shard1 FOR DISTRIBUTION ds1;
-         add key range          
---------------------------------
- created key range with bound 1
-(1 row)
-
 CREATE KEY RANGE krid2 FROM 1000 ROUTE TO shard2 FOR DISTRIBUTION ds1;
             add key range          
 -----------------------------------
  created key range with bound 1000
 (1 row)
+
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO shard1 FOR DISTRIBUTION ds1;
+         add key range          
+--------------------------------
+ created key range with bound 1
+(1 row)
 ```
+<Warning>
+Order is important. If you reverse the order, you will get an error "key range krid2 intersects with key range krid1 in QDB".
+</Warning>
 
 Here we go! You can play with some SELECTs or INSERTs.
 

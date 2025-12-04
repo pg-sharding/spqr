@@ -33,6 +33,11 @@ func TestFrontendSimpleEOF(t *testing.T) {
 
 	cl := mockcl.NewMockRouterClient(ctrl)
 	qr := mockqr.NewMockQueryRouter(ctrl)
+
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+	mmgr.EXPECT().DCStateKeeper().AnyTimes().Return(nil)
+	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
+
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
@@ -59,6 +64,7 @@ func TestFrontendSimple(t *testing.T) {
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
 
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+	mmgr.EXPECT().DCStateKeeper().AnyTimes().Return(nil)
 
 	frrule := &config.FrontendRule{
 		DB:  "db1",
@@ -88,6 +94,7 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().BindParams().AnyTimes()
 
 	cl.EXPECT().ShardingKey().AnyTimes()
+	cl.EXPECT().EnhancedMultiShardProcessing().AnyTimes()
 	cl.EXPECT().SetShardingKey(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().ID().AnyTimes()
@@ -171,6 +178,7 @@ func TestFrontendXProto(t *testing.T) {
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
 
 	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+	mmgr.EXPECT().DCStateKeeper().AnyTimes().Return(nil)
 
 	frrule := &config.FrontendRule{
 		DB:       "db1",
@@ -179,6 +187,7 @@ func TestFrontendXProto(t *testing.T) {
 	}
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
+	qr.EXPECT().AnalyzeQuery(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 

@@ -50,6 +50,10 @@ func (a *Adapter) QDB() qdb.QDB {
 	panic("Adapter.QDB not implemented")
 }
 
+func (a *Adapter) DCStateKeeper() qdb.DCStateKeeper {
+	panic("Adapter.DCStateKeeper not implemented")
+}
+
 func (a *Adapter) Cache() *cache.SchemaCache {
 	panic("Adapter.Cache not implemented")
 }
@@ -71,6 +75,16 @@ func (a *Adapter) ShareKeyRange(id string) error {
 // GetReferenceRelation implements meta.EntityMgr.
 func (a *Adapter) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetReferenceRelation not implemented")
+}
+
+// GetSequenceColumns implements meta.EntityMgr.
+func (a *Adapter) GetSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetSequenceColumns not implemented")
+}
+
+// GetSequenceColumns implements meta.EntityMgr.
+func (a *Adapter) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetSequenceRelations not implemented")
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.

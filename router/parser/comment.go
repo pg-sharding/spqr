@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"strings"
 	"unicode"
 
 	"golang.org/x/xerrors"
@@ -64,7 +65,12 @@ func ParseComment(comm string) (map[string]string, error) {
 
 		optval_end := j
 
-		opts[comm[i:optarg_end+1]] = comm[optval_pos : optval_end+1]
+		opt_name := comm[i : optarg_end+1]
+		if after, ok := strings.CutPrefix(opt_name, "__spqr__."); ok {
+			opt_name = "__spqr__" + after
+		}
+
+		opts[opt_name] = comm[optval_pos : optval_end+1]
 
 		j++
 		// skip spaces after value

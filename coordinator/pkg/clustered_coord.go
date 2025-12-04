@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,7 +49,9 @@ import (
 	"github.com/pg-sharding/spqr/router/route"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 type grpcConnMgr struct {
@@ -213,8 +216,22 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 	spqrlog.Zero.Debug().
 		Str("router-id", r.ID).
 		Msg("dialing router")
-	// TODO: add creds
-	return grpc.NewClient(r.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	// Configure keepalive to prevent connection closure during long idle periods
+	// Network intermediaries (load balancers, firewalls) typically close idle connections after 60s-5min
+	// Default: 30s keepalive ensures connections survive even aggressive timeouts (e.g., AWS ELB 60s default)
+	keepaliveTime := config.ValueOrDefaultDuration(config.CoordinatorConfig().RouterKeepaliveTime, 30*time.Second)
+	keepaliveTimeout := config.ValueOrDefaultDuration(config.CoordinatorConfig().RouterKeepaliveTimeout, 20*time.Second)
+
+	keepaliveParams := keepalive.ClientParameters{
+		Time:                keepaliveTime,    // Send keepalive ping interval
+		Timeout:             keepaliveTimeout, // Wait for ping ack before considering connection dead
+		PermitWithoutStream: true,             // Allow pings even when no active RPCs
+	}
+
+	return grpc.NewClient(r.Address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithKeepaliveParams(keepaliveParams))
 }
 
 const defaultWatchRouterTimeout = time.Second
@@ -234,6 +251,9 @@ type ClusteredCoordinator struct {
 
 	bounds [][][]byte
 	index  int
+
+	routerConnCache map[string]*grpc.ClientConn
+	routerConnMutex sync.RWMutex
 }
 
 func (qc *ClusteredCoordinator) QDB() qdb.QDB {
@@ -246,6 +266,45 @@ func (qc *ClusteredCoordinator) Cache() *cache.SchemaCache {
 
 var _ coordinator.Coordinator = &ClusteredCoordinator{}
 
+// getOrCreateRouterConn returns a cached connection or creates a new one.
+func (qc *ClusteredCoordinator) getOrCreateRouterConn(r *topology.Router) (*grpc.ClientConn, error) {
+	qc.routerConnMutex.Lock()
+	defer qc.routerConnMutex.Unlock()
+
+	conn, exists := qc.routerConnCache[r.ID]
+
+	if exists {
+		// Check if connection is still valid
+		state := conn.GetState()
+		if state == connectivity.Ready || state == connectivity.Idle {
+			return conn, nil
+		}
+		// Connection is not healthy, close and remove it
+		_ = conn.Close()
+		delete(qc.routerConnCache, r.ID)
+	}
+
+	// Create new connection
+	conn, err := DialRouter(r)
+	if err != nil {
+		return nil, err
+	}
+
+	qc.routerConnCache[r.ID] = conn
+	return conn, nil
+}
+
+// closeRouterConn closes and removes a router connection from cache
+func (qc *ClusteredCoordinator) closeRouterConn(routerID string) {
+	qc.routerConnMutex.Lock()
+	defer qc.routerConnMutex.Unlock()
+
+	if conn, exists := qc.routerConnCache[routerID]; exists {
+		_ = conn.Close()
+		delete(qc.routerConnCache, routerID)
+	}
+}
+
 // watchRouters traverse routers one check if they are opened
 // for clients. If not, initialize metadata and open router
 // TODO : unit tests
@@ -254,6 +313,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 	for {
 		// TODO check we are still coordinator
 		if !qc.acquiredLock {
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 
@@ -265,43 +325,46 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 			continue
 		}
 
-		// TODO we have to rewrite this code
-		// instead of opening new connections to each router
-		// we have to open it ones, keep and update before the iteration
+		// Build set of current router IDs for cleanup
+		currentRouterIDs := make(map[string]bool, len(routers))
+		for _, r := range routers {
+			currentRouterIDs[r.ID] = true
+		}
+
 		for _, r := range routers {
 			if err := func() error {
+				// Create bounded context for this router's operations
+				routerCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				defer cancel()
+
 				internalR := &topology.Router{
 					ID:      r.ID,
 					Address: r.Address,
 				}
 
-				cc, err := DialRouter(internalR)
+				cc, err := qc.getOrCreateRouterConn(internalR)
 				if err != nil {
 					return err
 				}
 
-				defer func() {
-					if err := cc.Close(); err != nil {
-						spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-					}
-				}()
-
 				rrClient := proto.NewTopologyServiceClient(cc)
 
-				resp, err := rrClient.GetRouterStatus(ctx, nil)
+				resp, err := rrClient.GetRouterStatus(routerCtx, nil)
 				if err != nil {
+					// Connection error - close and remove from cache so we reconnect next time
+					qc.closeRouterConn(internalR.ID)
 					return err
 				}
 
 				switch resp.Status {
 				case proto.RouterStatus_CLOSED:
 					spqrlog.Zero.Debug().Msg("router is closed")
-					if err := qc.SyncRouterCoordinatorAddress(ctx, internalR); err != nil {
+					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
 						return err
 					}
 
 					/* Mark router as opened in qdb */
-					err := qc.db.CloseRouter(ctx, internalR.ID)
+					err := qc.db.CloseRouter(routerCtx, internalR.ID)
 					if err != nil {
 						return err
 					}
@@ -310,12 +373,12 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 					spqrlog.Zero.Debug().Msg("router is opened")
 
 					/* TODO: check router metadata consistency */
-					if err := qc.SyncRouterCoordinatorAddress(ctx, internalR); err != nil {
+					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
 						return err
 					}
 
 					/* Mark router as opened in qdb */
-					err := qc.db.OpenRouter(ctx, internalR.ID)
+					err := qc.db.OpenRouter(routerCtx, internalR.ID)
 					if err != nil {
 						return err
 					}
@@ -329,19 +392,35 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 			}
 		}
 
+		// Clean up connections for routers that no longer exist
+		qc.routerConnMutex.RLock()
+		var staleConnIDs []string
+		for routerID := range qc.routerConnCache {
+			if !currentRouterIDs[routerID] {
+				staleConnIDs = append(staleConnIDs, routerID)
+			}
+		}
+		qc.routerConnMutex.RUnlock()
+
+		for _, routerID := range staleConnIDs {
+			spqrlog.Zero.Debug().Str("router-id", routerID).Msg("cleaning up connection for removed router")
+			qc.closeRouterConn(routerID)
+		}
+
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().IterationTimeout, defaultWatchRouterTimeout))
 	}
 }
 
 func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*ClusteredCoordinator, error) {
 	return &ClusteredCoordinator{
-		Coordinator:  coord.NewCoordinator(db),
-		db:           db,
-		tlsconfig:    tlsconfig,
-		rmgr:         rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
-		acquiredLock: false,
-		bounds:       make([][][]byte, 0),
-		index:        0,
+		Coordinator:     coord.NewCoordinator(db, nil),
+		db:              db,
+		tlsconfig:       tlsconfig,
+		rmgr:            rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
+		acquiredLock:    false,
+		bounds:          make([][][]byte, 0),
+		index:           0,
+		routerConnCache: make(map[string]*grpc.ClientConn),
 	}, nil
 }
 
@@ -519,18 +598,13 @@ func (qc *ClusteredCoordinator) traverseRouters(ctx context.Context, cb func(cc 
 			}
 
 			// TODO: run cb`s async
-			cc, err := DialRouter(&topology.Router{
+			cc, err := qc.getOrCreateRouterConn(&topology.Router{
 				ID:      rtr.ID,
 				Address: rtr.Addr(),
 			})
 			if err != nil {
 				return err
 			}
-			defer func() {
-				if err := cc.Close(); err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-				}
-			}()
 
 			if err := cb(cc); err != nil {
 				spqrlog.Zero.Debug().Err(err).Str("router id", rtr.ID).Msg("traverse routers")
@@ -1790,15 +1864,10 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		Str("address", qRouter.Address).
 		Msg("qdb coordinator: sync router metadata")
 
-	cc, err := DialRouter(qRouter)
+	cc, err := qc.getOrCreateRouterConn(qRouter)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := cc.Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-		}
-	}()
 
 	// Configure distributions
 	dsCl := proto.NewDistributionServiceClient(cc)
@@ -1905,15 +1974,10 @@ func (qc *ClusteredCoordinator) SyncRouterCoordinatorAddress(ctx context.Context
 		Str("address", qRouter.Address).
 		Msg("qdb coordinator: sync coordinator address")
 
-	cc, err := DialRouter(qRouter)
+	cc, err := qc.getOrCreateRouterConn(qRouter)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := cc.Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-		}
-	}()
 
 	/* Update current coordinator address. */
 	/* Todo: check that router metadata is in sync. */
@@ -2070,7 +2134,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 		case *pgproto3.Query:
 			tstmt, err := spqrparser.Parse(v.String)
 			if err != nil {
-				_ = cli.ReportError(err)
+				_ = cli.ReportError(fmt.Errorf("failed to parse query \"%s\": %w", v.String, err))
 				continue
 			}
 

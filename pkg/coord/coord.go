@@ -3,6 +3,7 @@ package coord
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -24,13 +25,15 @@ import (
 
 type Coordinator struct {
 	qdb qdb.XQDB
+	dcs qdb.DCStateKeeper
 }
 
 var _ meta.EntityMgr = &Coordinator{}
 
-func NewCoordinator(qdb qdb.XQDB) Coordinator {
+func NewCoordinator(q qdb.XQDB, d qdb.DCStateKeeper) Coordinator {
 	return Coordinator{
-		qdb: qdb,
+		qdb: q,
+		dcs: d,
 	}
 }
 
@@ -53,7 +56,11 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*r
 		}
 		fromShard := rel.ShardIds[0]
 
-		destShards := append(rel.ShardIds, destShard)
+		// XXX: should we ignore the command/error here?
+		destShards := rel.ShardIds
+		if !slices.Contains(rel.ShardIds, destShard) {
+			destShards = append(rel.ShardIds, destShard)
+		}
 
 		if err = datatransfers.SyncReferenceRelation(ctx, fromShard, destShard, rel, lc.qdb); err != nil {
 			return err
@@ -340,6 +347,12 @@ func (lc *Coordinator) NextRange(ctx context.Context, seqName string, rangeSize 
 // QDB implements meta.EntityMgr.
 func (lc *Coordinator) QDB() qdb.QDB {
 	return lc.qdb
+}
+
+// DCStateKeeper implements meta.EntityMgr.
+func (lc *Coordinator) DCStateKeeper() qdb.DCStateKeeper {
+	/* this is actually used by router, so we have to provide one */
+	return lc.dcs
 }
 
 // RedistributeKeyRange implements meta.EntityMgr.
@@ -1047,4 +1060,12 @@ func (lc *Coordinator) ListSequences(ctx context.Context) ([]string, error) {
 
 func (lc *Coordinator) ListRelationSequences(ctx context.Context, rel *rfqn.RelationFQN) (map[string]string, error) {
 	return lc.qdb.GetRelationSequence(ctx, rel)
+}
+
+func (lc *Coordinator) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
+	return lc.qdb.GetSequenceRelations(ctx, seqName)
+}
+
+func (lc *Coordinator) AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error {
+	return lc.qdb.AlterSequenceDetachRelation(ctx, rel)
 }

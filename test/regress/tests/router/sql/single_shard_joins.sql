@@ -16,7 +16,6 @@ INSERT INTO sshjt1 (i, j) VALUES(12, 13);
 SELECT * FROM sshjt1 WHERE i = 12;
 SELECT * FROM sshjt1 WHERE i = 12 AND j = 1;
 
-SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;
 SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12;
 
 SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12 AND b.j = a.j;

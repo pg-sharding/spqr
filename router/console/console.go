@@ -47,6 +47,29 @@ type LocalInstanceConsole struct {
 
 var _ Console = &LocalInstanceConsole{}
 
+func distributedMgr(ctx context.Context, localCoordinator meta.EntityMgr) (meta.EntityMgr, func(), error) {
+
+	if !config.RouterConfig().UseCoordinatorInit && !config.RouterConfig().WithCoordinator {
+		return localCoordinator, func() {}, nil
+	}
+
+	coordAddr, err := localCoordinator.GetCoordinator(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return coord.NewAdapter(conn), func() {
+		if err := conn.Close(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+		}
+	}, nil
+}
+
 func (l *LocalInstanceConsole) Mgr() meta.EntityMgr {
 	return l.entityMgr
 }
@@ -61,30 +84,16 @@ func NewLocalInstanceConsole(mgr meta.EntityMgr, rrouter rulerouter.RuleRouter, 
 	}, nil
 }
 
-// TODO : unit tests
-func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rclient.RouterClient, gc catalog.GrantChecker) error {
-	tstmt, err := spqrparser.Parse(q)
-	if err != nil {
-		spqrlog.Zero.Error().Str("query", q).Err(err).Msg("failed to parse query")
-		return fmt.Errorf("failed to parse query %s: %w", q, err)
-	}
-
-	spqrlog.Zero.Debug().
-		Str("query", q).
-		Type("type", tstmt).
-		Msg("processQueryInternal: parsed query with type")
-
-		/* Should we proxy this request to coordinator? */
-
-	coordAddr, err := l.entityMgr.GetCoordinator(ctx)
-	if err != nil {
-		return err
-	}
-	if !config.RouterConfig().UseCoordinatorInit && !config.RouterConfig().WithCoordinator {
-		return meta.ProcMetadataCommand(ctx, tstmt, l.entityMgr, l.rrouter, rc, l.writer, false)
-	}
+func (l *LocalInstanceConsole) ExecuteMetadataQuery(
+	ctx context.Context,
+	tstmt spqrparser.Statement,
+	rc rclient.RouterClient, gc catalog.GrantChecker) error {
+	/* Should we proxy this request to coordinator? */
 
 	mgr := l.entityMgr
+	var cf func()
+	var err error
+
 	switch tstmt := tstmt.(type) {
 	case *spqrparser.Show:
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
@@ -92,35 +101,41 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 		}
 		switch tstmt.Cmd {
 		case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.MoveTaskStr, spqrparser.SequencesStr:
-			conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			mgr, cf, err = distributedMgr(ctx, l.entityMgr)
 			if err != nil {
 				return err
 			}
-			defer func() {
-				if err := conn.Close(); err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-				}
-			}()
-			mgr = coord.NewAdapter(conn)
+			defer cf()
 		}
 	default:
 		if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
 		}
-		conn, err := grpc.NewClient(coordAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		mgr, cf, err = distributedMgr(ctx, l.entityMgr)
 		if err != nil {
 			return err
 		}
-		defer func() {
-			if err := conn.Close(); err != nil {
-				spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-			}
-		}()
-		mgr = coord.NewAdapter(conn)
+		defer cf()
 	}
 
 	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
 	return meta.ProcMetadataCommand(ctx, tstmt, mgr, l.rrouter, rc, l.writer, false)
+}
+
+// TODO : unit tests
+func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rclient.RouterClient, gc catalog.GrantChecker) error {
+	tstmt, err := spqrparser.Parse(q)
+	if err != nil {
+		spqrlog.Zero.Error().Str("query", q).Err(err).Msg("failed to parse query")
+		return fmt.Errorf("failed to parse query \"%s\": %w", q, err)
+	}
+
+	spqrlog.Zero.Debug().
+		Str("query", q).
+		Type("type", tstmt).
+		Msg("processQueryInternal: parsed query with type")
+
+	return l.ExecuteMetadataQuery(ctx, tstmt, rc, gc)
 }
 
 // TODO : unit tests
