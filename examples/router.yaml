@@ -17,8 +17,8 @@ init_sql: "examples/init.sql"
 use_init_sql: false
 
 frontend_tls:
-  key_file: /etc/odyssey/ssl/server.key
-  cert_file: /etc/odyssey/ssl/server.crt
+  key_file: /path/to/ssl/server.key
+  cert_file: /path/to/ssl/server.crt
   sslmode: disable
 
 frontend_rules:
