@@ -11,6 +11,7 @@ package mock
 
 import (
 	tls "crypto/tls"
+	net "net"
 	reflect "reflect"
 	time "time"
 
@@ -240,6 +241,20 @@ func (m *MockRouterClient) CommitStrategy() string {
 func (mr *MockRouterClientMockRecorder) CommitStrategy() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitStrategy", reflect.TypeOf((*MockRouterClient)(nil).CommitStrategy))
+}
+
+// Conn mocks base method.
+func (m *MockRouterClient) Conn() net.Conn {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Conn")
+	ret0, _ := ret[0].(net.Conn)
+	return ret0
+}
+
+// Conn indicates an expected call of Conn.
+func (mr *MockRouterClientMockRecorder) Conn() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Conn", reflect.TypeOf((*MockRouterClient)(nil).Conn))
 }
 
 // ConstructClientParams mocks base method.

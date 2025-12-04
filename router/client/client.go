@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/rand"
+	"net"
 	"sync/atomic"
 	"time"
 
@@ -110,6 +111,11 @@ func (r *PsqlClient) Add(st statistics.StatisticsType, value float64) error {
 		// panic?
 		return nil
 	}
+}
+
+// Conn implements RouterClient.
+func (r *PsqlClient) Conn() net.Conn {
+	return r.conn
 }
 
 // GetTimeData implements statistics.StatHolder.
@@ -936,6 +942,10 @@ func (c NoopClient) RAddr() string {
 
 func (c NoopClient) Shards() []shard.ShardHostInstance {
 	return c.shards
+}
+
+func (c NoopClient) Conn() net.Conn {
+	return nil
 }
 
 type MockShard struct {
