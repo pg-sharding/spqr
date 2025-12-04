@@ -318,7 +318,7 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 			[]byte(cl.DB()),
 			[]byte(hostname),
 			[]byte(rAddr),
-			[]byte(fmt.Sprintf("%v", netutil.TCPisConnected(cl.Conn())))}
+			fmt.Appendf(nil, "%v", netutil.TCPisConnected(cl.Conn()))}
 
 		for _, el := range *quantiles {
 			rowData = append(rowData, fmt.Appendf(nil, "%.2fms",

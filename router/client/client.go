@@ -944,6 +944,10 @@ func (c NoopClient) Shards() []shard.ShardHostInstance {
 	return c.shards
 }
 
+func (c NoopClient) Conn() net.Conn {
+	return nil
+}
+
 type MockShard struct {
 	shard.ShardHostInstance
 

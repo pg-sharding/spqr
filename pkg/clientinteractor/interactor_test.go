@@ -273,6 +273,7 @@ func TestClientsOrderBy(t *testing.T) {
 	ca.EXPECT().ID().AnyTimes()
 	ca.EXPECT().Usr().AnyTimes()
 	ca.EXPECT().DB().AnyTimes()
+	ca.EXPECT().Conn().AnyTimes().Return(nil)
 	shw := &spqrparser.Show{
 		Cmd:   spqrparser.ClientsStr,
 		Where: &lyx.AExprEmpty{},

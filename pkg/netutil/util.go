@@ -6,6 +6,10 @@ import (
 )
 
 func TCPisConnected(conn net.Conn) bool {
+	/* some caller may pass nil here */
+	if conn == nil {
+		return false
+	}
 	f, err := conn.(*net.TCPConn).File()
 	if err != nil {
 		return false
