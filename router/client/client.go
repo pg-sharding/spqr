@@ -76,6 +76,11 @@ type PsqlClient struct {
 	ReplyClientId bool
 
 	rule *config.FrontendRule
+
+	/* If any reason to access tcp iface... */
+
+	tcpconn net.Conn
+
 	conn conn.RawConn
 
 	r *route.Route
@@ -115,7 +120,7 @@ func (r *PsqlClient) Add(st statistics.StatisticsType, value float64) error {
 
 // Conn implements RouterClient.
 func (r *PsqlClient) Conn() net.Conn {
-	return r.conn
+	return r.tcpconn
 }
 
 // GetTimeData implements statistics.StatHolder.
@@ -176,6 +181,7 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 	cl := &PsqlClient{
 		SessionParamsHolder: sh,
 		conn:                pgconn,
+		tcpconn:             pgconn,
 		startupMsg:          &pgproto3.StartupMessage{},
 		prepStmts:           map[string]*prepstatement.PreparedStatementDefinition{},
 		prepStmtsHash:       map[string]uint64{},
