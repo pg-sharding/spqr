@@ -289,7 +289,7 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 			}
 
 			/* recheck connection */
-			if netutil.TCPisConnected(sh.Instance().Conn()) {
+			if netutil.TCP_CheckAliveness(sh.Instance().Conn()) {
 				break
 			} else {
 				spqrlog.Zero.Error().

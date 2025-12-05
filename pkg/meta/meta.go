@@ -932,7 +932,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		case spqrparser.StaleClientsInvalidateTarget:
 			cnt := 0
 			if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
-				if !netutil.TCPisConnected(cl.Conn()) {
+				if !netutil.TCP_CheckAliveness(cl.Conn()) {
 					cnt++
 					return cl.Cancel()
 				}
@@ -1125,6 +1125,12 @@ func ProcessShowExtended(ctx context.Context, stmt *spqrparser.Show, mngr Entity
 		var resp []client.ClientInfo
 		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
 			resp = append(resp, client)
+			/* XXX: should we do this un-conditionally  or under separate setting? */
+			if !netutil.TCP_CheckAliveness(client.Conn()) {
+				if err := client.Cancel(); err != nil {
+					return err
+				}
+			}
 			return nil
 		}); err != nil {
 			return nil, err

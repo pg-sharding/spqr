@@ -5,7 +5,7 @@ import (
 	"syscall"
 )
 
-func TCPisConnected(conn net.Conn) bool {
+func TCP_CheckAliveness(conn net.Conn) bool {
 	/* some caller may pass nil here */
 	if conn == nil {
 		return false
