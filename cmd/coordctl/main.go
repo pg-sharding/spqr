@@ -2,27 +2,16 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/util"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
-
-// TDB: move to util
-// TODO : unit tests
-func randomHex(n int) (string, error) {
-	bytes := make([]byte, n)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
-}
 
 var (
 	coordinatorEndpoint string
@@ -65,7 +54,7 @@ var addRouterCmd = &cobra.Command{
 		}
 
 		if routerID == "" {
-			routerID, err = randomHex(6)
+			routerID, err = util.RandomHex(6)
 
 			if err != nil {
 				return err
@@ -145,7 +134,7 @@ var addShardCmd = &cobra.Command{
 		}
 
 		if shardID == "" {
-			shardID, err = randomHex(6)
+			shardID, err = util.RandomHex(6)
 
 			if err != nil {
 				return err
