@@ -1628,6 +1628,13 @@ func TestRefresh(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "INVALIDATE STALE CLIENTs",
+			exp: &spqrparser.Invalidate{
+				Target: spqrparser.StaleClientsInvalidateTarget,
+			},
+			err: nil,
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 

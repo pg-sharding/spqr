@@ -563,6 +563,7 @@ TCLOSEBR
 TCLOSESQBR
 TCOMMA
 tctx
+tcpconn
 tdigest
 tempor
 terabytes
