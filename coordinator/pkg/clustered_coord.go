@@ -34,6 +34,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/rulemgr"
@@ -2466,4 +2467,53 @@ func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id 
 
 func (qc *ClusteredCoordinator) IsReadOnly() bool {
 	return !qc.acquiredLock
+}
+
+func gossipMetaChanges(ctx context.Context, gossip *proto.MetaTransactionGossipRequest) func(cc *grpc.ClientConn) error {
+	return func(cc *grpc.ClientConn) error {
+		cl := proto.NewMetaTransactionGossipServiceClient(cc)
+		resp, err := cl.ApplyMeta(ctx, gossip)
+		spqrlog.Zero.Debug().Err(err).
+			Interface("response", resp).
+			Msg("send meta transaction gossip")
+		return err
+	}
+}
+
+func (qc *ClusteredCoordinator) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionChunk) error {
+	for _, gossipRequest := range chunk.GossipRequests {
+		if gossipType := mtran.GetGossipRequestType(gossipRequest); gossipType == mtran.GR_UNKNOWN {
+			return fmt.Errorf("invalid meta transaction request (exec no tran)")
+		}
+	}
+	noGossipChunk, _ := mtran.NewMetaTransactionChunk(nil, chunk.QdbStatements)
+	if err := qc.Coordinator.ExecNoTran(ctx, noGossipChunk); err != nil {
+		return err
+	} else {
+		return qc.traverseRouters(ctx,
+			gossipMetaChanges(ctx, &proto.MetaTransactionGossipRequest{Commands: chunk.GossipRequests}),
+		)
+	}
+}
+
+func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
+	for _, gossipRequest := range transaction.Operations.GossipRequests {
+		if gossipType := mtran.GetGossipRequestType(gossipRequest); gossipType == mtran.GR_UNKNOWN {
+			return fmt.Errorf("invalid meta transaction request (commit tran)")
+		}
+	}
+	noGossipTran := mtran.ToNoGossipTransaction(transaction)
+
+	if err := qc.Coordinator.CommitTran(ctx, noGossipTran); err != nil {
+		return err
+	}
+	return qc.traverseRouters(ctx,
+		gossipMetaChanges(ctx,
+			&proto.MetaTransactionGossipRequest{Commands: transaction.Operations.GossipRequests},
+		),
+	)
+}
+
+func (qc *ClusteredCoordinator) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error) {
+	return qc.Coordinator.BeginTran(ctx)
 }

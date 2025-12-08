@@ -20,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -45,6 +46,7 @@ type EntityMgr interface {
 	tasks.TaskMgr
 	sequences.SequenceMgr
 	rrelation.ReferenceRelationMgr
+	mtran.TransactionMgr
 
 	ShareKeyRange(id string) error
 

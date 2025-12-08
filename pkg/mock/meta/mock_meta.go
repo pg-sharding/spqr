@@ -18,6 +18,7 @@ import (
 	rrelation "github.com/pg-sharding/spqr/pkg/models/rrelation"
 	tasks "github.com/pg-sharding/spqr/pkg/models/tasks"
 	topology "github.com/pg-sharding/spqr/pkg/models/topology"
+	meta_transaction "github.com/pg-sharding/spqr/pkg/models/transaction"
 	qdb "github.com/pg-sharding/spqr/qdb"
 	cache "github.com/pg-sharding/spqr/router/cache"
 	rfqn "github.com/pg-sharding/spqr/router/rfqn"
@@ -174,6 +175,21 @@ func (mr *MockEntityMgrMockRecorder) BatchMoveKeyRange(ctx, req any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).BatchMoveKeyRange), ctx, req)
 }
 
+// BeginTran mocks base method.
+func (m *MockEntityMgr) BeginTran(ctx context.Context) (*meta_transaction.MetaTransaction, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeginTran", ctx)
+	ret0, _ := ret[0].(*meta_transaction.MetaTransaction)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BeginTran indicates an expected call of BeginTran.
+func (mr *MockEntityMgrMockRecorder) BeginTran(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginTran", reflect.TypeOf((*MockEntityMgr)(nil).BeginTran), ctx)
+}
+
 // Cache mocks base method.
 func (m *MockEntityMgr) Cache() *cache.SchemaCache {
 	m.ctrl.T.Helper()
@@ -186,6 +202,20 @@ func (m *MockEntityMgr) Cache() *cache.SchemaCache {
 func (mr *MockEntityMgrMockRecorder) Cache() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cache", reflect.TypeOf((*MockEntityMgr)(nil).Cache))
+}
+
+// CommitTran mocks base method.
+func (m *MockEntityMgr) CommitTran(ctx context.Context, transaction *meta_transaction.MetaTransaction) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CommitTran", ctx, transaction)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CommitTran indicates an expected call of CommitTran.
+func (mr *MockEntityMgrMockRecorder) CommitTran(ctx, transaction any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitTran", reflect.TypeOf((*MockEntityMgr)(nil).CommitTran), ctx, transaction)
 }
 
 // CreateDistribution mocks base method.
@@ -341,6 +371,20 @@ func (m *MockEntityMgr) DropShard(ctx context.Context, id string) error {
 func (mr *MockEntityMgrMockRecorder) DropShard(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropShard", reflect.TypeOf((*MockEntityMgr)(nil).DropShard), ctx, id)
+}
+
+// ExecNoTran mocks base method.
+func (m *MockEntityMgr) ExecNoTran(ctx context.Context, chunk *meta_transaction.MetaTransactionChunk) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExecNoTran", ctx, chunk)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ExecNoTran indicates an expected call of ExecNoTran.
+func (mr *MockEntityMgrMockRecorder) ExecNoTran(ctx, chunk any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecNoTran", reflect.TypeOf((*MockEntityMgr)(nil).ExecNoTran), ctx, chunk)
 }
 
 // GetBalancerTask mocks base method.
