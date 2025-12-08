@@ -633,6 +633,21 @@ func (tctx *testContext) stepClusterIsUpAndRunning() error {
 		tctx.userDbs[shardUser] = make(map[string]*sql.DB)
 	}
 
+	// check databases
+	for _, service := range tctx.composer.Services() {
+		if strings.HasPrefix(service, spqrShardName) {
+			addr, err := tctx.composer.GetAddr(service, spqrPort)
+			if err != nil {
+				return fmt.Errorf("failed to get shard addr %s: %s", service, err)
+			}
+			db, err := tctx.connectPostgresql(addr, shardUser, postgresqlInitialConnectTimeout)
+			if err != nil {
+				return fmt.Errorf("failed to connect to postgresql %s: %s", service, err)
+			}
+			tctx.userDbs[shardUser][service] = db
+		}
+	}
+
 	// check router
 	for _, service := range tctx.composer.Services() {
 		if strings.HasPrefix(service, spqrRouterName) {
@@ -656,21 +671,6 @@ func (tctx *testContext) stepClusterIsUpAndRunning() error {
 				return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 			}
 			tctx.userDbs[shardUser][fmt.Sprintf("%s-admin", service)] = db
-		}
-	}
-
-	// check databases
-	for _, service := range tctx.composer.Services() {
-		if strings.HasPrefix(service, spqrShardName) {
-			addr, err := tctx.composer.GetAddr(service, spqrPort)
-			if err != nil {
-				return fmt.Errorf("failed to get shard addr %s: %s", service, err)
-			}
-			db, err := tctx.connectPostgresql(addr, shardUser, postgresqlInitialConnectTimeout)
-			if err != nil {
-				return fmt.Errorf("failed to connect to postgresql %s: %s", service, err)
-			}
-			tctx.userDbs[shardUser][service] = db
 		}
 	}
 
