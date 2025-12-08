@@ -58,6 +58,13 @@ func TestParseComment(t *testing.T) {
 			err: nil,
 		},
 		{
+			sample: " __spqr__.preferred_engine: v2  ",
+			exp: map[string]string{
+				"__spqr__preferred_engine": "v2",
+			},
+			err: nil,
+		},
+		{
 			sample: "lol: kek, lol2 : kek2,   lol3:     kek3    , lol4:kek4   ,  lol5 :kek5",
 			exp: map[string]string{
 				"lol":  "kek",

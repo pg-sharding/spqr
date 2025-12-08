@@ -80,6 +80,7 @@ func (c *PoolImpl) Pop(id uint) (bool, error) {
 	var err error
 	cl, ok := c.pool.LoadAndDelete(id)
 	if ok {
+		_ = cl.(Client).Cancel()
 		err = cl.(Client).Close()
 	}
 

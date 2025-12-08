@@ -5,6 +5,7 @@ package spqrparser
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"crypto/rand"
 	"encoding/hex"
@@ -86,6 +87,8 @@ func randomHex(n int) (string, error) {
 
 	/* ICP */
 	icp						*InstanceControlPoint
+	icpAction				*ICPointAction
+	duration				time.Duration
 	
 	relations              []*DistributedRelation
 	relation               *DistributedRelation
@@ -192,12 +195,15 @@ func randomHex(n int) (string, error) {
 %token <str> RETRY
 %token <str> DISTRIBUTED IN ON
 %token <str> DEFAULT
+%token <str> STALE CLIENTS
 
 %token <str> IDENTITY MURMUR CITY 
 
 %token<str> START STOP TRACE MESSAGES
 
 %token<str> TASK GROUP
+
+%token<str> SECONDS WAIT PANIC
 
 /* types */
 %token<str> VARCHAR INTEGER INT TYPES UUID
@@ -285,6 +291,8 @@ func randomHex(n int) (string, error) {
 %type <retryMoveTaskGroup> retry_move_task_group
 %type <stopMoveTaskGroup> stop_move_task_group
 
+%type<icpAction> opt_icp_action 
+%type<duration> opt_duration
 
 %left		OR
 %left		AND
@@ -650,7 +658,7 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ClientsStr, StatusStr, DistributionsStr, CoordinatorAddrStr, VersionStr, ReferenceRelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users, MoveTaskStr:
+		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, StatusStr, DistributionsStr, CoordinatorAddrStr, VersionStr, ReferenceRelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users, MoveTaskStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -660,6 +668,8 @@ show_statement_type:
 	} | HOSTS {
 		$$ = $1
 	} | SHARDS {
+		$$ = $1
+	} | CLIENTS {
 		$$ = $1
 	}
 
@@ -1320,6 +1330,11 @@ invalidate_stmt:
 		$$ = &Invalidate{
 			Target: BackendConnectionsInvalidateTarget,
 		}
+	} | INVALIDATE STALE CLIENTS
+	{
+		$$ = &Invalidate{
+			Target: StaleClientsInvalidateTarget,
+		}
 	}
 
 sync_reference_tables_stmt:
@@ -1384,11 +1399,35 @@ stop_move_task_group:
 
 /* Control Points */
 
+opt_duration:
+	any_uint SECONDS {
+		$$ = time.Duration(time.Duration($1) * time.Second)
+	} | /* EMPTY */ {
+		$$ = time.Duration(1 * time.Minute)
+	}
+
+opt_icp_action:
+	WAIT opt_duration {
+		$$ = &ICPointAction{
+			Act: "sleep",
+			Timeout: $2,
+		}
+	} | PANIC {
+		$$ = &ICPointAction{
+			Act: "panic",
+		}
+	} | /* empty */ {
+		$$ = &ICPointAction{
+			Act: "panic",
+		}
+	}
+
 icp_stmt:
-	ATTACH CONTROL POINT SCONST {
+	ATTACH CONTROL POINT SCONST opt_icp_action {
 		$$ = &InstanceControlPoint {
 			Name: string($4),
 			Enable: true,
+			A:		$5,
 		}
 	} | 
 	DETACH CONTROL POINT SCONST {

@@ -28,6 +28,8 @@ type DBInstance interface {
 
 	ReqBackendSsl(*tls.Config) error
 
+	Conn() net.Conn
+
 	Hostname() string
 	AvailabilityZone() string
 	ShardName() string
@@ -270,6 +272,10 @@ func (pgi *PostgreSQLInstance) Cancel(csm *pgproto3.CancelRequest) error {
 // - *tls.Config: The TLS configuration of the PostgreSQLInstance.
 func (pgi *PostgreSQLInstance) Tls() *tls.Config {
 	return pgi.tlsconfig
+}
+
+func (pgi *PostgreSQLInstance) Conn() net.Conn {
+	return pgi.conn
 }
 
 var _ DBInstance = &PostgreSQLInstance{}

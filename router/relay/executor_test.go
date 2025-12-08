@@ -3,6 +3,7 @@ package relay_test
 import (
 	"testing"
 
+	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
 	"github.com/pg-sharding/spqr/router/relay"
 	"github.com/stretchr/testify/assert"
 
@@ -22,6 +23,10 @@ func TestTxSimpleCommit(t *testing.T) {
 	cl := mockcl.NewMockRouterClient(ctrl)
 	cl.EXPECT().CleanupStatementSet().AnyTimes()
 	qr := mockqr.NewMockQueryRouter(ctrl)
+
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+	mmgr.EXPECT().DCStateKeeper().AnyTimes().Return(nil)
+	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 
 	rst := relay.NewRelayState(qr, cl, cmngr)
 
@@ -46,6 +51,10 @@ func TestTxSimpleRollback(t *testing.T) {
 	cl.EXPECT().CleanupStatementSet().AnyTimes()
 
 	qr := mockqr.NewMockQueryRouter(ctrl)
+
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+	mmgr.EXPECT().DCStateKeeper().AnyTimes().Return(nil)
+	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 
 	rst := relay.NewRelayState(qr, cl, cmngr)
 

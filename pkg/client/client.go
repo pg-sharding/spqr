@@ -72,6 +72,8 @@ type Client interface {
 
 	Reply(msg string) error
 
+	Conn() net.Conn
+
 	SetAuthType(uint32) error
 }
 

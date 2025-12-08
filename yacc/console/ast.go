@@ -1,6 +1,8 @@
 package spqrparser
 
 import (
+	"time"
+
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
@@ -193,6 +195,7 @@ type Kill struct {
 type InvalidateCacheTarget string
 
 const (
+	StaleClientsInvalidateTarget       = InvalidateCacheTarget("STALE CLIENTS")
 	BackendConnectionsInvalidateTarget = InvalidateCacheTarget("BACKENDS")
 	SchemaCacheInvalidateTarget        = InvalidateCacheTarget("SCHEMA CACHE")
 )
@@ -345,9 +348,15 @@ type StopMoveTaskGroup struct {
 
 func (*StopMoveTaskGroup) iStatement() {}
 
+type ICPointAction struct {
+	Act     string
+	Timeout time.Duration /* for act = 'sleep' */
+}
+
 type InstanceControlPoint struct {
 	Name   string
 	Enable bool
+	A      *ICPointAction
 }
 
 func (*InstanceControlPoint) iStatement() {}

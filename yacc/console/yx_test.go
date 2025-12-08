@@ -3,6 +3,7 @@ package spqrparser_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -1627,6 +1628,13 @@ func TestRefresh(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "INVALIDATE STALE CLIENTs",
+			exp: &spqrparser.Invalidate{
+				Target: spqrparser.StaleClientsInvalidateTarget,
+			},
+			err: nil,
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
@@ -1940,6 +1948,45 @@ func TestICP(t *testing.T) {
 			exp: &spqrparser.InstanceControlPoint{
 				Name:   "p1",
 				Enable: true,
+				A: &spqrparser.ICPointAction{
+					Act: "panic",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "attach control point 'p1' wait 10 seconds",
+			exp: &spqrparser.InstanceControlPoint{
+				Name:   "p1",
+				Enable: true,
+				A: &spqrparser.ICPointAction{
+					Act: "sleep",
+
+					Timeout: time.Duration(10 * time.Second),
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "attach control point 'p1' wait",
+			exp: &spqrparser.InstanceControlPoint{
+				Name:   "p1",
+				Enable: true,
+				A: &spqrparser.ICPointAction{
+					Act:     "sleep",
+					Timeout: time.Duration(1 * time.Minute),
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "attach control point 'p1' panic",
+			exp: &spqrparser.InstanceControlPoint{
+				Name:   "p1",
+				Enable: true,
+				A: &spqrparser.ICPointAction{
+					Act: "panic",
+				},
 			},
 			err: nil,
 		},

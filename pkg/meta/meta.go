@@ -21,6 +21,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
+	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -50,6 +51,7 @@ type EntityMgr interface {
 	ShareKeyRange(id string) error
 
 	QDB() qdb.QDB
+	DCStateKeeper() qdb.DCStateKeeper
 	Cache() *cache.SchemaCache
 }
 
@@ -752,7 +754,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 	case *spqrparser.InstanceControlPoint:
 		/* create control point */
 		if stmt.Enable {
-			err := icp.DefineICP(stmt.Name)
+			err := icp.DefineICP(stmt.Name, stmt.A)
 			if err != nil {
 				return cli.ReportError(err)
 			}
@@ -929,7 +931,18 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		switch stmt.Target {
 		case spqrparser.SchemaCacheInvalidateTarget:
 			mgr.Cache().Reset()
-
+		case spqrparser.StaleClientsInvalidateTarget:
+			cnt := 0
+			if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
+				if !netutil.TCP_CheckAliveness(cl.Conn()) {
+					cnt++
+					return cl.Cancel()
+				}
+				return nil
+			}); err != nil {
+				return cli.ReportError(err)
+			}
+			return cli.CompleteMsg(cnt)
 		case spqrparser.BackendConnectionsInvalidateTarget:
 			if err := ci.ForEachPool(func(p pool.Pool) error {
 				return p.ForEach(func(sh shard.ShardHostCtl) error {
@@ -937,7 +950,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 					return nil
 				})
 			}); err != nil {
-				return err
+				return cli.ReportError(err)
 			}
 		}
 		return cli.CompleteMsg(0)
@@ -1114,6 +1127,13 @@ func ProcessShowExtended(ctx context.Context, stmt *spqrparser.Show, mngr Entity
 		var resp []client.ClientInfo
 		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
 			resp = append(resp, client)
+			/* XXX: should we do this un-conditionally  or under separate setting? */
+			/*  When this is executed by coordinator, c is (validly) nil*/
+			if c := client.Conn(); c != nil && !netutil.TCP_CheckAliveness(c) {
+				if err := client.Cancel(); err != nil {
+					return err
+				}
+			}
 			return nil
 		}); err != nil {
 			return nil, err
@@ -1246,7 +1266,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Pools(ctx, respPools)
-
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
 	case spqrparser.CoordinatorAddrStr:

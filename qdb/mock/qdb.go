@@ -266,32 +266,32 @@ func (mr *MockTopologyKeeperMockRecorder) OpenRouter(ctx, rID any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenRouter", reflect.TypeOf((*MockTopologyKeeper)(nil).OpenRouter), ctx, rID)
 }
 
-// MockDistributedXactKeeper is a mock of DistributedXactKeeper interface.
-type MockDistributedXactKeeper struct {
+// MockTransferXactKeeper is a mock of TransferXactKeeper interface.
+type MockTransferXactKeeper struct {
 	ctrl     *gomock.Controller
-	recorder *MockDistributedXactKeeperMockRecorder
+	recorder *MockTransferXactKeeperMockRecorder
 	isgomock struct{}
 }
 
-// MockDistributedXactKeeperMockRecorder is the mock recorder for MockDistributedXactKeeper.
-type MockDistributedXactKeeperMockRecorder struct {
-	mock *MockDistributedXactKeeper
+// MockTransferXactKeeperMockRecorder is the mock recorder for MockTransferXactKeeper.
+type MockTransferXactKeeperMockRecorder struct {
+	mock *MockTransferXactKeeper
 }
 
-// NewMockDistributedXactKeeper creates a new mock instance.
-func NewMockDistributedXactKeeper(ctrl *gomock.Controller) *MockDistributedXactKeeper {
-	mock := &MockDistributedXactKeeper{ctrl: ctrl}
-	mock.recorder = &MockDistributedXactKeeperMockRecorder{mock}
+// NewMockTransferXactKeeper creates a new mock instance.
+func NewMockTransferXactKeeper(ctrl *gomock.Controller) *MockTransferXactKeeper {
+	mock := &MockTransferXactKeeper{ctrl: ctrl}
+	mock.recorder = &MockTransferXactKeeperMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockDistributedXactKeeper) EXPECT() *MockDistributedXactKeeperMockRecorder {
+func (m *MockTransferXactKeeper) EXPECT() *MockTransferXactKeeperMockRecorder {
 	return m.recorder
 }
 
 // GetTransferTx mocks base method.
-func (m *MockDistributedXactKeeper) GetTransferTx(ctx context.Context, key string) (*qdb.DataTransferTransaction, error) {
+func (m *MockTransferXactKeeper) GetTransferTx(ctx context.Context, key string) (*qdb.DataTransferTransaction, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTransferTx", ctx, key)
 	ret0, _ := ret[0].(*qdb.DataTransferTransaction)
@@ -300,13 +300,13 @@ func (m *MockDistributedXactKeeper) GetTransferTx(ctx context.Context, key strin
 }
 
 // GetTransferTx indicates an expected call of GetTransferTx.
-func (mr *MockDistributedXactKeeperMockRecorder) GetTransferTx(ctx, key any) *gomock.Call {
+func (mr *MockTransferXactKeeperMockRecorder) GetTransferTx(ctx, key any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransferTx", reflect.TypeOf((*MockDistributedXactKeeper)(nil).GetTransferTx), ctx, key)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransferTx", reflect.TypeOf((*MockTransferXactKeeper)(nil).GetTransferTx), ctx, key)
 }
 
 // RecordTransferTx mocks base method.
-func (m *MockDistributedXactKeeper) RecordTransferTx(ctx context.Context, key string, info *qdb.DataTransferTransaction) error {
+func (m *MockTransferXactKeeper) RecordTransferTx(ctx context.Context, key string, info *qdb.DataTransferTransaction) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RecordTransferTx", ctx, key, info)
 	ret0, _ := ret[0].(error)
@@ -314,13 +314,13 @@ func (m *MockDistributedXactKeeper) RecordTransferTx(ctx context.Context, key st
 }
 
 // RecordTransferTx indicates an expected call of RecordTransferTx.
-func (mr *MockDistributedXactKeeperMockRecorder) RecordTransferTx(ctx, key, info any) *gomock.Call {
+func (mr *MockTransferXactKeeperMockRecorder) RecordTransferTx(ctx, key, info any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordTransferTx", reflect.TypeOf((*MockDistributedXactKeeper)(nil).RecordTransferTx), ctx, key, info)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordTransferTx", reflect.TypeOf((*MockTransferXactKeeper)(nil).RecordTransferTx), ctx, key, info)
 }
 
 // RemoveTransferTx mocks base method.
-func (m *MockDistributedXactKeeper) RemoveTransferTx(ctx context.Context, key string) error {
+func (m *MockTransferXactKeeper) RemoveTransferTx(ctx context.Context, key string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveTransferTx", ctx, key)
 	ret0, _ := ret[0].(error)
@@ -328,9 +328,9 @@ func (m *MockDistributedXactKeeper) RemoveTransferTx(ctx context.Context, key st
 }
 
 // RemoveTransferTx indicates an expected call of RemoveTransferTx.
-func (mr *MockDistributedXactKeeperMockRecorder) RemoveTransferTx(ctx, key any) *gomock.Call {
+func (mr *MockTransferXactKeeperMockRecorder) RemoveTransferTx(ctx, key any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveTransferTx", reflect.TypeOf((*MockDistributedXactKeeper)(nil).RemoveTransferTx), ctx, key)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveTransferTx", reflect.TypeOf((*MockTransferXactKeeper)(nil).RemoveTransferTx), ctx, key)
 }
 
 // MockTXManager is a mock of TXManager interface.
@@ -1358,6 +1358,20 @@ func (m *MockDCStateKeeper) EXPECT() *MockDCStateKeeperMockRecorder {
 	return m.recorder
 }
 
+// AcquireTxOwnership mocks base method.
+func (m *MockDCStateKeeper) AcquireTxOwnership(gid string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AcquireTxOwnership", gid)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// AcquireTxOwnership indicates an expected call of AcquireTxOwnership.
+func (mr *MockDCStateKeeperMockRecorder) AcquireTxOwnership(gid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireTxOwnership", reflect.TypeOf((*MockDCStateKeeper)(nil).AcquireTxOwnership), gid)
+}
+
 // AddRouter mocks base method.
 func (m *MockDCStateKeeper) AddRouter(ctx context.Context, r *qdb.Router) error {
 	m.ctrl.T.Helper()
@@ -1387,15 +1401,17 @@ func (mr *MockDCStateKeeperMockRecorder) AddShard(ctx, shard any) *gomock.Call {
 }
 
 // ChangeTxStatus mocks base method.
-func (m *MockDCStateKeeper) ChangeTxStatus(id, state string) {
+func (m *MockDCStateKeeper) ChangeTxStatus(gid, state string) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "ChangeTxStatus", id, state)
+	ret := m.ctrl.Call(m, "ChangeTxStatus", gid, state)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // ChangeTxStatus indicates an expected call of ChangeTxStatus.
-func (mr *MockDCStateKeeperMockRecorder) ChangeTxStatus(id, state any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) ChangeTxStatus(gid, state any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockDCStateKeeper)(nil).ChangeTxStatus), id, state)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeTxStatus", reflect.TypeOf((*MockDCStateKeeper)(nil).ChangeTxStatus), gid, state)
 }
 
 // CloseRouter mocks base method.
@@ -1514,15 +1530,57 @@ func (mr *MockDCStateKeeperMockRecorder) OpenRouter(ctx, rID any) *gomock.Call {
 }
 
 // RecordTwoPhaseMembers mocks base method.
-func (m *MockDCStateKeeper) RecordTwoPhaseMembers(id string, shards []string) {
+func (m *MockDCStateKeeper) RecordTwoPhaseMembers(gid string, shards []string) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RecordTwoPhaseMembers", id, shards)
+	ret := m.ctrl.Call(m, "RecordTwoPhaseMembers", gid, shards)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // RecordTwoPhaseMembers indicates an expected call of RecordTwoPhaseMembers.
-func (mr *MockDCStateKeeperMockRecorder) RecordTwoPhaseMembers(id, shards any) *gomock.Call {
+func (mr *MockDCStateKeeperMockRecorder) RecordTwoPhaseMembers(gid, shards any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordTwoPhaseMembers", reflect.TypeOf((*MockDCStateKeeper)(nil).RecordTwoPhaseMembers), id, shards)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordTwoPhaseMembers", reflect.TypeOf((*MockDCStateKeeper)(nil).RecordTwoPhaseMembers), gid, shards)
+}
+
+// ReleaseTxOwnership mocks base method.
+func (m *MockDCStateKeeper) ReleaseTxOwnership(gid string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ReleaseTxOwnership", gid)
+}
+
+// ReleaseTxOwnership indicates an expected call of ReleaseTxOwnership.
+func (mr *MockDCStateKeeperMockRecorder) ReleaseTxOwnership(gid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseTxOwnership", reflect.TypeOf((*MockDCStateKeeper)(nil).ReleaseTxOwnership), gid)
+}
+
+// TXCohortShards mocks base method.
+func (m *MockDCStateKeeper) TXCohortShards(gid string) []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TXCohortShards", gid)
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// TXCohortShards indicates an expected call of TXCohortShards.
+func (mr *MockDCStateKeeperMockRecorder) TXCohortShards(gid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXCohortShards", reflect.TypeOf((*MockDCStateKeeper)(nil).TXCohortShards), gid)
+}
+
+// TXStatus mocks base method.
+func (m *MockDCStateKeeper) TXStatus(gid string) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TXStatus", gid)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// TXStatus indicates an expected call of TXStatus.
+func (mr *MockDCStateKeeperMockRecorder) TXStatus(gid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXStatus", reflect.TypeOf((*MockDCStateKeeper)(nil).TXStatus), gid)
 }
 
 // MockXQDB is a mock of XQDB interface.

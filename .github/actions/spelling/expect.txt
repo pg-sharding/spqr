@@ -26,6 +26,7 @@ ARRAYOID
 aspernatur
 astmt
 authed
+automaxprocs
 autotools
 basebackup
 bbc
@@ -293,6 +294,7 @@ logproxy
 lol
 lsb
 lval
+maxprocs
 maxuint
 mcol
 mdblocales
@@ -336,6 +338,7 @@ NConst
 Neque
 netchecker
 netconn
+netutil
 Newf
 Nofity
 noid
@@ -466,7 +469,6 @@ rmgr
 rollbacked
 roolback
 routable
-routerparser
 routerproto
 routingstate
 rowmap
@@ -502,7 +504,6 @@ shardproxy
 shkey
 shname
 shq
-shrid
 singleshard
 Smartphone
 spaolacci
@@ -515,7 +516,6 @@ SPQRE
 spqrerror
 SPQRF
 spqrguard
-SPQRH
 spqrhash
 SPQRI
 spqrinfra
@@ -564,6 +564,7 @@ TCLOSEBR
 TCLOSESQBR
 TCOMMA
 tctx
+tcpconn
 tdigest
 tempor
 terabytes

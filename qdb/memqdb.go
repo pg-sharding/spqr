@@ -46,7 +46,10 @@ type MemQDB struct {
 	ColumnSequence       map[string]string                   `json:"column_sequence"`
 	SequenceToValues     map[string]int64                    `json:"sequence_to_values"`
 	TaskGroupMoveTaskID  map[string]string                   `json:"task_group_move_task"`
-	SequenceLock         sync.RWMutex
+
+	TwoPhaseTx map[string]*TwoPCInfo `json:"two_phase_info"`
+
+	SequenceLock sync.RWMutex
 
 	backupPath        string
 	activeTransaction uuid.UUID
@@ -74,6 +77,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		StopMoveTaskGroup:    map[string]bool{},
 		TotalKeys:            map[string]int64{},
 		MoveTasks:            map[string]*MoveTask{},
+		TwoPhaseTx:           map[string]*TwoPCInfo{},
 
 		backupPath: backupPath,
 	}, nil
@@ -1481,12 +1485,72 @@ func (q *MemQDB) BeginTransaction(_ context.Context, transaction *QdbTransaction
 }
 
 // ChangeTxStatus implements DCStateKeeper.
-func (q *MemQDB) ChangeTxStatus(id string, state string) {
-	panic("unimplemented")
+func (q *MemQDB) ChangeTxStatus(id string, state string) error {
+	spqrlog.Zero.Debug().Msg("memqdb: ChangeTxStatus")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	/* XXX: validate state outer layers? */
+
+	info := q.TwoPhaseTx[id]
+	info.State = state
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.TwoPhaseTx, id, info))
+}
+
+func (q *MemQDB) AcquireTxOwnership(id string) bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if info, ok := q.TwoPhaseTx[id]; ok {
+		if info.Locked {
+			return false
+		}
+		info.Locked = true
+		return true
+	}
+	return false
+}
+
+func (q *MemQDB) ReleaseTxOwnership(gid string) {
+	spqrlog.Zero.Debug().Str("gid", gid).Msg("memqdb: ReleaseTxOwnership")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if info, ok := q.TwoPhaseTx[gid]; ok {
+		info.Locked = false
+	}
 }
 
 // RecordTwoPhaseMembers implements DCStateKeeper.
 // XXX: check that all members are valid spqr shards
-func (q *MemQDB) RecordTwoPhaseMembers(id string, shards []string) {
-	panic("unimplemented")
+func (q *MemQDB) RecordTwoPhaseMembers(id string, shards []string) error {
+	spqrlog.Zero.Debug().Msg("memqdb: RecordTwoPhaseMembers")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	info := &TwoPCInfo{
+		Gid:       id,
+		SHardsIds: shards,
+		State:     TwoPhaseInitState,
+		Locked:    true,
+	}
+
+	q.TwoPhaseTx[id] = info
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.TwoPhaseTx, id, info))
+}
+
+// TXCohortShards implements DCStateKeeper.
+func (q *MemQDB) TXCohortShards(gid string) []string {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return q.TwoPhaseTx[gid].SHardsIds
+}
+
+// TXStatus implements DCStateKeeper.
+func (q *MemQDB) TXStatus(gid string) string {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return q.TwoPhaseTx[gid].State
 }

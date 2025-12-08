@@ -81,7 +81,12 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	}
 
 	cache := cache.NewSchemaCache(config.RouterConfig().ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
-	lc := coord.NewLocalInstanceMetadataMgr(db, cache)
+
+	d, err := qdb.NewDataPlaneTwoPhaseStateKeeper("mem")
+	if err != nil {
+		return nil, err
+	}
+	lc := coord.NewLocalInstanceMetadataMgr(db, d, cache)
 
 	var notifier *sdnotifier.Notifier
 	if config.RouterConfig().UseSystemdNotifier {
