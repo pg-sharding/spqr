@@ -702,6 +702,11 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *ExecutorState, mgr meta.Entity
 		}
 	case *plan.CopyPlan:
 
+		if serv == nil {
+			/* Malformed */
+			return errUnAttached
+		}
+
 		msg, _, err := serv.Receive()
 		if err != nil {
 			return err
@@ -724,6 +729,11 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *ExecutorState, mgr meta.Entity
 		default:
 			return server.ErrMultiShardSyncBroken
 		}
+	}
+
+	if serv == nil {
+		/* Malformed */
+		return errUnAttached
 	}
 
 	for {
