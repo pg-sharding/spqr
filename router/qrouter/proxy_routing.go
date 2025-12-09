@@ -349,6 +349,8 @@ func (qr *ProxyQrouter) analyzeWhereClause(ctx context.Context, expr lyx.Node, m
 		}
 	case *lyx.AExprList:
 		/* ok */
+	case *lyx.AExprNot:
+		// swallow
 	default:
 		return fmt.Errorf("analyze where clause, unknown expr %T: %w", expr, rerrors.ErrComplexQuery)
 	}
