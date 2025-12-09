@@ -29,6 +29,8 @@ type Balancer struct {
 	MaxMoveCount int `json:"max_move_count" yaml:"max_move_count" toml:"max_move_count"`
 	KeysPerMove  int `json:"keys_per_move" yaml:"keys_per_move" toml:"keys_per_move"`
 
+	MaxFitCoefficient float64 `json:"max_fit_coefficient" yaml:"max_fit_coefficient" toml:"max_fit_coefficient"`
+
 	TimeoutSec int `json:"timeout" yaml:"timeout" toml:"timeout"`
 }
 
@@ -60,6 +62,10 @@ func LoadBalancerCfg(cfgPath string) (string, error) {
 
 	if cfgBalancer.TimeoutSec == 0 {
 		cfgBalancer.TimeoutSec = defaultBalancerTimeout
+	}
+
+	if cfgBalancer.MaxFitCoefficient == 0 {
+		cfgBalancer.MaxFitCoefficient = 0.8
 	}
 
 	configBytes, err := json.MarshalIndent(cfgBalancer, "", "  ")
