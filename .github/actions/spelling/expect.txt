@@ -431,6 +431,7 @@ qury
 RAddr
 ragel
 randkey
+randomhex
 rarg
 rcfg
 rclient
