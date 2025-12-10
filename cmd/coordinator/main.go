@@ -59,7 +59,7 @@ var rootCmd = &cobra.Command{
 		if logLevel != "" {
 			config.CoordinatorConfig().LogLevel = logLevel
 		}
-		if prettyLogging {
+		if cmd.Flags().Changed("pretty-log") {
 			config.CoordinatorConfig().PrettyLogging = prettyLogging
 		}
 
