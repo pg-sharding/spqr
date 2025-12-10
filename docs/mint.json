@@ -130,7 +130,7 @@
                             ]
                         },
                         "sharding/copy",
-                        "sharding/default_shards"
+                        "sharding/default_shard"
                     ]
                 },
                 {

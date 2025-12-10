@@ -43,7 +43,7 @@ SELECT * FROM test /*__spqr__execute_on: sh1*/;
 
 ## Default Shard
 
-A [default shard](/sharding/default_shards) provides a catch-all fallback for queries whose sharding key doesn't match any explicitly defined key range.
+A [default shard](/sharding/default_shard) provides a catch-all fallback for queries whose sharding key doesn't match any explicitly defined key range.
 
 ### Why Use a Default Shard?
 
@@ -100,4 +100,4 @@ Remove the default shard:
 ALTER DISTRIBUTION ds1 DROP DEFAULT SHARD;
 ```
 
-See [Default Shard](/sharding/default_shards) for more details.
+See [Default Shard](/sharding/default_shard) for more details.
