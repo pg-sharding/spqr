@@ -237,3 +237,13 @@ func keyRangeFromInternal(keyRange *internalKeyRange, locked bool) *KeyRange {
 		Locked:         locked,
 	}
 }
+
+type TwoPCInfo struct {
+	Gid       string   `json:"gid"`
+	SHardsIds []string `json:"shard_ids"`
+
+	State string `json:"state"`
+
+	/* ephemeral part of state */
+	Locked bool `json:"-"`
+}

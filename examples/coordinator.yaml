@@ -4,6 +4,18 @@ grpc_api_port: 7003
 qdb_addr: 'localhost:2379'
 log_level: info
 shard_data: 'examples/shard_data.yaml'
+
+# Coordinator timing settings (optional)
+# iteration_timeout: 1s           # How often to check router status (default: 1s)
+                                   # Increase to 10s-5m for production to reduce overhead
+# lock_iteration_timeout: 1s      # Retry interval for coordinator lock acquisition (default: 1s)
+
+# gRPC keepalive settings for router connections (optional)
+# Prevents connections from being closed by network intermediaries during idle periods
+# IMPORTANT: If iteration_timeout is high (e.g., 5m), keepalive must be lower than network timeouts
+# router_keepalive_time: 30s      # How often to send keepalive pings (default: 30s)
+# router_keepalive_timeout: 20s   # How long to wait for ping response (default: 20s)
+
 frontend_rules:
   - pool_default: true
     auth_rule:

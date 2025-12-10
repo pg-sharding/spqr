@@ -86,7 +86,7 @@ func TestMultiShardRouting(t *testing.T) {
 		},
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -172,7 +172,7 @@ func TestMultiShardRouting(t *testing.T) {
 			exp:   &plan.RandomDispatchPlan{},
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -246,7 +246,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -291,17 +291,45 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "INSERT INTO distrr_mm_test VALUES (3), (34) /* __spqr__engine_v2: true */;",
-			exp:   nil,
-			err:   rerrors.ErrComplexQuery,
+			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: false */;",
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO distrr_mm_test (id) VALUES (3) /* __spqr__engine_v2: false */;`,
+					"sh2": `INSERT INTO distrr_mm_test (id) VALUES (34) /* __spqr__engine_v2: false */;`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
 		},
 		{
 			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: true */;",
-			exp:   nil,
-			err:   rerrors.ErrComplexQuery,
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO distrr_mm_test (id) VALUES (3) /* __spqr__engine_v2: true */;`,
+					"sh2": `INSERT INTO distrr_mm_test (id) VALUES (34) /* __spqr__engine_v2: true */;`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -318,6 +346,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
 		} else {
+			assert.NotNil(tmp, tt.query)
 			tmp.SetStmt(nil) /* dont check stmt */
 
 			assert.NoError(err, "query %s", tt.query)
@@ -394,7 +423,7 @@ func TestRoutingByExpression(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -409,6 +438,7 @@ func TestRoutingByExpression(t *testing.T) {
 			WITH vals(x,y) AS (VALUES(5, 'jidw'), (100, 'jidw'))
 			SELECT * FROM distrr_mm_test d JOIN vals v ON d.id1 = v.x AND d.id2 = v.y;`,
 			exp: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh2",
@@ -463,7 +493,7 @@ func TestRoutingByExpression(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -516,9 +546,12 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		ColumnSequenceMapping: map[string]string{
 			"id1": "s1",
 		},
+		ShardIds: []string{
+			"sh1", "sh2",
+		},
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -533,8 +566,46 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 			query: `INSERT INTO test_ref_rel SELECT 1;`,
 			err:   rerrors.ErrComplexQuery,
 		},
+		{
+			query: `INSERT INTO test_ref_rel (i) VALUES (1), (2);`,
+			exp: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO test_ref_rel (id1, i) VALUES (11, 1), (12, 2);`,
+					"sh2": `INSERT INTO test_ref_rel (id1, i) VALUES (11, 1), (12, 2);`,
+				},
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{
+						ExecTargets: []kr.ShardKey{
+							{
+								Name: "sh1",
+							},
+							{
+								Name: "sh2",
+							},
+						},
+					},
+					ExecTargets: []kr.ShardKey{
+						{
+							Name: "sh1",
+						},
+						{
+							Name: "sh2",
+						},
+					},
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
+		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -551,11 +622,10 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
 		} else {
+			assert.NoError(err, "query %s", tt.query)
 
 			assert.NotNil(tmp, tt.query)
 			tmp.SetStmt(nil) /* dont check stmt */
-
-			assert.NoError(err, "query %s", tt.query)
 
 			assert.Equal(tt.exp, tmp, tt.query)
 		}
@@ -586,7 +656,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -600,7 +670,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 			query: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
 			exp: &plan.DataRowFilter{
 				SubPlan: &plan.ScatterPlan{
-					OverwriteQuery: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
+					OverwriteQuery: map[string]string{},
 					SubPlan: &plan.ScatterPlan{
 						SubPlan: &plan.ModifyTable{},
 					},
@@ -618,7 +688,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: `INSERT INTO test_ref_rel VALUES(1) ;`,
+				OverwriteQuery: map[string]string{},
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -636,6 +706,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `WITH data as (VALUES(1)) INSERT INTO test_ref_rel SELECT * FROM data;`,
 			exp: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{},
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -650,8 +721,10 @@ func TestReferenceRelationRouting(t *testing.T) {
 			},
 		},
 		{
+			/* XXX: with (proper) engine v2, this should we 2-slice split-update plan */
 			query: `UPDATE test_ref_rel SET i = i + 1 ;`,
 			exp: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{},
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -668,6 +741,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `DELETE FROM test_ref_rel WHERE i = 2;`,
 			exp: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{},
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -682,7 +756,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 			},
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -766,7 +840,7 @@ func TestComment(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -789,7 +863,7 @@ func TestComment(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -876,7 +950,7 @@ func TestCTE(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1090,7 +1164,7 @@ func TestCTE(t *testing.T) {
 			},
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1219,7 +1293,7 @@ func TestSingleShard(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1235,6 +1309,7 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "SELECT * FROM xxtt1 a WHERE i IN (1,11,111)",
 			exp: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{},
 				ExecTargets: []kr.ShardKey{
 					{Name: "sh1"},
 					{Name: "sh2"},
@@ -1418,7 +1493,7 @@ func TestSingleShard(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1503,7 +1578,7 @@ func TestInsertOffsets(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1574,7 +1649,7 @@ func TestInsertOffsets(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1657,7 +1732,7 @@ func TestJoins(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1735,7 +1810,7 @@ func TestJoins(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1806,7 +1881,7 @@ func TestUnnest(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1841,7 +1916,7 @@ func TestUnnest(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1910,7 +1985,7 @@ func TestCopySingleShard(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1928,7 +2003,7 @@ func TestCopySingleShard(t *testing.T) {
 			err:   nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1998,7 +2073,7 @@ func TestCopyMultiShard(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2016,7 +2091,7 @@ func TestCopyMultiShard(t *testing.T) {
 			err:   nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2073,7 +2148,7 @@ func TestSetStmt(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2104,7 +2179,7 @@ func TestSetStmt(t *testing.T) {
 			err:          nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2183,7 +2258,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2431,7 +2506,7 @@ LIMIT 1000
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2499,7 +2574,7 @@ func TestHashRouting(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2523,7 +2598,7 @@ func TestHashRouting(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2585,7 +2660,7 @@ func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error
 		return nil, err
 	}
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	router, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2612,7 +2687,7 @@ func TestCheckTableIsRoutable(t *testing.T) {
 		},
 		{
 			query: "create table table1 (id1 int)",
-			err:   fmt.Errorf("create table stmt ignored: no sharding rule columns found"),
+			err:   fmt.Errorf("create table stmt ignored: no matching distribution found"),
 		},
 		{
 			query: "create table schema2.table2 (id int, dat varchar)",
@@ -2623,7 +2698,7 @@ func TestCheckTableIsRoutable(t *testing.T) {
 			err:   fmt.Errorf("distribution for relation \"schema2.table2Err\" not found"),
 		},
 	} {
-		stmt, err := lyx.Parse(tt.query)
+		stmt, _, err := lyx.Parse(tt.query)
 		assert.NoError(err)
 		switch node := stmt[0].(type) {
 		case *lyx.CreateTable:

@@ -54,8 +54,6 @@ NOTICE: send query to shard(s) : sh2
 ---+---
 (0 rows)
 
-SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;
-ERROR:  client processing error: 'SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;': syntax error on pos 37, tx status IDLE
 SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12;
 NOTICE: send query to shard(s) : sh2
  i  | j  | i  | j  

@@ -2,6 +2,9 @@ package qdb_test
 
 import (
 	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -70,6 +73,45 @@ func TestMemqdbRacing(t *testing.T) {
 		},
 		func() { _ = memqdb.UpdateKeyRange(ctx, mockKeyRange) },
 		func() { _ = memqdb.DeleteRouter(ctx, mockRouter.ID) },
+		func() {
+			tran1, err := qdb.NewTransaction()
+			if err != nil {
+				panic("cann't create transaction structure (begin transaction test)!")
+			}
+			_ = memqdb.BeginTransaction(ctx, tran1)
+		},
+		func() {
+			dataDistribution1, err := json.Marshal(mockDistribution)
+			if err != nil {
+				panic("cann't unmarshal distribution (exec no transaction test)!")
+			}
+			commands := []qdb.QdbStatement{
+				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
+			}
+			_ = memqdb.ExecNoTransaction(ctx, commands)
+		},
+		func() {
+			tran, err := qdb.NewTransaction()
+			if err != nil {
+				panic("can't create transaction structure (commit transaction test)!")
+			}
+			dataDistribution1, err := json.Marshal(mockDistribution)
+			if err != nil {
+				panic("cann't unmarshal distribution case(1)!")
+			}
+			commands := []qdb.QdbStatement{
+				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
+			}
+			err = tran.Append(commands)
+			if err != nil {
+				panic("fail append commands to transaction!")
+			}
+			err = memqdb.BeginTransaction(ctx, tran)
+			if err != nil {
+				panic("cann't begin transaction!")
+			}
+			_ = memqdb.ExecNoTransaction(ctx, commands)
+		},
 	}
 	for range 1000 {
 		for _, m := range methods {
@@ -313,4 +355,67 @@ func TestMemQDB_NextVal(t *testing.T) {
 	idRange, err := memqdb.NextRange(ctx, "seq", 1)
 	assert.NoError(err)
 	assert.Equal(expectedValue, idRange.Right)
+}
+
+func TestRestoreQDB_EmptyPath(t *testing.T) {
+	assert := assert.New(t)
+
+	q, err := qdb.RestoreQDB("")
+	assert.NoError(err)
+	assert.NotNil(q)
+}
+
+func TestRestoreQDB_NonexistentFile(t *testing.T) {
+	assert := assert.New(t)
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "backup.json")
+
+	_, statErr := os.Stat(path)
+	assert.Error(statErr)
+
+	q, err := qdb.RestoreQDB(path)
+	assert.NoError(err)
+	assert.NotNil(q)
+
+	_, statErr = os.Stat(path)
+	assert.NoError(statErr)
+}
+
+func TestRestoreQDB_InvalidJSON(t *testing.T) {
+	assert := assert.New(t)
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "backup.json")
+
+	writeErr := os.WriteFile(path, []byte("not json"), 0o644)
+	assert.NoError(writeErr)
+
+	q, err := qdb.RestoreQDB(path)
+	assert.Error(err)
+	assert.Nil(q)
+}
+
+func TestRestoreQDB_ValidJSON(t *testing.T) {
+	assert := assert.New(t)
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "backup.json")
+
+	orig, err := qdb.NewMemQDB(path)
+	assert.NoError(err)
+
+	orig.Coordinator = "coord-1"
+
+	data, err := json.Marshal(orig)
+	assert.NoError(err)
+
+	writeErr := os.WriteFile(path, data, 0o644)
+	assert.NoError(writeErr)
+
+	q, err := qdb.RestoreQDB(path)
+	assert.NoError(err)
+	assert.NotNil(q)
+
+	assert.Equal("coord-1", q.Coordinator)
 }

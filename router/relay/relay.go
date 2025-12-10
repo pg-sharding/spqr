@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/opentracing/opentracing-go"
@@ -106,6 +107,7 @@ type RelayStateImpl struct {
 	savedPortalDesc map[string]*PortalDesc
 
 	parseCache map[string]ParseCacheEntry
+	savedRM    map[string]*rmeta.RoutingMetadataContext
 
 	// buffer of messages to process on Sync request
 	xBuf []pgproto3.FrontendMessage
@@ -132,10 +134,18 @@ func (rst *RelayStateImpl) UnholdRouting() {
 }
 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr) RelayStateMgr {
+	mgr := qr.Mgr()
+	var d qdb.DCStateKeeper
+
+	/* in case of local router, mgr can be nil */
+	if mgr != nil {
+		d = mgr.DCStateKeeper()
+	}
+
 	return &RelayStateImpl{
 		activeShards:        nil,
 		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(client),
+		qse:                 NewQueryStateExecutor(d, client),
 		Qr:                  qr,
 		Cl:                  client,
 		poolMgr:             manager,
@@ -143,6 +153,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		saveBind:            pgproto3.Bind{},
 		savedPortalDesc:     map[string]*PortalDesc{},
 		parseCache:          map[string]ParseCacheEntry{},
+		savedRM:             map[string]*rmeta.RoutingMetadataContext{},
 		unnamedPortalExists: false,
 	}
 }
@@ -514,8 +525,6 @@ func (rst *RelayStateImpl) Connect() error {
 }
 
 func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
-	statistics.RecordFinishedTransaction(time.Now(), rst.Client())
-
 	rst.unnamedPortalExists = false
 
 	spqrlog.Zero.Debug().
@@ -534,7 +543,13 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 			}
 		}
 
-		return rst.poolMgr.TXEndCB(rst)
+		if err := rst.poolMgr.TXEndCB(rst); err != nil {
+			return err
+		}
+
+		statistics.RecordFinishedTransaction(time.Now(), rst.Client())
+
+		return nil
 	case txstatus.TXERR:
 		fallthrough
 	case txstatus.TXACT:
@@ -671,8 +686,14 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			}
 
 			/* XXX: check that we have reference relation insert here */
-
 			stmt := rst.qp.Stmt()
+
+			rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, query, stmt)
+			if err != nil {
+				return err
+			}
+
+			rst.savedRM[currentMsg.Name] = rm
 
 			def := &prepstatement.PreparedStatementDefinition{
 				Name:          currentMsg.Name,
@@ -749,6 +770,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			if err := fin(); err != nil {
 				return err
 			}
+
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, currentMsg.Query, time.Since(startTime))
 		case *pgproto3.Bind:
 			startTime := time.Now()
@@ -795,6 +817,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
 				rst.saveBind.DestinationPortal = currentMsg.DestinationPortal
 
+				rm := rst.savedRM[currentMsg.PreparedStatement]
+
 				hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.PreparedStatement)
 
 				rst.saveBind.PreparedStatement = fmt.Sprintf("%d", hash)
@@ -807,10 +831,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				ctx := context.TODO()
 
 				if rst.poolMgr.ValidateSliceChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
-					rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.qp.OriginQuery(), rst.qp.Stmt())
-					if err != nil {
-						return err
-					}
 
 					// Do not respond with BindComplete, as the relay step should take care of itself.
 					queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
@@ -1054,6 +1074,10 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 
 	state, comm, err := rst.qp.Parse(query)
 
+	if err != nil {
+		return nil, "", err
+	}
+
 	switch stm := rst.qp.Stmt().(type) {
 	case *lyx.Insert:
 		// load columns from information schema
@@ -1073,7 +1097,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 		}
 	}
 
-	if err == nil && doCaching {
+	if doCaching {
 		stmt := rst.qp.Stmt()
 		/* only cache specific type of queries */
 		switch stmt.(type) {
@@ -1087,7 +1111,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 	}
 
 	rst.plainQ = query
-	return state, comm, err
+	return state, comm, nil
 }
 
 var _ RelayStateMgr = &RelayStateImpl{}
@@ -1280,11 +1304,6 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		}
 
 		rst.routingDecisionPlan = queryPlan
-	}
-
-	// rewrite query
-	if qs := rst.routingDecisionPlan.GetQuery(""); qs != "" {
-		q.String = qs
 	}
 
 	es := &ExecutorState{

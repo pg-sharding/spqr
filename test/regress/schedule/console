@@ -13,7 +13,6 @@ test: add
 test: hash
 test: teardown
 test: delete_distribution
-test: sharding_rules
 test: default_distribution
 test: sequence
 test: alter_relation
@@ -21,3 +20,4 @@ test: reference_table
 test: show_users
 test: show_tsa_cache
 test: routing_expression
+test: control_point

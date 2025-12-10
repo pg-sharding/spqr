@@ -8,6 +8,8 @@ import (
 
 	_ "net/http/pprof"
 
+	_ "go.uber.org/automaxprocs/maxprocs"
+
 	"github.com/pg-sharding/spqr/coordinator/app"
 	coord "github.com/pg-sharding/spqr/coordinator/pkg"
 	"github.com/pg-sharding/spqr/pkg"

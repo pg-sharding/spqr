@@ -32,11 +32,6 @@ import (
 //   - If the authentication method is `pgproto3.AuthenticationSASL`, the error message will depend on the specific error that occurs during the authentication process.
 //   - For any other authentication method, the error message will be "authBackend type {type} not supported".
 func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3.BackendMessage) error {
-	spqrlog.Zero.Debug().
-		Uint("shard ", spqrlog.GetPointer(shard)).
-		Type("auth_type", msg).
-		Msg("auth backend")
-
 	switch v := msg.(type) {
 	case *pgproto3.AuthenticationOk:
 		return nil
@@ -77,13 +72,7 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 		hashSalted.Write(res)
 		hashSalted.Write([]byte{v.Salt[0], v.Salt[1], v.Salt[2], v.Salt[3]})
 		resSalted := hashSalted.Sum(nil)
-
 		psswd := hex.EncodeToString(resSalted)
-
-		spqrlog.Zero.Debug().
-			Str("password1", psswd).
-			Str("password2", rule.Password).
-			Msg("sending plain password auth package")
 
 		return shard.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd})
 	case *pgproto3.AuthenticationCleartextPassword:
@@ -222,7 +211,6 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 			innerhash := md5.New()
 			innerhash.Write([]byte(rule.AuthRule.Password + rule.Usr))
 			innerres := innerhash.Sum(nil)
-			spqrlog.Zero.Debug().Bytes("inner-hash", innerres).Msg("")
 			hash.Write([]byte(hex.EncodeToString(innerres)))
 		}
 		hash.Write([]byte{salt[0], salt[1], salt[2], salt[3]})
@@ -329,7 +317,7 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		}
 		defer func() {
 			if err := conn.Close(); err != nil {
-				spqrlog.Zero.Debug().Err(err).Msg("failed to close LDAP connection")
+				spqrlog.Zero.Error().Err(err).Msg("failed to close LDAP connection")
 			}
 		}()
 

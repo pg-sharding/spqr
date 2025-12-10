@@ -61,8 +61,6 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
 		}
 
-		err = fmt.Errorf("client processing error: '%v': %w, tx status %s", query, err, rst.QueryExecutor().TxStatus().String())
-
 		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
 			// TODO: figure out if we need this
 			// _ = rst.UnrouteRoutes(rst.ActiveShards())
@@ -166,6 +164,9 @@ func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error
 				case "false", "no", "off":
 					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelStatement, false)
 				}
+			case session.SPQR_PREFERRED_ENGINE:
+				spqrlog.Zero.Debug().Str("preferred engine", val).Msg("parse preferred engine from comment")
+				rst.Client().SetPreferredEngine(session.VirtualParamLevelStatement, val)
 			case session.SPQR_AUTO_DISTRIBUTION:
 				/* Should we create distributed or reference relation? */
 
@@ -360,6 +361,8 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				fallthrough
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
 				ReplyVirtualParamState(rst.Client(), "target session attrs", []byte(rst.Client().GetTsa()))
+			case session.SPQR_PREFERRED_ENGINE:
+				ReplyVirtualParamState(rst.Client(), "preferred engine", []byte(rst.Client().PreferredEngine()))
 			default:
 
 				if strings.HasPrefix(param, "__spqr__") {
@@ -509,78 +512,45 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context, hintName string,
 	name := virtualParamTransformName(hintName)
 	value := strings.ToLower(hintVal)
 
+	lvl := session.VirtualParamLevelTxBlock
+
+	if isLocal {
+		lvl = session.VirtualParamLevelLocal
+	}
+
 	switch name {
 	case session.SPQR_DISTRIBUTION:
-		if isLocal {
-			rst.Client().SetDistribution(session.VirtualParamLevelLocal, hintVal)
-		} else {
-			rst.Client().SetDistribution(session.VirtualParamLevelTxBlock, hintVal)
-		}
+		rst.Client().SetDistribution(lvl, hintVal)
 	case session.SPQR_DISTRIBUTED_RELATION:
-		lvl := session.VirtualParamLevelTxBlock
-
-		if isLocal {
-			lvl = session.VirtualParamLevelLocal
-		}
-
 		rst.Client().SetDistributedRelation(lvl, hintVal)
 	case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-		lvl := session.VirtualParamLevelTxBlock
-
-		if isLocal {
-			lvl = session.VirtualParamLevelLocal
-		}
-
 		rst.Client().SetDefaultRouteBehaviour(lvl, hintVal)
 	case session.SPQR_SHARDING_KEY:
-		lvl := session.VirtualParamLevelTxBlock
-
-		if isLocal {
-			lvl = session.VirtualParamLevelLocal
-		}
-
 		rst.Client().SetShardingKey(lvl, hintVal)
+	case session.SPQR_PREFERRED_ENGINE:
+		rst.Client().SetPreferredEngine(lvl, hintVal)
 	case session.SPQR_REPLY_NOTICE:
-		lvl := session.VirtualParamLevelTxBlock
-
-		if isLocal {
-			lvl = session.VirtualParamLevelLocal
-		}
-
 		if value == "on" || value == "true" {
 			rst.Client().SetShowNoticeMsg(lvl, true)
 		} else {
 			rst.Client().SetShowNoticeMsg(lvl, false)
 		}
 	case session.SPQR_MAINTAIN_PARAMS:
-		lvl := session.VirtualParamLevelTxBlock
-
-		if isLocal {
-			lvl = session.VirtualParamLevelLocal
-		}
-
 		if value == "on" || value == "true" {
 			rst.Client().SetMaintainParams(lvl, true)
 		} else {
 			rst.Client().SetMaintainParams(lvl, false)
 		}
 	case session.SPQR_EXECUTE_ON:
-		if isLocal {
-			rst.Client().SetExecuteOn(session.VirtualParamLevelLocal, hintVal)
-		} else {
-			rst.Client().SetExecuteOn(session.VirtualParamLevelTxBlock, hintVal)
-		}
+		rst.Client().SetExecuteOn(lvl, hintVal)
 	case session.SPQR_TARGET_SESSION_ATTRS:
 		fallthrough
 	case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
 		fallthrough
 	case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-		if isLocal {
-			rst.Client().SetTsa(session.VirtualParamLevelLocal, hintVal)
-		} else {
-			rst.Client().SetTsa(session.VirtualParamLevelTxBlock, hintVal)
-		}
+		rst.Client().SetTsa(lvl, hintVal)
 	case session.SPQR_ENGINE_V2:
+		/* Ignore statement level here */
 		switch value {
 		case "true", "on", "ok":
 			rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)

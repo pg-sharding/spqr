@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
@@ -50,6 +51,10 @@ func (a *Adapter) QDB() qdb.QDB {
 	panic("Adapter.QDB not implemented")
 }
 
+func (a *Adapter) DCStateKeeper() qdb.DCStateKeeper {
+	panic("Adapter.DCStateKeeper not implemented")
+}
+
 func (a *Adapter) Cache() *cache.SchemaCache {
 	panic("Adapter.Cache not implemented")
 }
@@ -71,6 +76,16 @@ func (a *Adapter) ShareKeyRange(id string) error {
 // GetReferenceRelation implements meta.EntityMgr.
 func (a *Adapter) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetReferenceRelation not implemented")
+}
+
+// GetSequenceColumns implements meta.EntityMgr.
+func (a *Adapter) GetSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetSequenceColumns not implemented")
+}
+
+// GetSequenceColumns implements meta.EntityMgr.
+func (a *Adapter) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetSequenceRelations not implemented")
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.
@@ -1229,4 +1244,38 @@ func (a *Adapter) ListRelationSequences(ctx context.Context, relName *rfqn.Relat
 	}
 
 	return resp.ColumnSequences, nil
+}
+
+func (a *Adapter) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionChunk) error {
+	conn := proto.NewMetaTransactionServiceClient(a.conn)
+	request := &proto.ExecNoTranRequest{
+		MetaCmdList: chunk.GossipRequests,
+		CmdList:     qdb.SliceToProto(chunk.QdbStatements),
+	}
+	_, err := conn.ExecNoTran(ctx, request)
+	return err
+}
+
+func (a *Adapter) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
+	conn := proto.NewMetaTransactionServiceClient(a.conn)
+	request := &proto.MetaTransactionRequest{
+		TransactionId: transaction.TransactionId.String(),
+		MetaCmdList:   transaction.Operations.GossipRequests,
+		CmdList:       qdb.SliceToProto(transaction.Operations.QdbStatements),
+	}
+	_, err := conn.CommitTran(ctx, request)
+	return err
+}
+
+func (a *Adapter) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error) {
+	conn := proto.NewMetaTransactionServiceClient(a.conn)
+	if transactionProto, err := conn.BeginTran(ctx, nil); err != nil {
+		return nil, err
+	} else {
+		if transactionMeta, err := mtran.TransactionFromProto(transactionProto); err != nil {
+			return nil, err
+		} else {
+			return transactionMeta, nil
+		}
+	}
 }
