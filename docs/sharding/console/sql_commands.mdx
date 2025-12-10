@@ -82,20 +82,19 @@ This command is used to alter an existing distribution. You can detach a relatio
 ALTER DISTRIBUTION <distribution_name> DETACH RELATION <relation_name>
 ```
 
-### ALTER DISTRIBUTION ADD DEFAULT SHARD
-This command is used to add a default shard to an existing distribution.
-
-```sql
-ALTER DISTRIBUTION <distributionID> ADD DEFAULT SHARD <shardId>
-
-where <shardId> is a default shard identifier. The shard must exist.
-```
-
 ### ALTER DISTRIBUTION DROP DEFAULT SHARD
-This command is used to remove the default shard from an existing distribution.
+This command is used to add default shard to an existing distribution.
 
 ```sql
 ALTER DISTRIBUTION <distributionID> DROP DEFAULT SHARD
+```
+
+### ALTER DISTRIBUTION DROP DEFAULT SHARD
+This command is used to add default shard to an existing distribution.
+
+```sql
+ALTER DISTRIBUTION <distributionID> DEFAULT SHARD <shardId>
+where <shardId> is a default shard identifier. <shardId> must be exist 
 ```
 
 ### CREATE REFERENCE TABLE
