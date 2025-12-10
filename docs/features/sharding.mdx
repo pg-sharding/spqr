@@ -6,15 +6,22 @@ The router knows that some tables have been [split into shards](/sharding/sharde
 
 SPQR supports both single-column and [composite (multi-column) sharding keys](/sharding/composite_keys).
 
+## Query Routing
+
+When a query arrives, the router extracts the sharding key from the query and determines which key range (and thus which shard) should handle it.
+
 ```sql
 -- This query works with properly configured sharding rules
+-- The router extracts id=10 and routes to the appropriate shard
 INSERT INTO test(id, age) VALUES (10, 16);
 ```
 
-But you can explicitly specify a shard or a sharding key in a comment request
+### Explicit Sharding Key
+
+You can explicitly specify a sharding key in a SQL comment when the router cannot determine it automatically:
 
 ```sql
--- If you want to explicitly pass sharding key, you can do it like this
+-- Override automatic routing by specifying the sharding key
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30*/;
 ```
 
@@ -25,4 +32,72 @@ For composite sharding keys, specify all key values separated by commas:
 INSERT INTO users(tenant_id, user_id, name) VALUES (1, 100, 'Alice') /*__spqr__sharding_key: 1, 100*/;
 ```
 
-You can set a [default shard](/sharding/default_shard) for distribution. If there is a default shard, the router routes the query to that shard for an existing route.
+### Explicit Shard Selection
+
+You can also force a query to execute on a specific shard:
+
+```sql
+-- Execute on a specific shard regardless of key
+SELECT * FROM test /*__spqr__execute_on: sh1*/;
+```
+
+## Default Shard
+
+A [default shard](/sharding/default_shards) provides a catch-all fallback for queries whose sharding key doesn't match any explicitly defined key range.
+
+### Why Use a Default Shard?
+
+Consider a distribution with key ranges starting at 0:
+
+```sql
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+```
+
+Without a default shard, any query with a negative sharding key (e.g., `id = -5`) would fail to route. The default shard catches these "orphan" values.
+
+### How It Works
+
+The default shard is implemented as a special key range with ID `{distribution_id}.DEFAULT` that covers the minimum possible value for your column types:
+
+| Column Type | Default Lower Bound |
+|-------------|---------------------|
+| `integer` | `-9223372036854775808` (MinInt64) |
+| `uinteger` / `varchar hash` | `0` |
+| `varchar` | `""` (empty string) |
+
+<Warning>`uuid` column type does not support default shard. See [issue #1666](https://github.com/pg-sharding/spqr/issues/1666).</Warning>
+
+### Routing Example
+
+```sql
+-- Setup: key ranges kr1: [-20, -10) → sh2, kr2: [-10, 0) → sh3, kr3: [0, ∞) → sh4
+-- Default shard: sh1 (covers MinInt64 to -20)
+
+INSERT INTO t(id) VALUES (-30);  -- → sh1 (default, below all explicit ranges)
+INSERT INTO t(id) VALUES (-20);  -- → sh2 (kr1)
+INSERT INTO t(id) VALUES (-10);  -- → sh3 (kr2)
+INSERT INTO t(id) VALUES (0);    -- → sh4 (kr3)
+```
+
+### Configuration
+
+Set a default shard during distribution creation:
+
+```sql
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer DEFAULT SHARD sh1;
+```
+
+Or add it to an existing distribution:
+
+```sql
+ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;
+```
+
+Remove the default shard:
+
+```sql
+ALTER DISTRIBUTION ds1 DROP DEFAULT SHARD;
+```
+
+See [Default Shard](/sharding/default_shards) for more details.

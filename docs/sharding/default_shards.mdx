@@ -1,15 +1,27 @@
 ---
-title: 'Default shards'
+title: 'Default shard'
 ---
 
-Distribution can have a default shard. It means that if router matches query to distribution with default shard it definitely find route. It route will be to this shard. 
-Default shard is realized as "key range" with minimal value of column set. This key range have reserved id `<DistributionId>`.DEFAULT.
-For example: 
-Column set for distribution is [varchar, integer]. Lower bound of default key range is ["",-9223372036854775808]
+A distribution can have a default shard that acts as a catch-all fallback. When the router matches a query to a distribution with a default shard, it is guaranteed to find a route—even if the sharding key doesn't fall within any explicitly defined key range.
 
+The default shard is implemented as a special key range with the minimum possible value as its lower bound. This key range has a reserved ID: `{DistributionId}.DEFAULT`.
 
-## How to use it?
-We have the distribution with key range kr18b713215 "From 0". Try alter distribution with default shard command:
+For example, if the distribution has column types `[varchar, integer]`, the default key range lower bound is `["", -9223372036854775808]`.
+
+## Supported Column Types
+
+| Column Type | Default Lower Bound |
+|-------------|---------------------|
+| `integer` | `-9223372036854775808` (MinInt64) |
+| `uinteger` | `0` |
+| `varchar` | `""` (empty string) |
+| `varchar hash` | `0` |
+
+<Warning>`uuid` column type does not support default shard. See [issue #1666](https://github.com/pg-sharding/spqr/issues/1666).</Warning>
+
+## How to Use It
+
+Given a distribution with key range `kr1` starting "From 0", you can add a default shard:
 ```sql
 ALTER DISTRIBUTION testWithDefault ADD DEFAULT SHARD sh2;
         create default shard        
