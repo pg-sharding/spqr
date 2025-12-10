@@ -3,6 +3,8 @@ package qdb_test
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -353,4 +355,67 @@ func TestMemQDB_NextVal(t *testing.T) {
 	idRange, err := memqdb.NextRange(ctx, "seq", 1)
 	assert.NoError(err)
 	assert.Equal(expectedValue, idRange.Right)
+}
+
+func TestRestoreQDB_EmptyPath(t *testing.T) {
+	assert := assert.New(t)
+
+	q, err := qdb.RestoreQDB("")
+	assert.NoError(err)
+	assert.NotNil(q)
+}
+
+func TestRestoreQDB_NonexistentFile(t *testing.T) {
+	assert := assert.New(t)
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "backup.json")
+
+	_, statErr := os.Stat(path)
+	assert.Error(statErr)
+
+	q, err := qdb.RestoreQDB(path)
+	assert.NoError(err)
+	assert.NotNil(q)
+
+	_, statErr = os.Stat(path)
+	assert.NoError(statErr)
+}
+
+func TestRestoreQDB_InvalidJSON(t *testing.T) {
+	assert := assert.New(t)
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "backup.json")
+
+	writeErr := os.WriteFile(path, []byte("not json"), 0o644)
+	assert.NoError(writeErr)
+
+	q, err := qdb.RestoreQDB(path)
+	assert.Error(err)
+	assert.Nil(q)
+}
+
+func TestRestoreQDB_ValidJSON(t *testing.T) {
+	assert := assert.New(t)
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "backup.json")
+
+	orig, err := qdb.NewMemQDB(path)
+	assert.NoError(err)
+
+	orig.Coordinator = "coord-1"
+
+	data, err := json.Marshal(orig)
+	assert.NoError(err)
+
+	writeErr := os.WriteFile(path, data, 0o644)
+	assert.NoError(writeErr)
+
+	q, err := qdb.RestoreQDB(path)
+	assert.NoError(err)
+	assert.NotNil(q)
+
+	assert.Equal("coord-1", q.Coordinator)
 }

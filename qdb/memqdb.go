@@ -83,7 +83,6 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 	}, nil
 }
 
-// TODO : unit tests
 func RestoreQDB(backupPath string) (*MemQDB, error) {
 	qdb, err := NewMemQDB(backupPath)
 	if err != nil {
