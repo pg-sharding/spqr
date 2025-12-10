@@ -61,6 +61,7 @@
                     "group": "Features",
                     "pages": [
                         "features/sharding",
+                        "features/default_shard",
                         "features/reference_tables",
                         "features/distributed_transactions",
                         "features/pooling",

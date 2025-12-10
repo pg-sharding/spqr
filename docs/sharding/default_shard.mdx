@@ -2,13 +2,35 @@
 title: 'Default shard'
 ---
 
-A distribution can have a default shard that acts as a catch-all fallback. When the router matches a query to a distribution with a default shard, it is guaranteed to find a route—even if the sharding key doesn't fall within any explicitly defined key range.
+A distribution can have a default shard that acts as a catch-all fallback. When the router matches a query to a distribution with a default shard, it is guaranteed to find a route — even if the sharding key doesn't fall within any explicitly defined key range.
 
 The default shard is implemented as a special key range with the minimum possible value as its lower bound. This key range has a reserved ID: `{DistributionId}.DEFAULT`.
 
 For example, if the distribution has column types `[varchar, integer]`, the default key range lower bound is `["", -9223372036854775808]`.
 
-## Supported Column Types
+## How to Use It
+
+Given a distribution with key range `kr1` starting "From 0", you can add a default shard:
+```sql
+ALTER DISTRIBUTION testWithDefault ADD DEFAULT SHARD sh2; -- Add default shard
+        create default shard        
+------------------------------------
+ distribution id -> testWithDefault
+ shard id        -> sh2
+(2 rows)
+
+SHOW key_ranges; -- Let's see the key ranges now
+      Key range ID       | Shard ID | Distribution ID |     Lower bound      | Locked 
+-------------------------+----------+-----------------+----------------------+--------
+ kr18b713215             | sh1      | ds1             | 0                    | true
+ testWithDefault.DEFAULT | sh2      | testWithDefault | -9223372036854775808 | false
+(2 rows)
+```
+
+## How It Works
+
+The default shard is implemented as a special key range with ID `{distribution_id}.DEFAULT` that covers the minimum possible value for your column types:
+
 
 | Column Type | Default Lower Bound |
 |-------------|---------------------|
@@ -19,26 +41,34 @@ For example, if the distribution has column types `[varchar, integer]`, the defa
 
 <Warning>`uuid` column type does not support default shard. See [issue #1666](https://github.com/pg-sharding/spqr/issues/1666).</Warning>
 
-## How to Use It
+## Routing Example
 
-Given a distribution with key range `kr1` starting "From 0", you can add a default shard:
 ```sql
-ALTER DISTRIBUTION testWithDefault ADD DEFAULT SHARD sh2;
-        create default shard        
-------------------------------------
- distribution id -> testWithDefault
- shard id        -> sh2
-(2 rows)
-```
-result:
-```sql
-show key_ranges;
-      Key range ID       | Shard ID | Distribution ID |     Lower bound      | Locked 
--------------------------+----------+-----------------+----------------------+--------
- kr18b713215             | sh1      | ds1             | 0                    | true
- testWithDefault.DEFAULT | sh2      | testWithDefault | -9223372036854775808 | false
-(2 rows)
+-- Setup: key ranges kr1: [-20, -10) → sh2, kr2: [-10, 0) → sh3, kr3: [0, ∞) → sh4
+-- Default shard: sh1 (covers MinInt64 to -20)
 
+INSERT INTO t(id) VALUES (-30);  -- → sh1 (default, below all explicit ranges)
+INSERT INTO t(id) VALUES (-20);  -- → sh2 (kr1)
+INSERT INTO t(id) VALUES (-10);  -- → sh3 (kr2)
+INSERT INTO t(id) VALUES (0);    -- → sh4 (kr3)
 ```
 
-The default shard functionality is supported for the 'integer', 'unsigned integer', and 'varchar' types, as well as hash-based routing.
+## Configuration
+
+Set a default shard during distribution creation:
+
+```sql
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer DEFAULT SHARD sh1;
+```
+
+Or add it to an existing distribution:
+
+```sql
+ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;
+```
+
+Remove the default shard:
+
+```sql
+ALTER DISTRIBUTION ds1 DROP DEFAULT SHARD;
+```
