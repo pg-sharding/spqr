@@ -1,6 +1,10 @@
 package spqrerror
 
-import "fmt"
+import (
+	"fmt"
+
+	"google.golang.org/grpc/status"
+)
 
 const (
 	SPQR_UNEXPECTED           = "SPQRU"
@@ -142,4 +146,18 @@ func Newf(errorCode string, format string, a ...any) *SpqrError {
 //   - string: The formatted error message.
 func (er *SpqrError) Error() string {
 	return er.Err.Error()
+}
+
+// Try convert grpc error to error without "rpc error: code..."
+//
+// Returns:
+//   - error: non grpc error.
+func CleanGrpcError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if st, ok := status.FromError(err); ok {
+		return fmt.Errorf("%s", st.Message())
+	}
+	return err // non grpc error
 }
