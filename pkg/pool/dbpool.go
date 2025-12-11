@@ -58,6 +58,7 @@ func (s *DBPool) StartBackgroundHealthCheck() {
 		return // Disabled
 	}
 
+	/* XXX: we will pool cancellation on dynamic routes */
 	ctx, cancel := context.WithCancel(context.Background())
 	s.healthCheckCancel = cancel
 	s.healthCheckCtx = ctx
@@ -689,9 +690,7 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 	dbPool.cache = NewDbpoolCacheWithCleanup(hostCheckTTL, hostCheckInterval)
 
 	// Start background health checking if enabled
-	if dbPool.deadCheckInterval > 0 {
-		dbPool.StartBackgroundHealthCheck()
-	}
+	dbPool.StartBackgroundHealthCheck()
 
 	return dbPool
 }

@@ -96,6 +96,8 @@ type Router struct {
 	DbpoolAcquireRetryCount    int           `json:"dbpool_acquire_retry_count" toml:"dbpool_acquire_retry_count" yaml:"dbpool_acquire_retry_count"`
 	DefaultRecheckTCPAliveness bool          `json:"dbpool_recheck_tcp" toml:"dbpool_recheck_tcp" yaml:"dbpool_recheck_tcp"`
 
+	ClientPoolDeadCheckInterval time.Duration `json:"client_pool_dead_check_interval" toml:"client_pool_dead_check_interval" yaml:"client_pool_dead_check_interval"`
+
 	WorkloadFile      string `json:"workload_file" toml:"workload_file" yaml:"workload_file"`
 	WorkloadBatchSize int    `json:"workload_batch_size" toml:"workload_batch_size" yaml:"workload_batch_size"`
 
