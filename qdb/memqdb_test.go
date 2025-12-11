@@ -269,12 +269,12 @@ func TestKeyRanges(t *testing.T) {
 
 	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
 	assert.NoError(err)
-	memqdb.ExecNoTransaction(ctx, chunk)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
 	assert.NoError(err)
 
 	chunk, err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", nil))
 	assert.NoError(err)
-	memqdb.ExecNoTransaction(ctx, chunk)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
 	assert.NoError(err)
 
 	assert.NoError(err)
@@ -307,12 +307,12 @@ func Test_MemQDB_GetKeyRange(t *testing.T) {
 
 	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
 	assert.NoError(err)
-	memqdb.ExecNoTransaction(ctx, chunk)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
 	assert.NoError(err)
 
 	chunk, err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", nil))
 	assert.NoError(err)
-	memqdb.ExecNoTransaction(ctx, chunk)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
 	assert.NoError(err)
 
 	keyRange1 := qdb.KeyRange{
