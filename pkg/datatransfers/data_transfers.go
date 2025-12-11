@@ -426,7 +426,7 @@ func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, rela
 	// TODO: process differently to avoid deadlocks
 	switch val {
 	case "on", "yes", "ok", "true":
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "reference relations already locked", relation.String())
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "reference relations already locked")
 	}
 	if _, err = tx.Exec(ctx, "SELECT spqr_metadata.mark_reference_relation($1);", relation.String()); err != nil {
 		return err
