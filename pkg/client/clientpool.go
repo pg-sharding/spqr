@@ -181,7 +181,7 @@ func (s *PoolImpl) backgroundHealthCheckLoop() {
 			spqrlog.Zero.Info().Msg("PoolImpl client background health check stopped")
 			return
 		case <-ticker.C:
-			s.ClientPoolForeach(func(cl ClientInfo) error {
+			_ = s.ClientPoolForeach(func(cl ClientInfo) error {
 
 				if !netutil.TCP_CheckAliveness(cl.Conn()) {
 
