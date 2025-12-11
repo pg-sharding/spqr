@@ -151,7 +151,7 @@ func (l *LocalQrouterServer) createDistributionPrepare(ctx context.Context, goss
 			return nil, err
 		} else {
 			if len(tranChunk.QdbStatements) == 0 {
-				return nil, fmt.Errorf("transaction chunk must have a qdb statetment (createDistributionPrepare)")
+				return nil, fmt.Errorf("transaction chunk must have a qdb statement (createDistributionPrepare)")
 			}
 			result = append(result, tranChunk.QdbStatements...)
 		}

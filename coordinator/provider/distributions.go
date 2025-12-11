@@ -37,7 +37,7 @@ func (d *DistributionsServer) CreateDistribution(ctx context.Context, req *proto
 			return nil, err
 		} else {
 			if len(tranChunk.QdbStatements) == 0 {
-				return nil, fmt.Errorf("transaction chunk must have a qdb statetment (DistributionsServer.CreateDistribution)")
+				return nil, fmt.Errorf("transaction chunk must have a qdb statement (DistributionsServer.CreateDistribution)")
 			}
 			for _, qdbStmt := range tranChunk.QdbStatements {
 				reply.CmdList = append(reply.CmdList, qdbStmt.ToProto())
