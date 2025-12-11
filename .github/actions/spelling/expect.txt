@@ -446,6 +446,7 @@ rconn
 rdistr
 receivepasswd
 regclass
+reloid
 relpersistence
 rels
 repeattimes
@@ -564,8 +565,8 @@ tcase
 TCLOSEBR
 TCLOSESQBR
 TCOMMA
-tctx
 tcpconn
+tctx
 tdigest
 tempor
 terabytes
