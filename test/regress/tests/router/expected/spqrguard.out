@@ -1,7 +1,5 @@
 SET __spqr__maintain_params TO TRUE;
 SET allow_system_table_mods TO true;
-CREATE EXTENSION spqrguard;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE guard_zz(i INT) /* __spqr__auto_distribution: REPLICATED */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT spqr_metadata.mark_reference_relation('guard_zz') /* __spqr__execute_on: sh1 */;
@@ -56,8 +54,6 @@ NOTICE: send query to shard(s) : sh4
 INSERT INTO guard_zz (i) VALUES(1);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE guard_zz;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-DROP EXTENSION spqrguard;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 

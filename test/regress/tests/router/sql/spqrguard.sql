@@ -3,8 +3,6 @@ SET __spqr__maintain_params TO TRUE;
 
 SET allow_system_table_mods TO true;
 
-CREATE EXTENSION spqrguard;
-
 CREATE TABLE guard_zz(i INT) /* __spqr__auto_distribution: REPLICATED */;
 
 SELECT spqr_metadata.mark_reference_relation('guard_zz') /* __spqr__execute_on: sh1 */;
@@ -29,7 +27,6 @@ DELETE FROM spqr_metadata.spqr_global_settings WHERE name = 69 /* __spqr__execut
 INSERT INTO guard_zz (i) VALUES(1);
 
 DROP TABLE guard_zz;
-DROP EXTENSION spqrguard;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
