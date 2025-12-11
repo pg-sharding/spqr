@@ -5,7 +5,8 @@ Feature: Reference relation test
     #
     Given cluster environment is
     """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster.yaml
+    COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator_three_shards.yaml
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster_three_shards.yaml
     """
     Given cluster is up and running
     And host "coordinator2" is stopped
@@ -275,6 +276,39 @@ Feature: Reference relation test
     Then command return code should be "0"
 
     When I run SQL on host "shard2"
+    """
+    SELECT * FROM t
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+        {
+            "id": 1,
+            "name": "{}"
+        },
+        {
+            "id": 2,
+            "name": "{NULL}"
+        },
+        {
+            "id": 3,
+            "name": "{one_value}"
+        },
+        {
+            "id": 4,
+            "name": "{two,values}"
+        }
+    ]
+    """
+  
+  When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE TABLE t ON sh3;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard3"
     """
     SELECT * FROM t
     """
