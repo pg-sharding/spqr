@@ -24,6 +24,8 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
+const spqrguardReferenceRelationLock = 69
+
 type MoveTableRes struct {
 	TableSchema string `db:"table_schema"`
 	TableName   string `db:"table_name"`
@@ -286,6 +288,16 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 	for tx != nil {
 		switch tx.Status {
 		case qdb.Planned:
+			// lock reference relation on its current shards
+			if err = lockReferenceRelation(ctx, rel); err != nil {
+				return err
+			}
+			tx.Status = qdb.Locked
+			err = db.RecordTransferTx(ctx, transferKey, tx)
+			if err != nil {
+				return err
+			}
+		case qdb.Locked:
 			// copy data of key range to receiving shard
 			if err = copyReferenceRelationData(ctx, from, to, fromId, toId, rel); err != nil {
 				return err
@@ -296,7 +308,10 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 				return err
 			}
 		case qdb.DataCopied:
-			// drop data from sending shard
+			// unlock reference relation
+			if err = unlockReferenceRelation(ctx, rel); err != nil {
+				return err
+			}
 			if err = db.RemoveTransferTx(ctx, transferKey); err != nil {
 				return err
 			}
@@ -379,6 +394,78 @@ func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		}
 	}
 	return err
+}
+
+func lockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRelation) error {
+	for _, shard := range relation.ShardIds {
+		connInfo, ok := shards.ShardsData[shard]
+		if !ok {
+			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.GetFullName())
+		}
+		shardConn, err := GetMasterConnection(ctx, connInfo)
+		if err != nil {
+			return fmt.Errorf("can't lock relation \"%s\": %s", relation.GetFullName(), err)
+		}
+		if err = lockReferenceRelationOnShard(ctx, shardConn, relation.QualifiedName()); err != nil {
+			return fmt.Errorf("can't lock relation \"%s\": %s", relation.GetFullName(), err)
+		}
+	}
+	return nil
+}
+
+func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, relation rfqn.RelationFQN) error {
+	tx, err := shardConn.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	row := tx.QueryRow(ctx, "SELECT value as references_locked FROM spqr_metadata.spqr_global_settings WHERE name = $1", spqrguardReferenceRelationLock)
+	val := ""
+	if err = row.Scan(&val); err != nil && err != pgx.ErrNoRows {
+		return err
+	}
+	// TODO: process differently to avoid deadlocks
+	switch val {
+	case "on", "yes", "ok", "true":
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "reference relations already locked")
+	}
+	if _, err = tx.Exec(ctx, "SELECT spqr_metadata.mark_reference_relation($1);", relation.String()); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, "INSERT INTO spqr_metadata.spqr_global_settings (name, value) VALUES ($1, 'true')", spqrguardReferenceRelationLock); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func unlockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRelation) error {
+	for _, shard := range relation.ShardIds {
+		connInfo, ok := shards.ShardsData[shard]
+		if !ok {
+			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.GetFullName())
+		}
+		shardConn, err := GetMasterConnection(ctx, connInfo)
+		if err != nil {
+			return fmt.Errorf("can't lock relation \"%s\": %s", relation.GetFullName(), err)
+		}
+		if err = unlockReferenceRelationOnShard(ctx, shardConn, relation.QualifiedName()); err != nil {
+			return fmt.Errorf("can't lock relation \"%s\": %s", relation.GetFullName(), err)
+		}
+	}
+	return nil
+}
+
+func unlockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, relation rfqn.RelationFQN) error {
+	tx, err := shardConn.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, "DELETE FROM spqr_metadata.spqr_reference_relations WHERE reloid = ($1)::regclass::oid;", relation.String()); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, "DELETE FROM spqr_metadata.spqr_global_settings WHERE name=$1", spqrguardReferenceRelationLock); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 // copyData performs physical key-range move from one datashard to another.
