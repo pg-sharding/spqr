@@ -112,11 +112,19 @@ SHOW __spqr__default_route_behaviour;
 
 SELECT 1 FROM test WHERE id IN (5, 25) /* __spqr__scatter_query: true */;
 
+CREATE TABLE test_unmatch(i int);
+SET __spqr__default_route_behaviour to 'sh2';
+SHOW __spqr__default_route_behaviour;
+
+-- check that unmatched relation proxied to `default` shard
+SELECT 1 FROM test_unmatch;
+
 -- restart session, reset all params
 \c regress
 
 DROP TABLE test;
 DROP TABLE test_h;
+DROP TABLE test_unmatch;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
