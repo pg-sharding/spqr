@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -24,17 +25,28 @@ func NewDistributionServer(impl coordinator.Coordinator) *DistributionsServer {
 
 var _ protos.DistributionServiceServer = &DistributionsServer{}
 
-func (d *DistributionsServer) CreateDistribution(ctx context.Context, req *protos.CreateDistributionRequest) (*emptypb.Empty, error) {
+func (d *DistributionsServer) CreateDistribution(ctx context.Context, req *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
+	reply := protos.CreateDistributionReply{MetaCmdList: make([]*protos.MetaTransactionGossipCommand, 0),
+		CmdList: make([]*protos.QdbTransactionCmd, 0)}
 	for _, ds := range req.Distributions {
 		mds, err := distributions.DistributionFromProto(ds)
 		if err != nil {
 			return nil, err
 		}
-		if err := d.impl.CreateDistribution(ctx, mds); err != nil {
+		if tranChunk, err := d.impl.CreateDistribution(ctx, mds); err != nil {
 			return nil, err
+		} else {
+			if len(tranChunk.QdbStatements) == 0 {
+				return nil, fmt.Errorf("transaction chunk must have a qdb statetment (DistributionsServer.CreateDistribution)")
+			}
+			for _, qdbStmt := range tranChunk.QdbStatements {
+				reply.CmdList = append(reply.CmdList, qdbStmt.ToProto())
+			}
+			reply.MetaCmdList = append(reply.MetaCmdList, tranChunk.GossipRequests...)
 		}
+
 	}
-	return nil, nil
+	return &reply, nil
 }
 
 func (d *DistributionsServer) DropDistribution(ctx context.Context, req *protos.DropDistributionRequest) (*emptypb.Empty, error) {

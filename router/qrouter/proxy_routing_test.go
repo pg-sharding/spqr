@@ -71,7 +71,7 @@ func TestMultiShardRouting(t *testing.T) {
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "ds1"
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -85,6 +85,9 @@ func TestMultiShardRouting(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
@@ -203,7 +206,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "ds1"
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -217,8 +220,11 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -367,7 +373,7 @@ func TestRoutingByExpression(t *testing.T) {
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "ds1"
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeUinteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -394,8 +400,11 @@ func TestRoutingByExpression(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -529,7 +538,7 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distributions.REPLICATED,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -538,6 +547,9 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
 	_ = db.CreateSequence(context.TODO(), "s1", 10)
 
@@ -642,7 +654,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distributions.REPLICATED,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -651,6 +663,9 @@ func TestReferenceRelationRouting(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
@@ -795,7 +810,7 @@ func TestComment(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID: distribution,
 		ColTypes: []string{
 			qdb.ColumnTypeInteger,
@@ -811,8 +826,11 @@ func TestComment(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -895,7 +913,7 @@ func TestCTE(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID: distribution,
 
 		ColTypes: []string{qdb.ColumnTypeInteger},
@@ -910,8 +928,11 @@ func TestCTE(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1", LowerBound: kr.KeyRangeBound{
@@ -1200,7 +1221,7 @@ func TestSingleShard(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID: distribution,
 		ColTypes: []string{
 			qdb.ColumnTypeInteger,
@@ -1265,7 +1286,11 @@ func TestSingleShard(t *testing.T) {
 		},
 	})
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
+
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -1525,7 +1550,7 @@ func TestInsertOffsets(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -1556,7 +1581,11 @@ func TestInsertOffsets(t *testing.T) {
 		},
 	})
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
+
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		LowerBound: []any{int64(1)},
 
 		ShardID:      "sh1",
@@ -1681,7 +1710,7 @@ func TestJoins(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -1712,7 +1741,11 @@ func TestJoins(t *testing.T) {
 		},
 	})
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
+
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -1846,7 +1879,7 @@ func TestUnnest(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -1860,8 +1893,11 @@ func TestUnnest(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -1948,7 +1984,7 @@ func TestCopySingleShard(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -1962,8 +1998,11 @@ func TestCopySingleShard(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -2036,7 +2075,7 @@ func TestCopyMultiShard(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -2050,8 +2089,11 @@ func TestCopyMultiShard(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -2127,10 +2169,17 @@ func TestSetStmt(t *testing.T) {
 	distribution1 := "ds1"
 	distribution2 := "ds2"
 
-	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution1, nil)))
-	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution2, nil)))
+	chunk1, err := db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution1, nil))
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk1)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
+	chunk2, err := db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution2, nil))
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk2)
+	assert.NoError(err)
+
+	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		DistributionId: distribution1,
 		KeyRangeID:     "id1",
@@ -2236,11 +2285,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 			},
 		},
 	}
+	chunk1, err := db.CreateDistribution(context.TODO(), distribution)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk1)
+	assert.NoError(err)
 
-	assert.NoError(db.CreateDistribution(context.TODO(), distribution))
-	assert.NoError(db.CreateDistribution(context.TODO(), unusedDistribution))
+	chunk2, err := db.CreateDistribution(context.TODO(), unusedDistribution)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk2)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		DistributionId: distribution.ID,
 		KeyRangeID:     "id1",
@@ -2541,11 +2596,14 @@ func TestHashRouting(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution1 := "ds1"
 
-	assert.NoError(db.CreateDistribution(context.TODO(),
+	chunk, err := db.CreateDistribution(context.TODO(),
 		qdb.NewDistribution(distribution1,
-			[]string{qdb.ColumnTypeVarcharHashed})))
+			[]string{qdb.ColumnTypeVarcharHashed}))
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution1,
 		ID:           "id1",
@@ -2622,10 +2680,11 @@ func TestHashRouting(t *testing.T) {
 	}
 }
 func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error) {
+	assert := assert.New(t)
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -2648,8 +2707,11 @@ func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "krid1",

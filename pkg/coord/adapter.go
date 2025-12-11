@@ -809,15 +809,26 @@ func (a *Adapter) ListDistributions(ctx context.Context) ([]*distributions.Distr
 //
 // Returns:
 // - error: An error if the creation of the distribution fails, otherwise nil.
-func (a *Adapter) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
+func (a *Adapter) CreateDistribution(ctx context.Context, ds *distributions.Distribution) (*mtran.MetaTransactionChunk, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 
-	_, err := c.CreateDistribution(ctx, &proto.CreateDistributionRequest{
+	if reply, err := c.CreateDistribution(ctx, &proto.CreateDistributionRequest{
 		Distributions: []*proto.Distribution{
 			distributions.DistributionToProto(ds),
 		},
-	})
-	return err
+	}); err != nil {
+		return nil, err
+	} else {
+		qdbCmds := make([]qdb.QdbStatement, 0, len(reply.CmdList))
+		for _, cmd := range reply.CmdList {
+			if qdbCmd, err := qdb.QdbStmtFromProto(cmd); err != nil {
+				return nil, err
+			} else {
+				qdbCmds = append(qdbCmds, *qdbCmd)
+			}
+		}
+		return mtran.NewMetaTransactionChunk(reply.MetaCmdList, qdbCmds)
+	}
 }
 
 // TODO : unit tests

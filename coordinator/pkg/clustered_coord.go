@@ -1892,16 +1892,23 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 	}); err != nil {
 		return err
 	}
-	if _, err = dsCl.CreateDistribution(ctx, &proto.CreateDistributionRequest{
-		Distributions: func() []*proto.Distribution {
-			res := make([]*proto.Distribution, len(dss))
-			for i, ds := range dss {
-				res[i] = distributions.DistributionToProto(ds)
-			}
-			return res
-		}(),
-	}); err != nil {
-		return err
+	spqrlog.Zero.Debug().Msg("clustered coordinator: distributions dropped successfully")
+	if len(dss) > 0 {
+		distribsToCreate := make([]*proto.Distribution, len(dss))
+		for i, ds := range dss {
+			distribsToCreate[i] = distributions.DistributionToProto(ds)
+		}
+		commands := []*proto.MetaTransactionGossipCommand{
+			{CreateDistribution: &proto.CreateDistributionGossip{
+				Distributions: distribsToCreate,
+			},
+			},
+		}
+		gossipCl := proto.NewMetaTransactionGossipServiceClient(cc)
+		if _, err := gossipCl.ApplyMeta(ctx, &proto.MetaTransactionGossipRequest{Commands: commands}); err != nil {
+			return err
+		}
+		spqrlog.Zero.Debug().Msg("qdb coordinator: distributions created")
 	}
 
 	// Configure key ranges.
@@ -2268,17 +2275,12 @@ func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 	})
 }
 
-// CreateDistribution creates distribution in QDB
-// TODO: unit tests
-func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
-	if err := qc.Coordinator.CreateDistribution(ctx, ds); err != nil {
-		return err
-	}
-
-	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+/*
+func gossipCreateDistribution(gossip *proto.CreateDistributionGossip) func(cc *grpc.ClientConn) error {
+	return func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
 		resp, err := cl.CreateDistribution(context.TODO(), &proto.CreateDistributionRequest{
-			Distributions: []*proto.Distribution{distributions.DistributionToProto(ds)},
+			Distributions: gossip.Distributions,
 		})
 		if err != nil {
 			return err
@@ -2288,7 +2290,25 @@ func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *dist
 			Interface("response", resp).
 			Msg("create distribution response")
 		return nil
-	})
+	}
+}*/
+
+// CreateDistribution creates distribution in QDB
+// TODO: unit tests
+func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) (*mtran.MetaTransactionChunk, error) {
+	if transactionChunk, err := qc.Coordinator.CreateDistribution(ctx, ds); err != nil {
+		return nil, err
+	} else {
+		if len(transactionChunk.GossipRequests) > 0 {
+			return nil, fmt.Errorf("clustered coord have got gossip requests from local coord (case 0)")
+		} else {
+			gossipReq := &proto.MetaTransactionGossipCommand{CreateDistribution: &proto.CreateDistributionGossip{
+				Distributions: []*proto.Distribution{distributions.DistributionToProto(ds)},
+			}}
+			transactionChunk.GossipRequests = []*proto.MetaTransactionGossipCommand{gossipReq}
+			return transactionChunk, nil
+		}
+	}
 }
 
 // DropDistribution deletes distribution from QDB
