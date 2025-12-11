@@ -49,9 +49,11 @@ func TestMemqdbRacing(t *testing.T) {
 	methods := []func(){
 		func() {
 			if stmts, err := memqdb.CreateDistribution(ctx, mockDistribution); err != nil {
-				panic("fail run CreateDistribution in race test")
+				panic("fail run CreateDistribution in race test (prepare phase)")
 			} else {
-				memqdb.ExecNoTransaction(ctx, stmts)
+				if err = memqdb.ExecNoTransaction(ctx, stmts); err != nil {
+					panic("fail run CreateDistribution in race test (exec phase)")
+				}
 			}
 
 		},
@@ -143,12 +145,12 @@ func TestDistributions(t *testing.T) {
 
 	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
 	assert.NoError(err)
-	memqdb.ExecNoTransaction(ctx, chunk)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
 	assert.NoError(err)
 
 	chunk, err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", nil))
 	assert.NoError(err)
-	memqdb.ExecNoTransaction(ctx, chunk)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
 	assert.NoError(err)
 
 	assert.NoError(err)
@@ -209,7 +211,7 @@ func TestMemQDB_GetNotAttachedRelationDistribution(t *testing.T) {
 
 	chunk, err := memQDB.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
 	assert.NoError(err)
-	memQDB.ExecNoTransaction(ctx, chunk)
+	err = memQDB.ExecNoTransaction(ctx, chunk)
 	assert.NoError(err)
 
 	_, err = memQDB.GetRelationDistribution(ctx, &rfqn.RelationFQN{RelationName: "rel"})
