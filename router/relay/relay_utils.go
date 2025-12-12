@@ -11,7 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 )
 
-func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
+func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind, portal string) error {
 
 	/* Case when no describe stmt was issued before Execute+Sync*/
 
@@ -26,7 +26,14 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
 		if err := DispatchPlan(es, rst.Client().Server(), rst.Client(), false); err != nil {
 			return err
 		}
-		es.Msg = pgexec
+		if portal == "" {
+			/* save extra allocation */
+			es.Msg = pgexec
+		} else {
+			es.Msg = &pgproto3.Execute{
+				Portal: portal,
+			}
+		}
 
 		if err := DispatchPlan(es, rst.Client().Server(), rst.Client(), false); err != nil {
 			return err

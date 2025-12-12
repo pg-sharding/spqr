@@ -151,6 +151,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		Cl:                  client,
 		poolMgr:             manager,
 		execute:             nil,
+		executeMp:           map[string]func() error{},
 		saveBind:            pgproto3.Bind{},
 		savedPortalDesc:     map[string]*PortalDesc{},
 		parseCache:          map[string]ParseCacheEntry{},
@@ -866,7 +867,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				case *plan.VirtualPlan:
 
 					f := func() error {
-						return BindAndReadSliceResult(rst, &rst.saveBind)
+						return BindAndReadSliceResult(rst, &rst.saveBind /* XXX: virtual query always empty portal? */, "")
 					}
 
 					/* only populate map for non-empty portal */
@@ -900,7 +901,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 							return err
 						}
 
-						return BindAndReadSliceResult(rst, &rst.saveBind)
+						return BindAndReadSliceResult(rst, &rst.saveBind, currentMsg.DestinationPortal)
 					}
 
 					/* only populate map for non-empty portal */
