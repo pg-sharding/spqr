@@ -3178,7 +3178,7 @@ func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
 				},
 				&pgproto3.Bind{
 					PreparedStatement: "named_tx_p_s_1",
-					DestinationPortal: "d_tx_p_1",
+					DestinationPortal: "d_n_tx_p_1",
 					Parameters:        [][]byte{[]byte("1")},
 				},
 				&pgproto3.Describe{
@@ -3188,7 +3188,7 @@ func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
 
 				&pgproto3.Describe{
 					ObjectType: 'P',
-					Name:       "d_tx_p_1",
+					Name:       "d_n_tx_p_1",
 				},
 
 				&pgproto3.Parse{
@@ -3197,7 +3197,7 @@ func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
 				},
 				&pgproto3.Bind{
 					PreparedStatement: "named_tx_p_s_2",
-					DestinationPortal: "d_tx_p_2",
+					DestinationPortal: "d_n_tx_p_2",
 					Parameters:        [][]byte{[]byte("1")},
 				},
 				&pgproto3.Describe{
@@ -3207,15 +3207,15 @@ func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
 
 				&pgproto3.Describe{
 					ObjectType: 'P',
-					Name:       "d_tx_p_2",
+					Name:       "d_n_tx_p_2",
 				},
 
 				&pgproto3.Execute{
-					Portal: "d_tx_p_1",
+					Portal: "d_n_tx_p_1",
 				},
 
 				&pgproto3.Execute{
-					Portal: "d_tx_p_2",
+					Portal: "d_n_tx_p_2",
 				},
 				&pgproto3.Sync{},
 			},
