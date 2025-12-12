@@ -1074,12 +1074,18 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			if currentMsg.Portal == "" {
 				/* NB: unnamed portals are quite different is a sence of that they are
-				* auto-deallocaed on tx bounds */
+				* auto-closed on new bind msgs
+				* From PostgreSQL doc:
+				* Named portals must be explicitly closed before
+				* they can be redefined by another Bind message,
+				* but this is not required for the unnamed portal. */
 				err = rst.execute()
 				rst.execute = nil
 				rst.bindQueryPlan = nil
 			} else {
 				err = rst.executeMp[currentMsg.Portal]()
+				/* Note we do not delete from exeuteMP, this is intentional */
+				rst.bindQueryPlan = nil
 			}
 
 			if rst.lastBindName == "" {
@@ -1092,6 +1098,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, q, time.Since(startTime))
 		case *pgproto3.Close:
 			/*  */
+			if currentMsg.ObjectType == 'P' {
+				if currentMsg.Name != "" {
+					delete(rst.executeMp, currentMsg.Name)
+				}
+			}
 		default:
 			panic(fmt.Sprintf("unexpected query type %v", msg))
 		}
