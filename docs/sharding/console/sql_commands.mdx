@@ -128,8 +128,9 @@ This command is used to synchronize a [reference table](/sharding/reference_tabl
 
 This is useful when:
 - Adding a new shard to the cluster and needing to populate it with reference table data
-- A shard is out of sync and needs to be updated with the latest reference table data
-- Recovering reference table data on a shard after a failure
+- **Exceptional cases** (indicating data corruption):
+  - A shard is out of sync and needs to be updated with the latest reference table data
+  - Recovering reference table data on a shard after a failure
 
 ```sql
 SYNC REFERENCE TABLE <table_name> ON <shard_id>
