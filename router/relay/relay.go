@@ -101,7 +101,8 @@ type RelayStateImpl struct {
 	lastBindName        string
 	unnamedPortalExists bool
 
-	execute func() error
+	execute   func() error
+	executeMp map[string]func() error
 
 	saveBind        pgproto3.Bind
 	savedPortalDesc map[string]*PortalDesc
@@ -777,6 +778,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			spqrlog.Zero.Debug().
 				Str("name", currentMsg.PreparedStatement).
+				Str("portal", currentMsg.DestinationPortal).
 				Uint("client", rst.Client().ID()).
 				Msg("Binding prepared statement")
 
@@ -812,7 +814,13 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			rst.lastBindName = currentMsg.PreparedStatement
 			rst.unnamedPortalExists = true
-			rst.execute = emptyExecFunc
+
+			/* only populate map for non-empty portal */
+			if currentMsg.DestinationPortal == "" {
+				rst.execute = emptyExecFunc
+			} else {
+				rst.executeMp[currentMsg.DestinationPortal] = emptyExecFunc
+			}
 
 			pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
 				rst.saveBind.DestinationPortal = currentMsg.DestinationPortal
@@ -856,13 +864,22 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				switch rst.bindQueryPlan.(type) {
 				case *plan.VirtualPlan:
-					rst.execute = func() error {
+
+					f := func() error {
 						return BindAndReadSliceResult(rst, &rst.saveBind)
 					}
+
+					/* only populate map for non-empty portal */
+					if currentMsg.DestinationPortal == "" {
+						rst.execute = f
+					} else {
+						rst.executeMp[currentMsg.DestinationPortal] = f
+					}
+
 					spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
 					return nil
 				default:
-					rst.execute = func() error {
+					f := func() error {
 
 						err := rst.PrepareTargetDispatchExecutionSlice(rst.bindQueryPlan)
 						if err != nil {
@@ -885,10 +902,17 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 						return BindAndReadSliceResult(rst, &rst.saveBind)
 					}
+
+					/* only populate map for non-empty portal */
+					if currentMsg.DestinationPortal == "" {
+						rst.execute = f
+					} else {
+						rst.executeMp[currentMsg.DestinationPortal] = f
+					}
+
 					spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
 
 					return nil
-
 				}
 
 			}, true /* cache parsing for prep statement */, false /* do not completeRelay*/)
@@ -1042,10 +1066,21 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			q := rst.plainQ
 			spqrlog.Zero.Debug().
 				Uint("client", rst.Client().ID()).
+				Str("portal", currentMsg.Portal).
 				Msg("Execute prepared statement, reset saved bind")
-			err := rst.execute()
-			rst.execute = nil
-			rst.bindQueryPlan = nil
+
+			var err error
+
+			if currentMsg.Portal == "" {
+				/* NB: unnamed portals are quite different is a sence of that they are
+				* auto-deallocaed on tx bounds */
+				err = rst.execute()
+				rst.execute = nil
+				rst.bindQueryPlan = nil
+			} else {
+				err = rst.executeMp[currentMsg.Portal]()
+			}
+
 			if rst.lastBindName == "" {
 				delete(rst.savedPortalDesc, rst.lastBindName)
 			}
@@ -1055,7 +1090,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			}
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, q, time.Since(startTime))
 		case *pgproto3.Close:
-			//
+			/*  */
 		default:
 			panic(fmt.Sprintf("unexpected query type %v", msg))
 		}
