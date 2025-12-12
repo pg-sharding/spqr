@@ -163,8 +163,17 @@ func sliceDescribePortal(serv server.Server, portalDesc *pgproto3.Describe, bind
 		return nil, err
 	}
 
-	if err := serv.SendShard(portalClose, shkey); err != nil {
-		return nil, err
+	if bind.DestinationPortal == "" {
+		if err := serv.SendShard(portalClose, shkey); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := serv.SendShard(&pgproto3.Close{
+			ObjectType: 'P',
+			Name:       bind.DestinationPortal,
+		}, shkey); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := serv.SendShard(pgsync, shkey); err != nil {
