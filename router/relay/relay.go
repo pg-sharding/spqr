@@ -98,6 +98,7 @@ type RelayStateImpl struct {
 	holdRouting bool
 
 	bindQueryPlan       plan.Plan
+	bindQueryPlanMP     map[string]plan.Plan
 	lastBindName        string
 	unnamedPortalExists bool
 
@@ -155,6 +156,8 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		executeMp:           map[string]func() error{},
 		saveBind:            pgproto3.Bind{},
 		saveBindNamed:       map[string]*pgproto3.Bind{},
+		bindQueryPlan:       nil,
+		bindQueryPlanMP:     map[string]plan.Plan{},
 		savedPortalDesc:     map[string]*PortalDesc{},
 		parseCache:          map[string]ParseCacheEntry{},
 		savedRM:             map[string]*rmeta.RoutingMetadataContext{},
@@ -862,7 +865,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					rst.routingDecisionPlan = queryPlan
 				}
 
-				rst.bindQueryPlan = rst.routingDecisionPlan
+				if currentMsg.DestinationPortal == "" {
+					rst.bindQueryPlan = rst.routingDecisionPlan
+				} else {
+					rst.bindQueryPlanMP[currentMsg.DestinationPortal] = rst.routingDecisionPlan
+				}
 
 				// hold route if appropriate
 
@@ -870,11 +877,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					rst.HoldRouting()
 				}
 
-				if rst.bindQueryPlan == nil {
+				if rst.routingDecisionPlan == nil {
 					return fmt.Errorf("extended xproto state out of sync")
 				}
 
-				switch rst.bindQueryPlan.(type) {
+				switch rst.routingDecisionPlan.(type) {
 				case *plan.VirtualPlan:
 
 					f := func() error {
@@ -893,7 +900,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				default:
 					f := func() error {
 
-						err := rst.PrepareTargetDispatchExecutionSlice(rst.bindQueryPlan)
+						p := rst.bindQueryPlan
+						if currentMsg.DestinationPortal != "" {
+							p = rst.bindQueryPlanMP[currentMsg.DestinationPortal]
+						}
+
+						err := rst.PrepareTargetDispatchExecutionSlice(p)
 						if err != nil {
 							return err
 						}
@@ -968,7 +980,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					}
 				} else {
 
-					switch q := rst.bindQueryPlan.(type) {
+					p := rst.bindQueryPlan
+					if currentMsg.Name != "" {
+						p = rst.bindQueryPlanMP[currentMsg.Name]
+					}
+
+					switch q := p.(type) {
 					case *plan.VirtualPlan:
 						// skip deploy
 
@@ -982,12 +999,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					default:
 						/* SingleShard or random shard plans */
 
-						err := rst.PrepareTargetDispatchExecutionSlice(rst.bindQueryPlan)
+						err := rst.PrepareTargetDispatchExecutionSlice(p)
 						if err != nil {
 							return err
 						}
 
-						rst.routingDecisionPlan = rst.bindQueryPlan
+						rst.routingDecisionPlan = p
 
 						if _, _, err := rst.gangDeployPrepStmtByName(rst.lastBindName); err != nil {
 							return err
@@ -1104,7 +1121,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			} else {
 				err = rst.executeMp[currentMsg.Portal]()
 				/* Note we do not delete from exeuteMP, this is intentional */
-				rst.bindQueryPlan = nil
+				rst.bindQueryPlanMP[currentMsg.Portal] = nil
 			}
 
 			if rst.lastBindName == "" {
