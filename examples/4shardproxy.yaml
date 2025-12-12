@@ -8,6 +8,10 @@ grpc_api_port: '7010'
 
 show_notice_messages: false
 
+
+# Sic! This is intended to be debug-only option
+enable_icp: true
+
 time_quantiles:
   - 0.75
 
@@ -92,6 +96,14 @@ shards:
     hosts:
       - 'localhost:5553'
       - 'localhost:5653'
+
+watchdog_backend_rule:
+  usr: user1
+  db: db1
+  pool_discard: true
+  pool_rollback: true
+
+enable_2pc_watchdog: true
 
 schema_cache_backend_rule:
   usr: regress

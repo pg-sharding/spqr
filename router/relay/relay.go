@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/opentracing/opentracing-go"
@@ -97,15 +98,19 @@ type RelayStateImpl struct {
 	holdRouting bool
 
 	bindQueryPlan       plan.Plan
+	bindQueryPlanMP     map[string]plan.Plan
 	lastBindName        string
 	unnamedPortalExists bool
 
-	execute func() error
+	execute   func() error
+	executeMp map[string]func() error
 
 	saveBind        pgproto3.Bind
+	saveBindNamed   map[string]*pgproto3.Bind
 	savedPortalDesc map[string]*PortalDesc
 
 	parseCache map[string]ParseCacheEntry
+	savedRM    map[string]*rmeta.RoutingMetadataContext
 
 	// buffer of messages to process on Sync request
 	xBuf []pgproto3.FrontendMessage
@@ -132,17 +137,30 @@ func (rst *RelayStateImpl) UnholdRouting() {
 }
 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr) RelayStateMgr {
+	mgr := qr.Mgr()
+	var d qdb.DCStateKeeper
+
+	/* in case of local router, mgr can be nil */
+	if mgr != nil {
+		d = mgr.DCStateKeeper()
+	}
+
 	return &RelayStateImpl{
 		activeShards:        nil,
 		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(client),
+		qse:                 NewQueryStateExecutor(d, client),
 		Qr:                  qr,
 		Cl:                  client,
 		poolMgr:             manager,
 		execute:             nil,
+		executeMp:           map[string]func() error{},
 		saveBind:            pgproto3.Bind{},
+		saveBindNamed:       map[string]*pgproto3.Bind{},
+		bindQueryPlan:       nil,
+		bindQueryPlanMP:     map[string]plan.Plan{},
 		savedPortalDesc:     map[string]*PortalDesc{},
 		parseCache:          map[string]ParseCacheEntry{},
+		savedRM:             map[string]*rmeta.RoutingMetadataContext{},
 		unnamedPortalExists: false,
 	}
 }
@@ -514,8 +532,6 @@ func (rst *RelayStateImpl) Connect() error {
 }
 
 func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
-	statistics.RecordFinishedTransaction(time.Now(), rst.Client())
-
 	rst.unnamedPortalExists = false
 
 	spqrlog.Zero.Debug().
@@ -534,7 +550,13 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 			}
 		}
 
-		return rst.poolMgr.TXEndCB(rst)
+		if err := rst.poolMgr.TXEndCB(rst); err != nil {
+			return err
+		}
+
+		statistics.RecordFinishedTransaction(time.Now(), rst.Client())
+
+		return nil
 	case txstatus.TXERR:
 		fallthrough
 	case txstatus.TXACT:
@@ -671,8 +693,14 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			}
 
 			/* XXX: check that we have reference relation insert here */
-
 			stmt := rst.qp.Stmt()
+
+			rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, query, stmt)
+			if err != nil {
+				return err
+			}
+
+			rst.savedRM[currentMsg.Name] = rm
 
 			def := &prepstatement.PreparedStatementDefinition{
 				Name:          currentMsg.Name,
@@ -749,12 +777,14 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			if err := fin(); err != nil {
 				return err
 			}
+
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeParse, currentMsg.Query, time.Since(startTime))
 		case *pgproto3.Bind:
 			startTime := time.Now()
 
 			spqrlog.Zero.Debug().
 				Str("name", currentMsg.PreparedStatement).
+				Str("portal", currentMsg.DestinationPortal).
 				Uint("client", rst.Client().ID()).
 				Msg("Binding prepared statement")
 
@@ -790,27 +820,40 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 			rst.lastBindName = currentMsg.PreparedStatement
 			rst.unnamedPortalExists = true
-			rst.execute = emptyExecFunc
+
+			/* only populate map for non-empty portal */
+			if currentMsg.DestinationPortal == "" {
+				rst.execute = emptyExecFunc
+			} else {
+				rst.executeMp[currentMsg.DestinationPortal] = emptyExecFunc
+			}
 
 			pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
-				rst.saveBind.DestinationPortal = currentMsg.DestinationPortal
+				var bnd *pgproto3.Bind
+
+				if currentMsg.DestinationPortal == "" {
+					bnd = &rst.saveBind
+				} else {
+					rst.saveBindNamed[currentMsg.DestinationPortal] = &pgproto3.Bind{}
+					bnd = rst.saveBindNamed[currentMsg.DestinationPortal]
+				}
+
+				bnd.DestinationPortal = currentMsg.DestinationPortal
+
+				rm := rst.savedRM[currentMsg.PreparedStatement]
 
 				hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.PreparedStatement)
 
-				rst.saveBind.PreparedStatement = fmt.Sprintf("%d", hash)
-				rst.saveBind.ParameterFormatCodes = currentMsg.ParameterFormatCodes
+				bnd.PreparedStatement = fmt.Sprintf("%d", hash)
+				bnd.ParameterFormatCodes = currentMsg.ParameterFormatCodes
 				rst.Client().SetBindParams(currentMsg.Parameters)
 				rst.Client().SetParamFormatCodes(currentMsg.ParameterFormatCodes)
-				rst.saveBind.ResultFormatCodes = currentMsg.ResultFormatCodes
-				rst.saveBind.Parameters = currentMsg.Parameters
+				bnd.ResultFormatCodes = currentMsg.ResultFormatCodes
+				bnd.Parameters = currentMsg.Parameters
 
 				ctx := context.TODO()
 
 				if rst.poolMgr.ValidateSliceChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
-					rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.qp.OriginQuery(), rst.qp.Stmt())
-					if err != nil {
-						return err
-					}
 
 					// Do not respond with BindComplete, as the relay step should take care of itself.
 					queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
@@ -822,7 +865,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					rst.routingDecisionPlan = queryPlan
 				}
 
-				rst.bindQueryPlan = rst.routingDecisionPlan
+				if currentMsg.DestinationPortal == "" {
+					rst.bindQueryPlan = rst.routingDecisionPlan
+				} else {
+					rst.bindQueryPlanMP[currentMsg.DestinationPortal] = rst.routingDecisionPlan
+				}
 
 				// hold route if appropriate
 
@@ -830,21 +877,35 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					rst.HoldRouting()
 				}
 
-				if rst.bindQueryPlan == nil {
+				if rst.routingDecisionPlan == nil {
 					return fmt.Errorf("extended xproto state out of sync")
 				}
 
-				switch rst.bindQueryPlan.(type) {
+				switch rst.routingDecisionPlan.(type) {
 				case *plan.VirtualPlan:
-					rst.execute = func() error {
-						return BindAndReadSliceResult(rst, &rst.saveBind)
+
+					f := func() error {
+						return BindAndReadSliceResult(rst, bnd /* XXX: virtual query always empty portal? */, "")
 					}
+
+					/* only populate map for non-empty portal */
+					if currentMsg.DestinationPortal == "" {
+						rst.execute = f
+					} else {
+						rst.executeMp[currentMsg.DestinationPortal] = f
+					}
+
 					spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
 					return nil
 				default:
-					rst.execute = func() error {
+					f := func() error {
 
-						err := rst.PrepareTargetDispatchExecutionSlice(rst.bindQueryPlan)
+						p := rst.bindQueryPlan
+						if currentMsg.DestinationPortal != "" {
+							p = rst.bindQueryPlanMP[currentMsg.DestinationPortal]
+						}
+
+						err := rst.PrepareTargetDispatchExecutionSlice(p)
 						if err != nil {
 							return err
 						}
@@ -863,12 +924,19 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 							return err
 						}
 
-						return BindAndReadSliceResult(rst, &rst.saveBind)
+						return BindAndReadSliceResult(rst, bnd, currentMsg.DestinationPortal)
 					}
+
+					/* only populate map for non-empty portal */
+					if currentMsg.DestinationPortal == "" {
+						rst.execute = f
+					} else {
+						rst.executeMp[currentMsg.DestinationPortal] = f
+					}
+
 					spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
 
 					return nil
-
 				}
 
 			}, true /* cache parsing for prep statement */, false /* do not completeRelay*/)
@@ -912,7 +980,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					}
 				} else {
 
-					switch q := rst.bindQueryPlan.(type) {
+					p := rst.bindQueryPlan
+					if currentMsg.Name != "" {
+						p = rst.bindQueryPlanMP[currentMsg.Name]
+					}
+
+					switch q := p.(type) {
 					case *plan.VirtualPlan:
 						// skip deploy
 
@@ -926,18 +999,26 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					default:
 						/* SingleShard or random shard plans */
 
-						err := rst.PrepareTargetDispatchExecutionSlice(rst.bindQueryPlan)
+						err := rst.PrepareTargetDispatchExecutionSlice(p)
 						if err != nil {
 							return err
 						}
 
-						rst.routingDecisionPlan = rst.bindQueryPlan
+						rst.routingDecisionPlan = p
 
 						if _, _, err := rst.gangDeployPrepStmtByName(rst.lastBindName); err != nil {
 							return err
 						}
 
-						cachedPd, err := sliceDescribePortal(rst.Client().Server(), currentMsg, &rst.saveBind)
+						var bnd *pgproto3.Bind
+
+						if currentMsg.Name == "" {
+							bnd = &rst.saveBind
+						} else {
+							bnd = rst.saveBindNamed[currentMsg.Name]
+						}
+
+						cachedPd, err := sliceDescribePortal(rst.Client().Server(), currentMsg, bnd)
 						if err != nil {
 							return err
 						}
@@ -1022,10 +1103,27 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			q := rst.plainQ
 			spqrlog.Zero.Debug().
 				Uint("client", rst.Client().ID()).
+				Str("portal", currentMsg.Portal).
 				Msg("Execute prepared statement, reset saved bind")
-			err := rst.execute()
-			rst.execute = nil
-			rst.bindQueryPlan = nil
+
+			var err error
+
+			if currentMsg.Portal == "" {
+				/* NB: unnamed portals are quite different is a sence of that they are
+				* auto-closed on new bind msgs
+				* From PostgreSQL doc:
+				* Named portals must be explicitly closed before
+				* they can be redefined by another Bind message,
+				* but this is not required for the unnamed portal. */
+				err = rst.execute()
+				rst.execute = nil
+				rst.bindQueryPlan = nil
+			} else {
+				err = rst.executeMp[currentMsg.Portal]()
+				/* Note we do not delete from executeMP, this is intentional */
+				rst.bindQueryPlanMP[currentMsg.Portal] = nil
+			}
+
 			if rst.lastBindName == "" {
 				delete(rst.savedPortalDesc, rst.lastBindName)
 			}
@@ -1035,7 +1133,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			}
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, q, time.Since(startTime))
 		case *pgproto3.Close:
-			//
+			/*  */
+			if currentMsg.ObjectType == 'P' {
+				if currentMsg.Name != "" {
+					delete(rst.executeMp, currentMsg.Name)
+				}
+			}
 		default:
 			panic(fmt.Sprintf("unexpected query type %v", msg))
 		}
@@ -1053,6 +1156,10 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 	}
 
 	state, comm, err := rst.qp.Parse(query)
+
+	if err != nil {
+		return nil, "", err
+	}
 
 	switch stm := rst.qp.Stmt().(type) {
 	case *lyx.Insert:
@@ -1073,7 +1180,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 		}
 	}
 
-	if err == nil && doCaching {
+	if doCaching {
 		stmt := rst.qp.Stmt()
 		/* only cache specific type of queries */
 		switch stmt.(type) {
@@ -1087,7 +1194,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 	}
 
 	rst.plainQ = query
-	return state, comm, err
+	return state, comm, nil
 }
 
 var _ RelayStateMgr = &RelayStateImpl{}
@@ -1280,11 +1387,6 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		}
 
 		rst.routingDecisionPlan = queryPlan
-	}
-
-	// rewrite query
-	if qs := rst.routingDecisionPlan.GetQuery(""); qs != "" {
-		q.String = qs
 	}
 
 	es := &ExecutorState{

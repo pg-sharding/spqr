@@ -150,3 +150,11 @@ func (d *DistributionsServer) ListRelationSequences(ctx context.Context, req *pr
 	}
 	return &protos.ListRelationSequencesReply{ColumnSequences: val}, nil
 }
+
+func (d *DistributionsServer) ListSequences(ctx context.Context, _ *emptypb.Empty) (*protos.ListSequencesReply, error) {
+	seqs, err := d.impl.ListSequences(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.ListSequencesReply{Names: seqs}, nil
+}

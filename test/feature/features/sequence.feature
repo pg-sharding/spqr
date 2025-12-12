@@ -145,3 +145,82 @@ Feature: Sequence test
     """
     []
     """
+
+  Scenario: Show sequences after router restart (issue #1590)
+    #
+    # Test that sequences are visible after router restart
+    # with coordinator installation
+    #
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster.yaml
+    """
+    Given cluster is up and running
+    And host "coordinator2" is stopped
+    And host "coordinator2" is started
+
+    When I run SQL on host "coordinator"
+    """
+    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
+    """
+    Then command return code should be "0"
+
+    # Create reference tables with sequences
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE users AUTO INCREMENT id;
+    CREATE REFERENCE TABLE posts AUTO INCREMENT id START 100;
+    """
+    Then command return code should be "0"
+
+    # Verify sequences are visible initially
+    When I run SQL on host "router-admin"
+    """
+    SHOW sequences;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+        {
+            "name": "posts_id",
+            "value": "100"
+        },
+        {
+            "name": "users_id",
+            "value": "0"
+        }
+    ]
+    """
+
+    # Restart router
+    Given host "router" is stopped
+    And host "router" is started
+
+    # Verify sequences are still visible after restart (issue #1590)
+    When I run SQL on host "router-admin"
+    """
+    SHOW sequences;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+        {
+            "name": "posts_id",
+            "value": "100"
+        },
+        {
+            "name": "users_id",
+            "value": "0"
+        }
+    ]
+    """
+
+    # Cleanup
+    When I run SQL on host "coordinator"
+    """
+    DROP REFERENCE RELATION users;
+    DROP REFERENCE RELATION posts;
+    """
+    Then command return code should be "0"

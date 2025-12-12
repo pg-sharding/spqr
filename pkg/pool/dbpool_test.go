@@ -123,6 +123,9 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	sh, err := dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
 
+	assert.NoError(err)
+	assert.NotNil(sh)
+
 	assert.Equal(sh.Instance().Hostname(), h3.Instance().Hostname())
 	assert.Equal(sh.Instance().AvailabilityZone(), h3.Instance().AvailabilityZone())
 

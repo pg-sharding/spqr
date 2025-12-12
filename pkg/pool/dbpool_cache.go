@@ -33,6 +33,8 @@ const (
 	DefaultCacheTTL          = 5 * time.Minute
 	DefaultCheckInterval     = 30 * time.Second
 	DefaultDeadCheckInterval = 15 * time.Second
+
+	DefaultAcquireRetryCount = 3
 )
 
 // NewDbpoolCache creates a new cache instance

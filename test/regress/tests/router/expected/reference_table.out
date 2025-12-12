@@ -449,6 +449,14 @@ SELECT * FROM __spqr__show('reference_relations');
 (3 rows)
 
 SET __spqr__preferred_engine TO '';
+SELECT __spqr__show('reference_relations') /*  __spqr__preferred_engine: v2 */;
+    table name     | schema version |      shards       | column sequence mapping 
+-------------------+----------------+-------------------+-------------------------
+ test_ref_rel      | 1              | [sh1 sh2 sh3 sh4] | map[]
+ test_ref_rel_part | 1              | [sh1 sh3]         | map[]
+ test_ref_rel_rel  | 1              | [sh1 sh2 sh3 sh4] | map[]
+(3 rows)
+
 DROP TABLE test_ref_rel;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE sh1.test_ref_rel_rel;

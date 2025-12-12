@@ -9,6 +9,7 @@ import (
 	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
 	distribution "github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/qdb"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
@@ -34,12 +35,16 @@ func TestAutoDistributionSetFail(t *testing.T) {
 	rst := RelayStateImpl{
 		activeShards:        nil,
 		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(client),
+		qse:                 NewQueryStateExecutor(nil, client),
 		Qr:                  qr,
 		Cl:                  client,
 		poolMgr:             cmngr,
 		execute:             nil,
+		executeMp:           map[string]func() error{},
 		saveBind:            pgproto3.Bind{},
+		saveBindNamed:       map[string]*pgproto3.Bind{},
+		bindQueryPlan:       nil,
+		bindQueryPlanMP:     map[string]plan.Plan{},
 		savedPortalDesc:     map[string]*PortalDesc{},
 		parseCache:          map[string]ParseCacheEntry{},
 		unnamedPortalExists: false,
@@ -71,12 +76,16 @@ func TestAutoDistributionSetSuccess(t *testing.T) {
 	rst := RelayStateImpl{
 		activeShards:        nil,
 		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(client),
+		qse:                 NewQueryStateExecutor(nil, client),
 		Qr:                  qr,
 		Cl:                  client,
 		poolMgr:             cmngr,
 		execute:             nil,
+		executeMp:           map[string]func() error{},
 		saveBind:            pgproto3.Bind{},
+		saveBindNamed:       map[string]*pgproto3.Bind{},
+		bindQueryPlan:       nil,
+		bindQueryPlanMP:     map[string]plan.Plan{},
 		savedPortalDesc:     map[string]*PortalDesc{},
 		parseCache:          map[string]ParseCacheEntry{},
 		unnamedPortalExists: false,
@@ -105,15 +114,20 @@ func TestAutoDistributionSetReplicated(t *testing.T) {
 	)
 
 	rst := RelayStateImpl{
-		activeShards:        nil,
-		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(client),
-		Qr:                  qr,
-		Cl:                  client,
-		poolMgr:             cmngr,
-		execute:             nil,
-		saveBind:            pgproto3.Bind{},
-		savedPortalDesc:     map[string]*PortalDesc{},
+		activeShards:    nil,
+		msgBuf:          nil,
+		qse:             NewQueryStateExecutor(nil, client),
+		Qr:              qr,
+		Cl:              client,
+		poolMgr:         cmngr,
+		execute:         nil,
+		executeMp:       map[string]func() error{},
+		saveBind:        pgproto3.Bind{},
+		saveBindNamed:   map[string]*pgproto3.Bind{},
+		savedPortalDesc: map[string]*PortalDesc{},
+		bindQueryPlan:   nil,
+		bindQueryPlanMP: map[string]plan.Plan{},
+
 		parseCache:          map[string]ParseCacheEntry{},
 		unnamedPortalExists: false,
 	}

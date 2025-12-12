@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/engine"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -19,6 +20,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
+	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -43,10 +46,12 @@ type EntityMgr interface {
 	tasks.TaskMgr
 	sequences.SequenceMgr
 	rrelation.ReferenceRelationMgr
+	mtran.TransactionMgr
 
 	ShareKeyRange(id string) error
 
 	QDB() qdb.QDB
+	DCStateKeeper() qdb.DCStateKeeper
 	Cache() *cache.SchemaCache
 }
 
@@ -107,8 +112,6 @@ func processDrop(ctx context.Context,
 
 			return tts, err
 		}
-	case *spqrparser.ShardingRuleSelector:
-		return nil, spqrerror.ShardingRulesRemoved
 	case *spqrparser.ReferenceRelationSelector:
 		/* XXX: fix reference relation selector to support schema-qualified names */
 		relName := &rfqn.RelationFQN{
@@ -275,6 +278,20 @@ func processDrop(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.SequenceSelector:
+		rels, err := mngr.GetSequenceRelations(ctx, stmt.Name)
+		if err != nil {
+			return nil, err
+		}
+		if len(rels) > 0 && !isCascade {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop sequence %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.Name)
+		}
+
+		for _, rel := range rels {
+			if err := mngr.QDB().AlterSequenceDetachRelation(ctx, rel); err != nil {
+				return nil, err
+			}
+		}
+
 		if err := mngr.DropSequence(ctx, stmt.Name, false); err != nil {
 			return nil, err
 		}
@@ -452,8 +469,6 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 				return tts, nil
 			}
 		}
-	case *spqrparser.ShardingRuleDefinition:
-		return nil, spqrerror.ShardingRulesRemoved
 	case *spqrparser.KeyRangeDefinition:
 		if stmt.Distribution.ID == "default" {
 			list, err := mngr.ListDistributions(ctx)
@@ -736,6 +751,37 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 	switch stmt := tstmt.(type) {
 	case nil:
 		return cli.CompleteMsg(0)
+	case *spqrparser.InstanceControlPoint:
+		/* create control point */
+		if stmt.Enable {
+			err := icp.DefineICP(stmt.Name, stmt.A)
+			if err != nil {
+				return cli.ReportError(err)
+			}
+		} else {
+			err := icp.ResetICP(stmt.Name)
+			if err != nil {
+				return cli.ReportError(err)
+			}
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("control point"),
+		}
+		if stmt.Enable {
+			tts.Raw = [][][]byte{
+				{
+					[]byte("ATTACH CONTROL POINT"),
+				},
+			}
+		} else {
+			tts.Raw = [][][]byte{
+				{
+					[]byte("DETACH CONTROL POINT"),
+				},
+			}
+		}
+
+		return cli.ReplyTTS(tts)
 	case *spqrparser.TraceStmt:
 		if writer == nil {
 			return fmt.Errorf("cannot save workload from here")
@@ -885,7 +931,18 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		switch stmt.Target {
 		case spqrparser.SchemaCacheInvalidateTarget:
 			mgr.Cache().Reset()
-
+		case spqrparser.StaleClientsInvalidateTarget:
+			cnt := 0
+			if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
+				if !netutil.TCP_CheckAliveness(cl.Conn()) {
+					cnt++
+					return cl.Cancel()
+				}
+				return nil
+			}); err != nil {
+				return cli.ReportError(err)
+			}
+			return cli.CompleteMsg(cnt)
 		case spqrparser.BackendConnectionsInvalidateTarget:
 			if err := ci.ForEachPool(func(p pool.Pool) error {
 				return p.ForEach(func(sh shard.ShardHostCtl) error {
@@ -893,7 +950,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 					return nil
 				})
 			}); err != nil {
-				return err
+				return cli.ReportError(err)
 			}
 		}
 		return cli.CompleteMsg(0)
@@ -1070,6 +1127,13 @@ func ProcessShowExtended(ctx context.Context, stmt *spqrparser.Show, mngr Entity
 		var resp []client.ClientInfo
 		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
 			resp = append(resp, client)
+			/* XXX: should we do this un-conditionally  or under separate setting? */
+			/*  When this is executed by coordinator, c is (validly) nil*/
+			if c := client.Conn(); c != nil && !netutil.TCP_CheckAliveness(c) {
+				if err := client.Cancel(); err != nil {
+					return err
+				}
+			}
 			return nil
 		}); err != nil {
 			return nil, err
@@ -1192,9 +1256,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Routers(resp)
-	case spqrparser.ShardingRules:
-		return cli.ReportError(spqrerror.ShardingRulesRemoved)
-
 	case spqrparser.PoolsStr:
 		var respPools []pool.Pool
 		if err := ci.ForEachPool(func(p pool.Pool) error {
@@ -1205,7 +1266,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Pools(ctx, respPools)
-
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
 	case spqrparser.CoordinatorAddrStr:

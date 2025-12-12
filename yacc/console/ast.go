@@ -1,6 +1,8 @@
 package spqrparser
 
 import (
+	"time"
+
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
@@ -90,18 +92,6 @@ type DistributionDefinition struct {
 	DefaultShard         string
 }
 
-type ShardingRuleDefinition struct {
-	ID           string
-	TableName    string
-	Entries      []ShardingRuleEntry
-	Distribution string
-}
-
-type ShardingRuleEntry struct {
-	Column       string
-	HashFunction string
-}
-
 type ReferenceRelationDefinition struct {
 	TableName            *rfqn.RelationFQN
 	AutoIncrementEntries []*AutoIncrementEntry
@@ -132,7 +122,6 @@ type ShardDefinition struct {
 func (*KeyRangeDefinition) iCreate()          {}
 func (*ShardDefinition) iCreate()             {}
 func (*DistributionDefinition) iCreate()      {}
-func (*ShardingRuleDefinition) iCreate()      {}
 func (*ReferenceRelationDefinition) iCreate() {}
 
 type SplitKeyRange struct {
@@ -163,10 +152,6 @@ type KeyRangeSelector struct {
 	KeyRangeID string
 }
 
-type ShardingRuleSelector struct {
-	ID string
-}
-
 type DistributionSelector struct {
 	ID string
 }
@@ -184,7 +169,6 @@ type TaskGroupSelector struct {
 }
 
 func (*KeyRangeSelector) iDrop()          {}
-func (*ShardingRuleSelector) iDrop()      {}
 func (*DistributionSelector) iDrop()      {}
 func (*ReferenceRelationSelector) iDrop() {}
 func (*ShardSelector) iDrop()             {}
@@ -211,6 +195,7 @@ type Kill struct {
 type InvalidateCacheTarget string
 
 const (
+	StaleClientsInvalidateTarget       = InvalidateCacheTarget("STALE CLIENTS")
 	BackendConnectionsInvalidateTarget = InvalidateCacheTarget("BACKENDS")
 	SchemaCacheInvalidateTarget        = InvalidateCacheTarget("SCHEMA CACHE")
 )
@@ -363,9 +348,15 @@ type StopMoveTaskGroup struct {
 
 func (*StopMoveTaskGroup) iStatement() {}
 
+type ICPointAction struct {
+	Act     string
+	Timeout time.Duration /* for act = 'sleep' */
+}
+
 type InstanceControlPoint struct {
 	Name   string
 	Enable bool
+	A      *ICPointAction
 }
 
 func (*InstanceControlPoint) iStatement() {}
@@ -419,7 +410,6 @@ type Statement interface {
 func (*Show) iStatement()                        {}
 func (*Set) iStatement()                         {}
 func (*KeyRangeSelector) iStatement()            {}
-func (*ShardingRuleSelector) iStatement()        {}
 func (*DistributionSelector) iStatement()        {}
 func (*ReferenceRelationSelector) iStatement()   {}
 func (*ShardSelector) iStatement()               {}
@@ -435,7 +425,6 @@ func (*SplitKeyRange) iStatement()               {}
 func (*UniteKeyRange) iStatement()               {}
 func (*DistributionDefinition) iStatement()      {}
 func (*ReferenceRelationDefinition) iStatement() {}
-func (*ShardingRuleDefinition) iStatement()      {}
 func (*KeyRangeDefinition) iStatement()          {}
 func (*ShardDefinition) iStatement()             {}
 func (*Kill) iStatement()                        {}

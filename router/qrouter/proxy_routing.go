@@ -225,6 +225,7 @@ func (qr *ProxyQrouter) planQueryV1(
 				} else if rs {
 					/* If reference relation, use planner v2 */
 					p, err := planner.PlanReferenceRelationInsertValues(ctx, rm, stmt.Columns, rf, subS, qr.idRangeCache)
+
 					if err != nil {
 						return nil, err
 					}
@@ -243,6 +244,10 @@ func (qr *ProxyQrouter) planQueryV1(
 					/* XXX: give change for engine v2 to rewrite queries */
 					for _, sh := range shs {
 						if sh.Name != shs[0].Name {
+							/* try to rewrite, but only for simple protocol */
+							if len(rm.ParamRefs) == 0 {
+								return planner.RewriteDistributedRelBatchInsert(rm.Query, shs)
+							}
 							return nil, rerrors.ErrComplexQuery
 						}
 					}
@@ -602,7 +607,6 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadata
 			return &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: firstShard,
-					RO:   rm.IsRO(),
 				},
 				PStmt: rm.Stmt,
 			}, nil

@@ -406,9 +406,9 @@ func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(ctx context.Context, 
 //
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
-func NewLocalInstanceMetadataMgr(db qdb.XQDB, cache *cache.SchemaCache) meta.EntityMgr {
+func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache) meta.EntityMgr {
 	return &LocalInstanceMetadataMgr{
-		Coordinator: NewCoordinator(db),
+		Coordinator: NewCoordinator(db, d),
 		cache:       cache,
 	}
 }

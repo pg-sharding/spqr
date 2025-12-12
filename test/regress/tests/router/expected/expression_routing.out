@@ -51,7 +51,7 @@ show relations;
 
 \c regress
 CREATE TABLE tr (id1 INT, val TEXT);
-ERROR:  client processing error: error processing query 'CREATE TABLE tr (id1 INT, val TEXT);': create table stmt ignored: no sharding rule columns found, tx status IDLE
+ERROR:  client processing error: error processing query 'CREATE TABLE tr (id1 INT, val TEXT);': create table stmt ignored: no matching distribution found, tx status IDLE
 CREATE TABLE tr (id1 INT, id2 TEXT, val TEXT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY tr (id1, id2, val) FROM STDIN DELIMITER '|';

@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/server"
 )
 
@@ -20,54 +21,90 @@ const (
 	COMMIT_STRATEGY_2PC = "2pc"
 )
 
-func ExecuteTwoPhaseCommit(clid uint, s server.Server) error {
+func ExecuteTwoPhaseCommit(q qdb.DCStateKeeper, clid uint, s server.Server) (txstatus.TXStatus, error) {
 
 	/*
 	* go along first phase
 	 */
 	uid7, err := uuid.NewV7()
 	if err != nil {
-		return err
+		return txstatus.TXERR, err
 	}
-	txid := uid7.String()
+	gid := uid7.String()
+
+	/* Store our intentions in state keeper */
+	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
+	shs := []string{}
+
+	for _, dsh := range s.Datashards() {
+		shs = append(shs, dsh.SHKey().Name)
+	}
+
+	if q != nil {
+		if err := q.RecordTwoPhaseMembers(gid, shs); err != nil {
+			return txstatus.TXERR, err
+		}
+
+		/* From this point, 2PC GID is visible for other actors,
+		* including external clients running qdb inspect queries and
+		* recovery goroutines. We are holding lock on this GID while alive.
+		 */
+
+		defer q.ReleaseTxOwnership(gid)
+	}
+
+	retST := txstatus.TXERR
 
 	for _, dsh := range s.Datashards() {
 		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
-			String: fmt.Sprintf(`PREPARE TRANSACTION '%s'`, txid),
+			String: fmt.Sprintf(`PREPARE TRANSACTION '%s'`, gid),
 		}, txstatus.TXIDLE)
 
 		if err != nil {
 			/* assert st == txtstatus.TXERR? */
-			s.SetTxStatus(txstatus.TXStatus(txstatus.TXERR))
-			return err
+			return txstatus.TXERR, err
 		}
 
-		s.SetTxStatus(txstatus.TXStatus(st))
+		retST = st
 	}
 
 	if config.RouterConfig().EnableICP {
 		if err := icp.CheckControlPoint(icp.TwoPhaseDecisionCP); err != nil {
-			spqrlog.Zero.Info().Uint("client", clid).Str("txid", txid).Err(err).Msg("error while checking control point")
+			spqrlog.Zero.Info().Uint("client", clid).Str("txid", gid).Err(err).Msg("error while checking control point")
 		}
 	}
 
-	spqrlog.Zero.Info().Uint("client", clid).Str("txid", txid).Msg("first phase succeeded")
+	/* XXX: we actually accept nil as valid DCStateKeeper, so be carefull */
+	if q != nil {
+		if err := q.ChangeTxStatus(gid, qdb.TwoPhaseP2); err != nil {
+			return txstatus.TXERR, err
+		}
+	}
+
+	spqrlog.Zero.Info().Uint("client", clid).Str("txid", gid).Msg("first phase succeeded")
+
+	if config.RouterConfig().EnableICP {
+		if err := icp.CheckControlPoint(icp.TwoPhaseDecisionCP2); err != nil {
+			spqrlog.Zero.Info().Uint("client", clid).Str("txid", gid).Err(err).Msg("error while checking control point")
+		}
+	}
 
 	for _, dsh := range s.Datashards() {
 		st, err := shard.DeployTxOnShard(dsh, &pgproto3.Query{
-			String: fmt.Sprintf(`COMMIT PREPARED '%s'`, txid),
+			String: fmt.Sprintf(`COMMIT PREPARED '%s'`, gid),
 		}, txstatus.TXIDLE)
 
 		if err != nil {
 			/* assert st == txtstatus.TXERR? */
 			/* XXX: We now should discard all connection
 			* and let recovery algorithm complete tx */
-			s.SetTxStatus(txstatus.TXStatus(txstatus.TXERR))
-			return err
+			return txstatus.TXERR, err
 		}
 
-		s.SetTxStatus(txstatus.TXStatus(st))
+		spqrlog.Zero.Info().Uint("client", clid).Str("status", txstatus.TXStatus(st).String()).Str("shard", dsh.ShardKeyName()).Str("txid", gid).Msg("committed on shard")
+
+		retST = txstatus.TXStatus(st)
 	}
 
-	return nil
+	return retST, nil
 }
