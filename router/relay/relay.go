@@ -1120,7 +1120,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				rst.bindQueryPlan = nil
 			} else {
 				err = rst.executeMp[currentMsg.Portal]()
-				/* Note we do not delete from exeuteMP, this is intentional */
+				/* Note we do not delete from executeMP, this is intentional */
 				rst.bindQueryPlanMP[currentMsg.Portal] = nil
 			}
 

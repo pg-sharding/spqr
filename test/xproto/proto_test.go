@@ -3146,7 +3146,7 @@ func TestPrepStmtNamedPortalBind(t *testing.T) {
 	}
 }
 
-func TestPrepStmtNamedPortal_NO_TXbounds(t *testing.T) {
+func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -3323,7 +3323,7 @@ func TestPrepStmtNamedPortal_NO_TXbounds(t *testing.T) {
 	}
 }
 
-func TestPrepStmtNamedPortal_TXbounds(t *testing.T) {
+func TestPrepStmtNamedPortal_TX_bounds(t *testing.T) {
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
