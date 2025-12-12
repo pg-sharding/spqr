@@ -25,6 +25,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/app"
 	"github.com/pg-sharding/spqr/router/instance"
+	"github.com/pg-sharding/spqr/router/metrics"
 	"github.com/sevlyar/go-daemon"
 	"github.com/spf13/cobra"
 )
@@ -444,6 +445,9 @@ var runCmd = &cobra.Command{
 		go func() {
 			log.Println(http.ListenAndServe("localhost:6060", nil))
 		}()
+
+		// Start Prometheus metrics server
+		metrics.StartMetricsServer("9090")
 
 		wg.Wait()
 
