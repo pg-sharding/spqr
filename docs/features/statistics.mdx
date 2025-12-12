@@ -85,20 +85,29 @@ SHOW move_stats;
  total                  | 5.234s
  router                 | 125ms
  shard.Total            | 4.891s
- shard.LockKeyRange     | 45ms
- shard.CopyData         | 4.632s
- shard.UnlockKeyRange   | 12ms
+ shard.copyData         | 4.632s
+ shard.dropData         | 210ms
  qdb.Total              | 218ms
+ qdb.LockKeyRange       | 45ms
+ qdb.UnlockKeyRange     | 12ms
  qdb.UpdateKeyRange     | 156ms
- qdb.CommitMetadata     | 62ms
 (9 rows)
 ```
 
 **Statistics Breakdown:**
 - `total`: Total time for the entire move operation
 - `router`: Time spent coordinating the move at router level
-- `shard.*`: Time spent on shard operations (locking, copying data, unlocking)
-- `qdb.*`: Time spent on metadata operations in the query database
+- `shard.Total`: Total time for all shard operations
+- `shard.copyData`: Time spent copying data to the target shard
+- `shard.dropData`: Time spent removing data from the source shard
+- `qdb.Total`: Total time for all QDB (metadata) operations
+- `qdb.LockKeyRange`: Time spent locking the key range
+- `qdb.UnlockKeyRange`: Time spent unlocking the key range
+- `qdb.UpdateKeyRange`: Time spent updating key range metadata
+
+<Note>
+The exact statistics shown depend on which operations were performed during data movement. Not all statistics may appear in every output.
+</Note>
 
 These metrics represent **average values** across all completed move operations since the router started.
 
