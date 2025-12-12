@@ -105,6 +105,7 @@ type RelayStateImpl struct {
 	executeMp map[string]func() error
 
 	saveBind        pgproto3.Bind
+	saveBindNamed   map[string]*pgproto3.Bind
 	savedPortalDesc map[string]*PortalDesc
 
 	parseCache map[string]ParseCacheEntry
@@ -153,6 +154,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		execute:             nil,
 		executeMp:           map[string]func() error{},
 		saveBind:            pgproto3.Bind{},
+		saveBindNamed:       map[string]*pgproto3.Bind{},
 		savedPortalDesc:     map[string]*PortalDesc{},
 		parseCache:          map[string]ParseCacheEntry{},
 		savedRM:             map[string]*rmeta.RoutingMetadataContext{},
@@ -824,18 +826,27 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			}
 
 			pd, err := rst.ProcQueryAdvancedTx(def.Query, func() error {
-				rst.saveBind.DestinationPortal = currentMsg.DestinationPortal
+				var bnd *pgproto3.Bind
+
+				if currentMsg.DestinationPortal == "" {
+					bnd = &rst.saveBind
+				} else {
+					rst.saveBindNamed[currentMsg.DestinationPortal] = &pgproto3.Bind{}
+					bnd = rst.saveBindNamed[currentMsg.DestinationPortal]
+				}
+
+				bnd.DestinationPortal = currentMsg.DestinationPortal
 
 				rm := rst.savedRM[currentMsg.PreparedStatement]
 
 				hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.PreparedStatement)
 
-				rst.saveBind.PreparedStatement = fmt.Sprintf("%d", hash)
-				rst.saveBind.ParameterFormatCodes = currentMsg.ParameterFormatCodes
+				bnd.PreparedStatement = fmt.Sprintf("%d", hash)
+				bnd.ParameterFormatCodes = currentMsg.ParameterFormatCodes
 				rst.Client().SetBindParams(currentMsg.Parameters)
 				rst.Client().SetParamFormatCodes(currentMsg.ParameterFormatCodes)
-				rst.saveBind.ResultFormatCodes = currentMsg.ResultFormatCodes
-				rst.saveBind.Parameters = currentMsg.Parameters
+				bnd.ResultFormatCodes = currentMsg.ResultFormatCodes
+				bnd.Parameters = currentMsg.Parameters
 
 				ctx := context.TODO()
 
@@ -867,7 +878,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 				case *plan.VirtualPlan:
 
 					f := func() error {
-						return BindAndReadSliceResult(rst, &rst.saveBind /* XXX: virtual query always empty portal? */, "")
+						return BindAndReadSliceResult(rst, bnd /* XXX: virtual query always empty portal? */, "")
 					}
 
 					/* only populate map for non-empty portal */
@@ -901,7 +912,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 							return err
 						}
 
-						return BindAndReadSliceResult(rst, &rst.saveBind, currentMsg.DestinationPortal)
+						return BindAndReadSliceResult(rst, bnd, currentMsg.DestinationPortal)
 					}
 
 					/* only populate map for non-empty portal */
@@ -982,7 +993,15 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 							return err
 						}
 
-						cachedPd, err := sliceDescribePortal(rst.Client().Server(), currentMsg, &rst.saveBind)
+						var bnd *pgproto3.Bind
+
+						if currentMsg.Name == "" {
+							bnd = &rst.saveBind
+						} else {
+							bnd = rst.saveBindNamed[currentMsg.Name]
+						}
+
+						cachedPd, err := sliceDescribePortal(rst.Client().Server(), currentMsg, bnd)
 						if err != nil {
 							return err
 						}
