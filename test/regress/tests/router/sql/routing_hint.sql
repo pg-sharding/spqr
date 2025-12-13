@@ -112,7 +112,7 @@ SHOW __spqr__default_route_behaviour;
 
 SELECT 1 FROM test WHERE id IN (5, 25) /* __spqr__scatter_query: true */;
 
-CREATE TABLE test_unmatch(i int);
+CREATE TABLE test_unmatch(i int) /* __spqr__scatter_query: true */;
 SET __spqr__default_route_behaviour to 'sh2';
 SHOW __spqr__default_route_behaviour;
 
