@@ -78,7 +78,7 @@ type QDB interface {
 	RenameKeyRange(ctx context.Context, krId, ktIdNew string) error
 
 	// Distribution management
-	CreateDistribution(ctx context.Context, distr *Distribution) error
+	CreateDistribution(ctx context.Context, distr *Distribution) ([]QdbStatement, error)
 	ListDistributions(ctx context.Context) ([]*Distribution, error)
 	DropDistribution(ctx context.Context, id string) error
 	GetDistribution(ctx context.Context, id string) (*Distribution, error)

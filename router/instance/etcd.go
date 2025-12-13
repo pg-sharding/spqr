@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	meta_transaction "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 )
@@ -33,13 +34,18 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 	if err != nil {
 		return err
 	}
-
+	mngr := r.Console().Mgr()
 	for _, d := range ds {
 		if d.ID == distributions.REPLICATED {
 			continue
 		}
-		if err := r.Console().Mgr().CreateDistribution(ctx, distributions.DistributionFromDB(d)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
+		var tranChunk *meta_transaction.MetaTransactionChunk
+		if tranChunk, err = mngr.CreateDistribution(ctx, distributions.DistributionFromDB(d)); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (prepare phase)")
+			return err
+		}
+		if err = mngr.ExecNoTran(ctx, tranChunk); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (exec phase)")
 			return err
 		}
 

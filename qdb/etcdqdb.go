@@ -1220,51 +1220,23 @@ func (q *EtcdQDB) ListReferenceRelations(ctx context.Context) ([]*ReferenceRelat
 // ==============================================================================
 
 // TODO : unit tests
-func (q *EtcdQDB) CreateDistribution(ctx context.Context, distribution *Distribution) error {
+func (q *EtcdQDB) CreateDistribution(ctx context.Context, distribution *Distribution) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Str("id", distribution.ID).
 		Msg("etcdqdb: add distribution")
 
 	distrJson, err := json.Marshal(distribution)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	resp, err := q.cli.Txn(ctx).
-		If(
-			clientv3.Compare(
-				clientv3.Version(distributionNodePath(distribution.ID)), "=", distribution.Version,
-			),
-		).
-		Then(
-			clientv3.OpPut(distributionNodePath(distribution.ID), string(distrJson)),
-		).
-		Else(
-			clientv3.OpGet(distributionNodePath(distribution.ID), clientv3.WithCountOnly()),
-		).
-		Commit()
-	if err != nil {
-		return err
+	if resp, err := NewQdbStatement(CMD_PUT, distributionNodePath(distribution.ID), string(distrJson)); err != nil {
+		return nil, err
+	} else {
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("etcdqdb: add distribution")
+		return []QdbStatement{*resp}, nil
 	}
-	if !resp.Succeeded {
-		if len(resp.Responses) < 1 {
-			return fmt.Errorf("unexpected (case 1) etcd create distribution '%s' response parts count=%d",
-				distribution.ID, len(resp.Responses))
-		} else {
-			rng := resp.Responses[0].GetResponseRange()
-			if len(rng.Kvs) < 1 {
-				return fmt.Errorf("unexpected (case 0) etcd create distribution '%s' response parts count=%d",
-					distribution.ID, len(rng.Kvs))
-			}
-			currentVersion := rng.Kvs[0].Version
-			return fmt.Errorf("distribution was changed '%s' current version is=%d",
-				distribution.ID, currentVersion)
-		}
-	}
-	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Msg("etcdqdb: add distribution")
-
-	return nil
 }
 
 // TODO : unit tests
@@ -1378,9 +1350,11 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 		}
 	}
 
-	err = q.CreateDistribution(ctx, distribution)
-
-	return err
+	if operations, err := q.CreateDistribution(ctx, distribution); err != nil {
+		return err
+	} else {
+		return q.ExecNoTransaction(ctx, operations)
+	}
 }
 
 // TODO: unit tests
@@ -1399,10 +1373,13 @@ func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relNam
 	}
 
 	delete(distribution.Relations, relName.RelationName)
-	if err = q.CreateDistribution(ctx, distribution); err != nil {
+	var operations []QdbStatement
+	if operations, err = q.CreateDistribution(ctx, distribution); err != nil {
 		return err
 	}
-
+	if err = q.ExecNoTransaction(ctx, operations); err != nil {
+		return err
+	}
 	_, err = q.cli.Delete(ctx, relationMappingNodePath(relName.RelationName))
 	return err
 }
@@ -1429,9 +1406,11 @@ func (q *EtcdQDB) AlterDistributedRelation(ctx context.Context, id string, rel *
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", rel.Name, ds.ID, id)
 	}
 
-	err = q.CreateDistribution(ctx, distribution)
-
-	return err
+	if operations, err := q.CreateDistribution(ctx, distribution); err != nil {
+		return err
+	} else {
+		return q.ExecNoTransaction(ctx, operations)
+	}
 }
 
 // TODO : unit tests
@@ -1457,9 +1436,11 @@ func (q *EtcdQDB) AlterDistributedRelationSchema(ctx context.Context, id string,
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relName, ds.ID, id)
 	}
 
-	err = q.CreateDistribution(ctx, distribution)
-
-	return err
+	if operations, err := q.CreateDistribution(ctx, distribution); err != nil {
+		return err
+	} else {
+		return q.ExecNoTransaction(ctx, operations)
+	}
 }
 
 // TODO : unit tests
@@ -1497,35 +1478,10 @@ func (q *EtcdQDB) AlterReplicatedRelationSchema(ctx context.Context, dsID string
 	if err != nil {
 		return err
 	}
-	resp, err := q.cli.Txn(ctx).
-		If(
-			clientv3.Compare(clientv3.Version(distributionNodePath(distribution.ID)), "=", distribution.Version),
-		).
-		Then(
-			clientv3.OpPut(distributionNodePath(distribution.ID), string(distrJson)),
-			clientv3.OpPut(referenceRelationNodePath(relName), string(relJson)),
-		).
-		Else(
-			clientv3.OpGet(distributionNodePath(distribution.ID), clientv3.WithCountOnly()),
-		).
-		Commit()
-
-	if !resp.Succeeded {
-		if len(resp.Responses) < 1 {
-			return fmt.Errorf("unexpected (case 1) etcd create distribution '%s' response parts count=%d",
-				distribution.ID, len(resp.Responses))
-		} else {
-			rng := resp.Responses[0].GetResponseRange()
-			if len(rng.Kvs) < 1 {
-				return fmt.Errorf("unexpected (case 0) etcd create distribution '%s' response parts count=%d",
-					distribution.ID, len(rng.Kvs))
-			}
-			currentVersion := rng.Kvs[0].Version
-			return fmt.Errorf("distribution was changed '%s' current version is=%d",
-				distribution.ID, currentVersion)
-		}
-	}
-
+	_, err = q.cli.Txn(ctx).Then(
+		clientv3.OpPut(distributionNodePath(distribution.ID), string(distrJson)),
+		clientv3.OpPut(referenceRelationNodePath(relName), string(relJson)),
+	).Commit()
 	return err
 }
 
@@ -1551,9 +1507,11 @@ func (q *EtcdQDB) AlterDistributedRelationDistributionKey(ctx context.Context, i
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relName, ds.ID, id)
 	}
 
-	err = q.CreateDistribution(ctx, distribution)
-
-	return err
+	if operations, err := q.CreateDistribution(ctx, distribution); err != nil {
+		return err
+	} else {
+		return q.ExecNoTransaction(ctx, operations)
+	}
 }
 
 // TODO : unit tests
@@ -1575,7 +1533,6 @@ func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution
 	if err := json.Unmarshal(resp.Kvs[0].Value, &distrib); err != nil {
 		return nil, err
 	}
-	distrib.Version = resp.Kvs[0].Version
 
 	return distrib, nil
 }

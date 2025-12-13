@@ -41,7 +41,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DistributionServiceClient interface {
-	CreateDistribution(ctx context.Context, in *CreateDistributionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CreateDistribution(ctx context.Context, in *CreateDistributionRequest, opts ...grpc.CallOption) (*CreateDistributionReply, error)
 	DropDistribution(ctx context.Context, in *DropDistributionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListDistributions(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListDistributionsReply, error)
 	AlterDistributionAttach(ctx context.Context, in *AlterDistributionAttachRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -66,9 +66,9 @@ func NewDistributionServiceClient(cc grpc.ClientConnInterface) DistributionServi
 	return &distributionServiceClient{cc}
 }
 
-func (c *distributionServiceClient) CreateDistribution(ctx context.Context, in *CreateDistributionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *distributionServiceClient) CreateDistribution(ctx context.Context, in *CreateDistributionRequest, opts ...grpc.CallOption) (*CreateDistributionReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CreateDistributionReply)
 	err := c.cc.Invoke(ctx, DistributionService_CreateDistribution_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -220,7 +220,7 @@ func (c *distributionServiceClient) DropSequence(ctx context.Context, in *DropSe
 // All implementations must embed UnimplementedDistributionServiceServer
 // for forward compatibility.
 type DistributionServiceServer interface {
-	CreateDistribution(context.Context, *CreateDistributionRequest) (*emptypb.Empty, error)
+	CreateDistribution(context.Context, *CreateDistributionRequest) (*CreateDistributionReply, error)
 	DropDistribution(context.Context, *DropDistributionRequest) (*emptypb.Empty, error)
 	ListDistributions(context.Context, *emptypb.Empty) (*ListDistributionsReply, error)
 	AlterDistributionAttach(context.Context, *AlterDistributionAttachRequest) (*emptypb.Empty, error)
@@ -245,7 +245,7 @@ type DistributionServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedDistributionServiceServer struct{}
 
-func (UnimplementedDistributionServiceServer) CreateDistribution(context.Context, *CreateDistributionRequest) (*emptypb.Empty, error) {
+func (UnimplementedDistributionServiceServer) CreateDistribution(context.Context, *CreateDistributionRequest) (*CreateDistributionReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateDistribution not implemented")
 }
 func (UnimplementedDistributionServiceServer) DropDistribution(context.Context, *DropDistributionRequest) (*emptypb.Empty, error) {

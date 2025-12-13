@@ -13,6 +13,11 @@ message CreateDistributionRequest{
   repeated Distribution distributions = 1;
 }
 
+message CreateDistributionReply{
+  repeated QdbTransactionCmd cmdList = 1;
+  repeated MetaTransactionGossipCommand metaCmdList = 2;
+}
+
 message ListDistributionsReply {
   repeated Distribution distributions = 1;
 }
@@ -102,7 +107,7 @@ message ListRelationSequencesReply {
 }
 
 service DistributionService {
-  rpc CreateDistribution(CreateDistributionRequest) returns (google.protobuf.Empty) {}
+  rpc CreateDistribution(CreateDistributionRequest) returns (CreateDistributionReply) {}
   rpc DropDistribution(DropDistributionRequest) returns (google.protobuf.Empty) {}
   rpc ListDistributions(google.protobuf.Empty) returns (ListDistributionsReply) {}
 

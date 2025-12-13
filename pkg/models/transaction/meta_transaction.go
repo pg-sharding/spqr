@@ -28,19 +28,19 @@ func NewMetaTransaction(qdbTransaction qdb.QdbTransaction) *MetaTransaction {
 	return &MetaTransaction{TransactionId: qdbTransaction.Id()}
 }
 
-func TransactionFromProto(tran *proto.MetaTransactionReply) (*MetaTransaction, error) {
-	if tranId, err := uuid.Parse(tran.TransactionId); err != nil {
+func innerFromProto(TransactionId string, CmdList []*proto.QdbTransactionCmd, MetaCmdList []*proto.MetaTransactionGossipCommand) (*MetaTransaction, error) {
+	if tranId, err := uuid.Parse(TransactionId); err != nil {
 		return nil, err
 	} else {
-		qdbCmdList := make([]qdb.QdbStatement, len(tran.CmdList))
-		for index, stmtProto := range tran.CmdList {
+		qdbCmdList := make([]qdb.QdbStatement, len(CmdList))
+		for index, stmtProto := range CmdList {
 			if stmtQdb, err := qdb.QdbStmtFromProto(stmtProto); err != nil {
 				return nil, err
 			} else {
 				qdbCmdList[index] = *stmtQdb
 			}
 		}
-		chunk, err := NewMetaTransactionChunk(tran.MetaCmdList, qdbCmdList)
+		chunk, err := NewMetaTransactionChunk(MetaCmdList, qdbCmdList)
 		if err != nil {
 			return nil, err
 		}
@@ -49,6 +49,15 @@ func TransactionFromProto(tran *proto.MetaTransactionReply) (*MetaTransaction, e
 		}, nil
 	}
 }
+
+func TransactionFromProto(tran *proto.MetaTransactionReply) (*MetaTransaction, error) {
+	return innerFromProto(tran.TransactionId, tran.CmdList, tran.MetaCmdList)
+}
+
+func TransactionFromProtoRequest(tran *proto.MetaTransactionRequest) (*MetaTransaction, error) {
+	return innerFromProto(tran.TransactionId, tran.CmdList, tran.MetaCmdList)
+}
+
 func ToQdbTransaction(tran *MetaTransaction) *qdb.QdbTransaction {
 	return qdb.NewTransactionWithCmd(tran.TransactionId, tran.Operations.QdbStatements)
 }
