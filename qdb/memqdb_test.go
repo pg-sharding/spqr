@@ -390,7 +390,9 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 
 	ctx := context.TODO()
 
-	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
 	assert.NoError(err)
 
 	// Basic drop
@@ -470,7 +472,9 @@ func TestMemQDB_RenameKeyRange(t *testing.T) {
 
 	ctx := context.TODO()
 
-	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
 	assert.NoError(err)
 
 	initKeyRange := &qdb.KeyRange{
