@@ -57,7 +57,7 @@ func (qr *ProxyQrouter) AnalyzeQuery(ctx context.Context,
 
 	rm.SetRO(ro)
 
-	if sph.ExecuteOn() == "" && sph.ScatterQuery() == false {
+	if sph.ExecuteOn() == "" && !sph.ScatterQuery() {
 		if err := planner.AnalyzeQueryV1(ctx, rm, rm.Stmt); err != nil {
 			spqrlog.Zero.Debug().Err(err).Msg("failed to analyze query")
 
