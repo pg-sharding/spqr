@@ -57,9 +57,18 @@ func (qr *ProxyQrouter) AnalyzeQuery(ctx context.Context,
 
 	rm.SetRO(ro)
 
-	if sph.ExecuteOn() == "" {
+	if sph.ExecuteOn() == "" && !sph.ScatterQuery() {
 		if err := planner.AnalyzeQueryV1(ctx, rm, rm.Stmt); err != nil {
 			spqrlog.Zero.Debug().Err(err).Msg("failed to analyze query")
+
+			/* XXX: below is very hacky */
+			/* Does DRH force any executions? */
+			for _, sh := range qr.DataShardsRoutes() {
+				if sh.Name == rm.SPH.DefaultRouteBehaviour() {
+					return rm, nil
+				}
+			}
+
 			return nil, err
 		}
 	}

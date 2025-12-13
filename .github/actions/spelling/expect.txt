@@ -438,6 +438,7 @@ qury
 RAddr
 ragel
 randkey
+randomhex
 rarg
 rcfg
 rclient
@@ -445,6 +446,7 @@ rconn
 rdistr
 receivepasswd
 regclass
+reloid
 relpersistence
 rels
 repeattimes
@@ -563,8 +565,8 @@ tcase
 TCLOSEBR
 TCLOSESQBR
 TCOMMA
-tctx
 tcpconn
+tctx
 tdigest
 tempor
 terabytes
@@ -612,6 +614,7 @@ umi
 unconfigured
 underyling
 unmarshalling
+unmatch
 unrecognised
 Unregistering
 unregisters

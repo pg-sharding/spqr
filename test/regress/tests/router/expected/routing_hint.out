@@ -266,11 +266,29 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
         1
 (2 rows)
 
+CREATE TABLE test_unmatch(i int) /* __spqr__scatter_query: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SET __spqr__default_route_behaviour to 'sh2';
+SHOW __spqr__default_route_behaviour;
+ default route behaviour 
+-------------------------
+ sh2
+(1 row)
+
+-- check that unmatched relation proxied to `default` shard
+SELECT 1 FROM test_unmatch;
+NOTICE: send query to shard(s) : sh2
+ ?column? 
+----------
+(0 rows)
+
 -- restart session, reset all params
 \c regress
 DROP TABLE test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE test_h;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE test_unmatch;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 

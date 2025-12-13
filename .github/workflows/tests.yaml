@@ -172,7 +172,7 @@ jobs:
       #  use cache to pass docker images to the test jobs
       - name: Docker shard image caching
         id: cache-shard-image
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ${{ env.CACHE_FILE_SHARD }}
@@ -223,7 +223,7 @@ jobs:
       # load docker images
       - name: Load shard image
         id: cache-shard-image
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ${{ env.CACHE_FILE_SHARD }}

@@ -1,8 +1,12 @@
 package client
 
 import (
+	"context"
 	"sync"
+	"time"
 
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/netutil"
 	spqrlog "github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
@@ -39,6 +43,12 @@ type Pool interface {
 
 type PoolImpl struct {
 	pool sync.Map
+
+	// XXX: refactor this logic to some common iface
+	// Background health checking
+	healthCheckCtx    context.Context
+	healthCheckCancel context.CancelFunc
+	deadCheckInterval time.Duration
 }
 
 var _ Pool = &PoolImpl{}
@@ -111,6 +121,8 @@ func (c *PoolImpl) Shutdown() error {
 		return true
 	})
 
+	c.healthCheckCancel()
+
 	return nil
 }
 
@@ -143,6 +155,49 @@ func (c *PoolImpl) ClientPoolForeach(cb func(client ClientInfo) error) error {
 	return nil
 }
 
+// StartBackgroundHealthCheck starts background health checking for disconnected clients
+func (s *PoolImpl) StartBackgroundHealthCheck() {
+	if s.deadCheckInterval <= 0 {
+		return // Disabled
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.healthCheckCancel = cancel
+	s.healthCheckCtx = ctx
+
+	go s.backgroundHealthCheckLoop()
+}
+
+// backgroundHealthCheckLoop runs the background health checking
+func (s *PoolImpl) backgroundHealthCheckLoop() {
+	spqrlog.Zero.Info().Msg("PoolImpl client background health check started")
+
+	ticker := time.NewTicker(s.deadCheckInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-s.healthCheckCtx.Done():
+			spqrlog.Zero.Info().Msg("PoolImpl client background health check stopped")
+			return
+		case <-ticker.C:
+			_ = s.ClientPoolForeach(func(cl ClientInfo) error {
+
+				if !netutil.TCP_CheckAliveness(cl.Conn()) {
+
+					spqrlog.Zero.Info().Uint("client-id", cl.ID()).Msg("Found un-alive client")
+					return cl.Cancel()
+				}
+				return nil
+			})
+		}
+	}
+}
+
+const (
+	DefaultClientDeadCheckInterval = time.Duration(time.Second * 15)
+)
+
 // NewClientPool creates a new instance of the PoolImpl struct, which implements the Pool interface.
 //
 // It initializes the pool map with an empty map and the mutex with a new sync.Mutex.
@@ -154,7 +209,13 @@ func (c *PoolImpl) ClientPoolForeach(cb func(client ClientInfo) error) error {
 // Returns:
 // - Pool: A pointer to the newly created PoolImpl instance.
 func NewClientPool() Pool {
-	return &PoolImpl{
+	pl := &PoolImpl{
 		pool: sync.Map{},
+
+		deadCheckInterval: config.ValueOrDefaultDuration(config.RouterConfig().ClientPoolDeadCheckInterval, DefaultClientDeadCheckInterval),
 	}
+
+	pl.StartBackgroundHealthCheck()
+
+	return pl
 }

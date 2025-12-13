@@ -209,6 +209,7 @@ type TxStatus string
 
 const (
 	Planned    = TxStatus("planned")
+	Locked     = TxStatus("locked")
 	DataCopied = TxStatus("data_copied")
 )
 

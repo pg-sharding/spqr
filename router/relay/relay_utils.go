@@ -11,7 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 )
 
-func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
+func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind, portal string) error {
 
 	/* Case when no describe stmt was issued before Execute+Sync*/
 
@@ -26,7 +26,14 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
 		if err := DispatchPlan(es, rst.Client().Server(), rst.Client(), false); err != nil {
 			return err
 		}
-		es.Msg = pgexec
+		if portal == "" {
+			/* save extra allocation */
+			es.Msg = pgexec
+		} else {
+			es.Msg = &pgproto3.Execute{
+				Portal: portal,
+			}
+		}
 
 		if err := DispatchPlan(es, rst.Client().Server(), rst.Client(), false); err != nil {
 			return err
@@ -156,8 +163,17 @@ func sliceDescribePortal(serv server.Server, portalDesc *pgproto3.Describe, bind
 		return nil, err
 	}
 
-	if err := serv.SendShard(portalClose, shkey); err != nil {
-		return nil, err
+	if bind.DestinationPortal == "" {
+		if err := serv.SendShard(portalClose, shkey); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := serv.SendShard(&pgproto3.Close{
+			ObjectType: 'P',
+			Name:       bind.DestinationPortal,
+		}, shkey); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := serv.SendShard(pgsync, shkey); err != nil {
