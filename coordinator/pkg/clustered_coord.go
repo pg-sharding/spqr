@@ -2300,7 +2300,7 @@ func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *dist
 		return nil, err
 	} else {
 		if len(transactionChunk.GossipRequests) > 0 {
-			return nil, fmt.Errorf("clustered coord have got gossip requests from local coord (case 0)")
+			return nil, fmt.Errorf("local coordinator unexpectedly returned gossip requests; expected empty gossip requests from local coordinator")
 		} else {
 			gossipReq := &proto.MetaTransactionGossipCommand{CreateDistribution: &proto.CreateDistributionGossip{
 				Distributions: []*proto.Distribution{distributions.DistributionToProto(ds)},
