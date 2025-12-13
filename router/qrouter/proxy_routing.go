@@ -618,6 +618,15 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadata
 		return nil, err
 	}
 
+	/* Last chance, try to match DRH on some of existing shards */
+	for _, sh := range qr.DataShardsRoutes() {
+		if sh.Name == rm.SPH.DefaultRouteBehaviour() {
+			return &plan.ShardDispatchPlan{
+				ExecTarget: sh,
+			}, nil
+		}
+	}
+
 	/* do init plan logic */
 	np, err := qr.InitExecutionTargets(ctx, rm, p)
 	if err == nil {
