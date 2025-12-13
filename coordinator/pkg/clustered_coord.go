@@ -2275,24 +2275,6 @@ func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 	})
 }
 
-/*
-func gossipCreateDistribution(gossip *proto.CreateDistributionGossip) func(cc *grpc.ClientConn) error {
-	return func(cc *grpc.ClientConn) error {
-		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.CreateDistribution(context.TODO(), &proto.CreateDistributionRequest{
-			Distributions: gossip.Distributions,
-		})
-		if err != nil {
-			return err
-		}
-
-		spqrlog.Zero.Debug().
-			Interface("response", resp).
-			Msg("create distribution response")
-		return nil
-	}
-}*/
-
 // CreateDistribution creates distribution in QDB
 // TODO: unit tests
 func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) (*mtran.MetaTransactionChunk, error) {
