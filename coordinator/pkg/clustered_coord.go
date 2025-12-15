@@ -52,6 +52,7 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type grpcConnMgr struct {
@@ -1924,7 +1925,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 	if err != nil {
 		return err
 	}
-	shardResp, err := shCl.ListShards(ctx, nil)
+	shardResp, err := shCl.ListShards(ctx, &emptypb.Empty{})
 	if err != nil {
 		return err
 	}

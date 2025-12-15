@@ -32,7 +32,7 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 	}()
 
 	/* Initialize shards */
-	if config.RouterConfig().ManagedShardsByCoordinator {
+	if config.RouterConfig().ManageShardsByCoordinator {
 		shards, err := etcdConn.ListShards(ctx)
 		if err != nil {
 			return err

@@ -3,6 +3,7 @@ package coord
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -22,8 +23,11 @@ import (
 type LocalInstanceMetadataMgr struct {
 	Coordinator
 
-	cache        *cache.SchemaCache
-	shardMapping map[string]*config.Shard
+	cache *cache.SchemaCache
+
+	updateShardsMapping bool
+	shardMapping        map[string]*config.Shard
+	shardMappingMutex   sync.Mutex
 }
 
 // GetBalancerTask is disabled in LocalCoordinator
@@ -200,15 +204,19 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 		Str("node", ds.ID).
 		Msg("adding datashard node in local coordinator")
 
-	if config.RouterConfig().ManagedShardsByCoordinator {
+	if config.RouterConfig().ManageShardsByCoordinator {
+		lc.shardMappingMutex.Lock()
 		lc.shardMapping[ds.ID] = ds.Cfg
+		lc.shardMappingMutex.Unlock()
 	}
 	return lc.Coordinator.AddDataShard(ctx, ds)
 }
 
 func (lc *LocalInstanceMetadataMgr) DropShard(ctx context.Context, shardId string) error {
-	if config.RouterConfig().ManagedShardsByCoordinator {
+	if config.RouterConfig().ManageShardsByCoordinator {
+		lc.shardMappingMutex.Lock()
 		delete(lc.shardMapping, shardId)
+		lc.shardMappingMutex.Unlock()
 	}
 	return lc.qdb.DropShard(ctx, shardId)
 }
@@ -420,10 +428,12 @@ func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(ctx context.Context, 
 //
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
-func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache, shardMapping map[string]*config.Shard) meta.EntityMgr {
+func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache, shardMapping map[string]*config.Shard, updateShardsMapping bool) meta.EntityMgr {
 	return &LocalInstanceMetadataMgr{
-		Coordinator:  NewCoordinator(db, d),
-		cache:        cache,
-		shardMapping: shardMapping,
+		Coordinator:         NewCoordinator(db, d),
+		cache:               cache,
+		shardMapping:        shardMapping,
+		shardMappingMutex:   sync.Mutex{},
+		updateShardsMapping: updateShardsMapping,
 	}
 }
