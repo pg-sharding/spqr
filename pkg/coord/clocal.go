@@ -199,7 +199,7 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 		Str("node", ds.ID).
 		Msg("adding datashard node in local coordinator")
 
-	if config.RouterConfig().ManageShardsByCoordinator {
+	if lc.updateShardsMapping {
 		lc.shardMappingMutex.Lock()
 		lc.shardMapping[ds.ID] = ds.Cfg
 		lc.shardMappingMutex.Unlock()
@@ -208,7 +208,7 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 }
 
 func (lc *LocalInstanceMetadataMgr) DropShard(ctx context.Context, shardId string) error {
-	if config.RouterConfig().ManageShardsByCoordinator {
+	if lc.updateShardsMapping {
 		lc.shardMappingMutex.Lock()
 		delete(lc.shardMapping, shardId)
 		lc.shardMappingMutex.Unlock()
