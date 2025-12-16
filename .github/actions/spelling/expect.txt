@@ -26,6 +26,7 @@ ARRAYOID
 aspernatur
 astmt
 authed
+autocreate
 automaxprocs
 autotools
 basebackup
