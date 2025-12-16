@@ -14,7 +14,7 @@ import (
 	"sync"
 	"syscall"
 
-	_ "go.uber.org/automaxprocs/maxprocs"
+	_ "go.uber.org/automaxprocs"
 
 	coordApp "github.com/pg-sharding/spqr/coordinator/app"
 	coord "github.com/pg-sharding/spqr/coordinator/pkg"
