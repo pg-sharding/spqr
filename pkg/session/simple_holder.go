@@ -102,7 +102,7 @@ func (cl *SimpleSessionParamHandler) Distribution() string {
 
 // PreferredEngine implements client.Client.
 func (cl *SimpleSessionParamHandler) PreferredEngine() string {
-	return cl.resolveVirtualStringParam(SPQR_PREFERRED_ENGINE, "")
+	return cl.resolveVirtualStringParam(SPQR_PREFERRED_ENGINE, config.RouterConfig().Qr.PreferEngine)
 }
 
 // SetPreferredEngine implements client.Client.

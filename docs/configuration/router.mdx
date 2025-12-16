@@ -109,6 +109,7 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 | `query_routing.default_route_behaviour`        | Whether to explicitly block multishard queries. Can be overridden by the [__spqr__default_route_behaviour](/routing/hints#spqr-default-route-behaviour) hint. | `BLOCK`, `ALLOW` | Yes |
 | `query_routing.default_target_session_attrs`   | Default [target_session_attrs](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-TARGET-SESSION-ATTRS) for connections. Can be overridden by the [__spqr__target_session_attrs](/routing/hints#spqr-target-session-attrs) hint. | `read-write`, `smart-read-write`, `read-only`, `prefer-standby`, `any` | Yes |
 | `query_routing.enhanced_multishard_processing` | Whether to enable enhanced processing for multishard queries. Can be overridden by the [__spqr__engine_v2](/routing/hints#spqr-engine-v2) hint. | `true`, `false`  | Yes |
+| `query_routing.prefer_engine`                  | Default preferred routing engine for query processing. Can be overridden by the [__spqr__preferred_engine](/routing/hints#spqr-preferred-engine) hint. Currently only `v2` is supported. | `v2` | Yes |
 | `query_routing.always_check_rules`             | Whether to always check the routing rules for every query. This only makes sense in a single-shard deployment.           | `true`, `false`  | No |
 | `query_routing.auto_route_ro_on_standby`       | Whether to automatically route read-only queries to standby servers. Currently only supported for single-shard topology. | `true`, `false`  | No |
 

@@ -274,8 +274,12 @@ For comprehensive information about transaction strategies, including when to us
 
 ### __spqr__preferred_engine
 
-This is developer-only option. Only possible value currently is 'v2'
+Specifies the preferred routing engine for query processing. Only possible value currently is 'v2'.
 
-<Note>This is a runtime-only hint with no corresponding router configuration setting. It is intended for internal development use only.</Note>
+<Tip>This hint overrides the [`query_routing.prefer_engine`](/configuration/router#query-routing-settings) router configuration setting.</Tip>
+
+```sql
+SET __spqr__preferred_engine TO 'v2';
+```
 
 
