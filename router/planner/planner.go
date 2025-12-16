@@ -46,7 +46,7 @@ func (p *PlannerV2) Ready() bool {
 }
 
 func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *lyx.CreateTable) (plan.Plan, error) {
-	if val := rm.SPH.AutoDistribution(); val != "" {
+	if distributionId := rm.SPH.AutoDistribution(); distributionId != "" {
 
 		switch q := v.TableRv.(type) {
 		case *lyx.RangeVar:
@@ -54,26 +54,16 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 			/* pre-attach relation to its distribution
 			 * sic! this is not transactional nor abortable
 			 */
-			spqrlog.Zero.Debug().Str("relation", q.RelationName).Str("distribution", val).Msg("attaching relation")
+			spqrlog.Zero.Debug().Str("relation", q.RelationName).Str("distribution", distributionId).Msg("attaching relation")
 
-			if val == distributions.REPLICATED {
+			if distributionId == distributions.REPLICATED {
 				err := console.CreateReferenceRelation(ctx, rm.Mgr, q)
 				if err != nil {
 					return nil, err
 				}
 			} else {
-				if err := rm.Mgr.AlterDistributionAttach(ctx, val, []*distributions.DistributedRelation{
-					{
-						Name:               q.RelationName,
-						ReplicatedRelation: val == distributions.REPLICATED,
-						DistributionKey: []distributions.DistributionKeyEntry{
-							{
-								Column: rm.SPH.DistributionKey(),
-								/* support hash function here */
-							},
-						},
-					},
-				}); err != nil {
+				err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionId, rm.SPH.DistributionKey())
+				if err != nil {
 					return nil, err
 				}
 			}

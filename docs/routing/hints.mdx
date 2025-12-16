@@ -193,6 +193,8 @@ The `__spqr__auto_distribution` parameter is used to automatically adding new ta
 
 <Note>This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.</Note>
 
+<Note>Distributions with a single key column are only supported. The following key types are supported for the automatic creation of distributed tables: `integer`, `uuid`, and `varchar`. Hash distributions are currently not supported for auto-creating tables.</Note>
+
 ```sql
 CREATE TABLE tax_rates (
     country_code VARCHAR(2),
