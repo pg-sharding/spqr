@@ -12,10 +12,10 @@ SELECT spqr_metadata.mark_reference_relation('guard_zz') /* __spqr__execute_on: 
 
 INSERT INTO guard_zz (i) VALUES(1);
 
-INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, 'yes') /* __spqr__execute_on: sh1 */;
-INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, 'yes') /* __spqr__execute_on: sh2 */;
-INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, 'yes') /* __spqr__execute_on: sh3 */;
-INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, 'yes') /* __spqr__execute_on: sh4 */;
+INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, true) /* __spqr__execute_on: sh1 */;
+INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, true) /* __spqr__execute_on: sh2 */;
+INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, true) /* __spqr__execute_on: sh3 */;
+INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, true) /* __spqr__execute_on: sh4 */;
 
 INSERT INTO guard_zz (i) VALUES(1);
 
