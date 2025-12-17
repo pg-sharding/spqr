@@ -337,7 +337,7 @@ Feature: Reference relation test
   
     When I run SQL on host "shard1"
     """
-    SELECT name, value FROM spqr_metadata.spqr_global_settings
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -355,7 +355,7 @@ Feature: Reference relation test
     """
     When I run SQL on host "shard2"
     """
-    SELECT name, value FROM spqr_metadata.spqr_global_settings
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -391,7 +391,7 @@ Scenario: Ref relation sync fails when reference relations are locked in spqrgua
     INSERT INTO t (id, name) VALUES(2, ARRAY[null]);
     INSERT INTO t (id, name) VALUES(3, ARRAY['one_value']);
     INSERT INTO t (id, name) VALUES(4, ARRAY['two', 'values']);
-    INSERT INTO spqr_metadata.spqr_global_settings (name, value) VALUES (69, 'true');
+    INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES (69, true);
     """
     Then command return code should be "0"
     
