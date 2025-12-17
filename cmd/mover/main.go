@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	_ "go.uber.org/automaxprocs/maxprocs"
+	_ "go.uber.org/automaxprocs"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 
