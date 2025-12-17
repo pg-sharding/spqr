@@ -418,7 +418,7 @@ func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, rela
 	if err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, "LOCK TABLE spqr_metadata.spqr_global_settings IN ACCESS EXCLUSIVE MODE;", relation.String()); err != nil {
+	if _, err = tx.Exec(ctx, "LOCK TABLE spqr_metadata.spqr_global_settings IN ACCESS EXCLUSIVE MODE"); err != nil {
 		return err
 	}
 	row := tx.QueryRow(ctx, "SELECT enabled as references_locked FROM spqr_metadata.spqr_global_settings WHERE name = $1", spqrguardReferenceRelationLock)
@@ -430,7 +430,7 @@ func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, rela
 	if val {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "reference relations already locked")
 	}
-	if _, err = tx.Exec(ctx, "SELECT spqr_metadata.mark_reference_relation($1);", relation.String()); err != nil {
+	if _, err = tx.Exec(ctx, "SELECT spqr_metadata.mark_reference_relation($1)", relation.String()); err != nil {
 		return err
 	}
 	if _, err = tx.Exec(ctx, "INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES ($1, true)", spqrguardReferenceRelationLock); err != nil {
