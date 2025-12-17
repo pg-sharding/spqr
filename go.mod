@@ -29,7 +29,6 @@ require (
 	github.com/uber/jaeger-lib v2.4.1+incompatible
 	github.com/xdg-go/scram v1.2.0
 	go.etcd.io/etcd/client/v3 v3.6.6
-	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.46.0
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
