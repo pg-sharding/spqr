@@ -337,7 +337,7 @@ Feature: Reference relation test
   
     When I run SQL on host "shard1"
     """
-    SELECT name, value FROM spqr_metadata.spqr_global_settings
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
@@ -355,7 +355,7 @@ Feature: Reference relation test
     """
     When I run SQL on host "shard2"
     """
-    SELECT name, value FROM spqr_metadata.spqr_global_settings
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
