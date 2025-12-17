@@ -14,9 +14,9 @@ RUN install -d /usr/share/postgresql-common/pgdg && \
     echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    sudo postgresql-13 
+    sudo postgresql-18
 
-ENV PATH=$PATH:"/usr/lib/postgresql/13/lib/pgxs/src/test/stress"
+ENV PATH=$PATH:"/usr/lib/postgresql/18/lib/pgxs/src/test/stress"
 
 COPY ./ /stress
 RUN chmod a+x /stress/run_tests.sh
