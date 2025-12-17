@@ -17,6 +17,6 @@ CUR_HOST=$(cat ${CONFIG_PATH} | grep "host:")
 sed "s/${CUR_HOST}/${ROUTER_HOST=${CUR_HOST}}/g" -i ${CONFIG_PATH}
 rm -f /tmp/.s.PGSQL.*
 echo ${CONFIG_PATH}
-/go/bin/dlv --listen=:2345 --headless=true --log=true --accept-multiclient --log-output=rpc,dap --check-go-version=true exec /spqr/spqr-router -- run --config ${CONFIG_PATH} &
+/go/bin/dlv --listen=:2345 --headless=true --log=true --accept-multiclient --log-output=rpc,dap --check-go-version=true exec /spqr/spqr-router -- run --config ${CONFIG_PATH} --coordinator-config ${COORD_CONFIG_PATH} &
 while true; do sleep 1; done
 
