@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"log"
 
-	_ "go.uber.org/automaxprocs"
-
 	"github.com/pg-sharding/spqr/balancer/app"
 	"github.com/pg-sharding/spqr/balancer/provider"
 	"github.com/pg-sharding/spqr/pkg"
