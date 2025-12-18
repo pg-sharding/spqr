@@ -492,7 +492,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	for _, rel := range ds.Relations {
 		schemas[rel.GetSchema()] = struct{}{}
 	}
-	if err := SetupFDW(ctx, from, fromShardId, toShardId, schemas); err != nil {
+	if err := SetupFDW(ctx, to, fromShardId, toShardId, schemas); err != nil {
 		return err
 	}
 	fromShard := shards.ShardsData[fromShardId]
@@ -577,7 +577,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	schemas := make(map[string]struct{})
 	schemas[rel.GetSchema()] = struct{}{}
 
-	if err := SetupFDW(ctx, from, fromId, toId, schemas); err != nil {
+	if err := SetupFDW(ctx, to, fromId, toId, schemas); err != nil {
 		return err
 	}
 	fromShard := shards.ShardsData[fromId]

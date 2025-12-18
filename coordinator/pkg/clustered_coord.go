@@ -1090,7 +1090,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on destination shard")
 	}
 
-	return datatransfers.SetupFDW(ctx, sourceConn, keyRange.ShardID, req.ShardId, schemas)
+	return datatransfers.SetupFDW(ctx, destConn, keyRange.ShardID, req.ShardId, schemas)
 }
 
 // TODO : unit tests
