@@ -86,7 +86,7 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	if err != nil {
 		return nil, err
 	}
-	lc := coord.NewLocalInstanceMetadataMgr(db, d, cache)
+	lc := coord.NewLocalInstanceMetadataMgr(db, d, cache, config.RouterConfig().ShardMapping, config.RouterConfig().ManageShardsByCoordinator)
 
 	var notifier *sdnotifier.Notifier
 	if config.RouterConfig().UseSystemdNotifier {

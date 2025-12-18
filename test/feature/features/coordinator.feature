@@ -464,8 +464,7 @@ Feature: Coordinator test
   Scenario: Adding/dropping shards works
     When I run SQL on host "coordinator"
     """
-    ADD SHARD sh3 WITH HOSTS "spqr_shard_1:6432";
-    ADD SHARD sh4 WITH HOSTS "spqr_shard_2:6432";
+    ADD SHARD sh3 WITH HOSTS "spqr_shard_3:6432";
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator"
@@ -484,9 +483,6 @@ Feature: Coordinator test
       },
       {
         "shard":"sh3"
-      },
-      {
-        "shard":"sh4"
       }
     ]
     """
@@ -538,20 +534,26 @@ Feature: Coordinator test
       },
       {
         "shard":"sh3",
-        "host":"spqr_shard_1:6432",
-        "alive":"unknown",
-        "rw":"unknown",
-        "time":"unknown"
-      },
-      {
-        "shard":"sh4",
-        "host":"spqr_shard_2:6432",
+        "host":"spqr_shard_3:6432",
         "alive":"unknown",
         "rw":"unknown",
         "time":"unknown"
       }
     ]
     """
+
+    When I run SQL on host "shard3"
+    """
+    CREATE TABLE test(id int, name text)
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    set __spqr__execute_on to sh3;
+    INSERT INTO test(id, name) VALUES(1000, 'random');
+    """
+    Then command return code should be "0"
 
     When I run SQL on host "coordinator"
     """
@@ -571,9 +573,23 @@ Feature: Coordinator test
       },
       {
         "shard":"sh3"
+      }
+    ]
+    """
+
+    When I run SQL on host "router-admin"
+    """
+    SHOW shards;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "shard":"sh2"
       },
       {
-        "shard":"sh4"
+        "shard":"sh3"
       }
     ]
     """

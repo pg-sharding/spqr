@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/models/sequences"
 	"github.com/pg-sharding/spqr/qdb"
@@ -25,7 +26,7 @@ func TestStepOne(t *testing.T) {
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*config.Shard{}, false)
 	var seqMngr sequences.SequenceMgr = lc
 	identityMgr := planner.NewIdentityRouterCache(1, &seqMngr)
 	actualNext, err := identityMgr.NextVal(ctx, "testSeq")
@@ -53,7 +54,7 @@ func TestStepFive(t *testing.T) {
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*config.Shard{}, false)
 	var seqMngr sequences.SequenceMgr = lc
 	identityMgr := planner.NewIdentityRouterCache(5, &seqMngr)
 	actualNext, err := identityMgr.NextVal(ctx, "testSeq")
@@ -100,7 +101,7 @@ func TestStepOne_concurrent(t *testing.T) {
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*config.Shard{}, false)
 	var seqMngr sequences.SequenceMgr = lc
 	identityMgr := planner.NewIdentityRouterCache(1, &seqMngr)
 
@@ -140,7 +141,7 @@ func TestStepFive_concurrent(t *testing.T) {
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*config.Shard{}, false)
 	var seqMngr sequences.SequenceMgr = lc
 	identityMgr := planner.NewIdentityRouterCache(5, &seqMngr)
 
