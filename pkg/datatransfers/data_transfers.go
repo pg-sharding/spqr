@@ -352,7 +352,7 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr meta.EntityMgr) 
 	return bound, nil
 }
 
-func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId string, schemas map[string]struct{}) error {
+func SetupFDW(ctx context.Context, to *pgx.Conn, fromShardId, toShardId string, schemas map[string]struct{}) error {
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
@@ -492,7 +492,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	for _, rel := range ds.Relations {
 		schemas[rel.GetSchema()] = struct{}{}
 	}
-	if err := SetupFDW(ctx, from, to, fromShardId, toShardId, schemas); err != nil {
+	if err := SetupFDW(ctx, to, fromShardId, toShardId, schemas); err != nil {
 		return err
 	}
 	fromShard := shards.ShardsData[fromShardId]
@@ -577,7 +577,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	schemas := make(map[string]struct{})
 	schemas[rel.GetSchema()] = struct{}{}
 
-	if err := SetupFDW(ctx, from, to, fromId, toId, schemas); err != nil {
+	if err := SetupFDW(ctx, to, fromId, toId, schemas); err != nil {
 		return err
 	}
 	fromShard := shards.ShardsData[fromId]
