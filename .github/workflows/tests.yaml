@@ -79,7 +79,7 @@ jobs:
     strategy:
       matrix:
         os-version: ['jammy', 'noble']
-        version: ['13', '14', '15', '16', '17']
+        version: ['14', '15', '16', '17', '18']
         # temporary solution due to problems with yandex registry
         # version: ['13', '14', '15', '16', '17', '13-mdb', '14-mdb', '15-mdb', '16-mdb', '17-mdb']
 
@@ -156,7 +156,7 @@ jobs:
           echo "features=$(echo "{\"command\": $array}")" >> $GITHUB_OUTPUT
 
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: generated_tests
           path: |
@@ -215,7 +215,7 @@ jobs:
           echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
 
       - name: Download generatedFeatures
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: generated_tests
           path: ./test/feature/generatedFeatures

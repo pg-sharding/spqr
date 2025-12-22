@@ -352,7 +352,7 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr meta.EntityMgr) 
 	return bound, nil
 }
 
-func SetupFDW(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId string, schemas map[string]struct{}) error {
+func SetupFDW(ctx context.Context, to *pgx.Conn, fromShardId, toShardId string, schemas map[string]struct{}) error {
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
@@ -418,20 +418,22 @@ func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, rela
 	if err != nil {
 		return err
 	}
-	row := tx.QueryRow(ctx, "SELECT value as references_locked FROM spqr_metadata.spqr_global_settings WHERE name = $1", spqrguardReferenceRelationLock)
-	val := ""
+	if _, err = tx.Exec(ctx, "LOCK TABLE spqr_metadata.spqr_global_settings IN ACCESS EXCLUSIVE MODE"); err != nil {
+		return err
+	}
+	row := tx.QueryRow(ctx, "SELECT enabled as references_locked FROM spqr_metadata.spqr_global_settings WHERE name = $1", spqrguardReferenceRelationLock)
+	val := false
 	if err = row.Scan(&val); err != nil && err != pgx.ErrNoRows {
 		return err
 	}
 	// TODO: process differently to avoid deadlocks
-	switch val {
-	case "on", "yes", "ok", "true":
+	if val {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "reference relations already locked")
 	}
-	if _, err = tx.Exec(ctx, "SELECT spqr_metadata.mark_reference_relation($1);", relation.String()); err != nil {
+	if _, err = tx.Exec(ctx, "SELECT spqr_metadata.mark_reference_relation($1)", relation.String()); err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, "INSERT INTO spqr_metadata.spqr_global_settings (name, value) VALUES ($1, 'true')", spqrguardReferenceRelationLock); err != nil {
+	if _, err = tx.Exec(ctx, "INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES ($1, true)", spqrguardReferenceRelationLock); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -490,7 +492,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	for _, rel := range ds.Relations {
 		schemas[rel.GetSchema()] = struct{}{}
 	}
-	if err := SetupFDW(ctx, from, to, fromShardId, toShardId, schemas); err != nil {
+	if err := SetupFDW(ctx, to, fromShardId, toShardId, schemas); err != nil {
 		return err
 	}
 	fromShard := shards.ShardsData[fromShardId]
@@ -575,7 +577,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	schemas := make(map[string]struct{})
 	schemas[rel.GetSchema()] = struct{}{}
 
-	if err := SetupFDW(ctx, from, to, fromId, toId, schemas); err != nil {
+	if err := SetupFDW(ctx, to, fromId, toId, schemas); err != nil {
 		return err
 	}
 	fromShard := shards.ShardsData[fromId]
