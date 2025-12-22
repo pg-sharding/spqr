@@ -221,11 +221,12 @@ func (mr *MockCoordinatorMockRecorder) CommitTran(ctx, transaction any) *gomock.
 }
 
 // CreateDistribution mocks base method.
-func (m *MockCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
+func (m *MockCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) (*meta_transaction.MetaTransactionChunk, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateDistribution", ctx, ds)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*meta_transaction.MetaTransactionChunk)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateDistribution indicates an expected call of CreateDistribution.

@@ -3,12 +3,13 @@ package distributions
 import (
 	"context"
 
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
 type DistributionMgr interface {
 	ListDistributions(ctx context.Context) ([]*Distribution, error)
-	CreateDistribution(ctx context.Context, ds *Distribution) error
+	CreateDistribution(ctx context.Context, ds *Distribution) (*mtran.MetaTransactionChunk, error)
 	DropDistribution(ctx context.Context, id string) error
 	GetDistribution(ctx context.Context, id string) (*Distribution, error)
 

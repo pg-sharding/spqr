@@ -609,11 +609,12 @@ func (mr *MockQDBMockRecorder) CheckMoveTaskGroupStopFlag(ctx, id any) *gomock.C
 }
 
 // CreateDistribution mocks base method.
-func (m *MockQDB) CreateDistribution(ctx context.Context, distr *qdb.Distribution) error {
+func (m *MockQDB) CreateDistribution(ctx context.Context, distr *qdb.Distribution) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateDistribution", ctx, distr)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateDistribution indicates an expected call of CreateDistribution.
@@ -1863,11 +1864,12 @@ func (mr *MockXQDBMockRecorder) CommitTransaction(ctx, transaction any) *gomock.
 }
 
 // CreateDistribution mocks base method.
-func (m *MockXQDB) CreateDistribution(ctx context.Context, distr *qdb.Distribution) error {
+func (m *MockXQDB) CreateDistribution(ctx context.Context, distr *qdb.Distribution) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateDistribution", ctx, distr)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateDistribution indicates an expected call of CreateDistribution.

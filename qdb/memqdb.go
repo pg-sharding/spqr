@@ -775,17 +775,30 @@ func (q *MemQDB) ListReferenceRelations(ctx context.Context) ([]*ReferenceRelati
 // ==============================================================================
 
 // TODO : unit tests
-func (q *MemQDB) CreateDistribution(_ context.Context, distribution *Distribution) error {
+func (q *MemQDB) CreateDistribution(_ context.Context, distribution *Distribution) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Interface("distribution", distribution).Msg("memqdb: add distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()
-
+	commands := make([]QdbStatement, 0, len(distribution.Relations)+1)
 	for _, r := range distribution.Relations {
 		q.RelationDistribution[r.Name] = distribution.ID
-		_ = ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, r.Name, distribution.ID))
+		if cmd, err := NewQdbStatementExt(CMD_PUT, r.Name, distribution.ID, MapRelationDistribution); err != nil {
+			return nil, err
+		} else {
+			commands = append(commands, *cmd)
+		}
 	}
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, distribution.ID, distribution))
+	if distributionJSON, err := json.Marshal(*distribution); err != nil {
+		return nil, err
+	} else {
+		if cmd, err := NewQdbStatementExt(CMD_PUT, distribution.ID, string(distributionJSON), MapDistributions); err != nil {
+			return nil, err
+		} else {
+			commands = append(commands, *cmd)
+			return commands, nil
+		}
+	}
 }
 
 // TODO : unit tests
