@@ -140,19 +140,28 @@ func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.Shard
 	}, nil
 }
 
-// CreateDistribution creates distribution in QDB
-// TODO: unit tests
-func (l *LocalQrouterServer) CreateDistribution(ctx context.Context, request *protos.CreateDistributionRequest) (*emptypb.Empty, error) {
-	for _, ds := range request.GetDistributions() {
+func (l *LocalQrouterServer) createDistributionPrepare(ctx context.Context, gossip *protos.CreateDistributionGossip) ([]qdb.QdbStatement, error) {
+	result := make([]qdb.QdbStatement, 0, len(gossip.GetDistributions()))
+	for _, ds := range gossip.GetDistributions() {
 		mds, err := distributions.DistributionFromProto(ds)
 		if err != nil {
 			return nil, err
 		}
-		if err := l.mgr.CreateDistribution(ctx, mds); err != nil {
+		if tranChunk, err := l.mgr.CreateDistribution(ctx, mds); err != nil {
 			return nil, err
+		} else {
+			if len(tranChunk.QdbStatements) == 0 {
+				return nil, fmt.Errorf("transaction chunk must have a qdb statement (createDistributionPrepare)")
+			}
+			result = append(result, tranChunk.QdbStatements...)
 		}
 	}
-	return nil, nil
+	return result, nil
+}
+
+// CreateDistribution creates distribution in QDB
+func (l *LocalQrouterServer) CreateDistribution(ctx context.Context, request *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
+	return nil, fmt.Errorf("DEPRECATED, remove after meta transaction implementation")
 }
 
 // DropDistribution deletes distribution from QDB
@@ -616,6 +625,15 @@ func (l *LocalQrouterServer) ApplyMeta(ctx context.Context, request *protos.Meta
 	for _, gossipCommand := range request.Commands {
 		cmdType := mtran.GetGossipRequestType(gossipCommand)
 		switch cmdType {
+		case mtran.GR_CreateDistributionRequest:
+			if cmdList, err := l.createDistributionPrepare(ctx, gossipCommand.CreateDistribution); err != nil {
+				return nil, err
+			} else {
+				if len(cmdList) == 0 {
+					return nil, fmt.Errorf("no QDB changes in gossip request:%d", cmdType)
+				}
+				toExecuteCmds = append(toExecuteCmds, cmdList...)
+			}
 		// TODO: run handlers converting gossip commands to chunk with qdb commands
 		default:
 			return nil, fmt.Errorf("invalid meta gossip request:%d", cmdType)

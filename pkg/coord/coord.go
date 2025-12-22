@@ -152,12 +152,18 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 	selectedDistribId := distributions.REPLICATED
 
 	if _, err := lc.GetDistribution(ctx, selectedDistribId); err != nil {
-		err := lc.CreateDistribution(ctx, &distributions.Distribution{
+		var chunk *mtran.MetaTransactionChunk
+		chunk, err = lc.CreateDistribution(ctx, &distributions.Distribution{
 			Id:       distributions.REPLICATED,
 			ColTypes: nil,
 		})
 		if err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
+			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution (prepare phase)")
+			return err
+		}
+		err = lc.ExecNoTran(ctx, chunk)
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution (exec phase)")
 			return err
 		}
 	}
@@ -724,24 +730,32 @@ func (qc *Coordinator) ListDistributions(ctx context.Context) ([]*distributions.
 	return res, nil
 }
 
-func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
+func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) (*mtran.MetaTransactionChunk, error) {
 	if len(ds.ColTypes) == 0 && ds.Id != distributions.REPLICATED {
-		return fmt.Errorf("empty distributions are disallowed")
+		return nil, fmt.Errorf("empty distributions are disallowed")
 	}
 	for _, rel := range ds.Relations {
 		for colName, SeqName := range rel.ColumnSequenceMapping {
 
 			if err := qc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
-				return err
+				return nil, err
 			}
 			qualifiedName := rel.ToRFQN()
 			err := qc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
-	return qc.qdb.CreateDistribution(ctx, distributions.DistributionToDB(ds))
+	if stmts, err := qc.qdb.CreateDistribution(ctx, distributions.DistributionToDB(ds)); err != nil {
+		return nil, err
+	} else {
+		if result, err := mtran.NewMetaTransactionChunk(nil, stmts); err != nil {
+			return nil, err
+		} else {
+			return result, nil
+		}
+	}
 }
 
 // TODO : unit tests
