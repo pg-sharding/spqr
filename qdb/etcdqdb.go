@@ -67,6 +67,7 @@ const (
 	transactionNamespace           = "/transfer_txs/"
 	sequenceNamespace              = "/sequences/"
 	referenceRelationsNamespace    = "/reference_relations"
+	uniqueIndexesNamespace         = "/unique_indexes"
 	columnSequenceMappingNamespace = "/column_sequence_mappings/"
 	lockNamespace                  = "/lock"
 	totalKeysNamespace             = "/total_keys/"
@@ -103,6 +104,10 @@ func distributionNodePath(key string) string {
 
 func referenceRelationNodePath(key string) string {
 	return path.Join(referenceRelationsNamespace, key)
+}
+
+func uniqueIndexNodePath(key string) string {
+	return path.Join(uniqueIndexesNamespace, key)
 }
 
 func relationMappingNodePath(key string) string {
@@ -1572,6 +1577,31 @@ func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName *rfqn.Rel
 		// metadata corruption
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_METADATA_CORRUPTION)
 	}
+}
+
+// ==============================================================================
+//                               UNIQUE INDEXES
+// ==============================================================================
+
+func (q *EtcdQDB) ListUniqueIndexes(ctx context.Context) (map[string]*UniqueIndex, error) {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: list unique indexes")
+
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, dsID string, idx *UniqueIndex) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: create unique index")
+
+	return fmt.Errorf("not implemented")
+}
+
+func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: drop unique index")
+
+	return fmt.Errorf("not implemented")
 }
 
 // ==============================================================================
