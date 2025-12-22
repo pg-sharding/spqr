@@ -110,10 +110,11 @@ type DistributionKeyEntry struct {
 }
 
 type DistributedRelation struct {
-	Name               string                 `json:"name"`
-	SchemaName         string                 `json:"schema_name,omitempty"`
-	DistributionKey    []DistributionKeyEntry `json:"column_names"`
-	ReplicatedRelation bool                   `json:"replicated_relation,omitempty"`
+	Name               string                  `json:"name"`
+	SchemaName         string                  `json:"schema_name,omitempty"`
+	DistributionKey    []DistributionKeyEntry  `json:"column_names"`
+	ReplicatedRelation bool                    `json:"replicated_relation,omitempty"`
+	UniqueIndexes      map[string]*UniqueIndex `json:"unique_indexes"`
 }
 
 func (r *DistributedRelation) QualifiedName() *rfqn.RelationFQN {
@@ -124,6 +125,7 @@ type Distribution struct {
 	ID        string                          `json:"id"`
 	ColTypes  []string                        `json:"col_types,omitempty"`
 	Relations map[string]*DistributedRelation `json:"relations"`
+	UniqueIndexes map[string]*UniqueIndex         `json:"unique_indexes"`
 }
 
 type ReferenceRelation struct {
@@ -132,6 +134,12 @@ type ReferenceRelation struct {
 	SchemaVersion         uint64            `json:"schema_version"`
 	ColumnSequenceMapping map[string]string `json:"column_sequence_mapping"`
 	ShardIds              []string          `json:"shard_ids"`
+}
+
+type UniqueIndex struct {
+	ID         string            `json:"id"`
+	Relation   *rfqn.RelationFQN `json:"relation"`
+	ColumnName string            `json:"column"`
 }
 
 func NewDistribution(id string, coltypes []string) *Distribution {

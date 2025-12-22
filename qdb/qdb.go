@@ -100,6 +100,11 @@ type QDB interface {
 	AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []DistributionKeyEntry) error
 	AlterReplicatedRelationSchema(ctx context.Context, dsID string, relName string, schemaName string) error
 
+	// Unique indexes
+	CreateUniqueIndex(ctx context.Context, dsID string, idx *UniqueIndex) error
+	DropUniqueIndex(ctx context.Context, id string) error
+	ListUniqueIndexes(ctx context.Context) (map[string]*UniqueIndex, error)
+
 	// Task group
 	ListTaskGroups(ctx context.Context) (map[string]*MoveTaskGroup, error)
 	GetMoveTaskGroup(ctx context.Context, id string) (*MoveTaskGroup, error)
