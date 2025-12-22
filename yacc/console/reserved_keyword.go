@@ -94,4 +94,6 @@ var reservedWords = map[string]int{
 	"panic":        PANIC,
 	"stale":        STALE,
 	"clients":      CLIENTS,
+	"unique":       UNIQUE,
+	"index":        INDEX,
 }

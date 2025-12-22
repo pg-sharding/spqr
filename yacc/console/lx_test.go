@@ -371,6 +371,20 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.IDENT,
 			},
 		},
+		{
+			query: "CREATE UNIQUE INDEX ui1 FOR TABLE t COLUMN sec_id",
+			exp: []int{
+				spqrparser.CREATE,
+				spqrparser.UNIQUE,
+				spqrparser.INDEX,
+				spqrparser.IDENT,
+				spqrparser.FOR,
+				spqrparser.TABLE,
+				spqrparser.IDENT,
+				spqrparser.COLUMN,
+				spqrparser.IDENT,
+			},
+		},
 	} {
 		tmp := spqrparser.NewStringTokenizer(tt.query)
 

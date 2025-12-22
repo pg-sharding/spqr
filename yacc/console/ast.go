@@ -98,6 +98,11 @@ type ReferenceRelationDefinition struct {
 	ShardIds             []string
 }
 
+type UniqueIndexDefinition struct {
+	TableName *rfqn.RelationFQN
+	Column    string
+}
+
 type AutoIncrementEntry struct {
 	Column string
 	Start  uint64
@@ -123,6 +128,7 @@ func (*KeyRangeDefinition) iCreate()          {}
 func (*ShardDefinition) iCreate()             {}
 func (*DistributionDefinition) iCreate()      {}
 func (*ReferenceRelationDefinition) iCreate() {}
+func (*UniqueIndexDefinition) iCreate()       {}
 
 type SplitKeyRange struct {
 	Border         *KeyRangeBound
@@ -160,6 +166,10 @@ type ReferenceRelationSelector struct {
 	ID string
 }
 
+type UniqueIndexSelector struct {
+	ID string
+}
+
 type ShardSelector struct {
 	ID string
 }
@@ -171,6 +181,7 @@ type TaskGroupSelector struct {
 func (*KeyRangeSelector) iDrop()          {}
 func (*DistributionSelector) iDrop()      {}
 func (*ReferenceRelationSelector) iDrop() {}
+func (*UniqueIndexSelector) iDrop()       {}
 func (*ShardSelector) iDrop()             {}
 func (*TaskGroupSelector) iDrop()         {}
 
@@ -412,6 +423,7 @@ func (*Set) iStatement()                         {}
 func (*KeyRangeSelector) iStatement()            {}
 func (*DistributionSelector) iStatement()        {}
 func (*ReferenceRelationSelector) iStatement()   {}
+func (*UniqueIndexSelector) iStatement()         {}
 func (*ShardSelector) iStatement()               {}
 func (*TaskGroupSelector) iStatement()           {}
 func (*SequenceSelector) iStatement()            {}
@@ -425,6 +437,7 @@ func (*SplitKeyRange) iStatement()               {}
 func (*UniteKeyRange) iStatement()               {}
 func (*DistributionDefinition) iStatement()      {}
 func (*ReferenceRelationDefinition) iStatement() {}
+func (*UniqueIndexDefinition) iStatement()       {}
 func (*KeyRangeDefinition) iStatement()          {}
 func (*ShardDefinition) iStatement()             {}
 func (*Kill) iStatement()                        {}

@@ -184,8 +184,8 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY
-%token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE
+%token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX
 %token <str> SHARDS ROUTERS SHARD HOST RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
@@ -728,6 +728,14 @@ drop_stmt:
 			},
 		}
 	}
+	| DROP UNIQUE INDEX any_id 
+	{
+		$$ = &Drop{
+			Element: &UniqueIndexSelector{
+				ID: $4,
+			},
+		}
+	}
 
 add_stmt:
 	// TODO: drop
@@ -1009,6 +1017,16 @@ create_stmt:
 				TableName: $4,
                 AutoIncrementEntries: $5,
 				ShardIds: $6,
+			},
+		}
+	}
+	|
+	CREATE UNIQUE INDEX any_id FOR table_or_relation qualified_name COLUMN any_id
+	{
+		$$ = &Create{
+			Element: &UniqueIndexDefinition{
+				TableName: $7,
+				Column: $9,
 			},
 		}
 	}
