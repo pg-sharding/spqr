@@ -20,4 +20,9 @@ type DistributionMgr interface {
 	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
 	AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error
 	AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []DistributionKeyEntry) error
+
+	CreateUniqueIndex(ctx context.Context, dsID string, idx *UniqueIndex) error
+	DropUniqueIndex(ctx context.Context, dsID string, idxID string) error
+	ListUniqueIndexes(ctx context.Context) (map[string]*UniqueIndex, error)
+	ListDistributionIndexes(ctx context.Context, dsID string) (map[string]*UniqueIndex, error)
 }

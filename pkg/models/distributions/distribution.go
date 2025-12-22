@@ -32,6 +32,7 @@ type DistributedRelation struct {
 	DistributionKey       []DistributionKeyEntry
 	ReplicatedRelation    bool
 	ColumnSequenceMapping map[string]string
+	UniqueIndexeByColumn  map[string]*UniqueIndex
 }
 
 func (r *DistributedRelation) QualifiedName() rfqn.RelationFQN {
@@ -314,8 +315,9 @@ type Distribution struct {
 	Id string
 	// column types to be used
 	// REPLICATED distribution has an empty array here.
-	ColTypes  []string
-	Relations map[string]*DistributedRelation
+	ColTypes          []string
+	Relations         map[string]*DistributedRelation
+	UniqueIndexesByID map[string]*UniqueIndex
 }
 
 func (s *Distribution) GetRelation(relname *rfqn.RelationFQN) *DistributedRelation {
