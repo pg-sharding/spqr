@@ -1025,8 +1025,9 @@ create_stmt:
 	{
 		$$ = &Create{
 			Element: &UniqueIndexDefinition{
+				ID:        $4,
 				TableName: $7,
-				Column: $9,
+				Column:    $9,
 			},
 		}
 	}

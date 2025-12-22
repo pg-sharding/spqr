@@ -2025,6 +2025,7 @@ func TestUniqueIndex(t *testing.T) {
 			query: "CREATE UNIQUE INDEX ui1 FOR TABLE t COLUMN id",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.UniqueIndexDefinition{
+					ID: "uil",
 					TableName: &rfqn.RelationFQN{
 						RelationName: "t",
 					},
