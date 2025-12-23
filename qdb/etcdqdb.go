@@ -1587,21 +1587,108 @@ func (q *EtcdQDB) ListUniqueIndexes(ctx context.Context) (map[string]*UniqueInde
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: list unique indexes")
 
-	return nil, fmt.Errorf("not implemented")
+	resp, err := q.cli.Get(ctx, uniqueIndexesNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*UniqueIndex)
+	for _, kv := range resp.Kvs {
+		var idx *UniqueIndex
+		if err := json.Unmarshal(kv.Value, &idx); err != nil {
+			return nil, err
+		}
+		res[idx.ID] = idx
+	}
+	return res, nil
 }
 
 func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: create unique index")
 
-	return fmt.Errorf("not implemented")
+	ds, err := q.GetDistribution(ctx, idx.DistributionId)
+	if err != nil {
+		return err
+	}
+	ds.UniqueIndexes[idx.ID] = idx
+	idxJson, err := json.Marshal(idx)
+	if err != nil {
+		return err
+	}
+	dsJson, err := json.Marshal(ds)
+	if err != nil {
+		return err
+	}
+	res, err := q.cli.Txn(ctx).
+		If(clientv3.Compare(clientv3.Version(uniqueIndexNodePath(idx.ID)), "=", 0), clientv3.Compare(clientv3.Version(distributionNodePath(ds.ID)), "=", ds.Version)).
+		Then(clientv3.OpPut(distributionNodePath(ds.ID), string(dsJson)), clientv3.OpPut(uniqueIndexNodePath(idx.ID), string(idxJson))).
+		Else(clientv3.OpGet(distributionNodePath(ds.ID)), clientv3.OpGet(uniqueIndexNodePath(idx.ID))).
+		Commit()
+	if err != nil {
+		return fmt.Errorf("failed to run transaction: %s", err)
+	}
+	if !res.Succeeded {
+		if len(res.Responses) != 2 {
+			return fmt.Errorf("unexpected response count in create unique index: %d", len(res.Responses))
+		}
+		if res.Responses[0].GetResponseRange().Count == 1 {
+			for _, kv := range res.Responses[0].GetResponseRange().Kvs {
+				if kv.Version != ds.Version {
+					return fmt.Errorf("unexpected distribution record \"%s\" version: expected %d, got %d", kv.Key, ds.Version, kv.Version)
+				}
+			}
+		}
+		if res.Responses[0].GetResponseRange().Count == 0 {
+			return fmt.Errorf("unexpected deletion of distribution record \"%s\"", distributionNodePath(ds.ID))
+		}
+		if res.Responses[1].GetResponseRange().Count > 0 {
+			return fmt.Errorf("unique index \"%s\" already exists in QDB", idx.ID)
+		}
+		return fmt.Errorf("create unique index transaction condition failed: unknown error")
+	}
+	return nil
 }
 
 func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: drop unique index")
 
-	return fmt.Errorf("not implemented")
+	resp, err := q.cli.Get(ctx, uniqueIndexNodePath(id))
+	if err != nil {
+		return err
+	}
+
+	if len(resp.Kvs) == 0 {
+		return fmt.Errorf("unique index \"%s\" not found", id)
+	}
+
+	var idx *UniqueIndex
+	if err = json.Unmarshal(resp.Kvs[0].Value, &idx); err != nil {
+		return err
+	}
+	version := resp.Kvs[0].Version
+	ds, err := q.GetDistribution(ctx, idx.DistributionId)
+	if err != nil {
+		return err
+	}
+	delete(ds.UniqueIndexes, id)
+	dsJson, err := json.Marshal(ds)
+	if err != nil {
+		return err
+	}
+
+	txResp, err := q.cli.Txn(ctx).
+		If(clientv3.Compare(clientv3.Version(uniqueIndexNodePath(id)), "=", version),
+			clientv3.Compare(clientv3.Version(distributionNodePath(ds.ID)), "=", ds.Version)).
+		Then(clientv3.OpDelete(uniqueIndexNodePath(id)), clientv3.OpPut(distributionNodePath(ds.ID), string(dsJson))).
+		Commit()
+	if err != nil {
+		return err
+	}
+	if !txResp.Succeeded {
+		return fmt.Errorf("cannot drop unique index: distribution modified")
+	}
+	return nil
 }
 
 // ==============================================================================
