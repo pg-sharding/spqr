@@ -200,7 +200,7 @@ func (l *LocalQrouterServer) AlterDistributionAttach(ctx context.Context, reques
 	res := make([]*distributions.DistributedRelation, len(request.GetRelations()))
 	for i, rel := range request.GetRelations() {
 		var err error
-		res[i], err = distributions.DistributedRelationFromProto(rel)
+		res[i], err = distributions.DistributedRelationFromProto(rel, map[string]*distributions.UniqueIndex{})
 		if err != nil {
 			return nil, err
 		}
@@ -227,11 +227,19 @@ func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, reques
 // AlterDistributedRelation alters the distributed relation
 // TODO: unit tests
 func (l *LocalQrouterServer) AlterDistributedRelation(ctx context.Context, request *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
-	ds, err := distributions.DistributedRelationFromProto(request.GetRelation())
+	ds, err := l.mgr.GetRelationDistribution(ctx, &rfqn.RelationFQN{RelationName: request.Relation.Name, SchemaName: request.Relation.SchemaName})
 	if err != nil {
 		return nil, err
 	}
-	return nil, l.mgr.AlterDistributedRelation(ctx, request.GetId(), ds)
+	curRel, ok := ds.Relations[request.Relation.Name]
+	if !ok {
+		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", request.Relation.Name, ds.Id)
+	}
+	rel, err := distributions.DistributedRelationFromProto(request.GetRelation(), curRel.UniqueIndexesByColumn)
+	if err != nil {
+		return nil, err
+	}
+	return nil, l.mgr.AlterDistributedRelation(ctx, request.GetId(), rel)
 }
 
 // AlterDistributedRelation alters the distributed relation

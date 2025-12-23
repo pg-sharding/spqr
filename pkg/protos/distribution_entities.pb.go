@@ -258,6 +258,7 @@ type Distribution struct {
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ColumnTypes   []string               `protobuf:"bytes,2,rep,name=ColumnTypes,proto3" json:"ColumnTypes,omitempty"`
 	Relations     []*DistributedRelation `protobuf:"bytes,3,rep,name=relations,proto3" json:"relations,omitempty"`
+	UniqueIndexes []*UniqueIndex         `protobuf:"bytes,4,rep,name=uniqueIndexes,proto3" json:"uniqueIndexes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -309,6 +310,13 @@ func (x *Distribution) GetColumnTypes() []string {
 func (x *Distribution) GetRelations() []*DistributedRelation {
 	if x != nil {
 		return x.Relations
+	}
+	return nil
+}
+
+func (x *Distribution) GetUniqueIndexes() []*UniqueIndex {
+	if x != nil {
+		return x.UniqueIndexes
 	}
 	return nil
 }
@@ -400,11 +408,12 @@ const file_protos_distribution_entities_proto_rawDesc = "" +
 	"schemaName\x1aB\n" +
 	"\x14SequenceColumnsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"y\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb2\x01\n" +
 	"\fDistribution\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
 	"\vColumnTypes\x18\x02 \x03(\tR\vColumnTypes\x127\n" +
-	"\trelations\x18\x03 \x03(\v2\x19.spqr.DistributedRelationR\trelations\"j\n" +
+	"\trelations\x18\x03 \x03(\v2\x19.spqr.DistributedRelationR\trelations\x127\n" +
+	"\runiqueIndexes\x18\x04 \x03(\v2\x11.spqr.UniqueIndexR\runiqueIndexes\"j\n" +
 	"\vUniqueIndex\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x121\n" +
 	"\ttableName\x18\x02 \x01(\v2\x13.spqr.QualifiedNameR\ttableName\x12\x18\n" +
@@ -440,12 +449,13 @@ var file_protos_distribution_entities_proto_depIdxs = []int32{
 	2, // 2: spqr.DistributedRelation.distributionKey:type_name -> spqr.DistributionKeyEntry
 	6, // 3: spqr.DistributedRelation.sequenceColumns:type_name -> spqr.DistributedRelation.SequenceColumnsEntry
 	3, // 4: spqr.Distribution.relations:type_name -> spqr.DistributedRelation
-	7, // 5: spqr.UniqueIndex.tableName:type_name -> spqr.QualifiedName
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	5, // 5: spqr.Distribution.uniqueIndexes:type_name -> spqr.UniqueIndex
+	7, // 6: spqr.UniqueIndex.tableName:type_name -> spqr.QualifiedName
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_protos_distribution_entities_proto_init() }

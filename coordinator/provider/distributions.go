@@ -79,7 +79,7 @@ func (d *DistributionsServer) AlterDistributionAttach(ctx context.Context, req *
 	res := make([]*distributions.DistributedRelation, len(req.GetRelations()))
 	for i, rel := range req.GetRelations() {
 		var err error
-		res[i], err = distributions.DistributedRelationFromProto(rel)
+		res[i], err = distributions.DistributedRelationFromProto(rel, map[string]*distributions.UniqueIndex{})
 		if err != nil {
 			return nil, err
 		}
@@ -99,11 +99,19 @@ func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *
 }
 
 func (d *DistributionsServer) AlterDistributedRelation(ctx context.Context, req *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
-	ds, err := distributions.DistributedRelationFromProto(req.GetRelation())
+	ds, err := d.impl.GetRelationDistribution(ctx, &rfqn.RelationFQN{RelationName: req.Relation.Name, SchemaName: req.Relation.SchemaName})
 	if err != nil {
 		return nil, err
 	}
-	return nil, d.impl.AlterDistributedRelation(ctx, req.GetId(), ds)
+	curRel, ok := ds.Relations[req.Relation.Name]
+	if !ok {
+		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", req.Relation.Name, ds.Id)
+	}
+	rel, err := distributions.DistributedRelationFromProto(req.GetRelation(), curRel.UniqueIndexesByColumn)
+	if err != nil {
+		return nil, err
+	}
+	return nil, d.impl.AlterDistributedRelation(ctx, req.GetId(), rel)
 }
 
 func (d *DistributionsServer) AlterDistributedRelationSchema(ctx context.Context, req *protos.AlterDistributedRelationSchemaRequest) (*emptypb.Empty, error) {

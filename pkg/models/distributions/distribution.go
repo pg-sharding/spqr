@@ -53,7 +53,7 @@ const (
 //
 // Returns:
 //   - *DistributedRelation: The created DistributedRelation object.
-func DistributedRelationFromDB(rel *qdb.DistributedRelation) *DistributedRelation {
+func DistributedRelationFromDB(rel *qdb.DistributedRelation, idxs map[string]*UniqueIndex) *DistributedRelation {
 	rdistr := &DistributedRelation{
 		Name:       rel.Name,
 		SchemaName: rel.SchemaName,
@@ -70,6 +70,7 @@ func DistributedRelationFromDB(rel *qdb.DistributedRelation) *DistributedRelatio
 	}
 
 	rdistr.ReplicatedRelation = rel.ReplicatedRelation
+	rdistr.UniqueIndexesByColumn = idxs
 
 	return rdistr
 }
@@ -188,7 +189,7 @@ func DistributionKeyFromProto(key []*proto.DistributionKeyEntry) ([]Distribution
 //
 // Returns:
 //   - *DistributedRelation: The created DistributedRelation object.
-func DistributedRelationFromProto(rel *proto.DistributedRelation) (*DistributedRelation, error) {
+func DistributedRelationFromProto(rel *proto.DistributedRelation, idxsByColumns map[string]*UniqueIndex) (*DistributedRelation, error) {
 	key, err := DistributionKeyFromProto(rel.DistributionKey)
 	if err != nil {
 		return nil, err
@@ -200,6 +201,7 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation) (*DistributedR
 		ColumnSequenceMapping: rel.SequenceColumns,
 		DistributionKey:       key,
 		ReplicatedRelation:    rel.ReplicatedRelation,
+		UniqueIndexesByColumn: idxsByColumns,
 	}, nil
 }
 
@@ -341,9 +343,10 @@ func (s *Distribution) TryGetRelation(relname *rfqn.RelationFQN) (*DistributedRe
 //   - *Distribution: The created Distribution object.
 func NewDistribution(id string, coltypes []string) *Distribution {
 	return &Distribution{
-		Id:        id,
-		ColTypes:  coltypes,
-		Relations: map[string]*DistributedRelation{},
+		Id:                id,
+		ColTypes:          coltypes,
+		Relations:         map[string]*DistributedRelation{},
+		UniqueIndexesByID: map[string]*UniqueIndex{},
 	}
 }
 
@@ -363,10 +366,18 @@ func (s *Distribution) ID() string {
 //   - *Distribution: The created Distribution object.
 func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 	ret := NewDistribution(distr.ID, distr.ColTypes)
-	for name, val := range distr.Relations {
-		ret.Relations[name] = DistributedRelationFromDB(val)
+	for id, idx := range distr.UniqueIndexes {
+		ret.UniqueIndexesByID[id] = UniqueIndexFromDB(idx)
 	}
-
+	for name, val := range distr.Relations {
+		relIdxs := make(map[string]*UniqueIndex)
+		for _, idx := range ret.UniqueIndexesByID {
+			if idx.RelationName.RelationName == name {
+				relIdxs[idx.ColumnName] = idx
+			}
+		}
+		ret.Relations[name] = DistributedRelationFromDB(val, relIdxs)
+	}
 	return ret
 }
 
@@ -378,19 +389,44 @@ func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 // Returns:
 //   - *Distribution: The created Distribution object.
 func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
-	res := make(map[string]*DistributedRelation)
+	idxsById := make(map[string]*UniqueIndex)
+	idxsByRel := make(map[string]map[string]*UniqueIndex)
+	for _, idxProto := range ds.UniqueIndexes {
+		idx := UniqueIndexFromProto(idxProto)
+		idxsById[idx.ID] = idx
+		if _, ok := idxsByRel[idx.RelationName.RelationName]; !ok {
+			idxsByRel[idx.RelationName.RelationName] = make(map[string]*UniqueIndex)
+		}
+		idxsByRel[idx.RelationName.RelationName][idx.ColumnName] = idx
+	}
+	rels := make(map[string]*DistributedRelation)
 	for _, rel := range ds.Relations {
 		var err error
-		res[rel.Name], err = DistributedRelationFromProto(rel)
+		relIdxs, ok := idxsByRel[rel.Name]
+		if !ok {
+			relIdxs = make(map[string]*UniqueIndex)
+		}
+		if ok {
+			delete(idxsByRel, rel.Name)
+		}
+		rels[rel.Name], err = DistributedRelationFromProto(rel, relIdxs)
 		if err != nil {
 			return nil, err
 		}
 	}
+	if len(idxsByRel) > 0 {
+		rels := make([]string, 0, len(idxsByRel))
+		for rel := range idxsByRel {
+			rels = append(rels, rel)
+		}
+		return nil, fmt.Errorf("unique index declared for non-existent relations: %s", strings.Join(rels, ", "))
+	}
 
 	return &Distribution{
-		Id:        ds.Id,
-		ColTypes:  ds.ColumnTypes,
-		Relations: res,
+		Id:                ds.Id,
+		ColTypes:          ds.ColumnTypes,
+		Relations:         rels,
+		UniqueIndexesByID: idxsById,
 	}, nil
 }
 
@@ -406,10 +442,15 @@ func DistributionToProto(ds *Distribution) *proto.Distribution {
 	for _, r := range ds.Relations {
 		drels = append(drels, DistributedRelationToProto(r))
 	}
+	dsIdxs := make([]*proto.UniqueIndex, 0, len(ds.UniqueIndexesByID))
+	for _, idx := range ds.UniqueIndexesByID {
+		dsIdxs = append(dsIdxs, UniqueIndexToProto(idx))
+	}
 	return &proto.Distribution{
-		Id:          ds.Id,
-		ColumnTypes: ds.ColTypes,
-		Relations:   drels,
+		Id:            ds.Id,
+		ColumnTypes:   ds.ColTypes,
+		Relations:     drels,
+		UniqueIndexes: dsIdxs,
 	}
 }
 
@@ -423,13 +464,18 @@ func DistributionToProto(ds *Distribution) *proto.Distribution {
 //   - *qdb.Distribution: The converted qdb.Distribution struct.
 func DistributionToDB(ds *Distribution) *qdb.Distribution {
 	d := &qdb.Distribution{
-		ID:        ds.Id,
-		ColTypes:  ds.ColTypes,
-		Relations: map[string]*qdb.DistributedRelation{},
+		ID:            ds.Id,
+		ColTypes:      ds.ColTypes,
+		Relations:     map[string]*qdb.DistributedRelation{},
+		UniqueIndexes: map[string]*qdb.UniqueIndex{},
 	}
 
 	for _, r := range ds.Relations {
 		d.Relations[r.Name] = DistributedRelationToDB(r)
+	}
+
+	for id, idx := range ds.UniqueIndexesByID {
+		d.UniqueIndexes[id] = UniqueIndexToDB(ds.Id, idx)
 	}
 
 	return d
