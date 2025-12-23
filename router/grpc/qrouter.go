@@ -646,6 +646,58 @@ func (l *LocalQrouterServer) ApplyMeta(ctx context.Context, request *protos.Meta
 	}
 }
 
+func (l *LocalQrouterServer) CurrVal(ctx context.Context, req *protos.CurrValRequest) (*protos.CurrValReply, error) {
+	val, err := l.mgr.CurrVal(ctx, req.Seq)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.CurrValReply{Value: val}, nil
+}
+
+func (l *LocalQrouterServer) ListSequences(ctx context.Context, _ *emptypb.Empty) (*protos.ListSequencesReply, error) {
+	seqs, err := l.mgr.ListSequences(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.ListSequencesReply{Names: seqs}, nil
+}
+
+func (l *LocalQrouterServer) ListRelationSequences(ctx context.Context, req *protos.ListRelationSequencesRequest) (*protos.ListRelationSequencesReply, error) {
+	val, err := l.mgr.ListRelationSequences(ctx, rfqn.RelationFQNFromFullName(req.SchemaName, req.Name))
+	if err != nil {
+		return nil, err
+	}
+	return &protos.ListRelationSequencesReply{ColumnSequences: val}, nil
+}
+
+func (l *LocalQrouterServer) NextRange(ctx context.Context, req *protos.NextRangeRequest) (*protos.NextRangeReply, error) {
+	val, err := l.mgr.NextRange(ctx, req.Seq, uint64(req.RangeSize))
+	if err != nil {
+		return nil, err
+	}
+	return &protos.NextRangeReply{Left: val.Left, Right: val.Right}, nil
+}
+
+func (l *LocalQrouterServer) CreateUniqueIndex(ctx context.Context, req *protos.CreateUniqueIndexRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.CreateUniqueIndex(ctx, req.DistributionId, distributions.UniqueIndexFromProto(req.Idx))
+}
+
+func (l *LocalQrouterServer) DropUniqueIndex(ctx context.Context, req *protos.DropUniqueIndexRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropUniqueIndex(ctx, req.IdxId)
+}
+
+func (l *LocalQrouterServer) ListDistributionUniqueIndexes(ctx context.Context, req *protos.ListDistributionUniqueIndexesRequest) (*protos.ListUniqueIndexesReply, error) {
+	idxs, err := l.mgr.ListDistributionIndexes(ctx, req.DistributionId)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*protos.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexToProto(idx)
+	}
+	return &protos.ListUniqueIndexesReply{Indexes: res}, nil
+}
+
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
 
 	lqr := &LocalQrouterServer{

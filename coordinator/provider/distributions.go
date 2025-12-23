@@ -170,3 +170,23 @@ func (d *DistributionsServer) ListSequences(ctx context.Context, _ *emptypb.Empt
 	}
 	return &protos.ListSequencesReply{Names: seqs}, nil
 }
+
+func (d *DistributionsServer) CreateUniqueIndex(ctx context.Context, req *protos.CreateUniqueIndexRequest) (*emptypb.Empty, error) {
+	return nil, d.impl.CreateUniqueIndex(ctx, req.DistributionId, distributions.UniqueIndexFromProto(req.Idx))
+}
+
+func (d *DistributionsServer) DropUniqueIndex(ctx context.Context, req *protos.DropUniqueIndexRequest) (*emptypb.Empty, error) {
+	return nil, d.impl.DropUniqueIndex(ctx, req.IdxId)
+}
+
+func (d *DistributionsServer) ListDistributionUniqueIndexes(ctx context.Context, req *protos.ListDistributionUniqueIndexesRequest) (*protos.ListUniqueIndexesReply, error) {
+	idxs, err := d.impl.ListDistributionIndexes(ctx, req.DistributionId)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*protos.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexToProto(idx)
+	}
+	return &protos.ListUniqueIndexesReply{Indexes: res}, nil
+}
