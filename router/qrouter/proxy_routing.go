@@ -248,6 +248,7 @@ func (qr *ProxyQrouter) planQueryV1(
 							if len(rm.ParamRefs) == 0 {
 								return planner.RewriteDistributedRelBatchInsert(rm.Query, shs)
 							}
+							spqrlog.Zero.Info().Int("param refs", len(rm.ParamRefs)).Msg("unable to rewrite query, giving up")
 							return nil, rerrors.ErrComplexQuery
 						}
 					}
