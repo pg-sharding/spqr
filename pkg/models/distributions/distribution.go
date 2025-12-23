@@ -32,7 +32,7 @@ type DistributedRelation struct {
 	DistributionKey       []DistributionKeyEntry
 	ReplicatedRelation    bool
 	ColumnSequenceMapping map[string]string
-	UniqueIndexeByColumn  map[string]*UniqueIndex
+	UniqueIndexesByColumn map[string]*UniqueIndex
 }
 
 func (r *DistributedRelation) QualifiedName() rfqn.RelationFQN {

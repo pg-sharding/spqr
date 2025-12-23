@@ -101,7 +101,7 @@ type QDB interface {
 	AlterReplicatedRelationSchema(ctx context.Context, dsID string, relName string, schemaName string) error
 
 	// Unique indexes
-	CreateUniqueIndex(ctx context.Context, dsID string, idx *UniqueIndex) error
+	CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 	DropUniqueIndex(ctx context.Context, id string) error
 	ListUniqueIndexes(ctx context.Context) (map[string]*UniqueIndex, error)
 

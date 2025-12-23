@@ -22,7 +22,6 @@ type DistributionMgr interface {
 	AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []DistributionKeyEntry) error
 
 	CreateUniqueIndex(ctx context.Context, dsID string, idx *UniqueIndex) error
-	DropUniqueIndex(ctx context.Context, dsID string, idxID string) error
-	ListUniqueIndexes(ctx context.Context) (map[string]*UniqueIndex, error)
+	DropUniqueIndex(ctx context.Context, idxID string) error
 	ListDistributionIndexes(ctx context.Context, dsID string) (map[string]*UniqueIndex, error)
 }

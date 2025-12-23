@@ -1590,7 +1590,7 @@ func (q *EtcdQDB) ListUniqueIndexes(ctx context.Context) (map[string]*UniqueInde
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, dsID string, idx *UniqueIndex) error {
+func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: create unique index")
 

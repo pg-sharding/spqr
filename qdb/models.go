@@ -137,9 +137,10 @@ type ReferenceRelation struct {
 }
 
 type UniqueIndex struct {
-	ID         string            `json:"id"`
-	Relation   *rfqn.RelationFQN `json:"relation"`
-	ColumnName string            `json:"column"`
+	ID             string            `json:"id"`
+	Relation       *rfqn.RelationFQN `json:"relation"`
+	ColumnName     string            `json:"column"`
+	DistributionId string            `json:"distribution_id"`
 }
 
 func NewDistribution(id string, coltypes []string) *Distribution {

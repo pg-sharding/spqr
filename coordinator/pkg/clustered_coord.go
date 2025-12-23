@@ -2228,10 +2228,7 @@ func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relN
 
 			resp, err := cl.AlterReferenceRelationStorage(context.TODO(),
 				&proto.AlterReferenceRelationStorageRequest{
-					Relation: &proto.QualifiedName{
-						RelationName: relName.RelationName,
-						SchemaName:   relName.SchemaName,
-					},
+					Relation: rfqn.RelationFQNToProto(relName),
 					ShardIds: rel.ShardIds,
 				})
 			if err != nil {
@@ -2259,10 +2256,7 @@ func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 		cl := proto.NewReferenceRelationsServiceClient(cc)
 		resp, err := cl.DropReferenceRelations(context.TODO(),
 			&proto.DropReferenceRelationsRequest{
-				Relations: []*proto.QualifiedName{{
-					RelationName: relName.RelationName,
-					SchemaName:   relName.SchemaName,
-				}},
+				Relations: []*proto.QualifiedName{rfqn.RelationFQNToProto(relName)},
 			})
 		if err != nil {
 			return err
@@ -2451,10 +2445,9 @@ func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id 
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		protoRelation := proto.QualifiedName{RelationName: relName.RelationName, SchemaName: relName.SchemaName}
 		resp, err := cl.AlterDistributionDetach(context.TODO(), &proto.AlterDistributionDetachRequest{
 			Id:       id,
-			RelNames: []*proto.QualifiedName{&protoRelation},
+			RelNames: []*proto.QualifiedName{rfqn.RelationFQNToProto(relName)},
 		})
 		if err != nil {
 			return err

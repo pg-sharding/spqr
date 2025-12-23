@@ -1036,7 +1036,7 @@ func (q *MemQDB) ListUniqueIndexes(ctx context.Context) (map[string]*UniqueIndex
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (q *MemQDB) CreateUniqueIndex(ctx context.Context, dsID string, idx *UniqueIndex) error {
+func (q *MemQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error {
 	spqrlog.Zero.Debug().
 		Msg("memqdb: create unique index")
 

@@ -313,11 +313,71 @@ func (x *Distribution) GetRelations() []*DistributedRelation {
 	return nil
 }
 
+type UniqueIndex struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	TableName     *QualifiedName         `protobuf:"bytes,2,opt,name=tableName,proto3" json:"tableName,omitempty"`
+	ColName       string                 `protobuf:"bytes,3,opt,name=colName,proto3" json:"colName,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UniqueIndex) Reset() {
+	*x = UniqueIndex{}
+	mi := &file_protos_distribution_entities_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UniqueIndex) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UniqueIndex) ProtoMessage() {}
+
+func (x *UniqueIndex) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distribution_entities_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UniqueIndex.ProtoReflect.Descriptor instead.
+func (*UniqueIndex) Descriptor() ([]byte, []int) {
+	return file_protos_distribution_entities_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *UniqueIndex) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UniqueIndex) GetTableName() *QualifiedName {
+	if x != nil {
+		return x.TableName
+	}
+	return nil
+}
+
+func (x *UniqueIndex) GetColName() string {
+	if x != nil {
+		return x.ColName
+	}
+	return ""
+}
+
 var File_protos_distribution_entities_proto protoreflect.FileDescriptor
 
 const file_protos_distribution_entities_proto_rawDesc = "" +
 	"\n" +
-	"\"protos/distribution_entities.proto\x12\x04spqr\"M\n" +
+	"\"protos/distribution_entities.proto\x12\x04spqr\x1a\x1bprotos/qualified_name.proto\"M\n" +
 	"\vTypedColRef\x12\x1e\n" +
 	"\n" +
 	"columnName\x18\x01 \x01(\tR\n" +
@@ -344,7 +404,11 @@ const file_protos_distribution_entities_proto_rawDesc = "" +
 	"\fDistribution\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
 	"\vColumnTypes\x18\x02 \x03(\tR\vColumnTypes\x127\n" +
-	"\trelations\x18\x03 \x03(\v2\x19.spqr.DistributedRelationR\trelationsB\fZ\n" +
+	"\trelations\x18\x03 \x03(\v2\x19.spqr.DistributedRelationR\trelations\"j\n" +
+	"\vUniqueIndex\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x121\n" +
+	"\ttableName\x18\x02 \x01(\v2\x13.spqr.QualifiedNameR\ttableName\x12\x18\n" +
+	"\acolName\x18\x03 \x01(\tR\acolNameB\fZ\n" +
 	"spqr/protob\x06proto3"
 
 var (
@@ -359,26 +423,29 @@ func file_protos_distribution_entities_proto_rawDescGZIP() []byte {
 	return file_protos_distribution_entities_proto_rawDescData
 }
 
-var file_protos_distribution_entities_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_protos_distribution_entities_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_protos_distribution_entities_proto_goTypes = []any{
 	(*TypedColRef)(nil),          // 0: spqr.TypedColRef
 	(*RoutingExpr)(nil),          // 1: spqr.RoutingExpr
 	(*DistributionKeyEntry)(nil), // 2: spqr.DistributionKeyEntry
 	(*DistributedRelation)(nil),  // 3: spqr.DistributedRelation
 	(*Distribution)(nil),         // 4: spqr.Distribution
-	nil,                          // 5: spqr.DistributedRelation.SequenceColumnsEntry
+	(*UniqueIndex)(nil),          // 5: spqr.UniqueIndex
+	nil,                          // 6: spqr.DistributedRelation.SequenceColumnsEntry
+	(*QualifiedName)(nil),        // 7: spqr.QualifiedName
 }
 var file_protos_distribution_entities_proto_depIdxs = []int32{
 	0, // 0: spqr.RoutingExpr.colRefs:type_name -> spqr.TypedColRef
 	1, // 1: spqr.DistributionKeyEntry.Expr:type_name -> spqr.RoutingExpr
 	2, // 2: spqr.DistributedRelation.distributionKey:type_name -> spqr.DistributionKeyEntry
-	5, // 3: spqr.DistributedRelation.sequenceColumns:type_name -> spqr.DistributedRelation.SequenceColumnsEntry
+	6, // 3: spqr.DistributedRelation.sequenceColumns:type_name -> spqr.DistributedRelation.SequenceColumnsEntry
 	3, // 4: spqr.Distribution.relations:type_name -> spqr.DistributedRelation
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	7, // 5: spqr.UniqueIndex.tableName:type_name -> spqr.QualifiedName
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_protos_distribution_entities_proto_init() }
@@ -386,13 +453,14 @@ func file_protos_distribution_entities_proto_init() {
 	if File_protos_distribution_entities_proto != nil {
 		return
 	}
+	file_protos_qualified_name_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_distribution_entities_proto_rawDesc), len(file_protos_distribution_entities_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

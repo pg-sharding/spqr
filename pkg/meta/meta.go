@@ -542,17 +542,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		if err != nil {
 			return nil, err
 		}
-		if _, ok := ds.UniqueIndexesByID[stmt.ID]; ok {
-			return nil, fmt.Errorf("unique index with ID \"%s\" already exists", stmt.ID)
-		}
-		rel, ok := ds.Relations[stmt.TableName.RelationName]
-		if !ok {
-			return nil, fmt.Errorf("no relation \"%s\" found in distribution \"%s\"", stmt.TableName.RelationName, ds.Id)
-		}
-		if _, ok := rel.UniqueIndexeByColumn[stmt.Column]; ok {
-			return nil, fmt.Errorf("unique index for table \"%s\", column \"%s\" already exists", stmt.TableName.String(), stmt.Column)
-		}
-		if err := mngr.CreateUniqueIndex(ctx, ds.ID(), &distributions.UniqueIndex{ID: stmt.ID, Relation: rel, ColumnName: stmt.Column}); err != nil {
+		if err := mngr.CreateUniqueIndex(ctx, ds.ID(), &distributions.UniqueIndex{ID: stmt.ID, RelationName: stmt.TableName, ColumnName: stmt.Column}); err != nil {
 			return nil, err
 		}
 
@@ -561,7 +551,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			Raw: [][][]byte{
 				{
 					fmt.Appendf(nil, "index ID -> %s", stmt.ID),
-					fmt.Appendf(nil, "relation name -> %s", rel.GetFullName()),
+					fmt.Appendf(nil, "relation name -> %s", stmt.TableName.String()),
 					fmt.Appendf(nil, "column name -> %s", stmt.Column),
 				},
 			},
