@@ -46,6 +46,7 @@ type MemQDB struct {
 	ColumnSequence       map[string]string                   `json:"column_sequence"`
 	SequenceToValues     map[string]int64                    `json:"sequence_to_values"`
 	TaskGroupMoveTaskID  map[string]string                   `json:"task_group_move_task"`
+	UniqueIndexes        map[string]*UniqueIndex             `json:"unique_indexes"`
 
 	TwoPhaseTx map[string]*TwoPCInfo `json:"two_phase_info"`
 
@@ -78,6 +79,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		TotalKeys:            map[string]int64{},
 		MoveTasks:            map[string]*MoveTask{},
 		TwoPhaseTx:           map[string]*TwoPCInfo{},
+		UniqueIndexes:        map[string]*UniqueIndex{},
 
 		backupPath: backupPath,
 	}, nil
@@ -1029,25 +1031,46 @@ func (q *MemQDB) GetRelationDistribution(_ context.Context, relation *rfqn.Relat
 //                               UNIQUE INDEXES
 // ==============================================================================
 
-func (q *MemQDB) ListUniqueIndexes(ctx context.Context) (map[string]*UniqueIndex, error) {
+func (q *MemQDB) ListUniqueIndexes(_ context.Context) (map[string]*UniqueIndex, error) {
 	spqrlog.Zero.Debug().
 		Msg("memqdb: list unique indexes")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
-	return nil, fmt.Errorf("not implemented")
+	return q.UniqueIndexes, nil
 }
 
-func (q *MemQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error {
+func (q *MemQDB) CreateUniqueIndex(_ context.Context, idx *UniqueIndex) error {
 	spqrlog.Zero.Debug().
 		Msg("memqdb: create unique index")
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	return fmt.Errorf("not implemented")
+	ds, ok := q.Distributions[idx.DistributionId]
+	if !ok {
+		return fmt.Errorf("cannot create unique index: distribution \"%s\" not found", idx.DistributionId)
+	}
+	ds.UniqueIndexes[idx.ID] = idx
+	q.UniqueIndexes[idx.ID] = idx
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexes, idx.ID, idx))
 }
 
-func (q *MemQDB) DropUniqueIndex(ctx context.Context, id string) error {
+func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Msg("memqdb: drop unique index")
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	return fmt.Errorf("not implemented")
+	idx, ok := q.UniqueIndexes[id]
+	if !ok {
+		return fmt.Errorf("unique index \"%s\" not found", id)
+	}
+	ds, ok := q.Distributions[idx.DistributionId]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "unique index \"%s\" belongs to nonexistent distribution \"%s\"", idx.ID, idx.DistributionId)
+	}
+	delete(ds.UniqueIndexes, idx.ID)
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewDeleteCommand(q.UniqueIndexes, idx.ID))
 }
 
 // ==============================================================================
