@@ -1691,6 +1691,10 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 	return nil
 }
 
+func (q *EtcdQDB) ListRelationIndexes(ctx context.Context, relName string) (map[string]*UniqueIndex, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 // ==============================================================================
 //                                    TASKS
 // ==============================================================================

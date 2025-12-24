@@ -39,6 +39,7 @@ const (
 	DistributionService_ListDistributionUniqueIndexes_FullMethodName           = "/spqr.DistributionService/ListDistributionUniqueIndexes"
 	DistributionService_CreateUniqueIndex_FullMethodName                       = "/spqr.DistributionService/CreateUniqueIndex"
 	DistributionService_DropUniqueIndex_FullMethodName                         = "/spqr.DistributionService/DropUniqueIndex"
+	DistributionService_ListRelationUniqueIndexes_FullMethodName               = "/spqr.DistributionService/ListRelationUniqueIndexes"
 )
 
 // DistributionServiceClient is the client API for DistributionService service.
@@ -64,6 +65,7 @@ type DistributionServiceClient interface {
 	ListDistributionUniqueIndexes(ctx context.Context, in *ListDistributionUniqueIndexesRequest, opts ...grpc.CallOption) (*ListUniqueIndexesReply, error)
 	CreateUniqueIndex(ctx context.Context, in *CreateUniqueIndexRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DropUniqueIndex(ctx context.Context, in *DropUniqueIndexRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListRelationUniqueIndexes(ctx context.Context, in *ListRelationUniqueIndexesRequest, opts ...grpc.CallOption) (*ListUniqueIndexesReply, error)
 }
 
 type distributionServiceClient struct {
@@ -264,6 +266,16 @@ func (c *distributionServiceClient) DropUniqueIndex(ctx context.Context, in *Dro
 	return out, nil
 }
 
+func (c *distributionServiceClient) ListRelationUniqueIndexes(ctx context.Context, in *ListRelationUniqueIndexesRequest, opts ...grpc.CallOption) (*ListUniqueIndexesReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListUniqueIndexesReply)
+	err := c.cc.Invoke(ctx, DistributionService_ListRelationUniqueIndexes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DistributionServiceServer is the server API for DistributionService service.
 // All implementations must embed UnimplementedDistributionServiceServer
 // for forward compatibility.
@@ -287,6 +299,7 @@ type DistributionServiceServer interface {
 	ListDistributionUniqueIndexes(context.Context, *ListDistributionUniqueIndexesRequest) (*ListUniqueIndexesReply, error)
 	CreateUniqueIndex(context.Context, *CreateUniqueIndexRequest) (*emptypb.Empty, error)
 	DropUniqueIndex(context.Context, *DropUniqueIndexRequest) (*emptypb.Empty, error)
+	ListRelationUniqueIndexes(context.Context, *ListRelationUniqueIndexesRequest) (*ListUniqueIndexesReply, error)
 	mustEmbedUnimplementedDistributionServiceServer()
 }
 
@@ -353,6 +366,9 @@ func (UnimplementedDistributionServiceServer) CreateUniqueIndex(context.Context,
 }
 func (UnimplementedDistributionServiceServer) DropUniqueIndex(context.Context, *DropUniqueIndexRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropUniqueIndex not implemented")
+}
+func (UnimplementedDistributionServiceServer) ListRelationUniqueIndexes(context.Context, *ListRelationUniqueIndexesRequest) (*ListUniqueIndexesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRelationUniqueIndexes not implemented")
 }
 func (UnimplementedDistributionServiceServer) mustEmbedUnimplementedDistributionServiceServer() {}
 func (UnimplementedDistributionServiceServer) testEmbeddedByValue()                             {}
@@ -717,6 +733,24 @@ func _DistributionService_DropUniqueIndex_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DistributionService_ListRelationUniqueIndexes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRelationUniqueIndexesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistributionServiceServer).ListRelationUniqueIndexes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistributionService_ListRelationUniqueIndexes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistributionServiceServer).ListRelationUniqueIndexes(ctx, req.(*ListRelationUniqueIndexesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DistributionService_ServiceDesc is the grpc.ServiceDesc for DistributionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -799,6 +833,10 @@ var DistributionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DropUniqueIndex",
 			Handler:    _DistributionService_DropUniqueIndex_Handler,
+		},
+		{
+			MethodName: "ListRelationUniqueIndexes",
+			Handler:    _DistributionService_ListRelationUniqueIndexes_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

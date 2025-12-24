@@ -1073,6 +1073,10 @@ func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewDeleteCommand(q.UniqueIndexes, idx.ID))
 }
 
+func (q *MemQDB) ListRelationIndexes(_ context.Context, relName string) (map[string]*UniqueIndex, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 // ==============================================================================
 //                                   TASKS
 // ==============================================================================

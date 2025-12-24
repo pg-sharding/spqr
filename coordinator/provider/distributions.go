@@ -210,3 +210,15 @@ func (d *DistributionsServer) ListDistributionUniqueIndexes(ctx context.Context,
 	}
 	return &protos.ListUniqueIndexesReply{Indexes: res}, nil
 }
+
+func (d *DistributionsServer) ListRelationUniqueIndexes(ctx context.Context, req *protos.ListRelationUniqueIndexesRequest) (*protos.ListUniqueIndexesReply, error) {
+	idxs, err := d.impl.ListRelationIndexes(ctx, req.RelationName)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*protos.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexToProto(idx)
+	}
+	return &protos.ListUniqueIndexesReply{Indexes: res}, nil
+}

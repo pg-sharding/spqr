@@ -123,6 +123,10 @@ message ListUniqueIndexesReply {
   map<string, UniqueIndex> indexes = 1;
 }
 
+message ListRelationUniqueIndexesRequest {
+  string relationName = 1;
+}
+
 service DistributionService {
   rpc CreateDistribution(CreateDistributionRequest) returns (CreateDistributionReply) {}
   rpc DropDistribution(DropDistributionRequest) returns (google.protobuf.Empty) {}
@@ -149,4 +153,5 @@ service DistributionService {
   rpc ListDistributionUniqueIndexes(ListDistributionUniqueIndexesRequest) returns (ListUniqueIndexesReply) {}
   rpc CreateUniqueIndex(CreateUniqueIndexRequest) returns (google.protobuf.Empty) {}
   rpc DropUniqueIndex(DropUniqueIndexRequest) returns (google.protobuf.Empty) {}
+  rpc ListRelationUniqueIndexes(ListRelationUniqueIndexesRequest) returns (ListUniqueIndexesReply) {}
 }

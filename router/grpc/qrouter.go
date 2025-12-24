@@ -694,8 +694,20 @@ func (l *LocalQrouterServer) DropUniqueIndex(ctx context.Context, req *protos.Dr
 	return nil, l.mgr.DropUniqueIndex(ctx, req.IdxId)
 }
 
-func (l *LocalQrouterServer) ListUniqueIndexes(ctx context.Context, req *emptypb.Empty) (*protos.ListUniqueIndexesReply, error) {
+func (l *LocalQrouterServer) ListUniqueIndexes(ctx context.Context, _ *emptypb.Empty) (*protos.ListUniqueIndexesReply, error) {
 	idxs, err := l.mgr.ListUniqueIndexes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*protos.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexToProto(idx)
+	}
+	return &protos.ListUniqueIndexesReply{Indexes: res}, nil
+}
+
+func (l *LocalQrouterServer) ListRelationUniqueIndexes(ctx context.Context, req *protos.ListRelationUniqueIndexesRequest) (*protos.ListUniqueIndexesReply, error) {
+	idxs, err := l.mgr.ListRelationIndexes(ctx, req.RelationName)
 	if err != nil {
 		return nil, err
 	}

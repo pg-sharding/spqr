@@ -1172,3 +1172,16 @@ func (lc *Coordinator) ListUniqueIndexes(ctx context.Context) (map[string]*distr
 	}
 	return res, nil
 }
+
+// ListRelationIndexes implements meta.EntityMgr.
+func (lc *Coordinator) ListRelationIndexes(ctx context.Context, relName string) (map[string]*distributions.UniqueIndex, error) {
+	idxs, err := lc.qdb.ListRelationIndexes(ctx, relName)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*distributions.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexFromDB(idx)
+	}
+	return res, nil
+}
