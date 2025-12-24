@@ -764,6 +764,20 @@ func (pi *PSQLInteractor) Users(ctx context.Context) error {
 	return pi.CompleteMsg(len(berules))
 }
 
+func (pi *PSQLInteractor) UniqueIndexes(idxs map[string]*distributions.UniqueIndex) error {
+	if err := pi.WriteHeader("ID", "Relation name", "Column"); err != nil {
+		return err
+	}
+
+	for _, idx := range idxs {
+		if err := pi.WriteDataRow(idx.ID, idx.RelationName.RelationName, idx.ColumnName); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // ReplyNotice sends notice message to client
 func (pi *PSQLInteractor) ReplyNotice(ctx context.Context, msg string) error {
 	return pi.cl.ReplyNotice(msg)

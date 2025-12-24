@@ -1318,3 +1318,17 @@ func (a *Adapter) ListDistributionIndexes(ctx context.Context, dsId string) (map
 	}
 	return res, nil
 }
+
+// ListDistributionIndexes implements meta.EntityMgr.
+func (a *Adapter) ListUniqueIndexes(ctx context.Context) (map[string]*distributions.UniqueIndex, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
+	idxs, err := c.ListUniqueIndexes(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*distributions.UniqueIndex)
+	for id, idx := range idxs.Indexes {
+		res[id] = distributions.UniqueIndexFromProto(idx)
+	}
+	return res, nil
+}

@@ -731,6 +731,21 @@ func (mr *MockEntityMgrMockRecorder) ListShards(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListShards", reflect.TypeOf((*MockEntityMgr)(nil).ListShards), ctx)
 }
 
+// ListUniqueIndexes mocks base method.
+func (m *MockEntityMgr) ListUniqueIndexes(ctx context.Context) (map[string]*distributions.UniqueIndex, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListUniqueIndexes", ctx)
+	ret0, _ := ret[0].(map[string]*distributions.UniqueIndex)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListUniqueIndexes indicates an expected call of ListUniqueIndexes.
+func (mr *MockEntityMgrMockRecorder) ListUniqueIndexes(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUniqueIndexes", reflect.TypeOf((*MockEntityMgr)(nil).ListUniqueIndexes), ctx)
+}
+
 // LockKeyRange mocks base method.
 func (m *MockEntityMgr) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, error) {
 	m.ctrl.T.Helper()

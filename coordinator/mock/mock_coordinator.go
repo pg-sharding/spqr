@@ -747,6 +747,21 @@ func (mr *MockCoordinatorMockRecorder) ListShards(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListShards", reflect.TypeOf((*MockCoordinator)(nil).ListShards), ctx)
 }
 
+// ListUniqueIndexes mocks base method.
+func (m *MockCoordinator) ListUniqueIndexes(ctx context.Context) (map[string]*distributions.UniqueIndex, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListUniqueIndexes", ctx)
+	ret0, _ := ret[0].(map[string]*distributions.UniqueIndex)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListUniqueIndexes indicates an expected call of ListUniqueIndexes.
+func (mr *MockCoordinatorMockRecorder) ListUniqueIndexes(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUniqueIndexes", reflect.TypeOf((*MockCoordinator)(nil).ListUniqueIndexes), ctx)
+}
+
 // LockKeyRange mocks base method.
 func (m *MockCoordinator) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, error) {
 	m.ctrl.T.Helper()

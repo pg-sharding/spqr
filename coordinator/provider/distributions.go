@@ -187,6 +187,18 @@ func (d *DistributionsServer) DropUniqueIndex(ctx context.Context, req *protos.D
 	return nil, d.impl.DropUniqueIndex(ctx, req.IdxId)
 }
 
+func (d *DistributionsServer) ListUniqueIndexes(ctx context.Context, _ *emptypb.Empty) (*protos.ListUniqueIndexesReply, error) {
+	idxs, err := d.impl.ListUniqueIndexes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*protos.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexToProto(idx)
+	}
+	return &protos.ListUniqueIndexesReply{Indexes: res}, nil
+}
+
 func (d *DistributionsServer) ListDistributionUniqueIndexes(ctx context.Context, req *protos.ListDistributionUniqueIndexesRequest) (*protos.ListUniqueIndexesReply, error) {
 	idxs, err := d.impl.ListDistributionIndexes(ctx, req.DistributionId)
 	if err != nil {

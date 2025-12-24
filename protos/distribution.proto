@@ -145,6 +145,7 @@ service DistributionService {
   rpc ListRelationSequences(ListRelationSequencesRequest) returns (ListRelationSequencesReply) {}
   rpc DropSequence(DropSequenceRequest) returns (google.protobuf.Empty) {}
 
+  rpc ListUniqueIndexes(google.protobuf.Empty) returns (ListUniqueIndexesReply) {}
   rpc ListDistributionUniqueIndexes(ListDistributionUniqueIndexesRequest) returns (ListUniqueIndexesReply) {}
   rpc CreateUniqueIndex(CreateUniqueIndexRequest) returns (google.protobuf.Empty) {}
   rpc DropUniqueIndex(DropUniqueIndexRequest) returns (google.protobuf.Empty) {}
