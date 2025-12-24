@@ -20,20 +20,30 @@ CREATE UNIQUE INDEX ui1 FOR TABLE t COLUMN col_uniq;
 (3 rows)
 
 CREATE UNIQUE INDEX ui_same_col FOR TABLE t COLUMN col_uniq;
-ERROR: 
-CREATE UNIQUE INDEX ui_same_col FOR TABLE t COLUMN col_uniq;
-   create unique index   
--------------------------
- index ID -> ui1_2
+ERROR:  unique index for table "t", column "col_uniq" already exists
+CREATE UNIQUE INDEX ui2 FOR TABLE t COLUMN col_uniq_2;
+    create unique index    
+---------------------------
+ index ID -> ui2
  relation name -> t
  column name -> col_uniq_2
 (3 rows)
 
 DROP UNIQUE INDEX ui1;
+  drop unique index  
+---------------------
+ unique index -> ui1
+(1 row)
+
 DROP UNIQUE INDEX ui2;
+  drop unique index  
+---------------------
+ unique index -> ui2
+(1 row)
 
 DROP DISTRIBUTION ds1 CASCADE;
    drop distribution    
 ------------------------
  distribution id -> ds1
 (1 row)
+

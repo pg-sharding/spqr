@@ -401,6 +401,7 @@ const (
 	TsaCacheStr           = "tsa_cache"
 	Users                 = "users"
 	MoveTaskStr           = "move_task"
+	UniqueIndexesStr      = "unique_indexes"
 )
 
 // not SHOW target

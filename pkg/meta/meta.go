@@ -137,7 +137,7 @@ func processDrop(ctx context.Context,
 		}
 
 		tts.Raw = [][][]byte{
-			[][]byte{
+			{
 				fmt.Appendf(nil, "relation -> %s", stmt.ID),
 			},
 		}
@@ -181,9 +181,14 @@ func processDrop(ctx context.Context,
 				return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID)
 			}
 
+			for _, idx := range ds.UniqueIndexesByID {
+				if err := mngr.DropUniqueIndex(ctx, idx.ID); err != nil {
+					return nil, err
+				}
+			}
+
 			for _, rel := range ds.Relations {
 				qualifiedName := &rfqn.RelationFQN{RelationName: rel.Name, SchemaName: rel.SchemaName}
-				// TODO: check for unique indexes on relation detachment
 				if err := mngr.AlterDistributionDetach(ctx, ds.Id, qualifiedName); err != nil {
 					return nil, err
 				}
@@ -308,6 +313,18 @@ func processDrop(ctx context.Context,
 		}
 
 		return tts, nil
+	case *spqrparser.UniqueIndexSelector:
+		if err := mngr.DropUniqueIndex(ctx, stmt.ID); err != nil {
+			return nil, err
+		}
+		return &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("drop unique index"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "unique index -> %s", stmt.ID),
+				},
+			},
+		}, nil
 	default:
 		return nil, fmt.Errorf("unknown drop statement")
 	}

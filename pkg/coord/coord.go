@@ -770,6 +770,17 @@ func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 // Returns:
 // - error: an error if the alteration operation fails.
 func (qc *Coordinator) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
+	ds, err := qc.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
+	rel, ok := ds.Relations[relName.RelationName]
+	if !ok {
+		return fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", relName.RelationName, ds.Id)
+	}
+	if len(rel.UniqueIndexesByColumn) > 0 {
+		return fmt.Errorf("cannot detach relation \"%s\" because there are unique indexes depending on it\nHINT: Use DROP ... CASCADE to drop unique indexes automatically", relName.RelationName)
+	}
 	return qc.qdb.AlterDistributionDetach(ctx, id, relName)
 }
 
