@@ -355,7 +355,7 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 func UniqueIndexesVirtualRelationScan(idToidxs map[string]*distributions.UniqueIndex) *tupleslot.TupleTableSlot {
 
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("ID", "Relation name", "Column"),
+		Desc: GetVPHeader("ID", "Relation name", "Column", "Column type"),
 	}
 
 	/* XXX: make sort support in outer abstraction layer */
@@ -369,7 +369,7 @@ func UniqueIndexesVirtualRelationScan(idToidxs map[string]*distributions.UniqueI
 
 	for _, id := range ids {
 		idx := idToidxs[id]
-		tts.WriteDataRow(idx.ID, idx.RelationName.RelationName, idx.ColumnName)
+		tts.WriteDataRow(idx.ID, idx.RelationName.RelationName, idx.ColumnName, idx.ColType)
 	}
 	return tts
 }

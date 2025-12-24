@@ -206,7 +206,7 @@ func randomHex(n int) (string, error) {
 %token<str> SECONDS WAIT PANIC
 
 /* types */
-%token<str> VARCHAR INTEGER INT TYPES UUID
+%token<str> VARCHAR INTEGER INT TYPES UUID TYPE
 
 /* ICP */
 %token<str> CONTROL POINT
@@ -1021,13 +1021,14 @@ create_stmt:
 		}
 	}
 	|
-	CREATE UNIQUE INDEX any_id FOR table_or_relation qualified_name COLUMN any_id
+	CREATE UNIQUE INDEX any_id ON qualified_name COLUMN any_id TYPE col_types_elem
 	{
 		$$ = &Create{
 			Element: &UniqueIndexDefinition{
 				ID:        $4,
-				TableName: $7,
-				Column:    $9,
+				TableName: $6,
+				Column:    $8,
+				ColType:   $10,
 			},
 		}
 	}

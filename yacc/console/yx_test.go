@@ -2022,7 +2022,7 @@ func TestUniqueIndex(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "CREATE UNIQUE INDEX ui1 FOR TABLE t COLUMN id",
+			query: "CREATE UNIQUE INDEX ui1 ON t COLUMN id TYPE integer",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.UniqueIndexDefinition{
 					ID: "uil",

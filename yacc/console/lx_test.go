@@ -372,17 +372,18 @@ func TestSimpleLex(t *testing.T) {
 			},
 		},
 		{
-			query: "CREATE UNIQUE INDEX ui1 FOR TABLE t COLUMN sec_id",
+			query: "CREATE UNIQUE INDEX ui1 ON t COLUMN sec_id TYPE integer",
 			exp: []int{
 				spqrparser.CREATE,
 				spqrparser.UNIQUE,
 				spqrparser.INDEX,
 				spqrparser.IDENT,
-				spqrparser.FOR,
-				spqrparser.TABLE,
+				spqrparser.ON,
 				spqrparser.IDENT,
 				spqrparser.COLUMN,
 				spqrparser.IDENT,
+				spqrparser.TYPE,
+				spqrparser.INTEGER,
 			},
 		},
 	} {

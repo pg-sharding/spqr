@@ -102,6 +102,7 @@ type UniqueIndexDefinition struct {
 	ID        string
 	TableName *rfqn.RelationFQN
 	Column    string
+	ColType   string
 }
 
 type AutoIncrementEntry struct {

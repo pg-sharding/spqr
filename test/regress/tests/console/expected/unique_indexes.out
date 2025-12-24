@@ -11,29 +11,31 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;
  distribution id -> ds1
 (2 rows)
 
-CREATE UNIQUE INDEX ui1 FOR TABLE t COLUMN col_uniq;
+CREATE UNIQUE INDEX ui1 ON t COLUMN col_uniq TYPE integer;
    create unique index   
 -------------------------
  index ID -> ui1
  relation name -> t
  column name -> col_uniq
-(3 rows)
+ column type -> integer
+(4 rows)
 
-CREATE UNIQUE INDEX ui_same_col FOR TABLE t COLUMN col_uniq;
+CREATE UNIQUE INDEX ui_same_col ON t COLUMN col_uniq TYPE integer;
 ERROR:  unique index for table "t", column "col_uniq" already exists
-CREATE UNIQUE INDEX ui2 FOR TABLE t COLUMN col_uniq_2;
+CREATE UNIQUE INDEX ui2 ON t COLUMN col_uniq_2 TYPE integer;
     create unique index    
 ---------------------------
  index ID -> ui2
  relation name -> t
  column name -> col_uniq_2
-(3 rows)
+ column type -> integer
+(4 rows)
 
 SHOW unique_indexes;
- ID  | Relation name |   Column   
------+---------------+------------
- ui1 | t             | col_uniq
- ui2 | t             | col_uniq_2
+ ID  | Relation name |   Column   | Column type 
+-----+---------------+------------+-------------
+ ui1 | t             | col_uniq   | integer
+ ui2 | t             | col_uniq_2 | integer
 (2 rows)
 
 DROP UNIQUE INDEX ui1;
@@ -43,9 +45,9 @@ DROP UNIQUE INDEX ui1;
 (1 row)
 
 SHOW unique_indexes;
- ID  | Relation name |   Column   
------+---------------+------------
- ui2 | t             | col_uniq_2
+ ID  | Relation name |   Column   | Column type 
+-----+---------------+------------+-------------
+ ui2 | t             | col_uniq_2 | integer
 (1 row)
 
 DROP UNIQUE INDEX ui2;

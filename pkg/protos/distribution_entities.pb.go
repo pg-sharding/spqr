@@ -326,6 +326,7 @@ type UniqueIndex struct {
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	TableName     *QualifiedName         `protobuf:"bytes,2,opt,name=tableName,proto3" json:"tableName,omitempty"`
 	ColName       string                 `protobuf:"bytes,3,opt,name=colName,proto3" json:"colName,omitempty"`
+	ColType       string                 `protobuf:"bytes,4,opt,name=colType,proto3" json:"colType,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -381,6 +382,13 @@ func (x *UniqueIndex) GetColName() string {
 	return ""
 }
 
+func (x *UniqueIndex) GetColType() string {
+	if x != nil {
+		return x.ColType
+	}
+	return ""
+}
+
 var File_protos_distribution_entities_proto protoreflect.FileDescriptor
 
 const file_protos_distribution_entities_proto_rawDesc = "" +
@@ -413,11 +421,12 @@ const file_protos_distribution_entities_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
 	"\vColumnTypes\x18\x02 \x03(\tR\vColumnTypes\x127\n" +
 	"\trelations\x18\x03 \x03(\v2\x19.spqr.DistributedRelationR\trelations\x127\n" +
-	"\runiqueIndexes\x18\x04 \x03(\v2\x11.spqr.UniqueIndexR\runiqueIndexes\"j\n" +
+	"\runiqueIndexes\x18\x04 \x03(\v2\x11.spqr.UniqueIndexR\runiqueIndexes\"\x84\x01\n" +
 	"\vUniqueIndex\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x121\n" +
 	"\ttableName\x18\x02 \x01(\v2\x13.spqr.QualifiedNameR\ttableName\x12\x18\n" +
-	"\acolName\x18\x03 \x01(\tR\acolNameB\fZ\n" +
+	"\acolName\x18\x03 \x01(\tR\acolName\x12\x18\n" +
+	"\acolType\x18\x04 \x01(\tR\acolTypeB\fZ\n" +
 	"spqr/protob\x06proto3"
 
 var (

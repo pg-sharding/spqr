@@ -140,6 +140,7 @@ type UniqueIndex struct {
 	ID             string            `json:"id"`
 	Relation       *rfqn.RelationFQN `json:"relation"`
 	ColumnName     string            `json:"column"`
+	ColType     string            `json:"column_type"`
 	DistributionId string            `json:"distribution_id"`
 }
 
