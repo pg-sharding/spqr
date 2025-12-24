@@ -183,10 +183,12 @@ func processDrop(ctx context.Context,
 
 			for _, rel := range ds.Relations {
 				qualifiedName := &rfqn.RelationFQN{RelationName: rel.Name, SchemaName: rel.SchemaName}
+				// TODO: check for unique indexes on relation detachment
 				if err := mngr.AlterDistributionDetach(ctx, ds.Id, qualifiedName); err != nil {
 					return nil, err
 				}
 			}
+
 			if err := mngr.DropDistribution(ctx, stmt.ID); err != nil {
 				return nil, err
 			}
@@ -551,7 +553,11 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			Raw: [][][]byte{
 				{
 					fmt.Appendf(nil, "index ID -> %s", stmt.ID),
+				},
+				{
 					fmt.Appendf(nil, "relation name -> %s", stmt.TableName.String()),
+				},
+				{
 					fmt.Appendf(nil, "column name -> %s", stmt.Column),
 				},
 			},

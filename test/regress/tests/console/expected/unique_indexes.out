@@ -1,0 +1,39 @@
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;
+      attach table      
+------------------------
+ relation name   -> t
+ distribution id -> ds1
+(2 rows)
+
+CREATE UNIQUE INDEX ui1 FOR TABLE t COLUMN col_uniq;
+   create unique index   
+-------------------------
+ index ID -> ui1
+ relation name -> t
+ column name -> col_uniq
+(3 rows)
+
+CREATE UNIQUE INDEX ui_same_col FOR TABLE t COLUMN col_uniq;
+ERROR: 
+CREATE UNIQUE INDEX ui_same_col FOR TABLE t COLUMN col_uniq;
+   create unique index   
+-------------------------
+ index ID -> ui1_2
+ relation name -> t
+ column name -> col_uniq_2
+(3 rows)
+
+DROP UNIQUE INDEX ui1;
+DROP UNIQUE INDEX ui2;
+
+DROP DISTRIBUTION ds1 CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
