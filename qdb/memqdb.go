@@ -1545,7 +1545,7 @@ func (q *MemQDB) CommitTransaction(ctx context.Context, transaction *QdbTransact
 		return fmt.Errorf("invalid transaction %s: %w", transaction.Id(), err)
 	}
 	if transaction.Id() != q.activeTransaction {
-		return fmt.Errorf("transaction '%s' cann't be committed", transaction.Id())
+		return fmt.Errorf("transaction '%s' can't be committed", transaction.Id())
 	}
 	if memOperations, err := q.packMemqdbCommands(transaction.commands); err != nil {
 		return err

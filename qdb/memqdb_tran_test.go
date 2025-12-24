@@ -168,7 +168,7 @@ func TestMemQdbTransactions(t *testing.T) {
 			is.NoError(err)
 
 			err = memqdb.CommitTransaction(ctx, tran1)
-			is.EqualError(err, fmt.Sprintf("transaction '%s' cann't be committed", tran1.Id()))
+			is.EqualError(err, fmt.Sprintf("transaction '%s' can't be committed", tran1.Id()))
 		})
 		t.Run("fails invalid tran", func(t *testing.T) {
 			memqdb, err := NewMemQDB("")
