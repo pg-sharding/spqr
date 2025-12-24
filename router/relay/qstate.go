@@ -80,7 +80,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 		/* If user supplied COMMIT in already-errored tx, simply rollback
 		* and end tx block. */
 		if _, ok := state.(parser.ParseStateTXCommit); ok {
-			/* It is crutual here to change state to trigger correct
+			/* It is crucual here to change state to trigger correct
 			* execution path ProcQueryAdvanced, that is, single-slice scatter-out
 			* query (no 2pc commit management!) */
 			state = &parser.ParseStateTXRollback{}
