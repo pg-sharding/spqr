@@ -1254,6 +1254,12 @@ func ProcessShowExtended(ctx context.Context, stmt *spqrparser.Show, mngr Entity
 
 		cacheEntries := ci.TsaCacheEntries()
 		tts = engine.TSAVirtualRelationScan(cacheEntries)
+	case spqrparser.UniqueIndexesStr:
+		idxs, err := mngr.ListUniqueIndexes(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts = engine.UniqueIndexesVirtualRelationScan(idxs)
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -1426,12 +1432,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.MoveStats(ctx, stats)
 	case spqrparser.Users:
 		return cli.Users(ctx)
-	case spqrparser.UniqueIndexesStr:
-		idxs, err := mngr.ListUniqueIndexes(ctx)
-		if err != nil {
-			return err
-		}
-		return cli.UniqueIndexes(idxs)
 	default:
 		tts, err := ProcessShowExtended(ctx, stmt, mngr, ci, ro)
 		if err != nil {

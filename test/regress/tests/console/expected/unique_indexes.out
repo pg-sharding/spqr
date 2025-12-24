@@ -30,7 +30,11 @@ CREATE UNIQUE INDEX ui2 FOR TABLE t COLUMN col_uniq_2;
 (3 rows)
 
 SHOW unique_indexes;
-...
+ ID  | Relation name |   Column   
+-----+---------------+------------
+ ui1 | t             | col_uniq
+ ui2 | t             | col_uniq_2
+(2 rows)
 
 DROP UNIQUE INDEX ui1;
   drop unique index  
@@ -39,7 +43,10 @@ DROP UNIQUE INDEX ui1;
 (1 row)
 
 SHOW unique_indexes;
-...
+ ID  | Relation name |   Column   
+-----+---------------+------------
+ ui2 | t             | col_uniq_2
+(1 row)
 
 DROP UNIQUE INDEX ui2;
   drop unique index  
