@@ -1641,7 +1641,9 @@ func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 	if err != nil {
 		return err
 	}
-	tx.Append(dsCommand)
+	if err = tx.Append(dsCommand); err != nil {
+		return err
+	}
 	idxCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexNodePath(idx.ID), string(idxJson))
 	if err != nil {
 		return err
@@ -1652,10 +1654,12 @@ func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 		return err
 	}
 
-	tx.Append([]QdbStatement{
+	if err = tx.Append([]QdbStatement{
 		*idxCommand,
 		*idxByRelCommand,
-	})
+	}); err != nil {
+		return err
+	}
 	return q.CommitTransaction(ctx, tx)
 }
 
@@ -1704,7 +1708,9 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	tx.Append(dsCommand)
+	if err = tx.Append(dsCommand); err != nil {
+		return err
+	}
 	idxCommand, err := NewQdbStatement(CMD_DELETE, uniqueIndexNodePath(idx.ID), "")
 	if err != nil {
 		return err
@@ -1715,10 +1721,12 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 		return err
 	}
 
-	tx.Append([]QdbStatement{
+	if err := tx.Append([]QdbStatement{
 		*idxCommand,
 		*idxByRelCommand,
-	})
+	}); err != nil {
+		return err
+	}
 	return q.CommitTransaction(ctx, tx)
 }
 
