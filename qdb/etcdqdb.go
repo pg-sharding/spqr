@@ -1611,6 +1611,14 @@ func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: create unique index")
 
+	tx, err := NewTransaction()
+	if err != nil {
+		return err
+	}
+	if err := q.BeginTransaction(ctx, tx); err != nil {
+		return err
+	}
+
 	ds, err := q.GetDistribution(ctx, idx.DistributionId)
 	if err != nil {
 		return err
@@ -1620,11 +1628,7 @@ func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 	if err != nil {
 		return err
 	}
-	dsJson, err := json.Marshal(ds)
-	if err != nil {
-		return err
-	}
-	currRelIdxs, version, err := q.listRelationIndexesWithVersion(ctx, idx.Relation.RelationName)
+	currRelIdxs, _, err := q.listRelationIndexesWithVersion(ctx, idx.Relation.RelationName)
 	if err != nil {
 		return err
 	}
@@ -1633,61 +1637,39 @@ func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 	if err != nil {
 		return err
 	}
-	res, err := q.cli.Txn(ctx).
-		If(
-			clientv3.Compare(clientv3.Version(uniqueIndexNodePath(idx.ID)), "=", 0),
-			clientv3.Compare(clientv3.Version(distributionNodePath(ds.ID)), "=", ds.Version),
-			clientv3.Compare(clientv3.Version(uniqueIndexesByRelationNodePath(idx.Relation.RelationName)), "=", version),
-		).
-		Then(
-			clientv3.OpPut(distributionNodePath(ds.ID), string(dsJson)),
-			clientv3.OpPut(uniqueIndexNodePath(idx.ID), string(idxJson)),
-			clientv3.OpPut(uniqueIndexesByRelationNodePath(idx.Relation.RelationName), string(idxsByRelJson)),
-		).
-		Else(
-			clientv3.OpGet(distributionNodePath(ds.ID)),
-			clientv3.OpGet(uniqueIndexNodePath(idx.ID)),
-			clientv3.OpGet(uniqueIndexesByRelationNodePath(idx.Relation.RelationName)),
-		).
-		Commit()
+	dsCommand, err := q.CreateDistribution(ctx, ds)
 	if err != nil {
-		return fmt.Errorf("failed to run transaction: %s", err)
+		return err
 	}
-	if !res.Succeeded {
-		if len(res.Responses) != 3 {
-			return fmt.Errorf("unexpected response count in create unique index: %d", len(res.Responses))
-		}
-		if res.Responses[0].GetResponseRange().Count > 0 {
-			return fmt.Errorf("unique index \"%s\" already exists in QDB", idx.ID)
-		}
-		if res.Responses[1].GetResponseRange().Count == 1 {
-			for _, kv := range res.Responses[0].GetResponseRange().Kvs {
-				if kv.Version != ds.Version {
-					return fmt.Errorf("unexpected distribution record \"%s\" version: expected %d, got %d", kv.Key, ds.Version, kv.Version)
-				}
-			}
-		}
-		if res.Responses[1].GetResponseRange().Count == 0 {
-			return fmt.Errorf("unexpected deletion of distribution record \"%s\"", distributionNodePath(ds.ID))
-		}
-		if res.Responses[2].GetResponseRange().Count == 1 {
-			for _, kv := range res.Responses[0].GetResponseRange().Kvs {
-				if kv.Version != ds.Version {
-					return fmt.Errorf("unexpected indexes by relation record \"%s\" version: expected %d, got %d", kv.Key, version, kv.Version)
-				}
-			}
-		}
-		if res.Responses[2].GetResponseRange().Count == 0 {
-			return fmt.Errorf("unexpected deletion of indexes by relation record \"%s\"", uniqueIndexesByRelationNodePath(idx.Relation.RelationName))
-		}
-		return fmt.Errorf("create unique index transaction condition failed: unknown error")
+	tx.Append(dsCommand)
+	idxCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexNodePath(idx.ID), string(idxJson))
+	if err != nil {
+		return err
 	}
-	return nil
+
+	idxByRelCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexesByRelationNodePath(idx.Relation.RelationName), string(idxsByRelJson))
+	if err != nil {
+		return err
+	}
+
+	tx.Append([]QdbStatement{
+		*idxCommand,
+		*idxByRelCommand,
+	})
+	return q.CommitTransaction(ctx, tx)
 }
 
 func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: drop unique index")
+
+	tx, err := NewTransaction()
+	if err != nil {
+		return err
+	}
+	if err := q.BeginTransaction(ctx, tx); err != nil {
+		return err
+	}
 
 	resp, err := q.cli.Get(ctx, uniqueIndexNodePath(id))
 	if err != nil {
@@ -1702,18 +1684,13 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 	if err = json.Unmarshal(resp.Kvs[0].Value, &idx); err != nil {
 		return err
 	}
-	idxVersion := resp.Kvs[0].Version
 	ds, err := q.GetDistribution(ctx, idx.DistributionId)
 	if err != nil {
 		return err
 	}
 	delete(ds.UniqueIndexes, id)
-	dsJson, err := json.Marshal(ds)
-	if err != nil {
-		return err
-	}
 
-	currRelIdxs, relIdxVersion, err := q.listRelationIndexesWithVersion(ctx, idx.Relation.RelationName)
+	currRelIdxs, _, err := q.listRelationIndexesWithVersion(ctx, idx.Relation.RelationName)
 	if err != nil {
 		return err
 	}
@@ -1723,25 +1700,26 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 		return err
 	}
 
-	txResp, err := q.cli.Txn(ctx).
-		If(
-			clientv3.Compare(clientv3.Version(uniqueIndexNodePath(id)), "=", idxVersion),
-			clientv3.Compare(clientv3.Version(distributionNodePath(ds.ID)), "=", ds.Version),
-			clientv3.Compare(clientv3.Version(uniqueIndexesByRelationNodePath(idx.Relation.RelationName)), "=", relIdxVersion),
-		).
-		Then(
-			clientv3.OpDelete(uniqueIndexNodePath(id)),
-			clientv3.OpPut(distributionNodePath(ds.ID), string(dsJson)),
-			clientv3.OpPut(uniqueIndexesByRelationNodePath(idx.Relation.RelationName), string(idxsByRelJson)),
-		).
-		Commit()
+	dsCommand, err := q.CreateDistribution(ctx, ds)
 	if err != nil {
 		return err
 	}
-	if !txResp.Succeeded {
-		return fmt.Errorf("cannot drop unique index: distribution modified")
+	tx.Append(dsCommand)
+	idxCommand, err := NewQdbStatement(CMD_DELETE, uniqueIndexNodePath(idx.ID), "")
+	if err != nil {
+		return err
 	}
-	return nil
+
+	idxByRelCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexesByRelationNodePath(idx.Relation.RelationName), string(idxsByRelJson))
+	if err != nil {
+		return err
+	}
+
+	tx.Append([]QdbStatement{
+		*idxCommand,
+		*idxByRelCommand,
+	})
+	return q.CommitTransaction(ctx, tx)
 }
 
 func (q *EtcdQDB) ListRelationIndexes(ctx context.Context, relName string) (map[string]*UniqueIndex, error) {
@@ -2534,7 +2512,7 @@ func (q *EtcdQDB) CommitTransaction(ctx context.Context, transaction *QdbTransac
 		return fmt.Errorf("failed to commit transaction: %s", transaction.Id())
 	}
 	if !resp.Succeeded {
-		return fmt.Errorf("transaction '%s' cann't be committed", transaction.Id())
+		return fmt.Errorf("transaction '%s' can't be committed", transaction.Id())
 	}
 	return nil
 }
