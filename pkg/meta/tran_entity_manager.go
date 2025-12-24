@@ -28,7 +28,7 @@ var _ EntityMgr = &TranEntityManager{}
 // NewTranEntityManager creates a new instance of the TranEntityManager struct.
 //
 // Parameters:
-// - conmngrn (EntityMgr): Entity manager which really changes meta
+// - mngr (EntityMgr): Entity manager which really changes meta
 //
 // Returns:
 // - a pointer to an TranEntityManager object.
