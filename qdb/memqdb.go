@@ -47,6 +47,7 @@ type MemQDB struct {
 	SequenceToValues     map[string]int64                    `json:"sequence_to_values"`
 	TaskGroupMoveTaskID  map[string]string                   `json:"task_group_move_task"`
 	UniqueIndexes        map[string]*UniqueIndex             `json:"unique_indexes"`
+	UniqueIndexesByRel   map[string]map[string]*UniqueIndex  `json:"unique_indexes_by_relation"`
 
 	TwoPhaseTx map[string]*TwoPCInfo `json:"two_phase_info"`
 
@@ -80,6 +81,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		MoveTasks:            map[string]*MoveTask{},
 		TwoPhaseTx:           map[string]*TwoPCInfo{},
 		UniqueIndexes:        map[string]*UniqueIndex{},
+		UniqueIndexesByRel:   map[string]map[string]*UniqueIndex{},
 
 		backupPath: backupPath,
 	}, nil
@@ -1051,8 +1053,15 @@ func (q *MemQDB) CreateUniqueIndex(_ context.Context, idx *UniqueIndex) error {
 		return fmt.Errorf("cannot create unique index: distribution \"%s\" not found", idx.DistributionId)
 	}
 	ds.UniqueIndexes[idx.ID] = idx
+
+	idxs, ok := q.UniqueIndexesByRel[idx.Relation.RelationName]
+	if !ok {
+		idxs = make(map[string]*UniqueIndex)
+	}
+	idxs[idx.ColumnName] = idx
+
 	q.UniqueIndexes[idx.ID] = idx
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexes, idx.ID, idx))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexes, idx.ID, idx), NewUpdateCommand(q.UniqueIndexesByRel, idx.Relation.RelationName, idxs))
 }
 
 func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
@@ -1065,12 +1074,20 @@ func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
 	if !ok {
 		return fmt.Errorf("unique index \"%s\" not found", id)
 	}
+
 	ds, ok := q.Distributions[idx.DistributionId]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "unique index \"%s\" belongs to nonexistent distribution \"%s\"", idx.ID, idx.DistributionId)
 	}
 	delete(ds.UniqueIndexes, idx.ID)
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewDeleteCommand(q.UniqueIndexes, idx.ID))
+
+	idxs, ok := q.UniqueIndexesByRel[idx.Relation.RelationName]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "unique index \"%s\" belongs to relation \"%s\", but index record not found", idx.ID, idx.Relation.RelationName)
+	}
+	delete(idxs, idx.ColumnName)
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexesByRel, idx.Relation.RelationName, idxs), NewDeleteCommand(q.UniqueIndexes, idx.ID))
 }
 
 func (q *MemQDB) ListRelationIndexes(_ context.Context, relName string) (map[string]*UniqueIndex, error) {
