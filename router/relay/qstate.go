@@ -77,7 +77,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	txbefore := rst.QueryExecutor().TxStatus()
 	if txbefore == txstatus.TXERR {
 
-		/* If user supplied COMMIT in alread-errored tx, simply rollback
+		/* If user supplied COMMIT in already-errored tx, simply rollback
 		* and end tx block. */
 		if _, ok := state.(parser.ParseStateTXCommit); ok {
 			/* It is crutual here to change state to trigger correct
