@@ -1468,6 +1468,9 @@ ORDER BY (%s) %s;
 		// Avoid splitting key range by its own bound when moving the whole range
 		boundList[len(boundList)-1] = keyRange.Raw()
 	}
+	if qc.bounds == nil {
+		qc.bounds = make(map[string][][][]byte)
+	}
 	qc.bounds[taskGroup.ID] = boundList
 	qc.index[taskGroup.ID] = 1
 	return boundList[0], nil
