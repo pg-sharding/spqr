@@ -284,7 +284,7 @@ func TestTransactions(t *testing.T) {
 			is.NoError(err)
 
 			err = db.CommitTransaction(ctx, tran1)
-			is.EqualError(err, fmt.Sprintf("transaction '%s' cann't be committed", tran1.Id()))
+			is.EqualError(err, fmt.Sprintf("transaction '%s' can't be committed", tran1.Id()))
 		})
 		t.Run("suddenly there was a boxwood", func(t *testing.T) {
 			tran1, err := qdb.NewTransaction()
@@ -300,7 +300,7 @@ func TestTransactions(t *testing.T) {
 			is.NoError(err)
 
 			err = db.CommitTransaction(ctx, tran1)
-			is.EqualError(err, fmt.Sprintf("transaction '%s' cann't be committed", tran1.Id()))
+			is.EqualError(err, fmt.Sprintf("transaction '%s' can't be committed", tran1.Id()))
 		})
 
 		t.Run("fails invalid tran", func(t *testing.T) {

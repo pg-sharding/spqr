@@ -94,10 +94,7 @@ func (a *Adapter) SyncReferenceRelations(ctx context.Context, ids []*rfqn.Relati
 
 	qRels := []*proto.QualifiedName{}
 	for _, r := range ids {
-		qRels = append(qRels, &proto.QualifiedName{
-			RelationName: r.RelationName,
-			SchemaName:   r.SchemaName,
-		})
+		qRels = append(qRels, rfqn.RelationFQNToProto(r))
 	}
 
 	_, err := c.SyncReferenceRelations(ctx, &proto.SyncReferenceRelationsRequest{
@@ -128,10 +125,7 @@ func (a *Adapter) DropReferenceRelation(ctx context.Context, relName *rfqn.Relat
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
 	_, err := c.DropReferenceRelations(ctx, &proto.DropReferenceRelationsRequest{
 		Relations: []*proto.QualifiedName{
-			{
-				RelationName: relName.RelationName,
-				SchemaName:   relName.SchemaName,
-			},
+			rfqn.RelationFQNToProto(relName),
 		},
 	})
 	return spqrerror.CleanGrpcError(err)
@@ -950,10 +944,9 @@ func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, i
 // - error: An error if the detachment fails, otherwise nil.
 func (a *Adapter) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
 	c := proto.NewDistributionServiceClient(a.conn)
-	protoRelationName := proto.QualifiedName{RelationName: relName.RelationName, SchemaName: relName.SchemaName}
 	_, err := c.AlterDistributionDetach(ctx, &proto.AlterDistributionDetachRequest{
 		Id:       id,
-		RelNames: []*proto.QualifiedName{&protoRelationName},
+		RelNames: []*proto.QualifiedName{rfqn.RelationFQNToProto(relName)},
 	})
 
 	return err
@@ -1289,4 +1282,67 @@ func (a *Adapter) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error)
 			return transactionMeta, nil
 		}
 	}
+}
+
+// CreateUniqueIndex implements meta.EntityMgr.
+func (a *Adapter) CreateUniqueIndex(ctx context.Context, dsId string, idx *distributions.UniqueIndex) error {
+	c := proto.NewDistributionServiceClient(a.conn)
+	_, err := c.CreateUniqueIndex(ctx, &proto.CreateUniqueIndexRequest{
+		DistributionId: dsId,
+		Idx:            distributions.UniqueIndexToProto(idx),
+	})
+	return err
+}
+
+// DropUniqueIndex implements meta.EntityMgr.
+func (a *Adapter) DropUniqueIndex(ctx context.Context, idxId string) error {
+	c := proto.NewDistributionServiceClient(a.conn)
+	_, err := c.DropUniqueIndex(ctx, &proto.DropUniqueIndexRequest{
+		IdxId: idxId,
+	})
+	return err
+}
+
+// ListDistributionIndexes implements meta.EntityMgr.
+func (a *Adapter) ListDistributionIndexes(ctx context.Context, dsId string) (map[string]*distributions.UniqueIndex, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
+	idxs, err := c.ListDistributionUniqueIndexes(ctx, &proto.ListDistributionUniqueIndexesRequest{
+		DistributionId: dsId,
+	})
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*distributions.UniqueIndex)
+	for id, idx := range idxs.Indexes {
+		res[id] = distributions.UniqueIndexFromProto(idx)
+	}
+	return res, nil
+}
+
+// ListDistributionIndexes implements meta.EntityMgr.
+func (a *Adapter) ListUniqueIndexes(ctx context.Context) (map[string]*distributions.UniqueIndex, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
+	idxs, err := c.ListUniqueIndexes(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*distributions.UniqueIndex)
+	for id, idx := range idxs.Indexes {
+		res[id] = distributions.UniqueIndexFromProto(idx)
+	}
+	return res, nil
+}
+
+// ListDistributionIndexes implements meta.EntityMgr.
+func (a *Adapter) ListRelationIndexes(ctx context.Context, relName string) (map[string]*distributions.UniqueIndex, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
+	idxs, err := c.ListRelationUniqueIndexes(ctx, &proto.ListRelationUniqueIndexesRequest{RelationName: relName})
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*distributions.UniqueIndex)
+	for id, idx := range idxs.Indexes {
+		res[id] = distributions.UniqueIndexFromProto(idx)
+	}
+	return res, nil
 }

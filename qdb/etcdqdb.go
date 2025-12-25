@@ -54,24 +54,26 @@ func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 }
 
 const (
-	keyRangesNamespace             = "/keyranges/"
-	distributionNamespace          = "/distributions/"
-	keyRangeMovesNamespace         = "/krmoves/"
-	routersNamespace               = "/routers/"
-	shardsNamespace                = "/shards/"
-	relationMappingNamespace       = "/relation_mappings/"
-	taskGroupsNamespace            = "/move_task_groups/"
-	moveTaskNamespace              = "/move_tasks/"
-	redistributeTaskPath           = "/redistribute_task/"
-	balancerTaskPath               = "/balancer_task/"
-	transactionNamespace           = "/transfer_txs/"
-	sequenceNamespace              = "/sequences/"
-	referenceRelationsNamespace    = "/reference_relations"
-	columnSequenceMappingNamespace = "/column_sequence_mappings/"
-	lockNamespace                  = "/lock"
-	totalKeysNamespace             = "/total_keys/"
-	stopMoveTaskGroupNamespace     = "/stop_move_task_group/"
-	moveTaskByGroupNamespace       = "/group_move_tasks/"
+	keyRangesNamespace               = "/keyranges/"
+	distributionNamespace            = "/distributions/"
+	keyRangeMovesNamespace           = "/krmoves/"
+	routersNamespace                 = "/routers/"
+	shardsNamespace                  = "/shards/"
+	relationMappingNamespace         = "/relation_mappings/"
+	taskGroupsNamespace              = "/move_task_groups/"
+	moveTaskNamespace                = "/move_tasks/"
+	redistributeTaskPath             = "/redistribute_task/"
+	balancerTaskPath                 = "/balancer_task/"
+	transactionNamespace             = "/transfer_txs/"
+	sequenceNamespace                = "/sequences/"
+	referenceRelationsNamespace      = "/reference_relations"
+	uniqueIndexesNamespace           = "/unique_indexes"
+	columnSequenceMappingNamespace   = "/column_sequence_mappings/"
+	lockNamespace                    = "/lock"
+	totalKeysNamespace               = "/total_keys/"
+	stopMoveTaskGroupNamespace       = "/stop_move_task_group/"
+	moveTaskByGroupNamespace         = "/group_move_tasks/"
+	uniqueIndexesByRelationNamespace = "/relation_unique_indexes"
 
 	CoordKeepAliveTtl  = 3
 	coordLockKey       = "coordinator_exists"
@@ -103,6 +105,10 @@ func distributionNodePath(key string) string {
 
 func referenceRelationNodePath(key string) string {
 	return path.Join(referenceRelationsNamespace, key)
+}
+
+func uniqueIndexNodePath(key string) string {
+	return path.Join(uniqueIndexesNamespace, key)
 }
 
 func relationMappingNodePath(key string) string {
@@ -151,6 +157,10 @@ func moveTaskByGroupNodePath(taskGroupID string) string {
 
 func keyRangeLockNamespace() string {
 	return path.Join(lockNamespace, keyRangesNamespace)
+}
+
+func uniqueIndexesByRelationNodePath(relName string) string {
+	return path.Join(uniqueIndexesByRelationNamespace, relName)
 }
 
 func (q *EtcdQDB) Client() *clientv3.Client {
@@ -1575,6 +1585,176 @@ func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName *rfqn.Rel
 }
 
 // ==============================================================================
+//                               UNIQUE INDEXES
+// ==============================================================================
+
+func (q *EtcdQDB) ListUniqueIndexes(ctx context.Context) (map[string]*UniqueIndex, error) {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: list unique indexes")
+
+	resp, err := q.cli.Get(ctx, uniqueIndexesNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*UniqueIndex)
+	for _, kv := range resp.Kvs {
+		var idx *UniqueIndex
+		if err := json.Unmarshal(kv.Value, &idx); err != nil {
+			return nil, err
+		}
+		res[idx.ID] = idx
+	}
+	return res, nil
+}
+
+func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: create unique index")
+
+	tx, err := NewTransaction()
+	if err != nil {
+		return err
+	}
+	if err := q.BeginTransaction(ctx, tx); err != nil {
+		return err
+	}
+
+	ds, err := q.GetDistribution(ctx, idx.DistributionId)
+	if err != nil {
+		return err
+	}
+	ds.UniqueIndexes[idx.ID] = idx
+	idxJson, err := json.Marshal(idx)
+	if err != nil {
+		return err
+	}
+	currRelIdxs, _, err := q.listRelationIndexesWithVersion(ctx, idx.Relation.RelationName)
+	if err != nil {
+		return err
+	}
+	currRelIdxs[idx.ColumnName] = idx
+	idxsByRelJson, err := json.Marshal(currRelIdxs)
+	if err != nil {
+		return err
+	}
+	dsCommand, err := q.CreateDistribution(ctx, ds)
+	if err != nil {
+		return err
+	}
+	if err = tx.Append(dsCommand); err != nil {
+		return err
+	}
+	idxCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexNodePath(idx.ID), string(idxJson))
+	if err != nil {
+		return err
+	}
+
+	idxByRelCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexesByRelationNodePath(idx.Relation.RelationName), string(idxsByRelJson))
+	if err != nil {
+		return err
+	}
+
+	if err = tx.Append([]QdbStatement{
+		*idxCommand,
+		*idxByRelCommand,
+	}); err != nil {
+		return err
+	}
+	return q.CommitTransaction(ctx, tx)
+}
+
+func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: drop unique index")
+
+	tx, err := NewTransaction()
+	if err != nil {
+		return err
+	}
+	if err := q.BeginTransaction(ctx, tx); err != nil {
+		return err
+	}
+
+	resp, err := q.cli.Get(ctx, uniqueIndexNodePath(id))
+	if err != nil {
+		return err
+	}
+
+	if len(resp.Kvs) == 0 {
+		return fmt.Errorf("unique index \"%s\" not found", id)
+	}
+
+	var idx *UniqueIndex
+	if err = json.Unmarshal(resp.Kvs[0].Value, &idx); err != nil {
+		return err
+	}
+	ds, err := q.GetDistribution(ctx, idx.DistributionId)
+	if err != nil {
+		return err
+	}
+	delete(ds.UniqueIndexes, id)
+
+	currRelIdxs, _, err := q.listRelationIndexesWithVersion(ctx, idx.Relation.RelationName)
+	if err != nil {
+		return err
+	}
+	delete(currRelIdxs, idx.ColumnName)
+	idxsByRelJson, err := json.Marshal(currRelIdxs)
+	if err != nil {
+		return err
+	}
+
+	dsCommand, err := q.CreateDistribution(ctx, ds)
+	if err != nil {
+		return err
+	}
+	if err = tx.Append(dsCommand); err != nil {
+		return err
+	}
+	idxCommand, err := NewQdbStatement(CMD_DELETE, uniqueIndexNodePath(idx.ID), "")
+	if err != nil {
+		return err
+	}
+
+	idxByRelCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexesByRelationNodePath(idx.Relation.RelationName), string(idxsByRelJson))
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Append([]QdbStatement{
+		*idxCommand,
+		*idxByRelCommand,
+	}); err != nil {
+		return err
+	}
+	return q.CommitTransaction(ctx, tx)
+}
+
+func (q *EtcdQDB) ListRelationIndexes(ctx context.Context, relName string) (map[string]*UniqueIndex, error) {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: list relation unique indexes")
+
+	idxs, _, err := q.listRelationIndexesWithVersion(ctx, relName)
+	return idxs, err
+}
+
+func (q *EtcdQDB) listRelationIndexesWithVersion(ctx context.Context, relName string) (map[string]*UniqueIndex, int64, error) {
+	resp, err := q.cli.Get(ctx, uniqueIndexesByRelationNodePath(relName))
+	if err != nil {
+		return nil, 0, err
+	}
+	if resp.Count == 0 {
+		return map[string]*UniqueIndex{}, 0, nil
+	}
+
+	idxs := make(map[string]*UniqueIndex)
+	if err = json.Unmarshal(resp.Kvs[0].Value, &idxs); err != nil {
+		return nil, 0, err
+	}
+	return idxs, resp.Kvs[0].Version, nil
+}
+
+// ==============================================================================
 //                                    TASKS
 // ==============================================================================
 
@@ -2340,7 +2520,7 @@ func (q *EtcdQDB) CommitTransaction(ctx context.Context, transaction *QdbTransac
 		return fmt.Errorf("failed to commit transaction: %s", transaction.Id())
 	}
 	if !resp.Succeeded {
-		return fmt.Errorf("transaction '%s' cann't be committed", transaction.Id())
+		return fmt.Errorf("transaction '%s' can't be committed", transaction.Id())
 	}
 	return nil
 }

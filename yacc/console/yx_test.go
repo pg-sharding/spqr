@@ -2010,3 +2010,46 @@ func TestICP(t *testing.T) {
 		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
+
+func TestUniqueIndex(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "CREATE UNIQUE INDEX ui1 ON t COLUMN id TYPE integer",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.UniqueIndexDefinition{
+					ID: "ui1",
+					TableName: &rfqn.RelationFQN{
+						RelationName: "t",
+					},
+					Column:  "id",
+					ColType: "integer",
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "DROP UNIQUE INDEX ui1",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.UniqueIndexSelector{
+					ID: "ui1",
+				},
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}

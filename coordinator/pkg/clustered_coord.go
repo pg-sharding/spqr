@@ -2194,7 +2194,7 @@ func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context,
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewReferenceRelationsServiceClient(cc)
-		resp, err := cl.CreateReferenceRelations(context.TODO(),
+		resp, err := cl.CreateReferenceRelations(ctx,
 			&proto.CreateReferenceRelationsRequest{
 				Relation: rrelation.RefRelationToProto(r),
 				Entries:  rrelation.AutoIncrementEntriesToProto(entry),
@@ -2226,12 +2226,9 @@ func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relN
 				return err
 			}
 
-			resp, err := cl.AlterReferenceRelationStorage(context.TODO(),
+			resp, err := cl.AlterReferenceRelationStorage(ctx,
 				&proto.AlterReferenceRelationStorageRequest{
-					Relation: &proto.QualifiedName{
-						RelationName: relName.RelationName,
-						SchemaName:   relName.SchemaName,
-					},
+					Relation: rfqn.RelationFQNToProto(relName),
 					ShardIds: rel.ShardIds,
 				})
 			if err != nil {
@@ -2257,12 +2254,9 @@ func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewReferenceRelationsServiceClient(cc)
-		resp, err := cl.DropReferenceRelations(context.TODO(),
+		resp, err := cl.DropReferenceRelations(ctx,
 			&proto.DropReferenceRelationsRequest{
-				Relations: []*proto.QualifiedName{{
-					RelationName: relName.RelationName,
-					SchemaName:   relName.SchemaName,
-				}},
+				Relations: []*proto.QualifiedName{rfqn.RelationFQNToProto(relName)},
 			})
 		if err != nil {
 			return err
@@ -2302,7 +2296,7 @@ func (qc *ClusteredCoordinator) DropDistribution(ctx context.Context, id string)
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.DropDistribution(context.TODO(), &proto.DropDistributionRequest{
+		resp, err := cl.DropDistribution(ctx, &proto.DropDistributionRequest{
 			Ids: []string{id},
 		})
 		if err != nil {
@@ -2325,7 +2319,7 @@ func (qc *ClusteredCoordinator) AlterDistributionAttach(ctx context.Context, id 
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.AlterDistributionAttach(context.TODO(), &proto.AlterDistributionAttachRequest{
+		resp, err := cl.AlterDistributionAttach(ctx, &proto.AlterDistributionAttachRequest{
 			Id: id,
 			Relations: func() []*proto.DistributedRelation {
 				res := make([]*proto.DistributedRelation, len(rels))
@@ -2355,7 +2349,7 @@ func (qc *ClusteredCoordinator) AlterDistributedRelation(ctx context.Context, id
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.AlterDistributedRelation(context.TODO(), &proto.AlterDistributedRelationRequest{
+		resp, err := cl.AlterDistributedRelation(ctx, &proto.AlterDistributedRelationRequest{
 			Id:       id,
 			Relation: distributions.DistributedRelationToProto(rel),
 		})
@@ -2379,7 +2373,7 @@ func (qc *ClusteredCoordinator) AlterDistributedRelationSchema(ctx context.Conte
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.AlterDistributedRelationSchema(context.TODO(), &proto.AlterDistributedRelationSchemaRequest{
+		resp, err := cl.AlterDistributedRelationSchema(ctx, &proto.AlterDistributedRelationSchemaRequest{
 			Id:           id,
 			RelationName: relName,
 			SchemaName:   schemaName,
@@ -2404,7 +2398,7 @@ func (qc *ClusteredCoordinator) AlterDistributedRelationDistributionKey(ctx cont
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.AlterDistributedRelationDistributionKey(context.TODO(), &proto.AlterDistributedRelationDistributionKeyRequest{
+		resp, err := cl.AlterDistributedRelationDistributionKey(ctx, &proto.AlterDistributedRelationDistributionKeyRequest{
 			Id:              id,
 			RelationName:    relName,
 			DistributionKey: distributions.DistributionKeyToProto(distributionKey),
@@ -2426,7 +2420,7 @@ func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string
 	}
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.DropSequence(context.TODO(), &proto.DropSequenceRequest{
+		resp, err := cl.DropSequence(ctx, &proto.DropSequenceRequest{
 			Name:  seqName,
 			Force: force,
 		})
@@ -2451,10 +2445,9 @@ func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id 
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		protoRelation := proto.QualifiedName{RelationName: relName.RelationName, SchemaName: relName.SchemaName}
-		resp, err := cl.AlterDistributionDetach(context.TODO(), &proto.AlterDistributionDetachRequest{
+		resp, err := cl.AlterDistributionDetach(ctx, &proto.AlterDistributionDetachRequest{
 			Id:       id,
-			RelNames: []*proto.QualifiedName{&protoRelation},
+			RelNames: []*proto.QualifiedName{rfqn.RelationFQNToProto(relName)},
 		})
 		if err != nil {
 			return err
@@ -2518,4 +2511,49 @@ func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtr
 
 func (qc *ClusteredCoordinator) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error) {
 	return qc.Coordinator.BeginTran(ctx)
+}
+
+func (qc *ClusteredCoordinator) CreateUniqueIndex(ctx context.Context, dsId string, idx *distributions.UniqueIndex) error {
+	if err := qc.Coordinator.CreateUniqueIndex(ctx, dsId, idx); err != nil {
+		return err
+	}
+
+	req := &proto.CreateUniqueIndexRequest{
+		DistributionId: dsId,
+		Idx:            distributions.UniqueIndexToProto(idx),
+	}
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := proto.NewDistributionServiceClient(cc)
+		resp, err := cl.CreateUniqueIndex(ctx, req)
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("create unique index response")
+		return nil
+	})
+}
+
+func (qc *ClusteredCoordinator) DropUniqueIndex(ctx context.Context, idxId string) error {
+	if err := qc.Coordinator.DropUniqueIndex(ctx, idxId); err != nil {
+		return err
+	}
+
+	req := &proto.DropUniqueIndexRequest{
+		IdxId: idxId,
+	}
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := proto.NewDistributionServiceClient(cc)
+		resp, err := cl.DropUniqueIndex(ctx, req)
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("drop unique index response")
+		return nil
+	})
 }

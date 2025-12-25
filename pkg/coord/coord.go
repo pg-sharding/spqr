@@ -770,6 +770,17 @@ func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 // Returns:
 // - error: an error if the alteration operation fails.
 func (qc *Coordinator) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
+	ds, err := qc.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
+	rel, ok := ds.Relations[relName.RelationName]
+	if !ok {
+		return fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", relName.RelationName, ds.Id)
+	}
+	if len(rel.UniqueIndexesByColumn) > 0 {
+		return fmt.Errorf("cannot detach relation \"%s\" because there are unique indexes depending on it\nHINT: Use DROP ... CASCADE to drop unique indexes automatically", relName.RelationName)
+	}
 	return qc.qdb.AlterDistributionDetach(ctx, id, relName)
 }
 
@@ -1108,4 +1119,69 @@ func (lc *Coordinator) BeginTran(ctx context.Context) (*mtran.MetaTransaction, e
 		}
 		return mtran.NewMetaTransaction(*qdbTran), nil
 	}
+}
+
+// CreateUniqueIndex implements meta.EntityMgr.
+func (lc *Coordinator) CreateUniqueIndex(ctx context.Context, dsId string, idx *distributions.UniqueIndex) error {
+	ds, err := lc.GetRelationDistribution(ctx, idx.RelationName)
+	if err != nil {
+		return err
+	}
+	if _, ok := ds.UniqueIndexesByID[idx.ID]; ok {
+		return fmt.Errorf("unique index with ID \"%s\" already exists", idx.ID)
+	}
+	rel, ok := ds.Relations[idx.RelationName.RelationName]
+	if !ok {
+		return fmt.Errorf("no relation \"%s\" found in distribution \"%s\"", idx.RelationName.RelationName, ds.Id)
+	}
+	if _, ok := rel.UniqueIndexesByColumn[idx.ColumnName]; ok {
+		return fmt.Errorf("unique index for table \"%s\", column \"%s\" already exists", idx.RelationName.String(), idx.ColumnName)
+	}
+	return lc.qdb.CreateUniqueIndex(ctx, distributions.UniqueIndexToDB(dsId, idx))
+}
+
+// DropUniqueIndex implements meta.EntityMgr.
+func (lc *Coordinator) DropUniqueIndex(ctx context.Context, idxId string) error {
+	return lc.qdb.DropUniqueIndex(ctx, idxId)
+}
+
+// ListDistributionIndexes implements meta.EntityMgr.
+func (lc *Coordinator) ListDistributionIndexes(ctx context.Context, dsId string) (map[string]*distributions.UniqueIndex, error) {
+	idxs, err := lc.qdb.ListUniqueIndexes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*distributions.UniqueIndex)
+	for id, idx := range idxs {
+		if idx.DistributionId == dsId {
+			res[id] = distributions.UniqueIndexFromDB(idx)
+		}
+	}
+	return res, nil
+}
+
+// ListDistributionIndexes implements meta.EntityMgr.
+func (lc *Coordinator) ListUniqueIndexes(ctx context.Context) (map[string]*distributions.UniqueIndex, error) {
+	idxs, err := lc.qdb.ListUniqueIndexes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*distributions.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexFromDB(idx)
+	}
+	return res, nil
+}
+
+// ListRelationIndexes implements meta.EntityMgr.
+func (lc *Coordinator) ListRelationIndexes(ctx context.Context, relName string) (map[string]*distributions.UniqueIndex, error) {
+	idxs, err := lc.qdb.ListRelationIndexes(ctx, relName)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*distributions.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexFromDB(idx)
+	}
+	return res, nil
 }

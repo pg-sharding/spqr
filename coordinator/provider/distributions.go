@@ -79,7 +79,7 @@ func (d *DistributionsServer) AlterDistributionAttach(ctx context.Context, req *
 	res := make([]*distributions.DistributedRelation, len(req.GetRelations()))
 	for i, rel := range req.GetRelations() {
 		var err error
-		res[i], err = distributions.DistributedRelationFromProto(rel)
+		res[i], err = distributions.DistributedRelationFromProto(rel, map[string]*distributions.UniqueIndex{})
 		if err != nil {
 			return nil, err
 		}
@@ -99,11 +99,19 @@ func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *
 }
 
 func (d *DistributionsServer) AlterDistributedRelation(ctx context.Context, req *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
-	ds, err := distributions.DistributedRelationFromProto(req.GetRelation())
+	ds, err := d.impl.GetRelationDistribution(ctx, &rfqn.RelationFQN{RelationName: req.Relation.Name, SchemaName: req.Relation.SchemaName})
 	if err != nil {
 		return nil, err
 	}
-	return nil, d.impl.AlterDistributedRelation(ctx, req.GetId(), ds)
+	curRel, ok := ds.Relations[req.Relation.Name]
+	if !ok {
+		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", req.Relation.Name, ds.Id)
+	}
+	rel, err := distributions.DistributedRelationFromProto(req.GetRelation(), curRel.UniqueIndexesByColumn)
+	if err != nil {
+		return nil, err
+	}
+	return nil, d.impl.AlterDistributedRelation(ctx, req.GetId(), rel)
 }
 
 func (d *DistributionsServer) AlterDistributedRelationSchema(ctx context.Context, req *protos.AlterDistributedRelationSchemaRequest) (*emptypb.Empty, error) {
@@ -169,4 +177,48 @@ func (d *DistributionsServer) ListSequences(ctx context.Context, _ *emptypb.Empt
 		return nil, err
 	}
 	return &protos.ListSequencesReply{Names: seqs}, nil
+}
+
+func (d *DistributionsServer) CreateUniqueIndex(ctx context.Context, req *protos.CreateUniqueIndexRequest) (*emptypb.Empty, error) {
+	return nil, d.impl.CreateUniqueIndex(ctx, req.DistributionId, distributions.UniqueIndexFromProto(req.Idx))
+}
+
+func (d *DistributionsServer) DropUniqueIndex(ctx context.Context, req *protos.DropUniqueIndexRequest) (*emptypb.Empty, error) {
+	return nil, d.impl.DropUniqueIndex(ctx, req.IdxId)
+}
+
+func (d *DistributionsServer) ListUniqueIndexes(ctx context.Context, _ *emptypb.Empty) (*protos.ListUniqueIndexesReply, error) {
+	idxs, err := d.impl.ListUniqueIndexes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*protos.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexToProto(idx)
+	}
+	return &protos.ListUniqueIndexesReply{Indexes: res}, nil
+}
+
+func (d *DistributionsServer) ListDistributionUniqueIndexes(ctx context.Context, req *protos.ListDistributionUniqueIndexesRequest) (*protos.ListUniqueIndexesReply, error) {
+	idxs, err := d.impl.ListDistributionIndexes(ctx, req.DistributionId)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*protos.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexToProto(idx)
+	}
+	return &protos.ListUniqueIndexesReply{Indexes: res}, nil
+}
+
+func (d *DistributionsServer) ListRelationUniqueIndexes(ctx context.Context, req *protos.ListRelationUniqueIndexesRequest) (*protos.ListUniqueIndexesReply, error) {
+	idxs, err := d.impl.ListRelationIndexes(ctx, req.RelationName)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*protos.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexToProto(idx)
+	}
+	return &protos.ListUniqueIndexesReply{Indexes: res}, nil
 }
