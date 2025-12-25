@@ -103,12 +103,12 @@ func HostsVirtualRelationScan(shards []*topology.DataShard, ihc map[string]tsa.C
 func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.TupleTableSlot {
 
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("table name", "schema version", "shards", "column sequence mapping"),
+		Desc: GetVPHeader("table name", "schema name", "schema version", "shards", "column sequence mapping"),
 	}
 	for _, r := range rrs {
-
 		tts.Raw = append(tts.Raw, [][]byte{
 			[]byte(r.TableName),
+			[]byte(r.GetSchema()),
 			fmt.Appendf(nil, "%d", r.SchemaVersion),
 			fmt.Appendf(nil, "%+v", r.ShardIds),
 			fmt.Appendf(nil, "%+v", r.ColumnSequenceMapping),
