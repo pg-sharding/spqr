@@ -787,7 +787,6 @@ Feature: Redistribution test
     When I run SQL on host "coordinator" with timeout "150" seconds
     """
     ALTER DISTRIBUTION ds1 ALTER RELATION xMove SCHEMA my_schema;
-    ALTER DISTRIBUTION ds1 DETACH RELATION xMove2;
     REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 100 APPLY;
     """
     Then command return code should be "0"
