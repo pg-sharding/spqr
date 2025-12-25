@@ -81,6 +81,13 @@ DETAIL:  Key (id)=(51) already exists.
 SELECT * FROM tt WHERE id = 10;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
+-- test ending tx block with COMMIT
+BEGIN;
+SELECT 1/0 /* __spqr__.execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ERROR:  division by zero
+COMMIT;
+NOTICE: send query to shard(s) : sh1
 DROP TABLE tt;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console

@@ -76,8 +76,20 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 
 	txbefore := rst.QueryExecutor().TxStatus()
 	if txbefore == txstatus.TXERR {
-		if _, ok := state.(parser.ParseStateTXRollback); !ok {
-			return nil, rst.Client().ReplyErrWithTxStatus(errAbortedTx, txstatus.TXERR)
+
+		/* If user supplied COMMIT in already-errored tx, simply rollback
+		* and end tx block. */
+		if _, ok := state.(parser.ParseStateTXCommit); ok {
+			/* It is necessary here to change state to trigger correct
+			* execution path ProcQueryAdvanced, that is, single-slice scatter-out
+			* query (no 2pc commit management!) */
+			state = &parser.ParseStateTXRollback{}
+			/* We will actually send COMMIT as use command to shards, do not
+			* override `query` */
+		} else {
+			if _, ok := state.(parser.ParseStateTXRollback); !ok {
+				return nil, rst.Client().ReplyErrWithTxStatus(errAbortedTx, txstatus.TXERR)
+			}
 		}
 	}
 

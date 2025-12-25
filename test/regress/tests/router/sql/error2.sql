@@ -41,6 +41,12 @@ INSERT INTO tt (id, data) VALUES (51, 'duplicate_shard2');
 SELECT * FROM tt WHERE id = 10;
 ROLLBACK;
 
+
+-- test ending tx block with COMMIT
+BEGIN;
+SELECT 1/0 /* __spqr__.execute_on: sh1 */;
+COMMIT;
+
 DROP TABLE tt;
 
 \c spqr-console
