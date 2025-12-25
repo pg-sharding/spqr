@@ -250,8 +250,8 @@ type ClusteredCoordinator struct {
 	cache        *cache.SchemaCache
 	acquiredLock bool
 
-	bounds [][][]byte
-	index  int
+	bounds map[string][][][]byte
+	index  map[string]int
 
 	routerConnCache map[string]*grpc.ClientConn
 	routerConnMutex sync.RWMutex
@@ -419,8 +419,8 @@ func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*ClusteredCoor
 		tlsconfig:       tlsconfig,
 		rmgr:            rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
 		acquiredLock:    false,
-		bounds:          make([][][]byte, 0),
-		index:           0,
+		bounds:          make(map[string][][][]byte, 0),
+		index:           make(map[string]int),
 		routerConnCache: make(map[string]*grpc.ClientConn),
 	}, nil
 }
@@ -1282,12 +1282,14 @@ func (*ClusteredCoordinator) getBiggestRelation(relCount map[string]int64, total
 }
 
 func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, ds *distributions.Distribution) ([][]byte, error) {
-	if qc.bounds != nil && qc.index < len(qc.bounds) {
-		qc.index++
-		return qc.bounds[qc.index-1], nil
+	if qc.bounds != nil {
+		if groupBounds, ok := qc.bounds[taskGroup.ID]; ok && qc.index[taskGroup.ID] < len(groupBounds) {
+			qc.index[taskGroup.ID]++
+			return groupBounds[qc.index[taskGroup.ID]-1], nil
+		}
 	}
 
-	spqrlog.Zero.Debug().Msg("generating new bounds batch")
+	spqrlog.Zero.Debug().Str("task group id", taskGroup.ID).Msg("generating new bounds batch")
 	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KrIdFrom)
 	krFound := true
 	if et, ok := err.(*spqrerror.SpqrError); ok && et.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
@@ -1466,9 +1468,9 @@ ORDER BY (%s) %s;
 		// Avoid splitting key range by its own bound when moving the whole range
 		boundList[len(boundList)-1] = keyRange.Raw()
 	}
-	qc.bounds = boundList
-	qc.index = 1
-	return qc.bounds[0], nil
+	qc.bounds[taskGroup.ID] = boundList
+	qc.index[taskGroup.ID] = 1
+	return boundList[0], nil
 }
 
 func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, ds *distributions.Distribution) (*tasks.MoveTask, error) {
