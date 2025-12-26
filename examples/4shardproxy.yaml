@@ -28,6 +28,7 @@ memqdb_backup_path: "memqdb.json"
 query_routing:
     enhanced_multishard_processing: true
     strict_operators: true
+    prefer_engine: v2  # Set default routing engine to v2
 
 frontend_tls:
   key_file: /etc/odyssey/ssl/server.key
