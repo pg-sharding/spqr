@@ -222,12 +222,16 @@ func (q *MemQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
 
-	q.mu.RLock()
-	if _, ok := q.Krs[keyRange.KeyRangeID]; ok {
-		q.mu.RUnlock()
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" already exists", keyRange.KeyRangeID)
+	if err := func() error {
+		q.mu.RLock()
+		defer q.mu.RUnlock()
+		if _, ok := q.Krs[keyRange.KeyRangeID]; ok {
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" already exists", keyRange.KeyRangeID)
+		}
+		return nil
+	}(); err != nil {
+		return err
 	}
-	q.mu.RUnlock()
 
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -246,6 +250,10 @@ func (q *MemQDB) GetKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
+	return q.getKeyrangeInternal(id)
+}
+
+func (q *MemQDB) getKeyrangeInternal(id string) (*KeyRange, error) {
 	kRangeInt, ok := q.Krs[id]
 	if !ok {
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "there is no key range %s", id)
@@ -461,7 +469,7 @@ func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange,
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	krs, err := q.GetKeyRange(ctx, id)
+	krs, err := q.getKeyrangeInternal(id)
 	if err != nil {
 		return nil, err
 	}
@@ -560,9 +568,9 @@ func (q *MemQDB) TryCoordinatorLock(_ context.Context, _ string) error {
 // TODO : unit tests
 func (q *MemQDB) UpdateCoordinator(_ context.Context, address string) error {
 	q.mu.Lock()
+	defer q.mu.Unlock()
 	changed := q.Coordinator != address
 	q.Coordinator = address
-	q.mu.Unlock()
 
 	if changed {
 		spqrlog.Zero.Debug().Str("address", address).Msg("memqdb: update coordinator address")

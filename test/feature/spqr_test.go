@@ -549,6 +549,37 @@ func (tctx *testContext) executePostgresql(host string, query string) error {
 	return nil
 }
 
+func (tctx *testContext) stepIExecuteSqlInParallel(host string, timeout int, body *godog.DocString) error {
+	query := strings.TrimSpace(body.Content)
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(timeout)*time.Second)
+	defer cancel()
+
+	// sqlx is not used now. try remove split
+	queries := strings.SplitSeq(query, ";")
+
+	wg := sync.WaitGroup{}
+	var execErr error
+	for q := range queries {
+		q = strings.TrimSpace(q)
+		if q == "" {
+			continue
+		}
+		wg.Go(func() {
+			db, err := tctx.getPostgresqlConnection(shardUser, host)
+			if err != nil {
+				execErr = err
+				return
+			}
+			_, err = db.QueryContext(ctx, q)
+			if err != nil {
+				execErr = err
+			}
+		})
+	}
+	wg.Wait()
+	return execErr
+}
+
 func (tctx *testContext) doPostgresqlQuery(db *sql.DB, query string, timeout time.Duration, args []interface{}) ([]map[string]any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -1367,6 +1398,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 
 		return nil
 	})
+	s.Step(`^I run SQL on host "([^"]*)" in parallel with timeout "(\d+)" seconds$`, tctx.stepIExecuteSqlInParallel)
 
 	s.Step(`^SQL result should not match (\w+)$`, tctx.stepSQLResultShouldNotMatch)
 	s.Step(`^I record in qdb data transfer transaction with name "([^"]*)"$`, tctx.stepRecordQDBTx)
