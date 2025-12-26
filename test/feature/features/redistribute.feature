@@ -1479,6 +1479,8 @@ Feature: Redistribution test
   Scenario: REDISTRIBUTE KEY RANGE works in parallel
     When I execute SQL on host "coordinator"
     """
+    CREATE KEY RANGE kr4 FROM 900 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr3 FROM 600 ROUTE TO sh2 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE kr2 FROM 300 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     """
@@ -1494,10 +1496,17 @@ Feature: Redistribution test
     INSERT INTO xMove (w_id, s) SELECT generate_series(0, 599), 'sample text value';
     """
     Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    INSERT INTO xMove (w_id, s) SELECT generate_series(600, 1199), 'sample text value';
+    """
+    Then command return code should be "0"
     When I run SQL on host "coordinator" in parallel with timeout "150" seconds
     """
     REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 10;
     REDISTRIBUTE KEY RANGE kr2 TO sh3 BATCH SIZE 10;
+    REDISTRIBUTE KEY RANGE kr3 TO sh1 BATCH SIZE 10;
+    REDISTRIBUTE KEY RANGE kr4 TO sh3 BATCH SIZE 10;
     """
     Then command return code should be "0"
     When I run SQL on host "shard1"
@@ -1507,7 +1516,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    0
+    300
     """
     When I run SQL on host "shard2"
     """
@@ -1525,7 +1534,7 @@ Feature: Redistribution test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    300
+    600
     """
     When I run SQL on host "coordinator"
     """
@@ -1545,6 +1554,20 @@ Feature: Redistribution test
       "Key range ID":"kr2",
       "Distribution ID":"ds1",
       "Lower bound":"300",
+      "Shard ID":"sh3",
+      "Locked":"false"
+    },
+    {
+      "Key range ID":"kr3",
+      "Distribution ID":"ds1",
+      "Lower bound":"600",
+      "Shard ID":"sh1",
+      "Locked":"false"
+    },
+    {
+      "Key range ID":"kr4",
+      "Distribution ID":"ds1",
+      "Lower bound":"900",
       "Shard ID":"sh3",
       "Locked":"false"
     }]
@@ -1569,6 +1592,20 @@ Feature: Redistribution test
       "Lower bound":"300",
       "Shard ID":"sh3",
       "Locked":"false"
+    },
+    {
+      "Key range ID":"kr3",
+      "Distribution ID":"ds1",
+      "Lower bound":"600",
+      "Shard ID":"sh1",
+      "Locked":"false"
+    },
+    {
+      "Key range ID":"kr4",
+      "Distribution ID":"ds1",
+      "Lower bound":"900",
+      "Shard ID":"sh3",
+      "Locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -1591,6 +1628,30 @@ Feature: Redistribution test
       "Lower bound":"300",
       "Shard ID":"sh3",
       "Locked":"false"
+    },
+    {
+      "Key range ID":"kr3",
+      "Distribution ID":"ds1",
+      "Lower bound":"600",
+      "Shard ID":"sh1",
+      "Locked":"false"
+    },
+    {
+      "Key range ID":"kr4",
+      "Distribution ID":"ds1",
+      "Lower bound":"900",
+      "Shard ID":"sh3",
+      "Locked":"false"
     }]
     """
+  
+  Scenario: REDISTRIBUTE KEY RANGE works in parallel
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr4 FROM 900 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr3 FROM 600 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr2 FROM 300 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
 
