@@ -16,8 +16,8 @@ import (
 )
 
 // Wrapper of EntityManager. Keeps track of changes made during a transaction that have not yet been committed.
-// It's NO THREADSAFE because process in single console thread.
-// WARNING: ALL implemented methods MUST have 100% test covering
+// It's NO NOT THREAD-SAFE because process in single console thread.
+// WARNING: ALL implemented methods MUST have 100% test coverage
 type TranEntityManager struct {
 	mngr          EntityMgr
 	distributions MetaEntityList[*distributions.Distribution]
@@ -28,7 +28,7 @@ var _ EntityMgr = &TranEntityManager{}
 // NewTranEntityManager creates a new instance of the TranEntityManager struct.
 //
 // Parameters:
-// - mngr (EntityMgr): Entity manager which really changes meta
+// - mngr (EntityMgr): Underlying entity manager that performs metadata operations
 //
 // Returns:
 // - a pointer to an TranEntityManager object.
@@ -132,12 +132,8 @@ func (t *TranEntityManager) DCStateKeeper() qdb.DCStateKeeper {
 
 // DropDistribution implements [EntityMgr].
 func (t *TranEntityManager) DropDistribution(ctx context.Context, id string) error {
-	if _, ok := t.distributions.Items()[id]; ok {
-		t.distributions.Delete(id)
-		return nil
-	}
-
-	return t.mngr.DropDistribution(ctx, id)
+	t.distributions.Delete(id)
+	return nil
 }
 
 // DropKeyRange implements [EntityMgr].
@@ -249,7 +245,7 @@ func (t *TranEntityManager) ListDistributions(ctx context.Context) ([]*distribut
 			}
 			result = append(result, distribution)
 		}
-		return result, err
+		return result, nil
 	}
 }
 
@@ -413,23 +409,44 @@ type MetaEntityList[T any] struct {
 	deletedItems map[string]struct{}
 }
 
+// Returns saved items
+//
+// Returns:
+// - saved items of type T
 func (mList *MetaEntityList[T]) Items() map[string]T {
 	return mList.existsItems
 }
 
+// Returns deleted items
+//
+// Returns:
+// - deleted items of type T
 func (mList *MetaEntityList[T]) DeletedItems() map[string]struct{} {
 	return mList.deletedItems
 }
 
+// Returns struct for saving changes of type T data
+//
+// Returns:
+// - struct for saving changes of type T data
 func NewMetaEntityList[T any]() *MetaEntityList[T] {
 	return &MetaEntityList[T]{existsItems: make(map[string]T), deletedItems: make(map[string]struct{})}
 }
 
+// Save T in storage of exists items
+//
+// Parameters:
+// - key (string): id of struct T
+// - item (T): struct of type T for save
 func (mList *MetaEntityList[T]) Save(key string, item T) {
 	mList.existsItems[key] = item
 	delete(mList.deletedItems, key)
 }
 
+// Mark that T with key T is deleted
+//
+// Parameters:
+// - key (string): id of struct T
 func (mList *MetaEntityList[T]) Delete(key string) {
 	mList.deletedItems[key] = struct{}{}
 	delete(mList.existsItems, key)
