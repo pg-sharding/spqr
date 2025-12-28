@@ -127,6 +127,7 @@ func TestTranGetDistribution(t *testing.T) {
 		is.EqualError(err, "distribution \"ds0\" not found")
 
 		actualQdb, err := mngr.GetDistribution(ctx, "ds0")
+		is.NoError(err)
 		is.Equal(ds0, actualQdb)
 	})
 
