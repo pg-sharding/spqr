@@ -46,6 +46,8 @@ type MemQDB struct {
 	ColumnSequence       map[string]string                   `json:"column_sequence"`
 	SequenceToValues     map[string]int64                    `json:"sequence_to_values"`
 	TaskGroupMoveTaskID  map[string]string                   `json:"task_group_move_task"`
+	UniqueIndexes        map[string]*UniqueIndex             `json:"unique_indexes"`
+	UniqueIndexesByRel   map[string]map[string]*UniqueIndex  `json:"unique_indexes_by_relation"`
 
 	TwoPhaseTx map[string]*TwoPCInfo `json:"two_phase_info"`
 
@@ -78,6 +80,8 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		TotalKeys:            map[string]int64{},
 		MoveTasks:            map[string]*MoveTask{},
 		TwoPhaseTx:           map[string]*TwoPCInfo{},
+		UniqueIndexes:        map[string]*UniqueIndex{},
+		UniqueIndexesByRel:   map[string]map[string]*UniqueIndex{},
 
 		backupPath: backupPath,
 	}, nil
@@ -1026,6 +1030,71 @@ func (q *MemQDB) GetRelationDistribution(_ context.Context, relation *rfqn.Relat
 }
 
 // ==============================================================================
+//                               UNIQUE INDEXES
+// ==============================================================================
+
+func (q *MemQDB) ListUniqueIndexes(_ context.Context) (map[string]*UniqueIndex, error) {
+	spqrlog.Zero.Debug().
+		Msg("memqdb: list unique indexes")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.UniqueIndexes, nil
+}
+
+func (q *MemQDB) CreateUniqueIndex(_ context.Context, idx *UniqueIndex) error {
+	spqrlog.Zero.Debug().
+		Msg("memqdb: create unique index")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	ds, ok := q.Distributions[idx.DistributionId]
+	if !ok {
+		return fmt.Errorf("cannot create unique index: distribution \"%s\" not found", idx.DistributionId)
+	}
+	ds.UniqueIndexes[idx.ID] = idx
+
+	idxs, ok := q.UniqueIndexesByRel[idx.Relation.RelationName]
+	if !ok {
+		idxs = make(map[string]*UniqueIndex)
+	}
+	idxs[idx.ColumnName] = idx
+
+	q.UniqueIndexes[idx.ID] = idx
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexes, idx.ID, idx), NewUpdateCommand(q.UniqueIndexesByRel, idx.Relation.RelationName, idxs))
+}
+
+func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Msg("memqdb: drop unique index")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	idx, ok := q.UniqueIndexes[id]
+	if !ok {
+		return fmt.Errorf("unique index \"%s\" not found", id)
+	}
+
+	ds, ok := q.Distributions[idx.DistributionId]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "unique index \"%s\" belongs to nonexistent distribution \"%s\"", idx.ID, idx.DistributionId)
+	}
+	delete(ds.UniqueIndexes, idx.ID)
+
+	idxs, ok := q.UniqueIndexesByRel[idx.Relation.RelationName]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "unique index \"%s\" belongs to relation \"%s\", but index record not found", idx.ID, idx.Relation.RelationName)
+	}
+	delete(idxs, idx.ColumnName)
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexesByRel, idx.Relation.RelationName, idxs), NewDeleteCommand(q.UniqueIndexes, idx.ID))
+}
+
+func (q *MemQDB) ListRelationIndexes(_ context.Context, relName string) (map[string]*UniqueIndex, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+// ==============================================================================
 //                                   TASKS
 // ==============================================================================
 
@@ -1476,7 +1545,7 @@ func (q *MemQDB) CommitTransaction(ctx context.Context, transaction *QdbTransact
 		return fmt.Errorf("invalid transaction %s: %w", transaction.Id(), err)
 	}
 	if transaction.Id() != q.activeTransaction {
-		return fmt.Errorf("transaction '%s' cann't be committed", transaction.Id())
+		return fmt.Errorf("transaction '%s' can't be committed", transaction.Id())
 	}
 	if memOperations, err := q.packMemqdbCommands(transaction.commands); err != nil {
 		return err

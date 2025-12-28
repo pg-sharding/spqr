@@ -106,6 +106,27 @@ message ListRelationSequencesReply {
   map<string, string> columnSequences = 1;
 }
 
+message CreateUniqueIndexRequest {
+  string distributionId = 1;
+  UniqueIndex idx = 2;
+}
+
+message DropUniqueIndexRequest {
+  string idxId = 2;
+}
+
+message ListDistributionUniqueIndexesRequest {
+  string distributionId = 1;
+}
+
+message ListUniqueIndexesReply {
+  map<string, UniqueIndex> indexes = 1;
+}
+
+message ListRelationUniqueIndexesRequest {
+  string relationName = 1;
+}
+
 service DistributionService {
   rpc CreateDistribution(CreateDistributionRequest) returns (CreateDistributionReply) {}
   rpc DropDistribution(DropDistributionRequest) returns (google.protobuf.Empty) {}
@@ -127,4 +148,10 @@ service DistributionService {
   rpc ListSequences(google.protobuf.Empty) returns (ListSequencesReply) {}
   rpc ListRelationSequences(ListRelationSequencesRequest) returns (ListRelationSequencesReply) {}
   rpc DropSequence(DropSequenceRequest) returns (google.protobuf.Empty) {}
+
+  rpc ListUniqueIndexes(google.protobuf.Empty) returns (ListUniqueIndexesReply) {}
+  rpc ListDistributionUniqueIndexes(ListDistributionUniqueIndexesRequest) returns (ListUniqueIndexesReply) {}
+  rpc CreateUniqueIndex(CreateUniqueIndexRequest) returns (google.protobuf.Empty) {}
+  rpc DropUniqueIndex(DropUniqueIndexRequest) returns (google.protobuf.Empty) {}
+  rpc ListRelationUniqueIndexes(ListRelationUniqueIndexesRequest) returns (ListUniqueIndexesReply) {}
 }

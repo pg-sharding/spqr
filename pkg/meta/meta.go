@@ -137,7 +137,7 @@ func processDrop(ctx context.Context,
 		}
 
 		tts.Raw = [][][]byte{
-			[][]byte{
+			{
 				fmt.Appendf(nil, "relation -> %s", stmt.ID),
 			},
 		}
@@ -181,12 +181,19 @@ func processDrop(ctx context.Context,
 				return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID)
 			}
 
+			for _, idx := range ds.UniqueIndexesByID {
+				if err := mngr.DropUniqueIndex(ctx, idx.ID); err != nil {
+					return nil, err
+				}
+			}
+
 			for _, rel := range ds.Relations {
 				qualifiedName := &rfqn.RelationFQN{RelationName: rel.Name, SchemaName: rel.SchemaName}
 				if err := mngr.AlterDistributionDetach(ctx, ds.Id, qualifiedName); err != nil {
 					return nil, err
 				}
 			}
+
 			if err := mngr.DropDistribution(ctx, stmt.ID); err != nil {
 				return nil, err
 			}
@@ -306,6 +313,18 @@ func processDrop(ctx context.Context,
 		}
 
 		return tts, nil
+	case *spqrparser.UniqueIndexSelector:
+		if err := mngr.DropUniqueIndex(ctx, stmt.ID); err != nil {
+			return nil, err
+		}
+		return &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("drop unique index"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "unique index -> %s", stmt.ID),
+				},
+			},
+		}, nil
 	default:
 		return nil, fmt.Errorf("unknown drop statement")
 	}
@@ -537,6 +556,32 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 
 		return tts, nil
+	case *spqrparser.UniqueIndexDefinition:
+		ds, err := mngr.GetRelationDistribution(ctx, stmt.TableName)
+		if err != nil {
+			return nil, err
+		}
+		if err := mngr.CreateUniqueIndex(ctx, ds.ID(), &distributions.UniqueIndex{ID: stmt.ID, RelationName: stmt.TableName, ColumnName: stmt.Column, ColType: stmt.ColType}); err != nil {
+			return nil, err
+		}
+
+		return &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("create unique index"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "index ID -> %s", stmt.ID),
+				},
+				{
+					fmt.Appendf(nil, "relation name -> %s", stmt.TableName.String()),
+				},
+				{
+					fmt.Appendf(nil, "column name -> %s", stmt.Column),
+				},
+				{
+					fmt.Appendf(nil, "column type -> %s", stmt.ColType),
+				},
+			},
+		}, nil
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -1212,6 +1257,12 @@ func ProcessShowExtended(ctx context.Context, stmt *spqrparser.Show, mngr Entity
 
 		cacheEntries := ci.TsaCacheEntries()
 		tts = engine.TSAVirtualRelationScan(cacheEntries)
+	case spqrparser.UniqueIndexesStr:
+		idxs, err := mngr.ListUniqueIndexes(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts = engine.UniqueIndexesVirtualRelationScan(idxs)
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -1384,7 +1435,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.MoveStats(ctx, stats)
 	case spqrparser.Users:
 		return cli.Users(ctx)
-
 	default:
 		tts, err := ProcessShowExtended(ctx, stmt, mngr, ci, ro)
 		if err != nil {

@@ -4,6 +4,8 @@ package spqr;
 
 option go_package = "spqr/proto";
 
+import "protos/qualified_name.proto";
+
 message TypedColRef {
   string columnName = 1;
   string columnType = 2;
@@ -31,4 +33,12 @@ message Distribution {
   string id = 1;
   repeated string ColumnTypes = 2;
   repeated DistributedRelation relations = 3;
+  repeated UniqueIndex uniqueIndexes = 4;
+}
+
+message UniqueIndex {
+  string id = 1;
+  QualifiedName tableName = 2;
+  string colName = 3;
+  string colType = 4;
 }

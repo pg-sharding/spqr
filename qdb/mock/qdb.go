@@ -665,6 +665,20 @@ func (mr *MockQDBMockRecorder) CreateSequence(ctx, seqName, initialValue any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSequence", reflect.TypeOf((*MockQDB)(nil).CreateSequence), ctx, seqName, initialValue)
 }
 
+// CreateUniqueIndex mocks base method.
+func (m *MockQDB) CreateUniqueIndex(ctx context.Context, idx *qdb.UniqueIndex) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateUniqueIndex", ctx, idx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateUniqueIndex indicates an expected call of CreateUniqueIndex.
+func (mr *MockQDBMockRecorder) CreateUniqueIndex(ctx, idx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUniqueIndex", reflect.TypeOf((*MockQDB)(nil).CreateUniqueIndex), ctx, idx)
+}
+
 // CurrVal mocks base method.
 func (m *MockQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
 	m.ctrl.T.Helper()
@@ -748,6 +762,20 @@ func (m *MockQDB) DropSequence(ctx context.Context, seqName string, force bool) 
 func (mr *MockQDBMockRecorder) DropSequence(ctx, seqName, force any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropSequence", reflect.TypeOf((*MockQDB)(nil).DropSequence), ctx, seqName, force)
+}
+
+// DropUniqueIndex mocks base method.
+func (m *MockQDB) DropUniqueIndex(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropUniqueIndex", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropUniqueIndex indicates an expected call of DropUniqueIndex.
+func (mr *MockQDBMockRecorder) DropUniqueIndex(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropUniqueIndex", reflect.TypeOf((*MockQDB)(nil).DropUniqueIndex), ctx, id)
 }
 
 // GetBalancerTask mocks base method.
@@ -1035,6 +1063,21 @@ func (mr *MockQDBMockRecorder) ListReferenceRelations(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListReferenceRelations", reflect.TypeOf((*MockQDB)(nil).ListReferenceRelations), ctx)
 }
 
+// ListRelationIndexes mocks base method.
+func (m *MockQDB) ListRelationIndexes(ctx context.Context, relName string) (map[string]*qdb.UniqueIndex, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRelationIndexes", ctx, relName)
+	ret0, _ := ret[0].(map[string]*qdb.UniqueIndex)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRelationIndexes indicates an expected call of ListRelationIndexes.
+func (mr *MockQDBMockRecorder) ListRelationIndexes(ctx, relName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRelationIndexes", reflect.TypeOf((*MockQDB)(nil).ListRelationIndexes), ctx, relName)
+}
+
 // ListRouters mocks base method.
 func (m *MockQDB) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
 	m.ctrl.T.Helper()
@@ -1078,6 +1121,21 @@ func (m *MockQDB) ListTaskGroups(ctx context.Context) (map[string]*qdb.MoveTaskG
 func (mr *MockQDBMockRecorder) ListTaskGroups(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTaskGroups", reflect.TypeOf((*MockQDB)(nil).ListTaskGroups), ctx)
+}
+
+// ListUniqueIndexes mocks base method.
+func (m *MockQDB) ListUniqueIndexes(ctx context.Context) (map[string]*qdb.UniqueIndex, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListUniqueIndexes", ctx)
+	ret0, _ := ret[0].(map[string]*qdb.UniqueIndex)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListUniqueIndexes indicates an expected call of ListUniqueIndexes.
+func (mr *MockQDBMockRecorder) ListUniqueIndexes(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUniqueIndexes", reflect.TypeOf((*MockQDB)(nil).ListUniqueIndexes), ctx)
 }
 
 // LockKeyRange mocks base method.
@@ -1920,6 +1978,20 @@ func (mr *MockXQDBMockRecorder) CreateSequence(ctx, seqName, initialValue any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSequence", reflect.TypeOf((*MockXQDB)(nil).CreateSequence), ctx, seqName, initialValue)
 }
 
+// CreateUniqueIndex mocks base method.
+func (m *MockXQDB) CreateUniqueIndex(ctx context.Context, idx *qdb.UniqueIndex) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateUniqueIndex", ctx, idx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateUniqueIndex indicates an expected call of CreateUniqueIndex.
+func (mr *MockXQDBMockRecorder) CreateUniqueIndex(ctx, idx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUniqueIndex", reflect.TypeOf((*MockXQDB)(nil).CreateUniqueIndex), ctx, idx)
+}
+
 // CurrVal mocks base method.
 func (m *MockXQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
 	m.ctrl.T.Helper()
@@ -2059,6 +2131,20 @@ func (m *MockXQDB) DropShard(ctx context.Context, shardID string) error {
 func (mr *MockXQDBMockRecorder) DropShard(ctx, shardID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropShard", reflect.TypeOf((*MockXQDB)(nil).DropShard), ctx, shardID)
+}
+
+// DropUniqueIndex mocks base method.
+func (m *MockXQDB) DropUniqueIndex(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropUniqueIndex", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropUniqueIndex indicates an expected call of DropUniqueIndex.
+func (mr *MockXQDBMockRecorder) DropUniqueIndex(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropUniqueIndex", reflect.TypeOf((*MockXQDB)(nil).DropUniqueIndex), ctx, id)
 }
 
 // ExecNoTransaction mocks base method.
@@ -2405,6 +2491,21 @@ func (mr *MockXQDBMockRecorder) ListReferenceRelations(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListReferenceRelations", reflect.TypeOf((*MockXQDB)(nil).ListReferenceRelations), ctx)
 }
 
+// ListRelationIndexes mocks base method.
+func (m *MockXQDB) ListRelationIndexes(ctx context.Context, relName string) (map[string]*qdb.UniqueIndex, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRelationIndexes", ctx, relName)
+	ret0, _ := ret[0].(map[string]*qdb.UniqueIndex)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRelationIndexes indicates an expected call of ListRelationIndexes.
+func (mr *MockXQDBMockRecorder) ListRelationIndexes(ctx, relName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRelationIndexes", reflect.TypeOf((*MockXQDB)(nil).ListRelationIndexes), ctx, relName)
+}
+
 // ListRouters mocks base method.
 func (m *MockXQDB) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
 	m.ctrl.T.Helper()
@@ -2463,6 +2564,21 @@ func (m *MockXQDB) ListTaskGroups(ctx context.Context) (map[string]*qdb.MoveTask
 func (mr *MockXQDBMockRecorder) ListTaskGroups(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTaskGroups", reflect.TypeOf((*MockXQDB)(nil).ListTaskGroups), ctx)
+}
+
+// ListUniqueIndexes mocks base method.
+func (m *MockXQDB) ListUniqueIndexes(ctx context.Context) (map[string]*qdb.UniqueIndex, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListUniqueIndexes", ctx)
+	ret0, _ := ret[0].(map[string]*qdb.UniqueIndex)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListUniqueIndexes indicates an expected call of ListUniqueIndexes.
+func (mr *MockXQDBMockRecorder) ListUniqueIndexes(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUniqueIndexes", reflect.TypeOf((*MockXQDB)(nil).ListUniqueIndexes), ctx)
 }
 
 // LockKeyRange mocks base method.

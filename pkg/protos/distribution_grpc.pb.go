@@ -35,6 +35,11 @@ const (
 	DistributionService_ListSequences_FullMethodName                           = "/spqr.DistributionService/ListSequences"
 	DistributionService_ListRelationSequences_FullMethodName                   = "/spqr.DistributionService/ListRelationSequences"
 	DistributionService_DropSequence_FullMethodName                            = "/spqr.DistributionService/DropSequence"
+	DistributionService_ListUniqueIndexes_FullMethodName                       = "/spqr.DistributionService/ListUniqueIndexes"
+	DistributionService_ListDistributionUniqueIndexes_FullMethodName           = "/spqr.DistributionService/ListDistributionUniqueIndexes"
+	DistributionService_CreateUniqueIndex_FullMethodName                       = "/spqr.DistributionService/CreateUniqueIndex"
+	DistributionService_DropUniqueIndex_FullMethodName                         = "/spqr.DistributionService/DropUniqueIndex"
+	DistributionService_ListRelationUniqueIndexes_FullMethodName               = "/spqr.DistributionService/ListRelationUniqueIndexes"
 )
 
 // DistributionServiceClient is the client API for DistributionService service.
@@ -56,6 +61,11 @@ type DistributionServiceClient interface {
 	ListSequences(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListSequencesReply, error)
 	ListRelationSequences(ctx context.Context, in *ListRelationSequencesRequest, opts ...grpc.CallOption) (*ListRelationSequencesReply, error)
 	DropSequence(ctx context.Context, in *DropSequenceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListUniqueIndexes(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListUniqueIndexesReply, error)
+	ListDistributionUniqueIndexes(ctx context.Context, in *ListDistributionUniqueIndexesRequest, opts ...grpc.CallOption) (*ListUniqueIndexesReply, error)
+	CreateUniqueIndex(ctx context.Context, in *CreateUniqueIndexRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DropUniqueIndex(ctx context.Context, in *DropUniqueIndexRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListRelationUniqueIndexes(ctx context.Context, in *ListRelationUniqueIndexesRequest, opts ...grpc.CallOption) (*ListUniqueIndexesReply, error)
 }
 
 type distributionServiceClient struct {
@@ -216,6 +226,56 @@ func (c *distributionServiceClient) DropSequence(ctx context.Context, in *DropSe
 	return out, nil
 }
 
+func (c *distributionServiceClient) ListUniqueIndexes(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListUniqueIndexesReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListUniqueIndexesReply)
+	err := c.cc.Invoke(ctx, DistributionService_ListUniqueIndexes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *distributionServiceClient) ListDistributionUniqueIndexes(ctx context.Context, in *ListDistributionUniqueIndexesRequest, opts ...grpc.CallOption) (*ListUniqueIndexesReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListUniqueIndexesReply)
+	err := c.cc.Invoke(ctx, DistributionService_ListDistributionUniqueIndexes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *distributionServiceClient) CreateUniqueIndex(ctx context.Context, in *CreateUniqueIndexRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, DistributionService_CreateUniqueIndex_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *distributionServiceClient) DropUniqueIndex(ctx context.Context, in *DropUniqueIndexRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, DistributionService_DropUniqueIndex_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *distributionServiceClient) ListRelationUniqueIndexes(ctx context.Context, in *ListRelationUniqueIndexesRequest, opts ...grpc.CallOption) (*ListUniqueIndexesReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListUniqueIndexesReply)
+	err := c.cc.Invoke(ctx, DistributionService_ListRelationUniqueIndexes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DistributionServiceServer is the server API for DistributionService service.
 // All implementations must embed UnimplementedDistributionServiceServer
 // for forward compatibility.
@@ -235,6 +295,11 @@ type DistributionServiceServer interface {
 	ListSequences(context.Context, *emptypb.Empty) (*ListSequencesReply, error)
 	ListRelationSequences(context.Context, *ListRelationSequencesRequest) (*ListRelationSequencesReply, error)
 	DropSequence(context.Context, *DropSequenceRequest) (*emptypb.Empty, error)
+	ListUniqueIndexes(context.Context, *emptypb.Empty) (*ListUniqueIndexesReply, error)
+	ListDistributionUniqueIndexes(context.Context, *ListDistributionUniqueIndexesRequest) (*ListUniqueIndexesReply, error)
+	CreateUniqueIndex(context.Context, *CreateUniqueIndexRequest) (*emptypb.Empty, error)
+	DropUniqueIndex(context.Context, *DropUniqueIndexRequest) (*emptypb.Empty, error)
+	ListRelationUniqueIndexes(context.Context, *ListRelationUniqueIndexesRequest) (*ListUniqueIndexesReply, error)
 	mustEmbedUnimplementedDistributionServiceServer()
 }
 
@@ -289,6 +354,21 @@ func (UnimplementedDistributionServiceServer) ListRelationSequences(context.Cont
 }
 func (UnimplementedDistributionServiceServer) DropSequence(context.Context, *DropSequenceRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DropSequence not implemented")
+}
+func (UnimplementedDistributionServiceServer) ListUniqueIndexes(context.Context, *emptypb.Empty) (*ListUniqueIndexesReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListUniqueIndexes not implemented")
+}
+func (UnimplementedDistributionServiceServer) ListDistributionUniqueIndexes(context.Context, *ListDistributionUniqueIndexesRequest) (*ListUniqueIndexesReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListDistributionUniqueIndexes not implemented")
+}
+func (UnimplementedDistributionServiceServer) CreateUniqueIndex(context.Context, *CreateUniqueIndexRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateUniqueIndex not implemented")
+}
+func (UnimplementedDistributionServiceServer) DropUniqueIndex(context.Context, *DropUniqueIndexRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DropUniqueIndex not implemented")
+}
+func (UnimplementedDistributionServiceServer) ListRelationUniqueIndexes(context.Context, *ListRelationUniqueIndexesRequest) (*ListUniqueIndexesReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListRelationUniqueIndexes not implemented")
 }
 func (UnimplementedDistributionServiceServer) mustEmbedUnimplementedDistributionServiceServer() {}
 func (UnimplementedDistributionServiceServer) testEmbeddedByValue()                             {}
@@ -581,6 +661,96 @@ func _DistributionService_DropSequence_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DistributionService_ListUniqueIndexes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistributionServiceServer).ListUniqueIndexes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistributionService_ListUniqueIndexes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistributionServiceServer).ListUniqueIndexes(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DistributionService_ListDistributionUniqueIndexes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDistributionUniqueIndexesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistributionServiceServer).ListDistributionUniqueIndexes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistributionService_ListDistributionUniqueIndexes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistributionServiceServer).ListDistributionUniqueIndexes(ctx, req.(*ListDistributionUniqueIndexesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DistributionService_CreateUniqueIndex_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateUniqueIndexRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistributionServiceServer).CreateUniqueIndex(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistributionService_CreateUniqueIndex_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistributionServiceServer).CreateUniqueIndex(ctx, req.(*CreateUniqueIndexRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DistributionService_DropUniqueIndex_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DropUniqueIndexRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistributionServiceServer).DropUniqueIndex(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistributionService_DropUniqueIndex_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistributionServiceServer).DropUniqueIndex(ctx, req.(*DropUniqueIndexRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DistributionService_ListRelationUniqueIndexes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRelationUniqueIndexesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistributionServiceServer).ListRelationUniqueIndexes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistributionService_ListRelationUniqueIndexes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistributionServiceServer).ListRelationUniqueIndexes(ctx, req.(*ListRelationUniqueIndexesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DistributionService_ServiceDesc is the grpc.ServiceDesc for DistributionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -647,6 +817,26 @@ var DistributionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DropSequence",
 			Handler:    _DistributionService_DropSequence_Handler,
+		},
+		{
+			MethodName: "ListUniqueIndexes",
+			Handler:    _DistributionService_ListUniqueIndexes_Handler,
+		},
+		{
+			MethodName: "ListDistributionUniqueIndexes",
+			Handler:    _DistributionService_ListDistributionUniqueIndexes_Handler,
+		},
+		{
+			MethodName: "CreateUniqueIndex",
+			Handler:    _DistributionService_CreateUniqueIndex_Handler,
+		},
+		{
+			MethodName: "DropUniqueIndex",
+			Handler:    _DistributionService_DropUniqueIndex_Handler,
+		},
+		{
+			MethodName: "ListRelationUniqueIndexes",
+			Handler:    _DistributionService_ListRelationUniqueIndexes_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

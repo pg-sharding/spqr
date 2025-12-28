@@ -263,6 +263,20 @@ func (mr *MockCoordinatorMockRecorder) CreateReferenceRelation(ctx, r, e any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateReferenceRelation", reflect.TypeOf((*MockCoordinator)(nil).CreateReferenceRelation), ctx, r, e)
 }
 
+// CreateUniqueIndex mocks base method.
+func (m *MockCoordinator) CreateUniqueIndex(ctx context.Context, dsID string, idx *distributions.UniqueIndex) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateUniqueIndex", ctx, dsID, idx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateUniqueIndex indicates an expected call of CreateUniqueIndex.
+func (mr *MockCoordinatorMockRecorder) CreateUniqueIndex(ctx, dsID, idx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUniqueIndex", reflect.TypeOf((*MockCoordinator)(nil).CreateUniqueIndex), ctx, dsID, idx)
+}
+
 // CurrVal mocks base method.
 func (m *MockCoordinator) CurrVal(ctx context.Context, seqName string) (int64, error) {
 	m.ctrl.T.Helper()
@@ -374,6 +388,20 @@ func (m *MockCoordinator) DropShard(ctx context.Context, id string) error {
 func (mr *MockCoordinatorMockRecorder) DropShard(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropShard", reflect.TypeOf((*MockCoordinator)(nil).DropShard), ctx, id)
+}
+
+// DropUniqueIndex mocks base method.
+func (m *MockCoordinator) DropUniqueIndex(ctx context.Context, idxID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropUniqueIndex", ctx, idxID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropUniqueIndex indicates an expected call of DropUniqueIndex.
+func (mr *MockCoordinatorMockRecorder) DropUniqueIndex(ctx, idxID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropUniqueIndex", reflect.TypeOf((*MockCoordinator)(nil).DropUniqueIndex), ctx, idxID)
 }
 
 // ExecNoTran mocks base method.
@@ -554,6 +582,21 @@ func (mr *MockCoordinatorMockRecorder) ListAllKeyRanges(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllKeyRanges", reflect.TypeOf((*MockCoordinator)(nil).ListAllKeyRanges), ctx)
 }
 
+// ListDistributionIndexes mocks base method.
+func (m *MockCoordinator) ListDistributionIndexes(ctx context.Context, dsID string) (map[string]*distributions.UniqueIndex, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListDistributionIndexes", ctx, dsID)
+	ret0, _ := ret[0].(map[string]*distributions.UniqueIndex)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListDistributionIndexes indicates an expected call of ListDistributionIndexes.
+func (mr *MockCoordinatorMockRecorder) ListDistributionIndexes(ctx, dsID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDistributionIndexes", reflect.TypeOf((*MockCoordinator)(nil).ListDistributionIndexes), ctx, dsID)
+}
+
 // ListDistributions mocks base method.
 func (m *MockCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
 	m.ctrl.T.Helper()
@@ -644,6 +687,21 @@ func (mr *MockCoordinatorMockRecorder) ListReferenceRelations(ctx any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListReferenceRelations", reflect.TypeOf((*MockCoordinator)(nil).ListReferenceRelations), ctx)
 }
 
+// ListRelationIndexes mocks base method.
+func (m *MockCoordinator) ListRelationIndexes(ctx context.Context, relName string) (map[string]*distributions.UniqueIndex, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRelationIndexes", ctx, relName)
+	ret0, _ := ret[0].(map[string]*distributions.UniqueIndex)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRelationIndexes indicates an expected call of ListRelationIndexes.
+func (mr *MockCoordinatorMockRecorder) ListRelationIndexes(ctx, relName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRelationIndexes", reflect.TypeOf((*MockCoordinator)(nil).ListRelationIndexes), ctx, relName)
+}
+
 // ListRelationSequences mocks base method.
 func (m *MockCoordinator) ListRelationSequences(ctx context.Context, rel *rfqn.RelationFQN) (map[string]string, error) {
 	m.ctrl.T.Helper()
@@ -702,6 +760,21 @@ func (m *MockCoordinator) ListShards(ctx context.Context) ([]*topology.DataShard
 func (mr *MockCoordinatorMockRecorder) ListShards(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListShards", reflect.TypeOf((*MockCoordinator)(nil).ListShards), ctx)
+}
+
+// ListUniqueIndexes mocks base method.
+func (m *MockCoordinator) ListUniqueIndexes(ctx context.Context) (map[string]*distributions.UniqueIndex, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListUniqueIndexes", ctx)
+	ret0, _ := ret[0].(map[string]*distributions.UniqueIndex)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListUniqueIndexes indicates an expected call of ListUniqueIndexes.
+func (mr *MockCoordinatorMockRecorder) ListUniqueIndexes(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUniqueIndexes", reflect.TypeOf((*MockCoordinator)(nil).ListUniqueIndexes), ctx)
 }
 
 // LockKeyRange mocks base method.

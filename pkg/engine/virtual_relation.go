@@ -103,12 +103,12 @@ func HostsVirtualRelationScan(shards []*topology.DataShard, ihc map[string]tsa.C
 func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.TupleTableSlot {
 
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("table name", "schema version", "shards", "column sequence mapping"),
+		Desc: GetVPHeader("table name", "schema name", "schema version", "shards", "column sequence mapping"),
 	}
 	for _, r := range rrs {
-
 		tts.Raw = append(tts.Raw, [][]byte{
 			[]byte(r.TableName),
+			[]byte(r.GetSchema()),
 			fmt.Appendf(nil, "%d", r.SchemaVersion),
 			fmt.Appendf(nil, "%+v", r.ShardIds),
 			fmt.Appendf(nil, "%+v", r.ColumnSequenceMapping),
@@ -350,4 +350,26 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 	tts.Raw = data
 
 	return tts, nil
+}
+
+func UniqueIndexesVirtualRelationScan(idToidxs map[string]*distributions.UniqueIndex) *tupleslot.TupleTableSlot {
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("ID", "Relation name", "Column", "Column type"),
+	}
+
+	/* XXX: make sort support in outer abstraction layer */
+	ids := make([]string, len(idToidxs))
+	i := 0
+	for id := range idToidxs {
+		ids[i] = id
+		i++
+	}
+	sort.Strings(ids)
+
+	for _, id := range ids {
+		idx := idToidxs[id]
+		tts.WriteDataRow(idx.ID, idx.RelationName.RelationName, idx.ColumnName, idx.ColType)
+	}
+	return tts
 }

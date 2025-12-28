@@ -27,8 +27,6 @@ aspernatur
 astmt
 authed
 Autoattach
-autocreate
-automaxprocs
 autotools
 basebackup
 bbc
@@ -166,6 +164,7 @@ firewalls
 fmtcheck
 forumsys
 forwardable
+FQNTo
 frmp
 frrule
 frsm
@@ -213,6 +212,7 @@ IDBy
 idi
 idj
 IDR
+idxs
 IExecute
 illum
 incididunt
@@ -472,7 +472,6 @@ rmgr
 rollbacked
 roolback
 routable
-routerparser
 routerproto
 routingstate
 rowmap
@@ -508,7 +507,6 @@ shardproxy
 shkey
 shname
 shq
-shrid
 singleshard
 Smartphone
 spaolacci
@@ -521,7 +519,6 @@ SPQRE
 spqrerror
 SPQRF
 spqrguard
-SPQRH
 spqrhash
 SPQRI
 spqrinfra
@@ -587,6 +584,7 @@ tlt
 TMINUS
 tmpfs
 tmpnum
+Toidxs
 topbar
 TOPENBR
 TOPENSQBR

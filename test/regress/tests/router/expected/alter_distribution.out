@@ -102,12 +102,7 @@ ALTER DISTRIBUTION ds2 DETACH RELATION yy;
 (2 rows)
 
 ALTER DISTRIBUTION ds2 DETACH RELATION yy;
-    detach relation     
-------------------------
- relation name   -> yy
- distribution id -> ds2
-(2 rows)
-
+ERROR:  relation "yy" not found in distribution "ds2"
 ALTER DISTRIBUTION ds1 ATTACH RELATION yy DISTRIBUTION KEY w_id;
       attach table      
 ------------------------

@@ -56,6 +56,7 @@ var reservedWords = map[string]int{
 	"ident":        IDENTITY,
 	"attach":       ATTACH,
 	"types":        TYPES,
+	"type":         TYPE,
 	"varchar":      VARCHAR,
 	"int":          INT,
 	"integer":      INTEGER,
@@ -94,4 +95,6 @@ var reservedWords = map[string]int{
 	"panic":        PANIC,
 	"stale":        STALE,
 	"clients":      CLIENTS,
+	"unique":       UNIQUE,
+	"index":        INDEX,
 }
