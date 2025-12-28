@@ -72,6 +72,7 @@ func TestTranGetDistribution(t *testing.T) {
 		//check List
 		actualList, err := tranMngr.ListDistributions(ctx)
 		is.NoError(err)
+		is.Len(actualList, 3)
 		is.Equal(map[string]*distributions.Distribution{"ds1": ds1, "ds2": ds2, "ds0": ds0},
 			map[string]*distributions.Distribution{actualList[0].Id: actualList[0], actualList[1].Id: actualList[1], actualList[2].Id: actualList[2]})
 
