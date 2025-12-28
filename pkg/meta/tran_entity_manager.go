@@ -404,6 +404,31 @@ func (t *TranEntityManager) WriteMoveTaskGroup(ctx context.Context, taskGroup *t
 	panic("WriteMoveTaskGroup unimplemented")
 }
 
+// CreateUniqueIndex implements [EntityMgr].
+func (t *TranEntityManager) CreateUniqueIndex(ctx context.Context, dsID string, idx *distributions.UniqueIndex) error {
+	panic("CreateUniqueIndex unimplemented")
+}
+
+// DropUniqueIndex implements [EntityMgr].
+func (t *TranEntityManager) DropUniqueIndex(ctx context.Context, idxID string) error {
+	panic("DropUniqueIndex unimplemented")
+}
+
+// ListDistributionIndexes implements [EntityMgr].
+func (t *TranEntityManager) ListDistributionIndexes(ctx context.Context, dsID string) (map[string]*distributions.UniqueIndex, error) {
+	panic("ListDistributionIndexes unimplemented")
+}
+
+// ListRelationIndexes implements [EntityMgr].
+func (t *TranEntityManager) ListRelationIndexes(ctx context.Context, relName string) (map[string]*distributions.UniqueIndex, error) {
+	panic("ListRelationIndexes unimplemented")
+}
+
+// ListUniqueIndexes implements [EntityMgr].
+func (t *TranEntityManager) ListUniqueIndexes(ctx context.Context) (map[string]*distributions.UniqueIndex, error) {
+	panic("ListUniqueIndexes unimplemented")
+}
+
 type MetaEntityList[T any] struct {
 	existsItems  map[string]T
 	deletedItems map[string]struct{}
