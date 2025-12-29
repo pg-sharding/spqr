@@ -27,7 +27,6 @@ aspernatur
 astmt
 authed
 Autoattach
-autotools
 basebackup
 bbc
 bcad
@@ -104,7 +103,6 @@ dbtpcc
 dbutils
 dcd
 ddl
-debhelper
 debian
 denchick
 denis
@@ -590,6 +588,7 @@ TOPENBR
 TOPENSQBR
 tpcc
 tran
+transfering
 TRASCE
 tsa
 TSEMICOLON

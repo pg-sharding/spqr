@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"github.com/spaolacci/murmur3"
 
 	pgx "github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
@@ -365,31 +366,46 @@ func SetupFDW(ctx context.Context, to *pgx.Conn, fromShardId, toShardId string, 
 	toShard := shards.ShardsData[toShardId]
 	dbName := fromShard.DB
 	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
-	serverName := fmt.Sprintf("%s_%s_%s", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
+	hasher := murmur3.New64()
+	if _, err := hasher.Write(fmt.Appendf(nil, "%s_%s_%s", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)); err != nil {
+		return err
+	}
+	serverNameHash := hasher.Sum64()
+	serverName := fmt.Sprintf("spqr_transfer_server_%x", serverNameHash)
 	// create postgres_fdw server on receiving shard
-	_, err := to.Exec(ctx, fmt.Sprintf(`CREATE server IF NOT EXISTS %q FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1]))
+	_, err := to.Exec(ctx, fmt.Sprintf(`CREATE server IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1]))
 	if err != nil {
 		return err
 	}
-	// create user mapping for postgres_fdw server
-	// TODO check if name is taken
-	if _, err = to.Exec(ctx, fmt.Sprintf(`DROP USER MAPPING IF EXISTS FOR %s SERVER %q`, toShard.User, serverName)); err != nil {
-		return err
-	}
-	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE USER MAPPING FOR %s SERVER %q OPTIONS (user '%s', password '%s')`, toShard.User, serverName, fromShard.User, fromShard.Password)); err != nil {
+	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE USER MAPPING IF NOT EXISTS FOR %s SERVER %s OPTIONS (user '%s', password '%s')`, toShard.User, serverName, fromShard.User, fromShard.Password)); err != nil {
 		return err
 	}
 	// create foreign tables corresponding to such on sending shard
 	// TODO check if schemaName is not used by relations (needs schemas in distributions)
-	schemaName := fmt.Sprintf("%s_schema", serverName)
-	if _, err = to.Exec(ctx, fmt.Sprintf(`DROP SCHEMA IF EXISTS %q CASCADE`, schemaName)); err != nil {
-		return err
-	}
-	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS %q`, schemaName)); err != nil {
-		return err
-	}
 	for schema := range schemas {
-		if _, err = to.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA %s FROM SERVER %q INTO %q`, schema, serverName, schemaName)); err != nil {
+		schemaName := fmt.Sprintf("%s_%s", serverName, schema)
+		tx, err := to.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		row := tx.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as schema_exists FROM pg_namespace WHERE nspname = '%s'`, schemaName))
+		exist := false
+		if err := row.Scan(&exist); err != nil {
+			return err
+		}
+		if exist {
+			if err = tx.Rollback(ctx); err != nil {
+				return err
+			}
+			continue
+		}
+		if _, err = tx.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA %s`, schemaName)); err != nil {
+			return err
+		}
+		if _, err = tx.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA %s FROM SERVER %s INTO %s`, schema, serverName, schemaName)); err != nil {
+			return err
+		}
+		if err := tx.Commit(ctx); err != nil {
 			return err
 		}
 	}
@@ -499,7 +515,12 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	toShard := shards.ShardsData[toShardId]
 	dbName := fromShard.DB
 	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
-	schemaName := fmt.Sprintf("%s_%s_%s_schema", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
+	hasher := murmur3.New64()
+	if _, err := hasher.Write(fmt.Appendf(nil, "%s_%s_%s", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)); err != nil {
+		return err
+	}
+	serverNameHash := hasher.Sum64()
+	serverName := fmt.Sprintf("spqr_transfer_server_%x", serverNameHash)
 	tx, err := to.Begin(ctx)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not start transaction: %s", err)
@@ -560,7 +581,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 					INSERT INTO %s (%s)
 					SELECT %s FROM %s
 					WHERE %s
-`, relFullName, colNames, colNames, fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.Name)), krCondition)
+`, relFullName, colNames, colNames, fmt.Sprintf("%s_%s.%q", serverName, rel.GetSchema(), strings.ToLower(rel.Name)), krCondition)
 		_, err = tx.Exec(ctx, query)
 		if err != nil {
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
@@ -584,9 +605,12 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	toShard := shards.ShardsData[toId]
 	dbName := fromShard.DB
 	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
-	schemaName := fmt.Sprintf("%s_%s_%s_schema", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
-
-	/* TODO: lock reference relation in spqrguard everywhere */
+	hasher := murmur3.New64()
+	if _, err := hasher.Write(fmt.Appendf(nil, "%s_%s_%s", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)); err != nil {
+		return err
+	}
+	serverNameHash := hasher.Sum64()
+	serverName := fmt.Sprintf("spqr_transfer_server_%x", serverNameHash)
 
 	// check that relation exists on sending shard and there is data to copy. If not, skip the relation
 	// TODO get actual schema
@@ -635,7 +659,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	query := fmt.Sprintf(`
 					INSERT INTO %s (%s)
 					SELECT %s FROM %s
-`, relFullName, strings.Join(cols, ", "), strings.Join(cols, ", "), fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.TableName)))
+`, relFullName, strings.Join(cols, ", "), strings.Join(cols, ", "), fmt.Sprintf("%s_%s.%q", serverName, rel.GetSchema(), strings.ToLower(rel.TableName)))
 	_, err = tx.Exec(ctx, query)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
