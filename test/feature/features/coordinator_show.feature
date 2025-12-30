@@ -577,7 +577,8 @@ Feature: Coordinator show clients, pools and backend_connections
                 "id":            "2",
                 "kr_id_temp":    "temp_id",
                 "bound":         ["FAAAAAAAAAA="],
-                "state":         0
+                "state":         0,
+                "task_group_id": "tgid1"
             }
         }
         """
