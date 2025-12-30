@@ -392,6 +392,7 @@ const (
 	VersionStr            = "version"
 	RelationsStr          = "relations"
 	TaskGroupStr          = "task_group"
+	TaskGroupsStr         = "task_groups"
 	PreparedStatementsStr = "prepared_statements"
 	ReferenceRelationsStr = "reference_relations"
 	UnsupportedStr        = "unsupported"
@@ -402,6 +403,7 @@ const (
 	TsaCacheStr           = "tsa_cache"
 	Users                 = "users"
 	MoveTaskStr           = "move_task"
+	MoveTasksStr          = "move_tasks"
 	UniqueIndexesStr      = "unique_indexes"
 )
 

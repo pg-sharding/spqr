@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
@@ -353,7 +354,6 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 }
 
 func UniqueIndexesVirtualRelationScan(idToidxs map[string]*distributions.UniqueIndex) *tupleslot.TupleTableSlot {
-
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader("ID", "Relation name", "Column", "Column type"),
 	}
@@ -372,4 +372,55 @@ func UniqueIndexesVirtualRelationScan(idToidxs map[string]*distributions.UniqueI
 		tts.WriteDataRow(idx.ID, idx.RelationName.RelationName, idx.ColumnName, idx.ColType)
 	}
 	return tts
+}
+
+func TaskGroupsVirtualRelationScan(groups map[string]*tasks.MoveTaskGroup) *tupleslot.TupleTableSlot {
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID", "Move task ID"),
+	}
+	for _, group := range groups {
+		currTaskId := ""
+		if group.CurrentTask != nil {
+			currTaskId = group.CurrentTask.ID
+		}
+		tts.WriteDataRow(group.ID, group.ShardToId, group.KrIdFrom, group.KrIdTo, currTaskId)
+	}
+	return tts
+}
+
+func MoveTasksVirtualRelationScan(ts map[string]*tasks.MoveTask, dsIDColTypes map[string][]string, moveTaskDsID map[string]string) (*tupleslot.TupleTableSlot, error) {
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("Move task ID", "Temporary key range ID", "Bound", "State", "Task group ID"),
+	}
+
+	for _, task := range ts {
+		krData := []string{""}
+		if task.Bound != nil {
+			dsID, ok := moveTaskDsID[task.ID]
+			if !ok {
+				return nil, fmt.Errorf("failed to reply move task data: distribution for task \"%s\" not found", task.ID)
+			}
+			moveTaskColTypes, ok := dsIDColTypes[dsID]
+			if !ok {
+				return nil, fmt.Errorf("failed to reply move task data: column types for distribution \"%s\" not found", dsID)
+			}
+			if len(task.Bound) != len(moveTaskColTypes) {
+				err := fmt.Errorf("something wrong in task: %s, columns: %#v", task.ID, moveTaskColTypes)
+				return nil, err
+			}
+			kRange, err := kr.KeyRangeFromBytes(task.Bound, moveTaskColTypes)
+			if err != nil {
+				return nil, err
+			}
+			krData = kRange.SendRaw()
+		}
+		tts.WriteDataRow(
+			task.ID,
+			task.KrIdTemp,
+			strings.Join(krData, ";"),
+			tasks.TaskStateToStr(task.State),
+			task.TaskGroupID,
+		)
+	}
+	return tts, nil
 }

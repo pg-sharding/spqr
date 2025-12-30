@@ -1263,6 +1263,57 @@ func ProcessShowExtended(ctx context.Context, stmt *spqrparser.Show, mngr Entity
 			return nil, err
 		}
 		tts = engine.UniqueIndexesVirtualRelationScan(idxs)
+	case spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr:
+		group, err := mngr.ListMoveTaskGroups(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts = engine.TaskGroupsVirtualRelationScan(group)
+	case spqrparser.MoveTaskStr, spqrparser.MoveTasksStr:
+		taskList, err := mngr.ListMoveTasks(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if taskList == nil {
+			break
+		}
+
+		taskGroups := make(map[string]*tasks.MoveTaskGroup)
+		for _, task := range taskList {
+			group, err := mngr.GetMoveTaskGroup(ctx, task.TaskGroupID)
+			if err != nil {
+				return nil, err
+			}
+			if group == nil {
+				return nil, fmt.Errorf("task group for task \"%s\" not found", task.ID)
+			}
+			taskGroups[group.ID] = group
+		}
+
+		moveTasksDsID := make(map[string]string)
+		colTypes := make(map[string][]string)
+		for _, task := range taskList {
+			taskGroup, ok := taskGroups[task.TaskGroupID]
+			if !ok {
+				return nil, fmt.Errorf("task group \"%s\" not found", task.TaskGroupID)
+			}
+			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+			if err != nil {
+				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
+					var err2 error
+					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
+					if err2 != nil {
+						return nil, fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
+					}
+				}
+			}
+			moveTasksDsID[task.ID] = keyRange.Distribution
+			colTypes[keyRange.Distribution] = keyRange.ColumnTypes
+		}
+		tts, err = engine.MoveTasksVirtualRelationScan(taskList, colTypes, moveTasksDsID)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -1355,56 +1406,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			defShardIDs = append(defShardIDs, shID)
 		}
 		return cli.Distributions(ctx, dss, defShardIDs)
-
-	case spqrparser.TaskGroupStr:
-		group, err := mngr.ListMoveTaskGroups(ctx)
-		if err != nil {
-			return err
-		}
-		return cli.MoveTaskGroups(ctx, group)
-	case spqrparser.MoveTaskStr:
-		taskList, err := mngr.ListMoveTasks(ctx)
-		if err != nil {
-			return err
-		}
-		if taskList == nil {
-			return cli.CompleteMsg(0)
-		}
-
-		taskGroups := make(map[string]*tasks.MoveTaskGroup)
-		for _, task := range taskList {
-			group, err := mngr.GetMoveTaskGroup(ctx, task.TaskGroupID)
-			if err != nil {
-				return err
-			}
-			if group == nil {
-				return fmt.Errorf("task group for task \"%s\" not found", task.ID)
-			}
-			taskGroups[group.ID] = group
-		}
-
-		moveTasksDsID := make(map[string]string)
-		colTypes := make(map[string][]string)
-		for _, task := range taskList {
-			taskGroup, ok := taskGroups[task.TaskGroupID]
-			if !ok {
-				return fmt.Errorf("task group \"%s\" not found", task.TaskGroupID)
-			}
-			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
-			if err != nil {
-				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
-					var err2 error
-					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
-					if err2 != nil {
-						return fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
-					}
-				}
-			}
-			moveTasksDsID[task.ID] = keyRange.Distribution
-			colTypes[keyRange.Distribution] = keyRange.ColumnTypes
-		}
-		return cli.MoveTasks(ctx, taskList, colTypes, moveTasksDsID)
-
 	case spqrparser.QuantilesStr:
 		return cli.Quantiles(ctx)
 	case spqrparser.SequencesStr:
