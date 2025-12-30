@@ -250,8 +250,8 @@ type ClusteredCoordinator struct {
 	cache        *cache.SchemaCache
 	acquiredLock bool
 
-	bounds map[string][][][]byte
-	index  map[string]int
+	bounds *sync.Map
+	index  *sync.Map
 
 	routerConnCache map[string]*grpc.ClientConn
 	routerConnMutex sync.RWMutex
@@ -414,13 +414,16 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 
 func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*ClusteredCoordinator, error) {
 	return &ClusteredCoordinator{
-		Coordinator:     coord.NewCoordinator(db, nil),
-		db:              db,
-		tlsconfig:       tlsconfig,
-		rmgr:            rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
-		acquiredLock:    false,
-		bounds:          make(map[string][][][]byte, 0),
-		index:           make(map[string]int),
+		Coordinator:  coord.NewCoordinator(db, nil),
+		db:           db,
+		tlsconfig:    tlsconfig,
+		rmgr:         rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
+		acquiredLock: false,
+		// boundMutex:      sync.RWMutex{},
+		// bounds:          make(map[string][][][]byte, 0),
+		bounds: &sync.Map{},
+		index:  &sync.Map{},
+		// index:           make(map[string]int),
 		routerConnCache: make(map[string]*grpc.ClientConn),
 	}, nil
 }
@@ -1283,9 +1286,14 @@ func (*ClusteredCoordinator) getBiggestRelation(relCount map[string]int64, total
 
 func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, ds *distributions.Distribution) ([][]byte, error) {
 	if qc.bounds != nil {
-		if groupBounds, ok := qc.bounds[taskGroup.ID]; ok && qc.index[taskGroup.ID] < len(groupBounds) {
-			qc.index[taskGroup.ID]++
-			return groupBounds[qc.index[taskGroup.ID]-1], nil
+		if groupBoundsInt, ok := qc.bounds.Load(taskGroup.ID); ok {
+			indMap, _ := qc.index.Load(taskGroup.ID)
+			groupBounds, _ := groupBoundsInt.([][][]byte)
+			ind := indMap.(int)
+			if ind < len(groupBounds) {
+				qc.index.Store(taskGroup.ID, ind+1)
+				return groupBounds[ind], nil
+			}
 		}
 	}
 
@@ -1469,10 +1477,10 @@ ORDER BY (%s) %s;
 		boundList[len(boundList)-1] = keyRange.Raw()
 	}
 	if qc.bounds == nil {
-		qc.bounds = make(map[string][][][]byte)
+		qc.bounds = &sync.Map{}
 	}
-	qc.bounds[taskGroup.ID] = boundList
-	qc.index[taskGroup.ID] = 1
+	qc.bounds.Store(taskGroup.ID, boundList)
+	qc.index.Store(taskGroup.ID, 1)
 	return boundList[0], nil
 }
 
