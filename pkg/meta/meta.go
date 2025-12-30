@@ -187,10 +187,12 @@ func processDrop(ctx context.Context,
 				}
 			}
 
-			for _, rel := range ds.Relations {
-				qualifiedName := &rfqn.RelationFQN{RelationName: rel.Name, SchemaName: rel.SchemaName}
-				if err := mngr.AlterDistributionDetach(ctx, ds.Id, qualifiedName); err != nil {
-					return nil, err
+			if stmt.ID != distributions.REPLICATED {
+				for _, rel := range ds.Relations {
+					qualifiedName := &rfqn.RelationFQN{RelationName: rel.Name, SchemaName: rel.SchemaName}
+					if err := mngr.AlterDistributionDetach(ctx, ds.Id, qualifiedName); err != nil {
+						return nil, err
+					}
 				}
 			}
 

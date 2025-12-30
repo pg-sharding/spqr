@@ -36,6 +36,31 @@ DROP REFERENCE RELATION zz2;
 --should fail
 DROP REFERENCE RELATION zz2;
 ERROR:  reference relation "zz2" not found
+CREATE REFERENCE RELATION r;
+   create reference table    
+-----------------------------
+ table    -> r
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
+DROP DISTRIBUTION 'REPLICATED' CASCADE;
+       drop distribution       
+-------------------------------
+ distribution id -> REPLICATED
+(1 row)
+
+SHOW relations WHERE "Distribution ID" = 'REPLICATED';
+ Relation name | Distribution ID | Distribution key | Schema name 
+---------------+-----------------+------------------+-------------
+(0 rows)
+
+CREATE REFERENCE RELATION r;
+   create reference table    
+-----------------------------
+ table    -> r
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
 DROP DISTRIBUTION ALL CASCADE;
        drop distribution       
 -------------------------------
