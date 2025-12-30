@@ -287,7 +287,7 @@ Feature: Proxy console
             "Destination shard ID":     "sh_to",
             "Source key range ID":      "kr_from",
             "Destination key range ID": "kr_to",
-            "Current move task ID":     "2",
+            "Current move task ID":     "2"
         }]
         """
         When I run SQL on host "router-admin"
@@ -302,6 +302,6 @@ Feature: Proxy console
             "State":                    "PLANNED",
             "Bound":                    "10",
             "Temporary key range ID":   "temp_id",
-            "Current move task ID":     "2",
+            "Current move task ID":     "2"
         }]
         """
