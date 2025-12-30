@@ -24,7 +24,9 @@ func TestSequencesCommandRoutesToCoordinator(t *testing.T) {
 	coordinatorCommands := []string{
 		spqrparser.RoutersStr,
 		spqrparser.TaskGroupStr,
+		spqrparser.TaskGroupsStr,
 		spqrparser.MoveTaskStr,
+		spqrparser.MoveTasksStr,
 		spqrparser.SequencesStr, // Added for issue #1590
 	}
 

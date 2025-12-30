@@ -1356,13 +1356,13 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 		return cli.Distributions(ctx, dss, defShardIDs)
 
-	case spqrparser.TaskGroupStr:
+	case spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr:
 		group, err := mngr.ListMoveTaskGroups(ctx)
 		if err != nil {
 			return err
 		}
 		return cli.MoveTaskGroups(ctx, group)
-	case spqrparser.MoveTaskStr:
+	case spqrparser.MoveTaskStr, spqrparser.MoveTasksStr:
 		taskList, err := mngr.ListMoveTasks(ctx)
 		if err != nil {
 			return err
