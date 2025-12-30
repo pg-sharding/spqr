@@ -604,7 +604,8 @@ Feature: Move recover test
         "Task group ID":            "tgid1",
         "Destination shard ID":     "sh2",
         "Source key range ID":      "krid1",
-        "Destination key range ID": "krid2"
+        "Destination key range ID": "krid2",
+        "Current move taks ID":     "2",
     }]
     """
     When I run SQL on host "coordinator"
@@ -618,7 +619,8 @@ Feature: Move recover test
         "Move task ID":             "1",
         "State":                    "PLANNED",
         "Bound":                    "10",
-        "Temporary key range ID":   "krid_temp1"
+        "Temporary key range ID":   "krid_temp1",
+        "Current move taks ID":     "2",
     }]
     """
     When I run SQL on host "shard1"
@@ -692,7 +694,8 @@ Feature: Move recover test
         "Task group ID":            "tgid1",
         "Destination shard ID":     "sh2",
         "Source key range ID":      "krid1",
-        "Destination key range ID": "krid2"
+        "Destination key range ID": "krid2",
+        "Current move taks ID":     "2",
     }]
     """
     When I run SQL on host "coordinator"
@@ -706,7 +709,8 @@ Feature: Move recover test
         "Move task ID":             "1",
         "State":                    "PLANNED",
         "Bound":                    "10",
-        "Temporary key range ID":   "krid_temp1"
+        "Temporary key range ID":   "krid_temp1",
+        "Current move taks ID":     "2",
     }]
     """
     When I run SQL on host "shard1"

@@ -593,7 +593,8 @@ Feature: Coordinator show clients, pools and backend_connections
             "Task group ID":            "tgid1",
             "Destination shard ID":     "sh_to",
             "Source key range ID":      "kr_from",
-            "Destination key range ID": "kr_to"
+            "Destination key range ID": "kr_to",
+            "Current move taks ID":     "2",
         }]
         """
         When I run SQL on host "coordinator"
@@ -607,6 +608,7 @@ Feature: Coordinator show clients, pools and backend_connections
             "Move task ID":             "2",
             "State":                    "PLANNED",
             "Bound":                    "10",
-            "Temporary key range ID":   "temp_id"
+            "Temporary key range ID":   "temp_id",
+            "Current move taks ID":     "2",
         }]
         """

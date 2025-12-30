@@ -795,7 +795,8 @@ Feature: Coordinator test
         "Task group ID":            "tgid1",
         "Destination shard ID":     "sh_to",
         "Source key range ID":      "krid1",
-        "Destination key range ID": "krid2"
+        "Destination key range ID": "krid2",
+        "Current move taks ID":     "2",
     }]
     """
     When I run SQL on host "coordinator"
@@ -809,7 +810,8 @@ Feature: Coordinator test
         "Move task ID":             "2",
         "State":                    "PLANNED",
         "Bound":                    "10",
-        "Temporary key range ID":   "temp_id"
+        "Temporary key range ID":   "temp_id",
+        "Current move taks ID":     "2",
     }]
     """
     When I run SQL on host "coordinator"
