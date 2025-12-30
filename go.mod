@@ -12,7 +12,7 @@ require (
 	github.com/go-faster/city v1.0.1
 	github.com/go-ldap/ldap/v3 v3.4.12
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.7.6
+	github.com/jackc/pgx/v5 v5.8.0
 	github.com/jcmturner/gofork v1.7.6
 	github.com/jcmturner/gokrb5/v8 v8.4.4
 	github.com/lib/pq v1.10.9
