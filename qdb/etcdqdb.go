@@ -1371,6 +1371,7 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
+		Str("relation", relName.String()).
 		Msg("etcdqdb: detach table from distribution")
 
 	distribution, err := q.GetDistribution(ctx, id)
