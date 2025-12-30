@@ -811,7 +811,7 @@ Feature: Coordinator test
         "State":                    "PLANNED",
         "Bound":                    "10",
         "Temporary key range ID":   "temp_id",
-        "Move task ID":     "2"
+        "Task group ID":            "tgid1"
     }]
     """
     When I run SQL on host "coordinator"

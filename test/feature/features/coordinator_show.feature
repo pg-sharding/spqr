@@ -610,6 +610,6 @@ Feature: Coordinator show clients, pools and backend_connections
             "State":                    "PLANNED",
             "Bound":                    "10",
             "Temporary key range ID":   "temp_id",
-            "Move task ID":     "2"
+            "Task group ID":            "tgid1"
         }]
         """
