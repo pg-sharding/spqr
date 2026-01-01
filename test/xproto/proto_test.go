@@ -169,7 +169,7 @@ func CreateTables() {
 		_ = conn.Close(context.Background())
 	}()
 
-	_, err = conn.Exec(context.Background(), "CREATE TABLE t (id int)")
+	_, err = conn.Exec(context.Background(), "CREATE TABLE t (id int, val int)")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
 	}
@@ -2587,7 +2587,7 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 
 				&pgproto3.Parse{
 					Name:  "xproto_ddl_multishard_t_s_1",
-					Query: "UPDATE t SET id = id + 1 /* __spqr__engine_v2: true */;",
+					Query: "UPDATE t SET val = val + 1 /* __spqr__engine_v2: true */;",
 				},
 				&pgproto3.Parse{
 					Name:  "xproto_ddl_multishard_t_s_2",
