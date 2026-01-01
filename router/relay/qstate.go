@@ -83,7 +83,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			/* It is necessary here to change state to trigger correct
 			* execution path ProcQueryAdvanced, that is, single-slice scatter-out
 			* query (no 2pc commit management!) */
-			state = &parser.ParseStateTXRollback{}
+			state = parser.ParseStateTXRollback{}
 			/* We will actually send COMMIT as use command to shards, do not
 			* override `query` */
 		} else {
