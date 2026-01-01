@@ -45,14 +45,14 @@ COPY xxmultish (id) FROM STDIN;
 
 SELECT id FROM xxmultish ORDER BY id;
 
-SELECT * FROM xxmultish WHERE id = 0 OR id = 199;
-SELECT * FROM xxmultish WHERE id = 0 OR id = 399;
-SELECT * FROM xxmultish WHERE id = 1 OR id = 299 OR id = 350;
-SELECT * FROM xxmultish WHERE id = 299 OR id = 350;
+SELECT id FROM xxmultish WHERE id = 0 OR id = 199;
+SELECT id FROM xxmultish WHERE id = 0 OR id = 399;
+SELECT id FROM xxmultish WHERE id = 1 OR id = 299 OR id = 350;
+SELECT id FROM xxmultish WHERE id = 299 OR id = 350;
 
-SELECT * FROM xxmultish WHERE id = 201 UNION ALL SELECT * FROM xxmultish WHERE id = 199;
-SELECT * FROM xxmultish WHERE id = 401 UNION ALL SELECT * FROM xxmultish WHERE id = 99;
-SELECT * FROM xxmultish WHERE id = 401 EXCEPT ALL SELECT * FROM xxmultish WHERE id = 99;
+SELECT id FROM xxmultish WHERE id = 201 UNION ALL SELECT * FROM xxmultish WHERE id = 199;
+SELECT id FROM xxmultish WHERE id = 401 UNION ALL SELECT * FROM xxmultish WHERE id = 99;
+SELECT id FROM xxmultish WHERE id = 401 EXCEPT ALL SELECT * FROM xxmultish WHERE id = 99;
 
 WITH d AS (SELECT * FROM xxmultish WHERE id = 401 OR id = 0) TABLE d;
 
