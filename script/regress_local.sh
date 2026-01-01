@@ -44,4 +44,4 @@ do
 	echo $name done
 done
 
-killall -9 spqr-router
+killall spqr-router
