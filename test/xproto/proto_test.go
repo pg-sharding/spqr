@@ -107,10 +107,16 @@ func SetupSharding() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;")
+	_, err = conn.Exec(context.Background(), "CREATE RELATION t(id) IN ds1;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
+
+	_, err = conn.Exec(context.Background(), "CREATE RELATION t2(id) IN ds1;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+
 	_, err = conn.Exec(context.Background(), "CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
