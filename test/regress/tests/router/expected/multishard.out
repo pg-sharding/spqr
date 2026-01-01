@@ -113,7 +113,7 @@ NOTICE: send query to shard(s) : sh3,sh4
  350
 (2 rows)
 
-SELECT id FROM xxmultish WHERE id = 201 UNION ALL SELECT * FROM xxmultish WHERE id = 199;
+SELECT id FROM xxmultish WHERE id = 201 UNION ALL SELECT id FROM xxmultish WHERE id = 199;
 NOTICE: send query to shard(s) : sh2,sh3
  id  
 -----
@@ -122,7 +122,7 @@ NOTICE: send query to shard(s) : sh2,sh3
  199
 (3 rows)
 
-SELECT id FROM xxmultish WHERE id = 401 UNION ALL SELECT * FROM xxmultish WHERE id = 99;
+SELECT id FROM xxmultish WHERE id = 401 UNION ALL SELECT id FROM xxmultish WHERE id = 99;
 NOTICE: send query to shard(s) : sh1,sh4
  id  
 -----
@@ -130,7 +130,7 @@ NOTICE: send query to shard(s) : sh1,sh4
   99
 (2 rows)
 
-SELECT id FROM xxmultish WHERE id = 401 EXCEPT ALL SELECT * FROM xxmultish WHERE id = 99;
+SELECT id FROM xxmultish WHERE id = 401 EXCEPT ALL SELECT id FROM xxmultish WHERE id = 99;
 NOTICE: send query to shard(s) : sh1,sh4
  id  
 -----
