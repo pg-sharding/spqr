@@ -54,7 +54,7 @@ SELECT id FROM xxmultish WHERE id = 201 UNION ALL SELECT id FROM xxmultish WHERE
 SELECT id FROM xxmultish WHERE id = 401 UNION ALL SELECT id FROM xxmultish WHERE id = 99;
 SELECT id FROM xxmultish WHERE id = 401 EXCEPT ALL SELECT id FROM xxmultish WHERE id = 99;
 
-WITH d AS (SELECT * FROM xxmultish WHERE id = 401 OR id = 0) TABLE d;
+WITH d AS (SELECT id FROM xxmultish WHERE id = 401 OR id = 0) TABLE d;
 
 -- XXX: support this
 --WITH d AS (SELECT * FROM xxmultish WHERE id = 401 OR id = 0) SELECT * FROM d UNION ALL SELECT * FROM xxmultish WHERE id = 300;

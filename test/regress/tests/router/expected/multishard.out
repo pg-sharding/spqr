@@ -137,7 +137,7 @@ NOTICE: send query to shard(s) : sh1,sh4
  401
 (1 row)
 
-WITH d AS (SELECT * FROM xxmultish WHERE id = 401 OR id = 0) TABLE d;
+WITH d AS (SELECT id FROM xxmultish WHERE id = 401 OR id = 0) TABLE d;
 NOTICE: send query to shard(s) : sh1,sh4
  id  
 -----
@@ -147,7 +147,7 @@ NOTICE: send query to shard(s) : sh1,sh4
 
 -- XXX: support this
 --WITH d AS (SELECT * FROM xxmultish WHERE id = 401 OR id = 0) SELECT * FROM d UNION ALL SELECT * FROM xxmultish WHERE id = 300;
-UPDATE xxmultish SET id = -1 /* __spqr__engine_v2: true */;
+UPDATE xxmultish SET val = -1 /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DELETE FROM xxmultish /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
