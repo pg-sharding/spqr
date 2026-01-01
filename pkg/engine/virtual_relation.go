@@ -107,9 +107,13 @@ func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.Tuple
 		Desc: GetVPHeader("table name", "schema name", "schema version", "shards", "column sequence mapping"),
 	}
 	for _, r := range rrs {
+		schema := r.SchemaName
+		if schema == "" {
+			schema = "$search_path"
+		}
 		tts.Raw = append(tts.Raw, [][]byte{
 			[]byte(r.TableName),
-			[]byte(r.GetSchema()),
+			[]byte(schema),
 			fmt.Appendf(nil, "%d", r.SchemaVersion),
 			fmt.Appendf(nil, "%+v", r.ShardIds),
 			fmt.Appendf(nil, "%+v", r.ColumnSequenceMapping),
@@ -354,6 +358,7 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 }
 
 func UniqueIndexesVirtualRelationScan(idToidxs map[string]*distributions.UniqueIndex) *tupleslot.TupleTableSlot {
+
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader("ID", "Relation name", "Column", "Column type"),
 	}

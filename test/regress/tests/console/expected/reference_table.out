@@ -61,6 +61,27 @@ CREATE REFERENCE RELATION r;
  shard id -> sh1,sh2,sh3,sh4
 (2 rows)
 
+CREATE REFERENCE RELATION nsp1.rr;
+   create reference table    
+-----------------------------
+ table    -> nsp1.rr
+ shard id -> sh1,sh2,sh3,sh4
+(2 rows)
+
+SHOW relations WHERE "Distribution ID" = 'REPLICATED';
+ Relation name | Distribution ID | Distribution key | Schema name  
+---------------+-----------------+------------------+--------------
+ r             | REPLICATED      |                  | $search_path
+ rr            | REPLICATED      |                  | nsp1
+(2 rows)
+
+SHOW reference_relations;
+ table name | schema name  | schema version |      shards       | column sequence mapping 
+------------+--------------+----------------+-------------------+-------------------------
+ r          | $search_path | 1              | [sh1 sh2 sh3 sh4] | map[]
+ rr         | nsp1         | 1              | [sh1 sh2 sh3 sh4] | map[]
+(2 rows)
+
 DROP DISTRIBUTION ALL CASCADE;
        drop distribution       
 -------------------------------
