@@ -292,6 +292,7 @@ localrouter
 logdir
 logproxy
 lol
+lowlevel
 lsb
 lval
 maxuint
