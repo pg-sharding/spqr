@@ -6,11 +6,12 @@ CREATE KEY RANGE krid4 FROM 300 ROUTE TO sh4 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid3 FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid2 FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-ALTER DISTRIBUTION ds1 ATTACH RELATION xxmultish DISTRIBUTION KEY id;
+
+CREATE DISTRIBUTED RELATION xxmultish (id);
 
 \c regress
 
-CREATE TABLE xxmultish(id int);
+CREATE TABLE xxmultish(id int, val int);
 
 COPY xxmultish (id) FROM STDIN;
 0
@@ -56,7 +57,7 @@ WITH d AS (SELECT * FROM xxmultish WHERE id = 401 OR id = 0) TABLE d;
 -- XXX: support this
 --WITH d AS (SELECT * FROM xxmultish WHERE id = 401 OR id = 0) SELECT * FROM d UNION ALL SELECT * FROM xxmultish WHERE id = 300;
 
-UPDATE xxmultish SET id = -1 /* __spqr__engine_v2: true */;;
+UPDATE xxmultish SET val = -1 /* __spqr__engine_v2: true */;;
 DELETE FROM xxmultish /* __spqr__engine_v2: true */;;
 
 DROP TABLE xxmultish;

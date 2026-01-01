@@ -37,7 +37,7 @@ CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
  bound -> 0
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION xxmultish DISTRIBUTION KEY id;
+CREATE DISTRIBUTED RELATION xxmultish (id);
          attach table         
 ------------------------------
  relation name   -> xxmultish
@@ -45,108 +45,108 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxmultish DISTRIBUTION KEY id;
 (2 rows)
 
 \c regress
-CREATE TABLE xxmultish(id int);
+CREATE TABLE xxmultish(id int, val int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY xxmultish (id) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 /* XXX: sort result here is not stable until proper router processing support */
 SELECT * FROM xxmultish ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
- id  
------
-   0
-   1
-  10
-  20
-  30
-  50
-  99
- 100
- 101
- 102
- 150
- 152
- 199
- 201
- 201
- 250
- 299
- 300
- 301
- 350
- 399
- 400
- 401
+ id  | val 
+-----+-----
+   0 |    
+   1 |    
+  10 |    
+  20 |    
+  30 |    
+  50 |    
+  99 |    
+ 100 |    
+ 101 |    
+ 102 |    
+ 150 |    
+ 152 |    
+ 199 |    
+ 201 |    
+ 201 |    
+ 250 |    
+ 299 |    
+ 300 |    
+ 301 |    
+ 350 |    
+ 399 |    
+ 400 |    
+ 401 |    
 (23 rows)
 
 SELECT * FROM xxmultish WHERE id = 0 OR id = 199;
-NOTICE: send query to shard(s) : sh1,sh2
- id  
------
-   0
- 199
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ id  | val 
+-----+-----
+   0 |    
+ 199 |    
 (2 rows)
 
 SELECT * FROM xxmultish WHERE id = 0 OR id = 399;
-NOTICE: send query to shard(s) : sh1,sh4
- id  
------
-   0
- 399
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ id  | val 
+-----+-----
+   0 |    
+ 399 |    
 (2 rows)
 
 SELECT * FROM xxmultish WHERE id = 1 OR id = 299 OR id = 350;
-NOTICE: send query to shard(s) : sh1,sh3,sh4
- id  
------
-   1
- 299
- 350
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ id  | val 
+-----+-----
+   1 |    
+ 299 |    
+ 350 |    
 (3 rows)
 
 SELECT * FROM xxmultish WHERE id = 299 OR id = 350;
-NOTICE: send query to shard(s) : sh3,sh4
- id  
------
- 299
- 350
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ id  | val 
+-----+-----
+ 299 |    
+ 350 |    
 (2 rows)
 
 SELECT * FROM xxmultish WHERE id = 201 UNION ALL SELECT * FROM xxmultish WHERE id = 199;
 NOTICE: send query to shard(s) : sh2,sh3
- id  
------
- 201
- 201
- 199
+ id  | val 
+-----+-----
+ 201 |    
+ 201 |    
+ 199 |    
 (3 rows)
 
 SELECT * FROM xxmultish WHERE id = 401 UNION ALL SELECT * FROM xxmultish WHERE id = 99;
 NOTICE: send query to shard(s) : sh1,sh4
- id  
------
- 401
-  99
+ id  | val 
+-----+-----
+ 401 |    
+  99 |    
 (2 rows)
 
 SELECT * FROM xxmultish WHERE id = 401 EXCEPT ALL SELECT * FROM xxmultish WHERE id = 99;
 NOTICE: send query to shard(s) : sh1,sh4
- id  
------
- 401
+ id  | val 
+-----+-----
+ 401 |    
 (1 row)
 
 WITH d AS (SELECT * FROM xxmultish WHERE id = 401 OR id = 0) TABLE d;
-NOTICE: send query to shard(s) : sh1,sh4
- id  
------
- 401
-   0
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ id  | val 
+-----+-----
+   0 |    
+ 401 |    
 (2 rows)
 
 -- XXX: support this
 --WITH d AS (SELECT * FROM xxmultish WHERE id = 401 OR id = 0) SELECT * FROM d UNION ALL SELECT * FROM xxmultish WHERE id = 300;
-UPDATE xxmultish SET id = -1 /* __spqr__engine_v2: true */;;
+UPDATE xxmultish SET val = -1 /* __spqr__engine_v2: true */;;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DELETE FROM xxmultish /* __spqr__engine_v2: true */;;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
