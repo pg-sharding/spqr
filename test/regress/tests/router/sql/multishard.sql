@@ -11,6 +11,8 @@ CREATE DISTRIBUTED RELATION xxmultish (id);
 
 \c regress
 
+SET __spqr__engine_v2 TO true;
+
 CREATE TABLE xxmultish(id int, val int);
 
 COPY xxmultish (id) FROM STDIN;
@@ -41,7 +43,7 @@ COPY xxmultish (id) FROM STDIN;
 
 /* XXX: sort result here is not stable until proper router processing support */
 
-SELECT * FROM xxmultish ORDER BY id;
+SELECT id FROM xxmultish ORDER BY id;
 
 SELECT * FROM xxmultish WHERE id = 0 OR id = 199;
 SELECT * FROM xxmultish WHERE id = 0 OR id = 399;
@@ -57,8 +59,8 @@ WITH d AS (SELECT * FROM xxmultish WHERE id = 401 OR id = 0) TABLE d;
 -- XXX: support this
 --WITH d AS (SELECT * FROM xxmultish WHERE id = 401 OR id = 0) SELECT * FROM d UNION ALL SELECT * FROM xxmultish WHERE id = 300;
 
-UPDATE xxmultish SET val = -1 /* __spqr__engine_v2: true */;;
-DELETE FROM xxmultish /* __spqr__engine_v2: true */;;
+UPDATE xxmultish SET val = -1 /* __spqr__engine_v2: true */;
+DELETE FROM xxmultish /* __spqr__engine_v2: true */;
 
 DROP TABLE xxmultish;
 
