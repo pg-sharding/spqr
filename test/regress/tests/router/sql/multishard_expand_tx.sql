@@ -7,9 +7,12 @@ CREATE KEY RANGE FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION xxm_expd DISTRIBUTION KEY id;
+
+CREATE DISTRIBUTED RELATION xxm_expd (id);
 
 \c regress
+
+SET __spqr__engine_v2 TO true;
 
 CREATE TABLE xxm_expd(id int, j INT);
 
@@ -60,7 +63,7 @@ ROLLBACK;
 
 SELECT * FROM xxm_expd ORDER BY id /* __spqr__engine_v2: true */;
 
-UPDATE xxm_expd SET id = -1 /* __spqr__engine_v2: true */;
+UPDATE xxm_expd SET j = -1 /* __spqr__engine_v2: true */;
 DELETE FROM xxm_expd /* __spqr__engine_v2: true */;
 
 DROP TABLE xxm_expd;

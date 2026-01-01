@@ -3,6 +3,7 @@ package planner
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/pg-sharding/lyx/lyx"
@@ -396,11 +397,37 @@ func AnalyzeQueryV1(
 		return nil
 	case *lyx.Update:
 
-		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
+		switch q := stmt.TableRef.(type) {
+		case *lyx.RangeVar:
+			rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
+			if d, err := rm.GetRelationDistribution(ctx, rqdn); err != nil {
+				return err
+			} else {
+				for _, c := range stmt.SetClause {
+					switch cc := c.(type) {
+					case *lyx.ResTarget:
+						r := d.GetRelation(rqdn)
+						cols, err := r.GetDistributionKeyColumns()
+						if err != nil {
+							return err
+						}
+						if slices.Contains(cols, cc.Name) {
+							return spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
+						}
+					default:
+						return rerrors.ErrComplexQuery
+					}
+				}
+			}
+		default:
+			return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+		}
+
+		if err := analyzeFromNode(ctx, stmt.TableRef, rm); err != nil {
 			return err
 		}
 
-		if err := analyseHelper(stmt.TableRef); err != nil {
+		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
 			return err
 		}
 

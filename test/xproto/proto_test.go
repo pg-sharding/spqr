@@ -107,10 +107,16 @@ func SetupSharding() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;")
+	_, err = conn.Exec(context.Background(), "CREATE RELATION t(id) IN ds1;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
+
+	_, err = conn.Exec(context.Background(), "CREATE RELATION t2(id) IN ds1;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+
 	_, err = conn.Exec(context.Background(), "CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
@@ -173,6 +179,12 @@ func CreateTables() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
 	}
+
+	_, err = conn.Exec(context.Background(), "CREATE TABLE t2 (id int, val int)")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
+	}
+
 	_, err = conn.Exec(context.Background(), "CREATE TABLE text_table (id text)")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
@@ -2587,11 +2599,11 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 
 				&pgproto3.Parse{
 					Name:  "xproto_ddl_multishard_t_s_1",
-					Query: "UPDATE t SET id = id + 1 /* __spqr__engine_v2: true */;",
+					Query: "UPDATE t2 SET val = val + 1 /* __spqr__engine_v2: true */;",
 				},
 				&pgproto3.Parse{
 					Name:  "xproto_ddl_multishard_t_s_2",
-					Query: "SELECT FROM t /* __spqr__engine_v2: true */;",
+					Query: "SELECT FROM t2 /* __spqr__engine_v2: true */;",
 				},
 				&pgproto3.Sync{},
 				&pgproto3.Bind{
