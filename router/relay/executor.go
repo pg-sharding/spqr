@@ -810,13 +810,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *ExecutorState, mgr meta.Entity
 				return fmt.Errorf("unexpected row description in slice deploy")
 			}
 		default:
-
-			if replyCl {
-				err = s.Client().Send(msg)
-				if err != nil {
-					return err
-				}
-			}
+			return fmt.Errorf("unexpected %T message type in executor slice deploy", msg)
 		}
 	}
 }
