@@ -46,7 +46,7 @@ type RelayStateMgr interface {
 
 	Parse(query string, doCaching bool) (parser.ParseState, string, error)
 
-	CompleteRelay(replyCl bool) error
+	CompleteRelay() error
 	Close() error
 	Client() client.RouterClient
 
@@ -531,7 +531,7 @@ func (rst *RelayStateImpl) Connect() error {
 	return nil
 }
 
-func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
+func (rst *RelayStateImpl) CompleteRelay() error {
 	rst.unnamedPortalExists = false
 
 	spqrlog.Zero.Debug().
@@ -542,12 +542,10 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	/* move this logic to executor */
 	switch rst.qse.TxStatus() {
 	case txstatus.TXIDLE:
-		if replyCl {
-			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
-				TxStatus: byte(rst.qse.TxStatus()),
-			}); err != nil {
-				return err
-			}
+		if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(rst.qse.TxStatus()),
+		}); err != nil {
+			return err
 		}
 
 		if err := rst.poolMgr.TXEndCB(rst); err != nil {
@@ -560,12 +558,10 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	case txstatus.TXERR:
 		fallthrough
 	case txstatus.TXACT:
-		if replyCl {
-			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
-				TxStatus: byte(rst.qse.TxStatus()),
-			}); err != nil {
-				return err
-			}
+		if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(rst.qse.TxStatus()),
+		}); err != nil {
+			return err
 		}
 		/* preserve same route. Do not unroute */
 		return nil
@@ -1144,7 +1140,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 		}
 	}
 
-	return rst.CompleteRelay(true)
+	return rst.CompleteRelay()
 }
 
 // TODO : unit tests

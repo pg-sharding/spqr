@@ -104,7 +104,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	}
 
 	if err == nil {
-		return pd, rst.CompleteRelay(true)
+		return pd, rst.CompleteRelay()
 	}
 
 	/* outer function will complete relay here */
