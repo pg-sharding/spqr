@@ -809,6 +809,8 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *ExecutorState, mgr meta.Entity
 			} else {
 				return fmt.Errorf("unexpected row description in slice deploy")
 			}
+		case *pgproto3.ParameterStatus:
+			/* do not resent this to client */
 		default:
 			return fmt.Errorf("unexpected %T message type in executor slice deploy", msg)
 		}
