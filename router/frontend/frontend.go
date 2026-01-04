@@ -113,7 +113,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 			case io.ErrUnexpectedEOF:
 				fallthrough
 			case io.EOF:
-				// EOFs are OK.
+				// EOF is OK.
 				return nil
 			default:
 				return rst.ResetWithError(err)
