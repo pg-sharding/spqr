@@ -517,7 +517,7 @@ func (rst *RelayStateImpl) AllocateGang() error {
 		Str("user", rst.Cl.Usr()).
 		Str("db", rst.Cl.DB()).
 		Uint("client", rst.Client().ID()).
-		Msg("alloicate gang for client")
+		Msg("allocate gang for client")
 
 	for _, shkey := range rst.ActiveShards() {
 		spqrlog.Zero.Debug().
