@@ -70,7 +70,7 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *p
 	return nil
 }
 
-// DeploySliceTransactionBlock implements QueryStateExecutor.
+// InitPlan implements QueryStateExecutor.
 func (s *QueryStateExecutorImpl) InitPlan(as []kr.ShardKey) error {
 
 	var serv server.Server
