@@ -2,6 +2,7 @@ package poolmgr
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -37,6 +38,32 @@ type PoolMgr interface {
 func unRouteWithError(cmngr PoolMgr, client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
 	_ = cmngr.UnRouteCB(client, sh)
 	return client.ReplyErr(errmsg)
+}
+
+// TODO : unit tests
+func UnrouteCommon(
+	pmgr PoolMgr,
+	cl client.RouterClient,
+	activeShards []kr.ShardKey,
+	shkey []kr.ShardKey) ([]kr.ShardKey, error) {
+	newActiveShards := make([]kr.ShardKey, 0)
+	for _, el := range activeShards {
+		if slices.IndexFunc(shkey, func(k kr.ShardKey) bool {
+			return k == el
+		}) == -1 {
+			newActiveShards = append(newActiveShards, el)
+		}
+	}
+	if err := pmgr.UnRouteCB(cl, shkey); err != nil {
+		return nil, err
+	}
+	if len(newActiveShards) > 0 {
+		activeShards = newActiveShards
+	} else {
+		activeShards = nil
+	}
+
+	return activeShards, nil
 }
 
 func unRouteShardsCommon(cl client.RouterClient, sh []kr.ShardKey) error {

@@ -15,5 +15,4 @@ type ExecutionSliceMgr interface {
 
 	/* Unroute Routines */
 	UnRouteWithError(shkey []kr.ShardKey, errmsg error) error
-	Unroute(shkey []kr.ShardKey) error
 }

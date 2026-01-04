@@ -18,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/parser"
+	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/twopc"
 )
@@ -115,7 +116,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	case io.ErrUnexpectedEOF:
 		fallthrough
 	case io.EOF:
-		_ = rst.Unroute(rst.ActiveShards())
+		rst.activeShards, err = poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.ActiveShards(), rst.ActiveShards())
 		return nil, err
 		// ok
 	default:

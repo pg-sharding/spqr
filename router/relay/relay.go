@@ -236,7 +236,7 @@ func (rst *RelayStateImpl) Close() error {
 		}
 	}()
 	defer rst.ActiveShardsReset()
-	return rst.poolMgr.UnRouteCB(rst.Cl, rst.activeShards)
+	return rst.poolMgr.UnRouteCB(rst.Cl, rst.ActiveShards())
 }
 
 func (rst *RelayStateImpl) ActiveShardsReset() {
@@ -271,7 +271,7 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 		Uint("relay state", spqrlog.GetPointer(rst)).
 		Msg("unroute previous connections")
 
-	if err := rst.Unroute(rst.activeShards); err != nil {
+	if _, err := poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.ActiveShards(), rst.ActiveShards()); err != nil {
 		return err
 	}
 
@@ -566,34 +566,15 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 		/* preserve same route. Do not unroute */
 		return nil
 	default:
-		_ = rst.Unroute(rst.activeShards)
+		if _, err := poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.activeShards, rst.activeShards); err != nil {
+			return err
+		}
 		return fmt.Errorf("unknown tx status %v", rst.qse.TxStatus())
 	}
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Unroute(shkey []kr.ShardKey) error {
-	newActiveShards := make([]kr.ShardKey, 0)
-	for _, el := range rst.activeShards {
-		if slices.IndexFunc(shkey, func(k kr.ShardKey) bool {
-			return k == el
-		}) == -1 {
-			newActiveShards = append(newActiveShards, el)
-		}
-	}
-	if err := rst.poolMgr.UnRouteCB(rst.Cl, shkey); err != nil {
-		return err
-	}
-	if len(newActiveShards) > 0 {
-		rst.activeShards = newActiveShards
-	} else {
-		rst.activeShards = nil
-	}
-
-	return nil
-}
-
-// TODO : unit tests
+// XXX: remove that?
 func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) error {
 	_ = rst.poolMgr.UnRouteWithError(rst.Cl, shkey, errmsg)
 	return rst.Reset()
@@ -1349,7 +1330,8 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	switch err {
 	case nil:
 		return p, func() error {
-			return rst.Unroute(p.ExecutionTargets())
+			rst.activeShards, err = poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.activeShards, p.ExecutionTargets())
+			return err
 		}, nil
 	case ErrSkipQuery:
 		if err := rst.Client().ReplyErr(err); err != nil {
