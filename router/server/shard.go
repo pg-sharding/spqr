@@ -28,9 +28,9 @@ func (srv *ShardServer) ToMultishard() Server {
 	return NewMultiShardServerFromShard(srv.pool, *srv.shard.Load())
 }
 
-// ExpandDataShard implements Server.
-func (srv *ShardServer) ExpandDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
-	return fmt.Errorf("expanding transaction on single shard server in unsupported")
+// ExpandGang implements Server.
+func (srv *ShardServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
+	return fmt.Errorf("expanding gang on single shard server in unsupported")
 }
 
 // DataPending implements Server.
@@ -120,7 +120,7 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 }
 
 // TODO : unit tests
-func (srv *ShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA) error {
+func (srv *ShardServer) AllocateGangMember(clid uint, shkey kr.ShardKey, tsa tsa.TSA) error {
 	v := srv.shard.Load()
 	if v != nil {
 		return fmt.Errorf("single datashard " +

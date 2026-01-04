@@ -283,7 +283,7 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 		}
 	}
 
-	if err := rst.Connect(); err != nil {
+	if err := rst.AllocateGang(); err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
 			Uint("client", rst.Client().ID()).
@@ -353,7 +353,7 @@ func (rst *RelayStateImpl) expandRoutes(routes []kr.ShardKey) error {
 			Str("deploying tx", beforeTx.String()).
 			Msg("expanding shard with tsa")
 
-		if err := rst.Client().Server().ExpandDataShard(rst.Client().ID(), shkey, rst.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
+		if err := rst.Client().Server().ExpandGang(rst.Client().ID(), shkey, rst.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
 			return err
 		}
 	}
@@ -495,7 +495,7 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Connect() error {
+func (rst *RelayStateImpl) AllocateGang() error {
 	var serv server.Server
 	var err error
 
@@ -517,13 +517,13 @@ func (rst *RelayStateImpl) Connect() error {
 		Str("user", rst.Cl.Usr()).
 		Str("db", rst.Cl.DB()).
 		Uint("client", rst.Client().ID()).
-		Msg("connect client to datashard routes")
+		Msg("allocate gang for client")
 
 	for _, shkey := range rst.ActiveShards() {
 		spqrlog.Zero.Debug().
 			Str("client tsa", string(rst.Client().GetTsa())).
 			Msg("adding shard with tsa")
-		if err := rst.Client().Server().AddDataShard(rst.Client().ID(), shkey, rst.Client().GetTsa()); err != nil {
+		if err := rst.Client().Server().AllocateGangMember(rst.Client().ID(), shkey, rst.Client().GetTsa()); err != nil {
 			return err
 		}
 	}

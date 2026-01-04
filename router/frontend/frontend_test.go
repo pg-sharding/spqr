@@ -78,7 +78,7 @@ func TestFrontendSimple(t *testing.T) {
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{})
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 
-	srv.EXPECT().AddDataShard(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
@@ -198,7 +198,7 @@ func TestFrontendXProto(t *testing.T) {
 		sh,
 	})
 
-	srv.EXPECT().AddDataShard(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	/* query Router */
 

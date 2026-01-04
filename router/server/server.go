@@ -19,12 +19,14 @@ type Server interface {
 
 	SendShard(query pgproto3.FrontendMessage, shKey kr.ShardKey) error
 
+	/* XXX: remove two methods below and derive next message in executor */
 	/* message, gang source index, error */
 	Receive() (pgproto3.BackendMessage, uint, error)
 	ReceiveShard(shardId uint) (pgproto3.BackendMessage, error)
 
-	AddDataShard(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) error
-	ExpandDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error
+	/* TODO: add and support gang id here. */
+	AllocateGangMember(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) error
+	ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error
 
 	ToMultishard() Server
 
