@@ -35,7 +35,7 @@ import (
 )
 
 type RelayStateMgr interface {
-	poolmgr.ConnectionKeeper
+	poolmgr.GangMgr
 	slice.ExecutionSliceMgr
 
 	QueryExecutor() QueryStateExecutor
@@ -830,7 +830,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				ctx := context.TODO()
 
-				if rst.poolMgr.ValidateSliceChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
+				if rst.poolMgr.ValidateGangChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
 
 					// Do not respond with BindComplete, as the relay step should take care of itself.
 					queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
@@ -1189,16 +1189,28 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 		return nil, nil
 	}
 
-	// txactive == 0 || activeSh == nil
-	if !rst.poolMgr.ValidateSliceChange(rst) {
-		if rst.Client().EnhancedMultiShardProcessing() {
-			/* With engine v2 we can expand transaction on more targets */
-			/* TODO: XXX */
+	wantExpand := false
 
-			q, err := rst.CreateSlicedPlan(ctx, rm)
-			if err != nil {
-				return nil, err
-			}
+	// txactive == 0 || activeSh == nil
+	if !rst.poolMgr.ValidateGangChange(rst) {
+		if !rst.Client().EnhancedMultiShardProcessing() {
+
+			/* TODO: fix this */
+			prevPlan.SetStmt(rst.qp.Stmt())
+
+			return prevPlan, nil
+		}
+		/* With engine v2 we can expand transaction on more targets */
+		/* TODO: XXX */
+
+		wantExpand = true
+	}
+
+	q, err := rst.CreateSlicedPlan(ctx, rm)
+
+	switch err {
+	case nil:
+		if wantExpand {
 			execTarg := q.ExecutionTargets()
 
 			/*
@@ -1212,16 +1224,6 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 			return q, rst.expandRoutes(execTarg)
 		}
 
-		/* TODO: fix this */
-		prevPlan.SetStmt(rst.qp.Stmt())
-
-		return prevPlan, nil
-	}
-
-	q, err := rst.CreateSlicedPlan(ctx, rm)
-
-	switch err {
-	case nil:
 		switch q.(type) {
 		case *plan.VirtualPlan:
 			return q, nil
@@ -1260,7 +1262,7 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 
 	// txactive == 0 || activeSh == nil
 	// already has route, no need for any hint
-	if !rst.poolMgr.ValidateSliceChange(rst) {
+	if !rst.poolMgr.ValidateGangChange(rst) {
 		return nil
 	}
 
@@ -1308,7 +1310,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	}
 
 	// txactive == 0 || activeSh == nil
-	if !rst.poolMgr.ValidateSliceChange(rst) {
+	if !rst.poolMgr.ValidateGangChange(rst) {
 		return currentPlan, noopCloseRouteFunc, nil
 	}
 
@@ -1349,7 +1351,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error {
 
 	ctx := context.TODO()
-	if rst.poolMgr.ValidateSliceChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
+	if rst.poolMgr.ValidateGangChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
 		rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, q.String, rst.qp.Stmt())
 		if err != nil {
 			return err
