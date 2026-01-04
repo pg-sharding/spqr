@@ -64,7 +64,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 
 		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
 			// TODO: figure out if we need this
-			// _ = rst.UnrouteRoutes(rst.ActiveShards())
+			// _ = rst.Reset()
 			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
 		}
 
@@ -72,7 +72,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
 		}
 
-		return nil, rst.UnRouteWithError(rst.ActiveShards(), err)
+		return nil, rst.ResetWithError(err)
 	}
 
 	txbefore := rst.QueryExecutor().TxStatus()
@@ -130,7 +130,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			return nil, rst.Client().ReplyErrWithTxStatus(rerr, txstatus.TXERR)
 		}
 
-		return nil, rst.UnRouteWithError(rst.ActiveShards(), rerr)
+		return nil, rst.ResetWithError(rerr)
 	}
 }
 
