@@ -258,7 +258,6 @@ func (rst *RelayStateImpl) Reset() error {
 	return rst.Cl.Unroute()
 }
 
-var ErrSkipQuery = fmt.Errorf("wait for a next query")
 var ErrMatchShardError = fmt.Errorf("failed to match datashard")
 
 // TODO : unit tests
@@ -1230,14 +1229,9 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 		default:
 			return q, rst.procRoutes(q.ExecutionTargets())
 		}
-	case ErrSkipQuery:
-		if err := rst.Client().ReplyErr(err); err != nil {
-			return nil, err
-		}
-		return nil, ErrSkipQuery
 	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
-		return nil, ErrSkipQuery
+		return nil, err
 	default:
 		return q, err
 	}
@@ -1284,14 +1278,9 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 	switch err {
 	case nil:
 		return nil
-	case ErrSkipQuery:
-		if err := rst.Client().ReplyErr(err); err != nil {
-			return err
-		}
-		return ErrSkipQuery
 	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
-		return ErrSkipQuery
+		return err
 	default:
 		return err
 	}
@@ -1335,14 +1324,9 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 			rst.activeShards, err = poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.activeShards, p.ExecutionTargets())
 			return err
 		}, nil
-	case ErrSkipQuery:
-		if err := rst.Client().ReplyErr(err); err != nil {
-			return currentPlan, noopCloseRouteFunc, err
-		}
-		return currentPlan, noopCloseRouteFunc, ErrSkipQuery
 	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
-		return currentPlan, noopCloseRouteFunc, ErrSkipQuery
+		return currentPlan, noopCloseRouteFunc, err
 	default:
 		return currentPlan, noopCloseRouteFunc, err
 	}
