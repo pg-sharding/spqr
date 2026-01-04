@@ -2,7 +2,6 @@ package poolmgr
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -28,43 +27,15 @@ type GangMgr interface {
 type PoolMgr interface {
 	TXEndCB(gangMgr GangMgr) error
 
-	UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error
-	UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error
-
 	ValidateGangChange(gangMgr GangMgr) bool
 	ConnectionActive(gangMgr GangMgr) bool
 }
 
 // TODO : unit tests
-func unRouteWithError(cmngr PoolMgr, client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
-	_ = cmngr.UnRouteCB(client, sh)
-	return client.ReplyErr(errmsg)
-}
-
-// TODO : unit tests
 func UnrouteCommon(
-	pmgr PoolMgr,
 	cl client.RouterClient,
-	activeShards []kr.ShardKey,
-	shkey []kr.ShardKey) ([]kr.ShardKey, error) {
-	newActiveShards := make([]kr.ShardKey, 0)
-	for _, el := range activeShards {
-		if slices.IndexFunc(shkey, func(k kr.ShardKey) bool {
-			return k == el
-		}) == -1 {
-			newActiveShards = append(newActiveShards, el)
-		}
-	}
-	if err := pmgr.UnRouteCB(cl, shkey); err != nil {
-		return nil, err
-	}
-	if len(newActiveShards) > 0 {
-		activeShards = newActiveShards
-	} else {
-		activeShards = nil
-	}
-
-	return activeShards, nil
+	shkey []kr.ShardKey) error {
+	return unRouteShardsCommon(cl, shkey)
 }
 
 func unRouteShardsCommon(cl client.RouterClient, sh []kr.ShardKey) error {
@@ -105,16 +76,6 @@ func unRouteShardsCommon(cl client.RouterClient, sh []kr.ShardKey) error {
 type TxConnManager struct {
 }
 
-// TODO : unit tests
-func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
-	return unRouteWithError(t, client, sh, errmsg)
-}
-
-// TODO : unit tests
-func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
-	return unRouteShardsCommon(cl, sh)
-}
-
 func NewTxConnManager() *TxConnManager {
 	return &TxConnManager{}
 }
@@ -148,20 +109,10 @@ func (t *TxConnManager) TXEndCB(rst GangMgr) error {
 		Msg("client end of transaction, unrouting from active shards")
 	rst.ActiveShardsReset()
 
-	return t.UnRouteCB(rst.Client(), ash)
+	return unRouteShardsCommon(rst.Client(), ash)
 }
 
 type SessConnManager struct {
-}
-
-// TODO : unit tests
-func (s *SessConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
-	return unRouteWithError(s, client, sh, errmsg)
-}
-
-// TODO : unit tests
-func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
-	return unRouteShardsCommon(cl, sh)
 }
 
 func (s *SessConnManager) TXEndCB(rst GangMgr) error {
@@ -193,16 +144,6 @@ func (v *VirtualConnManager) ConnectionActive(rst GangMgr) bool {
 // TXEndCB implements PoolMgr.
 func (v *VirtualConnManager) TXEndCB(rst GangMgr) error {
 	return nil
-}
-
-// UnRouteCB implements PoolMgr.
-func (v *VirtualConnManager) UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error {
-	return nil
-}
-
-// UnRouteWithError implements PoolMgr.
-func (v *VirtualConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
-	return unRouteWithError(v, client, sh, errmsg)
 }
 
 // ValidateGangChange implements PoolMgr.
