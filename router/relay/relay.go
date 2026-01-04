@@ -237,7 +237,7 @@ func (rst *RelayStateImpl) Close() error {
 		}
 	}()
 	defer rst.ActiveShardsReset()
-	return rst.poolMgr.UnRouteCB(rst.Cl, rst.ActiveShards())
+	return poolmgr.UnrouteCommon(rst.Cl, rst.ActiveShards())
 }
 
 func (rst *RelayStateImpl) ActiveShardsReset() {
@@ -250,6 +250,11 @@ func (rst *RelayStateImpl) ActiveShards() []kr.ShardKey {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) Reset() error {
+
+	if err := poolmgr.UnrouteCommon(rst.Client(), rst.ActiveShards()); err != nil {
+		return err
+	}
+
 	rst.activeShards = nil
 	rst.qse.SetTxStatus(txstatus.TXIDLE)
 
@@ -271,7 +276,7 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 		Uint("relay state", spqrlog.GetPointer(rst)).
 		Msg("unroute previous connections")
 
-	if _, err := poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.ActiveShards(), rst.ActiveShards()); err != nil {
+	if err := poolmgr.UnrouteCommon(rst.Client(), rst.ActiveShards()); err != nil {
 		return err
 	}
 
@@ -529,7 +534,7 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 		/* preserve same route. Do not unroute */
 		return nil
 	default:
-		if _, err := poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.activeShards, rst.activeShards); err != nil {
+		if err := rst.Reset(); err != nil {
 			return err
 		}
 		return fmt.Errorf("unknown tx status %v", rst.qse.TxStatus())
@@ -538,7 +543,7 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) ResetWithError(err error) error {
-	_ = rst.poolMgr.UnRouteWithError(rst.Cl, rst.ActiveShards(), err)
+	_ = rst.Client().ReplyErr(err)
 	return rst.Reset()
 }
 
@@ -1284,7 +1289,9 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	switch err {
 	case nil:
 		return p, func() error {
-			rst.activeShards, err = poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.activeShards, p.ExecutionTargets())
+			/* Active shards should be same as p.ExecutionTargets */
+			err = poolmgr.UnrouteCommon(rst.Client(), rst.ActiveShards())
+			rst.activeShards = nil
 			return err
 		}, nil
 	case ErrMatchShardError:
