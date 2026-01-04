@@ -43,6 +43,7 @@ type RelayStateMgr interface {
 	PoolMgr() poolmgr.PoolMgr
 
 	Reset() error
+	ResetWithError(err error) error
 
 	Parse(query string, doCaching bool) (parser.ParseState, string, error)
 
@@ -574,9 +575,8 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 }
 
 // TODO : unit tests
-// XXX: remove that?
-func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) error {
-	_ = rst.poolMgr.UnRouteWithError(rst.Cl, shkey, errmsg)
+func (rst *RelayStateImpl) ResetWithError(err error) error {
+	_ = rst.poolMgr.UnRouteWithError(rst.Cl, rst.ActiveShards(), err)
 	return rst.Reset()
 }
 
