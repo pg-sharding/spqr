@@ -80,7 +80,6 @@ func (s *QueryStateExecutorImpl) DeploySliceTransactionBlock(server server.Serve
 	}
 
 	if !s.cl.EnhancedMultiShardProcessing() {
-		/* move this logic to executor */
 		if s.TxStatus() == txstatus.TXACT && len(server.Datashards()) > 1 {
 			return fmt.Errorf("cannot route in an active transaction")
 		}
