@@ -109,12 +109,13 @@ func (m *MultiShardServer) Reset() error {
 	return nil
 }
 
-func (m *MultiShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA) error {
+func (m *MultiShardServer) AllocateGangMember(clid uint, shkey kr.ShardKey, tsa tsa.TSA) error {
 	for _, piv := range m.activeShards {
 		if piv.SHKey().Name == shkey.Name {
 			return fmt.Errorf("multishard connection already use %v", shkey.Name)
 		}
 	}
+	/* do connection acquiring  */
 	sh, err := m.pool.ConnectionWithTSA(clid, shkey, tsa)
 	if err != nil {
 		return err
@@ -127,7 +128,7 @@ func (m *MultiShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TS
 	return nil
 }
 
-func (m *MultiShardServer) ExpandDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
+func (m *MultiShardServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
 	for _, piv := range m.activeShards {
 		if piv.SHKey().Name == shkey.Name {
 			/* todo: multi-slice server can use multiple connections to shard. */
