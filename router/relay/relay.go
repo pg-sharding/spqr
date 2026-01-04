@@ -1291,6 +1291,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 		return p, func() error {
 			/* Active shards should be same as p.ExecutionTargets */
 			err = poolmgr.UnrouteCommon(rst.Client(), rst.ActiveShards())
+			rst.activeShards = nil
 			return err
 		}, nil
 	case ErrMatchShardError:

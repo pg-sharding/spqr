@@ -34,11 +34,7 @@ type PoolMgr interface {
 // TODO : unit tests
 func UnrouteCommon(
 	cl client.RouterClient,
-	shkey []kr.ShardKey) error {
-	return unRouteShardsCommon(cl, shkey)
-}
-
-func unRouteShardsCommon(cl client.RouterClient, sh []kr.ShardKey) error {
+	sh []kr.ShardKey) error {
 	var anyerr error
 	anyerr = nil
 
@@ -109,7 +105,7 @@ func (t *TxConnManager) TXEndCB(rst GangMgr) error {
 		Msg("client end of transaction, unrouting from active shards")
 	rst.ActiveShardsReset()
 
-	return unRouteShardsCommon(rst.Client(), ash)
+	return UnrouteCommon(rst.Client(), ash)
 }
 
 type SessConnManager struct {
