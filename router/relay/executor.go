@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -64,6 +65,44 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *p
 		}
 
 		s.SetTxStatus(txstatus.TXStatus(st))
+	}
+
+	return nil
+}
+
+// DeploySliceTransactionBlock implements QueryStateExecutor.
+func (s *QueryStateExecutorImpl) InitPlan(as []kr.ShardKey) error {
+
+	var serv server.Server
+	var err error
+
+	if len(as) > 1 {
+		serv, err = server.NewMultiShardServer(s.Client().Route().ServPool())
+		if err != nil {
+			return err
+		}
+	} else {
+		_ = s.Client().ReplyDebugNotice("open a connection to the single data shard")
+		serv = server.NewShardServer(s.Client().Route().ServPool())
+	}
+
+	if err := s.Client().AssignServerConn(serv); err != nil {
+		return err
+	}
+
+	spqrlog.Zero.Debug().
+		Str("user", s.Client().Usr()).
+		Str("db", s.Client().DB()).
+		Uint("client", s.Client().ID()).
+		Msg("allocate gang for client")
+
+	for _, shkey := range as {
+		spqrlog.Zero.Debug().
+			Str("client tsa", string(s.Client().GetTsa())).
+			Msg("adding shard with tsa")
+		if err := s.Client().Server().AllocateGangMember(s.Client().ID(), shkey, s.Client().GetTsa()); err != nil {
+			return err
+		}
 	}
 
 	return nil

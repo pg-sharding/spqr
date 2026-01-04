@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
@@ -29,6 +30,9 @@ type QueryStateExecutor interface {
 	txstatus.TxStatusMgr
 
 	Client() client.RouterClient
+
+	/* Do all gang allocation required for plan processing */
+	InitPlan(as []kr.ShardKey) error
 
 	DeploySliceTransactionBlock(server server.Server) error
 	DeploySliceTransactionQuery(server server.Server, query string) error

@@ -283,7 +283,7 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 		}
 	}
 
-	if err := rst.AllocateGang(); err != nil {
+	if err := rst.QueryExecutor().InitPlan(rst.ActiveShards()); err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
 			Uint("client", rst.Client().ID()).
@@ -492,43 +492,6 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 	shardMatches := strings.Join(shardInfos, ",")
 
 	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) AllocateGang() error {
-	var serv server.Server
-	var err error
-
-	if len(rst.ActiveShards()) > 1 {
-		serv, err = server.NewMultiShardServer(rst.Cl.Route().ServPool())
-		if err != nil {
-			return err
-		}
-	} else {
-		_ = rst.Cl.ReplyDebugNotice("open a connection to the single data shard")
-		serv = server.NewShardServer(rst.Cl.Route().ServPool())
-	}
-
-	if err := rst.Cl.AssignServerConn(serv); err != nil {
-		return err
-	}
-
-	spqrlog.Zero.Debug().
-		Str("user", rst.Cl.Usr()).
-		Str("db", rst.Cl.DB()).
-		Uint("client", rst.Client().ID()).
-		Msg("allocate gang for client")
-
-	for _, shkey := range rst.ActiveShards() {
-		spqrlog.Zero.Debug().
-			Str("client tsa", string(rst.Client().GetTsa())).
-			Msg("adding shard with tsa")
-		if err := rst.Client().Server().AllocateGangMember(rst.Client().ID(), shkey, rst.Client().GetTsa()); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (rst *RelayStateImpl) CompleteRelay() error {
