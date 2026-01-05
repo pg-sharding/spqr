@@ -96,7 +96,6 @@ func prepareDB(ctx context.Context) (*qdb.MemQDB, error) {
 }
 
 func TestValidateKeyRangeForCreate_happyPath(t *testing.T) {
-	assert := assert.New(t)
 	ctx := context.TODO()
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(err)
@@ -107,7 +106,6 @@ func TestValidateKeyRangeForCreate_happyPath(t *testing.T) {
 	assert.NoError(validator.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 }
 func TestValidateKeyRangeForCreate_intersectWithExistsSameShard(t *testing.T) {
-	assert := assert.New(t)
 	ctx := context.TODO()
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(err)
@@ -118,7 +116,6 @@ func TestValidateKeyRangeForCreate_intersectWithExistsSameShard(t *testing.T) {
 	assert.NoError(validator.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 }
 func TestValidateKeyRangeForCreate_intersectWithExistsAnotherShard(t *testing.T) {
-	assert := assert.New(t)
 	ctx := context.TODO()
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(err)
@@ -131,7 +128,6 @@ func TestValidateKeyRangeForCreate_intersectWithExistsAnotherShard(t *testing.T)
 }
 
 func TestValidateKeyRangeForCreate_equalBound(t *testing.T) {
-	assert := assert.New(t)
 	ctx := context.TODO()
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(err)
@@ -144,7 +140,6 @@ func TestValidateKeyRangeForCreate_equalBound(t *testing.T) {
 }
 
 func TestValidateKeyRangeForModify_happyPath(t *testing.T) {
-	assert := assert.New(t)
 	ctx := context.TODO()
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(err)
@@ -156,7 +151,6 @@ func TestValidateKeyRangeForModify_happyPath(t *testing.T) {
 }
 
 func TestValidateKeyRangeForModify_lock_fail(t *testing.T) {
-	assert := assert.New(t)
 	ctx := context.TODO()
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(err)
@@ -173,7 +167,6 @@ func TestValidateKeyRangeForModify_lock_fail(t *testing.T) {
 }
 
 func TestValidateKeyRangeForModify_intersection(t *testing.T) {
-	assert := assert.New(t)
 	ctx := context.TODO()
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(err)
