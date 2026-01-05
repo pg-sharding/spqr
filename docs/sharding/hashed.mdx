@@ -2,9 +2,13 @@
 title: 'Hash-based sharding'
 ---
 
-Hash-based sharding is a method of distributing data across multiple database shards by applying a hash function to a specific key. The hash function generates a hash value, which is then used to determine the shard where the data should be stored. This approach ensures a more uniform distribution of data compared to range-based sharding.
+Hash-based sharding is a method of distributing data across multiple database shards by applying a hash function to a specific key. The hash function generates a hash value, which is then used to determine the shard where the data should be stored. This approach ensures a more uniform distribution of data compared to [direct key sharding](/sharding/ranged).
 
-For example, if you are sharding based on user IDs, the hash function will take a user ID as input and produce a hash value. This hash value is then mapped to one of the available shards. The same hash function is used consistently to ensure that the same key always maps to the same shard.
+<Note>
+Hash-based sharding **still uses key ranges**, just like direct key sharding. The difference is that your key is first transformed by a hash function (e.g., MURMUR or CITY), and the resulting hash value is then routed using key ranges defined over the hash space.
+</Note>
+
+For example, if you are sharding based on user IDs, the hash function will take a user ID as input and produce a hash value. This hash value is then mapped to one of the available shards using key ranges. The same hash function is used consistently to ensure that the same key always maps to the same shard.
 
 Hash-based sharding helps to evenly distribute the data and load across all shards, reducing the risk of hotspots and ensuring better performance and scalability. However, it can make range queries more complex, as the data for a given range of keys may be spread across multiple shards.
 
@@ -25,14 +29,27 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION r4 DISTRIBUTION KEY col1 HASH FUNCTION CI
 (2 rows)
 ```
 
-Then, you create key ranges as usual:
+Then, you create key ranges over the hash space. For hash functions like MURMUR, the output is a 32-bit unsigned integer, so the hash space is `0` to `4294967295`:
 
 ```sql
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO shard01 FOR DISTRIBUTION ds1;
- add key range 
+-- Split hash space between two shards
+-- First half: 0 to 2147483647 -> shard01
+-- Second half: 2147483648 to 4294967295 -> shard02
+CREATE KEY RANGE krid1 FROM 0 ROUTE TO shard01 FOR DISTRIBUTION ds1;
+ add key range
 ---------------
- bound -> 1
+ bound -> 0
+(1 row)
+
+CREATE KEY RANGE krid2 FROM 2147483648 ROUTE TO shard02 FOR DISTRIBUTION ds1;
+ add key range
+---------------
+ bound -> 2147483648
 (1 row)
 ```
 
-For clarity, we recommend you take a look [at this test](https://github.com/pg-sharding/spqr/blob/master/test/regress/tests/console/expected/hash.out).
+<Tip>
+When creating multiple key ranges, create them in descending order by lower bound (highest first). This ensures proper range boundary handling.
+</Tip>
+
+For more examples, see [this test](https://github.com/pg-sharding/spqr/blob/master/test/regress/tests/console/expected/hash.out).

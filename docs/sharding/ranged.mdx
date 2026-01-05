@@ -1,12 +1,12 @@
 ---
-title: 'Range-based sharding'
+title: 'Direct key sharding'
 ---
 
-Range-based sharding is a method of distributing data across multiple database shards where each shard holds a contiguous range of data. This is typically done based on a specific key (we call it sharding key), such as a numeric ID, UUID or a date.
+Direct key sharding (also known as range-based sharding) is a method of distributing data across multiple database shards where each shard holds a contiguous range of data. The sharding key value is used directly to determine which key range (and therefore which shard) the data belongs to.
 
 For example, if you are sharding a database of user records by user ID, you might have one shard that holds users with IDs from 1 to 1000, another shard that holds users with IDs from 1001 to 2000, and so on.
 
-This method allows for efficient range queries, as all the data within a specific range is located on the same shard. However, it can lead to uneven distribution of data and load between key ranges.
+This method allows for efficient range queries, as all the data within a specific range is located on the same shard. However, it can lead to uneven distribution of data and load between key ranges. If you need more uniform distribution, consider using [hash-based sharding](/sharding/hashed), which also uses key ranges but applies a hash function to the key first.
 
 SPQR also supports [composite (multi-column) sharding keys](/sharding/composite_keys) for more complex range-based sharding scenarios, such as sharding by tenant ID and user ID together.
 
