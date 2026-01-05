@@ -62,7 +62,7 @@ func ValidateKeyRangeForCreate(ctx context.Context, mngr meta.EntityMgr, keyRang
 	return nil
 }
 
-// ValidateKeyRangeForCreate validates key range before modifying
+// ValidateKeyRangeForModify validates key range before modifying
 //
 // Parameters:
 // - ctx: the context of the operation.
