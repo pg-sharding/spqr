@@ -60,7 +60,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION events
 
 1. **Column Order Matters**: Choose the order of columns carefully. The first column should be the one most frequently used in your queries.
 
-2. **Cardinality Considerations**: For range-based sharding, consider using a lower-cardinality column first (e.g., tenant ID) followed by a higher-cardinality column (e.g., user ID or timestamp).
+2. **Cardinality Considerations**: For [direct key sharding](/sharding/ranged), consider using a lower-cardinality column first (e.g., tenant ID) followed by a higher-cardinality column (e.g., user ID or timestamp).
 
 3. **Hash Functions**: When using hash functions with composite keys, they are applied individually to each column.
 
