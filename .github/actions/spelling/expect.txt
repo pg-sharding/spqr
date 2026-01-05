@@ -401,7 +401,6 @@ phandler
 pitr
 pkgclient
 pmgr
-Pmgr
 podman
 poolers
 poolmgr
