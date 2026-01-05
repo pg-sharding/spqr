@@ -16,7 +16,6 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -381,13 +380,6 @@ func (rst *RelayStateImpl) expandRoutes(routes []kr.ShardKey) error {
 // TODO : unit tests
 func (rst *RelayStateImpl) CreateSlicedPlan(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
-
-	if config.RouterConfig().WithJaeger {
-		span := opentracing.StartSpan("reroute")
-		defer span.Finish()
-		span.SetTag("user", rst.Cl.Usr())
-		span.SetTag("db", rst.Cl.DB())
-	}
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -1234,13 +1226,6 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
-	if config.RouterConfig().WithJaeger {
-		span := opentracing.StartSpan("reroute")
-		defer span.Finish()
-		span.SetTag("user", rst.Cl.Usr())
-		span.SetTag("db", rst.Cl.DB())
-	}
-
 	err := rst.procRoutes(bindPlan.ExecutionTargets())
 
 	switch err {
@@ -1272,13 +1257,6 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	}
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
-
-	if config.RouterConfig().WithJaeger {
-		span := opentracing.StartSpan("reroute")
-		defer span.Finish()
-		span.SetTag("user", rst.Cl.Usr())
-		span.SetTag("db", rst.Cl.DB())
-	}
 
 	p, err := planner.SelectRandomDispatchPlan(rst.QueryRouter().DataShardsRoutes())
 	if err != nil {
