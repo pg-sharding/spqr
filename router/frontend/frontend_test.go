@@ -43,6 +43,9 @@ func TestFrontendSimpleEOF(t *testing.T) {
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 	cl.EXPECT().Close().Times(1)
+	cl.EXPECT().CleanupStatementSet().Times(1)
+	cl.EXPECT().Reset().Times(1)
+	cl.EXPECT().Unroute().Times(1)
 	cl.EXPECT().Server().AnyTimes()
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
@@ -105,6 +108,7 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().ID().AnyTimes()
 
 	cl.EXPECT().Close().Times(1)
+	cl.EXPECT().Reset().Times(1)
 	cl.EXPECT().Rule().AnyTimes().Return(
 		frrule,
 	)
@@ -231,6 +235,7 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().ID().AnyTimes()
 
 	cl.EXPECT().Close().Times(1)
+	cl.EXPECT().Reset().Times(1)
 	cl.EXPECT().Rule().AnyTimes().Return(frrule)
 
 	cl.EXPECT().ReplyParseComplete().AnyTimes()

@@ -230,13 +230,9 @@ shardLoop:
 }
 
 func (rst *RelayStateImpl) Close() error {
-	defer func() {
-		if err := rst.Cl.Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close client connection")
-		}
-	}()
-	defer rst.ActiveShardsReset()
-	return poolmgr.UnrouteCommon(rst.Cl, rst.ActiveShards())
+	_ = rst.Reset()
+
+	return rst.Cl.Close()
 }
 
 func (rst *RelayStateImpl) ActiveShardsReset() {
