@@ -1942,7 +1942,7 @@ func TestUnnest(t *testing.T) {
 		},
 
 		{
-			query: "UPDATE xxtt1 set i=a.i, j=a.j from unnest(ARRAY[(1,10)]) as a(i int, j int) where i=20 and xxtt1.j=a.j;",
+			query: "UPDATE xxtt1 set j=a.j from unnest(ARRAY[(1,10)]) as a(i int, j int) where i=20 and xxtt1.j=a.j;",
 			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
@@ -1968,7 +1968,7 @@ func TestUnnest(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp)
+		assert.Equal(tt.exp, tmp, tt.query)
 	}
 }
 

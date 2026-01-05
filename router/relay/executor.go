@@ -80,7 +80,6 @@ func (s *QueryStateExecutorImpl) DeploySliceTransactionBlock(server server.Serve
 	}
 
 	if !s.cl.EnhancedMultiShardProcessing() {
-		/* move this logic to executor */
 		if s.TxStatus() == txstatus.TXACT && len(server.Datashards()) > 1 {
 			return fmt.Errorf("cannot route in an active transaction")
 		}
@@ -809,14 +808,10 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *ExecutorState, mgr meta.Entity
 			} else {
 				return fmt.Errorf("unexpected row description in slice deploy")
 			}
+		case *pgproto3.ParameterStatus:
+			/* do not resent this to client */
 		default:
-
-			if replyCl {
-				err = s.Client().Send(msg)
-				if err != nil {
-					return err
-				}
-			}
+			return fmt.Errorf("unexpected %T message type in executor slice deploy", msg)
 		}
 	}
 }

@@ -78,7 +78,7 @@ func TestFrontendSimple(t *testing.T) {
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{})
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 
-	srv.EXPECT().AddDataShard(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
@@ -113,7 +113,7 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().DefaultRouteBehaviour().Return("ALLOW").AnyTimes()
 
 	// reroute on first query in this case
-	cmngr.EXPECT().ValidateSliceChange(gomock.Any()).AnyTimes().Return(true)
+	cmngr.EXPECT().ValidateGangChange(gomock.Any()).AnyTimes().Return(true)
 
 	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).AnyTimes()
 
@@ -198,7 +198,7 @@ func TestFrontendXProto(t *testing.T) {
 		sh,
 	})
 
-	srv.EXPECT().AddDataShard(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	/* query Router */
 
@@ -231,7 +231,7 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().AssignServerConn(gomock.Any()).AnyTimes().Return(nil)
 
 	// reroute on first query in this case
-	cmngr.EXPECT().ValidateSliceChange(gomock.Any()).AnyTimes().Return(true)
+	cmngr.EXPECT().ValidateGangChange(gomock.Any()).AnyTimes().Return(true)
 
 	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).AnyTimes()
 

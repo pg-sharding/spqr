@@ -35,7 +35,7 @@ import (
 )
 
 type RelayStateMgr interface {
-	poolmgr.ConnectionKeeper
+	poolmgr.GangMgr
 	slice.ExecutionSliceMgr
 
 	QueryExecutor() QueryStateExecutor
@@ -43,10 +43,11 @@ type RelayStateMgr interface {
 	PoolMgr() poolmgr.PoolMgr
 
 	Reset() error
+	ResetWithError(err error) error
 
 	Parse(query string, doCaching bool) (parser.ParseState, string, error)
 
-	CompleteRelay(replyCl bool) error
+	CompleteRelay() error
 	Close() error
 	Client() client.RouterClient
 
@@ -236,7 +237,7 @@ func (rst *RelayStateImpl) Close() error {
 		}
 	}()
 	defer rst.ActiveShardsReset()
-	return rst.poolMgr.UnRouteCB(rst.Cl, rst.activeShards)
+	return rst.poolMgr.UnRouteCB(rst.Cl, rst.ActiveShards())
 }
 
 func (rst *RelayStateImpl) ActiveShardsReset() {
@@ -257,7 +258,6 @@ func (rst *RelayStateImpl) Reset() error {
 	return rst.Cl.Unroute()
 }
 
-var ErrSkipQuery = fmt.Errorf("wait for a next query")
 var ErrMatchShardError = fmt.Errorf("failed to match datashard")
 
 // TODO : unit tests
@@ -271,7 +271,7 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 		Uint("relay state", spqrlog.GetPointer(rst)).
 		Msg("unroute previous connections")
 
-	if err := rst.Unroute(rst.activeShards); err != nil {
+	if _, err := poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.ActiveShards(), rst.ActiveShards()); err != nil {
 		return err
 	}
 
@@ -283,7 +283,7 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 		}
 	}
 
-	if err := rst.Connect(); err != nil {
+	if err := rst.AllocateGang(); err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
 			Uint("client", rst.Client().ID()).
@@ -353,7 +353,7 @@ func (rst *RelayStateImpl) expandRoutes(routes []kr.ShardKey) error {
 			Str("deploying tx", beforeTx.String()).
 			Msg("expanding shard with tsa")
 
-		if err := rst.Client().Server().ExpandDataShard(rst.Client().ID(), shkey, rst.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
+		if err := rst.Client().Server().ExpandGang(rst.Client().ID(), shkey, rst.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
 			return err
 		}
 	}
@@ -495,7 +495,7 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Connect() error {
+func (rst *RelayStateImpl) AllocateGang() error {
 	var serv server.Server
 	var err error
 
@@ -517,13 +517,13 @@ func (rst *RelayStateImpl) Connect() error {
 		Str("user", rst.Cl.Usr()).
 		Str("db", rst.Cl.DB()).
 		Uint("client", rst.Client().ID()).
-		Msg("connect client to datashard routes")
+		Msg("allocate gang for client")
 
 	for _, shkey := range rst.ActiveShards() {
 		spqrlog.Zero.Debug().
 			Str("client tsa", string(rst.Client().GetTsa())).
 			Msg("adding shard with tsa")
-		if err := rst.Client().Server().AddDataShard(rst.Client().ID(), shkey, rst.Client().GetTsa()); err != nil {
+		if err := rst.Client().Server().AllocateGangMember(rst.Client().ID(), shkey, rst.Client().GetTsa()); err != nil {
 			return err
 		}
 	}
@@ -531,7 +531,7 @@ func (rst *RelayStateImpl) Connect() error {
 	return nil
 }
 
-func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
+func (rst *RelayStateImpl) CompleteRelay() error {
 	rst.unnamedPortalExists = false
 
 	spqrlog.Zero.Debug().
@@ -542,12 +542,10 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	/* move this logic to executor */
 	switch rst.qse.TxStatus() {
 	case txstatus.TXIDLE:
-		if replyCl {
-			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
-				TxStatus: byte(rst.qse.TxStatus()),
-			}); err != nil {
-				return err
-			}
+		if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(rst.qse.TxStatus()),
+		}); err != nil {
+			return err
 		}
 
 		if err := rst.poolMgr.TXEndCB(rst); err != nil {
@@ -560,46 +558,24 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	case txstatus.TXERR:
 		fallthrough
 	case txstatus.TXACT:
-		if replyCl {
-			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
-				TxStatus: byte(rst.qse.TxStatus()),
-			}); err != nil {
-				return err
-			}
+		if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(rst.qse.TxStatus()),
+		}); err != nil {
+			return err
 		}
 		/* preserve same route. Do not unroute */
 		return nil
 	default:
-		_ = rst.Unroute(rst.activeShards)
+		if _, err := poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.activeShards, rst.activeShards); err != nil {
+			return err
+		}
 		return fmt.Errorf("unknown tx status %v", rst.qse.TxStatus())
 	}
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Unroute(shkey []kr.ShardKey) error {
-	newActiveShards := make([]kr.ShardKey, 0)
-	for _, el := range rst.activeShards {
-		if slices.IndexFunc(shkey, func(k kr.ShardKey) bool {
-			return k == el
-		}) == -1 {
-			newActiveShards = append(newActiveShards, el)
-		}
-	}
-	if err := rst.poolMgr.UnRouteCB(rst.Cl, shkey); err != nil {
-		return err
-	}
-	if len(newActiveShards) > 0 {
-		rst.activeShards = newActiveShards
-	} else {
-		rst.activeShards = nil
-	}
-
-	return nil
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) error {
-	_ = rst.poolMgr.UnRouteWithError(rst.Cl, shkey, errmsg)
+func (rst *RelayStateImpl) ResetWithError(err error) error {
+	_ = rst.poolMgr.UnRouteWithError(rst.Cl, rst.ActiveShards(), err)
 	return rst.Reset()
 }
 
@@ -853,7 +829,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				ctx := context.TODO()
 
-				if rst.poolMgr.ValidateSliceChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
+				if rst.poolMgr.ValidateGangChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
 
 					// Do not respond with BindComplete, as the relay step should take care of itself.
 					queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
@@ -1144,7 +1120,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 		}
 	}
 
-	return rst.CompleteRelay(true)
+	return rst.CompleteRelay()
 }
 
 // TODO : unit tests
@@ -1212,16 +1188,28 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 		return nil, nil
 	}
 
-	// txactive == 0 || activeSh == nil
-	if !rst.poolMgr.ValidateSliceChange(rst) {
-		if rst.Client().EnhancedMultiShardProcessing() {
-			/* With engine v2 we can expand transaction on more targets */
-			/* TODO: XXX */
+	wantExpand := false
 
-			q, err := rst.CreateSlicedPlan(ctx, rm)
-			if err != nil {
-				return nil, err
-			}
+	// txactive == 0 || activeSh == nil
+	if !rst.poolMgr.ValidateGangChange(rst) {
+		if !rst.Client().EnhancedMultiShardProcessing() {
+
+			/* TODO: fix this */
+			prevPlan.SetStmt(rst.qp.Stmt())
+
+			return prevPlan, nil
+		}
+		/* With engine v2 we can expand transaction on more targets */
+		/* TODO: XXX */
+
+		wantExpand = true
+	}
+
+	q, err := rst.CreateSlicedPlan(ctx, rm)
+
+	switch err {
+	case nil:
+		if wantExpand {
 			execTarg := q.ExecutionTargets()
 
 			/*
@@ -1235,30 +1223,15 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 			return q, rst.expandRoutes(execTarg)
 		}
 
-		/* TODO: fix this */
-		prevPlan.SetStmt(rst.qp.Stmt())
-
-		return prevPlan, nil
-	}
-
-	q, err := rst.CreateSlicedPlan(ctx, rm)
-
-	switch err {
-	case nil:
 		switch q.(type) {
 		case *plan.VirtualPlan:
 			return q, nil
 		default:
 			return q, rst.procRoutes(q.ExecutionTargets())
 		}
-	case ErrSkipQuery:
-		if err := rst.Client().ReplyErr(err); err != nil {
-			return nil, err
-		}
-		return nil, ErrSkipQuery
 	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
-		return nil, ErrSkipQuery
+		return nil, err
 	default:
 		return q, err
 	}
@@ -1283,7 +1256,7 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 
 	// txactive == 0 || activeSh == nil
 	// already has route, no need for any hint
-	if !rst.poolMgr.ValidateSliceChange(rst) {
+	if !rst.poolMgr.ValidateGangChange(rst) {
 		return nil
 	}
 
@@ -1305,14 +1278,9 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 	switch err {
 	case nil:
 		return nil
-	case ErrSkipQuery:
-		if err := rst.Client().ReplyErr(err); err != nil {
-			return err
-		}
-		return ErrSkipQuery
 	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
-		return ErrSkipQuery
+		return err
 	default:
 		return err
 	}
@@ -1331,7 +1299,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	}
 
 	// txactive == 0 || activeSh == nil
-	if !rst.poolMgr.ValidateSliceChange(rst) {
+	if !rst.poolMgr.ValidateGangChange(rst) {
 		return currentPlan, noopCloseRouteFunc, nil
 	}
 
@@ -1353,16 +1321,12 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	switch err {
 	case nil:
 		return p, func() error {
-			return rst.Unroute(p.ExecutionTargets())
+			rst.activeShards, err = poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.activeShards, p.ExecutionTargets())
+			return err
 		}, nil
-	case ErrSkipQuery:
-		if err := rst.Client().ReplyErr(err); err != nil {
-			return currentPlan, noopCloseRouteFunc, err
-		}
-		return currentPlan, noopCloseRouteFunc, ErrSkipQuery
 	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
-		return currentPlan, noopCloseRouteFunc, ErrSkipQuery
+		return currentPlan, noopCloseRouteFunc, err
 	default:
 		return currentPlan, noopCloseRouteFunc, err
 	}
@@ -1371,7 +1335,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error {
 
 	ctx := context.TODO()
-	if rst.poolMgr.ValidateSliceChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
+	if rst.poolMgr.ValidateGangChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
 		rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, q.String, rst.qp.Stmt())
 		if err != nil {
 			return err

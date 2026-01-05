@@ -113,10 +113,10 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 			case io.ErrUnexpectedEOF:
 				fallthrough
 			case io.EOF:
+				// EOF is OK.
 				return nil
-				// ok
 			default:
-				return rst.UnRouteWithError(rst.ActiveShards(), err)
+				return rst.ResetWithError(err)
 			}
 		}
 

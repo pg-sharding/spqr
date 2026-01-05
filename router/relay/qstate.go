@@ -18,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/parser"
+	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/twopc"
 )
@@ -63,7 +64,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 
 		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
 			// TODO: figure out if we need this
-			// _ = rst.UnrouteRoutes(rst.ActiveShards())
+			// _ = rst.Reset()
 			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
 		}
 
@@ -71,7 +72,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
 		}
 
-		return nil, rst.UnRouteWithError(rst.ActiveShards(), err)
+		return nil, rst.ResetWithError(err)
 	}
 
 	txbefore := rst.QueryExecutor().TxStatus()
@@ -104,7 +105,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	}
 
 	if err == nil {
-		return pd, rst.CompleteRelay(true)
+		return pd, rst.CompleteRelay()
 	}
 
 	/* outer function will complete relay here */
@@ -115,7 +116,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	case io.ErrUnexpectedEOF:
 		fallthrough
 	case io.EOF:
-		_ = rst.Unroute(rst.ActiveShards())
+		rst.activeShards, err = poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.ActiveShards(), rst.ActiveShards())
 		return nil, err
 		// ok
 	default:
@@ -129,7 +130,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			return nil, rst.Client().ReplyErrWithTxStatus(rerr, txstatus.TXERR)
 		}
 
-		return nil, rst.UnRouteWithError(rst.ActiveShards(), rerr)
+		return nil, rst.ResetWithError(rerr)
 	}
 }
 
