@@ -156,5 +156,5 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Contains(t, rows, "move key range krid3 to shard sh2")
-	assert.Contains(t, rows, "HINT: If you don't fully understand how SPQR works, maybe you need REDISTRIBUTE KEY RANGE")
+	assert.Contains(t, rows, "HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")
 }

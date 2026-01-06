@@ -897,7 +897,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			Desc: engine.GetVPHeader("move key range"),
 			Raw: [][][]byte{
 				{fmt.Appendf(nil, "move key range %v to shard %v", move.Krid, move.ShardId)},
-				{[]byte("HINT: If you don't fully understand how SPQR works, maybe you need REDISTRIBUTE KEY RANGE")},
+				{[]byte("HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")},
 			},
 		}
 
