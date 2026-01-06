@@ -232,14 +232,6 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 }
 
 func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.RouterPortType) error {
-	if config.RouterConfig().WithJaeger {
-		closer, err := r.initJaegerTracer(config.RouterConfig())
-		if err != nil {
-			return fmt.Errorf("could not initialize jaeger tracer: %s", err)
-		}
-		defer func() { _ = closer.Close() }()
-	}
-
 	if r.notifier != nil {
 		if err := r.notifier.Ready(); err != nil {
 			return fmt.Errorf("could not send ready msg: %s", err)

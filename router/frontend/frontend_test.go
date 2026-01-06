@@ -43,10 +43,12 @@ func TestFrontendSimpleEOF(t *testing.T) {
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 	cl.EXPECT().Close().Times(1)
+	cl.EXPECT().CleanupStatementSet().Times(1)
+	cl.EXPECT().Reset().Times(1)
+	cl.EXPECT().Unroute().Times(1)
+	cl.EXPECT().Server().AnyTimes()
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
-
-	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).Times(1)
 
 	err := frontend.Frontend(qr, cl, cmngr, nil)
 
@@ -76,11 +78,17 @@ func TestFrontendSimple(t *testing.T) {
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{})
+
+	srv.EXPECT().TxStatus().AnyTimes()
+	srv.EXPECT().UnRouteShard(gomock.Any(), gomock.Any()).AnyTimes()
+	srv.EXPECT().Reset().AnyTimes()
+
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 
 	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
+	cl.EXPECT().Unroute().AnyTimes()
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
 	cl.EXPECT().CleanupStatementSet().AnyTimes()
@@ -100,6 +108,7 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().ID().AnyTimes()
 
 	cl.EXPECT().Close().Times(1)
+	cl.EXPECT().Reset().Times(1)
 	cl.EXPECT().Rule().AnyTimes().Return(
 		frrule,
 	)
@@ -114,8 +123,6 @@ func TestFrontendSimple(t *testing.T) {
 
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateGangChange(gomock.Any()).AnyTimes().Return(true)
-
-	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 
@@ -194,6 +201,10 @@ func TestFrontendXProto(t *testing.T) {
 	sh.EXPECT().ID().AnyTimes()
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
+	srv.EXPECT().TxStatus().AnyTimes()
+	srv.EXPECT().UnRouteShard(gomock.Any(), gomock.Any()).AnyTimes()
+	srv.EXPECT().Reset().AnyTimes()
+
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{
 		sh,
 	})
@@ -206,6 +217,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	cl.EXPECT().ShowNoticeMsg().AnyTimes()
 	cl.EXPECT().GetTsa().AnyTimes()
+	cl.EXPECT().Unroute().AnyTimes()
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
@@ -223,6 +235,7 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().ID().AnyTimes()
 
 	cl.EXPECT().Close().Times(1)
+	cl.EXPECT().Reset().Times(1)
 	cl.EXPECT().Rule().AnyTimes().Return(frrule)
 
 	cl.EXPECT().ReplyParseComplete().AnyTimes()
@@ -232,8 +245,6 @@ func TestFrontendXProto(t *testing.T) {
 
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateGangChange(gomock.Any()).AnyTimes().Return(true)
-
-	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 
