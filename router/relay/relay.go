@@ -29,7 +29,6 @@ import (
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/slice"
-	"github.com/pg-sharding/spqr/router/statistics"
 	"golang.org/x/exp/slices"
 )
 
@@ -148,7 +147,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 	return &RelayStateImpl{
 		activeShards:        nil,
 		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(d, client),
+		qse:                 NewQueryStateExecutor(d, manager, client),
 		Qr:                  qr,
 		Cl:                  client,
 		poolMgr:             manager,
@@ -495,38 +494,20 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 		Str("txstatus", rst.qse.TxStatus().String()).
 		Msg("complete relay iter")
 
-	/* move this logic to executor */
-	switch rst.qse.TxStatus() {
-	case txstatus.TXIDLE:
-		if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(rst.qse.TxStatus()),
-		}); err != nil {
-			return err
-		}
+	if err := rst.QueryExecutor().CompleteTx(rst); err != nil {
+		spqrlog.Zero.Error().
+			Uint("client", rst.Client().ID()).
+			Str("txstatus", rst.qse.TxStatus().String()).
+			Err(err).
+			Msg("failed to complete relay")
 
-		if err := rst.poolMgr.TXEndCB(rst); err != nil {
-			return err
-		}
-
-		statistics.RecordFinishedTransaction(time.Now(), rst.Client())
-
-		return nil
-	case txstatus.TXERR:
-		fallthrough
-	case txstatus.TXACT:
-		if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(rst.qse.TxStatus()),
-		}); err != nil {
-			return err
-		}
-		/* preserve same route. Do not unroute */
-		return nil
-	default:
 		if err := rst.Reset(); err != nil {
 			return err
 		}
-		return fmt.Errorf("unknown tx status %v", rst.qse.TxStatus())
+		return err
 	}
+
+	return nil
 }
 
 // TODO : unit tests
