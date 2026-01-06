@@ -16,7 +16,6 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -231,13 +230,9 @@ shardLoop:
 }
 
 func (rst *RelayStateImpl) Close() error {
-	defer func() {
-		if err := rst.Cl.Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close client connection")
-		}
-	}()
-	defer rst.ActiveShardsReset()
-	return rst.poolMgr.UnRouteCB(rst.Cl, rst.ActiveShards())
+	_ = rst.Reset()
+
+	return rst.Cl.Close()
 }
 
 func (rst *RelayStateImpl) ActiveShardsReset() {
@@ -250,6 +245,11 @@ func (rst *RelayStateImpl) ActiveShards() []kr.ShardKey {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) Reset() error {
+
+	if err := poolmgr.UnrouteCommon(rst.Client(), rst.ActiveShards()); err != nil {
+		return err
+	}
+
 	rst.activeShards = nil
 	rst.qse.SetTxStatus(txstatus.TXIDLE)
 
@@ -271,7 +271,7 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 		Uint("relay state", spqrlog.GetPointer(rst)).
 		Msg("unroute previous connections")
 
-	if _, err := poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.ActiveShards(), rst.ActiveShards()); err != nil {
+	if err := poolmgr.UnrouteCommon(rst.Client(), rst.ActiveShards()); err != nil {
 		return err
 	}
 
@@ -283,7 +283,7 @@ func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
 		}
 	}
 
-	if err := rst.AllocateGang(); err != nil {
+	if err := rst.QueryExecutor().InitPlan(rst.ActiveShards()); err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
 			Uint("client", rst.Client().ID()).
@@ -376,13 +376,6 @@ func (rst *RelayStateImpl) expandRoutes(routes []kr.ShardKey) error {
 // TODO : unit tests
 func (rst *RelayStateImpl) CreateSlicedPlan(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
-
-	if config.RouterConfig().WithJaeger {
-		span := opentracing.StartSpan("reroute")
-		defer span.Finish()
-		span.SetTag("user", rst.Cl.Usr())
-		span.SetTag("db", rst.Cl.DB())
-	}
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -494,43 +487,6 @@ func replyShardMatchesWithHosts(client client.RouterClient, serv server.Server, 
 	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
 }
 
-// TODO : unit tests
-func (rst *RelayStateImpl) AllocateGang() error {
-	var serv server.Server
-	var err error
-
-	if len(rst.ActiveShards()) > 1 {
-		serv, err = server.NewMultiShardServer(rst.Cl.Route().ServPool())
-		if err != nil {
-			return err
-		}
-	} else {
-		_ = rst.Cl.ReplyDebugNotice("open a connection to the single data shard")
-		serv = server.NewShardServer(rst.Cl.Route().ServPool())
-	}
-
-	if err := rst.Cl.AssignServerConn(serv); err != nil {
-		return err
-	}
-
-	spqrlog.Zero.Debug().
-		Str("user", rst.Cl.Usr()).
-		Str("db", rst.Cl.DB()).
-		Uint("client", rst.Client().ID()).
-		Msg("allocate gang for client")
-
-	for _, shkey := range rst.ActiveShards() {
-		spqrlog.Zero.Debug().
-			Str("client tsa", string(rst.Client().GetTsa())).
-			Msg("adding shard with tsa")
-		if err := rst.Client().Server().AllocateGangMember(rst.Client().ID(), shkey, rst.Client().GetTsa()); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (rst *RelayStateImpl) CompleteRelay() error {
 	rst.unnamedPortalExists = false
 
@@ -566,7 +522,7 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 		/* preserve same route. Do not unroute */
 		return nil
 	default:
-		if _, err := poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.activeShards, rst.activeShards); err != nil {
+		if err := rst.Reset(); err != nil {
 			return err
 		}
 		return fmt.Errorf("unknown tx status %v", rst.qse.TxStatus())
@@ -575,7 +531,7 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) ResetWithError(err error) error {
-	_ = rst.poolMgr.UnRouteWithError(rst.Cl, rst.ActiveShards(), err)
+	_ = rst.Client().ReplyErr(err)
 	return rst.Reset()
 }
 
@@ -1266,13 +1222,6 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
-	if config.RouterConfig().WithJaeger {
-		span := opentracing.StartSpan("reroute")
-		defer span.Finish()
-		span.SetTag("user", rst.Cl.Usr())
-		span.SetTag("db", rst.Cl.DB())
-	}
-
 	err := rst.procRoutes(bindPlan.ExecutionTargets())
 
 	switch err {
@@ -1305,13 +1254,6 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
-	if config.RouterConfig().WithJaeger {
-		span := opentracing.StartSpan("reroute")
-		defer span.Finish()
-		span.SetTag("user", rst.Cl.Usr())
-		span.SetTag("db", rst.Cl.DB())
-	}
-
 	p, err := planner.SelectRandomDispatchPlan(rst.QueryRouter().DataShardsRoutes())
 	if err != nil {
 		return nil, noopCloseRouteFunc, err
@@ -1321,7 +1263,9 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	switch err {
 	case nil:
 		return p, func() error {
-			rst.activeShards, err = poolmgr.UnrouteCommon(rst.poolMgr, rst.Client(), rst.activeShards, p.ExecutionTargets())
+			/* Active shards should be same as p.ExecutionTargets */
+			err = poolmgr.UnrouteCommon(rst.Client(), rst.ActiveShards())
+			rst.activeShards = nil
 			return err
 		}, nil
 	case ErrMatchShardError:
