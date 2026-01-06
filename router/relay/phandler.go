@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
+	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/server"
 )
 
@@ -48,6 +49,8 @@ type QueryStateExecutor interface {
 
 	ExecuteSlice(qd *ExecutorState, mgr meta.EntityMgr, replyCl bool) error
 	ExecuteSlicePrepare(qd *ExecutorState, mgr meta.EntityMgr, replyCl bool, expectRowDesc bool) error
+
+	CompleteTx(mgr poolmgr.GangMgr) error
 
 	ExecSet(rst RelayStateMgr, query, name, value string) error
 	ExecReset(rst RelayStateMgr, query, name string) error
