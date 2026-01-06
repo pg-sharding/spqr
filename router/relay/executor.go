@@ -21,6 +21,7 @@ import (
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
+	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
@@ -37,6 +38,8 @@ type QueryStateExecutorImpl struct {
 	txStatus txstatus.TXStatus
 	cl       client.RouterClient
 	d        qdb.DCStateKeeper
+
+	poolMgr poolmgr.PoolMgr
 
 	savedBegin *pgproto3.Query
 }
@@ -859,12 +862,43 @@ func (s *QueryStateExecutorImpl) Client() client.RouterClient {
 	return s.cl
 }
 
+func (s *QueryStateExecutorImpl) CompleteTx(mgr poolmgr.GangMgr) error {
+
+	/* move this logic to executor */
+	switch s.TxStatus() {
+	case txstatus.TXIDLE:
+		if err := s.Client().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(s.TxStatus()),
+		}); err != nil {
+			return err
+		}
+
+		if err := s.poolMgr.TXEndCB(mgr); err != nil {
+			return err
+		}
+
+		statistics.RecordFinishedTransaction(time.Now(), s.Client())
+
+		return nil
+	case txstatus.TXERR:
+		fallthrough
+	case txstatus.TXACT:
+		/* preserve same route. Do not unroute */
+		return s.Client().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(s.TxStatus()),
+		})
+	default:
+		return fmt.Errorf("unknown tx status %v", s.TxStatus())
+	}
+}
+
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}
 
-func NewQueryStateExecutor(d qdb.DCStateKeeper, cl client.RouterClient) QueryStateExecutor {
+func NewQueryStateExecutor(d qdb.DCStateKeeper, poolMgr poolmgr.PoolMgr, cl client.RouterClient) QueryStateExecutor {
 	return &QueryStateExecutorImpl{
 		cl:       cl,
 		d:        d,
+		poolMgr:  poolMgr,
 		txStatus: txstatus.TXIDLE,
 	}
 }
