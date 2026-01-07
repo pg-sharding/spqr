@@ -108,7 +108,10 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 		/* do not bother with those */
 		return nil, nil
 	case *lyx.Copy:
-		return &plan.CopyPlan{}, nil
+		return &plan.ScatterPlan{
+			Stmt:   node,
+			IsCopy: true,
+		}, nil
 	default:
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}

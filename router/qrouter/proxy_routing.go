@@ -472,11 +472,6 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 			return planner.SelectRandomDispatchPlan(v.ExecTargets)
 		}
 
-	case *plan.CopyPlan:
-		/* temporary */
-		return &plan.ScatterPlan{
-			ExecTargets: qr.DataShardsRoutes(),
-		}, nil
 	case *plan.ScatterPlan:
 		if v.IsDDL {
 			v.ExecTargets = qr.DataShardsRoutes()
@@ -608,7 +603,6 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadata
 				ExecTarget: kr.ShardKey{
 					Name: firstShard,
 				},
-				PStmt: rm.Stmt,
 			}, nil
 		}
 	}
@@ -628,10 +622,5 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadata
 	}
 
 	/* do init plan logic */
-	np, err := qr.InitExecutionTargets(ctx, rm, p)
-	if err == nil {
-		np.SetStmt(rm.Stmt)
-	}
-
-	return np, err
+	return qr.InitExecutionTargets(ctx, rm, p)
 }

@@ -319,7 +319,6 @@ func (rst *RelayStateImpl) CreateSlicedPlan(ctx context.Context, rm *rmeta.Routi
 
 	if v := rst.Client().ExecuteOn(); v != "" {
 		queryPlan = &plan.ShardDispatchPlan{
-			PStmt: rst.qp.Stmt(),
 			ExecTarget: kr.ShardKey{
 				Name: v,
 			},
@@ -1063,10 +1062,6 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) {
 		if !rst.Client().EnhancedMultiShardProcessing() {
-
-			/* TODO: fix this */
-			prevPlan.SetStmt(rst.qp.Stmt())
-
 			return prevPlan, nil
 		}
 		/* With engine v2 we can expand transaction on more targets */
@@ -1215,14 +1210,11 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		Msg: q,
 		P:   rst.routingDecisionPlan, /*  ugh... fix this someday */
 	}
-	/* FIX this */
-	es.P.SetStmt(rst.qp.Stmt())
 
-	if err := rst.qse.ExecuteSlicePrepare(
+	if err := rst.QueryExecutor().ExecuteSlicePrepare(
 		es, rst.Qr.Mgr(), replyCl, true); err != nil {
 		return err
 	}
 
-	return rst.qse.ExecuteSlice(
-		es, rst.Qr.Mgr(), replyCl)
+	return rst.QueryExecutor().ExecuteSlice(es, rst.Qr.Mgr(), replyCl)
 }
