@@ -33,7 +33,6 @@ import (
 )
 
 type RelayStateMgr interface {
-	poolmgr.GangMgr
 	slice.ExecutionSliceMgr
 
 	QueryExecutor() QueryStateExecutor
@@ -81,8 +80,6 @@ type ParseCacheEntry struct {
 }
 
 type RelayStateImpl struct {
-	activeShards []kr.ShardKey
-
 	routingDecisionPlan plan.Plan
 
 	Qr      qrouter.QueryRouter
@@ -145,7 +142,6 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 	}
 
 	return &RelayStateImpl{
-		activeShards:        nil,
 		msgBuf:              nil,
 		qse:                 NewQueryStateExecutor(d, manager, client),
 		Qr:                  qr,
@@ -162,24 +158,6 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		savedRM:             map[string]*rmeta.RoutingMetadataContext{},
 		unnamedPortalExists: false,
 	}
-}
-
-func (rst *RelayStateImpl) SyncCount() int64 {
-	server := rst.Client().Server()
-	if server == nil {
-		return 0
-	}
-	return server.Sync()
-}
-
-func (rst *RelayStateImpl) DataPending() bool {
-	server := rst.Client().Server()
-
-	if server == nil {
-		return false
-	}
-
-	return server.DataPending()
 }
 
 func (rst *RelayStateImpl) QueryRouter() qrouter.QueryRouter {
@@ -234,22 +212,14 @@ func (rst *RelayStateImpl) Close() error {
 	return rst.Cl.Close()
 }
 
-func (rst *RelayStateImpl) ActiveShardsReset() {
-	rst.activeShards = nil
-}
-
-func (rst *RelayStateImpl) ActiveShards() []kr.ShardKey {
-	return rst.activeShards
-}
-
 // TODO : unit tests
 func (rst *RelayStateImpl) Reset() error {
 
-	if err := poolmgr.UnrouteCommon(rst.Client(), rst.ActiveShards()); err != nil {
+	if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
 		return err
 	}
 
-	rst.activeShards = nil
+	rst.QueryExecutor().ActiveShardsReset()
 	rst.qse.SetTxStatus(txstatus.TXIDLE)
 
 	_ = rst.Cl.Reset()
@@ -260,29 +230,9 @@ func (rst *RelayStateImpl) Reset() error {
 var ErrMatchShardError = fmt.Errorf("failed to match datashard")
 
 // TODO : unit tests
-func (rst *RelayStateImpl) procRoutes(routes []kr.ShardKey) error {
-	// if there is no routes configured, there is nowhere to route to
-	if len(routes) == 0 {
-		return ErrMatchShardError
-	}
+func (rst *RelayStateImpl) procRoutes(p plan.Plan) error {
 
-	spqrlog.Zero.Debug().
-		Uint("relay state", spqrlog.GetPointer(rst)).
-		Msg("unroute previous connections")
-
-	if err := poolmgr.UnrouteCommon(rst.Client(), rst.ActiveShards()); err != nil {
-		return err
-	}
-
-	rst.activeShards = routes
-
-	if config.RouterConfig().PgprotoDebug {
-		if err := rst.Cl.ReplyDebugNoticef("matched datashard routes %+v", routes); err != nil {
-			return err
-		}
-	}
-
-	if err := rst.QueryExecutor().InitPlan(rst.ActiveShards()); err != nil {
+	if err := rst.QueryExecutor().InitPlan(p); err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
 			Uint("client", rst.Client().ID()).
@@ -336,25 +286,8 @@ func (rst *RelayStateImpl) expandRoutes(routes []kr.ShardKey) error {
 
 	_ = rst.Client().SwitchServerConn(rst.Client().Server().ToMultishard())
 
-	beforeTx := rst.Client().Server().TxStatus()
-
-	for _, shkey := range routes {
-		if slices.ContainsFunc(rst.activeShards, func(c kr.ShardKey) bool {
-			return shkey == c
-		}) {
-			continue
-		}
-
-		rst.activeShards = append(rst.activeShards, shkey)
-
-		spqrlog.Zero.Debug().
-			Str("client tsa", string(rst.Client().GetTsa())).
-			Str("deploying tx", beforeTx.String()).
-			Msg("expanding shard with tsa")
-
-		if err := rst.Client().Server().ExpandGang(rst.Client().ID(), shkey, rst.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
-			return err
-		}
+	if err := rst.QueryExecutor().ExpandRoutes(routes); err != nil {
+		return err
 	}
 
 	/* take care of session param if we told to */
@@ -494,7 +427,7 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 		Str("txstatus", rst.qse.TxStatus().String()).
 		Msg("complete relay iter")
 
-	if err := rst.QueryExecutor().CompleteTx(rst); err != nil {
+	if err := rst.QueryExecutor().CompleteTx(rst.QueryExecutor()); err != nil {
 		spqrlog.Zero.Error().
 			Uint("client", rst.Client().ID()).
 			Str("txstatus", rst.qse.TxStatus().String()).
@@ -766,7 +699,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				ctx := context.TODO()
 
-				if rst.poolMgr.ValidateGangChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
+				if rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) || rst.Client().EnhancedMultiShardProcessing() {
 
 					// Do not respond with BindComplete, as the relay step should take care of itself.
 					queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
@@ -1128,7 +1061,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 	wantExpand := false
 
 	// txactive == 0 || activeSh == nil
-	if !rst.poolMgr.ValidateGangChange(rst) {
+	if !rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) {
 		if !rst.Client().EnhancedMultiShardProcessing() {
 
 			/* TODO: fix this */
@@ -1152,7 +1085,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 			/*
 			 * Try to keep single-shard connection as long as possible
 			 */
-			if len(execTarg) == 1 && len(rst.ActiveShards()) == 1 && rst.ActiveShards()[0].Name == execTarg[0].Name {
+			if len(execTarg) == 1 && len(rst.QueryExecutor().ActiveShards()) == 1 && rst.QueryExecutor().ActiveShards()[0].Name == execTarg[0].Name {
 				return q, nil
 			}
 
@@ -1164,7 +1097,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 		case *plan.VirtualPlan:
 			return q, nil
 		default:
-			return q, rst.procRoutes(q.ExecutionTargets())
+			return q, rst.procRoutes(q)
 		}
 	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
@@ -1184,7 +1117,7 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 		Uint("client", rst.Client().ID()).
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
-		Int("curr routes len", len(rst.activeShards)).
+		Int("curr routes len", len(rst.QueryExecutor().ActiveShards())).
 		Msg("preparing relay step for client on target route")
 
 	if rst.holdRouting {
@@ -1193,7 +1126,7 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 
 	// txactive == 0 || activeSh == nil
 	// already has route, no need for any hint
-	if !rst.poolMgr.ValidateGangChange(rst) {
+	if !rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) {
 		return nil
 	}
 
@@ -1203,7 +1136,7 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
-	err := rst.procRoutes(bindPlan.ExecutionTargets())
+	err := rst.procRoutes(bindPlan)
 
 	switch err {
 	case nil:
@@ -1229,7 +1162,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	}
 
 	// txactive == 0 || activeSh == nil
-	if !rst.poolMgr.ValidateGangChange(rst) {
+	if !rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) {
 		return currentPlan, noopCloseRouteFunc, nil
 	}
 
@@ -1239,14 +1172,14 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	if err != nil {
 		return nil, noopCloseRouteFunc, err
 	}
-	err = rst.procRoutes(p.ExecutionTargets())
+	err = rst.procRoutes(p)
 
 	switch err {
 	case nil:
 		return p, func() error {
 			/* Active shards should be same as p.ExecutionTargets */
-			err = poolmgr.UnrouteCommon(rst.Client(), rst.ActiveShards())
-			rst.activeShards = nil
+			err = poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
+			rst.QueryExecutor().ActiveShardsReset()
 			return err
 		}, nil
 	case ErrMatchShardError:
@@ -1260,7 +1193,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error {
 
 	ctx := context.TODO()
-	if rst.poolMgr.ValidateGangChange(rst) || rst.Client().EnhancedMultiShardProcessing() {
+	if rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) || rst.Client().EnhancedMultiShardProcessing() {
 		rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, q.String, rst.qp.Stmt())
 		if err != nil {
 			return err

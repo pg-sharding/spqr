@@ -28,6 +28,7 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/pg-sharding/spqr/router/twopc"
+	"golang.org/x/exp/slices"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -41,7 +42,39 @@ type QueryStateExecutorImpl struct {
 
 	poolMgr poolmgr.PoolMgr
 
+	activeShards []kr.ShardKey
+
 	savedBegin *pgproto3.Query
+}
+
+// ActiveShards implements [QueryStateExecutor].
+func (s *QueryStateExecutorImpl) ActiveShards() []kr.ShardKey {
+	return s.activeShards
+}
+
+// ActiveShardsReset implements [QueryStateExecutor].
+func (s *QueryStateExecutorImpl) ActiveShardsReset() {
+	s.activeShards = nil
+}
+
+// DataPending implements [QueryStateExecutor].
+func (s *QueryStateExecutorImpl) DataPending() bool {
+	server := s.Client().Server()
+
+	if server == nil {
+		return false
+	}
+
+	return server.DataPending()
+}
+
+// SyncCount implements [QueryStateExecutor].
+func (s *QueryStateExecutorImpl) SyncCount() int64 {
+	server := s.Client().Server()
+	if server == nil {
+		return 0
+	}
+	return server.Sync()
 }
 
 var (
@@ -74,12 +107,35 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *p
 }
 
 // InitPlan implements QueryStateExecutor.
-func (s *QueryStateExecutorImpl) InitPlan(as []kr.ShardKey) error {
+func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
+
+	routes := p.ExecutionTargets()
+
+	// if there is no routes configured, there is nowhere to route to
+	if len(routes) == 0 {
+		return ErrMatchShardError
+	}
+
+	spqrlog.Zero.Debug().
+		Uint("relay state", spqrlog.GetPointer(s)).
+		Msg("unroute previous connections")
+
+	if err := poolmgr.UnrouteCommon(s.Client(), s.ActiveShards()); err != nil {
+		return err
+	}
+
+	s.activeShards = routes
+
+	if config.RouterConfig().PgprotoDebug {
+		if err := s.Client().ReplyDebugNoticef("matched datashard routes %+v", routes); err != nil {
+			return err
+		}
+	}
 
 	var serv server.Server
 	var err error
 
-	if len(as) > 1 {
+	if len(s.activeShards) > 1 {
 		serv, err = server.NewMultiShardServer(s.Client().Route().ServPool())
 		if err != nil {
 			return err
@@ -99,7 +155,7 @@ func (s *QueryStateExecutorImpl) InitPlan(as []kr.ShardKey) error {
 		Uint("client", s.Client().ID()).
 		Msg("allocate gang for client")
 
-	for _, shkey := range as {
+	for _, shkey := range s.activeShards {
 		spqrlog.Zero.Debug().
 			Str("client tsa", string(s.Client().GetTsa())).
 			Msg("adding shard with tsa")
@@ -148,7 +204,7 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 }
 
 func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error {
-	if rst.PoolMgr().ConnectionActive(rst) {
+	if rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
 		return rst.QueryExecutor().DeploySliceTransactionQuery(rst.Client().Server(), query)
 	}
 
@@ -198,7 +254,7 @@ func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
 // query in commit query. maybe commit or commit `name`
 func (s *QueryStateExecutorImpl) ExecCommit(rst RelayStateMgr, query string) error {
 	// Virtual tx case. Do the whole logic locally
-	if !rst.PoolMgr().ConnectionActive(rst) {
+	if !rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
 		s.cl.CommitActiveSet()
 		_ = rst.Client().ReplyCommandComplete("COMMIT")
 		s.SetTxStatus(txstatus.TXIDLE)
@@ -230,7 +286,7 @@ func (s *QueryStateExecutorImpl) ExecRollbackServer() error {
 /* TODO: proper support for rollback to savepoint */
 func (s *QueryStateExecutorImpl) ExecRollback(rst RelayStateMgr, query string) error {
 	// Virtual tx case. Do the whole logic locally
-	if !rst.PoolMgr().ConnectionActive(rst) {
+	if !rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
 		s.cl.Rollback()
 		_ = s.cl.ReplyCommandComplete("ROLLBACK")
 		s.SetTxStatus(txstatus.TXIDLE)
@@ -250,7 +306,7 @@ func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, 
 		// some session characteristic, ignore
 		return rst.Client().ReplyCommandComplete("SET")
 	}
-	if !rst.PoolMgr().ConnectionActive(rst) {
+	if !rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
 		rst.Client().SetParam(name, value)
 		return rst.Client().ReplyCommandComplete("SET")
 	}
@@ -265,14 +321,14 @@ func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, 
 }
 
 func (s *QueryStateExecutorImpl) ExecReset(rst RelayStateMgr, query, setting string) error {
-	if rst.PoolMgr().ConnectionActive(rst) {
+	if rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
 		return rst.ProcessSimpleQuery(rst.Client().ConstructClientParams(), false)
 	}
 	return nil
 }
 
 func (s *QueryStateExecutorImpl) ExecResetMetadata(rst RelayStateMgr, query string, setting string) error {
-	if !rst.PoolMgr().ConnectionActive(rst) {
+	if !rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
 		return nil
 	}
 
@@ -890,6 +946,31 @@ func (s *QueryStateExecutorImpl) CompleteTx(mgr poolmgr.GangMgr) error {
 	default:
 		return fmt.Errorf("unknown tx status %v", s.TxStatus())
 	}
+}
+
+func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
+
+	beforeTx := s.Client().Server().TxStatus()
+
+	for _, shkey := range routes {
+		if slices.ContainsFunc(s.activeShards, func(c kr.ShardKey) bool {
+			return shkey == c
+		}) {
+			continue
+		}
+
+		s.activeShards = append(s.activeShards, shkey)
+
+		spqrlog.Zero.Debug().
+			Str("client tsa", string(s.Client().GetTsa())).
+			Str("deploying tx", beforeTx.String()).
+			Msg("expanding shard with tsa")
+
+		if err := s.Client().Server().ExpandGang(s.Client().ID(), shkey, s.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}
