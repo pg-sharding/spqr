@@ -232,7 +232,12 @@ var ErrMatchShardError = fmt.Errorf("failed to match datashard")
 // TODO : unit tests
 func (rst *RelayStateImpl) procRoutes(p plan.Plan) error {
 
-	if err := rst.QueryExecutor().InitPlan(p); err != nil {
+	switch p.(type) {
+	case *plan.VirtualPlan:
+		return nil
+	}
+
+	if err := rst.QueryExecutor().InitPlan(p, rst.Qr.Mgr()); err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
 			Uint("client", rst.Client().ID()).
@@ -241,30 +246,8 @@ func (rst *RelayStateImpl) procRoutes(p plan.Plan) error {
 	}
 
 	/* if transaction is explicitly requested, deploy */
-	if err := rst.QueryExecutor().DeploySliceTransactionBlock(rst.Client().Server()); err != nil {
+	if err := rst.QueryExecutor().DeploySliceTransactionBlock(); err != nil {
 		return err
-	}
-
-	/* take care of session param if we told to */
-	if rst.Client().MaintainParams() {
-		query := rst.Cl.ConstructClientParams()
-		spqrlog.Zero.Debug().
-			Uint("client", rst.Client().ID()).
-			Str("query", query.String).
-			Msg("setting params for client")
-
-		es := &ExecutorState{
-			Msg: query,
-			P:   nil,
-		}
-
-		replyClient := false
-
-		if err := rst.qse.ExecuteSlicePrepare(es, rst.Qr.Mgr(), replyClient, true); err != nil {
-			return err
-		}
-
-		return rst.qse.ExecuteSlice(es, rst.Qr.Mgr(), replyClient)
 	}
 
 	return nil
@@ -1093,12 +1076,11 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 			return q, rst.expandRoutes(execTarg)
 		}
 
-		switch q.(type) {
-		case *plan.VirtualPlan:
-			return q, nil
-		default:
-			return q, rst.procRoutes(q)
+		if err := rst.procRoutes(q); err != nil {
+			return nil, err
 		}
+
+		return q, nil
 	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return nil, err

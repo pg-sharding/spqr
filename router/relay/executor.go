@@ -107,7 +107,7 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *p
 }
 
 // InitPlan implements QueryStateExecutor.
-func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
+func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error {
 
 	routes := p.ExecutionTargets()
 
@@ -164,11 +164,33 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 		}
 	}
 
+	/* Do this in expand routes too. */
+	if s.Client().MaintainParams() {
+		query := s.Client().ConstructClientParams()
+		spqrlog.Zero.Debug().
+			Uint("client", s.Client().ID()).
+			Str("query", query.String).
+			Msg("setting params for client")
+
+		es := &ExecutorState{
+			Msg: query,
+		}
+
+		if err := DispatchPlan(es, s.Client().Server(), s.Client(), false); err != nil {
+			return err
+		}
+
+		if err := s.ExecuteSlice(es, mgr, false); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 // DeploySliceTransactionBlock implements QueryStateExecutor.
-func (s *QueryStateExecutorImpl) DeploySliceTransactionBlock(server server.Server) error {
+func (s *QueryStateExecutorImpl) DeploySliceTransactionBlock() error {
+	server := s.Client().Server()
 	if server == nil {
 		return errUnAttached
 	}
@@ -186,7 +208,11 @@ func (s *QueryStateExecutorImpl) DeploySliceTransactionBlock(server server.Serve
 	return s.deployTxStatusInternal(server, s.savedBegin, txstatus.TXACT)
 }
 
-func (s *QueryStateExecutorImpl) DeploySliceTransactionQuery(server server.Server, query string) error {
+func (s *QueryStateExecutorImpl) DeploySliceTransactionQuery(query string) error {
+	server := s.Client().Server()
+	if server == nil {
+		return errUnAttached
+	}
 	s.SetTxStatus(txstatus.TXACT)
 	s.savedBegin = &pgproto3.Query{String: query}
 
@@ -205,7 +231,7 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 
 func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error {
 	if rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
-		return rst.QueryExecutor().DeploySliceTransactionQuery(rst.Client().Server(), query)
+		return rst.QueryExecutor().DeploySliceTransactionQuery(query)
 	}
 
 	s.SetTxStatus(txstatus.TXACT)
@@ -734,7 +760,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *ExecutorState, mgr meta
 					spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
 
 					if serv.TxStatus() == txstatus.TXIDLE {
-						if err := s.DeploySliceTransactionQuery(serv, "BEGIN"); err != nil {
+						if err := s.DeploySliceTransactionQuery("BEGIN"); err != nil {
 							return err
 						}
 						qd.doFinalizeTx = true
