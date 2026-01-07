@@ -354,6 +354,8 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 	switch q := stmt.TableRef.(type) {
 	case *lyx.RangeVar:
 		relname = rfqn.RelationFQNFromRangeRangeVar(q)
+	default:
+		return nil, fmt.Errorf("failed to prepare copy statement context")
 	}
 	// Read delimiter from COPY options
 	delimiter := byte('\t')
@@ -659,14 +661,17 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, qd *Execut
 	var leftoverMsgData []byte
 	ctx := context.TODO()
 
-	stmt := qd.P.Stmt()
-	if stmt == nil {
+	cp, ok := qd.P.(*plan.ScatterPlan)
+	if !ok || !cp.IsCopy {
 		return fmt.Errorf("failed to prepare copy context")
 	}
-	cs, ok := stmt.(*lyx.Copy)
+
+	cs, ok := cp.Stmt.(*lyx.Copy)
+
 	if !ok {
-		return fmt.Errorf("failed to prepare copy context, not a copy statement")
+		return fmt.Errorf("failed to prepare copy context")
 	}
+
 	cps, err := s.ProcCopyPrepare(ctx, mgr, cs, qd.attachedCopy)
 	if err != nil {
 		return err
@@ -715,45 +720,43 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *ExecutorState, mgr meta
 
 	serv := s.Client().Server()
 
-	switch qd.P.(type) {
+	switch q := qd.P.(type) {
 	case *plan.VirtualPlan:
-	default:
+	case *plan.ScatterPlan:
+
 		if serv == nil {
 			return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 		}
 
-		qd.attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
+		if q.IsCopy {
+			qd.attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
 
-		if p := qd.P; p != nil {
+			spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
 
-			stmt := qd.P.Stmt()
-
-			if stmt != nil {
-				switch stmt.(type) {
-				case *lyx.Copy:
-					spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
-
-					if serv.TxStatus() == txstatus.TXIDLE {
-						if err := s.DeploySliceTransactionQuery(serv, "BEGIN"); err != nil {
-							return err
-						}
-						qd.doFinalizeTx = true
-					}
+			if serv.TxStatus() == txstatus.TXIDLE {
+				if err := s.DeploySliceTransactionQuery(serv, "BEGIN"); err != nil {
+					return err
 				}
+				qd.doFinalizeTx = true
 			}
 		}
-
-		spqrlog.Zero.Debug().
-			Uints("shards", shard.ShardIDs(serv.Datashards())).
-			Type("query-type", qd.Msg).Type("plan-type", qd.P).
-			Msg("relay process plan")
-
-		statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
-		if err := DispatchPlan(qd, serv, s.Client(), replyCl); err != nil {
-			return err
-		}
+		/* OK, do standard processing */
+	default:
+		/* OK, do standard processing */
 	}
-	return nil
+
+	if serv == nil {
+		return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
+	}
+
+	spqrlog.Zero.Debug().
+		Uints("shards", shard.ShardIDs(serv.Datashards())).
+		Type("query-type", qd.Msg).Type("plan-type", qd.P).
+		Msg("relay process plan")
+
+	statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
+
+	return DispatchPlan(qd, serv, s.Client(), replyCl)
 }
 
 // TODO : unit tests
@@ -797,40 +800,43 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *ExecutorState, mgr meta.Entity
 		} else {
 			return rerrors.ErrExecutorSyncLost
 		}
-	case *plan.CopyPlan:
+	case *plan.ScatterPlan:
 
 		if serv == nil {
 			/* Malformed */
 			return errUnAttached
 		}
 
-		msg, _, err := serv.Receive()
-		if err != nil {
-			return err
-		}
+		if q.IsCopy {
 
-		spqrlog.Zero.Debug().
-			Str("server", serv.Name()).
-			Type("msg-type", msg).
-			Msg("received message from server")
-
-		switch msg.(type) {
-		case *pgproto3.CopyInResponse:
-			// handle replyCl somehow
-			err = s.Client().Send(msg)
+			msg, _, err := serv.Receive()
 			if err != nil {
 				return err
 			}
 
-			return s.copyFromExecutor(mgr, qd)
-		default:
-			return server.ErrMultiShardSyncBroken
-		}
-	}
+			spqrlog.Zero.Debug().
+				Str("server", serv.Name()).
+				Type("msg-type", msg).
+				Msg("received message from server")
 
-	if serv == nil {
-		/* Malformed */
-		return errUnAttached
+			switch msg.(type) {
+			case *pgproto3.CopyInResponse:
+				// handle replyCl somehow
+				err = s.Client().Send(msg)
+				if err != nil {
+					return err
+				}
+
+				return s.copyFromExecutor(mgr, qd)
+			default:
+				return server.ErrMultiShardSyncBroken
+			}
+		}
+	default:
+		if serv == nil {
+			/* Malformed */
+			return errUnAttached
+		}
 	}
 
 	for {
