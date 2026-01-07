@@ -13,7 +13,6 @@ import (
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
 	"github.com/pg-sharding/spqr/router/poolmgr"
-	"github.com/pg-sharding/spqr/router/server"
 )
 
 type ExecutorState struct {
@@ -35,10 +34,10 @@ type QueryStateExecutor interface {
 	Client() client.RouterClient
 
 	/* Do all gang allocation required for plan processing */
-	InitPlan(p plan.Plan) error
+	InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 
-	DeploySliceTransactionBlock(server server.Server) error
-	DeploySliceTransactionQuery(server server.Server, query string) error
+	DeploySliceTransactionBlock() error
+	DeploySliceTransactionQuery(query string) error
 
 	ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error
 	ExecCommit(rst RelayStateMgr, query string) error
