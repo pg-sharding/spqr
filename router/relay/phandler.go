@@ -30,10 +30,12 @@ type ExecutorState struct {
 type QueryStateExecutor interface {
 	txstatus.TxStatusMgr
 
+	poolmgr.GangMgr
+
 	Client() client.RouterClient
 
 	/* Do all gang allocation required for plan processing */
-	InitPlan(as []kr.ShardKey) error
+	InitPlan(p plan.Plan) error
 
 	DeploySliceTransactionBlock(server server.Server) error
 	DeploySliceTransactionQuery(server server.Server, query string) error
@@ -55,4 +57,6 @@ type QueryStateExecutor interface {
 	ExecSet(rst RelayStateMgr, query, name, value string) error
 	ExecReset(rst RelayStateMgr, query, name string) error
 	ExecResetMetadata(rst RelayStateMgr, query, setting string) error
+
+	ExpandRoutes(routes []kr.ShardKey) error
 }

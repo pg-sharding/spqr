@@ -33,7 +33,6 @@ func TestAutoDistributionSetFail(t *testing.T) {
 	mmgr.EXPECT().GetDistribution(gomock.Any(), "distrNotFound").Return(nil, errNotFoundDistr)
 
 	rst := RelayStateImpl{
-		activeShards:        nil,
 		msgBuf:              nil,
 		qse:                 NewQueryStateExecutor(nil, cmngr, client),
 		Qr:                  qr,
@@ -74,7 +73,6 @@ func TestAutoDistributionSetSuccess(t *testing.T) {
 	)
 
 	rst := RelayStateImpl{
-		activeShards:        nil,
 		msgBuf:              nil,
 		qse:                 NewQueryStateExecutor(nil, cmngr, client),
 		Qr:                  qr,
@@ -114,7 +112,6 @@ func TestAutoDistributionSetReplicated(t *testing.T) {
 	)
 
 	rst := RelayStateImpl{
-		activeShards:    nil,
 		msgBuf:          nil,
 		qse:             NewQueryStateExecutor(nil, cmngr, client),
 		Qr:              qr,
