@@ -176,7 +176,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 			Msg: query,
 		}
 
-		if err := DispatchPlan(es, s.Client().Server(), s.Client(), false); err != nil {
+		if err := DispatchPlan(es, s.Client(), false); err != nil {
 			return err
 		}
 
@@ -775,7 +775,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *ExecutorState, mgr meta
 			Msg("relay process plan")
 
 		statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
-		if err := DispatchPlan(qd, serv, s.Client(), replyCl); err != nil {
+		if err := DispatchPlan(qd, s.Client(), replyCl); err != nil {
 			return err
 		}
 	}
