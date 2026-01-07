@@ -46,7 +46,6 @@ var _ Plan = &ScatterPlan{}
 
 type ModifyTable struct {
 	Plan
-	stmt        lyx.Node
 	ExecTargets []kr.ShardKey
 }
 
@@ -63,7 +62,6 @@ var _ Plan = &ModifyTable{}
 type ShardDispatchPlan struct {
 	Plan
 
-	PStmt              lyx.Node
 	ExecTarget         kr.ShardKey
 	TargetSessionAttrs tsa.TSA
 }
@@ -81,7 +79,6 @@ var _ Plan = &ShardDispatchPlan{}
 type RandomDispatchPlan struct {
 	Plan
 
-	stmt        lyx.Node
 	ExecTargets []kr.ShardKey
 }
 
@@ -97,8 +94,6 @@ var _ Plan = &RandomDispatchPlan{}
 
 type VirtualPlan struct {
 	Plan
-
-	stmt lyx.Node
 
 	TTS     *tupleslot.TupleTableSlot
 	SubPlan Plan
@@ -117,7 +112,6 @@ var _ Plan = &VirtualPlan{}
 type DataRowFilter struct {
 	Plan
 
-	stmt        lyx.Node
 	FilterIndex uint
 	SubPlan     Plan
 }

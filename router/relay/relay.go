@@ -319,7 +319,6 @@ func (rst *RelayStateImpl) CreateSlicedPlan(ctx context.Context, rm *rmeta.Routi
 
 	if v := rst.Client().ExecuteOn(); v != "" {
 		queryPlan = &plan.ShardDispatchPlan{
-			PStmt: rst.qp.Stmt(),
 			ExecTarget: kr.ShardKey{
 				Name: v,
 			},

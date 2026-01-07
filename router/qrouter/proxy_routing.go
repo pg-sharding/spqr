@@ -603,7 +603,6 @@ func (qr *ProxyQrouter) PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadata
 				ExecTarget: kr.ShardKey{
 					Name: firstShard,
 				},
-				PStmt: rm.Stmt,
 			}, nil
 		}
 	}

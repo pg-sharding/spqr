@@ -100,7 +100,6 @@ func (l *LocalQrouter) AddDataShard(_ context.Context, ds *topology.DataShard) e
 // TODO : unit tests
 func (l *LocalQrouter) PlanQuery(_ context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 	return &plan.ShardDispatchPlan{
-		PStmt: rm.Stmt,
 		ExecTarget: kr.ShardKey{
 			Name: l.ds.ID,
 		},

@@ -722,6 +722,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *ExecutorState, mgr meta
 
 	switch q := qd.P.(type) {
 	case *plan.VirtualPlan:
+		return nil
 	case *plan.ScatterPlan:
 
 		if serv == nil {
@@ -742,11 +743,12 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *ExecutorState, mgr meta
 		}
 		/* OK, do standard processing */
 	default:
-		/* OK, do standard processing */
-	}
 
-	if serv == nil {
-		return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
+		if serv == nil {
+			return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
+		}
+
+		/* OK, do standard processing */
 	}
 
 	spqrlog.Zero.Debug().
