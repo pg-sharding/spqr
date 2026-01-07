@@ -230,7 +230,7 @@ func (rst *RelayStateImpl) Reset() error {
 var ErrMatchShardError = fmt.Errorf("failed to match datashard")
 
 // TODO : unit tests
-func (rst *RelayStateImpl) procRoutes(p plan.Plan) error {
+func (rst *RelayStateImpl) initExecutor(p plan.Plan) error {
 
 	switch p.(type) {
 	case *plan.VirtualPlan:
@@ -1076,7 +1076,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 			return q, rst.expandRoutes(execTarg)
 		}
 
-		if err := rst.procRoutes(q); err != nil {
+		if err := rst.initExecutor(q); err != nil {
 			return nil, err
 		}
 
@@ -1118,7 +1118,7 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
-	err := rst.procRoutes(bindPlan)
+	err := rst.initExecutor(bindPlan)
 
 	switch err {
 	case nil:
@@ -1154,7 +1154,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	if err != nil {
 		return nil, noopCloseRouteFunc, err
 	}
-	err = rst.procRoutes(p)
+	err = rst.initExecutor(p)
 
 	switch err {
 	case nil:
