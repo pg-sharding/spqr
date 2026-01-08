@@ -154,7 +154,7 @@ func (m *MultiShardServer) AllocateGangMember(clid uint, shkey kr.ShardKey, tsa 
 }
 
 func (m *MultiShardServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
-	return m.expandGangUtil(clid, shkey, tsa, false)
+	return m.expandGangUtil(clid, shkey, tsa, deployTX)
 }
 
 func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error {
