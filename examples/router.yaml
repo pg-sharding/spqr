@@ -16,6 +16,9 @@ time_quantiles:
 init_sql: "examples/init.sql"
 use_init_sql: false
 
+query_routing:
+  engine_default: v2
+
 frontend_tls:
   key_file: /path/to/ssl/server.key
   cert_file: /path/to/ssl/server.crt

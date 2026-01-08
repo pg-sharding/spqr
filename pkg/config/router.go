@@ -129,6 +129,7 @@ type QRouter struct {
 	DefaultRouteBehaviour        DefaultRouteBehaviour `json:"default_route_behaviour" toml:"default_route_behaviour" yaml:"default_route_behaviour"`
 	DefaultTSA                   string                `json:"default_target_session_attrs" toml:"default_target_session_attrs" yaml:"default_target_session_attrs"`
 	EnhancedMultiShardProcessing bool                  `json:"enhanced_multishard_processing" toml:"enhanced_multishard_processing" yaml:"enhanced_multishard_processing"`
+	EngineDefault                string                `json:"engine_default" toml:"engine_default" yaml:"engine_default"`
 	AlwaysCheckRules             bool                  `json:"always_check_rules" toml:"always_check_rules" yaml:"always_check_rules"`
 	StrictOperators              bool                  `json:"strict_operators" toml:"strict_operators" yaml:"strict_operators"`
 	PreferEngine                 string                `json:"prefer_engine" toml:"prefer_engine" yaml:"prefer_engine"`
@@ -243,6 +244,16 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 		return "", err
 	}
 
+	switch strings.ToLower(strings.TrimSpace(rcfg.Qr.EngineDefault)) {
+	case "":
+		// no-op
+	case "v2":
+		rcfg.Qr.EnhancedMultiShardProcessing = true
+	default:
+		return "", spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR,
+			"invalid query_routing.engine_default %q, expected \"\" or v2", rcfg.Qr.EngineDefault)
+	}
+
 	if err := validateRouterConfig(&rcfg); err != nil {
 		cfgRouter = rcfg
 		return "", err
@@ -273,6 +284,7 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 
 	// log.Println("Running config:", string(configBytes))
 	cfgRouter = rcfg
+	log.Printf("DEBUG: EnhancedMultiShardProcessing after setting global: %v", cfgRouter.Qr.EnhancedMultiShardProcessing)
 	return string(configBytes), nil
 }
 
