@@ -1114,6 +1114,12 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 	}
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
+	if len(rst.QueryExecutor().ActiveShards()) != 0 {
+		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
+			return err
+		}
+		rst.QueryExecutor().ActiveShardsReset()
+	}
 
 	err := rst.initExecutor(bindPlan)
 
@@ -1150,13 +1156,6 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	p, err := planner.SelectRandomDispatchPlan(rst.QueryRouter().DataShardsRoutes())
 	if err != nil {
 		return nil, noopCloseRouteFunc, err
-	}
-
-	if len(rst.QueryExecutor().ActiveShards()) != 0 {
-		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
-			return nil, noopCloseRouteFunc, err
-		}
-		rst.QueryExecutor().ActiveShardsReset()
 	}
 
 	err = rst.initExecutor(p)
