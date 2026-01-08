@@ -70,7 +70,7 @@ type RuleRouterImpl struct {
 func (r *RuleRouterImpl) InstanceHealthChecks() map[string]tsa.CachedCheckResult {
 	rt := map[string]tsa.CachedCheckResult{}
 	_ = r.NotifyRoutes(func(r *route.Route) (bool, error) {
-		m := r.ServPool().InstanceHealthChecks()
+		m := r.MShardPool().InstanceHealthChecks()
 		for k, v := range m {
 			// we are interested in most recent check
 			if v2, ok := rt[k]; !ok || v2.LastCheckTime.UnixNano() > v.LastCheckTime.UnixNano() {
@@ -86,7 +86,7 @@ func (r *RuleRouterImpl) InstanceHealthChecks() map[string]tsa.CachedCheckResult
 func (r *RuleRouterImpl) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
 	rt := map[pool.TsaKey]pool.CachedEntry{}
 	_ = r.NotifyRoutes(func(r *route.Route) (bool, error) {
-		m := r.ServPool().TsaCacheEntries()
+		m := r.MShardPool().TsaCacheEntries()
 		for k, v := range m {
 			rt[k] = v
 		}

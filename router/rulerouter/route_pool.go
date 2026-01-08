@@ -43,7 +43,7 @@ func NewRouterPoolImpl(shardMapping map[string]*config.Shard) *RoutePoolImpl {
 // TODO : unit tests
 func (r *RoutePoolImpl) ForEach(cb func(sh shard.ShardHostCtl) error) error {
 	return r.NotifyRoutes(func(route *route.Route) (bool, error) {
-		return true, route.ServPool().ForEach(cb)
+		return true, route.MShardPool().ForEach(cb)
 	})
 }
 
@@ -116,7 +116,7 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 
 	if !loaded {
 		// conflict, release goroutines
-		nroute.ServPool().StopCacheWatchdog()
+		nroute.MShardPool().StopCacheWatchdog()
 	}
 	return act.(*route.Route), nil
 }
