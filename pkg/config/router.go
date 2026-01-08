@@ -284,7 +284,6 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 
 	// log.Println("Running config:", string(configBytes))
 	cfgRouter = rcfg
-	log.Printf("DEBUG: EnhancedMultiShardProcessing after setting global: %v", cfgRouter.Qr.EnhancedMultiShardProcessing)
 	return string(configBytes), nil
 }
 

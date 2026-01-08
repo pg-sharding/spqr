@@ -75,7 +75,7 @@ Enables v2 routing engine functionality. This hint is currently under developmen
 <Tip>This hint overrides the [`query_routing.enhanced_multishard_processing`](/configuration/router#query-routing-settings) router configuration setting.</Tip>
 
 Possible values:
-- `v2` - Enables query_routing.enhanced_multishard_processing by default.
+- `v2` - When set, this value automatically enables the `query_routing.enhanced_multishard_processing` feature (it does not directly change `query_routing.engine_default`).
 
 ```sql
 SET __spqr__engine_v2 TO on;
