@@ -17,16 +17,15 @@ func virtualParamTransformName(name string) string {
 	return retName
 }
 
-func DispatchPlan(qd *ExecutorState, serv server.Server, cl client.RouterClient, replyCl bool) error {
+func DispatchPlan(qd *ExecutorState, cl client.RouterClient, replyCl bool) error {
+
+	serv := cl.Server()
 
 	if qd.P == nil {
 		if err := serv.Send(qd.Msg); err != nil {
 			return err
 		}
 
-		if cl.ShowNoticeMsg() && replyCl {
-			_ = replyShardMatchesWithHosts(cl, serv, server.ServerShkeys(serv))
-		}
 	} else {
 		et := qd.P.ExecutionTargets()
 
@@ -35,9 +34,6 @@ func DispatchPlan(qd *ExecutorState, serv server.Server, cl client.RouterClient,
 				return err
 			}
 
-			if cl.ShowNoticeMsg() && replyCl {
-				_ = replyShardMatchesWithHosts(cl, serv, server.ServerShkeys(serv))
-			}
 		} else {
 			for _, targ := range et {
 				msg := qd.Msg
@@ -51,11 +47,11 @@ func DispatchPlan(qd *ExecutorState, serv server.Server, cl client.RouterClient,
 					return err
 				}
 			}
-
-			if cl.ShowNoticeMsg() && replyCl {
-				_ = replyShardMatchesWithHosts(cl, serv, et)
-			}
 		}
+	}
+
+	if cl.ShowNoticeMsg() && replyCl {
+		_ = replyShardMatchesWithHosts(cl, serv, server.ServerShkeys(serv))
 	}
 	return nil
 }

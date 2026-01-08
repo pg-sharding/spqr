@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	validator "github.com/pg-sharding/spqr/pkg/meta/validators"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -18,7 +19,6 @@ import (
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/qdb/ops"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/sethvargo/go-retry"
@@ -804,7 +804,11 @@ func (qc *Coordinator) ShareKeyRange(id string) error {
 // Returns:
 // - error: An error if the creation encounters any issues.
 func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	return ops.CreateKeyRangeWithChecks(ctx, lc.qdb, kr)
+	// TODO: move check to meta layer
+	if err := validator.ValidateKeyRangeForCreate(ctx, lc, kr); err != nil {
+		return err
+	}
+	return lc.qdb.CreateKeyRange(ctx, kr.ToDB())
 }
 
 // TODO : unit tests
@@ -963,8 +967,11 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 	if krLeft.ID != krBase.ID {
 		krBase.LowerBound = krAppendage.LowerBound
 	}
-
-	if err := ops.ModifyKeyRangeWithChecks(ctx, lc.qdb, krBase); err != nil {
+	// TODO: move check to meta layer
+	if err := validator.ValidateKeyRangeForModify(ctx, lc, krBase); err != nil {
+		return err
+	}
+	if err := lc.qdb.UpdateKeyRange(ctx, krBase.ToDB()); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err.Error())
 	}
 	return nil
@@ -1055,7 +1062,7 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return err
 	}
 
-	if err := ops.CreateKeyRangeWithChecks(ctx, qc.qdb, krTemp); err != nil {
+	if err := qc.CreateKeyRange(ctx, krTemp); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
 	}
 

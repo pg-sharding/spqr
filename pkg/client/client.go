@@ -12,7 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/router/statistics"
 )
 
-type Pmgr interface {
+type ParamManager interface {
 	SetParam(string, string)
 	ResetParam(string)
 	ResetAll()
@@ -28,7 +28,7 @@ type Pmgr interface {
 }
 
 type Client interface {
-	Pmgr
+	ParamManager
 	session.SessionParamsHolder
 	statistics.StatHolder
 
