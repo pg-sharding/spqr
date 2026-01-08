@@ -139,7 +139,6 @@ func (m *MultiShardServer) expandGangUtil(clid uint, shkey kr.ShardKey, tsa tsa.
 	}
 
 	m.activeShards = append(m.activeShards, sh)
-	m.states = append(m.states, m.states[0])
 
 	return nil
 }
@@ -148,13 +147,18 @@ func (m *MultiShardServer) AllocateGangMember(clid uint, shkey kr.ShardKey, tsa 
 	if err := m.expandGangUtil(clid, shkey, tsa, false); err != nil {
 		return err
 	}
+	m.states = append(m.states, ShardRFQState)
 	m.multistate = InitialState
 
 	return nil
 }
 
 func (m *MultiShardServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
-	return m.expandGangUtil(clid, shkey, tsa, deployTX)
+	if err := m.expandGangUtil(clid, shkey, tsa, deployTX); err != nil {
+		return err
+	}
+	m.states = append(m.states, m.states[0])
+	return nil
 }
 
 func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error {
