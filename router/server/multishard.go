@@ -109,28 +109,12 @@ func (m *MultiShardServer) Reset() error {
 	return nil
 }
 
-func (m *MultiShardServer) AllocateGangMember(clid uint, shkey kr.ShardKey, tsa tsa.TSA) error {
+func (m *MultiShardServer) expandGangUtil(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
 	for _, piv := range m.activeShards {
 		if piv.SHKey().Name == shkey.Name {
-			return fmt.Errorf("multishard connection already use %v", shkey.Name)
-		}
-	}
-	/* do connection acquiring  */
-	sh, err := m.pool.ConnectionWithTSA(clid, shkey, tsa)
-	if err != nil {
-		return err
-	}
 
-	m.activeShards = append(m.activeShards, sh)
-	m.states = append(m.states, ShardRFQState)
-	m.multistate = InitialState
+			spqrlog.Zero.Debug().Uint("shid", piv.ID()).Msg("reuse  gang member")
 
-	return nil
-}
-
-func (m *MultiShardServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
-	for _, piv := range m.activeShards {
-		if piv.SHKey().Name == shkey.Name {
 			/* todo: multi-slice server can use multiple connections to shard. */
 			return nil
 		}
@@ -139,6 +123,8 @@ func (m *MultiShardServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA,
 	if err != nil {
 		return err
 	}
+
+	spqrlog.Zero.Debug().Uint("shid", sh.ID()).Msg("acquired gang member")
 
 	if deployTX {
 		retst, err := shard.DeployTxOnShard(sh, &pgproto3.Query{
@@ -156,6 +142,19 @@ func (m *MultiShardServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA,
 	m.states = append(m.states, m.states[0])
 
 	return nil
+}
+
+func (m *MultiShardServer) AllocateGangMember(clid uint, shkey kr.ShardKey, tsa tsa.TSA) error {
+	if err := m.expandGangUtil(clid, shkey, tsa, false); err != nil {
+		return err
+	}
+	m.multistate = InitialState
+
+	return nil
+}
+
+func (m *MultiShardServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
+	return m.expandGangUtil(clid, shkey, tsa, false)
 }
 
 func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error {
