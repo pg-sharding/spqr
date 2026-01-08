@@ -21,6 +21,8 @@ func DispatchPlan(qd *ExecutorState, cl client.RouterClient, replyCl bool) error
 
 	serv := cl.Server()
 
+	shkey := server.ServerShkeys(serv)
+
 	if qd.P == nil {
 		if err := serv.Send(qd.Msg); err != nil {
 			return err
@@ -47,11 +49,12 @@ func DispatchPlan(qd *ExecutorState, cl client.RouterClient, replyCl bool) error
 					return err
 				}
 			}
+			shkey = et
 		}
 	}
 
 	if cl.ShowNoticeMsg() && replyCl {
-		_ = replyShardMatchesWithHosts(cl, serv, server.ServerShkeys(serv))
+		_ = replyShardMatchesWithHosts(cl, serv, shkey)
 	}
 	return nil
 }
