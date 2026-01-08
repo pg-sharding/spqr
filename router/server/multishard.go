@@ -113,7 +113,7 @@ func (m *MultiShardServer) expandGangUtil(clid uint, shkey kr.ShardKey, tsa tsa.
 	for _, piv := range m.activeShards {
 		if piv.SHKey().Name == shkey.Name {
 
-			spqrlog.Zero.Debug().Uint("shid", piv.ID()).Msg("reuse  gang member")
+			spqrlog.Zero.Debug().Uint("shard-id", piv.ID()).Msg("reuse  gang member")
 
 			/* todo: multi-slice server can use multiple connections to shard. */
 			return nil
@@ -124,7 +124,7 @@ func (m *MultiShardServer) expandGangUtil(clid uint, shkey kr.ShardKey, tsa tsa.
 		return err
 	}
 
-	spqrlog.Zero.Debug().Uint("shid", sh.ID()).Msg("acquired gang member")
+	spqrlog.Zero.Debug().Uint("shard-id", sh.ID()).Msg("acquired gang member")
 
 	if deployTX {
 		retst, err := shard.DeployTxOnShard(sh, &pgproto3.Query{
