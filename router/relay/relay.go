@@ -1151,6 +1151,14 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	if err != nil {
 		return nil, noopCloseRouteFunc, err
 	}
+
+	if len(rst.QueryExecutor().ActiveShards()) != 0 {
+		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
+			return nil, noopCloseRouteFunc, err
+		}
+		rst.QueryExecutor().ActiveShardsReset()
+	}
+
 	err = rst.initExecutor(p)
 
 	switch err {
