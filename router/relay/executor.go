@@ -91,7 +91,7 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *p
 		return fmt.Errorf("unexpected executor tx state in transaction deploy")
 	}
 
-	/* TODO: deply tx status on each gang. */
+	/* TODO: deploy tx status on each gang. */
 
 	for _, sh := range serv.Datashards() {
 		st, err := shard.DeployTxOnShard(sh, q, expTx)
@@ -144,12 +144,12 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 	/* Traverse and create gang for each slice. */
 
 	if len(s.activeShards) > 1 {
-		serv, err = server.NewMultiShardServer(s.Client().Route().MShardPool())
+		serv, err = server.NewMultiShardServer(s.Client().Route().MultiShardPool())
 		if err != nil {
 			return err
 		}
 	} else {
-		serv = server.NewShardServer(s.Client().Route().MShardPool())
+		serv = server.NewShardServer(s.Client().Route().MultiShardPool())
 	}
 
 	/* Assign top-level gang (output slice) to client */

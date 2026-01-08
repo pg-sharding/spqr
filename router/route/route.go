@@ -117,7 +117,7 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 	return r.params, nil
 }
 
-func (r *Route) MShardPool() pool.MultiShardTSAPool {
+func (r *Route) MultiShardPool() pool.MultiShardTSAPool {
 	return r.mShardPool
 }
 
