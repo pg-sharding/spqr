@@ -15,13 +15,21 @@ import (
 	"github.com/pg-sharding/spqr/router/poolmgr"
 )
 
-type ExecutorState struct {
+type QueryDesc struct {
 	Msg pgproto3.FrontendMessage
 	P   plan.Plan
+}
 
+type ExecutorState struct {
 	doFinalizeTx  bool
 	attachedCopy  bool
 	expectRowDesc bool
+
+	savedBegin *pgproto3.Query
+	cc         *pgproto3.CommandComplete
+
+	/* XXX: make gang table here */
+	activeShards []kr.ShardKey
 }
 
 // Execute required command via
@@ -48,8 +56,8 @@ type QueryStateExecutor interface {
 	ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error)
 	ProcCopyComplete(query pgproto3.FrontendMessage) (txstatus.TXStatus, error)
 
-	ExecuteSlice(qd *ExecutorState, mgr meta.EntityMgr, replyCl bool) error
-	ExecuteSlicePrepare(qd *ExecutorState, mgr meta.EntityMgr, replyCl bool, expectRowDesc bool) error
+	ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error
+	ExecuteSlicePrepare(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool, expectRowDesc bool) error
 
 	CompleteTx(mgr poolmgr.GangMgr) error
 

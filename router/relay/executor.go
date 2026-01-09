@@ -42,19 +42,17 @@ type QueryStateExecutorImpl struct {
 
 	poolMgr poolmgr.PoolMgr
 
-	activeShards []kr.ShardKey
-
-	savedBegin *pgproto3.Query
+	es ExecutorState
 }
 
 // ActiveShards implements [QueryStateExecutor].
 func (s *QueryStateExecutorImpl) ActiveShards() []kr.ShardKey {
-	return s.activeShards
+	return s.es.activeShards
 }
 
 // ActiveShardsReset implements [QueryStateExecutor].
 func (s *QueryStateExecutorImpl) ActiveShardsReset() {
-	s.activeShards = nil
+	s.es.activeShards = nil
 }
 
 // DataPending implements [QueryStateExecutor].
@@ -127,11 +125,11 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 		if err := poolmgr.UnrouteCommon(s.Client(), s.ActiveShards()); err != nil {
 			return err
 		}
-		s.activeShards = nil
+		s.es.activeShards = nil
 		return fmt.Errorf("init plan called on active executor")
 	}
 
-	s.activeShards = routes
+	s.es.activeShards = routes
 
 	if config.RouterConfig().PgprotoDebug {
 		if err := s.Client().ReplyDebugNoticef("matched datashard routes %+v", routes); err != nil {
@@ -144,7 +142,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 
 	/* Traverse and create gang for each slice. */
 
-	if len(s.activeShards) > 1 {
+	if len(s.ActiveShards()) > 1 {
 		serv, err = server.NewMultiShardServer(s.Client().Route().MultiShardPool())
 		if err != nil {
 			return err
@@ -164,7 +162,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 		Uint("client", s.Client().ID()).
 		Msg("allocate gang for client")
 
-	for _, shkey := range s.activeShards {
+	for _, shkey := range s.ActiveShards() {
 		spqrlog.Zero.Debug().
 			Str("client tsa", string(s.Client().GetTsa())).
 			Msg("adding shard with tsa")
@@ -181,7 +179,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 			Str("query", query.String).
 			Msg("setting params for client")
 
-		es := &ExecutorState{
+		es := &QueryDesc{
 			Msg: query,
 		}
 
@@ -214,7 +212,7 @@ func (s *QueryStateExecutorImpl) DeploySliceTransactionBlock() error {
 		}
 	}
 
-	return s.deployTxStatusInternal(server, s.savedBegin, txstatus.TXACT)
+	return s.deployTxStatusInternal(server, s.es.savedBegin, txstatus.TXACT)
 }
 
 func (s *QueryStateExecutorImpl) DeploySliceTransactionQuery(query string) error {
@@ -223,9 +221,9 @@ func (s *QueryStateExecutorImpl) DeploySliceTransactionQuery(query string) error
 		return errUnAttached
 	}
 	s.SetTxStatus(txstatus.TXACT)
-	s.savedBegin = &pgproto3.Query{String: query}
+	s.es.savedBegin = &pgproto3.Query{String: query}
 
-	return s.deployTxStatusInternal(server, s.savedBegin, txstatus.TXACT)
+	return s.deployTxStatusInternal(server, s.es.savedBegin, txstatus.TXACT)
 }
 
 func (s *QueryStateExecutorImpl) SetTxStatus(status txstatus.TXStatus) {
@@ -247,7 +245,7 @@ func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *
 	s.cl.StartTx()
 
 	// explicitly set silent query message, as it can differ from query begin in xproto
-	s.savedBegin = &pgproto3.Query{String: query}
+	s.es.savedBegin = &pgproto3.Query{String: query}
 
 	spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Msg("start new transaction")
 
@@ -689,7 +687,7 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	return txt, nil
 }
 
-func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, qd *ExecutorState) error {
+func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, qd *QueryDesc) error {
 
 	var leftoverMsgData []byte
 	ctx := context.TODO()
@@ -702,7 +700,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, qd *Execut
 	if !ok {
 		return fmt.Errorf("failed to prepare copy context, not a copy statement")
 	}
-	cps, err := s.ProcCopyPrepare(ctx, mgr, cs, qd.attachedCopy)
+	cps, err := s.ProcCopyPrepare(ctx, mgr, cs, s.es.attachedCopy)
 	if err != nil {
 		return err
 	}
@@ -725,7 +723,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, qd *Execut
 			if txt, err := s.ProcCopyComplete(cpMsg); err != nil {
 				return err
 			} else {
-				if qd.doFinalizeTx {
+				if s.es.doFinalizeTx {
 					if txt == txstatus.TXACT {
 						return s.ExecCommitTx("COMMIT")
 					}
@@ -741,12 +739,12 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, qd *Execut
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *ExecutorState, mgr meta.EntityMgr, replyCl bool, expectRowDesc bool) error {
+func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool, expectRowDesc bool) error {
 
 	/* XXX: refactor this */
-	qd.expectRowDesc = expectRowDesc
-	qd.attachedCopy = false
-	qd.doFinalizeTx = false
+	s.es.expectRowDesc = expectRowDesc
+	s.es.attachedCopy = false
+	s.es.doFinalizeTx = false
 
 	serv := s.Client().Server()
 
@@ -757,7 +755,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *ExecutorState, mgr meta
 			return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 		}
 
-		qd.attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
+		s.es.attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
 
 		if p := qd.P; p != nil {
 
@@ -772,7 +770,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *ExecutorState, mgr meta
 						if err := s.DeploySliceTransactionQuery("BEGIN"); err != nil {
 							return err
 						}
-						qd.doFinalizeTx = true
+						s.es.doFinalizeTx = true
 					}
 				}
 			}
@@ -792,7 +790,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *ExecutorState, mgr meta
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) ExecuteSlice(qd *ExecutorState, mgr meta.EntityMgr, replyCl bool) error {
+func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error {
 
 	serv := s.Client().Server()
 
@@ -806,7 +804,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *ExecutorState, mgr meta.Entity
 
 			/* only send row description for simple proto case */
 
-			if qd.expectRowDesc {
+			if s.es.expectRowDesc {
 				if err := s.Client().Send(&pgproto3.RowDescription{
 					Fields: q.TTS.Desc,
 				}); err != nil {
@@ -931,7 +929,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *ExecutorState, mgr meta.Entity
 				}
 			}
 		case *pgproto3.RowDescription:
-			if qd.expectRowDesc {
+			if s.es.expectRowDesc {
 				if replyCl {
 					err = s.Client().Send(msg)
 					if err != nil {
@@ -988,13 +986,13 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 	beforeTx := s.Client().Server().TxStatus()
 
 	for _, shkey := range routes {
-		if slices.ContainsFunc(s.activeShards, func(c kr.ShardKey) bool {
+		if slices.ContainsFunc(s.ActiveShards(), func(c kr.ShardKey) bool {
 			return shkey == c
 		}) {
 			continue
 		}
 
-		s.activeShards = append(s.activeShards, shkey)
+		s.es.activeShards = append(s.es.activeShards, shkey)
 
 		spqrlog.Zero.Debug().
 			Str("client tsa", string(s.Client().GetTsa())).

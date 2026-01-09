@@ -17,7 +17,7 @@ func virtualParamTransformName(name string) string {
 	return retName
 }
 
-func DispatchPlan(qd *ExecutorState, cl client.RouterClient, replyCl bool) error {
+func DispatchPlan(qd *QueryDesc, cl client.RouterClient, replyCl bool) error {
 
 	serv := cl.Server()
 
