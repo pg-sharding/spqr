@@ -29,6 +29,8 @@ type ExecutorState struct {
 	cc         *pgproto3.CommandComplete
 	eMsg       *pgproto3.ErrorResponse
 
+	replyEmptyQuery bool
+
 	/* XXX: make gang table here */
 	activeShards []kr.ShardKey
 }
@@ -64,6 +66,8 @@ type QueryStateExecutor interface {
 
 	DeriveCommandComplete() error
 	CompleteTx(mgr poolmgr.GangMgr) error
+
+	ReplyEmptyQuery()
 
 	ExecSet(rst RelayStateMgr, query, name, value string) error
 	ExecReset(rst RelayStateMgr, query, name string) error

@@ -280,9 +280,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return noDataPd, err
 	case parser.ParseStateEmptyQuery:
-		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
-			return nil, err
-		}
+		rst.QueryExecutor().ReplyEmptyQuery()
 		// do not complete relay  here
 		return noDataPd, nil
 	// with tx pooling we might have no active connection while processing set x to y

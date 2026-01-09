@@ -41,6 +41,7 @@ type QueryStateExecutorImpl struct {
 	d        qdb.DCStateKeeper
 
 	cacheCC pgproto3.CommandComplete
+	cacheEQ pgproto3.EmptyQueryResponse
 
 	poolMgr poolmgr.PoolMgr
 
@@ -755,6 +756,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, mgr meta.Ent
 	s.es.doFinalizeTx = false
 	s.es.cc = nil
 	s.es.eMsg = nil
+	s.es.replyEmptyQuery = false
 
 	serv := s.Client().Server()
 
@@ -1012,6 +1014,11 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 }
 
 func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
+
+	if s.es.replyEmptyQuery {
+		return s.Client().Send(&s.cacheEQ)
+	}
+
 	/*
 	* For single slice execution plans, we have two valid completion messages:
 	* ErrorMessage and Command complete. If our output gang did not return either of them,
@@ -1024,6 +1031,10 @@ func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
 	}
 
 	return s.Client().Send(s.es.eMsg)
+}
+
+func (s *QueryStateExecutorImpl) ReplyEmptyQuery() {
+	s.es.replyEmptyQuery = true
 }
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}
