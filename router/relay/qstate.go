@@ -100,19 +100,21 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	}
 
 	/* outer function will complete relay here */
-
-	spqrlog.Zero.Debug().Err(err).Uint("client-id", rst.Client().ID()).Msg("completing client relay with error")
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Uint("client-id", rst.Client().ID()).Msg("completing client relay with error")
+	} else {
+		spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Msg("completing client relay")
+	}
 
 	switch err {
 	case nil:
+		if !completeRelay {
+			return pd, nil
+		}
 
 		/* Okay, respond with CommandComplete first. */
 		if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
 			return nil, err
-		}
-
-		if !completeRelay {
-			return pd, nil
 		}
 
 		return pd, rst.CompleteRelay()
@@ -239,7 +241,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
 			// ignore this
 			_ = rst.Client().ReplyWarningf("there is already transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("BEGIN")
+			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("BEGIN")
 		}
 		err := rst.QueryExecutor().ExecBegin(rst, query, &st)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
@@ -264,7 +266,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("COMMIT")
+			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("COMMIT")
 		}
 		err := rst.QueryExecutor().ExecCommit(rst, query)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
@@ -272,7 +274,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 	case parser.ParseStateTXRollback:
 		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("ROLLBACK")
+			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("ROLLBACK")
 		}
 		err := rst.QueryExecutor().ExecRollback(rst, query)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
@@ -395,7 +397,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				}
 			}
 
-			if err := rst.Client().ReplyCommandComplete("SHOW"); err != nil {
+			if err := rst.QueryExecutor().ReplyCommandComplete("SHOW"); err != nil {
 				return nil, err
 			}
 		}
@@ -417,7 +419,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			switch q.Kind {
 			case lyx.VarTypeResetAll:
 				rst.Client().ResetAll()
-				if err := rst.Client().ReplyCommandComplete("RESET"); err != nil {
+				if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
 					return nil, err
 				}
 			case lyx.VarTypeReset:
@@ -433,7 +435,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						rst.Client().ResetParam("role")
 					}
 
-					if err := rst.Client().ReplyCommandComplete("RESET"); err != nil {
+					if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
 						return nil, err
 					}
 
@@ -453,7 +455,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						}
 					}
 
-					if err := rst.Client().ReplyCommandComplete("RESET"); err != nil {
+					if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
 						return nil, err
 					}
 
@@ -584,5 +586,5 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context, hintName string,
 		rst.Client().SetParam(name, hintVal)
 	}
 
-	return rst.Client().ReplyCommandComplete("SET")
+	return rst.QueryExecutor().ReplyCommandComplete("SET")
 }

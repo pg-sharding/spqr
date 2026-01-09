@@ -27,6 +27,7 @@ type ExecutorState struct {
 
 	savedBegin *pgproto3.Query
 	cc         *pgproto3.CommandComplete
+	eMsg       *pgproto3.ErrorResponse
 
 	/* XXX: make gang table here */
 	activeShards []kr.ShardKey
@@ -50,6 +51,8 @@ type QueryStateExecutor interface {
 	ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error
 	ExecCommit(rst RelayStateMgr, query string) error
 	ExecRollback(rst RelayStateMgr, query string) error
+
+	ReplyCommandComplete(commandTag string) error
 
 	/* Copy execution */
 	ProcCopyPrepare(ctx context.Context, mgr meta.EntityMgr, stmt *lyx.Copy, attached bool) (*pgcopy.CopyState, error)
