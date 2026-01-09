@@ -50,9 +50,9 @@ type QueryStateExecutor interface {
 	DeploySliceTransactionBlock() error
 	DeploySliceTransactionQuery(query string) error
 
-	ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error
-	ExecCommit(rst RelayStateMgr, query string) error
-	ExecRollback(rst RelayStateMgr, query string) error
+	ExecBegin(query string, st *parser.ParseStateTXBegin) error
+	ExecCommit(query string) error
+	ExecRollback(query string) error
 
 	ReplyCommandComplete(commandTag string) error
 

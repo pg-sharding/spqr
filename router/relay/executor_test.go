@@ -34,7 +34,7 @@ func TestTxSimpleCommit(t *testing.T) {
 
 	cl.EXPECT().CommitActiveSet().Times(1)
 
-	err := rst.QueryExecutor().ExecCommit(rst, "COMMIT")
+	err := rst.QueryExecutor().ExecCommit("COMMIT")
 
 	assert.Nil(err)
 }
@@ -61,7 +61,7 @@ func TestTxSimpleRollback(t *testing.T) {
 
 	cl.EXPECT().Rollback().Times(1)
 
-	err := rst.QueryExecutor().ExecRollback(rst, "ROLLBACK")
+	err := rst.QueryExecutor().ExecRollback("ROLLBACK")
 
 	assert.Nil(err)
 }

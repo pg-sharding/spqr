@@ -239,7 +239,7 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 	return s.txStatus
 }
 
-func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error {
+func (s *QueryStateExecutorImpl) ExecBegin(query string, st *parser.ParseStateTXBegin) error {
 	if s.poolMgr.ConnectionActive(s) {
 		return s.DeploySliceTransactionQuery(query)
 	}
@@ -250,16 +250,16 @@ func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *
 	// explicitly set silent query message, as it can differ from query begin in xproto
 	s.es.savedBegin = &pgproto3.Query{String: query}
 
-	spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Msg("start new transaction")
+	spqrlog.Zero.Debug().Uint("client", s.Client().ID()).Msg("start new transaction")
 
 	for _, opt := range st.Options {
 		switch opt {
 		case lyx.TransactionReadOnly:
-			rst.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsPS)
+			s.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsPS)
 		case lyx.TransactionReadWrite:
-			rst.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsRW)
+			s.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsRW)
 		default:
-			rst.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsRW)
+			s.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsRW)
 		}
 	}
 	return s.ReplyCommandComplete("BEGIN")
@@ -288,7 +288,7 @@ func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
 }
 
 // query in commit query. maybe commit or commit `name`
-func (s *QueryStateExecutorImpl) ExecCommit(rst RelayStateMgr, query string) error {
+func (s *QueryStateExecutorImpl) ExecCommit(query string) error {
 	// Virtual tx case. Do the whole logic locally
 	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.CommitActiveSet()
@@ -320,9 +320,9 @@ func (s *QueryStateExecutorImpl) ExecRollbackServer() error {
 }
 
 /* TODO: proper support for rollback to savepoint */
-func (s *QueryStateExecutorImpl) ExecRollback(rst RelayStateMgr, query string) error {
+func (s *QueryStateExecutorImpl) ExecRollback(query string) error {
 	// Virtual tx case. Do the whole logic locally
-	if !rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
+	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.Rollback()
 		_ = s.ReplyCommandComplete("ROLLBACK")
 		s.SetTxStatus(txstatus.TXIDLE)
@@ -636,6 +636,7 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 		Type("query-type", query).
 		Msg("client process copy end")
 	server := s.cl.Server()
+
 	/* non-null server should never be set to null here until we call Unroute()
 	in complete relay */
 	if server == nil {
@@ -681,16 +682,12 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	}
 
 	if errmsg != nil {
-		if err := s.cl.Send(errmsg); err != nil {
-			return txt, err
-		}
+		s.es.eMsg = errmsg
 	} else {
 		if ccmsg == nil {
 			return txt, fmt.Errorf("copy state out of sync")
 		}
-		if err := s.cl.Send(ccmsg); err != nil {
-			return txt, err
-		}
+		s.es.cc = ccmsg
 	}
 
 	return txt, nil

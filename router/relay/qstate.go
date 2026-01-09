@@ -243,7 +243,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			_ = rst.Client().ReplyWarningf("there is already transaction in progress")
 			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("BEGIN")
 		}
-		err := rst.QueryExecutor().ExecBegin(rst, query, &st)
+		err := rst.QueryExecutor().ExecBegin(query, &st)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return noDataPd, err
 	case parser.ParseStateTXCommit:
@@ -268,7 +268,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
 			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("COMMIT")
 		}
-		err := rst.QueryExecutor().ExecCommit(rst, query)
+		err := rst.QueryExecutor().ExecCommit(query)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return noDataPd, err
 	case parser.ParseStateTXRollback:
@@ -276,7 +276,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
 			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("ROLLBACK")
 		}
-		err := rst.QueryExecutor().ExecRollback(rst, query)
+		err := rst.QueryExecutor().ExecRollback(query)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return noDataPd, err
 	case parser.ParseStateEmptyQuery:
