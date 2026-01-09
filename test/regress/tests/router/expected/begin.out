@@ -218,16 +218,35 @@ NOTICE: send query to shard(s) : sh1
  10 |  16
 (2 rows)
 
-INSERT INTO fff VALUES(1);
+INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
 NOTICE: send query to shard(s) : sh1
-ERROR:  relation "fff" does not exist
-LINE 1: INSERT INTO fff VALUES(1);
-                    ^
-INSERT INTO fff VALUES(1);
+ERROR:  invalid input syntax for type integer: "ababa"
+LINE 1: INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
+                                                  ^
+INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
-INSERT INTO fff VALUES(1);
+INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
-INSERT INTO fff VALUES(1);
+INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ROLLBACK;
+-- test ignore of all cmds after metadata error
+BEGIN;
+SELECT * FROM test_beg WHERE id = 10;
+NOTICE: send query to shard(s) : sh1
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+(2 rows)
+
+INSERT INTO fff (id) VALUES(1);
+ERROR:  client processing error: distribution for relation "fff" not found, tx status ERROR
+INSERT INTO fff (id) VALUES(1);
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+INSERT INTO fff (id) VALUES(1);
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+INSERT INTO fff (id) VALUES(1);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 DROP TABLE test_beg;

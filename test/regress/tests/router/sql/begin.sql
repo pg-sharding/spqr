@@ -66,10 +66,20 @@ ROLLBACK;
 -- test ignore of all cmds after error
 BEGIN;
 SELECT * FROM test_beg WHERE id = 10;
-INSERT INTO fff VALUES(1);
-INSERT INTO fff VALUES(1);
-INSERT INTO fff VALUES(1);
-INSERT INTO fff VALUES(1);
+INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
+INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
+INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
+INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
+ROLLBACK;
+
+
+-- test ignore of all cmds after metadata error
+BEGIN;
+SELECT * FROM test_beg WHERE id = 10;
+INSERT INTO fff (id) VALUES(1);
+INSERT INTO fff (id) VALUES(1);
+INSERT INTO fff (id) VALUES(1);
+INSERT INTO fff (id) VALUES(1);
 ROLLBACK;
 
 
