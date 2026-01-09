@@ -1013,7 +1013,7 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 
 func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
 	/*
-	* For single slice exeution plans, we have two valid completion messages:
+	* For single slice execution plans, we have two valid completion messages:
 	* ErrorMessage and Command complete. If our output gang did not return either of them,
 	* we are in big trouble */
 	if s.es.cc == nil && s.es.eMsg == nil {

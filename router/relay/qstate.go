@@ -289,7 +289,15 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 	case parser.ParseStateShowStmt:
 		var pd *PortalDesc
 
-		for _, stmt := range st.Stmts {
+		for i, stmt := range st.Stmts {
+
+			/* This is hacky and very-very bad. Should fix multistatement. */
+			if i > 0 {
+				if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
+					return nil, err
+				}
+			}
+
 			q, ok := stmt.(*lyx.VariableShowStmt)
 			if !ok {
 				return nil, rerrors.ErrComplexQuery
@@ -406,7 +414,15 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		return pd, nil
 	case parser.ParseStateSetStmt:
 
-		for _, stmt := range st.Stmts {
+		for i, stmt := range st.Stmts {
+
+			/* This is hacky and very-very bad. Should fix multistatement. */
+			if i > 0 {
+				if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
+					return nil, err
+				}
+			}
+
 			q, ok := stmt.(*lyx.VariableSetStmt)
 			if !ok {
 				return nil, rerrors.ErrComplexQuery
