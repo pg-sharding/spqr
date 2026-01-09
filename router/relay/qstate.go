@@ -99,19 +99,18 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 		rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
 	}
 
-	if !completeRelay {
-		return pd, nil
-	}
-
-	if err == nil {
-		return pd, rst.CompleteRelay()
-	}
-
 	/* outer function will complete relay here */
 
 	spqrlog.Zero.Debug().Err(err).Uint("client-id", rst.Client().ID()).Msg("completing client relay with error")
 
 	switch err {
+	case nil:
+
+		if !completeRelay {
+			return pd, nil
+		}
+
+		return pd, rst.CompleteRelay()
 	case io.ErrUnexpectedEOF:
 		fallthrough
 	case io.EOF:
