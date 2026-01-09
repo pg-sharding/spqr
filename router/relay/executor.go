@@ -741,10 +741,11 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, qd *QueryD
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool, expectRowDesc bool) error {
 
-	/* XXX: refactor this */
+	/* XXX: refactor this into ExecutorReset */
 	s.es.expectRowDesc = expectRowDesc
 	s.es.attachedCopy = false
 	s.es.doFinalizeTx = false
+	s.es.cc = nil
 
 	serv := s.Client().Server()
 
@@ -921,12 +922,12 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 
 			return rerrors.ErrExecutorSyncLost
 		case *pgproto3.CommandComplete:
-
+			/*
+			* Safe for later reuse. For multi-slice statements
+			* original CommandComplete may differ from any of
+			* received from slices (including output slice). */
 			if replyCl {
-				err = s.Client().Send(msg)
-				if err != nil {
-					return err
-				}
+				s.es.cc = v
 			}
 		case *pgproto3.RowDescription:
 			if s.es.expectRowDesc {
@@ -1004,6 +1005,13 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 		}
 	}
 	return nil
+}
+
+func (q *QueryStateExecutorImpl) DeriveCommandComplete() error {
+	if q.es.cc == nil {
+		return fmt.Errorf("failed to derive command complete for query")
+	}
+	return q.Client().Send(q.es.cc)
 }
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}

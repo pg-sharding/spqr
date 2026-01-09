@@ -106,6 +106,11 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	switch err {
 	case nil:
 
+		/* Okay, respond with CommandComplete first. */
+		if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
+			return err
+		}
+
 		if !completeRelay {
 			return pd, nil
 		}

@@ -59,6 +59,7 @@ type QueryStateExecutor interface {
 	ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error
 	ExecuteSlicePrepare(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool, expectRowDesc bool) error
 
+	DeriveCommandComplete() error
 	CompleteTx(mgr poolmgr.GangMgr) error
 
 	ExecSet(rst RelayStateMgr, query, name, value string) error
