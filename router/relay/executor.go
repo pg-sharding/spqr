@@ -40,6 +40,9 @@ type QueryStateExecutorImpl struct {
 	cl       client.RouterClient
 	d        qdb.DCStateKeeper
 
+	cacheCC pgproto3.CommandComplete
+	cacheEQ pgproto3.EmptyQueryResponse
+
 	poolMgr poolmgr.PoolMgr
 
 	es ExecutorState
@@ -236,9 +239,9 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 	return s.txStatus
 }
 
-func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error {
-	if rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
-		return rst.QueryExecutor().DeploySliceTransactionQuery(query)
+func (s *QueryStateExecutorImpl) ExecBegin(query string, st *parser.ParseStateTXBegin) error {
+	if s.poolMgr.ConnectionActive(s) {
+		return s.DeploySliceTransactionQuery(query)
 	}
 
 	s.SetTxStatus(txstatus.TXACT)
@@ -247,19 +250,19 @@ func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *
 	// explicitly set silent query message, as it can differ from query begin in xproto
 	s.es.savedBegin = &pgproto3.Query{String: query}
 
-	spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Msg("start new transaction")
+	spqrlog.Zero.Debug().Uint("client", s.Client().ID()).Msg("start new transaction")
 
 	for _, opt := range st.Options {
 		switch opt {
 		case lyx.TransactionReadOnly:
-			rst.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsPS)
+			s.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsPS)
 		case lyx.TransactionReadWrite:
-			rst.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsRW)
+			s.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsRW)
 		default:
-			rst.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsRW)
+			s.Client().SetTsa(session.VirtualParamLevelLocal, config.TargetSessionAttrsRW)
 		}
 	}
-	return rst.Client().ReplyCommandComplete("BEGIN")
+	return s.ReplyCommandComplete("BEGIN")
 }
 
 func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
@@ -285,11 +288,11 @@ func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
 }
 
 // query in commit query. maybe commit or commit `name`
-func (s *QueryStateExecutorImpl) ExecCommit(rst RelayStateMgr, query string) error {
+func (s *QueryStateExecutorImpl) ExecCommit(query string) error {
 	// Virtual tx case. Do the whole logic locally
-	if !rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
+	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.CommitActiveSet()
-		_ = rst.Client().ReplyCommandComplete("COMMIT")
+		_ = s.ReplyCommandComplete("COMMIT")
 		s.SetTxStatus(txstatus.TXIDLE)
 		return nil
 	}
@@ -298,8 +301,8 @@ func (s *QueryStateExecutorImpl) ExecCommit(rst RelayStateMgr, query string) err
 		return err
 	}
 
-	rst.Client().CommitActiveSet()
-	return rst.Client().ReplyCommandComplete("COMMIT")
+	s.Client().CommitActiveSet()
+	return s.ReplyCommandComplete("COMMIT")
 }
 
 func (s *QueryStateExecutorImpl) ExecRollbackServer() error {
@@ -317,11 +320,11 @@ func (s *QueryStateExecutorImpl) ExecRollbackServer() error {
 }
 
 /* TODO: proper support for rollback to savepoint */
-func (s *QueryStateExecutorImpl) ExecRollback(rst RelayStateMgr, query string) error {
+func (s *QueryStateExecutorImpl) ExecRollback(query string) error {
 	// Virtual tx case. Do the whole logic locally
-	if !rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
+	if !s.poolMgr.ConnectionActive(s) {
 		s.cl.Rollback()
-		_ = s.cl.ReplyCommandComplete("ROLLBACK")
+		_ = s.ReplyCommandComplete("ROLLBACK")
 		s.SetTxStatus(txstatus.TXIDLE)
 		return nil
 	}
@@ -331,24 +334,30 @@ func (s *QueryStateExecutorImpl) ExecRollback(rst RelayStateMgr, query string) e
 		return err
 	}
 	s.cl.Rollback()
-	return s.cl.ReplyCommandComplete("ROLLBACK")
+	return s.ReplyCommandComplete("ROLLBACK")
+}
+
+func (s *QueryStateExecutorImpl) ReplyCommandComplete(commandTag string) error {
+	s.cacheCC.CommandTag = []byte(commandTag)
+	s.es.cc = &s.cacheCC
+	return nil
 }
 
 func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, value string) error {
 	if len(name) == 0 {
 		// some session characteristic, ignore
-		return rst.Client().ReplyCommandComplete("SET")
+		return s.ReplyCommandComplete("SET")
 	}
-	if !rst.PoolMgr().ConnectionActive(rst.QueryExecutor()) {
-		rst.Client().SetParam(name, value)
-		return rst.Client().ReplyCommandComplete("SET")
+	if !s.poolMgr.ConnectionActive(s) {
+		s.Client().SetParam(name, value)
+		return s.ReplyCommandComplete("SET")
 	}
 
 	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
 	if err := rst.ProcessSimpleQuery(&pgproto3.Query{String: query}, true); err != nil {
 		return err
 	}
-	rst.Client().SetParam(name, value)
+	s.Client().SetParam(name, value)
 
 	return nil
 }
@@ -627,6 +636,7 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 		Type("query-type", query).
 		Msg("client process copy end")
 	server := s.cl.Server()
+
 	/* non-null server should never be set to null here until we call Unroute()
 	in complete relay */
 	if server == nil {
@@ -672,16 +682,12 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	}
 
 	if errmsg != nil {
-		if err := s.cl.Send(errmsg); err != nil {
-			return txt, err
-		}
+		s.es.eMsg = errmsg
 	} else {
 		if ccmsg == nil {
 			return txt, fmt.Errorf("copy state out of sync")
 		}
-		if err := s.cl.Send(ccmsg); err != nil {
-			return txt, err
-		}
+		s.es.cc = ccmsg
 	}
 
 	return txt, nil
@@ -741,10 +747,9 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, qd *QueryD
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool, expectRowDesc bool) error {
 
-	/* XXX: refactor this */
+	s.Reset()
+	/* XXX: refactor this into ExecutorReset */
 	s.es.expectRowDesc = expectRowDesc
-	s.es.attachedCopy = false
-	s.es.doFinalizeTx = false
 
 	serv := s.Client().Server()
 
@@ -820,10 +825,8 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 				}
 			}
 
-			if err := s.Client().Send(&pgproto3.CommandComplete{
-				CommandTag: []byte("SELECT 1"),
-			}); err != nil {
-				return err
+			s.es.cc = &pgproto3.CommandComplete{
+				CommandTag: fmt.Appendf(nil, "SELECT %d", len(q.TTS.Raw)),
 			}
 
 			return nil
@@ -909,10 +912,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 		case *pgproto3.ErrorResponse:
 
 			if replyCl {
-				err = s.Client().Send(msg)
-				if err != nil {
-					return err
-				}
+				s.es.eMsg = v
 			}
 		// never expect these msgs
 		case *pgproto3.BindComplete:
@@ -921,12 +921,12 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 
 			return rerrors.ErrExecutorSyncLost
 		case *pgproto3.CommandComplete:
-
+			/*
+			* Safe for later reuse. For multi-slice statements
+			* original CommandComplete may differ from any of
+			* received from slices (including output slice). */
 			if replyCl {
-				err = s.Client().Send(msg)
-				if err != nil {
-					return err
-				}
+				s.es.cc = v
 			}
 		case *pgproto3.RowDescription:
 			if s.es.expectRowDesc {
@@ -1004,6 +1004,43 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 		}
 	}
 	return nil
+}
+
+func (s *QueryStateExecutorImpl) DeriveCommandComplete() error {
+
+	if s.es.replyEmptyQuery {
+		return s.Client().Send(&s.cacheEQ)
+	}
+
+	/*
+	* For single slice execution plans, we have two valid completion messages:
+	* ErrorMessage and Command complete. If our output gang did not return either of them,
+	* we are in big trouble */
+	if s.es.cc == nil && s.es.eMsg == nil {
+		return fmt.Errorf("failed to derive command complete for query")
+	}
+	if s.es.cc != nil {
+		return s.Client().Send(s.es.cc)
+	}
+
+	return s.Client().Send(s.es.eMsg)
+}
+
+func (s *QueryStateExecutorImpl) ReplyEmptyQuery() {
+	s.es.replyEmptyQuery = true
+}
+
+func (s *QueryStateExecutorImpl) FailStatement(err *pgproto3.ErrorResponse) {
+	s.es.eMsg = err
+}
+
+func (s *QueryStateExecutorImpl) Reset() {
+	s.es.expectRowDesc = false
+	s.es.attachedCopy = false
+	s.es.doFinalizeTx = false
+	s.es.cc = nil
+	s.es.eMsg = nil
+	s.es.replyEmptyQuery = false
 }
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}

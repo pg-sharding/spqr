@@ -100,14 +100,21 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	}
 
 	/* outer function will complete relay here */
-
-	spqrlog.Zero.Debug().Err(err).Uint("client-id", rst.Client().ID()).Msg("completing client relay with error")
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Uint("client-id", rst.Client().ID()).Msg("completing client relay with error")
+	} else {
+		spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Msg("completing client relay")
+	}
 
 	switch err {
 	case nil:
-
 		if !completeRelay {
 			return pd, nil
+		}
+
+		/* Okay, respond with CommandComplete first. */
+		if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
+			return nil, err
 		}
 
 		return pd, rst.CompleteRelay()
@@ -234,9 +241,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
 			// ignore this
 			_ = rst.Client().ReplyWarningf("there is already transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("BEGIN")
+			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("BEGIN")
 		}
-		err := rst.QueryExecutor().ExecBegin(rst, query, &st)
+		err := rst.QueryExecutor().ExecBegin(query, &st)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return noDataPd, err
 	case parser.ParseStateTXCommit:
@@ -259,30 +266,36 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("COMMIT")
+			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("COMMIT")
 		}
-		err := rst.QueryExecutor().ExecCommit(rst, query)
+		err := rst.QueryExecutor().ExecCommit(query)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return noDataPd, err
 	case parser.ParseStateTXRollback:
 		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("ROLLBACK")
+			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("ROLLBACK")
 		}
-		err := rst.QueryExecutor().ExecRollback(rst, query)
+		err := rst.QueryExecutor().ExecRollback(query)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return noDataPd, err
 	case parser.ParseStateEmptyQuery:
-		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
-			return nil, err
-		}
+		rst.QueryExecutor().ReplyEmptyQuery()
 		// do not complete relay  here
 		return noDataPd, nil
 	// with tx pooling we might have no active connection while processing set x to y
 	case parser.ParseStateShowStmt:
 		var pd *PortalDesc
 
-		for _, stmt := range st.Stmts {
+		for i, stmt := range st.Stmts {
+
+			/* This is hacky and very-very bad. Should fix multi-statement. */
+			if i > 0 {
+				if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
+					return nil, err
+				}
+			}
+
 			q, ok := stmt.(*lyx.VariableShowStmt)
 			if !ok {
 				return nil, rerrors.ErrComplexQuery
@@ -308,7 +321,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 			switch param {
 			case session.SPQR_DISTRIBUTION:
-				err := rst.Client().Send(
+				rst.QueryExecutor().FailStatement(
 					&pgproto3.ErrorResponse{
 						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
 							session.SPQR_DISTRIBUTION),
@@ -316,9 +329,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
 					})
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, err
+				return pd, nil
 			case session.SPQR_DISTRIBUTED_RELATION:
-				err := rst.Client().Send(
+				rst.QueryExecutor().FailStatement(
 					&pgproto3.ErrorResponse{
 						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
 							session.SPQR_DISTRIBUTED_RELATION),
@@ -326,7 +339,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
 					})
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, err
+				return pd, nil
 
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
 				ReplyVirtualParamState(rst.Client(), "default route behaviour", []byte(rst.Client().DefaultRouteBehaviour()))
@@ -349,7 +362,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			case session.SPQR_SHARDING_KEY:
 				ReplyVirtualParamState(rst.Client(), "sharding key", []byte(rst.Client().ShardingKey()))
 			case session.SPQR_SCATTER_QUERY:
-				err := rst.Client().Send(
+				rst.QueryExecutor().FailStatement(
 					&pgproto3.ErrorResponse{
 						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
 							session.SPQR_SCATTER_QUERY),
@@ -357,7 +370,8 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
 					})
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, err
+				return pd, nil
+
 			case session.SPQR_EXECUTE_ON:
 				ReplyVirtualParamState(rst.Client(), "execute on", []byte(rst.Client().ExecuteOn()))
 			case session.SPQR_ENGINE_V2:
@@ -390,7 +404,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				}
 			}
 
-			if err := rst.Client().ReplyCommandComplete("SHOW"); err != nil {
+			if err := rst.QueryExecutor().ReplyCommandComplete("SHOW"); err != nil {
 				return nil, err
 			}
 		}
@@ -399,7 +413,15 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		return pd, nil
 	case parser.ParseStateSetStmt:
 
-		for _, stmt := range st.Stmts {
+		for i, stmt := range st.Stmts {
+
+			/* This is hacky and very-very bad. Should fix multi-statement. */
+			if i > 0 {
+				if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
+					return nil, err
+				}
+			}
+
 			q, ok := stmt.(*lyx.VariableSetStmt)
 			if !ok {
 				return nil, rerrors.ErrComplexQuery
@@ -412,7 +434,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			switch q.Kind {
 			case lyx.VarTypeResetAll:
 				rst.Client().ResetAll()
-				if err := rst.Client().ReplyCommandComplete("RESET"); err != nil {
+				if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
 					return nil, err
 				}
 			case lyx.VarTypeReset:
@@ -428,7 +450,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						rst.Client().ResetParam("role")
 					}
 
-					if err := rst.Client().ReplyCommandComplete("RESET"); err != nil {
+					if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
 						return nil, err
 					}
 
@@ -448,7 +470,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						}
 					}
 
-					if err := rst.Client().ReplyCommandComplete("RESET"); err != nil {
+					if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
 						return nil, err
 					}
 
@@ -579,5 +601,5 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context, hintName string,
 		rst.Client().SetParam(name, hintVal)
 	}
 
-	return rst.Client().ReplyCommandComplete("SET")
+	return rst.QueryExecutor().ReplyCommandComplete("SET")
 }

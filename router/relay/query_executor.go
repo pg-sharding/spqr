@@ -27,6 +27,9 @@ type ExecutorState struct {
 
 	savedBegin *pgproto3.Query
 	cc         *pgproto3.CommandComplete
+	eMsg       *pgproto3.ErrorResponse
+
+	replyEmptyQuery bool
 
 	/* XXX: make gang table here */
 	activeShards []kr.ShardKey
@@ -47,9 +50,11 @@ type QueryStateExecutor interface {
 	DeploySliceTransactionBlock() error
 	DeploySliceTransactionQuery(query string) error
 
-	ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error
-	ExecCommit(rst RelayStateMgr, query string) error
-	ExecRollback(rst RelayStateMgr, query string) error
+	ExecBegin(query string, st *parser.ParseStateTXBegin) error
+	ExecCommit(query string) error
+	ExecRollback(query string) error
+
+	ReplyCommandComplete(commandTag string) error
 
 	/* Copy execution */
 	ProcCopyPrepare(ctx context.Context, mgr meta.EntityMgr, stmt *lyx.Copy, attached bool) (*pgcopy.CopyState, error)
@@ -59,11 +64,17 @@ type QueryStateExecutor interface {
 	ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error
 	ExecuteSlicePrepare(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool, expectRowDesc bool) error
 
+	DeriveCommandComplete() error
 	CompleteTx(mgr poolmgr.GangMgr) error
+
+	ReplyEmptyQuery()
+	FailStatement(err *pgproto3.ErrorResponse)
 
 	ExecSet(rst RelayStateMgr, query, name, value string) error
 	ExecReset(rst RelayStateMgr, query, name string) error
 	ExecResetMetadata(rst RelayStateMgr, query, setting string) error
 
 	ExpandRoutes(routes []kr.ShardKey) error
+
+	Reset()
 }

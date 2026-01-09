@@ -59,7 +59,6 @@ type RouterClient interface {
 
 	ReplyParseComplete() error
 	ReplyBindComplete() error
-	ReplyCommandComplete(commandTag string) error
 
 	GetCancelPid() uint32
 	GetCancelKey() uint32
@@ -290,11 +289,6 @@ func (cl *PsqlClient) Reply(msg string) error {
 	}
 
 	return nil
-}
-
-func (cl *PsqlClient) ReplyCommandComplete(commandTag string) error {
-	cl.cacheCC.CommandTag = []byte(commandTag)
-	return cl.Send(&cl.cacheCC)
 }
 
 var (
@@ -832,17 +826,9 @@ func (cl *PsqlClient) ReplyErrMsgByCode(code string) error {
 }
 
 func (cl *PsqlClient) ReplyRFQ(txstatus txstatus.TXStatus) error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.ReadyForQuery{
-			TxStatus: byte(txstatus),
-		},
-	} {
-		if err := cl.Send(msg); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return cl.Send(&pgproto3.ReadyForQuery{
+		TxStatus: byte(txstatus),
+	})
 }
 
 func (cl *PsqlClient) Shutdown() error {

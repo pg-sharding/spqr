@@ -220,11 +220,13 @@ func (rst *RelayStateImpl) Reset() error {
 	}
 
 	rst.QueryExecutor().ActiveShardsReset()
-	rst.qse.SetTxStatus(txstatus.TXIDLE)
+	rst.QueryExecutor().Reset()
 
-	_ = rst.Cl.Reset()
+	rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
 
-	return rst.Cl.Unroute()
+	_ = rst.Client().Reset()
+
+	return rst.Client().Unroute()
 }
 
 var ErrMatchShardError = fmt.Errorf("failed to match datashard")
@@ -281,7 +283,7 @@ func (rst *RelayStateImpl) expandRoutes(routes []kr.ShardKey) error {
 	// 		Uint("client", rst.Client().ID()).
 	// 		Str("query", query.String).
 	// 		Msg("setting params for client")
-	// 	_, err := rst.qse.ExecuteSlice(query, rst.qp.Stmt(), rst.Qr.Mgr(), true, false)
+	// 	_, err := rst.QueryExecutor().ExecuteSlice(query, rst.qp.Stmt(), rst.Qr.Mgr(), true, false)
 	// 	return err
 	// }
 
@@ -422,6 +424,8 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 		}
 		return err
 	}
+
+	rst.QueryExecutor().Reset()
 
 	return nil
 }
@@ -927,6 +931,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			rst.qse.SetTxStatus(saveTxStat)
 
 		case *pgproto3.Execute:
+
 			startTime := time.Now()
 			q := rst.plainQ
 			spqrlog.Zero.Debug().
@@ -959,6 +964,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
+
+			/* Okay, respond with CommandComplete first. */
+			if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
+				return err
+			}
+
 			spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, q, time.Since(startTime))
 		case *pgproto3.Close:
 			/*  */
@@ -1214,11 +1225,11 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		P:   rst.routingDecisionPlan, /*  ugh... fix this someday */
 	}
 
-	if err := rst.qse.ExecuteSlicePrepare(
+	if err := rst.QueryExecutor().ExecuteSlicePrepare(
 		es, rst.Qr.Mgr(), replyCl, true); err != nil {
 		return err
 	}
 
-	return rst.qse.ExecuteSlice(
+	return rst.QueryExecutor().ExecuteSlice(
 		es, rst.Qr.Mgr(), replyCl)
 }
