@@ -219,13 +219,14 @@ func (rst *RelayStateImpl) Reset() error {
 		return err
 	}
 
+	rst.QueryExecutor().ActiveShardsReset()
 	rst.QueryExecutor().Reset()
 
-	rst.qse.SetTxStatus(txstatus.TXIDLE)
+	rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
 
-	_ = rst.Cl.Reset()
+	_ = rst.Client().Reset()
 
-	return rst.Cl.Unroute()
+	return rst.Client().Unroute()
 }
 
 var ErrMatchShardError = fmt.Errorf("failed to match datashard")
