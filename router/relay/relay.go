@@ -296,7 +296,7 @@ func (rst *RelayStateImpl) CreateSlicedPlan(ctx context.Context, rm *rmeta.Routi
 		Uint("client", rst.Client().ID()).
 		Str("drb", rst.Client().DefaultRouteBehaviour()).
 		Str("exec_on", rst.Client().ExecuteOn()).
-		Msg("create plan forr current statement")
+		Msg("create plan for current statement")
 
 	var queryPlan plan.Plan
 
