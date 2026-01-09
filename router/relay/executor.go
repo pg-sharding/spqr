@@ -1034,6 +1034,10 @@ func (s *QueryStateExecutorImpl) ReplyEmptyQuery() {
 	s.es.replyEmptyQuery = true
 }
 
+func (s *QueryStateExecutorImpl) FailStatement(err *pgproto3.ErrorResponse) {
+	s.es.eMsg = err
+}
+
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}
 
 func NewQueryStateExecutor(d qdb.DCStateKeeper, poolMgr poolmgr.PoolMgr, cl client.RouterClient) QueryStateExecutor {

@@ -321,7 +321,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 			switch param {
 			case session.SPQR_DISTRIBUTION:
-				err := rst.Client().Send(
+				rst.QueryExecutor().FailStatement(
 					&pgproto3.ErrorResponse{
 						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
 							session.SPQR_DISTRIBUTION),
@@ -329,9 +329,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
 					})
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, err
+				return pd, nil
 			case session.SPQR_DISTRIBUTED_RELATION:
-				err := rst.Client().Send(
+				rst.QueryExecutor().FailStatement(
 					&pgproto3.ErrorResponse{
 						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
 							session.SPQR_DISTRIBUTED_RELATION),
@@ -339,7 +339,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
 					})
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, err
+				return pd, nil
 
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
 				ReplyVirtualParamState(rst.Client(), "default route behaviour", []byte(rst.Client().DefaultRouteBehaviour()))
@@ -362,7 +362,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			case session.SPQR_SHARDING_KEY:
 				ReplyVirtualParamState(rst.Client(), "sharding key", []byte(rst.Client().ShardingKey()))
 			case session.SPQR_SCATTER_QUERY:
-				err := rst.Client().Send(
+				rst.QueryExecutor().FailStatement(
 					&pgproto3.ErrorResponse{
 						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
 							session.SPQR_SCATTER_QUERY),
@@ -370,7 +370,8 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
 					})
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, err
+				return pd, nil
+
 			case session.SPQR_EXECUTE_ON:
 				ReplyVirtualParamState(rst.Client(), "execute on", []byte(rst.Client().ExecuteOn()))
 			case session.SPQR_ENGINE_V2:
