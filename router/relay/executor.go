@@ -127,6 +127,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 		if err := poolmgr.UnrouteCommon(s.Client(), s.ActiveShards()); err != nil {
 			return err
 		}
+		s.activeShards = nil
 		return fmt.Errorf("init plan called on active executor")
 	}
 

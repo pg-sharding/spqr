@@ -296,7 +296,7 @@ func (rst *RelayStateImpl) CreateSlicedPlan(ctx context.Context, rm *rmeta.Routi
 		Uint("client", rst.Client().ID()).
 		Str("drb", rst.Client().DefaultRouteBehaviour()).
 		Str("exec_on", rst.Client().ExecuteOn()).
-		Msg("rerouting the client connection, resolving shard")
+		Msg("create plan forr current statement")
 
 	var queryPlan plan.Plan
 
@@ -476,6 +476,8 @@ var (
 )
 
 // TODO : unit tests
+// If we enter this function, then we need to process whole messages buffer
+// in current statement pipeline bounds.
 func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 	spqrlog.Zero.Debug().
@@ -1153,6 +1155,23 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
+	cf := func() error {
+		/* Active shards should be same as p.ExecutionTargets */
+		err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
+		rst.QueryExecutor().ActiveShardsReset()
+		return err
+	}
+
+	/* No need to change gang, we can reuse existing gang. */
+	if len(rst.QueryExecutor().ActiveShards()) == 1 {
+		return currentPlan, cf, nil
+	} else if len(rst.QueryExecutor().ActiveShards()) != 0 {
+		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
+			return nil, noopCloseRouteFunc, err
+		}
+		rst.QueryExecutor().ActiveShardsReset()
+	}
+
 	p, err := planner.SelectRandomDispatchPlan(rst.QueryRouter().DataShardsRoutes())
 	if err != nil {
 		return nil, noopCloseRouteFunc, err
@@ -1162,12 +1181,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 
 	switch err {
 	case nil:
-		return p, func() error {
-			/* Active shards should be same as p.ExecutionTargets */
-			err = poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
-			rst.QueryExecutor().ActiveShardsReset()
-			return err
-		}, nil
+		return p, cf, nil
 	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return currentPlan, noopCloseRouteFunc, err
