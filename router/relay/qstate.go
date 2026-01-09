@@ -291,7 +291,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 		for i, stmt := range st.Stmts {
 
-			/* This is hacky and very-very bad. Should fix multistatement. */
+			/* This is hacky and very-very bad. Should fix multi-statement. */
 			if i > 0 {
 				if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
 					return nil, err
@@ -416,7 +416,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 		for i, stmt := range st.Stmts {
 
-			/* This is hacky and very-very bad. Should fix multistatement. */
+			/* This is hacky and very-very bad. Should fix multi-statement. */
 			if i > 0 {
 				if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
 					return nil, err
