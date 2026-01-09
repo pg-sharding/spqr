@@ -53,29 +53,30 @@ func (s *QueryStateExecutorImpl) ActiveShards() []kr.ShardKey {
 	return s.es.activeShards
 }
 
-// ActiveShardsReset implements [QueryStateExecutor].
-func (s *QueryStateExecutorImpl) ActiveShardsReset() {
+// ResetActiveGangs implements [QueryStateExecutor].
+func (s *QueryStateExecutorImpl) ResetActiveGangs() {
 	s.es.activeShards = nil
+	/* Run for each gang and cleanup? */
+	s.es.gangTable = nil
 }
 
 // DataPending implements [QueryStateExecutor].
 func (s *QueryStateExecutorImpl) DataPending() bool {
-	server := s.Client().Server()
+	pending := false
 
-	if server == nil {
-		return false
+	for _, serv := range s.es.gangTable {
+		pending = pending || serv.DataPending()
 	}
-
-	return server.DataPending()
+	return pending
 }
 
 // SyncCount implements [QueryStateExecutor].
 func (s *QueryStateExecutorImpl) SyncCount() int64 {
-	server := s.Client().Server()
-	if server == nil {
-		return 0
+	cnt := int64(0)
+	for _, serv := range s.es.gangTable {
+		cnt += serv.Sync()
 	}
-	return server.Sync()
+	return cnt
 }
 
 var (
@@ -119,6 +120,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 		return ErrMatchShardError
 	}
 
+	/* XXX: Cleanup gangs? */
 	if len(s.ActiveShards()) != 0 {
 		spqrlog.Zero.Debug().
 			Uint("relay state", spqrlog.GetPointer(s)).
@@ -132,8 +134,6 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 		return fmt.Errorf("init plan called on active executor")
 	}
 
-	s.es.activeShards = routes
-
 	if config.RouterConfig().PgprotoDebug {
 		if err := s.Client().ReplyDebugNoticef("matched datashard routes %+v", routes); err != nil {
 			return err
@@ -145,6 +145,10 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 
 	/* Traverse and create gang for each slice. */
 
+	s.es.activeShards = routes
+
+	s.es.gangTable = make([]server.Server, 1)
+
 	if len(s.ActiveShards()) > 1 {
 		serv, err = server.NewMultiShardServer(s.Client().Route().MultiShardPool())
 		if err != nil {
@@ -153,6 +157,8 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 	} else {
 		serv = server.NewShardServer(s.Client().Route().MultiShardPool())
 	}
+
+	s.es.gangTable[0] = serv
 
 	/* Assign top-level gang (output slice) to client */
 	if err := s.Client().AssignServerConn(serv); err != nil {
@@ -165,11 +171,13 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 		Uint("client", s.Client().ID()).
 		Msg("allocate gang for client")
 
+	/* XXX: replace with for-each-gang loop */
 	for _, shkey := range s.ActiveShards() {
 		spqrlog.Zero.Debug().
 			Str("client tsa", string(s.Client().GetTsa())).
 			Msg("adding shard with tsa")
-		if err := s.Client().Server().AllocateGangMember(s.Client().ID(), shkey, s.Client().GetTsa()); err != nil {
+
+		if err := s.es.gangTable[0].AllocateGangMember(s.Client().ID(), shkey, s.Client().GetTsa()); err != nil {
 			return err
 		}
 	}
@@ -200,33 +208,48 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 
 // DeploySliceTransactionBlock implements QueryStateExecutor.
 func (s *QueryStateExecutorImpl) DeploySliceTransactionBlock() error {
-	server := s.Client().Server()
-	if server == nil {
-		return errUnAttached
-	}
-	if s.txStatus == txstatus.TXIDLE {
-		/* unexpected? */
-		return nil
-	}
 
-	if !s.cl.EnhancedMultiShardProcessing() {
-		if s.TxStatus() == txstatus.TXACT && len(server.Datashards()) > 1 {
-			return fmt.Errorf("cannot route in an active transaction")
+	/* deploy transaction status on each gang */
+
+	for _, server := range s.es.gangTable {
+		if server == nil {
+			return errUnAttached
+		}
+		if s.txStatus == txstatus.TXIDLE {
+			/* unexpected? */
+			return nil
+		}
+
+		if !s.cl.EnhancedMultiShardProcessing() {
+			if s.TxStatus() == txstatus.TXACT && len(server.Datashards()) > 1 {
+				return fmt.Errorf("cannot route in an active transaction")
+			}
+		}
+
+		if err := s.deployTxStatusInternal(server, s.es.savedBegin, txstatus.TXACT); err != nil {
+			return err
 		}
 	}
 
-	return s.deployTxStatusInternal(server, s.es.savedBegin, txstatus.TXACT)
+	return nil
 }
 
 func (s *QueryStateExecutorImpl) DeploySliceTransactionQuery(query string) error {
-	server := s.Client().Server()
-	if server == nil {
-		return errUnAttached
-	}
-	s.SetTxStatus(txstatus.TXACT)
-	s.es.savedBegin = &pgproto3.Query{String: query}
+	/* deploy transaction status on each gang */
 
-	return s.deployTxStatusInternal(server, s.es.savedBegin, txstatus.TXACT)
+	for _, server := range s.es.gangTable {
+		if server == nil {
+			return errUnAttached
+		}
+		s.SetTxStatus(txstatus.TXACT)
+		s.es.savedBegin = &pgproto3.Query{String: query}
+
+		if err := s.deployTxStatusInternal(server, s.es.savedBegin, txstatus.TXACT); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *QueryStateExecutorImpl) SetTxStatus(status txstatus.TXStatus) {
@@ -751,14 +774,16 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, mgr meta.Ent
 	/* XXX: refactor this into ExecutorReset */
 	s.es.expectRowDesc = expectRowDesc
 
-	serv := s.Client().Server()
-
 	switch qd.P.(type) {
 	case *plan.VirtualPlan:
 	default:
-		if serv == nil {
+
+		/* XXX: have gang id here */
+		if len(s.es.gangTable) <= 0 {
 			return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 		}
+
+		serv := s.es.gangTable[0]
 
 		s.es.attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
 
@@ -797,8 +822,6 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, mgr meta.Ent
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error {
 
-	serv := s.Client().Server()
-
 	switch q := qd.P.(type) {
 	case *plan.VirtualPlan:
 		/* execute logic without shard dispatch */
@@ -835,10 +858,12 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 		}
 	case *plan.CopyPlan:
 
-		if serv == nil {
-			/* Malformed */
-			return errUnAttached
+		/* XXX: have gang id here */
+		if len(s.es.gangTable) <= 0 {
+			return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 		}
+
+		serv := s.es.gangTable[0]
 
 		msg, _, err := serv.Receive()
 		if err != nil {
@@ -864,10 +889,12 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 		}
 	}
 
-	if serv == nil {
-		/* Malformed */
-		return errUnAttached
+	/* XXX: have gang id here */
+	if len(s.es.gangTable) <= 0 {
+		return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 	}
+
+	serv := s.es.gangTable[0]
 
 	for {
 		msg, recvIndex, err := serv.Receive()
@@ -982,7 +1009,7 @@ func (s *QueryStateExecutorImpl) CompleteTx(mgr poolmgr.GangMgr) error {
 }
 
 func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
-
+	/* XXX: pass gang id here? */
 	beforeTx := s.Client().Server().TxStatus()
 
 	for _, shkey := range routes {

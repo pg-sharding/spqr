@@ -57,16 +57,16 @@ func (mr *MockGangMgrMockRecorder) ActiveShards() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveShards", reflect.TypeOf((*MockGangMgr)(nil).ActiveShards))
 }
 
-// ActiveShardsReset mocks base method.
-func (m *MockGangMgr) ActiveShardsReset() {
+// ResetActiveGangs mocks base method.
+func (m *MockGangMgr) ResetActiveGangs() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "ActiveShardsReset")
+	m.ctrl.Call(m, "ResetActiveGangs")
 }
 
-// ActiveShardsReset indicates an expected call of ActiveShardsReset.
-func (mr *MockGangMgrMockRecorder) ActiveShardsReset() *gomock.Call {
+// ResetActiveGangs indicates an expected call of ResetActiveGangs.
+func (mr *MockGangMgrMockRecorder) ResetActiveGangs() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveShardsReset", reflect.TypeOf((*MockGangMgr)(nil).ActiveShardsReset))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetActiveGangs", reflect.TypeOf((*MockGangMgr)(nil).ResetActiveGangs))
 }
 
 // Client mocks base method.

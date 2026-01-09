@@ -15,7 +15,7 @@ type GangMgr interface {
 	txstatus.TxStatusMgr
 
 	ActiveShards() []kr.ShardKey
-	ActiveShardsReset()
+	ResetActiveGangs()
 
 	SyncCount() int64
 
@@ -103,7 +103,7 @@ func (t *TxConnManager) TXEndCB(rst GangMgr) error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("client end of transaction, unrouting from active shards")
-	rst.ActiveShardsReset()
+	rst.ResetActiveGangs()
 
 	return UnrouteCommon(rst.Client(), ash)
 }

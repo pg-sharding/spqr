@@ -176,6 +176,7 @@ func (rst *RelayStateImpl) Client() client.RouterClient {
 	return rst.Cl
 }
 
+/* XXX: move this to executor */
 func (rst *RelayStateImpl) gangDeployPrepStmt(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 	serv := rst.Client().Server()
 
@@ -219,7 +220,7 @@ func (rst *RelayStateImpl) Reset() error {
 		return err
 	}
 
-	rst.QueryExecutor().ActiveShardsReset()
+	rst.QueryExecutor().ResetActiveGangs()
 	rst.QueryExecutor().Reset()
 
 	rst.QueryExecutor().SetTxStatus(txstatus.TXIDLE)
@@ -1131,7 +1132,7 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
 			return err
 		}
-		rst.QueryExecutor().ActiveShardsReset()
+		rst.QueryExecutor().ResetActiveGangs()
 	}
 
 	err := rst.initExecutor(bindPlan)
@@ -1169,7 +1170,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	cf := func() error {
 		/* Active shards should be same as p.ExecutionTargets */
 		err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
-		rst.QueryExecutor().ActiveShardsReset()
+		rst.QueryExecutor().ResetActiveGangs()
 		return err
 	}
 
@@ -1180,7 +1181,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
 			return nil, noopCloseRouteFunc, err
 		}
-		rst.QueryExecutor().ActiveShardsReset()
+		rst.QueryExecutor().ResetActiveGangs()
 	}
 
 	p, err := planner.SelectRandomDispatchPlan(rst.QueryRouter().DataShardsRoutes())
