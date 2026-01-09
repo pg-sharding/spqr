@@ -218,16 +218,16 @@ NOTICE: send query to shard(s) : sh1
  10 |  16
 (2 rows)
 
-INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
+INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
 NOTICE: send query to shard(s) : sh1
-ERROR:  invalid input syntax for type integer: "ababa"
-LINE 1: INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
+ERROR:  invalid input syntax for type integer: "aaa"
+LINE 1: INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
                                                   ^
-INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
+INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
-INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
+INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
-INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
+INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 -- test ignore of all cmds after metadata error

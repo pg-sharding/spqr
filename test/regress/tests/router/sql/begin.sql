@@ -66,10 +66,10 @@ ROLLBACK;
 -- test ignore of all cmds after error
 BEGIN;
 SELECT * FROM test_beg WHERE id = 10;
-INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
-INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
-INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
-INSERT INTO test_beg (id, age) VALUES(10, 'ababa');
+INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
+INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
+INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
+INSERT INTO test_beg (id, age) VALUES(10, 'aaa');
 ROLLBACK;
 
 
