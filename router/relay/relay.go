@@ -296,7 +296,7 @@ func (rst *RelayStateImpl) CreateSlicedPlan(ctx context.Context, rm *rmeta.Routi
 		Uint("client", rst.Client().ID()).
 		Str("drb", rst.Client().DefaultRouteBehaviour()).
 		Str("exec_on", rst.Client().ExecuteOn()).
-		Msg("rerouting the client connection, resolving shard")
+		Msg("create plan for current statement")
 
 	var queryPlan plan.Plan
 
@@ -476,6 +476,8 @@ var (
 )
 
 // TODO : unit tests
+// If we enter this function, then we need to process whole messages buffer
+// in current statement pipeline bounds.
 func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 	spqrlog.Zero.Debug().
@@ -682,17 +684,14 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				ctx := context.TODO()
 
-				if rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) || rst.Client().EnhancedMultiShardProcessing() {
+				// Do not respond with BindComplete, as the relay step should take care of itself.
+				queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
 
-					// Do not respond with BindComplete, as the relay step should take care of itself.
-					queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
-
-					if err != nil {
-						return err
-					}
-
-					rst.routingDecisionPlan = queryPlan
+				if err != nil {
+					return err
 				}
+
+				rst.routingDecisionPlan = queryPlan
 
 				if currentMsg.DestinationPortal == "" {
 					rst.bindQueryPlan = rst.routingDecisionPlan
@@ -1041,7 +1040,7 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 		return nil, nil
 	}
 
-	wantExpand := false
+	expandCurrentTx := false
 
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) {
@@ -1055,14 +1054,14 @@ func (rst *RelayStateImpl) PrepareExecutionSlice(ctx context.Context, rm *rmeta.
 		/* With engine v2 we can expand transaction on more targets */
 		/* TODO: XXX */
 
-		wantExpand = true
+		expandCurrentTx = true
 	}
 
 	q, err := rst.CreateSlicedPlan(ctx, rm)
 
 	switch err {
 	case nil:
-		if wantExpand {
+		if expandCurrentTx {
 			execTarg := q.ExecutionTargets()
 
 			/*
@@ -1117,6 +1116,12 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 	}
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
+	if len(rst.QueryExecutor().ActiveShards()) != 0 {
+		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
+			return err
+		}
+		rst.QueryExecutor().ActiveShardsReset()
+	}
 
 	err := rst.initExecutor(bindPlan)
 
@@ -1150,20 +1155,33 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
+	cf := func() error {
+		/* Active shards should be same as p.ExecutionTargets */
+		err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
+		rst.QueryExecutor().ActiveShardsReset()
+		return err
+	}
+
+	/* No need to change gang, we can reuse existing gang. */
+	if len(rst.QueryExecutor().ActiveShards()) == 1 {
+		return currentPlan, cf, nil
+	} else if len(rst.QueryExecutor().ActiveShards()) != 0 {
+		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
+			return nil, noopCloseRouteFunc, err
+		}
+		rst.QueryExecutor().ActiveShardsReset()
+	}
+
 	p, err := planner.SelectRandomDispatchPlan(rst.QueryRouter().DataShardsRoutes())
 	if err != nil {
 		return nil, noopCloseRouteFunc, err
 	}
+
 	err = rst.initExecutor(p)
 
 	switch err {
 	case nil:
-		return p, func() error {
-			/* Active shards should be same as p.ExecutionTargets */
-			err = poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
-			rst.QueryExecutor().ActiveShardsReset()
-			return err
-		}, nil
+		return p, cf, nil
 	case ErrMatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return currentPlan, noopCloseRouteFunc, err
@@ -1173,32 +1191,28 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 }
 
 func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error {
-
 	ctx := context.TODO()
-	if rst.poolMgr.ValidateGangChange(rst.QueryExecutor()) || rst.Client().EnhancedMultiShardProcessing() {
-		rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, q.String, rst.qp.Stmt())
-		if err != nil {
-			return err
-		}
 
-		// Do not respond with BindComplete, as the relay step should take care of itself.
-		queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
-
-		if err != nil {
-			/* some critical connection issue, client processing cannot be competed.
-			* empty our msg buf */
-			return err
-		}
-
-		rst.routingDecisionPlan = queryPlan
+	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, q.String, rst.qp.Stmt())
+	if err != nil {
+		return err
 	}
+
+	// Do not respond with BindComplete, as the relay step should take care of itself.
+	queryPlan, err := rst.PrepareExecutionSlice(ctx, rm, rst.routingDecisionPlan)
+
+	if err != nil {
+		/* some critical connection issue, client processing cannot be competed.
+		* empty our msg buf */
+		return err
+	}
+
+	rst.routingDecisionPlan = queryPlan
 
 	es := &ExecutorState{
 		Msg: q,
 		P:   rst.routingDecisionPlan, /*  ugh... fix this someday */
 	}
-	/* FIX this */
-	es.P.SetStmt(rst.qp.Stmt())
 
 	if err := rst.qse.ExecuteSlicePrepare(
 		es, rst.Qr.Mgr(), replyCl, true); err != nil {

@@ -91,6 +91,8 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *p
 		return fmt.Errorf("unexpected executor tx state in transaction deploy")
 	}
 
+	/* TODO: deploy tx status on each gang. */
+
 	for _, sh := range serv.Datashards() {
 		st, err := shard.DeployTxOnShard(sh, q, expTx)
 
@@ -116,12 +118,17 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 		return ErrMatchShardError
 	}
 
-	spqrlog.Zero.Debug().
-		Uint("relay state", spqrlog.GetPointer(s)).
-		Msg("unroute previous connections")
+	if len(s.ActiveShards()) != 0 {
+		spqrlog.Zero.Debug().
+			Uint("relay state", spqrlog.GetPointer(s)).
+			Int("len", len(s.ActiveShards())).
+			Msg("unroute previous connections")
 
-	if err := poolmgr.UnrouteCommon(s.Client(), s.ActiveShards()); err != nil {
-		return err
+		if err := poolmgr.UnrouteCommon(s.Client(), s.ActiveShards()); err != nil {
+			return err
+		}
+		s.activeShards = nil
+		return fmt.Errorf("init plan called on active executor")
 	}
 
 	s.activeShards = routes
@@ -135,16 +142,18 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 	var serv server.Server
 	var err error
 
+	/* Traverse and create gang for each slice. */
+
 	if len(s.activeShards) > 1 {
-		serv, err = server.NewMultiShardServer(s.Client().Route().ServPool())
+		serv, err = server.NewMultiShardServer(s.Client().Route().MultiShardPool())
 		if err != nil {
 			return err
 		}
 	} else {
-		_ = s.Client().ReplyDebugNotice("open a connection to the single data shard")
-		serv = server.NewShardServer(s.Client().Route().ServPool())
+		serv = server.NewShardServer(s.Client().Route().MultiShardPool())
 	}
 
+	/* Assign top-level gang (output slice) to client */
 	if err := s.Client().AssignServerConn(serv); err != nil {
 		return err
 	}
