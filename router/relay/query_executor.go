@@ -68,11 +68,13 @@ type QueryStateExecutor interface {
 	CompleteTx(mgr poolmgr.GangMgr) error
 
 	ReplyEmptyQuery()
-	FailStatement(response *pgproto3.ErrorResponse)
+	FailStatement(err *pgproto3.ErrorResponse)
 
 	ExecSet(rst RelayStateMgr, query, name, value string) error
 	ExecReset(rst RelayStateMgr, query, name string) error
 	ExecResetMetadata(rst RelayStateMgr, query, setting string) error
 
 	ExpandRoutes(routes []kr.ShardKey) error
+
+	Reset()
 }

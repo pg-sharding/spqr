@@ -219,7 +219,8 @@ func (rst *RelayStateImpl) Reset() error {
 		return err
 	}
 
-	rst.QueryExecutor().ActiveShardsReset()
+	rst.QueryExecutor().Reset()
+
 	rst.qse.SetTxStatus(txstatus.TXIDLE)
 
 	_ = rst.Cl.Reset()
@@ -422,6 +423,8 @@ func (rst *RelayStateImpl) CompleteRelay() error {
 		}
 		return err
 	}
+
+	rst.QueryExecutor().Reset()
 
 	return nil
 }

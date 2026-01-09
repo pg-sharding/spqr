@@ -747,13 +747,9 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, qd *QueryD
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool, expectRowDesc bool) error {
 
+	s.Reset()
 	/* XXX: refactor this into ExecutorReset */
 	s.es.expectRowDesc = expectRowDesc
-	s.es.attachedCopy = false
-	s.es.doFinalizeTx = false
-	s.es.cc = nil
-	s.es.eMsg = nil
-	s.es.replyEmptyQuery = false
 
 	serv := s.Client().Server()
 
@@ -1036,6 +1032,15 @@ func (s *QueryStateExecutorImpl) ReplyEmptyQuery() {
 
 func (s *QueryStateExecutorImpl) FailStatement(err *pgproto3.ErrorResponse) {
 	s.es.eMsg = err
+}
+
+func (s *QueryStateExecutorImpl) Reset() {
+	s.es.expectRowDesc = false
+	s.es.attachedCopy = false
+	s.es.doFinalizeTx = false
+	s.es.cc = nil
+	s.es.eMsg = nil
+	s.es.replyEmptyQuery = false
 }
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}
