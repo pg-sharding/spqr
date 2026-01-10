@@ -287,16 +287,16 @@ func (mr *MockServerMockRecorder) TxStatus() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TxStatus", reflect.TypeOf((*MockServer)(nil).TxStatus))
 }
 
-// UnRouteShard mocks base method.
-func (m *MockServer) UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error {
+// UnRouteAll mocks base method.
+func (m *MockServer) UnRouteAll(rule *config.FrontendRule) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnRouteShard", sh, rule)
+	ret := m.ctrl.Call(m, "UnRouteAll", rule)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// UnRouteShard indicates an expected call of UnRouteShard.
-func (mr *MockServerMockRecorder) UnRouteShard(sh, rule any) *gomock.Call {
+// UnRouteAll indicates an expected call of UnRouteAll.
+func (mr *MockServerMockRecorder) UnRouteAll(rule any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnRouteShard", reflect.TypeOf((*MockServer)(nil).UnRouteShard), sh, rule)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnRouteAll", reflect.TypeOf((*MockServer)(nil).UnRouteAll), rule)
 }

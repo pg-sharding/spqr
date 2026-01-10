@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
 	"github.com/pg-sharding/spqr/router/poolmgr"
+	"github.com/pg-sharding/spqr/router/server"
 )
 
 type QueryDesc struct {
@@ -32,6 +33,8 @@ type ExecutorState struct {
 
 	/* XXX: make gang table here */
 	activeShards []kr.ShardKey
+
+	gangTable []server.Server
 }
 
 // Execute required command via
@@ -73,6 +76,7 @@ type QueryStateExecutor interface {
 	ExecReset(rst RelayStateMgr, query, name string) error
 	ExecResetMetadata(rst RelayStateMgr, query, setting string) error
 
+	ExpandRoutesPrepare() error
 	ExpandRoutes(routes []kr.ShardKey) error
 
 	Reset()

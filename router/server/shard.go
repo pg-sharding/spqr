@@ -90,17 +90,13 @@ func (srv *ShardServer) Reset() error {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRule) error {
+func (srv *ShardServer) UnRouteAll(rule *config.FrontendRule) error {
 	v := srv.shard.Load()
 	if v == nil {
 		return nil
 	}
 
 	srv.shard.Store(nil)
-
-	if (*v).SHKey().Name != shkey.Name {
-		return fmt.Errorf("active datashard does not match unrouted: %v != %v", (*v).SHKey().Name, shkey.Name)
-	}
 
 	if (*v).Sync() != 0 {
 		/* will automatically discard connection,

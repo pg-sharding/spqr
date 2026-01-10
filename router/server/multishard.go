@@ -161,21 +161,28 @@ func (m *MultiShardServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA,
 	return nil
 }
 
-func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error {
+func (m *MultiShardServer) UnRouteAll(rule *config.FrontendRule) error {
 	// map?
 	for _, activeShard := range m.activeShards {
-		if activeShard.Name() == sh.Name {
-			err := activeShard.Cleanup(rule)
+
+		if err := activeShard.Cleanup(rule); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to cleanup gang connection")
+
+			if err := m.pool.Discard(activeShard); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to put release gang connection")
+			}
+		} else {
 
 			if err := m.pool.Put(activeShard); err != nil {
-				return err
+				spqrlog.Zero.Error().Err(err).Msg("failed to put release gang connection")
 			}
-
-			return err
 		}
+
 	}
 
-	return fmt.Errorf("unrouted datashard does not match any of active")
+	m.activeShards = nil
+
+	return nil
 }
 
 func (m *MultiShardServer) Name() string {
@@ -234,7 +241,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 			// error state or something else
 			m.states[i] = ShardRFQState
 
-			go func(i int) {
+			func(i int) {
 				for {
 					msg, err := m.activeShards[i].Receive()
 					if err != nil {

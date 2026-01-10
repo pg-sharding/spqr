@@ -9,13 +9,18 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
+	"github.com/pg-sharding/spqr/router/server"
 )
 
 type GangMgr interface {
 	txstatus.TxStatusMgr
 
 	ActiveShards() []kr.ShardKey
-	ActiveShardsReset()
+	ActiveGangs() []server.Server
+	ResetActiveGangs()
+
+	/* This may be called in parallel with above */
+	Cancel() error
 
 	SyncCount() int64
 
@@ -34,34 +39,29 @@ type PoolMgr interface {
 // TODO : unit tests
 func UnrouteCommon(
 	cl client.RouterClient,
-	sh []kr.ShardKey) error {
+	gangs []server.Server) error {
 	var anyerr error
 	anyerr = nil
 
-	serv := cl.Server()
+	for _, serv := range gangs {
 
-	if serv == nil {
-		/* If there is nothing to unroute, return */
-		return nil
-	}
-
-	if serv.TxStatus() != txstatus.TXIDLE {
-		if err := serv.Reset(); err != nil {
-			return err
+		if serv.TxStatus() != txstatus.TXIDLE {
+			if err := serv.Reset(); err != nil {
+				return err
+			}
+			// TODO: figure out if we need this
+			// return fmt.Errorf("failed to unroute client from connection with active TX")
 		}
-		// TODO: figure out if we need this
-		// return fmt.Errorf("failed to unroute client from connection with active TX")
-	}
 
-	for _, shkey := range sh {
 		spqrlog.Zero.Debug().
 			Uint("client", cl.ID()).
 			Uint("shardn", spqrlog.GetPointer(serv)).
-			Str("key", shkey.Name).
+			Str("key", serv.Name()).
 			Msg("client unrouting from datashard")
-		if err := serv.UnRouteShard(shkey, cl.Rule()); err != nil {
+		if err := serv.UnRouteAll(cl.Rule()); err != nil {
 			anyerr = err
 		}
+
 	}
 
 	_ = cl.Unroute()
@@ -99,13 +99,14 @@ func (t *TxConnManager) ValidateGangChange(gangMgr GangMgr) bool {
 
 // TODO : unit tests
 func (t *TxConnManager) TXEndCB(rst GangMgr) error {
-	ash := rst.ActiveShards()
+	gangs := rst.ActiveGangs()
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("client end of transaction, unrouting from active shards")
-	rst.ActiveShardsReset()
 
-	return UnrouteCommon(rst.Client(), ash)
+	rst.ResetActiveGangs()
+
+	return UnrouteCommon(rst.Client(), gangs)
 }
 
 type SessConnManager struct {

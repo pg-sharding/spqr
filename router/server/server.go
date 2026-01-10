@@ -30,7 +30,7 @@ type Server interface {
 
 	ToMultishard() Server
 
-	UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error
+	UnRouteAll(rule *config.FrontendRule) error
 	Datashards() []shard.ShardHostInstance
 
 	Cancel() error

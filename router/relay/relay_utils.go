@@ -23,7 +23,7 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind, portal str
 	case *plan.VirtualPlan:
 	default:
 		/* this is pretty ugly but lets just do it */
-		if err := DispatchPlan(es, rst.Client(), false); err != nil {
+		if err := DispatchPlan(es, rst.QueryExecutor().ActiveGangs()[0], rst.Client(), false); err != nil {
 			return err
 		}
 		if portal == "" {
@@ -35,7 +35,7 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind, portal str
 			}
 		}
 
-		if err := DispatchPlan(es, rst.Client(), false); err != nil {
+		if err := DispatchPlan(es, rst.QueryExecutor().ActiveGangs()[0], rst.Client(), false); err != nil {
 			return err
 		}
 	}

@@ -16,6 +16,7 @@ import (
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
 	client "github.com/pg-sharding/spqr/router/client"
 	poolmgr "github.com/pg-sharding/spqr/router/poolmgr"
+	server "github.com/pg-sharding/spqr/router/server"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -43,6 +44,20 @@ func (m *MockGangMgr) EXPECT() *MockGangMgrMockRecorder {
 	return m.recorder
 }
 
+// ActiveGangs mocks base method.
+func (m *MockGangMgr) ActiveGangs() []server.Server {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ActiveGangs")
+	ret0, _ := ret[0].([]server.Server)
+	return ret0
+}
+
+// ActiveGangs indicates an expected call of ActiveGangs.
+func (mr *MockGangMgrMockRecorder) ActiveGangs() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveGangs", reflect.TypeOf((*MockGangMgr)(nil).ActiveGangs))
+}
+
 // ActiveShards mocks base method.
 func (m *MockGangMgr) ActiveShards() []kr.ShardKey {
 	m.ctrl.T.Helper()
@@ -55,18 +70,6 @@ func (m *MockGangMgr) ActiveShards() []kr.ShardKey {
 func (mr *MockGangMgrMockRecorder) ActiveShards() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveShards", reflect.TypeOf((*MockGangMgr)(nil).ActiveShards))
-}
-
-// ActiveShardsReset mocks base method.
-func (m *MockGangMgr) ActiveShardsReset() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "ActiveShardsReset")
-}
-
-// ActiveShardsReset indicates an expected call of ActiveShardsReset.
-func (mr *MockGangMgrMockRecorder) ActiveShardsReset() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveShardsReset", reflect.TypeOf((*MockGangMgr)(nil).ActiveShardsReset))
 }
 
 // Client mocks base method.
@@ -95,6 +98,18 @@ func (m *MockGangMgr) DataPending() bool {
 func (mr *MockGangMgrMockRecorder) DataPending() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockGangMgr)(nil).DataPending))
+}
+
+// ResetActiveGangs mocks base method.
+func (m *MockGangMgr) ResetActiveGangs() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ResetActiveGangs")
+}
+
+// ResetActiveGangs indicates an expected call of ResetActiveGangs.
+func (mr *MockGangMgrMockRecorder) ResetActiveGangs() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetActiveGangs", reflect.TypeOf((*MockGangMgr)(nil).ResetActiveGangs))
 }
 
 // SetTxStatus mocks base method.
