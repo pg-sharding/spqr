@@ -34,7 +34,7 @@ func TestAutoDistributionSetFail(t *testing.T) {
 
 	rst := RelayStateImpl{
 		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(nil, cmngr, client),
+		qse:                 NewQueryStateExecutor(nil, mmgr, cmngr, client),
 		Qr:                  qr,
 		Cl:                  client,
 		poolMgr:             cmngr,
@@ -71,7 +71,7 @@ func TestAutoDistributionSetSuccess(t *testing.T) {
 
 	rst := RelayStateImpl{
 		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(nil, cmngr, client),
+		qse:                 NewQueryStateExecutor(nil, mmgr, cmngr, client),
 		Qr:                  qr,
 		Cl:                  client,
 		poolMgr:             cmngr,
@@ -107,7 +107,7 @@ func TestAutoDistributionSetReplicated(t *testing.T) {
 
 	rst := RelayStateImpl{
 		msgBuf:          nil,
-		qse:             NewQueryStateExecutor(nil, cmngr, client),
+		qse:             NewQueryStateExecutor(nil, mmgr, cmngr, client),
 		Qr:              qr,
 		Cl:              client,
 		poolMgr:         cmngr,
