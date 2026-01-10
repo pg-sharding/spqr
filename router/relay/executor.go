@@ -53,6 +53,11 @@ func (s *QueryStateExecutorImpl) ActiveShards() []kr.ShardKey {
 	return s.es.activeShards
 }
 
+// ActiveShards implements [QueryStateExecutor].
+func (s *QueryStateExecutorImpl) ActiveGangs() []server.Server {
+	return s.es.gangTable
+}
+
 // ResetActiveGangs implements [QueryStateExecutor].
 func (s *QueryStateExecutorImpl) ResetActiveGangs() {
 	s.es.activeShards = nil
@@ -127,10 +132,10 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 			Int("len", len(s.ActiveShards())).
 			Msg("unroute previous connections")
 
-		if err := poolmgr.UnrouteCommon(s.Client(), s.ActiveShards()); err != nil {
+		if err := poolmgr.UnrouteCommon(s.Client(), s.ActiveGangs()); err != nil {
 			return err
 		}
-		s.es.activeShards = nil
+		s.ResetActiveGangs()
 		return fmt.Errorf("init plan called on active executor")
 	}
 
@@ -161,9 +166,6 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 	s.es.gangTable[0] = serv
 
 	/* Assign top-level gang (output slice) to client */
-	if err := s.Client().AssignServerConn(serv); err != nil {
-		return err
-	}
 
 	spqrlog.Zero.Debug().
 		Str("user", s.Client().Usr()).
@@ -194,7 +196,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 			Msg: query,
 		}
 
-		if err := DispatchPlan(es, s.Client(), false); err != nil {
+		if err := DispatchPlan(es, s.es.gangTable[0], s.Client(), false); err != nil {
 			return err
 		}
 
@@ -212,9 +214,6 @@ func (s *QueryStateExecutorImpl) DeploySliceTransactionBlock() error {
 	/* deploy transaction status on each gang */
 
 	for _, server := range s.es.gangTable {
-		if server == nil {
-			return errUnAttached
-		}
 		if s.txStatus == txstatus.TXIDLE {
 			/* unexpected? */
 			return nil
@@ -238,9 +237,6 @@ func (s *QueryStateExecutorImpl) DeploySliceTransactionQuery(query string) error
 	/* deploy transaction status on each gang */
 
 	for _, server := range s.es.gangTable {
-		if server == nil {
-			return errUnAttached
-		}
 		s.SetTxStatus(txstatus.TXACT)
 		s.es.savedBegin = &pgproto3.Query{String: query}
 
@@ -291,22 +287,24 @@ func (s *QueryStateExecutorImpl) ExecBegin(query string, st *parser.ParseStateTX
 func (s *QueryStateExecutorImpl) ExecCommitTx(query string) error {
 	spqrlog.Zero.Debug().Uint("client", s.cl.ID()).Str("commit strategy", s.cl.CommitStrategy()).Msg("execute commit")
 
-	serv := s.cl.Server()
+	for _, serv := range s.es.gangTable {
 
-	if s.cl.CommitStrategy() == twopc.COMMIT_STRATEGY_2PC && len(serv.Datashards()) > 1 {
-		if st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl.ID(), serv); err != nil {
-			return err
+		if s.cl.CommitStrategy() == twopc.COMMIT_STRATEGY_2PC && len(serv.Datashards()) > 1 {
+			if st, err := twopc.ExecuteTwoPhaseCommit(s.d, s.cl.ID(), serv); err != nil {
+				return err
+			} else {
+				// serv.SetTxStatus(st)
+				s.SetTxStatus(st)
+			}
+
 		} else {
-			// serv.SetTxStatus(st)
-			s.SetTxStatus(st)
-		}
-
-	} else {
-		if err := s.deployTxStatusInternal(serv,
-			&pgproto3.Query{String: query}, txstatus.TXIDLE); err != nil {
-			return err
+			if err := s.deployTxStatusInternal(serv,
+				&pgproto3.Query{String: query}, txstatus.TXIDLE); err != nil {
+				return err
+			}
 		}
 	}
+
 	return nil
 }
 
@@ -329,7 +327,7 @@ func (s *QueryStateExecutorImpl) ExecCommit(query string) error {
 }
 
 func (s *QueryStateExecutorImpl) ExecRollbackServer() error {
-	if server := s.cl.Server(); server != nil {
+	for _, server := range s.es.gangTable {
 		for _, sh := range server.Datashards() {
 			if err := sh.Cleanup(&config.FrontendRule{
 				PoolRollback: true,
@@ -521,8 +519,10 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error) {
+	serv := s.es.gangTable[0]
+
 	if cps.Attached {
-		for _, sh := range s.cl.Server().Datashards() {
+		for _, sh := range serv.Datashards() {
 			err := sh.Send(data)
 			return nil, err
 		}
@@ -532,7 +532,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 	/* We dont really need to parse and route tuples for DISTRIBUTED relations */
 	if cps.Scatter {
 		for _, et := range cps.ExecutionTargets {
-			if err := s.cl.Server().SendShard(data, et); err != nil {
+			if err := serv.SendShard(data, et); err != nil {
 				return nil, err
 			}
 		}
@@ -639,7 +639,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		leftoverMsgData = data.Data[prevLine:len(data.Data)]
 	}
 
-	for _, sh := range s.cl.Server().Datashards() {
+	for _, sh := range serv.Datashards() {
 		if bts, ok := rowsMp[sh.Name()]; ok {
 			err := sh.Send(&pgproto3.CopyData{Data: bts})
 			if err != nil {
@@ -658,7 +658,10 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 		Uint("client", s.cl.ID()).
 		Type("query-type", query).
 		Msg("client process copy end")
-	server := s.cl.Server()
+	if len(s.es.gangTable) <= 0 {
+		return txstatus.TXERR, fmt.Errorf("client not routed in copy complete phase, resetting")
+	}
+	server := s.es.gangTable[0]
 
 	/* non-null server should never be set to null here until we call Unroute()
 	in complete relay */
@@ -812,7 +815,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, mgr meta.Ent
 			Msg("relay process plan")
 
 		statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
-		if err := DispatchPlan(qd, s.Client(), replyCl); err != nil {
+		if err := DispatchPlan(qd, s.es.gangTable[0], s.Client(), replyCl); err != nil {
 			return err
 		}
 	}
@@ -1008,9 +1011,17 @@ func (s *QueryStateExecutorImpl) CompleteTx(mgr poolmgr.GangMgr) error {
 	}
 }
 
+func (s *QueryStateExecutorImpl) ExpandRoutesPrepare() error {
+	for i, serv := range s.es.gangTable {
+		s.es.gangTable[i] = serv.ToMultishard()
+	}
+
+	return nil
+}
+
 func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 	/* XXX: pass gang id here? */
-	beforeTx := s.Client().Server().TxStatus()
+	beforeTx := s.es.gangTable[0].TxStatus()
 
 	for _, shkey := range routes {
 		if slices.ContainsFunc(s.ActiveShards(), func(c kr.ShardKey) bool {
@@ -1026,7 +1037,7 @@ func (s *QueryStateExecutorImpl) ExpandRoutes(routes []kr.ShardKey) error {
 			Str("deploying tx", beforeTx.String()).
 			Msg("expanding shard with tsa")
 
-		if err := s.Client().Server().ExpandGang(s.Client().ID(), shkey, s.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
+		if err := s.es.gangTable[0].ExpandGang(s.Client().ID(), shkey, s.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
 			return err
 		}
 	}

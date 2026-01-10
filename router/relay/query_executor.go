@@ -77,6 +77,7 @@ type QueryStateExecutor interface {
 	ExecReset(rst RelayStateMgr, query, name string) error
 	ExecResetMetadata(rst RelayStateMgr, query, setting string) error
 
+	ExpandRoutesPrepare() error
 	ExpandRoutes(routes []kr.ShardKey) error
 
 	Reset()

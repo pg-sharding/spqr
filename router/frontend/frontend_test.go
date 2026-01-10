@@ -46,7 +46,6 @@ func TestFrontendSimpleEOF(t *testing.T) {
 	cl.EXPECT().CleanupStatementSet().Times(1)
 	cl.EXPECT().Reset().Times(1)
 	cl.EXPECT().Unroute().Times(1)
-	cl.EXPECT().Server().AnyTimes()
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
@@ -80,14 +79,12 @@ func TestFrontendSimple(t *testing.T) {
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{})
 
 	srv.EXPECT().TxStatus().AnyTimes()
-	srv.EXPECT().UnRouteShard(gomock.Any(), gomock.Any()).AnyTimes()
 	srv.EXPECT().Reset().AnyTimes()
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 
 	srv.EXPECT().AllocateGangMember(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
-	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().Unroute().AnyTimes()
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
@@ -114,7 +111,6 @@ func TestFrontendSimple(t *testing.T) {
 	)
 
 	cl.EXPECT().ReplyDebugNotice(gomock.Any()).AnyTimes().Return(nil)
-	cl.EXPECT().AssignServerConn(gomock.Any()).AnyTimes().Return(nil)
 
 	cl.EXPECT().ExecuteOn().AnyTimes()
 	cl.EXPECT().SetExecuteOn(gomock.Any(), gomock.Any()).AnyTimes()
@@ -202,7 +198,6 @@ func TestFrontendXProto(t *testing.T) {
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 	srv.EXPECT().TxStatus().AnyTimes()
-	srv.EXPECT().UnRouteShard(gomock.Any(), gomock.Any()).AnyTimes()
 	srv.EXPECT().Reset().AnyTimes()
 
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.ShardHostInstance{
@@ -219,7 +214,6 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().GetTsa().AnyTimes()
 	cl.EXPECT().Unroute().AnyTimes()
 
-	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
@@ -241,7 +235,6 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().ReplyParseComplete().AnyTimes()
 
 	cl.EXPECT().ReplyDebugNotice(gomock.Any()).AnyTimes().Return(nil)
-	cl.EXPECT().AssignServerConn(gomock.Any()).AnyTimes().Return(nil)
 
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateGangChange(gomock.Any()).AnyTimes().Return(true)

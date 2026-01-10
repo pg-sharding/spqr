@@ -177,8 +177,7 @@ func (rst *RelayStateImpl) Client() client.RouterClient {
 }
 
 /* XXX: move this to executor */
-func (rst *RelayStateImpl) gangDeployPrepStmt(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
-	serv := rst.Client().Server()
+func (rst *RelayStateImpl) gangDeployPrepStmt(serv server.Server, hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 
 	shards := serv.Datashards()
 	if len(shards) == 0 {
@@ -216,7 +215,7 @@ func (rst *RelayStateImpl) Close() error {
 // TODO : unit tests
 func (rst *RelayStateImpl) Reset() error {
 
-	if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
+	if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveGangs()); err != nil {
 		return err
 	}
 
@@ -263,14 +262,20 @@ func (rst *RelayStateImpl) expandRoutes(routes []kr.ShardKey) error {
 		return nil
 	}
 
-	serv := rst.Client().Server()
+	if len(rst.QueryExecutor().ActiveGangs()) <= 0 {
+		return nil
+	}
 
-	if serv == nil || serv.TxStatus() == txstatus.TXERR {
+	serv := rst.QueryExecutor().ActiveGangs()[0]
+
+	if serv.TxStatus() == txstatus.TXERR {
 		/* should never happen */
 		return fmt.Errorf("unexpected server expand request")
 	}
 
-	_ = rst.Client().SwitchServerConn(rst.Client().Server().ToMultishard())
+	if err := rst.QueryExecutor().ExpandRoutesPrepare(); err != nil {
+		return err
+	}
 
 	if err := rst.QueryExecutor().ExpandRoutes(routes); err != nil {
 		return err
@@ -446,7 +451,7 @@ func (rst *RelayStateImpl) AddExtendedProtocMessage(q pgproto3.FrontendMessage) 
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) gangDeployPrepStmtByName(qname string) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
+func (rst *RelayStateImpl) gangDeployPrepStmtByName(serv server.Server, qname string) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 
 	def := rst.Client().PreparedStatementDefinitionByName(qname)
 	hash := rst.Client().PreparedStatementQueryHashByName(qname)
@@ -459,7 +464,7 @@ func (rst *RelayStateImpl) gangDeployPrepStmtByName(qname string) (*prepstatemen
 		Uint("client", rst.Client().ID()).
 		Msg("deploy prepared statement")
 
-	return rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
+	return rst.gangDeployPrepStmt(serv, hash, &prepstatement.PreparedStatementDefinition{
 		Name:          name,
 		Query:         def.Query,
 		ParameterOIDs: def.ParameterOIDs,
@@ -596,7 +601,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			/* TODO: refactor code to make this less ugly */
 			saveTxStatus := rst.qse.TxStatus()
 
-			_, retMsg, err := rst.gangDeployPrepStmtByName(currentMsg.Name)
+			_, retMsg, err := rst.gangDeployPrepStmtByName(rst.QueryExecutor().ActiveGangs()[0], currentMsg.Name)
 			if err != nil {
 				return err
 			}
@@ -747,7 +752,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 						hash := rst.Client().PreparedStatementQueryHashByName(currentMsg.PreparedStatement)
 						name := fmt.Sprintf("%d", hash)
 
-						_, _, err = rst.gangDeployPrepStmt(hash, &prepstatement.PreparedStatementDefinition{
+						_, _, err = rst.gangDeployPrepStmt(rst.QueryExecutor().ActiveGangs()[0], hash, &prepstatement.PreparedStatementDefinition{
 							Name:          name,
 							Query:         def.Query,
 							ParameterOIDs: def.ParameterOIDs,
@@ -839,7 +844,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 						rst.routingDecisionPlan = p
 
-						if _, _, err := rst.gangDeployPrepStmtByName(rst.lastBindName); err != nil {
+						if _, _, err := rst.gangDeployPrepStmtByName(rst.QueryExecutor().ActiveGangs()[0], rst.lastBindName); err != nil {
 							return err
 						}
 
@@ -851,7 +856,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 							bnd = rst.saveBindNamed[currentMsg.Name]
 						}
 
-						cachedPd, err := sliceDescribePortal(rst.Client().Server(), currentMsg, bnd)
+						cachedPd, err := sliceDescribePortal(rst.QueryExecutor().ActiveGangs()[0], currentMsg, bnd)
 						if err != nil {
 							return err
 						}
@@ -893,7 +898,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 
 				rst.routingDecisionPlan = p
 
-				rd, _, err := rst.gangDeployPrepStmtByName(currentMsg.Name)
+				rd, _, err := rst.gangDeployPrepStmtByName(rst.QueryExecutor().ActiveGangs()[0], currentMsg.Name)
 				if err != nil {
 					return err
 				}
@@ -1129,7 +1134,7 @@ func (rst *RelayStateImpl) PrepareTargetDispatchExecutionSlice(bindPlan plan.Pla
 
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 	if len(rst.QueryExecutor().ActiveShards()) != 0 {
-		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
+		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveGangs()); err != nil {
 			return err
 		}
 		rst.QueryExecutor().ResetActiveGangs()
@@ -1169,7 +1174,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 
 	cf := func() error {
 		/* Active shards should be same as p.ExecutionTargets */
-		err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards())
+		err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveGangs())
 		rst.QueryExecutor().ResetActiveGangs()
 		return err
 	}
@@ -1178,7 +1183,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 	if len(rst.QueryExecutor().ActiveShards()) == 1 {
 		return currentPlan, cf, nil
 	} else if len(rst.QueryExecutor().ActiveShards()) != 0 {
-		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveShards()); err != nil {
+		if err := poolmgr.UnrouteCommon(rst.Client(), rst.QueryExecutor().ActiveGangs()); err != nil {
 			return nil, noopCloseRouteFunc, err
 		}
 		rst.QueryExecutor().ResetActiveGangs()

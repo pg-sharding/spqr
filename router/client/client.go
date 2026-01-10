@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"sync/atomic"
 	"time"
 
 	"github.com/caio/go-tdigest"
@@ -25,6 +24,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/server"
@@ -37,7 +37,6 @@ type RouterClient interface {
 	prepstatement.PreparedStatementMapper
 
 	session.SessionParamsHolder
-	Server() server.Server
 	/* functions for operation with client's server */
 
 	Unroute() error
@@ -45,8 +44,6 @@ type RouterClient interface {
 	Auth(rt *route.Route) error
 
 	AssignRule(rule *config.FrontendRule) error
-	AssignServerConn(srv server.Server) error
-	SwitchServerConn(srv server.Server) error
 
 	AssignRoute(r *route.Route) error
 
@@ -99,7 +96,7 @@ type PsqlClient struct {
 
 	TimeData *statistics.StartTimes
 
-	serverP atomic.Pointer[server.Server]
+	gangMgr poolmgr.GangMgr
 }
 
 var _ RouterClient = &PsqlClient{}
@@ -184,15 +181,11 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		startupMsg:          &pgproto3.StartupMessage{},
 		prepStmts:           map[string]*prepstatement.PreparedStatementDefinition{},
 		prepStmtsHash:       map[string]uint64{},
-
-		serverP: atomic.Pointer[server.Server]{},
 	}
 
 	cl.SetCommitStrategy(twopc.COMMIT_STRATEGY_BEST_EFFORT)
 
 	cl.id = spqrlog.GetPointer(cl)
-
-	cl.serverP.Store(nil)
 
 	cl.RouterTime, _ = tdigest.New()
 	cl.ShardTime, _ = tdigest.New()
@@ -384,19 +377,6 @@ func (cl *PsqlClient) Server() server.Server {
 		return nil
 	}
 	return *serv
-}
-
-/* This method can be called concurrently with Cancel() */
-func (cl *PsqlClient) Unroute() error {
-	serv := cl.serverP.Load()
-
-	if serv == nil || *serv == nil {
-		/* TBD: raise error here sometimes? */
-		return nil
-	}
-
-	cl.serverP.Store(nil)
-	return nil
 }
 
 /* This method can be called concurrently with Unroute() */

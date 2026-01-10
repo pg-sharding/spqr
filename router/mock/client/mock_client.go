@@ -22,7 +22,6 @@ import (
 	tsa "github.com/pg-sharding/spqr/pkg/tsa"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
 	route "github.com/pg-sharding/spqr/router/route"
-	server "github.com/pg-sharding/spqr/router/server"
 	statistics "github.com/pg-sharding/spqr/router/statistics"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -91,20 +90,6 @@ func (m *MockRouterClient) AssignRule(rule *config.FrontendRule) error {
 func (mr *MockRouterClientMockRecorder) AssignRule(rule any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AssignRule", reflect.TypeOf((*MockRouterClient)(nil).AssignRule), rule)
-}
-
-// AssignServerConn mocks base method.
-func (m *MockRouterClient) AssignServerConn(srv server.Server) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AssignServerConn", srv)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AssignServerConn indicates an expected call of AssignServerConn.
-func (mr *MockRouterClientMockRecorder) AssignServerConn(srv any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AssignServerConn", reflect.TypeOf((*MockRouterClient)(nil).AssignServerConn), srv)
 }
 
 // Auth mocks base method.
@@ -956,20 +941,6 @@ func (mr *MockRouterClientMockRecorder) Send(msg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockRouterClient)(nil).Send), msg)
 }
 
-// Server mocks base method.
-func (m *MockRouterClient) Server() server.Server {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Server")
-	ret0, _ := ret[0].(server.Server)
-	return ret0
-}
-
-// Server indicates an expected call of Server.
-func (mr *MockRouterClientMockRecorder) Server() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Server", reflect.TypeOf((*MockRouterClient)(nil).Server))
-}
-
 // SetAuthType mocks base method.
 func (m *MockRouterClient) SetAuthType(arg0 uint32) error {
 	m.ctrl.T.Helper()
@@ -1304,20 +1275,6 @@ func (m *MockRouterClient) StorePreparedStatement(d *prepstatement.PreparedState
 func (mr *MockRouterClientMockRecorder) StorePreparedStatement(d any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorePreparedStatement", reflect.TypeOf((*MockRouterClient)(nil).StorePreparedStatement), d)
-}
-
-// SwitchServerConn mocks base method.
-func (m *MockRouterClient) SwitchServerConn(srv server.Server) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SwitchServerConn", srv)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SwitchServerConn indicates an expected call of SwitchServerConn.
-func (mr *MockRouterClientMockRecorder) SwitchServerConn(srv any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SwitchServerConn", reflect.TypeOf((*MockRouterClient)(nil).SwitchServerConn), srv)
 }
 
 // Unroute mocks base method.
