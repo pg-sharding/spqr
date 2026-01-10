@@ -5,7 +5,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
-	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -45,7 +44,7 @@ type QueryStateExecutor interface {
 	Client() client.RouterClient
 
 	/* Do all gang allocation required for plan processing */
-	InitPlan(p plan.Plan, mgr meta.EntityMgr) error
+	InitPlan(p plan.Plan) error
 
 	DeploySliceTransactionBlock() error
 	DeploySliceTransactionQuery(query string) error
@@ -57,12 +56,12 @@ type QueryStateExecutor interface {
 	ReplyCommandComplete(commandTag string) error
 
 	/* Copy execution */
-	ProcCopyPrepare(ctx context.Context, mgr meta.EntityMgr, stmt *lyx.Copy, attached bool) (*pgcopy.CopyState, error)
+	ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy, attached bool) (*pgcopy.CopyState, error)
 	ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error)
 	ProcCopyComplete(query pgproto3.FrontendMessage) (txstatus.TXStatus, error)
 
-	ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error
-	ExecuteSlicePrepare(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool, expectRowDesc bool) error
+	ExecuteSlice(qd *QueryDesc, replyCl bool) error
+	ExecuteSlicePrepare(qd *QueryDesc, replyCl bool, expectRowDesc bool) error
 
 	DeriveCommandComplete() error
 	CompleteTx(mgr poolmgr.GangMgr) error

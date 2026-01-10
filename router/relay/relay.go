@@ -143,7 +143,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 
 	return &RelayStateImpl{
 		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(d, manager, client),
+		qse:                 NewQueryStateExecutor(d, qr.Mgr(), manager, client),
 		Qr:                  qr,
 		Cl:                  client,
 		poolMgr:             manager,
@@ -239,7 +239,7 @@ func (rst *RelayStateImpl) initExecutor(p plan.Plan) error {
 		return nil
 	}
 
-	if err := rst.QueryExecutor().InitPlan(p, rst.Qr.Mgr()); err != nil {
+	if err := rst.QueryExecutor().InitPlan(p); err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
 			Uint("client", rst.Client().ID()).
@@ -1226,10 +1226,10 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 	}
 
 	if err := rst.QueryExecutor().ExecuteSlicePrepare(
-		es, rst.Qr.Mgr(), replyCl, true); err != nil {
+		es, replyCl, true); err != nil {
 		return err
 	}
 
 	return rst.QueryExecutor().ExecuteSlice(
-		es, rst.Qr.Mgr(), replyCl)
+		es, replyCl)
 }

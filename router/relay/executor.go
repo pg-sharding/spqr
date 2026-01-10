@@ -45,6 +45,8 @@ type QueryStateExecutorImpl struct {
 
 	poolMgr poolmgr.PoolMgr
 
+	mgr meta.EntityMgr
+
 	es ExecutorState
 }
 
@@ -110,7 +112,7 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *p
 }
 
 // InitPlan implements QueryStateExecutor.
-func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error {
+func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 
 	routes := p.ExecutionTargets()
 
@@ -190,7 +192,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan, mgr meta.EntityMgr) error
 			return err
 		}
 
-		if err := s.ExecuteSlice(es, mgr, false); err != nil {
+		if err := s.ExecuteSlice(es, false); err != nil {
 			return err
 		}
 	}
@@ -386,7 +388,7 @@ func (s *QueryStateExecutorImpl) ExecResetMetadata(rst RelayStateMgr, query stri
 }
 
 // TODO: unit tests
-func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.EntityMgr, stmt *lyx.Copy, attachedCopy bool) (*pgcopy.CopyState, error) {
+func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy, attachedCopy bool) (*pgcopy.CopyState, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", s.cl.ID()).
 		Msg("client pre-process copy")
@@ -424,12 +426,12 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 	}
 
 	// TODO: check by whole RFQN
-	ds, err := mgr.GetRelationDistribution(ctx, relname)
+	ds, err := s.mgr.GetRelationDistribution(ctx, relname)
 	if err != nil {
 		return nil, err
 	}
 	if ds.Id == distributions.REPLICATED {
-		rr, err := mgr.GetReferenceRelation(ctx, relname)
+		rr, err := s.mgr.GetReferenceRelation(ctx, relname)
 		if err != nil {
 			return nil, err
 		}
@@ -444,7 +446,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 
 	hashFunc := make([]hashfunction.HashFunctionType, len(dRel.DistributionKey))
 
-	krs, err := mgr.ListKeyRanges(ctx, ds.Id)
+	krs, err := s.mgr.ListKeyRanges(ctx, ds.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -486,7 +488,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 	return &pgcopy.CopyState{
 		Delimiter:      delimiter,
 		Krs:            krs,
-		RM:             rmeta.NewRoutingMetadataContext(s.cl, "", nil /*XXX: fix this*/, nil, mgr),
+		RM:             rmeta.NewRoutingMetadataContext(s.cl, "", nil /*XXX: fix this*/, nil, s.mgr),
 		Ds:             ds,
 		Drel:           dRel,
 		HashFunc:       hashFunc,
@@ -693,7 +695,7 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	return txt, nil
 }
 
-func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, qd *QueryDesc) error {
+func (s *QueryStateExecutorImpl) copyFromExecutor(qd *QueryDesc) error {
 
 	var leftoverMsgData []byte
 	ctx := context.TODO()
@@ -706,7 +708,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, qd *QueryD
 	if !ok {
 		return fmt.Errorf("failed to prepare copy context, not a copy statement")
 	}
-	cps, err := s.ProcCopyPrepare(ctx, mgr, cs, s.es.attachedCopy)
+	cps, err := s.ProcCopyPrepare(ctx, cs, s.es.attachedCopy)
 	if err != nil {
 		return err
 	}
@@ -745,7 +747,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(mgr meta.EntityMgr, qd *QueryD
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool, expectRowDesc bool) error {
+func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, replyCl bool, expectRowDesc bool) error {
 
 	s.Reset()
 	/* XXX: refactor this into ExecutorReset */
@@ -795,7 +797,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, mgr meta.Ent
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr, replyCl bool) error {
+func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, replyCl bool) error {
 
 	serv := s.Client().Server()
 
@@ -858,7 +860,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 				return err
 			}
 
-			return s.copyFromExecutor(mgr, qd)
+			return s.copyFromExecutor(qd)
 		default:
 			return server.ErrMultiShardSyncBroken
 		}
@@ -888,7 +890,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, mgr meta.EntityMgr,
 				return err
 			}
 
-			return s.copyFromExecutor(mgr, qd)
+			return s.copyFromExecutor(qd)
 		case *pgproto3.DataRow:
 			if replyCl {
 				switch v := qd.P.(type) {
@@ -1045,11 +1047,12 @@ func (s *QueryStateExecutorImpl) Reset() {
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}
 
-func NewQueryStateExecutor(d qdb.DCStateKeeper, poolMgr poolmgr.PoolMgr, cl client.RouterClient) QueryStateExecutor {
+func NewQueryStateExecutor(d qdb.DCStateKeeper, mgr meta.EntityMgr, poolMgr poolmgr.PoolMgr, cl client.RouterClient) QueryStateExecutor {
 	return &QueryStateExecutorImpl{
 		cl:       cl,
 		d:        d,
 		poolMgr:  poolMgr,
+		mgr:      mgr,
 		txStatus: txstatus.TXIDLE,
 	}
 }

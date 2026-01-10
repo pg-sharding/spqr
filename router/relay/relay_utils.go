@@ -42,11 +42,11 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind, portal str
 
 	es.Msg = pgsync
 
-	if err := rst.QueryExecutor().ExecuteSlicePrepare(es, rst.Qr.Mgr(), true, false); err != nil {
+	if err := rst.QueryExecutor().ExecuteSlicePrepare(es, true, false); err != nil {
 		return err
 	}
 
-	return rst.QueryExecutor().ExecuteSlice(es, rst.Qr.Mgr(), true)
+	return rst.QueryExecutor().ExecuteSlice(es, true)
 }
 
 func gangMemberDeployPreparedStatement(shard shard.ShardHostInstance, hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
