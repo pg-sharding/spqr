@@ -568,7 +568,9 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 	}
 
 	statements, err := q.CreateKeyRange(ctx, kr)
-	q.ExecNoTransaction(ctx, statements)
+	if err = q.ExecNoTransaction(ctx, statements); err != nil {
+		return err
+	}
 	statistics.RecordQDBOperation("RenameKeyRange", time.Since(t))
 	return err
 }

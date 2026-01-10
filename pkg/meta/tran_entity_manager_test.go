@@ -139,7 +139,7 @@ func TestTranGetKeyRange(t *testing.T) {
 	is := assert.New(t)
 	t.Run("test with save changes", func(t *testing.T) {
 		ctx := context.Background()
-		memqdb, err := prepareDB(ctx)
+		memqdb, err := prepareDbTestValidate(ctx)
 		is.NoError(err)
 		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
 		chunk, err := mngr.CreateKeyRange(ctx, &kr.KeyRange{
@@ -169,15 +169,17 @@ func TestTranGetKeyRange(t *testing.T) {
 			LowerBound:   []any{int64(10)},
 			ColumnTypes:  []string{qdb.ColumnTypeInteger},
 		}
-
-		is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
+		err = meta.ValidateKeyRangeForCreate(ctx, tranMngr, kr1)
+		is.Error(err)
 		is.EqualError(err, "key range kr1 already present in qdb")
-		is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
+		err = meta.ValidateKeyRangeForCreate(ctx, tranMngr, kr2)
+		is.NoError(err)
 		_, err = tranMngr.CreateKeyRange(ctx, kr2)
 		//NO COMMIT QDB!!!
+		is.NoError(err)
 
 		_, err = tranMngr.GetKeyRange(ctx, "kr1DOUBLE")
-		is.EqualError(err, "key range \"kr1DOUBLE\" not found")
+		is.EqualError(err, "there is no key range kr1DOUBLE")
 		_, err = tranMngr.GetKeyRange(ctx, "kr1")
 		is.NoError(err)
 		_, err = tranMngr.GetKeyRange(ctx, "kr2")

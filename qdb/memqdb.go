@@ -1546,7 +1546,7 @@ func (q *MemQDB) toKeyRange(stmt QdbStatement) (Command, error) {
 			return NewUpdateCommand(q.Krs, stmt.Key, keyRangeToInternal(&kr)), nil
 		}
 	default:
-		return nil, fmt.Errorf("unsupported memDB cmd %s (key range)", stmt.CmdType)
+		return nil, fmt.Errorf("unsupported memDB cmd %d (key range)", stmt.CmdType)
 	}
 }
 

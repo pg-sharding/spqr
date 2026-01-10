@@ -178,8 +178,11 @@ func createKeyRange(ctx context.Context, tranMngr TranEntityManager, stmt *spqrp
 			return nil, err
 		} else {
 			tran.Operations = tranChunk
-			tranMngr.CommitTran(ctx, tran)
-			return keyRange, nil
+			if err = tranMngr.CommitTran(ctx, tran); err != nil {
+				return nil, err
+			} else {
+				return keyRange, nil
+			}
 		}
 	}
 }

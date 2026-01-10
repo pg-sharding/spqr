@@ -451,6 +451,7 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 		DistributionId: "ds1",
 	}
 	statements, err = memqdb.CreateKeyRange(ctx, keyRange2)
+	assert.NoError(err)
 	err = memqdb.ExecNoTransaction(ctx, statements)
 	assert.NoError(err)
 
