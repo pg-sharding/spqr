@@ -352,7 +352,7 @@ func (l *LocalQrouterServer) createKeyRangePrepare(ctx context.Context,
 	if err != nil {
 		return nil, err
 	} else {
-		// MemQDB.createKeyRangeCommands generate 3 QDB commands for createing key range
+		// MemQDB.createKeyRangeCommands generate 3 QDB commands for creating key range
 		if len(tranChunk.QdbStatements) != 3 {
 			return nil, fmt.Errorf("transaction chunk must have a qdb statement (createKeyRangePrepare)")
 		}

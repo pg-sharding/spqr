@@ -1561,7 +1561,7 @@ func (q *MemQDB) toFreq(stmt QdbStatement) (Command, error) {
 		}
 		return NewUpdateCommand(q.Freq, stmt.Key, valFreq), nil
 	default:
-		return nil, fmt.Errorf("unsupported memDB cmd %s (freq)", stmt.CmdType)
+		return nil, fmt.Errorf("unsupported memDB cmd %d (freq)", stmt.CmdType)
 	}
 }
 
@@ -1572,7 +1572,7 @@ func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
 	case CMD_PUT:
 		return NewUpdateCommand(q.Locks, stmt.Key, &sync.RWMutex{}), nil
 	default:
-		return nil, fmt.Errorf("unsupported memDB cmd %s (lock)", stmt.CmdType)
+		return nil, fmt.Errorf("unsupported memDB cmd %d (lock)", stmt.CmdType)
 	}
 }
 
