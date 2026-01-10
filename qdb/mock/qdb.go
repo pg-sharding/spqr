@@ -624,11 +624,12 @@ func (mr *MockQDBMockRecorder) CreateDistribution(ctx, distr any) *gomock.Call {
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
+func (m *MockQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, keyRange)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateKeyRange indicates an expected call of CreateKeyRange.
@@ -1937,11 +1938,12 @@ func (mr *MockXQDBMockRecorder) CreateDistribution(ctx, distr any) *gomock.Call 
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockXQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
+func (m *MockXQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, keyRange)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateKeyRange indicates an expected call of CreateKeyRange.

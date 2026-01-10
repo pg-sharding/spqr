@@ -451,7 +451,7 @@ var File_protos_meta_transaction_proto protoreflect.FileDescriptor
 
 const file_protos_meta_transaction_proto_rawDesc = "" +
 	"\n" +
-	"\x1dprotos/meta_transaction.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\"protos/distribution_entities.proto\x1a\x16protos/key_range.proto\"T\n" +
+	"\x1dprotos/meta_transaction.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\"protos/distribution_entities.proto\x1a\x1fprotos/key_range_entities.proto\"T\n" +
 	"\x18CreateDistributionGossip\x128\n" +
 	"\rdistributions\x18\x01 \x03(\v2\x12.spqr.DistributionR\rdistributions\"P\n" +
 	"\x14CreateKeyRangeGossip\x128\n" +
@@ -546,7 +546,7 @@ func file_protos_meta_transaction_proto_init() {
 		return
 	}
 	file_protos_distribution_entities_proto_init()
-	file_protos_key_range_proto_init()
+	file_protos_key_range_entities_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

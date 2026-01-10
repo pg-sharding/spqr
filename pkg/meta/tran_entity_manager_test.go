@@ -9,6 +9,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 func TestTranEntitySaveBefore(t *testing.T) {
@@ -50,7 +52,7 @@ func TestTranGetDistribution(t *testing.T) {
 	t.Run("test with save changes", func(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
-		assert.NoError(t, err)
+		is.NoError(err)
 		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
 		ds0 := distributions.NewDistribution("ds0", []string{"integer"})
 		chunk, err := mngr.CreateDistribution(ctx, ds0)
@@ -131,4 +133,55 @@ func TestTranGetDistribution(t *testing.T) {
 		is.Equal(ds0, actualQdb)
 	})
 
+}
+
+func TestTranGetKeyRange(t *testing.T) {
+	is := assert.New(t)
+	t.Run("test with save changes", func(t *testing.T) {
+		ctx := context.Background()
+		memqdb, err := prepareDB(ctx)
+		is.NoError(err)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+		chunk, err := mngr.CreateKeyRange(ctx, &kr.KeyRange{
+			ID:           "kr1",
+			ShardID:      "sh1",
+			Distribution: "ds1",
+			LowerBound:   []any{int64(0)},
+			ColumnTypes:  []string{qdb.ColumnTypeInteger},
+		})
+		is.NoError(err)
+		err = mngr.ExecNoTran(ctx, chunk)
+		is.NoError(err)
+
+		tranMngr := meta.NewTranEntityManager(mngr)
+		var kr1 = &kr.KeyRange{
+			ID:           "kr1",
+			ShardID:      "sh1",
+			Distribution: "ds1",
+			LowerBound:   []any{int64(0)},
+			ColumnTypes:  []string{qdb.ColumnTypeInteger},
+		}
+
+		var kr2 = &kr.KeyRange{
+			ID:           "kr2",
+			ShardID:      "sh1",
+			Distribution: "ds1",
+			LowerBound:   []any{int64(10)},
+			ColumnTypes:  []string{qdb.ColumnTypeInteger},
+		}
+
+		is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
+		is.EqualError(err, "key range kr1 already present in qdb")
+		is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
+		_, err = tranMngr.CreateKeyRange(ctx, kr2)
+		//NO COMMIT QDB!!!
+
+		_, err = tranMngr.GetKeyRange(ctx, "kr1DOUBLE")
+		is.EqualError(err, "key range \"kr1DOUBLE\" not found")
+		_, err = tranMngr.GetKeyRange(ctx, "kr1")
+		is.NoError(err)
+		_, err = tranMngr.GetKeyRange(ctx, "kr2")
+		is.NoError(err)
+
+	})
 }

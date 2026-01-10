@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
@@ -42,7 +43,9 @@ func (c *CoordinatorService) DropKeyRange(ctx context.Context, request *protos.D
 }
 
 // TODO : unit tests
-func (c *CoordinatorService) CreateKeyRange(ctx context.Context, request *protos.CreateKeyRangeRequest) (*protos.ModifyReply, error) {
+func (c *CoordinatorService) CreateKeyRange(ctx context.Context, request *protos.CreateKeyRangeRequest) (*protos.ModifyReplyTransaction, error) {
+	reply := protos.ModifyReplyTransaction{MetaCmdList: make([]*protos.MetaTransactionGossipCommand, 0),
+		CmdList: make([]*protos.QdbTransactionCmd, 0)}
 	ds, err := c.impl.GetDistribution(ctx, request.KeyRangeInfo.DistributionId)
 	if err != nil {
 		return nil, err
@@ -52,12 +55,19 @@ func (c *CoordinatorService) CreateKeyRange(ctx context.Context, request *protos
 		return nil, err
 	}
 
-	err = c.impl.CreateKeyRange(ctx, protoKR)
-	if err != nil {
+	if tranChunk, err := c.impl.CreateKeyRange(ctx, protoKR); err != nil {
 		return nil, err
+	} else {
+		if len(tranChunk.QdbStatements) == 0 {
+			return nil, fmt.Errorf("transaction chunk must have a qdb statement (DistributionsServer.CreateKeyRange)")
+		}
+		for _, qdbStmt := range tranChunk.QdbStatements {
+			reply.CmdList = append(reply.CmdList, qdbStmt.ToProto())
+		}
+		reply.MetaCmdList = append(reply.MetaCmdList, tranChunk.GossipRequests...)
 	}
 
-	return &protos.ModifyReply{}, nil
+	return &reply, nil
 }
 
 // TODO : unit tests

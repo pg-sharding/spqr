@@ -137,7 +137,9 @@ func TestLockUnlock(t *testing.T) {
 				KeyRangeID:     "krid1",
 				DistributionId: "ds1",
 			}
-			err = db.CreateKeyRange(ctx, &keyRange1)
+			statements, err := db.CreateKeyRange(ctx, &keyRange1)
+			is.NoError(err)
+			err = db.ExecNoTransaction(ctx, statements)
 			is.NoError(err)
 			_, err = db.NoWaitLockKeyRange(ctx, keyRange1.KeyRangeID)
 			is.NoError(err)

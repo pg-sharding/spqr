@@ -80,12 +80,16 @@ func (manager *DefaultShardManager) CreateDefaultShardNoCheck(ctx context.Contex
 			manager.distribution.Id)
 		return err
 	}
-	if err := manager.mngr.CreateKeyRange(ctx, req); err != nil {
+	if err = ValidateKeyRangeForCreate(ctx, manager.mngr, req); err != nil {
+		return err
+	}
+	if statements, err := manager.mngr.CreateKeyRange(ctx, req); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error (2) when adding default key range for: " +
 			manager.distribution.Id)
 		return err
+	} else {
+		return manager.mngr.ExecNoTran(ctx, statements)
 	}
-	return nil
 }
 
 func (manager *DefaultShardManager) DropDefaultShard(ctx context.Context) (*string, error) {

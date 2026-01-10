@@ -27,7 +27,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
-	validator "github.com/pg-sharding/spqr/pkg/meta/validators"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -630,7 +629,7 @@ func (qc *ClusteredCoordinator) AddRouter(ctx context.Context, router *topology.
 }
 
 // TODO : unit tests
-func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
+func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRange) (*mtran.MetaTransactionChunk, error) {
 	// add key range to metadb
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.Raw()[0]).
@@ -638,26 +637,25 @@ func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr
 		Str("key-range-id", keyRange.ID).
 		Msg("add key range")
 
-	if err := qc.Coordinator.CreateKeyRange(ctx, keyRange); err != nil {
-		return err
+	if transactionChunk, err := qc.Coordinator.CreateKeyRange(ctx, keyRange); err != nil {
+		return nil, err
+	} else {
+		if len(transactionChunk.GossipRequests) > 0 {
+			return nil, fmt.Errorf("local coordinator unexpectedly returned gossip requests on CreateKeyRange; expected empty gossip requests from local coordinator")
+		} else {
+			gossipReq := &proto.MetaTransactionGossipCommand{CreateKeyRange: &proto.CreateKeyRangeGossip{
+				KeyRangeInfo: keyRange.ToProto(),
+			}}
+			transactionChunk.GossipRequests = []*proto.MetaTransactionGossipCommand{gossipReq}
+			return transactionChunk, nil
+		}
 	}
-
-	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := proto.NewKeyRangeServiceClient(cc)
-		resp, err := cl.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{
-			KeyRangeInfo: keyRange.ToProto(),
-		})
-		spqrlog.Zero.Debug().Err(err).
-			Interface("response", resp).
-			Msg("add key range response")
-		return err
-	})
 }
 
 // TODO : unit tests
 func (qc *ClusteredCoordinator) MoveKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
 	// TODO: move check to meta layer
-	if err := validator.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
+	if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
 		return err
 	}
 	return qc.db.UpdateKeyRange(ctx, keyRange.ToDB())
@@ -909,7 +907,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			}
 			krg.ShardID = req.ShardId
 			// TODO: move check to meta layer
-			if err := validator.ValidateKeyRangeForModify(ctx, qc, krg); err != nil {
+			if err := meta.ValidateKeyRangeForModify(ctx, qc, krg); err != nil {
 				return err
 			}
 			if err := qc.db.UpdateKeyRange(ctx, krg.ToDB()); err != nil {
@@ -1958,10 +1956,14 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 			if err != nil {
 				return err
 			}
-			resp, err := krClient.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{
-				KeyRangeInfo: kRange.ToProto(),
-			})
-
+			commands := []*proto.MetaTransactionGossipCommand{
+				{CreateKeyRange: &proto.CreateKeyRangeGossip{
+					KeyRangeInfo: kRange.ToProto(),
+				},
+				},
+			}
+			gossipCl := proto.NewMetaTransactionGossipServiceClient(cc)
+			resp, err := gossipCl.ApplyMeta(ctx, &proto.MetaTransactionGossipRequest{Commands: commands})
 			if err != nil {
 				return err
 			}

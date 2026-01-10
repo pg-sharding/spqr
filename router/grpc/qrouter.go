@@ -335,22 +335,35 @@ func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.M
 	return &protos.ModifyReply{}, nil
 }
 
-// TODO : unit tests
-func (l *LocalQrouterServer) CreateKeyRange(ctx context.Context, request *protos.CreateKeyRangeRequest) (*protos.ModifyReply, error) {
-	ds, err := l.mgr.GetDistribution(ctx, request.KeyRangeInfo.DistributionId)
+// prepare QDB CreateKeyRange commands
+// TODO: unit tests
+func (l *LocalQrouterServer) createKeyRangePrepare(ctx context.Context,
+	gossip *protos.CreateKeyRangeGossip) ([]qdb.QdbStatement, error) {
+	result := make([]qdb.QdbStatement, 0)
+	ds, err := l.mgr.GetDistribution(ctx, gossip.KeyRangeInfo.DistributionId)
 	if err != nil {
 		return nil, err
 	}
-	kRange, err := kr.KeyRangeFromProto(request.KeyRangeInfo, ds.ColTypes)
+	krToCreate, err := kr.KeyRangeFromProto(gossip.KeyRangeInfo, ds.ColTypes)
 	if err != nil {
 		return nil, err
 	}
-	err = l.mgr.CreateKeyRange(ctx, kRange)
+	tranChunk, err := l.mgr.CreateKeyRange(ctx, krToCreate)
 	if err != nil {
 		return nil, err
+	} else {
+		// MemQDB.createKeyRangeCommands generate 3 QDB commands for createing key range
+		if len(tranChunk.QdbStatements) != 3 {
+			return nil, fmt.Errorf("transaction chunk must have a qdb statement (createKeyRangePrepare)")
+		}
+		result = append(result, tranChunk.QdbStatements...)
+		return result, nil
 	}
+}
 
-	return &protos.ModifyReply{}, nil
+// TODO : unit tests
+func (l *LocalQrouterServer) CreateKeyRange(ctx context.Context, request *protos.CreateKeyRangeRequest) (*protos.ModifyReplyTransaction, error) {
+	return nil, fmt.Errorf("DEPRECATED, remove after meta transaction implementation (qrouter.CreateKeyRange)")
 }
 
 // GetKeyRange gets key ranges with given ids
@@ -635,6 +648,15 @@ func (l *LocalQrouterServer) ApplyMeta(ctx context.Context, request *protos.Meta
 		switch cmdType {
 		case mtran.GR_CreateDistributionRequest:
 			if cmdList, err := l.createDistributionPrepare(ctx, gossipCommand.CreateDistribution); err != nil {
+				return nil, err
+			} else {
+				if len(cmdList) == 0 {
+					return nil, fmt.Errorf("no QDB changes in gossip request:%d", cmdType)
+				}
+				toExecuteCmds = append(toExecuteCmds, cmdList...)
+			}
+		case mtran.GR_CreateKeyRange:
+			if cmdList, err := l.createKeyRangePrepare(ctx, gossipCommand.CreateKeyRange); err != nil {
 				return nil, err
 			} else {
 				if len(cmdList) == 0 {

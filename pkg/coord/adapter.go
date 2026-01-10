@@ -280,14 +280,20 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 // - kr (*kr.KeyRange): The key range object to be created.
 //
 // Returns:
+// - *mtran.MetaTransactionChunk - chunk of commands to execute on commit transaction
 // - error: An error if creating the key range was unsuccessful.
-func (a *Adapter) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+func (a *Adapter) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) (*mtran.MetaTransactionChunk, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
-	_, err := c.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{
-		KeyRangeInfo: kr.ToProto(),
-	})
+	if reply, err := c.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{KeyRangeInfo: kr.ToProto()}); err != nil {
+		return nil, spqrerror.CleanGrpcError(err)
+	} else {
+		if qdbCmds, err := qdb.SliceFromProto(reply.CmdList); err != nil {
+			return nil, err
+		} else {
+			return mtran.NewMetaTransactionChunk(reply.MetaCmdList, qdbCmds)
+		}
+	}
 
-	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -814,15 +820,11 @@ func (a *Adapter) CreateDistribution(ctx context.Context, ds *distributions.Dist
 	}); err != nil {
 		return nil, err
 	} else {
-		qdbCmds := make([]qdb.QdbStatement, 0, len(reply.CmdList))
-		for _, cmd := range reply.CmdList {
-			if qdbCmd, err := qdb.QdbStmtFromProto(cmd); err != nil {
-				return nil, err
-			} else {
-				qdbCmds = append(qdbCmds, *qdbCmd)
-			}
+		if qdbCmds, err := qdb.SliceFromProto(reply.CmdList); err != nil {
+			return nil, err
+		} else {
+			return mtran.NewMetaTransactionChunk(reply.MetaCmdList, qdbCmds)
 		}
-		return mtran.NewMetaTransactionChunk(reply.MetaCmdList, qdbCmds)
 	}
 }
 
@@ -1276,7 +1278,7 @@ func (a *Adapter) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error)
 	if transactionProto, err := conn.BeginTran(ctx, nil); err != nil {
 		return nil, err
 	} else {
-		if transactionMeta, err := mtran.TransactionFromProto(transactionProto); err != nil {
+		if transactionMeta, err := mtran.BeginTranFromProto(transactionProto); err != nil {
 			return nil, err
 		} else {
 			return transactionMeta, nil

@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package spqr;
+
+option go_package = "spqr/proto";
+
+enum KeyRangeStatus {
+  LOCKED = 0;
+  AVAILABLE = 1;
+}
+
+message KeyRangeBound {
+  repeated bytes values = 1;
+}
+
+// key range info is mapped to shard
+message KeyRangeInfo {
+  KeyRangeBound bound = 1;
+
+  string krid = 2;
+  string shardId = 3;
+  string distributionId = 4;
+  optional bool locked = 5;
+}

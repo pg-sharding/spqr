@@ -234,11 +234,12 @@ func (mr *MockEntityMgrMockRecorder) CreateDistribution(ctx, ds any) *gomock.Cal
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockEntityMgr) CreateKeyRange(ctx context.Context, arg1 *kr.KeyRange) error {
+func (m *MockEntityMgr) CreateKeyRange(ctx context.Context, arg1 *kr.KeyRange) (*meta_transaction.MetaTransactionChunk, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*meta_transaction.MetaTransactionChunk)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateKeyRange indicates an expected call of CreateKeyRange.

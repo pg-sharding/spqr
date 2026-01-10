@@ -52,6 +52,18 @@ func SliceToProto(stmts []QdbStatement) []*protos.QdbTransactionCmd {
 	return result
 }
 
+func SliceFromProto(cmdList []*protos.QdbTransactionCmd) ([]QdbStatement, error) {
+	qdbCmds := make([]QdbStatement, 0, len(cmdList))
+	for _, cmd := range cmdList {
+		if qdbCmd, err := QdbStmtFromProto(cmd); err != nil {
+			return nil, err
+		} else {
+			qdbCmds = append(qdbCmds, *qdbCmd)
+		}
+	}
+	return qdbCmds, nil
+}
+
 type QdbTransaction struct {
 	transactionId uuid.UUID
 	commands      []QdbStatement
