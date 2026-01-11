@@ -16,7 +16,11 @@ import (
 
 type QueryDesc struct {
 	Msg pgproto3.FrontendMessage
-	P   plan.Plan
+
+	P plan.Plan
+
+	simple bool
+	exec   *pgproto3.Execute
 }
 
 type ExecutorState struct {

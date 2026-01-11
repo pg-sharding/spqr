@@ -1223,6 +1223,8 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 	es := &QueryDesc{
 		Msg: q,
 		P:   rst.routingDecisionPlan, /*  ugh... fix this someday */
+
+		simple: true,
 	}
 
 	if err := rst.QueryExecutor().ExecuteSlicePrepare(

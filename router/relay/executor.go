@@ -184,15 +184,16 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 			Str("query", query.String).
 			Msg("setting params for client")
 
-		es := &QueryDesc{
-			Msg: query,
+		qd := &QueryDesc{
+			Msg:    query,
+			simple: true,
 		}
 
-		if err := DispatchPlan(es, s.Client(), false); err != nil {
+		if err := s.ExecuteSlicePrepare(qd, false, false); err != nil {
 			return err
 		}
 
-		if err := s.ExecuteSlice(es, false); err != nil {
+		if err := s.ExecuteSlice(qd, false); err != nil {
 			return err
 		}
 	}
@@ -757,6 +758,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, replyCl bool
 
 	switch qd.P.(type) {
 	case *plan.VirtualPlan:
+		return nil
 	default:
 		if serv == nil {
 			return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
@@ -789,11 +791,8 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, replyCl bool
 			Msg("relay process plan")
 
 		statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
-		if err := DispatchPlan(qd, s.Client(), replyCl); err != nil {
-			return err
-		}
+		return DispatchPlan(qd, s.Client(), replyCl)
 	}
-	return nil
 }
 
 // TODO : unit tests
@@ -801,40 +800,43 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, replyCl bool) error
 
 	serv := s.Client().Server()
 
-	switch q := qd.P.(type) {
+	p := qd.P
+	if p != nil {
+		if sp := p.Subplan(); sp != nil {
+			/* XXX: Do all required job in sub-plan */
+
+		}
+	}
+
+	switch q := p.(type) {
 	case *plan.VirtualPlan:
 		/* execute logic without shard dispatch */
 
-		/* XXX: fetch all tuples from sub-plan */
-
-		if q.SubPlan == nil {
-
-			/* only send row description for simple proto case */
-
-			if s.es.expectRowDesc {
+		/* only send row description for simple proto case */
+		if s.es.expectRowDesc {
+			if replyCl {
 				if err := s.Client().Send(&pgproto3.RowDescription{
 					Fields: q.TTS.Desc,
 				}); err != nil {
 					return err
 				}
 			}
-
-			for _, vals := range q.TTS.Raw {
-				if err := s.Client().Send(&pgproto3.DataRow{
-					Values: vals,
-				}); err != nil {
-					return err
-				}
-			}
-
-			s.es.cc = &pgproto3.CommandComplete{
-				CommandTag: fmt.Appendf(nil, "SELECT %d", len(q.TTS.Raw)),
-			}
-
-			return nil
-		} else {
-			return rerrors.ErrExecutorSyncLost
 		}
+
+		for _, vals := range q.TTS.Raw {
+			if err := s.Client().Send(&pgproto3.DataRow{
+				Values: vals,
+			}); err != nil {
+				return err
+			}
+		}
+
+		s.es.cc = &pgproto3.CommandComplete{
+			CommandTag: fmt.Appendf(nil, "SELECT %d", len(q.TTS.Raw)),
+		}
+
+		return nil
+
 	case *plan.CopyPlan:
 
 		if serv == nil {

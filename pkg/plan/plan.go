@@ -13,8 +13,13 @@ import (
 type Plan interface {
 	Stmt() lyx.Node
 	SetStmt(lyx.Node)
+
 	ExecutionTargets() []kr.ShardKey
 	GetGangMemberMsg(sh kr.ShardKey) string
+
+	/* get SubPlan if any */
+
+	Subplan() Plan
 }
 
 type ScatterPlan struct {
@@ -51,6 +56,10 @@ func (s *ScatterPlan) GetGangMemberMsg(sh kr.ShardKey) string {
 	return ""
 }
 
+func (s *ScatterPlan) Subplan() Plan {
+	return s.SubPlan
+}
+
 var _ Plan = &ScatterPlan{}
 
 type ModifyTable struct {
@@ -75,10 +84,18 @@ func (s *ModifyTable) GetGangMemberMsg(kr.ShardKey) string {
 	return ""
 }
 
+func (s *ModifyTable) Subplan() Plan {
+	return nil
+}
+
 var _ Plan = &ModifyTable{}
 
 type ShardDispatchPlan struct {
 	Plan
+
+	/* Subplan */
+
+	subplan Plan
 
 	PStmt              lyx.Node
 	ExecTarget         kr.ShardKey
@@ -99,6 +116,10 @@ func (sp *ShardDispatchPlan) SetStmt(n lyx.Node) {
 
 func (s *ShardDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
 	return ""
+}
+
+func (s *ShardDispatchPlan) Subplan() Plan {
+	return s.subplan
 }
 
 var _ Plan = &ShardDispatchPlan{}
@@ -126,6 +147,10 @@ func (s *RandomDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
 	return ""
 }
 
+func (s *RandomDispatchPlan) Subplan() Plan {
+	return nil
+}
+
 var _ Plan = &RandomDispatchPlan{}
 
 type VirtualPlan struct {
@@ -151,6 +176,10 @@ func (sp *VirtualPlan) SetStmt(n lyx.Node) {
 
 func (s *VirtualPlan) GetGangMemberMsg(kr.ShardKey) string {
 	return ""
+}
+
+func (s *VirtualPlan) Subplan() Plan {
+	return nil
 }
 
 var _ Plan = &VirtualPlan{}
@@ -182,6 +211,10 @@ func (s *DataRowFilter) GetGangMemberMsg(sh kr.ShardKey) string {
 	return s.SubPlan.GetGangMemberMsg(sh)
 }
 
+func (s *DataRowFilter) Subplan() Plan {
+	return s.SubPlan
+}
+
 var _ Plan = &DataRowFilter{}
 
 type CopyPlan struct {
@@ -205,6 +238,10 @@ func (sp *CopyPlan) SetStmt(n lyx.Node) {
 
 func (s *CopyPlan) GetGangMemberMsg(kr.ShardKey) string {
 	return ""
+}
+
+func (s *CopyPlan) Subplan() Plan {
+	return nil
 }
 
 var _ Plan = &CopyPlan{}

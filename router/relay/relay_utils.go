@@ -5,7 +5,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/router/server"
@@ -15,38 +14,25 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind, portal str
 
 	/* Case when no describe stmt was issued before Execute+Sync*/
 
-	es := &QueryDesc{
+	qd := &QueryDesc{
 		Msg: bind,
 		P:   rst.bindQueryPlan, /*  ugh... fix this someday */
 	}
-	switch rst.bindQueryPlan.(type) {
-	case *plan.VirtualPlan:
-	default:
-		/* this is pretty ugly but lets just do it */
-		if err := DispatchPlan(es, rst.Client(), false); err != nil {
-			return err
-		}
-		if portal == "" {
-			/* save extra allocation */
-			es.Msg = pgexec
-		} else {
-			es.Msg = &pgproto3.Execute{
-				Portal: portal,
-			}
-		}
 
-		if err := DispatchPlan(es, rst.Client(), false); err != nil {
-			return err
+	if portal == "" {
+		/* save extra allocation */
+		qd.exec = pgexec
+	} else {
+		qd.exec = &pgproto3.Execute{
+			Portal: portal,
 		}
 	}
 
-	es.Msg = pgsync
-
-	if err := rst.QueryExecutor().ExecuteSlicePrepare(es, true, false); err != nil {
+	if err := rst.QueryExecutor().ExecuteSlicePrepare(qd, true, false); err != nil {
 		return err
 	}
 
-	return rst.QueryExecutor().ExecuteSlice(es, true)
+	return rst.QueryExecutor().ExecuteSlice(qd, true)
 }
 
 func gangMemberDeployPreparedStatement(shard shard.ShardHostInstance, hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
