@@ -171,7 +171,9 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 		spqrlog.Zero.Debug().
 			Str("client tsa", string(s.Client().GetTsa())).
 			Msg("adding shard with tsa")
-		if err := s.Client().Server().AllocateGangMember(s.Client().ID(), shkey, s.Client().GetTsa()); err != nil {
+		if err := s.Client().Server().AllocateGangMember(
+			s.Client().ID(),
+			shkey, s.Client().GetTsa()); err != nil {
 			return err
 		}
 	}
@@ -189,7 +191,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 			simple: true,
 		}
 
-		if err := s.ExecuteSlice(qd, false); err != nil {
+		if err := s.ExecuteSlice(qd, nil, false); err != nil {
 			return err
 		}
 	}
@@ -692,12 +694,12 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	return txt, nil
 }
 
-func (s *QueryStateExecutorImpl) copyFromExecutor(qd *QueryDesc) error {
+func (s *QueryStateExecutorImpl) copyFromExecutor() error {
 
 	var leftoverMsgData []byte
 	ctx := context.TODO()
 
-	stmt := qd.P.Stmt()
+	stmt := s.es.copyStmt
 	if stmt == nil {
 		return fmt.Errorf("failed to prepare copy context")
 	}
@@ -744,13 +746,13 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(qd *QueryDesc) error {
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, replyCl bool) error {
+func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan, replyCl bool) error {
 
 	s.Reset()
 	/* XXX: refactor this into ExecutorReset */
 	s.es.expectRowDesc = qd.simple
 
-	switch qd.P.(type) {
+	switch P.(type) {
 	case *plan.VirtualPlan:
 		return nil
 	default:
@@ -761,14 +763,16 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, replyCl bool
 
 		s.es.attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
 
-		if p := qd.P; p != nil {
+		if P != nil {
 
-			stmt := qd.P.Stmt()
+			stmt := P.Stmt()
 
 			if stmt != nil {
 				switch stmt.(type) {
 				case *lyx.Copy:
 					spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
+
+					s.es.copyStmt = stmt
 
 					if serv.TxStatus() == txstatus.TXIDLE {
 						if err := s.DeploySliceTransactionQuery("BEGIN"); err != nil {
@@ -780,34 +784,39 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, replyCl bool
 			}
 		}
 
-		spqrlog.Zero.Debug().
-			Uints("shards", shard.ShardIDs(serv.Datashards())).
-			Type("query-type", qd.Msg).Type("plan-type", qd.P).
-			Msg("relay process plan")
-
-		statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
-		return DispatchPlan(qd, s.Client(), replyCl)
+		return nil
 	}
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, replyCl bool) error {
-
-	if err := s.executeSlicePrepare(qd, replyCl); err != nil {
-		return err
-	}
+func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, replyCl bool) error {
 
 	serv := s.Client().Server()
 
-	p := qd.P
-	if p != nil {
-		if sp := p.Subplan(); sp != nil {
+	spqrlog.Zero.Debug().
+		Uints("shards", shard.ShardIDs(serv.Datashards())).
+		Type("query-type", qd.Msg).Type("plan-type", topPlan).
+		Msg("toplevel plan process")
+
+	statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
+
+	if topPlan != nil {
+		if sp := topPlan.Subplan(); sp != nil {
 			/* XXX: Do all required job in sub-plan */
 			spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msg("executing sub plan")
 		}
 	}
 
-	switch q := p.(type) {
+	if err := s.executeSlicePrepare(qd, topPlan, replyCl); err != nil {
+		return err
+	}
+
+	/* Now dispatch this toplevel slice */
+	if err := DispatchSlice(qd, topPlan, s.Client(), replyCl); err != nil {
+		return err
+	}
+
+	switch q := topPlan.(type) {
 	case *plan.VirtualPlan:
 		/* execute logic without shard dispatch */
 
@@ -861,7 +870,7 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, replyCl bool) error
 				return err
 			}
 
-			return s.copyFromExecutor(qd)
+			return s.copyFromExecutor()
 		default:
 			return server.ErrMultiShardSyncBroken
 		}
@@ -891,10 +900,10 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, replyCl bool) error
 				return err
 			}
 
-			return s.copyFromExecutor(qd)
+			return s.copyFromExecutor()
 		case *pgproto3.DataRow:
 			if replyCl {
-				switch v := qd.P.(type) {
+				switch v := topPlan.(type) {
 				case *plan.DataRowFilter:
 					if v.FilterIndex == recvIndex {
 						err = s.Client().Send(msg)
@@ -1044,6 +1053,7 @@ func (s *QueryStateExecutorImpl) Reset() {
 	s.es.cc = nil
 	s.es.eMsg = nil
 	s.es.replyEmptyQuery = false
+	s.es.copyStmt = nil
 }
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}

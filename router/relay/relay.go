@@ -713,30 +713,14 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 					return fmt.Errorf("extended xproto state out of sync")
 				}
 
-				switch rst.routingDecisionPlan.(type) {
-				case *plan.VirtualPlan:
-
-					f := func() error {
-						return BindAndReadSliceResult(rst, bnd /* XXX: virtual query always empty portal? */, "")
+				f := func() error {
+					p := rst.bindQueryPlan
+					if currentMsg.DestinationPortal != "" {
+						p = rst.bindQueryPlanMP[currentMsg.DestinationPortal]
 					}
-
-					/* only populate map for non-empty portal */
-					if currentMsg.DestinationPortal == "" {
-						rst.execute = f
-					} else {
-						rst.executeMp[currentMsg.DestinationPortal] = f
-					}
-
-					spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
-					return nil
-				default:
-					f := func() error {
-
-						p := rst.bindQueryPlan
-						if currentMsg.DestinationPortal != "" {
-							p = rst.bindQueryPlanMP[currentMsg.DestinationPortal]
-						}
-
+					switch p.(type) {
+					case *plan.VirtualPlan:
+					default:
 						err := rst.PrepareTargetDispatchExecutionSlice(p)
 						if err != nil {
 							return err
@@ -755,21 +739,21 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 						if err != nil {
 							return err
 						}
-
-						return BindAndReadSliceResult(rst, bnd, currentMsg.DestinationPortal)
 					}
 
-					/* only populate map for non-empty portal */
-					if currentMsg.DestinationPortal == "" {
-						rst.execute = f
-					} else {
-						rst.executeMp[currentMsg.DestinationPortal] = f
-					}
-
-					spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
-
-					return nil
+					return BindAndReadSliceResult(rst, bnd, currentMsg.DestinationPortal)
 				}
+
+				/* only populate map for non-empty portal */
+				if currentMsg.DestinationPortal == "" {
+					rst.execute = f
+				} else {
+					rst.executeMp[currentMsg.DestinationPortal] = f
+				}
+
+				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeBind, def.Query, time.Since(startTime))
+
+				return nil
 
 			}, true /* cache parsing for prep statement */, false /* do not completeRelay*/)
 
@@ -1221,12 +1205,10 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 	rst.routingDecisionPlan = queryPlan
 
 	es := &QueryDesc{
-		Msg: q,
-		P:   rst.routingDecisionPlan, /*  ugh... fix this someday */
-
+		Msg:    q,
 		simple: true,
 	}
 
 	return rst.QueryExecutor().ExecuteSlice(
-		es, replyCl)
+		es, queryPlan /*  ugh... fix this someday */, replyCl)
 }
