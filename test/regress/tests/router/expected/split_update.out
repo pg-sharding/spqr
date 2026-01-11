@@ -45,10 +45,13 @@ CREATE KEY RANGE k1 FROM 0 ROUTE TO sh1;
 
 \c regress
 CREATE TABLE r(i INT, j INT, t TEXT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY r (i, j, t) FROM STDIN DELIMITER '|';
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 UPDATE r SET i = 110 WHERE i = 10;
 ERROR:  client processing error: updating distribution column is not yet supported, tx status IDLE
 DROP TABLE r;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console
