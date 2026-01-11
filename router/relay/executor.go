@@ -750,12 +750,11 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, replyCl bool
 	/* XXX: refactor this into ExecutorReset */
 	s.es.expectRowDesc = qd.simple
 
-	serv := s.Client().Server()
-
 	switch qd.P.(type) {
 	case *plan.VirtualPlan:
 		return nil
 	default:
+		serv := s.Client().Server()
 		if serv == nil {
 			return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 		}

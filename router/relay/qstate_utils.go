@@ -25,8 +25,24 @@ func DispatchPlan(qd *QueryDesc, cl client.RouterClient, replyCl bool) error {
 
 	if qd.P == nil {
 
-		if err := serv.Send(qd.Msg); err != nil {
-			return err
+		if qd.simple {
+			if err := serv.Send(qd.Msg); err != nil {
+				return err
+			}
+		} else {
+
+			/* this message is actually bind */
+			if err := serv.Send(qd.Msg); err != nil {
+				return err
+			}
+
+			if err := serv.Send(qd.exec); err != nil {
+				return err
+			}
+
+			if err := serv.Send(pgsync); err != nil {
+				return err
+			}
 		}
 
 	} else {
