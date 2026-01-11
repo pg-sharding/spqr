@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -208,7 +209,7 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 		} else {
 			commands[1] = *cmd
 		}
-		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, "false", MapFreq); err != nil {
+		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapFreq); err != nil {
 			return nil, err
 		} else {
 			commands[2] = *cmd
