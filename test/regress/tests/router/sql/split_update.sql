@@ -20,7 +20,7 @@ COPY r (i, j, t) FROM STDIN DELIMITER '|';
 100|101|cccc
 200|201|dddd
 300|301|eeee
-150|151|ababa
+150|151|yyyyy
 \.
 
 UPDATE r SET i = 110 WHERE i = 10;
