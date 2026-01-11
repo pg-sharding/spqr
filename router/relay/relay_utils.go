@@ -16,7 +16,6 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind, portal str
 
 	qd := &QueryDesc{
 		Msg: bind,
-		P:   rst.bindQueryPlan, /*  ugh... fix this someday */
 	}
 
 	if portal == "" {
@@ -28,7 +27,7 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind, portal str
 		}
 	}
 
-	return rst.QueryExecutor().ExecuteSlice(qd, true)
+	return rst.QueryExecutor().ExecuteSlice(qd, rst.bindQueryPlan /*  ugh... fix this someday */, true)
 }
 
 func gangMemberDeployPreparedStatement(shard shard.ShardHostInstance, hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {

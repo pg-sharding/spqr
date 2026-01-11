@@ -19,11 +19,13 @@ import (
 
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
-	statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
+
 	switch q := msg.(type) {
 	case *pgproto3.Terminate:
 		return nil
 	case *pgproto3.Sync:
+		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
+
 		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
 			return err
 		}
@@ -32,6 +34,20 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			Uint("client", rst.Client().ID()).
 			Msg("client connection synced")
 		return nil
+	case *pgproto3.Query:
+		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
+
+		// copy interface
+		cpQ := *q
+		q = &cpQ
+		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
+			// this call completes relay, sends RFQ
+			return rst.ProcessSimpleQuery(q, true)
+		}, false, true)
+
+		return err
+
+	/* These messages do not trigger immediate processing */
 	case *pgproto3.Parse:
 		// copy interface
 		cpQ := *q
@@ -70,16 +86,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 
 		rst.AddExtendedProtocMessage(q)
 		return nil
-	case *pgproto3.Query:
-		// copy interface
-		cpQ := *q
-		q = &cpQ
-		_, err := rst.ProcQueryAdvancedTx(q.String, func() error {
-			// this call completes relay, sends RFQ
-			return rst.ProcessSimpleQuery(q, true)
-		}, false, true)
 
-		return err
 	default:
 		return nil
 	}

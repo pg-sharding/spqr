@@ -17,8 +17,6 @@ import (
 type QueryDesc struct {
 	Msg pgproto3.FrontendMessage
 
-	P plan.Plan
-
 	simple bool
 	exec   *pgproto3.Execute
 }
@@ -33,6 +31,9 @@ type ExecutorState struct {
 	eMsg       *pgproto3.ErrorResponse
 
 	replyEmptyQuery bool
+
+	/* misc for Copy */
+	copyStmt lyx.Node
 
 	/* XXX: make gang table here */
 	activeShards []kr.ShardKey
@@ -64,7 +65,7 @@ type QueryStateExecutor interface {
 	ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error)
 	ProcCopyComplete(query pgproto3.FrontendMessage) (txstatus.TXStatus, error)
 
-	ExecuteSlice(qd *QueryDesc, replyCl bool) error
+	ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, replyCl bool) error
 
 	DeriveCommandComplete() error
 	CompleteTx(mgr poolmgr.GangMgr) error
