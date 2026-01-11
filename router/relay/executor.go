@@ -793,10 +793,16 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, 
 
 	serv := s.Client().Server()
 
-	spqrlog.Zero.Debug().
-		Uints("shards", shard.ShardIDs(serv.Datashards())).
-		Type("query-type", qd.Msg).Type("plan-type", topPlan).
-		Msg("toplevel plan process")
+	if serv != nil {
+		spqrlog.Zero.Debug().
+			Uints("shards", shard.ShardIDs(serv.Datashards())).
+			Type("query-type", qd.Msg).Type("plan-type", topPlan).
+			Msg("toplevel plan process")
+	} else {
+		spqrlog.Zero.Debug().
+			Type("query-type", qd.Msg).Type("plan-type", topPlan).
+			Msg("toplevel plan process")
+	}
 
 	statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
 
@@ -808,11 +814,6 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, 
 	}
 
 	if err := s.executeSlicePrepare(qd, topPlan, replyCl); err != nil {
-		return err
-	}
-
-	/* Now dispatch this toplevel slice */
-	if err := DispatchSlice(qd, topPlan, s.Client(), replyCl); err != nil {
 		return err
 	}
 
@@ -852,6 +853,11 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, 
 			return errUnAttached
 		}
 
+		/* Now dispatch this toplevel slice */
+		if err := DispatchSlice(qd, topPlan, s.Client(), replyCl); err != nil {
+			return err
+		}
+
 		msg, _, err := serv.Receive()
 		if err != nil {
 			return err
@@ -879,6 +885,11 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, 
 	if serv == nil {
 		/* Malformed */
 		return errUnAttached
+	}
+
+	/* Now dispatch this toplevel slice */
+	if err := DispatchSlice(qd, topPlan, s.Client(), replyCl); err != nil {
+		return err
 	}
 
 	for {
