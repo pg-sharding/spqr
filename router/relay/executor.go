@@ -184,15 +184,12 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 			Str("query", query.String).
 			Msg("setting params for client")
 
-		es := &QueryDesc{
-			Msg: query,
+		qd := &QueryDesc{
+			Msg:    query,
+			simple: true,
 		}
 
-		if err := DispatchPlan(es, s.Client(), false); err != nil {
-			return err
-		}
-
-		if err := s.ExecuteSlice(es, false); err != nil {
+		if err := s.ExecuteSlice(qd, false); err != nil {
 			return err
 		}
 	}
@@ -747,17 +744,17 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(qd *QueryDesc) error {
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, replyCl bool, expectRowDesc bool) error {
+func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, replyCl bool) error {
 
 	s.Reset()
 	/* XXX: refactor this into ExecutorReset */
-	s.es.expectRowDesc = expectRowDesc
-
-	serv := s.Client().Server()
+	s.es.expectRowDesc = qd.simple
 
 	switch qd.P.(type) {
 	case *plan.VirtualPlan:
+		return nil
 	default:
+		serv := s.Client().Server()
 		if serv == nil {
 			return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 		}
@@ -789,52 +786,56 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, replyCl bool
 			Msg("relay process plan")
 
 		statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
-		if err := DispatchPlan(qd, s.Client(), replyCl); err != nil {
-			return err
-		}
+		return DispatchPlan(qd, s.Client(), replyCl)
 	}
-	return nil
 }
 
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, replyCl bool) error {
 
+	if err := s.executeSlicePrepare(qd, replyCl); err != nil {
+		return err
+	}
+
 	serv := s.Client().Server()
 
-	switch q := qd.P.(type) {
+	p := qd.P
+	if p != nil {
+		if sp := p.Subplan(); sp != nil {
+			/* XXX: Do all required job in sub-plan */
+			spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msg("executing sub plan")
+		}
+	}
+
+	switch q := p.(type) {
 	case *plan.VirtualPlan:
 		/* execute logic without shard dispatch */
 
-		/* XXX: fetch all tuples from sub-plan */
-
-		if q.SubPlan == nil {
-
-			/* only send row description for simple proto case */
-
-			if s.es.expectRowDesc {
+		/* only send row description for simple proto case */
+		if s.es.expectRowDesc {
+			if replyCl {
 				if err := s.Client().Send(&pgproto3.RowDescription{
 					Fields: q.TTS.Desc,
 				}); err != nil {
 					return err
 				}
 			}
-
-			for _, vals := range q.TTS.Raw {
-				if err := s.Client().Send(&pgproto3.DataRow{
-					Values: vals,
-				}); err != nil {
-					return err
-				}
-			}
-
-			s.es.cc = &pgproto3.CommandComplete{
-				CommandTag: fmt.Appendf(nil, "SELECT %d", len(q.TTS.Raw)),
-			}
-
-			return nil
-		} else {
-			return rerrors.ErrExecutorSyncLost
 		}
+
+		for _, vals := range q.TTS.Raw {
+			if err := s.Client().Send(&pgproto3.DataRow{
+				Values: vals,
+			}); err != nil {
+				return err
+			}
+		}
+
+		s.es.cc = &pgproto3.CommandComplete{
+			CommandTag: fmt.Appendf(nil, "SELECT %d", len(q.TTS.Raw)),
+		}
+
+		return nil
+
 	case *plan.CopyPlan:
 
 		if serv == nil {

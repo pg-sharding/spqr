@@ -16,7 +16,11 @@ import (
 
 type QueryDesc struct {
 	Msg pgproto3.FrontendMessage
-	P   plan.Plan
+
+	P plan.Plan
+
+	simple bool
+	exec   *pgproto3.Execute
 }
 
 type ExecutorState struct {
@@ -61,7 +65,6 @@ type QueryStateExecutor interface {
 	ProcCopyComplete(query pgproto3.FrontendMessage) (txstatus.TXStatus, error)
 
 	ExecuteSlice(qd *QueryDesc, replyCl bool) error
-	ExecuteSlicePrepare(qd *QueryDesc, replyCl bool, expectRowDesc bool) error
 
 	DeriveCommandComplete() error
 	CompleteTx(mgr poolmgr.GangMgr) error
