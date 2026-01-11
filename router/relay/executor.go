@@ -537,6 +537,9 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 			break
 		}
 		if b == '\n' || b == cps.Delimiter {
+			if attrIndx >= len(cps.SchemaColumns) {
+				return nil, fmt.Errorf("malformed data in copy")
+			}
 			if indx, ok := cps.SchemaColumnMp[cps.SchemaColumns[attrIndx]]; ok {
 				routingTupleItems[indx] = append(routingTupleItems[indx], data.Data[prevDelimiter:i])
 			}

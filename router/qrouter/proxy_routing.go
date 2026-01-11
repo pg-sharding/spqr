@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
@@ -594,6 +595,12 @@ func planSplitUpdate(
 
 		var et kr.ShardKey
 
+		/* cleanup temporal state */
+
+		/* XXX: introduce Reset() and use */
+		rm.ParamRefs = map[rfqn.RelationFQN]map[string][]int{}
+		rm.Exprs = map[rfqn.RelationFQN]map[string][]any{}
+
 		for _, c := range q.SetClause {
 			switch rt := c.(type) {
 			case *lyx.ResTarget:
@@ -603,6 +610,8 @@ func planSplitUpdate(
 						return nil, err
 					}
 
+					spqrlog.Zero.Debug().Msgf("rm params %+v", rm.Exprs)
+
 					queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 
 					krs, err := rm.Mgr.ListKeyRanges(ctx, d.Id)
@@ -610,18 +619,31 @@ func planSplitUpdate(
 						return nil, err
 					}
 
+					hf, err := hashfunction.HashFunctionByName(r.DistributionKey[0].HashFunction)
+					if err != nil {
+						spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
+						return nil, err
+					}
+
 					/* len should be one */
 					compositeKey := make([]any, len(r.DistributionKey))
 
-					valList, err := rm.ComputeRoutingExpr(
-						rqdn,
-						&r.DistributionKey[0].Expr,
-						r.DistributionKey[0].HashFunction,
-						queryParamsFormatCodes)
+					valList, err := rm.ResolveValue(rqdn, rt.Name, queryParamsFormatCodes)
+
+					if err != nil {
+						/* Is this ok? */
+						return nil, err
+					}
 
 					if len(valList) != 1 {
 						/* should not happen */
 						return nil, rerrors.ErrComplexQuery
+					}
+
+					compositeKey[0], err = hashfunction.ApplyHashFunction(valList[0], d.ColTypes[0], hf)
+
+					if err != nil {
+						return nil, err
 					}
 
 					currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
@@ -631,11 +653,6 @@ func planSplitUpdate(
 					}
 					et = currroute
 
-					/* cleanup temporal state */
-
-					/* XXX: introduce Reset() and use */
-					rm.ParamRefs = nil
-					rm.Exprs = nil
 				}
 			default:
 				return nil, rerrors.ErrComplexQuery
