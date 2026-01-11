@@ -788,6 +788,38 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan,
 	}
 }
 
+func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Plan) error {
+
+	/* The main difference between top-level and inner slices are that
+	* inner slice results are not transferred to client.
+	* Top-level slice outputs to client. */
+
+	if sp := p.Subplan(); sp != nil {
+		/* XXX: Do all required job in sub-plan */
+		spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msg("executing sub plan")
+		if err := s.executeInnerSlice(serv, sp); err != nil {
+			return err
+		}
+	}
+
+	if serv == nil {
+		/* Malformed */
+		return errUnAttached
+	}
+
+	/*  Inner slice should always contain per-shard overwrite message. */
+	qd := &QueryDesc{
+		simple: true,
+	}
+
+	/* Now dispatch this toplevel slice */
+	if err := DispatchSlice(qd, p, s.Client(), false); err != nil {
+		return err
+	}
+
+	return p.RunSlice()
+}
+
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, replyCl bool) error {
 
@@ -810,9 +842,13 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, 
 		if sp := topPlan.Subplan(); sp != nil {
 			/* XXX: Do all required job in sub-plan */
 			spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msg("executing sub plan")
+			if err := s.executeInnerSlice(serv, sp); err != nil {
+				return err
+			}
 		}
 	}
 
+	/* Prepare copy state, if needed. */
 	if err := s.executeSlicePrepare(qd, topPlan, replyCl); err != nil {
 		return err
 	}
