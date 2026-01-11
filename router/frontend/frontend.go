@@ -47,7 +47,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 
 		return err
 
-	/* These messages do not trigger immidiate processing */
+	/* These messages do not trigger immediate processing */
 	case *pgproto3.Parse:
 		// copy interface
 		cpQ := *q
