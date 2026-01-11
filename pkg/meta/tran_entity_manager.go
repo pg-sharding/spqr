@@ -237,7 +237,7 @@ func (t *TranEntityManager) GetSequenceRelations(ctx context.Context, seqName st
 
 // GetShard implements [EntityMgr].
 func (t *TranEntityManager) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
-	// TODO convert track change beahviour
+	// TODO convert track change behaviour
 	return t.mngr.GetShard(ctx, shardID)
 }
 
