@@ -28,10 +28,6 @@ func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind, portal str
 		}
 	}
 
-	if err := rst.QueryExecutor().ExecuteSlicePrepare(qd, true, false); err != nil {
-		return err
-	}
-
 	return rst.QueryExecutor().ExecuteSlice(qd, true)
 }
 

@@ -1227,11 +1227,6 @@ func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) e
 		simple: true,
 	}
 
-	if err := rst.QueryExecutor().ExecuteSlicePrepare(
-		es, replyCl, true); err != nil {
-		return err
-	}
-
 	return rst.QueryExecutor().ExecuteSlice(
 		es, replyCl)
 }

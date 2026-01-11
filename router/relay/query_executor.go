@@ -65,7 +65,6 @@ type QueryStateExecutor interface {
 	ProcCopyComplete(query pgproto3.FrontendMessage) (txstatus.TXStatus, error)
 
 	ExecuteSlice(qd *QueryDesc, replyCl bool) error
-	ExecuteSlicePrepare(qd *QueryDesc, replyCl bool, expectRowDesc bool) error
 
 	DeriveCommandComplete() error
 	CompleteTx(mgr poolmgr.GangMgr) error

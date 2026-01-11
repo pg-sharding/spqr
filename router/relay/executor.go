@@ -189,10 +189,6 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 			simple: true,
 		}
 
-		if err := s.ExecuteSlicePrepare(qd, false, false); err != nil {
-			return err
-		}
-
 		if err := s.ExecuteSlice(qd, false); err != nil {
 			return err
 		}
@@ -748,11 +744,11 @@ func (s *QueryStateExecutorImpl) copyFromExecutor(qd *QueryDesc) error {
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, replyCl bool, expectRowDesc bool) error {
+func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, replyCl bool) error {
 
 	s.Reset()
 	/* XXX: refactor this into ExecutorReset */
-	s.es.expectRowDesc = expectRowDesc
+	s.es.expectRowDesc = qd.simple
 
 	serv := s.Client().Server()
 
@@ -798,13 +794,17 @@ func (s *QueryStateExecutorImpl) ExecuteSlicePrepare(qd *QueryDesc, replyCl bool
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, replyCl bool) error {
 
+	if err := s.executeSlicePrepare(qd, replyCl); err != nil {
+		return err
+	}
+
 	serv := s.Client().Server()
 
 	p := qd.P
 	if p != nil {
 		if sp := p.Subplan(); sp != nil {
 			/* XXX: Do all required job in sub-plan */
-
+			spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msg("executing sub plan")
 		}
 	}
 
