@@ -70,13 +70,28 @@ db1=# SHOW __spqr__commit_strategy;
 ## List of hints
 
 ### __spqr__engine_v2
-Enables v2 routing engine functionality. This hint is currently under development and may be removed in future updates.
+Enables v2 routing engine functionality with enhanced multi-shard query support.
 
 <Tip>This hint overrides the [`query_routing.enhanced_multishard_processing`](/configuration/router#query-routing-settings) router configuration setting.</Tip>
+
+Key features enabled by engine V2:
+- **Batch INSERT support**: Multi-value INSERT statements targeting different shards are automatically split and routed to the correct shards
+- **Two-phase commit (2PC)**: Atomic transactions across multiple shards (requires additional configuration)
 
 ```sql
 SET __spqr__engine_v2 TO on;
 ```
+
+**Batch INSERT example:**
+```sql
+-- Without engine V2, this would fail if rows target different shards
+-- With engine V2, SPQR automatically splits the INSERT by shard
+INSERT INTO users (id, name) VALUES (1, 'Alice'), (100, 'Bob') /* __spqr__engine_v2: true */;
+-- NOTICE: send query to shard(s) : sh1,sh2
+-- Row (1, 'Alice') goes to sh1, row (100, 'Bob') goes to sh2
+```
+
+<Note>Batch INSERT rewriting only works with simple protocol. Parameterized queries using extended protocol are not supported for cross-shard batch inserts.</Note>
 
 ### __spqr__target_session_attrs
 

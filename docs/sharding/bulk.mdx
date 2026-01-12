@@ -1,0 +1,103 @@
+---
+title: 'Bulk Operations'
+description: 'Efficiently load data across multiple shards using COPY and batch INSERT'
+---
+
+SPQR supports bulk data loading operations that automatically distribute data across shards according to your sharding setup. This page covers two main approaches: `COPY FROM` for file-based loading and batch `INSERT` for multi-value statements.
+
+<Warning>
+Be careful with bulk operations when not using two-phase commit. There is no concept of snapshot isolation across shards in SPQR. This means:
+
+- A `SELECT` that runs on multiple shards at the same time may see partial results
+- If an error occurs on one shard, the transaction is rolled back only on that shard
+- Use [two-phase commit](/sharding/distributed_transactions#2-two-phase-commit-2pc) for atomic operations across shards
+</Warning>
+
+## COPY FROM
+
+The `COPY` command allows for efficient bulk copying of data from files or stdin into a sharded table. For more information on the PostgreSQL `COPY` command, see the [PostgreSQL documentation](https://www.postgresql.org/docs/current/sql-copy.html).
+
+**From stdin:**
+```sql
+COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
+1|1
+2|2
+3|3
+...
+\.
+NOTICE: send query to shard(s) : shard1,shard2,shard3,shard4
+```
+
+**From file using psql:**
+```bash
+dbname=> \copy "spqr-test" (uid, data) from 'data_test.csv' WITH DELIMITER ';';
+NOTICE: send query to shard(s) : shard1,shard2,shard3,shard4
+```
+
+## Batch INSERT
+
+When [engine V2](/routing/hints#spqr-engine-v2) is enabled, SPQR supports batch INSERT statements that target multiple shards. The router automatically analyzes each row in the VALUES clause, determines the target shard based on the sharding key, and rewrites the query into separate INSERT statements per shard.
+
+```sql
+-- Insert multiple rows that target different shards
+INSERT INTO users (id, name) VALUES
+    (1, 'Alice'),      -- routes to sh1
+    (100, 'Bob'),      -- routes to sh2
+    (2, 'Charlie')     -- routes to sh1
+/* __spqr__engine_v2: true */;
+-- NOTICE: send query to shard(s) : sh1,sh2
+```
+
+SPQR rewrites this into:
+- `INSERT INTO users (id, name) VALUES (1, 'Alice'), (2, 'Charlie');` → sh1
+- `INSERT INTO users (id, name) VALUES (100, 'Bob');` → sh2
+
+### Enabling Batch INSERT
+
+You can enable engine V2 in several ways:
+
+**Per-statement hint:**
+```sql
+INSERT INTO users (id, name) VALUES (1, 'Alice'), (100, 'Bob') /* __spqr__engine_v2: true */;
+```
+
+**Session-level:**
+```sql
+SET __spqr__engine_v2 TO on;
+INSERT INTO users (id, name) VALUES (1, 'Alice'), (100, 'Bob');
+```
+
+**Router configuration:**
+```yaml
+query_routing:
+  enhanced_multishard_processing: true
+```
+
+### Limitations
+
+<Note>
+Batch INSERT rewriting only works with **simple protocol**. Parameterized queries using extended protocol (prepared statements with placeholders) are not supported for cross-shard batch inserts.
+</Note>
+
+### Atomic Batch Inserts
+
+For atomic batch inserts across shards, combine engine V2 with two-phase commit:
+
+```sql
+SET __spqr__engine_v2 TO on;
+SET __spqr__commit_strategy TO '2pc';
+
+BEGIN;
+INSERT INTO users (id, name) VALUES (1, 'Alice'), (100, 'Bob');
+COMMIT; -- Uses 2PC for atomicity across shards
+```
+
+## Choosing Between COPY and Batch INSERT
+
+| Feature | COPY FROM | Batch INSERT |
+|---------|-----------|--------------|
+| Data source | Files, stdin | SQL VALUES clause |
+| Best for | Large data imports | Application-generated inserts |
+| Engine V2 required | No | Yes |
+| Supports RETURNING | No | Yes |
+| Extended protocol | Yes | No (simple protocol only) |

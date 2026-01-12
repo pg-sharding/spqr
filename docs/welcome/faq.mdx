@@ -111,8 +111,9 @@ The router provides a PostgreSQL-compatible admin console with `SHOW` commands f
 **A:** Yes, but with limitations:
 
 * For cross-shard operations, use `/*__spqr__engine_v2: true*/`.
+* **Batch INSERT**: Multi-value INSERT statements targeting different shards are automatically split and routed (engine V2 required).
 * `COPY` operations are allowed with `/*__spqr__allow_multishard: true*/`.
-* Transactions modifying multiple shards are **not supported**.
+* For atomic multi-shard transactions, use [two-phase commit](/sharding/distributed_transactions#2-two-phase-commit-2pc).
 
 **Q: How to explicitly route a query to a specific shard?**
 
