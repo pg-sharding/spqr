@@ -536,7 +536,34 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 	}
 }
 
-func planSplitUpdate(
+func (qr *ProxyQrouter) plannerV1(
+	ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+) (plan.Plan, error) {
+	/* Top level plan */
+	p, err := qr.RouteWithRules(ctx, rm, rm.Stmt)
+
+	if err != nil {
+		return nil, err
+	}
+
+	tmp, err := rm.RouteByTuples(ctx, rm.SPH.GetTsa())
+	if err != nil {
+		return nil, err
+	}
+
+	p = plan.Combine(p, tmp)
+
+	// set up this variable if not yet
+	if p == nil {
+		p = &plan.ScatterPlan{
+			ExecTargets: qr.DataShardsRoutes(),
+		}
+	}
+	return p, nil
+}
+
+func (qr *ProxyQrouter) planSplitUpdate(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
@@ -561,7 +588,7 @@ func planSplitUpdate(
 			return nil, rerrors.ErrComplexQuery
 		}
 
-		var dcols []string
+		var distribCols []string
 		var d *distributions.Distribution
 		var r *distributions.DistributedRelation
 
@@ -578,22 +605,28 @@ func planSplitUpdate(
 			}
 
 			r = d.GetRelation(rqdn)
-			dcols, err = r.GetDistributionKeyColumns()
+			distribCols, err = r.GetDistributionKeyColumns()
 			if err != nil {
 				return nil, err
 			}
 
-			if len(dcols) != 1 {
+			if len(distribCols) != 1 {
 				/* TODO: multi-column support here */
 				return nil, rerrors.ErrComplexQuery
 			}
 
 		default:
-
 			return nil, rerrors.ErrComplexQuery
 		}
 
 		var et kr.ShardKey
+
+		/* inner plan */
+
+		inp, err := qr.plannerV1(ctx, rm)
+		if err != nil {
+			return nil, err
+		}
 
 		/* cleanup temporal state */
 
@@ -604,7 +637,7 @@ func planSplitUpdate(
 		for _, c := range q.SetClause {
 			switch rt := c.(type) {
 			case *lyx.ResTarget:
-				if rt.Name == dcols[0] {
+				if rt.Name == distribCols[0] {
 
 					if err := rm.ProcessConstExprOnRFQN(rqdn, rt.Name, []lyx.Node{rt.Value}); err != nil {
 						return nil, err
@@ -665,7 +698,13 @@ func planSplitUpdate(
 			ExecTarget: et,
 		}
 
-		return rPlan, nil
+		if len(inp.ExecutionTargets()) == 1 && inp.ExecutionTargets()[0].Name == et.Name {
+			return rPlan, nil
+		}
+
+		/* TODO: suppport if   config.RouterConfig().Qr.AllowSplitUpdate  */
+		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
+
 	default:
 		return nil, rerrors.ErrComplexQuery
 	}
@@ -696,7 +735,7 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	}
 
 	if rm.IsSplitUpdate {
-		return planSplitUpdate(ctx, rm)
+		return qr.planSplitUpdate(ctx, rm)
 	}
 
 	if rm.SPH.PreferredEngine() == planner.EnhancedEngineVersion {
@@ -709,25 +748,7 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		}
 	} else {
 		/* Top level plan */
-		p, err = qr.RouteWithRules(ctx, rm, rm.Stmt)
-
-		if err != nil {
-			return nil, err
-		}
-
-		tmp, err := rm.RouteByTuples(ctx, rm.SPH.GetTsa())
-		if err != nil {
-			return nil, err
-		}
-
-		p = plan.Combine(p, tmp)
-
-		// set up this variable if not yet
-		if p == nil {
-			p = &plan.ScatterPlan{
-				ExecTargets: qr.DataShardsRoutes(),
-			}
-		}
+		p, err = qr.plannerV1(ctx, rm)
 	}
 
 	return p, nil

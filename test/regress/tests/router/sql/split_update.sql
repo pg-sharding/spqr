@@ -24,6 +24,7 @@ COPY r (i, j, t) FROM STDIN DELIMITER '|';
 \.
 
 UPDATE r SET i = 110 WHERE i = 10;
+UPDATE r SET i = 110 WHERE i = 100;
 
 DROP TABLE r;
 

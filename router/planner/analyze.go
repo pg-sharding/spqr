@@ -412,13 +412,7 @@ func AnalyzeQueryV1(
 							return err
 						}
 						if slices.Contains(cols, cc.Name) {
-
-							if !config.RouterConfig().Qr.AllowSplitUpdate {
-								return spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
-							} else {
-
-								rm.IsSplitUpdate = true
-							}
+							rm.IsSplitUpdate = true
 						}
 					default:
 						return rerrors.ErrComplexQuery
