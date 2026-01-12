@@ -18,6 +18,10 @@ import (
 
 func RewriteUpdateToDelete(query string, rqdn *rfqn.RelationFQN) (string, error) {
 
+	if query[len(query)-1] == ';' {
+		query = query[:len(query)-1]
+	}
+
 	// Find the WHERE keyword
 	// we expect query in form of simple update, no CTE or RETURNING.
 	valuesKeywordStart := strings.Index(strings.ToUpper(query), "WHERE")

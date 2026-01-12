@@ -3,6 +3,7 @@ package qrouter
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -702,9 +703,9 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			ExecTarget: et,
 		}
 
-		innerETs := inp.ExecutionTargets()
+		deleteSliceExecTargets := inp.ExecutionTargets()
 
-		if len(innerETs) == 1 && innerETs[0].Name == et.Name {
+		if len(deleteSliceExecTargets) == 1 && deleteSliceExecTargets[0].Name == et.Name {
 			return rPlan, nil
 		}
 
@@ -721,43 +722,118 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			return nil, err
 		}
 
-		subPlan := &plan.ScatterPlan{
+		/* Our real rewrite query would be
+		*COPY (delstmt RETURNING *) TO STDOUT BINARY.
+		 **/
+
+		copyQuery := fmt.Sprintf(`COPY (%s RETURNING *) TO STDOUT BINARY`, delQuery)
+
+		deleteSubplan := &plan.ScatterPlan{
 			OverwriteQuery: map[string]string{},
-			ExecTargets:    innerETs,
+			ExecTargets:    deleteSliceExecTargets,
 		}
 
-		for _, et := range innerETs {
-			subPlan.OverwriteQuery[et.Name] = delQuery
+		for _, et := range deleteSliceExecTargets {
+			deleteSubplan.OverwriteQuery[et.Name] = copyQuery
 		}
 
 		/* Also define runfunction */
 
-		subPlan.RunF = func(serv server.Server) error {
+		copyData := make([]pgproto3.CopyData, 0)
 
-			var errmsg *pgproto3.ErrorResponse
+		deleteSubplan.RunF = func(serv server.Server) error {
+			for _, sh := range serv.Datashards() {
 
-			for {
-				msg, _, err := serv.Receive()
-				if err != nil {
+				var errmsg *pgproto3.ErrorResponse
+
+				if !slices.ContainsFunc(deleteSliceExecTargets, func(el kr.ShardKey) bool {
+					return sh.Name() == el.Name
+				}) {
+					continue
+				}
+			shLoop:
+				for {
+					msg, err := serv.ReceiveShard(sh.ID())
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+						}
+
+						break shLoop
+					case *pgproto3.ErrorResponse:
+						errmsg = v
+					case *pgproto3.CopyData:
+						copyData = append(copyData, *v)
+					default:
+						/* All ok? */
+					}
+				}
+			}
+
+			return nil
+		}
+
+		/* This is pretty ugly, fix it someday */
+		insertSubplan := &plan.ScatterPlan{
+			ExecTargets: []kr.ShardKey{et},
+			OverwriteQuery: map[string]string{
+				et.Name: fmt.Sprintf(`COPY "%s" FROM STDIN BINARY`, rqdn.String()),
+			},
+			RunF: func(serv server.Server) error {
+
+				targetShid := uint(0)
+				for _, sh := range serv.Datashards() {
+					if sh.Name() == et.Name {
+						targetShid = sh.ID()
+					}
+				}
+
+				var errmsg *pgproto3.ErrorResponse
+
+				for _, msg := range copyData {
+					if err := serv.SendShard(&msg, et); err != nil {
+						return err
+					}
+				}
+
+				if err := serv.SendShard(&pgproto3.CopyDone{}, et); err != nil {
 					return err
 				}
 
-				switch v := msg.(type) {
-				case *pgproto3.ReadyForQuery:
-					if v.TxStatus == byte(txstatus.TXERR) {
-						return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+				for {
+					msg, err := serv.ReceiveShard(targetShid)
+					if err != nil {
+						return err
 					}
 
-					return nil
-				case *pgproto3.ErrorResponse:
-					errmsg = v
-				default:
-					/* All ok? */
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+						}
+
+						return nil
+					case *pgproto3.ErrorResponse:
+						errmsg = v
+					default:
+						/* All ok? */
+					}
 				}
-			}
+			},
 		}
 
-		rPlan.SP = subPlan
+		/* Workflow is
+		* COPY (DELETE) -> COPY FROM STDIN -> UPDATE on destination shard
+		 */
+
+		insertSubplan.SubSlice = deleteSubplan
+
+		rPlan.SP = insertSubplan
 
 		return rPlan, nil
 
