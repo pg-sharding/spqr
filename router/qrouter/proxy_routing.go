@@ -713,7 +713,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
 		}
 
-		/* okay, go throught all execution targets of sub-plan
+		/* okay, go through all execution targets of sub-plan
 		* and do query rewrite: we want do DELETE old tuples on source shards
 		* as part of split-update. */
 
@@ -723,7 +723,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 		}
 
 		/* Our real rewrite query would be
-		*COPY (delstmt RETURNING *) TO STDOUT BINARY.
+		*COPY (delete statement RETURNING *) TO STDOUT BINARY.
 		 **/
 
 		copyQuery := fmt.Sprintf(`COPY (%s RETURNING *) TO STDOUT BINARY`, delQuery)
@@ -737,7 +737,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			deleteSubplan.OverwriteQuery[et.Name] = copyQuery
 		}
 
-		/* Also define runfunction */
+		/* Also define run function */
 
 		copyData := make([]pgproto3.CopyData, 0)
 
@@ -786,10 +786,10 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			},
 			RunF: func(serv server.Server) error {
 
-				targetShid := uint(0)
+				targetShardId := uint(0)
 				for _, sh := range serv.Datashards() {
 					if sh.Name() == et.Name {
-						targetShid = sh.ID()
+						targetShardId = sh.ID()
 					}
 				}
 
@@ -806,7 +806,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 				}
 
 				for {
-					msg, err := serv.ReceiveShard(targetShid)
+					msg, err := serv.ReceiveShard(targetShardId)
 					if err != nil {
 						return err
 					}

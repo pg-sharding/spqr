@@ -292,7 +292,7 @@ var _ Plan = &CopyPlan{}
 
 const NOSHARD = ""
 
-/* XXX: check subplain here? */
+/* XXX: check subplan here? */
 func mergeExecTargets(l, r []kr.ShardKey) []kr.ShardKey {
 	/* XXX: nil means all */
 	if l == nil {
