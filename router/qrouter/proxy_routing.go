@@ -702,7 +702,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			return rPlan, nil
 		}
 
-		/* TODO: suppport if   config.RouterConfig().Qr.AllowSplitUpdate  */
+		/* TODO: support if config.RouterConfig().Qr.AllowSplitUpdate  */
 		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
 
 	default:
@@ -749,6 +749,9 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	} else {
 		/* Top level plan */
 		p, err = qr.plannerV1(ctx, rm)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return p, nil
