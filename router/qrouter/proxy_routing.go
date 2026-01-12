@@ -2,13 +2,17 @@ package qrouter
 
 import (
 	"context"
+	"fmt"
+	"slices"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/plan"
@@ -17,6 +21,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/pg-sharding/spqr/router/server"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -698,12 +703,139 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			ExecTarget: et,
 		}
 
-		if len(inp.ExecutionTargets()) == 1 && inp.ExecutionTargets()[0].Name == et.Name {
+		deleteSliceExecTargets := inp.ExecutionTargets()
+
+		if len(deleteSliceExecTargets) == 1 && deleteSliceExecTargets[0].Name == et.Name {
 			return rPlan, nil
 		}
 
-		/* TODO: support if config.RouterConfig().Qr.AllowSplitUpdate  */
-		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
+		if !config.RouterConfig().Qr.AllowSplitUpdate {
+			return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
+		}
+
+		/* okay, go through all execution targets of sub-plan
+		* and do query rewrite: we want do DELETE old tuples on source shards
+		* as part of split-update. */
+
+		delQuery, err := planner.RewriteUpdateToDelete(rm.Query, rqdn)
+		if err != nil {
+			return nil, err
+		}
+
+		/* Our real rewrite query would be
+		*COPY (delete statement RETURNING *) TO STDOUT BINARY.
+		 **/
+
+		copyQuery := fmt.Sprintf(`COPY (%s RETURNING *) TO STDOUT BINARY`, delQuery)
+
+		deleteSubplan := &plan.ScatterPlan{
+			OverwriteQuery: map[string]string{},
+			ExecTargets:    deleteSliceExecTargets,
+		}
+
+		for _, et := range deleteSliceExecTargets {
+			deleteSubplan.OverwriteQuery[et.Name] = copyQuery
+		}
+
+		/* Also define run function */
+
+		copyData := make([]pgproto3.CopyData, 0)
+
+		deleteSubplan.RunF = func(serv server.Server) error {
+			for _, sh := range serv.Datashards() {
+
+				var errmsg *pgproto3.ErrorResponse
+
+				if !slices.ContainsFunc(deleteSliceExecTargets, func(el kr.ShardKey) bool {
+					return sh.Name() == el.Name
+				}) {
+					continue
+				}
+			shLoop:
+				for {
+					msg, err := serv.ReceiveShard(sh.ID())
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+						}
+
+						break shLoop
+					case *pgproto3.ErrorResponse:
+						errmsg = v
+					case *pgproto3.CopyData:
+						copyData = append(copyData, *v)
+					default:
+						/* All ok? */
+					}
+				}
+			}
+
+			return nil
+		}
+
+		/* This is pretty ugly, fix it someday */
+		insertSubplan := &plan.ScatterPlan{
+			ExecTargets: []kr.ShardKey{et},
+			OverwriteQuery: map[string]string{
+				et.Name: fmt.Sprintf(`COPY "%s" FROM STDIN BINARY`, rqdn.String()),
+			},
+			RunF: func(serv server.Server) error {
+
+				targetShardId := uint(0)
+				for _, sh := range serv.Datashards() {
+					if sh.Name() == et.Name {
+						targetShardId = sh.ID()
+					}
+				}
+
+				var errmsg *pgproto3.ErrorResponse
+
+				for _, msg := range copyData {
+					if err := serv.SendShard(&msg, et); err != nil {
+						return err
+					}
+				}
+
+				if err := serv.SendShard(&pgproto3.CopyDone{}, et); err != nil {
+					return err
+				}
+
+				for {
+					msg, err := serv.ReceiveShard(targetShardId)
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+						}
+
+						return nil
+					case *pgproto3.ErrorResponse:
+						errmsg = v
+					default:
+						/* All ok? */
+					}
+				}
+			},
+		}
+
+		/* Workflow is
+		* COPY (DELETE) -> COPY FROM STDIN -> UPDATE on destination shard
+		 */
+
+		insertSubplan.SubSlice = deleteSubplan
+
+		rPlan.SP = insertSubplan
+
+		return rPlan, nil
 
 	default:
 		return nil, rerrors.ErrComplexQuery

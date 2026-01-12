@@ -6,8 +6,48 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestUpdate2DeleteQuery(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		name     string
+		query    string
+		expected string
+		rel      *rfqn.RelationFQN
+		wantErr  bool
+	}
+
+	for _, tt := range []tcase{
+		{
+			name:     "plain update",
+			query:    "UPDATE rel SET i = i + 1 WHERE j = 23 OR k = 312",
+			rel:      rfqn.RelationFQNFromFullName("public", "rel"),
+			expected: `DELETE FROM "public.rel" WHERE j = 23 OR k = 312`,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := RewriteUpdateToDelete(tt.query, tt.rel)
+
+			if tt.wantErr && err == nil {
+				t.Errorf("ModifyQuery/%s expected error, got nil. Plan: %+v", tt.name, result)
+				return
+			}
+
+			if err != nil {
+				if (err != nil) != tt.wantErr {
+					t.Errorf("ModifyQuery/%s error = %v, wantErr %v", tt.name, err, tt.wantErr)
+				}
+				return
+			}
+
+			assert.Equal(tt.expected, result)
+		})
+	}
+}
 
 func TestModifyQuery(t *testing.T) {
 	assert := assert.New(t)

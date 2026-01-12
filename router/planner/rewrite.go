@@ -13,7 +13,24 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/router/rfqn"
 )
+
+func RewriteUpdateToDelete(query string, rqdn *rfqn.RelationFQN) (string, error) {
+
+	if query[len(query)-1] == ';' {
+		query = query[:len(query)-1]
+	}
+
+	// Find the WHERE keyword
+	// we expect query in form of simple update, no CTE or RETURNING.
+	valuesKeywordStart := strings.Index(strings.ToUpper(query), "WHERE")
+	if valuesKeywordStart == -1 {
+		return "", fmt.Errorf("invalid query: missing VALUES clause")
+	}
+
+	return fmt.Sprintf(`DELETE FROM "%s" %s`, rqdn.String(), query[valuesKeywordStart:]), nil
+}
 
 func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
 
