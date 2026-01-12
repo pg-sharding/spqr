@@ -135,3 +135,9 @@ NOTICE: send query to shard(s) : sh2
 ```
 
 Whenever router need new autoincrement value it ask it from coordinator. To improve performance generating autoincrement values you can set `identity_range_size` in router config file. This parameter set size of range identifiers which router get  from coordinator in a time.
+
+To remove a sequence, use the [DROP SEQUENCE](/sharding/console/sql_commands#drop-sequence) command in the SPQR console:
+
+```sql
+DROP SEQUENCE country_regions_id CASCADE;
+```
