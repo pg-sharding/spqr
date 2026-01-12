@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"fmt"
 	"maps"
 
 	"github.com/pg-sharding/lyx/lyx"
@@ -19,6 +20,8 @@ type Plan interface {
 
 	/* get SubPlan if any */
 
+	RunSlice() error
+
 	Subplan() Plan
 }
 
@@ -26,11 +29,16 @@ type ScatterPlan struct {
 	Plan
 	SubPlan Plan
 
+	/* explicitly set-up link to next slice */
+	SubSlice Plan
+
 	stmt lyx.Node
 
 	/* To decide if query is OK even in DRH = BLOCK */
 	IsDDL  bool
 	Forced bool
+
+	runF func() error
 
 	OverwriteQuery map[string]string
 	/* Empty means execute everywhere */
@@ -57,7 +65,14 @@ func (s *ScatterPlan) GetGangMemberMsg(sh kr.ShardKey) string {
 }
 
 func (s *ScatterPlan) Subplan() Plan {
-	return s.SubPlan
+	return s.SubSlice
+}
+
+func (s *ScatterPlan) RunSlice() error {
+	if s.runF == nil {
+		return fmt.Errorf("execution failed, run function missing")
+	}
+	return s.runF()
 }
 
 var _ Plan = &ScatterPlan{}
@@ -88,6 +103,10 @@ func (s *ModifyTable) Subplan() Plan {
 	return nil
 }
 
+func (s *ModifyTable) RunSlice() error {
+	return fmt.Errorf("unexpected run function call")
+}
+
 var _ Plan = &ModifyTable{}
 
 type ShardDispatchPlan struct {
@@ -96,6 +115,7 @@ type ShardDispatchPlan struct {
 	/* Subplan */
 
 	subplan Plan
+	runF    func() error
 
 	PStmt              lyx.Node
 	ExecTarget         kr.ShardKey
@@ -120,6 +140,13 @@ func (s *ShardDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
 
 func (s *ShardDispatchPlan) Subplan() Plan {
 	return s.subplan
+}
+
+func (s *ShardDispatchPlan) RunSlice() error {
+	if s.runF == nil {
+		return fmt.Errorf("execution failed, run function missing")
+	}
+	return s.runF()
 }
 
 var _ Plan = &ShardDispatchPlan{}
@@ -149,6 +176,10 @@ func (s *RandomDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
 
 func (s *RandomDispatchPlan) Subplan() Plan {
 	return nil
+}
+
+func (s *RandomDispatchPlan) RunSlice() error {
+	return fmt.Errorf("unexpected run function call")
 }
 
 var _ Plan = &RandomDispatchPlan{}
@@ -182,6 +213,10 @@ func (s *VirtualPlan) Subplan() Plan {
 	return nil
 }
 
+func (s *VirtualPlan) RunSlice() error {
+	return fmt.Errorf("unexpected run function call")
+}
+
 var _ Plan = &VirtualPlan{}
 
 type DataRowFilter struct {
@@ -212,7 +247,11 @@ func (s *DataRowFilter) GetGangMemberMsg(sh kr.ShardKey) string {
 }
 
 func (s *DataRowFilter) Subplan() Plan {
-	return s.SubPlan
+	return s.SubPlan.Subplan()
+}
+
+func (s *DataRowFilter) RunSlice() error {
+	return s.SubPlan.RunSlice()
 }
 
 var _ Plan = &DataRowFilter{}
@@ -242,6 +281,10 @@ func (s *CopyPlan) GetGangMemberMsg(kr.ShardKey) string {
 
 func (s *CopyPlan) Subplan() Plan {
 	return nil
+}
+
+func (s *CopyPlan) RunSlice() error {
+	return fmt.Errorf("unexpected run function call")
 }
 
 var _ Plan = &CopyPlan{}

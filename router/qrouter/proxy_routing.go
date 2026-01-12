@@ -5,8 +5,10 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/plan"
@@ -534,6 +536,181 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 	}
 }
 
+func (qr *ProxyQrouter) plannerV1(
+	ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+) (plan.Plan, error) {
+	/* Top level plan */
+	p, err := qr.RouteWithRules(ctx, rm, rm.Stmt)
+
+	if err != nil {
+		return nil, err
+	}
+
+	tmp, err := rm.RouteByTuples(ctx, rm.SPH.GetTsa())
+	if err != nil {
+		return nil, err
+	}
+
+	p = plan.Combine(p, tmp)
+
+	// set up this variable if not yet
+	if p == nil {
+		p = &plan.ScatterPlan{
+			ExecTargets: qr.DataShardsRoutes(),
+		}
+	}
+	return p, nil
+}
+
+func (qr *ProxyQrouter) planSplitUpdate(
+	ctx context.Context,
+	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
+
+	/*
+	* Here we want to support distribution column update,
+	* i.e. UPDATE <rel> SET <col> = <value> WHERE <col> = <old value>.
+	* There can be more that one row which WHERE clause returns.
+	* If we allowed do plan split-update, there are still some restrictions.
+	* First of all, reject query planing if it has CTE.
+	* Also we do not yet support returning for now.
+	 */
+
+	stmt := rm.Stmt
+
+	switch q := stmt.(type) {
+	case *lyx.Update:
+
+		if q.WithClause != nil {
+			return nil, rerrors.ErrComplexQuery
+		}
+		if q.Returning != nil {
+			return nil, rerrors.ErrComplexQuery
+		}
+
+		var distribCols []string
+		var d *distributions.Distribution
+		var r *distributions.DistributedRelation
+
+		var rqdn *rfqn.RelationFQN
+
+		switch tr := q.TableRef.(type) {
+		case *lyx.RangeVar:
+			rqdn = rfqn.RelationFQNFromRangeRangeVar(tr)
+
+			var err error
+			d, err = rm.GetRelationDistribution(ctx, rqdn)
+			if err != nil {
+				return nil, err
+			}
+
+			r = d.GetRelation(rqdn)
+			distribCols, err = r.GetDistributionKeyColumns()
+			if err != nil {
+				return nil, err
+			}
+
+			if len(distribCols) != 1 {
+				/* TODO: multi-column support here */
+				return nil, rerrors.ErrComplexQuery
+			}
+
+		default:
+			return nil, rerrors.ErrComplexQuery
+		}
+
+		var et kr.ShardKey
+
+		/* inner plan */
+
+		inp, err := qr.plannerV1(ctx, rm)
+		if err != nil {
+			return nil, err
+		}
+
+		/* cleanup temporal state */
+
+		/* XXX: introduce Reset() and use */
+		rm.ParamRefs = map[rfqn.RelationFQN]map[string][]int{}
+		rm.Exprs = map[rfqn.RelationFQN]map[string][]any{}
+
+		for _, c := range q.SetClause {
+			switch rt := c.(type) {
+			case *lyx.ResTarget:
+				if rt.Name == distribCols[0] {
+
+					if err := rm.ProcessConstExprOnRFQN(rqdn, rt.Name, []lyx.Node{rt.Value}); err != nil {
+						return nil, err
+					}
+
+					spqrlog.Zero.Debug().Msgf("rm params %+v", rm.Exprs)
+
+					queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
+
+					krs, err := rm.Mgr.ListKeyRanges(ctx, d.Id)
+					if err != nil {
+						return nil, err
+					}
+
+					hf, err := hashfunction.HashFunctionByName(r.DistributionKey[0].HashFunction)
+					if err != nil {
+						spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
+						return nil, err
+					}
+
+					/* len should be one */
+					compositeKey := make([]any, len(r.DistributionKey))
+
+					valList, err := rm.ResolveValue(rqdn, rt.Name, queryParamsFormatCodes)
+
+					if err != nil {
+						/* Is this ok? */
+						return nil, err
+					}
+
+					if len(valList) != 1 {
+						/* should not happen */
+						return nil, rerrors.ErrComplexQuery
+					}
+
+					compositeKey[0], err = hashfunction.ApplyHashFunction(valList[0], d.ColTypes[0], hf)
+
+					if err != nil {
+						return nil, err
+					}
+
+					currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
+					if err != nil {
+						spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
+						return nil, err
+					}
+					et = currroute
+
+				}
+			default:
+				return nil, rerrors.ErrComplexQuery
+			}
+		}
+
+		/* Our top-level plan will be single-shard slice
+		* which should be executed where <col> = <value> locates. */
+		rPlan := &plan.ShardDispatchPlan{
+			ExecTarget: et,
+		}
+
+		if len(inp.ExecutionTargets()) == 1 && inp.ExecutionTargets()[0].Name == et.Name {
+			return rPlan, nil
+		}
+
+		/* TODO: support if config.RouterConfig().Qr.AllowSplitUpdate  */
+		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
+
+	default:
+		return nil, rerrors.ErrComplexQuery
+	}
+
+}
+
 func (qr *ProxyQrouter) PlanQueryExtended(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
@@ -552,8 +729,13 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 	if err != nil {
 		return nil, err
 	}
+
 	if utilityPlan != nil {
 		return utilityPlan, nil
+	}
+
+	if rm.IsSplitUpdate {
+		return qr.planSplitUpdate(ctx, rm)
 	}
 
 	if rm.SPH.PreferredEngine() == planner.EnhancedEngineVersion {
@@ -566,24 +748,9 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 		}
 	} else {
 		/* Top level plan */
-		p, err = qr.RouteWithRules(ctx, rm, rm.Stmt)
-
+		p, err = qr.plannerV1(ctx, rm)
 		if err != nil {
 			return nil, err
-		}
-
-		tmp, err := rm.RouteByTuples(ctx, rm.SPH.GetTsa())
-		if err != nil {
-			return nil, err
-		}
-
-		p = plan.Combine(p, tmp)
-
-		// set up this variable if not yet
-		if p == nil {
-			p = &plan.ScatterPlan{
-				ExecTargets: qr.DataShardsRoutes(),
-			}
 		}
 	}
 

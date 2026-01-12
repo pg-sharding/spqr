@@ -133,6 +133,8 @@ type QRouter struct {
 	StrictOperators              bool                  `json:"strict_operators" toml:"strict_operators" yaml:"strict_operators"`
 	PreferEngine                 string                `json:"prefer_engine" toml:"prefer_engine" yaml:"prefer_engine"`
 
+	AllowSplitUpdate bool `json:"allow_split_update" toml:"allow_split_update" yaml:"allow_split_update"`
+
 	/* XXX: for now, supported only for single-shard topology */
 	AutoRouteRoOnStandby bool `json:"auto_route_ro_on_standby" toml:"auto_route_ro_on_standby" yaml:"auto_route_ro_on_standby"`
 }
