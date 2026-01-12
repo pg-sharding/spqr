@@ -40,7 +40,7 @@ CREATE DISTRIBUTION ds5 COLUMN TYPES integer, varchar hash;
 
 ### DROP DISTRIBUTION
 
-This command is used to drop an existing distribution with the specified name. The CASCADE keyword is optional and indicates that any dependent objects should also be dropped.
+This command is used to drop an existing distribution with the specified name. The `CASCADE` keyword is optional and indicates that any dependent objects should also be dropped.
 
 ```sql
 DROP DISTRIBUTION <distribution_name> [CASCADE]
@@ -110,14 +110,11 @@ CREATE REFERENCE TABLE <table_name> [AUTO INCREMENT <column_name START start_val
 
 ### DROP SEQUENCE
 
-This command is used to drop [a sequence](/sharding/reference_tables#sequences).
+This command is used to drop [a sequence](/sharding/reference_tables#sequences).  The `CASCADE` keyword is optional and indicates that any dependent objects should also be dropped.
+
 
 ```sql
-DROP SEQUENCE t1_id;
-   drop sequence   
--------------------
- sequence -> t1_id
-(1 row)
+DROP SEQUENCE <sequence_name> [CASCADE]
 ```
 
 ### SYNC REFERENCE TABLE
