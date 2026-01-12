@@ -445,12 +445,16 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return nil, err
 		}
 
+		tableName := r.TableName
+		if r.SchemaName != "" {
+			tableName = r.SchemaName + "." + r.TableName
+		}
 		/* XXX: can we already make this more SQL compliant?  */
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("create reference table"),
 			Raw: [][][]byte{
 				{
-					fmt.Appendf(nil, "table    -> %s", r.TableName),
+					fmt.Appendf(nil, "table    -> %s", tableName),
 				},
 				{
 					fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIds, ",")),

@@ -201,6 +201,7 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 	return lc.AlterDistributionAttach(ctx, selectedDistribId, []*distributions.DistributedRelation{
 		{
 			Name:                  r.TableName,
+			SchemaName:            r.SchemaName,
 			ReplicatedRelation:    true,
 			ColumnSequenceMapping: ret,
 		},
