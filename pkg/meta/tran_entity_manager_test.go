@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -53,7 +54,7 @@ func TestTranGetDistribution(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 		ds0 := distributions.NewDistribution("ds0", []string{"integer"})
 		chunk, err := mngr.CreateDistribution(ctx, ds0)
 		is.NoError(err)
@@ -93,7 +94,7 @@ func TestTranGetDistribution(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 		ds0 := distributions.NewDistribution("ds0", []string{"integer"})
 		chunk, err := mngr.CreateDistribution(ctx, ds0)
 		is.NoError(err)

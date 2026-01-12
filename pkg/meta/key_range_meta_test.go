@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -95,7 +96,7 @@ func TestValidateKeyRangeForCreate_happyPath(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	assert.NoError(t, meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	err = mngr.CreateKeyRange(ctx, kr2)
@@ -107,7 +108,7 @@ func TestValidateKeyRangeForCreate_intersectWithExistsSameShard(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 	err = mngr.CreateKeyRange(ctx, kr1)
@@ -119,7 +120,7 @@ func TestValidateKeyRangeForCreate_intersectWithExistsAnotherShard(t *testing.T)
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 	err = mngr.CreateKeyRange(ctx, kr1)
@@ -133,7 +134,7 @@ func TestValidateKeyRangeForCreate_equalBound(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 	err = mngr.CreateKeyRange(ctx, kr1)
@@ -147,7 +148,7 @@ func TestValidateKeyRangeForModify_happyPath(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	err = mngr.CreateKeyRange(ctx, kr2)
@@ -160,7 +161,7 @@ func TestValidateKeyRangeForModify_lock_fail(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	err = mngr.CreateKeyRange(ctx, kr2)
@@ -179,7 +180,7 @@ func TestValidateKeyRangeForModify_intersection(t *testing.T) {
 	ctx := context.TODO()
 	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 	err = mngr.CreateKeyRange(ctx, kr2)
