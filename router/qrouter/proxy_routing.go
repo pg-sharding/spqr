@@ -569,8 +569,8 @@ func (qr *ProxyQrouter) planSplitUpdate(
 
 	/*
 	* Here we want to support distribution column update,
-	* i.e. UPDATE <rel> SET <col> = <value> WHERE <col> = <oldvalue>.
-	* There can be more that one row which WHERE cluase returns.
+	* i.e. UPDATE <rel> SET <col> = <value> WHERE <col> = <old value>.
+	* There can be more that one row which WHERE clause returns.
 	* If we allowed do plan split-update, there are still some restrictions.
 	* First of all, reject query planing if it has CTE.
 	* Also we do not yet support returning for now.
