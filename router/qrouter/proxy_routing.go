@@ -2,13 +2,16 @@ package qrouter
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/plan"
@@ -17,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/pg-sharding/spqr/router/server"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -698,12 +702,64 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			ExecTarget: et,
 		}
 
-		if len(inp.ExecutionTargets()) == 1 && inp.ExecutionTargets()[0].Name == et.Name {
+		innerETs := inp.ExecutionTargets()
+
+		if len(innerETs) == 1 && innerETs[0].Name == et.Name {
 			return rPlan, nil
 		}
 
-		/* TODO: support if config.RouterConfig().Qr.AllowSplitUpdate  */
-		return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
+		if !config.RouterConfig().Qr.AllowSplitUpdate {
+			return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
+		}
+
+		/* okay, go throught all execution targets of sub-plan
+		* and do query rewrite: we want do DELETE old tuples on source shards
+		* as part of split-update. */
+
+		delQuery, err := planner.RewriteUpdateToDelete(rm.Query, rqdn)
+		if err != nil {
+			return nil, err
+		}
+
+		subPlan := &plan.ScatterPlan{
+			OverwriteQuery: map[string]string{},
+			ExecTargets:    innerETs,
+		}
+
+		for _, et := range innerETs {
+			subPlan.OverwriteQuery[et.Name] = delQuery
+		}
+
+		/* Also define runfunction */
+
+		subPlan.RunF = func(serv server.Server) error {
+
+			var errmsg *pgproto3.ErrorResponse
+
+			for {
+				msg, _, err := serv.Receive()
+				if err != nil {
+					return err
+				}
+
+				switch v := msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					if v.TxStatus == byte(txstatus.TXERR) {
+						return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+					}
+
+					return nil
+				case *pgproto3.ErrorResponse:
+					errmsg = v
+				default:
+					/* All ok? */
+				}
+			}
+		}
+
+		rPlan.SP = subPlan
+
+		return rPlan, nil
 
 	default:
 		return nil, rerrors.ErrComplexQuery

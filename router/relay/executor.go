@@ -147,7 +147,7 @@ func (s *QueryStateExecutorImpl) InitPlan(p plan.Plan) error {
 
 	/* Traverse and create gang for each slice. */
 
-	if len(s.ActiveShards()) > 1 {
+	if len(s.ActiveShards()) > 1 || p.Subplan() != nil {
 		serv, err = server.NewMultiShardServer(s.Client().Route().MultiShardPool())
 		if err != nil {
 			return err
@@ -815,12 +815,20 @@ func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Pl
 		simple: true,
 	}
 
-	/* Now dispatch this toplevel slice */
-	if err := DispatchSlice(qd, p, s.Client(), false); err != nil {
+	spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msgf("dispatching slice plan: %+v", p)
+
+	/* Before dispatching slice, expand server, if needed */
+
+	if err := s.ExpandRoutes(p.ExecutionTargets()); err != nil {
 		return err
 	}
 
-	return p.RunSlice()
+	/* Now dispatch this toplevel slice */
+	if err := DispatchSlice(qd, p, s.Client(), true); err != nil {
+		return err
+	}
+
+	return p.RunSlice(serv)
 }
 
 // TODO : unit tests

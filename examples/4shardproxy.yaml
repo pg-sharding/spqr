@@ -28,6 +28,7 @@ memqdb_backup_path: "memqdb.json"
 query_routing:
     enhanced_multishard_processing: true
     strict_operators: true
+    allow_split_update: true
 
 frontend_tls:
   key_file: /etc/odyssey/ssl/server.key
@@ -103,11 +104,12 @@ watchdog_backend_rule:
   pool_discard: true
   pool_rollback: true
 
-enable_2pc_watchdog: true
+enable_2pc_watchdog: false
 
 schema_cache_backend_rule:
   usr: regress
   db: regress
   pool_discard: true
   pool_rollback: true
+
 

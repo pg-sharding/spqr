@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
+	"github.com/pg-sharding/spqr/router/server"
 )
 
 type Plan interface {
@@ -20,7 +21,7 @@ type Plan interface {
 
 	/* get SubPlan if any */
 
-	RunSlice() error
+	RunSlice(server.Server) error
 
 	Subplan() Plan
 }
@@ -38,7 +39,7 @@ type ScatterPlan struct {
 	IsDDL  bool
 	Forced bool
 
-	runF func() error
+	RunF func(server.Server) error
 
 	OverwriteQuery map[string]string
 	/* Empty means execute everywhere */
@@ -68,11 +69,11 @@ func (s *ScatterPlan) Subplan() Plan {
 	return s.SubSlice
 }
 
-func (s *ScatterPlan) RunSlice() error {
-	if s.runF == nil {
+func (s *ScatterPlan) RunSlice(serv server.Server) error {
+	if s.RunF == nil {
 		return fmt.Errorf("execution failed, run function missing")
 	}
-	return s.runF()
+	return s.RunF(serv)
 }
 
 var _ Plan = &ScatterPlan{}
@@ -103,7 +104,7 @@ func (s *ModifyTable) Subplan() Plan {
 	return nil
 }
 
-func (s *ModifyTable) RunSlice() error {
+func (s *ModifyTable) RunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
@@ -114,8 +115,8 @@ type ShardDispatchPlan struct {
 
 	/* Subplan */
 
-	subplan Plan
-	runF    func() error
+	SP   Plan
+	runF func(server.Server) error
 
 	PStmt              lyx.Node
 	ExecTarget         kr.ShardKey
@@ -139,14 +140,14 @@ func (s *ShardDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
 }
 
 func (s *ShardDispatchPlan) Subplan() Plan {
-	return s.subplan
+	return s.SP
 }
 
-func (s *ShardDispatchPlan) RunSlice() error {
+func (s *ShardDispatchPlan) RunSlice(serv server.Server) error {
 	if s.runF == nil {
 		return fmt.Errorf("execution failed, run function missing")
 	}
-	return s.runF()
+	return s.runF(serv)
 }
 
 var _ Plan = &ShardDispatchPlan{}
@@ -178,7 +179,7 @@ func (s *RandomDispatchPlan) Subplan() Plan {
 	return nil
 }
 
-func (s *RandomDispatchPlan) RunSlice() error {
+func (s *RandomDispatchPlan) RunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
@@ -213,7 +214,7 @@ func (s *VirtualPlan) Subplan() Plan {
 	return nil
 }
 
-func (s *VirtualPlan) RunSlice() error {
+func (s *VirtualPlan) RunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
@@ -250,8 +251,8 @@ func (s *DataRowFilter) Subplan() Plan {
 	return s.SubPlan.Subplan()
 }
 
-func (s *DataRowFilter) RunSlice() error {
-	return s.SubPlan.RunSlice()
+func (s *DataRowFilter) RunSlice(serv server.Server) error {
+	return s.SubPlan.RunSlice(serv)
 }
 
 var _ Plan = &DataRowFilter{}
@@ -283,7 +284,7 @@ func (s *CopyPlan) Subplan() Plan {
 	return nil
 }
 
-func (s *CopyPlan) RunSlice() error {
+func (s *CopyPlan) RunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
@@ -291,6 +292,7 @@ var _ Plan = &CopyPlan{}
 
 const NOSHARD = ""
 
+/* XXX: check subplain here? */
 func mergeExecTargets(l, r []kr.ShardKey) []kr.ShardKey {
 	/* XXX: nil means all */
 	if l == nil {
