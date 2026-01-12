@@ -26,7 +26,8 @@ run_tests () {
 }
 
 insert_greeting () {
-    for f in /regress/tests/common/expected/*; do 
+    testDir=$1
+    for f in /regress/tests/$testDir/expected/*; do 
     echo -e "
 \t\tSPQR router admin console
 \tHere you can configure your routing rules
@@ -40,12 +41,14 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 }
 
 
+
 echo "wait for services started"
 sleep 10
 echo "init cluster"
 run_tests "init_cluster" "regress_coordinator" "7002"
 sleep 10
 echo "go test!"
+insert_greeting "console"
 run_tests "console" "regress_router" "7432"
 #TODO: fix bugs, remove commented 'run_tests'
 #run_tests "router" "regress_router" "6432"
@@ -59,7 +62,7 @@ echo "go test!"
 
 # these tests are to compare the results of the local and qdb coordinators
 #run_tests "common" "regress_coordinator" "7002"
-#insert_greeting
+#insert_greeting "common"
 #run_tests "common" "regress_router" "7432"
 
 # test if diffs are empty

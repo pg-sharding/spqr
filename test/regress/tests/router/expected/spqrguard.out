@@ -1,7 +1,5 @@
 SET __spqr__maintain_params TO TRUE;
 SET allow_system_table_mods TO true;
-CREATE EXTENSION spqrguard;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE guard_zz(i INT) /* __spqr__auto_distribution: REPLICATED */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT spqr_metadata.mark_reference_relation('guard_zz') /* __spqr__execute_on: sh1 */;
@@ -34,13 +32,28 @@ NOTICE: send query to shard(s) : sh4
 
 INSERT INTO guard_zz (i) VALUES(1);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-SET spqrguard.prevent_reference_table_modify TO on;
+INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, true) /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, true) /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, true) /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+INSERT INTO spqr_metadata.spqr_global_settings VALUES (69, true) /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
 INSERT INTO guard_zz (i) VALUES(1);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  unable to modify SPQR reference relation within read-only transaction
-DROP TABLE guard_zz;
+DELETE FROM spqr_metadata.spqr_global_settings WHERE name = 69 /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+DELETE FROM spqr_metadata.spqr_global_settings WHERE name = 69 /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+DELETE FROM spqr_metadata.spqr_global_settings WHERE name = 69 /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+DELETE FROM spqr_metadata.spqr_global_settings WHERE name = 69 /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+INSERT INTO guard_zz (i) VALUES(1);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-DROP EXTENSION spqrguard;
+DROP TABLE guard_zz;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 

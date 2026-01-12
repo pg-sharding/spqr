@@ -2,6 +2,10 @@ package qdb_test
 
 import (
 	"context"
+	"encoding/json"
+	"maps"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -46,7 +50,16 @@ func TestMemqdbRacing(t *testing.T) {
 	ctx := context.TODO()
 
 	methods := []func(){
-		func() { _ = memqdb.CreateDistribution(ctx, mockDistribution) },
+		func() {
+			if stmts, err := memqdb.CreateDistribution(ctx, mockDistribution); err != nil {
+				panic("fail run CreateDistribution in race test (prepare phase)")
+			} else {
+				if err = memqdb.ExecNoTransaction(ctx, stmts); err != nil {
+					panic("fail run CreateDistribution in race test (exec phase)")
+				}
+			}
+
+		},
 		func() { _ = memqdb.CreateKeyRange(ctx, mockKeyRange) },
 		func() { _ = memqdb.AddRouter(ctx, mockRouter) },
 		func() { _ = memqdb.AddShard(ctx, mockShard) },
@@ -70,6 +83,45 @@ func TestMemqdbRacing(t *testing.T) {
 		},
 		func() { _ = memqdb.UpdateKeyRange(ctx, mockKeyRange) },
 		func() { _ = memqdb.DeleteRouter(ctx, mockRouter.ID) },
+		func() {
+			tran1, err := qdb.NewTransaction()
+			if err != nil {
+				panic("can't create transaction structure (begin transaction test)!")
+			}
+			_ = memqdb.BeginTransaction(ctx, tran1)
+		},
+		func() {
+			dataDistribution1, err := json.Marshal(mockDistribution)
+			if err != nil {
+				panic("can't unmarshal distribution (exec no transaction test)!")
+			}
+			commands := []qdb.QdbStatement{
+				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
+			}
+			_ = memqdb.ExecNoTransaction(ctx, commands)
+		},
+		func() {
+			tran, err := qdb.NewTransaction()
+			if err != nil {
+				panic("can't create transaction structure (commit transaction test)!")
+			}
+			dataDistribution1, err := json.Marshal(mockDistribution)
+			if err != nil {
+				panic("can't unmarshal distribution case(1)!")
+			}
+			commands := []qdb.QdbStatement{
+				{CmdType: qdb.CMD_PUT, Key: mockDistribution.ID, Value: string(dataDistribution1), Extension: qdb.MapDistributions},
+			}
+			err = tran.Append(commands)
+			if err != nil {
+				panic("fail append commands to transaction!")
+			}
+			err = memqdb.BeginTransaction(ctx, tran)
+			if err != nil {
+				panic("can't begin transaction!")
+			}
+			_ = memqdb.ExecNoTransaction(ctx, commands)
+		},
 	}
 	for range 1000 {
 		for _, m := range methods {
@@ -94,11 +146,15 @@ func TestDistributions(t *testing.T) {
 
 	ctx := context.TODO()
 
-	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
-
+	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
 	assert.NoError(err)
 
-	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", nil))
+	chunk, err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", nil))
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
+	assert.NoError(err)
 
 	assert.NoError(err)
 
@@ -156,7 +212,10 @@ func TestMemQDB_GetNotAttachedRelationDistribution(t *testing.T) {
 
 	ctx := context.TODO()
 
-	assert.NoError(memQDB.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil)))
+	chunk, err := memQDB.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+	err = memQDB.ExecNoTransaction(ctx, chunk)
+	assert.NoError(err)
 
 	_, err = memQDB.GetRelationDistribution(ctx, &rfqn.RelationFQN{RelationName: "rel"})
 	assert.Error(err)
@@ -211,11 +270,15 @@ func TestKeyRanges(t *testing.T) {
 
 	ctx := context.TODO()
 
-	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
-
+	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
 	assert.NoError(err)
 
-	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", nil))
+	chunk, err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", nil))
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
+	assert.NoError(err)
 
 	assert.NoError(err)
 
@@ -245,10 +308,14 @@ func Test_MemQDB_GetKeyRange(t *testing.T) {
 
 	ctx := context.TODO()
 
-	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
 	assert.NoError(err)
 
-	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", nil))
+	chunk, err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", nil))
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
 	assert.NoError(err)
 
 	keyRange1 := qdb.KeyRange{
@@ -313,4 +380,218 @@ func TestMemQDB_NextVal(t *testing.T) {
 	idRange, err := memqdb.NextRange(ctx, "seq", 1)
 	assert.NoError(err)
 	assert.Equal(expectedValue, idRange.Right)
+}
+
+func TestMemQDB_DropKeyRange(t *testing.T) {
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
+	assert.NoError(err)
+
+	// Basic drop
+	keyRange1 := &qdb.KeyRange{
+		KeyRangeID:     "krid1",
+		LowerBound:     [][]byte{[]byte("1")},
+		ShardID:        "sh1",
+		DistributionId: "ds1",
+	}
+	assert.NoError(memqdb.CreateKeyRange(ctx, keyRange1))
+
+	kr1, ok := memqdb.Krs["krid1"]
+	assert.True(ok)
+	assert.Equal("krid1", kr1.KeyRangeID)
+	_, ok = memqdb.Locks["krid1"]
+	assert.True(ok)
+
+	assert.NoError(memqdb.DropKeyRange(ctx, "krid1"))
+	_, ok = memqdb.Krs["krid1"]
+	assert.False(ok)
+	_, ok = memqdb.Locks["krid1"]
+	assert.False(ok)
+
+	// Drop non-existent KR
+	assert.NoError(memqdb.DropKeyRange(ctx, "krid1"))
+
+	// Lock missing
+	keyRange2 := &qdb.KeyRange{
+		KeyRangeID:     "krid2",
+		LowerBound:     [][]byte{[]byte("2")},
+		ShardID:        "sh1",
+		DistributionId: "ds1",
+	}
+	assert.NoError(memqdb.CreateKeyRange(ctx, keyRange2))
+
+	delete(memqdb.Locks, "krid2")
+	err = memqdb.DropKeyRange(ctx, "krid2")
+	assert.Error(err)
+	assert.Contains(err.Error(), "no lock in MemQDB")
+
+	kr2, ok := memqdb.Krs["krid2"]
+	assert.True(ok)
+	assert.Equal("krid2", kr2.KeyRangeID)
+	_, ok = memqdb.Locks["krid2"]
+	assert.False(ok)
+
+	// KR locked
+	keyRange3 := &qdb.KeyRange{
+		KeyRangeID:     "krid3",
+		LowerBound:     [][]byte{[]byte("3")},
+		ShardID:        "sh1",
+		DistributionId: "ds1",
+	}
+	assert.NoError(memqdb.CreateKeyRange(ctx, keyRange3))
+
+	kr3, ok := memqdb.Krs["krid3"]
+	assert.True(ok)
+	assert.Equal("krid3", kr3.KeyRangeID)
+	lock3, ok := memqdb.Locks["krid3"]
+	assert.True(ok)
+
+	lock3.Lock()
+	defer lock3.Unlock()
+	err = memqdb.DropKeyRange(ctx, "krid3")
+	assert.Error(err)
+	assert.Contains(err.Error(), "is locked")
+
+	_, ok = memqdb.Krs["krid3"]
+	assert.True(ok)
+}
+
+func TestMemQDB_RenameKeyRange(t *testing.T) {
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(ctx, chunk)
+	assert.NoError(err)
+
+	initKeyRange := &qdb.KeyRange{
+		KeyRangeID:     "krid1",
+		LowerBound:     [][]byte{[]byte("1")},
+		ShardID:        "sh1",
+		DistributionId: "ds1",
+	}
+	assert.NoError(memqdb.CreateKeyRange(ctx, initKeyRange))
+
+	_, ok := memqdb.Krs["krid1"]
+	assert.True(ok)
+
+	origLock := memqdb.Locks["krid1"]
+
+	// Basic rename
+	assert.NoError(memqdb.RenameKeyRange(ctx, "krid1", "krid2"))
+
+	_, ok = memqdb.Krs["krid1"]
+	assert.False(ok)
+	krNew, ok := memqdb.Krs["krid2"]
+	assert.True(ok)
+	assert.Equal("krid2", krNew.KeyRangeID)
+	assert.Equal([][]byte{[]byte("1")}, krNew.LowerBound)
+	assert.Equal("sh1", krNew.ShardID)
+	assert.Equal("ds1", krNew.DistributionId)
+
+	_, ok = memqdb.Locks["krid1"]
+	assert.False(ok)
+	newLock, ok := memqdb.Locks["krid2"]
+	assert.True(ok)
+	assert.Equal(origLock, newLock)
+
+	// Rename non-existent KR
+	prev := maps.Clone(memqdb.Krs)
+	assert.Error(memqdb.RenameKeyRange(ctx, "krid1", "krid3"))
+	assert.Equal(prev, memqdb.Krs)
+
+	// Rename to existing KR
+	otherKeyRange := &qdb.KeyRange{
+		KeyRangeID:     "krid3",
+		LowerBound:     [][]byte{[]byte("3")},
+		ShardID:        "sh1",
+		DistributionId: "ds1",
+	}
+	assert.NoError(memqdb.CreateKeyRange(ctx, otherKeyRange))
+
+	assert.Error(memqdb.RenameKeyRange(ctx, "krid2", "krid3"))
+
+	kr2, ok := memqdb.Krs["krid2"]
+	assert.True(ok)
+	assert.Equal("krid2", kr2.KeyRangeID)
+	assert.Equal([][]byte{[]byte("1")}, kr2.LowerBound)
+	kr3, ok := memqdb.Krs["krid3"]
+	assert.True(ok)
+	assert.Equal("krid3", kr3.KeyRangeID)
+}
+
+func TestRestoreQDB_EmptyPath(t *testing.T) {
+	assert := assert.New(t)
+
+	q, err := qdb.RestoreQDB("")
+	assert.NoError(err)
+	assert.NotNil(q)
+}
+
+func TestRestoreQDB_NonexistentFile(t *testing.T) {
+	assert := assert.New(t)
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "backup.json")
+
+	_, statErr := os.Stat(path)
+	assert.Error(statErr)
+
+	q, err := qdb.RestoreQDB(path)
+	assert.NoError(err)
+	assert.NotNil(q)
+
+	_, statErr = os.Stat(path)
+	assert.NoError(statErr)
+}
+
+func TestRestoreQDB_InvalidJSON(t *testing.T) {
+	assert := assert.New(t)
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "backup.json")
+
+	writeErr := os.WriteFile(path, []byte("not json"), 0o644)
+	assert.NoError(writeErr)
+
+	q, err := qdb.RestoreQDB(path)
+	assert.Error(err)
+	assert.Nil(q)
+}
+
+func TestRestoreQDB_ValidJSON(t *testing.T) {
+	assert := assert.New(t)
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "backup.json")
+
+	orig, err := qdb.NewMemQDB(path)
+	assert.NoError(err)
+
+	orig.Coordinator = "coord-1"
+
+	data, err := json.Marshal(orig)
+	assert.NoError(err)
+
+	writeErr := os.WriteFile(path, data, 0o644)
+	assert.NoError(writeErr)
+
+	q, err := qdb.RestoreQDB(path)
+	assert.NoError(err)
+	assert.NotNil(q)
+
+	assert.Equal("coord-1", q.Coordinator)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/engine"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -19,6 +20,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
+	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -43,10 +46,12 @@ type EntityMgr interface {
 	tasks.TaskMgr
 	sequences.SequenceMgr
 	rrelation.ReferenceRelationMgr
+	mtran.TransactionMgr
 
 	ShareKeyRange(id string) error
 
 	QDB() qdb.QDB
+	DCStateKeeper() qdb.DCStateKeeper
 	Cache() *cache.SchemaCache
 }
 
@@ -107,8 +112,6 @@ func processDrop(ctx context.Context,
 
 			return tts, err
 		}
-	case *spqrparser.ShardingRuleSelector:
-		return nil, spqrerror.ShardingRulesRemoved
 	case *spqrparser.ReferenceRelationSelector:
 		/* XXX: fix reference relation selector to support schema-qualified names */
 		relName := &rfqn.RelationFQN{
@@ -134,7 +137,7 @@ func processDrop(ctx context.Context,
 		}
 
 		tts.Raw = [][][]byte{
-			[][]byte{
+			{
 				fmt.Appendf(nil, "relation -> %s", stmt.ID),
 			},
 		}
@@ -178,12 +181,21 @@ func processDrop(ctx context.Context,
 				return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID)
 			}
 
-			for _, rel := range ds.Relations {
-				qualifiedName := &rfqn.RelationFQN{RelationName: rel.Name, SchemaName: rel.SchemaName}
-				if err := mngr.AlterDistributionDetach(ctx, ds.Id, qualifiedName); err != nil {
+			for _, idx := range ds.UniqueIndexesByID {
+				if err := mngr.DropUniqueIndex(ctx, idx.ID); err != nil {
 					return nil, err
 				}
 			}
+
+			if stmt.ID != distributions.REPLICATED {
+				for _, rel := range ds.Relations {
+					qualifiedName := &rfqn.RelationFQN{RelationName: rel.Name, SchemaName: rel.SchemaName}
+					if err := mngr.AlterDistributionDetach(ctx, ds.Id, qualifiedName); err != nil {
+						return nil, err
+					}
+				}
+			}
+
 			if err := mngr.DropDistribution(ctx, stmt.ID); err != nil {
 				return nil, err
 			}
@@ -275,6 +287,20 @@ func processDrop(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.SequenceSelector:
+		rels, err := mngr.GetSequenceRelations(ctx, stmt.Name)
+		if err != nil {
+			return nil, err
+		}
+		if len(rels) > 0 && !isCascade {
+			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop sequence %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.Name)
+		}
+
+		for _, rel := range rels {
+			if err := mngr.QDB().AlterSequenceDetachRelation(ctx, rel); err != nil {
+				return nil, err
+			}
+		}
+
 		if err := mngr.DropSequence(ctx, stmt.Name, false); err != nil {
 			return nil, err
 		}
@@ -289,6 +315,18 @@ func processDrop(ctx context.Context,
 		}
 
 		return tts, nil
+	case *spqrparser.UniqueIndexSelector:
+		if err := mngr.DropUniqueIndex(ctx, stmt.ID); err != nil {
+			return nil, err
+		}
+		return &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("drop unique index"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "unique index -> %s", stmt.ID),
+				},
+			},
+		}, nil
 	default:
 		return nil, fmt.Errorf("unknown drop statement")
 	}
@@ -310,9 +348,13 @@ func createReplicatedDistribution(ctx context.Context, mngr EntityMgr) (*distrib
 			Id:       distributions.REPLICATED,
 			ColTypes: nil,
 		}
-		err := mngr.CreateDistribution(ctx, distribution)
+		chunk, err := mngr.CreateDistribution(ctx, distribution)
 		if err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
+			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution (prepare phase)")
+			return nil, err
+		}
+		if err = mngr.ExecNoTran(ctx, chunk); err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution (execute phase)")
 			return nil, err
 		}
 		return distribution, nil
@@ -357,8 +399,11 @@ func createNonReplicatedDistribution(ctx context.Context,
 		}
 	}
 
-	err = mngr.CreateDistribution(ctx, distribution)
+	chunk, err := mngr.CreateDistribution(ctx, distribution)
 	if err != nil {
+		return nil, err
+	}
+	if err = mngr.ExecNoTran(ctx, chunk); err != nil {
 		return nil, err
 	}
 	if defaultShard != nil {
@@ -400,12 +445,16 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return nil, err
 		}
 
+		tableName := r.TableName
+		if r.SchemaName != "" {
+			tableName = r.SchemaName + "." + r.TableName
+		}
 		/* XXX: can we already make this more SQL compliant?  */
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("create reference table"),
 			Raw: [][][]byte{
 				{
-					fmt.Appendf(nil, "table    -> %s", r.TableName),
+					fmt.Appendf(nil, "table    -> %s", tableName),
 				},
 				{
 					fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIds, ",")),
@@ -452,8 +501,6 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 				return tts, nil
 			}
 		}
-	case *spqrparser.ShardingRuleDefinition:
-		return nil, spqrerror.ShardingRulesRemoved
 	case *spqrparser.KeyRangeDefinition:
 		if stmt.Distribution.ID == "default" {
 			list, err := mngr.ListDistributions(ctx)
@@ -515,6 +562,32 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 
 		return tts, nil
+	case *spqrparser.UniqueIndexDefinition:
+		ds, err := mngr.GetRelationDistribution(ctx, stmt.TableName)
+		if err != nil {
+			return nil, err
+		}
+		if err := mngr.CreateUniqueIndex(ctx, ds.ID(), &distributions.UniqueIndex{ID: stmt.ID, RelationName: stmt.TableName, ColumnName: stmt.Column, ColType: stmt.ColType}); err != nil {
+			return nil, err
+		}
+
+		return &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("create unique index"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "index ID -> %s", stmt.ID),
+				},
+				{
+					fmt.Appendf(nil, "relation name -> %s", stmt.TableName.String()),
+				},
+				{
+					fmt.Appendf(nil, "column name -> %s", stmt.Column),
+				},
+				{
+					fmt.Appendf(nil, "column type -> %s", stmt.ColType),
+				},
+			},
+		}, nil
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -736,6 +809,37 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 	switch stmt := tstmt.(type) {
 	case nil:
 		return cli.CompleteMsg(0)
+	case *spqrparser.InstanceControlPoint:
+		/* create control point */
+		if stmt.Enable {
+			err := icp.DefineICP(stmt.Name, stmt.A)
+			if err != nil {
+				return cli.ReportError(err)
+			}
+		} else {
+			err := icp.ResetICP(stmt.Name)
+			if err != nil {
+				return cli.ReportError(err)
+			}
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("control point"),
+		}
+		if stmt.Enable {
+			tts.Raw = [][][]byte{
+				{
+					[]byte("ATTACH CONTROL POINT"),
+				},
+			}
+		} else {
+			tts.Raw = [][][]byte{
+				{
+					[]byte("DETACH CONTROL POINT"),
+				},
+			}
+		}
+
+		return cli.ReplyTTS(tts)
 	case *spqrparser.TraceStmt:
 		if writer == nil {
 			return fmt.Errorf("cannot save workload from here")
@@ -797,6 +901,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			Desc: engine.GetVPHeader("move key range"),
 			Raw: [][][]byte{
 				{fmt.Appendf(nil, "move key range %v to shard %v", move.Krid, move.ShardId)},
+				{[]byte("HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")},
 			},
 		}
 
@@ -885,7 +990,18 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		switch stmt.Target {
 		case spqrparser.SchemaCacheInvalidateTarget:
 			mgr.Cache().Reset()
-
+		case spqrparser.StaleClientsInvalidateTarget:
+			cnt := 0
+			if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
+				if !netutil.TCP_CheckAliveness(cl.Conn()) {
+					cnt++
+					return cl.Cancel()
+				}
+				return nil
+			}); err != nil {
+				return cli.ReportError(err)
+			}
+			return cli.CompleteMsg(cnt)
 		case spqrparser.BackendConnectionsInvalidateTarget:
 			if err := ci.ForEachPool(func(p pool.Pool) error {
 				return p.ForEach(func(sh shard.ShardHostCtl) error {
@@ -893,7 +1009,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 					return nil
 				})
 			}); err != nil {
-				return err
+				return cli.ReportError(err)
 			}
 		}
 		return cli.CompleteMsg(0)
@@ -1070,6 +1186,13 @@ func ProcessShowExtended(ctx context.Context, stmt *spqrparser.Show, mngr Entity
 		var resp []client.ClientInfo
 		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
 			resp = append(resp, client)
+			/* XXX: should we do this un-conditionally  or under separate setting? */
+			/*  When this is executed by coordinator, c is (validly) nil*/
+			if c := client.Conn(); c != nil && !netutil.TCP_CheckAliveness(c) {
+				if err := client.Cancel(); err != nil {
+					return err
+				}
+			}
 			return nil
 		}); err != nil {
 			return nil, err
@@ -1141,6 +1264,63 @@ func ProcessShowExtended(ctx context.Context, stmt *spqrparser.Show, mngr Entity
 
 		cacheEntries := ci.TsaCacheEntries()
 		tts = engine.TSAVirtualRelationScan(cacheEntries)
+	case spqrparser.UniqueIndexesStr:
+		idxs, err := mngr.ListUniqueIndexes(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts = engine.UniqueIndexesVirtualRelationScan(idxs)
+	case spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr:
+		group, err := mngr.ListMoveTaskGroups(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts = engine.TaskGroupsVirtualRelationScan(group)
+	case spqrparser.MoveTaskStr, spqrparser.MoveTasksStr:
+		taskList, err := mngr.ListMoveTasks(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if taskList == nil {
+			break
+		}
+
+		taskGroups := make(map[string]*tasks.MoveTaskGroup)
+		for _, task := range taskList {
+			group, err := mngr.GetMoveTaskGroup(ctx, task.TaskGroupID)
+			if err != nil {
+				return nil, err
+			}
+			if group == nil {
+				return nil, fmt.Errorf("task group for task \"%s\" not found", task.ID)
+			}
+			taskGroups[group.ID] = group
+		}
+
+		moveTasksDsID := make(map[string]string)
+		colTypes := make(map[string][]string)
+		for _, task := range taskList {
+			taskGroup, ok := taskGroups[task.TaskGroupID]
+			if !ok {
+				return nil, fmt.Errorf("task group \"%s\" not found", task.TaskGroupID)
+			}
+			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+			if err != nil {
+				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
+					var err2 error
+					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
+					if err2 != nil {
+						return nil, fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
+					}
+				}
+			}
+			moveTasksDsID[task.ID] = keyRange.Distribution
+			colTypes[keyRange.Distribution] = keyRange.ColumnTypes
+		}
+		tts, err = engine.MoveTasksVirtualRelationScan(taskList, colTypes, moveTasksDsID)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -1192,9 +1372,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Routers(resp)
-	case spqrparser.ShardingRules:
-		return cli.ReportError(spqrerror.ShardingRulesRemoved)
-
 	case spqrparser.PoolsStr:
 		var respPools []pool.Pool
 		if err := ci.ForEachPool(func(p pool.Pool) error {
@@ -1205,7 +1382,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Pools(ctx, respPools)
-
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
 	case spqrparser.CoordinatorAddrStr:
@@ -1237,56 +1413,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			defShardIDs = append(defShardIDs, shID)
 		}
 		return cli.Distributions(ctx, dss, defShardIDs)
-
-	case spqrparser.TaskGroupStr:
-		group, err := mngr.ListMoveTaskGroups(ctx)
-		if err != nil {
-			return err
-		}
-		return cli.MoveTaskGroups(ctx, group)
-	case spqrparser.MoveTaskStr:
-		taskList, err := mngr.ListMoveTasks(ctx)
-		if err != nil {
-			return err
-		}
-		if taskList == nil {
-			return cli.CompleteMsg(0)
-		}
-
-		taskGroups := make(map[string]*tasks.MoveTaskGroup)
-		for _, task := range taskList {
-			group, err := mngr.GetMoveTaskGroup(ctx, task.TaskGroupID)
-			if err != nil {
-				return err
-			}
-			if group == nil {
-				return fmt.Errorf("task group for task \"%s\" not found", task.ID)
-			}
-			taskGroups[group.ID] = group
-		}
-
-		moveTasksDsID := make(map[string]string)
-		colTypes := make(map[string][]string)
-		for _, task := range taskList {
-			taskGroup, ok := taskGroups[task.TaskGroupID]
-			if !ok {
-				return fmt.Errorf("task group \"%s\" not found", task.TaskGroupID)
-			}
-			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
-			if err != nil {
-				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
-					var err2 error
-					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
-					if err2 != nil {
-						return fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
-					}
-				}
-			}
-			moveTasksDsID[task.ID] = keyRange.Distribution
-			colTypes[keyRange.Distribution] = keyRange.ColumnTypes
-		}
-		return cli.MoveTasks(ctx, taskList, colTypes, moveTasksDsID)
-
 	case spqrparser.QuantilesStr:
 		return cli.Quantiles(ctx)
 	case spqrparser.SequencesStr:
@@ -1317,7 +1443,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.MoveStats(ctx, stats)
 	case spqrparser.Users:
 		return cli.Users(ctx)
-
 	default:
 		tts, err := ProcessShowExtended(ctx, stmt, mngr, ci, ro)
 		if err != nil {

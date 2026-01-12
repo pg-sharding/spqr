@@ -3,9 +3,11 @@ package planner
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/rerrors"
@@ -71,25 +73,30 @@ func analyzeSelectStmt(ctx context.Context, selectStmt lyx.Node, meta *rmeta.Rou
 
 // TODO : unit tests
 // analyzes from clause
-func analyzeFromNode(ctx context.Context, node lyx.FromClauseNode, meta *rmeta.RoutingMetadataContext) error {
+func analyzeFromNode(ctx context.Context, node lyx.FromClauseNode, rm *rmeta.RoutingMetadataContext) error {
 	spqrlog.Zero.Debug().
 		Type("node-type", node).
 		Msg("analyzing from node")
 	switch q := node.(type) {
 	case *lyx.RangeVar:
-		if err := ProcessRangeNode(ctx, meta, q); err != nil {
+		if err := ProcessRangeNode(ctx, rm, q); err != nil {
 			return err
 		}
 
 	case *lyx.JoinExpr:
-		if err := analyzeFromNode(ctx, q.Rarg, meta); err != nil {
+		if err := analyzeFromNode(ctx, q.Rarg, rm); err != nil {
 			return err
 		}
-		if err := analyzeFromNode(ctx, q.Larg, meta); err != nil {
+		if err := analyzeFromNode(ctx, q.Larg, rm); err != nil {
 			return err
 		}
+
+		if err := analyzeWhereClause(ctx, q.JoinQual, rm); err != nil {
+			return err
+		}
+
 	case *lyx.SubSelect:
-		return analyzeSelectStmt(ctx, q.Arg, meta)
+		return analyzeSelectStmt(ctx, q.Arg, rm)
 	default:
 		// other cases to consider
 		// lateral join, natural, etc
@@ -98,6 +105,7 @@ func analyzeFromNode(ctx context.Context, node lyx.FromClauseNode, meta *rmeta.R
 	return nil
 }
 
+/* XXX: Keep this in sync with `planByQualExpr`` */
 func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMetadataContext) error {
 	if expr == nil {
 		return nil
@@ -110,9 +118,18 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 	/* lyx.ResTarget is unexpected here */
 	case *lyx.AExprIn:
 
-		switch texpr.Expr.(type) {
+		switch lft := texpr.Expr.(type) {
 		case *lyx.ColumnRef:
+
+			alias, colname := lft.TableAlias, lft.ColName
+
 			switch q := texpr.SubLink.(type) {
+			case *lyx.AExprList:
+				for _, expr := range q.List {
+					if err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
+						return err
+					}
+				}
 			case *lyx.Select:
 				/* TODO properly support subquery here */
 				/* SELECT * FROM t WHERE id IN (SELECT 1, 2) */
@@ -125,11 +142,58 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 
 	case *lyx.AExprOp:
 
+		if config.RouterConfig().Qr.StrictOperators {
+			if texpr.Op != "=" {
+				return nil
+			}
+		}
+
 		switch lft := texpr.Left.(type) {
-		case *lyx.ColumnRef:
+		/* simple key-value pair in const = id form */
+		case *lyx.ParamRef, *lyx.AExprSConst, *lyx.AExprIConst:
+			// else  error out?
+
 			/* simple key-value pair */
 			switch right := texpr.Right.(type) {
+			case *lyx.ColumnRef:
 
+				alias, colname := right.TableAlias, right.ColName
+				// TBD: postpone routing from here to root of parsing tree
+				// maybe extremely inefficient. Will be fixed in SPQR-3.0/engine v2
+				if err := rm.ProcessConstExpr(alias, colname, lft); err != nil {
+					return err
+				}
+			}
+		/* lyx.ResTarget is unexpected here */
+		case *lyx.ColumnRef:
+
+			alias, colname := lft.TableAlias, lft.ColName
+
+			/* simple key-value pair */
+			switch right := texpr.Right.(type) {
+			case *lyx.ParamRef, *lyx.AExprSConst, *lyx.AExprIConst:
+				// else  error out?
+
+				// TBD: postpone routing from here to root of parsing tree
+				// maybe extremely inefficient. Will be fixed in SPQR-3.0/engine v2
+				if err := rm.ProcessConstExpr(alias, colname, right); err != nil {
+					return err
+				}
+
+			case *lyx.ColumnRef:
+				/* colref = colref case, skip, expect when we know exact value of ColumnRef */
+				for _, v := range rm.AuxExprByColref(right) {
+					if err := rm.ProcessConstExpr(alias, colname, v); err != nil {
+						return err
+					}
+				}
+
+			case *lyx.AExprList:
+				for _, expr := range right.List {
+					if err := rm.ProcessConstExpr(alias, colname, expr); err != nil {
+						return err
+					}
+				}
 			case *lyx.FuncApplication:
 				// there are several types of queries like DELETE FROM rel WHERE colref = func_application
 				// and func_application is actually routable statement.
@@ -150,6 +214,9 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 				}
 
 			default:
+				if err := analyzeWhereClause(ctx, texpr.Left, rm); err != nil {
+					return err
+				}
 				if err := analyzeWhereClause(ctx, texpr.Right, rm); err != nil {
 					return err
 				}
@@ -201,6 +268,30 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 	return nil
 }
 
+func AnalyzeWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, WithClause []*lyx.CommonTableExpr) error {
+	for _, cte := range WithClause {
+		rm.CteNames[cte.Name] = struct{}{}
+		switch qq := cte.SubQuery.(type) {
+		case *lyx.ValueClause:
+			/* special case */
+			for _, vv := range qq.Values {
+				for i, name := range cte.NameList {
+					if i < len(cte.NameList) && i < len(vv) {
+						/* XXX: currently only one-tuple aux values supported */
+						rm.RecordAuxExpr(cte.Name, name, vv[i])
+					}
+				}
+			}
+		default:
+			if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func AnalyzeQueryV1(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext, qstmt lyx.Node) error {
@@ -232,13 +323,8 @@ func AnalyzeQueryV1(
 		return AnalyzeQueryV1(ctx, rm, stmt.Query)
 	case *lyx.Select:
 
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				rm.CteNames[cte.Name] = struct{}{}
-				if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
-					return err
-				}
-			}
+		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
+			return err
 		}
 
 		for _, expr := range stmt.TargetList {
@@ -280,12 +366,10 @@ func AnalyzeQueryV1(
 			return err
 		}
 
-		if stmt.FromClause != nil {
-			// collect table alias names, if any
-			// for single-table queries, process as usual
-			if err := analyzeFromClauseList(ctx, stmt.FromClause, rm); err != nil {
-				return err
-			}
+		// collect table alias names, if any
+		// for single-table queries, process as usual
+		if err := analyzeFromClauseList(ctx, stmt.FromClause, rm); err != nil {
+			return err
 		}
 
 		/* XXX: analyse where clause here, because it can contain col op subselect patterns */
@@ -293,13 +377,8 @@ func AnalyzeQueryV1(
 		return analyzeWhereClause(ctx, stmt.Where, rm)
 	case *lyx.Insert:
 
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				rm.CteNames[cte.Name] = struct{}{}
-				if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
-					return err
-				}
-			}
+		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
+			return err
 		}
 
 		if err := analyseHelper(stmt.TableRef); err != nil {
@@ -318,29 +397,45 @@ func AnalyzeQueryV1(
 		return nil
 	case *lyx.Update:
 
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				rm.CteNames[cte.Name] = struct{}{}
-				if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
-					return err
+		switch q := stmt.TableRef.(type) {
+		case *lyx.RangeVar:
+			rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
+			if d, err := rm.GetRelationDistribution(ctx, rqdn); err != nil {
+				return err
+			} else {
+				for _, c := range stmt.SetClause {
+					switch cc := c.(type) {
+					case *lyx.ResTarget:
+						r := d.GetRelation(rqdn)
+						cols, err := r.GetDistributionKeyColumns()
+						if err != nil {
+							return err
+						}
+						if slices.Contains(cols, cc.Name) {
+							rm.IsSplitUpdate = true
+						}
+					default:
+						return rerrors.ErrComplexQuery
+					}
 				}
 			}
+		default:
+			return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		if err := analyseHelper(stmt.TableRef); err != nil {
+		if err := analyzeFromNode(ctx, stmt.TableRef, rm); err != nil {
+			return err
+		}
+
+		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
 			return err
 		}
 
 		return analyzeWhereClause(ctx, stmt.Where, rm)
 	case *lyx.Delete:
 
-		if stmt.WithClause != nil {
-			for _, cte := range stmt.WithClause {
-				rm.CteNames[cte.Name] = struct{}{}
-				if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
-					return err
-				}
-			}
+		if err := AnalyzeWithClause(ctx, rm, stmt.WithClause); err != nil {
+			return err
 		}
 
 		if err := analyseHelper(stmt.TableRef); err != nil {

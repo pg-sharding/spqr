@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/rand"
+	"net"
 	"sync/atomic"
 	"time"
 
@@ -58,7 +59,6 @@ type RouterClient interface {
 
 	ReplyParseComplete() error
 	ReplyBindComplete() error
-	ReplyCommandComplete(commandTag string) error
 
 	GetCancelPid() uint32
 	GetCancelKey() uint32
@@ -75,6 +75,11 @@ type PsqlClient struct {
 	ReplyClientId bool
 
 	rule *config.FrontendRule
+
+	/* If any reason to access tcp iface... */
+
+	tcpconn net.Conn
+
 	conn conn.RawConn
 
 	r *route.Route
@@ -110,6 +115,11 @@ func (r *PsqlClient) Add(st statistics.StatisticsType, value float64) error {
 		// panic?
 		return nil
 	}
+}
+
+// Conn implements RouterClient.
+func (r *PsqlClient) Conn() net.Conn {
+	return r.tcpconn
 }
 
 // GetTimeData implements statistics.StatHolder.
@@ -170,6 +180,7 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 	cl := &PsqlClient{
 		SessionParamsHolder: sh,
 		conn:                pgconn,
+		tcpconn:             pgconn,
 		startupMsg:          &pgproto3.StartupMessage{},
 		prepStmts:           map[string]*prepstatement.PreparedStatementDefinition{},
 		prepStmtsHash:       map[string]uint64{},
@@ -278,11 +289,6 @@ func (cl *PsqlClient) Reply(msg string) error {
 	}
 
 	return nil
-}
-
-func (cl *PsqlClient) ReplyCommandComplete(commandTag string) error {
-	cl.cacheCC.CommandTag = []byte(commandTag)
-	return cl.Send(&cl.cacheCC)
 }
 
 var (
@@ -760,7 +766,10 @@ func (cl *PsqlClient) Close() error {
 	return cl.conn.Close()
 }
 
-func (cl *PsqlClient) replyErrMsgHint(msg string, code string, hint string, s txstatus.TXStatus) error {
+func (cl *PsqlClient) replyErrMsgHint(
+	msg string,
+	code string,
+	hint string, pos int32, s txstatus.TXStatus) error {
 	var clErrMsg string
 
 	if cl.ReplyClientId {
@@ -775,6 +784,7 @@ func (cl *PsqlClient) replyErrMsgHint(msg string, code string, hint string, s tx
 			Severity: "ERROR",
 			Code:     code,
 			Hint:     hint,
+			Position: pos,
 		},
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(s),
@@ -787,45 +797,38 @@ func (cl *PsqlClient) replyErrMsgHint(msg string, code string, hint string, s tx
 	return nil
 }
 
-func (cl *PsqlClient) ReplyErrMsg(msg string, code string, s txstatus.TXStatus) error {
-	return cl.replyErrMsgHint(msg, code, "", s)
+func (cl *PsqlClient) ReplyErrMsg(msg string, code string, pos int32, s txstatus.TXStatus) error {
+	return cl.replyErrMsgHint(msg, code, "", pos, s)
 }
 
 func (cl *PsqlClient) ReplyErrWithTxStatus(e error, s txstatus.TXStatus) error {
 	switch er := e.(type) {
 	case *spqrerror.SpqrError:
-		return cl.ReplyErrMsg(er.Error(), er.ErrorCode, s)
+		return cl.ReplyErrMsg(er.Error(), er.ErrorCode, er.Position, s)
 	default:
-		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, s)
+		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, 0, s)
 	}
 }
 
 func (cl *PsqlClient) ReplyErr(e error) error {
+
 	switch er := e.(type) {
 	case *spqrerror.SpqrError:
-		return cl.replyErrMsgHint(er.Error(), er.ErrorCode, er.ErrHint, txstatus.TXIDLE)
+		return cl.replyErrMsgHint(er.Error(), er.ErrorCode, er.ErrHint, er.Position, txstatus.TXIDLE)
 	default:
-		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, txstatus.TXIDLE)
+		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, 0, txstatus.TXIDLE)
 	}
 }
 
 func (cl *PsqlClient) ReplyErrMsgByCode(code string) error {
 	clErrMsg := spqrerror.GetMessageByCode(code)
-	return cl.ReplyErrMsg(clErrMsg, code, txstatus.TXIDLE)
+	return cl.ReplyErrMsg(clErrMsg, code, 0, txstatus.TXIDLE)
 }
 
 func (cl *PsqlClient) ReplyRFQ(txstatus txstatus.TXStatus) error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.ReadyForQuery{
-			TxStatus: byte(txstatus),
-		},
-	} {
-		if err := cl.Send(msg); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return cl.Send(&pgproto3.ReadyForQuery{
+		TxStatus: byte(txstatus),
+	})
 }
 
 func (cl *PsqlClient) Shutdown() error {
@@ -931,6 +934,10 @@ func (c NoopClient) RAddr() string {
 
 func (c NoopClient) Shards() []shard.ShardHostInstance {
 	return c.shards
+}
+
+func (c NoopClient) Conn() net.Conn {
+	return nil
 }
 
 type MockShard struct {

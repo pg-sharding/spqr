@@ -26,7 +26,7 @@ ARRAYOID
 aspernatur
 astmt
 authed
-autotools
+Autoattach
 basebackup
 bbc
 bcad
@@ -103,7 +103,6 @@ dbtpcc
 dbutils
 dcd
 ddl
-debhelper
 debian
 denchick
 denis
@@ -159,12 +158,15 @@ ffd
 fffffffffffe
 FFFFFFFFFFFFFFFF
 filerow
+firewalls
 fmtcheck
 forumsys
 forwardable
+FQNTo
 frmp
 frrule
 frsm
+frst
 frules
 ftts
 fugiat
@@ -203,10 +205,12 @@ hotspots
 hst
 HTAP
 iana
+icp
 IDBy
 idi
 idj
 IDR
+idxs
 IExecute
 illum
 incididunt
@@ -288,6 +292,7 @@ localrouter
 logdir
 logproxy
 lol
+lowlevel
 lsb
 lval
 maxuint
@@ -314,6 +319,7 @@ mollit
 Msgf
 msgroup
 msgtype
+mtran
 multiclient
 multicoordinator
 multidbpool
@@ -332,6 +338,7 @@ NConst
 Neque
 netchecker
 netconn
+netutil
 Newf
 Nofity
 noid
@@ -393,7 +400,7 @@ pgxconn
 phandler
 pitr
 pkgclient
-Pmgr
+pmgr
 podman
 poolers
 poolmgr
@@ -439,6 +446,7 @@ rconn
 rdistr
 receivepasswd
 regclass
+reloid
 relpersistence
 rels
 repeattimes
@@ -463,11 +471,10 @@ rmgr
 rollbacked
 roolback
 routable
-routemgr
-routerparser
 routerproto
 routingstate
 rowmap
+RPCs
 rport
 rqdn
 rqfn
@@ -499,7 +506,6 @@ shardproxy
 shkey
 shname
 shq
-shrid
 singleshard
 Smartphone
 spaolacci
@@ -512,7 +518,6 @@ SPQRE
 spqrerror
 SPQRF
 spqrguard
-SPQRH
 spqrhash
 SPQRI
 spqrinfra
@@ -560,6 +565,7 @@ tcase
 TCLOSEBR
 TCLOSESQBR
 TCOMMA
+tcpconn
 tctx
 tdigest
 tempor
@@ -577,10 +583,13 @@ tlt
 TMINUS
 tmpfs
 tmpnum
+Toidxs
 topbar
 TOPENBR
 TOPENSQBR
 tpcc
+tran
+transfering
 TRASCE
 tsa
 TSEMICOLON
@@ -607,6 +616,7 @@ umi
 unconfigured
 underyling
 unmarshalling
+unmatch
 unrecognised
 Unregistering
 unregisters
@@ -621,6 +631,7 @@ vasya
 velit
 vguoyguoygoyy
 Vitess
+vmsg
 Volkov
 voluptate
 voluptatem

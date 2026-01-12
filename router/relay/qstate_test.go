@@ -9,6 +9,7 @@ import (
 	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
 	distribution "github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/qdb"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
@@ -32,14 +33,17 @@ func TestAutoDistributionSetFail(t *testing.T) {
 	mmgr.EXPECT().GetDistribution(gomock.Any(), "distrNotFound").Return(nil, errNotFoundDistr)
 
 	rst := RelayStateImpl{
-		activeShards:        nil,
 		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(client),
+		qse:                 NewQueryStateExecutor(nil, mmgr, cmngr, client),
 		Qr:                  qr,
 		Cl:                  client,
 		poolMgr:             cmngr,
 		execute:             nil,
+		executeMp:           map[string]func() error{},
 		saveBind:            pgproto3.Bind{},
+		saveBindNamed:       map[string]*pgproto3.Bind{},
+		bindQueryPlan:       nil,
+		bindQueryPlanMP:     map[string]plan.Plan{},
 		savedPortalDesc:     map[string]*PortalDesc{},
 		parseCache:          map[string]ParseCacheEntry{},
 		unnamedPortalExists: false,
@@ -63,20 +67,20 @@ func TestAutoDistributionSetSuccess(t *testing.T) {
 	existsDistr := distribution.NewDistribution("ds1", []string{qdb.ColumnTypeUinteger})
 	mmgr.EXPECT().GetDistribution(gomock.Any(), "ds1").Return(existsDistr, nil)
 
-	gomock.InOrder(
-		client.EXPECT().SetParam("__spqr__auto_distribution", "ds1"),
-		client.EXPECT().ReplyCommandComplete("SET"),
-	)
+	client.EXPECT().SetParam("__spqr__auto_distribution", "ds1")
 
 	rst := RelayStateImpl{
-		activeShards:        nil,
 		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(client),
+		qse:                 NewQueryStateExecutor(nil, mmgr, cmngr, client),
 		Qr:                  qr,
 		Cl:                  client,
 		poolMgr:             cmngr,
 		execute:             nil,
+		executeMp:           map[string]func() error{},
 		saveBind:            pgproto3.Bind{},
+		saveBindNamed:       map[string]*pgproto3.Bind{},
+		bindQueryPlan:       nil,
+		bindQueryPlanMP:     map[string]plan.Plan{},
 		savedPortalDesc:     map[string]*PortalDesc{},
 		parseCache:          map[string]ParseCacheEntry{},
 		unnamedPortalExists: false,
@@ -99,21 +103,22 @@ func TestAutoDistributionSetReplicated(t *testing.T) {
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 	mmgr.EXPECT().GetDistribution(gomock.Any(), "REPLICATED").Return(nil, fmt.Errorf("not found"))
 
-	gomock.InOrder(
-		client.EXPECT().SetParam("__spqr__auto_distribution", "REPLICATED"),
-		client.EXPECT().ReplyCommandComplete("SET"),
-	)
+	client.EXPECT().SetParam("__spqr__auto_distribution", "REPLICATED")
 
 	rst := RelayStateImpl{
-		activeShards:        nil,
-		msgBuf:              nil,
-		qse:                 NewQueryStateExecutor(client),
-		Qr:                  qr,
-		Cl:                  client,
-		poolMgr:             cmngr,
-		execute:             nil,
-		saveBind:            pgproto3.Bind{},
-		savedPortalDesc:     map[string]*PortalDesc{},
+		msgBuf:          nil,
+		qse:             NewQueryStateExecutor(nil, mmgr, cmngr, client),
+		Qr:              qr,
+		Cl:              client,
+		poolMgr:         cmngr,
+		execute:         nil,
+		executeMp:       map[string]func() error{},
+		saveBind:        pgproto3.Bind{},
+		saveBindNamed:   map[string]*pgproto3.Bind{},
+		savedPortalDesc: map[string]*PortalDesc{},
+		bindQueryPlan:   nil,
+		bindQueryPlanMP: map[string]plan.Plan{},
+
 		parseCache:          map[string]ParseCacheEntry{},
 		unnamedPortalExists: false,
 	}

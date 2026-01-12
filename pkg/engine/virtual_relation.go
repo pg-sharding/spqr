@@ -15,7 +15,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -102,12 +104,16 @@ func HostsVirtualRelationScan(shards []*topology.DataShard, ihc map[string]tsa.C
 func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.TupleTableSlot {
 
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("table name", "schema version", "shards", "column sequence mapping"),
+		Desc: GetVPHeader("table name", "schema name", "schema version", "shards", "column sequence mapping"),
 	}
 	for _, r := range rrs {
-
+		schema := r.SchemaName
+		if schema == "" {
+			schema = "$search_path"
+		}
 		tts.Raw = append(tts.Raw, [][]byte{
 			[]byte(r.TableName),
+			[]byte(schema),
 			fmt.Appendf(nil, "%d", r.SchemaVersion),
 			fmt.Appendf(nil, "%+v", r.ShardIds),
 			fmt.Appendf(nil, "%+v", r.ColumnSequenceMapping),
@@ -296,7 +302,7 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 
 	quantiles := statistics.GetQuantiles()
 	headers := []string{
-		"client_id", "user", "dbname", "server_id", "router_address",
+		"client_id", "user", "dbname", "server_id", "router_address", "is_alive",
 	}
 	for _, el := range *quantiles {
 		headers = append(headers, fmt.Sprintf("router_time_%g", el))
@@ -315,7 +321,9 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 			fmt.Appendf(nil, "%d", cl.ID()),
 			[]byte(cl.Usr()),
 			[]byte(cl.DB()),
-			[]byte(hostname), []byte(rAddr)}
+			[]byte(hostname),
+			[]byte(rAddr),
+			fmt.Appendf(nil, "%v", netutil.TCP_CheckAliveness(cl.Conn()))}
 
 		for _, el := range *quantiles {
 			rowData = append(rowData, fmt.Appendf(nil, "%.2fms",
@@ -346,5 +354,78 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 
 	tts.Raw = data
 
+	return tts, nil
+}
+
+func UniqueIndexesVirtualRelationScan(idToidxs map[string]*distributions.UniqueIndex) *tupleslot.TupleTableSlot {
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("ID", "Relation name", "Column", "Column type"),
+	}
+
+	/* XXX: make sort support in outer abstraction layer */
+	ids := make([]string, len(idToidxs))
+	i := 0
+	for id := range idToidxs {
+		ids[i] = id
+		i++
+	}
+	sort.Strings(ids)
+
+	for _, id := range ids {
+		idx := idToidxs[id]
+		tts.WriteDataRow(idx.ID, idx.RelationName.RelationName, idx.ColumnName, idx.ColType)
+	}
+	return tts
+}
+
+func TaskGroupsVirtualRelationScan(groups map[string]*tasks.MoveTaskGroup) *tupleslot.TupleTableSlot {
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID", "Move task ID"),
+	}
+	for _, group := range groups {
+		currTaskId := ""
+		if group.CurrentTask != nil {
+			currTaskId = group.CurrentTask.ID
+		}
+		tts.WriteDataRow(group.ID, group.ShardToId, group.KrIdFrom, group.KrIdTo, currTaskId)
+	}
+	return tts
+}
+
+func MoveTasksVirtualRelationScan(ts map[string]*tasks.MoveTask, dsIDColTypes map[string][]string, moveTaskDsID map[string]string) (*tupleslot.TupleTableSlot, error) {
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("Move task ID", "Temporary key range ID", "Bound", "State", "Task group ID"),
+	}
+
+	for _, task := range ts {
+		krData := []string{""}
+		if task.Bound != nil {
+			dsID, ok := moveTaskDsID[task.ID]
+			if !ok {
+				return nil, fmt.Errorf("failed to reply move task data: distribution for task \"%s\" not found", task.ID)
+			}
+			moveTaskColTypes, ok := dsIDColTypes[dsID]
+			if !ok {
+				return nil, fmt.Errorf("failed to reply move task data: column types for distribution \"%s\" not found", dsID)
+			}
+			if len(task.Bound) != len(moveTaskColTypes) {
+				err := fmt.Errorf("something wrong in task: %s, columns: %#v", task.ID, moveTaskColTypes)
+				return nil, err
+			}
+			kRange, err := kr.KeyRangeFromBytes(task.Bound, moveTaskColTypes)
+			if err != nil {
+				return nil, err
+			}
+			krData = kRange.SendRaw()
+		}
+		tts.WriteDataRow(
+			task.ID,
+			task.KrIdTemp,
+			strings.Join(krData, ";"),
+			tasks.TaskStateToStr(task.State),
+			task.TaskGroupID,
+		)
+	}
 	return tts, nil
 }

@@ -1,6 +1,10 @@
 package spqrerror
 
-import "fmt"
+import (
+	"fmt"
+
+	"google.golang.org/grpc/status"
+)
 
 const (
 	SPQR_UNEXPECTED           = "SPQRU"
@@ -14,7 +18,6 @@ const (
 	SPQR_ROUTING_ERROR        = "SPQRR"
 	SPQR_CONNECTION_ERROR     = "SPQRO"
 	SPQR_KEYRANGE_ERROR       = "SPQRK"
-	SPQR_SHARDING_RULE_ERROR  = "SPQRH"
 	SPQR_TRANSFER_ERROR       = "SPQRT"
 	SPQR_OBJECT_NOT_EXIST     = "SPQRN"
 	SPQR_NOT_IMPLEMENTED      = "SPQRI"
@@ -40,7 +43,6 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_ROUTING_ERROR:        "Routing error",
 	SPQR_CONNECTION_ERROR:     "Connection error",
 	SPQR_KEYRANGE_ERROR:       "Keyrange error",
-	SPQR_SHARDING_RULE_ERROR:  "Sharding rule error",
 	SPQR_TRANSFER_ERROR:       "Transfer error",
 	SPQR_OBJECT_NOT_EXIST:     "No object",
 	SPQR_NOT_IMPLEMENTED:      "Not implemented",
@@ -51,8 +53,6 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_STOP_MOVE_TASK_GROUP: "Task group stopped",
 	SPQR_QUERY_BLOCKED:        "Query is blocked due to the default route behavior",
 }
-
-var ShardingRulesRemoved = New(SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR, see https://github.com/pg-sharding/spqr/blob/master/docs/Syntax.md")
 
 // GetMessageByCode returns the error message associated with the provided error code.
 // If the error code is not found in the existingErrorCodeMap, the function returns "Unexpected error".
@@ -76,6 +76,7 @@ type SpqrError struct {
 	Err error
 
 	ErrorCode string
+	Position  int32
 	ErrHint   string
 }
 
@@ -147,4 +148,18 @@ func Newf(errorCode string, format string, a ...any) *SpqrError {
 //   - string: The formatted error message.
 func (er *SpqrError) Error() string {
 	return er.Err.Error()
+}
+
+// Try convert grpc error to error without "rpc error: code..."
+//
+// Returns:
+//   - error: non grpc error.
+func CleanGrpcError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if st, ok := status.FromError(err); ok {
+		return fmt.Errorf("%s", st.Message())
+	}
+	return err // non grpc error
 }

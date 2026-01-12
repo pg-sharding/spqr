@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/meta"
+	validator "github.com/pg-sharding/spqr/pkg/meta/validators"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -12,7 +13,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/qdb/ops"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"google.golang.org/grpc"
@@ -165,7 +165,13 @@ func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRan
 		return err
 	}
 	reqKr.ShardID = req.ShardId
-	return ops.ModifyKeyRangeWithChecks(ctx, lc.qdb, reqKr)
+
+	// TODO: move check to meta layer
+	if err := validator.ValidateKeyRangeForModify(ctx, lc, reqKr); err != nil {
+		return err
+	}
+	return lc.qdb.UpdateKeyRange(ctx, reqKr.ToDB())
+
 }
 
 // BatchMoveKeyRange is disabled in LocalCoordinator
@@ -406,9 +412,9 @@ func (lc *LocalInstanceMetadataMgr) SyncReferenceRelations(ctx context.Context, 
 //
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
-func NewLocalInstanceMetadataMgr(db qdb.XQDB, cache *cache.SchemaCache) meta.EntityMgr {
+func NewLocalInstanceMetadataMgr(db qdb.XQDB, d qdb.DCStateKeeper, cache *cache.SchemaCache) meta.EntityMgr {
 	return &LocalInstanceMetadataMgr{
-		Coordinator: NewCoordinator(db),
+		Coordinator: NewCoordinator(db, d),
 		cache:       cache,
 	}
 }

@@ -577,7 +577,8 @@ Feature: Coordinator show clients, pools and backend_connections
                 "id":            "2",
                 "kr_id_temp":    "temp_id",
                 "bound":         ["FAAAAAAAAAA="],
-                "state":         0
+                "state":         0,
+                "task_group_id": "tgid1"
             }
         }
         """
@@ -593,7 +594,8 @@ Feature: Coordinator show clients, pools and backend_connections
             "Task group ID":            "tgid1",
             "Destination shard ID":     "sh_to",
             "Source key range ID":      "kr_from",
-            "Destination key range ID": "kr_to"
+            "Destination key range ID": "kr_to",
+            "Move task ID":     "2"
         }]
         """
         When I run SQL on host "coordinator"
@@ -607,6 +609,7 @@ Feature: Coordinator show clients, pools and backend_connections
             "Move task ID":             "2",
             "State":                    "PLANNED",
             "Bound":                    "10",
-            "Temporary key range ID":   "temp_id"
+            "Temporary key range ID":   "temp_id",
+            "Task group ID":            "tgid1"
         }]
         """

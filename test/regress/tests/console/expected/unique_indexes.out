@@ -1,0 +1,64 @@
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;
+      attach table      
+------------------------
+ relation name   -> t
+ distribution id -> ds1
+(2 rows)
+
+CREATE UNIQUE INDEX ui1 ON t COLUMN col_uniq TYPE integer;
+   create unique index   
+-------------------------
+ index ID -> ui1
+ relation name -> t
+ column name -> col_uniq
+ column type -> integer
+(4 rows)
+
+CREATE UNIQUE INDEX ui_same_col ON t COLUMN col_uniq TYPE integer;
+ERROR:  unique index for table "t", column "col_uniq" already exists
+CREATE UNIQUE INDEX ui2 ON t COLUMN col_uniq_2 TYPE integer;
+    create unique index    
+---------------------------
+ index ID -> ui2
+ relation name -> t
+ column name -> col_uniq_2
+ column type -> integer
+(4 rows)
+
+SHOW unique_indexes;
+ ID  | Relation name |   Column   | Column type 
+-----+---------------+------------+-------------
+ ui1 | t             | col_uniq   | integer
+ ui2 | t             | col_uniq_2 | integer
+(2 rows)
+
+DROP UNIQUE INDEX ui1;
+  drop unique index  
+---------------------
+ unique index -> ui1
+(1 row)
+
+SHOW unique_indexes;
+ ID  | Relation name |   Column   | Column type 
+-----+---------------+------------+-------------
+ ui2 | t             | col_uniq_2 | integer
+(1 row)
+
+DROP UNIQUE INDEX ui2;
+  drop unique index  
+---------------------
+ unique index -> ui2
+(1 row)
+
+DROP DISTRIBUTION ds1 CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+

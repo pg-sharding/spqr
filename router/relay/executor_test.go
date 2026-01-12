@@ -3,6 +3,7 @@ package relay_test
 import (
 	"testing"
 
+	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
 	"github.com/pg-sharding/spqr/router/relay"
 	"github.com/stretchr/testify/assert"
 
@@ -23,14 +24,17 @@ func TestTxSimpleCommit(t *testing.T) {
 	cl.EXPECT().CleanupStatementSet().AnyTimes()
 	qr := mockqr.NewMockQueryRouter(ctrl)
 
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+	mmgr.EXPECT().DCStateKeeper().AnyTimes().Return(nil)
+	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
+
 	rst := relay.NewRelayState(qr, cl, cmngr)
 
 	cmngr.EXPECT().ConnectionActive(gomock.Any()).Return(false)
 
 	cl.EXPECT().CommitActiveSet().Times(1)
-	cl.EXPECT().ReplyCommandComplete("COMMIT").Times(1)
 
-	err := rst.QueryExecutor().ExecCommit(rst, "COMMIT")
+	err := rst.QueryExecutor().ExecCommit("COMMIT")
 
 	assert.Nil(err)
 }
@@ -47,14 +51,17 @@ func TestTxSimpleRollback(t *testing.T) {
 
 	qr := mockqr.NewMockQueryRouter(ctrl)
 
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+	mmgr.EXPECT().DCStateKeeper().AnyTimes().Return(nil)
+	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
+
 	rst := relay.NewRelayState(qr, cl, cmngr)
 
 	cmngr.EXPECT().ConnectionActive(gomock.Any()).Return(false)
 
 	cl.EXPECT().Rollback().Times(1)
-	cl.EXPECT().ReplyCommandComplete("ROLLBACK").Times(1)
 
-	err := rst.QueryExecutor().ExecRollback(rst, "ROLLBACK")
+	err := rst.QueryExecutor().ExecRollback("ROLLBACK")
 
 	assert.Nil(err)
 }

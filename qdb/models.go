@@ -114,6 +114,7 @@ type DistributedRelation struct {
 	SchemaName         string                 `json:"schema_name,omitempty"`
 	DistributionKey    []DistributionKeyEntry `json:"column_names"`
 	ReplicatedRelation bool                   `json:"replicated_relation,omitempty"`
+	// UniqueIndexes      map[string]*UniqueIndex `json:"unique_indexes"`
 }
 
 func (r *DistributedRelation) QualifiedName() *rfqn.RelationFQN {
@@ -121,16 +122,10 @@ func (r *DistributedRelation) QualifiedName() *rfqn.RelationFQN {
 }
 
 type Distribution struct {
-	ID       string   `json:"id"`
-	ColTypes []string `json:"col_types,omitempty"`
-
-	Relations map[string]*DistributedRelation `json:"relations"`
-	// The `version` is obtained from the QDB key version.
-	// This field is needed to prevent corruption of the value
-	// when it is updated in concurrent mode by the router.
-	// There is no need to try to deserialize the value or serialize it.
-	// if Version 0 then it not exists in qdb.
-	Version int64 `json:"-"`
+	ID            string                          `json:"id"`
+	ColTypes      []string                        `json:"col_types,omitempty"`
+	Relations     map[string]*DistributedRelation `json:"relations"`
+	UniqueIndexes map[string]*UniqueIndex         `json:"unique_indexes"`
 }
 
 type ReferenceRelation struct {
@@ -139,6 +134,14 @@ type ReferenceRelation struct {
 	SchemaVersion         uint64            `json:"schema_version"`
 	ColumnSequenceMapping map[string]string `json:"column_sequence_mapping"`
 	ShardIds              []string          `json:"shard_ids"`
+}
+
+type UniqueIndex struct {
+	ID             string            `json:"id"`
+	Relation       *rfqn.RelationFQN `json:"relation"`
+	ColumnName     string            `json:"column"`
+	ColType        string            `json:"column_type"`
+	DistributionId string            `json:"distribution_id"`
 }
 
 func NewDistribution(id string, coltypes []string) *Distribution {
@@ -236,4 +239,14 @@ func keyRangeFromInternal(keyRange *internalKeyRange, locked bool) *KeyRange {
 		DistributionId: keyRange.DistributionId,
 		Locked:         locked,
 	}
+}
+
+type TwoPCInfo struct {
+	Gid       string   `json:"gid"`
+	SHardsIds []string `json:"shard_ids"`
+
+	State string `json:"state"`
+
+	/* ephemeral part of state */
+	Locked bool `json:"-"`
 }

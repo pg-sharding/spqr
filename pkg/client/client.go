@@ -12,7 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/router/statistics"
 )
 
-type Pmgr interface {
+type ParamManager interface {
 	SetParam(string, string)
 	ResetParam(string)
 	ResetAll()
@@ -28,13 +28,13 @@ type Pmgr interface {
 }
 
 type Client interface {
-	Pmgr
+	ParamManager
 	session.SessionParamsHolder
 	statistics.StatHolder
 
 	ID() uint
 
-	ReplyErrMsg(e string, c string, s txstatus.TXStatus) error
+	ReplyErrMsg(e string, c string, p int32, s txstatus.TXStatus) error
 	ReplyErrWithTxStatus(e error, s txstatus.TXStatus) error
 	ReplyErrMsgByCode(code string) error
 	ReplyErr(errmsg error) error
@@ -71,6 +71,8 @@ type Client interface {
 	CancelMsg() *pgproto3.CancelRequest
 
 	Reply(msg string) error
+
+	Conn() net.Conn
 
 	SetAuthType(uint32) error
 }

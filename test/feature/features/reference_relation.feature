@@ -1,11 +1,12 @@
 Feature: Reference relation test
-  Scenario: Basic ref relation DML
+  Background:
     #
     # Make host "coordinator" take control
     #
     Given cluster environment is
     """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster.yaml
+    COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator_three_shards.yaml
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster_three_shards.yaml
     """
     Given cluster is up and running
     And host "coordinator2" is stopped
@@ -17,6 +18,7 @@ Feature: Reference relation test
     """
     Then command return code should be "0"
 
+  Scenario: Basic ref relation DML
     When I run SQL on host "coordinator"
     """
     CREATE REFERENCE TABLE t ON sh1, sh2;
@@ -86,23 +88,6 @@ Feature: Reference relation test
     """
 
   Scenario: 2pc transaction happy path
-    #
-    # Make host "coordinator" take control
-    #
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster.yaml
-    """
-    Given cluster is up and running
-    And host "coordinator2" is stopped
-    And host "coordinator2" is started
-
-    When I run SQL on host "coordinator"
-    """
-    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
-    """
-    Then command return code should be "0"
-
     When I run SQL on host "coordinator"
     """
     CREATE REFERENCE TABLE test_table ON sh1, sh2;
@@ -156,23 +141,6 @@ Feature: Reference relation test
     """
  
   Scenario: 2pc transaction fails
-    #
-    # Make host "coordinator" take control
-    #
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster.yaml
-    """
-    Given cluster is up and running
-    And host "coordinator2" is stopped
-    And host "coordinator2" is started
-
-    When I run SQL on host "coordinator"
-    """
-    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
-    """
-    Then command return code should be "0"
-
     When I run SQL on host "coordinator"
     """
     CREATE REFERENCE TABLE test_table ON sh1, sh2;
@@ -226,23 +194,6 @@ Feature: Reference relation test
 
 
   Scenario: create reference relation on create table
-    #
-    # Make host "coordinator" take control
-    #
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_cluster.yaml
-    """
-    Given cluster is up and running
-    And host "coordinator2" is stopped
-    And host "coordinator2" is started
-
-    When I run SQL on host "coordinator"
-    """
-    REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
-    """
-    Then command return code should be "0"
-
     When I execute SQL on host "router"
     """
     set __spqr__auto_distribution=REPLICATED;
@@ -295,4 +246,161 @@ Feature: Reference relation test
       }
     ]
     """
+  
+  Scenario: Ref relation sync works
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE t ON sh1;
+    """
+    Then command return code should be "0"
 
+    When I execute SQL on host "router"
+    """
+    CREATE TABLE t(id int, name text[]);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO t (id, name) VALUES(1, ARRAY[]::text[]);
+    INSERT INTO t (id, name) VALUES(2, ARRAY[null]);
+    INSERT INTO t (id, name) VALUES(3, ARRAY['one_value']);
+    INSERT INTO t (id, name) VALUES(4, ARRAY['two', 'values']);
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE TABLE t ON sh2;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM t
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+        {
+            "id": 1,
+            "name": "{}"
+        },
+        {
+            "id": 2,
+            "name": "{NULL}"
+        },
+        {
+            "id": 3,
+            "name": "{one_value}"
+        },
+        {
+            "id": 4,
+            "name": "{two,values}"
+        }
+    ]
+    """
+  
+    When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE TABLE t ON sh3;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard3"
+    """
+    SELECT * FROM t
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+        {
+            "id": 1,
+            "name": "{}"
+        },
+        {
+            "id": 2,
+            "name": "{NULL}"
+        },
+        {
+            "id": 3,
+            "name": "{one_value}"
+        },
+        {
+            "id": 4,
+            "name": "{two,values}"
+        }
+    ]
+    """
+  
+    When I run SQL on host "shard1"
+    """
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT reloid FROM spqr_metadata.spqr_reference_relations
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT name, enabled FROM spqr_metadata.spqr_global_settings
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT reloid FROM spqr_metadata.spqr_reference_relations
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """
+
+Scenario: Ref relation sync fails when reference relations are locked in spqrguard
+    When I run SQL on host "coordinator"
+    """
+    CREATE REFERENCE TABLE t ON sh1;
+    """
+    Then command return code should be "0"
+
+    When I execute SQL on host "router"
+    """
+    CREATE TABLE t(id int, name text[]);
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO t (id, name) VALUES(1, ARRAY[]::text[]);
+    INSERT INTO t (id, name) VALUES(2, ARRAY[null]);
+    INSERT INTO t (id, name) VALUES(3, ARRAY['one_value']);
+    INSERT INTO t (id, name) VALUES(4, ARRAY['two', 'values']);
+    INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES (69, true);
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "coordinator"
+    """
+    SYNC REFERENCE TABLE t ON sh2;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    reference relations already locked
+    """

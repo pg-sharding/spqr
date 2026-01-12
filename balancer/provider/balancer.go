@@ -25,11 +25,12 @@ type BalancerImpl struct {
 	coordinatorConn *grpc.ClientConn
 	threshold       []float64
 
-	shardConns    *config.DatatransferConnections
-	dsToKeyRanges map[string][]*kr.KeyRange
-	dsToKrIdx     map[string]map[string]int
-	shardKr       map[string][]string
-	krToDs        map[string]string
+	shardConns        *config.DatatransferConnections
+	dsToKeyRanges     map[string][]*kr.KeyRange
+	dsToKrIdx         map[string]map[string]int
+	shardKr           map[string][]string
+	krToDs            map[string]string
+	maxFitCoefficient float64
 }
 
 // NewBalancer creates new instance of BalancerImpl.
@@ -53,13 +54,14 @@ func NewBalancer() (*BalancerImpl, error) {
 		return nil, err
 	}
 	return &BalancerImpl{
-		shardConns:      shards,
-		coordinatorConn: conn,
-		threshold:       threshold,
-		dsToKeyRanges:   map[string][]*kr.KeyRange{},
-		dsToKrIdx:       map[string]map[string]int{},
-		shardKr:         map[string][]string{},
-		krToDs:          map[string]string{},
+		shardConns:        shards,
+		coordinatorConn:   conn,
+		threshold:         threshold,
+		dsToKeyRanges:     map[string][]*kr.KeyRange{},
+		dsToKrIdx:         map[string]map[string]int{},
+		shardKr:           map[string][]string{},
+		krToDs:            map[string]string{},
+		maxFitCoefficient: config.BalancerConfig().MaxFitCoefficient,
 	}, nil
 }
 
@@ -382,12 +384,13 @@ func (b *BalancerImpl) getKRRelations(ctx context.Context, kRange *kr.KeyRange) 
 	if err != nil {
 		return nil, err
 	}
-	rels := make([]*distributions.DistributedRelation, len(res.Distribution.Relations))
-	for i, relProto := range res.Distribution.Relations {
-		rels[i], err = distributions.DistributedRelationFromProto(relProto)
-		if err != nil {
-			return nil, err
-		}
+	ds, err := distributions.DistributionFromProto(res.Distribution)
+	if err != nil {
+		return nil, err
+	}
+	rels := make([]*distributions.DistributedRelation, 0, len(res.Distribution.Relations))
+	for _, rel := range ds.Relations {
+		rels = append(rels, rel)
 	}
 	return rels, nil
 }
@@ -404,8 +407,6 @@ func (b *BalancerImpl) getKRRelations(ctx context.Context, kRange *kr.KeyRange) 
 // Returns:
 //   - string: the ID of the shard to move the data to.
 //   - error: an error if any occurred.
-//
-// TODO unit tests
 func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string, keyCountToMove int) (string, bool) {
 	krKeyCount := int(shardIdToMetrics[krShardId].KeyCountKR[krId])
 	shardToMetrics := shardIdToMetrics[krShardId].MetricsKR[krId]
@@ -437,8 +438,6 @@ func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToM
 // Returns:
 //   - shardId (string): the ID of the shard to move the data to.
 //   - maxKeyCount (int): the maximal possible amount of keys to move.
-//
-// TODO unit tests
 func (b *BalancerImpl) moveMaxPossible(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string) (shardId string, maxKeyCount int) {
 	maxKeyCount = -1
 	for i := len(shardMetrics) - 1; i >= 0; i-- {
@@ -462,8 +461,6 @@ func (b *BalancerImpl) moveMaxPossible(shardMetrics []*ShardMetrics, shardIdToMe
 //
 // Returns:
 //   - bool: determines whether keys will overload the shard.
-//
-// TODO unit tests
 func (b *BalancerImpl) fitsOnShard(krMetrics []float64, keyCountToMove int, krKeyCount int, shard *ShardMetrics) bool {
 	for kind, metric := range shard.MetricsTotal {
 		meanKeyMetric := krMetrics[kind] / float64(krKeyCount)
@@ -484,14 +481,11 @@ func (b *BalancerImpl) fitsOnShard(krMetrics []float64, keyCountToMove int, krKe
 //
 // Returns:
 //   - maxCount (int): the maximal amount of keys that can be fit on the shard.
-//
-// TODO unit tests
 func (b *BalancerImpl) maxFitOnShard(krMetrics []float64, krKeyCount int64, shard *ShardMetrics) (maxCount int) {
 	maxCount = -1
 	for kind, metric := range shard.MetricsTotal {
-		// TODO move const to config
 		krMeanMetricKey := krMetrics[kind] / float64(krKeyCount)
-		count := int(0.8 * ((b.threshold[kind] - metric) / krMeanMetricKey))
+		count := int(b.maxFitCoefficient * ((b.threshold[kind] - metric) / krMeanMetricKey))
 		if count > maxCount {
 			maxCount = count
 		}
@@ -513,7 +507,7 @@ func (b *BalancerImpl) getAdjacentShards(krId string) map[string]struct{} {
 	if krIdx != 0 {
 		res[b.dsToKeyRanges[ds][krIdx-1].ShardID] = struct{}{}
 	}
-	if krIdx < len(b.dsToKeyRanges)-1 {
+	if krIdx < len(b.dsToKeyRanges[ds])-1 {
 		res[b.dsToKeyRanges[ds][krIdx+1].ShardID] = struct{}{}
 	}
 	// do not include the shard containing key range itself

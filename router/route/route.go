@@ -43,8 +43,8 @@ type Route struct {
 	beRule *config.BackendRule
 	frRule *config.FrontendRule
 
-	clPool   client.Pool
-	servPool pool.MultiShardTSAPool
+	clPool     client.Pool
+	mShardPool pool.MultiShardTSAPool
 
 	mu sync.Mutex
 	// protects this
@@ -67,13 +67,13 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 	hostCheckTTL := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCacheTTL, pool.DefaultCacheTTL)
 
 	route := &Route{
-		beRule:   beRule,
-		frRule:   frRule,
-		servPool: pool.NewDBPool(mapping, sp, preferAZ, hostCheckTTL, hostCheckInterval),
-		clPool:   client.NewClientPool(),
-		params:   shard.ParameterSet{},
+		beRule:     beRule,
+		frRule:     frRule,
+		mShardPool: pool.NewDBPool(mapping, sp, preferAZ, hostCheckTTL, hostCheckInterval),
+		clPool:     client.NewClientPool(),
+		params:     shard.ParameterSet{},
 	}
-	route.servPool.SetRule(beRule)
+	route.mShardPool.SetRule(beRule)
 	return route
 }
 
@@ -95,13 +95,13 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 	}
 
 	var anyK kr.ShardKey
-	for k := range r.servPool.ShardMapping() {
+	for k := range r.mShardPool.ShardMapping() {
 		anyK.Name = k
 		break
 	}
 
 	// maxuint64
-	serv, err := r.servPool.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, anyK, tsa.TSA(config.TargetSessionAttrsAny))
+	serv, err := r.mShardPool.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, anyK, tsa.TSA(config.TargetSessionAttrsAny))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return shard.ParameterSet{}, err
@@ -110,15 +110,15 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 	r.cachedParams = true
 	r.params = serv.Params()
 
-	if err := r.servPool.Put(serv); err != nil {
+	if err := r.mShardPool.Put(serv); err != nil {
 		return nil, err
 	}
 
 	return r.params, nil
 }
 
-func (r *Route) ServPool() pool.MultiShardTSAPool {
-	return r.servPool
+func (r *Route) MultiShardPool() pool.MultiShardTSAPool {
+	return r.mShardPool
 }
 
 func (r *Route) BeRule() *config.BackendRule {
@@ -142,5 +142,5 @@ func (r *Route) ReleaseClient(clientID uint) (bool, error) {
 }
 
 func (r *Route) ForEachPool(cb func(pool.Pool) error) error {
-	return r.servPool.ForEachPool(cb)
+	return r.mShardPool.ForEachPool(cb)
 }
