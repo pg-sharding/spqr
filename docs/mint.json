@@ -130,7 +130,7 @@
                                 "sharding/console/sql_commands"
                             ]
                         },
-                        "sharding/copy",
+                        "sharding/bulk",
                         "sharding/default_shard"
                     ]
                 },

@@ -44,6 +44,12 @@ RESET __spqr__scatter_query;
 Scatter queries do not provide consistent cross-shard snapshots, can have significant performance impact on large clusters, and should be used primarily for administrative or analytical purposes.
 </Warning>
 
+### Bulk Operations
+
+SPQR supports bulk data loading across multiple shards, including COPY FROM and batch INSERT statements. When engine V2 is enabled, multi-value INSERT statements are automatically split and routed to the correct shards.
+
+For detailed information, examples, and limitations, see [Bulk Operations](/sharding/bulk).
+
 ## Commit Strategies
 
 SPQR provides three commit strategies for distributed transactions, controlled by the [default_commit_strategy](/configuration/router#transaction-settings) parameter.
