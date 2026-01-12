@@ -734,7 +734,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 		 */
 		switch strings.ToUpper(rm.SPH.DefaultRouteBehaviour()) {
 		case "BLOCK":
-			return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_QUERY_BLOCKED)
 		case "ALLOW":
 			fallthrough
 		default:
