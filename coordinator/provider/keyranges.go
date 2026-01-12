@@ -55,17 +55,17 @@ func (c *CoordinatorService) CreateKeyRange(ctx context.Context, request *protos
 		return nil, err
 	}
 
-	if tranChunk, err := c.impl.CreateKeyRange(ctx, protoKR); err != nil {
+	tranChunk, err := c.impl.CreateKeyRange(ctx, protoKR)
+	if err != nil {
 		return nil, err
-	} else {
-		if len(tranChunk.QdbStatements) == 0 {
-			return nil, fmt.Errorf("transaction chunk must have a qdb statement (DistributionsServer.CreateKeyRange)")
-		}
-		for _, qdbStmt := range tranChunk.QdbStatements {
-			reply.CmdList = append(reply.CmdList, qdbStmt.ToProto())
-		}
-		reply.MetaCmdList = append(reply.MetaCmdList, tranChunk.GossipRequests...)
 	}
+	if len(tranChunk.QdbStatements) == 0 {
+		return nil, fmt.Errorf("transaction chunk must have a qdb statement (DistributionsServer.CreateKeyRange)")
+	}
+	for _, qdbStmt := range tranChunk.QdbStatements {
+		reply.CmdList = append(reply.CmdList, qdbStmt.ToProto())
+	}
+	reply.MetaCmdList = append(reply.MetaCmdList, tranChunk.GossipRequests...)
 
 	return &reply, nil
 }

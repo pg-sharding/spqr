@@ -54,11 +54,11 @@ func BeginTranFromProto(tran *proto.MetaTransactionReply) (*MetaTransaction, err
 	if len(tran.CmdList) > 0 || len(tran.MetaCmdList) > 0 {
 		return nil, fmt.Errorf("begin from proto non empty transaction")
 	}
-	if idTran, err := uuid.Parse(tran.TransactionId); err != nil {
+	idTran, err := uuid.Parse(tran.TransactionId)
+	if err != nil {
 		return nil, fmt.Errorf("invalid transaction id=%s", tran.TransactionId)
-	} else {
-		return &MetaTransaction{TransactionId: idTran}, nil
 	}
+	return &MetaTransaction{TransactionId: idTran}, nil
 }
 
 func TransactionFromProto(tran *proto.MetaTransactionReply) (*MetaTransaction, error) {

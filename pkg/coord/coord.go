@@ -804,16 +804,15 @@ func (qc *Coordinator) ShareKeyRange(id string) error {
 // - *mtran.MetaTransactionChunk - chunk of commands to execute on commit transaction
 // - error: An error if the creation encounters any issues.
 func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) (*mtran.MetaTransactionChunk, error) {
-	if stmts, err := lc.qdb.CreateKeyRange(ctx, kr.ToDB()); err != nil {
+	stmts, err := lc.qdb.CreateKeyRange(ctx, kr.ToDB())
+	if err != nil {
 		return nil, err
-	} else {
-		if result, err := mtran.NewMetaTransactionChunk(nil, stmts); err != nil {
-			return nil, err
-		} else {
-			return result, nil
-		}
 	}
-
+	result, err := mtran.NewMetaTransactionChunk(nil, stmts)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 // TODO : unit tests

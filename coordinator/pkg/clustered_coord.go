@@ -637,19 +637,19 @@ func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr
 		Str("key-range-id", keyRange.ID).
 		Msg("add key range")
 
-	if transactionChunk, err := qc.Coordinator.CreateKeyRange(ctx, keyRange); err != nil {
+	transactionChunk, err := qc.Coordinator.CreateKeyRange(ctx, keyRange)
+	if err != nil {
 		return nil, err
-	} else {
-		if len(transactionChunk.GossipRequests) > 0 {
-			return nil, fmt.Errorf("local coordinator unexpectedly returned gossip requests on CreateKeyRange; expected empty gossip requests from local coordinator")
-		} else {
-			gossipReq := &proto.MetaTransactionGossipCommand{CreateKeyRange: &proto.CreateKeyRangeGossip{
-				KeyRangeInfo: keyRange.ToProto(),
-			}}
-			transactionChunk.GossipRequests = []*proto.MetaTransactionGossipCommand{gossipReq}
-			return transactionChunk, nil
-		}
 	}
+	if len(transactionChunk.GossipRequests) > 0 {
+		return nil, fmt.Errorf("local coordinator unexpectedly returned gossip requests on CreateKeyRange; expected empty gossip requests from local coordinator")
+	}
+	gossipReq := &proto.MetaTransactionGossipCommand{CreateKeyRange: &proto.CreateKeyRangeGossip{
+		KeyRangeInfo: keyRange.ToProto(),
+	}}
+	transactionChunk.GossipRequests = []*proto.MetaTransactionGossipCommand{gossipReq}
+	return transactionChunk, nil
+
 }
 
 // TODO : unit tests

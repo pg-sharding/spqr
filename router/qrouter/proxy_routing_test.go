@@ -203,10 +203,11 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		exp   plan.Plan
 		err   error
 	}
+	ctx := context.TODO()
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "ds1"
-	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(ctx, &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -223,8 +224,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 	assert.NoError(err)
 	err = db.ExecNoTransaction(context.TODO(), chunk)
 	assert.NoError(err)
-	ctx := context.TODO()
-	statements, err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	statements, err := db.CreateKeyRange(ctx, (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",

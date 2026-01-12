@@ -184,18 +184,18 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 		return nil, err
 	}
 	respKR := make([]QdbStatement, 1, 2)
-	if resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange)); err != nil {
+	resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	if err != nil {
 		return nil, err
-	} else {
-		respKR[0] = *resp
 	}
+	respKR[0] = *resp
 
 	if keyRange.Locked {
-		if resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange)); err != nil {
+		resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+		if err != nil {
 			return nil, err
-		} else {
-			respKR = append(respKR, *resp)
 		}
+		respKR = append(respKR, *resp)
 	}
 
 	spqrlog.Zero.Debug().

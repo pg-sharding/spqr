@@ -284,16 +284,15 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 // - error: An error if creating the key range was unsuccessful.
 func (a *Adapter) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) (*mtran.MetaTransactionChunk, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
-	if reply, err := c.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{KeyRangeInfo: kr.ToProto()}); err != nil {
+	reply, err := c.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{KeyRangeInfo: kr.ToProto()})
+	if err != nil {
 		return nil, spqrerror.CleanGrpcError(err)
-	} else {
-		if qdbCmds, err := qdb.SliceFromProto(reply.CmdList); err != nil {
-			return nil, err
-		} else {
-			return mtran.NewMetaTransactionChunk(reply.MetaCmdList, qdbCmds)
-		}
 	}
-
+	qdbCmds, err := qdb.SliceFromProto(reply.CmdList)
+	if err != nil {
+		return nil, err
+	}
+	return mtran.NewMetaTransactionChunk(reply.MetaCmdList, qdbCmds)
 }
 
 // TODO : unit tests

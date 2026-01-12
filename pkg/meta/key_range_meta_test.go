@@ -75,6 +75,12 @@ func prepareDbTestValidate(ctx context.Context) (*qdb.MemQDB, error) {
 	if err = memqdb.ExecNoTransaction(ctx, chunk); err != nil {
 		return nil, err
 	}
+	if chunk, err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", []string{qdb.ColumnTypeInteger})); err != nil {
+		return nil, err
+	}
+	if err = memqdb.ExecNoTransaction(ctx, chunk); err != nil {
+		return nil, err
+	}
 	if err = memqdb.AddShard(ctx, mockShard1); err != nil {
 		return nil, err
 	}

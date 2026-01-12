@@ -351,14 +351,13 @@ func (l *LocalQrouterServer) createKeyRangePrepare(ctx context.Context,
 	tranChunk, err := l.mgr.CreateKeyRange(ctx, krToCreate)
 	if err != nil {
 		return nil, err
-	} else {
-		// MemQDB.createKeyRangeCommands generate 3 QDB commands for creating key range
-		if len(tranChunk.QdbStatements) != 3 {
-			return nil, fmt.Errorf("transaction chunk must have a qdb statement (createKeyRangePrepare)")
-		}
-		result = append(result, tranChunk.QdbStatements...)
-		return result, nil
 	}
+	// MemQDB.createKeyRangeCommands generate 3 QDB commands for creating key range
+	if len(tranChunk.QdbStatements) != 3 {
+		return nil, fmt.Errorf("transaction chunk must have a qdb statement (createKeyRangePrepare)")
+	}
+	result = append(result, tranChunk.QdbStatements...)
+	return result, nil
 }
 
 // TODO : unit tests

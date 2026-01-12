@@ -2,6 +2,7 @@ package meta
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -115,12 +116,16 @@ func (t *TranEntityManager) CreateDistribution(ctx context.Context, ds *distribu
 
 // CreateKeyRange implements [EntityMgr].
 func (t *TranEntityManager) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) (*meta_transaction.MetaTransactionChunk, error) {
-	if chunk, err := t.mngr.CreateKeyRange(ctx, kr); err != nil {
+	chunk, err := t.mngr.CreateKeyRange(ctx, kr)
+	if err != nil {
 		return nil, err
-	} else {
-		t.keyRanges.Save(kr.ID, kr)
-		return chunk, nil
 	}
+	if _, ok := t.keyRanges.Items()[kr.ID]; ok {
+		return nil, fmt.Errorf("key range %s already present in qdb", kr.ID)
+	}
+	t.keyRanges.Save(kr.ID, kr)
+	return chunk, nil
+
 }
 
 // CreateReferenceRelation implements [EntityMgr].
@@ -273,26 +278,32 @@ func (t *TranEntityManager) ListKeyRangeLocks(ctx context.Context) ([]string, er
 	panic("ListKeyRangeLocks unimplemented")
 }
 
+// TODO: ADD more tests when altering key range will be realized
+
 // ListKeyRanges implements [EntityMgr].
 func (t *TranEntityManager) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
-	if list, err := t.mngr.ListKeyRanges(ctx, distribution); err != nil {
+	list, err := t.mngr.ListKeyRanges(ctx, distribution)
+	if err != nil {
 		return nil, err
-	} else {
-		result := make([]*kr.KeyRange, 0, len(list)+len(t.keyRanges.Items()))
-		for _, keyRange := range t.keyRanges.Items() {
-			result = append(result, keyRange)
-		}
-		for _, keyRange := range list {
-			if _, ok := t.distributions.DeletedItems()[keyRange.ID]; ok {
-				continue
-			}
-			if _, ok := t.distributions.Items()[keyRange.ID]; ok {
-				continue
-			}
-			result = append(result, keyRange)
-		}
-		return result, nil
 	}
+	result := make([]*kr.KeyRange, 0, len(list)+len(t.keyRanges.Items()))
+	for _, keyRange := range t.keyRanges.Items() {
+		if keyRange.Distribution == distribution {
+
+			result = append(result, keyRange)
+		}
+	}
+	for _, keyRange := range list {
+		if _, ok := t.keyRanges.DeletedItems()[keyRange.ID]; ok {
+			continue
+		}
+		if _, ok := t.keyRanges.Items()[keyRange.ID]; ok {
+			continue
+		}
+		result = append(result, keyRange)
+	}
+	return result, nil
+
 }
 
 // ListMoveTaskGroups implements [EntityMgr].

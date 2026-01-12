@@ -1543,9 +1543,8 @@ func (q *MemQDB) toKeyRange(stmt QdbStatement) (Command, error) {
 		var kr KeyRange
 		if err := json.Unmarshal([]byte(stmt.Value), &kr); err != nil {
 			return nil, err
-		} else {
-			return NewUpdateCommand(q.Krs, stmt.Key, keyRangeToInternal(&kr)), nil
 		}
+		return NewUpdateCommand(q.Krs, stmt.Key, keyRangeToInternal(&kr)), nil
 	default:
 		return nil, fmt.Errorf("unsupported memDB cmd %d (key range)", stmt.CmdType)
 	}
@@ -1594,23 +1593,23 @@ func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error
 				memOperations = append(memOperations, operation)
 			}
 		case MapKrs:
-			if operation, err := q.toKeyRange(stmt); err != nil {
+			operation, err := q.toKeyRange(stmt)
+			if err != nil {
 				return nil, err
-			} else {
-				memOperations = append(memOperations, operation)
 			}
+			memOperations = append(memOperations, operation)
 		case MapFreq:
-			if operation, err := q.toFreq(stmt); err != nil {
+			operation, err := q.toFreq(stmt)
+			if err != nil {
 				return nil, err
-			} else {
-				memOperations = append(memOperations, operation)
 			}
+			memOperations = append(memOperations, operation)
 		case MapLocks:
-			if operation, err := q.toLock(stmt); err != nil {
+			operation, err := q.toLock(stmt)
+			if err != nil {
 				return nil, err
-			} else {
-				memOperations = append(memOperations, operation)
 			}
+			memOperations = append(memOperations, operation)
 		default:
 			return nil, fmt.Errorf("not implemented for transaction memqdb part %s", stmt.Extension)
 		}

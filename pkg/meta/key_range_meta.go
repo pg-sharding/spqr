@@ -118,12 +118,12 @@ func CreateKeyRangeStrict(ctx context.Context, tranMngr EntityMgr, keyRange *kr.
 		return nil, err
 	}
 
-	if chunk, err := tranMngr.CreateKeyRange(ctx, keyRange); err != nil {
+	chunk, err := tranMngr.CreateKeyRange(ctx, keyRange)
+	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 		return nil, err
-	} else {
-		return chunk, err
 	}
+	return chunk, err
 }
 
 // TODO : unit tests
@@ -170,19 +170,18 @@ func createKeyRange(ctx context.Context, tranMngr TranEntityManager, stmt *spqrp
 		spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 		return nil, err
 	}
-	if chunk, err := CreateKeyRangeStrict(ctx, &tranMngr, keyRange); err != nil {
+	chunk, err := CreateKeyRangeStrict(ctx, &tranMngr, keyRange)
+	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 		return nil, err
-	} else {
-		if tranChunk, err := mtran.NewMetaTransactionChunk(chunk.GossipRequests, chunk.QdbStatements); err != nil {
-			return nil, err
-		} else {
-			tran.Operations = tranChunk
-			if err = tranMngr.CommitTran(ctx, tran); err != nil {
-				return nil, err
-			} else {
-				return keyRange, nil
-			}
-		}
 	}
+	tranChunk, err := mtran.NewMetaTransactionChunk(chunk.GossipRequests, chunk.QdbStatements)
+	if err != nil {
+		return nil, err
+	}
+	tran.Operations = tranChunk
+	if err = tranMngr.CommitTran(ctx, tran); err != nil {
+		return nil, err
+	}
+	return keyRange, nil
 }
