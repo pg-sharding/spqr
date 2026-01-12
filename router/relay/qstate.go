@@ -185,6 +185,16 @@ func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error
 			case session.SPQR_PREFERRED_ENGINE:
 				spqrlog.Zero.Debug().Str("preferred engine", val).Msg("parse preferred engine from comment")
 				rst.Client().SetPreferredEngine(session.VirtualParamLevelStatement, val)
+			case session.SPQR_ALLOW_SPLIT_UPDATE:
+				spqrlog.Zero.Debug().Str("preferred engine", val).Msg("parse preferred engine from comment")
+
+				switch val {
+				case "true", "ok", "on":
+					rst.Client().SetAllowSplitUpdate(session.VirtualParamLevelStatement, true)
+				case "false", "no", "off":
+					rst.Client().SetAllowSplitUpdate(session.VirtualParamLevelStatement, false)
+				}
+
 			case session.SPQR_AUTO_DISTRIBUTION:
 				/* Should we create distributed or reference relation? */
 
@@ -388,6 +398,13 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				ReplyVirtualParamState(rst.Client(), "target session attrs", []byte(rst.Client().GetTsa()))
 			case session.SPQR_PREFERRED_ENGINE:
 				ReplyVirtualParamState(rst.Client(), "preferred engine", []byte(rst.Client().PreferredEngine()))
+			case session.SPQR_ALLOW_SPLIT_UPDATE:
+
+				if rst.Client().AllowSplitUpdate() {
+					ReplyVirtualParamState(rst.Client(), "allow split update", []byte("on"))
+				} else {
+					ReplyVirtualParamState(rst.Client(), "allow split update", []byte("off"))
+				}
 			default:
 
 				if strings.HasPrefix(param, "__spqr__") {
@@ -562,6 +579,12 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context, hintName string,
 		rst.Client().SetShardingKey(lvl, hintVal)
 	case session.SPQR_PREFERRED_ENGINE:
 		rst.Client().SetPreferredEngine(lvl, hintVal)
+	case session.SPQR_ALLOW_SPLIT_UPDATE:
+		if value == "on" || value == "true" {
+			rst.Client().SetAllowSplitUpdate(lvl, true)
+		} else {
+			rst.Client().SetAllowSplitUpdate(lvl, false)
+		}
 	case session.SPQR_REPLY_NOTICE:
 		if value == "on" || value == "true" {
 			rst.Client().SetShowNoticeMsg(lvl, true)

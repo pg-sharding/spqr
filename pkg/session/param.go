@@ -59,6 +59,10 @@ type SessionParamsHolder interface {
 	SetPreferredEngine(level string, val string)
 	PreferredEngine() string
 
+	/*  XXX: developer option */
+	SetAllowSplitUpdate(level string, val bool)
+	AllowSplitUpdate() bool
+
 	/* Distributed transactions */
 
 	/* route hint always tx-block-level */
@@ -108,6 +112,9 @@ const (
 	SPQR_PREFERRED_ENGINE        = "__spqr__preferred_engine"
 	SPQR_COMMIT_STRATEGY         = "__spqr__commit_strategy"
 	SPQR_TARGET_SESSION_ATTRS    = "__spqr__target_session_attrs"
+
+	/*XXX: should we ever disallow?*/
+	SPQR_ALLOW_SPLIT_UPDATE = "__spqr__allow_split_update"
 
 	/* backward compatibility */
 	SPQR_TARGET_SESSION_ATTRS_ALIAS   = "target_session_attrs"

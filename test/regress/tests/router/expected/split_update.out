@@ -48,10 +48,83 @@ CREATE TABLE r(i INT, j INT, t TEXT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY r (i, j, t) FROM STDIN DELIMITER '|';
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SET __spqr__allow_split_update TO off;
 UPDATE r SET i = 110 WHERE i = 10;
 ERROR:  client processing error: error processing query 'UPDATE r SET i = 110 WHERE i = 10;': updating distribution column is not yet supported, tx status IDLE
 UPDATE r SET i = 110 WHERE i = 100;
 NOTICE: send query to shard(s) : sh2
+SET __spqr__engine_v2 TO on;
+SET __spqr__allow_split_update TO on;
+SELECT * FROM r /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+  i  |  j  |   t   
+-----+-----+-------
+ 150 | 151 | yyyyy
+ 110 | 101 | cccc
+(2 rows)
+
+SELECT * FROM r /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+  i  |  j  |  t   
+-----+-----+------
+ 200 | 201 | dddd
+(1 row)
+
+UPDATE r SET i = 201 WHERE i = 110;
+NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh3
+SELECT * FROM r /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+  i  |  j  |   t   
+-----+-----+-------
+ 150 | 151 | yyyyy
+(1 row)
+
+SELECT * FROM r /* __spqr__execute_on: sh3 */;
+NOTICE: send query to shard(s) : sh3
+  i  |  j  |  t   
+-----+-----+------
+ 200 | 201 | dddd
+ 201 | 101 | cccc
+(2 rows)
+
+BEGIN;
+SELECT * FROM r /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ i  | j  |  t   
+----+----+------
+  0 | 10 | aaaa
+ 10 | 11 | bbbb
+(2 rows)
+
+SELECT * FROM r /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+  i  |  j  |  t   
+-----+-----+------
+ 300 | 301 | eeee
+(1 row)
+
+UPDATE r SET i = 401 WHERE i = 10;
+NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4
+SELECT * FROM r /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ i | j  |  t   
+---+----+------
+ 0 | 10 | aaaa
+(1 row)
+
+SELECT * FROM r /* __spqr__execute_on: sh4 */;
+NOTICE: send query to shard(s) : sh4
+  i  |  j  |  t   
+-----+-----+------
+ 300 | 301 | eeee
+ 401 |  11 | bbbb
+(2 rows)
+
+COMMIT;
 DROP TABLE r;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console

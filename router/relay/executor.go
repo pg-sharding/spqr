@@ -339,7 +339,7 @@ func (s *QueryStateExecutorImpl) ExecRollback(query string) error {
 }
 
 func (s *QueryStateExecutorImpl) ReplyCommandComplete(commandTag string) error {
-	s.cacheCC.CommandTag = []byte(commandTag)
+	s.cacheCC.CommandTag = append([]byte(nil), commandTag...)
 	s.es.cc = &s.cacheCC
 	return nil
 }
@@ -691,7 +691,10 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 		if ccmsg == nil {
 			return txt, fmt.Errorf("copy state out of sync")
 		}
-		s.es.cc = ccmsg
+
+		s.cacheCC.CommandTag = append([]byte(nil), ccmsg.CommandTag...)
+
+		s.es.cc = &s.cacheCC
 	}
 
 	return txt, nil
@@ -733,11 +736,8 @@ func (s *QueryStateExecutorImpl) copyFromExecutor() error {
 			if txt, err := s.ProcCopyComplete(cpMsg); err != nil {
 				return err
 			} else {
-				if s.es.doFinalizeTx {
-					if txt == txstatus.TXACT {
-						return s.ExecCommitTx("COMMIT")
-					}
-					return s.ExecRollbackServer()
+				if txt != s.cl.Server().TxStatus() {
+					return rerrors.ErrExecutorSyncLost
 				}
 			}
 
@@ -766,6 +766,10 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan,
 
 		s.es.attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
 
+		/* Should be deploy plan (all slices) in implicit transaction block? */
+
+		implicitTx := false
+
 		if P != nil {
 
 			stmt := P.Stmt()
@@ -778,13 +782,22 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan,
 					s.es.copyStmt = stmt
 
 					if serv.TxStatus() == txstatus.TXIDLE {
-						if err := s.DeploySliceTransactionQuery("BEGIN"); err != nil {
-							return err
-						}
-						s.es.doFinalizeTx = true
+						implicitTx = true
 					}
 				}
 			}
+			if P.Subplan() != nil {
+				if serv.TxStatus() == txstatus.TXIDLE {
+					implicitTx = true
+				}
+			}
+		}
+
+		if implicitTx {
+			if err := s.DeploySliceTransactionQuery("BEGIN"); err != nil {
+				return err
+			}
+			s.es.doFinalizeTx = true
 		}
 
 		return nil
@@ -831,9 +844,7 @@ func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Pl
 	return p.RunSlice(serv)
 }
 
-// TODO : unit tests
-func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, replyCl bool) error {
-
+func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Plan, replyCl bool) error {
 	serv := s.Client().Server()
 
 	if serv != nil {
@@ -996,7 +1007,9 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, 
 			* original CommandComplete may differ from any of
 			* received from slices (including output slice). */
 			if replyCl {
-				s.es.cc = v
+				s.cacheCC.CommandTag = append([]byte(nil), v.CommandTag...)
+
+				s.es.cc = &s.cacheCC
 			}
 		case *pgproto3.RowDescription:
 			if s.es.expectRowDesc {
@@ -1015,6 +1028,23 @@ func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, 
 			return fmt.Errorf("unexpected %T message type in executor slice deploy", msg)
 		}
 	}
+}
+
+// TODO : unit tests
+func (s *QueryStateExecutorImpl) ExecuteSlice(qd *QueryDesc, topPlan plan.Plan, replyCl bool) error {
+
+	if err := s.executeSliceGuts(qd, topPlan, replyCl); err != nil {
+		return err
+	}
+
+	if s.es.doFinalizeTx {
+		if s.TxStatus() == txstatus.TXACT {
+			return s.ExecCommitTx("COMMIT")
+		}
+		return s.ExecRollbackServer()
+	}
+
+	return nil
 }
 
 func (s *QueryStateExecutorImpl) Client() client.RouterClient {
