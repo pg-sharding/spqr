@@ -86,6 +86,7 @@ corporis
 cptr
 createsequence
 Cta
+CTEs
 ctl
 ctsa
 cupidatat
@@ -234,8 +235,6 @@ iure
 iuwehiuhweui
 ixxxd
 jackc
-jaegercfg
-jaegerlog
 jcmturner
 jidw
 jiofewjijiojioji
@@ -362,7 +361,6 @@ Oids
 oiwejow
 OLAP
 omnis
-opentracing
 opgejrqr
 optarg
 optval
@@ -397,10 +395,8 @@ pgsync
 PGUSER
 pgx
 pgxconn
-phandler
 pitr
 pkgclient
-pmgr
 podman
 poolers
 poolmgr
@@ -631,7 +627,6 @@ vasya
 velit
 vguoyguoygoyy
 Vitess
-vmsg
 Volkov
 voluptate
 voluptatem
