@@ -36,6 +36,10 @@ NOTICE: send query to shard(s) : shard1,shard2,shard3,shard4
 
 ## Batch INSERT
 
+<Warning>
+Batch INSERT rewriting only works with **simple protocol**. Parameterized queries using extended protocol (prepared statements with placeholders) are not supported for cross-shard batch inserts.
+</Warning>
+
 When [engine V2](/routing/hints#spqr-engine-v2) is enabled, SPQR supports batch INSERT statements that target multiple shards. The router automatically analyzes each row in the VALUES clause, determines the target shard based on the sharding key, and rewrites the query into separate INSERT statements per shard.
 
 ```sql
@@ -52,35 +56,6 @@ SPQR rewrites this into:
 - `INSERT INTO users (id, name) VALUES (1, 'Alice'), (2, 'Charlie');` → sh1
 - `INSERT INTO users (id, name) VALUES (100, 'Bob');` → sh2
 
-### Enabling Batch INSERT
-
-You can enable engine V2 in several ways:
-
-**Per-statement hint:**
-```sql
-INSERT INTO users (id, name) VALUES (1, 'Alice'), (100, 'Bob') /* __spqr__engine_v2: true */;
-```
-
-**Session-level:**
-```sql
-SET __spqr__engine_v2 TO on;
-INSERT INTO users (id, name) VALUES (1, 'Alice'), (100, 'Bob');
-```
-
-**Router configuration:**
-```yaml
-query_routing:
-  enhanced_multishard_processing: true
-```
-
-### Limitations
-
-<Note>
-Batch INSERT rewriting only works with **simple protocol**. Parameterized queries using extended protocol (prepared statements with placeholders) are not supported for cross-shard batch inserts.
-</Note>
-
-### Atomic Batch Inserts
-
 For atomic batch inserts across shards, combine engine V2 with two-phase commit:
 
 ```sql
@@ -92,12 +67,3 @@ INSERT INTO users (id, name) VALUES (1, 'Alice'), (100, 'Bob');
 COMMIT; -- Uses 2PC for atomicity across shards
 ```
 
-## Choosing Between COPY and Batch INSERT
-
-| Feature | COPY FROM | Batch INSERT |
-|---------|-----------|--------------|
-| Data source | Files, stdin | SQL VALUES clause |
-| Best for | Large data imports | Application-generated inserts |
-| Engine V2 required | No | Yes |
-| Supports RETURNING | No | Yes |
-| Extended protocol | Yes | No (simple protocol only) |

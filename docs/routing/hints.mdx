@@ -70,28 +70,48 @@ db1=# SHOW __spqr__commit_strategy;
 ## List of hints
 
 ### __spqr__engine_v2
-Enables v2 routing engine functionality with enhanced multi-shard query support.
+Enables v2 routing engine functionality. This hint is currently under development and may be removed in future updates.
 
 <Tip>This hint overrides the [`query_routing.enhanced_multishard_processing`](/configuration/router#query-routing-settings) router configuration setting.</Tip>
-
-Key features enabled by engine V2:
-- **Batch INSERT support**: Multi-value INSERT statements targeting different shards are automatically split and routed to the correct shards
-- **Two-phase commit (2PC)**: Atomic transactions across multiple shards (requires additional configuration)
 
 ```sql
 SET __spqr__engine_v2 TO on;
 ```
 
-**Batch INSERT example:**
+**Features enabled by engine V2:**
+
+| Feature | Description |
+|---------|-------------|
+| Multi-shard SELECT | `WHERE id = X OR id = Y` routes only to needed shards |
+| Set operations | `UNION`, `EXCEPT`, `INTERSECT` across shards |
+| CTEs | `WITH` clauses spanning multiple shards |
+| Batch INSERT | Multi-value INSERTs auto-split by shard ([details](/sharding/bulk#batch-insert)) |
+| Multi-shard UPDATE/DELETE | Modify data across all shards |
+| Reference table writes | INSERT/UPDATE/DELETE on [reference tables](/features/reference_tables) |
+| Transaction expansion | Transactions can span multiple shards |
+| Two-phase commit | Atomic commits across shards ([details](/sharding/distributed_transactions#2-two-phase-commit-2pc)) |
+
+**Examples:**
 ```sql
--- Without engine V2, this would fail if rows target different shards
--- With engine V2, SPQR automatically splits the INSERT by shard
-INSERT INTO users (id, name) VALUES (1, 'Alice'), (100, 'Bob') /* __spqr__engine_v2: true */;
--- NOTICE: send query to shard(s) : sh1,sh2
--- Row (1, 'Alice') goes to sh1, row (100, 'Bob') goes to sh2
+-- Multi-shard SELECT (routes to sh1 and sh2 only, not all shards)
+SELECT * FROM users WHERE id = 1 OR id = 100 /* __spqr__engine_v2: true */;
+
+-- UNION across shards
+SELECT id FROM users WHERE id = 1 UNION ALL SELECT id FROM users WHERE id = 300;
+
+-- Multi-shard UPDATE
+UPDATE users SET status = 'active' /* __spqr__engine_v2: true */;
+
+-- Multi-shard DELETE within transaction
+BEGIN;
+DELETE FROM users WHERE id IN (1, 100, 300) /* __spqr__engine_v2: true */;
+COMMIT;
+
+-- Reference table modification
+INSERT INTO ref_table VALUES (1, 'data') /* __spqr__engine_v2: true */;
 ```
 
-<Note>Batch INSERT rewriting only works with simple protocol. Parameterized queries using extended protocol are not supported for cross-shard batch inserts.</Note>
+<Note>Batch INSERT rewriting only works with simple protocol. Parameterized queries (extended protocol) are not supported for cross-shard batch inserts.</Note>
 
 ### __spqr__target_session_attrs
 
