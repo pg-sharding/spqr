@@ -23,8 +23,33 @@ COPY r (i, j, t) FROM STDIN DELIMITER '|';
 150|151|yyyyy
 \.
 
+SET __spqr__allow_split_update TO off;
+
 UPDATE r SET i = 110 WHERE i = 10;
 UPDATE r SET i = 110 WHERE i = 100;
+
+SET __spqr__engine_v2 TO on;
+SET __spqr__allow_split_update TO on;
+SELECT * FROM r /* __spqr__execute_on: sh2 */;
+SELECT * FROM r /* __spqr__execute_on: sh3 */;
+
+UPDATE r SET i = 201 WHERE i = 110;
+
+SELECT * FROM r /* __spqr__execute_on: sh2 */;
+SELECT * FROM r /* __spqr__execute_on: sh3 */;
+
+BEGIN;
+
+SELECT * FROM r /* __spqr__execute_on: sh1 */;
+SELECT * FROM r /* __spqr__execute_on: sh4 */;
+
+UPDATE r SET i = 401 WHERE i = 10;
+
+SELECT * FROM r /* __spqr__execute_on: sh1 */;
+SELECT * FROM r /* __spqr__execute_on: sh4 */;
+
+COMMIT;
+
 
 DROP TABLE r;
 

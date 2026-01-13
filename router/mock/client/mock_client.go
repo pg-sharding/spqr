@@ -65,6 +65,20 @@ func (mr *MockRouterClientMockRecorder) Add(statType, value any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockRouterClient)(nil).Add), statType, value)
 }
 
+// AllowSplitUpdate mocks base method.
+func (m *MockRouterClient) AllowSplitUpdate() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AllowSplitUpdate")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// AllowSplitUpdate indicates an expected call of AllowSplitUpdate.
+func (mr *MockRouterClientMockRecorder) AllowSplitUpdate() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllowSplitUpdate", reflect.TypeOf((*MockRouterClient)(nil).AllowSplitUpdate))
+}
+
 // AssignRoute mocks base method.
 func (m *MockRouterClient) AssignRoute(r *route.Route) error {
 	m.ctrl.T.Helper()
@@ -968,6 +982,18 @@ func (m *MockRouterClient) Server() server.Server {
 func (mr *MockRouterClientMockRecorder) Server() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Server", reflect.TypeOf((*MockRouterClient)(nil).Server))
+}
+
+// SetAllowSplitUpdate mocks base method.
+func (m *MockRouterClient) SetAllowSplitUpdate(level string, val bool) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetAllowSplitUpdate", level, val)
+}
+
+// SetAllowSplitUpdate indicates an expected call of SetAllowSplitUpdate.
+func (mr *MockRouterClientMockRecorder) SetAllowSplitUpdate(level, val any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAllowSplitUpdate", reflect.TypeOf((*MockRouterClient)(nil).SetAllowSplitUpdate), level, val)
 }
 
 // SetAuthType mocks base method.

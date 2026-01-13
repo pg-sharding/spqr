@@ -709,7 +709,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 			return rPlan, nil
 		}
 
-		if !config.RouterConfig().Qr.AllowSplitUpdate {
+		if !rm.SPH.AllowSplitUpdate() {
 			return nil, spqrerror.Newf(spqrerror.SPQR_NOT_IMPLEMENTED, "updating distribution column is not yet supported")
 		}
 
