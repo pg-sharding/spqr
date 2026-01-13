@@ -659,7 +659,6 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 	txt := txstatus.TXIDLE
 
 	for _, sh := range server.Datashards() {
-
 	wl:
 		for {
 			msg, err := sh.Receive()
@@ -739,6 +738,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor() error {
 				if txt != s.cl.Server().TxStatus() {
 					return rerrors.ErrExecutorSyncLost
 				}
+				s.SetTxStatus(txt)
 			}
 
 			return nil
@@ -794,10 +794,8 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan,
 		}
 
 		if implicitTx {
-			if err := s.DeploySliceTransactionQuery("BEGIN"); err != nil {
-				return err
-			}
 			s.es.doFinalizeTx = true
+			return s.DeploySliceTransactionQuery("BEGIN")
 		}
 
 		return nil
