@@ -601,11 +601,11 @@ Feature: Move recover test
     And SQL result should match json_exactly
     """
     [{
-        "Task group ID":            "tgid1",
+        "task_group_id":            "tgid1",
         "destination_shard_id":     "sh2",
         "source_key_range_id":      "krid1",
         "destination_key_range_id": "krid2",
-        "Move task ID":     "1"
+        "move_task_id":     "1"
     }]
     """
     When I run SQL on host "coordinator"
@@ -616,11 +616,11 @@ Feature: Move recover test
     And SQL result should match json_exactly
     """
     [{
-        "Move task ID":             "1",
+        "move_task_id":             "1",
         "State":                    "PLANNED",
         "Bound":                    "10",
         "temporary_key_range_id":   "krid_temp1",
-        "Task group ID":            "tgid1"
+        "task_group_id":            "tgid1"
     }]
     """
     When I run SQL on host "shard1"
@@ -692,11 +692,11 @@ Feature: Move recover test
     And SQL result should match json_exactly
     """
     [{
-        "Task group ID":            "tgid1",
+        "task_group_id":            "tgid1",
         "destination_shard_id":     "sh2",
         "source_key_range_id":      "krid1",
         "destination_key_range_id": "krid2",
-        "Move task ID":     "1"
+        "move_task_id":     "1"
     }]
     """
     When I run SQL on host "coordinator"
@@ -707,11 +707,11 @@ Feature: Move recover test
     And SQL result should match json_exactly
     """
     [{
-        "Move task ID":             "1",
+        "move_task_id":             "1",
         "State":                    "PLANNED",
         "Bound":                    "10",
         "temporary_key_range_id":   "krid_temp1",
-        "Task group ID":            "tgid1"
+        "task_group_id":            "tgid1"
     }]
     """
     When I run SQL on host "shard1"

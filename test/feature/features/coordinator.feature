@@ -792,11 +792,11 @@ Feature: Coordinator test
     And SQL result should match json_exactly
     """
     [{
-        "Task group ID":            "tgid1",
+        "task_group_id":            "tgid1",
         "destination_shard_id":     "sh_to",
         "source_key_range_id":      "krid1",
         "destination_key_range_id": "krid2",
-        "Move task ID":     "2"
+        "move_task_id":     "2"
     }]
     """
     When I run SQL on host "coordinator"
@@ -807,11 +807,11 @@ Feature: Coordinator test
     And SQL result should match json_exactly
     """
     [{
-        "Move task ID":             "2",
+        "move_task_id":             "2",
         "State":                    "PLANNED",
         "Bound":                    "10",
         "temporary_key_range_id":   "temp_id",
-        "Task group ID":            "tgid1"
+        "task_group_id":            "tgid1"
     }]
     """
     When I run SQL on host "coordinator"

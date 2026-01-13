@@ -284,11 +284,11 @@ Feature: Proxy console
         And SQL result should match json_exactly
         """
         [{
-            "Task group ID":            "tgid1",
+            "task_group_id":            "tgid1",
             "destination_shard_id":     "sh_to",
             "source_key_range_id":      "kr_from",
             "destination_key_range_id": "kr_to",
-            "Move task ID":     "2"
+            "move_task_id":     "2"
         }]
         """
         When I run SQL on host "router-admin"
@@ -299,10 +299,10 @@ Feature: Proxy console
         And SQL result should match json_exactly
         """
         [{
-            "Move task ID":             "2",
+            "move_task_id":             "2",
             "State":                    "PLANNED",
             "Bound":                    "10",
             "temporary_key_range_id":   "temp_id",
-            "Task group ID":            "tgid1"
+            "task_group_id":            "tgid1"
         }]
         """
