@@ -45,9 +45,9 @@ Feature: MemQDB save state into a file
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer hash;
     CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
-    ALTER DISTRIBUTION ds1 ATTACH RELATION a distribution_key a_id HASH FUNCTION MURMUR;
-    ALTER DISTRIBUTION ds2 ATTACH RELATION b distribution_key b_id;
-    ALTER DISTRIBUTION ds2 ATTACH RELATION c distribution_key c_id;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id HASH FUNCTION MURMUR;
+    ALTER DISTRIBUTION ds2 ATTACH RELATION b DISTRIBUTION KEY b_id;
+    ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id;
     """
     Then command return code should be "0"
     When host "router" is stopped

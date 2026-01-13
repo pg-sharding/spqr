@@ -181,7 +181,7 @@ Feature: Coordinator test
     Then SQL result should match json_exactly
     """
     [{
-      "show routers":"router -\u003e r1-[regress_router]:7000",
+      "show_routers":"router -\u003e r1-[regress_router]:7000",
       "status":"OPENED"
     }]
     """
@@ -845,7 +845,7 @@ Feature: Coordinator test
     DROP KEY RANGE krid1;
     DROP KEY RANGE krid2;
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    ALTER DISTRIBUTION ds1 ATTACH RELATION xMove distribution_key w_id;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
     """
     Then command return code should be "0"
 
