@@ -9,7 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
-	validator "github.com/pg-sharding/spqr/pkg/meta/validators"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -805,10 +804,6 @@ func (qc *Coordinator) ShareKeyRange(id string) error {
 // Returns:
 // - error: An error if the creation encounters any issues.
 func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	// TODO: move check to meta layer
-	if err := validator.ValidateKeyRangeForCreate(ctx, lc, kr); err != nil {
-		return err
-	}
 	return lc.qdb.CreateKeyRange(ctx, kr.ToDB())
 }
 
@@ -969,7 +964,7 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		krBase.LowerBound = krAppendage.LowerBound
 	}
 	// TODO: move check to meta layer
-	if err := validator.ValidateKeyRangeForModify(ctx, lc, krBase); err != nil {
+	if err := meta.ValidateKeyRangeForModify(ctx, lc, krBase); err != nil {
 		return err
 	}
 	if err := lc.qdb.UpdateKeyRange(ctx, krBase.ToDB()); err != nil {
@@ -1063,7 +1058,7 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return err
 	}
 
-	if err := qc.CreateKeyRange(ctx, krTemp); err != nil {
+	if err := meta.CreateKeyRangeStrict(ctx, qc, krTemp); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
 	}
 

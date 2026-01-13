@@ -1,11 +1,13 @@
-package meta_validators
+package meta
 
 import (
 	"context"
+	"fmt"
 
-	meta "github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
 // ValidateKeyRangeForCreate validates key range before create
@@ -17,7 +19,7 @@ import (
 //
 // Returns:
 // - error: an error if validation is not passed
-func ValidateKeyRangeForCreate(ctx context.Context, mngr meta.EntityMgr, keyRange *kr.KeyRange) error {
+func ValidateKeyRangeForCreate(ctx context.Context, mngr EntityMgr, keyRange *kr.KeyRange) error {
 	if _, err := mngr.GetShard(ctx, keyRange.ShardID); err != nil {
 		return err
 	}
@@ -71,7 +73,7 @@ func ValidateKeyRangeForCreate(ctx context.Context, mngr meta.EntityMgr, keyRang
 //
 // Returns:
 // - error: an error if validation is not passed
-func ValidateKeyRangeForModify(ctx context.Context, mngr meta.EntityMgr, keyRange *kr.KeyRange) error {
+func ValidateKeyRangeForModify(ctx context.Context, mngr EntityMgr, keyRange *kr.KeyRange) error {
 	krLock, err := mngr.GetKeyRange(ctx, keyRange.ID)
 	if err != nil {
 		return err
@@ -108,4 +110,65 @@ func ValidateKeyRangeForModify(ctx context.Context, mngr meta.EntityMgr, keyRang
 	}
 
 	return nil
+}
+
+func CreateKeyRangeStrict(ctx context.Context, tranMngr EntityMgr, keyRange *kr.KeyRange) error {
+	if err := ValidateKeyRangeForCreate(ctx, tranMngr, keyRange); err != nil {
+		return err
+	}
+
+	err := tranMngr.CreateKeyRange(ctx, keyRange)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
+		return err
+	}
+	return nil
+}
+
+// TODO : unit tests
+
+// createKeyRange creates key range
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - mngr (TranEntityManager): The entity manager used to manage the entities.
+// - stmt (spqrparser.KeyRangeDefinition): The create distribution statement to be processed.
+// Returns:
+// - *kr.KeyRange: created key range.
+// - error: An error if the creation encounters any issues.
+func createKeyRange(ctx context.Context, mngr EntityMgr, stmt *spqrparser.KeyRangeDefinition) (*kr.KeyRange, error) {
+	if stmt.Distribution.ID == "default" {
+		list, err := mngr.ListDistributions(ctx)
+		if err != nil {
+			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "error while selecting list of distributions")
+		}
+		if len(list) == 0 {
+			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "you don't have any distributions")
+		}
+		if len(list) > 1 {
+			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "distributions count not equal one, use FOR DISTRIBUTION syntax")
+		}
+		stmt.Distribution.ID = list[0].Id
+	}
+	ds, err := mngr.GetDistribution(ctx, stmt.Distribution.ID)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
+		return nil, err
+	}
+	if defaultKr := DefaultKeyRangeId(ds); stmt.KeyRangeID == defaultKr {
+		err := fmt.Errorf("key range %s is reserved", defaultKr)
+		spqrlog.Zero.Error().Err(err).Msg("failed to create key range")
+		return nil, err
+	}
+	keyRange, err := kr.KeyRangeFromSQL(stmt, ds.ColTypes)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
+		return nil, err
+	}
+	err = CreateKeyRangeStrict(ctx, mngr, keyRange)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
+		return nil, err
+	}
+	return keyRange, nil
 }
