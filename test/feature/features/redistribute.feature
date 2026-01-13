@@ -70,11 +70,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -85,11 +85,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -100,11 +100,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -156,11 +156,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -171,11 +171,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -186,11 +186,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -237,11 +237,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -252,11 +252,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -267,11 +267,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -344,11 +344,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -359,11 +359,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -374,11 +374,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
   
@@ -436,11 +436,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr2",
-      "Distribution ID":"ds2",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds2",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -451,11 +451,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr2",
-      "Distribution ID":"ds2",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds2",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -466,11 +466,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr2",
-      "Distribution ID":"ds2",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds2",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -532,11 +532,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh3",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh3",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -547,11 +547,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh3",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh3",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -562,11 +562,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh3",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh3",
+      "locked":"false"
     }]
     """
   
@@ -637,11 +637,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -652,11 +652,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -667,11 +667,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run command on host "router"
@@ -728,11 +728,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -743,11 +743,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -758,11 +758,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
   
@@ -816,11 +816,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -831,11 +831,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -846,11 +846,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -925,11 +925,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -940,11 +940,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -955,11 +955,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -1011,11 +1011,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -1026,11 +1026,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -1041,11 +1041,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
   
@@ -1107,32 +1107,32 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"100",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"100",
+      "shard_id":"sh2",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr3",
-      "Distribution ID":"ds1",
-      "Lower bound":"150",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr3",
+      "distribution_id":"ds1",
+      "lower_bound":"150",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr4",
-      "Distribution ID":"ds1",
-      "Lower bound":"90",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr4",
+      "distribution_id":"ds1",
+      "lower_bound":"90",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -1143,32 +1143,32 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"100",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"100",
+      "shard_id":"sh2",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr3",
-      "Distribution ID":"ds1",
-      "Lower bound":"150",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr3",
+      "distribution_id":"ds1",
+      "lower_bound":"150",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr4",
-      "Distribution ID":"ds1",
-      "Lower bound":"90",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr4",
+      "distribution_id":"ds1",
+      "lower_bound":"90",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -1179,32 +1179,32 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"100",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"100",
+      "shard_id":"sh2",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr3",
-      "Distribution ID":"ds1",
-      "Lower bound":"150",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr3",
+      "distribution_id":"ds1",
+      "lower_bound":"150",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr4",
-      "Distribution ID":"ds1",
-      "Lower bound":"90",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr4",
+      "distribution_id":"ds1",
+      "lower_bound":"90",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
   
@@ -1261,11 +1261,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr2",
-      "Distribution ID":"ds2",
-      "Lower bound":"'00000000-0000-0000-0000-000000000000'",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds2",
+      "lower_bound":"'00000000-0000-0000-0000-000000000000'",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -1276,11 +1276,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr2",
-      "Distribution ID":"ds2",
-      "Lower bound":"'00000000-0000-0000-0000-000000000000'",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds2",
+      "lower_bound":"'00000000-0000-0000-0000-000000000000'",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -1291,11 +1291,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr2",
-      "Distribution ID":"ds2",
-      "Lower bound":"'00000000-0000-0000-0000-000000000000'",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds2",
+      "lower_bound":"'00000000-0000-0000-0000-000000000000'",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -1352,11 +1352,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -1367,11 +1367,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -1382,11 +1382,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
   
@@ -1438,11 +1438,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -1453,11 +1453,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -1468,11 +1468,11 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -1544,32 +1544,32 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"300",
-      "Shard ID":"sh3",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"300",
+      "shard_id":"sh3",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr3",
-      "Distribution ID":"ds1",
-      "Lower bound":"600",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr3",
+      "distribution_id":"ds1",
+      "lower_bound":"600",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr4",
-      "Distribution ID":"ds1",
-      "Lower bound":"900",
-      "Shard ID":"sh3",
-      "Locked":"false"
+      "key_range_id":"kr4",
+      "distribution_id":"ds1",
+      "lower_bound":"900",
+      "shard_id":"sh3",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -1580,32 +1580,32 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"300",
-      "Shard ID":"sh3",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"300",
+      "shard_id":"sh3",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr3",
-      "Distribution ID":"ds1",
-      "Lower bound":"600",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr3",
+      "distribution_id":"ds1",
+      "lower_bound":"600",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr4",
-      "Distribution ID":"ds1",
-      "Lower bound":"900",
-      "Shard ID":"sh3",
-      "Locked":"false"
+      "key_range_id":"kr4",
+      "distribution_id":"ds1",
+      "lower_bound":"900",
+      "shard_id":"sh3",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -1616,32 +1616,32 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"300",
-      "Shard ID":"sh3",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"300",
+      "shard_id":"sh3",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr3",
-      "Distribution ID":"ds1",
-      "Lower bound":"600",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr3",
+      "distribution_id":"ds1",
+      "lower_bound":"600",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr4",
-      "Distribution ID":"ds1",
-      "Lower bound":"900",
-      "Shard ID":"sh3",
-      "Locked":"false"
+      "key_range_id":"kr4",
+      "distribution_id":"ds1",
+      "lower_bound":"900",
+      "shard_id":"sh3",
+      "locked":"false"
     }]
     """
   
@@ -1701,18 +1701,18 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"300",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"300",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -1723,18 +1723,18 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"300",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"300",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -1745,18 +1745,18 @@ Feature: Redistribution test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"300",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"300",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 

@@ -80,18 +80,18 @@ Feature: Move test
     """
     [
       {
-      "Key range ID":    "krid1",
-      "Distribution ID": "ds1",
-      "Lower bound":     "1",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid1",
+      "distribution_id": "ds1",
+      "lower_bound":     "1",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid2",
-      "Distribution ID": "ds1",
-      "Lower bound":     "11",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid2",
+      "distribution_id": "ds1",
+      "lower_bound":     "11",
+      "shard_id":        "sh2",
+      "locked":          "false"
       }
     ]
     """
@@ -167,32 +167,32 @@ Feature: Move test
     """
     [
       {
-      "Key range ID":    "krid1",
-      "Distribution ID": "ds1",
-      "Lower bound":     "1",
-      "Shard ID":        "sh1",
-      "Locked":          "false"
+      "key_range_id":    "krid1",
+      "distribution_id": "ds1",
+      "lower_bound":     "1",
+      "shard_id":        "sh1",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid2",
-      "Distribution ID": "ds1",
-      "Lower bound":     "11",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid2",
+      "distribution_id": "ds1",
+      "lower_bound":     "11",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid3",
-      "Distribution ID": "ds2",
-      "Lower bound":     "'a'",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid3",
+      "distribution_id": "ds2",
+      "lower_bound":     "'a'",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid4",
-      "Distribution ID": "ds2",
-      "Lower bound":     "'aa'",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid4",
+      "distribution_id": "ds2",
+      "lower_bound":     "'aa'",
+      "shard_id":        "sh2",
+      "locked":          "false"
       }
     ]
     """
@@ -245,18 +245,18 @@ Feature: Move test
     """
     [
       {
-      "Key range ID":    "krid1",
-      "Distribution ID": "ds1",
-      "Lower bound":     "1",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid1",
+      "distribution_id": "ds1",
+      "lower_bound":     "1",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid2",
-      "Distribution ID": "ds1",
-      "Lower bound":     "11",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid2",
+      "distribution_id": "ds1",
+      "lower_bound":     "11",
+      "shard_id":        "sh2",
+      "locked":          "false"
       }
     ]
     """
@@ -326,18 +326,18 @@ Feature: Move test
     """
     [
       {
-      "Key range ID":    "krid1",
-      "Distribution ID": "ds1",
-      "Lower bound":     "1",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid1",
+      "distribution_id": "ds1",
+      "lower_bound":     "1",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid2",
-      "Distribution ID": "ds1",
-      "Lower bound":     "11",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid2",
+      "distribution_id": "ds1",
+      "lower_bound":     "11",
+      "shard_id":        "sh2",
+      "locked":          "false"
       }
     ]
     """
@@ -483,39 +483,39 @@ Feature: Move test
     """
     [
       {
-      "Key range ID":    "krid1",
-      "Distribution ID": "ds1",
-      "Lower bound":     "1",
-      "Shard ID":        "sh1",
-      "Locked":          "false"
+      "key_range_id":    "krid1",
+      "distribution_id": "ds1",
+      "lower_bound":     "1",
+      "shard_id":        "sh1",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid2",
-      "Distribution ID":"ds1",
-      "Lower bound":     "11",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid2",
+      "distribution_id":"ds1",
+      "lower_bound":     "11",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid3",
-      "Distribution ID":"ds2",
-      "Lower bound":     "0",
-      "Shard ID":        "sh1",
-      "Locked":          "false"
+      "key_range_id":    "krid3",
+      "distribution_id":"ds2",
+      "lower_bound":     "0",
+      "shard_id":        "sh1",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid4",
-      "Distribution ID":"ds2",
-      "Lower bound":     "2147483648",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid4",
+      "distribution_id":"ds2",
+      "lower_bound":     "2147483648",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid5",
-      "Distribution ID":"ds2",
-      "Lower bound":     "1073741824",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid5",
+      "distribution_id":"ds2",
+      "lower_bound":     "1073741824",
+      "shard_id":        "sh2",
+      "locked":          "false"
       }
     ]
     """
@@ -598,39 +598,39 @@ Feature: Move test
     """
     [
       {
-      "Key range ID":    "krid1",
-      "Distribution ID": "ds1",
-      "Lower bound":     "1",
-      "Shard ID":        "sh1",
-      "Locked":          "false"
+      "key_range_id":    "krid1",
+      "distribution_id": "ds1",
+      "lower_bound":     "1",
+      "shard_id":        "sh1",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid2",
-      "Distribution ID": "ds1",
-      "Lower bound":     "11",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid2",
+      "distribution_id": "ds1",
+      "lower_bound":     "11",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid3",
-      "Distribution ID": "ds2",
-      "Lower bound":     "0",
-      "Shard ID":        "sh1",
-      "Locked":          "false"
+      "key_range_id":    "krid3",
+      "distribution_id": "ds2",
+      "lower_bound":     "0",
+      "shard_id":        "sh1",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid4",
-      "Distribution ID": "ds2",
-      "Lower bound":     "2147483648",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid4",
+      "distribution_id": "ds2",
+      "lower_bound":     "2147483648",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid5",
-      "Distribution ID": "ds2",
-      "Lower bound":     "1073741824",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid5",
+      "distribution_id": "ds2",
+      "lower_bound":     "1073741824",
+      "shard_id":        "sh2",
+      "locked":          "false"
       }
     ]
     """
@@ -719,39 +719,39 @@ Feature: Move test
     """
     [
       {
-      "Key range ID":    "krid1",
-      "Distribution ID": "ds1",
-      "Lower bound":     "1",
-      "Shard ID":        "sh1",
-      "Locked":          "false"
+      "key_range_id":    "krid1",
+      "distribution_id": "ds1",
+      "lower_bound":     "1",
+      "shard_id":        "sh1",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid2",
-      "Distribution ID": "ds1",
-      "Lower bound":     "11",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid2",
+      "distribution_id": "ds1",
+      "lower_bound":     "11",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid3",
-      "Distribution ID": "ds2",
-      "Lower bound":     "0",
-      "Shard ID":        "sh1",
-      "Locked":          "false"
+      "key_range_id":    "krid3",
+      "distribution_id": "ds2",
+      "lower_bound":     "0",
+      "shard_id":        "sh1",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid4",
-      "Distribution ID": "ds2",
-      "Lower bound":     "2147483648",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid4",
+      "distribution_id": "ds2",
+      "lower_bound":     "2147483648",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid5",
-      "Distribution ID": "ds2",
-      "Lower bound":     "1073741824",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid5",
+      "distribution_id": "ds2",
+      "lower_bound":     "1073741824",
+      "shard_id":        "sh2",
+      "locked":          "false"
       }
     ]
     """
@@ -843,39 +843,39 @@ Feature: Move test
     """
     [
       {
-      "Key range ID":    "krid1",
-      "Distribution ID": "ds1",
-      "Lower bound":     "1",
-      "Shard ID":        "sh1",
-      "Locked":          "false"
+      "key_range_id":    "krid1",
+      "distribution_id": "ds1",
+      "lower_bound":     "1",
+      "shard_id":        "sh1",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid2",
-      "Distribution ID": "ds1",
-      "Lower bound":     "11",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid2",
+      "distribution_id": "ds1",
+      "lower_bound":     "11",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid3",
-      "Distribution ID": "ds2",
-      "Lower bound":     "0",
-      "Shard ID":        "sh1",
-      "Locked":          "false"
+      "key_range_id":    "krid3",
+      "distribution_id": "ds2",
+      "lower_bound":     "0",
+      "shard_id":        "sh1",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid4",
-      "Distribution ID": "ds2",
-      "Lower bound":     "2147483648",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid4",
+      "distribution_id": "ds2",
+      "lower_bound":     "2147483648",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid5",
-      "Distribution ID": "ds2",
-      "Lower bound":     "1073741824",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid5",
+      "distribution_id": "ds2",
+      "lower_bound":     "1073741824",
+      "shard_id":        "sh2",
+      "locked":          "false"
       }
     ]
     """
@@ -951,32 +951,32 @@ Feature: Move test
     """
     [
       {
-      "Key range ID":    "krid1",
-      "Distribution ID": "ds1",
-      "Lower bound":     "1",
-      "Shard ID":        "sh1",
-      "Locked":          "false"
+      "key_range_id":    "krid1",
+      "distribution_id": "ds1",
+      "lower_bound":     "1",
+      "shard_id":        "sh1",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid2",
-      "Distribution ID": "ds1",
-      "Lower bound":     "11",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid2",
+      "distribution_id": "ds1",
+      "lower_bound":     "11",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid3",
-      "Distribution ID": "ds2",
-      "Lower bound":     "'00000000-0000-0000-0000-000000000000'",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid3",
+      "distribution_id": "ds2",
+      "lower_bound":     "'00000000-0000-0000-0000-000000000000'",
+      "shard_id":        "sh2",
+      "locked":          "false"
       },
       {
-      "Key range ID":    "krid4",
-      "Distribution ID": "ds2",
-      "Lower bound":     "'80000000-0000-0000-0000-000000000000'",
-      "Shard ID":        "sh2",
-      "Locked":          "false"
+      "key_range_id":    "krid4",
+      "distribution_id": "ds2",
+      "lower_bound":     "'80000000-0000-0000-0000-000000000000'",
+      "shard_id":        "sh2",
+      "locked":          "false"
       }
     ]
     """
@@ -1051,18 +1051,18 @@ Feature: Move test
     """
     [
       {
-      "Key range ID":"krid1",
-      "Distribution ID":"ds1",
-      "Lower bound":"1",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"krid1",
+      "distribution_id":"ds1",
+      "lower_bound":"1",
+      "shard_id":"sh2",
+      "locked":"false"
       },
       {
-      "Key range ID":"krid2",
-      "Distribution ID":"ds1",
-      "Lower bound":"11",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"krid2",
+      "distribution_id":"ds1",
+      "lower_bound":"11",
+      "shard_id":"sh2",
+      "locked":"false"
       }
     ]
     """

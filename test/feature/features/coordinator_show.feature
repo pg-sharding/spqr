@@ -177,7 +177,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
                 "router":"[regress_router]:7000",
-                "shard key name":"sh2",
+                "shard_key_name":"sh2",
                 "user":"regress"
             }
         ]
@@ -189,7 +189,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
                 "router":"[regress_router_2]:7000",
-                "shard key name":"sh2",
+                "shard_key_name":"sh2",
                 "user":"regress"
             }
         ]
@@ -201,7 +201,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
                 "router":"[regress_router_2]:7000",
-                "shard key name":"sh1",
+                "shard_key_name":"sh1",
                 "user":"regress"
             }
         ]
@@ -213,7 +213,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
                 "router":"[regress_router]:7000",
-                "shard key name":"sh1",
+                "shard_key_name":"sh1",
                 "user":"regress"
             }
         ]
@@ -232,7 +232,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
                 "router":"[regress_router]:7000",
-                "shard key name":"sh2",
+                "shard_key_name":"sh2",
                 "user":"regress"
             }
         ]
@@ -244,7 +244,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
                 "router":"[regress_router_2]:7000",
-                "shard key name":"sh2",
+                "shard_key_name":"sh2",
                 "user":"regress"
             }
         ]
@@ -256,7 +256,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
                 "router":"[regress_router_2]:7000",
-                "shard key name":"sh1",
+                "shard_key_name":"sh1",
                 "user":"regress"
             }
         ]
@@ -268,7 +268,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
                 "router":"[regress_router]:7000",
-                "shard key name":"sh1",
+                "shard_key_name":"sh1",
                 "user":"regress"
             }
         ]
@@ -295,7 +295,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
                 "router":"[regress_router_2]:7000",
-                "shard key name":"sh1",
+                "shard_key_name":"sh1",
                 "user":"regress"
             }
         ]
@@ -307,7 +307,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
                 "router":"[regress_router_2]:7000",
-                "shard key name":"sh2",
+                "shard_key_name":"sh2",
                 "user":"regress"
             }
         ]
@@ -592,9 +592,9 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         [{
             "Task group ID":            "tgid1",
-            "Destination shard ID":     "sh_to",
-            "Source key range ID":      "kr_from",
-            "Destination key range ID": "kr_to",
+            "destination_shard_id":     "sh_to",
+            "source_key_range_id":      "kr_from",
+            "destination_key_range_id": "kr_to",
             "Move task ID":     "2"
         }]
         """
@@ -609,7 +609,7 @@ Feature: Coordinator show clients, pools and backend_connections
             "Move task ID":             "2",
             "State":                    "PLANNED",
             "Bound":                    "10",
-            "Temporary key range ID":   "temp_id",
+            "temporary_key_range_id":   "temp_id",
             "Task group ID":            "tgid1"
         }]
         """

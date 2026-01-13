@@ -23,12 +23,12 @@ Feature: MemQDB save state into a file
     """
     [
       {
-        "Distribution ID": "ds1",
+        "distribution_id": "ds1",
         "Column types": "integer",
         "Default shard": "not exists"
       },
       {
-        "Distribution ID": "ds2",
+        "distribution_id": "ds2",
         "Column types": "varchar",
         "Default shard": "not exists"
       }
@@ -45,9 +45,9 @@ Feature: MemQDB save state into a file
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer hash;
     CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
-    ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id HASH FUNCTION MURMUR;
-    ALTER DISTRIBUTION ds2 ATTACH RELATION b DISTRIBUTION KEY b_id;
-    ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION a distribution_key a_id HASH FUNCTION MURMUR;
+    ALTER DISTRIBUTION ds2 ATTACH RELATION b distribution_key b_id;
+    ALTER DISTRIBUTION ds2 ATTACH RELATION c distribution_key c_id;
     """
     Then command return code should be "0"
     When host "router" is stopped
@@ -61,22 +61,22 @@ Feature: MemQDB save state into a file
     """
     [
       {
-        "Relation name": "a",
-        "Distribution ID": "ds1",
-        "Distribution key": "(\"a_id\", murmur)",
-        "Schema name": "$search_path"
+        "relation_name": "a",
+        "distribution_id": "ds1",
+        "distribution_key": "(\"a_id\", murmur)",
+        "schema_name": "$search_path"
       },
       {
-        "Relation name": "b",
-        "Distribution ID": "ds2",
-        "Distribution key": "(\"b_id\", identity)",
-        "Schema name": "$search_path"
+        "relation_name": "b",
+        "distribution_id": "ds2",
+        "distribution_key": "(\"b_id\", identity)",
+        "schema_name": "$search_path"
       },
       {
-        "Relation name": "c",
-        "Distribution ID": "ds2",
-        "Distribution key": "(\"c_id\", identity)",
-        "Schema name": "$search_path"
+        "relation_name": "c",
+        "distribution_id": "ds2",
+        "distribution_key": "(\"c_id\", identity)",
+        "schema_name": "$search_path"
       }
     ]
     """
@@ -105,18 +105,18 @@ Feature: MemQDB save state into a file
     """
     [
       {
-        "Key range ID": "krid1",
-        "Distribution ID":"ds1",
-        "Lower bound": "1",
-        "Shard ID": "sh1",
-        "Locked":"false"
+        "key_range_id": "krid1",
+        "distribution_id":"ds1",
+        "lower_bound": "1",
+        "shard_id": "sh1",
+        "locked":"false"
       },
       {
-        "Key range ID": "krid2",
-        "Distribution ID":"ds1",
-        "Lower bound": "11",
-        "Shard ID": "sh1",
-        "Locked":"false"
+        "key_range_id": "krid2",
+        "distribution_id":"ds1",
+        "lower_bound": "11",
+        "shard_id": "sh1",
+        "locked":"false"
       }
     ]
     """

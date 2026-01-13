@@ -52,7 +52,7 @@ Feature: Coordinator test
     """
     [
         {
-            "Distribution ID":"ds1_test",
+            "distribution_id":"ds1_test",
             "Column types":"integer"
         }
     ]
@@ -92,7 +92,7 @@ Feature: Coordinator test
     """
     [
         {
-            "Distribution ID":"ds1_test",
+            "distribution_id":"ds1_test",
             "Column types":"integer"
         }
     ]
@@ -207,18 +207,18 @@ Feature: Coordinator test
     Then SQL result should match json_exactly
     """
     [{
-      "Key range ID":"krid1",
-      "Distribution ID":"ds1",
-      "Lower bound":"50",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"krid1",
+      "distribution_id":"ds1",
+      "lower_bound":"50",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"krid2",
-      "Distribution ID":"ds1",
-      "Lower bound":"100",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"krid2",
+      "distribution_id":"ds1",
+      "lower_bound":"100",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -271,21 +271,21 @@ Feature: Coordinator test
     And SQL result should match json
     """
     [{
-      "Key range ID":"krid1",
-      "Distribution ID":"ds1",
-      "Lower bound":"50",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"krid1",
+      "distribution_id":"ds1",
+      "lower_bound":"50",
+      "shard_id":"sh1",
+      "locked":"false"
     }]
     """
     And SQL result should match json
     """
     [{
-      "Key range ID":"krid3",
-      "Distribution ID":"ds1",
-      "Lower bound":"70",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"krid3",
+      "distribution_id":"ds1",
+      "lower_bound":"70",
+      "shard_id":"sh1",
+      "locked":"false"
     }]
     """
 
@@ -297,21 +297,21 @@ Feature: Coordinator test
     And SQL result should match json
     """
     [{
-      "Key range ID":"krid1",
-      "Distribution ID":"ds1",
-      "Lower bound":"50",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"krid1",
+      "distribution_id":"ds1",
+      "lower_bound":"50",
+      "shard_id":"sh1",
+      "locked":"false"
     }]
     """
     And SQL result should match json
     """
     [{
-      "Key range ID":"krid3",
-      "Distribution ID":"ds1",
-      "Lower bound":"70",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"krid3",
+      "distribution_id":"ds1",
+      "lower_bound":"70",
+      "shard_id":"sh1",
+      "locked":"false"
     }]
     """
 
@@ -324,11 +324,11 @@ Feature: Coordinator test
     And SQL result should match json
     """
     [{
-      "Key range ID":"krid1",
-      "Distribution ID":"ds1",
-      "Lower bound":"50",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"krid1",
+      "distribution_id":"ds1",
+      "lower_bound":"50",
+      "shard_id":"sh1",
+      "locked":"false"
     }]
     """
 
@@ -340,11 +340,11 @@ Feature: Coordinator test
     And SQL result should match json
     """
     [{
-      "Key range ID":"krid1",
-      "Distribution ID":"ds1",
-      "Lower bound":"50",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"krid1",
+      "distribution_id":"ds1",
+      "lower_bound":"50",
+      "shard_id":"sh1",
+      "locked":"false"
     }]
     """
 
@@ -405,11 +405,11 @@ Feature: Coordinator test
     Then SQL result should match json
     """
     [{
-      "Key range ID":"krid3",
-      "Distribution ID":"ds1",
-      "Lower bound":"31",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"krid3",
+      "distribution_id":"ds1",
+      "lower_bound":"31",
+      "shard_id":"sh1",
+      "locked":"false"
     }]
     """
 
@@ -671,11 +671,11 @@ Feature: Coordinator test
     And SQL result should match json
     """
     [{
-      "Key range ID":"krid3",
-      "Distribution ID":"ds1",
-      "Lower bound":"31",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"krid3",
+      "distribution_id":"ds1",
+      "lower_bound":"31",
+      "shard_id":"sh1",
+      "locked":"false"
     }]
     """
 
@@ -715,7 +715,7 @@ Feature: Coordinator test
     """
     [
       {
-        "Distribution ID": "ds1",
+        "distribution_id": "ds1",
         "Column types": "integer",
         "Default shard": "not exists"
       }
@@ -729,18 +729,18 @@ Feature: Coordinator test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"krid1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"krid1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"krid2",
-      "Distribution ID":"ds1",
-      "Lower bound":"11",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"krid2",
+      "distribution_id":"ds1",
+      "lower_bound":"11",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -752,10 +752,10 @@ Feature: Coordinator test
     """
     [
       {
-        "Relation name": "test",
-        "Distribution ID": "ds1",
-        "Distribution key": "(\"id\", identity)",
-        "Schema name": "$search_path"
+        "relation_name": "test",
+        "distribution_id": "ds1",
+        "distribution_key": "(\"id\", identity)",
+        "schema_name": "$search_path"
       }
     ]
     """
@@ -793,9 +793,9 @@ Feature: Coordinator test
     """
     [{
         "Task group ID":            "tgid1",
-        "Destination shard ID":     "sh_to",
-        "Source key range ID":      "krid1",
-        "Destination key range ID": "krid2",
+        "destination_shard_id":     "sh_to",
+        "source_key_range_id":      "krid1",
+        "destination_key_range_id": "krid2",
         "Move task ID":     "2"
     }]
     """
@@ -810,7 +810,7 @@ Feature: Coordinator test
         "Move task ID":             "2",
         "State":                    "PLANNED",
         "Bound":                    "10",
-        "Temporary key range ID":   "temp_id",
+        "temporary_key_range_id":   "temp_id",
         "Task group ID":            "tgid1"
     }]
     """
@@ -845,7 +845,7 @@ Feature: Coordinator test
     DROP KEY RANGE krid1;
     DROP KEY RANGE krid2;
     CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION xMove distribution_key w_id;
     """
     Then command return code should be "0"
 
@@ -890,11 +890,11 @@ Feature: Coordinator test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router-admin"
@@ -905,11 +905,11 @@ Feature: Coordinator test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
     When I run SQL on host "router2-admin"
@@ -920,10 +920,10 @@ Feature: Coordinator test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """

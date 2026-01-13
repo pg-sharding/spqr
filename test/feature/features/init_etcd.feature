@@ -32,10 +32,10 @@ Feature: Initialize router metadata from Etcd
         Then SQL result should match json_exactly
         """
         [{
-            "Key range ID":"krid1",
-            "Distribution ID":"ds1",
-            "Lower bound":"19",
-            "Shard ID":"sh1",
-            "Locked":"false"
+            "key_range_id":"krid1",
+            "distribution_id":"ds1",
+            "lower_bound":"19",
+            "shard_id":"sh1",
+            "locked":"false"
         }]
         """

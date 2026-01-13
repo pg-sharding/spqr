@@ -78,18 +78,18 @@ Feature: Mover test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"krid1",
-      "Distribution ID":"ds1",
-      "Lower bound":"1",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"krid1",
+      "distribution_id":"ds1",
+      "lower_bound":"1",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"krid2",
-      "Distribution ID":"ds1",
-      "Lower bound":"11",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"krid2",
+      "distribution_id":"ds1",
+      "lower_bound":"11",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
