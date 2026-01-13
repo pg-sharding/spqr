@@ -53,7 +53,7 @@ Feature: Coordinator test
     [
         {
             "distribution_id":"ds1_test",
-            "Column types":"integer"
+            "column_types":"integer"
         }
     ]
     """
@@ -93,7 +93,7 @@ Feature: Coordinator test
     [
         {
             "distribution_id":"ds1_test",
-            "Column types":"integer"
+            "column_types":"integer"
         }
     ]
     """
@@ -716,8 +716,8 @@ Feature: Coordinator test
     [
       {
         "distribution_id": "ds1",
-        "Column types": "integer",
-        "Default shard": "not exists"
+        "column_types": "integer",
+        "default_shard": "not exists"
       }
     ]
     """
@@ -808,8 +808,8 @@ Feature: Coordinator test
     """
     [{
         "move_task_id":             "2",
-        "State":                    "PLANNED",
-        "Bound":                    "10",
+        "state":                    "PLANNED",
+        "bound":                    "10",
         "temporary_key_range_id":   "temp_id",
         "task_group_id":            "tgid1"
     }]

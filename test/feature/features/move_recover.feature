@@ -617,8 +617,8 @@ Feature: Move recover test
     """
     [{
         "move_task_id":             "1",
-        "State":                    "PLANNED",
-        "Bound":                    "10",
+        "state":                    "PLANNED",
+        "bound":                    "10",
         "temporary_key_range_id":   "krid_temp1",
         "task_group_id":            "tgid1"
     }]
@@ -708,8 +708,8 @@ Feature: Move recover test
     """
     [{
         "move_task_id":             "1",
-        "State":                    "PLANNED",
-        "Bound":                    "10",
+        "state":                    "PLANNED",
+        "bound":                    "10",
         "temporary_key_range_id":   "krid_temp1",
         "task_group_id":            "tgid1"
     }]

@@ -34,7 +34,7 @@ Feature: Router in cluster test
     [
         {
             "distribution_id":"ds1",
-            "Column types":"integer"
+            "column_types":"integer"
         }
     ]
     """

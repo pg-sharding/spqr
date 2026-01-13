@@ -24,13 +24,13 @@ Feature: MemQDB save state into a file
     [
       {
         "distribution_id": "ds1",
-        "Column types": "integer",
-        "Default shard": "not exists"
+        "column_types": "integer",
+        "default_shard": "not exists"
       },
       {
         "distribution_id": "ds2",
-        "Column types": "varchar",
-        "Default shard": "not exists"
+        "column_types": "varchar",
+        "default_shard": "not exists"
       }
     ]
     """

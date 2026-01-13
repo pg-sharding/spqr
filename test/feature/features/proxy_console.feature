@@ -300,8 +300,8 @@ Feature: Proxy console
         """
         [{
             "move_task_id":             "2",
-            "State":                    "PLANNED",
-            "Bound":                    "10",
+            "state":                    "PLANNED",
+            "bound":                    "10",
             "temporary_key_range_id":   "temp_id",
             "task_group_id":            "tgid1"
         }]
