@@ -2807,6 +2807,7 @@ func TestSplitUpdateXproto(t *testing.T) {
 				&pgproto3.CommandComplete{
 					/* XXX: fix that */
 					// CommandTag: []byte("SELECT 0"),
+					CommandTag: []byte{},
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -2834,6 +2835,7 @@ func TestSplitUpdateXproto(t *testing.T) {
 				&pgproto3.CommandComplete{
 					/* XXX: fix that */
 					// CommandTag: []byte("SELECT 1"),
+					CommandTag: []byte{},
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXACT),
