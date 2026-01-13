@@ -37,7 +37,7 @@ func GetVPHeader(stmts ...string) []pgproto3.FieldDescription {
 func KeyRangeVirtualRelationScan(krs []*kr.KeyRange, locks []string) *tupleslot.TupleTableSlot {
 
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("Key range ID", "Shard ID", "Distribution ID", "Lower bound", "Locked"),
+		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "locked"),
 	}
 
 	lockMap := make(map[string]string, len(locks))
@@ -104,7 +104,7 @@ func HostsVirtualRelationScan(shards []*topology.DataShard, ihc map[string]tsa.C
 func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.TupleTableSlot {
 
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("table name", "schema name", "schema version", "shards", "column sequence mapping"),
+		Desc: GetVPHeader("table_name", "schema_name", "schema_version", "shards", "column_sequence_mapping"),
 	}
 	for _, r := range rrs {
 		schema := r.SchemaName
@@ -151,9 +151,9 @@ func InstanceVirtualRelationScan(ctx context.Context, ci connmgr.ConnectionMgr) 
 
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader(
-			"total tcp connection count",
-			"total cancel requests",
-			"active tcp connections")}
+			"total_tcp_connection_count",
+			"total_cancel_requests",
+			"active_tcp_connections")}
 
 	tts.WriteDataRow(
 		fmt.Sprintf("%v", ci.TotalTcpCount()),
@@ -188,7 +188,7 @@ func RelationsVirtualRelationScan(
 	dsToRels map[string][]*distributions.DistributedRelation) (*tupleslot.TupleTableSlot, error) {
 
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("Relation name", "Distribution ID", "Distribution key", "Schema name"),
+		Desc: GetVPHeader("relation_name", "distribution_id", "distribution_key", "schema_name"),
 	}
 
 	/* XXX: make sort support in outer abstraction layer */
@@ -224,18 +224,18 @@ func RelationsVirtualRelationScan(
 }
 
 var BackendConnectionsHeaders = []string{
-	"backend connection id",
+	"backend_connection_id",
 	"router",
-	"shard key name",
+	"shard_key_name",
 	"hostname",
 	"pid",
 	"user",
 	"dbname",
 	"sync",
 	"tx_served",
-	"tx status",
-	"is stale",
-	"created at",
+	"tx_status",
+	"is_stale",
+	"created_at",
 }
 
 // BackendConnections writes backend connection information to the PSQL client.
@@ -360,7 +360,7 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 func UniqueIndexesVirtualRelationScan(idToidxs map[string]*distributions.UniqueIndex) *tupleslot.TupleTableSlot {
 
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("ID", "Relation name", "Column", "Column type"),
+		Desc: GetVPHeader("id", "relation_name", "column", "column_type"),
 	}
 
 	/* XXX: make sort support in outer abstraction layer */
@@ -381,7 +381,7 @@ func UniqueIndexesVirtualRelationScan(idToidxs map[string]*distributions.UniqueI
 
 func TaskGroupsVirtualRelationScan(groups map[string]*tasks.MoveTaskGroup) *tupleslot.TupleTableSlot {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID", "Move task ID"),
+		Desc: GetVPHeader("task_group_id", "destination_shard_id", "source_key_range_id", "destination_key_range_id", "move_task_id"),
 	}
 	for _, group := range groups {
 		currTaskId := ""
@@ -395,7 +395,7 @@ func TaskGroupsVirtualRelationScan(groups map[string]*tasks.MoveTaskGroup) *tupl
 
 func MoveTasksVirtualRelationScan(ts map[string]*tasks.MoveTask, dsIDColTypes map[string][]string, moveTaskDsID map[string]string) (*tupleslot.TupleTableSlot, error) {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("Move task ID", "Temporary key range ID", "Bound", "State", "Task group ID"),
+		Desc: GetVPHeader("move_task_id", "temporary_key_range_id", "bound", "state", "task_group_id"),
 	}
 
 	for _, task := range ts {

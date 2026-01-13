@@ -241,12 +241,12 @@ func TestSimpleWhere(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: `SHOW relations WHERE "Distribution ID" = 'ds1';`,
+			query: `SHOW relations WHERE distribution_id = 'ds1';`,
 			exp: &spqrparser.Show{
 				Cmd: spqrparser.RelationsStr,
 				Where: &lyx.AExprOp{
 					Left: &lyx.ColumnRef{
-						ColName: "Distribution ID",
+						ColName: "distribution_id",
 					},
 					Right: &lyx.AExprSConst{
 						Value: "ds1",

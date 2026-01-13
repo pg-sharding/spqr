@@ -17,7 +17,7 @@ CREATE DISTRIBUTION ds3 COLUMN TYPES integer hash DEFAULT SHARD sh1;
 (1 row)
 
 SHOW distributions;
- Distribution ID |  Column types   | Default shard 
+ distribution_id |  column_types   | default_shard 
 -----------------+-----------------+---------------
  ds1             | integer         | not exists
  ds2             | varchar,integer | not exists

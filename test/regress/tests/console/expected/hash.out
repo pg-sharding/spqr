@@ -33,13 +33,13 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION r4 DISTRIBUTION KEY col1 HASH FUNCTION CI
 (2 rows)
 
 SHOW DISTRIBUTIONS;
- Distribution ID | Column types | Default shard 
+ distribution_id | column_types | default_shard 
 -----------------+--------------+---------------
  ds1             | uinteger     | not exists
 (1 row)
 
 SHOW RELATIONS;
- Relation name | Distribution ID |  Distribution key  | Schema name  
+ relation_name | distribution_id |  distribution_key  | schema_name  
 ---------------+-----------------+--------------------+--------------
  r1            | ds1             | ("col1", identity) | $search_path
  r2            | ds1             | ("col1", identity) | $search_path

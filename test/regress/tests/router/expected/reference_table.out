@@ -433,7 +433,7 @@ NOTICE: send query to shard(s) : sh3
 
 SET __spqr__preferred_engine TO v2;
 SELECT __spqr__show('reference_relations');
-    table name     | schema name  | schema version |      shards       | column sequence mapping 
+    table_name     | schema_name  | schema_version |      shards       | column_sequence_mapping 
 -------------------+--------------+----------------+-------------------+-------------------------
  test_ref_rel      | $search_path | 1              | [sh1 sh2 sh3 sh4] | map[]
  test_ref_rel_part | $search_path | 1              | [sh1 sh3]         | map[]
@@ -441,7 +441,7 @@ SELECT __spqr__show('reference_relations');
 (3 rows)
 
 SELECT * FROM __spqr__show('reference_relations');
-    table name     | schema name  | schema version |      shards       | column sequence mapping 
+    table_name     | schema_name  | schema_version |      shards       | column_sequence_mapping 
 -------------------+--------------+----------------+-------------------+-------------------------
  test_ref_rel      | $search_path | 1              | [sh1 sh2 sh3 sh4] | map[]
  test_ref_rel_part | $search_path | 1              | [sh1 sh3]         | map[]
@@ -450,7 +450,7 @@ SELECT * FROM __spqr__show('reference_relations');
 
 SET __spqr__preferred_engine TO '';
 SELECT __spqr__show('reference_relations') /*  __spqr__preferred_engine: v2 */;
-    table name     | schema name  | schema version |      shards       | column sequence mapping 
+    table_name     | schema_name  | schema_version |      shards       | column_sequence_mapping 
 -------------------+--------------+----------------+-------------------+-------------------------
  test_ref_rel      | $search_path | 1              | [sh1 sh2 sh3 sh4] | map[]
  test_ref_rel_part | $search_path | 1              | [sh1 sh3]         | map[]
@@ -476,7 +476,7 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 SHOW reference_relations;
-    table name     | schema name  | schema version |      shards       | column sequence mapping 
+    table_name     | schema_name  | schema_version |      shards       | column_sequence_mapping 
 -------------------+--------------+----------------+-------------------+-------------------------
  test_ref_rel      | $search_path | 1              | [sh1 sh2 sh3 sh4] | map[]
  test_ref_rel_part | $search_path | 1              | [sh1 sh3]         | map[]

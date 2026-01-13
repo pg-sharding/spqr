@@ -44,7 +44,7 @@ CREATE KEY RANGE FROM 0 ROUTE TO sh1;
 (1 row)
 
 show relations;
- Relation name | Distribution ID | Distribution key | Schema name  
+ relation_name | distribution_id | distribution_key | schema_name  
 ---------------+-----------------+------------------+--------------
  tr            | ds1             | ("", murmur)     | $search_path
 (1 row)
