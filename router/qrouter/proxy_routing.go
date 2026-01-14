@@ -7,11 +7,13 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -568,6 +570,132 @@ func (qr *ProxyQrouter) plannerV1(
 	return p, nil
 }
 
+func (qr *ProxyQrouter) planSPQR_CTID(
+	ctx context.Context,
+	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
+
+	stmt := rm.Stmt
+
+	switch q := stmt.(type) {
+	case *lyx.Select:
+		if len(q.FromClause) != 0 {
+			return nil, rerrors.ErrComplexQuery
+		}
+		if q.WithClause != nil {
+			return nil, rerrors.ErrComplexQuery
+		}
+
+		if q.LArg != nil {
+			return nil, rerrors.ErrComplexQuery
+		}
+
+		if q.RArg != nil {
+			return nil, rerrors.ErrComplexQuery
+		}
+
+		if len(q.TargetList) != 1 {
+			return nil, rerrors.ErrComplexQuery
+		}
+
+		tle := q.TargetList[0]
+
+		relation := ""
+
+		switch f := tle.(type) {
+		case *lyx.FuncApplication:
+
+			if f.Name != "__spqr__ctid" {
+				return nil, rerrors.ErrComplexQuery
+			}
+			if len(f.Args) != 1 {
+				return nil, rerrors.ErrComplexQuery
+			}
+
+			switch v := f.Args[0].(type) {
+			case *lyx.AExprSConst:
+				relation = v.Value
+			default:
+				return nil, rerrors.ErrComplexQuery
+			}
+
+		default:
+			return nil, rerrors.ErrComplexQuery
+		}
+
+		scanPlan := &plan.ScatterPlan{
+			OverwriteQuery: map[string]string{},
+			ExecTargets:    qr.DataShardsRoutes(),
+		}
+
+		for _, sh := range scanPlan.ExecTargets {
+			scanPlan.OverwriteQuery[sh.Name] = fmt.Sprintf("TABLE %s", relation)
+		}
+
+		tts := &tupleslot.TupleTableSlot{}
+
+		scanPlan.RunF = func(serv server.Server) error {
+			for _, sh := range serv.Datashards() {
+
+				var errmsg *pgproto3.ErrorResponse
+			shLoop:
+				for {
+					msg, err := serv.ReceiveShard(sh.ID())
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+						}
+
+						break shLoop
+					case *pgproto3.RowDescription:
+						if tts.Desc == nil {
+							tts.Desc = []pgproto3.FieldDescription{
+								engine.TextOidFD("__spqr__ctid"),
+							}
+
+							for _, fd := range v.Fields {
+								tts.Desc = append(tts.Desc, pgproto3.FieldDescription{
+									Name:                 fd.Name,
+									TableOID:             fd.TableOID,
+									TableAttributeNumber: fd.TableAttributeNumber,
+									DataTypeOID:          fd.DataTypeOID,
+									DataTypeSize:         fd.DataTypeSize,
+									TypeModifier:         fd.TypeModifier,
+									Format:               fd.Format,
+								})
+							}
+
+						}
+					case *pgproto3.ErrorResponse:
+						errmsg = v
+					case *pgproto3.DataRow:
+						vals := v.Values
+
+						vals = append([][]byte{fmt.Appendf(nil, "shard %s", sh.Name())}, vals...)
+
+						tts.Raw = append(tts.Raw, vals)
+					default:
+						/* All ok? */
+					}
+				}
+			}
+
+			return nil
+		}
+
+		return &plan.VirtualPlan{
+			TTS:     tts,
+			SubPlan: scanPlan,
+		}, nil
+	default:
+		return nil, rerrors.ErrComplexQuery
+	}
+}
+
 func (qr *ProxyQrouter) planSplitUpdate(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
@@ -864,6 +992,11 @@ func (qr *ProxyQrouter) PlanQueryExtended(
 
 	if utilityPlan != nil {
 		return utilityPlan, nil
+	}
+
+	/* TODO: support more cases */
+	if rm.Is_SPQR_CTID {
+		return qr.planSPQR_CTID(ctx, rm)
 	}
 
 	if rm.IsSplitUpdate {

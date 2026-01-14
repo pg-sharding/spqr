@@ -1,0 +1,87 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION d COLUMN TYPES INT;
+   add distribution   
+----------------------
+ distribution id -> d
+(1 row)
+
+CREATE RELATION r (i);
+     attach table     
+----------------------
+ relation name   -> r
+ distribution id -> d
+(2 rows)
+
+CREATE KEY RANGE k4 FROM 300 ROUTE TO sh4;
+ add key range 
+---------------
+ bound -> 300
+(1 row)
+
+CREATE KEY RANGE k3 FROM 200 ROUTE TO sh3;
+ add key range 
+---------------
+ bound -> 200
+(1 row)
+
+CREATE KEY RANGE k2 FROM 100 ROUTE TO sh2;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
+
+CREATE KEY RANGE k1 FROM 0 ROUTE TO sh1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+\c regress
+CREATE TABLE r(i INT, j INT, t TEXT);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+COPY r (i, j, t) FROM STDIN DELIMITER '|';
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT __spqr__ctid('r');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid |  i  |  j  |   t   
+--------------+-----+-----+-------
+ shard sh1    |   0 |  10 | aaaa
+ shard sh1    |  10 |  11 | bbbb
+ shard sh2    | 100 | 101 | cccc
+ shard sh2    | 150 | 151 | yyyyy
+ shard sh3    | 200 | 201 | dddd
+ shard sh4    | 300 | 301 | eeee
+(6 rows)
+
+-- should be rejected.
+SELECT 1, __spqr__ctid('r');
+ERROR:  client processing error: error processing query 'SELECT 1, __spqr__ctid('r');': too complex query to route, tx status IDLE
+WITH s as (SELECT 1) SELECT __spqr__ctid('r');
+ERROR:  client processing error: error processing query 'WITH s as (SELECT 1) SELECT __spqr__ctid('r');': too complex query to route, tx status IDLE
+SELECT __spqr__ctid('r') UNION ALL SELECT __spqr__ctid('r');
+ERROR:  client processing error: error processing query 'SELECT __spqr__ctid('r') UNION ALL SELECT __spqr__ctid('r');': too complex query to route, tx status IDLE
+SELECT  __spqr__ctid('r'), now();
+ERROR:  client processing error: error processing query 'SELECT  __spqr__ctid('r'), now();': too complex query to route, tx status IDLE
+DROP TABLE r;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+  drop distribution   
+----------------------
+ distribution id -> d
+(1 row)
+

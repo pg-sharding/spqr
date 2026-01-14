@@ -195,7 +195,10 @@ type VirtualPlan struct {
 }
 
 func (vp *VirtualPlan) ExecutionTargets() []kr.ShardKey {
-	return nil
+	if vp.SubPlan == nil {
+		return nil
+	}
+	return vp.SubPlan.ExecutionTargets()
 }
 
 func (sp *VirtualPlan) Stmt() lyx.Node {
@@ -211,7 +214,7 @@ func (s *VirtualPlan) GetGangMemberMsg(kr.ShardKey) string {
 }
 
 func (s *VirtualPlan) Subplan() Plan {
-	return nil
+	return s.SubPlan
 }
 
 func (s *VirtualPlan) RunSlice(server.Server) error {
