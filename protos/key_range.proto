@@ -6,6 +6,8 @@ option go_package = "spqr/proto";
 
 import "google/protobuf/empty.proto";
 import "protos/tasks.proto";
+import "protos/meta_transaction.proto";
+import "protos/key_range_entities.proto";
 
 service KeyRangeService {
   rpc GetKeyRange (GetKeyRangeRequest) returns (KeyRangeReply) {}
@@ -13,7 +15,7 @@ service KeyRangeService {
   rpc ListAllKeyRanges (google.protobuf.Empty) returns (KeyRangeReply) {}
   rpc ListKeyRangeLocks (google.protobuf.Empty) returns (KeyRangeLocksReply) {}
   rpc LockKeyRange (LockKeyRangeRequest) returns (ModifyReply) {}
-  rpc CreateKeyRange(CreateKeyRangeRequest) returns (ModifyReply) {}
+  rpc CreateKeyRange(CreateKeyRangeRequest) returns (ModifyReplyTransaction) {}
   rpc DropKeyRange(DropKeyRangeRequest) returns (ModifyReply) {}
   rpc DropAllKeyRanges(google.protobuf.Empty) returns (DropAllKeyRangesResponse) {}
   rpc UnlockKeyRange (UnlockKeyRangeRequest) returns (ModifyReply) {}
@@ -24,25 +26,6 @@ service KeyRangeService {
   rpc BatchMoveKeyRange (BatchMoveKeyRangeRequest) returns (google.protobuf.Empty) {}
   rpc RedistributeKeyRange (RedistributeKeyRangeRequest) returns (google.protobuf.Empty) {}
   rpc RenameKeyRange (RenameKeyRangeRequest) returns (google.protobuf.Empty) {}
-}
-
-enum KeyRangeStatus {
-  LOCKED = 0;
-  AVAILABLE = 1;
-}
-
-message KeyRangeBound {
-  repeated bytes values = 1;
-}
-
-// key range info is mapped to shard
-message KeyRangeInfo {
-  KeyRangeBound bound = 1;
-
-  string krid = 2;
-  string shardId = 3;
-  string distributionId = 4;
-  optional bool locked = 5;
 }
 
 message ListKeyRangeRequest {
@@ -96,6 +79,12 @@ message KeyRangeLocksReply {
 
 message ModifyReply {
   string operation_id = 1;
+}
+
+message ModifyReplyTransaction {
+  string operation_id = 1;
+  repeated QdbTransactionCmd cmdList = 2;
+  repeated MetaTransactionGossipCommand metaCmdList = 3;
 }
 
 message ResolveKeyRangeRequest {

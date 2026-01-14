@@ -48,7 +48,7 @@ func (mts *MetaTransactionServer) ExecNoTran(ctx context.Context, request *proto
 	return nil, mts.impl.ExecNoTran(ctx, tranChunk)
 }
 
-func (mts *MetaTransactionServer) ExecTran(ctx context.Context, request *proto.MetaTransactionRequest) (*emptypb.Empty, error) {
+func (mts *MetaTransactionServer) CommitTran(ctx context.Context, request *proto.MetaTransactionRequest) (*emptypb.Empty, error) {
 	var metaTran *mtran.MetaTransaction
 	metaTran, err := mtran.TransactionFromProtoRequest(request)
 	if err != nil {

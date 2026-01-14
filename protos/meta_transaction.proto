@@ -5,7 +5,7 @@ package spqr;
 option go_package = "spqr/proto";
 import "google/protobuf/empty.proto";
 import "protos/distribution_entities.proto";
-import "protos/key_range.proto";
+import "protos/key_range_entities.proto";
 
 
 message CreateDistributionGossip {

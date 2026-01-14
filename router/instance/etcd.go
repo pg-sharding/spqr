@@ -66,8 +66,14 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 			if err != nil {
 				return err
 			}
-			if err := r.Console().Mgr().CreateKeyRange(ctx, kRange); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
+			mngr := r.Console().Mgr()
+			chunk, err := mngr.CreateKeyRange(ctx, kRange)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (create range prepare)")
+				return err
+			}
+			if err = mngr.ExecNoTran(ctx, chunk); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (create range exec)")
 				return err
 			}
 		}

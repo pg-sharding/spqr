@@ -50,6 +50,17 @@ func innerFromProto(TransactionId string, CmdList []*proto.QdbTransactionCmd, Me
 	}
 }
 
+func BeginTranFromProto(tran *proto.MetaTransactionReply) (*MetaTransaction, error) {
+	if len(tran.CmdList) > 0 || len(tran.MetaCmdList) > 0 {
+		return nil, fmt.Errorf("begin from proto non empty transaction")
+	}
+	idTran, err := uuid.Parse(tran.TransactionId)
+	if err != nil {
+		return nil, fmt.Errorf("invalid transaction id=%s", tran.TransactionId)
+	}
+	return &MetaTransaction{TransactionId: idTran}, nil
+}
+
 func TransactionFromProto(tran *proto.MetaTransactionReply) (*MetaTransaction, error) {
 	return innerFromProto(tran.TransactionId, tran.CmdList, tran.MetaCmdList)
 }

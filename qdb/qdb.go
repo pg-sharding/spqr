@@ -62,7 +62,7 @@ type TXManager interface {
 // while the coordinator uses etcd-based implementation to synchronize distributed state.
 type QDB interface {
 	// Key ranges
-	CreateKeyRange(ctx context.Context, keyRange *KeyRange) error
+	CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error)
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
 	DropKeyRange(ctx context.Context, id string) error
