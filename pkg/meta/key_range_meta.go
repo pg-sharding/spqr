@@ -157,7 +157,9 @@ func createKeyRange(ctx context.Context, mngr EntityMgr, stmt *spqrparser.KeyRan
 	}
 	if defaultKr := DefaultKeyRangeId(ds); stmt.KeyRangeID == defaultKr {
 		err := fmt.Errorf("key range %s is reserved", defaultKr)
-		spqrlog.Zero.Error().Err(err).Msg("failed to create key range")
+		spqrlog.Zero.Error().
+			Str("key_range", defaultKr).
+			Msg("the key range is reserved, failed to create key range")
 		return nil, err
 	}
 	keyRange, err := kr.KeyRangeFromSQL(stmt, ds.ColTypes)
