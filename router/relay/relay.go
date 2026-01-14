@@ -234,9 +234,11 @@ var ErrMatchShardError = fmt.Errorf("failed to match datashard")
 // TODO : unit tests
 func (rst *RelayStateImpl) initExecutor(p plan.Plan) error {
 
-	switch p.(type) {
+	switch q := p.(type) {
 	case *plan.VirtualPlan:
-		return nil
+		if q.SubPlan == nil {
+			return nil
+		}
 	}
 
 	if err := rst.QueryExecutor().InitPlan(p); err != nil {

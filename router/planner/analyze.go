@@ -336,6 +336,10 @@ func AnalyzeQueryV1(
 			switch e := actualExpr.(type) {
 			/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
 			case *lyx.FuncApplication:
+				if e.Name == "__spqr__ctid" {
+					/* we only support this if query is simple select */
+					rm.Is_SPQR_CTID = true
+				}
 				for _, innerExp := range e.Args {
 					switch iE := innerExp.(type) {
 					case *lyx.Select:
