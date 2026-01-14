@@ -152,7 +152,7 @@ func createKeyRange(ctx context.Context, mngr EntityMgr, stmt *spqrparser.KeyRan
 	}
 	ds, err := mngr.GetDistribution(ctx, stmt.Distribution.ID)
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
+		spqrlog.Zero.Error().Err(err).Msg("GetDistribution failed while createKeyRange")
 		return nil, err
 	}
 	if defaultKr := DefaultKeyRangeId(ds); stmt.KeyRangeID == defaultKr {
