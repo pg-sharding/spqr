@@ -87,6 +87,7 @@ cptr
 createsequence
 Cta
 CTEs
+ctid
 ctl
 ctsa
 cupidatat
