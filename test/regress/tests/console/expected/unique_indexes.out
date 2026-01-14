@@ -32,7 +32,7 @@ CREATE UNIQUE INDEX ui2 ON t COLUMN col_uniq_2 TYPE integer;
 (4 rows)
 
 SHOW unique_indexes;
- ID  | Relation name |   Column   | Column type 
+ id  | relation_name |   column   | column_type 
 -----+---------------+------------+-------------
  ui1 | t             | col_uniq   | integer
  ui2 | t             | col_uniq_2 | integer
@@ -45,7 +45,7 @@ DROP UNIQUE INDEX ui1;
 (1 row)
 
 SHOW unique_indexes;
- ID  | Relation name |   Column   | Column type 
+ id  | relation_name |   column   | column_type 
 -----+---------------+------------+-------------
  ui2 | t             | col_uniq_2 | integer
 (1 row)

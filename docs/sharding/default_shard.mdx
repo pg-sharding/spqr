@@ -20,7 +20,7 @@ ALTER DISTRIBUTION testWithDefault ADD DEFAULT SHARD sh2; -- Add default shard
 (2 rows)
 
 SHOW key_ranges; -- Let's see the key ranges now
-      Key range ID       | Shard ID | Distribution ID |     Lower bound      | Locked 
+      key_range_id       | shard_id | distribution_id |     lower_bound      | locked
 -------------------------+----------+-----------------+----------------------+--------
  kr18b713215             | sh1      | ds1             | 0                    | true
  testWithDefault.DEFAULT | sh2      | testWithDefault | -9223372036854775808 | false

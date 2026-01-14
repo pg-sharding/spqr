@@ -215,10 +215,10 @@ Feature: Reference relation test
     """
     [
       {
-        "Relation name": "test",
-        "Distribution ID": "REPLICATED",
-        "Distribution key":"",
-        "Schema name": "$search_path"
+        "relation_name": "test",
+        "distribution_id": "REPLICATED",
+        "distribution_key":"",
+        "schema_name": "$search_path"
       }
     ]
     """

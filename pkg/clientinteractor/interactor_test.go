@@ -636,11 +636,11 @@ func TestKeyRangesSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ca := mockcl.NewMockRouterClient(ctrl)
 	var desc []pgproto3.FieldDescription
-	desc = append(desc, engine.TextOidFD("Key range ID"))
-	desc = append(desc, engine.TextOidFD("Shard ID"))
-	desc = append(desc, engine.TextOidFD("Distribution ID"))
-	desc = append(desc, engine.TextOidFD("Lower bound"))
-	desc = append(desc, engine.TextOidFD("Locked"))
+	desc = append(desc, engine.TextOidFD("key_range_id"))
+	desc = append(desc, engine.TextOidFD("shard_id"))
+	desc = append(desc, engine.TextOidFD("distribution_id"))
+	desc = append(desc, engine.TextOidFD("lower_bound"))
+	desc = append(desc, engine.TextOidFD("locked"))
 	firstRow := pgproto3.DataRow{
 		Values: [][]byte{
 			[]byte("krid1"),

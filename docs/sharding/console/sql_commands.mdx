@@ -242,7 +242,7 @@ The`where_clause` is used to filter the results based on specific conditions. It
 ```sql
 spqr-console=> SHOW backend_connections WHERE hostname='hostname:6432'
 
- backend connection id | router  | shard key name |   hostname    |     user     | dbname | sync | tx_served | tx status
+ backend_connection_id | router  | shard_key_name |   hostname    |     user     | dbname | sync | tx_served | tx_status
 -----------------------+---------+----------------+---------------+--------------+--------+------+-----------+-----------
  824694216064          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 10102     | IDLE
  824646300800          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 7508      | IDLE

@@ -64,18 +64,18 @@ Feature: Balancer test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"99990",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"99990",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -128,18 +128,18 @@ Feature: Balancer test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"99970",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"99970",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -225,18 +225,18 @@ Feature: Balancer test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"100030",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"100030",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -288,20 +288,20 @@ Feature: Balancer test
     And SQL result should match json
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh1",
+      "locked":"false"
     }]
     """
     And SQL result should match json
     """
     [{
-      "Distribution ID":"ds1",
-      "Lower bound":"99970",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "distribution_id":"ds1",
+      "lower_bound":"99970",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -354,18 +354,18 @@ Feature: Balancer test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"99990",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"99990",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -441,32 +441,32 @@ Feature: Balancer test
     And SQL result should match json
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"99970",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"99970",
+      "shard_id":"sh2",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr3",
-      "Distribution ID":"ds2",
-      "Lower bound":"10",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr3",
+      "distribution_id":"ds2",
+      "lower_bound":"10",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr4",
-      "Distribution ID":"ds2",
-      "Lower bound":"10000",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr4",
+      "distribution_id":"ds2",
+      "lower_bound":"10000",
+      "shard_id":"sh2",
+      "locked":"false"
     }]
     """
 
@@ -524,39 +524,39 @@ Feature: Balancer test
     """
     [
     {
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr2",
-      "Distribution ID":"ds1",
-      "Lower bound":"20000",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr2",
+      "distribution_id":"ds1",
+      "lower_bound":"20000",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr3",
-      "Distribution ID":"ds1",
-      "Lower bound":"40000",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr3",
+      "distribution_id":"ds1",
+      "lower_bound":"40000",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr4",
-      "Distribution ID":"ds1",
-      "Lower bound":"60000",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr4",
+      "distribution_id":"ds1",
+      "lower_bound":"60000",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr6",
-      "Distribution ID":"ds1",
-      "Lower bound":"70000",
-      "Shard ID":"sh2",
-      "Locked":"false"
+      "key_range_id":"kr6",
+      "distribution_id":"ds1",
+      "lower_bound":"70000",
+      "shard_id":"sh2",
+      "locked":"false"
     }
     ]
     """

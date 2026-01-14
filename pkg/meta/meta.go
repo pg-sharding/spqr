@@ -278,7 +278,7 @@ func processDrop(ctx context.Context,
 		}
 
 		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("Drop task group"),
+			Desc: engine.GetVPHeader("drop task group"),
 		}
 
 		tts.Raw = append(tts.Raw, [][]byte{

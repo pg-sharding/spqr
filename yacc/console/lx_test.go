@@ -78,7 +78,7 @@ func TestSimpleLex(t *testing.T) {
 		},
 
 		{
-			query: `SHOW relations WHERE "Distribution ID" = 'ds1';`,
+			query: `SHOW relations WHERE distribution_id = 'ds1';`,
 			exp: []int{
 				spqrparser.SHOW, spqrparser.RELATIONS,
 				spqrparser.WHERE,

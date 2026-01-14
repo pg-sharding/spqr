@@ -1,5 +1,5 @@
 SHOW is_read_only;
- is read only 
+ is_read_only 
 --------------
  false
 (1 row)

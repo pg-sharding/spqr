@@ -1,5 +1,5 @@
 SHOW routers;
-   show routers   | status 
+      router      | status 
 ------------------+--------
  router -> local- | 
 (1 row)

@@ -33,8 +33,8 @@ Feature: Router in cluster test
     """
     [
         {
-            "Distribution ID":"ds1",
-            "Column types":"integer"
+            "distribution_id":"ds1",
+            "column_types":"integer"
         }
     ]
     """
@@ -54,10 +54,10 @@ Feature: Router in cluster test
     """
     [
       {
-        "Relation name": "d_zz",
-        "Distribution ID": "ds1",
-        "Distribution key": "(\"j\", identity)",
-        "Schema name": "$search_path"
+        "relation_name": "d_zz",
+        "distribution_id": "ds1",
+        "distribution_key": "(\"j\", identity)",
+        "schema_name": "$search_path"
       }
     ]
     """
@@ -71,10 +71,10 @@ Feature: Router in cluster test
     """
     [
       {
-        "Relation name": "d_zz",
-        "Distribution ID": "ds1",
-        "Distribution key": "(\"j\", identity)",
-        "Schema name": "$search_path"
+        "relation_name": "d_zz",
+        "distribution_id": "ds1",
+        "distribution_key": "(\"j\", identity)",
+        "schema_name": "$search_path"
       }
     ]
     """
