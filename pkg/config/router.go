@@ -78,7 +78,6 @@ type Router struct {
 
 	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
 	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
-	JaegerUrl        string            `json:"jaeger_url" toml:"jaeger_url" yaml:"jaeger_url"`
 	FrontendRules    []*FrontendRule   `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
 	Qr               QRouter           `json:"query_routing" toml:"query_routing" yaml:"query_routing"`
 	FrontendTLS      *TLSConfig        `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
