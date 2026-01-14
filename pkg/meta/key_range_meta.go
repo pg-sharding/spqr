@@ -162,7 +162,7 @@ func createKeyRange(ctx context.Context, mngr EntityMgr, stmt *spqrparser.KeyRan
 	}
 	keyRange, err := kr.KeyRangeFromSQL(stmt, ds.ColTypes)
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
+		spqrlog.Zero.Error().Err(err).Msg("KeyRangeFromSQL failed while createKeyRange")
 		return nil, err
 	}
 	err = CreateKeyRangeStrict(ctx, mngr, keyRange)
