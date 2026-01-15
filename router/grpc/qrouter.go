@@ -707,7 +707,9 @@ func (l *LocalQrouterServer) ListUniqueIndexes(ctx context.Context, _ *emptypb.E
 }
 
 func (l *LocalQrouterServer) ListRelationUniqueIndexes(ctx context.Context, req *protos.ListRelationUniqueIndexesRequest) (*protos.ListUniqueIndexesReply, error) {
-	idxs, err := l.mgr.ListRelationIndexes(ctx, req.RelationName)
+	idxs, err := l.mgr.ListRelationIndexes(ctx, &rfqn.RelationFQN{
+		RelationName: req.RelationName,
+	})
 	if err != nil {
 		return nil, err
 	}

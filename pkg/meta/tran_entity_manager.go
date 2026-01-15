@@ -420,7 +420,7 @@ func (t *TranEntityManager) ListDistributionIndexes(ctx context.Context, dsID st
 }
 
 // ListRelationIndexes implements [EntityMgr].
-func (t *TranEntityManager) ListRelationIndexes(ctx context.Context, relName string) (map[string]*distributions.UniqueIndex, error) {
+func (t *TranEntityManager) ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
 	panic("ListRelationIndexes unimplemented")
 }
 

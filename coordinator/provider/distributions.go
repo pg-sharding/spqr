@@ -212,7 +212,8 @@ func (d *DistributionsServer) ListDistributionUniqueIndexes(ctx context.Context,
 }
 
 func (d *DistributionsServer) ListRelationUniqueIndexes(ctx context.Context, req *protos.ListRelationUniqueIndexesRequest) (*protos.ListUniqueIndexesReply, error) {
-	idxs, err := d.impl.ListRelationIndexes(ctx, req.RelationName)
+	idxs, err := d.impl.ListRelationIndexes(ctx, &rfqn.RelationFQN{
+		RelationName: req.RelationName})
 	if err != nil {
 		return nil, err
 	}

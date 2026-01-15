@@ -672,7 +672,7 @@ func (mr *MockEntityMgrMockRecorder) ListReferenceRelations(ctx any) *gomock.Cal
 }
 
 // ListRelationIndexes mocks base method.
-func (m *MockEntityMgr) ListRelationIndexes(ctx context.Context, relName string) (map[string]*distributions.UniqueIndex, error) {
+func (m *MockEntityMgr) ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListRelationIndexes", ctx, relName)
 	ret0, _ := ret[0].(map[string]*distributions.UniqueIndex)
