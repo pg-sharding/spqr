@@ -1,3 +1,10 @@
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
@@ -37,13 +44,13 @@ CREATE RELATION t3 (id HASH MURMUR, id2 HASH MURMUR) IN ds3;
  distribution id -> ds3
 (2 rows)
 
-CREATE UNIQUE INDEX ui_same_col ON t2 COLUMN col_uniq TYPE integer HASH;
-   create unique index   
--------------------------
- index ID -> ui_same_col
+CREATE UNIQUE INDEX ui1 ON t2 COLUMN col_uniq_1 TYPE varchar HASH;
+      create unique index      
+-------------------------------
+ index ID -> ui1
  relation name -> t2
- column name -> col_uniq
- column type -> uinteger
+ column name -> col_uniq_1
+ column type -> varchar hashed
 (4 rows)
 
 CREATE UNIQUE INDEX ui2 ON t2 COLUMN col_uniq_2 TYPE integer HASH;
@@ -55,32 +62,31 @@ CREATE UNIQUE INDEX ui2 ON t2 COLUMN col_uniq_2 TYPE integer HASH;
  column type -> uinteger
 (4 rows)
 
-CREATE UNIQUE INDEX ui2 ON t2 COLUMN col_uniq_3 TYPE varchar HASH;
-ERROR:  unique index with ID "ui2" already exists
+CREATE UNIQUE INDEX ui_same_col ON t2 COLUMN col_uniq_2 TYPE integer HASH;
+ERROR:  unique index for table "t2", column "col_uniq_2" already exists
 -- reject that
-CREATE UNIQUE INDEX ui1 ON t COLUMN col_uniq TYPE integer;
+CREATE UNIQUE INDEX uiui ON t COLUMN col_uniq TYPE integer;
 ERROR:  unique indexes are not supported non-hashed distribution
-CREATE UNIQUE INDEX ui_same_col ON t3 COLUMN col_uniq TYPE integer;
+CREATE UNIQUE INDEX uiui ON t3 COLUMN col_uniq TYPE integer;
 ERROR:  unique indexes are supported only for single-column distributions, but ds3 has 2
 SHOW unique_indexes;
-     id      | relation_name |   column   | column_type 
--------------+---------------+------------+-------------
- ii          | t             | j          | integer
- ii2         | t             | j2         | uinteger
- ui2         | t2            | col_uniq_2 | uinteger
- ui_same_col | t2            | col_uniq   | uinteger
-(4 rows)
+ id  | relation_name |   column   |  column_type   
+-----+---------------+------------+----------------
+ ui1 | t2            | col_uniq_1 | varchar hashed
+ ui2 | t2            | col_uniq_2 | uinteger
+(2 rows)
 
 DROP UNIQUE INDEX ui1;
-ERROR:  unique index "ui1" not found
+  drop unique index  
+---------------------
+ unique index -> ui1
+(1 row)
+
 SHOW unique_indexes;
-     id      | relation_name |   column   | column_type 
--------------+---------------+------------+-------------
- ii          | t             | j          | integer
- ii2         | t             | j2         | uinteger
- ui2         | t2            | col_uniq_2 | uinteger
- ui_same_col | t2            | col_uniq   | uinteger
-(4 rows)
+ id  | relation_name |   column   | column_type 
+-----+---------------+------------+-------------
+ ui2 | t2            | col_uniq_2 | uinteger
+(1 row)
 
 DROP UNIQUE INDEX ui2;
   drop unique index  

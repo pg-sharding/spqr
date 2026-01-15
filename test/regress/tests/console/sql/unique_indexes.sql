@@ -5,13 +5,13 @@ CREATE RELATION t (id) IN ds1;
 CREATE RELATION t2 (id HASH MURMUR) IN ds2;
 CREATE RELATION t3 (id HASH MURMUR, id2 HASH MURMUR) IN ds3;
 
-CREATE UNIQUE INDEX ui_same_col ON t2 COLUMN col_uniq TYPE integer HASH;
+CREATE UNIQUE INDEX ui1 ON t2 COLUMN col_uniq_1 TYPE varchar HASH;
 CREATE UNIQUE INDEX ui2 ON t2 COLUMN col_uniq_2 TYPE integer HASH;
-CREATE UNIQUE INDEX ui2 ON t2 COLUMN col_uniq_3 TYPE varchar HASH;
+CREATE UNIQUE INDEX ui_same_col ON t2 COLUMN col_uniq_2 TYPE integer HASH;
 
 -- reject that
-CREATE UNIQUE INDEX ui1 ON t COLUMN col_uniq TYPE integer;
-CREATE UNIQUE INDEX ui_same_col ON t3 COLUMN col_uniq TYPE integer;
+CREATE UNIQUE INDEX uiui ON t COLUMN col_uniq TYPE integer;
+CREATE UNIQUE INDEX uiui ON t3 COLUMN col_uniq TYPE integer;
 
 SHOW unique_indexes;
 
