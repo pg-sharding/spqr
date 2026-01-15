@@ -1142,6 +1142,19 @@ func (lc *Coordinator) CreateUniqueIndex(ctx context.Context, dsId string, idx *
 	if !ok {
 		return fmt.Errorf("no relation \"%s\" found in distribution \"%s\"", idx.RelationName.RelationName, ds.Id)
 	}
+
+	/* Current implementation restiction. */
+	if len(ds.ColTypes) != 1 {
+		return fmt.Errorf("unique indexes are supported only for single-column distributions, but %s has %d", ds.Id, len(ds.ColTypes))
+	}
+
+	switch ds.ColTypes[0] {
+	/* only UUID or hashed types */
+	case qdb.ColumnTypeInteger, qdb.ColumnTypeVarchar:
+		return fmt.Errorf("unique indexes are not supported non-hashed distribution")
+	}
+
+	/* Is this a problem? */
 	if _, ok := rel.UniqueIndexesByColumn[idx.ColumnName]; ok {
 		return fmt.Errorf("unique index for table \"%s\", column \"%s\" already exists", idx.RelationName.String(), idx.ColumnName)
 	}

@@ -4,51 +4,83 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;
+CREATE DISTRIBUTION ds2 COLUMN TYPES integer HASH;
+    add distribution    
+------------------------
+ distribution id -> ds2
+(1 row)
+
+CREATE DISTRIBUTION ds3 COLUMN TYPES VARCHAR HASH, INT HASH;
+    add distribution    
+------------------------
+ distribution id -> ds3
+(1 row)
+
+CREATE RELATION t (id) IN ds1;
       attach table      
 ------------------------
  relation name   -> t
  distribution id -> ds1
 (2 rows)
 
-CREATE UNIQUE INDEX ui1 ON t COLUMN col_uniq TYPE integer;
+CREATE RELATION t2 (id HASH MURMUR) IN ds2;
+      attach table      
+------------------------
+ relation name   -> t2
+ distribution id -> ds2
+(2 rows)
+
+CREATE RELATION t3 (id HASH MURMUR, id2 HASH MURMUR) IN ds3;
+      attach table      
+------------------------
+ relation name   -> t3
+ distribution id -> ds3
+(2 rows)
+
+CREATE UNIQUE INDEX ui_same_col ON t2 COLUMN col_uniq TYPE integer HASH;
    create unique index   
 -------------------------
- index ID -> ui1
- relation name -> t
+ index ID -> ui_same_col
+ relation name -> t2
  column name -> col_uniq
- column type -> integer
+ column type -> uinteger
 (4 rows)
 
-CREATE UNIQUE INDEX ui_same_col ON t COLUMN col_uniq TYPE integer;
-ERROR:  unique index for table "t", column "col_uniq" already exists
-CREATE UNIQUE INDEX ui2 ON t COLUMN col_uniq_2 TYPE integer;
+CREATE UNIQUE INDEX ui2 ON t2 COLUMN col_uniq_2 TYPE integer HASH;
     create unique index    
 ---------------------------
  index ID -> ui2
- relation name -> t
+ relation name -> t2
  column name -> col_uniq_2
- column type -> integer
+ column type -> uinteger
 (4 rows)
 
+CREATE UNIQUE INDEX ui2 ON t2 COLUMN col_uniq_3 TYPE varchar HASH;
+ERROR:  unique index with ID "ui2" already exists
+-- reject that
+CREATE UNIQUE INDEX ui1 ON t COLUMN col_uniq TYPE integer;
+ERROR:  unique indexes are not supported non-hashed distribution
+CREATE UNIQUE INDEX ui_same_col ON t3 COLUMN col_uniq TYPE integer;
+ERROR:  unique indexes are supported only for single-column distributions, but ds3 has 2
 SHOW unique_indexes;
- id  | relation_name |   column   | column_type 
------+---------------+------------+-------------
- ui1 | t             | col_uniq   | integer
- ui2 | t             | col_uniq_2 | integer
-(2 rows)
+     id      | relation_name |   column   | column_type 
+-------------+---------------+------------+-------------
+ ii          | t             | j          | integer
+ ii2         | t             | j2         | uinteger
+ ui2         | t2            | col_uniq_2 | uinteger
+ ui_same_col | t2            | col_uniq   | uinteger
+(4 rows)
 
 DROP UNIQUE INDEX ui1;
-  drop unique index  
----------------------
- unique index -> ui1
-(1 row)
-
+ERROR:  unique index "ui1" not found
 SHOW unique_indexes;
- id  | relation_name |   column   | column_type 
------+---------------+------------+-------------
- ui2 | t             | col_uniq_2 | integer
-(1 row)
+     id      | relation_name |   column   | column_type 
+-------------+---------------+------------+-------------
+ ii          | t             | j          | integer
+ ii2         | t             | j2         | uinteger
+ ui2         | t2            | col_uniq_2 | uinteger
+ ui_same_col | t2            | col_uniq   | uinteger
+(4 rows)
 
 DROP UNIQUE INDEX ui2;
   drop unique index  
@@ -60,5 +92,17 @@ DROP DISTRIBUTION ds1 CASCADE;
    drop distribution    
 ------------------------
  distribution id -> ds1
+(1 row)
+
+DROP DISTRIBUTION ds2 CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds2
+(1 row)
+
+DROP DISTRIBUTION ds3 CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds3
 (1 row)
 
