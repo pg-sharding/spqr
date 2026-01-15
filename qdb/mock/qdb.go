@@ -1064,7 +1064,7 @@ func (mr *MockQDBMockRecorder) ListReferenceRelations(ctx any) *gomock.Call {
 }
 
 // ListRelationIndexes mocks base method.
-func (m *MockQDB) ListRelationIndexes(ctx context.Context, relName string) (map[string]*qdb.UniqueIndex, error) {
+func (m *MockQDB) ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*qdb.UniqueIndex, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListRelationIndexes", ctx, relName)
 	ret0, _ := ret[0].(map[string]*qdb.UniqueIndex)
@@ -2492,7 +2492,7 @@ func (mr *MockXQDBMockRecorder) ListReferenceRelations(ctx any) *gomock.Call {
 }
 
 // ListRelationIndexes mocks base method.
-func (m *MockXQDB) ListRelationIndexes(ctx context.Context, relName string) (map[string]*qdb.UniqueIndex, error) {
+func (m *MockXQDB) ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*qdb.UniqueIndex, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListRelationIndexes", ctx, relName)
 	ret0, _ := ret[0].(map[string]*qdb.UniqueIndex)

@@ -1629,7 +1629,7 @@ func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 	if err != nil {
 		return err
 	}
-	currRelIdxs, _, err := q.listRelationIndexesWithVersion(ctx, idx.Relation.RelationName)
+	currRelIdxs, _, err := q.listRelationIndexesWithVersion(ctx, idx.Relation)
 	if err != nil {
 		return err
 	}
@@ -1650,7 +1650,7 @@ func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 		return err
 	}
 
-	idxByRelCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexesByRelationNodePath(idx.Relation.RelationName), string(idxsByRelJson))
+	idxByRelCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexesByRelationNodePath(idx.Relation.String()), string(idxsByRelJson))
 	if err != nil {
 		return err
 	}
@@ -1695,7 +1695,7 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 	}
 	delete(ds.UniqueIndexes, id)
 
-	currRelIdxs, _, err := q.listRelationIndexesWithVersion(ctx, idx.Relation.RelationName)
+	currRelIdxs, _, err := q.listRelationIndexesWithVersion(ctx, idx.Relation)
 	if err != nil {
 		return err
 	}
@@ -1717,7 +1717,7 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 		return err
 	}
 
-	idxByRelCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexesByRelationNodePath(idx.Relation.RelationName), string(idxsByRelJson))
+	idxByRelCommand, err := NewQdbStatement(CMD_PUT, uniqueIndexesByRelationNodePath(idx.Relation.String()), string(idxsByRelJson))
 	if err != nil {
 		return err
 	}
@@ -1731,7 +1731,7 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 	return q.CommitTransaction(ctx, tx)
 }
 
-func (q *EtcdQDB) ListRelationIndexes(ctx context.Context, relName string) (map[string]*UniqueIndex, error) {
+func (q *EtcdQDB) ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*UniqueIndex, error) {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: list relation unique indexes")
 
@@ -1739,8 +1739,8 @@ func (q *EtcdQDB) ListRelationIndexes(ctx context.Context, relName string) (map[
 	return idxs, err
 }
 
-func (q *EtcdQDB) listRelationIndexesWithVersion(ctx context.Context, relName string) (map[string]*UniqueIndex, int64, error) {
-	resp, err := q.cli.Get(ctx, uniqueIndexesByRelationNodePath(relName))
+func (q *EtcdQDB) listRelationIndexesWithVersion(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*UniqueIndex, int64, error) {
+	resp, err := q.cli.Get(ctx, uniqueIndexesByRelationNodePath(relName.String()))
 	if err != nil {
 		return nil, 0, err
 	}

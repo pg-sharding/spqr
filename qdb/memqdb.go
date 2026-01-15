@@ -1062,14 +1062,14 @@ func (q *MemQDB) CreateUniqueIndex(_ context.Context, idx *UniqueIndex) error {
 	}
 	ds.UniqueIndexes[idx.ID] = idx
 
-	idxs, ok := q.UniqueIndexesByRel[idx.Relation.RelationName]
+	idxs, ok := q.UniqueIndexesByRel[idx.Relation.String()]
 	if !ok {
 		idxs = make(map[string]*UniqueIndex)
 	}
 	idxs[idx.ColumnName] = idx
 
 	q.UniqueIndexes[idx.ID] = idx
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexes, idx.ID, idx), NewUpdateCommand(q.UniqueIndexesByRel, idx.Relation.RelationName, idxs))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexes, idx.ID, idx), NewUpdateCommand(q.UniqueIndexesByRel, idx.Relation.String(), idxs))
 }
 
 func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
@@ -1089,17 +1089,21 @@ func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
 	}
 	delete(ds.UniqueIndexes, idx.ID)
 
-	idxs, ok := q.UniqueIndexesByRel[idx.Relation.RelationName]
+	idxs, ok := q.UniqueIndexesByRel[idx.Relation.String()]
 	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "unique index \"%s\" belongs to relation \"%s\", but index record not found", idx.ID, idx.Relation.RelationName)
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "unique index \"%s\" belongs to relation \"%s\", but index record not found", idx.ID, idx.Relation.String())
 	}
 	delete(idxs, idx.ColumnName)
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexesByRel, idx.Relation.RelationName, idxs), NewDeleteCommand(q.UniqueIndexes, idx.ID))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexesByRel, idx.Relation.String(), idxs), NewDeleteCommand(q.UniqueIndexes, idx.ID))
 }
 
-func (q *MemQDB) ListRelationIndexes(_ context.Context, relName string) (map[string]*UniqueIndex, error) {
-	return nil, fmt.Errorf("not implemented")
+func (q *MemQDB) ListRelationIndexes(_ context.Context, relName *rfqn.RelationFQN) (map[string]*UniqueIndex, error) {
+
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	return q.UniqueIndexesByRel[relName.String()], nil
 }
 
 // ==============================================================================

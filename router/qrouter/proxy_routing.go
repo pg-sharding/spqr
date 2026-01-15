@@ -78,6 +78,140 @@ func (qr *ProxyQrouter) planFromClauseList(
 	return p, nil
 }
 
+func (qr *ProxyQrouter) planInsertV1(
+	ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	stmt *lyx.Insert, rf *lyx.RangeVar) (plan.Plan, error) {
+
+	p, err := planner.PlanWithClause(ctx, rm, qr, stmt.WithClause)
+	if err != nil {
+		return nil, err
+	}
+	selectStmt := stmt.SubSelect
+	if selectStmt == nil {
+		return p, nil
+	}
+
+	var routingList [][]lyx.Node
+
+	switch subS := selectStmt.(type) {
+	case *lyx.Select:
+		spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
+
+		p, _ = qr.planQueryV1(ctx, rm, subS)
+
+		/* try target list */
+		spqrlog.Zero.Debug().Msgf("routing insert stmt on target list:%T", p)
+		/* this target list for some insert (...) sharding column */
+
+		routingList = [][]lyx.Node{subS.TargetList}
+		/* record all values from tl */
+
+		qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
+
+		if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
+			return nil, err
+		} else if rs {
+			rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
+			if err != nil {
+				return nil, err
+			}
+			if len(rel.ColumnSequenceMapping) == 0 {
+				// ok
+				if p == nil {
+					return &plan.ScatterPlan{
+						ExecTargets: rel.ListStorageRoutes(),
+					}, nil
+				}
+
+				// XXX: todo - check that sub select is not doing anything insane
+				switch p.(type) {
+				case *plan.VirtualPlan, *plan.ScatterPlan, *plan.RandomDispatchPlan:
+					if stmt.Returning != nil {
+						return &plan.DataRowFilter{
+							SubPlan: &plan.ScatterPlan{
+								ExecTargets: rel.ListStorageRoutes(),
+							},
+							FilterIndex: 0,
+						}, nil
+					}
+					return &plan.ScatterPlan{
+						ExecTargets: rel.ListStorageRoutes(),
+					}, nil
+				default:
+					return nil, rerrors.ErrComplexQuery
+				}
+			}
+			return nil, rerrors.ErrComplexQuery
+		} else {
+			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, stmt)
+			if err != nil {
+				return nil, err
+			}
+			for _, sh := range shs {
+				if sh.Name != shs[0].Name {
+					return nil, rerrors.ErrComplexQuery
+				}
+			}
+			if len(shs) > 0 {
+				p = plan.Combine(p, &plan.ShardDispatchPlan{
+					ExecTarget:         shs[0],
+					TargetSessionAttrs: config.TargetSessionAttrsRW,
+				})
+			}
+			return p, nil
+		}
+
+	case *lyx.ValueClause:
+		/* record all values from values scan */
+		routingList = subS.Values
+
+		if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
+			return nil, err
+		} else if rs {
+			/* If reference relation, use planner v2 */
+			p, err := planner.PlanReferenceRelationInsertValues(ctx, rm, stmt.Columns, rf, subS, qr.idRangeCache)
+
+			if err != nil {
+				return nil, err
+			}
+			if stmt.Returning != nil {
+				return &plan.DataRowFilter{
+					SubPlan:     p,
+					FilterIndex: 0,
+				}, nil
+			}
+			return p, nil
+		} else {
+			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, stmt)
+			if err != nil {
+				return nil, err
+			}
+			/* XXX: give change for engine v2 to rewrite queries */
+			for _, sh := range shs {
+				if sh.Name != shs[0].Name {
+					/* try to rewrite, but only for simple protocol */
+					if len(rm.ParamRefs) == 0 {
+						return planner.RewriteDistributedRelBatchInsert(rm.Query, shs)
+					}
+					return nil, rerrors.ErrComplexQuery
+				}
+			}
+
+			if len(shs) > 0 {
+				p = plan.Combine(p, &plan.ShardDispatchPlan{
+					ExecTarget:         shs[0],
+					TargetSessionAttrs: config.TargetSessionAttrsRW,
+				})
+			}
+			return p, nil
+		}
+
+	default:
+		return p, nil
+	}
+}
+
 // TODO : unit tests
 // May return nil routing state here - thats ok
 func (qr *ProxyQrouter) planQueryV1(
@@ -138,144 +272,32 @@ func (qr *ProxyQrouter) planQueryV1(
 
 	case *lyx.Insert:
 
-		p, err := planner.PlanWithClause(ctx, rm, qr, stmt.WithClause)
+		rf, ok := stmt.TableRef.(*lyx.RangeVar)
+
+		if !ok {
+			return nil, rerrors.ErrComplexQuery
+		}
+
+		p, err := qr.planInsertV1(ctx, rm, stmt, rf)
 		if err != nil {
 			return nil, err
 		}
-		selectStmt := stmt.SubSelect
-		if selectStmt == nil {
+
+		qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
+
+		/* plan one slice per unique index */
+		iis, err := rm.Mgr.ListRelationIndexes(ctx, qualName)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(iis) == 0 {
+			/* simple case */
 			return p, nil
 		}
 
-		var routingList [][]lyx.Node
-
-		switch subS := selectStmt.(type) {
-		case *lyx.Select:
-			spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
-
-			p, _ = qr.planQueryV1(ctx, rm, subS)
-
-			/* try target list */
-			spqrlog.Zero.Debug().Msgf("routing insert stmt on target list:%T", p)
-			/* this target list for some insert (...) sharding column */
-
-			routingList = [][]lyx.Node{subS.TargetList}
-			/* record all values from tl */
-
-			switch rf := stmt.TableRef.(type) {
-			case *lyx.RangeVar:
-
-				qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
-
-				if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
-					return nil, err
-				} else if rs {
-					rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
-					if err != nil {
-						return nil, err
-					}
-					if len(rel.ColumnSequenceMapping) == 0 {
-						// ok
-						if p == nil {
-							return &plan.ScatterPlan{
-								ExecTargets: rel.ListStorageRoutes(),
-							}, nil
-						}
-
-						// XXX: todo - check that sub select is not doing anything insane
-						switch p.(type) {
-						case *plan.VirtualPlan, *plan.ScatterPlan, *plan.RandomDispatchPlan:
-							if stmt.Returning != nil {
-								return &plan.DataRowFilter{
-									SubPlan: &plan.ScatterPlan{
-										ExecTargets: rel.ListStorageRoutes(),
-									},
-									FilterIndex: 0,
-								}, nil
-							}
-							return &plan.ScatterPlan{
-								ExecTargets: rel.ListStorageRoutes(),
-							}, nil
-						default:
-							return nil, rerrors.ErrComplexQuery
-						}
-					}
-					return nil, rerrors.ErrComplexQuery
-				} else {
-					shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, stmt)
-					if err != nil {
-						return nil, err
-					}
-					for _, sh := range shs {
-						if sh.Name != shs[0].Name {
-							return nil, rerrors.ErrComplexQuery
-						}
-					}
-					if len(shs) > 0 {
-						p = plan.Combine(p, &plan.ShardDispatchPlan{
-							ExecTarget:         shs[0],
-							TargetSessionAttrs: config.TargetSessionAttrsRW,
-						})
-					}
-					return p, nil
-				}
-			default:
-				return nil, rerrors.ErrComplexQuery
-			}
-
-		case *lyx.ValueClause:
-			/* record all values from values scan */
-			routingList = subS.Values
-
-			switch rf := stmt.TableRef.(type) {
-			case *lyx.RangeVar:
-				if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
-					return nil, err
-				} else if rs {
-					/* If reference relation, use planner v2 */
-					p, err := planner.PlanReferenceRelationInsertValues(ctx, rm, stmt.Columns, rf, subS, qr.idRangeCache)
-
-					if err != nil {
-						return nil, err
-					}
-					if stmt.Returning != nil {
-						return &plan.DataRowFilter{
-							SubPlan:     p,
-							FilterIndex: 0,
-						}, nil
-					}
-					return p, nil
-				} else {
-					shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, stmt)
-					if err != nil {
-						return nil, err
-					}
-					/* XXX: give change for engine v2 to rewrite queries */
-					for _, sh := range shs {
-						if sh.Name != shs[0].Name {
-							/* try to rewrite, but only for simple protocol */
-							if len(rm.ParamRefs) == 0 {
-								return planner.RewriteDistributedRelBatchInsert(rm.Query, shs)
-							}
-							return nil, rerrors.ErrComplexQuery
-						}
-					}
-
-					if len(shs) > 0 {
-						p = plan.Combine(p, &plan.ShardDispatchPlan{
-							ExecTarget:         shs[0],
-							TargetSessionAttrs: config.TargetSessionAttrsRW,
-						})
-					}
-					return p, nil
-				}
-			default:
-				return nil, rerrors.ErrComplexQuery
-			}
-
-		default:
-			return p, nil
-		}
+		/* just to silence compiler */
+		return nil, fmt.Errorf("not yet supported")
 
 	case *lyx.Update:
 
