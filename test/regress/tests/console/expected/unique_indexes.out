@@ -1,10 +1,3 @@
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
@@ -65,9 +58,9 @@ CREATE UNIQUE INDEX ui2 ON t2 COLUMN col_uniq_2 TYPE integer HASH;
 CREATE UNIQUE INDEX ui_same_col ON t2 COLUMN col_uniq_2 TYPE integer HASH;
 ERROR:  unique index for table "t2", column "col_uniq_2" already exists
 -- reject that
-CREATE UNIQUE INDEX uiui ON t COLUMN col_uniq TYPE integer;
+CREATE UNIQUE INDEX uiu ON t COLUMN col_uniq TYPE integer;
 ERROR:  unique indexes are not supported non-hashed distribution
-CREATE UNIQUE INDEX uiui ON t3 COLUMN col_uniq TYPE integer;
+CREATE UNIQUE INDEX uiu ON t3 COLUMN col_uniq TYPE integer;
 ERROR:  unique indexes are supported only for single-column distributions, but ds3 has 2
 SHOW unique_indexes;
  id  | relation_name |   column   |  column_type   

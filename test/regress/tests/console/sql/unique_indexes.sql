@@ -10,8 +10,8 @@ CREATE UNIQUE INDEX ui2 ON t2 COLUMN col_uniq_2 TYPE integer HASH;
 CREATE UNIQUE INDEX ui_same_col ON t2 COLUMN col_uniq_2 TYPE integer HASH;
 
 -- reject that
-CREATE UNIQUE INDEX uiui ON t COLUMN col_uniq TYPE integer;
-CREATE UNIQUE INDEX uiui ON t3 COLUMN col_uniq TYPE integer;
+CREATE UNIQUE INDEX uiu ON t COLUMN col_uniq TYPE integer;
+CREATE UNIQUE INDEX uiu ON t3 COLUMN col_uniq TYPE integer;
 
 SHOW unique_indexes;
 
