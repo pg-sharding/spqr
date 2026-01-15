@@ -1143,7 +1143,7 @@ func (lc *Coordinator) CreateUniqueIndex(ctx context.Context, dsId string, idx *
 		return fmt.Errorf("no relation \"%s\" found in distribution \"%s\"", idx.RelationName.RelationName, ds.Id)
 	}
 
-	/* Current implementation restiction. */
+	/* Current implementation restriction. */
 	if len(ds.ColTypes) != 1 {
 		return fmt.Errorf("unique indexes are supported only for single-column distributions, but %s has %d", ds.Id, len(ds.ColTypes))
 	}
