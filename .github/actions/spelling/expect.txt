@@ -508,6 +508,7 @@ Smartphone
 spaolacci
 spqr
 SPQRA
+SPQRB
 SPQRC
 SPQRD
 spqrdump

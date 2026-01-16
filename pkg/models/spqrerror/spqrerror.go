@@ -27,6 +27,7 @@ const (
 	SPQR_CONFIG_ERROR         = "SPQRM"
 	SPQR_SEQUENCE_ERROR       = "SPQRQ"
 	SPQR_STOP_MOVE_TASK_GROUP = "SPQRA"
+	SPQR_QUERY_BLOCKED        = "SPQRB"
 
 	PG_PREPARED_STATEMENT_DOES_NOT_EXISTS = "26000"
 	PG_PORTAl_DOES_NOT_EXISTS             = "34000"
@@ -50,6 +51,7 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_INVALID_REQUEST:      "Invalid Request",
 	SPQR_SEQUENCE_ERROR:       "Sequence error",
 	SPQR_STOP_MOVE_TASK_GROUP: "Task group stopped",
+	SPQR_QUERY_BLOCKED:        "query is blocked due to the default_route_behavior",
 }
 
 // GetMessageByCode returns the error message associated with the provided error code.

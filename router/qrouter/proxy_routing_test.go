@@ -2774,5 +2774,4 @@ func TestCheckTableIsRoutable(t *testing.T) {
 			assert.NoError(fmt.Errorf("no create statement"))
 		}
 	}
-
 }

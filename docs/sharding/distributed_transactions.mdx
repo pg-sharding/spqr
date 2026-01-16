@@ -15,7 +15,7 @@ description: 'How to use two-phase commit and understand transaction commit stra
 ```sql
 -- Default behavior blocks multi-shard queries
 DROP DATABASE prod;
--- ERROR: client processing error: 'DROP DATABASE prod': failed to match any datashard.
+-- ERROR: client processing error: query is blocked due to the default_route_behavior.
 
 -- Allow multi-shard execution
 DROP DATABASE prod /* __spqr__default_route_behaviour: allow */;

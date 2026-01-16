@@ -154,7 +154,7 @@ Possible values:
 
 ```sql
 DROP DATABASE prod;
-ERROR:  client processing error: 'DROP DATABASE prod': failed to match any datashard., tx status IDLE
+ERROR:  client processing error: query is blocked due to the default_route_behavior.
 
 DROP DATABASE prod /* __spqr__default_route_behaviour: allow */;
 NOTICE: send query to shard(s) : shard1,shard2,shard3,shard4
