@@ -14,7 +14,7 @@ CREATE KEY RANGE k1 FROM 0 ROUTE TO sh1;
 
 CREATE TABLE r(i int);
 
--- unique index is actaully a reverse index (just another table)
+-- unique index is actually a reverse index (just another table)
 CREATE TABLE ui(c1 int);
 CREATE UNIQUE INDEX ON ui USING btree(c1);
 

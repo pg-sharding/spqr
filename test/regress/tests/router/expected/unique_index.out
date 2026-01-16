@@ -55,7 +55,7 @@ CREATE KEY RANGE k1 FROM 0 ROUTE TO sh1;
 \c regress
 CREATE TABLE r(i int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
--- unique index is actaully a reverse index (just another table)
+-- unique index is actually a reverse index (just another table)
 CREATE TABLE ui(c1 int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE UNIQUE INDEX ON ui USING btree(c1);
