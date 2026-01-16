@@ -1,0 +1,25 @@
+\c spqr-console
+CREATE DISTRIBUTION d COLUMN TYPES INT HASH;
+
+CREATE RELATION r (i HASH murmur);
+
+CREATE UNIQUE INDEX ui ON r COLUMN c1 TYPE integer;
+
+CREATE KEY RANGE k4 FROM 300 ROUTE TO sh4;
+CREATE KEY RANGE k3 FROM 200 ROUTE TO sh3;
+CREATE KEY RANGE k2 FROM 100 ROUTE TO sh2;
+CREATE KEY RANGE k1 FROM 0 ROUTE TO sh1;
+
+\c regress
+
+CREATE TABLE r(i int);
+
+-- unique index is actually a reverse index (just another table)
+CREATE TABLE ui(c1 int);
+CREATE UNIQUE INDEX ON ui USING btree(c1);
+
+DROP TABLE r;
+DROP TABLE ui;
+
+\c spqr-console
+DROP DISTRIBUTION ALL CASCADE;

@@ -1,0 +1,80 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION d COLUMN TYPES INT HASH;
+   add distribution   
+----------------------
+ distribution id -> d
+(1 row)
+
+CREATE RELATION r (i HASH murmur);
+     attach table     
+----------------------
+ relation name   -> r
+ distribution id -> d
+(2 rows)
+
+CREATE UNIQUE INDEX ui ON r COLUMN c1 TYPE integer;
+  create unique index   
+------------------------
+ index ID -> ui
+ relation name -> r
+ column name -> c1
+ column type -> integer
+(4 rows)
+
+CREATE KEY RANGE k4 FROM 300 ROUTE TO sh4;
+ add key range 
+---------------
+ bound -> 300
+(1 row)
+
+CREATE KEY RANGE k3 FROM 200 ROUTE TO sh3;
+ add key range 
+---------------
+ bound -> 200
+(1 row)
+
+CREATE KEY RANGE k2 FROM 100 ROUTE TO sh2;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
+
+CREATE KEY RANGE k1 FROM 0 ROUTE TO sh1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+\c regress
+CREATE TABLE r(i int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- unique index is actually a reverse index (just another table)
+CREATE TABLE ui(c1 int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE UNIQUE INDEX ON ui USING btree(c1);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE r;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE ui;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+  drop distribution   
+----------------------
+ distribution id -> d
+(1 row)
+
