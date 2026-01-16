@@ -336,6 +336,7 @@ func (qr *ProxyQrouter) planQueryV1(
 			sliceInsert.OverwriteQuery[et.Name] = rewriteQuery
 		}
 
+		cntVal := 0
 		colValues := map[string][][]byte{}
 
 		sliceInsert.RunF = func(serv server.Server) error {
@@ -360,6 +361,7 @@ func (qr *ProxyQrouter) planQueryV1(
 					case *pgproto3.ErrorResponse:
 						errmsg = v
 					case *pgproto3.DataRow:
+						cntVal++
 						for ind, is := range iis {
 							colValues[is.ID] = append(colValues[is.ID],
 								v.Values[ind])
@@ -468,7 +470,9 @@ func (qr *ProxyQrouter) planQueryV1(
 		}
 
 		return &plan.VirtualPlan{
-
+			OverwriteCC: &pgproto3.CommandComplete{
+				CommandTag: fmt.Appendf(nil, "INSERT 0 %d", cntVal),
+			},
 			SubPlan: retPlan,
 		}, nil
 

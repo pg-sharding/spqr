@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -190,8 +191,9 @@ type VirtualPlan struct {
 
 	stmt lyx.Node
 
-	TTS     *tupleslot.TupleTableSlot
-	SubPlan Plan
+	OverwriteCC *pgproto3.CommandComplete
+	TTS         *tupleslot.TupleTableSlot
+	SubPlan     Plan
 }
 
 func (vp *VirtualPlan) ExecutionTargets() []kr.ShardKey {

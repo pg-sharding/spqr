@@ -877,27 +877,33 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 	case *plan.VirtualPlan:
 		/* execute logic without shard dispatch */
 
-		/* only send row description for simple proto case */
-		if s.es.expectRowDesc {
-			if replyCl {
-				if err := s.Client().Send(&pgproto3.RowDescription{
-					Fields: q.TTS.Desc,
+		if len(q.TTS.Raw) != 0 {
+			/* only send row description for simple proto case */
+			if s.es.expectRowDesc {
+				if replyCl {
+					if err := s.Client().Send(&pgproto3.RowDescription{
+						Fields: q.TTS.Desc,
+					}); err != nil {
+						return err
+					}
+				}
+			}
+
+			for _, vals := range q.TTS.Raw {
+				if err := s.Client().Send(&pgproto3.DataRow{
+					Values: vals,
 				}); err != nil {
 					return err
 				}
 			}
 		}
 
-		for _, vals := range q.TTS.Raw {
-			if err := s.Client().Send(&pgproto3.DataRow{
-				Values: vals,
-			}); err != nil {
-				return err
+		if q.OverwriteCC != nil {
+			s.es.cc = q.OverwriteCC
+		} else {
+			s.es.cc = &pgproto3.CommandComplete{
+				CommandTag: fmt.Appendf(nil, "SELECT %d", len(q.TTS.Raw)),
 			}
-		}
-
-		s.es.cc = &pgproto3.CommandComplete{
-			CommandTag: fmt.Appendf(nil, "SELECT %d", len(q.TTS.Raw)),
 		}
 
 		return nil
