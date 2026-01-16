@@ -131,8 +131,8 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 |------------------|-------------------------------------------------------|--------------------|---------------------|
 | `show_notice_messages` | Whether to show notice messages. Can be overridden by the [__spqr__reply_notice](/routing/hints#spqr-reply-notice) hint. | `true`, `false`    | Yes |
 | `notice_message_format` | Format template for notice messages. Supported placeholders: `{shard}`, `{host}`, `{hostname}`, `{port}`, `{user}`, `{db}`, `{pid}`, `{az}`, `{id}`, `{tx_status}`, `{tx_served}`. Default: `"{shard}@{host}"`. Examples: `"{shard}"`, `"{host}"`, `"{shard}@{hostname}:{port}"`, `"{shard}@{host} (user={user}, db={db})"` | Any valid template string | No |
-| `pid_file_name`  | The file name to store the process ID.                | Any valid filepath | No |
-| `log_file_name`  | The file name for logging output.                     | Any valid filepath | No |
+| `pid_filename`   | The file name to store the process ID.                | Any valid filepath | No |
+| `log_filename`   | The file name for logging output.                     | Any valid filepath | No |
 | `pgproto_debug`  | PostgreSQL protocol debug flag.                       | `true`, `false`    | No |
 
 ## DBpool Settings
