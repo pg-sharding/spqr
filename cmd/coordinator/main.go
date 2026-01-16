@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 
 	_ "net/http/pprof"
 
@@ -61,7 +64,7 @@ var rootCmd = &cobra.Command{
 			config.CoordinatorConfig().PrettyLogging = prettyLogging
 		}
 
-		spqrlog.ReloadLogger("", config.CoordinatorConfig().LogLevel, config.CoordinatorConfig().PrettyLogging)
+		spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, config.CoordinatorConfig().PrettyLogging)
 
 		if gomaxprocs > 0 {
 			runtime.GOMAXPROCS(gomaxprocs)
@@ -82,6 +85,22 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGUSR1)
+		go func() {
+			for {
+				s := <-sigs
+				spqrlog.Zero.Info().Str("signal", s.String()).Msg("received signal")
+
+				switch s {
+				case syscall.SIGUSR1:
+					spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, config.CoordinatorConfig().PrettyLogging)
+				default:
+					return
+				}
+			}
+		}()
 
 		app := app.NewApp(coordinator)
 		// run pprof without wait group
