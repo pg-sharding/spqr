@@ -64,7 +64,7 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 		/*
 		 * Disallow to create table which does not contain any sharding column
 		 */
-		if err := CheckTableIsRoutable(ctx, rm.Mgr, node); err != nil {
+		if err := CheckRelationIsRoutable(ctx, rm.Mgr, node); err != nil {
 			return nil, err
 		}
 		return ds, nil
@@ -79,7 +79,7 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 		return &plan.ScatterPlan{
 			IsDDL: true,
 		}, nil
-	case *lyx.Index:
+	case *lyx.CreateIndex:
 		/*
 		 * Disallow to index on table which does not contain any sharding column
 		 */
@@ -156,10 +156,10 @@ func SelectRandomDispatchPlan(routes []kr.ShardKey) (plan.Plan, error) {
 	}, nil
 }
 
-// CheckTableIsRoutable Given table create statement,
+// CheckRelationIsRoutable Given table create statement,
 // check if it is routable with some distribution rule
 // TODO : unit tests
-func CheckTableIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.CreateTable) error {
+func CheckRelationIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.CreateTable) error {
 	var err error
 	var ds *distributions.Distribution
 	var relname *rfqn.RelationFQN
@@ -178,6 +178,24 @@ func CheckTableIsRoutable(ctx context.Context, mgr meta.EntityMgr, node *lyx.Cre
 	switch q := node.TableRv.(type) {
 	case *lyx.RangeVar:
 		relname = rfqn.RelationFQNFromRangeRangeVar(q)
+
+		/* maybe this is actually reverse index? */
+
+		/* TODO: add proper method to mgr */
+		iis, err := mgr.ListUniqueIndexes(ctx)
+		if err != nil {
+			return err
+		}
+		for _, is := range iis {
+			spqrlog.Zero.Debug().Str("name", is.RelationName.String()).Msg("check index")
+			if is.ID == relname.String() {
+				/* this is an index table */
+
+				/* XXX: TODO - check columns */
+				return nil
+			}
+		}
+
 		ds, err = mgr.GetRelationDistribution(ctx, relname)
 		if err != nil {
 			return err

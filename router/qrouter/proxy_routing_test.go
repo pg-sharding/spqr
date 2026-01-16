@@ -2764,7 +2764,7 @@ func TestCheckTableIsRoutable(t *testing.T) {
 		assert.NoError(err)
 		switch node := stmt[0].(type) {
 		case *lyx.CreateTable:
-			actualErr := planner.CheckTableIsRoutable(ctx, router.Mgr(), node)
+			actualErr := planner.CheckRelationIsRoutable(ctx, router.Mgr(), node)
 			if tt.err == nil {
 				assert.NoError(actualErr, "case #%d", nn)
 			} else {

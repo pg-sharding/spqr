@@ -73,7 +73,7 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 	/*
 	 * Disallow to create table which does not contain any sharding column
 	 */
-	if err := CheckTableIsRoutable(ctx, rm.Mgr, v); err != nil {
+	if err := CheckRelationIsRoutable(ctx, rm.Mgr, v); err != nil {
 		return nil, err
 	}
 
