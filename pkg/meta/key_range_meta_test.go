@@ -1,29 +1,18 @@
-package meta_validators_test
+package meta_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/pg-sharding/spqr/pkg/coord"
-	validator "github.com/pg-sharding/spqr/pkg/meta/validators"
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
 )
 
-const MemQDBPath = ""
-
 var boolTrue bool = true
 var boolFalse bool = false
-
-var mockShard1 = &qdb.Shard{
-	ID:       "sh1",
-	RawHosts: []string{"host1", "host2"},
-}
-var mockShard2 = &qdb.Shard{
-	ID:       "sh2",
-	RawHosts: []string{"host3", "host4"},
-}
 
 var kr1 = &kr.KeyRange{
 	ID:           "kr1",
@@ -74,13 +63,19 @@ var kr1_not_locked = &kr.KeyRange{
 	IsLocked:     &boolFalse,
 }
 
-func prepareDB(ctx context.Context) (*qdb.MemQDB, error) {
+func prepareDbTestValidate(ctx context.Context) (*qdb.MemQDB, error) {
 	memqdb, err := qdb.RestoreQDB(MemQDBPath)
 	if err != nil {
 		return nil, err
 	}
 	var chunk []qdb.QdbStatement
 	if chunk, err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", []string{qdb.ColumnTypeInteger})); err != nil {
+		return nil, err
+	}
+	if err = memqdb.ExecNoTransaction(ctx, chunk); err != nil {
+		return nil, err
+	}
+	if chunk, err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", []string{qdb.ColumnTypeInteger})); err != nil {
 		return nil, err
 	}
 	if err = memqdb.ExecNoTransaction(ctx, chunk); err != nil {
@@ -96,86 +91,102 @@ func prepareDB(ctx context.Context) (*qdb.MemQDB, error) {
 }
 
 func TestValidateKeyRangeForCreate_happyPath(t *testing.T) {
+	is := assert.New(t)
 	ctx := context.TODO()
-	memqdb, err := prepareDB(ctx)
+	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
 
-	assert.NoError(t, validator.ValidateKeyRangeForCreate(ctx, mngr, kr2))
-	assert.NoError(t, mngr.CreateKeyRange(ctx, kr2))
-	assert.NoError(t, validator.ValidateKeyRangeForCreate(ctx, mngr, kr1))
+	assert.NoError(t, meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
+	err = mngr.CreateKeyRange(ctx, kr2)
+	is.NoError(err)
+	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 }
 func TestValidateKeyRangeForCreate_intersectWithExistsSameShard(t *testing.T) {
+	is := assert.New(t)
 	ctx := context.TODO()
-	memqdb, err := prepareDB(ctx)
+	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
 
-	assert.NoError(t, validator.ValidateKeyRangeForCreate(ctx, mngr, kr1))
-	assert.NoError(t, mngr.CreateKeyRange(ctx, kr1))
-	assert.NoError(t, validator.ValidateKeyRangeForCreate(ctx, mngr, kr2))
+	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
+	err = mngr.CreateKeyRange(ctx, kr1)
+	is.NoError(err)
+	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 }
 func TestValidateKeyRangeForCreate_intersectWithExistsAnotherShard(t *testing.T) {
+	is := assert.New(t)
 	ctx := context.TODO()
-	memqdb, err := prepareDB(ctx)
+	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
 
-	assert.NoError(t, validator.ValidateKeyRangeForCreate(ctx, mngr, kr1))
-	assert.NoError(t, mngr.CreateKeyRange(ctx, kr1))
-	assert.Error(t, validator.ValidateKeyRangeForCreate(ctx, mngr, kr2_sh2),
+	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
+	err = mngr.CreateKeyRange(ctx, kr1)
+	is.NoError(err)
+	is.Error(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2_sh2),
 		"key range kr2 intersects with key range kr1 in QDB")
 }
 
 func TestValidateKeyRangeForCreate_equalBound(t *testing.T) {
+	is := assert.New(t)
 	ctx := context.TODO()
-	memqdb, err := prepareDB(ctx)
+	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
 
-	assert.NoError(t, validator.ValidateKeyRangeForCreate(ctx, mngr, kr1))
-	assert.NoError(t, mngr.CreateKeyRange(ctx, kr1))
-	assert.Error(t, validator.ValidateKeyRangeForCreate(ctx, mngr, kr1_double),
+	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
+	err = mngr.CreateKeyRange(ctx, kr1)
+	is.NoError(err)
+	is.Error(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1_double),
 		"key range kr1DOUBLE equals key range kr1 in QDB")
 }
 
 func TestValidateKeyRangeForModify_happyPath(t *testing.T) {
+	is := assert.New(t)
 	ctx := context.TODO()
-	memqdb, err := prepareDB(ctx)
+	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
 
-	assert.NoError(t, validator.ValidateKeyRangeForCreate(ctx, mngr, kr2))
-	assert.NoError(t, mngr.CreateKeyRange(ctx, kr2))
-	assert.NoError(t, validator.ValidateKeyRangeForCreate(ctx, mngr, kr1_locked))
+	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
+	err = mngr.CreateKeyRange(ctx, kr2)
+	is.NoError(err)
+	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1_locked))
 }
 
 func TestValidateKeyRangeForModify_lock_fail(t *testing.T) {
+	is := assert.New(t)
 	ctx := context.TODO()
-	memqdb, err := prepareDB(ctx)
+	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
 
-	assert.NoError(t, validator.ValidateKeyRangeForCreate(ctx, mngr, kr2))
-	assert.NoError(t, mngr.CreateKeyRange(ctx, kr2))
-	assert.NoError(t, validator.ValidateKeyRangeForCreate(ctx, mngr, kr1))
-	assert.NoError(t, mngr.CreateKeyRange(ctx, kr1))
+	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
+	err = mngr.CreateKeyRange(ctx, kr2)
+	is.NoError(err)
+	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
+	err = mngr.CreateKeyRange(ctx, kr1)
+	is.NoError(err)
 	//lock unknown
-	assert.Error(t, validator.ValidateKeyRangeForModify(ctx, mngr, kr1))
+	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1))
 	//not locked
-	assert.Error(t, validator.ValidateKeyRangeForModify(ctx, mngr, kr1_not_locked))
+	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1_not_locked))
 }
 
 func TestValidateKeyRangeForModify_intersection(t *testing.T) {
+	is := assert.New(t)
 	ctx := context.TODO()
-	memqdb, err := prepareDB(ctx)
+	memqdb, err := prepareDbTestValidate(ctx)
 	assert.NoError(t, err)
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
 
-	assert.NoError(t, validator.ValidateKeyRangeForCreate(ctx, mngr, kr2))
-	assert.NoError(t, mngr.CreateKeyRange(ctx, kr2))
-	assert.NoError(t, validator.ValidateKeyRangeForCreate(ctx, mngr, kr1))
-	assert.NoError(t, mngr.CreateKeyRange(ctx, kr1))
+	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
+	err = mngr.CreateKeyRange(ctx, kr2)
+	is.NoError(err)
+	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
+	err = mngr.CreateKeyRange(ctx, kr1)
+	is.NoError(err)
 
-	assert.Error(t, validator.ValidateKeyRangeForModify(ctx, mngr, kr1_double))
+	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1_double))
 }

@@ -27,7 +27,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
-	validator "github.com/pg-sharding/spqr/pkg/meta/validators"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -657,7 +656,7 @@ func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr
 // TODO : unit tests
 func (qc *ClusteredCoordinator) MoveKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
 	// TODO: move check to meta layer
-	if err := validator.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
+	if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
 		return err
 	}
 	return qc.db.UpdateKeyRange(ctx, keyRange.ToDB())
@@ -909,7 +908,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			}
 			krg.ShardID = req.ShardId
 			// TODO: move check to meta layer
-			if err := validator.ValidateKeyRangeForModify(ctx, qc, krg); err != nil {
+			if err := meta.ValidateKeyRangeForModify(ctx, qc, krg); err != nil {
 				return err
 			}
 			if err := qc.db.UpdateKeyRange(ctx, krg.ToDB()); err != nil {

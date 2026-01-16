@@ -502,46 +502,17 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			}
 		}
 	case *spqrparser.KeyRangeDefinition:
-		if stmt.Distribution.ID == "default" {
-			list, err := mngr.ListDistributions(ctx)
-			if err != nil {
-				return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "error while selecting list of distributions")
-			}
-			if len(list) == 0 {
-				return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "you don't have any distributions")
-			}
-			if len(list) > 1 {
-				return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "distributions count not equal one, use FOR DISTRIBUTION syntax")
-			}
-			stmt.Distribution.ID = list[0].Id
-		}
-		ds, err := mngr.GetDistribution(ctx, stmt.Distribution.ID)
+		createdKr, err := createKeyRange(ctx, mngr, stmt)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 			return nil, err
 		}
-		if defaultKr := DefaultKeyRangeId(ds); stmt.KeyRangeID == defaultKr {
-			err := fmt.Errorf("key range %s is reserved", defaultKr)
-			spqrlog.Zero.Error().Err(err).Msg("failed to create key range")
-			return nil, err
-		}
-		req, err := kr.KeyRangeFromSQL(stmt, ds.ColTypes)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
-			return nil, err
-		}
-		if err := mngr.CreateKeyRange(ctx, req); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
-			return nil, err
-		}
-
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("add key range"),
 			Raw: [][][]byte{
-				{fmt.Appendf(nil, "bound -> %s", req.SendRaw()[0])},
+				{fmt.Appendf(nil, "bound -> %s", createdKr.SendRaw()[0])},
 			},
 		}
-
 		return tts, nil
 	case *spqrparser.ShardDefinition:
 		dataShard := topology.NewDataShard(stmt.Id, &config.Shard{

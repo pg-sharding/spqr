@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/meta"
-	validator "github.com/pg-sharding/spqr/pkg/meta/validators"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -167,7 +166,7 @@ func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRan
 	reqKr.ShardID = req.ShardId
 
 	// TODO: move check to meta layer
-	if err := validator.ValidateKeyRangeForModify(ctx, lc, reqKr); err != nil {
+	if err := meta.ValidateKeyRangeForModify(ctx, lc, reqKr); err != nil {
 		return err
 	}
 	return lc.qdb.UpdateKeyRange(ctx, reqKr.ToDB())
