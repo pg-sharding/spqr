@@ -51,7 +51,7 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_INVALID_REQUEST:      "Invalid Request",
 	SPQR_SEQUENCE_ERROR:       "Sequence error",
 	SPQR_STOP_MOVE_TASK_GROUP: "Task group stopped",
-	SPQR_QUERY_BLOCKED:        "Query is blocked due to the default route behavior",
+	SPQR_QUERY_BLOCKED:        "query is blocked due to the default_route_behavior",
 }
 
 // GetMessageByCode returns the error message associated with the provided error code.
