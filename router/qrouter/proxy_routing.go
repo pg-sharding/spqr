@@ -406,7 +406,7 @@ func (qr *ProxyQrouter) planQueryV1(
 			retPlan.PrepareRunF = func() error {
 				spqrlog.Zero.Debug().Msgf("creating query map using tuples: %+v", colValues)
 
-				iniTemplate := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", is.RelationName.String(), is.ColumnName)
+				iniTemplate := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", is.ID, is.ColumnName)
 
 				for _, val := range colValues[is.ColumnName] {
 
