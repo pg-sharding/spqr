@@ -755,51 +755,58 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan,
 	/* XXX: refactor this into ExecutorReset */
 	s.es.expectRowDesc = qd.simple
 
-	switch P.(type) {
-	case *plan.VirtualPlan:
-		return nil
-	default:
+	s.es.attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
+
+	/* Should be deploy plan (all slices) in implicit transaction block? */
+
+	implicitTx := false
+
+	if P != nil {
+
+		stmt := P.Stmt()
+
 		serv := s.Client().Server()
+
 		if serv == nil {
-			return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
+			/* serv == nil only if plan is purely virtual */
+
+			_, ok := P.(*plan.VirtualPlan)
+			if !ok {
+				return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
+			}
+
+			if P.Subplan() != nil {
+				return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
+			}
 		}
 
-		s.es.attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
+		if stmt != nil {
+			switch stmt.(type) {
+			case *lyx.Copy:
 
-		/* Should be deploy plan (all slices) in implicit transaction block? */
+				spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
 
-		implicitTx := false
+				s.es.copyStmt = stmt
 
-		if P != nil {
-
-			stmt := P.Stmt()
-
-			if stmt != nil {
-				switch stmt.(type) {
-				case *lyx.Copy:
-					spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
-
-					s.es.copyStmt = stmt
-
-					if serv.TxStatus() == txstatus.TXIDLE {
-						implicitTx = true
-					}
-				}
-			}
-			if P.Subplan() != nil {
 				if serv.TxStatus() == txstatus.TXIDLE {
 					implicitTx = true
 				}
 			}
 		}
-
-		if implicitTx {
-			s.es.doFinalizeTx = true
-			return s.DeploySliceTransactionQuery("BEGIN")
+		if P.Subplan() != nil {
+			if serv.TxStatus() == txstatus.TXIDLE {
+				implicitTx = true
+			}
 		}
-
-		return nil
 	}
+
+	if implicitTx {
+		s.es.doFinalizeTx = true
+		return s.DeploySliceTransactionQuery("BEGIN")
+	}
+
+	return nil
+
 }
 
 func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Plan) error {
@@ -858,6 +865,12 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 
 	statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
 
+	/* Prepare copy state, if needed. Also deploy implicit transaction for
+	* complex-multislice plans */
+	if err := s.executeSlicePrepare(qd, topPlan, replyCl); err != nil {
+		return err
+	}
+
 	if topPlan != nil {
 		if sp := topPlan.Subplan(); sp != nil {
 			/* XXX: Do all required job in sub-plan */
@@ -866,11 +879,6 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 				return err
 			}
 		}
-	}
-
-	/* Prepare copy state, if needed. */
-	if err := s.executeSlicePrepare(qd, topPlan, replyCl); err != nil {
-		return err
 	}
 
 	switch q := topPlan.(type) {

@@ -340,7 +340,14 @@ func (qr *ProxyQrouter) planQueryV1(
 		colValues := map[string][][]byte{}
 
 		sliceInsert.RunF = func(serv server.Server) error {
+			spqrlog.Zero.Debug().Msg("run bottom-level insert slice")
 			for _, sh := range serv.Datashards() {
+				if !slices.ContainsFunc(sliceInsert.ExecTargets, func(el kr.ShardKey) bool {
+					return sh.Name() == el.Name
+				}) {
+					continue
+				}
+
 				var errmsg *pgproto3.ErrorResponse
 			shLoop:
 				for {
@@ -390,84 +397,90 @@ func (qr *ProxyQrouter) planQueryV1(
 		distributedRelation := ds.GetRelation(qualName)
 
 		for _, is := range iis {
-			queryMp := map[string]string{}
-
-			iniTemplate := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", is.RelationName.String(), is.ColumnName)
-
-			execTargets := []kr.ShardKey{}
-
-			for _, val := range colValues[is.ColumnName] {
-
-				routingTuple := make([]any, len(distributedRelation.DistributionKey))
-
-				hf, err := hashfunction.HashFunctionByName(distributedRelation.DistributionKey[0].HashFunction)
-				if err != nil {
-					return nil, err
-				}
-
-				hashVal, err := hashfunction.ApplyHashFunctionOnStringRepr(
-					val,
-					ds.ColTypes[0],
-					hf)
-				if err != nil {
-					return nil, err
-				}
-				routingTuple[0] = hashVal
-
-				// check where this tuple should go
-				tupleExecTarget, err := rm.DeparseKeyWithRangesInternal(ctx, routingTuple, krs)
-				if err != nil {
-					return nil, err
-				}
-
-				/* okay, we know where this tuple should arrive. */
-
-				if qry, ok := queryMp[tupleExecTarget.Name]; ok {
-					queryMp[tupleExecTarget.Name] = qry + "( " + string(val) + " )"
-				} else {
-					queryMp[tupleExecTarget.Name] = iniTemplate + "( " + string(val) + " )"
-
-					execTargets = append(execTargets, tupleExecTarget)
-				}
-			}
 
 			retPlan = &plan.ScatterPlan{
 				SubSlice:       retPlan,
-				OverwriteQuery: queryMp,
-				ExecTargets:    execTargets,
+				OverwriteQuery: map[string]string{},
+			}
 
-				/* consume everything */
-				RunF: func(serv server.Server) error {
-					for _, sh := range serv.Datashards() {
-						var errmsg *pgproto3.ErrorResponse
-					shLoop:
-						for {
-							msg, err := serv.ReceiveShard(sh.ID())
-							if err != nil {
-								return err
-							}
+			retPlan.PrepareRunF = func() error {
+				iniTemplate := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", is.RelationName.String(), is.ColumnName)
 
-							switch v := msg.(type) {
-							case *pgproto3.ReadyForQuery:
-								if v.TxStatus == byte(txstatus.TXERR) {
-									return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
-								}
+				spqrlog.Zero.Debug().Msgf("creating query map using %d tuples", len(colValues[is.ColumnName]))
 
-								break shLoop
-							case *pgproto3.RowDescription:
-								/* we already know it */
-							case *pgproto3.ErrorResponse:
-								errmsg = v
-							default:
-								/* All ok? */
-							}
-						}
+				for _, val := range colValues[is.ColumnName] {
+
+					routingTuple := make([]any, len(distributedRelation.DistributionKey))
+
+					hf, err := hashfunction.HashFunctionByName(distributedRelation.DistributionKey[0].HashFunction)
+					if err != nil {
+						return err
 					}
 
-					return nil
-				},
+					hashVal, err := hashfunction.ApplyHashFunctionOnStringRepr(
+						val,
+						ds.ColTypes[0],
+						hf)
+					if err != nil {
+						return err
+					}
+					routingTuple[0] = hashVal
+
+					// check where this tuple should go
+					tupleExecTarget, err := rm.DeparseKeyWithRangesInternal(ctx, routingTuple, krs)
+					if err != nil {
+						return err
+					}
+
+					/* okay, we know where this tuple should arrive. */
+
+					if qry, ok := retPlan.OverwriteQuery[tupleExecTarget.Name]; ok {
+						retPlan.OverwriteQuery[tupleExecTarget.Name] = qry + "( " + string(val) + " )"
+					} else {
+						retPlan.OverwriteQuery[tupleExecTarget.Name] = iniTemplate + "( " + string(val) + " )"
+					}
+				}
+
+				spqrlog.Zero.Debug().Msgf("created query map %+v", retPlan.OverwriteQuery)
+
+				return nil
+			}
+
+			retPlan.RunF = func(serv server.Server) error {
+				for _, sh := range serv.Datashards() {
+					var errmsg *pgproto3.ErrorResponse
+				shLoop:
+					for {
+						msg, err := serv.ReceiveShard(sh.ID())
+						if err != nil {
+							return err
+						}
+
+						switch v := msg.(type) {
+						case *pgproto3.ReadyForQuery:
+							if v.TxStatus == byte(txstatus.TXERR) {
+								return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+							}
+
+							break shLoop
+						case *pgproto3.RowDescription:
+							/* we already know it */
+						case *pgproto3.ErrorResponse:
+							errmsg = v
+						default:
+							/* All ok? */
+						}
+					}
+				}
+
+				return nil
 			}
 		}
+
+		spqrlog.Zero.Debug().Msgf("created multi-insert sliced plan %+v", retPlan)
+
+		/* run everywhere */
+		retPlan.ExecTargets = qr.DataShardsRoutes()
 
 		return &plan.VirtualPlan{
 			OverwriteCC: &pgproto3.CommandComplete{
