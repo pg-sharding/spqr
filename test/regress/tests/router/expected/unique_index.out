@@ -191,8 +191,8 @@ SELECT __spqr__ctid('ui2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO r2 (i, j, k) VALUES(1, 2, 3);
 NOTICE: send query to shard(s) : sh2
-NOTICE: send query to shard(s) : sh3
 NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh3
 SELECT __spqr__ctid('r2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | i | j | k 
