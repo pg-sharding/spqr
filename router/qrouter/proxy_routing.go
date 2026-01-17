@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -301,6 +302,10 @@ func (qr *ProxyQrouter) planQueryV1(
 		for _, is := range iisMP {
 			iis = append(iis, is)
 		}
+
+		sort.Slice(iis, func(a, b int) bool {
+			return iis[a].ID < iis[b].ID
+		})
 
 		/* Okay, we are requested to INSERT
 		* into distributed relation, which has unique indexes */
