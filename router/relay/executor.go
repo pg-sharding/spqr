@@ -869,7 +869,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 	statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
 
 	/* Prepare copy state, if needed. Also deploy implicit transaction for
-	* complex-multislice plans */
+	* complex multi-slice plans */
 	if err := s.executeSlicePrepare(qd, topPlan, replyCl); err != nil {
 		return err
 	}
