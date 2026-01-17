@@ -370,7 +370,7 @@ func (qr *ProxyQrouter) planQueryV1(
 					case *pgproto3.DataRow:
 						cntVal++
 						for ind, is := range iis {
-							colValues[is.ID] = append(colValues[is.ID],
+							colValues[is.ColumnName] = append(colValues[is.ColumnName],
 								v.Values[ind])
 						}
 					default:
@@ -404,9 +404,9 @@ func (qr *ProxyQrouter) planQueryV1(
 			}
 
 			retPlan.PrepareRunF = func() error {
-				iniTemplate := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", is.RelationName.String(), is.ColumnName)
+				spqrlog.Zero.Debug().Msgf("creating query map using tuples: %+v", colValues)
 
-				spqrlog.Zero.Debug().Msgf("creating query map using %d tuples", len(colValues[is.ColumnName]))
+				iniTemplate := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", is.RelationName.String(), is.ColumnName)
 
 				for _, val := range colValues[is.ColumnName] {
 
@@ -443,11 +443,24 @@ func (qr *ProxyQrouter) planQueryV1(
 
 				spqrlog.Zero.Debug().Msgf("created query map %+v", retPlan.OverwriteQuery)
 
+				for et := range retPlan.OverwriteQuery {
+					retPlan.ExecTargets = append(retPlan.ExecTargets,
+						kr.ShardKey{
+							Name: et,
+						})
+				}
+
 				return nil
 			}
 
 			retPlan.RunF = func(serv server.Server) error {
 				for _, sh := range serv.Datashards() {
+					if !slices.ContainsFunc(retPlan.ExecTargets, func(el kr.ShardKey) bool {
+						return sh.Name() == el.Name
+					}) {
+						continue
+					}
+
 					var errmsg *pgproto3.ErrorResponse
 				shLoop:
 					for {
@@ -478,9 +491,6 @@ func (qr *ProxyQrouter) planQueryV1(
 		}
 
 		spqrlog.Zero.Debug().Msgf("created multi-insert sliced plan %+v", retPlan)
-
-		/* run everywhere */
-		retPlan.ExecTargets = qr.DataShardsRoutes()
 
 		return &plan.VirtualPlan{
 			OverwriteCC: &pgproto3.CommandComplete{

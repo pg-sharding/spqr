@@ -51,6 +51,13 @@ type ScatterPlan struct {
 }
 
 func (sp *ScatterPlan) ExecutionTargets() []kr.ShardKey {
+	if sp.ExecTargets == nil {
+		if sp.SubSlice == nil {
+			return nil
+		}
+		return sp.Subplan().ExecutionTargets()
+	}
+
 	return sp.ExecTargets
 }
 

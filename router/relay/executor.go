@@ -833,13 +833,16 @@ func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Pl
 		simple: true,
 	}
 
-	spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msgf("dispatching slice plan: %+v", p)
-
+	if err := p.PrepareRunSlice(serv); err != nil {
+		return err
+	}
 	/* Before dispatching slice, expand server, if needed */
 
 	if err := s.ExpandRoutes(p.ExecutionTargets()); err != nil {
 		return err
 	}
+
+	spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msgf("dispatching slice plan: %+v", p)
 
 	/* Now dispatch this toplevel slice */
 	if err := DispatchSlice(qd, p, s.Client(), true); err != nil {
@@ -885,7 +888,7 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 	case *plan.VirtualPlan:
 		/* execute logic without shard dispatch */
 
-		if len(q.TTS.Raw) != 0 {
+		if q.TTS != nil && len(q.TTS.Raw) != 0 {
 			/* only send row description for simple proto case */
 			if s.es.expectRowDesc {
 				if replyCl {
