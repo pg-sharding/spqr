@@ -398,12 +398,12 @@ func (qr *ProxyQrouter) planQueryV1(
 
 		for _, is := range iis {
 
-			retPlan = &plan.ScatterPlan{
+			nRetPlan := &plan.ScatterPlan{
 				SubSlice:       retPlan,
 				OverwriteQuery: map[string]string{},
 			}
 
-			retPlan.PrepareRunF = func() error {
+			nRetPlan.PrepareRunF = func() error {
 				spqrlog.Zero.Debug().Msgf("creating query map using tuples: %+v", colValues)
 
 				iniTemplate := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", is.ID, is.ColumnName)
@@ -434,17 +434,17 @@ func (qr *ProxyQrouter) planQueryV1(
 
 					/* okay, we know where this tuple should arrive. */
 
-					if qry, ok := retPlan.OverwriteQuery[tupleExecTarget.Name]; ok {
-						retPlan.OverwriteQuery[tupleExecTarget.Name] = qry + "( " + string(val) + " )"
+					if qry, ok := nRetPlan.OverwriteQuery[tupleExecTarget.Name]; ok {
+						nRetPlan.OverwriteQuery[tupleExecTarget.Name] = qry + "( " + string(val) + " )"
 					} else {
-						retPlan.OverwriteQuery[tupleExecTarget.Name] = iniTemplate + "( " + string(val) + " )"
+						nRetPlan.OverwriteQuery[tupleExecTarget.Name] = iniTemplate + "( " + string(val) + " )"
 					}
 				}
 
-				spqrlog.Zero.Debug().Msgf("created query map %+v", retPlan.OverwriteQuery)
+				spqrlog.Zero.Debug().Msgf("created query map %+v", nRetPlan.OverwriteQuery)
 
-				for et := range retPlan.OverwriteQuery {
-					retPlan.ExecTargets = append(retPlan.ExecTargets,
+				for et := range nRetPlan.OverwriteQuery {
+					nRetPlan.ExecTargets = append(nRetPlan.ExecTargets,
 						kr.ShardKey{
 							Name: et,
 						})
@@ -453,9 +453,9 @@ func (qr *ProxyQrouter) planQueryV1(
 				return nil
 			}
 
-			retPlan.RunF = func(serv server.Server) error {
+			nRetPlan.RunF = func(serv server.Server) error {
 				for _, sh := range serv.Datashards() {
-					if !slices.ContainsFunc(retPlan.ExecTargets, func(el kr.ShardKey) bool {
+					if !slices.ContainsFunc(nRetPlan.ExecTargets, func(el kr.ShardKey) bool {
 						return sh.Name() == el.Name
 					}) {
 						continue
@@ -488,6 +488,8 @@ func (qr *ProxyQrouter) planQueryV1(
 
 				return nil
 			}
+
+			retPlan = nRetPlan
 		}
 
 		spqrlog.Zero.Debug().Msgf("created multi-insert sliced plan %+v", retPlan)
