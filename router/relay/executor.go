@@ -755,51 +755,58 @@ func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan,
 	/* XXX: refactor this into ExecutorReset */
 	s.es.expectRowDesc = qd.simple
 
-	switch P.(type) {
-	case *plan.VirtualPlan:
-		return nil
-	default:
+	s.es.attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
+
+	/* Should be deploy plan (all slices) in implicit transaction block? */
+
+	implicitTx := false
+
+	if P != nil {
+
+		stmt := P.Stmt()
+
 		serv := s.Client().Server()
+
 		if serv == nil {
-			return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
+			/* serv == nil only if plan is purely virtual */
+
+			_, ok := P.(*plan.VirtualPlan)
+			if !ok {
+				return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
+			}
+
+			if P.Subplan() != nil {
+				return fmt.Errorf("client %p is out of transaction sync with router", s.Client())
+			}
 		}
 
-		s.es.attachedCopy = s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT
+		if stmt != nil {
+			switch stmt.(type) {
+			case *lyx.Copy:
 
-		/* Should be deploy plan (all slices) in implicit transaction block? */
+				spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
 
-		implicitTx := false
+				s.es.copyStmt = stmt
 
-		if P != nil {
-
-			stmt := P.Stmt()
-
-			if stmt != nil {
-				switch stmt.(type) {
-				case *lyx.Copy:
-					spqrlog.Zero.Debug().Str("txstatus", serv.TxStatus().String()).Msg("prepared copy state")
-
-					s.es.copyStmt = stmt
-
-					if serv.TxStatus() == txstatus.TXIDLE {
-						implicitTx = true
-					}
-				}
-			}
-			if P.Subplan() != nil {
 				if serv.TxStatus() == txstatus.TXIDLE {
 					implicitTx = true
 				}
 			}
 		}
-
-		if implicitTx {
-			s.es.doFinalizeTx = true
-			return s.DeploySliceTransactionQuery("BEGIN")
+		if P.Subplan() != nil {
+			if serv.TxStatus() == txstatus.TXIDLE {
+				implicitTx = true
+			}
 		}
-
-		return nil
 	}
+
+	if implicitTx {
+		s.es.doFinalizeTx = true
+		return s.DeploySliceTransactionQuery("BEGIN")
+	}
+
+	return nil
+
 }
 
 func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Plan) error {
@@ -826,13 +833,16 @@ func (s *QueryStateExecutorImpl) executeInnerSlice(serv server.Server, p plan.Pl
 		simple: true,
 	}
 
-	spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msgf("dispatching slice plan: %+v", p)
-
+	if err := p.PrepareRunSlice(serv); err != nil {
+		return err
+	}
 	/* Before dispatching slice, expand server, if needed */
 
 	if err := s.ExpandRoutes(p.ExecutionTargets()); err != nil {
 		return err
 	}
+
+	spqrlog.Zero.Debug().Uint("client-id", s.cl.ID()).Msgf("dispatching slice plan: %+v", p)
 
 	/* Now dispatch this toplevel slice */
 	if err := DispatchSlice(qd, p, s.Client(), true); err != nil {
@@ -858,6 +868,12 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 
 	statistics.RecordStartTime(statistics.StatisticsTypeShard, time.Now(), s.Client())
 
+	/* Prepare copy state, if needed. Also deploy implicit transaction for
+	* complex multi-slice plans */
+	if err := s.executeSlicePrepare(qd, topPlan, replyCl); err != nil {
+		return err
+	}
+
 	if topPlan != nil {
 		if sp := topPlan.Subplan(); sp != nil {
 			/* XXX: Do all required job in sub-plan */
@@ -868,36 +884,37 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		}
 	}
 
-	/* Prepare copy state, if needed. */
-	if err := s.executeSlicePrepare(qd, topPlan, replyCl); err != nil {
-		return err
-	}
-
 	switch q := topPlan.(type) {
 	case *plan.VirtualPlan:
 		/* execute logic without shard dispatch */
 
-		/* only send row description for simple proto case */
-		if s.es.expectRowDesc {
-			if replyCl {
-				if err := s.Client().Send(&pgproto3.RowDescription{
-					Fields: q.TTS.Desc,
+		if q.TTS != nil && len(q.TTS.Raw) != 0 {
+			/* only send row description for simple proto case */
+			if s.es.expectRowDesc {
+				if replyCl {
+					if err := s.Client().Send(&pgproto3.RowDescription{
+						Fields: q.TTS.Desc,
+					}); err != nil {
+						return err
+					}
+				}
+			}
+
+			for _, vals := range q.TTS.Raw {
+				if err := s.Client().Send(&pgproto3.DataRow{
+					Values: vals,
 				}); err != nil {
 					return err
 				}
 			}
 		}
 
-		for _, vals := range q.TTS.Raw {
-			if err := s.Client().Send(&pgproto3.DataRow{
-				Values: vals,
-			}); err != nil {
-				return err
+		if q.OverwriteCC != nil {
+			s.es.cc = q.OverwriteCC
+		} else {
+			s.es.cc = &pgproto3.CommandComplete{
+				CommandTag: fmt.Appendf(nil, "SELECT %d", len(q.TTS.Raw)),
 			}
-		}
-
-		s.es.cc = &pgproto3.CommandComplete{
-			CommandTag: fmt.Appendf(nil, "SELECT %d", len(q.TTS.Raw)),
 		}
 
 		return nil

@@ -10,6 +10,7 @@ import (
 	"unicode"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
@@ -30,6 +31,24 @@ func RewriteUpdateToDelete(query string, rqdn *rfqn.RelationFQN) (string, error)
 	}
 
 	return fmt.Sprintf(`DELETE FROM "%s" %s`, rqdn.String(), query[valuesKeywordStart:]), nil
+}
+
+func RewriteDistributedRelInsertForIndexes(query string, iis []*distributions.UniqueIndex) (string, error) {
+	if query[len(query)-1] == ';' {
+		query = query[:len(query)-1]
+	}
+
+	query += " RETURNING "
+
+	for ind, is := range iis {
+		if ind == 0 {
+			query += is.ColumnName
+		} else {
+			query += " , " + is.ColumnName
+		}
+	}
+
+	return query, nil
 }
 
 func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {

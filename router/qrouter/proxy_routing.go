@@ -286,18 +286,218 @@ func (qr *ProxyQrouter) planQueryV1(
 		qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
 
 		/* plan one slice per unique index */
-		iis, err := rm.Mgr.ListRelationIndexes(ctx, qualName)
+		iisMP, err := rm.Mgr.ListRelationIndexes(ctx, qualName)
 		if err != nil {
 			return nil, err
 		}
 
-		if len(iis) == 0 {
+		if len(iisMP) == 0 {
 			/* simple case */
 			return p, nil
 		}
 
-		/* just to silence compiler */
-		return nil, fmt.Errorf("not yet supported")
+		iis := make([]*distributions.UniqueIndex, 0)
+
+		for _, is := range iisMP {
+			iis = append(iis, is)
+		}
+
+		/* Okay, we are requested to INSERT
+		* into distributed relation, which has unique indexes */
+
+		/* for now, only simple queries */
+		if stmt.WithClause != nil {
+			return nil, rerrors.ErrComplexQuery
+		}
+
+		if stmt.Returning != nil {
+			return nil, rerrors.ErrComplexQuery
+		}
+
+		/* we will have inital sql as bottom-level slice, because we need to
+		* know which tuples actually got inserted */
+
+		execTargets := p.ExecutionTargets()
+
+		sliceInsert := &plan.ScatterPlan{
+			ExecTargets:    execTargets,
+			OverwriteQuery: map[string]string{},
+		}
+
+		/* rewrite initial query adding insert */
+
+		rewriteQuery, err := planner.RewriteDistributedRelInsertForIndexes(rm.Query, iis)
+
+		if err != nil {
+			return nil, err
+		}
+
+		for _, et := range execTargets {
+			sliceInsert.OverwriteQuery[et.Name] = rewriteQuery
+		}
+
+		cntVal := 0
+		colValues := map[string][][]byte{}
+
+		sliceInsert.RunF = func(serv server.Server) error {
+			spqrlog.Zero.Debug().Msg("run bottom-level insert slice")
+			for _, sh := range serv.Datashards() {
+				if !slices.ContainsFunc(sliceInsert.ExecTargets, func(el kr.ShardKey) bool {
+					return sh.Name() == el.Name
+				}) {
+					continue
+				}
+
+				var errmsg *pgproto3.ErrorResponse
+			shLoop:
+				for {
+					msg, err := serv.ReceiveShard(sh.ID())
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+						}
+
+						break shLoop
+					case *pgproto3.RowDescription:
+						/* we already know it */
+					case *pgproto3.ErrorResponse:
+						errmsg = v
+					case *pgproto3.DataRow:
+						cntVal++
+						for ind, is := range iis {
+							colValues[is.ColumnName] = append(colValues[is.ColumnName],
+								v.Values[ind])
+						}
+					default:
+						/* All ok? */
+					}
+				}
+			}
+
+			return nil
+		}
+
+		retPlan := sliceInsert
+
+		ds, err := rm.Mgr.GetRelationDistribution(ctx, qualName)
+		if err != nil {
+			return nil, err
+		}
+
+		krs, err := rm.Mgr.ListKeyRanges(ctx, ds.Id)
+		if err != nil {
+			return nil, err
+		}
+
+		distributedRelation := ds.GetRelation(qualName)
+
+		for _, is := range iis {
+
+			retPlan = &plan.ScatterPlan{
+				SubSlice:       retPlan,
+				OverwriteQuery: map[string]string{},
+			}
+
+			retPlan.PrepareRunF = func() error {
+				spqrlog.Zero.Debug().Msgf("creating query map using tuples: %+v", colValues)
+
+				iniTemplate := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", is.ID, is.ColumnName)
+
+				for _, val := range colValues[is.ColumnName] {
+
+					routingTuple := make([]any, len(distributedRelation.DistributionKey))
+
+					hf, err := hashfunction.HashFunctionByName(distributedRelation.DistributionKey[0].HashFunction)
+					if err != nil {
+						return err
+					}
+
+					hashVal, err := hashfunction.ApplyHashFunctionOnStringRepr(
+						val,
+						ds.ColTypes[0],
+						hf)
+					if err != nil {
+						return err
+					}
+					routingTuple[0] = hashVal
+
+					// check where this tuple should go
+					tupleExecTarget, err := rm.DeparseKeyWithRangesInternal(ctx, routingTuple, krs)
+					if err != nil {
+						return err
+					}
+
+					/* okay, we know where this tuple should arrive. */
+
+					if qry, ok := retPlan.OverwriteQuery[tupleExecTarget.Name]; ok {
+						retPlan.OverwriteQuery[tupleExecTarget.Name] = qry + "( " + string(val) + " )"
+					} else {
+						retPlan.OverwriteQuery[tupleExecTarget.Name] = iniTemplate + "( " + string(val) + " )"
+					}
+				}
+
+				spqrlog.Zero.Debug().Msgf("created query map %+v", retPlan.OverwriteQuery)
+
+				for et := range retPlan.OverwriteQuery {
+					retPlan.ExecTargets = append(retPlan.ExecTargets,
+						kr.ShardKey{
+							Name: et,
+						})
+				}
+
+				return nil
+			}
+
+			retPlan.RunF = func(serv server.Server) error {
+				for _, sh := range serv.Datashards() {
+					if !slices.ContainsFunc(retPlan.ExecTargets, func(el kr.ShardKey) bool {
+						return sh.Name() == el.Name
+					}) {
+						continue
+					}
+
+					var errmsg *pgproto3.ErrorResponse
+				shLoop:
+					for {
+						msg, err := serv.ReceiveShard(sh.ID())
+						if err != nil {
+							return err
+						}
+
+						switch v := msg.(type) {
+						case *pgproto3.ReadyForQuery:
+							if v.TxStatus == byte(txstatus.TXERR) {
+								return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+							}
+
+							break shLoop
+						case *pgproto3.RowDescription:
+							/* we already know it */
+						case *pgproto3.ErrorResponse:
+							errmsg = v
+						default:
+							/* All ok? */
+						}
+					}
+				}
+
+				return nil
+			}
+		}
+
+		spqrlog.Zero.Debug().Msgf("created multi-insert sliced plan %+v", retPlan)
+
+		return &plan.VirtualPlan{
+			OverwriteCC: &pgproto3.CommandComplete{
+				CommandTag: fmt.Appendf(nil, "INSERT 0 %d", cntVal),
+			},
+			SubPlan: retPlan,
+		}, nil
 
 	case *lyx.Update:
 
@@ -657,7 +857,6 @@ func (qr *ProxyQrouter) planSPQR_CTID(
 
 		scanPlan.RunF = func(serv server.Server) error {
 			for _, sh := range serv.Datashards() {
-
 				var errmsg *pgproto3.ErrorResponse
 			shLoop:
 				for {

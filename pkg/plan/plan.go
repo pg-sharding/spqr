@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -22,6 +23,7 @@ type Plan interface {
 	/* get SubPlan if any */
 
 	RunSlice(server.Server) error
+	PrepareRunSlice(server.Server) error
 
 	Subplan() Plan
 }
@@ -39,6 +41,8 @@ type ScatterPlan struct {
 	IsDDL  bool
 	Forced bool
 
+	PrepareRunF func() error
+
 	RunF func(server.Server) error
 
 	OverwriteQuery map[string]string
@@ -47,6 +51,13 @@ type ScatterPlan struct {
 }
 
 func (sp *ScatterPlan) ExecutionTargets() []kr.ShardKey {
+	if sp.ExecTargets == nil {
+		if sp.SubSlice == nil {
+			return nil
+		}
+		return sp.Subplan().ExecutionTargets()
+	}
+
 	return sp.ExecTargets
 }
 
@@ -67,6 +78,16 @@ func (s *ScatterPlan) GetGangMemberMsg(sh kr.ShardKey) string {
 
 func (s *ScatterPlan) Subplan() Plan {
 	return s.SubSlice
+}
+
+func (s *ScatterPlan) PrepareRunSlice(serv server.Server) error {
+	if s.PrepareRunF != nil {
+		/* prepare our slice */
+		if err := s.PrepareRunF(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *ScatterPlan) RunSlice(serv server.Server) error {
@@ -108,6 +129,10 @@ func (s *ModifyTable) RunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
+func (s *ModifyTable) PrepareRunSlice(server.Server) error {
+	return fmt.Errorf("unexpected run function call")
+}
+
 var _ Plan = &ModifyTable{}
 
 type ShardDispatchPlan struct {
@@ -141,6 +166,10 @@ func (s *ShardDispatchPlan) GetGangMemberMsg(kr.ShardKey) string {
 
 func (s *ShardDispatchPlan) Subplan() Plan {
 	return s.SP
+}
+
+func (s *ShardDispatchPlan) PrepareRunSlice(server.Server) error {
+	return nil
 }
 
 func (s *ShardDispatchPlan) RunSlice(serv server.Server) error {
@@ -183,6 +212,10 @@ func (s *RandomDispatchPlan) RunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
+func (s *RandomDispatchPlan) PrepareRunSlice(server.Server) error {
+	return fmt.Errorf("unexpected run function call")
+}
+
 var _ Plan = &RandomDispatchPlan{}
 
 type VirtualPlan struct {
@@ -190,8 +223,9 @@ type VirtualPlan struct {
 
 	stmt lyx.Node
 
-	TTS     *tupleslot.TupleTableSlot
-	SubPlan Plan
+	OverwriteCC *pgproto3.CommandComplete
+	TTS         *tupleslot.TupleTableSlot
+	SubPlan     Plan
 }
 
 func (vp *VirtualPlan) ExecutionTargets() []kr.ShardKey {
@@ -218,6 +252,10 @@ func (s *VirtualPlan) Subplan() Plan {
 }
 
 func (s *VirtualPlan) RunSlice(server.Server) error {
+	return fmt.Errorf("unexpected run function call")
+}
+
+func (s *VirtualPlan) PrepareRunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
@@ -258,6 +296,10 @@ func (s *DataRowFilter) RunSlice(serv server.Server) error {
 	return s.SubPlan.RunSlice(serv)
 }
 
+func (s *DataRowFilter) PrepareRunSlice(serv server.Server) error {
+	return s.SubPlan.PrepareRunSlice(serv)
+}
+
 var _ Plan = &DataRowFilter{}
 
 type CopyPlan struct {
@@ -288,6 +330,10 @@ func (s *CopyPlan) Subplan() Plan {
 }
 
 func (s *CopyPlan) RunSlice(server.Server) error {
+	return fmt.Errorf("unexpected run function call")
+}
+
+func (s *CopyPlan) PrepareRunSlice(server.Server) error {
 	return fmt.Errorf("unexpected run function call")
 }
 
