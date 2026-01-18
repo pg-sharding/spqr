@@ -170,7 +170,7 @@ func TestTranGetKeyRange(t *testing.T) {
 			ColumnTypes:  []string{qdb.ColumnTypeInteger},
 			IsLocked:     &boolTrue,
 		}
-		var kr2Duble = &kr.KeyRange{
+		var kr2Double = &kr.KeyRange{
 			ID:           "kr2",
 			ShardID:      "sh1",
 			Distribution: "ds2",
@@ -190,7 +190,7 @@ func TestTranGetKeyRange(t *testing.T) {
 		err = tranMngr.CreateKeyRange(ctx, kr2Ds2)
 		//NO COMMIT QDB!!!
 		is.NoError(err)
-		err = tranMngr.CreateKeyRange(ctx, kr2Duble)
+		err = tranMngr.CreateKeyRange(ctx, kr2Double)
 		//NO COMMIT QDB!!!
 		is.EqualError(err, "key range kr2 already present in qdb")
 
