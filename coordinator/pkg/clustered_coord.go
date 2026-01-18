@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,6 +34,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/rulemgr"
@@ -40,7 +42,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/qdb/ops"
 	"github.com/pg-sharding/spqr/router/cache"
 	rclient "github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/port"
@@ -48,7 +49,9 @@ import (
 	"github.com/pg-sharding/spqr/router/route"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 type grpcConnMgr struct {
@@ -213,8 +216,22 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 	spqrlog.Zero.Debug().
 		Str("router-id", r.ID).
 		Msg("dialing router")
-	// TODO: add creds
-	return grpc.NewClient(r.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	// Configure keepalive to prevent connection closure during long idle periods
+	// Network intermediaries (load balancers, firewalls) typically close idle connections after 60s-5min
+	// Default: 30s keepalive ensures connections survive even aggressive timeouts (e.g., AWS ELB 60s default)
+	keepaliveTime := config.ValueOrDefaultDuration(config.CoordinatorConfig().RouterKeepaliveTime, 30*time.Second)
+	keepaliveTimeout := config.ValueOrDefaultDuration(config.CoordinatorConfig().RouterKeepaliveTimeout, 20*time.Second)
+
+	keepaliveParams := keepalive.ClientParameters{
+		Time:                keepaliveTime,    // Send keepalive ping interval
+		Timeout:             keepaliveTimeout, // Wait for ping ack before considering connection dead
+		PermitWithoutStream: true,             // Allow pings even when no active RPCs
+	}
+
+	return grpc.NewClient(r.Address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithKeepaliveParams(keepaliveParams))
 }
 
 const defaultWatchRouterTimeout = time.Second
@@ -232,8 +249,11 @@ type ClusteredCoordinator struct {
 	cache        *cache.SchemaCache
 	acquiredLock bool
 
-	bounds [][][]byte
-	index  int
+	bounds *sync.Map
+	index  *sync.Map
+
+	routerConnCache map[string]*grpc.ClientConn
+	routerConnMutex sync.RWMutex
 }
 
 func (qc *ClusteredCoordinator) QDB() qdb.QDB {
@@ -246,6 +266,45 @@ func (qc *ClusteredCoordinator) Cache() *cache.SchemaCache {
 
 var _ coordinator.Coordinator = &ClusteredCoordinator{}
 
+// getOrCreateRouterConn returns a cached connection or creates a new one.
+func (qc *ClusteredCoordinator) getOrCreateRouterConn(r *topology.Router) (*grpc.ClientConn, error) {
+	qc.routerConnMutex.Lock()
+	defer qc.routerConnMutex.Unlock()
+
+	conn, exists := qc.routerConnCache[r.ID]
+
+	if exists {
+		// Check if connection is still valid
+		state := conn.GetState()
+		if state == connectivity.Ready || state == connectivity.Idle {
+			return conn, nil
+		}
+		// Connection is not healthy, close and remove it
+		_ = conn.Close()
+		delete(qc.routerConnCache, r.ID)
+	}
+
+	// Create new connection
+	conn, err := DialRouter(r)
+	if err != nil {
+		return nil, err
+	}
+
+	qc.routerConnCache[r.ID] = conn
+	return conn, nil
+}
+
+// closeRouterConn closes and removes a router connection from cache
+func (qc *ClusteredCoordinator) closeRouterConn(routerID string) {
+	qc.routerConnMutex.Lock()
+	defer qc.routerConnMutex.Unlock()
+
+	if conn, exists := qc.routerConnCache[routerID]; exists {
+		_ = conn.Close()
+		delete(qc.routerConnCache, routerID)
+	}
+}
+
 // watchRouters traverse routers one check if they are opened
 // for clients. If not, initialize metadata and open router
 // TODO : unit tests
@@ -254,6 +313,7 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 	for {
 		// TODO check we are still coordinator
 		if !qc.acquiredLock {
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 
@@ -265,43 +325,46 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 			continue
 		}
 
-		// TODO we have to rewrite this code
-		// instead of opening new connections to each router
-		// we have to open it ones, keep and update before the iteration
+		// Build set of current router IDs for cleanup
+		currentRouterIDs := make(map[string]bool, len(routers))
+		for _, r := range routers {
+			currentRouterIDs[r.ID] = true
+		}
+
 		for _, r := range routers {
 			if err := func() error {
+				// Create bounded context for this router's operations
+				routerCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				defer cancel()
+
 				internalR := &topology.Router{
 					ID:      r.ID,
 					Address: r.Address,
 				}
 
-				cc, err := DialRouter(internalR)
+				cc, err := qc.getOrCreateRouterConn(internalR)
 				if err != nil {
 					return err
 				}
 
-				defer func() {
-					if err := cc.Close(); err != nil {
-						spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-					}
-				}()
-
 				rrClient := proto.NewTopologyServiceClient(cc)
 
-				resp, err := rrClient.GetRouterStatus(ctx, nil)
+				resp, err := rrClient.GetRouterStatus(routerCtx, nil)
 				if err != nil {
+					// Connection error - close and remove from cache so we reconnect next time
+					qc.closeRouterConn(internalR.ID)
 					return err
 				}
 
 				switch resp.Status {
 				case proto.RouterStatus_CLOSED:
 					spqrlog.Zero.Debug().Msg("router is closed")
-					if err := qc.SyncRouterCoordinatorAddress(ctx, internalR); err != nil {
+					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
 						return err
 					}
 
 					/* Mark router as opened in qdb */
-					err := qc.db.CloseRouter(ctx, internalR.ID)
+					err := qc.db.CloseRouter(routerCtx, internalR.ID)
 					if err != nil {
 						return err
 					}
@@ -310,12 +373,12 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 					spqrlog.Zero.Debug().Msg("router is opened")
 
 					/* TODO: check router metadata consistency */
-					if err := qc.SyncRouterCoordinatorAddress(ctx, internalR); err != nil {
+					if err := qc.SyncRouterCoordinatorAddress(routerCtx, internalR); err != nil {
 						return err
 					}
 
 					/* Mark router as opened in qdb */
-					err := qc.db.OpenRouter(ctx, internalR.ID)
+					err := qc.db.OpenRouter(routerCtx, internalR.ID)
 					if err != nil {
 						return err
 					}
@@ -329,19 +392,38 @@ func (qc *ClusteredCoordinator) watchRouters(ctx context.Context) {
 			}
 		}
 
+		// Clean up connections for routers that no longer exist
+		qc.routerConnMutex.RLock()
+		var staleConnIDs []string
+		for routerID := range qc.routerConnCache {
+			if !currentRouterIDs[routerID] {
+				staleConnIDs = append(staleConnIDs, routerID)
+			}
+		}
+		qc.routerConnMutex.RUnlock()
+
+		for _, routerID := range staleConnIDs {
+			spqrlog.Zero.Debug().Str("router-id", routerID).Msg("cleaning up connection for removed router")
+			qc.closeRouterConn(routerID)
+		}
+
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().IterationTimeout, defaultWatchRouterTimeout))
 	}
 }
 
 func NewClusteredCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*ClusteredCoordinator, error) {
 	return &ClusteredCoordinator{
-		Coordinator:  coord.NewCoordinator(db),
+		Coordinator:  coord.NewCoordinator(db, nil),
 		db:           db,
 		tlsconfig:    tlsconfig,
 		rmgr:         rulemgr.NewMgr(config.CoordinatorConfig().FrontendRules, []*config.BackendRule{}),
 		acquiredLock: false,
-		bounds:       make([][][]byte, 0),
-		index:        0,
+		// boundMutex:      sync.RWMutex{},
+		// bounds:          make(map[string][][][]byte, 0),
+		bounds: &sync.Map{},
+		index:  &sync.Map{},
+		// index:           make(map[string]int),
+		routerConnCache: make(map[string]*grpc.ClientConn),
 	}, nil
 }
 
@@ -519,18 +601,13 @@ func (qc *ClusteredCoordinator) traverseRouters(ctx context.Context, cb func(cc 
 			}
 
 			// TODO: run cb`s async
-			cc, err := DialRouter(&topology.Router{
+			cc, err := qc.getOrCreateRouterConn(&topology.Router{
 				ID:      rtr.ID,
 				Address: rtr.Addr(),
 			})
 			if err != nil {
 				return err
 			}
-			defer func() {
-				if err := cc.Close(); err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-				}
-			}()
 
 			if err := cb(cc); err != nil {
 				spqrlog.Zero.Debug().Err(err).Str("router id", rtr.ID).Msg("traverse routers")
@@ -578,7 +655,11 @@ func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr
 
 // TODO : unit tests
 func (qc *ClusteredCoordinator) MoveKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
-	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, keyRange)
+	// TODO: move check to meta layer
+	if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
+		return err
+	}
+	return qc.db.UpdateKeyRange(ctx, keyRange.ToDB())
 }
 
 // TODO : unit tests
@@ -826,8 +907,11 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 				return err
 			}
 			krg.ShardID = req.ShardId
-			if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, krg); err != nil {
-				// TODO: check if unlock here is ok
+			// TODO: move check to meta layer
+			if err := meta.ValidateKeyRangeForModify(ctx, qc, krg); err != nil {
+				return err
+			}
+			if err := qc.db.UpdateKeyRange(ctx, krg.ToDB()); err != nil {
 				return err
 			}
 
@@ -1015,7 +1099,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on destination shard")
 	}
 
-	return datatransfers.SetupFDW(ctx, sourceConn, destConn, keyRange.ShardID, req.ShardId, schemas)
+	return datatransfers.SetupFDW(ctx, destConn, keyRange.ShardID, req.ShardId, schemas)
 }
 
 // TODO : unit tests
@@ -1207,12 +1291,19 @@ func (*ClusteredCoordinator) getBiggestRelation(relCount map[string]int64, total
 }
 
 func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, ds *distributions.Distribution) ([][]byte, error) {
-	if qc.bounds != nil && qc.index < len(qc.bounds) {
-		qc.index++
-		return qc.bounds[qc.index-1], nil
+	if qc.bounds != nil {
+		if groupBoundsInt, ok := qc.bounds.Load(taskGroup.ID); ok {
+			indMap, _ := qc.index.Load(taskGroup.ID)
+			groupBounds, _ := groupBoundsInt.([][][]byte)
+			ind := indMap.(int)
+			if ind < len(groupBounds) {
+				qc.index.Store(taskGroup.ID, ind+1)
+				return groupBounds[ind], nil
+			}
+		}
 	}
 
-	spqrlog.Zero.Debug().Msg("generating new bounds batch")
+	spqrlog.Zero.Debug().Str("task group id", taskGroup.ID).Msg("generating new bounds batch")
 	keyRange, err := qc.GetKeyRange(ctx, taskGroup.KrIdFrom)
 	krFound := true
 	if et, ok := err.(*spqrerror.SpqrError); ok && et.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
@@ -1391,9 +1482,12 @@ ORDER BY (%s) %s;
 		// Avoid splitting key range by its own bound when moving the whole range
 		boundList[len(boundList)-1] = keyRange.Raw()
 	}
-	qc.bounds = boundList
-	qc.index = 1
-	return qc.bounds[0], nil
+	if qc.bounds == nil {
+		qc.bounds = &sync.Map{}
+	}
+	qc.bounds.Store(taskGroup.ID, boundList)
+	qc.index.Store(taskGroup.ID, 1)
+	return boundList[0], nil
 }
 
 func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.Conn, taskGroup *tasks.MoveTaskGroup, rel *distributions.DistributedRelation, ds *distributions.Distribution) (*tasks.MoveTask, error) {
@@ -1790,15 +1884,10 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		Str("address", qRouter.Address).
 		Msg("qdb coordinator: sync router metadata")
 
-	cc, err := DialRouter(qRouter)
+	cc, err := qc.getOrCreateRouterConn(qRouter)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := cc.Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-		}
-	}()
 
 	// Configure distributions
 	dsCl := proto.NewDistributionServiceClient(cc)
@@ -1822,16 +1911,23 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 	}); err != nil {
 		return err
 	}
-	if _, err = dsCl.CreateDistribution(ctx, &proto.CreateDistributionRequest{
-		Distributions: func() []*proto.Distribution {
-			res := make([]*proto.Distribution, len(dss))
-			for i, ds := range dss {
-				res[i] = distributions.DistributionToProto(ds)
-			}
-			return res
-		}(),
-	}); err != nil {
-		return err
+	spqrlog.Zero.Debug().Msg("clustered coordinator: distributions dropped successfully")
+	if len(dss) > 0 {
+		distribsToCreate := make([]*proto.Distribution, len(dss))
+		for i, ds := range dss {
+			distribsToCreate[i] = distributions.DistributionToProto(ds)
+		}
+		commands := []*proto.MetaTransactionGossipCommand{
+			{CreateDistribution: &proto.CreateDistributionGossip{
+				Distributions: distribsToCreate,
+			},
+			},
+		}
+		gossipCl := proto.NewMetaTransactionGossipServiceClient(cc)
+		if _, err := gossipCl.ApplyMeta(ctx, &proto.MetaTransactionGossipRequest{Commands: commands}); err != nil {
+			return err
+		}
+		spqrlog.Zero.Debug().Msg("qdb coordinator: distributions created")
 	}
 
 	// Configure key ranges.
@@ -1905,15 +2001,10 @@ func (qc *ClusteredCoordinator) SyncRouterCoordinatorAddress(ctx context.Context
 		Str("address", qRouter.Address).
 		Msg("qdb coordinator: sync coordinator address")
 
-	cc, err := DialRouter(qRouter)
+	cc, err := qc.getOrCreateRouterConn(qRouter)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := cc.Close(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
-		}
-	}()
 
 	/* Update current coordinator address. */
 	/* Todo: check that router metadata is in sync. */
@@ -2070,7 +2161,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 		case *pgproto3.Query:
 			tstmt, err := spqrparser.Parse(v.String)
 			if err != nil {
-				_ = cli.ReportError(err)
+				_ = cli.ReportError(fmt.Errorf("failed to parse query \"%s\": %w", v.String, err))
 				continue
 			}
 
@@ -2157,7 +2248,7 @@ func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context,
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewReferenceRelationsServiceClient(cc)
-		resp, err := cl.CreateReferenceRelations(context.TODO(),
+		resp, err := cl.CreateReferenceRelations(ctx,
 			&proto.CreateReferenceRelationsRequest{
 				Relation: rrelation.RefRelationToProto(r),
 				Entries:  rrelation.AutoIncrementEntriesToProto(entry),
@@ -2189,12 +2280,9 @@ func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relN
 				return err
 			}
 
-			resp, err := cl.AlterReferenceRelationStorage(context.TODO(),
+			resp, err := cl.AlterReferenceRelationStorage(ctx,
 				&proto.AlterReferenceRelationStorageRequest{
-					Relation: &proto.QualifiedName{
-						RelationName: relName.RelationName,
-						SchemaName:   relName.SchemaName,
-					},
+					Relation: rfqn.RelationFQNToProto(relName),
 					ShardIds: rel.ShardIds,
 				})
 			if err != nil {
@@ -2220,12 +2308,9 @@ func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewReferenceRelationsServiceClient(cc)
-		resp, err := cl.DropReferenceRelations(context.TODO(),
+		resp, err := cl.DropReferenceRelations(ctx,
 			&proto.DropReferenceRelationsRequest{
-				Relations: []*proto.QualifiedName{{
-					RelationName: relName.RelationName,
-					SchemaName:   relName.SchemaName,
-				}},
+				Relations: []*proto.QualifiedName{rfqn.RelationFQNToProto(relName)},
 			})
 		if err != nil {
 			return err
@@ -2240,25 +2325,20 @@ func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 
 // CreateDistribution creates distribution in QDB
 // TODO: unit tests
-func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
-	if err := qc.Coordinator.CreateDistribution(ctx, ds); err != nil {
-		return err
-	}
-
-	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.CreateDistribution(context.TODO(), &proto.CreateDistributionRequest{
-			Distributions: []*proto.Distribution{distributions.DistributionToProto(ds)},
-		})
-		if err != nil {
-			return err
+func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) (*mtran.MetaTransactionChunk, error) {
+	if transactionChunk, err := qc.Coordinator.CreateDistribution(ctx, ds); err != nil {
+		return nil, err
+	} else {
+		if len(transactionChunk.GossipRequests) > 0 {
+			return nil, fmt.Errorf("local coordinator unexpectedly returned gossip requests; expected empty gossip requests from local coordinator")
+		} else {
+			gossipReq := &proto.MetaTransactionGossipCommand{CreateDistribution: &proto.CreateDistributionGossip{
+				Distributions: []*proto.Distribution{distributions.DistributionToProto(ds)},
+			}}
+			transactionChunk.GossipRequests = []*proto.MetaTransactionGossipCommand{gossipReq}
+			return transactionChunk, nil
 		}
-
-		spqrlog.Zero.Debug().
-			Interface("response", resp).
-			Msg("create distribution response")
-		return nil
-	})
+	}
 }
 
 // DropDistribution deletes distribution from QDB
@@ -2270,7 +2350,7 @@ func (qc *ClusteredCoordinator) DropDistribution(ctx context.Context, id string)
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.DropDistribution(context.TODO(), &proto.DropDistributionRequest{
+		resp, err := cl.DropDistribution(ctx, &proto.DropDistributionRequest{
 			Ids: []string{id},
 		})
 		if err != nil {
@@ -2293,7 +2373,7 @@ func (qc *ClusteredCoordinator) AlterDistributionAttach(ctx context.Context, id 
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.AlterDistributionAttach(context.TODO(), &proto.AlterDistributionAttachRequest{
+		resp, err := cl.AlterDistributionAttach(ctx, &proto.AlterDistributionAttachRequest{
 			Id: id,
 			Relations: func() []*proto.DistributedRelation {
 				res := make([]*proto.DistributedRelation, len(rels))
@@ -2323,7 +2403,7 @@ func (qc *ClusteredCoordinator) AlterDistributedRelation(ctx context.Context, id
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.AlterDistributedRelation(context.TODO(), &proto.AlterDistributedRelationRequest{
+		resp, err := cl.AlterDistributedRelation(ctx, &proto.AlterDistributedRelationRequest{
 			Id:       id,
 			Relation: distributions.DistributedRelationToProto(rel),
 		})
@@ -2347,7 +2427,7 @@ func (qc *ClusteredCoordinator) AlterDistributedRelationSchema(ctx context.Conte
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.AlterDistributedRelationSchema(context.TODO(), &proto.AlterDistributedRelationSchemaRequest{
+		resp, err := cl.AlterDistributedRelationSchema(ctx, &proto.AlterDistributedRelationSchemaRequest{
 			Id:           id,
 			RelationName: relName,
 			SchemaName:   schemaName,
@@ -2372,7 +2452,7 @@ func (qc *ClusteredCoordinator) AlterDistributedRelationDistributionKey(ctx cont
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.AlterDistributedRelationDistributionKey(context.TODO(), &proto.AlterDistributedRelationDistributionKeyRequest{
+		resp, err := cl.AlterDistributedRelationDistributionKey(ctx, &proto.AlterDistributedRelationDistributionKeyRequest{
 			Id:              id,
 			RelationName:    relName,
 			DistributionKey: distributions.DistributionKeyToProto(distributionKey),
@@ -2394,7 +2474,7 @@ func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string
 	}
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		resp, err := cl.DropSequence(context.TODO(), &proto.DropSequenceRequest{
+		resp, err := cl.DropSequence(ctx, &proto.DropSequenceRequest{
 			Name:  seqName,
 			Force: force,
 		})
@@ -2419,10 +2499,9 @@ func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id 
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
-		protoRelation := proto.QualifiedName{RelationName: relName.RelationName, SchemaName: relName.SchemaName}
-		resp, err := cl.AlterDistributionDetach(context.TODO(), &proto.AlterDistributionDetachRequest{
+		resp, err := cl.AlterDistributionDetach(ctx, &proto.AlterDistributionDetachRequest{
 			Id:       id,
-			RelNames: []*proto.QualifiedName{&protoRelation},
+			RelNames: []*proto.QualifiedName{rfqn.RelationFQNToProto(relName)},
 		})
 		if err != nil {
 			return err
@@ -2437,4 +2516,98 @@ func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id 
 
 func (qc *ClusteredCoordinator) IsReadOnly() bool {
 	return !qc.acquiredLock
+}
+
+func gossipMetaChanges(ctx context.Context, gossip *proto.MetaTransactionGossipRequest) func(cc *grpc.ClientConn) error {
+	return func(cc *grpc.ClientConn) error {
+		cl := proto.NewMetaTransactionGossipServiceClient(cc)
+		resp, err := cl.ApplyMeta(ctx, gossip)
+		spqrlog.Zero.Debug().Err(err).
+			Interface("response", resp).
+			Msg("send meta transaction gossip")
+		return err
+	}
+}
+
+func (qc *ClusteredCoordinator) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionChunk) error {
+	for _, gossipRequest := range chunk.GossipRequests {
+		if gossipType := mtran.GetGossipRequestType(gossipRequest); gossipType == mtran.GR_UNKNOWN {
+			return fmt.Errorf("invalid meta transaction request (exec no tran)")
+		}
+	}
+	noGossipChunk, _ := mtran.NewMetaTransactionChunk(nil, chunk.QdbStatements)
+	if err := qc.Coordinator.ExecNoTran(ctx, noGossipChunk); err != nil {
+		return err
+	} else {
+		return qc.traverseRouters(ctx,
+			gossipMetaChanges(ctx, &proto.MetaTransactionGossipRequest{Commands: chunk.GossipRequests}),
+		)
+	}
+}
+
+func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
+	for _, gossipRequest := range transaction.Operations.GossipRequests {
+		if gossipType := mtran.GetGossipRequestType(gossipRequest); gossipType == mtran.GR_UNKNOWN {
+			return fmt.Errorf("invalid meta transaction request (commit tran)")
+		}
+	}
+	noGossipTran := mtran.ToNoGossipTransaction(transaction)
+
+	if err := qc.Coordinator.CommitTran(ctx, noGossipTran); err != nil {
+		return err
+	}
+	return qc.traverseRouters(ctx,
+		gossipMetaChanges(ctx,
+			&proto.MetaTransactionGossipRequest{Commands: transaction.Operations.GossipRequests},
+		),
+	)
+}
+
+func (qc *ClusteredCoordinator) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error) {
+	return qc.Coordinator.BeginTran(ctx)
+}
+
+func (qc *ClusteredCoordinator) CreateUniqueIndex(ctx context.Context, dsId string, idx *distributions.UniqueIndex) error {
+	if err := qc.Coordinator.CreateUniqueIndex(ctx, dsId, idx); err != nil {
+		return err
+	}
+
+	req := &proto.CreateUniqueIndexRequest{
+		DistributionId: dsId,
+		Idx:            distributions.UniqueIndexToProto(idx),
+	}
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := proto.NewDistributionServiceClient(cc)
+		resp, err := cl.CreateUniqueIndex(ctx, req)
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("create unique index response")
+		return nil
+	})
+}
+
+func (qc *ClusteredCoordinator) DropUniqueIndex(ctx context.Context, idxId string) error {
+	if err := qc.Coordinator.DropUniqueIndex(ctx, idxId); err != nil {
+		return err
+	}
+
+	req := &proto.DropUniqueIndexRequest{
+		IdxId: idxId,
+	}
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := proto.NewDistributionServiceClient(cc)
+		resp, err := cl.DropUniqueIndex(ctx, req)
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("drop unique index response")
+		return nil
+	})
 }

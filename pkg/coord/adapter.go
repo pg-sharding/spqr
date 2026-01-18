@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
@@ -50,6 +51,10 @@ func (a *Adapter) QDB() qdb.QDB {
 	panic("Adapter.QDB not implemented")
 }
 
+func (a *Adapter) DCStateKeeper() qdb.DCStateKeeper {
+	panic("Adapter.DCStateKeeper not implemented")
+}
+
 func (a *Adapter) Cache() *cache.SchemaCache {
 	panic("Adapter.Cache not implemented")
 }
@@ -73,23 +78,30 @@ func (a *Adapter) GetReferenceRelation(ctx context.Context, relName *rfqn.Relati
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetReferenceRelation not implemented")
 }
 
+// GetSequenceColumns implements meta.EntityMgr.
+func (a *Adapter) GetSequenceColumns(ctx context.Context, seqName string) ([]string, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetSequenceColumns not implemented")
+}
+
+// GetSequenceColumns implements meta.EntityMgr.
+func (a *Adapter) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetSequenceRelations not implemented")
+}
+
 // SyncReferenceRelations implements meta.EntityMgr.
 func (a *Adapter) SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error {
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
 
 	qRels := []*proto.QualifiedName{}
 	for _, r := range ids {
-		qRels = append(qRels, &proto.QualifiedName{
-			RelationName: r.RelationName,
-			SchemaName:   r.SchemaName,
-		})
+		qRels = append(qRels, rfqn.RelationFQNToProto(r))
 	}
 
 	_, err := c.SyncReferenceRelations(ctx, &proto.SyncReferenceRelationsRequest{
 		Relations: qRels,
 		ShardId:   destShard,
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // AlterReferenceRelationStorage implements meta.EntityMgr.
@@ -104,7 +116,7 @@ func (a *Adapter) CreateReferenceRelation(ctx context.Context, r *rrelation.Refe
 		Relation: rrelation.RefRelationToProto(r),
 		Entries:  rrelation.AutoIncrementEntriesToProto(entry),
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // DropReferenceRelation implements meta.EntityMgr.
@@ -113,13 +125,10 @@ func (a *Adapter) DropReferenceRelation(ctx context.Context, relName *rfqn.Relat
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
 	_, err := c.DropReferenceRelations(ctx, &proto.DropReferenceRelationsRequest{
 		Relations: []*proto.QualifiedName{
-			{
-				RelationName: relName.RelationName,
-				SchemaName:   relName.SchemaName,
-			},
+			rfqn.RelationFQNToProto(relName),
 		},
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // ListReferenceRelations implements meta.EntityMgr.
@@ -191,13 +200,13 @@ func (a *Adapter) ListKeyRanges(ctx context.Context, distribution string) ([]*kr
 		Distribution: distribution,
 	})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 
 	dc := proto.NewDistributionServiceClient(a.conn)
 	ds, err := dc.GetDistribution(ctx, &proto.GetDistributionRequest{Id: distribution})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 
 	krs := make([]*kr.KeyRange, len(reply.KeyRangesInfo))
@@ -277,7 +286,8 @@ func (a *Adapter) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	_, err := c.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{
 		KeyRangeInfo: kr.ToProto(),
 	})
-	return err
+
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -365,7 +375,7 @@ func (a *Adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 				NewId:     split.Krid,
 				SplitLeft: split.SplitLeft,
 			})
-			return err
+			return spqrerror.CleanGrpcError(err)
 		}
 	}
 
@@ -423,7 +433,7 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 		BaseId:      unite.BaseKeyRangeId,
 		AppendageId: unite.AppendageKeyRangeId,
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -792,15 +802,26 @@ func (a *Adapter) ListDistributions(ctx context.Context) ([]*distributions.Distr
 //
 // Returns:
 // - error: An error if the creation of the distribution fails, otherwise nil.
-func (a *Adapter) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
+func (a *Adapter) CreateDistribution(ctx context.Context, ds *distributions.Distribution) (*mtran.MetaTransactionChunk, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 
-	_, err := c.CreateDistribution(ctx, &proto.CreateDistributionRequest{
+	if reply, err := c.CreateDistribution(ctx, &proto.CreateDistributionRequest{
 		Distributions: []*proto.Distribution{
 			distributions.DistributionToProto(ds),
 		},
-	})
-	return err
+	}); err != nil {
+		return nil, err
+	} else {
+		qdbCmds := make([]qdb.QdbStatement, 0, len(reply.CmdList))
+		for _, cmd := range reply.CmdList {
+			if qdbCmd, err := qdb.QdbStmtFromProto(cmd); err != nil {
+				return nil, err
+			} else {
+				qdbCmds = append(qdbCmds, *qdbCmd)
+			}
+		}
+		return mtran.NewMetaTransactionChunk(reply.MetaCmdList, qdbCmds)
+	}
 }
 
 // TODO : unit tests
@@ -820,7 +841,7 @@ func (a *Adapter) DropDistribution(ctx context.Context, id string) error {
 		Ids: []string{id},
 	})
 
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -847,7 +868,7 @@ func (a *Adapter) AlterDistributionAttach(ctx context.Context, id string, rels [
 		Relations: dRels,
 	})
 
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -867,7 +888,7 @@ func (a *Adapter) AlterDistributedRelation(ctx context.Context, id string, rel *
 		Id:       id,
 		Relation: distributions.DistributedRelationToProto(rel),
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // AlterDistributedRelationSchema alters the sequence name of a distributed relation.
@@ -907,7 +928,7 @@ func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, i
 		RelationName:    relName,
 		DistributionKey: distributions.DistributionKeyToProto(distributionKey),
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // AlterDistributionDetach detaches a relation from a distribution using the provided ID and relation name.
@@ -921,10 +942,9 @@ func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, i
 // - error: An error if the detachment fails, otherwise nil.
 func (a *Adapter) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
 	c := proto.NewDistributionServiceClient(a.conn)
-	protoRelationName := proto.QualifiedName{RelationName: relName.RelationName, SchemaName: relName.SchemaName}
 	_, err := c.AlterDistributionDetach(ctx, &proto.AlterDistributionDetachRequest{
 		Id:       id,
-		RelNames: []*proto.QualifiedName{&protoRelationName},
+		RelNames: []*proto.QualifiedName{rfqn.RelationFQNToProto(relName)},
 	})
 
 	return err
@@ -948,7 +968,7 @@ func (a *Adapter) GetDistribution(ctx context.Context, id string) (*distribution
 		Id: id,
 	})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 
 	return distributions.DistributionFromProto(resp.Distribution)
@@ -1189,7 +1209,7 @@ func (a *Adapter) DropSequence(ctx context.Context, seqName string, force bool) 
 		Name:  seqName,
 		Force: force,
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 func (a *Adapter) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
@@ -1226,4 +1246,101 @@ func (a *Adapter) ListRelationSequences(ctx context.Context, relName *rfqn.Relat
 	}
 
 	return resp.ColumnSequences, nil
+}
+
+func (a *Adapter) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionChunk) error {
+	conn := proto.NewMetaTransactionServiceClient(a.conn)
+	request := &proto.ExecNoTranRequest{
+		MetaCmdList: chunk.GossipRequests,
+		CmdList:     qdb.SliceToProto(chunk.QdbStatements),
+	}
+	_, err := conn.ExecNoTran(ctx, request)
+	return err
+}
+
+func (a *Adapter) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
+	conn := proto.NewMetaTransactionServiceClient(a.conn)
+	request := &proto.MetaTransactionRequest{
+		TransactionId: transaction.TransactionId.String(),
+		MetaCmdList:   transaction.Operations.GossipRequests,
+		CmdList:       qdb.SliceToProto(transaction.Operations.QdbStatements),
+	}
+	_, err := conn.CommitTran(ctx, request)
+	return err
+}
+
+func (a *Adapter) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error) {
+	conn := proto.NewMetaTransactionServiceClient(a.conn)
+	if transactionProto, err := conn.BeginTran(ctx, nil); err != nil {
+		return nil, err
+	} else {
+		if transactionMeta, err := mtran.TransactionFromProto(transactionProto); err != nil {
+			return nil, err
+		} else {
+			return transactionMeta, nil
+		}
+	}
+}
+
+// CreateUniqueIndex implements meta.EntityMgr.
+func (a *Adapter) CreateUniqueIndex(ctx context.Context, dsId string, idx *distributions.UniqueIndex) error {
+	c := proto.NewDistributionServiceClient(a.conn)
+	_, err := c.CreateUniqueIndex(ctx, &proto.CreateUniqueIndexRequest{
+		DistributionId: dsId,
+		Idx:            distributions.UniqueIndexToProto(idx),
+	})
+	return err
+}
+
+// DropUniqueIndex implements meta.EntityMgr.
+func (a *Adapter) DropUniqueIndex(ctx context.Context, idxId string) error {
+	c := proto.NewDistributionServiceClient(a.conn)
+	_, err := c.DropUniqueIndex(ctx, &proto.DropUniqueIndexRequest{
+		IdxId: idxId,
+	})
+	return err
+}
+
+// ListDistributionIndexes implements meta.EntityMgr.
+func (a *Adapter) ListDistributionIndexes(ctx context.Context, dsId string) (map[string]*distributions.UniqueIndex, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
+	idxs, err := c.ListDistributionUniqueIndexes(ctx, &proto.ListDistributionUniqueIndexesRequest{
+		DistributionId: dsId,
+	})
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*distributions.UniqueIndex)
+	for id, idx := range idxs.Indexes {
+		res[id] = distributions.UniqueIndexFromProto(idx)
+	}
+	return res, nil
+}
+
+// ListDistributionIndexes implements meta.EntityMgr.
+func (a *Adapter) ListUniqueIndexes(ctx context.Context) (map[string]*distributions.UniqueIndex, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
+	idxs, err := c.ListUniqueIndexes(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*distributions.UniqueIndex)
+	for id, idx := range idxs.Indexes {
+		res[id] = distributions.UniqueIndexFromProto(idx)
+	}
+	return res, nil
+}
+
+// ListDistributionIndexes implements meta.EntityMgr.
+func (a *Adapter) ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
+	idxs, err := c.ListRelationUniqueIndexes(ctx, &proto.ListRelationUniqueIndexesRequest{RelationName: /* fix that */ relName.RelationName})
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*distributions.UniqueIndex)
+	for id, idx := range idxs.Indexes {
+		res[id] = distributions.UniqueIndexFromProto(idx)
+	}
+	return res, nil
 }

@@ -5,42 +5,29 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/router/server"
 )
 
-func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind) error {
+func BindAndReadSliceResult(rst *RelayStateImpl, bind *pgproto3.Bind, portal string) error {
 
 	/* Case when no describe stmt was issued before Execute+Sync*/
 
-	switch rst.bindQueryPlan.(type) {
-	case *plan.VirtualPlan:
-	default:
-		for _, sh := range rst.Client().Server().Datashards() {
-			/* this is pretty ugly but lets just do it */
-			if err := sh.Send(bind); err != nil {
-				return err
-			}
-			if err := sh.Send(pgexec); err != nil {
-				return err
-			}
+	qd := &QueryDesc{
+		Msg: bind,
+	}
+
+	if portal == "" {
+		/* save extra allocation */
+		qd.exec = pgexec
+	} else {
+		qd.exec = &pgproto3.Execute{
+			Portal: portal,
 		}
 	}
 
-	es := &ExecutorState{
-		Msg: pgsync,
-		P:   rst.bindQueryPlan, /*  ugh... fix this someday */
-	}
-
-	replyClient := true
-
-	if err := rst.qse.ExecuteSlicePrepare(es, rst.Qr.Mgr(), replyClient, false); err != nil {
-		return err
-	}
-
-	return rst.qse.ExecuteSlice(es, rst.Qr.Mgr(), replyClient)
+	return rst.QueryExecutor().ExecuteSlice(qd, rst.bindQueryPlan /*  ugh... fix this someday */, true)
 }
 
 func gangMemberDeployPreparedStatement(shard shard.ShardHostInstance, hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
@@ -155,8 +142,17 @@ func sliceDescribePortal(serv server.Server, portalDesc *pgproto3.Describe, bind
 		return nil, err
 	}
 
-	if err := serv.SendShard(portalClose, shkey); err != nil {
-		return nil, err
+	if bind.DestinationPortal == "" {
+		if err := serv.SendShard(portalClose, shkey); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := serv.SendShard(&pgproto3.Close{
+			ObjectType: 'P',
+			Name:       bind.DestinationPortal,
+		}, shkey); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := serv.SendShard(pgsync, shkey); err != nil {

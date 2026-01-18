@@ -11,6 +11,7 @@ package mock
 
 import (
 	tls "crypto/tls"
+	net "net"
 	reflect "reflect"
 	time "time"
 
@@ -62,6 +63,20 @@ func (m *MockRouterClient) Add(statType statistics.StatisticsType, value float64
 func (mr *MockRouterClientMockRecorder) Add(statType, value any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockRouterClient)(nil).Add), statType, value)
+}
+
+// AllowSplitUpdate mocks base method.
+func (m *MockRouterClient) AllowSplitUpdate() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AllowSplitUpdate")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// AllowSplitUpdate indicates an expected call of AllowSplitUpdate.
+func (mr *MockRouterClientMockRecorder) AllowSplitUpdate() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllowSplitUpdate", reflect.TypeOf((*MockRouterClient)(nil).AllowSplitUpdate))
 }
 
 // AssignRoute mocks base method.
@@ -240,6 +255,20 @@ func (m *MockRouterClient) CommitStrategy() string {
 func (mr *MockRouterClientMockRecorder) CommitStrategy() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitStrategy", reflect.TypeOf((*MockRouterClient)(nil).CommitStrategy))
+}
+
+// Conn mocks base method.
+func (m *MockRouterClient) Conn() net.Conn {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Conn")
+	ret0, _ := ret[0].(net.Conn)
+	return ret0
+}
+
+// Conn indicates an expected call of Conn.
+func (mr *MockRouterClientMockRecorder) Conn() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Conn", reflect.TypeOf((*MockRouterClient)(nil).Conn))
 }
 
 // ConstructClientParams mocks base method.
@@ -635,20 +664,6 @@ func (mr *MockRouterClientMockRecorder) ReplyBindComplete() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyBindComplete", reflect.TypeOf((*MockRouterClient)(nil).ReplyBindComplete))
 }
 
-// ReplyCommandComplete mocks base method.
-func (m *MockRouterClient) ReplyCommandComplete(commandTag string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReplyCommandComplete", commandTag)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// ReplyCommandComplete indicates an expected call of ReplyCommandComplete.
-func (mr *MockRouterClientMockRecorder) ReplyCommandComplete(commandTag any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyCommandComplete", reflect.TypeOf((*MockRouterClient)(nil).ReplyCommandComplete), commandTag)
-}
-
 // ReplyDebugNotice mocks base method.
 func (m *MockRouterClient) ReplyDebugNotice(msg string) error {
 	m.ctrl.T.Helper()
@@ -697,17 +712,17 @@ func (mr *MockRouterClientMockRecorder) ReplyErr(errmsg any) *gomock.Call {
 }
 
 // ReplyErrMsg mocks base method.
-func (m *MockRouterClient) ReplyErrMsg(e, c string, s txstatus.TXStatus) error {
+func (m *MockRouterClient) ReplyErrMsg(e, c string, p int32, s txstatus.TXStatus) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReplyErrMsg", e, c, s)
+	ret := m.ctrl.Call(m, "ReplyErrMsg", e, c, p, s)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReplyErrMsg indicates an expected call of ReplyErrMsg.
-func (mr *MockRouterClientMockRecorder) ReplyErrMsg(e, c, s any) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) ReplyErrMsg(e, c, p, s any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErrMsg", reflect.TypeOf((*MockRouterClient)(nil).ReplyErrMsg), e, c, s)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErrMsg", reflect.TypeOf((*MockRouterClient)(nil).ReplyErrMsg), e, c, p, s)
 }
 
 // ReplyErrMsgByCode mocks base method.
@@ -967,6 +982,18 @@ func (m *MockRouterClient) Server() server.Server {
 func (mr *MockRouterClientMockRecorder) Server() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Server", reflect.TypeOf((*MockRouterClient)(nil).Server))
+}
+
+// SetAllowSplitUpdate mocks base method.
+func (m *MockRouterClient) SetAllowSplitUpdate(level string, val bool) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetAllowSplitUpdate", level, val)
+}
+
+// SetAllowSplitUpdate indicates an expected call of SetAllowSplitUpdate.
+func (mr *MockRouterClientMockRecorder) SetAllowSplitUpdate(level, val any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAllowSplitUpdate", reflect.TypeOf((*MockRouterClient)(nil).SetAllowSplitUpdate), level, val)
 }
 
 // SetAuthType mocks base method.

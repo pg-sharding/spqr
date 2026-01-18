@@ -46,7 +46,7 @@ func TestSimpleLex(t *testing.T) {
 		{
 			query: "SHOW clients where user = 'usr1' or dbname = 'db1';",
 			exp: []int{
-				spqrparser.SHOW, spqrparser.IDENT,
+				spqrparser.SHOW, spqrparser.CLIENTS,
 				spqrparser.WHERE,
 				spqrparser.IDENT,
 				spqrparser.TEQ,
@@ -63,7 +63,7 @@ func TestSimpleLex(t *testing.T) {
 		{
 			query: `SHOW clients where user = 'usr1' or "dbname" = 'db1';`,
 			exp: []int{
-				spqrparser.SHOW, spqrparser.IDENT,
+				spqrparser.SHOW, spqrparser.CLIENTS,
 				spqrparser.WHERE,
 				spqrparser.IDENT,
 				spqrparser.TEQ,
@@ -78,7 +78,7 @@ func TestSimpleLex(t *testing.T) {
 		},
 
 		{
-			query: `SHOW relations WHERE "Distribution ID" = 'ds1';`,
+			query: `SHOW relations WHERE distribution_id = 'ds1';`,
 			exp: []int{
 				spqrparser.SHOW, spqrparser.RELATIONS,
 				spqrparser.WHERE,
@@ -172,12 +172,11 @@ func TestSimpleLex(t *testing.T) {
 			},
 		},
 		{
-			query: "CREATE DISTRIBUTION db1 SHARDING COLUMN TYPES varchar, varchar, uuid",
+			query: "CREATE DISTRIBUTION db1 COLUMN TYPES varchar, varchar, uuid",
 			exp: []int{
 				spqrparser.CREATE,
 				spqrparser.DISTRIBUTION,
 				spqrparser.IDENT,
-				spqrparser.SHARDING,
 				spqrparser.COLUMN,
 				spqrparser.TYPES,
 				spqrparser.VARCHAR,
@@ -342,6 +341,14 @@ func TestSimpleLex(t *testing.T) {
 			},
 		},
 		{
+			query: "DROP SEQUENCE seq",
+			exp: []int{
+				spqrparser.DROP,
+				spqrparser.SEQUENCE,
+				spqrparser.IDENT,
+			},
+		},
+		{
 			query: "CREATE DISTRIBUTION ds1 DEFAULT shard1",
 			exp: []int{
 				spqrparser.CREATE,
@@ -362,6 +369,21 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.INTEGER,
 				spqrparser.DEFAULT,
 				spqrparser.IDENT,
+			},
+		},
+		{
+			query: "CREATE UNIQUE INDEX ui1 ON t COLUMN sec_id TYPE integer",
+			exp: []int{
+				spqrparser.CREATE,
+				spqrparser.UNIQUE,
+				spqrparser.INDEX,
+				spqrparser.IDENT,
+				spqrparser.ON,
+				spqrparser.IDENT,
+				spqrparser.COLUMN,
+				spqrparser.IDENT,
+				spqrparser.TYPE,
+				spqrparser.INTEGER,
 			},
 		},
 	} {

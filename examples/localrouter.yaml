@@ -6,7 +6,6 @@ admin_console_port: '7433'
 grpc_api_port: '7001'
 
 
-with_jaeger: false
 world_shard_fallback: true
 router_mode: LOCAL
 

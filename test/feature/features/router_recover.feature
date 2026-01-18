@@ -19,11 +19,11 @@ Feature: Router bootstrap test
     And SQL result should match json_exactly
     """
     [{
-        "Key range ID": "krid1",
-        "Shard ID": "sh1",
-        "Distribution ID": "ds1",
-        "Lower bound": "1",
-        "Locked": "true"
+        "key_range_id": "krid1",
+        "shard_id": "sh1",
+        "distribution_id": "ds1",
+        "lower_bound": "1",
+        "locked": "true"
     }]
     """
     When I run SQL on host "coordinator"
@@ -39,10 +39,10 @@ Feature: Router bootstrap test
     And SQL result should match json_exactly
     """
     [{
-        "Key range ID": "krid1",
-        "Shard ID": "sh1",
-        "Distribution ID": "ds1",
-        "Lower bound": "1",
-        "Locked": "true"
+        "key_range_id": "krid1",
+        "shard_id": "sh1",
+        "distribution_id": "ds1",
+        "lower_bound": "1",
+        "locked": "true"
     }]
     """

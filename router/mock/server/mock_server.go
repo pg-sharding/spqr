@@ -47,18 +47,18 @@ func (m *MockServer) EXPECT() *MockServerMockRecorder {
 	return m.recorder
 }
 
-// AddDataShard mocks base method.
-func (m *MockServer) AddDataShard(clid uint, shardKey kr.ShardKey, arg2 tsa.TSA) error {
+// AllocateGangMember mocks base method.
+func (m *MockServer) AllocateGangMember(clid uint, shardKey kr.ShardKey, arg2 tsa.TSA) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddDataShard", clid, shardKey, arg2)
+	ret := m.ctrl.Call(m, "AllocateGangMember", clid, shardKey, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// AddDataShard indicates an expected call of AddDataShard.
-func (mr *MockServerMockRecorder) AddDataShard(clid, shardKey, arg2 any) *gomock.Call {
+// AllocateGangMember indicates an expected call of AllocateGangMember.
+func (mr *MockServerMockRecorder) AllocateGangMember(clid, shardKey, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDataShard", reflect.TypeOf((*MockServer)(nil).AddDataShard), clid, shardKey, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllocateGangMember", reflect.TypeOf((*MockServer)(nil).AllocateGangMember), clid, shardKey, arg2)
 }
 
 // Cancel mocks base method.
@@ -103,18 +103,18 @@ func (mr *MockServerMockRecorder) Datashards() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Datashards", reflect.TypeOf((*MockServer)(nil).Datashards))
 }
 
-// ExpandDataShard mocks base method.
-func (m *MockServer) ExpandDataShard(clid uint, shkey kr.ShardKey, arg2 tsa.TSA, deployTX bool) error {
+// ExpandGang mocks base method.
+func (m *MockServer) ExpandGang(clid uint, shkey kr.ShardKey, arg2 tsa.TSA, deployTX bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExpandDataShard", clid, shkey, arg2, deployTX)
+	ret := m.ctrl.Call(m, "ExpandGang", clid, shkey, arg2, deployTX)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// ExpandDataShard indicates an expected call of ExpandDataShard.
-func (mr *MockServerMockRecorder) ExpandDataShard(clid, shkey, arg2, deployTX any) *gomock.Call {
+// ExpandGang indicates an expected call of ExpandGang.
+func (mr *MockServerMockRecorder) ExpandGang(clid, shkey, arg2, deployTX any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpandDataShard", reflect.TypeOf((*MockServer)(nil).ExpandDataShard), clid, shkey, arg2, deployTX)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpandGang", reflect.TypeOf((*MockServer)(nil).ExpandGang), clid, shkey, arg2, deployTX)
 }
 
 // HasPrepareStatement mocks base method.

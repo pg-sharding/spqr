@@ -1,12 +1,5 @@
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 SHOW routers;
-   show routers   | status 
+      router      | status 
 ------------------+--------
  router -> local- | 
 (1 row)

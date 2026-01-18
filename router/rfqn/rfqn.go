@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/lyx/lyx"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 )
 
 type RelationFQN struct {
@@ -22,6 +23,19 @@ func RelationFQNFromFullName(schemaName string, tableName string) *RelationFQN {
 	return &RelationFQN{
 		RelationName: tableName,
 		SchemaName:   schemaName,
+	}
+}
+func RelationFQNToProto(rfqn *RelationFQN) *proto.QualifiedName {
+	return &proto.QualifiedName{
+		RelationName: rfqn.RelationName,
+		SchemaName:   rfqn.SchemaName,
+	}
+}
+
+func RelationFQNFromProto(rfqn *proto.QualifiedName) *RelationFQN {
+	return &RelationFQN{
+		RelationName: rfqn.RelationName,
+		SchemaName:   rfqn.SchemaName,
 	}
 }
 

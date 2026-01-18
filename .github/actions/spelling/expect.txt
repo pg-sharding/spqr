@@ -26,7 +26,7 @@ ARRAYOID
 aspernatur
 astmt
 authed
-autotools
+Autoattach
 basebackup
 bbc
 bcad
@@ -86,6 +86,8 @@ corporis
 cptr
 createsequence
 Cta
+CTEs
+ctid
 ctl
 ctsa
 cupidatat
@@ -103,7 +105,6 @@ dbtpcc
 dbutils
 dcd
 ddl
-debhelper
 debian
 denchick
 denis
@@ -159,12 +160,15 @@ ffd
 fffffffffffe
 FFFFFFFFFFFFFFFF
 filerow
+firewalls
 fmtcheck
 forumsys
 forwardable
+FQNTo
 frmp
 frrule
 frsm
+frst
 frules
 ftts
 fugiat
@@ -203,10 +207,12 @@ hotspots
 hst
 HTAP
 iana
+icp
 IDBy
 idi
 idj
 IDR
+idxs
 IExecute
 illum
 incididunt
@@ -230,8 +236,6 @@ iure
 iuwehiuhweui
 ixxxd
 jackc
-jaegercfg
-jaegerlog
 jcmturner
 jidw
 jiofewjijiojioji
@@ -290,6 +294,7 @@ localrouter
 logdir
 logproxy
 lol
+lowlevel
 lsb
 lval
 maxuint
@@ -316,6 +321,7 @@ mollit
 Msgf
 msgroup
 msgtype
+mtran
 multiclient
 multicoordinator
 multidbpool
@@ -334,6 +340,7 @@ NConst
 Neque
 netchecker
 netconn
+netutil
 Newf
 Nofity
 noid
@@ -357,7 +364,6 @@ Oids
 oiwejow
 OLAP
 omnis
-opentracing
 opgejrqr
 optarg
 optval
@@ -392,10 +398,8 @@ pgsync
 PGUSER
 pgx
 pgxconn
-phandler
 pitr
 pkgclient
-Pmgr
 podman
 poolers
 poolmgr
@@ -433,6 +437,7 @@ qury
 RAddr
 ragel
 randkey
+randomhex
 rarg
 rcfg
 rclient
@@ -440,6 +445,7 @@ rconn
 rdistr
 receivepasswd
 regclass
+reloid
 relpersistence
 rels
 repeattimes
@@ -464,11 +470,10 @@ rmgr
 rollbacked
 roolback
 routable
-routemgr
-routerparser
 routerproto
 routingstate
 rowmap
+RPCs
 rport
 rqdn
 rqfn
@@ -500,12 +505,12 @@ shardproxy
 shkey
 shname
 shq
-shrid
 singleshard
 Smartphone
 spaolacci
 spqr
 SPQRA
+SPQRB
 SPQRC
 SPQRD
 spqrdump
@@ -513,7 +518,6 @@ SPQRE
 spqrerror
 SPQRF
 spqrguard
-SPQRH
 spqrhash
 SPQRI
 spqrinfra
@@ -561,6 +565,7 @@ tcase
 TCLOSEBR
 TCLOSESQBR
 TCOMMA
+tcpconn
 tctx
 tdigest
 tempor
@@ -578,10 +583,13 @@ tlt
 TMINUS
 tmpfs
 tmpnum
+Toidxs
 topbar
 TOPENBR
 TOPENSQBR
 tpcc
+tran
+transfering
 TRASCE
 tsa
 TSEMICOLON
@@ -608,6 +616,7 @@ umi
 unconfigured
 underyling
 unmarshalling
+unmatch
 unrecognised
 Unregistering
 unregisters

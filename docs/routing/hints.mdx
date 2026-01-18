@@ -78,6 +78,41 @@ Enables v2 routing engine functionality. This hint is currently under developmen
 SET __spqr__engine_v2 TO on;
 ```
 
+**Features enabled by engine V2:**
+
+| Feature | Description |
+|---------|-------------|
+| Multi-shard SELECT | `WHERE id = X OR id = Y` routes only to needed shards |
+| Set operations | `UNION`, `EXCEPT`, `INTERSECT` across shards |
+| CTEs | `WITH` clauses spanning multiple shards |
+| Batch INSERT | Multi-value INSERTs auto-split by shard ([details](/sharding/bulk#batch-insert)) |
+| Multi-shard UPDATE/DELETE | Modify data across all shards |
+| Reference table writes | INSERT/UPDATE/DELETE on [reference tables](/features/reference_tables) |
+| Transaction expansion | Transactions can span multiple shards |
+| Two-phase commit | Atomic commits across shards ([details](/sharding/distributed_transactions#2-two-phase-commit-2pc)) |
+
+**Examples:**
+```sql
+-- Multi-shard SELECT (routes to sh1 and sh2 only, not all shards)
+SELECT * FROM users WHERE id = 1 OR id = 100 /* __spqr__engine_v2: true */;
+
+-- UNION across shards
+SELECT id FROM users WHERE id = 1 UNION ALL SELECT id FROM users WHERE id = 300;
+
+-- Multi-shard UPDATE
+UPDATE users SET status = 'active' /* __spqr__engine_v2: true */;
+
+-- Multi-shard DELETE within transaction
+BEGIN;
+DELETE FROM users WHERE id IN (1, 100, 300) /* __spqr__engine_v2: true */;
+COMMIT;
+
+-- Reference table modification
+INSERT INTO ref_table VALUES (1, 'data') /* __spqr__engine_v2: true */;
+```
+
+<Note>Batch INSERT rewriting only works with simple protocol. Parameterized queries (extended protocol) are not supported for cross-shard batch inserts.</Note>
+
 ### __spqr__target_session_attrs
 
 The `target-session-attrs` parameter in PostgreSQL is used to specify the desired session state when connecting to a database. It is particularly useful in scenarios with multiple servers and failover configurations, where you want to ensure your session connects to the server with the desired role or state.
@@ -119,7 +154,7 @@ Possible values:
 
 ```sql
 DROP DATABASE prod;
-ERROR:  client processing error: 'DROP DATABASE prod': failed to match any datashard., tx status IDLE
+ERROR:  client processing error: query is blocked due to the default_route_behavior.
 
 DROP DATABASE prod /* __spqr__default_route_behaviour: allow */;
 NOTICE: send query to shard(s) : shard1,shard2,shard3,shard4
@@ -192,6 +227,8 @@ DELETE FROM users WHERE name = 'denchick'
 The `__spqr__auto_distribution` parameter is used to automatically adding new table in SPQR metadata without going into the spqr-console.
 
 <Note>This is a runtime-only hint with no corresponding router configuration setting. It can only be specified via SQL comments or SET statements.</Note>
+
+<Note>Distributions with a single key column are only supported. The following key types are supported for the automatic creation of distributed tables: `integer`, `uuid`, and `varchar`. Hash distributions are currently not supported for auto-creating tables.</Note>
 
 ```sql
 CREATE TABLE tax_rates (

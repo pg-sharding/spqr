@@ -40,3 +40,6 @@ test: negative_routing
 test: default_shard
 test: expression_routing
 test: show_backend_connections
+test: split_update
+test: virtual_sliced
+test: unique_index

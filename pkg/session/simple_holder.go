@@ -110,6 +110,20 @@ func (cl *SimpleSessionParamHandler) SetPreferredEngine(level string, val string
 	cl.recordVirtualParam(level, SPQR_PREFERRED_ENGINE, val)
 }
 
+// AllowSplitUpdate implements client.Client.
+func (cl *SimpleSessionParamHandler) AllowSplitUpdate() bool {
+	return cl.resolveVirtualBoolParam(SPQR_ALLOW_SPLIT_UPDATE, config.RouterConfig().Qr.AllowSplitUpdate)
+}
+
+// SetAllowSplitUpdate implements client.Client.
+func (cl *SimpleSessionParamHandler) SetAllowSplitUpdate(level string, val bool) {
+	if val {
+		cl.recordVirtualParam(level, SPQR_ALLOW_SPLIT_UPDATE, "ok")
+	} else {
+		cl.recordVirtualParam(level, SPQR_ALLOW_SPLIT_UPDATE, "no")
+	}
+}
+
 // SetDistributedRelation implements RouterClient.
 func (cl *SimpleSessionParamHandler) SetDistributedRelation(level string, val string) {
 	cl.recordVirtualParam(level, SPQR_DISTRIBUTED_RELATION, val)

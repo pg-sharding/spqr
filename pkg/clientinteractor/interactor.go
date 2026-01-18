@@ -45,7 +45,7 @@ type PSQLInteractor struct {
 
 func (pi *PSQLInteractor) CoordinatorAddr(ctx context.Context, addr string) error {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: engine.GetVPHeader("coordinator address"),
+		Desc: engine.GetVPHeader("coordinator_address"),
 	}
 	tts.WriteDataRow(fmt.Sprintf("%v", addr))
 	return pi.ReplyTTS(tts)
@@ -174,14 +174,14 @@ func (pi *PSQLInteractor) Databases(dbs []string) error {
 //   - error: An error if sending the messages fails, otherwise nil.
 func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 	if err := pi.WriteHeader(
-		"pool id",
-		"pool router",
-		"pool db",
-		"pool usr",
-		"pool host",
-		"used connections",
-		"idle connections",
-		"queue residual size"); err != nil {
+		"pool_id",
+		"pool_router",
+		"pool_db",
+		"pool_usr",
+		"pool_host",
+		"used_connections",
+		"idle_connections",
+		"queue_residual_size"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
@@ -214,7 +214,7 @@ func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 // Returns:
 //   - error: An error if sending the messages fails, otherwise nil.
 func (pi *PSQLInteractor) Version(_ context.Context) error {
-	if err := pi.WriteHeader("SPQR version"); err != nil {
+	if err := pi.WriteHeader("spqr_version"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
@@ -239,7 +239,7 @@ func (pi *PSQLInteractor) Version(_ context.Context) error {
 // TODO: unit tests
 func (pi *PSQLInteractor) Quantiles(_ context.Context) error {
 	if err := pi.cl.Send(&pgproto3.RowDescription{
-		Fields: []pgproto3.FieldDescription{engine.TextOidFD("quantile_type"), engine.FloatOidFD("time, ms")},
+		Fields: []pgproto3.FieldDescription{engine.TextOidFD("quantile_type"), engine.FloatOidFD("time_ms")},
 	}); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Could not write header for time quantiles")
 		return err
@@ -333,7 +333,7 @@ func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyR
 func (pi *PSQLInteractor) MoveTaskGroups(_ context.Context, groups map[string]*tasks.MoveTaskGroup) error {
 	spqrlog.Zero.Debug().Msg("show move task group")
 
-	if err := pi.WriteHeader("Task group ID", "Destination shard ID", "Source key range ID", "Destination key range ID"); err != nil {
+	if err := pi.WriteHeader("task_group_id", "destination_shard_id", "source_key_range_id", "destination_key_range_id"); err != nil {
 		return err
 	}
 	if groups == nil {
@@ -348,7 +348,7 @@ func (pi *PSQLInteractor) MoveTaskGroups(_ context.Context, groups map[string]*t
 }
 
 func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.MoveTask, dsIDColTypes map[string][]string, moveTaskDsID map[string]string) error {
-	if err := pi.WriteHeader("Move task ID", "Temporary key range ID", "Bound", "State"); err != nil {
+	if err := pi.WriteHeader("move_task_id", "temporary_key_range_id", "bound", "state"); err != nil {
 		return err
 	}
 
@@ -400,9 +400,9 @@ func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.Move
 func (pi *PSQLInteractor) Distributions(_ context.Context, distributions []*distributions.Distribution, defShardIDs []string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			engine.TextOidFD("Distribution ID"),
-			engine.TextOidFD("Column types"),
-			engine.TextOidFD("Default shard"),
+			engine.TextOidFD("distribution_id"),
+			engine.TextOidFD("column_types"),
+			engine.TextOidFD("default_shard"),
 		}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
@@ -528,7 +528,7 @@ func (pi *PSQLInteractor) RedistributeKeyRange(_ context.Context, stmt *spqrpars
 // Returns:
 // - error: An error if any occurred during the operation.
 func (pi *PSQLInteractor) Routers(resp []*topology.Router) error {
-	if err := pi.WriteHeader("show routers", "status"); err != nil {
+	if err := pi.WriteHeader("router", "status"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
@@ -707,7 +707,7 @@ func (pi *PSQLInteractor) Sequences(ctx context.Context, seqs []string, sequence
 }
 
 func (pi *PSQLInteractor) IsReadOnly(ctx context.Context, ro bool) error {
-	if err := pi.WriteHeader("is read only"); err != nil {
+	if err := pi.WriteHeader("is_read_only"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}

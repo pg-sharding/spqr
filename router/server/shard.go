@@ -28,9 +28,9 @@ func (srv *ShardServer) ToMultishard() Server {
 	return NewMultiShardServerFromShard(srv.pool, *srv.shard.Load())
 }
 
-// ExpandDataShard implements Server.
-func (srv *ShardServer) ExpandDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
-	return fmt.Errorf("expanding transaction on single shard server in unsupported")
+// ExpandGang implements Server.
+func (srv *ShardServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
+	return fmt.Errorf("expanding gang on single shard server in unsupported")
 }
 
 // DataPending implements Server.
@@ -120,7 +120,7 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 }
 
 // TODO : unit tests
-func (srv *ShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA) error {
+func (srv *ShardServer) AllocateGangMember(clid uint, shkey kr.ShardKey, tsa tsa.TSA) error {
 	v := srv.shard.Load()
 	if v != nil {
 		return fmt.Errorf("single datashard " +
@@ -153,8 +153,9 @@ func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 
 // TODO : unit tests
 func (srv *ShardServer) SendShard(query pgproto3.FrontendMessage, shkey kr.ShardKey) error {
-	if (*srv.shard.Load()).SHKey().Name != shkey.Name {
-		return spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+	localKey := (*srv.shard.Load()).SHKey().Name
+	if localKey != shkey.Name {
+		return spqrerror.Newf(spqrerror.SPQR_CROSS_SHARD_QUERY, "mismatched single-shard destination: %s vs %s", localKey, shkey.Name)
 	}
 	return srv.Send(query)
 }

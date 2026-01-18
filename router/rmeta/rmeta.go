@@ -61,6 +61,10 @@ type RoutingMetadataContext struct {
 	/* Is query proven to be read-only? */
 	ro bool
 
+	/* Is this split-update? */
+	IsSplitUpdate bool
+	Is_SPQR_CTID  bool
+
 	Distributions map[rfqn.RelationFQN]*distributions.Distribution
 }
 

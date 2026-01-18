@@ -49,7 +49,6 @@ type Router struct {
 	Daemonize bool `json:"daemonize" toml:"daemonize" yaml:"daemonize"`
 
 	MaintainParams bool `json:"maintain_params" toml:"maintain_params" yaml:"maintain_params"`
-	WithJaeger     bool `json:"with_jaeger" toml:"with_jaeger" yaml:"with_jaeger"`
 	PgprotoDebug   bool `json:"pgproto_debug" toml:"pgproto_debug" yaml:"pgproto_debug"`
 
 	PidFileName string `json:"pid_filename" toml:"pid_filename" yaml:"pid_filename"`
@@ -77,20 +76,25 @@ type Router struct {
 	ExitOnInitSQLError bool   `json:"exit_on_init_sql" toml:"exit_on_init_sql" yaml:"exit_on_init_sql"`
 	UseCoordinatorInit bool   `json:"use_coordinator_init" toml:"use_coordinator_init" yaml:"use_coordinator_init"`
 
-	MemqdbBackupPath       string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
-	RouterMode             string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
-	JaegerUrl              string            `json:"jaeger_url" toml:"jaeger_url" yaml:"jaeger_url"`
-	FrontendRules          []*FrontendRule   `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
-	Qr                     QRouter           `json:"query_routing" toml:"query_routing" yaml:"query_routing"`
-	FrontendTLS            *TLSConfig        `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
-	BackendRules           []*BackendRule    `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
-	ShardMapping           map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
-	SchemaCacheBackendRule *BackendRule      `json:"schema_cache_backend_rule" toml:"schema_cache_backend_rule" yaml:"schema_cache_backend_rule"`
-	MultiDBPoolSize        int               `json:"multidb_pool_size" toml:"multidb_pool_size" yaml:"multidb_pool_size"`
+	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
+	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
+	FrontendRules    []*FrontendRule   `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
+	Qr               QRouter           `json:"query_routing" toml:"query_routing" yaml:"query_routing"`
+	FrontendTLS      *TLSConfig        `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
+	BackendRules     []*BackendRule    `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
+	ShardMapping     map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
 
-	DbpoolCacheTTL          time.Duration `json:"dbpool_cache_ttl" yaml:"dbpool_cache_ttl" toml:"dbpool_cache_ttl"`
-	DbpoolCheckInterval     time.Duration `json:"dbpool_check_interval" toml:"dbpool_check_interval" yaml:"dbpool_check_interval"`
-	DbpoolDeadCheckInterval time.Duration `json:"dbpool_dead_check_interval" toml:"dbpool_dead_check_interval" yaml:"dbpool_dead_check_interval"`
+	SchemaCacheBackendRule *BackendRule `json:"schema_cache_backend_rule" toml:"schema_cache_backend_rule" yaml:"schema_cache_backend_rule"`
+
+	MultiDBPoolSize int `json:"multidb_pool_size" toml:"multidb_pool_size" yaml:"multidb_pool_size"`
+
+	DbpoolCacheTTL             time.Duration `json:"dbpool_cache_ttl" yaml:"dbpool_cache_ttl" toml:"dbpool_cache_ttl"`
+	DbpoolCheckInterval        time.Duration `json:"dbpool_check_interval" toml:"dbpool_check_interval" yaml:"dbpool_check_interval"`
+	DbpoolDeadCheckInterval    time.Duration `json:"dbpool_dead_check_interval" toml:"dbpool_dead_check_interval" yaml:"dbpool_dead_check_interval"`
+	DbpoolAcquireRetryCount    int           `json:"dbpool_acquire_retry_count" toml:"dbpool_acquire_retry_count" yaml:"dbpool_acquire_retry_count"`
+	DefaultRecheckTCPAliveness bool          `json:"dbpool_recheck_tcp" toml:"dbpool_recheck_tcp" yaml:"dbpool_recheck_tcp"`
+
+	ClientPoolDeadCheckInterval time.Duration `json:"client_pool_dead_check_interval" toml:"client_pool_dead_check_interval" yaml:"client_pool_dead_check_interval"`
 
 	WorkloadFile      string `json:"workload_file" toml:"workload_file" yaml:"workload_file"`
 	WorkloadBatchSize int    `json:"workload_batch_size" toml:"workload_batch_size" yaml:"workload_batch_size"`
@@ -112,6 +116,12 @@ type Router struct {
 	IdentityRangeSize    uint64 `json:"identity_range_size" toml:"identity_range_size" yaml:"identity_range_size"`
 
 	LogMinDurationStatement time.Duration `json:"log_min_duration_statement" toml:"log_min_duration_statement" yaml:"log_min_duration_statement"`
+
+	EnableICP        bool `json:"enable_icp" toml:"enable_icp" yaml:"enable_icp"`
+	EnableTwoPhaseWD bool `json:"enable_2pc_watchdog" toml:"enable_2pc_watchdog" yaml:"enable_2pc_watchdog"`
+
+	WatchdogBackendRule   *BackendRule  `json:"watchdog_backend_rule" toml:"watchdog_backend_rule" yaml:"watchdog_backend_rule"`
+	WatchdogSleepInterval time.Duration `json:"watchdog_sleep_interval" toml:"watchdog_sleep_interval" yaml:"watchdog_sleep_interval"`
 }
 
 type QRouter struct {
@@ -121,6 +131,8 @@ type QRouter struct {
 	AlwaysCheckRules             bool                  `json:"always_check_rules" toml:"always_check_rules" yaml:"always_check_rules"`
 	StrictOperators              bool                  `json:"strict_operators" toml:"strict_operators" yaml:"strict_operators"`
 	PreferEngine                 string                `json:"prefer_engine" toml:"prefer_engine" yaml:"prefer_engine"`
+
+	AllowSplitUpdate bool `json:"allow_split_update" toml:"allow_split_update" yaml:"allow_split_update"`
 
 	/* XXX: for now, supported only for single-shard topology */
 	AutoRouteRoOnStandby bool `json:"auto_route_ro_on_standby" toml:"auto_route_ro_on_standby" yaml:"auto_route_ro_on_standby"`

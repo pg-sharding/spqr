@@ -4,8 +4,50 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/plan"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestUpdate2DeleteQuery(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		name     string
+		query    string
+		expected string
+		rel      *rfqn.RelationFQN
+		wantErr  bool
+	}
+
+	for _, tt := range []tcase{
+		{
+			name:     "plain update",
+			query:    "UPDATE rel SET i = i + 1 WHERE j = 23 OR k = 312",
+			rel:      rfqn.RelationFQNFromFullName("public", "rel"),
+			expected: `DELETE FROM "public.rel" WHERE j = 23 OR k = 312`,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := RewriteUpdateToDelete(tt.query, tt.rel)
+
+			if tt.wantErr && err == nil {
+				t.Errorf("ModifyQuery/%s expected error, got nil. Plan: %+v", tt.name, result)
+				return
+			}
+
+			if err != nil {
+				if (err != nil) != tt.wantErr {
+					t.Errorf("ModifyQuery/%s error = %v, wantErr %v", tt.name, err, tt.wantErr)
+				}
+				return
+			}
+
+			assert.Equal(tt.expected, result)
+		})
+	}
+}
 
 func TestModifyQuery(t *testing.T) {
 	assert := assert.New(t)
@@ -645,6 +687,166 @@ RETURNING meta.campaigns.id, meta.campaigns.uuid, meta.campaigns.title, meta.cam
 
 			if tt.wantErr && err == nil {
 				t.Errorf("ModifyQuery/%s expected error, got nil. Query: %s", tt.name, result)
+				return
+			}
+
+			if err != nil {
+				if (err != nil) != tt.wantErr {
+					t.Errorf("ModifyQuery/%s error = %v, wantErr %v", tt.name, err, tt.wantErr)
+				}
+				return
+			}
+
+			assert.Equal(tt.expected, result)
+		})
+	}
+}
+
+func TestModifyDistributedInsertQuery(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		name     string
+		query    string
+		expected plan.Plan
+		shs      []kr.ShardKey
+		wantErr  bool
+	}
+
+	for _, tt := range []tcase{
+		{
+			name:  "BatchInsert",
+			query: "INSERT INTO test_table (col1, col2) VALUES (1, 2), (101, 102);",
+			shs: []kr.ShardKey{
+				{
+					Name: "sh1",
+				},
+				{
+					Name: "sh2",
+				},
+			},
+			expected: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO test_table (col1, col2) VALUES (1, 2);`,
+					"sh2": `INSERT INTO test_table (col1, col2) VALUES (101, 102);`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			wantErr: false,
+		},
+
+		{
+			name:  "BatchInsert",
+			query: "INSERT INTO test_table VALUES (1, 2), (101, 102);",
+			shs: []kr.ShardKey{
+				{
+					Name: "sh1",
+				},
+				{
+					Name: "sh2",
+				},
+			},
+			expected: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO test_table VALUES (1, 2);`,
+					"sh2": `INSERT INTO test_table VALUES (101, 102);`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			wantErr: false,
+		},
+
+		{
+			name:  "BatchInsert",
+			query: "INSERT INTO test_table (col1, col2) VALUES (1, 2), (101, 102), (200, 2), (330,3), (4404, 4);",
+			shs: []kr.ShardKey{
+				{
+					Name: "sh1",
+				},
+				{
+					Name: "sh2",
+				},
+				{
+					Name: "sh1",
+				},
+				{
+					Name: "sh1",
+				},
+				{
+					Name: "sh2",
+				},
+			},
+			expected: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO test_table (col1, col2) VALUES (1, 2), (200, 2), (330,3);`,
+					"sh2": `INSERT INTO test_table (col1, col2) VALUES (101, 102), (4404, 4);`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			wantErr: false,
+		},
+
+		{
+			name:  "BatchInsertFollowing",
+			query: "INSERT INTO test_table (col1, col2) VALUES (1, 2), (101, 102),  (303, 202) RETURNING *;",
+			shs: []kr.ShardKey{
+				{
+					Name: "sh1",
+				},
+				{
+					Name: "sh2",
+				},
+				{
+					Name: "sh1",
+				},
+			},
+			expected: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO test_table (col1, col2) VALUES (1, 2), (303, 202) RETURNING *;`,
+					"sh2": `INSERT INTO test_table (col1, col2) VALUES (101, 102) RETURNING *;`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			wantErr: false,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := RewriteDistributedRelBatchInsert(tt.query, tt.shs)
+
+			if tt.wantErr && err == nil {
+				t.Errorf("ModifyQuery/%s expected error, got nil. Plan: %+v", tt.name, result)
 				return
 			}
 

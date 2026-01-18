@@ -19,7 +19,7 @@ jobs:
      steps:
 
      - name: Check out code
-       uses: actions/checkout@v5
+       uses: actions/checkout@v6
 
      - name: unit tests
        run: make unittest
@@ -29,7 +29,7 @@ jobs:
      steps:
 
      - name: Check out code
-       uses: actions/checkout@v5
+       uses: actions/checkout@v6
 
      - name: etcdqdb_integration tests
        run: make etcdqdb_test
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install test deps
         run: |
@@ -66,7 +66,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: stress tests
         run: make stress
@@ -79,14 +79,14 @@ jobs:
     strategy:
       matrix:
         os-version: ['jammy', 'noble']
-        version: ['13', '14', '15', '16', '17']
+        version: ['14', '15', '16', '17', '18']
         # temporary solution due to problems with yandex registry
         # version: ['13', '14', '15', '16', '17', '13-mdb', '14-mdb', '15-mdb', '16-mdb', '17-mdb']
 
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Run tests
         run: |
@@ -109,7 +109,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Run tests
         run: make gorm_regress
@@ -120,7 +120,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Run tests
         run: make jdbc_regress
@@ -131,7 +131,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Run tests
         run: make xproto_regress
@@ -147,7 +147,7 @@ jobs:
         run: docker --version
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - id: step1
         run: |
@@ -156,7 +156,7 @@ jobs:
           echo "features=$(echo "{\"command\": $array}")" >> $GITHUB_OUTPUT
 
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: generated_tests
           path: |
@@ -172,7 +172,7 @@ jobs:
       #  use cache to pass docker images to the test jobs
       - name: Docker shard image caching
         id: cache-shard-image
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ${{ env.CACHE_FILE_SHARD }}
@@ -205,7 +205,7 @@ jobs:
       - name: Check Docker Version
         run: docker --version
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Update env
         run: |
@@ -215,7 +215,7 @@ jobs:
           echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
 
       - name: Download generatedFeatures
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: generated_tests
           path: ./test/feature/generatedFeatures
@@ -223,7 +223,7 @@ jobs:
       # load docker images
       - name: Load shard image
         id: cache-shard-image
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ${{ env.CACHE_FILE_SHARD }}

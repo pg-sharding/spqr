@@ -1,10 +1,3 @@
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
@@ -60,7 +53,7 @@ CREATE REFERENCE RELATION z_rf;
 (2 rows)
 
 SHOW relations;
- Relation name | Distribution ID |           Distribution key            | Schema name  
+ relation_name | distribution_id |           distribution_key            | schema_name  
 ---------------+-----------------+---------------------------------------+--------------
  a             | ds1             | ("a_id", identity)                    | $search_path
  b             | ds3             | ("b_id", murmur)                      | $search_path
@@ -69,8 +62,8 @@ SHOW relations;
  z_rf          | REPLICATED      |                                       | $search_path
 (5 rows)
 
-SHOW relations WHERE "Distribution ID" = 'ds1';
- Relation name | Distribution ID |  Distribution key  | Schema name  
+SHOW relations WHERE distribution_id = 'ds1';
+ relation_name | distribution_id |  distribution_key  | schema_name  
 ---------------+-----------------+--------------------+--------------
  a             | ds1             | ("a_id", identity) | $search_path
  d             | ds1             | ("d_id", identity) | $search_path
@@ -79,9 +72,9 @@ SHOW relations WHERE "Distribution ID" = 'ds1';
 SHOW relations WHERE unknown_param = 'ds1';
 ERROR:  column unknown_param does not exist
 SHOW reference_relations;
- table name | schema version |      shards       | column sequence mapping 
-------------+----------------+-------------------+-------------------------
- z_rf       | 1              | [sh1 sh2 sh3 sh4] | map[]
+ table_name | schema_name  | schema_version |      shards       | column_sequence_mapping 
+------------+--------------+----------------+-------------------+-------------------------
+ z_rf       | $search_path | 1              | [sh1 sh2 sh3 sh4] | map[]
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;

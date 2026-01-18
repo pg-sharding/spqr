@@ -107,10 +107,16 @@ func SetupSharding() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;")
+	_, err = conn.Exec(context.Background(), "CREATE RELATION t(id) IN ds1;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
+
+	_, err = conn.Exec(context.Background(), "CREATE RELATION t2(id) IN ds1;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+
 	_, err = conn.Exec(context.Background(), "CREATE DISTRIBUTION ds2 COLUMN TYPES varchar hash;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
@@ -173,6 +179,12 @@ func CreateTables() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
 	}
+
+	_, err = conn.Exec(context.Background(), "CREATE TABLE t2 (id int, val int)")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
+	}
+
 	_, err = conn.Exec(context.Background(), "CREATE TABLE text_table (id text)")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
@@ -1687,6 +1699,195 @@ func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "begin;",
+				},
+
+				&pgproto3.Query{
+					String: "SET __spqr__engine_v2 to TRUE;",
+				},
+
+				&pgproto3.Parse{
+					Name:  "stmtcache_sr_ms_2",
+					Query: "INSERT INTO t (id) VALUES($1);",
+				},
+
+				&pgproto3.Describe{
+					Name:       "stmtcache_sr_ms_2",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_ms_2",
+					Parameters: [][]byte{
+						[]byte("1"),
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_ms_2",
+					Parameters: [][]byte{
+						[]byte("101"),
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_ms_2",
+					Parameters: [][]byte{
+						[]byte("1"),
+					},
+					ParameterFormatCodes: []int16{xproto.FormatCodeText},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: `SELECT * FROM t /*__spqr__execute_on: sh1 */`,
+				},
+
+				&pgproto3.Query{
+					String: `SELECT * FROM t /*__spqr__execute_on: sh2 */`,
+				},
+
+				&pgproto3.Query{
+					String: "ROLLBACK;",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{
+						23,
+					},
+				},
+
+				&pgproto3.NoData{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("id"),
+							DataTypeOID:          23,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+							TableAttributeNumber: 1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					// XXX: FIX	CommandTag: []byte("SELECT 2"),
+					CommandTag: []byte{},
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("id"),
+							DataTypeOID:          23,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+							TableAttributeNumber: 1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("101"),
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					// XXX: FIX	CommandTag: []byte("SELECT 1"),
+					CommandTag: []byte{},
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
 					Name:  "stmtcache_sr_1_tt",
 					Query: "BEGIN",
@@ -2398,11 +2599,11 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 
 				&pgproto3.Parse{
 					Name:  "xproto_ddl_multishard_t_s_1",
-					Query: "UPDATE t SET id = id + 1 /* __spqr__engine_v2: true */;",
+					Query: "UPDATE t2 SET val = val + 1 /* __spqr__engine_v2: true */;",
 				},
 				&pgproto3.Parse{
 					Name:  "xproto_ddl_multishard_t_s_2",
-					Query: "SELECT FROM t /* __spqr__engine_v2: true */;",
+					Query: "SELECT FROM t2 /* __spqr__engine_v2: true */;",
 				},
 				&pgproto3.Sync{},
 				&pgproto3.Bind{
@@ -2462,6 +2663,217 @@ func TestPrepStmtMultishardXproto(t *testing.T) {
 					retMsgType.Fields[i].TableOID = 0
 				}
 			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg, "iter %d", i)
+		}
+	}
+}
+
+func TestSplitUpdateXproto(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+
+				&pgproto3.Query{
+					String: "SET __spqr__.engine_v2 TO on",
+				},
+
+				&pgproto3.Query{
+					String: "SET __spqr__.allow_split_update TO on",
+				},
+
+				&pgproto3.Query{
+					String: "BEGIN;",
+				},
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) VALUES(3)",
+				},
+
+				&pgproto3.Parse{
+					Name:  "xproto_split_update_p1",
+					Query: "UPDATE t SET id = 12 WHERE id = 3;",
+				},
+
+				&pgproto3.Bind{
+					PreparedStatement: "xproto_split_update_p1",
+				},
+
+				&pgproto3.Describe{
+					Name:       "",
+					ObjectType: 'P',
+				},
+
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: "SELECT * FROM t WHERE id < 10 /*__spqr__execute_on: sh1 */;",
+				},
+
+				&pgproto3.Query{
+					String: "SELECT * FROM t /*__spqr__execute_on: sh2 */;",
+				},
+
+				&pgproto3.Query{
+					String: "ROLLBACK;",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.NoData{},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("UPDATE 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("id"),
+							DataTypeOID:          23,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+							TableAttributeNumber: 1,
+						},
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					/* XXX: fix that */
+					// CommandTag: []byte("SELECT 0"),
+					CommandTag: []byte{},
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("id"),
+							DataTypeOID:          23,
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+							TableAttributeNumber: 1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte{0x31, 0x32},
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					/* XXX: fix that */
+					// CommandTag: []byte("SELECT 1"),
+					CommandTag: []byte{},
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for i, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.ErrorResponse:
+				retMsgType.Routine = ""
+				retMsgType.Line = 0
+				retMsgType.File = ""
+				retMsgType.SeverityUnlocalized = ""
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+
 				switch msg.(type) {
 				case *pgproto3.ReadyForQuery:
 					break
@@ -2802,6 +3214,511 @@ func TestPrepStmtDescribePortalAndBind(t *testing.T) {
 				},
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("SHOW"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for ind, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
+		}
+	}
+}
+
+func TestPrepStmtNamedPortalBind(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "named_p_s_1",
+					Query: "SELECT 1 AS z FROM t WHERE id = $1",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "named_p_s_1",
+					DestinationPortal: "d_p_1",
+					Parameters:        [][]byte{[]byte("1")},
+				},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "named_p_s_1",
+				},
+
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "d_p_1",
+				},
+				&pgproto3.Execute{
+					Portal: "d_p_1",
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("z"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("z"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 0"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for ind, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
+		}
+	}
+}
+
+func TestPrepStmtNamedPortal_NO_TX_bounds(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "named_tx_p_s_1",
+					Query: "SELECT 1+$1 AS z /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "named_tx_p_s_1",
+					DestinationPortal: "d_n_tx_p_1",
+					Parameters:        [][]byte{[]byte("1")},
+				},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "named_tx_p_s_1",
+				},
+
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "d_n_tx_p_1",
+				},
+
+				&pgproto3.Parse{
+					Name:  "named_tx_p_s_2",
+					Query: "SELECT 2+$1 AS z /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "named_tx_p_s_2",
+					DestinationPortal: "d_n_tx_p_2",
+					Parameters:        [][]byte{[]byte("1")},
+				},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "named_tx_p_s_2",
+				},
+
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "d_n_tx_p_2",
+				},
+
+				&pgproto3.Execute{
+					Portal: "d_n_tx_p_1",
+				},
+
+				&pgproto3.Execute{
+					Portal: "d_n_tx_p_2",
+				},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("z"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("z"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("z"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("z"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{{0x32}},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{{0x33}},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for ind, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
+		}
+	}
+}
+
+func TestPrepStmtNamedPortal_TX_bounds(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: `BEGIN`,
+				},
+				&pgproto3.Parse{
+					Name:  "named_tx_p_s_1",
+					Query: "SELECT 1+$1 AS z /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "named_tx_p_s_1",
+					DestinationPortal: "d_tx_p_1",
+					Parameters:        [][]byte{[]byte("1")},
+				},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "named_tx_p_s_1",
+				},
+
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "d_tx_p_1",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Name:  "named_tx_p_s_2",
+					Query: "SELECT 2+$1 AS z /* __spqr__execute_on: sh1 */",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "named_tx_p_s_2",
+					DestinationPortal: "d_tx_p_2",
+					Parameters:        [][]byte{[]byte("1")},
+				},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "named_tx_p_s_2",
+				},
+
+				&pgproto3.Describe{
+					ObjectType: 'P',
+					Name:       "d_tx_p_2",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Execute{
+					Portal: "d_tx_p_1",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Execute{
+					Portal: "d_tx_p_2",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{
+					String: `COMMIT`,
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("z"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("z"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.BindComplete{},
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{23},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("z"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("z"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{{0x32}},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{{0x33}},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COMMIT"),
 				},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),

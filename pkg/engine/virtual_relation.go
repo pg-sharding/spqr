@@ -15,7 +15,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -35,7 +37,7 @@ func GetVPHeader(stmts ...string) []pgproto3.FieldDescription {
 func KeyRangeVirtualRelationScan(krs []*kr.KeyRange, locks []string) *tupleslot.TupleTableSlot {
 
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("Key range ID", "Shard ID", "Distribution ID", "Lower bound", "Locked"),
+		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "locked"),
 	}
 
 	lockMap := make(map[string]string, len(locks))
@@ -102,12 +104,16 @@ func HostsVirtualRelationScan(shards []*topology.DataShard, ihc map[string]tsa.C
 func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.TupleTableSlot {
 
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("table name", "schema version", "shards", "column sequence mapping"),
+		Desc: GetVPHeader("table_name", "schema_name", "schema_version", "shards", "column_sequence_mapping"),
 	}
 	for _, r := range rrs {
-
+		schema := r.SchemaName
+		if schema == "" {
+			schema = "$search_path"
+		}
 		tts.Raw = append(tts.Raw, [][]byte{
 			[]byte(r.TableName),
+			[]byte(schema),
 			fmt.Appendf(nil, "%d", r.SchemaVersion),
 			fmt.Appendf(nil, "%+v", r.ShardIds),
 			fmt.Appendf(nil, "%+v", r.ColumnSequenceMapping),
@@ -145,9 +151,9 @@ func InstanceVirtualRelationScan(ctx context.Context, ci connmgr.ConnectionMgr) 
 
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader(
-			"total tcp connection count",
-			"total cancel requests",
-			"active tcp connections")}
+			"total_tcp_connection_count",
+			"total_cancel_requests",
+			"active_tcp_connections")}
 
 	tts.WriteDataRow(
 		fmt.Sprintf("%v", ci.TotalTcpCount()),
@@ -182,7 +188,7 @@ func RelationsVirtualRelationScan(
 	dsToRels map[string][]*distributions.DistributedRelation) (*tupleslot.TupleTableSlot, error) {
 
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("Relation name", "Distribution ID", "Distribution key", "Schema name"),
+		Desc: GetVPHeader("relation_name", "distribution_id", "distribution_key", "schema_name"),
 	}
 
 	/* XXX: make sort support in outer abstraction layer */
@@ -218,18 +224,18 @@ func RelationsVirtualRelationScan(
 }
 
 var BackendConnectionsHeaders = []string{
-	"backend connection id",
+	"backend_connection_id",
 	"router",
-	"shard key name",
+	"shard_key_name",
 	"hostname",
 	"pid",
 	"user",
 	"dbname",
 	"sync",
 	"tx_served",
-	"tx status",
-	"is stale",
-	"created at",
+	"tx_status",
+	"is_stale",
+	"created_at",
 }
 
 // BackendConnections writes backend connection information to the PSQL client.
@@ -296,7 +302,7 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 
 	quantiles := statistics.GetQuantiles()
 	headers := []string{
-		"client_id", "user", "dbname", "server_id", "router_address",
+		"client_id", "user", "dbname", "server_id", "router_address", "is_alive",
 	}
 	for _, el := range *quantiles {
 		headers = append(headers, fmt.Sprintf("router_time_%g", el))
@@ -315,7 +321,9 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 			fmt.Appendf(nil, "%d", cl.ID()),
 			[]byte(cl.Usr()),
 			[]byte(cl.DB()),
-			[]byte(hostname), []byte(rAddr)}
+			[]byte(hostname),
+			[]byte(rAddr),
+			fmt.Appendf(nil, "%v", netutil.TCP_CheckAliveness(cl.Conn()))}
 
 		for _, el := range *quantiles {
 			rowData = append(rowData, fmt.Appendf(nil, "%.2fms",
@@ -346,5 +354,78 @@ func ClientsVirtualRelationScan(ctx context.Context, clients []client.ClientInfo
 
 	tts.Raw = data
 
+	return tts, nil
+}
+
+func UniqueIndexesVirtualRelationScan(idToidxs map[string]*distributions.UniqueIndex) *tupleslot.TupleTableSlot {
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("id", "relation_name", "column", "column_type"),
+	}
+
+	/* XXX: make sort support in outer abstraction layer */
+	ids := make([]string, len(idToidxs))
+	i := 0
+	for id := range idToidxs {
+		ids[i] = id
+		i++
+	}
+	sort.Strings(ids)
+
+	for _, id := range ids {
+		idx := idToidxs[id]
+		tts.WriteDataRow(idx.ID, idx.RelationName.RelationName, idx.ColumnName, idx.ColType)
+	}
+	return tts
+}
+
+func TaskGroupsVirtualRelationScan(groups map[string]*tasks.MoveTaskGroup) *tupleslot.TupleTableSlot {
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("task_group_id", "destination_shard_id", "source_key_range_id", "destination_key_range_id", "move_task_id"),
+	}
+	for _, group := range groups {
+		currTaskId := ""
+		if group.CurrentTask != nil {
+			currTaskId = group.CurrentTask.ID
+		}
+		tts.WriteDataRow(group.ID, group.ShardToId, group.KrIdFrom, group.KrIdTo, currTaskId)
+	}
+	return tts
+}
+
+func MoveTasksVirtualRelationScan(ts map[string]*tasks.MoveTask, dsIDColTypes map[string][]string, moveTaskDsID map[string]string) (*tupleslot.TupleTableSlot, error) {
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("move_task_id", "temporary_key_range_id", "bound", "state", "task_group_id"),
+	}
+
+	for _, task := range ts {
+		krData := []string{""}
+		if task.Bound != nil {
+			dsID, ok := moveTaskDsID[task.ID]
+			if !ok {
+				return nil, fmt.Errorf("failed to reply move task data: distribution for task \"%s\" not found", task.ID)
+			}
+			moveTaskColTypes, ok := dsIDColTypes[dsID]
+			if !ok {
+				return nil, fmt.Errorf("failed to reply move task data: column types for distribution \"%s\" not found", dsID)
+			}
+			if len(task.Bound) != len(moveTaskColTypes) {
+				err := fmt.Errorf("something wrong in task: %s, columns: %#v", task.ID, moveTaskColTypes)
+				return nil, err
+			}
+			kRange, err := kr.KeyRangeFromBytes(task.Bound, moveTaskColTypes)
+			if err != nil {
+				return nil, err
+			}
+			krData = kRange.SendRaw()
+		}
+		tts.WriteDataRow(
+			task.ID,
+			task.KrIdTemp,
+			strings.Join(krData, ";"),
+			tasks.TaskStateToStr(task.State),
+			task.TaskGroupID,
+		)
+	}
 	return tts, nil
 }

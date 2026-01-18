@@ -1,10 +1,3 @@
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
@@ -25,7 +18,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id;
 (2 rows)
 
 SHOW relations;
- Relation name | Distribution ID |  Distribution key  | Schema name  
+ relation_name | distribution_id |  distribution_key  | schema_name  
 ---------------+-----------------+--------------------+--------------
  a             | ds1             | ("a_id", identity) | $search_path
 (1 row)
@@ -38,13 +31,13 @@ ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another;
 (2 rows)
 
 SHOW relations;
- Relation name | Distribution ID |   Distribution key    | Schema name  
+ relation_name | distribution_id |   distribution_key    | schema_name  
 ---------------+-----------------+-----------------------+--------------
  a             | ds1             | ("another", identity) | $search_path
 (1 row)
 
 ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;
-ERROR:  failed to parse query ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;: syntax error
+ERROR:  failed to parse query "ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;": syntax error
 ALTER DISTRIBUTION ds1 ALTER RELATION a SCHEMA schema_name;
           alter relation          
 ----------------------------------
@@ -53,7 +46,7 @@ ALTER DISTRIBUTION ds1 ALTER RELATION a SCHEMA schema_name;
 (2 rows)
 
 SHOW relations;
- Relation name | Distribution ID |   Distribution key    | Schema name 
+ relation_name | distribution_id |   distribution_key    | schema_name 
 ---------------+-----------------+-----------------------+-------------
  a             | ds1             | ("another", identity) | schema_name
 (1 row)
@@ -68,7 +61,7 @@ ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;
 (2 rows)
 
 SHOW distributions;
- Distribution ID | Column types | Default shard 
+ distribution_id | column_types | default_shard 
 -----------------+--------------+---------------
  ds1             | integer      | sh1
  ds2             | integer      | not exists
@@ -82,14 +75,14 @@ CREATE DISTRIBUTED RELATION aa DISTRIBUTION KEY another2 SCHEMA schema_name2 IN 
 (2 rows)
 
 SHOW relations;
- Relation name | Distribution ID |    Distribution key    | Schema name  
+ relation_name | distribution_id |    distribution_key    | schema_name  
 ---------------+-----------------+------------------------+--------------
  a             | ds1             | ("another", identity)  | schema_name
  aa            | ds2             | ("another2", identity) | schema_name2
 (2 rows)
 
 CREATE DISTRIBUTED RELATION sh12.aa12 DISTRIBUTION KEY another2 SCHEMA schema_name3 IN ds2;
-ERROR:  failed to parse query CREATE DISTRIBUTED RELATION sh12.aa12 DISTRIBUTION KEY another2 SCHEMA schema_name3 IN ds2;: it is forbidden to use both a qualified relation name and the keyword SCHEMA
+ERROR:  failed to parse query "CREATE DISTRIBUTED RELATION sh12.aa12 DISTRIBUTION KEY another2 SCHEMA schema_name3 IN ds2;": it is forbidden to use both a qualified relation name and the keyword SCHEMA
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------

@@ -70,7 +70,7 @@ type RuleRouterImpl struct {
 func (r *RuleRouterImpl) InstanceHealthChecks() map[string]tsa.CachedCheckResult {
 	rt := map[string]tsa.CachedCheckResult{}
 	_ = r.NotifyRoutes(func(r *route.Route) (bool, error) {
-		m := r.ServPool().InstanceHealthChecks()
+		m := r.MultiShardPool().InstanceHealthChecks()
 		for k, v := range m {
 			// we are interested in most recent check
 			if v2, ok := rt[k]; !ok || v2.LastCheckTime.UnixNano() > v.LastCheckTime.UnixNano() {
@@ -86,7 +86,7 @@ func (r *RuleRouterImpl) InstanceHealthChecks() map[string]tsa.CachedCheckResult
 func (r *RuleRouterImpl) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
 	rt := map[pool.TsaKey]pool.CachedEntry{}
 	_ = r.NotifyRoutes(func(r *route.Route) (bool, error) {
-		m := r.ServPool().TsaCacheEntries()
+		m := r.MultiShardPool().TsaCacheEntries()
 		for k, v := range m {
 			rt[k] = v
 		}
@@ -211,7 +211,11 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 			PoolMode: config.PoolModeVirtual,
 		}
 		if err := cl.AssignRule(rule); err != nil {
-			_ = cl.ReplyErrMsg("failed to assign rule", spqrerror.SPQR_ROUTING_ERROR, txstatus.TXIDLE)
+			_ = cl.ReplyErrMsg(
+				"failed to assign rule",
+				spqrerror.SPQR_ROUTING_ERROR,
+				0,
+				txstatus.TXIDLE)
 			return nil, err
 		}
 	}
@@ -296,7 +300,11 @@ func (r *RuleRouterImpl) preRouteInitializedClientAdm(cl rclient.RouterClient) (
 		Msg("console client routed")
 
 	if err := cl.AssignRule(frRule); err != nil {
-		_ = cl.ReplyErrMsg("failed to assign rule", spqrerror.SPQR_ROUTING_ERROR, txstatus.TXIDLE)
+		_ = cl.ReplyErrMsg(
+			"failed to assign rule",
+			spqrerror.SPQR_ROUTING_ERROR,
+			0,
+			txstatus.TXIDLE)
 		return nil, err
 	}
 

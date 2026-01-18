@@ -1,0 +1,5 @@
+SHOW routers;
+ router | status 
+--------+--------
+(0 rows)
+

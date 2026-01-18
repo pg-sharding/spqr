@@ -19,32 +19,32 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-// MockConnectionKeeper is a mock of ConnectionKeeper interface.
-type MockConnectionKeeper struct {
+// MockGangMgr is a mock of GangMgr interface.
+type MockGangMgr struct {
 	ctrl     *gomock.Controller
-	recorder *MockConnectionKeeperMockRecorder
+	recorder *MockGangMgrMockRecorder
 	isgomock struct{}
 }
 
-// MockConnectionKeeperMockRecorder is the mock recorder for MockConnectionKeeper.
-type MockConnectionKeeperMockRecorder struct {
-	mock *MockConnectionKeeper
+// MockGangMgrMockRecorder is the mock recorder for MockGangMgr.
+type MockGangMgrMockRecorder struct {
+	mock *MockGangMgr
 }
 
-// NewMockConnectionKeeper creates a new mock instance.
-func NewMockConnectionKeeper(ctrl *gomock.Controller) *MockConnectionKeeper {
-	mock := &MockConnectionKeeper{ctrl: ctrl}
-	mock.recorder = &MockConnectionKeeperMockRecorder{mock}
+// NewMockGangMgr creates a new mock instance.
+func NewMockGangMgr(ctrl *gomock.Controller) *MockGangMgr {
+	mock := &MockGangMgr{ctrl: ctrl}
+	mock.recorder = &MockGangMgrMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockConnectionKeeper) EXPECT() *MockConnectionKeeperMockRecorder {
+func (m *MockGangMgr) EXPECT() *MockGangMgrMockRecorder {
 	return m.recorder
 }
 
 // ActiveShards mocks base method.
-func (m *MockConnectionKeeper) ActiveShards() []kr.ShardKey {
+func (m *MockGangMgr) ActiveShards() []kr.ShardKey {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ActiveShards")
 	ret0, _ := ret[0].([]kr.ShardKey)
@@ -52,25 +52,25 @@ func (m *MockConnectionKeeper) ActiveShards() []kr.ShardKey {
 }
 
 // ActiveShards indicates an expected call of ActiveShards.
-func (mr *MockConnectionKeeperMockRecorder) ActiveShards() *gomock.Call {
+func (mr *MockGangMgrMockRecorder) ActiveShards() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveShards", reflect.TypeOf((*MockConnectionKeeper)(nil).ActiveShards))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveShards", reflect.TypeOf((*MockGangMgr)(nil).ActiveShards))
 }
 
 // ActiveShardsReset mocks base method.
-func (m *MockConnectionKeeper) ActiveShardsReset() {
+func (m *MockGangMgr) ActiveShardsReset() {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "ActiveShardsReset")
 }
 
 // ActiveShardsReset indicates an expected call of ActiveShardsReset.
-func (mr *MockConnectionKeeperMockRecorder) ActiveShardsReset() *gomock.Call {
+func (mr *MockGangMgrMockRecorder) ActiveShardsReset() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveShardsReset", reflect.TypeOf((*MockConnectionKeeper)(nil).ActiveShardsReset))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActiveShardsReset", reflect.TypeOf((*MockGangMgr)(nil).ActiveShardsReset))
 }
 
 // Client mocks base method.
-func (m *MockConnectionKeeper) Client() client.RouterClient {
+func (m *MockGangMgr) Client() client.RouterClient {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Client")
 	ret0, _ := ret[0].(client.RouterClient)
@@ -78,13 +78,13 @@ func (m *MockConnectionKeeper) Client() client.RouterClient {
 }
 
 // Client indicates an expected call of Client.
-func (mr *MockConnectionKeeperMockRecorder) Client() *gomock.Call {
+func (mr *MockGangMgrMockRecorder) Client() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Client", reflect.TypeOf((*MockConnectionKeeper)(nil).Client))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Client", reflect.TypeOf((*MockGangMgr)(nil).Client))
 }
 
 // DataPending mocks base method.
-func (m *MockConnectionKeeper) DataPending() bool {
+func (m *MockGangMgr) DataPending() bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DataPending")
 	ret0, _ := ret[0].(bool)
@@ -92,25 +92,25 @@ func (m *MockConnectionKeeper) DataPending() bool {
 }
 
 // DataPending indicates an expected call of DataPending.
-func (mr *MockConnectionKeeperMockRecorder) DataPending() *gomock.Call {
+func (mr *MockGangMgrMockRecorder) DataPending() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockConnectionKeeper)(nil).DataPending))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockGangMgr)(nil).DataPending))
 }
 
 // SetTxStatus mocks base method.
-func (m *MockConnectionKeeper) SetTxStatus(status txstatus.TXStatus) {
+func (m *MockGangMgr) SetTxStatus(status txstatus.TXStatus) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetTxStatus", status)
 }
 
 // SetTxStatus indicates an expected call of SetTxStatus.
-func (mr *MockConnectionKeeperMockRecorder) SetTxStatus(status any) *gomock.Call {
+func (mr *MockGangMgrMockRecorder) SetTxStatus(status any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTxStatus", reflect.TypeOf((*MockConnectionKeeper)(nil).SetTxStatus), status)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTxStatus", reflect.TypeOf((*MockGangMgr)(nil).SetTxStatus), status)
 }
 
 // SyncCount mocks base method.
-func (m *MockConnectionKeeper) SyncCount() int64 {
+func (m *MockGangMgr) SyncCount() int64 {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SyncCount")
 	ret0, _ := ret[0].(int64)
@@ -118,13 +118,13 @@ func (m *MockConnectionKeeper) SyncCount() int64 {
 }
 
 // SyncCount indicates an expected call of SyncCount.
-func (mr *MockConnectionKeeperMockRecorder) SyncCount() *gomock.Call {
+func (mr *MockGangMgrMockRecorder) SyncCount() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncCount", reflect.TypeOf((*MockConnectionKeeper)(nil).SyncCount))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncCount", reflect.TypeOf((*MockGangMgr)(nil).SyncCount))
 }
 
 // TxStatus mocks base method.
-func (m *MockConnectionKeeper) TxStatus() txstatus.TXStatus {
+func (m *MockGangMgr) TxStatus() txstatus.TXStatus {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TxStatus")
 	ret0, _ := ret[0].(txstatus.TXStatus)
@@ -132,9 +132,9 @@ func (m *MockConnectionKeeper) TxStatus() txstatus.TXStatus {
 }
 
 // TxStatus indicates an expected call of TxStatus.
-func (mr *MockConnectionKeeperMockRecorder) TxStatus() *gomock.Call {
+func (mr *MockGangMgrMockRecorder) TxStatus() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TxStatus", reflect.TypeOf((*MockConnectionKeeper)(nil).TxStatus))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TxStatus", reflect.TypeOf((*MockGangMgr)(nil).TxStatus))
 }
 
 // MockPoolMgr is a mock of PoolMgr interface.
@@ -162,71 +162,43 @@ func (m *MockPoolMgr) EXPECT() *MockPoolMgrMockRecorder {
 }
 
 // ConnectionActive mocks base method.
-func (m *MockPoolMgr) ConnectionActive(rst poolmgr.ConnectionKeeper) bool {
+func (m *MockPoolMgr) ConnectionActive(gangMgr poolmgr.GangMgr) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConnectionActive", rst)
+	ret := m.ctrl.Call(m, "ConnectionActive", gangMgr)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // ConnectionActive indicates an expected call of ConnectionActive.
-func (mr *MockPoolMgrMockRecorder) ConnectionActive(rst any) *gomock.Call {
+func (mr *MockPoolMgrMockRecorder) ConnectionActive(gangMgr any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionActive", reflect.TypeOf((*MockPoolMgr)(nil).ConnectionActive), rst)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionActive", reflect.TypeOf((*MockPoolMgr)(nil).ConnectionActive), gangMgr)
 }
 
 // TXEndCB mocks base method.
-func (m *MockPoolMgr) TXEndCB(rst poolmgr.ConnectionKeeper) error {
+func (m *MockPoolMgr) TXEndCB(gangMgr poolmgr.GangMgr) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TXEndCB", rst)
+	ret := m.ctrl.Call(m, "TXEndCB", gangMgr)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TXEndCB indicates an expected call of TXEndCB.
-func (mr *MockPoolMgrMockRecorder) TXEndCB(rst any) *gomock.Call {
+func (mr *MockPoolMgrMockRecorder) TXEndCB(gangMgr any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXEndCB", reflect.TypeOf((*MockPoolMgr)(nil).TXEndCB), rst)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXEndCB", reflect.TypeOf((*MockPoolMgr)(nil).TXEndCB), gangMgr)
 }
 
-// UnRouteCB mocks base method.
-func (m *MockPoolMgr) UnRouteCB(arg0 client.RouterClient, sh []kr.ShardKey) error {
+// ValidateGangChange mocks base method.
+func (m *MockPoolMgr) ValidateGangChange(gangMgr poolmgr.GangMgr) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnRouteCB", arg0, sh)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UnRouteCB indicates an expected call of UnRouteCB.
-func (mr *MockPoolMgrMockRecorder) UnRouteCB(arg0, sh any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnRouteCB", reflect.TypeOf((*MockPoolMgr)(nil).UnRouteCB), arg0, sh)
-}
-
-// UnRouteWithError mocks base method.
-func (m *MockPoolMgr) UnRouteWithError(arg0 client.RouterClient, sh []kr.ShardKey, errmsg error) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UnRouteWithError", arg0, sh, errmsg)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UnRouteWithError indicates an expected call of UnRouteWithError.
-func (mr *MockPoolMgrMockRecorder) UnRouteWithError(arg0, sh, errmsg any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnRouteWithError", reflect.TypeOf((*MockPoolMgr)(nil).UnRouteWithError), arg0, sh, errmsg)
-}
-
-// ValidateSliceChange mocks base method.
-func (m *MockPoolMgr) ValidateSliceChange(rst poolmgr.ConnectionKeeper) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateSliceChange", rst)
+	ret := m.ctrl.Call(m, "ValidateGangChange", gangMgr)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
-// ValidateSliceChange indicates an expected call of ValidateSliceChange.
-func (mr *MockPoolMgrMockRecorder) ValidateSliceChange(rst any) *gomock.Call {
+// ValidateGangChange indicates an expected call of ValidateGangChange.
+func (mr *MockPoolMgrMockRecorder) ValidateGangChange(gangMgr any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateSliceChange", reflect.TypeOf((*MockPoolMgr)(nil).ValidateSliceChange), rst)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateGangChange", reflect.TypeOf((*MockPoolMgr)(nil).ValidateGangChange), gangMgr)
 }

@@ -61,11 +61,9 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
 		}
 
-		err = fmt.Errorf("client processing error: '%v': %w, tx status %s", query, err, rst.QueryExecutor().TxStatus().String())
-
 		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
 			// TODO: figure out if we need this
-			// _ = rst.UnrouteRoutes(rst.ActiveShards())
+			// _ = rst.Reset()
 			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
 		}
 
@@ -73,13 +71,25 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
 		}
 
-		return nil, rst.UnRouteWithError(rst.ActiveShards(), err)
+		return nil, rst.ResetWithError(err)
 	}
 
 	txbefore := rst.QueryExecutor().TxStatus()
 	if txbefore == txstatus.TXERR {
-		if _, ok := state.(parser.ParseStateTXRollback); !ok {
-			return nil, rst.Client().ReplyErrWithTxStatus(errAbortedTx, txstatus.TXERR)
+
+		/* If user supplied COMMIT in already-errored tx, simply rollback
+		* and end tx block. */
+		if _, ok := state.(parser.ParseStateTXCommit); ok {
+			/* It is necessary here to change state to trigger correct
+			* execution path ProcQueryAdvanced, that is, single-slice scatter-out
+			* query (no 2pc commit management!) */
+			state = parser.ParseStateTXRollback{}
+			/* We will actually send COMMIT as use command to shards, do not
+			* override `query` */
+		} else {
+			if _, ok := state.(parser.ParseStateTXRollback); !ok {
+				return nil, rst.Client().ReplyErrWithTxStatus(errAbortedTx, txstatus.TXERR)
+			}
 		}
 	}
 
@@ -89,23 +99,29 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 		rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
 	}
 
-	if !completeRelay {
-		return pd, nil
-	}
-
-	if err == nil {
-		return pd, rst.CompleteRelay(true)
-	}
-
 	/* outer function will complete relay here */
-
-	spqrlog.Zero.Debug().Err(err).Uint("client-id", rst.Client().ID()).Msg("completing client relay with error")
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Uint("client-id", rst.Client().ID()).Msg("completing client relay with error")
+	} else {
+		spqrlog.Zero.Debug().Uint("client-id", rst.Client().ID()).Msg("completing client relay")
+	}
 
 	switch err {
+	case nil:
+		if !completeRelay {
+			return pd, nil
+		}
+
+		/* Okay, respond with CommandComplete first. */
+		if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
+			return nil, err
+		}
+
+		return pd, rst.CompleteRelay()
 	case io.ErrUnexpectedEOF:
 		fallthrough
 	case io.EOF:
-		_ = rst.Unroute(rst.ActiveShards())
+		err := rst.Reset()
 		return nil, err
 		// ok
 	default:
@@ -119,7 +135,7 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 			return nil, rst.Client().ReplyErrWithTxStatus(rerr, txstatus.TXERR)
 		}
 
-		return nil, rst.UnRouteWithError(rst.ActiveShards(), rerr)
+		return nil, rst.ResetWithError(rerr)
 	}
 }
 
@@ -166,6 +182,19 @@ func (rst *RelayStateImpl) queryProc(comment string, binderQ func() error) error
 				case "false", "no", "off":
 					rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelStatement, false)
 				}
+			case session.SPQR_PREFERRED_ENGINE:
+				spqrlog.Zero.Debug().Str("preferred engine", val).Msg("parse preferred engine from comment")
+				rst.Client().SetPreferredEngine(session.VirtualParamLevelStatement, val)
+			case session.SPQR_ALLOW_SPLIT_UPDATE:
+				spqrlog.Zero.Debug().Str("preferred engine", val).Msg("parse preferred engine from comment")
+
+				switch val {
+				case "true", "ok", "on":
+					rst.Client().SetAllowSplitUpdate(session.VirtualParamLevelStatement, true)
+				case "false", "no", "off":
+					rst.Client().SetAllowSplitUpdate(session.VirtualParamLevelStatement, false)
+				}
+
 			case session.SPQR_AUTO_DISTRIBUTION:
 				/* Should we create distributed or reference relation? */
 
@@ -222,9 +251,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
 			// ignore this
 			_ = rst.Client().ReplyWarningf("there is already transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("BEGIN")
+			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("BEGIN")
 		}
-		err := rst.QueryExecutor().ExecBegin(rst, query, &st)
+		err := rst.QueryExecutor().ExecBegin(query, &st)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return noDataPd, err
 	case parser.ParseStateTXCommit:
@@ -247,30 +276,36 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("COMMIT")
+			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("COMMIT")
 		}
-		err := rst.QueryExecutor().ExecCommit(rst, query)
+		err := rst.QueryExecutor().ExecCommit(query)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return noDataPd, err
 	case parser.ParseStateTXRollback:
 		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
-			return noDataPd, rst.Client().ReplyCommandComplete("ROLLBACK")
+			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("ROLLBACK")
 		}
-		err := rst.QueryExecutor().ExecRollback(rst, query)
+		err := rst.QueryExecutor().ExecRollback(query)
 		spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
 		return noDataPd, err
 	case parser.ParseStateEmptyQuery:
-		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
-			return nil, err
-		}
+		rst.QueryExecutor().ReplyEmptyQuery()
 		// do not complete relay  here
 		return noDataPd, nil
 	// with tx pooling we might have no active connection while processing set x to y
 	case parser.ParseStateShowStmt:
 		var pd *PortalDesc
 
-		for _, stmt := range st.Stmts {
+		for i, stmt := range st.Stmts {
+
+			/* This is hacky and very-very bad. Should fix multi-statement. */
+			if i > 0 {
+				if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
+					return nil, err
+				}
+			}
+
 			q, ok := stmt.(*lyx.VariableShowStmt)
 			if !ok {
 				return nil, rerrors.ErrComplexQuery
@@ -296,7 +331,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 			switch param {
 			case session.SPQR_DISTRIBUTION:
-				err := rst.Client().Send(
+				rst.QueryExecutor().FailStatement(
 					&pgproto3.ErrorResponse{
 						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
 							session.SPQR_DISTRIBUTION),
@@ -304,9 +339,9 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
 					})
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, err
+				return pd, nil
 			case session.SPQR_DISTRIBUTED_RELATION:
-				err := rst.Client().Send(
+				rst.QueryExecutor().FailStatement(
 					&pgproto3.ErrorResponse{
 						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
 							session.SPQR_DISTRIBUTED_RELATION),
@@ -314,7 +349,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
 					})
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, err
+				return pd, nil
 
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
 				ReplyVirtualParamState(rst.Client(), "default route behaviour", []byte(rst.Client().DefaultRouteBehaviour()))
@@ -337,7 +372,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			case session.SPQR_SHARDING_KEY:
 				ReplyVirtualParamState(rst.Client(), "sharding key", []byte(rst.Client().ShardingKey()))
 			case session.SPQR_SCATTER_QUERY:
-				err := rst.Client().Send(
+				rst.QueryExecutor().FailStatement(
 					&pgproto3.ErrorResponse{
 						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
 							session.SPQR_SCATTER_QUERY),
@@ -345,7 +380,8 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
 					})
 				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, err
+				return pd, nil
+
 			case session.SPQR_EXECUTE_ON:
 				ReplyVirtualParamState(rst.Client(), "execute on", []byte(rst.Client().ExecuteOn()))
 			case session.SPQR_ENGINE_V2:
@@ -360,6 +396,15 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				fallthrough
 			case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
 				ReplyVirtualParamState(rst.Client(), "target session attrs", []byte(rst.Client().GetTsa()))
+			case session.SPQR_PREFERRED_ENGINE:
+				ReplyVirtualParamState(rst.Client(), "preferred engine", []byte(rst.Client().PreferredEngine()))
+			case session.SPQR_ALLOW_SPLIT_UPDATE:
+
+				if rst.Client().AllowSplitUpdate() {
+					ReplyVirtualParamState(rst.Client(), "allow split update", []byte("on"))
+				} else {
+					ReplyVirtualParamState(rst.Client(), "allow split update", []byte("off"))
+				}
 			default:
 
 				if strings.HasPrefix(param, "__spqr__") {
@@ -376,7 +421,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 				}
 			}
 
-			if err := rst.Client().ReplyCommandComplete("SHOW"); err != nil {
+			if err := rst.QueryExecutor().ReplyCommandComplete("SHOW"); err != nil {
 				return nil, err
 			}
 		}
@@ -385,7 +430,15 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 		return pd, nil
 	case parser.ParseStateSetStmt:
 
-		for _, stmt := range st.Stmts {
+		for i, stmt := range st.Stmts {
+
+			/* This is hacky and very-very bad. Should fix multi-statement. */
+			if i > 0 {
+				if err := rst.QueryExecutor().DeriveCommandComplete(); err != nil {
+					return nil, err
+				}
+			}
+
 			q, ok := stmt.(*lyx.VariableSetStmt)
 			if !ok {
 				return nil, rerrors.ErrComplexQuery
@@ -398,7 +451,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 			switch q.Kind {
 			case lyx.VarTypeResetAll:
 				rst.Client().ResetAll()
-				if err := rst.Client().ReplyCommandComplete("RESET"); err != nil {
+				if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
 					return nil, err
 				}
 			case lyx.VarTypeReset:
@@ -414,7 +467,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						rst.Client().ResetParam("role")
 					}
 
-					if err := rst.Client().ReplyCommandComplete("RESET"); err != nil {
+					if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
 						return nil, err
 					}
 
@@ -434,7 +487,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 						}
 					}
 
-					if err := rst.Client().ReplyCommandComplete("RESET"); err != nil {
+					if err := rst.QueryExecutor().ReplyCommandComplete("RESET"); err != nil {
 						return nil, err
 					}
 
@@ -509,78 +562,51 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context, hintName string,
 	name := virtualParamTransformName(hintName)
 	value := strings.ToLower(hintVal)
 
+	lvl := session.VirtualParamLevelTxBlock
+
+	if isLocal {
+		lvl = session.VirtualParamLevelLocal
+	}
+
 	switch name {
 	case session.SPQR_DISTRIBUTION:
-		if isLocal {
-			rst.Client().SetDistribution(session.VirtualParamLevelLocal, hintVal)
-		} else {
-			rst.Client().SetDistribution(session.VirtualParamLevelTxBlock, hintVal)
-		}
+		rst.Client().SetDistribution(lvl, hintVal)
 	case session.SPQR_DISTRIBUTED_RELATION:
-		lvl := session.VirtualParamLevelTxBlock
-
-		if isLocal {
-			lvl = session.VirtualParamLevelLocal
-		}
-
 		rst.Client().SetDistributedRelation(lvl, hintVal)
 	case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
-		lvl := session.VirtualParamLevelTxBlock
-
-		if isLocal {
-			lvl = session.VirtualParamLevelLocal
-		}
-
 		rst.Client().SetDefaultRouteBehaviour(lvl, hintVal)
 	case session.SPQR_SHARDING_KEY:
-		lvl := session.VirtualParamLevelTxBlock
-
-		if isLocal {
-			lvl = session.VirtualParamLevelLocal
-		}
-
 		rst.Client().SetShardingKey(lvl, hintVal)
-	case session.SPQR_REPLY_NOTICE:
-		lvl := session.VirtualParamLevelTxBlock
-
-		if isLocal {
-			lvl = session.VirtualParamLevelLocal
+	case session.SPQR_PREFERRED_ENGINE:
+		rst.Client().SetPreferredEngine(lvl, hintVal)
+	case session.SPQR_ALLOW_SPLIT_UPDATE:
+		if value == "on" || value == "true" {
+			rst.Client().SetAllowSplitUpdate(lvl, true)
+		} else {
+			rst.Client().SetAllowSplitUpdate(lvl, false)
 		}
-
+	case session.SPQR_REPLY_NOTICE:
 		if value == "on" || value == "true" {
 			rst.Client().SetShowNoticeMsg(lvl, true)
 		} else {
 			rst.Client().SetShowNoticeMsg(lvl, false)
 		}
 	case session.SPQR_MAINTAIN_PARAMS:
-		lvl := session.VirtualParamLevelTxBlock
-
-		if isLocal {
-			lvl = session.VirtualParamLevelLocal
-		}
-
 		if value == "on" || value == "true" {
 			rst.Client().SetMaintainParams(lvl, true)
 		} else {
 			rst.Client().SetMaintainParams(lvl, false)
 		}
 	case session.SPQR_EXECUTE_ON:
-		if isLocal {
-			rst.Client().SetExecuteOn(session.VirtualParamLevelLocal, hintVal)
-		} else {
-			rst.Client().SetExecuteOn(session.VirtualParamLevelTxBlock, hintVal)
-		}
+		rst.Client().SetExecuteOn(lvl, hintVal)
 	case session.SPQR_TARGET_SESSION_ATTRS:
 		fallthrough
 	case session.SPQR_TARGET_SESSION_ATTRS_ALIAS:
 		fallthrough
 	case session.SPQR_TARGET_SESSION_ATTRS_ALIAS_2:
-		if isLocal {
-			rst.Client().SetTsa(session.VirtualParamLevelLocal, hintVal)
-		} else {
-			rst.Client().SetTsa(session.VirtualParamLevelTxBlock, hintVal)
-		}
+		rst.Client().SetTsa(lvl, hintVal)
 	case session.SPQR_ENGINE_V2:
+		/* Ignore statement level here */
 		switch value {
 		case "true", "on", "ok":
 			rst.Client().SetEnhancedMultiShardProcessing(session.VirtualParamLevelTxBlock, true)
@@ -598,5 +624,5 @@ func (rst *RelayStateImpl) processSpqrHint(ctx context.Context, hintName string,
 		rst.Client().SetParam(name, hintVal)
 	}
 
-	return rst.Client().ReplyCommandComplete("SET")
+	return rst.QueryExecutor().ReplyCommandComplete("SET")
 }

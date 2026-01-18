@@ -13,12 +13,12 @@ SHOW key_ranges;
 CREATE KEY RANGE krid4 FROM 20 ROUTE TO sh3 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid3 FROM 10 ROUTE TO sh4 FOR DISTRIBUTION ds1;
 
-SHOW key_ranges ORDER BY "Lower bound" ASC;
-SHOW key_ranges ORDER BY "Lower bound" DESC;
+SHOW key_ranges ORDER BY "lower_bound" ASC;
+SHOW key_ranges ORDER BY "lower_bound" DESC;
 
-SHOW key_ranges WHERE "Distribution ID" = 'ds1';
+SHOW key_ranges WHERE distribution_id = 'ds1';
 
-SHOW key_ranges WHERE "Shard ID" = 'sh3';
+SHOW key_ranges WHERE shard_id = 'sh3';
 
 DROP DISTRIBUTION ALL CASCADE;
 DROP KEY RANGE ALL;

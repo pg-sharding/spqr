@@ -1,12 +1,5 @@
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 SHOW is_read_only;
- is read only 
+ is_read_only 
 --------------
  false
 (1 row)

@@ -40,7 +40,7 @@ CREATE DISTRIBUTION ds5 COLUMN TYPES integer, varchar hash;
 
 ### DROP DISTRIBUTION
 
-This command is used to drop an existing distribution with the specified name. The CASCADE keyword is optional and indicates that any dependent objects should also be dropped.
+This command is used to drop an existing distribution with the specified name. The `CASCADE` keyword is optional and indicates that any dependent objects should also be dropped.
 
 ```sql
 DROP DISTRIBUTION <distribution_name> [CASCADE]
@@ -110,15 +110,45 @@ CREATE REFERENCE TABLE <table_name> [AUTO INCREMENT <column_name START start_val
 
 ### DROP SEQUENCE
 
-This command is used to drop [a sequence](/sharding/reference_tables#sequences).
+This command is used to drop [a sequence](/sharding/reference_tables#sequences).  The `CASCADE` keyword is optional and indicates that any dependent objects should also be dropped.
+
 
 ```sql
-DROP SEQUENCE t1_id;
-   drop sequence   
--------------------
- sequence -> t1_id
-(1 row)
+DROP SEQUENCE <sequence_name> [CASCADE]
 ```
+
+### SYNC REFERENCE TABLE
+
+<Warning>This command is not available for installations without SPQR coordinator.</Warning>
+
+This command is used to synchronize a [reference table](/sharding/reference_tables) to a target shard. It copies all data from the reference table on existing shards to the specified destination shard.
+
+This is useful when:
+- Adding a new shard to the cluster and needing to populate it with reference table data
+- **Exceptional cases** (indicating data corruption):
+  - A shard is out of sync and needs to be updated with the latest reference table data
+  - Recovering reference table data on a shard after a failure
+
+```sql
+SYNC REFERENCE TABLE <table_name> ON <shard_id>
+```
+
+**Parameters:**
+- `<table_name>`: The name of the reference table to synchronize
+- `<shard_id>`: The identifier of the destination shard where data will be copied
+
+**Example:**
+```sql
+-- First create a reference table on some shards
+CREATE REFERENCE TABLE tax_rates ON sh1, sh2;
+
+-- Later, sync it to another shard (e.g., after adding sh3 to the cluster)
+SYNC REFERENCE TABLE tax_rates ON sh3;
+```
+
+**Note:** 
+- The reference table must already be created in SPQR metadata and the table structure must exist on the destination shard before running this command.
+- `SYNC REFERENCE TABLES` (plural) to sync all reference tables at once is currently not supported.
 
 ### CREATE KEY RANGE
 
@@ -212,7 +242,7 @@ The`where_clause` is used to filter the results based on specific conditions. It
 ```sql
 spqr-console=> SHOW backend_connections WHERE hostname='hostname:6432'
 
- backend connection id | router  | shard key name |   hostname    |     user     | dbname | sync | tx_served | tx status
+ backend_connection_id | router  | shard_key_name |   hostname    |     user     | dbname | sync | tx_served | tx_status
 -----------------------+---------+----------------+---------------+--------------+--------+------+-----------+-----------
  824694216064          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 10102     | IDLE
  824646300800          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 7508      | IDLE

@@ -22,9 +22,9 @@ CREATE REFERENCE TABLE test_ref_rel;
 
 -- test schema-qualified creation
 CREATE REFERENCE TABLE sh1.test_ref_rel_rel;
-    create reference table    
-------------------------------
- table    -> test_ref_rel_rel
+      create reference table      
+----------------------------------
+ table    -> sh1.test_ref_rel_rel
  shard id -> sh1,sh2,sh3,sh4
 (2 rows)
 
@@ -360,6 +360,19 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  3 | -1
 (3 rows)
 
+BEGIN;
+-- To not interfere below results
+update test_ref_rel
+set i = 11
+where i <= 3 and j < 0
+returning i, j;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ i  | j  
+----+----
+ 11 | -1
+(1 row)
+
+ROLLBACK;
 -- check data on partially distributed reference relation
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
@@ -420,22 +433,30 @@ NOTICE: send query to shard(s) : sh3
 
 SET __spqr__preferred_engine TO v2;
 SELECT __spqr__show('reference_relations');
-    table name     | schema version |      shards       | column sequence mapping 
--------------------+----------------+-------------------+-------------------------
- test_ref_rel      | 1              | [sh1 sh2 sh3 sh4] | map[]
- test_ref_rel_part | 1              | [sh1 sh3]         | map[]
- test_ref_rel_rel  | 1              | [sh1 sh2 sh3 sh4] | map[]
+    table_name     | schema_name  | schema_version |      shards       | column_sequence_mapping 
+-------------------+--------------+----------------+-------------------+-------------------------
+ test_ref_rel      | $search_path | 1              | [sh1 sh2 sh3 sh4] | map[]
+ test_ref_rel_part | $search_path | 1              | [sh1 sh3]         | map[]
+ test_ref_rel_rel  | sh1          | 1              | [sh1 sh2 sh3 sh4] | map[]
 (3 rows)
 
 SELECT * FROM __spqr__show('reference_relations');
-    table name     | schema version |      shards       | column sequence mapping 
--------------------+----------------+-------------------+-------------------------
- test_ref_rel      | 1              | [sh1 sh2 sh3 sh4] | map[]
- test_ref_rel_part | 1              | [sh1 sh3]         | map[]
- test_ref_rel_rel  | 1              | [sh1 sh2 sh3 sh4] | map[]
+    table_name     | schema_name  | schema_version |      shards       | column_sequence_mapping 
+-------------------+--------------+----------------+-------------------+-------------------------
+ test_ref_rel      | $search_path | 1              | [sh1 sh2 sh3 sh4] | map[]
+ test_ref_rel_part | $search_path | 1              | [sh1 sh3]         | map[]
+ test_ref_rel_rel  | sh1          | 1              | [sh1 sh2 sh3 sh4] | map[]
 (3 rows)
 
 SET __spqr__preferred_engine TO '';
+SELECT __spqr__show('reference_relations') /*  __spqr__preferred_engine: v2 */;
+    table_name     | schema_name  | schema_version |      shards       | column_sequence_mapping 
+-------------------+--------------+----------------+-------------------+-------------------------
+ test_ref_rel      | $search_path | 1              | [sh1 sh2 sh3 sh4] | map[]
+ test_ref_rel_part | $search_path | 1              | [sh1 sh3]         | map[]
+ test_ref_rel_rel  | sh1          | 1              | [sh1 sh2 sh3 sh4] | map[]
+(3 rows)
+
 DROP TABLE test_ref_rel;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE sh1.test_ref_rel_rel;
@@ -455,11 +476,11 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 SHOW reference_relations;
-    table name     | schema version |      shards       | column sequence mapping 
--------------------+----------------+-------------------+-------------------------
- test_ref_rel      | 1              | [sh1 sh2 sh3 sh4] | map[]
- test_ref_rel_part | 1              | [sh1 sh3]         | map[]
- test_ref_rel_rel  | 1              | [sh1 sh2 sh3 sh4] | map[]
+    table_name     | schema_name  | schema_version |      shards       | column_sequence_mapping 
+-------------------+--------------+----------------+-------------------+-------------------------
+ test_ref_rel      | $search_path | 1              | [sh1 sh2 sh3 sh4] | map[]
+ test_ref_rel_part | $search_path | 1              | [sh1 sh3]         | map[]
+ test_ref_rel_rel  | sh1          | 1              | [sh1 sh2 sh3 sh4] | map[]
 (3 rows)
 
 DROP DISTRIBUTION ALL CASCADE;

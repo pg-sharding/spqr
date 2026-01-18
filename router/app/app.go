@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"sync"
+	"time"
 
 	reuse "github.com/libp2p/go-reuseport"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -14,6 +15,7 @@ import (
 	rgrpc "github.com/pg-sharding/spqr/router/grpc"
 	"github.com/pg-sharding/spqr/router/instance"
 	"github.com/pg-sharding/spqr/router/port"
+	"github.com/pg-sharding/spqr/router/recovery"
 	"google.golang.org/grpc"
 )
 
@@ -138,4 +140,29 @@ func (app *App) ServiceUnixSocket(ctx context.Context) error {
 
 	<-ctx.Done()
 	return nil
+}
+
+func (app *App) ServeWD(ctx context.Context) error {
+
+	wd, err := recovery.NewTwoPCWatchDog(config.RouterConfig().WatchdogBackendRule)
+
+	if err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			spqrlog.Zero.Info().Msg("recovery watchdog done")
+			return nil
+		default:
+			err := wd.RecoverDistributedTx()
+			if err != nil {
+				spqrlog.Zero.Error().Err(err)
+			}
+
+			/* wait for some period of time */
+			time.Sleep(config.ValueOrDefaultDuration(config.RouterConfig().WatchdogSleepInterval, time.Second))
+		}
+	}
 }

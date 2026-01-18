@@ -15,6 +15,7 @@ import (
 var cfgCoordinator Coordinator
 
 type Coordinator struct {
+	LogFileName          string          `json:"log_filename" toml:"log_filename" yaml:"log_filename"`
 	LogLevel             string          `json:"log_level" toml:"log_level" yaml:"log_level"`
 	PrettyLogging        bool            `json:"pretty_logging" toml:"pretty_logging" yaml:"pretty_logging"`
 	QdbAddr              string          `json:"qdb_addr" toml:"qdb_addr" yaml:"qdb_addr"`
@@ -34,6 +35,11 @@ type Coordinator struct {
 	EtcdMaxSendBytes        int   `json:"etcd_max_send_bytes" toml:"etcd_max_send_bytes" yaml:"etcd_max_send_bytes"`
 	DataMoveDisableTriggers bool  `json:"data_move_disable_triggers" toml:"data_move_disable_triggers" yaml:"data_move_disable_triggers"`
 	DataMoveBoundBatchSize  int64 `json:"data_move_bound_batch_size" toml:"data_move_bound_batch_size" yaml:"data_move_bound_batch_size"`
+
+	// gRPC keepalive settings for router connections
+	// Prevents connections from being closed by network intermediaries during idle periods
+	RouterKeepaliveTime    time.Duration `json:"router_keepalive_time" toml:"router_keepalive_time" yaml:"router_keepalive_time"`
+	RouterKeepaliveTimeout time.Duration `json:"router_keepalive_timeout" toml:"router_keepalive_timeout" yaml:"router_keepalive_timeout"`
 }
 
 // LoadCoordinatorCfg loads the coordinator configuration from the specified file path.

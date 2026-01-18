@@ -71,7 +71,7 @@ func TestMultiShardRouting(t *testing.T) {
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "ds1"
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -85,8 +85,11 @@ func TestMultiShardRouting(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -172,7 +175,7 @@ func TestMultiShardRouting(t *testing.T) {
 			exp:   &plan.RandomDispatchPlan{},
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -203,7 +206,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "ds1"
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -217,8 +220,11 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -246,7 +252,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -291,17 +297,45 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "INSERT INTO distrr_mm_test VALUES (3), (34) /* __spqr__engine_v2: true */;",
-			exp:   nil,
-			err:   rerrors.ErrComplexQuery,
+			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: false */;",
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO distrr_mm_test (id) VALUES (3) /* __spqr__engine_v2: false */;`,
+					"sh2": `INSERT INTO distrr_mm_test (id) VALUES (34) /* __spqr__engine_v2: false */;`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
 		},
 		{
 			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: true */;",
-			exp:   nil,
-			err:   rerrors.ErrComplexQuery,
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO distrr_mm_test (id) VALUES (3) /* __spqr__engine_v2: true */;`,
+					"sh2": `INSERT INTO distrr_mm_test (id) VALUES (34) /* __spqr__engine_v2: true */;`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -318,6 +352,7 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
 		} else {
+			assert.NotNil(tmp, tt.query)
 			tmp.SetStmt(nil) /* dont check stmt */
 
 			assert.NoError(err, "query %s", tt.query)
@@ -338,7 +373,7 @@ func TestRoutingByExpression(t *testing.T) {
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "ds1"
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeUinteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -365,8 +400,11 @@ func TestRoutingByExpression(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -394,7 +432,7 @@ func TestRoutingByExpression(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -409,6 +447,7 @@ func TestRoutingByExpression(t *testing.T) {
 			WITH vals(x,y) AS (VALUES(5, 'jidw'), (100, 'jidw'))
 			SELECT * FROM distrr_mm_test d JOIN vals v ON d.id1 = v.x AND d.id2 = v.y;`,
 			exp: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh2",
@@ -463,7 +502,7 @@ func TestRoutingByExpression(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -499,7 +538,7 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distributions.REPLICATED,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -508,6 +547,9 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
 	_ = db.CreateSequence(context.TODO(), "s1", 10)
 
@@ -516,9 +558,12 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		ColumnSequenceMapping: map[string]string{
 			"id1": "s1",
 		},
+		ShardIds: []string{
+			"sh1", "sh2",
+		},
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -533,8 +578,46 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 			query: `INSERT INTO test_ref_rel SELECT 1;`,
 			err:   rerrors.ErrComplexQuery,
 		},
+		{
+			query: `INSERT INTO test_ref_rel (i) VALUES (1), (2);`,
+			exp: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO test_ref_rel (id1, i) VALUES (11, 1), (12, 2);`,
+					"sh2": `INSERT INTO test_ref_rel (id1, i) VALUES (11, 1), (12, 2);`,
+				},
+				SubPlan: &plan.ScatterPlan{
+					SubPlan: &plan.ModifyTable{
+						ExecTargets: []kr.ShardKey{
+							{
+								Name: "sh1",
+							},
+							{
+								Name: "sh2",
+							},
+						},
+					},
+					ExecTargets: []kr.ShardKey{
+						{
+							Name: "sh1",
+						},
+						{
+							Name: "sh2",
+						},
+					},
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
+		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -551,11 +634,10 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 		if tt.err != nil {
 			assert.Equal(tt.err, err, tt.query)
 		} else {
+			assert.NoError(err, "query %s", tt.query)
 
 			assert.NotNil(tmp, tt.query)
 			tmp.SetStmt(nil) /* dont check stmt */
-
-			assert.NoError(err, "query %s", tt.query)
 
 			assert.Equal(tt.exp, tmp, tt.query)
 		}
@@ -572,7 +654,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distributions.REPLICATED,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -581,12 +663,15 @@ func TestReferenceRelationRouting(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
 	_ = db.CreateReferenceRelation(context.TODO(), &qdb.ReferenceRelation{
 		TableName: "test_ref_rel",
 	})
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -600,7 +685,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 			query: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
 			exp: &plan.DataRowFilter{
 				SubPlan: &plan.ScatterPlan{
-					OverwriteQuery: `INSERT INTO test_ref_rel VALUES(1) returning *;`,
+					OverwriteQuery: map[string]string{},
 					SubPlan: &plan.ScatterPlan{
 						SubPlan: &plan.ModifyTable{},
 					},
@@ -618,7 +703,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: `INSERT INTO test_ref_rel VALUES(1) ;`,
+				OverwriteQuery: map[string]string{},
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -636,6 +721,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `WITH data as (VALUES(1)) INSERT INTO test_ref_rel SELECT * FROM data;`,
 			exp: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{},
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -650,8 +736,10 @@ func TestReferenceRelationRouting(t *testing.T) {
 			},
 		},
 		{
+			/* XXX: with (proper) engine v2, this should we 2-slice split-update plan */
 			query: `UPDATE test_ref_rel SET i = i + 1 ;`,
 			exp: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{},
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -668,6 +756,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `DELETE FROM test_ref_rel WHERE i = 2;`,
 			exp: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{},
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -682,7 +771,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 			},
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -721,7 +810,7 @@ func TestComment(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID: distribution,
 		ColTypes: []string{
 			qdb.ColumnTypeInteger,
@@ -737,8 +826,11 @@ func TestComment(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -766,7 +858,7 @@ func TestComment(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -789,7 +881,7 @@ func TestComment(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -821,7 +913,7 @@ func TestCTE(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID: distribution,
 
 		ColTypes: []string{qdb.ColumnTypeInteger},
@@ -836,8 +928,11 @@ func TestCTE(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1", LowerBound: kr.KeyRangeBound{
@@ -876,7 +971,7 @@ func TestCTE(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1090,7 +1185,7 @@ func TestCTE(t *testing.T) {
 			},
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1126,7 +1221,7 @@ func TestSingleShard(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID: distribution,
 		ColTypes: []string{
 			qdb.ColumnTypeInteger,
@@ -1191,7 +1286,11 @@ func TestSingleShard(t *testing.T) {
 		},
 	})
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
+
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -1219,7 +1318,7 @@ func TestSingleShard(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1235,6 +1334,7 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "SELECT * FROM xxtt1 a WHERE i IN (1,11,111)",
 			exp: &plan.ScatterPlan{
+				OverwriteQuery: map[string]string{},
 				ExecTargets: []kr.ShardKey{
 					{Name: "sh1"},
 					{Name: "sh2"},
@@ -1418,7 +1518,7 @@ func TestSingleShard(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1450,7 +1550,7 @@ func TestInsertOffsets(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -1481,7 +1581,11 @@ func TestInsertOffsets(t *testing.T) {
 		},
 	})
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
+
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		LowerBound: []any{int64(1)},
 
 		ShardID:      "sh1",
@@ -1503,7 +1607,7 @@ func TestInsertOffsets(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1574,7 +1678,7 @@ func TestInsertOffsets(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1606,7 +1710,7 @@ func TestJoins(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -1637,7 +1741,11 @@ func TestJoins(t *testing.T) {
 		},
 	})
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
+
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -1657,7 +1765,7 @@ func TestJoins(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1735,7 +1843,7 @@ func TestJoins(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1771,7 +1879,7 @@ func TestUnnest(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -1785,8 +1893,11 @@ func TestUnnest(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -1806,7 +1917,7 @@ func TestUnnest(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1831,7 +1942,7 @@ func TestUnnest(t *testing.T) {
 		},
 
 		{
-			query: "UPDATE xxtt1 set i=a.i, j=a.j from unnest(ARRAY[(1,10)]) as a(i int, j int) where i=20 and xxtt1.j=a.j;",
+			query: "UPDATE xxtt1 set j=a.j from unnest(ARRAY[(1,10)]) as a(i int, j int) where i=20 and xxtt1.j=a.j;",
 			exp: &plan.ShardDispatchPlan{
 				ExecTarget: kr.ShardKey{
 					Name: "sh2",
@@ -1841,7 +1952,7 @@ func TestUnnest(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1857,7 +1968,7 @@ func TestUnnest(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp)
+		assert.Equal(tt.exp, tmp, tt.query)
 	}
 }
 
@@ -1873,7 +1984,7 @@ func TestCopySingleShard(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -1887,8 +1998,11 @@ func TestCopySingleShard(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -1910,7 +2024,7 @@ func TestCopySingleShard(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -1928,7 +2042,7 @@ func TestCopySingleShard(t *testing.T) {
 			err:   nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1961,7 +2075,7 @@ func TestCopyMultiShard(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -1975,8 +2089,11 @@ func TestCopyMultiShard(t *testing.T) {
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "id1",
@@ -1998,7 +2115,7 @@ func TestCopyMultiShard(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2016,7 +2133,7 @@ func TestCopyMultiShard(t *testing.T) {
 			err:   nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2052,10 +2169,17 @@ func TestSetStmt(t *testing.T) {
 	distribution1 := "ds1"
 	distribution2 := "ds2"
 
-	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution1, nil)))
-	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution2, nil)))
+	chunk1, err := db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution1, nil))
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk1)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
+	chunk2, err := db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution2, nil))
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk2)
+	assert.NoError(err)
+
+	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		DistributionId: distribution1,
 		KeyRangeID:     "id1",
@@ -2073,7 +2197,7 @@ func TestSetStmt(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2104,7 +2228,7 @@ func TestSetStmt(t *testing.T) {
 			err:          nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2161,11 +2285,17 @@ func TestRouteWithRules_Select(t *testing.T) {
 			},
 		},
 	}
+	chunk1, err := db.CreateDistribution(context.TODO(), distribution)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk1)
+	assert.NoError(err)
 
-	assert.NoError(db.CreateDistribution(context.TODO(), distribution))
-	assert.NoError(db.CreateDistribution(context.TODO(), unusedDistribution))
+	chunk2, err := db.CreateDistribution(context.TODO(), unusedDistribution)
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk2)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		DistributionId: distribution.ID,
 		KeyRangeID:     "id1",
@@ -2183,7 +2313,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2431,7 +2561,7 @@ LIMIT 1000
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2466,11 +2596,14 @@ func TestHashRouting(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution1 := "ds1"
 
-	assert.NoError(db.CreateDistribution(context.TODO(),
+	chunk, err := db.CreateDistribution(context.TODO(),
 		qdb.NewDistribution(distribution1,
-			[]string{qdb.ColumnTypeVarcharHashed})))
+			[]string{qdb.ColumnTypeVarcharHashed}))
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution1,
 		ID:           "id1",
@@ -2499,7 +2632,7 @@ func TestHashRouting(t *testing.T) {
 
 	assert.NoError(err)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2523,7 +2656,7 @@ func TestHashRouting(t *testing.T) {
 			err: nil,
 		},
 	} {
-		parserRes, err := lyx.Parse(tt.query)
+		parserRes, _, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -2547,10 +2680,11 @@ func TestHashRouting(t *testing.T) {
 	}
 }
 func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error) {
+	assert := assert.New(t)
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution := "dd"
 
-	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+	chunk, err := db.CreateDistribution(context.TODO(), &qdb.Distribution{
 		ID:       distribution,
 		ColTypes: []string{qdb.ColumnTypeInteger},
 		Relations: map[string]*qdb.DistributedRelation{
@@ -2573,8 +2707,11 @@ func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error
 			},
 		},
 	})
+	assert.NoError(err)
+	err = db.ExecNoTransaction(context.TODO(), chunk)
+	assert.NoError(err)
 
-	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
 		ShardID:      "sh1",
 		Distribution: distribution,
 		ID:           "krid1",
@@ -2585,7 +2722,7 @@ func prepareTestCheckTableIsRoutable(t *testing.T) (*qrouter.ProxyQrouter, error
 		return nil, err
 	}
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
 
 	router, err := qrouter.NewProxyRouter(map[string]*config.Shard{
 		"sh1": {},
@@ -2612,7 +2749,7 @@ func TestCheckTableIsRoutable(t *testing.T) {
 		},
 		{
 			query: "create table table1 (id1 int)",
-			err:   fmt.Errorf("create table stmt ignored: no sharding rule columns found"),
+			err:   fmt.Errorf("create table stmt ignored: no matching distribution found"),
 		},
 		{
 			query: "create table schema2.table2 (id int, dat varchar)",
@@ -2623,11 +2760,11 @@ func TestCheckTableIsRoutable(t *testing.T) {
 			err:   fmt.Errorf("distribution for relation \"schema2.table2Err\" not found"),
 		},
 	} {
-		stmt, err := lyx.Parse(tt.query)
+		stmt, _, err := lyx.Parse(tt.query)
 		assert.NoError(err)
 		switch node := stmt[0].(type) {
 		case *lyx.CreateTable:
-			actualErr := planner.CheckTableIsRoutable(ctx, router.Mgr(), node)
+			actualErr := planner.CheckRelationIsRoutable(ctx, router.Mgr(), node)
 			if tt.err == nil {
 				assert.NoError(actualErr, "case #%d", nn)
 			} else {
@@ -2637,5 +2774,4 @@ func TestCheckTableIsRoutable(t *testing.T) {
 			assert.NoError(fmt.Errorf("no create statement"))
 		}
 	}
-
 }

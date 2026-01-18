@@ -9,10 +9,17 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/rfqn"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+)
+
+const (
+	// maps of MemQDB as `extensions` of QdbStatement
+	MapRelationDistribution = "RelationDistribution"
+	MapDistributions        = "Distributions"
 )
 
 type MemQDB struct {
@@ -39,13 +46,20 @@ type MemQDB struct {
 	ColumnSequence       map[string]string                   `json:"column_sequence"`
 	SequenceToValues     map[string]int64                    `json:"sequence_to_values"`
 	TaskGroupMoveTaskID  map[string]string                   `json:"task_group_move_task"`
-	SequenceLock         sync.RWMutex
+	UniqueIndexes        map[string]*UniqueIndex             `json:"unique_indexes"`
+	UniqueIndexesByRel   map[string]map[string]*UniqueIndex  `json:"unique_indexes_by_relation"`
 
-	backupPath string
+	TwoPhaseTx map[string]*TwoPCInfo `json:"two_phase_info"`
+
+	SequenceLock sync.RWMutex
+
+	backupPath        string
+	activeTransaction uuid.UUID
 	/* caches */
 }
 
 var _ XQDB = &MemQDB{}
+var _ DCStateKeeper = &MemQDB{}
 
 func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
@@ -65,12 +79,14 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		StopMoveTaskGroup:    map[string]bool{},
 		TotalKeys:            map[string]int64{},
 		MoveTasks:            map[string]*MoveTask{},
+		TwoPhaseTx:           map[string]*TwoPCInfo{},
+		UniqueIndexes:        map[string]*UniqueIndex{},
+		UniqueIndexesByRel:   map[string]map[string]*UniqueIndex{},
 
 		backupPath: backupPath,
 	}, nil
 }
 
-// TODO : unit tests
 func RestoreQDB(backupPath string) (*MemQDB, error) {
 	qdb, err := NewMemQDB(backupPath)
 	if err != nil {
@@ -206,12 +222,16 @@ func (q *MemQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
 
-	q.mu.RLock()
-	if _, ok := q.Krs[keyRange.KeyRangeID]; ok {
-		q.mu.RUnlock()
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" already exists", keyRange.KeyRangeID)
+	if err := func() error {
+		q.mu.RLock()
+		defer q.mu.RUnlock()
+		if _, ok := q.Krs[keyRange.KeyRangeID]; ok {
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" already exists", keyRange.KeyRangeID)
+		}
+		return nil
+	}(); err != nil {
+		return err
 	}
-	q.mu.RUnlock()
 
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -230,6 +250,10 @@ func (q *MemQDB) GetKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
+	return q.getKeyrangeInternal(id)
+}
+
+func (q *MemQDB) getKeyrangeInternal(id string) (*KeyRange, error) {
 	kRangeInt, ok := q.Krs[id]
 	if !ok {
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "there is no key range %s", id)
@@ -445,7 +469,7 @@ func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange,
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	krs, err := q.GetKeyRange(ctx, id)
+	krs, err := q.getKeyrangeInternal(id)
 	if err != nil {
 		return nil, err
 	}
@@ -544,9 +568,9 @@ func (q *MemQDB) TryCoordinatorLock(_ context.Context, _ string) error {
 // TODO : unit tests
 func (q *MemQDB) UpdateCoordinator(_ context.Context, address string) error {
 	q.mu.Lock()
+	defer q.mu.Unlock()
 	changed := q.Coordinator != address
 	q.Coordinator = address
-	q.mu.Unlock()
 
 	if changed {
 		spqrlog.Zero.Debug().Str("address", address).Msg("memqdb: update coordinator address")
@@ -763,17 +787,30 @@ func (q *MemQDB) ListReferenceRelations(ctx context.Context) ([]*ReferenceRelati
 // ==============================================================================
 
 // TODO : unit tests
-func (q *MemQDB) CreateDistribution(_ context.Context, distribution *Distribution) error {
+func (q *MemQDB) CreateDistribution(_ context.Context, distribution *Distribution) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Interface("distribution", distribution).Msg("memqdb: add distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()
-
+	commands := make([]QdbStatement, 0, len(distribution.Relations)+1)
 	for _, r := range distribution.Relations {
 		q.RelationDistribution[r.Name] = distribution.ID
-		_ = ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, r.Name, distribution.ID))
+		if cmd, err := NewQdbStatementExt(CMD_PUT, r.Name, distribution.ID, MapRelationDistribution); err != nil {
+			return nil, err
+		} else {
+			commands = append(commands, *cmd)
+		}
 	}
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, distribution.ID, distribution))
+	if distributionJSON, err := json.Marshal(*distribution); err != nil {
+		return nil, err
+	} else {
+		if cmd, err := NewQdbStatementExt(CMD_PUT, distribution.ID, string(distributionJSON), MapDistributions); err != nil {
+			return nil, err
+		} else {
+			commands = append(commands, *cmd)
+			return commands, nil
+		}
+	}
 }
 
 // TODO : unit tests
@@ -998,6 +1035,75 @@ func (q *MemQDB) GetRelationDistribution(_ context.Context, relation *rfqn.Relat
 		// then we have corruption
 		return q.Distributions[ds], nil
 	}
+}
+
+// ==============================================================================
+//                               UNIQUE INDEXES
+// ==============================================================================
+
+func (q *MemQDB) ListUniqueIndexes(_ context.Context) (map[string]*UniqueIndex, error) {
+	spqrlog.Zero.Debug().
+		Msg("memqdb: list unique indexes")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.UniqueIndexes, nil
+}
+
+func (q *MemQDB) CreateUniqueIndex(_ context.Context, idx *UniqueIndex) error {
+	spqrlog.Zero.Debug().
+		Msg("memqdb: create unique index")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	ds, ok := q.Distributions[idx.DistributionId]
+	if !ok {
+		return fmt.Errorf("cannot create unique index: distribution \"%s\" not found", idx.DistributionId)
+	}
+	ds.UniqueIndexes[idx.ID] = idx
+
+	idxs, ok := q.UniqueIndexesByRel[idx.Relation.String()]
+	if !ok {
+		idxs = make(map[string]*UniqueIndex)
+	}
+	idxs[idx.ColumnName] = idx
+
+	q.UniqueIndexes[idx.ID] = idx
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexes, idx.ID, idx), NewUpdateCommand(q.UniqueIndexesByRel, idx.Relation.String(), idxs))
+}
+
+func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Msg("memqdb: drop unique index")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	idx, ok := q.UniqueIndexes[id]
+	if !ok {
+		return fmt.Errorf("unique index \"%s\" not found", id)
+	}
+
+	ds, ok := q.Distributions[idx.DistributionId]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "unique index \"%s\" belongs to nonexistent distribution \"%s\"", idx.ID, idx.DistributionId)
+	}
+	delete(ds.UniqueIndexes, idx.ID)
+
+	idxs, ok := q.UniqueIndexesByRel[idx.Relation.String()]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "unique index \"%s\" belongs to relation \"%s\", but index record not found", idx.ID, idx.Relation.String())
+	}
+	delete(idxs, idx.ColumnName)
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexesByRel, idx.Relation.String(), idxs), NewDeleteCommand(q.UniqueIndexes, idx.ID))
+}
+
+func (q *MemQDB) ListRelationIndexes(_ context.Context, relName *rfqn.RelationFQN) (map[string]*UniqueIndex, error) {
+
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	return q.UniqueIndexesByRel[relName.String()], nil
 }
 
 // ==============================================================================
@@ -1289,6 +1395,18 @@ func (q *MemQDB) AlterSequenceDetachRelation(_ context.Context, relName *rfqn.Re
 	return nil
 }
 
+func (q *MemQDB) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
+	rels := []*rfqn.RelationFQN{}
+	for col, seq := range q.ColumnSequence {
+		if seq == seqName {
+			s := strings.Split(col, "_")
+			relName := s[len(s)-2]
+			rels = append(rels, &rfqn.RelationFQN{RelationName: relName})
+		}
+	}
+	return rels, nil
+}
+
 func (q *MemQDB) DropSequence(ctx context.Context, seqName string, force bool) error {
 	for col, colSeq := range q.ColumnSequence {
 		if colSeq == seqName && !force {
@@ -1365,4 +1483,167 @@ func (q *MemQDB) CurrVal(_ context.Context, seqName string) (int64, error) {
 
 	next := q.SequenceToValues[seqName]
 	return next, nil
+}
+
+func (q *MemQDB) toRelationDistributionOperation(stmt QdbStatement) (Command, error) {
+	switch stmt.CmdType {
+	case CMD_DELETE:
+		return NewDeleteCommand(q.RelationDistribution, stmt.Key), nil
+	case CMD_PUT:
+		return NewUpdateCommand(q.RelationDistribution, stmt.Key, stmt.Value), nil
+	default:
+		return nil, fmt.Errorf("unsupported memqdb cmd %d (relation distribution)", stmt.CmdType)
+	}
+}
+func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
+	switch stmt.CmdType {
+	case CMD_DELETE:
+		return NewDeleteCommand(q.Distributions, stmt.Key), nil
+	case CMD_PUT:
+		var distr Distribution
+		if err := json.Unmarshal([]byte(stmt.Value), &distr); err != nil {
+			return nil, err
+		} else {
+			return NewUpdateCommand(q.Distributions, stmt.Key, &distr), nil
+		}
+	default:
+		return nil, fmt.Errorf("unsupported memqdb cmd %d (distributions)", stmt.CmdType)
+	}
+}
+
+func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error) {
+	memOperations := make([]Command, 0, len(operations))
+	for _, stmt := range operations {
+		switch stmt.Extension {
+		case MapRelationDistribution:
+			if operation, err := q.toRelationDistributionOperation(stmt); err != nil {
+				return nil, err
+			} else {
+				memOperations = append(memOperations, operation)
+			}
+		case MapDistributions:
+			if operation, err := q.toDistributions(stmt); err != nil {
+				return nil, err
+			} else {
+				memOperations = append(memOperations, operation)
+			}
+		default:
+			return nil, fmt.Errorf("not implemented for transaction memqdb part %s", stmt.Extension)
+		}
+	}
+	return memOperations, nil
+}
+
+func (q *MemQDB) ExecNoTransaction(ctx context.Context, operations []QdbStatement) error {
+	spqrlog.Zero.Debug().Msg("memqdb: exec chunk commands without transaction")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if memOperations, err := q.packMemqdbCommands(operations); err != nil {
+		return err
+	} else {
+		return ExecuteCommands(q.DumpState, memOperations...)
+	}
+}
+
+func (q *MemQDB) CommitTransaction(ctx context.Context, transaction *QdbTransaction) error {
+	spqrlog.Zero.Debug().Msg("memqdb: exec transaction")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if transaction == nil {
+		return fmt.Errorf("cant't commit empty transaction")
+	}
+	if err := transaction.Validate(); err != nil {
+		return fmt.Errorf("invalid transaction %s: %w", transaction.Id(), err)
+	}
+	if transaction.Id() != q.activeTransaction {
+		return fmt.Errorf("transaction '%s' can't be committed", transaction.Id())
+	}
+	if memOperations, err := q.packMemqdbCommands(transaction.commands); err != nil {
+		return err
+	} else {
+		return ExecuteCommands(q.DumpState, memOperations...)
+	}
+}
+
+func (q *MemQDB) BeginTransaction(_ context.Context, transaction *QdbTransaction) error {
+	spqrlog.Zero.Debug().Msg("memqdb: begin transaction")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if transaction == nil {
+		return fmt.Errorf("empty transaction is not supported")
+	}
+	q.activeTransaction = transaction.Id()
+	return nil
+}
+
+// ChangeTxStatus implements DCStateKeeper.
+func (q *MemQDB) ChangeTxStatus(id string, state string) error {
+	spqrlog.Zero.Debug().Msg("memqdb: ChangeTxStatus")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	/* XXX: validate state outer layers? */
+
+	info := q.TwoPhaseTx[id]
+	info.State = state
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.TwoPhaseTx, id, info))
+}
+
+func (q *MemQDB) AcquireTxOwnership(id string) bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if info, ok := q.TwoPhaseTx[id]; ok {
+		if info.Locked {
+			return false
+		}
+		info.Locked = true
+		return true
+	}
+	return false
+}
+
+func (q *MemQDB) ReleaseTxOwnership(gid string) {
+	spqrlog.Zero.Debug().Str("gid", gid).Msg("memqdb: ReleaseTxOwnership")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if info, ok := q.TwoPhaseTx[gid]; ok {
+		info.Locked = false
+	}
+}
+
+// RecordTwoPhaseMembers implements DCStateKeeper.
+// XXX: check that all members are valid spqr shards
+func (q *MemQDB) RecordTwoPhaseMembers(id string, shards []string) error {
+	spqrlog.Zero.Debug().Msg("memqdb: RecordTwoPhaseMembers")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	info := &TwoPCInfo{
+		Gid:       id,
+		SHardsIds: shards,
+		State:     TwoPhaseInitState,
+		Locked:    true,
+	}
+
+	q.TwoPhaseTx[id] = info
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.TwoPhaseTx, id, info))
+}
+
+// TXCohortShards implements DCStateKeeper.
+func (q *MemQDB) TXCohortShards(gid string) []string {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return q.TwoPhaseTx[gid].SHardsIds
+}
+
+// TXStatus implements DCStateKeeper.
+func (q *MemQDB) TXStatus(gid string) string {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return q.TwoPhaseTx[gid].State
 }

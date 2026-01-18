@@ -11,8 +11,9 @@ import (
 	"github.com/pg-sharding/spqr/router/client"
 )
 
-type ConnectionKeeper interface {
+type GangMgr interface {
 	txstatus.TxStatusMgr
+
 	ActiveShards() []kr.ShardKey
 	ActiveShardsReset()
 
@@ -24,22 +25,16 @@ type ConnectionKeeper interface {
 }
 
 type PoolMgr interface {
-	TXEndCB(rst ConnectionKeeper) error
+	TXEndCB(gangMgr GangMgr) error
 
-	UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error
-	UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error
-
-	ValidateSliceChange(rst ConnectionKeeper) bool
-	ConnectionActive(rst ConnectionKeeper) bool
+	ValidateGangChange(gangMgr GangMgr) bool
+	ConnectionActive(gangMgr GangMgr) bool
 }
 
 // TODO : unit tests
-func unRouteWithError(cmngr PoolMgr, client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
-	_ = cmngr.UnRouteCB(client, sh)
-	return client.ReplyErr(errmsg)
-}
-
-func unRouteShardsCommon(cl client.RouterClient, sh []kr.ShardKey) error {
+func UnrouteCommon(
+	cl client.RouterClient,
+	sh []kr.ShardKey) error {
 	var anyerr error
 	anyerr = nil
 
@@ -77,76 +72,56 @@ func unRouteShardsCommon(cl client.RouterClient, sh []kr.ShardKey) error {
 type TxConnManager struct {
 }
 
-// TODO : unit tests
-func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
-	return unRouteWithError(t, client, sh, errmsg)
-}
-
-// TODO : unit tests
-func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
-	return unRouteShardsCommon(cl, sh)
-}
-
 func NewTxConnManager() *TxConnManager {
 	return &TxConnManager{}
 }
 
 // TODO : unit tests
-func (t *TxConnManager) ConnectionActive(rst ConnectionKeeper) bool {
-	return rst.ActiveShards() != nil
+func (t *TxConnManager) ConnectionActive(gangMgr GangMgr) bool {
+	return gangMgr.ActiveShards() != nil
 }
 
 // TODO : unit tests
-func (t *TxConnManager) ValidateSliceChange(rst ConnectionKeeper) bool {
+func (t *TxConnManager) ValidateGangChange(gangMgr GangMgr) bool {
 	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Int("shards", len(rst.ActiveShards())).
-		Int64("sync-count", rst.SyncCount()).
-		Bool("data pending", rst.DataPending()).
+		Uint("client", gangMgr.Client().ID()).
+		Int("shards", len(gangMgr.ActiveShards())).
+		Int64("sync-count", gangMgr.SyncCount()).
+		Bool("data pending", gangMgr.DataPending()).
 		Msg("client validate rerouting of TX")
 
-	if rst.SyncCount() != 0 || rst.DataPending() {
+	if gangMgr.SyncCount() != 0 || gangMgr.DataPending() {
 		return false
 	}
 
-	return rst.ActiveShards() == nil || rst.TxStatus() == txstatus.TXIDLE
+	return gangMgr.ActiveShards() == nil || gangMgr.TxStatus() == txstatus.TXIDLE
 }
 
 // TODO : unit tests
-func (t *TxConnManager) TXEndCB(rst ConnectionKeeper) error {
+func (t *TxConnManager) TXEndCB(rst GangMgr) error {
 	ash := rst.ActiveShards()
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("client end of transaction, unrouting from active shards")
 	rst.ActiveShardsReset()
 
-	return t.UnRouteCB(rst.Client(), ash)
+	return UnrouteCommon(rst.Client(), ash)
 }
 
 type SessConnManager struct {
 }
 
-// TODO : unit tests
-func (s *SessConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
-	return unRouteWithError(s, client, sh, errmsg)
-}
-
-// TODO : unit tests
-func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
-	return unRouteShardsCommon(cl, sh)
-}
-
-func (s *SessConnManager) TXEndCB(rst ConnectionKeeper) error {
+func (s *SessConnManager) TXEndCB(rst GangMgr) error {
 	return nil
 }
 
 // TODO : unit tests
-func (t *SessConnManager) ConnectionActive(rst ConnectionKeeper) bool {
+func (t *SessConnManager) ConnectionActive(rst GangMgr) bool {
 	return rst.ActiveShards() != nil
 }
 
 // TODO : unit tests
-func (s *SessConnManager) ValidateSliceChange(rst ConnectionKeeper) bool {
+func (s *SessConnManager) ValidateGangChange(rst GangMgr) bool {
 	return rst.ActiveShards() == nil
 }
 
@@ -158,27 +133,17 @@ type VirtualConnManager struct {
 }
 
 // ConnectionActive implements PoolMgr.
-func (v *VirtualConnManager) ConnectionActive(rst ConnectionKeeper) bool {
+func (v *VirtualConnManager) ConnectionActive(rst GangMgr) bool {
 	return true
 }
 
 // TXEndCB implements PoolMgr.
-func (v *VirtualConnManager) TXEndCB(rst ConnectionKeeper) error {
+func (v *VirtualConnManager) TXEndCB(rst GangMgr) error {
 	return nil
 }
 
-// UnRouteCB implements PoolMgr.
-func (v *VirtualConnManager) UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error {
-	return nil
-}
-
-// UnRouteWithError implements PoolMgr.
-func (v *VirtualConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
-	return unRouteWithError(v, client, sh, errmsg)
-}
-
-// ValidateSliceChange implements PoolMgr.
-func (v *VirtualConnManager) ValidateSliceChange(rst ConnectionKeeper) bool {
+// ValidateGangChange implements PoolMgr.
+func (v *VirtualConnManager) ValidateGangChange(rst GangMgr) bool {
 	return false
 }
 

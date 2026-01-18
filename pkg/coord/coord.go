@@ -3,6 +3,7 @@ package coord
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -14,9 +15,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/qdb/ops"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/sethvargo/go-retry"
@@ -24,13 +25,15 @@ import (
 
 type Coordinator struct {
 	qdb qdb.XQDB
+	dcs qdb.DCStateKeeper
 }
 
 var _ meta.EntityMgr = &Coordinator{}
 
-func NewCoordinator(qdb qdb.XQDB) Coordinator {
+func NewCoordinator(q qdb.XQDB, d qdb.DCStateKeeper) Coordinator {
 	return Coordinator{
-		qdb: qdb,
+		qdb: q,
+		dcs: d,
 	}
 }
 
@@ -53,7 +56,11 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*r
 		}
 		fromShard := rel.ShardIds[0]
 
-		destShards := append(rel.ShardIds, destShard)
+		// XXX: should we ignore the command/error here?
+		destShards := rel.ShardIds
+		if !slices.Contains(rel.ShardIds, destShard) {
+			destShards = append(rel.ShardIds, destShard)
+		}
 
 		if err = datatransfers.SyncReferenceRelation(ctx, fromShard, destShard, rel, lc.qdb); err != nil {
 			return err
@@ -144,12 +151,18 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 	selectedDistribId := distributions.REPLICATED
 
 	if _, err := lc.GetDistribution(ctx, selectedDistribId); err != nil {
-		err := lc.CreateDistribution(ctx, &distributions.Distribution{
+		var chunk *mtran.MetaTransactionChunk
+		chunk, err = lc.CreateDistribution(ctx, &distributions.Distribution{
 			Id:       distributions.REPLICATED,
 			ColTypes: nil,
 		})
 		if err != nil {
-			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
+			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution (prepare phase)")
+			return err
+		}
+		err = lc.ExecNoTran(ctx, chunk)
+		if err != nil {
+			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution (exec phase)")
 			return err
 		}
 	}
@@ -187,6 +200,7 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 	return lc.AlterDistributionAttach(ctx, selectedDistribId, []*distributions.DistributedRelation{
 		{
 			Name:                  r.TableName,
+			SchemaName:            r.SchemaName,
 			ReplicatedRelation:    true,
 			ColumnSequenceMapping: ret,
 		},
@@ -340,6 +354,12 @@ func (lc *Coordinator) NextRange(ctx context.Context, seqName string, rangeSize 
 // QDB implements meta.EntityMgr.
 func (lc *Coordinator) QDB() qdb.QDB {
 	return lc.qdb
+}
+
+// DCStateKeeper implements meta.EntityMgr.
+func (lc *Coordinator) DCStateKeeper() qdb.DCStateKeeper {
+	/* this is actually used by router, so we have to provide one */
+	return lc.dcs
 }
 
 // RedistributeKeyRange implements meta.EntityMgr.
@@ -710,24 +730,32 @@ func (qc *Coordinator) ListDistributions(ctx context.Context) ([]*distributions.
 	return res, nil
 }
 
-func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
+func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) (*mtran.MetaTransactionChunk, error) {
 	if len(ds.ColTypes) == 0 && ds.Id != distributions.REPLICATED {
-		return fmt.Errorf("empty distributions are disallowed")
+		return nil, fmt.Errorf("empty distributions are disallowed")
 	}
 	for _, rel := range ds.Relations {
 		for colName, SeqName := range rel.ColumnSequenceMapping {
 
 			if err := qc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
-				return err
+				return nil, err
 			}
 			qualifiedName := rel.ToRFQN()
 			err := qc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
-	return qc.qdb.CreateDistribution(ctx, distributions.DistributionToDB(ds))
+	if stmts, err := qc.qdb.CreateDistribution(ctx, distributions.DistributionToDB(ds)); err != nil {
+		return nil, err
+	} else {
+		if result, err := mtran.NewMetaTransactionChunk(nil, stmts); err != nil {
+			return nil, err
+		} else {
+			return result, nil
+		}
+	}
 }
 
 // TODO : unit tests
@@ -742,6 +770,17 @@ func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 // Returns:
 // - error: an error if the alteration operation fails.
 func (qc *Coordinator) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
+	ds, err := qc.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
+	rel, ok := ds.Relations[relName.RelationName]
+	if !ok {
+		return fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", relName.RelationName, ds.Id)
+	}
+	if len(rel.UniqueIndexesByColumn) > 0 {
+		return fmt.Errorf("cannot detach relation \"%s\" because there are unique indexes depending on it\nHINT: Use DROP ... CASCADE to drop unique indexes automatically", relName.RelationName)
+	}
 	return qc.qdb.AlterDistributionDetach(ctx, id, relName)
 }
 
@@ -765,7 +804,7 @@ func (qc *Coordinator) ShareKeyRange(id string) error {
 // Returns:
 // - error: An error if the creation encounters any issues.
 func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	return ops.CreateKeyRangeWithChecks(ctx, lc.qdb, kr)
+	return lc.qdb.CreateKeyRange(ctx, kr.ToDB())
 }
 
 // TODO : unit tests
@@ -924,8 +963,11 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 	if krLeft.ID != krBase.ID {
 		krBase.LowerBound = krAppendage.LowerBound
 	}
-
-	if err := ops.ModifyKeyRangeWithChecks(ctx, lc.qdb, krBase); err != nil {
+	// TODO: move check to meta layer
+	if err := meta.ValidateKeyRangeForModify(ctx, lc, krBase); err != nil {
+		return err
+	}
+	if err := lc.qdb.UpdateKeyRange(ctx, krBase.ToDB()); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err.Error())
 	}
 	return nil
@@ -1016,7 +1058,7 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return err
 	}
 
-	if err := ops.CreateKeyRangeWithChecks(ctx, qc.qdb, krTemp); err != nil {
+	if err := meta.CreateKeyRangeStrict(ctx, qc, krTemp); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
 	}
 
@@ -1047,4 +1089,115 @@ func (lc *Coordinator) ListSequences(ctx context.Context) ([]string, error) {
 
 func (lc *Coordinator) ListRelationSequences(ctx context.Context, rel *rfqn.RelationFQN) (map[string]string, error) {
 	return lc.qdb.GetRelationSequence(ctx, rel)
+}
+
+func (lc *Coordinator) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
+	return lc.qdb.GetSequenceRelations(ctx, seqName)
+}
+
+func (lc *Coordinator) AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error {
+	return lc.qdb.AlterSequenceDetachRelation(ctx, rel)
+}
+
+func (lc *Coordinator) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionChunk) error {
+	if len(chunk.GossipRequests) > 0 {
+		return fmt.Errorf("gossip requests is supported in clustered mode only")
+	}
+	return lc.qdb.ExecNoTransaction(ctx, chunk.QdbStatements)
+}
+
+func (lc *Coordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
+	if len(transaction.Operations.GossipRequests) > 0 {
+		return fmt.Errorf("gossip requests is supported in clustered mode only")
+	}
+	return lc.qdb.CommitTransaction(ctx, mtran.ToQdbTransaction(transaction))
+}
+
+func (lc *Coordinator) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error) {
+	if qdbTran, err := qdb.NewTransaction(); err != nil {
+		return nil, err
+	} else {
+		if err := lc.qdb.BeginTransaction(ctx, qdbTran); err != nil {
+			return nil, err
+		}
+		return mtran.NewMetaTransaction(*qdbTran), nil
+	}
+}
+
+// CreateUniqueIndex implements meta.EntityMgr.
+func (lc *Coordinator) CreateUniqueIndex(ctx context.Context, dsId string, idx *distributions.UniqueIndex) error {
+	ds, err := lc.GetRelationDistribution(ctx, idx.RelationName)
+	if err != nil {
+		return err
+	}
+	if _, ok := ds.UniqueIndexesByID[idx.ID]; ok {
+		return fmt.Errorf("unique index with ID \"%s\" already exists", idx.ID)
+	}
+	rel, ok := ds.Relations[idx.RelationName.RelationName]
+	if !ok {
+		return fmt.Errorf("no relation \"%s\" found in distribution \"%s\"", idx.RelationName.RelationName, ds.Id)
+	}
+
+	/* Current implementation restriction. */
+	if len(ds.ColTypes) != 1 {
+		return fmt.Errorf("unique indexes are supported only for single-column distributions, but %s has %d", ds.Id, len(ds.ColTypes))
+	}
+
+	switch ds.ColTypes[0] {
+	/* only UUID or hashed types */
+	case qdb.ColumnTypeInteger, qdb.ColumnTypeVarchar:
+		return fmt.Errorf("unique indexes are not supported non-hashed distribution")
+	}
+
+	/* Is this a problem? */
+	if _, ok := rel.UniqueIndexesByColumn[idx.ColumnName]; ok {
+		return fmt.Errorf("unique index for table \"%s\", column \"%s\" already exists", idx.RelationName.String(), idx.ColumnName)
+	}
+	return lc.qdb.CreateUniqueIndex(ctx, distributions.UniqueIndexToDB(dsId, idx))
+}
+
+// DropUniqueIndex implements meta.EntityMgr.
+func (lc *Coordinator) DropUniqueIndex(ctx context.Context, idxId string) error {
+	return lc.qdb.DropUniqueIndex(ctx, idxId)
+}
+
+// ListDistributionIndexes implements meta.EntityMgr.
+func (lc *Coordinator) ListDistributionIndexes(ctx context.Context, dsId string) (map[string]*distributions.UniqueIndex, error) {
+	idxs, err := lc.qdb.ListUniqueIndexes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*distributions.UniqueIndex)
+	for id, idx := range idxs {
+		if idx.DistributionId == dsId {
+			res[id] = distributions.UniqueIndexFromDB(idx)
+		}
+	}
+	return res, nil
+}
+
+// ListDistributionIndexes implements meta.EntityMgr.
+func (lc *Coordinator) ListUniqueIndexes(ctx context.Context) (map[string]*distributions.UniqueIndex, error) {
+	idxs, err := lc.qdb.ListUniqueIndexes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*distributions.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexFromDB(idx)
+	}
+	return res, nil
+}
+
+// ListRelationIndexes implements meta.EntityMgr.
+func (lc *Coordinator) ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
+	idxs, err := lc.qdb.ListRelationIndexes(ctx, relName)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*distributions.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexFromDB(idx)
+	}
+	return res, nil
 }

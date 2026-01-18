@@ -10,12 +10,13 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rulerouter"
@@ -25,7 +26,6 @@ import (
 
 type LocalQrouterServer struct {
 	protos.UnimplementedKeyRangeServiceServer
-	protos.UnimplementedShardingRulesServiceServer
 	protos.UnimplementedRouterServiceServer
 	protos.UnimplementedTopologyServiceServer
 	protos.UnimplementedClientInfoServiceServer
@@ -36,6 +36,7 @@ type LocalQrouterServer struct {
 	protos.UnimplementedShardServiceServer
 	protos.UnimplementedBalancerTaskServiceServer
 	protos.UnimplementedReferenceRelationsServiceServer
+	protos.UnimplementedMetaTransactionGossipServiceServer
 
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
@@ -143,19 +144,28 @@ func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.Shard
 	}, nil
 }
 
-// CreateDistribution creates distribution in QDB
-// TODO: unit tests
-func (l *LocalQrouterServer) CreateDistribution(ctx context.Context, request *protos.CreateDistributionRequest) (*emptypb.Empty, error) {
-	for _, ds := range request.GetDistributions() {
+func (l *LocalQrouterServer) createDistributionPrepare(ctx context.Context, gossip *protos.CreateDistributionGossip) ([]qdb.QdbStatement, error) {
+	result := make([]qdb.QdbStatement, 0, len(gossip.GetDistributions()))
+	for _, ds := range gossip.GetDistributions() {
 		mds, err := distributions.DistributionFromProto(ds)
 		if err != nil {
 			return nil, err
 		}
-		if err := l.mgr.CreateDistribution(ctx, mds); err != nil {
+		if tranChunk, err := l.mgr.CreateDistribution(ctx, mds); err != nil {
 			return nil, err
+		} else {
+			if len(tranChunk.QdbStatements) == 0 {
+				return nil, fmt.Errorf("transaction chunk must have a qdb statement (createDistributionPrepare)")
+			}
+			result = append(result, tranChunk.QdbStatements...)
 		}
 	}
-	return nil, nil
+	return result, nil
+}
+
+// CreateDistribution creates distribution in QDB
+func (l *LocalQrouterServer) CreateDistribution(ctx context.Context, request *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
+	return nil, fmt.Errorf("DEPRECATED, remove after meta transaction implementation")
 }
 
 // DropDistribution deletes distribution from QDB
@@ -194,7 +204,7 @@ func (l *LocalQrouterServer) AlterDistributionAttach(ctx context.Context, reques
 	res := make([]*distributions.DistributedRelation, len(request.GetRelations()))
 	for i, rel := range request.GetRelations() {
 		var err error
-		res[i], err = distributions.DistributedRelationFromProto(rel)
+		res[i], err = distributions.DistributedRelationFromProto(rel, map[string]*distributions.UniqueIndex{})
 		if err != nil {
 			return nil, err
 		}
@@ -221,11 +231,19 @@ func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, reques
 // AlterDistributedRelation alters the distributed relation
 // TODO: unit tests
 func (l *LocalQrouterServer) AlterDistributedRelation(ctx context.Context, request *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
-	ds, err := distributions.DistributedRelationFromProto(request.GetRelation())
+	ds, err := l.mgr.GetRelationDistribution(ctx, &rfqn.RelationFQN{RelationName: request.Relation.Name, SchemaName: request.Relation.SchemaName})
 	if err != nil {
 		return nil, err
 	}
-	return nil, l.mgr.AlterDistributedRelation(ctx, request.GetId(), ds)
+	curRel, ok := ds.Relations[request.Relation.Name]
+	if !ok {
+		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", request.Relation.Name, ds.Id)
+	}
+	rel, err := distributions.DistributedRelationFromProto(request.GetRelation(), curRel.UniqueIndexesByColumn)
+	if err != nil {
+		return nil, err
+	}
+	return nil, l.mgr.AlterDistributedRelation(ctx, request.GetId(), rel)
 }
 
 // AlterDistributedRelation alters the distributed relation
@@ -319,21 +337,6 @@ func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.M
 	}
 
 	return &protos.ModifyReply{}, nil
-}
-
-// TODO : unit tests
-func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*emptypb.Empty, error) {
-	return nil, spqrerror.ShardingRulesRemoved
-}
-
-// TODO : unit tests
-func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
-	return nil, spqrerror.ShardingRulesRemoved
-}
-
-// TODO : unit tests
-func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *protos.DropShardingRuleRequest) (*emptypb.Empty, error) {
-	return nil, spqrerror.ShardingRulesRemoved
 }
 
 // TODO : unit tests
@@ -629,6 +632,110 @@ func (l *LocalQrouterServer) DropSequence(ctx context.Context, request *protos.D
 	return nil, err
 }
 
+func (l *LocalQrouterServer) ApplyMeta(ctx context.Context, request *protos.MetaTransactionGossipRequest) (*emptypb.Empty, error) {
+	toExecuteCmds := make([]qdb.QdbStatement, 0, len(request.Commands))
+	for _, gossipCommand := range request.Commands {
+		cmdType := mtran.GetGossipRequestType(gossipCommand)
+		switch cmdType {
+		case mtran.GR_CreateDistributionRequest:
+			if cmdList, err := l.createDistributionPrepare(ctx, gossipCommand.CreateDistribution); err != nil {
+				return nil, err
+			} else {
+				if len(cmdList) == 0 {
+					return nil, fmt.Errorf("no QDB changes in gossip request:%d", cmdType)
+				}
+				toExecuteCmds = append(toExecuteCmds, cmdList...)
+			}
+		// TODO: run handlers converting gossip commands to chunk with qdb commands
+		default:
+			return nil, fmt.Errorf("invalid meta gossip request:%d", cmdType)
+		}
+	}
+	if chunkCmd, err := mtran.NewMetaTransactionChunk(nil, toExecuteCmds); err != nil {
+		return nil, err
+	} else {
+		return nil, l.mgr.ExecNoTran(ctx, chunkCmd)
+	}
+}
+
+func (l *LocalQrouterServer) CurrVal(ctx context.Context, req *protos.CurrValRequest) (*protos.CurrValReply, error) {
+	val, err := l.mgr.CurrVal(ctx, req.Seq)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.CurrValReply{Value: val}, nil
+}
+
+func (l *LocalQrouterServer) ListSequences(ctx context.Context, _ *emptypb.Empty) (*protos.ListSequencesReply, error) {
+	seqs, err := l.mgr.ListSequences(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.ListSequencesReply{Names: seqs}, nil
+}
+
+func (l *LocalQrouterServer) ListRelationSequences(ctx context.Context, req *protos.ListRelationSequencesRequest) (*protos.ListRelationSequencesReply, error) {
+	val, err := l.mgr.ListRelationSequences(ctx, rfqn.RelationFQNFromFullName(req.SchemaName, req.Name))
+	if err != nil {
+		return nil, err
+	}
+	return &protos.ListRelationSequencesReply{ColumnSequences: val}, nil
+}
+
+func (l *LocalQrouterServer) NextRange(ctx context.Context, req *protos.NextRangeRequest) (*protos.NextRangeReply, error) {
+	val, err := l.mgr.NextRange(ctx, req.Seq, uint64(req.RangeSize))
+	if err != nil {
+		return nil, err
+	}
+	return &protos.NextRangeReply{Left: val.Left, Right: val.Right}, nil
+}
+
+func (l *LocalQrouterServer) CreateUniqueIndex(ctx context.Context, req *protos.CreateUniqueIndexRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.CreateUniqueIndex(ctx, req.DistributionId, distributions.UniqueIndexFromProto(req.Idx))
+}
+
+func (l *LocalQrouterServer) DropUniqueIndex(ctx context.Context, req *protos.DropUniqueIndexRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropUniqueIndex(ctx, req.IdxId)
+}
+
+func (l *LocalQrouterServer) ListUniqueIndexes(ctx context.Context, _ *emptypb.Empty) (*protos.ListUniqueIndexesReply, error) {
+	idxs, err := l.mgr.ListUniqueIndexes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*protos.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexToProto(idx)
+	}
+	return &protos.ListUniqueIndexesReply{Indexes: res}, nil
+}
+
+func (l *LocalQrouterServer) ListRelationUniqueIndexes(ctx context.Context, req *protos.ListRelationUniqueIndexesRequest) (*protos.ListUniqueIndexesReply, error) {
+	idxs, err := l.mgr.ListRelationIndexes(ctx, &rfqn.RelationFQN{
+		RelationName: req.RelationName,
+	})
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*protos.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexToProto(idx)
+	}
+	return &protos.ListUniqueIndexesReply{Indexes: res}, nil
+}
+
+func (l *LocalQrouterServer) ListDistributionUniqueIndexes(ctx context.Context, req *protos.ListDistributionUniqueIndexesRequest) (*protos.ListUniqueIndexesReply, error) {
+	idxs, err := l.mgr.ListDistributionIndexes(ctx, req.DistributionId)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*protos.UniqueIndex)
+	for id, idx := range idxs {
+		res[id] = distributions.UniqueIndexToProto(idx)
+	}
+	return &protos.ListUniqueIndexesReply{Indexes: res}, nil
+}
+
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
 
 	lqr := &LocalQrouterServer{
@@ -640,7 +747,6 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	reflection.Register(server)
 
 	protos.RegisterKeyRangeServiceServer(server, lqr)
-	protos.RegisterShardingRulesServiceServer(server, lqr)
 	protos.RegisterRouterServiceServer(server, lqr)
 	protos.RegisterTopologyServiceServer(server, lqr)
 	protos.RegisterClientInfoServiceServer(server, lqr)
@@ -650,11 +756,10 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterMoveTasksServiceServer(server, lqr)
 	protos.RegisterBalancerTaskServiceServer(server, lqr)
 	protos.RegisterReferenceRelationsServiceServer(server, lqr)
-	protos.RegisterShardServiceServer(server, lqr)
+	protos.RegisterMetaTransactionGossipServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
-var _ protos.ShardingRulesServiceServer = &LocalQrouterServer{}
 var _ protos.RouterServiceServer = &LocalQrouterServer{}
 var _ protos.ClientInfoServiceServer = &LocalQrouterServer{}
 var _ protos.BackendConnectionsServiceServer = &LocalQrouterServer{}
@@ -664,3 +769,4 @@ var _ protos.MoveTasksServiceServer = &LocalQrouterServer{}
 var _ protos.BalancerTaskServiceServer = &LocalQrouterServer{}
 var _ protos.ShardServiceServer = &LocalQrouterServer{}
 var _ protos.ReferenceRelationsServiceServer = &LocalQrouterServer{}
+var _ protos.MetaTransactionGossipServiceServer = &LocalQrouterServer{}

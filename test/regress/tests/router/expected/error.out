@@ -46,7 +46,9 @@ ERROR:  column "ixxxd" does not exist
 LINE 1: SELECT * FROM x WHERE ixxxd = 1 /* __spqr__engine_v2: true *...
                               ^
 SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;
-ERROR:  client processing error: 'SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;': syntax error on pos 32, tx status IDLE
+ERROR:  syntax error
+LINE 1: SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;
+                                       ^
 SELECT * FROM x WHERE id = 1;
 NOTICE: send query to shard(s) : sh1
  id 

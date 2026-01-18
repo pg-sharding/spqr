@@ -1,9 +1,10 @@
 ---
-title: 'Limited cross-shard queries'
+title: 'Cross-shard queries'
 ---
 
-SPQR is optimized for single-shard OLTP queries. But SPQR router supports limited subset of cross-shard queries. For example, `SELECT * FROM` without `WHERE` clause or DDL commands. This is made from best-effort logic in a non-disruptive and non-consistent way and is used mainly for testing purposes. Please be carefull using this feature in production, cross-shard snapshot will be inconsistent. 
+SPQR is optimized for single-shard OLTP queries but supports limited cross-shard operations:
 
-You can force disable this feature by setting a `query_routing.default_route_behaviour` to `BLOCK` in your router config file.
+- `SELECT * FROM` without `WHERE` clause and DDL commands (best-effort with no snapshot isolation, see [Distributed Transactions](/sharding/distributed_transactions))
+- [Bulk operations](/sharding/bulk) (COPY, batch INSERT)
 
-We have long-term plans to support routing queries for 2 or more shards efficiently.
+Disable with `query_routing.default_route_behaviour: BLOCK` in router config.

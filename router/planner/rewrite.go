@@ -3,13 +3,151 @@ package planner
 import (
 	"context"
 	"fmt"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/router/rfqn"
 )
+
+func RewriteUpdateToDelete(query string, rqdn *rfqn.RelationFQN) (string, error) {
+
+	if query[len(query)-1] == ';' {
+		query = query[:len(query)-1]
+	}
+
+	// Find the WHERE keyword
+	// we expect query in form of simple update, no CTE or RETURNING.
+	valuesKeywordStart := strings.Index(strings.ToUpper(query), "WHERE")
+	if valuesKeywordStart == -1 {
+		return "", fmt.Errorf("invalid query: missing VALUES clause")
+	}
+
+	return fmt.Sprintf(`DELETE FROM "%s" %s`, rqdn.String(), query[valuesKeywordStart:]), nil
+}
+
+func RewriteDistributedRelInsertForIndexes(query string, iis []*distributions.UniqueIndex) (string, error) {
+	if query[len(query)-1] == ';' {
+		query = query[:len(query)-1]
+	}
+
+	query += " RETURNING "
+
+	for ind, is := range iis {
+		if ind == 0 {
+			query += is.ColumnName
+		} else {
+			query += " , " + is.ColumnName
+		}
+	}
+
+	return query, nil
+}
+
+func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
+
+	p := &plan.ScatterPlan{
+		SubPlan: &plan.ModifyTable{},
+	}
+
+	// Find the VALUES keyword
+	valuesKeywordStart := strings.Index(strings.ToUpper(query), "VALUES")
+	if valuesKeywordStart == -1 {
+		return nil, fmt.Errorf("invalid query: missing VALUES clause")
+	}
+
+	// Find and process each VALUES clause
+	pos := valuesKeywordStart + 6
+
+	mp := map[string]string{}
+	frst := map[string]bool{}
+	for _, sh := range shs {
+		frst[sh.Name] = true
+		mp[sh.Name] = query[:pos] + " " /* add one space to make query pretty */
+	}
+
+	valIndx := 0
+
+	for {
+		// Skip whitespace
+		for pos < len(query) && unicode.IsSpace(rune(query[pos])) {
+			pos++
+		}
+
+		if pos >= len(query) {
+			break
+		}
+
+		// Look for opening parenthesis of VALUES clause
+		if query[pos] != '(' {
+			// If not a parenthesis and we've processed at least one VALUES clause, we're done
+			if valIndx == len(shs) {
+				break
+			}
+			return nil, fmt.Errorf("invalid query: expected opening parenthesis for VALUES clause")
+		}
+
+		// Find matching closing parenthesis for this VALUES clause
+		valuesOpenInd := pos
+		valuesCloseInd := findMatchingClosingParenthesis(query, valuesOpenInd)
+		if valuesCloseInd == -1 {
+			return nil, fmt.Errorf("invalid query: missing closing parenthesis in VALUES clause")
+		}
+
+		// Format the VALUES clause content
+		if !frst[shs[valIndx].Name] {
+			mp[shs[valIndx].Name] += ", "
+		}
+
+		mp[shs[valIndx].Name] += query[valuesOpenInd : valuesCloseInd+1]
+
+		// Move past this VALUES clause
+		pos = valuesCloseInd + 1
+
+		// Skip whitespace and look for comma
+		whitespaceStart := pos
+		for pos < len(query) && unicode.IsSpace(rune(query[pos])) {
+			pos++
+		}
+
+		if pos >= len(query) || query[pos] != ',' {
+			// No more VALUES clauses, preserve the whitespace and add remaining query
+			if whitespaceStart < len(query) {
+				for sh := range mp {
+					mp[sh] += query[whitespaceStart:]
+				}
+			}
+			break
+		}
+
+		// Skip the comma
+		pos++
+
+		frst[shs[valIndx].Name] = false
+		valIndx++
+	}
+
+	for sh := range frst {
+		p.ExecTargets = append(p.ExecTargets, kr.ShardKey{
+			Name: sh,
+		})
+	}
+
+	sort.Slice(p.ExecTargets, func(i, j int) bool {
+		return p.ExecTargets[i].Name < p.ExecTargets[j].Name
+	})
+
+	p.OverwriteQuery = mp
+
+	return p, nil
+}
 
 func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextvalGen func() (string, error)) (string, error) {
 	// Find the position of the opening parenthesis for the column list
@@ -161,11 +299,15 @@ func findMatchingClosingParenthesis(query string, openPos int) int {
 
 func InsertSequenceValue(ctx context.Context,
 	query string,
+	columns []string,
 	ColumnSequenceMapping map[string]string,
 	idCache IdentityRouterCache,
 ) (string, error) {
 
 	for colName, seqName := range ColumnSequenceMapping {
+		if slices.Contains(columns, colName) {
+			continue
+		}
 
 		newQuery, err := RewriteReferenceRelationAutoIncInsert(query, colName, func() (string, error) {
 			v, err := idCache.NextVal(ctx, seqName)

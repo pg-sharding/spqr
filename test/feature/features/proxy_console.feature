@@ -49,11 +49,11 @@ Feature: Proxy console
         Then SQL result should match json_exactly
         """
         [{
-            "Key range ID":"krid1",
-            "Distribution ID":"ds1",
-            "Lower bound":"0",
-            "Shard ID":"sh1",
-            "Locked":"false"
+            "key_range_id":"krid1",
+            "distribution_id":"ds1",
+            "lower_bound":"0",
+            "shard_id":"sh1",
+            "locked":"false"
         }]
         """
 
@@ -67,11 +67,11 @@ Feature: Proxy console
         Then SQL result should match json_exactly
         """
         [{
-            "Key range ID":"krid1",
-            "Distribution ID":"ds1",
-            "Lower bound":"0",
-            "Shard ID":"sh1",
-            "Locked":"false"
+            "key_range_id":"krid1",
+            "distribution_id":"ds1",
+            "lower_bound":"0",
+            "shard_id":"sh1",
+            "locked":"false"
         }]
         """
 
@@ -133,18 +133,18 @@ Feature: Proxy console
         Then SQL result should match json_exactly
         """
         [{
-            "Key range ID":"krid1",
-            "Distribution ID":"ds1",
-            "Lower bound":"0",
-            "Shard ID":"sh1",
-            "Locked":"false"
+            "key_range_id":"krid1",
+            "distribution_id":"ds1",
+            "lower_bound":"0",
+            "shard_id":"sh1",
+            "locked":"false"
         },
         {
-            "Key range ID":"new_krid",
-            "Distribution ID":"ds1",
-            "Lower bound":"5",
-            "Shard ID":"sh1",
-            "Locked":"false"
+            "key_range_id":"new_krid",
+            "distribution_id":"ds1",
+            "lower_bound":"5",
+            "shard_id":"sh1",
+            "locked":"false"
         }]
         """
 
@@ -161,11 +161,11 @@ Feature: Proxy console
         Then SQL result should match json_exactly
         """
         [{
-            "Key range ID":"krid1",
-            "Distribution ID":"ds1",
-            "Lower bound":"0",
-            "Shard ID":"sh1",
-            "Locked":"false"
+            "key_range_id":"krid1",
+            "distribution_id":"ds1",
+            "lower_bound":"0",
+            "shard_id":"sh1",
+            "locked":"false"
         }]
         """
 
@@ -223,11 +223,11 @@ Feature: Proxy console
         Then SQL result should match json_exactly
         """
         [{
-            "Key range ID":"old_krid",
-            "Distribution ID":"ds1",
-            "Lower bound":"100",
-            "Shard ID":"sh2",
-            "Locked":"false"
+            "key_range_id":"old_krid",
+            "distribution_id":"ds1",
+            "lower_bound":"100",
+            "shard_id":"sh2",
+            "locked":"false"
         }]
         """
 
@@ -270,7 +270,8 @@ Feature: Proxy console
                 "id":            "2",
                 "kr_id_temp":    "temp_id",
                 "bound":         ["FAAAAAAAAAA="],
-                "state":         0
+                "state":         0,
+                "task_group_id": "tgid1"
             }
         }
         """
@@ -283,10 +284,11 @@ Feature: Proxy console
         And SQL result should match json_exactly
         """
         [{
-            "Task group ID":            "tgid1",
-            "Destination shard ID":     "sh_to",
-            "Source key range ID":      "kr_from",
-            "Destination key range ID": "kr_to"
+            "task_group_id":            "tgid1",
+            "destination_shard_id":     "sh_to",
+            "source_key_range_id":      "kr_from",
+            "destination_key_range_id": "kr_to",
+            "move_task_id":     "2"
         }]
         """
         When I run SQL on host "router-admin"
@@ -297,10 +299,11 @@ Feature: Proxy console
         And SQL result should match json_exactly
         """
         [{
-            "Move task ID":             "2",
-            "State":                    "PLANNED",
-            "Bound":                    "10",
-            "Temporary key range ID":   "temp_id"
+            "move_task_id":             "2",
+            "state":                    "PLANNED",
+            "bound":                    "10",
+            "temporary_key_range_id":   "temp_id",
+            "task_group_id":            "tgid1"
         }]
         """
     

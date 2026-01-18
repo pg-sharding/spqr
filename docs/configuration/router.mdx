@@ -93,7 +93,6 @@ Map of string to Shard objects. Refer to the `Shard` struct in the [pkg/config/r
 | Setting                  | Description                                     |  Possible Values |
 |--------------------------|------------------------------------------------|------------------|
 | `maintain_params`        | Whether to maintain parameters flag.            | `true`, `false`  |
-| `with_jaeger`            | Whether to integrate with Jaeger for tracing.   | `true`, `false`  |
 | `world_shard_fallback`   | Whether to enable fallback to world shard.      | `true`, `false`  |
 
 ## Query Routing Settings
@@ -108,7 +107,7 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 |------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|------------------|---------------------|
 | `query_routing.default_route_behaviour`        | Whether to explicitly block multishard queries. Can be overridden by the [__spqr__default_route_behaviour](/routing/hints#spqr-default-route-behaviour) hint. | `BLOCK`, `ALLOW` | Yes |
 | `query_routing.default_target_session_attrs`   | Default [target_session_attrs](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-TARGET-SESSION-ATTRS) for connections. Can be overridden by the [__spqr__target_session_attrs](/routing/hints#spqr-target-session-attrs) hint. | `read-write`, `smart-read-write`, `read-only`, `prefer-standby`, `any` | Yes |
-| `query_routing.enhanced_multishard_processing` | Whether to enable enhanced processing for multishard queries. Can be overridden by the [__spqr__engine_v2](/routing/hints#spqr-engine-v2) hint. | `true`, `false`  | Yes |
+| `query_routing.enhanced_multishard_processing` | Enables engine V2 with enhanced multishard query processing, including [automatic batch INSERT/COPY](/sharding/bulk) splitting across shards. Can be overridden by the [__spqr__engine_v2](/routing/hints#spqr-engine-v2) hint. | `true`, `false`  | Yes |
 | `query_routing.always_check_rules`             | Whether to always check the routing rules for every query. This only makes sense in a single-shard deployment.           | `true`, `false`  | No |
 | `query_routing.auto_route_ro_on_standby`       | Whether to automatically route read-only queries to standby servers. Currently only supported for single-shard topology. | `true`, `false`  | No |
 
@@ -132,8 +131,8 @@ Refer to the `QRouter` struct in the [pkg/config/router.go](https://github.com/p
 |------------------|-------------------------------------------------------|--------------------|---------------------|
 | `show_notice_messages` | Whether to show notice messages. Can be overridden by the [__spqr__reply_notice](/routing/hints#spqr-reply-notice) hint. | `true`, `false`    | Yes |
 | `notice_message_format` | Format template for notice messages. Supported placeholders: `{shard}`, `{host}`, `{hostname}`, `{port}`, `{user}`, `{db}`, `{pid}`, `{az}`, `{id}`, `{tx_status}`, `{tx_served}`. Default: `"{shard}@{host}"`. Examples: `"{shard}"`, `"{host}"`, `"{shard}@{hostname}:{port}"`, `"{shard}@{host} (user={user}, db={db})"` | Any valid template string | No |
-| `pid_file_name`  | The file name to store the process ID.                | Any valid filepath | No |
-| `log_file_name`  | The file name for logging output.                     | Any valid filepath | No |
+| `pid_filename`   | The file name to store the process ID.                | Any valid filepath | No |
+| `log_filename`   | The file name for logging output.                     | Any valid filepath | No |
 | `pgproto_debug`  | PostgreSQL protocol debug flag.                       | `true`, `false`    | No |
 
 ## DBpool Settings

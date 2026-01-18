@@ -45,10 +45,29 @@ The following configurations will be available to you:
 make build_images
 ```
 It generates image `spqr-base-image-debug` with delve in image.
-3. run test environment
+3. run test environment 
+Example for run in cluster mode.
 ```shell
+export ROUTER_CONFIG="/spqr/test/feature/conf/router_cluster.yaml" export COORDINATOR_CONFIG="/spqr/test/feature/conf/coordinator.yaml" export ROUTER_COORDINATOR_CONFIG="/spqr/test/feature/conf/coordinator.yaml"  export ROUTER_2_COORDINATOR_CONFIG="/spqr/test/feature/conf/coordinator.yaml";
 docker compose --verbose -f ./test/feature/docker-compose-debug.yaml up
 ```
+You can change environment variables like different behaviour like in feature-test scenarios. For example like `redistribute.feature` test:
+```
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_three_shards.yaml
+    COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator_three_shards.yaml
+    """
+```
+You can run feature-test cluster without debug mode using `./test/feature/docker-compose.yaml` instead of `./test/feature/docker-compose-debug.yaml`. Cluster configuration in this `docker-compose.yaml` have 2 coordinators but only one can be active. You can run command `show coordinator_address;` to get address of active coordinator:
+```
+regress=> show coordinator_address;
+    coordinator address     
+----------------------------
+ regress_coordinator_2:7003
+(1 row)
+```
+
 4. Attach to the required spqr cluster components in the required order. Only the components you will attach to will work.
 
 ### Troubleshooting

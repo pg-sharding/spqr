@@ -1,10 +1,3 @@
-
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
@@ -24,7 +17,7 @@ CREATE KEY RANGE krid1 FROM 30 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 (1 row)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  krid1        | sh1      | ds1             | 30          | false
  krid2        | sh1      | ds1             | 40          | false
@@ -49,7 +42,7 @@ CREATE KEY RANGE krid21 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds2;
 (1 row)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  krid1        | sh1      | ds1             | 30          | false
  krid2        | sh1      | ds1             | 40          | false
@@ -69,8 +62,8 @@ CREATE KEY RANGE krid3 FROM 10 ROUTE TO sh4 FOR DISTRIBUTION ds1;
  bound -> 10
 (1 row)
 
-SHOW key_ranges ORDER BY "Lower bound" ASC;
- Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+SHOW key_ranges ORDER BY "lower_bound" ASC;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  krid21       | sh1      | ds2             | 1           | false
  krid3        | sh4      | ds1             | 10          | false
@@ -80,8 +73,8 @@ SHOW key_ranges ORDER BY "Lower bound" ASC;
  krid2        | sh1      | ds1             | 40          | false
 (6 rows)
 
-SHOW key_ranges ORDER BY "Lower bound" DESC;
- Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+SHOW key_ranges ORDER BY "lower_bound" DESC;
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  krid2        | sh1      | ds1             | 40          | false
  krid1        | sh1      | ds1             | 30          | false
@@ -91,8 +84,8 @@ SHOW key_ranges ORDER BY "Lower bound" DESC;
  krid21       | sh1      | ds2             | 1           | false
 (6 rows)
 
-SHOW key_ranges WHERE "Distribution ID" = 'ds1';
- Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+SHOW key_ranges WHERE distribution_id = 'ds1';
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  krid1        | sh1      | ds1             | 30          | false
  krid2        | sh1      | ds1             | 40          | false
@@ -100,8 +93,8 @@ SHOW key_ranges WHERE "Distribution ID" = 'ds1';
  krid4        | sh3      | ds1             | 20          | false
 (4 rows)
 
-SHOW key_ranges WHERE "Shard ID" = 'sh3';
- Key range ID | Shard ID | Distribution ID | Lower bound | Locked 
+SHOW key_ranges WHERE shard_id = 'sh3';
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  krid4        | sh3      | ds1             | 20          | false
 (1 row)

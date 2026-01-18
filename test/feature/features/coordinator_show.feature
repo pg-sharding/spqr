@@ -177,7 +177,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
                 "router":"[regress_router]:7000",
-                "shard key name":"sh2",
+                "shard_key_name":"sh2",
                 "user":"regress"
             }
         ]
@@ -189,7 +189,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
                 "router":"[regress_router_2]:7000",
-                "shard key name":"sh2",
+                "shard_key_name":"sh2",
                 "user":"regress"
             }
         ]
@@ -201,7 +201,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
                 "router":"[regress_router_2]:7000",
-                "shard key name":"sh1",
+                "shard_key_name":"sh1",
                 "user":"regress"
             }
         ]
@@ -213,7 +213,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
                 "router":"[regress_router]:7000",
-                "shard key name":"sh1",
+                "shard_key_name":"sh1",
                 "user":"regress"
             }
         ]
@@ -232,7 +232,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
                 "router":"[regress_router]:7000",
-                "shard key name":"sh2",
+                "shard_key_name":"sh2",
                 "user":"regress"
             }
         ]
@@ -244,7 +244,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
                 "router":"[regress_router_2]:7000",
-                "shard key name":"sh2",
+                "shard_key_name":"sh2",
                 "user":"regress"
             }
         ]
@@ -256,7 +256,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
                 "router":"[regress_router_2]:7000",
-                "shard key name":"sh1",
+                "shard_key_name":"sh1",
                 "user":"regress"
             }
         ]
@@ -268,7 +268,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
                 "router":"[regress_router]:7000",
-                "shard key name":"sh1",
+                "shard_key_name":"sh1",
                 "user":"regress"
             }
         ]
@@ -295,7 +295,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_1:6432",
                 "router":"[regress_router_2]:7000",
-                "shard key name":"sh1",
+                "shard_key_name":"sh1",
                 "user":"regress"
             }
         ]
@@ -307,7 +307,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "dbname":"regress",
                 "hostname":"spqr_shard_2:6432",
                 "router":"[regress_router_2]:7000",
-                "shard key name":"sh2",
+                "shard_key_name":"sh2",
                 "user":"regress"
             }
         ]
@@ -394,13 +394,13 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         [
             {
-                "idle connections":"1",
-                "pool db":"regress",
-                "pool router":"",
-                "pool host":"spqr_shard_2:6432",
-                "pool usr":"regress",
-                "queue residual size":"50",
-                "used connections":"0"
+                "idle_connections":"1",
+                "pool_db":"regress",
+                "pool_router":"",
+                "pool_host":"spqr_shard_2:6432",
+                "pool_usr":"regress",
+                "queue_residual_size":"50",
+                "used_connections":"0"
             }
         ]
         """
@@ -408,13 +408,13 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         [
             {
-                "idle connections":"1",
-                "pool db":"regress",
-                "pool router":"",
-                "pool host":"spqr_shard_2:6432",
-                "pool usr":"regress",
-                "queue residual size":"50",
-                "used connections":"0"
+                "idle_connections":"1",
+                "pool_db":"regress",
+                "pool_router":"",
+                "pool_host":"spqr_shard_2:6432",
+                "pool_usr":"regress",
+                "queue_residual_size":"50",
+                "used_connections":"0"
             }
         ]
         """
@@ -422,13 +422,13 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         [
             {
-                "idle connections":"1",
-                "pool db":"regress",
-                "pool router":"",
-                "pool host":"spqr_shard_1:6432",
-                "pool usr":"regress",
-                "queue residual size":"50",
-                "used connections":"0"
+                "idle_connections":"1",
+                "pool_db":"regress",
+                "pool_router":"",
+                "pool_host":"spqr_shard_1:6432",
+                "pool_usr":"regress",
+                "queue_residual_size":"50",
+                "used_connections":"0"
             }
         ]
         """
@@ -436,13 +436,13 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         [
             {
-                "idle connections":"1",
-                "pool db":"regress",
-                "pool router":"",
-                "pool host":"spqr_shard_1:6432",
-                "pool usr":"regress",
-                "queue residual size":"50",
-                "used connections":"0"
+                "idle_connections":"1",
+                "pool_db":"regress",
+                "pool_router":"",
+                "pool_host":"spqr_shard_1:6432",
+                "pool_usr":"regress",
+                "queue_residual_size":"50",
+                "used_connections":"0"
             }
         ]
         """
@@ -457,13 +457,13 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         [
             {
-                "idle connections":"1",
-                "pool db":"regress",
-                "pool router":"",
-                "pool host":"spqr_shard_2:6432",
-                "pool usr":"regress",
-                "queue residual size":"50",
-                "used connections":"0"
+                "idle_connections":"1",
+                "pool_db":"regress",
+                "pool_router":"",
+                "pool_host":"spqr_shard_2:6432",
+                "pool_usr":"regress",
+                "queue_residual_size":"50",
+                "used_connections":"0"
             }
         ]
         """
@@ -471,13 +471,13 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         [
             {
-                "idle connections":"1",
-                "pool db":"regress",
-                "pool router":"",
-                "pool host":"spqr_shard_2:6432",
-                "pool usr":"regress",
-                "queue residual size":"50",
-                "used connections":"0"
+                "idle_connections":"1",
+                "pool_db":"regress",
+                "pool_router":"",
+                "pool_host":"spqr_shard_2:6432",
+                "pool_usr":"regress",
+                "queue_residual_size":"50",
+                "used_connections":"0"
             }
         ]
         """
@@ -485,13 +485,13 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         [
             {
-                "idle connections":"1",
-                "pool db":"regress",
-                "pool router":"",
-                "pool host":"spqr_shard_1:6432",
-                "pool usr":"regress",
-                "queue residual size":"50",
-                "used connections":"0"
+                "idle_connections":"1",
+                "pool_db":"regress",
+                "pool_router":"",
+                "pool_host":"spqr_shard_1:6432",
+                "pool_usr":"regress",
+                "queue_residual_size":"50",
+                "used_connections":"0"
             }
         ]
         """
@@ -499,13 +499,13 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         [
             {
-                "idle connections":"1",
-                "pool db":"regress",
-                "pool router":"",
-                "pool host":"spqr_shard_1:6432",
-                "pool usr":"regress",
-                "queue residual size":"50",
-                "used connections":"0"
+                "idle_connections":"1",
+                "pool_db":"regress",
+                "pool_router":"",
+                "pool_host":"spqr_shard_1:6432",
+                "pool_usr":"regress",
+                "queue_residual_size":"50",
+                "used_connections":"0"
             }
         ]
         """
@@ -527,13 +527,13 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         [
             {
-                "idle connections":"1",
-                "pool db":"regress",
-                "pool router":"",
-                "pool host":"spqr_shard_1:6432",
-                "pool usr":"regress",
-                "queue residual size":"50",
-                "used connections":"0"
+                "idle_connections":"1",
+                "pool_db":"regress",
+                "pool_router":"",
+                "pool_host":"spqr_shard_1:6432",
+                "pool_usr":"regress",
+                "queue_residual_size":"50",
+                "used_connections":"0"
             }
         ]
         """
@@ -541,13 +541,13 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         [
             {
-                "idle connections":"1",
-                "pool db":"regress",
-                "pool router":"",
-                "pool host":"spqr_shard_2:6432",
-                "pool usr":"regress",
-                "queue residual size":"50",
-                "used connections":"0"
+                "idle_connections":"1",
+                "pool_db":"regress",
+                "pool_router":"",
+                "pool_host":"spqr_shard_2:6432",
+                "pool_usr":"regress",
+                "queue_residual_size":"50",
+                "used_connections":"0"
             }
         ]
         """
@@ -577,7 +577,8 @@ Feature: Coordinator show clients, pools and backend_connections
                 "id":            "2",
                 "kr_id_temp":    "temp_id",
                 "bound":         ["FAAAAAAAAAA="],
-                "state":         0
+                "state":         0,
+                "task_group_id": "tgid1"
             }
         }
         """
@@ -590,10 +591,11 @@ Feature: Coordinator show clients, pools and backend_connections
         And SQL result should match json_exactly
         """
         [{
-            "Task group ID":            "tgid1",
-            "Destination shard ID":     "sh_to",
-            "Source key range ID":      "kr_from",
-            "Destination key range ID": "kr_to"
+            "task_group_id":            "tgid1",
+            "destination_shard_id":     "sh_to",
+            "source_key_range_id":      "kr_from",
+            "destination_key_range_id": "kr_to",
+            "move_task_id":     "2"
         }]
         """
         When I run SQL on host "coordinator"
@@ -604,9 +606,10 @@ Feature: Coordinator show clients, pools and backend_connections
         And SQL result should match json_exactly
         """
         [{
-            "Move task ID":             "2",
-            "State":                    "PLANNED",
-            "Bound":                    "10",
-            "Temporary key range ID":   "temp_id"
+            "move_task_id":             "2",
+            "state":                    "PLANNED",
+            "bound":                    "10",
+            "temporary_key_range_id":   "temp_id",
+            "task_group_id":            "tgid1"
         }]
         """

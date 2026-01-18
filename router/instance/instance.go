@@ -74,23 +74,19 @@ func (r *InstanceImpl) Initialize() bool {
 var _ RouterInstance = &InstanceImpl{}
 
 func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
-	var db *qdb.MemQDB
-	var err error
 
-	if config.RouterConfig().MemqdbBackupPath != "" {
-		db, err = qdb.RestoreQDB(config.RouterConfig().MemqdbBackupPath)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		db, err = qdb.NewMemQDB(config.RouterConfig().MemqdbBackupPath)
-		if err != nil {
-			return nil, err
-		}
+	db, err := qdb.GetMemQDB()
+	if err != nil {
+		return nil, err
 	}
 
 	cache := cache.NewSchemaCache(config.RouterConfig().ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
-	lc := coord.NewLocalInstanceMetadataMgr(db, cache)
+
+	d, err := qdb.NewDataPlaneTwoPhaseStateKeeper("mem")
+	if err != nil {
+		return nil, err
+	}
+	lc := coord.NewLocalInstanceMetadataMgr(db, d, cache)
 
 	var notifier *sdnotifier.Notifier
 	if config.RouterConfig().UseSystemdNotifier {
@@ -236,14 +232,6 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 }
 
 func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.RouterPortType) error {
-	if config.RouterConfig().WithJaeger {
-		closer, err := r.initJaegerTracer(config.RouterConfig())
-		if err != nil {
-			return fmt.Errorf("could not initialize jaeger tracer: %s", err)
-		}
-		defer func() { _ = closer.Close() }()
-	}
-
 	if r.notifier != nil {
 		if err := r.notifier.Ready(); err != nil {
 			return fmt.Errorf("could not send ready msg: %s", err)

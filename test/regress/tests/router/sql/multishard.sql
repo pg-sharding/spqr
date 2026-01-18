@@ -6,11 +6,14 @@ CREATE KEY RANGE krid4 FROM 300 ROUTE TO sh4 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid3 FROM 200 ROUTE TO sh3 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid2 FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-ALTER DISTRIBUTION ds1 ATTACH RELATION xxmultish DISTRIBUTION KEY id;
+
+CREATE DISTRIBUTED RELATION xxmultish (id);
 
 \c regress
 
-CREATE TABLE xxmultish(id int);
+SET __spqr__engine_v2 TO true;
+
+CREATE TABLE xxmultish(id int, val int);
 
 COPY xxmultish (id) FROM STDIN;
 0
@@ -40,24 +43,24 @@ COPY xxmultish (id) FROM STDIN;
 
 /* XXX: sort result here is not stable until proper router processing support */
 
-SELECT * FROM xxmultish ORDER BY id;
+SELECT id FROM xxmultish ORDER BY id;
 
-SELECT * FROM xxmultish WHERE id = 0 OR id = 199;
-SELECT * FROM xxmultish WHERE id = 0 OR id = 399;
-SELECT * FROM xxmultish WHERE id = 1 OR id = 299 OR id = 350;
-SELECT * FROM xxmultish WHERE id = 299 OR id = 350;
+SELECT id FROM xxmultish WHERE id = 0 OR id = 199;
+SELECT id FROM xxmultish WHERE id = 0 OR id = 399;
+SELECT id FROM xxmultish WHERE id = 1 OR id = 299 OR id = 350;
+SELECT id FROM xxmultish WHERE id = 299 OR id = 350;
 
-SELECT * FROM xxmultish WHERE id = 201 UNION ALL SELECT * FROM xxmultish WHERE id = 199;
-SELECT * FROM xxmultish WHERE id = 401 UNION ALL SELECT * FROM xxmultish WHERE id = 99;
-SELECT * FROM xxmultish WHERE id = 401 EXCEPT ALL SELECT * FROM xxmultish WHERE id = 99;
+SELECT id FROM xxmultish WHERE id = 201 UNION ALL SELECT id FROM xxmultish WHERE id = 199;
+SELECT id FROM xxmultish WHERE id = 401 UNION ALL SELECT id FROM xxmultish WHERE id = 99;
+SELECT id FROM xxmultish WHERE id = 401 EXCEPT ALL SELECT id FROM xxmultish WHERE id = 99;
 
-WITH d AS (SELECT * FROM xxmultish WHERE id = 401 OR id = 0) TABLE d;
+WITH d AS (SELECT id FROM xxmultish WHERE id = 401 OR id = 0) TABLE d;
 
 -- XXX: support this
 --WITH d AS (SELECT * FROM xxmultish WHERE id = 401 OR id = 0) SELECT * FROM d UNION ALL SELECT * FROM xxmultish WHERE id = 300;
 
-UPDATE xxmultish SET id = -1 /* __spqr__engine_v2: true */;;
-DELETE FROM xxmultish /* __spqr__engine_v2: true */;;
+UPDATE xxmultish SET val = -1 /* __spqr__engine_v2: true */;
+DELETE FROM xxmultish /* __spqr__engine_v2: true */;
 
 DROP TABLE xxmultish;
 

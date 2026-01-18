@@ -12,21 +12,92 @@ Refer to the [pkg/config/coordinator.go](https://github.com/pg-sharding/spqr/blo
 
 ## Coordinator Settings
 
-| Setting                  | Description                                                        | Possible Values        |
-|--------------------------|--------------------------------------------------------------------|------------------------|
-| `log_level`              | The level of logging output.                                       | `debug`, `info`, `warning`, `error`, `fatal`|
-| `pretty_logging`         | Whether to write logs in an colorized, human-friendly format.      | `true`, `false`        |
-| `qdb_addr`               | the address of the QDB server                                      | Any valid address      |
-| `host`                   | The host address the coordinator listens on.                       | Any valid hostname     |
-| `coordinator_port`       | The port number for the coordinator.                               | Any valid port number  |
-| `grpc_api_port`          | The port number for the gRPC API.                                  | Any valid port number  |
-| `auth`                   | See [auth.mdx](./auth)                                             | Object of `AuthCfg`    |
-| `frontend_tls`           | See [auth.mdx](./auth)                                             | Object of `TLSConfig`  |
-| `frontend_rules`         | The rules for frontend connections.                                | List of `FrontendRule` |
-| `use_systemd_notifier`   | Whether to use systemd notifier.                                   | `true`, `false`        |
-| `systemd_notifier_debug` | Whether to run systemd notifier in debug mode.                     | `true`, `false`        |
-| `enable_role_system`     | Whether to enable the [role-based access control system](./roles). | `true`, `false`        |
-| `roles_file`             | The file path to the [roles](./roles) configuration.               | Any valid file path    |
+| Setting                    | Description                                                                                  | Possible Values                               |
+|----------------------------|----------------------------------------------------------------------------------------------|-----------------------------------------------|
+| `log_level`                | The level of logging output.                                                                 | `debug`, `info`, `warning`, `error`, `fatal`  |
+| `pretty_logging`           | Whether to write logs in an colorized, human-friendly format.                                | `true`, `false`                               |
+| `qdb_addr`                 | The address of the QDB server.                                                               | Any valid address                             |
+| `host`                     | The host address the coordinator listens on.                                                 | Any valid hostname                            |
+| `coordinator_port`         | The port number for the coordinator.                                                         | Any valid port number                         |
+| `grpc_api_port`            | The port number for the gRPC API.                                                            | Any valid port number                         |
+| `auth`                     | See [auth.mdx](./auth).                                                                      | Object of `AuthCfg`                           |
+| `frontend_tls`             | See [auth.mdx](./auth).                                                                      | Object of `TLSConfig`                         |
+| `frontend_rules`           | The rules for frontend connections.                                                          | List of `FrontendRule`                        |
+| `shard_data`               | Path to shard metadata used for data moves and distribution.                                 | Any valid file path                           |
+| `use_systemd_notifier`     | Whether to use systemd notifier.                                                             | `true`, `false`                               |
+| `systemd_notifier_debug`   | Whether to run systemd notifier in debug mode.                                               | `true`, `false`                               |
+| `iteration_timeout`        | Sleep duration between watchRouters iterations. Controls how frequently the coordinator checks router status and syncs metadata. Default `1s`. | Duration string (e.g., `1s`, `5m`, `10m`)   |
+| `lock_iteration_timeout`   | Sleep duration between attempts to acquire the coordinator lock when starting up. Default `1s`. | Duration string (e.g., `500ms`, `1s`, `5s`)   |
+| `router_keepalive_time`    | Interval for sending gRPC keepalive pings to routers. Prevents idle connection closure by network intermediaries. Default `30s`. | Duration string (e.g., `15s`, `30s`, `1m`) |
+| `router_keepalive_timeout` | Time to wait for keepalive ping response before considering connection dead. Default `20s`.  | Duration string (e.g., `10s`, `20s`)    |
+| `enable_role_system`       | Whether to enable the [role-based access control system](./roles).                           | `true`, `false`                               |
+| `roles_file`               | The file path to the [roles](./roles) configuration.                                         | Any valid file path                           |
+| `etcd_max_send_bytes`      | Maximum request size in bytes that the etcd client (QDB implementation) is allowed to send. | Integer (bytes), use `0` for the etcd default |
+| `data_move_disable_triggers` | Disable triggers during data move operations to speed up copying/deleting data.              | `true`, `false`                               |
+| `data_move_bound_batch_size` | Maximum number of rows fetched per batch when bounded data moves are executed. Default `10000`. | Positive integer                              |
+
+## Coordinator Timing Settings
+
+### Iteration Timeout
+
+The `iteration_timeout` setting controls how frequently the coordinator's watchRouters loop runs to monitor and manage router instances. This is one of the most important performance tuning parameters.
+
+#### What watchRouters Does
+
+On each iteration, the coordinator:
+1. Queries QDB for the list of active routers
+2. Connects to each router via gRPC (using cached connections)
+3. Calls `GetRouterStatus()` to check router health
+4. Syncs coordinator address and metadata if needed
+5. Opens/closes routers in QDB based on their status
+6. Cleans up connections for removed routers
+7. Sleeps for `iteration_timeout` before the next cycle
+
+<Warning>
+When using high `iteration_timeout` values (e.g., 5m+), ensure `router_keepalive_time` is configured appropriately to prevent cached connections from being closed by network devices. See [gRPC Keepalive Settings](#grpc-keepalive-settings).
+</Warning>
+
+#### Impact on Operations
+
+- **Router Failover**: Time to detect and mark failed routers as closed
+- **Topology Changes**: Time to recognize new routers added to the cluster
+- **Metadata Sync**: Frequency of coordinator address updates to routers
+- **Resource Usage**: CPU and network bandwidth for health checks
+
+<Tip>
+Start with the default `1s` for development. In production, increase to `10s` or higher once your topology is stable to reduce overhead.
+</Tip>
+
+### Lock Iteration Timeout
+
+The `lock_iteration_timeout` setting controls the retry interval when multiple coordinator instances compete for leadership during startup.
+
+#### How Coordinator Locking Works
+
+SPQR supports running multiple coordinator instances for high availability, but only one can be active (hold the lock) at a time:
+
+1. On startup, each coordinator tries to acquire a distributed lock in QDB (etcd)
+2. If the lock is already held, the coordinator waits `lock_iteration_timeout`
+3. After the timeout, it tries again
+4. This continues until it acquires the lock or the process is stopped
+
+<Tip>
+In high-availability setups with multiple coordinator instances, a longer `lock_iteration_timeout` reduces load on QDB/etcd during leadership elections.
+</Tip>
+
+## gRPC Keepalive Settings
+
+The coordinator maintains persistent gRPC connections to routers using connection caching. To prevent these connections from being closed by network intermediaries (load balancers, firewalls, NAT gateways) during idle periods, gRPC keepalive is configured.
+
+### Why Keepalive is Important
+
+Network devices typically close idle TCP connections after 60 seconds to 5 minutes. When `iteration_timeout` is set to several minutes, cached connections may be closed by the network before they're reused, causing connection failures and unnecessary reconnection overhead.
+
+Keepalive sends periodic "ping" messages to keep connections alive and detect dead connections early.
+
+<Tip>
+If you experience frequent connection errors when `iteration_timeout` is high, reduce `router_keepalive_time` to match your network environment's idle timeout characteristics.
+</Tip>
 
 ## Frontend Rules
 
@@ -34,8 +105,14 @@ Frontend rule is a specification of how clients connect to the admin console.
 
 Refer to the `FrontendRule` struct in the [pkg/config/rules.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/rules.go) file for the most up-to-date configuration options.
 
-| Setting                   | Description                                                                    | Possible Values          |
-|---------------------------|--------------------------------------------------------------------------------|--------------------------|
-| `db`                      | The database name to which the rule applies                                    | Any valid database name  |
-| `usr`                     | The user name for which the rule is applicable                                 | Any valid username       |
-| `auth_rule`               | See [General Auth Settings](./auth.go)                                         | Object of `AuthCfg`      |
+| Setting                     | Description                                                                                           | Possible Values                |
+|-----------------------------|-------------------------------------------------------------------------------------------------------|--------------------------------|
+| `db`                        | The database name to which the rule applies.                                                          | Any valid database name        |
+| `usr`                       | The user name for which the rule is applicable.                                                       | Any valid username             |
+| `auth_rule`                 | See [General Auth Settings](./auth.go).                                                               | Object of `AuthCfg`            |
+| `search_path`               | Search path sent to the backend.                                                                      | String                         |
+| `pool_mode`                 | Pooling mode value (ignored by coordinator but kept for compatibility with router configuration).    | See router pooling modes       |
+| `pool_discard`              | Whether to discard pooled connections after use (ignored by coordinator).                            | `true`, `false`                |
+| `pool_rollback`             | Whether to issue `ROLLBACK` on pooled connections (ignored by coordinator).                          | `true`, `false`                |
+| `pool_prepared_statement`   | Whether to reuse prepared statements in the pool (ignored by coordinator).                           | `true`, `false`                |
+| `pool_default`              | Whether the rule should be used as the default pool configuration for incoming connections.          | `true`, `false`                |

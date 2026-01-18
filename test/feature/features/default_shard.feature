@@ -32,21 +32,21 @@ Feature: default shards test
     And SQL result should match json
     """
     [{
-      "Key range ID":"ds1.DEFAULT",
-      "Distribution ID":"ds1",
-      "Lower bound":"-9223372036854775808",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"ds1.DEFAULT",
+      "distribution_id":"ds1",
+      "lower_bound":"-9223372036854775808",
+      "shard_id":"sh1",
+      "locked":"false"
     }]
     """
 
     And SQL result should match json
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh1"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh1"
     }]
     """
     When I run SQL on host "coordinator"
@@ -62,11 +62,11 @@ Feature: default shards test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh1",
+      "locked":"false"
     }]
     """
 
@@ -83,17 +83,17 @@ Feature: default shards test
     And SQL result should match json_exactly
     """
     [{
-      "Key range ID":"ds1.DEFAULT",
-      "Distribution ID":"ds1",
-      "Lower bound":"-9223372036854775808",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"ds1.DEFAULT",
+      "distribution_id":"ds1",
+      "lower_bound":"-9223372036854775808",
+      "shard_id":"sh1",
+      "locked":"false"
     },
     {
-      "Key range ID":"kr1",
-      "Distribution ID":"ds1",
-      "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Locked":"false"
+      "key_range_id":"kr1",
+      "distribution_id":"ds1",
+      "lower_bound":"0",
+      "shard_id":"sh1",
+      "locked":"false"
     }]
     """

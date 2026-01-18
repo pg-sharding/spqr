@@ -5,6 +5,7 @@ package spqrparser
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"crypto/rand"
 	"encoding/hex"
@@ -58,7 +59,6 @@ func randomHex(n int) (string, error) {
 	ds                     *DistributionDefinition
 	kr                     *KeyRangeDefinition
 	shard                  *ShardDefinition
-	sharding_rule          *ShardingRuleDefinition
 
 	register_router        *RegisterRouter
 	unregister_router      *UnregisterRouter
@@ -84,18 +84,19 @@ func randomHex(n int) (string, error) {
 	alter_distribution     *AlterDistribution
 	distributed_relation   *DistributedRelation
 	alter_default_shard    *AlterDefaultShard
+
+	/* ICP */
+	icp						*InstanceControlPoint
+	icpAction				*ICPointAction
+	duration				time.Duration
 	
 	relations              []*DistributedRelation
 	relation               *DistributedRelation
-	entrieslist            []ShardingRuleEntry
 	dEntrieslist 	       []DistributionKeyEntry
-
-	shruleEntry            ShardingRuleEntry
 
 	distrKeyEntry          DistributionKeyEntry
 	aiEntry                *AutoIncrementEntry
 
-	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
 	distribution_selector  *DistributionSelector
 	aiEntrieslist          []*AutoIncrementEntry
@@ -183,9 +184,9 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY
-%token <str> SHARDING COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA
-%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE
+%token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX
+%token <str> SHARDS ROUTERS SHARD HOST RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
 %token <str> BATCH SIZE
@@ -194,6 +195,7 @@ func randomHex(n int) (string, error) {
 %token <str> RETRY
 %token <str> DISTRIBUTED IN ON
 %token <str> DEFAULT
+%token <str> STALE CLIENTS
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -201,13 +203,18 @@ func randomHex(n int) (string, error) {
 
 %token<str> TASK GROUP
 
-%token<str> VARCHAR INTEGER INT TYPES UUID
+%token<str> SECONDS WAIT PANIC
+
+/* types */
+%token<str> VARCHAR INTEGER INT TYPES UUID TYPE
+
+/* ICP */
+%token<str> CONTROL POINT
 
 /* any operator */
 %token<str> OP
 
 
-%type<sharding_rule_selector> sharding_rule_stmt
 %type<key_range_selector> key_range_stmt
 %type<distribution_selector> distribution_select_stmt
 
@@ -225,29 +232,26 @@ func randomHex(n int) (string, error) {
 
 %type<qname> qualified_name
 %type <ds> distribution_define_stmt
-%type <sharding_rule> sharding_rule_define_stmt
 %type <kr> key_range_define_stmt
 %type <shard> shard_define_stmt
 
-%type<entrieslist> sharding_rule_argument_list
 %type<dEntrieslist> distribution_key_argument_list
 %type<aiEntrieslist> opt_auto_increment
 %type<aiEntrieslist> auto_inc_argument_list
 %type<uinteger> opt_auto_increment_start_clause
-%type<shruleEntry> sharding_rule_entry
 %type<str> opt_schema_name
 %type<distribution_selector> opt_distribution_selector
 
 %type<distrKeyEntry> distribution_key_entry routing_expr
 %type<aiEntry> auto_increment_entry
 
-%type<str> sharding_rule_table_clause
-%type<str> sharding_rule_column_clause
 %type<str> opt_hash_function_clause hash_function_clause
 %type<str> hash_function_name
 
 %type<alter> alter_stmt create_distributed_relation_stmt
 %type<alter_distribution> distribution_alter_stmt
+
+%type<icp> icp_stmt
 
 %type<invalidate> invalidate_stmt
 %type<sync_reference_tables> sync_reference_tables_stmt
@@ -287,6 +291,8 @@ func randomHex(n int) (string, error) {
 %type <retryMoveTaskGroup> retry_move_task_group
 %type <stopMoveTaskGroup> stop_move_task_group
 
+%type<icpAction> opt_icp_action 
+%type<duration> opt_duration
 
 %left		OR
 %left		AND
@@ -406,6 +412,9 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| create_distributed_relation_stmt
+	{
+		setParseTree(yylex, $1)
+	} | icp_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -649,7 +658,7 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, CoordinatorAddrStr, VersionStr, ReferenceRelationsStr, TaskGroupStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users, MoveTaskStr:
+		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, StatusStr, DistributionsStr, CoordinatorAddrStr, VersionStr, ReferenceRelationsStr, TaskGroupStr, TaskGroupsStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users, MoveTaskStr, MoveTasksStr, UniqueIndexesStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -659,6 +668,8 @@ show_statement_type:
 	} | HOSTS {
 		$$ = $1
 	} | SHARDS {
+		$$ = $1
+	} | CLIENTS {
 		$$ = $1
 	}
 
@@ -689,14 +700,6 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
 	}
-	| DROP sharding_rule_stmt
-	{
-		$$ = &Drop{Element: $2}
-	}
-	| DROP SHARDING RULE ALL
-	{
-		$$ = &Drop{Element: &ShardingRuleSelector{ID: `*`}}
-	}
 	| DROP distribution_select_stmt opt_cascade
 	{
 		$$ = &Drop{Element: $2, CascadeDelete: $3}
@@ -713,9 +716,9 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &TaskGroupSelector{ ID: $4 }}
 	}
-	| DROP SEQUENCE any_id
+	| DROP SEQUENCE any_id opt_cascade
 	{
-		$$ = &Drop{Element: &SequenceSelector{Name: $3}}
+		$$ = &Drop{Element: &SequenceSelector{Name: $3}, CascadeDelete: $4}
 	}
 	| DROP REFERENCE table_or_relation any_id
 	{
@@ -725,15 +728,18 @@ drop_stmt:
 			},
 		}
 	}
+	| DROP UNIQUE INDEX any_id 
+	{
+		$$ = &Drop{
+			Element: &UniqueIndexSelector{
+				ID: $4,
+			},
+		}
+	}
 
 add_stmt:
 	// TODO: drop
 	ADD distribution_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	ADD sharding_rule_define_stmt
 	{
 		$$ = &Create{Element: $2}
 	}
@@ -994,11 +1000,6 @@ create_stmt:
 		$$ = &Create{Element: $2}
 	}
 	|
-	CREATE sharding_rule_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	}
-	|
 	CREATE key_range_define_stmt
 	{
 		$$ = &Create{Element: $2}
@@ -1016,6 +1017,18 @@ create_stmt:
 				TableName: $4,
                 AutoIncrementEntries: $5,
 				ShardIds: $6,
+			},
+		}
+	}
+	|
+	CREATE UNIQUE INDEX any_id ON qualified_name COLUMN any_id TYPE col_types_elem
+	{
+		$$ = &Create{
+			Element: &UniqueIndexDefinition{
+				ID:        $4,
+				TableName: $6,
+				Column:    $8,
+				ColType:   $10,
 			},
 		}
 	}
@@ -1128,54 +1141,6 @@ opt_default_shard:
 	} | /* EMPTY */ {
 		$$ = ""
 	}
-
-sharding_rule_define_stmt:
-	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list opt_distribution_selector
-	{
-	}
-	|
-	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list opt_distribution_selector
-	{
-	}
-
-sharding_rule_argument_list: sharding_rule_entry
-    {
-      $$ = make([]ShardingRuleEntry, 0)
-      $$ = append($$, $1)
-    }
-    |
-    sharding_rule_argument_list sharding_rule_entry
-    {
-      $$ = append($1, $2)
-    }
-
-sharding_rule_entry:
-	sharding_rule_column_clause opt_hash_function_clause
-	{
-		$$ = ShardingRuleEntry{
-			Column: $1,
-			HashFunction: $2,
-		}
-	}
-
-sharding_rule_table_clause:
-	TABLE any_id
-	{
-       $$ = $2
-    }
-	| /*EMPTY*/	{ $$ = ""; }
-
-sharding_rule_column_clause:
-	COLUMN any_id
-	{
-		$$ = $2
-	}
-	|
-	COLUMNS any_id
-	{
-		$$ = $2
-	}/* to be backward-compatable*/
-
 
 hash_function_name:
 	IDENTITY {
@@ -1301,12 +1266,6 @@ unlock_stmt:
 		$$ = &Unlock{KeyRangeID: $2.KeyRangeID}
 	}
 
-sharding_rule_stmt:
-	SHARDING RULE any_id
-	{
-		$$ =&ShardingRuleSelector{ID: $3}
-	}
-
 key_range_stmt:
 	KEY RANGE any_id
 	{
@@ -1391,6 +1350,11 @@ invalidate_stmt:
 		$$ = &Invalidate{
 			Target: BackendConnectionsInvalidateTarget,
 		}
+	} | INVALIDATE STALE CLIENTS
+	{
+		$$ = &Invalidate{
+			Target: StaleClientsInvalidateTarget,
+		}
 	}
 
 sync_reference_tables_stmt:
@@ -1451,5 +1415,47 @@ stop_move_task_group:
 	{
 		$$ = &StopMoveTaskGroup{ ID: $4 }
 	} 
+
+
+/* Control Points */
+
+opt_duration:
+	any_uint SECONDS {
+		$$ = time.Duration(time.Duration($1) * time.Second)
+	} | /* EMPTY */ {
+		$$ = time.Duration(1 * time.Minute)
+	}
+
+opt_icp_action:
+	WAIT opt_duration {
+		$$ = &ICPointAction{
+			Act: "sleep",
+			Timeout: $2,
+		}
+	} | PANIC {
+		$$ = &ICPointAction{
+			Act: "panic",
+		}
+	} | /* empty */ {
+		$$ = &ICPointAction{
+			Act: "panic",
+		}
+	}
+
+icp_stmt:
+	ATTACH CONTROL POINT SCONST opt_icp_action {
+		$$ = &InstanceControlPoint {
+			Name: string($4),
+			Enable: true,
+			A:		$5,
+		}
+	} | 
+	DETACH CONTROL POINT SCONST {
+		$$ = &InstanceControlPoint {
+			Name: string($4),
+			Enable: false,
+		}
+	}
+
 %%
 
