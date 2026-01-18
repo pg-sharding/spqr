@@ -35,6 +35,7 @@ var _ EntityMgr = &TranEntityManager{}
 // Returns:
 // - a pointer to an TranEntityManager object.
 func NewTranEntityManager(mngr EntityMgr) *TranEntityManager {
+	distrList := NewMetaEntityList[*distributions.Distribution]()
 	keyRangesList := NewMetaEntityList[*kr.KeyRange]()
 	return &TranEntityManager{
 		mngr:          mngr,
@@ -115,15 +116,11 @@ func (t *TranEntityManager) CreateDistribution(ctx context.Context, ds *distribu
 
 // CreateKeyRange implements [EntityMgr].
 func (t *TranEntityManager) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	chunk, err := t.mngr.CreateKeyRange(ctx, kr)
-	if err != nil {
-		return nil, err
-	}
 	if _, ok := t.keyRanges.Items()[kr.ID]; ok {
-		return nil, fmt.Errorf("key range %s already present in qdb", kr.ID)
+		return fmt.Errorf("key range %s already present in qdb", kr.ID)
 	}
 	t.keyRanges.Save(kr.ID, kr)
-	return chunk, nil
+	return nil
 }
 
 // CreateReferenceRelation implements [EntityMgr].
@@ -286,8 +283,8 @@ func (t *TranEntityManager) ListKeyRanges(ctx context.Context, distribution stri
 	result := make([]*kr.KeyRange, 0, len(list)+len(t.keyRanges.Items()))
 	for _, keyRange := range t.keyRanges.Items() {
 		if keyRange.Distribution == distribution {
-
 			result = append(result, keyRange)
+		}
 	}
 	for _, keyRange := range list {
 		if _, ok := t.keyRanges.DeletedItems()[keyRange.ID]; ok {
@@ -299,7 +296,6 @@ func (t *TranEntityManager) ListKeyRanges(ctx context.Context, distribution stri
 		result = append(result, keyRange)
 	}
 	return result, nil
-
 
 }
 
