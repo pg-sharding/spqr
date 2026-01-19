@@ -26,7 +26,8 @@ import (
 )
 
 type EtcdQDB struct {
-	cli *clientv3.Client
+	cli     *clientv3.Client
+	session *concurrency.Session // for coordinator lock management
 }
 
 var _ XQDB = &EtcdQDB{}
@@ -51,6 +52,16 @@ func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 	return &EtcdQDB{
 		cli: cli,
 	}, nil
+}
+
+// Close closes the EtcdQDB connection and cleans up resources
+func (q *EtcdQDB) Close() error {
+	if q.session != nil {
+		if err := q.session.Close(); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("etcdqdb: failed to close session")
+		}
+	}
+	return q.cli.Close()
 }
 
 const (
@@ -654,48 +665,34 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context, addr string) error {
 		Str("address", addr).
 		Msg("etcdqdb: try coordinator lock")
 
-	leaseGrantResp, err := q.cli.Grant(ctx, CoordKeepAliveTtl)
+	// Use concurrency.Session which automatically manages lease keepalive internally
+	// No need to manually consume keepalive channel - etcd handles it
+	session, err := concurrency.NewSession(q.cli, concurrency.WithTTL(CoordKeepAliveTtl))
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease grant failed")
+		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: failed to create session")
 		return err
 	}
 
-	// KeepAlive attempts to keep the given lease alive forever. If the keepalive responses posted
-	// to the channel are not consumed promptly the channel may become full. When full, the lease
-	// client will continue sending keep alive requests to the etcd server, but will drop responses
-	// until there is capacity on the channel to send more responses.
-
-	keepAliveCh, err := q.cli.KeepAlive(context.Background(), leaseGrantResp.ID)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease keep alive failed")
-		return err
-	}
-
-	op := clientv3.OpPut(coordLockKey, addr, clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID)))
+	// Try to acquire lock by writing coordinator address with session lease
+	op := clientv3.OpPut(coordLockKey, addr, clientv3.WithLease(session.Lease()))
 	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(coordLockKey)).Then(op)
 	stat, err := tx.Commit()
 	if err != nil {
+		session.Close()
 		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: failed to commit coordinator lock")
 		return err
 	}
 
 	if !stat.Succeeded {
-		_, err := q.cli.Revoke(ctx, leaseGrantResp.ID)
-		if err != nil {
-			return err
-		}
+		session.Close()
 		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "qdb is already in use")
 	}
 
-	// okay, we acquired lock, time to spawn keep alive channel
-	go func() {
-		for resp := range keepAliveCh {
-			spqrlog.Zero.Debug().
-				Uint64("raft-term", resp.RaftTerm).
-				Int64("lease-id", int64(resp.ID)).
-				Msg("etcd keep alive channel")
-		}
-	}()
+	q.session = session
+
+	spqrlog.Zero.Debug().
+		Str("address", addr).
+		Msg("etcdqdb: coordinator lock acquired")
 
 	return nil
 }
