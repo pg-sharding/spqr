@@ -678,16 +678,25 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context, addr string) error {
 	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(coordLockKey)).Then(op)
 	stat, err := tx.Commit()
 	if err != nil {
-		session.Close()
+		if closeErr := session.Close(); closeErr != nil {
+			spqrlog.Zero.Error().Err(closeErr).Msg("etcdqdb: failed to close session")
+		}
 		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: failed to commit coordinator lock")
 		return err
 	}
 
 	if !stat.Succeeded {
-		session.Close()
+		if closeErr := session.Close(); closeErr != nil {
+			spqrlog.Zero.Error().Err(closeErr).Msg("etcdqdb: failed to close session")
+		}
 		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "qdb is already in use")
 	}
 
+	if q.session != nil {
+		if closeErr := q.session.Close(); closeErr != nil {
+			spqrlog.Zero.Error().Err(closeErr).Msg("etcdqdb: failed to close previous session")
+		}
+	}
 	q.session = session
 
 	spqrlog.Zero.Debug().
