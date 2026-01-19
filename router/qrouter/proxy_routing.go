@@ -565,7 +565,6 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		return p, nil
 	case *lyx.Delete:
 
 		p, err := planner.PlanWithClause(ctx, rm, qr, stmt.WithClause)
@@ -623,7 +622,6 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		return p, nil
 	}
 
 	return nil, nil
