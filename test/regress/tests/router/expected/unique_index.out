@@ -142,6 +142,16 @@ INSERT INTO r (i, j, k) VALUES(10, 2, 30);
 NOTICE: send query to shard(s) : sh4
 NOTICE: send query to shard(s) : sh4
 ERROR:  client processing error: failed to run inner slice, tx status error: duplicate key value violates unique constraint "ui_j_idx", tx status ACTIVE
+WITH s AS (select 1)
+INSERT INTO r (i, j, k) VALUES(10, 2, 30);
+ERROR:  client processing error: error processing query 'WITH s AS (select 1)
+INSERT INTO r (i, j, k) VALUES(10, 2, 30);': too complex query to route, tx status IDLE
+INSERT INTO r (i, j, k) VALUES(7, 8, 9) RETURNING *;
+ERROR:  client processing error: error processing query 'INSERT INTO r (i, j, k) VALUES(7, 8, 9) RETURNING *;': too complex query to route, tx status IDLE
+DELETE FROM r WHERE i = 7;
+ERROR:  client processing error: error processing query 'DELETE FROM r WHERE i = 7;': Not implemented, tx status IDLE
+UPDATE r SET k = k + 1 WHERE i = 7;
+ERROR:  client processing error: error processing query 'UPDATE r SET k = k + 1 WHERE i = 7;': Not implemented, tx status IDLE
 -- test with tx block
 BEGIN;
 INSERT INTO r (i, j, k) VALUES(7, 8, 9);
