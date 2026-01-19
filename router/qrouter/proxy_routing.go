@@ -553,11 +553,11 @@ func (qr *ProxyQrouter) planQueryV1(
 				return p, nil
 			}
 
-			iis := make([]*distributions.UniqueIndex, 0)
+			// iis := make([]*distributions.UniqueIndex, 0)
 
-			for _, is := range iisMP {
-				iis = append(iis, is)
-			}
+			// for _, is := range iisMP {
+			// 	iis = append(iis, is)
+			// }
 
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 
@@ -611,11 +611,11 @@ func (qr *ProxyQrouter) planQueryV1(
 				return p, nil
 			}
 
-			iis := make([]*distributions.UniqueIndex, 0)
+			// iis := make([]*distributions.UniqueIndex, 0)
 
-			for _, is := range iisMP {
-				iis = append(iis, is)
-			}
+			// for _, is := range iisMP {
+			// 	iis = append(iis, is)
+			// }
 
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		default:
