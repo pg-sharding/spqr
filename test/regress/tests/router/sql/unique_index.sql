@@ -50,6 +50,15 @@ SELECT __spqr__ctid('ui');
 
 INSERT INTO r (i, j, k) VALUES(10, 2, 30);
 
+WITH s AS (select 1)
+INSERT INTO r (i, j, k) VALUES(10, 2, 30);
+
+INSERT INTO r (i, j, k) VALUES(7, 8, 9) RETURNING *;
+
+DELETE FROM r WHERE i = 7;
+
+UPDATE r SET k = k + 1 WHERE i = 7;
+
 -- test with tx block
 
 BEGIN;
