@@ -379,7 +379,7 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 		}
 		keyRanges = append(keyRanges, keyRangeFromInternal(kRange, krLocked))
 	}
-	
+
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: list all key ranges")
