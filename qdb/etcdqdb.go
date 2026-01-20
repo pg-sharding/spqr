@@ -379,11 +379,7 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 		}
 		keyRanges = append(keyRanges, keyRangeFromInternal(kRange, krLocked))
 	}
-
-	sort.Slice(keyRanges, func(i, j int) bool {
-		return keyRanges[i].KeyRangeID < keyRanges[j].KeyRangeID
-	})
-
+	
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: list all key ranges")

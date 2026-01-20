@@ -41,16 +41,9 @@ func ValidateKeyRangeForCreate(ctx context.Context, mngr EntityMgr, keyRange *kr
 	var nearestKr *kr.KeyRange = nil
 	for _, v := range existsKrids {
 		// TODO: need remove lowlevel checks with qdbKr from QDB layer
-		qdbKeyRange := v.ToDB()
-		eph, err := kr.KeyRangeFromBytes(qdbKeyRange.LowerBound, keyRange.ColumnTypes)
-		if err != nil {
-			return err
-		}
-		if kr.CmpRangesLessEqual(eph.LowerBound, keyRange.LowerBound, keyRange.ColumnTypes) {
-			if nearestKr == nil || kr.CmpRangesLess(nearestKr.LowerBound, eph.LowerBound, nearestKr.ColumnTypes) {
-				nearestKr = eph
-				nearestKr.ID = qdbKeyRange.KeyRangeID
-				nearestKr.ShardID = v.ShardID
+		if kr.CmpRangesLessEqual(v.LowerBound, keyRange.LowerBound, keyRange.ColumnTypes) {
+			if nearestKr == nil || kr.CmpRangesLess(nearestKr.LowerBound, v.LowerBound, nearestKr.ColumnTypes) {
+				nearestKr = v
 			}
 		}
 	}
@@ -112,12 +105,12 @@ func ValidateKeyRangeForModify(ctx context.Context, mngr EntityMgr, keyRange *kr
 	return nil
 }
 
-func CreateKeyRangeStrict(ctx context.Context, tranMngr EntityMgr, keyRange *kr.KeyRange) error {
-	if err := ValidateKeyRangeForCreate(ctx, tranMngr, keyRange); err != nil {
+func CreateKeyRangeStrict(ctx context.Context, mngr EntityMgr, keyRange *kr.KeyRange) error {
+	if err := ValidateKeyRangeForCreate(ctx, mngr, keyRange); err != nil {
 		return err
 	}
 
-	err := tranMngr.CreateKeyRange(ctx, keyRange)
+	err := mngr.CreateKeyRange(ctx, keyRange)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("CreateKeyRange failed while CreateKeyRangeStrict")
 		return err

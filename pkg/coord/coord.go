@@ -288,12 +288,19 @@ func (lc *Coordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, er
 	}
 
 	krs := make([]*kr.KeyRange, 0, len(keyRanges))
+	dsIdColTypes := make(map[string][]string)
 	for _, keyRange := range keyRanges {
-		ds, err := lc.qdb.GetDistribution(ctx, keyRange.DistributionId)
-		if err != nil {
-			return nil, err
+		var colTypes []string
+		ok := false
+		if colTypes, ok = dsIdColTypes[keyRange.DistributionId]; !ok {
+			ds, err := lc.qdb.GetDistribution(ctx, keyRange.DistributionId)
+			if err != nil {
+				return nil, err
+			}
+			colTypes = ds.ColTypes
+			dsIdColTypes[ds.ID] = ds.ColTypes
 		}
-		kRange, err := kr.KeyRangeFromDB(keyRange, ds.ColTypes)
+		kRange, err := kr.KeyRangeFromDB(keyRange, colTypes)
 		if err != nil {
 			return nil, err
 		}
@@ -631,12 +638,12 @@ func (qc *Coordinator) ListKeyRanges(ctx context.Context, distribution string) (
 		return nil, err
 	}
 
+	ds, err := qc.qdb.GetDistribution(ctx, distribution)
+	if err != nil {
+		return nil, err
+	}
 	krs := make([]*kr.KeyRange, 0, len(keyRanges))
 	for _, keyRange := range keyRanges {
-		ds, err := qc.qdb.GetDistribution(ctx, keyRange.DistributionId)
-		if err != nil {
-			return nil, err
-		}
 		kRange, err := kr.KeyRangeFromDB(keyRange, ds.ColTypes)
 		if err != nil {
 			return nil, err
