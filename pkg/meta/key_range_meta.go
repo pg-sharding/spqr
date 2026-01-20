@@ -30,7 +30,7 @@ func ValidateKeyRangeForCreate(ctx context.Context, mngr EntityMgr, keyRange *kr
 
 	_, err := mngr.GetDistribution(ctx, keyRange.Distribution)
 	if err != nil {
-		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "try to add key range link to a nonexistent distribution")
+		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "trying to add key range to a nonexistent distribution")
 	}
 
 	existsKrids, err := mngr.ListKeyRanges(ctx, keyRange.Distribution)
