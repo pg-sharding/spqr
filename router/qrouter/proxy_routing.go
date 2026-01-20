@@ -521,9 +521,9 @@ func (qr *ProxyQrouter) planQueryV1(
 		switch q := stmt.TableRef.(type) {
 		case *lyx.RangeVar:
 
-			rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
+			qualName := rfqn.RelationFQNFromRangeRangeVar(q)
 
-			if d, err := rm.GetRelationDistribution(ctx, rqdn); err != nil {
+			if d, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
@@ -539,11 +539,32 @@ func (qr *ProxyQrouter) planQueryV1(
 				}
 				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 			}
+
+			/* Delete from relation - does it have any reverse index attached? */
+
+			/* plan one slice per unique index */
+			iisMP, err := rm.Mgr.ListRelationIndexes(ctx, qualName)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(iisMP) == 0 {
+				/* simple case */
+				return p, nil
+			}
+
+			// iis := make([]*distributions.UniqueIndex, 0)
+
+			// for _, is := range iisMP {
+			// 	iis = append(iis, is)
+			// }
+
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+
 		default:
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		return p, nil
 	case *lyx.Delete:
 
 		p, err := planner.PlanWithClause(ctx, rm, qr, stmt.WithClause)
@@ -559,9 +580,9 @@ func (qr *ProxyQrouter) planQueryV1(
 		switch q := stmt.TableRef.(type) {
 		case *lyx.RangeVar:
 
-			rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
+			qualName := rfqn.RelationFQNFromRangeRangeVar(q)
 
-			if d, err := rm.GetRelationDistribution(ctx, rqdn); err != nil {
+			if d, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
@@ -576,11 +597,31 @@ func (qr *ProxyQrouter) planQueryV1(
 				}
 				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 			}
+
+			/* Delete from relation - does it have any reverse index attached? */
+
+			/* plan one slice per unique index */
+			iisMP, err := rm.Mgr.ListRelationIndexes(ctx, qualName)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(iisMP) == 0 {
+				/* simple case */
+				return p, nil
+			}
+
+			// iis := make([]*distributions.UniqueIndex, 0)
+
+			// for _, is := range iisMP {
+			// 	iis = append(iis, is)
+			// }
+
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		default:
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		return p, nil
 	}
 
 	return nil, nil
