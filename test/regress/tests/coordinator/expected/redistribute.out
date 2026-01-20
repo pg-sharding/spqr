@@ -80,6 +80,8 @@ STOP MOVE TASK GROUP tgid;
 NOTICE: No move task group found to stop
 STOP TASK GROUP tgid;
 NOTICE: No move task group found to stop
+STOP TASK GROUP ALL;
+NOTICE: No move task group found to stop
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------

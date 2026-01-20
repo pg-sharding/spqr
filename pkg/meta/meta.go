@@ -989,19 +989,34 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}
 		return cli.CompleteMsg(0)
 	case *spqrparser.StopMoveTaskGroup:
-		tg, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
-		if err != nil {
-			return err
+		var tgs map[string]*tasks.MoveTaskGroup
+		if stmt.ID == "*" {
+			var err error
+			tgs, err = mgr.ListMoveTaskGroups(ctx)
+			if err != nil {
+				return err
+			}
+
+		} else {
+			tg, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
+			if err != nil {
+				return err
+			}
+			if tg != nil {
+				tgs = map[string]*tasks.MoveTaskGroup{tg.ID: tg}
+			}
 		}
-		if tg == nil {
+		if len(tgs) == 0 {
 			_ = cli.ReplyNotice(ctx, "No move task group found to stop")
 			return cli.CompleteMsg(0)
 		}
-		if err := mgr.StopMoveTaskGroup(ctx, stmt.ID); err != nil {
-			return err
+		for id := range tgs {
+			if err := mgr.StopMoveTaskGroup(ctx, id); err != nil {
+				return err
+			}
 		}
-		_ = cli.ReplyNotice(ctx, "Gracefully stopping task group")
-		return cli.CompleteMsg(0)
+		_ = cli.ReplyNotice(ctx, "Gracefully stopping task groups")
+		return cli.CompleteMsg(len(tgs))
 	case *spqrparser.RetryMoveTaskGroup:
 		taskGroup, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
 		if err != nil {
