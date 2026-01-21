@@ -1419,7 +1419,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			Desc: engine.GetVPHeader("router", "status"),
 		}
 
-		tts.WriteDataRow(pkg.SpqrVersionRevision)
 
 		for _, msg := range resp {
 			tts.WriteDataRow(fmt.Sprintf("router -> %s-%s", msg.ID, msg.Address), string(msg.State))
