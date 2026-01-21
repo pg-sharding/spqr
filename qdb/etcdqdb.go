@@ -61,6 +61,7 @@ const (
 	shardsNamespace                  = "/shards/"
 	relationMappingNamespace         = "/relation_mappings/"
 	taskGroupsNamespace              = "/move_task_groups/"
+	taskGroupStatusesNamespace       = "/task_group_statuses/"
 	moveTaskNamespace                = "/move_tasks/"
 	redistributeTaskPath             = "/redistribute_task/"
 	balancerTaskPath                 = "/balancer_task/"
@@ -136,6 +137,10 @@ func columnSequenceMappingNodePath(relName, colName string) string {
 }
 
 func taskGroupNodePath(id string) string {
+	return path.Join(taskGroupsNamespace, id)
+}
+
+func taskGroupStatusNodePath(id string) string {
 	return path.Join(taskGroupsNamespace, id)
 }
 
@@ -2159,15 +2164,60 @@ func (q *EtcdQDB) RemoveBalancerTask(ctx context.Context) error {
 }
 
 func (q *EtcdQDB) WriteTaskGroupStatus(ctx context.Context, id string, status *TaskGroupStatus) error {
-	return fmt.Errorf("not implemented")
+	spqrlog.Zero.Debug().
+		Str("task group ID", id).
+		Str("state", status.State).
+		Str("msg", status.Message).
+		Msg("etcdqdb: write task group status")
+
+	data, err := json.Marshal(status)
+	if err != nil {
+		return err
+	}
+	_, err = q.cli.Put(ctx, taskGroupStatusNodePath(id), string(data))
+	return err
 }
 
 func (q *EtcdQDB) GetTaskGroupStatus(ctx context.Context, id string) (*TaskGroupStatus, error) {
-	return nil, fmt.Errorf("not implemented")
+	spqrlog.Zero.Debug().
+		Str("task group ID", id).
+		Msg("etcdqdb: get task group status")
+
+	resp, err := q.cli.Get(ctx, taskGroupStatusNodePath(id))
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.Kvs) == 0 {
+		return nil, nil
+	}
+	var status *TaskGroupStatus
+	if err = json.Unmarshal(resp.Kvs[0].Value, &status); err != nil {
+		return nil, err
+	}
+	return status, err
 }
 
 func (q *EtcdQDB) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*TaskGroupStatus, error) {
-	return nil, fmt.Errorf("not implemented")
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: get task groups statuses")
+
+	resp, err := q.cli.Get(ctx, taskGroupStatusesNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.Kvs) == 0 {
+		return nil, nil
+	}
+	res := make(map[string]*TaskGroupStatus)
+	for _, kv := range resp.Kvs {
+		var status *TaskGroupStatus
+		if err = json.Unmarshal(kv.Value, &status); err != nil {
+			return nil, err
+		}
+		_, id := path.Split(string(kv.Key))
+		res[id] = status
+	}
+	return res, err
 }
 
 // ==============================================================================
