@@ -5,13 +5,10 @@ import (
 	"fmt"
 	"net"
 	"strings"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/client"
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/engine"
-	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
@@ -28,14 +25,6 @@ type Interactor interface {
 
 type PSQLInteractor struct {
 	cl client.Client
-}
-
-func (pi *PSQLInteractor) CoordinatorAddr(ctx context.Context, addr string) error {
-	tts := &tupleslot.TupleTableSlot{
-		Desc: engine.GetVPHeader("coordinator_address"),
-	}
-	tts.WriteDataRow(fmt.Sprintf("%v", addr))
-	return pi.ReplyTTS(tts)
 }
 
 // NewPSQLInteractor creates a new instance of the PSQLInteractor struct.
@@ -309,44 +298,6 @@ func (pi *PSQLInteractor) MoveTasks(_ context.Context, ts map[string]*tasks.Move
 
 // TODO : unit tests
 
-// Distributions sends distribution data to the PSQL client.
-//
-// Parameters:
-// - _ (context.Context): The context for the operation.
-// - distributions ([]*distributions.Distribution): The list of distribution data to send.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) Distributions(_ context.Context, distributions []*distributions.Distribution, defShardIDs []string) error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			engine.TextOidFD("distribution_id"),
-			engine.TextOidFD("column_types"),
-			engine.TextOidFD("default_shard"),
-		}},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-	for id, distribution := range distributions {
-		if err := pi.cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{
-				[]byte(distribution.Id),
-				[]byte(strings.Join(distribution.ColTypes, ",")),
-				[]byte(defShardIDs[id]),
-			},
-		}); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
 // ReportError sends an error response to the PSQL client in case of an error.
 //
 // Parameters:
@@ -485,50 +436,6 @@ func (pi *PSQLInteractor) IsReadOnly(ctx context.Context, ro bool) error {
 	}
 
 	return pi.CompleteMsg(0)
-}
-
-func (pi *PSQLInteractor) MoveStats(ctx context.Context, stats map[string]time.Duration) error {
-	if err := pi.WriteHeader("statistic", "time"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	for stat, time := range stats {
-		if err := pi.WriteDataRow(stat, time.String()); err != nil {
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(len(stats))
-}
-
-func (pi *PSQLInteractor) Users(ctx context.Context) error {
-	berules := config.RouterConfig().BackendRules
-	if err := pi.WriteHeader(
-		"user",
-		"dbname",
-		"connection_limit",
-		"connection_retries",
-		"connection_timeout",
-		"keep_alive",
-		"tcp_user_timeout",
-	); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	for _, berule := range berules {
-		if err := pi.WriteDataRow(
-			berule.Usr,
-			berule.DB,
-			fmt.Sprintf("%d", berule.ConnectionLimit),
-			fmt.Sprintf("%d", berule.ConnectionRetries),
-			berule.ConnectionTimeout.String(),
-			berule.KeepAlive.String(),
-			berule.TcpUserTimeout.String(),
-		); err != nil {
-			return err
-		}
-	}
-	return pi.CompleteMsg(len(berules))
 }
 
 // ReplyNotice sends notice message to client

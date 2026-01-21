@@ -1476,7 +1476,11 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
-		return cli.CoordinatorAddr(ctx, addr)
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("coordinator_address"),
+		}
+		tts.WriteDataRow(fmt.Sprintf("%v", addr))
+		return cli.ReplyTTS(tts)
 	case spqrparser.DistributionsStr:
 		dss, err := mngr.ListDistributions(ctx)
 		if err != nil {
@@ -1499,7 +1503,17 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 			defShardIDs = append(defShardIDs, shID)
 		}
-		return cli.Distributions(ctx, dss, defShardIDs)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("distribution_id", "column_types", "default_shard"),
+		}
+
+		for id, distribution := range dss {
+			tts.WriteDataRow(distribution.Id,
+				strings.Join(distribution.ColTypes, ","),
+				defShardIDs[id])
+		}
+		return cli.ReplyTTS(tts)
 	case spqrparser.QuantilesStr:
 		return cli.Quantiles(ctx)
 	case spqrparser.SequencesStr:
@@ -1527,9 +1541,44 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.IsReadOnly(ctx, ro)
 	case spqrparser.MoveStatsStr:
 		stats := statistics.GetMoveStats()
-		return cli.MoveStats(ctx, stats)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("statistic", "time"),
+		}
+
+		for stat, time := range stats {
+			tts.WriteDataRow(stat, time.String())
+		}
+
+		return cli.ReplyTTS(tts)
 	case spqrparser.Users:
-		return cli.Users(ctx)
+
+		berules := config.RouterConfig().BackendRules
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader(
+				"user",
+				"dbname",
+				"connection_limit",
+				"connection_retries",
+				"connection_timeout",
+				"keep_alive",
+				"tcp_user_timeout",
+			),
+		}
+
+		for _, berule := range berules {
+			tts.WriteDataRow(
+				berule.Usr,
+				berule.DB,
+				fmt.Sprintf("%d", berule.ConnectionLimit),
+				fmt.Sprintf("%d", berule.ConnectionRetries),
+				berule.ConnectionTimeout.String(),
+				berule.KeepAlive.String(),
+				berule.TcpUserTimeout.String(),
+			)
+		}
+		return cli.ReplyTTS(tts)
 	default:
 		tts, err := ProcessShowExtended(ctx, stmt, mngr, ci, ro)
 		if err != nil {
