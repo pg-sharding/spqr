@@ -527,36 +527,6 @@ func (pi *PSQLInteractor) Routers(resp []*topology.Router) error {
 	return pi.CompleteMsg(0)
 }
 
-// TODO : unit tests
-
-// AlterDistributionDetach detaches a relation from a distribution in the PSQL client.
-//
-// Parameters:
-// - _ (context.Context): The context for the operation. (Unused)
-// - id (string): The ID of the distribution to detach the relation from.
-// - relName (string): The name of the relation to detach.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) AlterDistributionDetach(_ context.Context, id string, relName string) error {
-	if err := pi.WriteHeader("detach relation"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("relation name   -> %s", relName)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("distribution id -> %s", id)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
-}
-
 // MakeSimpleResponse generic function to return to client result as list of key-value.
 //
 // Parameters:
