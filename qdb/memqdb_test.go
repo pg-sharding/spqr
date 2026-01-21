@@ -298,7 +298,7 @@ func TestKeyRanges(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
-	statements, err = memqdb.CreateKeyRange(ctx, &qdb.KeyRange{
+	_, err = memqdb.CreateKeyRange(ctx, &qdb.KeyRange{
 		LowerBound:     [][]byte{[]byte("1111")},
 		ShardID:        "sh1",
 		KeyRangeID:     "krid2",
