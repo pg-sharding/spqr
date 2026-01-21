@@ -1,13 +1,13 @@
 SHOW time_quantiles
    quantile_type    | time_ms 
 --------------------+---------
- router_time_0.75   |    0.00
- shard_time_0.75    |    0.00
- router_time_0.90   |    0.00
- shard_time_0.90    |    0.00
- router_time_0.999  |    0.00
- shard_time_0.999   |    0.00
- router_time_0.9999 |    0.00
- shard_time_0.9999  |    0.00
+ router_time_0.75   | 0.00
+ shard_time_0.75    | 0.00
+ router_time_0.90   | 0.00
+ shard_time_0.90    | 0.00
+ router_time_0.999  | 0.00
+ shard_time_0.999   | 0.00
+ router_time_0.9999 | 0.00
+ shard_time_0.9999  | 0.00
 (8 rows)
 
