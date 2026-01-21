@@ -20,13 +20,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MoveTasksService_ListMoveTasks_FullMethodName       = "/spqr.MoveTasksService/ListMoveTasks"
-	MoveTasksService_ListMoveTaskGroups_FullMethodName  = "/spqr.MoveTasksService/ListMoveTaskGroups"
-	MoveTasksService_GetMoveTaskGroup_FullMethodName    = "/spqr.MoveTasksService/GetMoveTaskGroup"
-	MoveTasksService_WriteMoveTaskGroup_FullMethodName  = "/spqr.MoveTasksService/WriteMoveTaskGroup"
-	MoveTasksService_RemoveMoveTaskGroup_FullMethodName = "/spqr.MoveTasksService/RemoveMoveTaskGroup"
-	MoveTasksService_RetryMoveTaskGroup_FullMethodName  = "/spqr.MoveTasksService/RetryMoveTaskGroup"
-	MoveTasksService_StopMoveTaskGroup_FullMethodName   = "/spqr.MoveTasksService/StopMoveTaskGroup"
+	MoveTasksService_ListMoveTasks_FullMethodName               = "/spqr.MoveTasksService/ListMoveTasks"
+	MoveTasksService_ListMoveTaskGroups_FullMethodName          = "/spqr.MoveTasksService/ListMoveTaskGroups"
+	MoveTasksService_GetMoveTaskGroup_FullMethodName            = "/spqr.MoveTasksService/GetMoveTaskGroup"
+	MoveTasksService_WriteMoveTaskGroup_FullMethodName          = "/spqr.MoveTasksService/WriteMoveTaskGroup"
+	MoveTasksService_RemoveMoveTaskGroup_FullMethodName         = "/spqr.MoveTasksService/RemoveMoveTaskGroup"
+	MoveTasksService_RetryMoveTaskGroup_FullMethodName          = "/spqr.MoveTasksService/RetryMoveTaskGroup"
+	MoveTasksService_StopMoveTaskGroup_FullMethodName           = "/spqr.MoveTasksService/StopMoveTaskGroup"
+	MoveTasksService_GetMoveTaskGroupStatus_FullMethodName      = "/spqr.MoveTasksService/GetMoveTaskGroupStatus"
+	MoveTasksService_GetAllMoveTaskGroupStatuses_FullMethodName = "/spqr.MoveTasksService/GetAllMoveTaskGroupStatuses"
 )
 
 // MoveTasksServiceClient is the client API for MoveTasksService service.
@@ -40,6 +42,8 @@ type MoveTasksServiceClient interface {
 	RemoveMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	RetryMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	StopMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetMoveTaskGroupStatus(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*MoveTaskGroupStatus, error)
+	GetAllMoveTaskGroupStatuses(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetAllMoveTaskGroupStatusesReply, error)
 }
 
 type moveTasksServiceClient struct {
@@ -120,6 +124,26 @@ func (c *moveTasksServiceClient) StopMoveTaskGroup(ctx context.Context, in *Move
 	return out, nil
 }
 
+func (c *moveTasksServiceClient) GetMoveTaskGroupStatus(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*MoveTaskGroupStatus, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MoveTaskGroupStatus)
+	err := c.cc.Invoke(ctx, MoveTasksService_GetMoveTaskGroupStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *moveTasksServiceClient) GetAllMoveTaskGroupStatuses(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetAllMoveTaskGroupStatusesReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAllMoveTaskGroupStatusesReply)
+	err := c.cc.Invoke(ctx, MoveTasksService_GetAllMoveTaskGroupStatuses_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MoveTasksServiceServer is the server API for MoveTasksService service.
 // All implementations must embed UnimplementedMoveTasksServiceServer
 // for forward compatibility.
@@ -131,6 +155,8 @@ type MoveTasksServiceServer interface {
 	RemoveMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error)
 	RetryMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error)
 	StopMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error)
+	GetMoveTaskGroupStatus(context.Context, *MoveTaskGroupSelector) (*MoveTaskGroupStatus, error)
+	GetAllMoveTaskGroupStatuses(context.Context, *emptypb.Empty) (*GetAllMoveTaskGroupStatusesReply, error)
 	mustEmbedUnimplementedMoveTasksServiceServer()
 }
 
@@ -161,6 +187,12 @@ func (UnimplementedMoveTasksServiceServer) RetryMoveTaskGroup(context.Context, *
 }
 func (UnimplementedMoveTasksServiceServer) StopMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method StopMoveTaskGroup not implemented")
+}
+func (UnimplementedMoveTasksServiceServer) GetMoveTaskGroupStatus(context.Context, *MoveTaskGroupSelector) (*MoveTaskGroupStatus, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMoveTaskGroupStatus not implemented")
+}
+func (UnimplementedMoveTasksServiceServer) GetAllMoveTaskGroupStatuses(context.Context, *emptypb.Empty) (*GetAllMoveTaskGroupStatusesReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAllMoveTaskGroupStatuses not implemented")
 }
 func (UnimplementedMoveTasksServiceServer) mustEmbedUnimplementedMoveTasksServiceServer() {}
 func (UnimplementedMoveTasksServiceServer) testEmbeddedByValue()                          {}
@@ -309,6 +341,42 @@ func _MoveTasksService_StopMoveTaskGroup_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MoveTasksService_GetMoveTaskGroupStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MoveTaskGroupSelector)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MoveTasksServiceServer).GetMoveTaskGroupStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MoveTasksService_GetMoveTaskGroupStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MoveTasksServiceServer).GetMoveTaskGroupStatus(ctx, req.(*MoveTaskGroupSelector))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MoveTasksService_GetAllMoveTaskGroupStatuses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MoveTasksServiceServer).GetAllMoveTaskGroupStatuses(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MoveTasksService_GetAllMoveTaskGroupStatuses_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MoveTasksServiceServer).GetAllMoveTaskGroupStatuses(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MoveTasksService_ServiceDesc is the grpc.ServiceDesc for MoveTasksService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -343,6 +411,14 @@ var MoveTasksService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StopMoveTaskGroup",
 			Handler:    _MoveTasksService_StopMoveTaskGroup_Handler,
+		},
+		{
+			MethodName: "GetMoveTaskGroupStatus",
+			Handler:    _MoveTasksService_GetMoveTaskGroupStatus_Handler,
+		},
+		{
+			MethodName: "GetAllMoveTaskGroupStatuses",
+			Handler:    _MoveTasksService_GetAllMoveTaskGroupStatuses_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

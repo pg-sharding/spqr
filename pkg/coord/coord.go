@@ -703,6 +703,40 @@ func (qc *Coordinator) RemoveMoveTaskGroup(ctx context.Context, id string) error
 	return qc.qdb.RemoveMoveTaskGroup(ctx, id)
 }
 
+// GetTaskGroupStatus gets the status of the task group from coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+// - id  (string):          ID of the task group
+//
+// Returns:
+// - *tasks.MoveTaskGroupStatus: the status of the task group
+// - error: an error if the removal operation fails.
+func (qc *Coordinator) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.MoveTaskGroupStatus, error) {
+	status, err := qc.qdb.GetTaskGroupStatus(ctx, id)
+	return tasks.MoveTaskGroupStatusFromDb(status), err
+}
+
+// GetAllTaskGroupStatuses gets statuses of all task groups from coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+//
+// Returns:
+// - map[string]*tasks.MoveTaskGroupStatus: the statuses of the task group by ID
+// - error: an error if the removal operation fails.
+func (qc *Coordinator) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.MoveTaskGroupStatus, error) {
+	statuses, err := qc.qdb.GetAllTaskGroupStatuses(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*tasks.MoveTaskGroupStatus)
+	for id, status := range statuses {
+		res[id] = tasks.MoveTaskGroupStatusFromDb(status)
+	}
+	return res, nil
+}
+
 // TODO : unit tests
 
 // ListDistributions retrieves a list of distributions from the local coordinator's QDB.

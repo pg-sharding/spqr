@@ -36,6 +36,7 @@ type MemQDB struct {
 	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
 	Coordinator          string                              `json:"coordinator"`
 	MoveTaskGroups       map[string]*MoveTaskGroup           `json:"taskGroup"`
+	TaskGroupIDToStatus  map[string]*TaskGroupStatus         `json:"task_group_statuses"`
 	StopMoveTaskGroup    map[string]bool                     `json:"stop_move_task_group"`
 	MoveTasks            map[string]*MoveTask                `json:"move_tasks"`
 	TotalKeys            map[string]int64                    `json:"total_keys"`
@@ -76,6 +77,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		SequenceToValues:     map[string]int64{},
 		ReferenceRelations:   map[string]*ReferenceRelation{},
 		MoveTaskGroups:       map[string]*MoveTaskGroup{},
+		TaskGroupIDToStatus:  map[string]*TaskGroupStatus{},
 		StopMoveTaskGroup:    map[string]bool{},
 		TotalKeys:            map[string]int64{},
 		MoveTasks:            map[string]*MoveTask{},
@@ -1352,6 +1354,39 @@ func (q *MemQDB) RemoveBalancerTask(_ context.Context) error {
 
 	q.BalancerTask = nil
 	return nil
+}
+
+func (q *MemQDB) WriteTaskGroupStatus(ctx context.Context, id string, status *TaskGroupStatus) error {
+	spqrlog.Zero.Debug().
+		Str("task group ID", id).
+		Str("state", status.State).
+		Str("msg", status.Message).
+		Msg("memqdb: write task group status")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.TaskGroupIDToStatus[id] = status
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.TaskGroupIDToStatus, id, status))
+}
+
+func (q *MemQDB) GetTaskGroupStatus(ctx context.Context, id string) (*TaskGroupStatus, error) {
+	spqrlog.Zero.Debug().
+		Str("task group ID", id).
+		Msg("memqdb: get task group status")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	status := q.TaskGroupIDToStatus[id]
+	return status, nil
+}
+
+func (q *MemQDB) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*TaskGroupStatus, error) {
+	spqrlog.Zero.Debug().
+		Msg("memqdb: get task groups statuses")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.TaskGroupIDToStatus, nil
 }
 
 func (q *MemQDB) CreateSequence(_ context.Context, seqName string, initialValue int64) error {

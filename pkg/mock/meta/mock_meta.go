@@ -416,6 +416,21 @@ func (mr *MockEntityMgrMockRecorder) ExecNoTran(ctx, chunk any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecNoTran", reflect.TypeOf((*MockEntityMgr)(nil).ExecNoTran), ctx, chunk)
 }
 
+// GetAllTaskGroupStatuses mocks base method.
+func (m *MockEntityMgr) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.MoveTaskGroupStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllTaskGroupStatuses", ctx)
+	ret0, _ := ret[0].(map[string]*tasks.MoveTaskGroupStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllTaskGroupStatuses indicates an expected call of GetAllTaskGroupStatuses.
+func (mr *MockEntityMgrMockRecorder) GetAllTaskGroupStatuses(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllTaskGroupStatuses", reflect.TypeOf((*MockEntityMgr)(nil).GetAllTaskGroupStatuses), ctx)
+}
+
 // GetBalancerTask mocks base method.
 func (m *MockEntityMgr) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {
 	m.ctrl.T.Helper()
@@ -549,6 +564,21 @@ func (m *MockEntityMgr) GetShard(ctx context.Context, shardID string) (*topology
 func (mr *MockEntityMgrMockRecorder) GetShard(ctx, shardID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShard", reflect.TypeOf((*MockEntityMgr)(nil).GetShard), ctx, shardID)
+}
+
+// GetTaskGroupStatus mocks base method.
+func (m *MockEntityMgr) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.MoveTaskGroupStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTaskGroupStatus", ctx, id)
+	ret0, _ := ret[0].(*tasks.MoveTaskGroupStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTaskGroupStatus indicates an expected call of GetTaskGroupStatus.
+func (mr *MockEntityMgrMockRecorder) GetTaskGroupStatus(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskGroupStatus", reflect.TypeOf((*MockEntityMgr)(nil).GetTaskGroupStatus), ctx, id)
 }
 
 // ListAllKeyRanges mocks base method.

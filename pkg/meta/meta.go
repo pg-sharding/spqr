@@ -1315,11 +1315,15 @@ func ProcessShowExtended(ctx context.Context, stmt *spqrparser.Show, mngr Entity
 		}
 		tts = engine.UniqueIndexesVirtualRelationScan(idxs)
 	case spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr:
-		group, err := mngr.ListMoveTaskGroups(ctx)
+		groups, err := mngr.ListMoveTaskGroups(ctx)
 		if err != nil {
 			return nil, err
 		}
-		tts = engine.TaskGroupsVirtualRelationScan(group)
+		statuses, err := mngr.GetAllTaskGroupStatuses(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts = engine.TaskGroupsVirtualRelationScan(groups, statuses)
 	case spqrparser.MoveTaskStr, spqrparser.MoveTasksStr:
 		taskList, err := mngr.ListMoveTasks(ctx)
 		if err != nil {

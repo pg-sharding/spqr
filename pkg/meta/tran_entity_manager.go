@@ -469,6 +469,16 @@ func (t *TranEntityManager) ListUniqueIndexes(ctx context.Context) (map[string]*
 	panic("ListUniqueIndexes unimplemented")
 }
 
+// GetAllTaskGroupStatuses implements [EntityMgr].
+func (t *TranEntityManager) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.MoveTaskGroupStatus, error) {
+	panic("GetAllTaskGroupStatuses unimplemented")
+}
+
+// GetTaskGroupStatus implements [EntityMgr].
+func (t *TranEntityManager) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.MoveTaskGroupStatus, error) {
+	panic("GetTaskGroupStatus unimplemented")
+}
+
 type MetaEntityList[T any] struct {
 	existsItems  map[string]T
 	deletedItems map[string]struct{}
