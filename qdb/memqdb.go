@@ -1354,6 +1354,18 @@ func (q *MemQDB) RemoveBalancerTask(_ context.Context) error {
 	return nil
 }
 
+func (q *MemQDB) WriteTaskGroupStatus(ctx context.Context, id string, status *TaskGroupStatus) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (q *MemQDB) GetTaskGroupStatus(ctx context.Context, id string) (*TaskGroupStatus, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (q *MemQDB) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*TaskGroupStatus, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 func (q *MemQDB) CreateSequence(_ context.Context, seqName string, initialValue int64) error {
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).Msg("memqdb: alter sequence attach")

@@ -52,6 +52,19 @@ type MoveTaskGroup struct {
 	CurrentTask *MoveTask `json:"task"`
 }
 
+type TaskGroupState string
+
+const (
+	TaskGroupPlanned TaskGroupState = "PLANNED"
+	TaskGroupRunning TaskGroupState = "RUNNING"
+	TaskGroupError   TaskGroupState = "ERROR"
+)
+
+type MoveTaskGroupStatus struct {
+	State   TaskGroupState
+	Message string
+}
+
 type RedistributeTaskState int
 
 const (

@@ -1193,6 +1193,9 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 	if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
 		return err
 	}
+	if err := qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupPlanned)}); err != nil {
+		spqrlog.Zero.Error().Str("task group ID", taskGroup.ID).Err(err).Msg("failed to write task group status")
+	}
 
 	execCtx := context.TODO()
 	ch := make(chan error)
@@ -1207,6 +1210,9 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 		case err := <-ch:
 			if statErr := statistics.RecordMoveFinish(time.Now()); statErr != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to record key range move finish in statistics")
+			}
+			if err != nil {
+				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
 			}
 			return err
 		}
@@ -1621,6 +1627,9 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" not found in distribution \"%s\"", taskGroup.BoundRel, ds.Id)
 		}
 	}
+	if err := qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupRunning)}); err != nil {
+		spqrlog.Zero.Error().Str("task group ID", taskGroup.ID).Err(err).Msg("failed to write task group status")
+	}
 
 	var delayedError error
 	for {
@@ -1732,7 +1741,26 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id strin
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get move task group: %s", err)
 	}
-	return qc.executeMoveTasks(ctx, taskGroup)
+	execCtx := context.TODO()
+	ch := make(chan error)
+	go func() {
+		ch <- qc.executeMoveTasks(execCtx, taskGroup)
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
+		case err := <-ch:
+			if err != nil {
+				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
+			}
+			if err != nil {
+				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
+			}
+			return err
+		}
+	}
 }
 
 // StopMoveTaskGroup gracefully stops the execution of current move task group.

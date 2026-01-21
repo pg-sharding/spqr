@@ -2158,6 +2158,18 @@ func (q *EtcdQDB) RemoveBalancerTask(ctx context.Context) error {
 	return err
 }
 
+func (q *EtcdQDB) WriteTaskGroupStatus(ctx context.Context, id string, status *TaskGroupStatus) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (q *EtcdQDB) GetTaskGroupStatus(ctx context.Context, id string) (*TaskGroupStatus, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (q *EtcdQDB) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*TaskGroupStatus, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 // ==============================================================================
 //                              KEY RANGE MOVES
 // ==============================================================================

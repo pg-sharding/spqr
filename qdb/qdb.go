@@ -115,6 +115,9 @@ type QDB interface {
 	RemoveMoveTaskGroup(ctx context.Context, id string) error
 	AddMoveTaskGroupStopFlag(ctx context.Context, id string) error
 	CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error)
+	WriteTaskGroupStatus(ctx context.Context, id string, status *TaskGroupStatus) error
+	GetTaskGroupStatus(ctx context.Context, id string) (*TaskGroupStatus, error)
+	GetAllTaskGroupStatuses(ctx context.Context) (map[string]*TaskGroupStatus, error)
 
 	// MOVE tasks
 	ListMoveTasks(ctx context.Context) (map[string]*MoveTask, error)
