@@ -1120,6 +1120,22 @@ func (a *Adapter) StopMoveTaskGroup(ctx context.Context, id string) error {
 	return err
 }
 
+func (a *Adapter) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.MoveTaskGroupStatus, error) {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	status, err := tasksService.GetMoveTaskGroupStatus(ctx, &proto.MoveTaskGroupSelector{ID: id})
+	return tasks.MoveTaskGroupStatusFromProto(status), err
+}
+
+func (a *Adapter) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.MoveTaskGroupStatus, error) {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	ret, err := tasksService.GetAllMoveTaskGroupStatuses(ctx, nil)
+	res := make(map[string]*tasks.MoveTaskGroupStatus)
+	for id, status := range ret.Statuses {
+		res[id] = tasks.MoveTaskGroupStatusFromProto(status)
+	}
+	return res, err
+}
+
 // GetBalancerTask retrieves current balancer task from the system.
 //
 // Parameters:

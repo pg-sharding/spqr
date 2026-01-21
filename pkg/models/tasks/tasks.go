@@ -612,3 +612,34 @@ func RedistributeTaskStateFromProto(state protos.RedistributeTaskState) Redistri
 		panic("unknown redistribute task state")
 	}
 }
+
+func MoveTaskGroupStatusToProto(status *MoveTaskGroupStatus) *protos.MoveTaskGroupStatus {
+	if status == nil {
+		return nil
+	}
+
+	return &protos.MoveTaskGroupStatus{
+		State:   string(status.State),
+		Message: status.Message,
+	}
+}
+
+func MoveTaskGroupStatusFromProto(status *protos.MoveTaskGroupStatus) *MoveTaskGroupStatus {
+	if status == nil {
+		return nil
+	}
+
+	var state TaskGroupState
+	switch TaskGroupState(status.State) {
+	case TaskGroupRunning:
+		state = TaskGroupRunning
+	case TaskGroupError:
+		state = TaskGroupError
+	default:
+		state = TaskGroupPlanned
+	}
+	return &MoveTaskGroupStatus{
+		State:   state,
+		Message: status.Message,
+	}
+}

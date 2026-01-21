@@ -470,12 +470,12 @@ func (t *TranEntityManager) ListUniqueIndexes(ctx context.Context) (map[string]*
 }
 
 // GetAllTaskGroupStatuses implements [EntityMgr].
-func (t *TranEntityManager) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.TaskGroupState, error) {
+func (t *TranEntityManager) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.MoveTaskGroupStatus, error) {
 	panic("GetAllTaskGroupStatuses unimplemented")
 }
 
 // GetTaskGroupStatus implements [EntityMgr].
-func (t *TranEntityManager) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.TaskGroupState, error) {
+func (t *TranEntityManager) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.MoveTaskGroupStatus, error) {
 	panic("GetTaskGroupStatus unimplemented")
 }
 

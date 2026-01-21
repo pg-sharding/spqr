@@ -73,6 +73,15 @@ message MoveTaskGroupSelector {
   string ID = 1;
 }
 
+message MoveTaskGroupStatus {
+  string state = 1;
+  string message = 2; 
+}
+
+message GetAllMoveTaskGroupStatusesReply {
+  map<string,MoveTaskGroupStatus> statuses = 1;
+}
+
 service MoveTasksService {
   rpc ListMoveTasks(google.protobuf.Empty) returns (MoveTasksReply) {}
 
@@ -82,6 +91,9 @@ service MoveTasksService {
   rpc RemoveMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
   rpc RetryMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
   rpc StopMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
+
+  rpc GetMoveTaskGroupStatus(MoveTaskGroupSelector) returns(MoveTaskGroupStatus) {}
+  rpc GetAllMoveTaskGroupStatuses(google.protobuf.Empty) returns(GetAllMoveTaskGroupStatusesReply) {}
 }
 
 enum BalancerTaskStatus {
