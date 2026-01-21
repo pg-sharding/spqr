@@ -1006,17 +1006,25 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 				tgs = map[string]*tasks.MoveTaskGroup{tg.ID: tg}
 			}
 		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("Move task group ID"),
+		}
+
 		if len(tgs) == 0 {
 			_ = cli.ReplyNotice(ctx, "No move task group found to stop")
-			return cli.CompleteMsg(0)
 		}
+
 		for id := range tgs {
 			if err := mgr.StopMoveTaskGroup(ctx, id); err != nil {
 				return err
 			}
+			tts.WriteDataRow(id)
 		}
+
 		_ = cli.ReplyNotice(ctx, "Gracefully stopping task groups")
-		return cli.CompleteMsg(len(tgs))
+
+		return cli.ReplyTTS(tts)
 	case *spqrparser.RetryMoveTaskGroup:
 		taskGroup, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
 		if err != nil {
