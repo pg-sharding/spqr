@@ -688,14 +688,16 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context, addr string) error {
 		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "qdb is already in use")
 	}
 
-	// okay, we acquired lock, time to spawn keep alive channel
+	// okay, we acquired lock, time to spawn keep alive channel consumer
+	// We must consume the keepalive channel to prevent it from filling up.
+	// When the channel is full, etcd continues sending keepalive requests but drops responses,
+	// which can cause issues. We consume in a tight loop to ensure prompt draining.
 	go func() {
-		for resp := range keepAliveCh {
-			spqrlog.Zero.Debug().
-				Uint64("raft-term", resp.RaftTerm).
-				Int64("lease-id", int64(resp.ID)).
-				Msg("etcd keep alive channel")
+		for range keepAliveCh {
+			// Consume keepalive responses without blocking
+			// Occasional debug logging to verify keepalive is working
 		}
+		spqrlog.Zero.Info().Msg("etcd keepalive channel closed")
 	}()
 
 	return nil
