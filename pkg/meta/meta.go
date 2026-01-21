@@ -1013,6 +1013,8 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 
 		if len(tgs) == 0 {
 			_ = cli.ReplyNotice(ctx, "No move task group found to stop")
+		} else {
+			_ = cli.ReplyNotice(ctx, "Gracefully stopping task groups")
 		}
 
 		for id := range tgs {
@@ -1021,8 +1023,6 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			}
 			tts.WriteDataRow(id)
 		}
-
-		_ = cli.ReplyNotice(ctx, "Gracefully stopping task groups")
 
 		return cli.ReplyTTS(tts)
 	case *spqrparser.RetryMoveTaskGroup:
