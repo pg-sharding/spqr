@@ -87,11 +87,11 @@ func (manager *DefaultShardManager) CreateDefaultShardNoCheck(ctx context.Contex
 	return nil
 }
 
-func (manager *DefaultShardManager) DropDefaultShard(ctx context.Context) (*string, error) {
+func (manager *DefaultShardManager) DropDefaultShard(ctx context.Context) (string, error) {
 	if defaultKeyRange, err := manager.mngr.GetKeyRange(ctx, DefaultKeyRangeId(manager.distribution)); err != nil {
-		return nil, fmt.Errorf("distribution id=%s have not default shard", manager.distribution.Id)
+		return "", fmt.Errorf("distribution id=%s have not default shard", manager.distribution.Id)
 	} else {
 		spqrlog.Zero.Debug().Str("default key range", defaultKeyRange.ID).Msg("parsed drop")
-		return &(defaultKeyRange.ShardID), manager.mngr.DropKeyRange(ctx, defaultKeyRange.ID)
+		return defaultKeyRange.ShardID, manager.mngr.DropKeyRange(ctx, defaultKeyRange.ID)
 	}
 }
