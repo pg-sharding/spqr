@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/coordinator/statistics"
+	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
@@ -820,7 +821,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 
 	switch stmt := tstmt.(type) {
 	case nil:
-		return cli.CompleteMsg(0)
+		return ErrUnknownCoordinatorCommand
 	case *spqrparser.InstanceControlPoint:
 		/* create control point */
 		if stmt.Enable {
@@ -1001,7 +1002,11 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			return cli.ReplyTTS(tts)
 		}
 	case *spqrparser.RedistributeKeyRange:
-		return processRedistribute(ctx, stmt, mgr, cli)
+		if tts, err := processRedistribute(ctx, stmt, mgr); err != nil {
+			return cli.ReportError(err)
+		} else {
+			return cli.ReplyTTS(tts)
+		}
 	case *spqrparser.Invalidate:
 		switch stmt.Target {
 		case spqrparser.SchemaCacheInvalidateTarget:
@@ -1410,19 +1415,60 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 
-		return cli.Routers(resp)
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("router", "status"),
+		}
+
+		tts.WriteDataRow(pkg.SpqrVersionRevision)
+
+		for _, msg := range resp {
+			tts.WriteDataRow(fmt.Sprintf("router -> %s-%s", msg.ID, msg.Address), string(msg.State))
+		}
+
+		return cli.ReplyTTS(tts)
 	case spqrparser.PoolsStr:
 		var respPools []pool.Pool
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader(
+				"pool_id",
+				"pool_router",
+				"pool_db",
+				"pool_usr",
+				"pool_host",
+				"used_connections",
+				"idle_connections",
+				"queue_residual_size"),
+		}
+
 		if err := ci.ForEachPool(func(p pool.Pool) error {
 			respPools = append(respPools, p)
+
+			statistics := p.View()
+			tts.WriteDataRow(
+				fmt.Sprintf("%p", p),
+				statistics.RouterName,
+				statistics.DB,
+				statistics.Usr,
+				statistics.Hostname,
+				fmt.Sprintf("%d", statistics.UsedConnections),
+				fmt.Sprintf("%d", statistics.IdleConnections),
+				fmt.Sprintf("%d", statistics.QueueResidualSize))
 			return nil
 		}); err != nil {
 			return err
 		}
 
-		return cli.Pools(ctx, respPools)
+		return cli.ReplyTTS(tts)
 	case spqrparser.VersionStr:
-		return cli.Version(ctx)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("spqr_version"),
+		}
+
+		tts.WriteDataRow(pkg.SpqrVersionRevision)
+
+		return cli.ReplyTTS(tts)
 	case spqrparser.CoordinatorAddrStr:
 		addr, err := mngr.GetCoordinator(ctx)
 		if err != nil {
@@ -1503,23 +1549,36 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 //
 // Returns:
 // - error: An error if the operation encounters any issues.
-func processRedistribute(ctx context.Context, req *spqrparser.RedistributeKeyRange, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
-	spqrlog.Zero.Debug().Str("key range id", req.KeyRangeID).Str("destination shard id", req.DestShardID).Int("batch size", req.BatchSize).Msg("process redistribute")
-	if req.BatchSize <= 0 {
+func processRedistribute(ctx context.Context,
+	stmt *spqrparser.RedistributeKeyRange,
+	mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
+	spqrlog.Zero.Debug().Str("key range id", stmt.KeyRangeID).Str("destination shard id", stmt.DestShardID).Int("batch size", stmt.BatchSize).Msg("process redistribute")
+	if stmt.BatchSize <= 0 {
 		spqrlog.Zero.Debug().
-			Int("batch-size-got", req.BatchSize).
+			Int("batch-size-got", stmt.BatchSize).
 			Int("batch-size-use", defaultBatchSize).
 			Msg("redistribute: using default batch size")
-		req.BatchSize = defaultBatchSize
+		stmt.BatchSize = defaultBatchSize
 	}
 	if err := mngr.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
-		KrId:      req.KeyRangeID,
-		ShardId:   req.DestShardID,
-		BatchSize: req.BatchSize,
-		Check:     req.Check,
-		Apply:     req.Apply,
+		KrId:      stmt.KeyRangeID,
+		ShardId:   stmt.DestShardID,
+		BatchSize: stmt.BatchSize,
+		Check:     stmt.Check,
+		Apply:     stmt.Apply,
 	}); err != nil {
-		return cli.ReportError(err)
+		return nil, err
 	}
-	return cli.RedistributeKeyRange(ctx, req)
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: engine.GetVPHeader("redistribute key range"),
+	}
+
+	tts.WriteDataRow(
+		fmt.Sprintf("key range id         -> %s", stmt.KeyRangeID),
+		fmt.Sprintf("destination shard id -> %s", stmt.DestShardID),
+		fmt.Sprintf("batch size           -> %d", stmt.BatchSize),
+	)
+
+	return tts, nil
 }
