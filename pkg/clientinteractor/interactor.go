@@ -465,29 +465,13 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 // Returns:
 // - error: An error if any occurred during the operation.
 func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRange) error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			{
-				Name:                 []byte("merge key ranges"),
-				TableOID:             0,
-				TableAttributeNumber: 0,
-				DataTypeOID:          25,
-				DataTypeSize:         -1,
-				TypeModifier:         -1,
-				Format:               0,
-			},
-		},
-		},
-		&pgproto3.DataRow{Values: [][]byte{fmt.Appendf(nil, "merge key ranges %v and %v", unite.BaseKeyRangeId, unite.AppendageKeyRangeId)}},
-		&pgproto3.CommandComplete{},
-		&pgproto3.ReadyForQuery{},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-		}
+	if err := pi.WriteHeader("merge key ranges"); err != nil {
+		return err
 	}
-
-	return nil
+	if err := pi.WriteDataRow(fmt.Sprintf("merge key range \"%v\" into \"%v\"", unite.AppendageKeyRangeId, unite.BaseKeyRangeId)); err != nil {
+		return err
+	}
+	return pi.CompleteMsg(1)
 }
 
 // RedistributeKeyRange moves key range to a specified shard in the PSQL client.
