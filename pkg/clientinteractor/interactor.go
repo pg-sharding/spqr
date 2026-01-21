@@ -16,7 +16,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/port"
-	"github.com/pg-sharding/spqr/router/statistics"
 )
 
 type Interactor interface {
@@ -135,47 +134,6 @@ func (pi *PSQLInteractor) Databases(dbs []string) error {
 	}
 
 	return pi.CompleteMsg(len(dbs))
-}
-
-// Quantiles sends the row description message for total time quantiles of queries in router and in shard.
-//
-// Parameters:
-// - _ (context.Context): The context parameter (not used in the function).
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-//
-// TODO: unit tests
-func (pi *PSQLInteractor) Quantiles(_ context.Context) error {
-	if err := pi.cl.Send(&pgproto3.RowDescription{
-		Fields: []pgproto3.FieldDescription{engine.TextOidFD("quantile_type"), engine.FloatOidFD("time_ms")},
-	}); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Could not write header for time quantiles")
-		return err
-	}
-
-	quantiles := statistics.GetQuantiles()
-	quantilesStr := statistics.GetQuantilesStr()
-	spqrlog.Zero.Debug().Str("quantiles", fmt.Sprintf("%#v", quantiles)).Msg("Got quantiles")
-	if len(*quantiles) != len(*quantilesStr) {
-		return fmt.Errorf("malformed configuration for quantilesStr")
-	}
-
-	for i := range *quantiles {
-		q := (*quantiles)[i]
-		qStr := (*quantilesStr)[i]
-		if qStr == "" {
-			qStr = fmt.Sprintf("%.2f", q)
-		}
-		if err := pi.WriteDataRow(fmt.Sprintf("router_time_%s", qStr), fmt.Sprintf("%.2f", statistics.GetTotalTimeQuantile(statistics.StatisticsTypeRouter, q))); err != nil {
-			return err
-		}
-		if err := pi.WriteDataRow(fmt.Sprintf("shard_time_%s", qStr), fmt.Sprintf("%.2f", statistics.GetTotalTimeQuantile(statistics.StatisticsTypeShard, q))); err != nil {
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(len(*quantiles) * 2)
 }
 
 // TODO : unit tests
@@ -407,35 +365,6 @@ func (pi *PSQLInteractor) KillBackend(id uint) error {
 func (pi *PSQLInteractor) ReferenceRelations(rrs []*rrelation.ReferenceRelation) error {
 	vp := engine.ReferenceRelationsScan(rrs)
 	return pi.ReplyTTS(vp)
-}
-
-func (pi *PSQLInteractor) Sequences(ctx context.Context, seqs []string, sequenceVals []int64) error {
-	if err := pi.WriteHeader("name", "value"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for i, seq := range seqs {
-		if err := pi.WriteDataRow(seq, fmt.Sprintf("%d", sequenceVals[i])); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-	return pi.CompleteMsg(len(seqs))
-}
-
-func (pi *PSQLInteractor) IsReadOnly(ctx context.Context, ro bool) error {
-	if err := pi.WriteHeader("is_read_only"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("%v", ro)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
 }
 
 // ReplyNotice sends notice message to client

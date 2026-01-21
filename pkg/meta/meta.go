@@ -32,6 +32,7 @@ import (
 	"github.com/pg-sharding/spqr/router/cache"
 	rclient "github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	sts "github.com/pg-sharding/spqr/router/statistics"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -808,7 +809,11 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		if err := catalog.GC.CheckGrants(catalog.RoleReader, rc.Rule()); err != nil {
 			return err
 		}
-		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, cli, ro)
+		if tts, err := ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, ro); err != nil {
+			return cli.ReportError(err)
+		} else {
+			return cli.ReplyTTS(tts)
+		}
 	}
 
 	if ro {
@@ -1165,7 +1170,11 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, ci 
 
 // TODO : unit tests
 
-func ProcessShowExtended(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connmgr.ConnectionMgr, ro bool) (*tupleslot.TupleTableSlot, error) {
+func ProcessShowExtended(ctx context.Context,
+	stmt *spqrparser.Show,
+	mngr EntityMgr,
+	ci connmgr.ConnectionMgr,
+	ro bool) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process extended show statement")
 
 	var tts *tupleslot.TupleTableSlot
@@ -1409,14 +1418,17 @@ func ProcessShowExtended(ctx context.Context, stmt *spqrparser.Show, mngr Entity
 //
 // Returns:
 // - error: An error if the operation encounters any issues.
-func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connmgr.ConnectionMgr, cli *clientinteractor.PSQLInteractor, ro bool) error {
+func ProcessShow(ctx context.Context,
+	stmt *spqrparser.Show,
+	mngr EntityMgr,
+	ci connmgr.ConnectionMgr, ro bool) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
 
 	switch stmt.Cmd {
 	case spqrparser.RoutersStr:
 		resp, err := mngr.ListRouters(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -1426,8 +1438,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		for _, msg := range resp {
 			tts.WriteDataRow(fmt.Sprintf("router -> %s-%s", msg.ID, msg.Address), string(msg.State))
 		}
+		return tts, nil
 
-		return cli.ReplyTTS(tts)
 	case spqrparser.PoolsStr:
 		var respPools []pool.Pool
 
@@ -1458,10 +1470,10 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 				fmt.Sprintf("%d", statistics.QueueResidualSize))
 			return nil
 		}); err != nil {
-			return err
+			return nil, err
 		}
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case spqrparser.VersionStr:
 
 		tts := &tupleslot.TupleTableSlot{
@@ -1470,27 +1482,28 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		tts.WriteDataRow(pkg.SpqrVersionRevision)
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case spqrparser.CoordinatorAddrStr:
 		addr, err := mngr.GetCoordinator(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("coordinator_address"),
 		}
 		tts.WriteDataRow(fmt.Sprintf("%v", addr))
-		return cli.ReplyTTS(tts)
+
+		return tts, nil
 	case spqrparser.DistributionsStr:
 		dss, err := mngr.ListDistributions(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		var defShardIDs []string
 		for _, d := range dss {
 			krs, err := mngr.ListKeyRanges(ctx, d.Id)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			shID := "not exists"
@@ -1513,13 +1526,35 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 				strings.Join(distribution.ColTypes, ","),
 				defShardIDs[id])
 		}
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case spqrparser.QuantilesStr:
-		return cli.Quantiles(ctx)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("quantile_type", "time_ms"),
+		}
+
+		quantiles := sts.GetQuantiles()
+		quantilesStr := sts.GetQuantilesStr()
+		spqrlog.Zero.Debug().Str("quantiles", fmt.Sprintf("%#v", quantiles)).Msg("Got quantiles")
+		if len(*quantiles) != len(*quantilesStr) {
+			return nil, fmt.Errorf("malformed configuration for quantilesStr")
+		}
+
+		for i := range *quantiles {
+			q := (*quantiles)[i]
+			qStr := (*quantilesStr)[i]
+			if qStr == "" {
+				qStr = fmt.Sprintf("%.2f", q)
+			}
+			tts.WriteDataRow(fmt.Sprintf("router_time_%s", qStr), fmt.Sprintf("%.2f", sts.GetTotalTimeQuantile(sts.StatisticsTypeRouter, q)))
+			tts.WriteDataRow(fmt.Sprintf("shard_time_%s", qStr), fmt.Sprintf("%.2f", sts.GetTotalTimeQuantile(sts.StatisticsTypeShard, q)))
+		}
+
+		return tts, nil
 	case spqrparser.SequencesStr:
 		seqs, err := mngr.ListSequences(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		/* this is a bit ugly, but it's quick and dirty.
@@ -1531,14 +1566,28 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		for _, s := range seqs {
 			v, err := mngr.CurrVal(ctx, s)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			sequenceVals = append(sequenceVals, v)
 		}
 
-		return cli.Sequences(ctx, seqs, sequenceVals)
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("name", "value"),
+		}
+
+		for i, seq := range seqs {
+			tts.WriteDataRow(seq, fmt.Sprintf("%d", sequenceVals[i]))
+		}
+
+		return tts, nil
 	case spqrparser.IsReadOnlyStr:
-		return cli.IsReadOnly(ctx, ro)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("is_read_only"),
+		}
+		tts.WriteDataRow(fmt.Sprintf("%v", ro))
+
+		return tts, nil
 	case spqrparser.MoveStatsStr:
 		stats := statistics.GetMoveStats()
 
@@ -1550,7 +1599,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			tts.WriteDataRow(stat, time.String())
 		}
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case spqrparser.Users:
 
 		berules := config.RouterConfig().BackendRules
@@ -1578,13 +1627,13 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 				berule.TcpUserTimeout.String(),
 			)
 		}
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	default:
 		tts, err := ProcessShowExtended(ctx, stmt, mngr, ci, ro)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	}
 }
 
