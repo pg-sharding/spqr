@@ -703,6 +703,14 @@ func (qc *Coordinator) RemoveMoveTaskGroup(ctx context.Context, id string) error
 	return qc.qdb.RemoveMoveTaskGroup(ctx, id)
 }
 
+func (qc *Coordinator) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.TaskGroupState, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (qc *Coordinator) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.TaskGroupState, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 // TODO : unit tests
 
 // ListDistributions retrieves a list of distributions from the local coordinator's QDB.
