@@ -17,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/recovery"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 type App struct {
@@ -104,7 +105,7 @@ func (app *App) ServeGrpcApi(ctx context.Context) error {
 		return err
 	}
 
-	server := grpc.NewServer()
+	server := grpc.NewServer(grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{PermitWithoutStream: true}))
 	rgrpc.Register(server, app.spqr.Qrouter, app.spqr.Mgr, app.spqr.RuleRouter)
 	spqrlog.Zero.Info().
 		Str("address", address).

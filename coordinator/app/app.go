@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/router/port"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/pg-sharding/spqr/coordinator"
@@ -142,7 +143,7 @@ func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
 		time.Sleep(time.Second)
 	}
 
-	serv := grpc.NewServer()
+	serv := grpc.NewServer(grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{PermitWithoutStream: true}))
 	reflection.Register(serv)
 
 	krServ := provider.NewKeyRangeService(app.coordinator)
