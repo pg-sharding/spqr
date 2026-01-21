@@ -804,7 +804,12 @@ func (qc *Coordinator) ShareKeyRange(id string) error {
 // Returns:
 // - error: An error if the creation encounters any issues.
 func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	return lc.qdb.CreateKeyRange(ctx, kr.ToDB())
+	qdbStatements, err := lc.qdb.CreateKeyRange(ctx, kr.ToDB())
+	if err != nil {
+		return err
+	} else {
+		return lc.qdb.ExecNoTransaction(ctx, qdbStatements)
+	}
 }
 
 // TODO : unit tests

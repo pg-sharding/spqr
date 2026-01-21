@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -20,6 +21,9 @@ const (
 	// maps of MemQDB as `extensions` of QdbStatement
 	MapRelationDistribution = "RelationDistribution"
 	MapDistributions        = "Distributions"
+	MapKrs                  = "Krs"
+	MapFreq                 = "Freq"
+	MapLocks                = "Locks"
 )
 
 type MemQDB struct {
@@ -218,8 +222,32 @@ func (q *MemQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 //                                 KEY RANGES
 // ==============================================================================
 
+func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement, error) {
+	commands := make([]QdbStatement, 3)
+	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
+		return nil, err
+	} else {
+		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs); err != nil {
+			return nil, err
+		} else {
+			commands[0] = *cmd
+		}
+		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, "{}", MapLocks); err != nil {
+			return nil, err
+		} else {
+			commands[1] = *cmd
+		}
+		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapFreq); err != nil {
+			return nil, err
+		} else {
+			commands[2] = *cmd
+		}
+	}
+	return commands, nil
+}
+
 // TODO : unit tests
-func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) error {
+func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
 
 	if err := func() error {
@@ -230,7 +258,7 @@ func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) error {
 		}
 		return nil
 	}(); err != nil {
-		return err
+		return nil, err
 	}
 
 	q.mu.Lock()
@@ -238,11 +266,11 @@ func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) error {
 
 	if len(keyRange.DistributionId) > 0 && keyRange.DistributionId != "default" {
 		if _, ok := q.Distributions[keyRange.DistributionId]; !ok {
-			return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, fmt.Sprintf("no such distribution %s", keyRange.DistributionId))
+			return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, fmt.Sprintf("no such distribution %s", keyRange.DistributionId))
 		}
 	}
 
-	return ExecuteCommands(q.DumpState, q.createKeyRangeCommands(keyRange)...)
+	return q.createKeyRangeQdbStatements(keyRange)
 }
 
 func (q *MemQDB) GetKeyRange(_ context.Context, id string) (*KeyRange, error) {
@@ -1511,6 +1539,47 @@ func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
 	}
 }
 
+func (q *MemQDB) toKeyRange(stmt QdbStatement) (Command, error) {
+	switch stmt.CmdType {
+	case CMD_DELETE:
+		return NewDeleteCommand(q.Krs, stmt.Key), nil
+	case CMD_PUT:
+		var kr KeyRange
+		if err := json.Unmarshal([]byte(stmt.Value), &kr); err != nil {
+			return nil, err
+		}
+		return NewUpdateCommand(q.Krs, stmt.Key, keyRangeToInternal(&kr)), nil
+	default:
+		return nil, fmt.Errorf("unsupported memDB cmd %d (key range)", stmt.CmdType)
+	}
+}
+
+func (q *MemQDB) toFreq(stmt QdbStatement) (Command, error) {
+	switch stmt.CmdType {
+	case CMD_DELETE:
+		return NewDeleteCommand(q.Freq, stmt.Key), nil
+	case CMD_PUT:
+		valFreq := true
+		if stmt.Value == "false" {
+			valFreq = false
+		}
+		return NewUpdateCommand(q.Freq, stmt.Key, valFreq), nil
+	default:
+		return nil, fmt.Errorf("unsupported memDB cmd %d (freq)", stmt.CmdType)
+	}
+}
+
+func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
+	switch stmt.CmdType {
+	case CMD_DELETE:
+		return NewDeleteCommand(q.Locks, stmt.Key), nil
+	case CMD_PUT:
+		return NewUpdateCommand(q.Locks, stmt.Key, &sync.RWMutex{}), nil
+	default:
+		return nil, fmt.Errorf("unsupported memDB cmd %d (lock)", stmt.CmdType)
+	}
+}
+
 func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error) {
 	memOperations := make([]Command, 0, len(operations))
 	for _, stmt := range operations {
@@ -1527,6 +1596,24 @@ func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error
 			} else {
 				memOperations = append(memOperations, operation)
 			}
+		case MapKrs:
+			operation, err := q.toKeyRange(stmt)
+			if err != nil {
+				return nil, err
+			}
+			memOperations = append(memOperations, operation)
+		case MapFreq:
+			operation, err := q.toFreq(stmt)
+			if err != nil {
+				return nil, err
+			}
+			memOperations = append(memOperations, operation)
+		case MapLocks:
+			operation, err := q.toLock(stmt)
+			if err != nil {
+				return nil, err
+			}
+			memOperations = append(memOperations, operation)
 		default:
 			return nil, fmt.Errorf("not implemented for transaction memqdb part %s", stmt.Extension)
 		}

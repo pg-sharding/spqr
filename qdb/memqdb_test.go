@@ -60,7 +60,14 @@ func TestMemqdbRacing(t *testing.T) {
 			}
 
 		},
-		func() { _ = memqdb.CreateKeyRange(ctx, mockKeyRange) },
+		func() {
+			if stmts, err := memqdb.CreateKeyRange(ctx, mockKeyRange); err == nil {
+				if err = memqdb.ExecNoTransaction(ctx, stmts); err != nil {
+					panic("fail run CreateKeyRange in race test (exec phase)")
+				}
+			}
+
+		},
 		func() { _ = memqdb.AddRouter(ctx, mockRouter) },
 		func() { _ = memqdb.AddShard(ctx, mockShard) },
 		func() {
@@ -282,19 +289,22 @@ func TestKeyRanges(t *testing.T) {
 
 	assert.NoError(err)
 
-	assert.NoError(memqdb.CreateKeyRange(ctx, &qdb.KeyRange{
+	statements, err := memqdb.CreateKeyRange(ctx, &qdb.KeyRange{
 		LowerBound:     [][]byte{[]byte("1111")},
 		ShardID:        "sh1",
 		KeyRangeID:     "krid1",
 		DistributionId: "ds1",
-	}))
+	})
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
-	assert.Error(memqdb.CreateKeyRange(ctx, &qdb.KeyRange{
+	statements, err = memqdb.CreateKeyRange(ctx, &qdb.KeyRange{
 		LowerBound:     [][]byte{[]byte("1111")},
 		ShardID:        "sh1",
 		KeyRangeID:     "krid2",
 		DistributionId: "dserr",
-	}))
+	})
+	assert.Error(err)
 
 	assert.NoError(memqdb.DropKeyRange(ctx, "nonexistentKeyRange"))
 }
@@ -324,7 +334,9 @@ func Test_MemQDB_GetKeyRange(t *testing.T) {
 		KeyRangeID:     "krid1",
 		DistributionId: "ds1",
 	}
-	assert.NoError(memqdb.CreateKeyRange(ctx, &keyRange1))
+	statements, err := memqdb.CreateKeyRange(ctx, &keyRange1)
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
 	keyRange2 := qdb.KeyRange{
 		LowerBound:     [][]byte{[]byte("1111")},
@@ -332,7 +344,9 @@ func Test_MemQDB_GetKeyRange(t *testing.T) {
 		KeyRangeID:     "krid2",
 		DistributionId: "ds2",
 	}
-	assert.NoError(memqdb.CreateKeyRange(ctx, &keyRange2))
+	statements, err = memqdb.CreateKeyRange(ctx, &keyRange2)
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
 	res, _ := memqdb.GetKeyRange(ctx, keyRange1.KeyRangeID)
 	assert.Equal(keyRange1.ShardID, res.ShardID)
@@ -402,7 +416,9 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 		ShardID:        "sh1",
 		DistributionId: "ds1",
 	}
-	assert.NoError(memqdb.CreateKeyRange(ctx, keyRange1))
+	statements, err := memqdb.CreateKeyRange(ctx, keyRange1)
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
 	kr1, ok := memqdb.Krs["krid1"]
 	assert.True(ok)
@@ -426,7 +442,9 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 		ShardID:        "sh1",
 		DistributionId: "ds1",
 	}
-	assert.NoError(memqdb.CreateKeyRange(ctx, keyRange2))
+	statements, err = memqdb.CreateKeyRange(ctx, keyRange2)
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
 	delete(memqdb.Locks, "krid2")
 	err = memqdb.DropKeyRange(ctx, "krid2")
@@ -446,7 +464,9 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 		ShardID:        "sh1",
 		DistributionId: "ds1",
 	}
-	assert.NoError(memqdb.CreateKeyRange(ctx, keyRange3))
+	statements, err = memqdb.CreateKeyRange(ctx, keyRange3)
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
 	kr3, ok := memqdb.Krs["krid3"]
 	assert.True(ok)
@@ -483,7 +503,9 @@ func TestMemQDB_RenameKeyRange(t *testing.T) {
 		ShardID:        "sh1",
 		DistributionId: "ds1",
 	}
-	assert.NoError(memqdb.CreateKeyRange(ctx, initKeyRange))
+	statements, err := memqdb.CreateKeyRange(ctx, initKeyRange)
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
 	_, ok := memqdb.Krs["krid1"]
 	assert.True(ok)
@@ -520,7 +542,9 @@ func TestMemQDB_RenameKeyRange(t *testing.T) {
 		ShardID:        "sh1",
 		DistributionId: "ds1",
 	}
-	assert.NoError(memqdb.CreateKeyRange(ctx, otherKeyRange))
+	statements, err = memqdb.CreateKeyRange(ctx, otherKeyRange)
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
 	assert.Error(memqdb.RenameKeyRange(ctx, "krid2", "krid3"))
 
