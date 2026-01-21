@@ -1572,11 +1572,13 @@ func processRedistribute(ctx context.Context,
 		Desc: engine.GetVPHeader("redistribute key range"),
 	}
 
+	/* TODO: fix output  */
 	tts.WriteDataRow(
-		fmt.Sprintf("key range id         -> %s", stmt.KeyRangeID),
-		fmt.Sprintf("destination shard id -> %s", stmt.DestShardID),
-		fmt.Sprintf("batch size           -> %d", stmt.BatchSize),
-	)
+		fmt.Sprintf("key range id         -> %s", stmt.KeyRangeID))
+	tts.WriteDataRow(
+		fmt.Sprintf("destination shard id -> %s", stmt.DestShardID))
+	tts.WriteDataRow(
+		fmt.Sprintf("batch size           -> %d", stmt.BatchSize))
 
 	return tts, nil
 }
