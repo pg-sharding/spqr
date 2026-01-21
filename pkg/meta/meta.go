@@ -1020,7 +1020,7 @@ func ProcMetadataCommand(ctx context.Context,
 		case spqrparser.StaleClientsInvalidateTarget:
 			if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
 				if !netutil.TCP_CheckAliveness(cl.Conn()) {
-					tts.WriteDataRow(fmt.Sprintf("singalled %d", cl.ID()))
+					tts.WriteDataRow(fmt.Sprintf("signaled %d", cl.ID()))
 					return cl.Cancel()
 				}
 				return nil
