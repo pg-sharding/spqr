@@ -643,3 +643,23 @@ func MoveTaskGroupStatusFromProto(status *protos.MoveTaskGroupStatus) *MoveTaskG
 		Message: status.Message,
 	}
 }
+
+func MoveTaskGroupStatusFromDb(status *qdb.TaskGroupStatus) *MoveTaskGroupStatus {
+	if status == nil {
+		return nil
+	}
+
+	var state TaskGroupState
+	switch TaskGroupState(status.State) {
+	case TaskGroupRunning:
+		state = TaskGroupRunning
+	case TaskGroupError:
+		state = TaskGroupError
+	default:
+		state = TaskGroupPlanned
+	}
+	return &MoveTaskGroupStatus{
+		State:   state,
+		Message: status.Message,
+	}
+}
