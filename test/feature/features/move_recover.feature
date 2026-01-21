@@ -605,7 +605,9 @@ Feature: Move recover test
         "destination_shard_id":     "sh2",
         "source_key_range_id":      "krid1",
         "destination_key_range_id": "krid2",
-        "move_task_id":     "1"
+        "move_task_id":             "1",
+        "state":                    "PLANNED",
+        "error":                    ""
     }]
     """
     When I run SQL on host "coordinator"
@@ -696,7 +698,9 @@ Feature: Move recover test
         "destination_shard_id":     "sh2",
         "source_key_range_id":      "krid1",
         "destination_key_range_id": "krid2",
-        "move_task_id":     "1"
+        "move_task_id":              "1",
+        "state":                    "PLANNED",
+        "error":                    ""
     }]
     """
     When I run SQL on host "coordinator"

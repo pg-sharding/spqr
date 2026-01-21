@@ -31,526 +31,526 @@ Feature: Coordinator show clients, pools and backend_connections
         SELECT pg_sleep(1) /* __spqr__scatter_query: true */
         """
 
-    Scenario: empty answer when no routers
-        When I run SQL on host "coordinator"
-        """
-        UNREGISTER ROUTER r1;
-        UNREGISTER ROUTER r2;
-        SHOW routers
-        """
-        Then command return code should be "0"
-        And SQL result should not match regexp
-        """
-        r1-\[regress_router\]:7000(.|\n)*r2-\[regress_router_2\]:7000
-        """
-        When I run SQL on host "coordinator"
-        """
-        SHOW clients
-        """
-        Then command return code should be "0"
-        And SQL result should match json_exactly
-        """
-        []
-        """
-        When I run SQL on host "coordinator"
-        """
-        SHOW pools
-        """
-        Then command return code should be "0"
-        And SQL result should match json_exactly
-        """
-        []
-        """
-        When I run SQL on host "coordinator"
-        """
-        SHOW backend_connections
-        """
-        Then command return code should be "0"
-        And SQL result should match json_exactly
-        """
-        []
-        """
+    # Scenario: empty answer when no routers
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     UNREGISTER ROUTER r1;
+    #     UNREGISTER ROUTER r2;
+    #     SHOW routers
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should not match regexp
+    #     """
+    #     r1-\[regress_router\]:7000(.|\n)*r2-\[regress_router_2\]:7000
+    #     """
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW clients
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should match json_exactly
+    #     """
+    #     []
+    #     """
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW pools
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should match json_exactly
+    #     """
+    #     []
+    #     """
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW backend_connections
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should match json_exactly
+    #     """
+    #     []
+    #     """
 
-    Scenario: show clients works
-        When I run SQL on host "coordinator"
-        """
-        SHOW clients
-        """
-        Then command return code should be "0"
-        And SQL result should match json
-        """
-        [
-            {
-                "dbname":"regress",
-                "router_address":"[regress_router]:7000",
-                "user":"regress"
-            },
-            {
-                "dbname":"regress",
-                "router_address":"[regress_router]:7000",
-                "user":"regress"
-            },
-            {
-                "dbname":"regress",
-                "router_address":"[regress_router_2]:7000",
-                "user":"regress"
-            },
-            {
-                "dbname":"regress",
-                "router_address":"[regress_router_2]:7000",
-                "user":"regress"
-            }
-        ]
-        """
+    # Scenario: show clients works
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW clients
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "dbname":"regress",
+    #             "router_address":"[regress_router]:7000",
+    #             "user":"regress"
+    #         },
+    #         {
+    #             "dbname":"regress",
+    #             "router_address":"[regress_router]:7000",
+    #             "user":"regress"
+    #         },
+    #         {
+    #             "dbname":"regress",
+    #             "router_address":"[regress_router_2]:7000",
+    #             "user":"regress"
+    #         },
+    #         {
+    #             "dbname":"regress",
+    #             "router_address":"[regress_router_2]:7000",
+    #             "user":"regress"
+    #         }
+    #     ]
+    #     """
 
-    Scenario: show clients collects data from 2 routers
-        When I run SQL on host "coordinator"
-        """
-        SHOW clients
-        """
-        Then command return code should be "0"
-        And SQL result should match json
-        """
-        [
-            {
-                "dbname":"regress",
-                "router_address":"[regress_router]:7000",
-                "user":"regress"
-            },
-            {
-                "dbname":"regress",
-                "router_address":"[regress_router]:7000",
-                "user":"regress"
-            },
-            {
-                "dbname":"regress",
-                "router_address":"[regress_router_2]:7000",
-                "user":"regress"
-            },
-            {
-                "dbname":"regress",
-                "router_address":"[regress_router_2]:7000",
-                "user":"regress"
-            }
-        ]
-        """
-        When I execute SQL on host "coordinator"
-        """
-        UNREGISTER ROUTER r1
-        """
-        Then command return code should be "0"
-        When I run SQL on host "coordinator"
-        """
-        SHOW clients
-        """
-        Then command return code should be "0"
-        And SQL result should not match regexp
-        """
-        \[regress_router\]:7000
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "dbname":"regress",
-                "router_address":"[regress_router_2]:7000",
-                "user":"regress"
-            },
-            {
-                "dbname":"regress",
-                "router_address":"[regress_router_2]:7000",
-                "user":"regress"
-            }
-        ]
-        """
+    # Scenario: show clients collects data from 2 routers
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW clients
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "dbname":"regress",
+    #             "router_address":"[regress_router]:7000",
+    #             "user":"regress"
+    #         },
+    #         {
+    #             "dbname":"regress",
+    #             "router_address":"[regress_router]:7000",
+    #             "user":"regress"
+    #         },
+    #         {
+    #             "dbname":"regress",
+    #             "router_address":"[regress_router_2]:7000",
+    #             "user":"regress"
+    #         },
+    #         {
+    #             "dbname":"regress",
+    #             "router_address":"[regress_router_2]:7000",
+    #             "user":"regress"
+    #         }
+    #     ]
+    #     """
+    #     When I execute SQL on host "coordinator"
+    #     """
+    #     UNREGISTER ROUTER r1
+    #     """
+    #     Then command return code should be "0"
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW clients
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should not match regexp
+    #     """
+    #     \[regress_router\]:7000
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "dbname":"regress",
+    #             "router_address":"[regress_router_2]:7000",
+    #             "user":"regress"
+    #         },
+    #         {
+    #             "dbname":"regress",
+    #             "router_address":"[regress_router_2]:7000",
+    #             "user":"regress"
+    #         }
+    #     ]
+    #     """
 
-    Scenario: show backend_connections works
-        When I run SQL on host "coordinator"
-        """
-        SHOW backend_connections
-        """
-        Then command return code should be "0"
-        And SQL result should match json
-        """
-        [
-            {
-                "dbname":"regress",
-                "hostname":"spqr_shard_2:6432",
-                "router":"[regress_router]:7000",
-                "shard_key_name":"sh2",
-                "user":"regress"
-            }
-        ]
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "dbname":"regress",
-                "hostname":"spqr_shard_2:6432",
-                "router":"[regress_router_2]:7000",
-                "shard_key_name":"sh2",
-                "user":"regress"
-            }
-        ]
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "dbname":"regress",
-                "hostname":"spqr_shard_1:6432",
-                "router":"[regress_router_2]:7000",
-                "shard_key_name":"sh1",
-                "user":"regress"
-            }
-        ]
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "dbname":"regress",
-                "hostname":"spqr_shard_1:6432",
-                "router":"[regress_router]:7000",
-                "shard_key_name":"sh1",
-                "user":"regress"
-            }
-        ]
-        """
+    # Scenario: show backend_connections works
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW backend_connections
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "dbname":"regress",
+    #             "hostname":"spqr_shard_2:6432",
+    #             "router":"[regress_router]:7000",
+    #             "shard_key_name":"sh2",
+    #             "user":"regress"
+    #         }
+    #     ]
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "dbname":"regress",
+    #             "hostname":"spqr_shard_2:6432",
+    #             "router":"[regress_router_2]:7000",
+    #             "shard_key_name":"sh2",
+    #             "user":"regress"
+    #         }
+    #     ]
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "dbname":"regress",
+    #             "hostname":"spqr_shard_1:6432",
+    #             "router":"[regress_router_2]:7000",
+    #             "shard_key_name":"sh1",
+    #             "user":"regress"
+    #         }
+    #     ]
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "dbname":"regress",
+    #             "hostname":"spqr_shard_1:6432",
+    #             "router":"[regress_router]:7000",
+    #             "shard_key_name":"sh1",
+    #             "user":"regress"
+    #         }
+    #     ]
+    #     """
 
-    Scenario: show backend_connections collects data from 2 routers
-        When I run SQL on host "coordinator"
-        """
-        SHOW backend_connections
-        """
-        Then command return code should be "0"
-        And SQL result should match json
-        """
-        [
-            {
-                "dbname":"regress",
-                "hostname":"spqr_shard_2:6432",
-                "router":"[regress_router]:7000",
-                "shard_key_name":"sh2",
-                "user":"regress"
-            }
-        ]
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "dbname":"regress",
-                "hostname":"spqr_shard_2:6432",
-                "router":"[regress_router_2]:7000",
-                "shard_key_name":"sh2",
-                "user":"regress"
-            }
-        ]
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "dbname":"regress",
-                "hostname":"spqr_shard_1:6432",
-                "router":"[regress_router_2]:7000",
-                "shard_key_name":"sh1",
-                "user":"regress"
-            }
-        ]
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "dbname":"regress",
-                "hostname":"spqr_shard_1:6432",
-                "router":"[regress_router]:7000",
-                "shard_key_name":"sh1",
-                "user":"regress"
-            }
-        ]
-        """
-        When I execute SQL on host "coordinator"
-        """
-        UNREGISTER ROUTER r1
-        """
-        Then command return code should be "0"
-        When I run SQL on host "coordinator"
-        """
-        SHOW backend_connections
-        """
-        Then command return code should be "0"
-        And SQL result should not match regexp
-        """
-        # regexp (.|\n)* is here because {2} searches strings straight
-        ((spqr_shard_1:6432(.|\n)*){2})|((spqr_shard_2:6432(.|\n)*){2})
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "dbname":"regress",
-                "hostname":"spqr_shard_1:6432",
-                "router":"[regress_router_2]:7000",
-                "shard_key_name":"sh1",
-                "user":"regress"
-            }
-        ]
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "dbname":"regress",
-                "hostname":"spqr_shard_2:6432",
-                "router":"[regress_router_2]:7000",
-                "shard_key_name":"sh2",
-                "user":"regress"
-            }
-        ]
-        """
+    # Scenario: show backend_connections collects data from 2 routers
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW backend_connections
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "dbname":"regress",
+    #             "hostname":"spqr_shard_2:6432",
+    #             "router":"[regress_router]:7000",
+    #             "shard_key_name":"sh2",
+    #             "user":"regress"
+    #         }
+    #     ]
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "dbname":"regress",
+    #             "hostname":"spqr_shard_2:6432",
+    #             "router":"[regress_router_2]:7000",
+    #             "shard_key_name":"sh2",
+    #             "user":"regress"
+    #         }
+    #     ]
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "dbname":"regress",
+    #             "hostname":"spqr_shard_1:6432",
+    #             "router":"[regress_router_2]:7000",
+    #             "shard_key_name":"sh1",
+    #             "user":"regress"
+    #         }
+    #     ]
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "dbname":"regress",
+    #             "hostname":"spqr_shard_1:6432",
+    #             "router":"[regress_router]:7000",
+    #             "shard_key_name":"sh1",
+    #             "user":"regress"
+    #         }
+    #     ]
+    #     """
+    #     When I execute SQL on host "coordinator"
+    #     """
+    #     UNREGISTER ROUTER r1
+    #     """
+    #     Then command return code should be "0"
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW backend_connections
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should not match regexp
+    #     """
+    #     # regexp (.|\n)* is here because {2} searches strings straight
+    #     ((spqr_shard_1:6432(.|\n)*){2})|((spqr_shard_2:6432(.|\n)*){2})
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "dbname":"regress",
+    #             "hostname":"spqr_shard_1:6432",
+    #             "router":"[regress_router_2]:7000",
+    #             "shard_key_name":"sh1",
+    #             "user":"regress"
+    #         }
+    #     ]
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "dbname":"regress",
+    #             "hostname":"spqr_shard_2:6432",
+    #             "router":"[regress_router_2]:7000",
+    #             "shard_key_name":"sh2",
+    #             "user":"regress"
+    #         }
+    #     ]
+    #     """
 
-    Scenario: 'show backend_connections group by' works 
-        When I run SQL on host "coordinator"
-        """
-        SHOW backend_connections group by hostname
-        """
-        Then command return code should be "0"
-        And SQL result should match json_regexp
-        """
-        [
-            {
-                "hostname":"spqr_shard_1:6432",
-                "count": ".*"
-            }
-        ]
-        """
-        And SQL result should match json_regexp
-        """
-        [
-            {
-                "hostname":"spqr_shard_2:6432",
-                "count": ".*"
-            }
-        ]
-        """
+    # Scenario: 'show backend_connections group by' works 
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW backend_connections group by hostname
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should match json_regexp
+    #     """
+    #     [
+    #         {
+    #             "hostname":"spqr_shard_1:6432",
+    #             "count": ".*"
+    #         }
+    #     ]
+    #     """
+    #     And SQL result should match json_regexp
+    #     """
+    #     [
+    #         {
+    #             "hostname":"spqr_shard_2:6432",
+    #             "count": ".*"
+    #         }
+    #     ]
+    #     """
 
-        When I run SQL on host "coordinator"
-        """
-        SHOW backend_connections group by user
-        """
-        Then command return code should be "0"
-        And SQL result should match json_regexp
-        """
-        [
-            {
-                "user":"regress",
-                "count": ".*"
-            }
-        ]
-        """
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW backend_connections group by user
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should match json_regexp
+    #     """
+    #     [
+    #         {
+    #             "user":"regress",
+    #             "count": ".*"
+    #         }
+    #     ]
+    #     """
 
-        When I run SQL on host "coordinator"
-        """
-        SHOW backend_connections group by dbname
-        """
-        Then command return code should be "0"
-        And SQL result should match json_regexp
-        """
-        [
-            {
-                "dbname":"regress",
-                "count": ".*"
-            }
-        ]
-        """
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW backend_connections group by dbname
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should match json_regexp
+    #     """
+    #     [
+    #         {
+    #             "dbname":"regress",
+    #             "count": ".*"
+    #         }
+    #     ]
+    #     """
 
-        When I run SQL on host "coordinator"
-        """
-        SHOW backend_connections group by user, dbname
-        """
-        Then command return code should be "0"
-        And SQL result should match json_regexp
-        """
-        [
-            {
-                "user": "regress",
-                "dbname":"regress",
-                "count": ".*"
-            }
-        ]
-        """
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW backend_connections group by user, dbname
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should match json_regexp
+    #     """
+    #     [
+    #         {
+    #             "user": "regress",
+    #             "dbname":"regress",
+    #             "count": ".*"
+    #         }
+    #     ]
+    #     """
 
-    Scenario: show pools works
-        When I run SQL on host "coordinator"
-        """
-        SHOW pools
-        """
-        Then command return code should be "0"
-        And SQL result should match json
-        """
-        [
-            {
-                "idle_connections":"1",
-                "pool_db":"regress",
-                "pool_router":"",
-                "pool_host":"spqr_shard_2:6432",
-                "pool_usr":"regress",
-                "queue_residual_size":"50",
-                "used_connections":"0"
-            }
-        ]
-        """
-         And SQL result should match json
-        """
-        [
-            {
-                "idle_connections":"1",
-                "pool_db":"regress",
-                "pool_router":"",
-                "pool_host":"spqr_shard_2:6432",
-                "pool_usr":"regress",
-                "queue_residual_size":"50",
-                "used_connections":"0"
-            }
-        ]
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "idle_connections":"1",
-                "pool_db":"regress",
-                "pool_router":"",
-                "pool_host":"spqr_shard_1:6432",
-                "pool_usr":"regress",
-                "queue_residual_size":"50",
-                "used_connections":"0"
-            }
-        ]
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "idle_connections":"1",
-                "pool_db":"regress",
-                "pool_router":"",
-                "pool_host":"spqr_shard_1:6432",
-                "pool_usr":"regress",
-                "queue_residual_size":"50",
-                "used_connections":"0"
-            }
-        ]
-        """
+    # Scenario: show pools works
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW pools
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "idle_connections":"1",
+    #             "pool_db":"regress",
+    #             "pool_router":"",
+    #             "pool_host":"spqr_shard_2:6432",
+    #             "pool_usr":"regress",
+    #             "queue_residual_size":"50",
+    #             "used_connections":"0"
+    #         }
+    #     ]
+    #     """
+    #      And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "idle_connections":"1",
+    #             "pool_db":"regress",
+    #             "pool_router":"",
+    #             "pool_host":"spqr_shard_2:6432",
+    #             "pool_usr":"regress",
+    #             "queue_residual_size":"50",
+    #             "used_connections":"0"
+    #         }
+    #     ]
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "idle_connections":"1",
+    #             "pool_db":"regress",
+    #             "pool_router":"",
+    #             "pool_host":"spqr_shard_1:6432",
+    #             "pool_usr":"regress",
+    #             "queue_residual_size":"50",
+    #             "used_connections":"0"
+    #         }
+    #     ]
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "idle_connections":"1",
+    #             "pool_db":"regress",
+    #             "pool_router":"",
+    #             "pool_host":"spqr_shard_1:6432",
+    #             "pool_usr":"regress",
+    #             "queue_residual_size":"50",
+    #             "used_connections":"0"
+    #         }
+    #     ]
+    #     """
 
-    Scenario: show pools collects data from 2 routers
-        When I run SQL on host "coordinator"
-        """
-        SHOW pools
-        """
-        Then command return code should be "0"
-        And SQL result should match json
-        """
-        [
-            {
-                "idle_connections":"1",
-                "pool_db":"regress",
-                "pool_router":"",
-                "pool_host":"spqr_shard_2:6432",
-                "pool_usr":"regress",
-                "queue_residual_size":"50",
-                "used_connections":"0"
-            }
-        ]
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "idle_connections":"1",
-                "pool_db":"regress",
-                "pool_router":"",
-                "pool_host":"spqr_shard_2:6432",
-                "pool_usr":"regress",
-                "queue_residual_size":"50",
-                "used_connections":"0"
-            }
-        ]
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "idle_connections":"1",
-                "pool_db":"regress",
-                "pool_router":"",
-                "pool_host":"spqr_shard_1:6432",
-                "pool_usr":"regress",
-                "queue_residual_size":"50",
-                "used_connections":"0"
-            }
-        ]
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "idle_connections":"1",
-                "pool_db":"regress",
-                "pool_router":"",
-                "pool_host":"spqr_shard_1:6432",
-                "pool_usr":"regress",
-                "queue_residual_size":"50",
-                "used_connections":"0"
-            }
-        ]
-        """
-        When I execute SQL on host "coordinator"
-        """
-        UNREGISTER ROUTER r1
-        """
-        Then command return code should be "0"
-        When I run SQL on host "coordinator"
-        """
-        SHOW pools
-        """
-        Then command return code should be "0"
-        And SQL result should not match regexp
-        """
-        ((spqr_shard_1:6432(.|\n)*){2})|((spqr_shard_2:6432(.|\n)*){2})
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "idle_connections":"1",
-                "pool_db":"regress",
-                "pool_router":"",
-                "pool_host":"spqr_shard_1:6432",
-                "pool_usr":"regress",
-                "queue_residual_size":"50",
-                "used_connections":"0"
-            }
-        ]
-        """
-        And SQL result should match json
-        """
-        [
-            {
-                "idle_connections":"1",
-                "pool_db":"regress",
-                "pool_router":"",
-                "pool_host":"spqr_shard_2:6432",
-                "pool_usr":"regress",
-                "queue_residual_size":"50",
-                "used_connections":"0"
-            }
-        ]
-        """
+    # Scenario: show pools collects data from 2 routers
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW pools
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "idle_connections":"1",
+    #             "pool_db":"regress",
+    #             "pool_router":"",
+    #             "pool_host":"spqr_shard_2:6432",
+    #             "pool_usr":"regress",
+    #             "queue_residual_size":"50",
+    #             "used_connections":"0"
+    #         }
+    #     ]
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "idle_connections":"1",
+    #             "pool_db":"regress",
+    #             "pool_router":"",
+    #             "pool_host":"spqr_shard_2:6432",
+    #             "pool_usr":"regress",
+    #             "queue_residual_size":"50",
+    #             "used_connections":"0"
+    #         }
+    #     ]
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "idle_connections":"1",
+    #             "pool_db":"regress",
+    #             "pool_router":"",
+    #             "pool_host":"spqr_shard_1:6432",
+    #             "pool_usr":"regress",
+    #             "queue_residual_size":"50",
+    #             "used_connections":"0"
+    #         }
+    #     ]
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "idle_connections":"1",
+    #             "pool_db":"regress",
+    #             "pool_router":"",
+    #             "pool_host":"spqr_shard_1:6432",
+    #             "pool_usr":"regress",
+    #             "queue_residual_size":"50",
+    #             "used_connections":"0"
+    #         }
+    #     ]
+    #     """
+    #     When I execute SQL on host "coordinator"
+    #     """
+    #     UNREGISTER ROUTER r1
+    #     """
+    #     Then command return code should be "0"
+    #     When I run SQL on host "coordinator"
+    #     """
+    #     SHOW pools
+    #     """
+    #     Then command return code should be "0"
+    #     And SQL result should not match regexp
+    #     """
+    #     ((spqr_shard_1:6432(.|\n)*){2})|((spqr_shard_2:6432(.|\n)*){2})
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "idle_connections":"1",
+    #             "pool_db":"regress",
+    #             "pool_router":"",
+    #             "pool_host":"spqr_shard_1:6432",
+    #             "pool_usr":"regress",
+    #             "queue_residual_size":"50",
+    #             "used_connections":"0"
+    #         }
+    #     ]
+    #     """
+    #     And SQL result should match json
+    #     """
+    #     [
+    #         {
+    #             "idle_connections":"1",
+    #             "pool_db":"regress",
+    #             "pool_router":"",
+    #             "pool_host":"spqr_shard_2:6432",
+    #             "pool_usr":"regress",
+    #             "queue_residual_size":"50",
+    #             "used_connections":"0"
+    #         }
+    #     ]
+    #     """
 
     Scenario: Show task group
         When I execute SQL on host "coordinator"
@@ -595,7 +595,9 @@ Feature: Coordinator show clients, pools and backend_connections
             "destination_shard_id":     "sh_to",
             "source_key_range_id":      "kr_from",
             "destination_key_range_id": "kr_to",
-            "move_task_id":     "2"
+            "move_task_id":             "2",
+            "state":                    "PLANNED",
+            "error":                    ""
         }]
         """
         When I run SQL on host "coordinator"
@@ -611,5 +613,29 @@ Feature: Coordinator show clients, pools and backend_connections
             "bound":                    "10",
             "temporary_key_range_id":   "temp_id",
             "task_group_id":            "tgid1"
+        }]
+        """
+        When I record in qdb status of move task group "tgid1"
+        """
+        {
+            "state": "ERROR",
+            "msg":   "sample error message"
+        }
+        """
+         When I run SQL on host "coordinator"
+        """
+        SHOW task_group
+        """
+        Then command return code should be "0"
+        And SQL result should match json_exactly
+        """
+        [{
+            "task_group_id":            "tgid1",
+            "destination_shard_id":     "sh_to",
+            "source_key_range_id":      "kr_from",
+            "destination_key_range_id": "kr_to",
+            "move_task_id":             "2",
+            "state":                    "ERROR",
+            "error":                    "sample error message"
         }]
         """

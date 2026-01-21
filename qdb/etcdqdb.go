@@ -141,7 +141,7 @@ func taskGroupNodePath(id string) string {
 }
 
 func taskGroupStatusNodePath(id string) string {
-	return path.Join(taskGroupsNamespace, id)
+	return path.Join(taskGroupStatusesNamespace, id)
 }
 
 func totalKeysNodePath(id string) string {

@@ -1260,7 +1260,7 @@ func ProcessShowExtended(ctx context.Context, stmt *spqrparser.Show, mngr Entity
 			return nil, err
 		}
 		tts = engine.UniqueIndexesVirtualRelationScan(idxs)
-	case spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr:ith
+	case spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr:
 		groups, err := mngr.ListMoveTaskGroups(ctx)
 		if err != nil {
 			return nil, err
