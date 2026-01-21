@@ -578,15 +578,15 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
+func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AlterDistribution:
 		if stmt.Distribution == nil {
-			return fmt.Errorf("failed to process 'ALTER DISTRIBUTION' statement: distribution ID is nil")
+			return nil, fmt.Errorf("failed to process 'ALTER DISTRIBUTION' statement: distribution ID is nil")
 		}
-		return processAlterDistribution(ctx, stmt.Element, mngr, cli, stmt.Distribution.ID)
+		return processAlterDistribution(ctx, stmt.Element, mngr, stmt.Distribution.ID)
 	default:
-		return ErrUnknownCoordinatorCommand
+		return nil, ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -600,7 +600,9 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor, dsId string) error {
+func processAlterDistribution(ctx context.Context,
+	astmt spqrparser.Statement,
+	mngr EntityMgr, dsId string) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AttachRelation:
 
@@ -613,13 +615,13 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		if dsId == "default" {
 			list, err := mngr.ListDistributions(ctx)
 			if err != nil {
-				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "error while selecting list of distributions")
+				return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "error while selecting list of distributions")
 			}
 			if len(list) == 0 {
-				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "you don't have any distributions")
+				return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "you don't have any distributions")
 			}
 			if len(list) > 1 {
-				return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "distributions count not equal one, use FOR DISTRIBUTION syntax")
+				return nil, spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "distributions count not equal one, use FOR DISTRIBUTION syntax")
 			}
 			dsId = list[0].Id
 		}
@@ -627,7 +629,7 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		selectedDistribId := dsId
 
 		if err := mngr.AlterDistributionAttach(ctx, selectedDistribId, rels); err != nil {
-			return cli.ReportError(err)
+			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -640,10 +642,10 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			tts.WriteDataRow(fmt.Sprintf("distribution id -> %s", selectedDistribId))
 		}
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case *spqrparser.DetachRelation:
 		if err := mngr.AlterDistributionDetach(ctx, dsId, stmt.RelationName); err != nil {
-			return err
+			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -654,10 +656,10 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 
 		tts.WriteDataRow(fmt.Sprintf("distribution id -> %s", dsId))
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case *spqrparser.AlterRelation:
 		if err := mngr.AlterDistributedRelation(ctx, dsId, distributions.DistributedRelationFromSQL(stmt.Relation)); err != nil {
-			return err
+			return nil, err
 		}
 		qName := rfqn.RelationFQN{RelationName: stmt.Relation.Name, SchemaName: stmt.Relation.SchemaName}
 
@@ -673,36 +675,52 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			},
 		}
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case *spqrparser.DropDefaultShard:
 		if distribution, err := mngr.GetDistribution(ctx, dsId); err != nil {
-			return err
+			return nil, err
 		} else {
 			manager := NewDefaultShardManager(distribution, mngr)
 			if defaultShard, err := manager.DropDefaultShard(ctx); err != nil {
-				return err
+				return nil, err
 			} else {
-				return cli.MakeSimpleResponse(ctx, manager.SuccessDropResponse(*defaultShard))
+
+				tts := &tupleslot.TupleTableSlot{
+					Desc: engine.GetVPHeader("drop default shard"),
+				}
+
+				tts.WriteDataRow(fmt.Sprintf("%s	-> %s", "distribution id", manager.distribution.Id))
+				tts.WriteDataRow(fmt.Sprintf("%s	-> %s", "shard id", defaultShard))
+
+				return tts, nil
 			}
 		}
 	case *spqrparser.AlterDefaultShard:
 		if distribution, err := mngr.GetDistribution(ctx, dsId); err != nil {
-			return err
+			return nil, err
 		} else {
 			manager := NewDefaultShardManager(distribution, mngr)
 			if err := manager.CreateDefaultShard(ctx, stmt.Shard); err != nil {
-				return err
+				return nil, err
 			}
-			return cli.MakeSimpleResponse(ctx, manager.SuccessCreateResponse(stmt.Shard))
+
+			tts := &tupleslot.TupleTableSlot{
+				Desc: engine.GetVPHeader("create default shard"),
+			}
+
+			tts.WriteDataRow(fmt.Sprintf("%s	-> %s", "distribution id", manager.distribution.Id))
+			tts.WriteDataRow(fmt.Sprintf("%s	-> %s", "shard id", stmt.Shard))
+
+			return tts, nil
 		}
 	case *spqrparser.AlterRelationV2:
 		tts, err := processAlterRelation(ctx, stmt.Element, mngr, dsId, stmt.RelationName)
 		if err != nil {
-			return cli.ReportError(err)
+			return nil, err
 		}
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	default:
-		return ErrUnknownCoordinatorCommand
+		return nil, ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -977,7 +995,11 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}
 		return cli.MergeKeyRanges(ctx, uniteKeyRange)
 	case *spqrparser.Alter:
-		return processAlter(ctx, stmt.Element, mgr, cli)
+		if tts, err := processAlter(ctx, stmt.Element, mgr); err != nil {
+			return cli.ReportError(err)
+		} else {
+			return cli.ReplyTTS(tts)
+		}
 	case *spqrparser.RedistributeKeyRange:
 		return processRedistribute(ctx, stmt, mgr, cli)
 	case *spqrparser.Invalidate:
