@@ -25,6 +25,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/virtual"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -874,7 +875,7 @@ func (qr *ProxyQrouter) planSPQR_CTID(
 		switch f := tle.(type) {
 		case *lyx.FuncApplication:
 
-			if f.Name != "__spqr__ctid" {
+			if f.Name != virtual.VirtualCTID {
 				return nil, rerrors.ErrComplexQuery
 			}
 			if len(f.Args) != 1 {
@@ -923,7 +924,7 @@ func (qr *ProxyQrouter) planSPQR_CTID(
 					case *pgproto3.RowDescription:
 						if tts.Desc == nil {
 							tts.Desc = []pgproto3.FieldDescription{
-								engine.TextOidFD("__spqr__ctid"),
+								engine.TextOidFD(virtual.VirtualCTID),
 							}
 
 							for _, fd := range v.Fields {

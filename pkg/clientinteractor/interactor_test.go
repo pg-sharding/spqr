@@ -2,7 +2,6 @@ package clientinteractor_test
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -583,53 +582,6 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 	_, err = engine.GroupBy(ftts, cmd.GroupBy)
 
 	assert.ErrorContains(err, "failed to resolve 'someColumn' column offset")
-}
-
-func TestMakeSimpleResponseWithData(t *testing.T) {
-	ctx := context.Background()
-	ctrl := gomock.NewController(t)
-	ca := mockcl.NewMockRouterClient(ctrl)
-	interactor := clientinteractor.NewPSQLInteractor(ca)
-	info := []clientinteractor.SimpleResultRow{
-		{Name: "test1", Value: "data1"},
-		{Name: "test2", Value: "data2"},
-	}
-	data := clientinteractor.SimpleResultMsg{Header: "test header", Rows: info}
-
-	desc := []pgproto3.FieldDescription{engine.TextOidFD("test header")}
-	firstRow := pgproto3.DataRow{
-		Values: [][]byte{[]byte(fmt.Sprintf("%s	-> %s", "test1", "data1"))},
-	}
-	secondRow := pgproto3.DataRow{
-		Values: [][]byte{[]byte(fmt.Sprintf("%s	-> %s", "test2", "data2"))},
-	}
-	gomock.InOrder(
-		ca.EXPECT().Send(&pgproto3.RowDescription{Fields: desc}),
-		ca.EXPECT().Send(&firstRow),
-		ca.EXPECT().Send(&secondRow),
-		ca.EXPECT().Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 2")}),
-		ca.EXPECT().Send(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}),
-	)
-	err := interactor.MakeSimpleResponse(ctx, data)
-	assert.Nil(t, err)
-}
-
-func TestMakeSimpleResponseEmpty(t *testing.T) {
-	ctx := context.Background()
-	ctrl := gomock.NewController(t)
-	ca := mockcl.NewMockRouterClient(ctrl)
-	interactor := clientinteractor.NewPSQLInteractor(ca)
-	info := []clientinteractor.SimpleResultRow{}
-	data := clientinteractor.SimpleResultMsg{Header: "test header", Rows: info}
-
-	desc := []pgproto3.FieldDescription{engine.TextOidFD("test header")}
-	gomock.InOrder(
-		ca.EXPECT().Send(&pgproto3.RowDescription{Fields: desc}),
-		ca.EXPECT().Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 0")}),
-		ca.EXPECT().Send(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}),
-	)
-	err := interactor.MakeSimpleResponse(ctx, data)
-	assert.Nil(t, err)
 }
 
 func TestKeyRangesSuccess(t *testing.T) {

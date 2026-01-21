@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/engine"
@@ -16,27 +15,15 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
-	"github.com/pg-sharding/spqr/pkg/models/topology"
-	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/statistics"
-	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
 type Interactor interface {
 	ProcClient(ctx context.Context, nconn net.Conn, pt port.RouterPortType) error
-}
-
-type SimpleResultRow struct {
-	Name  string
-	Value string
-}
-type SimpleResultMsg struct {
-	Header string
-	Rows   []SimpleResultRow
 }
 
 type PSQLInteractor struct {
@@ -159,73 +146,6 @@ func (pi *PSQLInteractor) Databases(dbs []string) error {
 	}
 
 	return pi.CompleteMsg(len(dbs))
-}
-
-// TODO : unit tests
-
-// Pools sends the row description message for pool information, followed by data rows
-// containing details of each pool, and completes the message with the number of pools sent.
-//
-// Parameters:
-// - _ (context.Context): The context parameter (not used in the function).
-// - ps ([]pool.Pool): The list of pool.Pool objects containing the pool information.
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
-	if err := pi.WriteHeader(
-		"pool_id",
-		"pool_router",
-		"pool_db",
-		"pool_usr",
-		"pool_host",
-		"used_connections",
-		"idle_connections",
-		"queue_residual_size"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	for _, p := range ps {
-		statistics := p.View()
-		if err := pi.WriteDataRow(
-			fmt.Sprintf("%p", p),
-			statistics.RouterName,
-			statistics.DB,
-			statistics.Usr,
-			statistics.Hostname,
-			fmt.Sprintf("%d", statistics.UsedConnections),
-			fmt.Sprintf("%d", statistics.IdleConnections),
-			fmt.Sprintf("%d", statistics.QueueResidualSize)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(len(ps))
-}
-
-// TODO : unit tests
-
-// Version sends the row description message for the SPQR version and a data row with the SPQR version revision.
-//
-// Parameters:
-// - _ (context.Context): The context parameter (not used in the function).
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) Version(_ context.Context) error {
-	if err := pi.WriteHeader("spqr_version"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	msg := &pgproto3.DataRow{Values: [][]byte{[]byte(pkg.SpqrVersionRevision)}}
-	if err := pi.cl.Send(msg); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
 }
 
 // Quantiles sends the row description message for total time quantiles of queries in router and in shard.
@@ -472,143 +392,6 @@ func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRa
 		return err
 	}
 	return pi.CompleteMsg(1)
-}
-
-// RedistributeKeyRange moves key range to a specified shard in the PSQL client.
-// Data moves are done by batches of the given size.
-//
-// Parameters:
-// - _ (context.Context): The context for the operation.
-// - redistribute (*kr.MoveKeyRange): The key range and shard information for the redistribution operation.
-//
-// Returns:
-// - error: An error if any occurred.
-// TODO : unit tests
-func (pi *PSQLInteractor) RedistributeKeyRange(_ context.Context, stmt *spqrparser.RedistributeKeyRange) error {
-	if err := pi.WriteHeader("redistribute key range"); err != nil {
-		return err
-	}
-
-	for _, row := range []string{
-		fmt.Sprintf("key range id         -> %s", stmt.KeyRangeID),
-		fmt.Sprintf("destination shard id -> %s", stmt.DestShardID),
-		fmt.Sprintf("batch size           -> %d", stmt.BatchSize),
-	} {
-		if err := pi.WriteDataRow(row); err != nil {
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(3)
-}
-
-// TODO : unit tests
-
-// Routers sends information about routers to the PSQL client.
-//
-// Parameters:
-// - resp ([]*topology.Router): The list of router information to send.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) Routers(resp []*topology.Router) error {
-	if err := pi.WriteHeader("router", "status"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range resp {
-		if err := pi.WriteDataRow(fmt.Sprintf("router -> %s-%s", msg.ID, msg.Address), string(msg.State)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// AlterDistributionAttach attaches tables to a distribution in the PSQL client.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-// - id (string): The ID of the distribution to attach tables to.
-// - ds ([]*distributions.DistributedRelation): The list of distributed relations to attach.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) AlterDistributionAttach(ctx context.Context, id string, ds []*distributions.DistributedRelation) error {
-	if err := pi.WriteHeader("attach table"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, r := range ds {
-		if err := pi.WriteDataRow(fmt.Sprintf("relation name   -> %s", r.QualifiedName().String())); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-
-		if err := pi.WriteDataRow(fmt.Sprintf("distribution id -> %s", id)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// AlterDistributionDetach detaches a relation from a distribution in the PSQL client.
-//
-// Parameters:
-// - _ (context.Context): The context for the operation. (Unused)
-// - id (string): The ID of the distribution to detach the relation from.
-// - relName (string): The name of the relation to detach.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) AlterDistributionDetach(_ context.Context, id string, relName string) error {
-	if err := pi.WriteHeader("detach relation"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("relation name   -> %s", relName)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("distribution id -> %s", id)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// MakeSimpleResponse generic function to return to client result as list of key-value.
-//
-// Parameters:
-// - _ (context.Context): The context for the operation. (Unused)
-// - msg (SimpleResultMsg): header and key-value rows
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) MakeSimpleResponse(_ context.Context, msg SimpleResultMsg) error {
-	if err := pi.WriteHeader(msg.Header); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	for _, info := range msg.Rows {
-		if err := pi.WriteDataRow(fmt.Sprintf("%s	-> %s", info.Name, info.Value)); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-	return pi.CompleteMsg(len(msg.Rows))
 }
 
 // TODO : unit tests
