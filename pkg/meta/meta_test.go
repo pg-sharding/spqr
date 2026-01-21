@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -152,8 +153,11 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 		KeyRangeID:  "krid3",
 	}
 
-	err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, cl, nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, cl, nil, false)
 	assert.NoError(t, err)
+
+	cli := clientinteractor.NewPSQLInteractor(cl)
+	_ = cli.ReplyTTS(tts)
 
 	assert.Contains(t, rows, "move key range krid3 to shard sh2")
 	assert.Contains(t, rows, "HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")

@@ -2198,9 +2198,13 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 				Type("type", tstmt).
 				Msg("parsed statement is")
 
-			if err := meta.ProcMetadataCommand(ctx, tstmt, qc, ci, cl, nil, qc.IsReadOnly()); err != nil {
+			tts, err := meta.ProcMetadataCommand(ctx, tstmt, qc, ci, cl, nil, qc.IsReadOnly())
+			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
-				_ = cli.ReportError(err)
+				return cli.ReportError(err)
+			}
+			if err := cli.ReplyTTS(tts); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("processing error")
 			} else {
 				spqrlog.Zero.Debug().Msg("processed OK")
 			}
