@@ -78,10 +78,22 @@ RETRY TASK GROUP tgid;
 
 STOP MOVE TASK GROUP tgid;
 NOTICE: No move task group found to stop
+ Move task group ID 
+--------------------
+(0 rows)
+
 STOP TASK GROUP tgid;
 NOTICE: No move task group found to stop
+ Move task group ID 
+--------------------
+(0 rows)
+
 STOP TASK GROUP ALL;
 NOTICE: No move task group found to stop
+ Move task group ID 
+--------------------
+(0 rows)
+
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------
