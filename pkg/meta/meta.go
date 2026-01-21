@@ -630,7 +630,17 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			return cli.ReportError(err)
 		}
 
-		return cli.AlterDistributionAttach(ctx, selectedDistribId, rels)
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("attach table"),
+		}
+
+		for _, r := range rels {
+			tts.WriteDataRow(fmt.Sprintf("relation name   -> %s", r.QualifiedName().String()))
+
+			tts.WriteDataRow(fmt.Sprintf("distribution id -> %s", selectedDistribId))
+		}
+
+		return cli.ReplyTTS(tts)
 	case *spqrparser.DetachRelation:
 		if err := mngr.AlterDistributionDetach(ctx, dsId, stmt.RelationName); err != nil {
 			return err
