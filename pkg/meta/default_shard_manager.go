@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -95,20 +94,4 @@ func (manager *DefaultShardManager) DropDefaultShard(ctx context.Context) (*stri
 		spqrlog.Zero.Debug().Str("default key range", defaultKeyRange.ID).Msg("parsed drop")
 		return &(defaultKeyRange.ShardID), manager.mngr.DropKeyRange(ctx, defaultKeyRange.ID)
 	}
-}
-
-func (manager *DefaultShardManager) SuccessDropResponse(defaultShard string) clientinteractor.SimpleResultMsg {
-	info := []clientinteractor.SimpleResultRow{
-		{Name: "distribution id", Value: manager.distribution.Id},
-		{Name: "shard id", Value: defaultShard},
-	}
-	return clientinteractor.SimpleResultMsg{Header: "drop default shard", Rows: info}
-}
-
-func (manager *DefaultShardManager) SuccessCreateResponse(defaultShard string) clientinteractor.SimpleResultMsg {
-	info := []clientinteractor.SimpleResultRow{
-		{Name: "distribution id", Value: manager.distribution.Id},
-		{Name: "shard id", Value: defaultShard},
-	}
-	return clientinteractor.SimpleResultMsg{Header: "create default shard", Rows: info}
 }
