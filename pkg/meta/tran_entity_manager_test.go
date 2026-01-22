@@ -140,7 +140,7 @@ func TestTranGetKeyRange(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDbTestValidate(ctx)
 		is.NoError(err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 		var kr1 = &kr.KeyRange{
 			ID:           "kr1",
 			ShardID:      "sh1",
