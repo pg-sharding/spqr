@@ -29,7 +29,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
-	rclient "github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	sts "github.com/pg-sharding/spqr/router/statistics"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -804,12 +803,13 @@ func ProcMetadataCommand(ctx context.Context,
 	tstmt spqrparser.Statement,
 	mgr EntityMgr,
 	ci connmgr.ConnectionMgr,
-	rc rclient.RouterClient, writer workloadlog.WorkloadLog, ro bool) (*tupleslot.TupleTableSlot, error) {
+	rule *config.FrontendRule, writer workloadlog.WorkloadLog, ro bool) (*tupleslot.TupleTableSlot, error) {
 
+	/* TODO: do not accept nil as rc here */
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 
 	if _, ok := tstmt.(*spqrparser.Show); ok {
-		if err := catalog.GC.CheckGrants(catalog.RoleReader, rc.Rule()); err != nil {
+		if err := catalog.GC.CheckGrants(catalog.RoleReader, rule); err != nil {
 			return nil, err
 		}
 		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, ro)
@@ -819,7 +819,7 @@ func ProcMetadataCommand(ctx context.Context,
 		return nil, fmt.Errorf("console is in read only mode")
 	}
 
-	if err := catalog.GC.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+	if err := catalog.GC.CheckGrants(catalog.RoleAdmin, rule); err != nil {
 		return nil, err
 	}
 
@@ -1060,12 +1060,6 @@ func ProcMetadataCommand(ctx context.Context,
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("Move task group ID"),
-		}
-
-		if len(tgs) == 0 {
-			_ = rc.ReplyNotice("No move task group found to stop")
-		} else {
-			_ = rc.ReplyNotice("Gracefully stopping task groups")
 		}
 
 		for id := range tgs {

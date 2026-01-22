@@ -153,7 +153,7 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 		KeyRangeID:  "krid3",
 	}
 
-	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, cl, nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, cl.Rule(), nil, false)
 	assert.NoError(t, err)
 
 	cli := clientinteractor.NewPSQLInteractor(cl)

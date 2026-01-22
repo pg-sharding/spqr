@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -49,7 +50,8 @@ type RoutingMetadataContext struct {
 	TableAliases map[string]rfqn.RelationFQN
 	CTEAliases   map[string]string
 
-	SPH session.SessionParamsHolder
+	SPH        session.SessionParamsHolder
+	ClientRule *config.FrontendRule
 
 	CSM   connmgr.ConnectionMgr
 	Mgr   meta.EntityMgr
@@ -77,7 +79,11 @@ func (rm *RoutingMetadataContext) IsRO() bool {
 }
 
 func NewRoutingMetadataContext(sph session.SessionParamsHolder,
-	query string, stmt lyx.Node, csm connmgr.ConnectionMgr, mgr meta.EntityMgr) *RoutingMetadataContext {
+	ClientRule *config.FrontendRule,
+	query string,
+	stmt lyx.Node,
+	csm connmgr.ConnectionMgr,
+	mgr meta.EntityMgr) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
 		Rels:          map[rfqn.RelationFQN]struct{}{},
 		CteNames:      map[string]struct{}{},
@@ -93,6 +99,7 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 		Query:         query,
 		Stmt:          stmt,
 		ro:            false,
+		ClientRule:    ClientRule,
 	}
 }
 
