@@ -2198,11 +2198,18 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 				Type("type", tstmt).
 				Msg("parsed statement is")
 
-			if err := meta.ProcMetadataCommand(ctx, tstmt, qc, ci, cl, nil, qc.IsReadOnly()); err != nil {
+			tts, err := meta.ProcMetadataCommand(ctx, tstmt, qc, ci, cl, nil, qc.IsReadOnly())
+			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
-				_ = cli.ReportError(err)
+				if err := cli.ReportError(err); err != nil {
+					return err
+				}
 			} else {
-				spqrlog.Zero.Debug().Msg("processed OK")
+				if err := cli.ReplyTTS(tts); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("processing error")
+				} else {
+					spqrlog.Zero.Debug().Msg("processed OK")
+				}
 			}
 		default:
 			return spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "unsupported msg type %T", msg)

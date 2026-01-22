@@ -159,36 +159,6 @@ func (pi *PSQLInteractor) ReplyTTS(tts *tupleslot.TupleTableSlot) error {
 	return pi.CompleteMsg(len(tts.Raw))
 }
 
-// TODO : unit tests
-
-// SplitKeyRange sends the row description message for splitting a key range, followed by a data row
-// indicating the split of the key range, and completes the message.
-//
-// Parameters:
-// - ctx (context.Context): The context parameter.
-// - split (*kr.SplitKeyRange): The *kr.SplitKeyRange object containing information about the split.
-//
-// Returns:
-//   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyRange) error {
-	if err := pi.WriteHeader("split key range"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{fmt.Appendf(nil, "key range id -> %v", split.Krid)}},
-		&pgproto3.DataRow{Values: [][]byte{fmt.Appendf(nil, "bound        -> %s", strings.ToLower(string(split.Bound[0])))}},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
 // MoveTaskGroup sends the list of move tasks to the client.
 //
 // Parameters:
@@ -285,26 +255,6 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 
 // TODO : unit tests
 
-// MergeKeyRanges merges two key ranges in the PSQL client.
-//
-// Parameters:
-// - _ (context.Context): The context for the operation.
-// - unite (*kr.UniteKeyRange): The key range to merge.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRange) error {
-	if err := pi.WriteHeader("merge key ranges"); err != nil {
-		return err
-	}
-	if err := pi.WriteDataRow(fmt.Sprintf("merge key range \"%v\" into \"%v\"", unite.AppendageKeyRangeId, unite.BaseKeyRangeId)); err != nil {
-		return err
-	}
-	return pi.CompleteMsg(1)
-}
-
-// TODO : unit tests
-
 // ReportStmtRoutedToAllShards reports that a statement has been routed to all shards in the PSQL client.
 //
 // Parameters:
@@ -319,43 +269,6 @@ func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error
 	}
 
 	if err := pi.WriteDataRow("query routed to all shards (multishard)"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-
-// KillClient kills a client in the PSQL client.
-//
-// Parameters:
-// - clientID (uint): The ID of the client to kill.
-//
-// Returns:
-// - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) KillClient(clientID uint) error {
-	if err := pi.WriteHeader("kill client"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("client id -> %d", clientID)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	return pi.CompleteMsg(0)
-}
-
-/* TODO: pretty-print if specified GUC set */
-/* KillBackend reports a backend as killed (marked stale) in the PSQL client. */
-func (pi *PSQLInteractor) KillBackend(id uint) error {
-	if err := pi.WriteHeader("kill backend"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("backend id -> %d", id)); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}

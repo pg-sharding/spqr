@@ -9,7 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
-	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
 	"github.com/pg-sharding/spqr/pkg/engine"
@@ -801,43 +800,43 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connmgr.ConnectionMgr, rc rclient.RouterClient, writer workloadlog.WorkloadLog, ro bool) error {
-	cli := clientinteractor.NewPSQLInteractor(rc)
+func ProcMetadataCommand(ctx context.Context,
+	tstmt spqrparser.Statement,
+	mgr EntityMgr,
+	ci connmgr.ConnectionMgr,
+	rc rclient.RouterClient, writer workloadlog.WorkloadLog, ro bool) (*tupleslot.TupleTableSlot, error) {
+
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 
 	if _, ok := tstmt.(*spqrparser.Show); ok {
 		if err := catalog.GC.CheckGrants(catalog.RoleReader, rc.Rule()); err != nil {
-			return err
+			return nil, err
 		}
-		if tts, err := ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, ro); err != nil {
-			return cli.ReportError(err)
-		} else {
-			return cli.ReplyTTS(tts)
-		}
+		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, ro)
 	}
 
 	if ro {
-		return fmt.Errorf("console is in read only mode")
+		return nil, fmt.Errorf("console is in read only mode")
 	}
 
 	if err := catalog.GC.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
-		return err
+		return nil, err
 	}
 
 	switch stmt := tstmt.(type) {
 	case nil:
-		return ErrUnknownCoordinatorCommand
+		return nil, ErrUnknownCoordinatorCommand
 	case *spqrparser.InstanceControlPoint:
 		/* create control point */
 		if stmt.Enable {
 			err := icp.DefineICP(stmt.Name, stmt.A)
 			if err != nil {
-				return cli.ReportError(err)
+				return nil, err
 			}
 		} else {
 			err := icp.ResetICP(stmt.Name)
 			if err != nil {
-				return cli.ReportError(err)
+				return nil, err
 			}
 		}
 		tts := &tupleslot.TupleTableSlot{
@@ -857,10 +856,10 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			}
 		}
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case *spqrparser.TraceStmt:
 		if writer == nil {
-			return fmt.Errorf("cannot save workload from here")
+			return nil, fmt.Errorf("cannot save workload from here")
 		}
 		writer.StartLogging(stmt.All, stmt.Client)
 
@@ -873,14 +872,14 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			},
 		}
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case *spqrparser.StopTraceStmt:
 		if writer == nil {
-			return cli.ReportError(fmt.Errorf("cannot save workload from here"))
+			return nil, fmt.Errorf("cannot save workload from here")
 		}
 		err := writer.StopLogging()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -892,19 +891,12 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			},
 		}
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case *spqrparser.Drop:
-		tts, err := processDrop(ctx, stmt.Element, stmt.CascadeDelete, mgr)
-		if err != nil {
-			return cli.ReportError(err)
-		}
-		return cli.ReplyTTS(tts)
+		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, mgr)
+
 	case *spqrparser.Create:
-		tts, err := ProcessCreate(ctx, stmt.Element, mgr)
-		if err != nil {
-			return cli.ReportError(err)
-		}
-		return cli.ReplyTTS(tts)
+		return ProcessCreate(ctx, stmt.Element, mgr)
 	case *spqrparser.MoveKeyRange:
 		move := &kr.MoveKeyRange{
 			ShardId: stmt.DestShardID,
@@ -912,7 +904,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}
 
 		if err := mgr.Move(ctx, move); err != nil {
-			return cli.ReportError(err)
+			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -923,7 +915,7 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			},
 		}
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case *spqrparser.RegisterRouter:
 		newRouter := &topology.Router{
 			ID:      stmt.ID,
@@ -931,11 +923,11 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}
 
 		if err := mgr.RegisterRouter(ctx, newRouter); err != nil {
-			return err
+			return nil, err
 		}
 
 		if err := mgr.SyncRouterMetadata(ctx, newRouter); err != nil {
-			return err
+			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -945,10 +937,10 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			},
 		}
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case *spqrparser.UnregisterRouter:
 		if err := mgr.UnregisterRouter(ctx, stmt.ID); err != nil {
-			return err
+			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -956,10 +948,10 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			Raw:  [][][]byte{{fmt.Appendf(nil, "router id -> %s", stmt.ID)}},
 		}
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case *spqrparser.Lock:
 		if _, err := mgr.LockKeyRange(ctx, stmt.KeyRangeID); err != nil {
-			return err
+			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -967,10 +959,10 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			Raw:  [][][]byte{{fmt.Appendf(nil, "key range id -> %v", stmt.KeyRangeID)}},
 		}
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case *spqrparser.Unlock:
 		if err := mgr.UnlockKeyRange(ctx, stmt.KeyRangeID); err != nil {
-			return err
+			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -978,9 +970,9 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			Raw:  [][][]byte{{fmt.Appendf(nil, "key range id -> %v", stmt.KeyRangeID)}},
 		}
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case *spqrparser.Kill:
-		return ProcessKill(ctx, stmt, mgr, ci, cli)
+		return ProcessKill(ctx, stmt, mgr, ci)
 	case *spqrparser.SplitKeyRange:
 		splitKeyRange := &kr.SplitKeyRange{
 			Bound:    stmt.Border.Pivots,
@@ -988,46 +980,54 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			Krid:     stmt.KeyRangeID,
 		}
 		if err := mgr.Split(ctx, splitKeyRange); err != nil {
-			return err
+			return nil, err
 		}
-		return cli.SplitKeyRange(ctx, splitKeyRange)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("split key range"),
+		}
+		tts.WriteDataRow(fmt.Sprintf("key range id -> %v", splitKeyRange.Krid))
+		tts.WriteDataRow(fmt.Sprintf("bound        -> %s", strings.ToLower(string(splitKeyRange.Bound[0]))))
+		return tts, nil
+
 	case *spqrparser.UniteKeyRange:
 		uniteKeyRange := &kr.UniteKeyRange{
 			BaseKeyRangeId:      stmt.KeyRangeIDL,
 			AppendageKeyRangeId: stmt.KeyRangeIDR,
 		}
 		if err := mgr.Unite(ctx, uniteKeyRange); err != nil {
-			return err
+			return nil, err
 		}
-		return cli.MergeKeyRanges(ctx, uniteKeyRange)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("merge key ranges"),
+		}
+		tts.WriteDataRow(fmt.Sprintf("merge key range \"%v\" into \"%v\"", uniteKeyRange.AppendageKeyRangeId, uniteKeyRange.BaseKeyRangeId))
+		return tts, nil
 	case *spqrparser.Alter:
-		if tts, err := processAlter(ctx, stmt.Element, mgr); err != nil {
-			return cli.ReportError(err)
-		} else {
-			return cli.ReplyTTS(tts)
-		}
+		return processAlter(ctx, stmt.Element, mgr)
 	case *spqrparser.RedistributeKeyRange:
-		if tts, err := processRedistribute(ctx, stmt, mgr); err != nil {
-			return cli.ReportError(err)
-		} else {
-			return cli.ReplyTTS(tts)
-		}
+		return processRedistribute(ctx, stmt, mgr)
 	case *spqrparser.Invalidate:
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("Invalidate"),
+		}
 		switch stmt.Target {
+
 		case spqrparser.SchemaCacheInvalidateTarget:
 			mgr.Cache().Reset()
 		case spqrparser.StaleClientsInvalidateTarget:
-			cnt := 0
 			if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
 				if !netutil.TCP_CheckAliveness(cl.Conn()) {
-					cnt++
+					tts.WriteDataRow(fmt.Sprintf("signaled %d", cl.ID()))
 					return cl.Cancel()
 				}
 				return nil
 			}); err != nil {
-				return cli.ReportError(err)
+				return nil, err
 			}
-			return cli.CompleteMsg(cnt)
+			return tts, nil
 		case spqrparser.BackendConnectionsInvalidateTarget:
 			if err := ci.ForEachPool(func(p pool.Pool) error {
 				return p.ForEach(func(sh shard.ShardHostCtl) error {
@@ -1035,23 +1035,23 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 					return nil
 				})
 			}); err != nil {
-				return cli.ReportError(err)
+				return nil, err
 			}
 		}
-		return cli.CompleteMsg(0)
+		return tts, nil
 	case *spqrparser.StopMoveTaskGroup:
 		var tgs map[string]*tasks.MoveTaskGroup
 		if stmt.ID == "*" {
 			var err error
 			tgs, err = mgr.ListMoveTaskGroups(ctx)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 		} else {
 			tg, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			if tg != nil {
 				tgs = map[string]*tasks.MoveTaskGroup{tg.ID: tg}
@@ -1063,26 +1063,26 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		}
 
 		if len(tgs) == 0 {
-			_ = cli.ReplyNotice(ctx, "No move task group found to stop")
+			_ = rc.ReplyNotice("No move task group found to stop")
 		} else {
-			_ = cli.ReplyNotice(ctx, "Gracefully stopping task groups")
+			_ = rc.ReplyNotice("Gracefully stopping task groups")
 		}
 
 		for id := range tgs {
 			if err := mgr.StopMoveTaskGroup(ctx, id); err != nil {
-				return err
+				return nil, err
 			}
 			tts.WriteDataRow(id)
 		}
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case *spqrparser.RetryMoveTaskGroup:
 		taskGroup, err := mgr.GetMoveTaskGroup(ctx, stmt.ID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if err := mgr.RetryMoveTaskGroup(ctx, stmt.ID); err != nil {
-			return err
+			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -1091,16 +1091,16 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 		if taskGroup != nil {
 			tts.WriteDataRow(taskGroup.ID, taskGroup.ShardToId, taskGroup.KrIdFrom, taskGroup.KrIdTo)
 		}
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	case *spqrparser.SyncReferenceTables:
 		/* TODO: fix RelationSelector logic */
 		if stmt.RelationSelector == "*" {
-			return fmt.Errorf("SYNC REFERENCE TABLES/RELATIONS currently unsupported")
+			return nil, fmt.Errorf("SYNC REFERENCE TABLES/RELATIONS currently unsupported")
 		}
 		if err := mgr.SyncReferenceRelations(ctx, []*rfqn.RelationFQN{
 			{RelationName: stmt.RelationSelector},
 		}, stmt.ShardID); err != nil {
-			return err
+			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
@@ -1111,9 +1111,9 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 			}},
 		}
 
-		return cli.ReplyTTS(tts)
+		return tts, nil
 	default:
-		return ErrUnknownCoordinatorCommand
+		return nil, ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -1126,22 +1126,31 @@ func ProcMetadataCommand(ctx context.Context, tstmt spqrparser.Statement, mgr En
 // - stmt (*spqrparser.Kill): The kill statement to process.
 // - mngr (EntityMgr): The entity manager for managing entities.
 // - pool (client.Pool): The pool of clients.
-// - cli (*clientinteractor.PSQLInteractor): The PSQL interactor for client interactions.
 //
 // Returns:
 // - error: An error if the operation encounters any issues.
-func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, ci connmgr.ConnectionMgr, cli *clientinteractor.PSQLInteractor) error {
+func ProcessKill(ctx context.Context,
+	stmt *spqrparser.Kill,
+	mngr EntityMgr,
+	ci connmgr.ConnectionMgr) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process kill")
 	switch stmt.Cmd {
 	case spqrparser.ClientStr:
 		ok, err := ci.Pop(stmt.Target)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if !ok {
-			return fmt.Errorf("no such client %d", stmt.Target)
+			return nil, fmt.Errorf("no such client %d", stmt.Target)
 		}
-		return cli.KillClient(stmt.Target)
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("kill client"),
+		}
+
+		tts.WriteDataRow(fmt.Sprintf("client id -> %d", stmt.Target))
+
+		return tts, nil
 	case spqrparser.BackendStr:
 
 		ok := false
@@ -1155,16 +1164,22 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, ci 
 				return nil
 			})
 		}); err != nil {
-			return err
+			return nil, err
 		}
 
 		if !ok {
-			return fmt.Errorf("no such backend %d", stmt.Target)
+			return nil, fmt.Errorf("no such backend %d", stmt.Target)
 		}
 
-		return cli.KillBackend(stmt.Target)
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("kill backend"),
+		}
+
+		tts.WriteDataRow(fmt.Sprintf("backend id -> %d", stmt.Target))
+
+		return tts, nil
 	default:
-		return ErrUnknownCoordinatorCommand
+		return nil, ErrUnknownCoordinatorCommand
 	}
 }
 
