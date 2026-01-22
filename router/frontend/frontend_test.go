@@ -126,7 +126,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 
-	qr.EXPECT().AnalyzeQuery(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+	qr.EXPECT().AnalyzeQuery(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 
 	qr.EXPECT().PlanQuery(gomock.Any(), gomock.Any()).Return(&plan.ShardDispatchPlan{
 		ExecTarget: kr.ShardKey{
@@ -194,7 +194,7 @@ func TestFrontendXProto(t *testing.T) {
 	}
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
-	qr.EXPECT().AnalyzeQuery(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	qr.EXPECT().AnalyzeQuery(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 

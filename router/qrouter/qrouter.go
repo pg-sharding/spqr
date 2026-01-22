@@ -18,7 +18,7 @@ import (
 
 type QueryRouter interface {
 	AnalyzeQuery(ctx context.Context,
-		sph session.SessionParamsHolder, query string, stmt lyx.Node) (*rmeta.RoutingMetadataContext, error)
+		sph session.SessionParamsHolder, rule *config.FrontendRule, query string, stmt lyx.Node) (*rmeta.RoutingMetadataContext, error)
 	PlanQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext) (plan.Plan, error)
 
 	WorldShardsRoutes() []kr.ShardKey

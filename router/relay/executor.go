@@ -487,7 +487,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 	return &pgcopy.CopyState{
 		Delimiter:      delimiter,
 		Krs:            krs,
-		RM:             rmeta.NewRoutingMetadataContext(s.cl, "", nil /*XXX: fix this*/, nil, s.mgr),
+		RM:             rmeta.NewRoutingMetadataContext(s.cl, s.cl.Rule(), "", nil /*XXX: fix this*/, nil, s.mgr),
 		Ds:             ds,
 		Drel:           dRel,
 		HashFunc:       hashFunc,

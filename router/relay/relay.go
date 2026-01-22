@@ -532,7 +532,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(ctx context.Context) error {
 			/* XXX: check that we have reference relation insert here */
 			stmt := rst.qp.Stmt()
 
-			rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, query, stmt)
+			rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.Cl.Rule(), query, stmt)
 			if err != nil {
 				return err
 			}
@@ -1190,7 +1190,7 @@ func (rst *RelayStateImpl) PrepareRandomDispatchExecutionSlice(currentPlan plan.
 func (rst *RelayStateImpl) ProcessSimpleQuery(q *pgproto3.Query, replyCl bool) error {
 	ctx := context.TODO()
 
-	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, q.String, rst.qp.Stmt())
+	rm, err := rst.Qr.AnalyzeQuery(ctx, rst.Cl, rst.Cl.Rule(), q.String, rst.qp.Stmt())
 	if err != nil {
 		return err
 	}
