@@ -381,7 +381,7 @@ func UniqueIndexesVirtualRelationScan(idToidxs map[string]*distributions.UniqueI
 
 func TaskGroupsVirtualRelationScan(groups map[string]*tasks.MoveTaskGroup, statuses map[string]*tasks.MoveTaskGroupStatus) *tupleslot.TupleTableSlot {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("task_group_id", "destination_shard_id", "source_key_range_id", "destination_key_range_id", "move_task_id", "state", "error"),
+		Desc: GetVPHeader("task_group_id", "destination_shard_id", "source_key_range_id", "destination_key_range_id", "batch_size", "move_task_id", "state", "error"),
 	}
 	for id, group := range groups {
 		status, ok := statuses[id]
@@ -392,7 +392,7 @@ func TaskGroupsVirtualRelationScan(groups map[string]*tasks.MoveTaskGroup, statu
 		if group.CurrentTask != nil {
 			currTaskId = group.CurrentTask.ID
 		}
-		tts.WriteDataRow(group.ID, group.ShardToId, group.KrIdFrom, group.KrIdTo, currTaskId, string(status.State), status.Message)
+		tts.WriteDataRow(group.ID, group.ShardToId, group.KrIdFrom, group.KrIdTo, strconv.FormatInt(group.BatchSize, 10), currTaskId, string(status.State), status.Message)
 	}
 	return tts
 }

@@ -596,6 +596,7 @@ Feature: Coordinator show clients, pools and backend_connections
             "source_key_range_id":      "kr_from",
             "destination_key_range_id": "kr_to",
             "move_task_id":             "2",
+            "batch_size":               "500",
             "state":                    "PLANNED",
             "error":                    ""
         }]
@@ -634,6 +635,7 @@ Feature: Coordinator show clients, pools and backend_connections
             "destination_shard_id":     "sh_to",
             "source_key_range_id":      "kr_from",
             "destination_key_range_id": "kr_to",
+            "batch_size":               "500",
             "move_task_id":             "2",
             "state":                    "ERROR",
             "error":                    "sample error message"

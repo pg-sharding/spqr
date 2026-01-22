@@ -796,6 +796,7 @@ Feature: Coordinator test
         "destination_shard_id":     "sh_to",
         "source_key_range_id":      "krid1",
         "destination_key_range_id": "krid2",
+        "batch_size":               "500",
         "move_task_id":             "2",
         "state":                    "PLANNED",
         "error":                    ""
