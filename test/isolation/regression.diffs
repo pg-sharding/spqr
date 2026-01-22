@@ -1,0 +1,28 @@
+diff -U3 /home/reshke/spqr/test/isolation/expected/simple.out /home/reshke/spqr/test/isolation/results/simple.out
+--- /home/reshke/spqr/test/isolation/expected/simple.out	2026-01-22 13:49:35.898325133 +0000
++++ /home/reshke/spqr/test/isolation/results/simple.out	2026-01-22 13:49:43.718432943 +0000
+@@ -1,23 +1,2 @@
+ Parsed test spec with 1 sessions
+-
+-starting permutation: s1_report s1_begin s1_s s1_commit
+-add distribution    
+---------------------
+-distribution id -> d
+-(1 row)
+-
+-step s1_report: SET __spqr__reply_notice TO on;
+-step s1_begin: BEGIN;
+-s1: NOTICE: send query to shard(s) : sh1
+-step s1_s: SELECT 1 /* __spqr__execute_on: sh1 */;
+-?column?
+---------
+-       1
+-(1 row)
+-
+-step s1_commit: COMMIT;
+-drop distribution   
+---------------------
+-distribution id -> d
+-(1 row)
+-
++setting of application name failed: ERROR:  unexpected *pgproto3.NoticeResponse message type in executor slice deploy

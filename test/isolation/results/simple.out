@@ -1,0 +1,2 @@
+Parsed test spec with 1 sessions
+setting of application name failed: ERROR:  unexpected *pgproto3.NoticeResponse message type in executor slice deploy

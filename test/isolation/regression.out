@@ -1,0 +1,7 @@
+# using postmaster on localhost, port 6432
+not ok 1     - simple                                      4 ms
+# (test process exited with exit code 1)
+1..1
+# 1 of 1 tests failed.
+# The differences that caused some tests to fail can be viewed in the file "/home/reshke/spqr/test/isolation/regression.diffs".
+# A copy of the test summary that you see above is saved in the file "/home/reshke/spqr/test/isolation/regression.out".
