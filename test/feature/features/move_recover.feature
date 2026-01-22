@@ -605,7 +605,7 @@ Feature: Move recover test
         "destination_shard_id":     "sh2",
         "source_key_range_id":      "krid1",
         "destination_key_range_id": "krid2",
-        "batch_size":               "500",
+        "batch_size":               "5",
         "move_task_id":             "1",
         "state":                    "PLANNED",
         "error":                    ""
@@ -699,7 +699,7 @@ Feature: Move recover test
         "destination_shard_id":     "sh2",
         "source_key_range_id":      "krid1",
         "destination_key_range_id": "krid2",
-        "batch_size":               "500",
+        "batch_size":               "5",
         "move_task_id":              "1",
         "state":                    "PLANNED",
         "error":                    ""

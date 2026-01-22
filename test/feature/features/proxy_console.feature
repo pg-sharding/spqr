@@ -288,7 +288,7 @@ Feature: Proxy console
             "destination_shard_id":     "sh_to",
             "source_key_range_id":      "kr_from",
             "destination_key_range_id": "kr_to",
-            "batch_size":               "500",
+            "batch_size":               "0",
             "move_task_id":             "2",
             "state":                    "PLANNED",
             "error":                    ""
