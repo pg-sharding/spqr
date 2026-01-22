@@ -138,6 +138,9 @@ gorm_regress: build_images
 xproto_regress: build_images
 	docker compose -f test/xproto/docker-compose.yaml down && docker compose -f test/xproto/docker-compose.yaml run --remove-orphans --build regress
 
+isolation_regress: build_images
+	docker compose -f test/isolation/docker-compose.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/isolation/docker-compose.yaml build && docker compose -f test/isolation/docker-compose.yaml run --remove-orphans regress
+
 stress: build_images
 	docker compose -f test/stress/docker-compose.yaml up --remove-orphans --exit-code-from stress --build router shard1 shard2 stress
 
