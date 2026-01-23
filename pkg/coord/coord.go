@@ -807,9 +807,8 @@ func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) erro
 	qdbStatements, err := lc.qdb.CreateKeyRange(ctx, kr.ToDB())
 	if err != nil {
 		return err
-	} else {
-		return lc.qdb.ExecNoTransaction(ctx, qdbStatements)
 	}
+	return lc.qdb.ExecNoTransaction(ctx, qdbStatements)
 }
 
 // TODO : unit tests
