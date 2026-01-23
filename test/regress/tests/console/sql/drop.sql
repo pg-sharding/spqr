@@ -10,7 +10,7 @@ DROP SHARD sh1 CASCADE;
 SHOW shards;
 SHOW key_ranges;
 
-CREATE SHARD sh1 WITH HOSTS spqr_shard_1:6432,spqr_shard_1_replica:6432;
+CREATE SHARD sh1 WITH HOSTS "spqr_shard_1:6432","spqr_shard_1_replica:6432";
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
 DROP KEY RANGE ALL;

@@ -52,6 +52,7 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type grpcConnMgr struct {
@@ -1917,6 +1918,38 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		return err
 	}
 
+	// Configure shards
+	shCl := proto.NewShardServiceClient(cc)
+	spqrlog.Zero.Debug().Msg("qdb coordinator: configure shards")
+	coordShards, err := qc.ListShards(ctx)
+	if err != nil {
+		return err
+	}
+	shardResp, err := shCl.ListShards(ctx, &emptypb.Empty{})
+	if err != nil {
+		return err
+	}
+	routerShards := make([]*topology.DataShard, 0, len(shardResp.Shards))
+	for _, sh := range shardResp.Shards {
+		routerShards = append(routerShards, topology.DataShardFromProto(sh))
+	}
+	needToAdd, needToDelete := qc.shardsDiff(routerShards, coordShards)
+
+	for _, sh := range needToAdd {
+		_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(sh)})
+		if err != nil {
+			return err
+		}
+	}
+	for _, sh := range needToDelete {
+		_, err = shCl.DropShard(ctx, &proto.DropShardRequest{
+			Id: sh.ID,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	// Configure distributions
 	dsCl := proto.NewDistributionServiceClient(cc)
 	spqrlog.Zero.Debug().Msg("qdb coordinator: configure distributions")
@@ -2219,7 +2252,32 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 
 // TODO : unit tests
 func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
-	return qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.RawHosts))
+	if err := qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.RawHosts)); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		c := proto.NewShardServiceClient(cc)
+		_, err := c.AddDataShard(ctx, &proto.AddShardRequest{
+			Shard: topology.DataShardToProto(shard),
+		})
+		return err
+	})
+}
+
+// TODO : unit tests
+func (qc *ClusteredCoordinator) DropShard(ctx context.Context, shardId string) error {
+	if err := qc.db.DropShard(ctx, shardId); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		c := proto.NewShardServiceClient(cc)
+		_, err := c.DropShard(ctx, &proto.DropShardRequest{
+			Id: shardId,
+		})
+		return err
+	})
 }
 
 func (qc *ClusteredCoordinator) AddWorldShard(_ context.Context, _ *topology.DataShard) error {
@@ -2610,4 +2668,29 @@ func (qc *ClusteredCoordinator) DropUniqueIndex(ctx context.Context, idxId strin
 			Msg("drop unique index response")
 		return nil
 	})
+}
+
+func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, coordShards []*topology.DataShard) (added []*topology.DataShard, deleted []*topology.DataShard) {
+	routerShardsMap := map[string]*topology.DataShard{}
+	coordShardsMap := map[string]*topology.DataShard{}
+
+	for _, sh := range routerShards {
+		routerShardsMap[sh.ID] = sh
+	}
+	for _, sh := range coordShards {
+		coordShardsMap[sh.ID] = sh
+	}
+
+	for id, sh := range coordShardsMap {
+		if _, exist := routerShardsMap[id]; !exist {
+			added = append(added, sh)
+		}
+	}
+	for id, sh := range routerShardsMap {
+		if _, exist := coordShardsMap[id]; !exist {
+			deleted = append(deleted, sh)
+		}
+	}
+
+	return
 }

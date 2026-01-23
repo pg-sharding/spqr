@@ -67,7 +67,7 @@ func TestNoManualCreateDefaultShardKeyRange(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 	//
 	_, err = meta.ProcessCreate(ctx, &statement, mngr)
 	assert.ErrorContains(t, err, "ds1.DEFAULT is reserved")
@@ -82,7 +82,7 @@ func TestCreteDistrWithDefaultShardSuccess(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	expectedDistribution := distributions.NewDistribution("dbTestDefault", []string{"integer"})
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
@@ -108,7 +108,7 @@ func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
 	assert.Nil(t, actualDistribution)
