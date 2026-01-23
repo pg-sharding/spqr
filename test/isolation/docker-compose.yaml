@@ -124,7 +124,7 @@ services:
         ports:
             - "6432:6432"
         environment:
-            - ROUTER_CONFIG=/spqr/test/regress/conf/router.yaml
+            - ROUTER_CONFIG=/spqr/test/isolation/conf/router.yaml
             - ROUTER_LOG=/var/log/spqr-router.log
         hostname: regress_router
         container_name: regress_router

@@ -102,6 +102,23 @@ jobs:
                   exit 1;
                 fi
              fi
+  
+  isolation-regress:
+    name: Isolation tests
+    runs-on: ubuntu-latest
+    needs: ['unit', 'stress', 'gorm-regress', 'jdbc-regress', 'xproto-regress']
+
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Run tests
+        run: |
+          if !(make isolation_regress); then
+            docker compose -f test/isolation/docker-compose.yaml ps -a --format "table {{.ID}}\t{{.Status}}" | grep -i unhealthy | awk '{print $1}' | xargs -n 1 docker logs; 
+            exit 1;
+          fi
 
   gorm-regress:
     name: drivers_gorm
