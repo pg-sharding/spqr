@@ -1195,8 +1195,10 @@ func (lc *Coordinator) CreateUniqueIndex(ctx context.Context, dsId string, idx *
 	}
 
 	/* Is this a problem? */
-	if _, ok := rel.UniqueIndexesByColumn[idx.ColumnName]; ok {
-		return fmt.Errorf("unique index for table \"%s\", column \"%s\" already exists", idx.RelationName.String(), idx.ColumnName)
+	for _, col := range idx.Columns {
+		if _, ok := rel.UniqueIndexesByColumn[col]; ok {
+			return fmt.Errorf("unique index for table \"%s\", column \"%s\" already exists", idx.RelationName.String(), col)
+		}
 	}
 	return lc.qdb.CreateUniqueIndex(ctx, distributions.UniqueIndexToDB(dsId, idx))
 }

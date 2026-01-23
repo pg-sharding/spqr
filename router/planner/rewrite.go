@@ -42,9 +42,9 @@ func RewriteDistributedRelInsertForIndexes(query string, iis []*distributions.Un
 
 	for ind, is := range iis {
 		if ind == 0 {
-			query += is.ColumnName
+			query += strings.Join(is.Columns, ", ")
 		} else {
-			query += " , " + is.ColumnName
+			query += " , " + strings.Join(is.Columns, ", ")
 		}
 	}
 
