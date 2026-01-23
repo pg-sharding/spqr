@@ -541,8 +541,9 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		if err := mngr.CreateUniqueIndex(ctx, ds.ID(), &distributions.UniqueIndex{
 			ID:           stmt.ID,
 			RelationName: stmt.TableName,
-			ColumnName:   stmt.Column,
-			ColType:      stmt.ColType}); err != nil {
+			Columns:      []string{stmt.Column},
+			ColTypes:     []string{stmt.ColType},
+		}); err != nil {
 			return nil, err
 		}
 

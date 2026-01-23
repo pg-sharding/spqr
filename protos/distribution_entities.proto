@@ -41,4 +41,6 @@ message UniqueIndex {
   QualifiedName tableName = 2;
   string colName = 3;
   string colType = 4;
+  repeated string columns = 5;
+  repeated string colTypes = 6;
 }

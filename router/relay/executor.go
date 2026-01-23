@@ -749,7 +749,7 @@ func (s *QueryStateExecutorImpl) copyFromExecutor() error {
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan, replyCl bool) error {
+func (s *QueryStateExecutorImpl) executeSlicePrepare(qd *QueryDesc, P plan.Plan, _ bool) error {
 
 	s.Reset()
 	/* XXX: refactor this into ExecutorReset */

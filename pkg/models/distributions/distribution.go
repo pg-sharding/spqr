@@ -373,7 +373,9 @@ func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 		relIdxs := make(map[string]*UniqueIndex)
 		for _, idx := range ret.UniqueIndexesByID {
 			if idx.RelationName.RelationName == name {
-				relIdxs[idx.ColumnName] = idx
+				for _, col := range idx.Columns {
+					relIdxs[col] = idx
+				}
 			}
 		}
 		ret.Relations[name] = DistributedRelationFromDB(val, relIdxs)
@@ -397,7 +399,9 @@ func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
 		if _, ok := idxsByRel[idx.RelationName.RelationName]; !ok {
 			idxsByRel[idx.RelationName.RelationName] = make(map[string]*UniqueIndex)
 		}
-		idxsByRel[idx.RelationName.RelationName][idx.ColumnName] = idx
+		for _, col := range idx.Columns {
+			idxsByRel[idx.RelationName.RelationName][col] = idx
+		}
 	}
 	rels := make(map[string]*DistributedRelation)
 	for _, rel := range ds.Relations {

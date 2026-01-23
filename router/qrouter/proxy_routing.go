@@ -16,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/plan"
@@ -376,8 +377,10 @@ func (qr *ProxyQrouter) planQueryV1(
 					case *pgproto3.DataRow:
 						cntVal++
 						for ind, is := range iis {
-							colValues[is.ColumnName] = append(colValues[is.ColumnName],
-								v.Values[ind])
+							for _, col := range is.Columns {
+								colValues[col] = append(colValues[col],
+									v.Values[ind])
+							}
 						}
 					default:
 						/* All ok? */
@@ -412,9 +415,19 @@ func (qr *ProxyQrouter) planQueryV1(
 			nRetPlan.PrepareRunF = func() error {
 				spqrlog.Zero.Debug().Msgf("creating query map using tuples: %+v", colValues)
 
-				iniTemplate := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", is.ID, is.ColumnName)
-
-				for _, val := range colValues[is.ColumnName] {
+				iniTemplate := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", is.ID, strings.Join(is.Columns, "_"))
+				values := make([][][]byte, len(is.Columns))
+				checkLen := -1
+				for i, col := range is.Columns {
+					values[i] = colValues[col]
+					if checkLen == -1 {
+						checkLen = len(values[i])
+					}
+					if checkLen != len(values[i]) {
+						return fmt.Errorf("number of values differs per column")
+					}
+				}
+				for i := range values[1] {
 
 					routingTuple := make([]any, len(distributedRelation.DistributionKey))
 
@@ -423,14 +436,30 @@ func (qr *ProxyQrouter) planQueryV1(
 						return err
 					}
 
-					hashVal, err := hashfunction.ApplyHashFunctionOnStringRepr(
-						val,
-						ds.ColTypes[0],
-						hf)
+					acc := []byte{}
+					for j := range values {
+						// hashVal, err := hashfunction.ApplyHashFunctionOnStringRepr(
+						// 	val,
+						// 	ds.ColTypes[0],
+						// 	hf)
+						// if err != nil {
+						// 	return err
+						// }
+						hashVal, err := hashfunction.ApplyNonIdentHashFunctionOnStringRepr(values[j][i],
+							is.ColTypes[i], hf)
+
+						if err != nil {
+							spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+							return err
+						}
+
+						acc = append(acc, hashfunction.EncodeUInt64(uint64(hashVal))...)
+					}
+
+					routingTuple[0], err = hashfunction.ApplyHashFunction(acc, qdb.ColumnTypeVarcharHashed, hf)
 					if err != nil {
 						return err
 					}
-					routingTuple[0] = hashVal
 
 					// check where this tuple should go
 					tupleExecTarget, err := rm.DeparseKeyWithRangesInternal(ctx, routingTuple, krs)
@@ -441,9 +470,9 @@ func (qr *ProxyQrouter) planQueryV1(
 					/* okay, we know where this tuple should arrive. */
 
 					if qry, ok := nRetPlan.OverwriteQuery[tupleExecTarget.Name]; ok {
-						nRetPlan.OverwriteQuery[tupleExecTarget.Name] = qry + "( " + string(val) + " )"
+						nRetPlan.OverwriteQuery[tupleExecTarget.Name] = qry + "( " + string(acc) + " )"
 					} else {
-						nRetPlan.OverwriteQuery[tupleExecTarget.Name] = iniTemplate + "( " + string(val) + " )"
+						nRetPlan.OverwriteQuery[tupleExecTarget.Name] = iniTemplate + "( " + string(acc) + " )"
 					}
 				}
 
@@ -842,7 +871,7 @@ func (qr *ProxyQrouter) plannerV1(
 }
 
 func (qr *ProxyQrouter) planSPQR_CTID(
-	ctx context.Context,
+	_ context.Context,
 	rm *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 
 	stmt := rm.Stmt
