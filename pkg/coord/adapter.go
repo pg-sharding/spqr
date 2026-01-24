@@ -697,7 +697,7 @@ func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) e
 // - error: An error if the data shard drop fails, otherwise nil.
 func (a *Adapter) DropShard(ctx context.Context, shardId string) error {
 	client := proto.NewShardServiceClient(a.conn)
-	_, err := client.DropDataShard(ctx, &proto.ShardRequest{Id: shardId})
+	_, err := client.DropShard(ctx, &proto.DropShardRequest{Id: shardId})
 	return err
 }
 
