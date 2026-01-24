@@ -177,7 +177,7 @@ func (q *EtcdQDB) Client() *clientv3.Client {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error {
+func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: add key range")
@@ -186,24 +186,21 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 
 	rawKeyRange, err := json.Marshal(keyRangeToInternal(keyRange))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	ops := []clientv3.Op{
-		clientv3.OpPut(keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange)),
-	}
-	if keyRange.Locked {
-		ops = append(ops, clientv3.OpPut(keyRangeNodePath(keyRange.KeyRangeID), "locked"))
-	}
-
-	resp, err := q.cli.Txn(ctx).
-		If(clientv3.Compare(clientv3.Version(keyRangeNodePath(keyRange.KeyRangeID)), "=", 0)).
-		Then(ops...).
-		Commit()
+	respKR := make([]QdbStatement, 1, 2)
+	resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if !resp.Succeeded {
-		return fmt.Errorf("key range \"%s\" already exists", keyRange.KeyRangeID)
+	respKR[0] = *resp
+
+	if keyRange.Locked {
+		resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+		if err != nil {
+			return nil, err
+		}
+		respKR = append(respKR, *resp)
 	}
 
 	spqrlog.Zero.Debug().
@@ -211,7 +208,7 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 		Msg("etcdqdb: put key range to qdb")
 
 	statistics.RecordQDBOperation("CreateKeyRange", time.Since(t))
-	return err
+	return respKR, nil
 }
 
 // TODO : unit tests
@@ -571,7 +568,13 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 		return err
 	}
 
-	err = q.CreateKeyRange(ctx, kr)
+	statements, err := q.CreateKeyRange(ctx, kr)
+	if err != nil {
+		return err
+	}
+	if err = q.ExecNoTransaction(ctx, statements); err != nil {
+		return err
+	}
 	statistics.RecordQDBOperation("RenameKeyRange", time.Since(t))
 	return err
 }
