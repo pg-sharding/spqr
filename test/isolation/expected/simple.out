@@ -1,0 +1,23 @@
+Parsed test spec with 1 sessions
+
+starting permutation: s1_report s1_begin s1_s s1_commit
+add distribution    
+--------------------
+distribution id -> d
+(1 row)
+
+step s1_report: SET __spqr__reply_notice TO on;
+step s1_begin: BEGIN;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_s: SELECT 1 /* __spqr__execute_on: sh1 */;
+?column?
+--------
+       1
+(1 row)
+
+step s1_commit: COMMIT;
+drop distribution   
+--------------------
+distribution id -> d
+(1 row)
+

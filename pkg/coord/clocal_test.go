@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/qdb"
 	mock "github.com/pg-sharding/spqr/qdb/mock"
@@ -18,7 +19,7 @@ func TestListKeyRangesCaches(t *testing.T) {
 
 	db := mock.NewMockXQDB(ctrl)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil)
+	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, map[string]*config.Shard{}, false)
 
 	krs := []*qdb.KeyRange{
 		{

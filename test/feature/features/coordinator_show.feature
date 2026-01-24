@@ -595,7 +595,10 @@ Feature: Coordinator show clients, pools and backend_connections
             "destination_shard_id":     "sh_to",
             "source_key_range_id":      "kr_from",
             "destination_key_range_id": "kr_to",
-            "move_task_id":     "2"
+            "move_task_id":             "2",
+            "batch_size":               "0",
+            "state":                    "PLANNED",
+            "error":                    ""
         }]
         """
         When I run SQL on host "coordinator"
@@ -611,5 +614,30 @@ Feature: Coordinator show clients, pools and backend_connections
             "bound":                    "10",
             "temporary_key_range_id":   "temp_id",
             "task_group_id":            "tgid1"
+        }]
+        """
+        When I record in qdb status of move task group "tgid1"
+        """
+        {
+            "state": "ERROR",
+            "msg":   "sample error message"
+        }
+        """
+         When I run SQL on host "coordinator"
+        """
+        SHOW task_group
+        """
+        Then command return code should be "0"
+        And SQL result should match json_exactly
+        """
+        [{
+            "task_group_id":            "tgid1",
+            "destination_shard_id":     "sh_to",
+            "source_key_range_id":      "kr_from",
+            "destination_key_range_id": "kr_to",
+            "batch_size":               "0",
+            "move_task_id":             "2",
+            "state":                    "ERROR",
+            "error":                    "sample error message"
         }]
         """

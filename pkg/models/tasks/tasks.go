@@ -52,6 +52,19 @@ type MoveTaskGroup struct {
 	CurrentTask *MoveTask `json:"task"`
 }
 
+type TaskGroupState string
+
+const (
+	TaskGroupPlanned TaskGroupState = "PLANNED"
+	TaskGroupRunning TaskGroupState = "RUNNING"
+	TaskGroupError   TaskGroupState = "ERROR"
+)
+
+type MoveTaskGroupStatus struct {
+	State   TaskGroupState
+	Message string
+}
+
 type RedistributeTaskState int
 
 const (
@@ -597,5 +610,56 @@ func RedistributeTaskStateFromProto(state protos.RedistributeTaskState) Redistri
 		return RedistributeTaskMoved
 	default:
 		panic("unknown redistribute task state")
+	}
+}
+
+func MoveTaskGroupStatusToProto(status *MoveTaskGroupStatus) *protos.MoveTaskGroupStatus {
+	if status == nil {
+		return nil
+	}
+
+	return &protos.MoveTaskGroupStatus{
+		State:   string(status.State),
+		Message: status.Message,
+	}
+}
+
+func MoveTaskGroupStatusFromProto(status *protos.MoveTaskGroupStatus) *MoveTaskGroupStatus {
+	if status == nil {
+		return nil
+	}
+
+	var state TaskGroupState
+	switch TaskGroupState(status.State) {
+	case TaskGroupRunning:
+		state = TaskGroupRunning
+	case TaskGroupError:
+		state = TaskGroupError
+	default:
+		state = TaskGroupPlanned
+	}
+	return &MoveTaskGroupStatus{
+		State:   state,
+		Message: status.Message,
+	}
+}
+
+func MoveTaskGroupStatusFromDb(status *qdb.TaskGroupStatus) *MoveTaskGroupStatus {
+	if status == nil {
+		return nil
+	}
+
+	var state TaskGroupState
+	switch TaskGroupState(status.State) {
+	case TaskGroupRunning:
+		state = TaskGroupRunning
+	case TaskGroupError:
+		state = TaskGroupError
+	default:
+		state = TaskGroupPlanned
+	}
+	return &MoveTaskGroupStatus{
+		State:   state,
+		Message: status.Message,
 	}
 }

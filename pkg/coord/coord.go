@@ -288,12 +288,19 @@ func (lc *Coordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, er
 	}
 
 	krs := make([]*kr.KeyRange, 0, len(keyRanges))
+	dsIdColTypes := make(map[string][]string)
 	for _, keyRange := range keyRanges {
-		ds, err := lc.qdb.GetDistribution(ctx, keyRange.DistributionId)
-		if err != nil {
-			return nil, err
+		var colTypes []string
+		ok := false
+		if colTypes, ok = dsIdColTypes[keyRange.DistributionId]; !ok {
+			ds, err := lc.qdb.GetDistribution(ctx, keyRange.DistributionId)
+			if err != nil {
+				return nil, err
+			}
+			colTypes = ds.ColTypes
+			dsIdColTypes[ds.ID] = ds.ColTypes
 		}
-		kRange, err := kr.KeyRangeFromDB(keyRange, ds.ColTypes)
+		kRange, err := kr.KeyRangeFromDB(keyRange, colTypes)
 		if err != nil {
 			return nil, err
 		}
@@ -631,12 +638,12 @@ func (qc *Coordinator) ListKeyRanges(ctx context.Context, distribution string) (
 		return nil, err
 	}
 
+	ds, err := qc.qdb.GetDistribution(ctx, distribution)
+	if err != nil {
+		return nil, err
+	}
 	krs := make([]*kr.KeyRange, 0, len(keyRanges))
 	for _, keyRange := range keyRanges {
-		ds, err := qc.qdb.GetDistribution(ctx, keyRange.DistributionId)
-		if err != nil {
-			return nil, err
-		}
 		kRange, err := kr.KeyRangeFromDB(keyRange, ds.ColTypes)
 		if err != nil {
 			return nil, err
@@ -694,6 +701,40 @@ func (qc *Coordinator) RemoveMoveTaskGroup(ctx context.Context, id string) error
 		}
 	}
 	return qc.qdb.RemoveMoveTaskGroup(ctx, id)
+}
+
+// GetTaskGroupStatus gets the status of the task group from coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+// - id  (string):          ID of the task group
+//
+// Returns:
+// - *tasks.MoveTaskGroupStatus: the status of the task group
+// - error: an error if the removal operation fails.
+func (qc *Coordinator) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.MoveTaskGroupStatus, error) {
+	status, err := qc.qdb.GetTaskGroupStatus(ctx, id)
+	return tasks.MoveTaskGroupStatusFromDb(status), err
+}
+
+// GetAllTaskGroupStatuses gets statuses of all task groups from coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+//
+// Returns:
+// - map[string]*tasks.MoveTaskGroupStatus: the statuses of the task group by ID
+// - error: an error if the removal operation fails.
+func (qc *Coordinator) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.MoveTaskGroupStatus, error) {
+	statuses, err := qc.qdb.GetAllTaskGroupStatuses(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*tasks.MoveTaskGroupStatus)
+	for id, status := range statuses {
+		res[id] = tasks.MoveTaskGroupStatusFromDb(status)
+	}
+	return res, nil
 }
 
 // TODO : unit tests
@@ -804,7 +845,11 @@ func (qc *Coordinator) ShareKeyRange(id string) error {
 // Returns:
 // - error: An error if the creation encounters any issues.
 func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	return lc.qdb.CreateKeyRange(ctx, kr.ToDB())
+	qdbStatements, err := lc.qdb.CreateKeyRange(ctx, kr.ToDB())
+	if err != nil {
+		return err
+	}
+	return lc.qdb.ExecNoTransaction(ctx, qdbStatements)
 }
 
 // TODO : unit tests

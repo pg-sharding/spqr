@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/catalog"
+	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -119,7 +120,12 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 	}
 
 	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
-	return meta.ProcMetadataCommand(ctx, tstmt, mgr, l.rrouter, rc, l.writer, false)
+	cli := clientinteractor.NewPSQLInteractor(rc)
+	tts, err := meta.ProcMetadataCommand(ctx, tstmt, mgr, l.rrouter, rc.Rule(), l.writer, false)
+	if err != nil {
+		return cli.ReportError(err)
+	}
+	return cli.ReplyTTS(tts)
 }
 
 // TODO : unit tests

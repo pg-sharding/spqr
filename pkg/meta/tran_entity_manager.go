@@ -2,6 +2,7 @@ package meta
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -21,6 +22,7 @@ import (
 type TranEntityManager struct {
 	mngr          EntityMgr
 	distributions MetaEntityList[*distributions.Distribution]
+	keyRanges     MetaEntityList[*kr.KeyRange]
 }
 
 var _ EntityMgr = &TranEntityManager{}
@@ -34,9 +36,11 @@ var _ EntityMgr = &TranEntityManager{}
 // - a pointer to an TranEntityManager object.
 func NewTranEntityManager(mngr EntityMgr) *TranEntityManager {
 	distrList := NewMetaEntityList[*distributions.Distribution]()
+	keyRangesList := NewMetaEntityList[*kr.KeyRange]()
 	return &TranEntityManager{
 		mngr:          mngr,
 		distributions: *distrList,
+		keyRanges:     *keyRangesList,
 	}
 }
 
@@ -87,7 +91,7 @@ func (t *TranEntityManager) BatchMoveKeyRange(ctx context.Context, req *kr.Batch
 
 // BeginTran implements [EntityMgr].
 func (t *TranEntityManager) BeginTran(ctx context.Context) (*meta_transaction.MetaTransaction, error) {
-	panic("BeginTran unimplemented")
+	return t.mngr.BeginTran(ctx)
 }
 
 // Cache implements [EntityMgr].
@@ -97,7 +101,7 @@ func (t *TranEntityManager) Cache() *cache.SchemaCache {
 
 // CommitTran implements [EntityMgr].
 func (t *TranEntityManager) CommitTran(ctx context.Context, transaction *meta_transaction.MetaTransaction) error {
-	panic("CommitTran unimplemented")
+	return t.mngr.CommitTran(ctx, transaction)
 }
 
 // CreateDistribution implements [EntityMgr].
@@ -112,7 +116,11 @@ func (t *TranEntityManager) CreateDistribution(ctx context.Context, ds *distribu
 
 // CreateKeyRange implements [EntityMgr].
 func (t *TranEntityManager) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	panic("CreateKeyRange unimplemented")
+	if _, ok := t.keyRanges.Items()[kr.ID]; ok {
+		return fmt.Errorf("key range %s already present in qdb", kr.ID)
+	}
+	t.keyRanges.Save(kr.ID, kr)
+	return nil
 }
 
 // CreateReferenceRelation implements [EntityMgr].
@@ -194,7 +202,17 @@ func (t *TranEntityManager) GetDistribution(ctx context.Context, id string) (*di
 
 // GetKeyRange implements [EntityMgr].
 func (t *TranEntityManager) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
-	panic("GetKeyRange unimplemented")
+	if _, ok := t.keyRanges.DeletedItems()[krId]; ok {
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "key range \"%s\" not found", krId)
+	}
+	if savedKr, ok := t.keyRanges.Items()[krId]; ok {
+		return savedKr, nil
+	}
+	if keyRangeFromQdb, err := t.mngr.GetKeyRange(ctx, krId); err != nil {
+		return nil, err
+	} else {
+		return keyRangeFromQdb, nil
+	}
 }
 
 // GetMoveTaskGroup implements [EntityMgr].
@@ -219,7 +237,8 @@ func (t *TranEntityManager) GetSequenceRelations(ctx context.Context, seqName st
 
 // GetShard implements [EntityMgr].
 func (t *TranEntityManager) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
-	panic("GetShard unimplemented")
+	// TODO convert track change behaviour
+	return t.mngr.GetShard(ctx, shardID)
 }
 
 // ListAllKeyRanges implements [EntityMgr].
@@ -254,9 +273,30 @@ func (t *TranEntityManager) ListKeyRangeLocks(ctx context.Context) ([]string, er
 	panic("ListKeyRangeLocks unimplemented")
 }
 
+// TODO: ADD more tests when altering key range will be realized
 // ListKeyRanges implements [EntityMgr].
 func (t *TranEntityManager) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
-	panic("ListKeyRanges unimplemented")
+	list, err := t.mngr.ListKeyRanges(ctx, distribution)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*kr.KeyRange, 0, len(list)+len(t.keyRanges.Items()))
+	for _, keyRange := range t.keyRanges.Items() {
+		if keyRange.Distribution == distribution {
+			result = append(result, keyRange)
+		}
+	}
+	for _, keyRange := range list {
+		if _, ok := t.keyRanges.DeletedItems()[keyRange.ID]; ok {
+			continue
+		}
+		if _, ok := t.keyRanges.Items()[keyRange.ID]; ok {
+			continue
+		}
+		result = append(result, keyRange)
+	}
+	return result, nil
+
 }
 
 // ListMoveTaskGroups implements [EntityMgr].
@@ -427,6 +467,16 @@ func (t *TranEntityManager) ListRelationIndexes(ctx context.Context, relName *rf
 // ListUniqueIndexes implements [EntityMgr].
 func (t *TranEntityManager) ListUniqueIndexes(ctx context.Context) (map[string]*distributions.UniqueIndex, error) {
 	panic("ListUniqueIndexes unimplemented")
+}
+
+// GetAllTaskGroupStatuses implements [EntityMgr].
+func (t *TranEntityManager) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.MoveTaskGroupStatus, error) {
+	panic("GetAllTaskGroupStatuses unimplemented")
+}
+
+// GetTaskGroupStatus implements [EntityMgr].
+func (t *TranEntityManager) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.MoveTaskGroupStatus, error) {
+	panic("GetTaskGroupStatus unimplemented")
 }
 
 type MetaEntityList[T any] struct {

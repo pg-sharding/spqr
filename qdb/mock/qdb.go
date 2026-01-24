@@ -624,11 +624,12 @@ func (mr *MockQDBMockRecorder) CreateDistribution(ctx, distr any) *gomock.Call {
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
+func (m *MockQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, keyRange)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateKeyRange indicates an expected call of CreateKeyRange.
@@ -776,6 +777,21 @@ func (m *MockQDB) DropUniqueIndex(ctx context.Context, id string) error {
 func (mr *MockQDBMockRecorder) DropUniqueIndex(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropUniqueIndex", reflect.TypeOf((*MockQDB)(nil).DropUniqueIndex), ctx, id)
+}
+
+// GetAllTaskGroupStatuses mocks base method.
+func (m *MockQDB) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*qdb.TaskGroupStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllTaskGroupStatuses", ctx)
+	ret0, _ := ret[0].(map[string]*qdb.TaskGroupStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllTaskGroupStatuses indicates an expected call of GetAllTaskGroupStatuses.
+func (mr *MockQDBMockRecorder) GetAllTaskGroupStatuses(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllTaskGroupStatuses", reflect.TypeOf((*MockQDB)(nil).GetAllTaskGroupStatuses), ctx)
 }
 
 // GetBalancerTask mocks base method.
@@ -971,6 +987,21 @@ func (m *MockQDB) GetSequenceRelations(ctx context.Context, seqName string) ([]*
 func (mr *MockQDBMockRecorder) GetSequenceRelations(ctx, seqName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSequenceRelations", reflect.TypeOf((*MockQDB)(nil).GetSequenceRelations), ctx, seqName)
+}
+
+// GetTaskGroupStatus mocks base method.
+func (m *MockQDB) GetTaskGroupStatus(ctx context.Context, id string) (*qdb.TaskGroupStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTaskGroupStatus", ctx, id)
+	ret0, _ := ret[0].(*qdb.TaskGroupStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTaskGroupStatus indicates an expected call of GetTaskGroupStatus.
+func (mr *MockQDBMockRecorder) GetTaskGroupStatus(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskGroupStatus", reflect.TypeOf((*MockQDB)(nil).GetTaskGroupStatus), ctx, id)
 }
 
 // ListAllKeyRanges mocks base method.
@@ -1391,6 +1422,20 @@ func (m *MockQDB) WriteRedistributeTask(ctx context.Context, task *qdb.Redistrib
 func (mr *MockQDBMockRecorder) WriteRedistributeTask(ctx, task any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteRedistributeTask", reflect.TypeOf((*MockQDB)(nil).WriteRedistributeTask), ctx, task)
+}
+
+// WriteTaskGroupStatus mocks base method.
+func (m *MockQDB) WriteTaskGroupStatus(ctx context.Context, id string, status *qdb.TaskGroupStatus) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WriteTaskGroupStatus", ctx, id, status)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// WriteTaskGroupStatus indicates an expected call of WriteTaskGroupStatus.
+func (mr *MockQDBMockRecorder) WriteTaskGroupStatus(ctx, id, status any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteTaskGroupStatus", reflect.TypeOf((*MockQDB)(nil).WriteTaskGroupStatus), ctx, id, status)
 }
 
 // MockDCStateKeeper is a mock of DCStateKeeper interface.
@@ -1937,11 +1982,12 @@ func (mr *MockXQDBMockRecorder) CreateDistribution(ctx, distr any) *gomock.Call 
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockXQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
+func (m *MockXQDB) CreateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, keyRange)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateKeyRange indicates an expected call of CreateKeyRange.
@@ -2161,6 +2207,21 @@ func (mr *MockXQDBMockRecorder) ExecNoTransaction(ctx, operations any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecNoTransaction", reflect.TypeOf((*MockXQDB)(nil).ExecNoTransaction), ctx, operations)
 }
 
+// GetAllTaskGroupStatuses mocks base method.
+func (m *MockXQDB) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*qdb.TaskGroupStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllTaskGroupStatuses", ctx)
+	ret0, _ := ret[0].(map[string]*qdb.TaskGroupStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllTaskGroupStatuses indicates an expected call of GetAllTaskGroupStatuses.
+func (mr *MockXQDBMockRecorder) GetAllTaskGroupStatuses(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllTaskGroupStatuses", reflect.TypeOf((*MockXQDB)(nil).GetAllTaskGroupStatuses), ctx)
+}
+
 // GetBalancerTask mocks base method.
 func (m *MockXQDB) GetBalancerTask(ctx context.Context) (*qdb.BalancerTask, error) {
 	m.ctrl.T.Helper()
@@ -2369,6 +2430,21 @@ func (m *MockXQDB) GetShard(ctx context.Context, shardID string) (*qdb.Shard, er
 func (mr *MockXQDBMockRecorder) GetShard(ctx, shardID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShard", reflect.TypeOf((*MockXQDB)(nil).GetShard), ctx, shardID)
+}
+
+// GetTaskGroupStatus mocks base method.
+func (m *MockXQDB) GetTaskGroupStatus(ctx context.Context, id string) (*qdb.TaskGroupStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTaskGroupStatus", ctx, id)
+	ret0, _ := ret[0].(*qdb.TaskGroupStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTaskGroupStatus indicates an expected call of GetTaskGroupStatus.
+func (mr *MockXQDBMockRecorder) GetTaskGroupStatus(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskGroupStatus", reflect.TypeOf((*MockXQDB)(nil).GetTaskGroupStatus), ctx, id)
 }
 
 // GetTransferTx mocks base method.
@@ -2918,4 +2994,18 @@ func (m *MockXQDB) WriteRedistributeTask(ctx context.Context, task *qdb.Redistri
 func (mr *MockXQDBMockRecorder) WriteRedistributeTask(ctx, task any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteRedistributeTask", reflect.TypeOf((*MockXQDB)(nil).WriteRedistributeTask), ctx, task)
+}
+
+// WriteTaskGroupStatus mocks base method.
+func (m *MockXQDB) WriteTaskGroupStatus(ctx context.Context, id string, status *qdb.TaskGroupStatus) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WriteTaskGroupStatus", ctx, id, status)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// WriteTaskGroupStatus indicates an expected call of WriteTaskGroupStatus.
+func (mr *MockXQDBMockRecorder) WriteTaskGroupStatus(ctx, id, status any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteTaskGroupStatus", reflect.TypeOf((*MockXQDB)(nil).WriteTaskGroupStatus), ctx, id, status)
 }

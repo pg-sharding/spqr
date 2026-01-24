@@ -1118,6 +1118,39 @@ func (a *Adapter) StopMoveTaskGroup(ctx context.Context, id string) error {
 	return err
 }
 
+// GetTaskGroupStatus gets the status of the task group.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+// - id  (string):          ID of the task group
+//
+// Returns:
+// - *tasks.MoveTaskGroupStatus: the status of the task group
+// - error: an error if the removal operation fails.
+func (a *Adapter) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.MoveTaskGroupStatus, error) {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	status, err := tasksService.GetMoveTaskGroupStatus(ctx, &proto.MoveTaskGroupSelector{ID: id})
+	return tasks.MoveTaskGroupStatusFromProto(status), err
+}
+
+// GetAllTaskGroupStatuses gets statuses of all task groups.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+//
+// Returns:
+// - map[string]*tasks.MoveTaskGroupStatus: the statuses of the task group by ID
+// - error: an error if the removal operation fails.
+func (a *Adapter) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.MoveTaskGroupStatus, error) {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	ret, err := tasksService.GetAllMoveTaskGroupStatuses(ctx, nil)
+	res := make(map[string]*tasks.MoveTaskGroupStatus)
+	for id, status := range ret.Statuses {
+		res[id] = tasks.MoveTaskGroupStatusFromProto(status)
+	}
+	return res, err
+}
+
 // GetBalancerTask retrieves current balancer task from the system.
 //
 // Parameters:

@@ -20,7 +20,6 @@ anyerr
 AOk
 appdefaults
 APREQ
-aqo
 argexpr
 ARRAYOID
 aspernatur
@@ -212,6 +211,7 @@ IDBy
 idi
 idj
 IDR
+IDTo
 idxs
 IExecute
 illum
@@ -285,10 +285,12 @@ LDAPTLS
 ldapwhoami
 ldflags
 libdefaults
+libicu
 libldap
 libp
 libpam
 libpq
+libreadline
 Linting
 localrouter
 logdir

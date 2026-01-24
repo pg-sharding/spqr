@@ -89,3 +89,25 @@ func (t TasksServer) WriteBalancerTask(ctx context.Context, request *protos.Writ
 func (t TasksServer) RemoveBalancerTask(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, t.impl.RemoveBalancerTask(ctx)
 }
+
+func (t TasksServer) GetMoveTaskGroupStatus(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupStatus, error) {
+	status, err := t.impl.GetTaskGroupStatus(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	return tasks.MoveTaskGroupStatusToProto(status), err
+}
+
+func (t TasksServer) GetAllMoveTaskGroupStatuses(ctx context.Context, _ *emptypb.Empty) (*protos.GetAllMoveTaskGroupStatusesReply, error) {
+	statuses, err := t.impl.GetAllTaskGroupStatuses(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*protos.MoveTaskGroupStatus)
+	for id, status := range statuses {
+		res[id] = tasks.MoveTaskGroupStatusToProto(status)
+	}
+	return &protos.GetAllMoveTaskGroupStatusesReply{
+		Statuses: res,
+	}, nil
+}

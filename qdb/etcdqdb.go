@@ -61,6 +61,7 @@ const (
 	shardsNamespace                  = "/shards/"
 	relationMappingNamespace         = "/relation_mappings/"
 	taskGroupsNamespace              = "/move_task_groups/"
+	taskGroupStatusesNamespace       = "/task_group_statuses/"
 	moveTaskNamespace                = "/move_tasks/"
 	redistributeTaskPath             = "/redistribute_task/"
 	balancerTaskPath                 = "/balancer_task/"
@@ -139,6 +140,10 @@ func taskGroupNodePath(id string) string {
 	return path.Join(taskGroupsNamespace, id)
 }
 
+func taskGroupStatusNodePath(id string) string {
+	return path.Join(taskGroupStatusesNamespace, id)
+}
+
 func totalKeysNodePath(id string) string {
 	return path.Join(totalKeysNamespace, id)
 }
@@ -172,7 +177,7 @@ func (q *EtcdQDB) Client() *clientv3.Client {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error {
+func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: add key range")
@@ -181,24 +186,21 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 
 	rawKeyRange, err := json.Marshal(keyRangeToInternal(keyRange))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	ops := []clientv3.Op{
-		clientv3.OpPut(keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange)),
-	}
-	if keyRange.Locked {
-		ops = append(ops, clientv3.OpPut(keyRangeNodePath(keyRange.KeyRangeID), "locked"))
-	}
-
-	resp, err := q.cli.Txn(ctx).
-		If(clientv3.Compare(clientv3.Version(keyRangeNodePath(keyRange.KeyRangeID)), "=", 0)).
-		Then(ops...).
-		Commit()
+	respKR := make([]QdbStatement, 1, 2)
+	resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if !resp.Succeeded {
-		return fmt.Errorf("key range \"%s\" already exists", keyRange.KeyRangeID)
+	respKR[0] = *resp
+
+	if keyRange.Locked {
+		resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+		if err != nil {
+			return nil, err
+		}
+		respKR = append(respKR, *resp)
 	}
 
 	spqrlog.Zero.Debug().
@@ -206,7 +208,7 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 		Msg("etcdqdb: put key range to qdb")
 
 	statistics.RecordQDBOperation("CreateKeyRange", time.Since(t))
-	return err
+	return respKR, nil
 }
 
 // TODO : unit tests
@@ -379,10 +381,6 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 		}
 		keyRanges = append(keyRanges, keyRangeFromInternal(kRange, krLocked))
 	}
-
-	sort.Slice(keyRanges, func(i, j int) bool {
-		return keyRanges[i].KeyRangeID < keyRanges[j].KeyRangeID
-	})
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
@@ -570,7 +568,13 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 		return err
 	}
 
-	err = q.CreateKeyRange(ctx, kr)
+	statements, err := q.CreateKeyRange(ctx, kr)
+	if err != nil {
+		return err
+	}
+	if err = q.ExecNoTransaction(ctx, statements); err != nil {
+		return err
+	}
 	statistics.RecordQDBOperation("RenameKeyRange", time.Since(t))
 	return err
 }
@@ -2160,6 +2164,63 @@ func (q *EtcdQDB) RemoveBalancerTask(ctx context.Context) error {
 
 	_, err := q.cli.Delete(ctx, balancerTaskPath)
 	return err
+}
+
+func (q *EtcdQDB) WriteTaskGroupStatus(ctx context.Context, id string, status *TaskGroupStatus) error {
+	spqrlog.Zero.Debug().
+		Str("task group ID", id).
+		Str("state", status.State).
+		Str("msg", status.Message).
+		Msg("etcdqdb: write task group status")
+
+	data, err := json.Marshal(status)
+	if err != nil {
+		return err
+	}
+	_, err = q.cli.Put(ctx, taskGroupStatusNodePath(id), string(data))
+	return err
+}
+
+func (q *EtcdQDB) GetTaskGroupStatus(ctx context.Context, id string) (*TaskGroupStatus, error) {
+	spqrlog.Zero.Debug().
+		Str("task group ID", id).
+		Msg("etcdqdb: get task group status")
+
+	resp, err := q.cli.Get(ctx, taskGroupStatusNodePath(id))
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.Kvs) == 0 {
+		return nil, nil
+	}
+	var status *TaskGroupStatus
+	if err = json.Unmarshal(resp.Kvs[0].Value, &status); err != nil {
+		return nil, err
+	}
+	return status, err
+}
+
+func (q *EtcdQDB) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*TaskGroupStatus, error) {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: get task groups statuses")
+
+	resp, err := q.cli.Get(ctx, taskGroupStatusesNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.Kvs) == 0 {
+		return nil, nil
+	}
+	res := make(map[string]*TaskGroupStatus)
+	for _, kv := range resp.Kvs {
+		var status *TaskGroupStatus
+		if err = json.Unmarshal(kv.Value, &status); err != nil {
+			return nil, err
+		}
+		_, id := path.Split(string(kv.Key))
+		res[id] = status
+	}
+	return res, err
 }
 
 // ==============================================================================

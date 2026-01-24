@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	ShardService_ListShards_FullMethodName    = "/spqr.ShardService/ListShards"
 	ShardService_AddDataShard_FullMethodName  = "/spqr.ShardService/AddDataShard"
+	ShardService_DropShard_FullMethodName     = "/spqr.ShardService/DropShard"
 	ShardService_AddWorldShard_FullMethodName = "/spqr.ShardService/AddWorldShard"
 	ShardService_GetShard_FullMethodName      = "/spqr.ShardService/GetShard"
 	ShardService_DropDataShard_FullMethodName = "/spqr.ShardService/DropDataShard"
@@ -33,6 +34,7 @@ const (
 type ShardServiceClient interface {
 	ListShards(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListShardsReply, error)
 	AddDataShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DropShard(ctx context.Context, in *DropShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	AddWorldShard(ctx context.Context, in *AddWorldShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetShard(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*ShardReply, error)
 	DropDataShard(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -60,6 +62,16 @@ func (c *shardServiceClient) AddDataShard(ctx context.Context, in *AddShardReque
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, ShardService_AddDataShard_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *shardServiceClient) DropShard(ctx context.Context, in *DropShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ShardService_DropShard_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -102,6 +114,7 @@ func (c *shardServiceClient) DropDataShard(ctx context.Context, in *ShardRequest
 type ShardServiceServer interface {
 	ListShards(context.Context, *emptypb.Empty) (*ListShardsReply, error)
 	AddDataShard(context.Context, *AddShardRequest) (*emptypb.Empty, error)
+	DropShard(context.Context, *DropShardRequest) (*emptypb.Empty, error)
 	AddWorldShard(context.Context, *AddWorldShardRequest) (*emptypb.Empty, error)
 	GetShard(context.Context, *ShardRequest) (*ShardReply, error)
 	DropDataShard(context.Context, *ShardRequest) (*emptypb.Empty, error)
@@ -120,6 +133,9 @@ func (UnimplementedShardServiceServer) ListShards(context.Context, *emptypb.Empt
 }
 func (UnimplementedShardServiceServer) AddDataShard(context.Context, *AddShardRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddDataShard not implemented")
+}
+func (UnimplementedShardServiceServer) DropShard(context.Context, *DropShardRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DropShard not implemented")
 }
 func (UnimplementedShardServiceServer) AddWorldShard(context.Context, *AddWorldShardRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddWorldShard not implemented")
@@ -183,6 +199,24 @@ func _ShardService_AddDataShard_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ShardServiceServer).AddDataShard(ctx, req.(*AddShardRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ShardService_DropShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DropShardRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ShardServiceServer).DropShard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ShardService_DropShard_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ShardServiceServer).DropShard(ctx, req.(*DropShardRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -255,6 +289,10 @@ var ShardService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddDataShard",
 			Handler:    _ShardService_AddDataShard_Handler,
+		},
+		{
+			MethodName: "DropShard",
+			Handler:    _ShardService_DropShard_Handler,
 		},
 		{
 			MethodName: "AddWorldShard",

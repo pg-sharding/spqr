@@ -173,6 +173,11 @@ type MoveTaskGroup struct {
 	Limit     int64   `json:"limit"`
 }
 
+type TaskGroupStatus struct {
+	State   string `json:"state"`
+	Message string `json:"msg"`
+}
+
 type RedistributeTask struct {
 	KrId      string `json:"kr_id"`
 	ShardId   string `json:"shard_id"`

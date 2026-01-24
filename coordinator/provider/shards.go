@@ -37,7 +37,7 @@ func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShard
 	return nil, nil
 }
 
-func (s *ShardServer) DropDataShard(ctx context.Context, request *protos.ShardRequest) (*emptypb.Empty, error) {
+func (s *ShardServer) DropShard(ctx context.Context, request *protos.DropShardRequest) (*emptypb.Empty, error) {
 	return nil, s.impl.DropShard(ctx, request.Id)
 }
 

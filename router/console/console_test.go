@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/qdb"
@@ -117,7 +118,7 @@ func TestAlterDistributionAttach(t *testing.T) {
 	} {
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 		err = innerAlterDistributionAttach(ctx, mngr, &testData.rel, testData.dsId, testData.keyColumn)
 		if testData.err != nil {
 			is.EqualError(err, testData.err.Error())

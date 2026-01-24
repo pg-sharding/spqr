@@ -52,6 +52,7 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type grpcConnMgr struct {
@@ -1193,6 +1194,9 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 	if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
 		return err
 	}
+	if err := qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupPlanned)}); err != nil {
+		spqrlog.Zero.Error().Str("task group ID", taskGroup.ID).Err(err).Msg("failed to write task group status")
+	}
 
 	execCtx := context.TODO()
 	ch := make(chan error)
@@ -1207,6 +1211,9 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 		case err := <-ch:
 			if statErr := statistics.RecordMoveFinish(time.Now()); statErr != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to record key range move finish in statistics")
+			}
+			if err != nil {
+				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
 			}
 			return err
 		}
@@ -1621,6 +1628,9 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" not found in distribution \"%s\"", taskGroup.BoundRel, ds.Id)
 		}
 	}
+	if err := qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupRunning)}); err != nil {
+		spqrlog.Zero.Error().Str("task group ID", taskGroup.ID).Err(err).Msg("failed to write task group status")
+	}
 
 	var delayedError error
 	for {
@@ -1732,7 +1742,26 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id strin
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get move task group: %s", err)
 	}
-	return qc.executeMoveTasks(ctx, taskGroup)
+	execCtx := context.TODO()
+	ch := make(chan error)
+	go func() {
+		ch <- qc.executeMoveTasks(execCtx, taskGroup)
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
+		case err := <-ch:
+			if err != nil {
+				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
+			}
+			if err != nil {
+				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
+			}
+			return err
+		}
+	}
 }
 
 // StopMoveTaskGroup gracefully stops the execution of current move task group.
@@ -1887,6 +1916,38 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 	cc, err := qc.getOrCreateRouterConn(qRouter)
 	if err != nil {
 		return err
+	}
+
+	// Configure shards
+	shCl := proto.NewShardServiceClient(cc)
+	spqrlog.Zero.Debug().Msg("qdb coordinator: configure shards")
+	coordShards, err := qc.ListShards(ctx)
+	if err != nil {
+		return err
+	}
+	shardResp, err := shCl.ListShards(ctx, &emptypb.Empty{})
+	if err != nil {
+		return err
+	}
+	routerShards := make([]*topology.DataShard, 0, len(shardResp.Shards))
+	for _, sh := range shardResp.Shards {
+		routerShards = append(routerShards, topology.DataShardFromProto(sh))
+	}
+	needToAdd, needToDelete := qc.shardsDiff(routerShards, coordShards)
+
+	for _, sh := range needToAdd {
+		_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(sh)})
+		if err != nil {
+			return err
+		}
+	}
+	for _, sh := range needToDelete {
+		_, err = shCl.DropShard(ctx, &proto.DropShardRequest{
+			Id: sh.ID,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	// Configure distributions
@@ -2170,11 +2231,18 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 				Type("type", tstmt).
 				Msg("parsed statement is")
 
-			if err := meta.ProcMetadataCommand(ctx, tstmt, qc, ci, cl, nil, qc.IsReadOnly()); err != nil {
+			tts, err := meta.ProcMetadataCommand(ctx, tstmt, qc, ci, cl.Rule(), nil, qc.IsReadOnly())
+			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
-				_ = cli.ReportError(err)
+				if err := cli.ReportError(err); err != nil {
+					return err
+				}
 			} else {
-				spqrlog.Zero.Debug().Msg("processed OK")
+				if err := cli.ReplyTTS(tts); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("processing error")
+				} else {
+					spqrlog.Zero.Debug().Msg("processed OK")
+				}
 			}
 		default:
 			return spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "unsupported msg type %T", msg)
@@ -2183,42 +2251,31 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 }
 
 func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
-	if err := qc.Coordinator.AddDataShard(ctx, shard); err != nil {
+	if err := qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.RawHosts)); err != nil {
 		return err
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := proto.NewShardServiceClient(cc)
-		resp, err := cl.AddDataShard(context.TODO(),
-			&proto.AddShardRequest{Shard: topology.DataShardToProto(shard)})
-		if err != nil {
-			return err
-		}
-
-		spqrlog.Zero.Debug().
-			Interface("response", resp).
-			Msg("add shard response")
-		return nil
+		c := proto.NewShardServiceClient(cc)
+		_, err := c.AddDataShard(ctx, &proto.AddShardRequest{
+			Shard: topology.DataShardToProto(shard),
+		})
+		return err
 	})
 }
 
+// TODO : unit tests
 func (qc *ClusteredCoordinator) DropShard(ctx context.Context, shardId string) error {
-	if err := qc.Coordinator.DropShard(ctx, shardId); err != nil {
+	if err := qc.db.DropShard(ctx, shardId); err != nil {
 		return err
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := proto.NewShardServiceClient(cc)
-		resp, err := cl.DropDataShard(context.TODO(),
-			&proto.ShardRequest{Id: shardId})
-		if err != nil {
-			return err
-		}
-
-		spqrlog.Zero.Debug().
-			Interface("response", resp).
-			Msg("drop shard response")
-		return nil
+		c := proto.NewShardServiceClient(cc)
+		_, err := c.DropShard(ctx, &proto.DropShardRequest{
+			Id: shardId,
+		})
+		return err
 	})
 }
 
@@ -2610,4 +2667,29 @@ func (qc *ClusteredCoordinator) DropUniqueIndex(ctx context.Context, idxId strin
 			Msg("drop unique index response")
 		return nil
 	})
+}
+
+func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, coordShards []*topology.DataShard) (added []*topology.DataShard, deleted []*topology.DataShard) {
+	routerShardsMap := map[string]*topology.DataShard{}
+	coordShardsMap := map[string]*topology.DataShard{}
+
+	for _, sh := range routerShards {
+		routerShardsMap[sh.ID] = sh
+	}
+	for _, sh := range coordShards {
+		coordShardsMap[sh.ID] = sh
+	}
+
+	for id, sh := range coordShardsMap {
+		if _, exist := routerShardsMap[id]; !exist {
+			added = append(added, sh)
+		}
+	}
+	for id, sh := range routerShardsMap {
+		if _, exist := coordShardsMap[id]; !exist {
+			deleted = append(deleted, sh)
+		}
+	}
+
+	return
 }

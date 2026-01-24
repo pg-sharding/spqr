@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -66,7 +67,7 @@ func TestNoManualCreateDefaultShardKeyRange(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 	//
 	_, err = meta.ProcessCreate(ctx, &statement, mngr)
 	assert.ErrorContains(t, err, "ds1.DEFAULT is reserved")
@@ -81,7 +82,7 @@ func TestCreteDistrWithDefaultShardSuccess(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	expectedDistribution := distributions.NewDistribution("dbTestDefault", []string{"integer"})
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
@@ -107,7 +108,7 @@ func TestCreteDistrWithDefaultShardFail1(t *testing.T) {
 	}
 	memqdb, err := prepareDB(ctx)
 	assert.NoError(t, err)
-	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	actualDistribution, err := meta.CreateNonReplicatedDistribution(ctx, statement, mngr)
 	assert.Nil(t, actualDistribution)
@@ -152,8 +153,11 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 		KeyRangeID:  "krid3",
 	}
 
-	err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, cl, nil, false)
+	tts, err := meta.ProcMetadataCommand(ctx, stmt, mmgr, nil, cl.Rule(), nil, false)
 	assert.NoError(t, err)
+
+	cli := clientinteractor.NewPSQLInteractor(cl)
+	_ = cli.ReplyTTS(tts)
 
 	assert.Contains(t, rows, "move key range krid3 to shard sh2")
 	assert.Contains(t, rows, "HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")

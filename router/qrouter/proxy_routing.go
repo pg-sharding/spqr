@@ -25,6 +25,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/virtual"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -521,9 +522,9 @@ func (qr *ProxyQrouter) planQueryV1(
 		switch q := stmt.TableRef.(type) {
 		case *lyx.RangeVar:
 
-			rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
+			qualName := rfqn.RelationFQNFromRangeRangeVar(q)
 
-			if d, err := rm.GetRelationDistribution(ctx, rqdn); err != nil {
+			if d, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
@@ -539,11 +540,32 @@ func (qr *ProxyQrouter) planQueryV1(
 				}
 				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 			}
+
+			/* Delete from relation - does it have any reverse index attached? */
+
+			/* plan one slice per unique index */
+			iisMP, err := rm.Mgr.ListRelationIndexes(ctx, qualName)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(iisMP) == 0 {
+				/* simple case */
+				return p, nil
+			}
+
+			// iis := make([]*distributions.UniqueIndex, 0)
+
+			// for _, is := range iisMP {
+			// 	iis = append(iis, is)
+			// }
+
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+
 		default:
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		return p, nil
 	case *lyx.Delete:
 
 		p, err := planner.PlanWithClause(ctx, rm, qr, stmt.WithClause)
@@ -559,9 +581,9 @@ func (qr *ProxyQrouter) planQueryV1(
 		switch q := stmt.TableRef.(type) {
 		case *lyx.RangeVar:
 
-			rqdn := rfqn.RelationFQNFromRangeRangeVar(q)
+			qualName := rfqn.RelationFQNFromRangeRangeVar(q)
 
-			if d, err := rm.GetRelationDistribution(ctx, rqdn); err != nil {
+			if d, err := rm.GetRelationDistribution(ctx, qualName); err != nil {
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if rm.SPH.EnhancedMultiShardProcessing() {
@@ -576,11 +598,31 @@ func (qr *ProxyQrouter) planQueryV1(
 				}
 				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 			}
+
+			/* Delete from relation - does it have any reverse index attached? */
+
+			/* plan one slice per unique index */
+			iisMP, err := rm.Mgr.ListRelationIndexes(ctx, qualName)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(iisMP) == 0 {
+				/* simple case */
+				return p, nil
+			}
+
+			// iis := make([]*distributions.UniqueIndex, 0)
+
+			// for _, is := range iisMP {
+			// 	iis = append(iis, is)
+			// }
+
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		default:
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
-		return p, nil
 	}
 
 	return nil, nil
@@ -833,7 +875,7 @@ func (qr *ProxyQrouter) planSPQR_CTID(
 		switch f := tle.(type) {
 		case *lyx.FuncApplication:
 
-			if f.Name != "__spqr__ctid" {
+			if f.Name != virtual.VirtualCTID {
 				return nil, rerrors.ErrComplexQuery
 			}
 			if len(f.Args) != 1 {
@@ -882,7 +924,7 @@ func (qr *ProxyQrouter) planSPQR_CTID(
 					case *pgproto3.RowDescription:
 						if tts.Desc == nil {
 							tts.Desc = []pgproto3.FieldDescription{
-								engine.TextOidFD("__spqr__ctid"),
+								engine.TextOidFD(virtual.VirtualCTID),
 							}
 
 							for _, fd := range v.Fields {

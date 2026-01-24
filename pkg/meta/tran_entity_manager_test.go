@@ -6,9 +6,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 func TestTranEntitySaveBefore(t *testing.T) {
@@ -51,7 +54,7 @@ func TestTranGetDistribution(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 		ds0 := distributions.NewDistribution("ds0", []string{"integer"})
 		chunk, err := mngr.CreateDistribution(ctx, ds0)
 		is.NoError(err)
@@ -91,7 +94,7 @@ func TestTranGetDistribution(t *testing.T) {
 		ctx := context.Background()
 		memqdb, err := prepareDB(ctx)
 		assert.NoError(t, err)
-		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 		ds0 := distributions.NewDistribution("ds0", []string{"integer"})
 		chunk, err := mngr.CreateDistribution(ctx, ds0)
 		is.NoError(err)
@@ -130,5 +133,83 @@ func TestTranGetDistribution(t *testing.T) {
 		is.NoError(err)
 		is.Equal(ds0, actualQdb)
 	})
+}
+func TestTranGetKeyRange(t *testing.T) {
+	is := assert.New(t)
+	t.Run("test with save changes", func(t *testing.T) {
+		ctx := context.Background()
+		memqdb, err := prepareDbTestValidate(ctx)
+		is.NoError(err)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		var kr1 = &kr.KeyRange{
+			ID:           "kr1",
+			ShardID:      "sh1",
+			Distribution: "ds1",
+			LowerBound:   []any{int64(0)},
+			ColumnTypes:  []string{qdb.ColumnTypeInteger},
+			IsLocked:     &boolTrue,
+		}
+		err = mngr.CreateKeyRange(ctx, kr1)
+		is.NoError(err)
 
+		tranMngr := meta.NewTranEntityManager(mngr)
+
+		var kr2 = &kr.KeyRange{
+			ID:           "kr2",
+			ShardID:      "sh1",
+			Distribution: "ds1",
+			LowerBound:   []any{int64(10)},
+			ColumnTypes:  []string{qdb.ColumnTypeInteger},
+			IsLocked:     &boolTrue,
+		}
+
+		var kr2Ds2 = &kr.KeyRange{
+			ID:           "kr2_ds2",
+			ShardID:      "sh1",
+			Distribution: "ds2",
+			LowerBound:   []any{int64(10)},
+			ColumnTypes:  []string{qdb.ColumnTypeInteger},
+			IsLocked:     &boolTrue,
+		}
+		var kr2Double = &kr.KeyRange{
+			ID:           "kr2",
+			ShardID:      "sh1",
+			Distribution: "ds2",
+			LowerBound:   []any{int64(10)},
+			ColumnTypes:  []string{qdb.ColumnTypeInteger},
+			IsLocked:     &boolFalse,
+		}
+
+		err = meta.ValidateKeyRangeForCreate(ctx, tranMngr, kr1)
+		is.Error(err)
+		is.EqualError(err, "key range kr1 already present in qdb")
+		err = meta.ValidateKeyRangeForCreate(ctx, tranMngr, kr2)
+		is.NoError(err)
+		err = tranMngr.CreateKeyRange(ctx, kr2)
+		//NO COMMIT QDB!!!
+		is.NoError(err)
+		err = tranMngr.CreateKeyRange(ctx, kr2Ds2)
+		//NO COMMIT QDB!!!
+		is.NoError(err)
+		err = tranMngr.CreateKeyRange(ctx, kr2Double)
+		//NO COMMIT QDB!!!
+		is.EqualError(err, "key range kr2 already present in qdb")
+
+		//check List
+		actualList, err := tranMngr.ListKeyRanges(ctx, "ds1")
+		is.NoError(err)
+		is.Equal([]*kr.KeyRange{kr2, kr1}, actualList)
+		actualList, err = tranMngr.ListKeyRanges(ctx, "ds2")
+		is.NoError(err)
+		is.Equal([]*kr.KeyRange{kr2Ds2}, actualList)
+
+		//check Get
+		_, err = tranMngr.GetKeyRange(ctx, "kr1DOUBLE")
+		is.EqualError(err, "there is no key range kr1DOUBLE")
+		_, err = tranMngr.GetKeyRange(ctx, "kr1")
+		is.NoError(err)
+		_, err = tranMngr.GetKeyRange(ctx, "kr2")
+		is.NoError(err)
+
+	})
 }

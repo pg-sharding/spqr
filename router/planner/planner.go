@@ -363,6 +363,28 @@ func PlanDistributedRelationInsert(
 
 func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataContext, fname string, args []lyx.Node) (*tupleslot.TupleTableSlot, error) {
 	switch fname {
+	case virtual.VirtualConsoleExecute:
+
+		/*  XXX: unite this code with client interactor internals */
+
+		if len(args) != 1 {
+			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualShow)
+		}
+
+		switch v := args[0].(type) {
+		case *lyx.AExprSConst:
+
+			tstmt, err := spqrparser.Parse(v.Value)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse query \"%s\": %w", v.Value, err)
+			}
+
+			return meta.ProcMetadataCommand(ctx, tstmt, rm.Mgr, rm.CSM, rm.ClientRule, nil, false)
+		default:
+			return nil, rerrors.ErrComplexQuery
+		}
+
+		/*  De-support? use __spqr__show(shards)*/
 	case virtual.VirtualShow:
 
 		/*  XXX: unite this code with client interactor internals */
@@ -373,7 +395,7 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 
 		switch v := args[0].(type) {
 		case *lyx.AExprSConst:
-			return meta.ProcessShowExtended(ctx, &spqrparser.Show{
+			return meta.ProcessShow(ctx, &spqrparser.Show{
 				Cmd:     v.Value,
 				Where:   &lyx.AExprEmpty{},
 				Order:   nil,

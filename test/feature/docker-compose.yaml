@@ -112,6 +112,8 @@ services:
         condition: service_healthy
       ldapserver2:
         condition: service_healthy
+      coordinator:
+        condition: service_started
     healthcheck: &router-healthcheck
       test: psql -h regress_router -p 6432 -U regress -d regress
       interval: 10s
@@ -150,6 +152,8 @@ services:
         condition: service_healthy
       shard3-replica:
         condition: service_healthy
+      coordinator:
+        condition: service_started
     healthcheck:
       <<: *router-healthcheck
       test: psql -h regress_router_2 -p 6432 -U regress -d regress
@@ -170,8 +174,6 @@ services:
     hostname: regress_coordinator
     container_name: regress_coordinator
     depends_on:
-      - "router"
-      - "router2"
       - "qdb01"
     networks:
       - feature_test_network

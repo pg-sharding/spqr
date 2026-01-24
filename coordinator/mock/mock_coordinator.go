@@ -418,6 +418,21 @@ func (mr *MockCoordinatorMockRecorder) ExecNoTran(ctx, chunk any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecNoTran", reflect.TypeOf((*MockCoordinator)(nil).ExecNoTran), ctx, chunk)
 }
 
+// GetAllTaskGroupStatuses mocks base method.
+func (m *MockCoordinator) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.MoveTaskGroupStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllTaskGroupStatuses", ctx)
+	ret0, _ := ret[0].(map[string]*tasks.MoveTaskGroupStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllTaskGroupStatuses indicates an expected call of GetAllTaskGroupStatuses.
+func (mr *MockCoordinatorMockRecorder) GetAllTaskGroupStatuses(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllTaskGroupStatuses", reflect.TypeOf((*MockCoordinator)(nil).GetAllTaskGroupStatuses), ctx)
+}
+
 // GetBalancerTask mocks base method.
 func (m *MockCoordinator) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {
 	m.ctrl.T.Helper()
@@ -551,6 +566,21 @@ func (m *MockCoordinator) GetShard(ctx context.Context, shardID string) (*topolo
 func (mr *MockCoordinatorMockRecorder) GetShard(ctx, shardID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShard", reflect.TypeOf((*MockCoordinator)(nil).GetShard), ctx, shardID)
+}
+
+// GetTaskGroupStatus mocks base method.
+func (m *MockCoordinator) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.MoveTaskGroupStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTaskGroupStatus", ctx, id)
+	ret0, _ := ret[0].(*tasks.MoveTaskGroupStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTaskGroupStatus indicates an expected call of GetTaskGroupStatus.
+func (mr *MockCoordinatorMockRecorder) GetTaskGroupStatus(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskGroupStatus", reflect.TypeOf((*MockCoordinator)(nil).GetTaskGroupStatus), ctx, id)
 }
 
 // IsReadOnly mocks base method.

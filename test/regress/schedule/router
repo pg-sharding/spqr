@@ -43,3 +43,4 @@ test: show_backend_connections
 test: split_update
 test: virtual_sliced
 test: unique_index
+test: spqr_execute

@@ -438,6 +438,9 @@ func KeyRangeFromProto(krproto *proto.KeyRangeInfo, colTypes []string) (*KeyRang
 		LowerBound: make(KeyRangeBound, len(colTypes)),
 	}
 
+	if krproto.Bound == nil || len(krproto.Bound.Values) != len(colTypes) {
+		return nil, fmt.Errorf("invalid key range bound value")
+	}
 	for i := range len(colTypes) {
 		if err := kr.InFunc(i, krproto.Bound.Values[i]); err != nil {
 			return nil, err

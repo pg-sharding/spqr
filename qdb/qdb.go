@@ -62,7 +62,7 @@ type TXManager interface {
 // while the coordinator uses etcd-based implementation to synchronize distributed state.
 type QDB interface {
 	// Key ranges
-	CreateKeyRange(ctx context.Context, keyRange *KeyRange) error
+	CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error)
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
 	DropKeyRange(ctx context.Context, id string) error
@@ -115,6 +115,9 @@ type QDB interface {
 	RemoveMoveTaskGroup(ctx context.Context, id string) error
 	AddMoveTaskGroupStopFlag(ctx context.Context, id string) error
 	CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error)
+	WriteTaskGroupStatus(ctx context.Context, id string, status *TaskGroupStatus) error
+	GetTaskGroupStatus(ctx context.Context, id string) (*TaskGroupStatus, error)
+	GetAllTaskGroupStatuses(ctx context.Context) (map[string]*TaskGroupStatus, error)
 
 	// MOVE tasks
 	ListMoveTasks(ctx context.Context) (map[string]*MoveTask, error)

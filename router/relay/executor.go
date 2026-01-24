@@ -487,7 +487,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.
 	return &pgcopy.CopyState{
 		Delimiter:      delimiter,
 		Krs:            krs,
-		RM:             rmeta.NewRoutingMetadataContext(s.cl, "", nil /*XXX: fix this*/, nil, s.mgr),
+		RM:             rmeta.NewRoutingMetadataContext(s.cl, s.cl.Rule(), "", nil /*XXX: fix this*/, nil, s.mgr),
 		Ds:             ds,
 		Drel:           dRel,
 		HashFunc:       hashFunc,
@@ -1038,6 +1038,8 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 				return fmt.Errorf("unexpected row description in slice deploy")
 			}
 		case *pgproto3.ParameterStatus:
+			/* do not resent this to client */
+		case *pgproto3.NoticeResponse:
 			/* do not resent this to client */
 		default:
 			return fmt.Errorf("unexpected %T message type in executor slice deploy", msg)

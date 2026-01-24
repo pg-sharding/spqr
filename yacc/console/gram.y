@@ -1415,6 +1415,16 @@ stop_move_task_group:
 	{
 		$$ = &StopMoveTaskGroup{ ID: $4 }
 	} 
+	|
+	STOP MOVE TASK GROUP ALL
+	{
+		$$ = &StopMoveTaskGroup{ ID: "*" }
+	}
+	|
+	STOP TASK GROUP ALL
+	{
+		$$ = &StopMoveTaskGroup{ ID: "*" }
+	} 
 
 
 /* Control Points */

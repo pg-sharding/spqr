@@ -39,9 +39,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
 UNITE KEY RANGE krid1 WITH krid3;
 ERROR:  failed to unite non-adjacent key ranges
 UNITE KEY RANGE krid1 WITH krid2;
-         merge key ranges         
-----------------------------------
- merge key ranges krid1 and krid2
+           merge key ranges           
+--------------------------------------
+ merge key range "krid2" into "krid1"
 (1 row)
 
 SHOW key_ranges;
@@ -69,9 +69,9 @@ UNLOCK KEY RANGE krid1;
 
 -- reverse order
 UNITE KEY RANGE krid3 WITH krid1;
-         merge key ranges         
-----------------------------------
- merge key ranges krid3 and krid1
+           merge key ranges           
+--------------------------------------
+ merge key range "krid1" into "krid3"
 (1 row)
 
 -- routing to different shards

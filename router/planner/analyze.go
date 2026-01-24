@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/pg-sharding/spqr/router/virtual"
 )
 
 // TODO : unit tests
@@ -336,7 +337,7 @@ func AnalyzeQueryV1(
 			switch e := actualExpr.(type) {
 			/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
 			case *lyx.FuncApplication:
-				if e.Name == "__spqr__ctid" {
+				if e.Name == virtual.VirtualCTID {
 					/* we only support this if query is simple select */
 					rm.Is_SPQR_CTID = true
 				}
