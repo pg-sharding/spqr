@@ -135,7 +135,7 @@ func (UnimplementedShardServiceServer) AddDataShard(context.Context, *AddShardRe
 	return nil, status.Error(codes.Unimplemented, "method AddDataShard not implemented")
 }
 func (UnimplementedShardServiceServer) DropShard(context.Context, *DropShardRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DropShard not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DropShard not implemented")
 }
 func (UnimplementedShardServiceServer) AddWorldShard(context.Context, *AddWorldShardRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddWorldShard not implemented")
@@ -144,7 +144,7 @@ func (UnimplementedShardServiceServer) GetShard(context.Context, *ShardRequest) 
 	return nil, status.Error(codes.Unimplemented, "method GetShard not implemented")
 }
 func (UnimplementedShardServiceServer) DropDataShard(context.Context, *ShardRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DropDataShard not implemented")
+	return nil, status.Error(codes.Unimplemented, "method DropDataShard not implemented")
 }
 func (UnimplementedShardServiceServer) mustEmbedUnimplementedShardServiceServer() {}
 func (UnimplementedShardServiceServer) testEmbeddedByValue()                      {}

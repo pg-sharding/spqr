@@ -7,13 +7,12 @@
 package proto
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -414,7 +413,7 @@ const file_protos_shard_proto_rawDesc = "" +
 	"\x14AddWorldShardRequest\x12!\n" +
 	"\x05shard\x18\x01 \x01(\v2\v.spqr.ShardR\x05shard\"\"\n" +
 	"\x10DropShardRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id2\xc8\x02\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id2\x87\x03\n" +
 	"\fShardService\x12=\n" +
 	"\n" +
 	"ListShards\x12\x16.google.protobuf.Empty\x1a\x15.spqr.ListShardsReply\"\x00\x12?\n" +
@@ -450,25 +449,27 @@ var file_protos_shard_proto_goTypes = []any{
 	(*emptypb.Empty)(nil),        // 8: google.protobuf.Empty
 }
 var file_protos_shard_proto_depIdxs = []int32{
-	0, // 0: spqr.ShardReply.shard:type_name -> spqr.Shard
-	0, // 1: spqr.ListShardsReply.shards:type_name -> spqr.Shard
-	0, // 2: spqr.AddShardRequest.shard:type_name -> spqr.Shard
-	0, // 3: spqr.AddWorldShardRequest.shard:type_name -> spqr.Shard
-	8, // 4: spqr.ShardService.ListShards:input_type -> google.protobuf.Empty
-	5, // 5: spqr.ShardService.AddDataShard:input_type -> spqr.AddShardRequest
-	7, // 6: spqr.ShardService.DropShard:input_type -> spqr.DropShardRequest
-	6, // 7: spqr.ShardService.AddWorldShard:input_type -> spqr.AddWorldShardRequest
-	3, // 8: spqr.ShardService.GetShard:input_type -> spqr.ShardRequest
-	4, // 9: spqr.ShardService.ListShards:output_type -> spqr.ListShardsReply
-	8, // 10: spqr.ShardService.AddDataShard:output_type -> google.protobuf.Empty
-	8, // 11: spqr.ShardService.DropShard:output_type -> google.protobuf.Empty
-	8, // 12: spqr.ShardService.AddWorldShard:output_type -> google.protobuf.Empty
-	2, // 13: spqr.ShardService.GetShard:output_type -> spqr.ShardReply
-	9, // [9:14] is the sub-list for method output_type
-	4, // [4:9] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: spqr.ShardReply.shard:type_name -> spqr.Shard
+	0,  // 1: spqr.ListShardsReply.shards:type_name -> spqr.Shard
+	0,  // 2: spqr.AddShardRequest.shard:type_name -> spqr.Shard
+	0,  // 3: spqr.AddWorldShardRequest.shard:type_name -> spqr.Shard
+	8,  // 4: spqr.ShardService.ListShards:input_type -> google.protobuf.Empty
+	5,  // 5: spqr.ShardService.AddDataShard:input_type -> spqr.AddShardRequest
+	7,  // 6: spqr.ShardService.DropShard:input_type -> spqr.DropShardRequest
+	6,  // 7: spqr.ShardService.AddWorldShard:input_type -> spqr.AddWorldShardRequest
+	3,  // 8: spqr.ShardService.GetShard:input_type -> spqr.ShardRequest
+	3,  // 9: spqr.ShardService.DropDataShard:input_type -> spqr.ShardRequest
+	4,  // 10: spqr.ShardService.ListShards:output_type -> spqr.ListShardsReply
+	8,  // 11: spqr.ShardService.AddDataShard:output_type -> google.protobuf.Empty
+	8,  // 12: spqr.ShardService.DropShard:output_type -> google.protobuf.Empty
+	8,  // 13: spqr.ShardService.AddWorldShard:output_type -> google.protobuf.Empty
+	2,  // 14: spqr.ShardService.GetShard:output_type -> spqr.ShardReply
+	8,  // 15: spqr.ShardService.DropDataShard:output_type -> google.protobuf.Empty
+	10, // [10:16] is the sub-list for method output_type
+	4,  // [4:10] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_protos_shard_proto_init() }
