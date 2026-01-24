@@ -1,0 +1,245 @@
+Parsed test spec with 3 sessions
+
+starting permutation: s1_report s1_ev2 s1_begin s1_s s1_s s1_commit s3_clean
+add distribution    
+--------------------
+distribution id -> d
+(1 row)
+
+attach table        
+--------------------
+relation name   -> r
+distribution id -> d
+(2 rows)
+
+add key range
+-------------
+bound -> 300 
+(1 row)
+
+add key range
+-------------
+bound -> 200 
+(1 row)
+
+add key range
+-------------
+bound -> 100 
+(1 row)
+
+add key range
+-------------
+bound -> 0   
+(1 row)
+
+step s1_report: SET __spqr__reply_notice TO on;
+step s1_ev2: SET __spqr__engine_v2 TO on;
+step s1_begin: BEGIN;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_s: SELECT * FROM r WHERE i = 11;
+i
+-
+(0 rows)
+
+s1: NOTICE: send query to shard(s) : sh1
+step s1_s: SELECT * FROM r WHERE i = 11;
+i
+-
+(0 rows)
+
+step s1_commit: COMMIT;
+step s3_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
+drop distribution   
+--------------------
+distribution id -> d
+(1 row)
+
+
+starting permutation: s1_report s1_ev2 s2_lock s1_begin s2_unlock s1_s s1_s s1_commit s3_clean
+add distribution    
+--------------------
+distribution id -> d
+(1 row)
+
+attach table        
+--------------------
+relation name   -> r
+distribution id -> d
+(2 rows)
+
+add key range
+-------------
+bound -> 300 
+(1 row)
+
+add key range
+-------------
+bound -> 200 
+(1 row)
+
+add key range
+-------------
+bound -> 100 
+(1 row)
+
+add key range
+-------------
+bound -> 0   
+(1 row)
+
+step s1_report: SET __spqr__reply_notice TO on;
+step s1_ev2: SET __spqr__engine_v2 TO on;
+step s2_lock: select __spqr__console_execute('LOCK KEY RANGE k0') /*__spqr__preferred_engine: v2 */;
+lock key range    
+------------------
+key range id -> k0
+(1 row)
+
+step s1_begin: BEGIN;
+step s2_unlock: select __spqr__console_execute('UNLOCK KEY RANGE k0') /*__spqr__preferred_engine: v2 */;
+unlock key range  
+------------------
+key range id -> k0
+(1 row)
+
+s1: NOTICE: send query to shard(s) : sh1
+step s1_s: SELECT * FROM r WHERE i = 11;
+i
+-
+(0 rows)
+
+s1: NOTICE: send query to shard(s) : sh1
+step s1_s: SELECT * FROM r WHERE i = 11;
+i
+-
+(0 rows)
+
+step s1_commit: COMMIT;
+step s3_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
+drop distribution   
+--------------------
+distribution id -> d
+(1 row)
+
+
+starting permutation: s1_report s1_ev2 s1_begin s1_s s2_lock s1_s s1_commit s2_unlock s3_clean
+add distribution    
+--------------------
+distribution id -> d
+(1 row)
+
+attach table        
+--------------------
+relation name   -> r
+distribution id -> d
+(2 rows)
+
+add key range
+-------------
+bound -> 300 
+(1 row)
+
+add key range
+-------------
+bound -> 200 
+(1 row)
+
+add key range
+-------------
+bound -> 100 
+(1 row)
+
+add key range
+-------------
+bound -> 0   
+(1 row)
+
+step s1_report: SET __spqr__reply_notice TO on;
+step s1_ev2: SET __spqr__engine_v2 TO on;
+step s1_begin: BEGIN;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_s: SELECT * FROM r WHERE i = 11;
+i
+-
+(0 rows)
+
+step s2_lock: select __spqr__console_execute('LOCK KEY RANGE k0') /*__spqr__preferred_engine: v2 */;
+lock key range    
+------------------
+key range id -> k0
+(1 row)
+
+step s1_s: SELECT * FROM r WHERE i = 11;
+ERROR:  client processing error: error processing query 'SELECT * FROM r WHERE i = 11;': key range k0 is locked, tx status ERROR
+step s1_commit: COMMIT;
+step s2_unlock: select __spqr__console_execute('UNLOCK KEY RANGE k0') /*__spqr__preferred_engine: v2 */;
+unlock key range  
+------------------
+key range id -> k0
+(1 row)
+
+step s3_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
+drop distribution   
+--------------------
+distribution id -> d
+(1 row)
+
+
+starting permutation: s2_lock s1_report s1_ev2 s1_begin s1_s s1_s s1_commit s2_unlock s3_clean
+add distribution    
+--------------------
+distribution id -> d
+(1 row)
+
+attach table        
+--------------------
+relation name   -> r
+distribution id -> d
+(2 rows)
+
+add key range
+-------------
+bound -> 300 
+(1 row)
+
+add key range
+-------------
+bound -> 200 
+(1 row)
+
+add key range
+-------------
+bound -> 100 
+(1 row)
+
+add key range
+-------------
+bound -> 0   
+(1 row)
+
+step s2_lock: select __spqr__console_execute('LOCK KEY RANGE k0') /*__spqr__preferred_engine: v2 */;
+lock key range    
+------------------
+key range id -> k0
+(1 row)
+
+step s1_report: SET __spqr__reply_notice TO on;
+step s1_ev2: SET __spqr__engine_v2 TO on;
+step s1_begin: BEGIN;
+step s1_s: SELECT * FROM r WHERE i = 11;
+ERROR:  client processing error: error processing query 'SELECT * FROM r WHERE i = 11;': key range k0 is locked, tx status ERROR
+step s1_s: SELECT * FROM r WHERE i = 11;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+step s1_commit: COMMIT;
+step s2_unlock: select __spqr__console_execute('UNLOCK KEY RANGE k0') /*__spqr__preferred_engine: v2 */;
+unlock key range  
+------------------
+key range id -> k0
+(1 row)
+
+step s3_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
+drop distribution   
+--------------------
+distribution id -> d
+(1 row)
+
