@@ -300,9 +300,13 @@ func (qr *ProxyQrouter) planQueryV1(
 		}
 
 		iis := make([]*distributions.UniqueIndex, 0)
+		iisSet := make(map[string]struct{})
 
 		for _, is := range iisMP {
-			iis = append(iis, is)
+			if _, ok := iisSet[is.ID]; !ok {
+				iis = append(iis, is)
+				iisSet[is.ID] = struct{}{}
+			}
 		}
 
 		sort.Slice(iis, func(a, b int) bool {
@@ -376,10 +380,12 @@ func (qr *ProxyQrouter) planQueryV1(
 						errmsg = v
 					case *pgproto3.DataRow:
 						cntVal++
-						for ind, is := range iis {
+						ind := 0
+						for _, is := range iis {
 							for _, col := range is.Columns {
 								colValues[col] = append(colValues[col],
 									v.Values[ind])
+								ind++
 							}
 						}
 					default:
