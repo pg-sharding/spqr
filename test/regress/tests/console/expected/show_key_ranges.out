@@ -94,13 +94,13 @@ SHOW key_ranges WHERE distribution_id = 'ds1';
 (4 rows)
 
 SHOW key_ranges WHERE shard_id = 'sh3';
- key_range_id | shard_id | distribution_id | lower_bound | locked
+ key_range_id | shard_id | distribution_id | lower_bound | locked 
 --------------+----------+-----------------+-------------+--------
  krid4        | sh3      | ds1             | 20          | false
 (1 row)
 
 SHOW key_ranges VERBOSE;
- key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage_percentage | locked
+ key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage_percentage | locked 
 --------------+----------+-----------------+-------------+-------------+---------------------+--------
  krid1        | sh1      | ds1             | 30          | 40          | 0.00%               | false
  krid2        | sh1      | ds1             | 40          | +inf        | 100.00%             | false
@@ -111,7 +111,7 @@ SHOW key_ranges VERBOSE;
 (6 rows)
 
 SHOW key_ranges WHERE distribution_id = 'ds1' VERBOSE;
- key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage_percentage | locked
+ key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage_percentage | locked 
 --------------+----------+-----------------+-------------+-------------+---------------------+--------
  krid1        | sh1      | ds1             | 30          | 40          | 0.00%               | false
  krid2        | sh1      | ds1             | 40          | +inf        | 100.00%             | false
@@ -120,7 +120,7 @@ SHOW key_ranges WHERE distribution_id = 'ds1' VERBOSE;
 (4 rows)
 
 SHOW key_ranges ORDER BY "lower_bound" ASC VERBOSE;
- key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage_percentage | locked
+ key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage_percentage | locked 
 --------------+----------+-----------------+-------------+-------------+---------------------+--------
  krid21       | sh1      | ds2             | 1           | 11          | 0.00%               | false
  krid3        | sh4      | ds1             | 10          | 20          | 0.00%               | false
