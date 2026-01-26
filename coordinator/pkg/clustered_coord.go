@@ -1544,11 +1544,105 @@ func (qc *ClusteredCoordinator) getNextMoveTask(ctx context.Context, conn *pgx.C
 			TaskGroupID: taskGroup.ID,
 		}, nil
 	}
+
+	// Validate split boundary doesn't conflict with destination shard key ranges
+	if bound != nil {
+		if err := qc.validateSplitBoundaryOnDestShard(ctx, bound, ds, taskGroup.ShardToId, keyRange.ColumnTypes); err != nil {
+			// Fallback: split boundary conflicts with existing ranges on destination shard
+			// Move entire key range without splitting instead
+			spqrlog.Zero.Warn().
+				Str("task_group_id", taskGroup.ID).
+				Str("key_range_id", taskGroup.KrIdFrom).
+				Err(err).
+				Msg("split boundary conflicts with existing ranges on destination shard, falling back to whole range move")
+
+			return &tasks.MoveTask{
+				ID: uuid.NewString(),
+				KrIdTemp: func() string {
+					if taskGroup.TotalKeys > 0 {
+						return taskGroup.KrIdFrom
+					}
+					return taskGroup.KrIdTo
+				}(),
+				State:       tasks.TaskPlanned,
+				Bound:       nil, // Move whole range without splitting
+				TaskGroupID: taskGroup.ID,
+			}, nil
+		}
+	}
+
 	task := &tasks.MoveTask{ID: uuid.NewString(), KrIdTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound, TaskGroupID: taskGroup.ID}
 	if taskGroup.TotalKeys == 0 {
 		task.KrIdTemp = taskGroup.KrIdTo
 	}
 	return task, nil
+}
+
+// validateSplitBoundaryOnDestShard checks if a split boundary is valid on the destination shard.
+// It ensures that:
+// 1. The boundary doesn't exactly match an existing key range's lower bound on the destination shard
+// 2. The boundary doesn't intersect with any existing key range on the destination shard
+//
+// This prevents the "bound intersects" error that occurs during Split() execution.
+// By validating early, we can fail gracefully before creating intermediate states.
+func (qc *ClusteredCoordinator) validateSplitBoundaryOnDestShard(
+	ctx context.Context,
+	bound [][]byte,
+	ds *distributions.Distribution,
+	destShardID string,
+	colTypes []string,
+) error {
+	if bound == nil {
+		return nil // Moving whole range, no boundary to validate
+	}
+
+	boundKR, err := kr.KeyRangeFromBytes(bound, colTypes)
+	if err != nil {
+		return err
+	}
+
+	destKeyRanges, err := qc.ListKeyRanges(ctx, ds.ID())
+	if err != nil {
+		return err
+	}
+
+	// Check boundary conflicts with all key ranges on destination shard
+	for _, destKR := range destKeyRanges {
+		if destKR.ShardID != destShardID {
+			continue
+		}
+
+		// Check if boundary exactly equals an existing key range's lower bound
+		if kr.CmpRangesEqual(boundKR.LowerBound, destKR.LowerBound, colTypes) {
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR,
+				"cannot move: split boundary coincides with existing key range '%s' on shard '%s', manual cleanup may be required",
+				destKR.ID, destShardID)
+		}
+	}
+
+	// Check if boundary would intersect with adjacent key ranges
+	// This happens when: destKR.lower < boundary < nextKR.lower
+	for i, destKR := range destKeyRanges {
+		if destKR.ShardID != destShardID {
+			continue
+		}
+
+		for j, nextKR := range destKeyRanges {
+			if nextKR.ShardID != destShardID || i == j {
+				continue
+			}
+			// Check if nextKR is "right after" destKR
+			if kr.CmpRangesLess(destKR.LowerBound, nextKR.LowerBound, colTypes) &&
+				kr.CmpRangesLess(destKR.LowerBound, boundKR.LowerBound, colTypes) &&
+				kr.CmpRangesLess(boundKR.LowerBound, nextKR.LowerBound, colTypes) {
+				return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR,
+					"cannot move: split boundary would intersect with key range '%s' on shard '%s', incomplete previous migration may need cleanup",
+					nextKR.ID, destShardID)
+			}
+		}
+	}
+
+	return nil
 }
 
 // TODO : unit tests
