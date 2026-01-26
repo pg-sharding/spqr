@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
@@ -34,6 +35,7 @@ func RewriteUpdateToDelete(query string, rqdn *rfqn.RelationFQN) (string, error)
 }
 
 func RewriteDistributedRelInsertForIndexes(query string, iis []*distributions.UniqueIndex) (string, error) {
+	spqrlog.Zero.Debug().Str("query", query).Msg("rewrite rel insert for indexes")
 	if query[len(query)-1] == ';' {
 		query = query[:len(query)-1]
 	}
@@ -41,10 +43,11 @@ func RewriteDistributedRelInsertForIndexes(query string, iis []*distributions.Un
 	query += " RETURNING "
 
 	for ind, is := range iis {
+		spqrlog.Zero.Debug().Str("id", is.ID).Strs("columns", is.Columns).Msg("got index")
 		if ind == 0 {
-			query += is.ColumnName
+			query += strings.Join(is.Columns, ", ")
 		} else {
-			query += " , " + is.ColumnName
+			query += " , " + strings.Join(is.Columns, ", ")
 		}
 	}
 

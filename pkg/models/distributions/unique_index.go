@@ -9,16 +9,16 @@ import (
 type UniqueIndex struct {
 	ID           string
 	RelationName *rfqn.RelationFQN
-	ColumnName   string
-	ColType      string
+	Columns      []string
+	ColTypes     []string
 }
 
 func UniqueIndexToProto(idx *UniqueIndex) *proto.UniqueIndex {
 	return &proto.UniqueIndex{
 		Id:        idx.ID,
 		TableName: rfqn.RelationFQNToProto(idx.RelationName),
-		ColName:   idx.ColumnName,
-		ColType:   idx.ColType,
+		Columns:   idx.Columns,
+		ColTypes:  idx.ColTypes,
 	}
 }
 
@@ -26,8 +26,8 @@ func UniqueIndexFromProto(idx *proto.UniqueIndex) *UniqueIndex {
 	return &UniqueIndex{
 		ID:           idx.Id,
 		RelationName: rfqn.RelationFQNFromProto(idx.TableName),
-		ColumnName:   idx.ColName,
-		ColType:      idx.ColType,
+		Columns:      idx.Columns,
+		ColTypes:     idx.ColTypes,
 	}
 }
 
@@ -35,9 +35,9 @@ func UniqueIndexToDB(dsId string, idx *UniqueIndex) *qdb.UniqueIndex {
 	return &qdb.UniqueIndex{
 		ID:             idx.ID,
 		Relation:       idx.RelationName,
-		ColumnName:     idx.ColumnName,
+		ColumnNames:    idx.Columns,
 		DistributionId: dsId,
-		ColType:        idx.ColType,
+		ColTypes:       idx.ColTypes,
 	}
 }
 
@@ -45,7 +45,7 @@ func UniqueIndexFromDB(idx *qdb.UniqueIndex) *UniqueIndex {
 	return &UniqueIndex{
 		ID:           idx.ID,
 		RelationName: idx.Relation,
-		ColumnName:   idx.ColumnName,
-		ColType:      idx.ColType,
+		Columns:      idx.ColumnNames,
+		ColTypes:     idx.ColTypes,
 	}
 }

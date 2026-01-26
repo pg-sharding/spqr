@@ -1096,7 +1096,9 @@ func (q *MemQDB) CreateUniqueIndex(_ context.Context, idx *UniqueIndex) error {
 	if !ok {
 		idxs = make(map[string]*UniqueIndex)
 	}
-	idxs[idx.ColumnName] = idx
+	for _, col := range idx.ColumnNames {
+		idxs[col] = idx
+	}
 
 	q.UniqueIndexes[idx.ID] = idx
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexes, idx.ID, idx), NewUpdateCommand(q.UniqueIndexesByRel, idx.Relation.String(), idxs))
@@ -1123,7 +1125,9 @@ func (q *MemQDB) DropUniqueIndex(_ context.Context, id string) error {
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "unique index \"%s\" belongs to relation \"%s\", but index record not found", idx.ID, idx.Relation.String())
 	}
-	delete(idxs, idx.ColumnName)
+	for _, col := range idx.ColumnNames {
+		delete(idxs, col)
+	}
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, ds.ID, ds), NewUpdateCommand(q.UniqueIndexesByRel, idx.Relation.String(), idxs), NewDeleteCommand(q.UniqueIndexes, idx.ID))
 }

@@ -1637,7 +1637,9 @@ func (q *EtcdQDB) CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
 	if err != nil {
 		return err
 	}
-	currRelIdxs[idx.ColumnName] = idx
+	for _, col := range idx.ColumnNames {
+		currRelIdxs[col] = idx
+	}
 	idxsByRelJson, err := json.Marshal(currRelIdxs)
 	if err != nil {
 		return err
@@ -1703,7 +1705,9 @@ func (q *EtcdQDB) DropUniqueIndex(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	delete(currRelIdxs, idx.ColumnName)
+	for _, col := range idx.ColumnNames {
+		delete(currRelIdxs, col)
+	}
 	idxsByRelJson, err := json.Marshal(currRelIdxs)
 	if err != nil {
 		return err
