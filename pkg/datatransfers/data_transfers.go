@@ -391,7 +391,10 @@ func SetupFDW(
 			schemaName := fmt.Sprintf("%s_%s", serverName, schema)
 			tx, err := to.Begin(ctx)
 			/* on any error, rollback */
-			defer tx.Rollback(ctx)
+			defer func() {
+				err := tx.Rollback(ctx)
+				spqrlog.Zero.Error().Err(err).Msg("failed to rollback move data transaction")
+			}()
 
 			if err != nil {
 				return err
