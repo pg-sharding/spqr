@@ -1082,9 +1082,9 @@ group_clause:
 
 
 show_stmt:
-	SHOW show_statement_type opt_verbose where_clause group_clause order_clause
+	SHOW show_statement_type where_clause group_clause order_clause opt_verbose
 	{
-		$$ = &Show{Cmd: $2, Verbose: $3, Where: $4, GroupBy: $5, Order: $6}
+		$$ = &Show{Cmd: $2, Where: $3, GroupBy: $4, Order: $5, Verbose: $6}
 	}
 	
 lock_stmt:

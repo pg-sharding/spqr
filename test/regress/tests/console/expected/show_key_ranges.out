@@ -110,7 +110,7 @@ SHOW key_ranges VERBOSE;
  krid4        | sh3      | ds1             | 20          | 30          | 0.00%               | false
 (6 rows)
 
-SHOW key_ranges VERBOSE WHERE distribution_id = 'ds1';
+SHOW key_ranges WHERE distribution_id = 'ds1' VERBOSE;
  key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage_percentage | locked
 --------------+----------+-----------------+-------------+-------------+---------------------+--------
  krid1        | sh1      | ds1             | 30          | 40          | 0.00%               | false
@@ -119,7 +119,7 @@ SHOW key_ranges VERBOSE WHERE distribution_id = 'ds1';
  krid4        | sh3      | ds1             | 20          | 30          | 0.00%               | false
 (4 rows)
 
-SHOW key_ranges VERBOSE ORDER BY "lower_bound" ASC;
+SHOW key_ranges ORDER BY "lower_bound" ASC VERBOSE;
  key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage_percentage | locked
 --------------+----------+-----------------+-------------+-------------+---------------------+--------
  krid21       | sh1      | ds2             | 1           | 11          | 0.00%               | false
