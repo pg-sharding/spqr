@@ -1,2 +1,3 @@
 test: simple
 test: simple_lock_kr
+test: simple_move_data
