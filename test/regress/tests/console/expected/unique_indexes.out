@@ -37,36 +37,36 @@ CREATE RELATION t3 (id HASH MURMUR, id2 HASH MURMUR) IN ds3;
  distribution id -> ds3
 (2 rows)
 
-CREATE UNIQUE INDEX ui1 ON t2 COLUMN col_uniq_1 TYPE varchar HASH;
-      create unique index      
--------------------------------
+CREATE UNIQUE INDEX ui1 ON t2 COLUMNS (col_uniq_1 varchar HASH);
+      create unique index       
+--------------------------------
  index ID -> ui1
  relation name -> t2
- column name -> col_uniq_1
- column type -> varchar hashed
+ column names  -> col_uniq_1
+ column types -> varchar hashed
 (4 rows)
 
-CREATE UNIQUE INDEX ui2 ON t2 COLUMN col_uniq_2 TYPE integer HASH;
-    create unique index    
----------------------------
+CREATE UNIQUE INDEX ui2 ON t2 COLUMNS (col_uniq_2 varchar HASH);
+      create unique index       
+--------------------------------
  index ID -> ui2
  relation name -> t2
- column name -> col_uniq_2
- column type -> uinteger
+ column names  -> col_uniq_2
+ column types -> varchar hashed
 (4 rows)
 
-CREATE UNIQUE INDEX ui_same_col ON t2 COLUMN col_uniq_2 TYPE integer HASH;
+CREATE UNIQUE INDEX ui_same_col ON t2 COLUMNS (col_uniq_2 integer HASH);
 ERROR:  unique index for table "t2", column "col_uniq_2" already exists
 -- reject that
-CREATE UNIQUE INDEX uiu ON t COLUMN col_uniq TYPE integer;
+CREATE UNIQUE INDEX uiu ON t COLUMNS (col_uniq integer);
 ERROR:  unique indexes are not supported non-hashed distribution
-CREATE UNIQUE INDEX uiu ON t3 COLUMN col_uniq TYPE integer;
+CREATE UNIQUE INDEX uiu ON t3 COLUMNS (col_uniq integer);
 ERROR:  unique indexes are supported only for single-column distributions, but ds3 has 2
 SHOW unique_indexes;
- id  | relation_name |   column   |  column_type   
+ id  | relation_name |  columns   |  column_types  
 -----+---------------+------------+----------------
  ui1 | t2            | col_uniq_1 | varchar hashed
- ui2 | t2            | col_uniq_2 | uinteger
+ ui2 | t2            | col_uniq_2 | varchar hashed
 (2 rows)
 
 DROP UNIQUE INDEX ui1;
@@ -76,9 +76,9 @@ DROP UNIQUE INDEX ui1;
 (1 row)
 
 SHOW unique_indexes;
- id  | relation_name |   column   | column_type 
------+---------------+------------+-------------
- ui2 | t2            | col_uniq_2 | uinteger
+ id  | relation_name |  columns   |  column_types  
+-----+---------------+------------+----------------
+ ui2 | t2            | col_uniq_2 | varchar hashed
 (1 row)
 
 DROP UNIQUE INDEX ui2;

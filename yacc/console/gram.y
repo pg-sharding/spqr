@@ -118,6 +118,7 @@ func randomHex(n int) (string, error) {
 	routingExpr				[]TypedColRef
 
 	alter_relation          *AlterRelationV2
+	
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -1021,14 +1022,13 @@ create_stmt:
 		}
 	}
 	|
-	CREATE UNIQUE INDEX any_id ON qualified_name COLUMN any_id TYPE col_types_elem
+	CREATE UNIQUE INDEX any_id ON qualified_name COLUMNS TOPENBR routing_expr_column_list TCLOSEBR
 	{
 		$$ = &Create{
 			Element: &UniqueIndexDefinition{
 				ID:        $4,
 				TableName: $6,
-				Column:    $8,
-				ColType:   $10,
+				Columns:    $9,
 			},
 		}
 	}
