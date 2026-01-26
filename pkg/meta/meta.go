@@ -1240,7 +1240,22 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-		tts = engine.KeyRangeVirtualRelationScan(ranges, locksKr)
+
+		if stmt.Verbose {
+			// Fetch distributions for column types and upper bounds
+			dists, err := mngr.ListDistributions(ctx)
+			if err != nil {
+				return nil, err
+			}
+			// Build distribution map for lookup
+			distMap := make(map[string]*distributions.Distribution)
+			for _, d := range dists {
+				distMap[d.Id] = d
+			}
+			tts = engine.KeyRangeVirtualRelationScanVerbose(ranges, locksKr, distMap)
+		} else {
+			tts = engine.KeyRangeVirtualRelationScan(ranges, locksKr)
+		}
 	case spqrparser.InstanceStr:
 		tts = engine.InstanceVirtualRelationScan(ctx, ci)
 

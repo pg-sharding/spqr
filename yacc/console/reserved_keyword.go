@@ -97,4 +97,5 @@ var reservedWords = map[string]int{
 	"clients":      CLIENTS,
 	"unique":       UNIQUE,
 	"index":        INDEX,
+	"verbose":      VERBOSE,
 }
