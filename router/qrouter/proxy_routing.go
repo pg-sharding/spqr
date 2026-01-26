@@ -415,7 +415,7 @@ func (qr *ProxyQrouter) planQueryV1(
 			nRetPlan.PrepareRunF = func() error {
 				spqrlog.Zero.Debug().Msgf("creating query map using tuples: %+v", colValues)
 
-				iniTemplate := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", is.ID, strings.Join(is.Columns, "_"))
+				iniTemplate := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", is.ID, strings.Join(is.Columns, ", "))
 				values := make([][][]byte, len(is.Columns))
 				checkLen := -1
 				for i, col := range is.Columns {
@@ -427,8 +427,7 @@ func (qr *ProxyQrouter) planQueryV1(
 						return fmt.Errorf("number of values differs per column")
 					}
 				}
-				for i := range values[1] {
-
+				for i := range values[0] {
 					routingTuple := make([]any, len(distributedRelation.DistributionKey))
 
 					hf, err := hashfunction.HashFunctionByName(distributedRelation.DistributionKey[0].HashFunction)
@@ -437,14 +436,9 @@ func (qr *ProxyQrouter) planQueryV1(
 					}
 
 					acc := []byte{}
+					valsStr := make([]string, len(values))
 					for j := range values {
-						// hashVal, err := hashfunction.ApplyHashFunctionOnStringRepr(
-						// 	val,
-						// 	ds.ColTypes[0],
-						// 	hf)
-						// if err != nil {
-						// 	return err
-						// }
+						valsStr[j] = string(values[j][i])
 						hashVal, err := hashfunction.ApplyNonIdentHashFunctionOnStringRepr(values[j][i],
 							is.ColTypes[i], hf)
 
@@ -470,9 +464,9 @@ func (qr *ProxyQrouter) planQueryV1(
 					/* okay, we know where this tuple should arrive. */
 
 					if qry, ok := nRetPlan.OverwriteQuery[tupleExecTarget.Name]; ok {
-						nRetPlan.OverwriteQuery[tupleExecTarget.Name] = qry + "( " + string(acc) + " )"
+						nRetPlan.OverwriteQuery[tupleExecTarget.Name] = qry + "( " + strings.Join(valsStr, ", ") + " )"
 					} else {
-						nRetPlan.OverwriteQuery[tupleExecTarget.Name] = iniTemplate + "( " + string(acc) + " )"
+						nRetPlan.OverwriteQuery[tupleExecTarget.Name] = iniTemplate + "( " + strings.Join(valsStr, ", ") + " )"
 					}
 				}
 

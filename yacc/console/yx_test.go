@@ -2045,15 +2045,27 @@ func TestUniqueIndex(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "CREATE UNIQUE INDEX ui1 ON t COLUMN id TYPE integer",
+			query: "CREATE UNIQUE INDEX ui1 ON t COLUMNS (id integer)",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.UniqueIndexDefinition{
 					ID: "ui1",
 					TableName: &rfqn.RelationFQN{
 						RelationName: "t",
 					},
-					Column:  "id",
-					ColType: "integer",
+					Columns: []spqrparser.TypedColRef{{Column: "id", Type: "integer"}},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE UNIQUE INDEX ui1 ON t COLUMNS ( id1 integer, id2 varchar )",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.UniqueIndexDefinition{
+					ID: "ui1",
+					TableName: &rfqn.RelationFQN{
+						RelationName: "t",
+					},
+					Columns: []spqrparser.TypedColRef{{Column: "id1", Type: "integer"}, {Column: "id2", Type: "varchar"}},
 				},
 			},
 			err: nil,
