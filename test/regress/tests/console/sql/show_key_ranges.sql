@@ -20,11 +20,11 @@ SHOW key_ranges WHERE distribution_id = 'ds1';
 
 SHOW key_ranges WHERE shard_id = 'sh3';
 
-SHOW key_ranges VERBOSE;
+SHOW key_ranges_extended;
 
-SHOW key_ranges WHERE distribution_id = 'ds1' VERBOSE;
+SHOW key_ranges_extended WHERE distribution_id = 'ds1';
 
-SHOW key_ranges ORDER BY "lower_bound" ASC VERBOSE;
+SHOW key_ranges_extended ORDER BY "lower_bound" ASC;
 
 DROP DISTRIBUTION ALL CASCADE;
 DROP KEY RANGE ALL;

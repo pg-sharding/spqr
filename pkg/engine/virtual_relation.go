@@ -163,7 +163,8 @@ func calculateCoverage(lowerBound, upperBound interface{}, colType string) strin
 		return fmt.Sprintf("%.2f%%", percentage)
 
 	default:
-		// For varchar, UUID, etc. - coverage not meaningful
+		// For varchar coverage is meaningless
+		// TODO implement hashed types and UUID
 		return "N/A"
 	}
 }
