@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -512,6 +513,8 @@ func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.Redistribute
 		Apply:     req.Apply,
 		NoWait:    req.NoWait,
 	})
+
+	spqrlog.Zero.Debug().Err(err).Msg("proxy RedistributeKeyRange to coordinator")
 	return err
 }
 

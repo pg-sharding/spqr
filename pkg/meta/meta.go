@@ -1842,7 +1842,11 @@ func ProcessShow(ctx context.Context,
 func processRedistribute(ctx context.Context,
 	stmt *spqrparser.RedistributeKeyRange,
 	mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
-	spqrlog.Zero.Debug().Str("key range id", stmt.KeyRangeID).Str("destination shard id", stmt.DestShardID).Int("batch size", stmt.BatchSize).Msg("process redistribute")
+	spqrlog.Zero.Debug().
+		Str("key range id", stmt.KeyRangeID).
+		Str("destination shard id", stmt.DestShardID).
+		Int("batch size", stmt.BatchSize).Msg("process redistribute")
+
 	if stmt.BatchSize <= 0 {
 		spqrlog.Zero.Debug().
 			Int("batch-size-got", stmt.BatchSize).
@@ -1850,6 +1854,7 @@ func processRedistribute(ctx context.Context,
 			Msg("redistribute: using default batch size")
 		stmt.BatchSize = defaultBatchSize
 	}
+
 	if err := mngr.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
 		KrId:      stmt.KeyRangeID,
 		ShardId:   stmt.DestShardID,
