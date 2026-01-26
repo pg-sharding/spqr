@@ -331,15 +331,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 			switch param {
 			case session.SPQR_DISTRIBUTION:
-				rst.QueryExecutor().FailStatement(
-					&pgproto3.ErrorResponse{
-						Message: fmt.Sprintf("parameter \"%s\" isn't user accessible",
-							session.SPQR_DISTRIBUTION),
-						Severity: "ERROR",
-						Code:     spqrerror.SPQR_NOT_IMPLEMENTED,
-					})
-				spqrlog.SLogger.ReportStatement(spqrlog.StmtTypeQuery, query, time.Since(startTime))
-				return pd, nil
+				ReplyVirtualParamState(rst.Client(), "distribution", []byte(rst.Client().Distribution()))
 			case session.SPQR_DISTRIBUTED_RELATION:
 				rst.QueryExecutor().FailStatement(
 					&pgproto3.ErrorResponse{

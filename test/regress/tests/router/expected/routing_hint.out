@@ -105,7 +105,11 @@ NOTICE: send query to shard(s) : sh1
 -- test transaction support for route-local variables;
 SET __spqr__distribution = 'ds1';
 SHOW __spqr__distribution;
-ERROR:  parameter "__spqr__distribution" isn't user accessible
+ distribution
+--------------
+ ds1
+(1 row)
+
 SET __spqr__sharding_key = 1;
 SHOW __spqr__sharding_key;
  sharding key 

@@ -1,5 +1,9 @@
 SHOW __spqr__distribution;
-ERROR:  parameter "__spqr__distribution" isn't user accessible
+ distribution
+--------------
+ default
+(1 row)
+
 SHOW __spqr__default_route_behaviour;
  default route behaviour 
 -------------------------
