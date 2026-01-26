@@ -111,7 +111,7 @@ func KeyRangeVirtualRelationScanExtended(krs []*kr.KeyRange, locks []string, dis
 				if kr.ID == keyRange.ID && i < len(distKrs)-1 {
 					nextKr = distKrs[i+1]
 					break
-}
+				}
 			}
 
 			if nextKr != nil {
