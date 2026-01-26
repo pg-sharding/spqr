@@ -42,7 +42,6 @@ type GroupBy struct {
 }
 type Show struct {
 	Cmd     string
-	Verbose bool
 	Where   lyx.Node
 	Order   OrderClause
 	GroupBy GroupByClause

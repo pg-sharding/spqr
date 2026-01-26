@@ -64,7 +64,7 @@ func KeyRangeVirtualRelationScan(krs []*kr.KeyRange, locks []string) *tupleslot.
 	return tts
 }
 
-func KeyRangeVirtualRelationScanVerbose(krs []*kr.KeyRange, locks []string, distMap map[string]*distributions.Distribution) *tupleslot.TupleTableSlot {
+func KeyRangeVirtualRelationScanExtended(krs []*kr.KeyRange, locks []string, distMap map[string]*distributions.Distribution) *tupleslot.TupleTableSlot {
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "upper_bound", "coverage_percentage", "locked"),
 	}
@@ -111,7 +111,7 @@ func KeyRangeVirtualRelationScanVerbose(krs []*kr.KeyRange, locks []string, dist
 				if kr.ID == keyRange.ID && i < len(distKrs)-1 {
 					nextKr = distKrs[i+1]
 					break
-				}
+}
 			}
 
 			if nextKr != nil {

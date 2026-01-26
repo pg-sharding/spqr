@@ -184,7 +184,7 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE VERBOSE
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE
 %token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX
 %token <str> SHARDS ROUTERS SHARD HOST RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
@@ -266,7 +266,6 @@ func randomHex(n int) (string, error) {
 %type<strlist> col_types_list opt_col_types any_id_list opt_on_shards
 %type<str> col_types_elem
 %type<bool> opt_cascade
-%type<bool> opt_verbose
 %type<str> opt_default_shard
 
 
@@ -689,9 +688,6 @@ kill_statement_type:
 		}
 	}
 
-opt_verbose:
-	VERBOSE { $$ = true } | {$$ = false}
-
 opt_cascade:
 	CASCADE { $$ = true } | {$$ = false}
 
@@ -1082,9 +1078,9 @@ group_clause:
 
 
 show_stmt:
-	SHOW show_statement_type where_clause group_clause order_clause opt_verbose
+	SHOW show_statement_type where_clause group_clause order_clause
 	{
-		$$ = &Show{Cmd: $2, Where: $3, GroupBy: $4, Order: $5, Verbose: $6}
+		$$ = &Show{Cmd: $2, Where: $3, GroupBy: $4, Order: $5}
 	}
 	
 lock_stmt:

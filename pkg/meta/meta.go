@@ -1263,7 +1263,7 @@ func ProcessShowExtended(ctx context.Context,
 		for _, d := range dists {
 			distMap[d.Id] = d
 		}
-		tts = engine.KeyRangeVirtualRelationScanVerbose(ranges, locksKr, distMap)
+		tts = engine.KeyRangeVirtualRelationScanExtended(ranges, locksKr, distMap)
 	case spqrparser.InstanceStr:
 		tts = engine.InstanceVirtualRelationScan(ctx, ci)
 
