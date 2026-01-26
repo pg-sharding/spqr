@@ -594,6 +594,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 					INSERT INTO %s (%s)
 					SELECT %s FROM %s
 					WHERE %s
+					FOR UPDATE
 `, relFullName, colNames, colNames, fmt.Sprintf("%s_%s.%q", serverName, rel.GetSchema(), strings.ToLower(rel.Name)), krCondition)
 		_, err = tx.Exec(ctx, query)
 		if err != nil {
