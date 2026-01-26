@@ -527,7 +527,7 @@ func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.Redistribute
 		Apply:     req.Apply,
 	})
 
-	spqrlog.Zero.Debug().Err(err).Msg("proxy RedistributeKeyRange to controlplane")
+	spqrlog.Zero.Debug().Err(err).Msg("proxy RedistributeKeyRange to coordinator")
 	return err
 }
 
