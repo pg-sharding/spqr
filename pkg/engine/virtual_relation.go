@@ -114,7 +114,7 @@ func KeyRangeVirtualRelationScanExtended(krs []*kr.KeyRange, locks []string, dis
 				}
 			}
 
-			if nextKr != nil {
+			if nextKr != nil && len(keyRange.LowerBound) > 0 && len(nextKr.LowerBound) > 0 {
 				upperBound = strings.Join(nextKr.SendRaw(), ",")
 				coverage = calculateCoverage(
 					keyRange.LowerBound[0],
@@ -141,8 +141,14 @@ func KeyRangeVirtualRelationScanExtended(krs []*kr.KeyRange, locks []string, dis
 func calculateCoverage(lowerBound, upperBound interface{}, colType string) string {
 	switch colType {
 	case qdb.ColumnTypeInteger:
-		lower := lowerBound.(int64)
-		upper := upperBound.(int64)
+		lower, ok := lowerBound.(int64)
+		if !ok {
+			return "N/A"
+		}
+		upper, ok := upperBound.(int64)
+		if !ok {
+			return "N/A"
+		}
 		if upper <= lower {
 			return "0.00%"
 		}
@@ -152,8 +158,14 @@ func calculateCoverage(lowerBound, upperBound interface{}, colType string) strin
 		return fmt.Sprintf("%.2f%%", percentage)
 
 	case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed:
-		lower := lowerBound.(uint64)
-		upper := upperBound.(uint64)
+		lower, ok := lowerBound.(uint64)
+		if !ok {
+			return "N/A"
+		}
+		upper, ok := upperBound.(uint64)
+		if !ok {
+			return "N/A"
+		}
 		if upper <= lower {
 			return "0.00%"
 		}
