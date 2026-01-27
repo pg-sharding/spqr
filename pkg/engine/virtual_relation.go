@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"math/big"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
@@ -174,9 +176,52 @@ func calculateCoverage(lowerBound, upperBound interface{}, colType string) strin
 		percentage := (keyRangeSize / totalRange) * 100.0
 		return fmt.Sprintf("%.2f%%", percentage)
 
+	case qdb.ColumnTypeUUID:
+		lowerStr, ok := lowerBound.(string)
+		if !ok {
+			return "N/A"
+		}
+		upperStr, ok := upperBound.(string)
+		if !ok {
+			return "N/A"
+		}
+
+		lowerUUID, err := uuid.Parse(lowerStr)
+		if err != nil {
+			return "N/A"
+		}
+		upperUUID, err := uuid.Parse(upperStr)
+		if err != nil {
+			return "N/A"
+		}
+
+		// Convert UUIDs to big.Int for comparison
+		lowerBytes := lowerUUID[:]
+		upperBytes := upperUUID[:]
+
+		lowerBig := new(big.Int).SetBytes(lowerBytes)
+		upperBig := new(big.Int).SetBytes(upperBytes)
+
+		if upperBig.Cmp(lowerBig) <= 0 {
+			return "0.00%"
+		}
+
+		// UUID space is 2^128
+		uuidSpace := new(big.Int).Exp(big.NewInt(2), big.NewInt(128), nil)
+		keyRangeSize := new(big.Int).Sub(upperBig, lowerBig)
+
+		// Calculate coverage percentage
+		coverage := new(big.Float).Quo(
+			new(big.Float).SetInt(keyRangeSize),
+			new(big.Float).SetInt(uuidSpace),
+		)
+		percentage := new(big.Float).Mul(coverage, big.NewFloat(100.0))
+
+		percentageValue, _ := percentage.Float64()
+		return fmt.Sprintf("%.2f%%", percentageValue)
+
 	default:
 		// For varchar coverage is meaningless
-		// TODO implement hashed types and UUID
 		return "N/A"
 	}
 }
