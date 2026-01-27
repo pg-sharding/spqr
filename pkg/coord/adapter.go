@@ -804,26 +804,8 @@ func (a *Adapter) ListDistributions(ctx context.Context) ([]*distributions.Distr
 //
 // Returns:
 // - error: An error if the creation of the distribution fails, otherwise nil.
-func (a *Adapter) CreateDistribution(ctx context.Context, ds *distributions.Distribution) (*mtran.MetaTransactionChunk, error) {
-	c := proto.NewDistributionServiceClient(a.conn)
-
-	if reply, err := c.CreateDistribution(ctx, &proto.CreateDistributionRequest{
-		Distributions: []*proto.Distribution{
-			distributions.DistributionToProto(ds),
-		},
-	}); err != nil {
-		return nil, err
-	} else {
-		qdbCmds := make([]qdb.QdbStatement, 0, len(reply.CmdList))
-		for _, cmd := range reply.CmdList {
-			if qdbCmd, err := qdb.QdbStmtFromProto(cmd); err != nil {
-				return nil, err
-			} else {
-				qdbCmds = append(qdbCmds, *qdbCmd)
-			}
-		}
-		return mtran.NewMetaTransactionChunk(reply.MetaCmdList, qdbCmds)
-	}
+func (a *Adapter) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.QdbStatement, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPREATED (CreateDistribution in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
 // TODO : unit tests
@@ -1287,7 +1269,8 @@ func (a *Adapter) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionCh
 	conn := proto.NewMetaTransactionServiceClient(a.conn)
 	request := &proto.ExecNoTranRequest{
 		MetaCmdList: chunk.GossipRequests,
-		CmdList:     qdb.SliceToProto(chunk.QdbStatements),
+		//KLEPOV
+		CmdList: nil,
 	}
 	_, err := conn.ExecNoTran(ctx, request)
 	return err
@@ -1298,7 +1281,8 @@ func (a *Adapter) CommitTran(ctx context.Context, transaction *mtran.MetaTransac
 	request := &proto.MetaTransactionRequest{
 		TransactionId: transaction.TransactionId.String(),
 		MetaCmdList:   transaction.Operations.GossipRequests,
-		CmdList:       qdb.SliceToProto(transaction.Operations.QdbStatements),
+		//KLEPOV
+		CmdList: nil,
 	}
 	_, err := conn.CommitTran(ctx, request)
 	return err

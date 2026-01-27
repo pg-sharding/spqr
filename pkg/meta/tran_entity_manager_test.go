@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -56,19 +59,19 @@ func TestTranGetDistribution(t *testing.T) {
 		assert.NoError(t, err)
 		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 		ds0 := distributions.NewDistribution("ds0", []string{"integer"})
-		chunk, err := mngr.CreateDistribution(ctx, ds0)
+		statements, err := mngr.CreateDistribution(ctx, ds0)
 		is.NoError(err)
-		err = mngr.ExecNoTran(ctx, chunk)
+		err = memqdb.ExecNoTransaction(ctx, statements)
 		is.NoError(err)
 
 		tranMngr := meta.NewTranEntityManager(mngr)
 
 		ds1 := distributions.NewDistribution("ds1", []string{"integer"})
 		ds2 := distributions.NewDistribution("ds2", []string{"integer"})
-		_, err = tranMngr.CreateDistribution(ctx, ds1)
+		err = tranMngr.CreateDistribution(ctx, ds1)
 		is.NoError(err)
 		//NO COMMIT QDB!!!
-		_, err = tranMngr.CreateDistribution(ctx, ds2)
+		err = tranMngr.CreateDistribution(ctx, ds2)
 		is.NoError(err)
 		//NO COMMIT QDB!!!
 
@@ -96,19 +99,19 @@ func TestTranGetDistribution(t *testing.T) {
 		assert.NoError(t, err)
 		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 		ds0 := distributions.NewDistribution("ds0", []string{"integer"})
-		chunk, err := mngr.CreateDistribution(ctx, ds0)
+		statements, err := mngr.CreateDistribution(ctx, ds0)
 		is.NoError(err)
-		err = mngr.ExecNoTran(ctx, chunk)
+		err = memqdb.ExecNoTransaction(ctx, statements)
 		is.NoError(err)
 
 		tranMngr := meta.NewTranEntityManager(mngr)
 
 		ds1 := distributions.NewDistribution("ds1", []string{"integer"})
 		ds2 := distributions.NewDistribution("ds2", []string{"integer"})
-		_, err = tranMngr.CreateDistribution(ctx, ds1)
+		err = tranMngr.CreateDistribution(ctx, ds1)
 		is.NoError(err)
 		//NO COMMIT QDB!!!
-		_, err = tranMngr.CreateDistribution(ctx, ds2)
+		err = tranMngr.CreateDistribution(ctx, ds2)
 		is.NoError(err)
 		//NO COMMIT QDB!!!
 		err = tranMngr.DropDistribution(ctx, "ds2")
@@ -212,4 +215,184 @@ func TestTranGetKeyRange(t *testing.T) {
 		is.NoError(err)
 
 	})
+}
+
+func TestTranState(t *testing.T) {
+	t.Run("setTransaction happy path", func(t *testing.T) {
+		is := assert.New(t)
+		distribution := &proto.Distribution{
+			Id:          "ds1",
+			ColumnTypes: []string{"integer"},
+		}
+		transactionId1, err := uuid.Parse("6ca41a0b-8446-4098-abcf-d9802bea3447")
+		is.NoError(err)
+		chunk := mtran.NewMetaTransactionChunk([]*proto.MetaTransactionGossipCommand{
+			{
+				CreateDistribution: &proto.CreateDistributionGossip{
+					Distributions: []*proto.Distribution{distribution},
+				},
+			},
+		},
+		)
+		is.NoError(err)
+		tran1 := mtran.MetaTransaction{
+			TransactionId: transactionId1,
+			Operations:    chunk,
+		}
+
+		state := meta.NewTransactionState()
+		err = state.SetTransaction(&tran1)
+		is.NoError(err)
+	})
+	t.Run("setTransaction tran over tran fails", func(t *testing.T) {
+		is := assert.New(t)
+		distribution := &proto.Distribution{
+			Id:          "ds1",
+			ColumnTypes: []string{"integer"},
+		}
+		transactionId1, err := uuid.Parse("6ca41a0b-8446-4098-abcf-d9802bea3447")
+		is.NoError(err)
+		transactionId2, err := uuid.Parse("7ca41a0b-8446-4098-abcf-d9802bea3447")
+		is.NoError(err)
+		chunk := mtran.NewMetaTransactionChunk([]*proto.MetaTransactionGossipCommand{
+			{
+				CreateDistribution: &proto.CreateDistributionGossip{
+					Distributions: []*proto.Distribution{distribution},
+				},
+			},
+		},
+		)
+		is.NoError(err)
+		tran1 := mtran.MetaTransaction{
+			TransactionId: transactionId1,
+			Operations:    chunk,
+		}
+		tran2 := mtran.MetaTransaction{
+			TransactionId: transactionId2,
+			Operations:    chunk,
+		}
+
+		state := meta.NewTransactionState()
+		err = state.SetTransaction(&tran1)
+		is.NoError(err)
+		err = state.SetTransaction(&tran2)
+		is.EqualError(err, "corrupted transaction state (setTransaction)")
+	})
+	t.Run("setTransaction tran over chunk fails", func(t *testing.T) {
+		is := assert.New(t)
+		distribution := &proto.Distribution{
+			Id:          "ds1",
+			ColumnTypes: []string{"integer"},
+		}
+		transactionId2, err := uuid.Parse("7ca41a0b-8446-4098-abcf-d9802bea3447")
+		is.NoError(err)
+		chunk := mtran.NewMetaTransactionChunk([]*proto.MetaTransactionGossipCommand{
+			{
+				CreateDistribution: &proto.CreateDistributionGossip{
+					Distributions: []*proto.Distribution{distribution},
+				},
+			},
+		},
+		)
+		is.NoError(err)
+		tran2 := mtran.MetaTransaction{
+			TransactionId: transactionId2,
+			Operations:    chunk,
+		}
+
+		state := meta.NewTransactionState()
+		err = state.Append([]*proto.MetaTransactionGossipCommand{
+			{
+				CreateDistribution: &proto.CreateDistributionGossip{
+					Distributions: []*proto.Distribution{distribution},
+				},
+			},
+		})
+		is.NoError(err)
+		err = state.SetTransaction(&tran2)
+		is.EqualError(err, "transaction state begins with no tranasction flow")
+	})
+	t.Run("append chunk for tran success", func(t *testing.T) {
+		is := assert.New(t)
+		distribution := &proto.Distribution{
+			Id:          "ds1",
+			ColumnTypes: []string{"integer"},
+		}
+		transactionId2, err := uuid.Parse("7ca41a0b-8446-4098-abcf-d9802bea3447")
+		is.NoError(err)
+		chunk := mtran.NewMetaTransactionChunk([]*proto.MetaTransactionGossipCommand{
+			{
+				CreateDistribution: &proto.CreateDistributionGossip{
+					Distributions: []*proto.Distribution{distribution},
+				},
+			},
+		},
+		)
+		is.NoError(err)
+		tran2 := mtran.MetaTransaction{
+			TransactionId: transactionId2,
+			Operations:    chunk,
+		}
+
+		state := meta.NewTransactionState()
+
+		err = state.SetTransaction(&tran2)
+		is.NoError(err)
+
+		err = state.Append([]*proto.MetaTransactionGossipCommand{
+			{
+				CreateDistribution: &proto.CreateDistributionGossip{
+					Distributions: []*proto.Distribution{distribution},
+				},
+			},
+		})
+
+		is.NoError(err)
+	})
+
+	t.Run("append chunk for chunk success", func(t *testing.T) {
+		is := assert.New(t)
+		distribution1 := &proto.Distribution{Id: "ds1", ColumnTypes: []string{"integer"}}
+		distribution2 := &proto.Distribution{Id: "ds2", ColumnTypes: []string{"integer"}}
+
+		chunk1 := mtran.NewMetaTransactionChunk([]*proto.MetaTransactionGossipCommand{
+			{
+				CreateDistribution: &proto.CreateDistributionGossip{
+					Distributions: []*proto.Distribution{distribution1},
+				},
+			},
+		},
+		)
+		chunk2 := mtran.NewMetaTransactionChunk([]*proto.MetaTransactionGossipCommand{
+			{
+				CreateDistribution: &proto.CreateDistributionGossip{
+					Distributions: []*proto.Distribution{distribution2},
+				},
+			},
+		},
+		)
+
+		state := meta.NewTransactionState()
+
+		err := state.Append(chunk1.GossipRequests)
+		is.NoError(err)
+		err = state.Append(chunk2.GossipRequests)
+		is.NoError(err)
+		expected := mtran.NewMetaTransactionChunk([]*proto.MetaTransactionGossipCommand{
+			{
+				CreateDistribution: &proto.CreateDistributionGossip{
+					Distributions: []*proto.Distribution{distribution1},
+				},
+			},
+			{
+				CreateDistribution: &proto.CreateDistributionGossip{
+					Distributions: []*proto.Distribution{distribution2},
+				},
+			},
+		},
+		)
+		is.Equal(state.Chunk, expected)
+
+	})
+
 }

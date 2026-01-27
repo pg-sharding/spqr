@@ -37,15 +37,7 @@ func toQdbStatementList(cmdList []*proto.QdbTransactionCmd) ([]qdb.QdbStatement,
 }
 
 func (mts *MetaTransactionServer) ExecNoTran(ctx context.Context, request *proto.ExecNoTranRequest) (*emptypb.Empty, error) {
-	stmts, err := toQdbStatementList(request.CmdList)
-	if err != nil {
-		return nil, err
-	}
-	tranChunk, err := mtran.NewMetaTransactionChunk(request.MetaCmdList, stmts)
-	if err != nil {
-		return nil, err
-	}
-	return nil, mts.impl.ExecNoTran(ctx, tranChunk)
+	return nil, mts.impl.ExecNoTran(ctx, mtran.NewMetaTransactionChunk(request.MetaCmdList))
 }
 
 func (mts *MetaTransactionServer) CommitTran(ctx context.Context, request *proto.MetaTransactionRequest) (*emptypb.Empty, error) {
