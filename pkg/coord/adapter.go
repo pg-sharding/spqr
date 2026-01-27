@@ -1269,8 +1269,7 @@ func (a *Adapter) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionCh
 	conn := proto.NewMetaTransactionServiceClient(a.conn)
 	request := &proto.ExecNoTranRequest{
 		MetaCmdList: chunk.GossipRequests,
-		//KLEPOV
-		CmdList: nil,
+		CmdList:     nil,
 	}
 	_, err := conn.ExecNoTran(ctx, request)
 	return err
@@ -1281,8 +1280,7 @@ func (a *Adapter) CommitTran(ctx context.Context, transaction *mtran.MetaTransac
 	request := &proto.MetaTransactionRequest{
 		TransactionId: transaction.TransactionId.String(),
 		MetaCmdList:   transaction.Operations.GossipRequests,
-		//KLEPOV
-		CmdList: nil,
+		CmdList:       nil,
 	}
 	_, err := conn.CommitTran(ctx, request)
 	return err
