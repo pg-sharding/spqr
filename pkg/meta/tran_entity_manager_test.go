@@ -310,7 +310,7 @@ func TestTranState(t *testing.T) {
 		})
 		is.NoError(err)
 		err = state.SetTransaction(&tran2)
-		is.EqualError(err, "transaction state begins with no tranasction flow")
+		is.EqualError(err, "transaction state begins with no transaction flow")
 	})
 	t.Run("append chunk for tran success", func(t *testing.T) {
 		is := assert.New(t)

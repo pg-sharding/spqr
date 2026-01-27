@@ -26,7 +26,7 @@ func NewDistributionServer(impl coordinator.Coordinator) *DistributionsServer {
 var _ protos.DistributionServiceServer = &DistributionsServer{}
 
 func (d *DistributionsServer) CreateDistribution(ctx context.Context, req *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
-	return nil, fmt.Errorf("DEPREATED (CreateDistribution in DistributionsServer). Use ExecuteNoTran or CommitTran")
+	return nil, fmt.Errorf("DEPRECATED (CreateDistribution in DistributionsServer). Use ExecuteNoTran or CommitTran")
 }
 
 func (d *DistributionsServer) DropDistribution(ctx context.Context, req *protos.DropDistributionRequest) (*emptypb.Empty, error) {

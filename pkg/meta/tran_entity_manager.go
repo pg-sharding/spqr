@@ -34,7 +34,7 @@ func (s *TransactionState) SetTransaction(transaction *meta_transaction.MetaTran
 		return fmt.Errorf("corrupted transaction state (setTransaction)")
 	}
 	if s.Chunk != nil {
-		return fmt.Errorf("transaction state begins with no tranasction flow")
+		return fmt.Errorf("transaction state begins with no transaction flow")
 	}
 	s.Transaction = transaction
 	return nil
@@ -44,14 +44,12 @@ func (s *TransactionState) Append(commands []*proto.MetaTransactionGossipCommand
 		return fmt.Errorf("corrupted transaction state (appendChunk)")
 	}
 	if s.Transaction != nil {
-		s.Transaction.Operations.Append(commands)
-		return nil
+		return s.Transaction.Operations.Append(commands)
 	}
 	if s.Chunk == nil {
 		s.Chunk = meta_transaction.NewEmptyMetaTransactionChunk()
 	}
-	s.Chunk.Append(commands)
-	return nil
+	return s.Chunk.Append(commands)
 }
 
 // interface for read only methods of EntityMgr

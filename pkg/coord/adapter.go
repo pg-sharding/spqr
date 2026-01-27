@@ -805,7 +805,7 @@ func (a *Adapter) ListDistributions(ctx context.Context) ([]*distributions.Distr
 // Returns:
 // - error: An error if the creation of the distribution fails, otherwise nil.
 func (a *Adapter) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.QdbStatement, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPREATED (CreateDistribution in Adapter). Use ExecuteNoTran or CommitTran")
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (CreateDistribution in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
 // TODO : unit tests

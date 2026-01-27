@@ -6,7 +6,6 @@ import (
 	"github.com/pg-sharding/spqr/coordinator"
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
-	qdb "github.com/pg-sharding/spqr/qdb"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -23,18 +22,6 @@ func NewMetaTransactionServer(impl coordinator.Coordinator) *MetaTransactionServ
 }
 
 var _ proto.MetaTransactionServiceServer = &MetaTransactionServer{}
-
-func toQdbStatementList(cmdList []*proto.QdbTransactionCmd) ([]qdb.QdbStatement, error) {
-	stmts := make([]qdb.QdbStatement, 0, len(cmdList))
-	for _, cmd := range cmdList {
-		if qdbCmd, err := qdb.QdbStmtFromProto(cmd); err != nil {
-			return nil, err
-		} else {
-			stmts = append(stmts, *qdbCmd)
-		}
-	}
-	return stmts, nil
-}
 
 func (mts *MetaTransactionServer) ExecNoTran(ctx context.Context, request *proto.ExecNoTranRequest) (*emptypb.Empty, error) {
 	return nil, mts.impl.ExecNoTran(ctx, mtran.NewMetaTransactionChunk(request.MetaCmdList))
