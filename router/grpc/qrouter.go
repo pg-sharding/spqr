@@ -16,7 +16,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
-	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rulerouter"
@@ -142,25 +141,6 @@ func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.Shard
 	return &protos.ShardReply{
 		Shard: topology.DataShardToProto(sh),
 	}, nil
-}
-
-func (l *LocalQrouterServer) createDistributionPrepare(ctx context.Context, gossip *protos.CreateDistributionGossip) ([]qdb.QdbStatement, error) {
-	result := make([]qdb.QdbStatement, 0, len(gossip.GetDistributions()))
-	for _, ds := range gossip.GetDistributions() {
-		mds, err := distributions.DistributionFromProto(ds)
-		if err != nil {
-			return nil, err
-		}
-		if tranChunk, err := l.mgr.CreateDistribution(ctx, mds); err != nil {
-			return nil, err
-		} else {
-			if len(tranChunk.QdbStatements) == 0 {
-				return nil, fmt.Errorf("transaction chunk must have a qdb statement (createDistributionPrepare)")
-			}
-			result = append(result, tranChunk.QdbStatements...)
-		}
-	}
-	return result, nil
 }
 
 // CreateDistribution creates distribution in QDB
@@ -633,29 +613,8 @@ func (l *LocalQrouterServer) DropSequence(ctx context.Context, request *protos.D
 }
 
 func (l *LocalQrouterServer) ApplyMeta(ctx context.Context, request *protos.MetaTransactionGossipRequest) (*emptypb.Empty, error) {
-	toExecuteCmds := make([]qdb.QdbStatement, 0, len(request.Commands))
-	for _, gossipCommand := range request.Commands {
-		cmdType := mtran.GetGossipRequestType(gossipCommand)
-		switch cmdType {
-		case mtran.GR_CreateDistributionRequest:
-			if cmdList, err := l.createDistributionPrepare(ctx, gossipCommand.CreateDistribution); err != nil {
-				return nil, err
-			} else {
-				if len(cmdList) == 0 {
-					return nil, fmt.Errorf("no QDB changes in gossip request:%d", cmdType)
-				}
-				toExecuteCmds = append(toExecuteCmds, cmdList...)
-			}
-		// TODO: run handlers converting gossip commands to chunk with qdb commands
-		default:
-			return nil, fmt.Errorf("invalid meta gossip request:%d", cmdType)
-		}
-	}
-	if chunkCmd, err := mtran.NewMetaTransactionChunk(nil, toExecuteCmds); err != nil {
-		return nil, err
-	} else {
-		return nil, l.mgr.ExecNoTran(ctx, chunkCmd)
-	}
+	chunkCmd := mtran.NewMetaTransactionChunk(request.Commands)
+	return nil, l.mgr.ExecNoTran(ctx, chunkCmd)
 }
 
 func (l *LocalQrouterServer) CurrVal(ctx context.Context, req *protos.CurrValRequest) (*protos.CurrValReply, error) {

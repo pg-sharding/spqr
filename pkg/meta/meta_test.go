@@ -73,7 +73,7 @@ func TestNoManualCreateDefaultShardKeyRange(t *testing.T) {
 	assert.ErrorContains(t, err, "ds1.DEFAULT is reserved")
 }
 
-func TestCreteDistrWithDefaultShardSuccess(t *testing.T) {
+func TestCreateDistrWithDefaultShardSuccess(t *testing.T) {
 	ctx := context.Background()
 	statement := spqrparser.DistributionDefinition{
 		ID:           "dbTestDefault",

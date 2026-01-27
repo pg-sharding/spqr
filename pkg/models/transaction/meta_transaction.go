@@ -19,6 +19,7 @@ type TransactionMgr interface {
 	BeginTran(ctx context.Context) (*MetaTransaction, error)
 }
 
+// NEED REMOVE. This structure doesn't make sense right now.
 type MetaTransaction struct {
 	TransactionId uuid.UUID
 	Operations    *MetaTransactionChunk
@@ -40,12 +41,8 @@ func innerFromProto(TransactionId string, CmdList []*proto.QdbTransactionCmd, Me
 				qdbCmdList[index] = *stmtQdb
 			}
 		}
-		chunk, err := NewMetaTransactionChunk(MetaCmdList, qdbCmdList)
-		if err != nil {
-			return nil, err
-		}
 		return &MetaTransaction{TransactionId: tranId,
-			Operations: chunk,
+			Operations: NewMetaTransactionChunk(MetaCmdList),
 		}, nil
 	}
 }
@@ -69,17 +66,10 @@ func TransactionFromProtoRequest(tran *proto.MetaTransactionRequest) (*MetaTrans
 	return innerFromProto(tran.TransactionId, tran.CmdList, tran.MetaCmdList)
 }
 
-func ToQdbTransaction(tran *MetaTransaction) *qdb.QdbTransaction {
-	return qdb.NewTransactionWithCmd(tran.TransactionId, tran.Operations.QdbStatements)
-}
-
 type MetaTransactionChunk struct {
 	// There are commands for router to change meta in router in atomic operation.
 	// Coordinator generates its.
 	GossipRequests []*proto.MetaTransactionGossipCommand
-	// There are qdb commands which need execute in atomic qdb operation.
-	// Qdb instance on active instance coordinator generates it
-	QdbStatements []qdb.QdbStatement
 }
 
 // Any change in this enum must change GetGossipRequestType function
@@ -89,31 +79,23 @@ const (
 	GR_CreateKeyRange
 )
 
-func NewMetaTransactionChunk(gossipRequests []*proto.MetaTransactionGossipCommand,
-	qdbStatements []qdb.QdbStatement) (*MetaTransactionChunk, error) {
-	if len(qdbStatements) == 0 {
-		return nil, fmt.Errorf("transaction chunk must have a qdb statement (create chunk)")
-	} else {
-		return &MetaTransactionChunk{
-			GossipRequests: gossipRequests,
-			QdbStatements:  qdbStatements,
-		}, nil
+func NewMetaTransactionChunk(gossipRequests []*proto.MetaTransactionGossipCommand) *MetaTransactionChunk {
+	return &MetaTransactionChunk{
+		GossipRequests: gossipRequests,
 	}
 }
 
-func (tc *MetaTransactionChunk) Append(gossipRequests []*proto.MetaTransactionGossipCommand,
-	qdbStatements []qdb.QdbStatement) error {
-	if len(qdbStatements) == 0 {
-		return fmt.Errorf("transaction chunk must have a qdb statement (case 1)")
-	} else {
-		for _, req := range gossipRequests {
-			if gossipType := GetGossipRequestType(req); gossipType == GR_UNKNOWN {
-				return fmt.Errorf("invalid meta gossip command request")
-			}
+func NewEmptyMetaTransactionChunk() *MetaTransactionChunk {
+	return NewMetaTransactionChunk([]*proto.MetaTransactionGossipCommand{})
+}
+
+func (tc *MetaTransactionChunk) Append(gossipRequests []*proto.MetaTransactionGossipCommand) error {
+	for _, req := range gossipRequests {
+		if gossipType := GetGossipRequestType(req); gossipType == GR_UNKNOWN {
+			return fmt.Errorf("invalid meta gossip command request")
 		}
-		tc.GossipRequests = append(tc.GossipRequests, gossipRequests...)
-		tc.QdbStatements = append(tc.QdbStatements, qdbStatements...)
 	}
+	tc.GossipRequests = append(tc.GossipRequests, gossipRequests...)
 	return nil
 }
 
@@ -133,7 +115,6 @@ func ToNoGossipTransaction(transaction *MetaTransaction) *MetaTransaction {
 		TransactionId: transaction.TransactionId,
 		Operations: &MetaTransactionChunk{
 			GossipRequests: make([]*proto.MetaTransactionGossipCommand, 0),
-			QdbStatements:  transaction.Operations.QdbStatements,
 		},
 	}
 }

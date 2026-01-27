@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
-	meta_transaction "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 )
@@ -67,12 +67,12 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 		if d.ID == distributions.REPLICATED {
 			continue
 		}
-		var tranChunk *meta_transaction.MetaTransactionChunk
-		if tranChunk, err = mngr.CreateDistribution(ctx, distributions.DistributionFromDB(d)); err != nil {
+		tranMngr := meta.NewTranEntityManager(mngr)
+		if err = tranMngr.CreateDistribution(ctx, distributions.DistributionFromDB(d)); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (prepare phase)")
 			return err
 		}
-		if err = mngr.ExecNoTran(ctx, tranChunk); err != nil {
+		if err = tranMngr.ExecNoTran(ctx); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (exec phase)")
 			return err
 		}
