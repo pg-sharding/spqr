@@ -42,6 +42,7 @@ type RedistributeKeyRange struct {
 	BatchSize int    // BatchSize is the amount of keys to be transferred in every transaction.
 	Check     bool   // if Check is set, we perform a pre-run check for the ability to redistribute
 	Apply     bool   // if Apply is not set, command will be a dry-run
+	NoWait    bool   // do we wait for redistribute completion?
 }
 
 type KeyRangeMgr interface {

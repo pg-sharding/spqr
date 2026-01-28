@@ -204,11 +204,11 @@ MOVE KEY RANGE <keyRangeID> TO <shardID>
 
 `BATCH SIZE` is an integer value that controls the number of keys moved in each batch during redistribution. Default batch size is 500.
 
-You can also use optional keywords `CHECK` and `APPLY`. By default, command will check for the ability to move keys, then perform the actual movement. With `CHECK`, you can perform a dry-run.
-With `APPLY`, you can skip checks.
+You can also use optional keywords `CHECK`, `NOWAIT` and `APPLY`. By default, command will check for the ability to move keys, then perform the actual movement. With `CHECK`, you can perform a dry-run.
+With `APPLY`, you can skip checks. With `NOWAIT` you will NOT wait for data move completion, but you will get an error like in `CHECK` case if anything is misconfigured.
 
 ```sql
-REDISTRIBUTE KEY RANGE <keyRangeID> TO <shardID> [ BATCH SIZE <batchSize> ] [ CHECK | APPLY ];
+REDISTRIBUTE KEY RANGE <keyRangeID> TO <shardID> [ BATCH SIZE <batchSize> ] [ CHECK | APPLY | NOWAIT ];
 ```
 
 ### SPLIT KEY RANGE

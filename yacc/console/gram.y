@@ -189,7 +189,7 @@ func randomHex(n int) (string, error) {
 %token <str> SHARDS ROUTERS SHARD HOST RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
-%token <str> BATCH SIZE
+%token <str> BATCH SIZE NOWAIT
 %token <str> INVALIDATE CACHE
 %token <str> SYNC
 %token <str> RETRY
@@ -279,7 +279,7 @@ func randomHex(n int) (string, error) {
 %type <listen> listen_stmt
 %type <split> split_key_range_stmt
 %type <move> move_key_range_stmt
-%type <redistribute> redistribute_key_range_stmt
+%type <redistribute> redistribute_stmt
 %type <unite> unite_key_range_stmt
 %type <register_router> register_router_stmt
 %type <unregister_router> unregister_router_stmt
@@ -375,7 +375,7 @@ command:
 	{
 		setParseTree(yylex, $1)
 	}
-	| redistribute_key_range_stmt
+	| redistribute_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -1303,14 +1303,41 @@ move_key_range_stmt:
 		$$ = &MoveKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4}
 	}
 
-redistribute_key_range_stmt:
+
+/* All of this is kinda uggly, refactor to make it more Postgresy */
+redistribute_stmt:
 	REDISTRIBUTE key_range_stmt TO any_id opt_batch_size
 	{
-		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: $5, Check: true, Apply: true}
+		$$ = &RedistributeKeyRange{
+			KeyRangeID: $2.KeyRangeID,
+			DestShardID: $4,
+			BatchSize: $5,
+			Check: true,
+			Apply: true,
+		}
 	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size CHECK {
-		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: $5, Check: true}
+		$$ = &RedistributeKeyRange{
+			KeyRangeID: $2.KeyRangeID,
+			DestShardID: $4,
+			BatchSize: $5,
+			Check: true,
+		}
 	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size APPLY {
-		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: $5, Apply: true}
+		$$ = &RedistributeKeyRange{
+			KeyRangeID: $2.KeyRangeID,
+			DestShardID: $4,
+			BatchSize: $5,
+			Check: true,
+			Apply: true,
+		}
+	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size NOWAIT {
+		$$ = &RedistributeKeyRange{
+			KeyRangeID: $2.KeyRangeID,
+			DestShardID: $4,
+			BatchSize: $5,
+			Check: true, /* or false, doesnt matter */
+			NoWait: true,
+		}
 	}
 
 opt_batch_size: BATCH SIZE any_uint			{ $$ = int($3) }

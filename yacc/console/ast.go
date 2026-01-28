@@ -154,6 +154,7 @@ type RedistributeKeyRange struct {
 	BatchSize   int
 	Check       bool
 	Apply       bool
+	NoWait      bool
 }
 
 type KeyRangeSelector struct {
