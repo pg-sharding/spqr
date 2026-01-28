@@ -20,9 +20,10 @@ SHOW key_ranges WHERE distribution_id = 'ds1';
 
 SHOW key_ranges WHERE shard_id = 'sh3';
 
-SHOW key_ranges_extended;
+-- order by for output stability which is otherwise not guaranteed.
+SHOW key_ranges_extended ORDER BY key_range_id;
 
-SHOW key_ranges_extended WHERE distribution_id = 'ds1';
+SHOW key_ranges_extended WHERE distribution_id = 'ds1' ORDER BY key_range_id;
 
 SHOW key_ranges_extended ORDER BY "lower_bound" ASC;
 
