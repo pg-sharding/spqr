@@ -108,60 +108,62 @@ func KeyRangeVirtualRelationScanExtended(
 		coverage := "100.00%"
 
 		dist, ok := distMap[keyRange.Distribution]
-		if ok && len(dist.ColTypes) > 0 {
-			distKrs := distToKrs[keyRange.Distribution]
+		if !ok {
+			return nil,
+				fmt.Errorf("could not find distribution %s for key range %v", keyRange.Distribution, keyRange.ID)
+		}
 
-			var nextKr *kr.KeyRange
-			for i, kr := range distKrs {
-				if kr.ID == keyRange.ID && i < len(distKrs)-1 {
-					nextKr = distKrs[i+1]
-					break
-				}
-			}
+		distKrs := distToKrs[keyRange.Distribution]
 
-			if nextKr != nil {
-				// Not the last key range
-				upperBound = strings.Join(nextKr.SendRaw(), ",")
-				coverage = calculateCoverage(
-					keyRange.LowerBound[0],
-					nextKr.LowerBound[0],
-					dist.ColTypes[0],
-				)
-			} else {
-				// Last key range - calculate coverage to max value
-				var maxValue interface{}
-				switch dist.ColTypes[0] {
-				case qdb.ColumnTypeInteger:
-					maxValue = int64(math.MaxInt64)
-				case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed:
-					maxValue = uint64(math.MaxUint64)
-				case qdb.ColumnTypeUUID:
-					maxValue = "ffffffff-ffff-ffff-ffff-ffffffffffff"
-				default:
-					// For varchar, coverage is meaningless
-					coverage = "N/A"
-					maxValue = nil
-				}
-
-				if maxValue != nil {
-					coverage = calculateCoverage(
-						keyRange.LowerBound[0],
-						maxValue,
-						dist.ColTypes[0],
-					)
-				}
+		/* TODO: Fix this AI mess  */
+		var nextKr *kr.KeyRange
+		for i, kr := range distKrs {
+			if kr.ID == keyRange.ID && i < len(distKrs)-1 {
+				nextKr = distKrs[i+1]
+				break
 			}
 		}
 
-		tts.Raw = append(tts.Raw, [][]byte{
-			[]byte(keyRange.ID),
-			[]byte(keyRange.ShardID),
-			[]byte(keyRange.Distribution),
-			[]byte(strings.Join(keyRange.SendRaw(), ",")),
-			[]byte(upperBound),
-			[]byte(coverage),
-			[]byte(isLocked),
-		})
+		var maxValue interface{}
+		if nextKr != nil {
+			maxValue = nextKr.LowerBound[0]
+		} else {
+			// Last key range - calculate coverage to max value
+
+			switch dist.ColTypes[0] {
+			case qdb.ColumnTypeInteger:
+				maxValue = int64(math.MaxInt64)
+			case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed:
+				maxValue = uint64(math.MaxUint64)
+			case qdb.ColumnTypeUUID:
+				maxValue = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+			default:
+				// For varchar, coverage is meaningless
+				coverage = "N/A"
+				maxValue = nil
+			}
+		}
+
+		if maxValue != nil {
+			/* TODO: multicolumn support? */
+			coverage = calculateCoverage(
+				keyRange.LowerBound[0],
+				maxValue,
+				dist.ColTypes[0],
+			)
+		} else {
+			coverage = "N/A"
+		}
+
+		tts.WriteDataRow(
+			keyRange.ID,
+			keyRange.ShardID,
+			keyRange.Distribution,
+			strings.Join(keyRange.SendRaw(), ","),
+			upperBound,
+			coverage,
+			isLocked,
+		)
 	}
 
 	return tts, nil
