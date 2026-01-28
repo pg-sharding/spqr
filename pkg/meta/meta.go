@@ -1699,6 +1699,7 @@ func processRedistribute(ctx context.Context,
 		BatchSize: stmt.BatchSize,
 		Check:     stmt.Check,
 		Apply:     stmt.Apply,
+		NoWait:    stmt.NoWait,
 	}); err != nil {
 		return nil, err
 	}

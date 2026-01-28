@@ -1034,6 +1034,7 @@ type RedistributeKeyRangeRequest struct {
 	BatchSize     int64                  `protobuf:"varint,3,opt,name=batchSize,proto3" json:"batchSize,omitempty"`
 	Check         bool                   `protobuf:"varint,4,opt,name=check,proto3" json:"check,omitempty"`
 	Apply         bool                   `protobuf:"varint,5,opt,name=apply,proto3" json:"apply,omitempty"`
+	NoWait        bool                   `protobuf:"varint,6,opt,name=noWait,proto3" json:"noWait,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1099,6 +1100,13 @@ func (x *RedistributeKeyRangeRequest) GetCheck() bool {
 func (x *RedistributeKeyRangeRequest) GetApply() bool {
 	if x != nil {
 		return x.Apply
+	}
+	return false
+}
+
+func (x *RedistributeKeyRangeRequest) GetNoWait() bool {
+	if x != nil {
+		return x.NoWait
 	}
 	return false
 }
@@ -1212,13 +1220,14 @@ const file_protos_key_range_proto_rawDesc = "" +
 	"\tlimitType\x18\x04 \x01(\x0e2\x1b.spqr.RedistributeLimitTypeR\tlimitType\x12\x14\n" +
 	"\x05limit\x18\x05 \x01(\x03R\x05limit\x12\x1c\n" +
 	"\tbatchSize\x18\x06 \x01(\x03R\tbatchSize\x12-\n" +
-	"\tsplitType\x18\a \x01(\x0e2\x0f.spqr.SplitTypeR\tsplitType\"\x91\x01\n" +
+	"\tsplitType\x18\a \x01(\x0e2\x0f.spqr.SplitTypeR\tsplitType\"\xa9\x01\n" +
 	"\x1bRedistributeKeyRangeRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\ashardId\x18\x02 \x01(\tR\ashardId\x12\x1c\n" +
 	"\tbatchSize\x18\x03 \x01(\x03R\tbatchSize\x12\x14\n" +
 	"\x05check\x18\x04 \x01(\bR\x05check\x12\x14\n" +
-	"\x05apply\x18\x05 \x01(\bR\x05apply\"]\n" +
+	"\x05apply\x18\x05 \x01(\bR\x05apply\x12\x16\n" +
+	"\x06noWait\x18\x06 \x01(\bR\x06noWait\"]\n" +
 	"\x15RenameKeyRangeRequest\x12\x1e\n" +
 	"\n" +
 	"keyRangeId\x18\x01 \x01(\tR\n" +

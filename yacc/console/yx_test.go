@@ -425,6 +425,17 @@ func TestRedistribute(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: "REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 500 NOWAIT",
+			exp: &spqrparser.RedistributeKeyRange{
+				KeyRangeID:  "kr1",
+				DestShardID: "sh2",
+				BatchSize:   500,
+				Check:       true,
+				NoWait:      true,
+			},
+			err: nil,
+		},
+		{
 			query: "REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE -1",
 			exp:   nil,
 			err:   fmt.Errorf("syntax error"),

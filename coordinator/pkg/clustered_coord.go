@@ -1804,7 +1804,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 	if req.BatchSize <= 0 {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "incorrect batch size %d", req.BatchSize)
 	}
-	if req.Check {
+	if req.Check || req.NoWait {
 		if err := qc.checkKeyRangeMove(ctx, &kr.BatchMoveKeyRange{
 			KrId:      req.KrId,
 			ShardId:   req.ShardId,
@@ -1816,11 +1816,29 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 			return err
 		}
 	}
-	if !req.Apply {
+
+	/* No more left to do. */
+	if req.Check {
 		return nil
 	}
-	ch := make(chan error)
+
+	/* Apply or apply nowait */
 	execCtx := context.TODO()
+
+	/* Should we wait for the completion? */
+	if req.NoWait {
+		go qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
+			KrId:      req.KrId,
+			ShardId:   req.ShardId,
+			BatchSize: req.BatchSize,
+			TempKrId:  uuid.NewString(),
+			State:     tasks.RedistributeTaskPlanned,
+		})
+
+		return nil
+	}
+
+	ch := make(chan error)
 	go func() {
 		ch <- qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
 			KrId:      req.KrId,
