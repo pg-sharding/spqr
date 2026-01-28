@@ -386,7 +386,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyInitialStackSize = 16
 
-//line gram.y:1496
+//line gram.y:1495
 
 //line yacctab:1
 var yyExca = [...]int16{
@@ -2342,13 +2342,12 @@ yydefault:
 				KeyRangeID:  yyDollar[2].key_range_selector.KeyRangeID,
 				DestShardID: yyDollar[4].str,
 				BatchSize:   yyDollar[5].integer,
-				Check:       true,
-				Apply:       true, /* or false, doesnt matter */
+				Apply:       true,
 			}
 		}
 	case 187:
 		yyDollar = yyS[yypt-6 : yypt+1]
-//line gram.y:1318
+//line gram.y:1317
 		{
 			yyVAL.redistribute = &RedistributeKeyRange{
 				KeyRangeID:  yyDollar[2].key_range_selector.KeyRangeID,
@@ -2359,7 +2358,7 @@ yydefault:
 		}
 	case 188:
 		yyDollar = yyS[yypt-6 : yypt+1]
-//line gram.y:1325
+//line gram.y:1324
 		{
 			yyVAL.redistribute = &RedistributeKeyRange{
 				KeyRangeID:  yyDollar[2].key_range_selector.KeyRangeID,
@@ -2370,49 +2369,49 @@ yydefault:
 		}
 	case 189:
 		yyDollar = yyS[yypt-6 : yypt+1]
-//line gram.y:1332
+//line gram.y:1331
 		{
 			yyVAL.redistribute = &RedistributeKeyRange{
 				KeyRangeID:  yyDollar[2].key_range_selector.KeyRangeID,
 				DestShardID: yyDollar[4].str,
 				BatchSize:   yyDollar[5].integer,
-				Check:       true,
+				Check:       true, /* or false, doesnt matter */
 				NoWait:      true,
 			}
 		}
 	case 190:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:1342
+//line gram.y:1341
 		{
 			yyVAL.integer = int(yyDollar[3].uinteger)
 		}
 	case 191:
 		yyDollar = yyS[yypt-0 : yypt+1]
-//line gram.y:1343
+//line gram.y:1342
 		{
 			yyVAL.integer = -1
 		}
 	case 192:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line gram.y:1347
+//line gram.y:1346
 		{
 			yyVAL.unite = &UniteKeyRange{KeyRangeIDL: yyDollar[2].key_range_selector.KeyRangeID, KeyRangeIDR: yyDollar[4].str}
 		}
 	case 193:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:1353
+//line gram.y:1352
 		{
 			yyVAL.listen = &Listen{addr: yyDollar[2].str}
 		}
 	case 194:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:1359
+//line gram.y:1358
 		{
 			yyVAL.shutdown = &Shutdown{}
 		}
 	case 195:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:1365
+//line gram.y:1364
 		{
 			yyVAL.invalidate = &Invalidate{
 				Target: SchemaCacheInvalidateTarget,
@@ -2420,7 +2419,7 @@ yydefault:
 		}
 	case 196:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:1370
+//line gram.y:1369
 		{
 			yyVAL.invalidate = &Invalidate{
 				Target: SchemaCacheInvalidateTarget,
@@ -2428,7 +2427,7 @@ yydefault:
 		}
 	case 197:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:1375
+//line gram.y:1374
 		{
 			yyVAL.invalidate = &Invalidate{
 				Target: BackendConnectionsInvalidateTarget,
@@ -2436,7 +2435,7 @@ yydefault:
 		}
 	case 198:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:1380
+//line gram.y:1379
 		{
 			yyVAL.invalidate = &Invalidate{
 				Target: StaleClientsInvalidateTarget,
@@ -2444,7 +2443,7 @@ yydefault:
 		}
 	case 199:
 		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:1388
+//line gram.y:1387
 		{
 			yyVAL.sync_reference_tables = &SyncReferenceTables{
 				ShardID:          yyDollar[5].str,
@@ -2453,7 +2452,7 @@ yydefault:
 		}
 	case 200:
 		yyDollar = yyS[yypt-6 : yypt+1]
-//line gram.y:1394
+//line gram.y:1393
 		{
 			yyVAL.sync_reference_tables = &SyncReferenceTables{
 				ShardID:          yyDollar[6].str,
@@ -2462,73 +2461,73 @@ yydefault:
 		}
 	case 201:
 		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:1405
+//line gram.y:1404
 		{
 			yyVAL.register_router = &RegisterRouter{ID: yyDollar[3].str, Addr: yyDollar[5].str}
 		}
 	case 202:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:1411
+//line gram.y:1410
 		{
 			yyVAL.unregister_router = &UnregisterRouter{ID: yyDollar[3].str}
 		}
 	case 203:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:1416
+//line gram.y:1415
 		{
 			yyVAL.unregister_router = &UnregisterRouter{ID: `*`}
 		}
 	case 204:
 		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:1424
+//line gram.y:1423
 		{
 			yyVAL.retryMoveTaskGroup = &RetryMoveTaskGroup{ID: yyDollar[5].str}
 		}
 	case 205:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line gram.y:1429
+//line gram.y:1428
 		{
 			yyVAL.retryMoveTaskGroup = &RetryMoveTaskGroup{ID: yyDollar[4].str}
 		}
 	case 206:
 		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:1436
+//line gram.y:1435
 		{
 			yyVAL.stopMoveTaskGroup = &StopMoveTaskGroup{ID: yyDollar[5].str}
 		}
 	case 207:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line gram.y:1441
+//line gram.y:1440
 		{
 			yyVAL.stopMoveTaskGroup = &StopMoveTaskGroup{ID: yyDollar[4].str}
 		}
 	case 208:
 		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:1446
+//line gram.y:1445
 		{
 			yyVAL.stopMoveTaskGroup = &StopMoveTaskGroup{ID: "*"}
 		}
 	case 209:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line gram.y:1451
+//line gram.y:1450
 		{
 			yyVAL.stopMoveTaskGroup = &StopMoveTaskGroup{ID: "*"}
 		}
 	case 210:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:1459
+//line gram.y:1458
 		{
 			yyVAL.duration = time.Duration(time.Duration(yyDollar[1].uinteger) * time.Second)
 		}
 	case 211:
 		yyDollar = yyS[yypt-0 : yypt+1]
-//line gram.y:1461
+//line gram.y:1460
 		{
 			yyVAL.duration = time.Duration(1 * time.Minute)
 		}
 	case 212:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:1466
+//line gram.y:1465
 		{
 			yyVAL.icpAction = &ICPointAction{
 				Act:     "sleep",
@@ -2537,7 +2536,7 @@ yydefault:
 		}
 	case 213:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:1471
+//line gram.y:1470
 		{
 			yyVAL.icpAction = &ICPointAction{
 				Act: "panic",
@@ -2545,7 +2544,7 @@ yydefault:
 		}
 	case 214:
 		yyDollar = yyS[yypt-0 : yypt+1]
-//line gram.y:1475
+//line gram.y:1474
 		{
 			yyVAL.icpAction = &ICPointAction{
 				Act: "panic",
@@ -2553,7 +2552,7 @@ yydefault:
 		}
 	case 215:
 		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:1482
+//line gram.y:1481
 		{
 			yyVAL.icp = &InstanceControlPoint{
 				Name:   string(yyDollar[4].str),
@@ -2563,7 +2562,7 @@ yydefault:
 		}
 	case 216:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line gram.y:1489
+//line gram.y:1488
 		{
 			yyVAL.icp = &InstanceControlPoint{
 				Name:   string(yyDollar[4].str),

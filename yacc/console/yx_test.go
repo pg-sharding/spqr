@@ -414,6 +414,17 @@ func TestRedistribute(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query: "REDISTRIBUTE KEY RANGE kr1 TO sh2",
+			exp: &spqrparser.RedistributeKeyRange{
+				KeyRangeID:  "kr1",
+				DestShardID: "sh2",
+				BatchSize:   500,
+				Apply:       true,
+			},
+			err: nil,
+		},
+
+		{
 			query: "REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 500",
 			exp: &spqrparser.RedistributeKeyRange{
 				KeyRangeID:  "kr1",

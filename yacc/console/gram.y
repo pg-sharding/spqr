@@ -1312,8 +1312,7 @@ redistribute_stmt:
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
 			BatchSize: $5,
-			Check: true,
-			Apply: true, /* or false, doesnt matter */
+			Apply: true,
 		}
 	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size CHECK {
 		$$ = &RedistributeKeyRange{
@@ -1334,7 +1333,7 @@ redistribute_stmt:
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
 			BatchSize: $5,
-			Check: true,
+			Check: true, /* or false, doesnt matter */
 			NoWait: true,
 		}
 	}
