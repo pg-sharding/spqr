@@ -73,7 +73,7 @@ func KeyRangeVirtualRelationScanExtended(
 	locks []string,
 	dists []*distributions.Distribution) (*tupleslot.TupleTableSlot, error) {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "upper_bound", "coverage", "locked"),
+		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "next_lower_bound", "coverage", "locked"),
 	}
 
 	lockMap := make(map[string]string, len(locks))
@@ -104,9 +104,6 @@ func KeyRangeVirtualRelationScanExtended(
 			isLocked = lockState
 		}
 
-		upperBound := "+inf"
-		coverage := "100.00%"
-
 		dist, ok := distMap[keyRange.Distribution]
 		if !ok {
 			return nil,
@@ -124,9 +121,13 @@ func KeyRangeVirtualRelationScanExtended(
 			}
 		}
 
+		next_lower_bound := "+inf"
+
 		var maxValue interface{}
 		if nextKr != nil {
 			maxValue = nextKr.LowerBound[0]
+
+			next_lower_bound = strings.Join(nextKr.SendRaw(), ",")
 		} else {
 			// Last key range - calculate coverage to max value
 
@@ -143,6 +144,7 @@ func KeyRangeVirtualRelationScanExtended(
 			}
 		}
 
+		var coverage string
 		if maxValue != nil {
 			/* TODO: multicolumn support? */
 			coverage = calculateCoverage(
@@ -159,7 +161,7 @@ func KeyRangeVirtualRelationScanExtended(
 			keyRange.ShardID,
 			keyRange.Distribution,
 			strings.Join(keyRange.SendRaw(), ","),
-			upperBound,
+			next_lower_bound,
 			coverage,
 			isLocked,
 		)
