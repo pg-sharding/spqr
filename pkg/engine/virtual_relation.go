@@ -38,7 +38,9 @@ func GetVPHeader(stmts ...string) []pgproto3.FieldDescription {
 	return desc
 }
 
-func KeyRangeVirtualRelationScan(krs []*kr.KeyRange, locks []string) *tupleslot.TupleTableSlot {
+func KeyRangeVirtualRelationScan(
+	krs []*kr.KeyRange,
+	locks []string) *tupleslot.TupleTableSlot {
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "locked"),
 	}
@@ -66,7 +68,10 @@ func KeyRangeVirtualRelationScan(krs []*kr.KeyRange, locks []string) *tupleslot.
 	return tts
 }
 
-func KeyRangeVirtualRelationScanExtended(krs []*kr.KeyRange, locks []string, distMap map[string]*distributions.Distribution) *tupleslot.TupleTableSlot {
+func KeyRangeVirtualRelationScanExtended(
+	krs []*kr.KeyRange,
+	locks []string,
+	dists []*distributions.Distribution) (*tupleslot.TupleTableSlot, error) {
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "upper_bound", "coverage", "locked"),
 	}
@@ -76,23 +81,21 @@ func KeyRangeVirtualRelationScanExtended(krs []*kr.KeyRange, locks []string, dis
 		lockMap[idKeyRange] = "true"
 	}
 
+	// Build distribution map for lookup
+	distMap := make(map[string]*distributions.Distribution)
+	for _, d := range dists {
+		distMap[d.Id] = d
+		if len(d.ColTypes) == 0 {
+			return nil, fmt.Errorf("malformed distribution %v", d.Id)
+		}
+	}
+
 	distToKrs := make(map[string][]*kr.KeyRange)
 	for _, keyRange := range krs {
 		distToKrs[keyRange.Distribution] = append(distToKrs[keyRange.Distribution], keyRange)
-	}
-
-	for distID, distKrs := range distToKrs {
-		dist, ok := distMap[distID]
-		if !ok {
-			continue
+		if len(keyRange.LowerBound) == 0 {
+			return nil, fmt.Errorf("malformed key range %v", keyRange.ID)
 		}
-		colTypes := dist.ColTypes
-
-		sort.Slice(distKrs, func(i, j int) bool {
-			return kr.CmpRangesLess(distKrs[i].LowerBound, distKrs[j].LowerBound, colTypes)
-		})
-
-		distToKrs[distID] = distKrs
 	}
 
 	for _, keyRange := range krs {
@@ -105,7 +108,7 @@ func KeyRangeVirtualRelationScanExtended(krs []*kr.KeyRange, locks []string, dis
 		coverage := "100.00%"
 
 		dist, ok := distMap[keyRange.Distribution]
-		if ok && len(dist.ColTypes) > 0 && len(keyRange.LowerBound) > 0 {
+		if ok && len(dist.ColTypes) > 0 {
 			distKrs := distToKrs[keyRange.Distribution]
 
 			var nextKr *kr.KeyRange
@@ -116,7 +119,7 @@ func KeyRangeVirtualRelationScanExtended(krs []*kr.KeyRange, locks []string, dis
 				}
 			}
 
-			if nextKr != nil && len(nextKr.LowerBound) > 0 {
+			if nextKr != nil {
 				// Not the last key range
 				upperBound = strings.Join(nextKr.SendRaw(), ",")
 				coverage = calculateCoverage(
@@ -161,7 +164,7 @@ func KeyRangeVirtualRelationScanExtended(krs []*kr.KeyRange, locks []string, dis
 		})
 	}
 
-	return tts
+	return tts, nil
 }
 
 func calculateCoverage(lowerBound, upperBound interface{}, colType string) string {

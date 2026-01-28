@@ -1248,22 +1248,23 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+
 		locksKr, err := mngr.ListKeyRangeLocks(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		// Fetch distributions for column types and upper bounds
+		// Fetch distributions for column types.
 		dists, err := mngr.ListDistributions(ctx)
 		if err != nil {
 			return nil, err
 		}
-		// Build distribution map for lookup
-		distMap := make(map[string]*distributions.Distribution)
-		for _, d := range dists {
-			distMap[d.Id] = d
+
+		tts, err = engine.KeyRangeVirtualRelationScanExtended(
+			ranges, locksKr, dists)
+		if err != nil {
+			return nil, err
 		}
-		tts = engine.KeyRangeVirtualRelationScanExtended(ranges, locksKr, distMap)
 	case spqrparser.InstanceStr:
 		tts = engine.InstanceVirtualRelationScan(ctx, ci)
 
