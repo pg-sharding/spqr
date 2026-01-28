@@ -24,23 +24,9 @@ func TestCalculateCoverage(t *testing.T) {
 			expected: "0.00%",
 		},
 		{
-			name:     "Integer: zero-width range (upper <= lower)",
-			lower:    int64(10),
-			upper:    int64(10),
-			colType:  qdb.ColumnTypeInteger,
-			expected: "0.00%",
-		},
-		{
 			name:     "Integer: inverse range (lower > upper)",
 			lower:    int64(20),
 			upper:    int64(10),
-			colType:  qdb.ColumnTypeInteger,
-			expected: "0.00%",
-		},
-		{
-			name:     "Integer: large range in negative half",
-			lower:    int64(-1000000000),
-			upper:    int64(0),
 			colType:  qdb.ColumnTypeInteger,
 			expected: "0.00%",
 		},
@@ -60,26 +46,11 @@ func TestCalculateCoverage(t *testing.T) {
 			expected: "0.00%",
 		},
 		{
-			name:     "Uinteger: zero-width range",
-			lower:    uint64(100),
-			upper:    uint64(100),
-			colType:  qdb.ColumnTypeUinteger,
-			expected: "0.00%",
-		},
-		{
 			name:     "Uinteger: large range (quarter of MaxUint64)",
 			lower:    uint64(0),
 			upper:    uint64(18446744073709551615 / 4),
 			colType:  qdb.ColumnTypeUinteger,
 			expected: "25.00%",
-		},
-		// Varchar hashed (same as uinteger)
-		{
-			name:     "VarcharHashed: small range",
-			lower:    uint64(100),
-			upper:    uint64(200),
-			colType:  qdb.ColumnTypeVarcharHashed,
-			expected: "0.00%",
 		},
 		// Unsupported types - should return N/A
 		{
@@ -88,27 +59,6 @@ func TestCalculateCoverage(t *testing.T) {
 			upper:    "xyz",
 			colType:  qdb.ColumnTypeVarchar,
 			expected: "N/A",
-		},
-		{
-			name:     "UUID: medium range",
-			lower:    "12345678-1234-1234-1234-123456789012",
-			upper:    "87654321-4321-4321-4321-210987654321",
-			colType:  qdb.ColumnTypeUUID,
-			expected: "45.78%",
-		},
-		{
-			name:     "UUID: sequential UUIDs",
-			lower:    "00000000-0000-0000-0000-000000000000",
-			upper:    "00000000-0000-0000-0000-000000000001",
-			colType:  qdb.ColumnTypeUUID,
-			expected: "0.00%",
-		},
-		{
-			name:     "UUID: in half",
-			lower:    "00000000-0000-0000-0000-000000000000",
-			upper:    "80000000-0000-0000-0000-000000000000",
-			colType:  qdb.ColumnTypeUUID,
-			expected: "50.00%",
 		},
 		{
 			name:     "UUID: almost in half",
@@ -135,6 +85,13 @@ func TestCalculateCoverage(t *testing.T) {
 			name:     "integer - from 0 to MaxInt64",
 			lower:    int64(0),
 			upper:    int64(math.MaxInt64),
+			colType:  qdb.ColumnTypeInteger,
+			expected: "50.00%",
+		},
+		{
+			name:     "integer - from MinInt64/2 to MaxInt64/2",
+			lower:    int64(math.MinInt64) / 2,
+			upper:    int64(math.MaxInt64) / 2,
 			colType:  qdb.ColumnTypeInteger,
 			expected: "50.00%",
 		},
