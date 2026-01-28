@@ -1808,7 +1808,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "incorrect batch size %d", req.BatchSize)
 	}
 
-	if req.Check || req.NoWait {
+	if req.Check {
 		if err := qc.checkKeyRangeMove(ctx, &kr.BatchMoveKeyRange{
 			KrId:      req.KrId,
 			ShardId:   req.ShardId,
@@ -1819,11 +1819,6 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		}); err != nil {
 			return err
 		}
-	}
-
-	/* No more left to do. */
-	if req.Check {
-		return nil
 	}
 
 	/* Apply or apply nowait */

@@ -1312,6 +1312,7 @@ redistribute_stmt:
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
 			BatchSize: $5,
+			Check: true,
 			Apply: true,
 		}
 	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size CHECK {
@@ -1326,6 +1327,7 @@ redistribute_stmt:
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
 			BatchSize: $5,
+			Check: true,
 			Apply: true,
 		}
 	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size NOWAIT {

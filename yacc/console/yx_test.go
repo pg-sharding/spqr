@@ -418,7 +418,8 @@ func TestRedistribute(t *testing.T) {
 			exp: &spqrparser.RedistributeKeyRange{
 				KeyRangeID:  "kr1",
 				DestShardID: "sh2",
-				BatchSize:   500,
+				BatchSize:   -1,
+				Check:       true,
 				Apply:       true,
 			},
 			err: nil,
@@ -479,7 +480,7 @@ func TestRedistribute(t *testing.T) {
 				KeyRangeID:  "kr1",
 				DestShardID: "sh2",
 				BatchSize:   -1,
-				Check:       false,
+				Check:       true,
 				Apply:       true,
 			},
 			err: nil,
