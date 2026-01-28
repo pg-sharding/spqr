@@ -103,9 +103,9 @@ SHOW key_ranges_extended;
  key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage | locked 
 --------------+----------+-----------------+-------------+-------------+----------+--------
  krid1        | sh1      | ds1             | 30          | 40          | 0.00%    | false
- krid2        | sh1      | ds1             | 40          | +inf        | 100.00%  | false
+ krid2        | sh1      | ds1             | 40          | +inf        | 50.00%   | false
  krid21       | sh1      | ds2             | 1           | 11          | 0.00%    | false
- krid22       | sh1      | ds2             | 11          | +inf        | 100.00%  | false
+ krid22       | sh1      | ds2             | 11          | +inf        | 50.00%   | false
  krid3        | sh4      | ds1             | 10          | 20          | 0.00%    | false
  krid4        | sh3      | ds1             | 20          | 30          | 0.00%    | false
 (6 rows)
@@ -114,7 +114,7 @@ SHOW key_ranges_extended WHERE distribution_id = 'ds1';
  key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage | locked 
 --------------+----------+-----------------+-------------+-------------+----------+--------
  krid1        | sh1      | ds1             | 30          | 40          | 0.00%    | false
- krid2        | sh1      | ds1             | 40          | +inf        | 100.00%  | false
+ krid2        | sh1      | ds1             | 40          | +inf        | 50.00%   | false
  krid3        | sh4      | ds1             | 10          | 20          | 0.00%    | false
  krid4        | sh3      | ds1             | 20          | 30          | 0.00%    | false
 (4 rows)
@@ -124,10 +124,10 @@ SHOW key_ranges_extended ORDER BY "lower_bound" ASC;
 --------------+----------+-----------------+-------------+-------------+----------+--------
  krid21       | sh1      | ds2             | 1           | 11          | 0.00%    | false
  krid3        | sh4      | ds1             | 10          | 20          | 0.00%    | false
- krid22       | sh1      | ds2             | 11          | +inf        | 100.00%  | false
+ krid22       | sh1      | ds2             | 11          | +inf        | 50.00%   | false
  krid4        | sh3      | ds1             | 20          | 30          | 0.00%    | false
  krid1        | sh1      | ds1             | 30          | 40          | 0.00%    | false
- krid2        | sh1      | ds1             | 40          | +inf        | 100.00%  | false
+ krid2        | sh1      | ds1             | 40          | +inf        | 50.00%   | false
 (6 rows)
 
 CREATE DISTRIBUTION ds3 COLUMN TYPES integer;
@@ -208,7 +208,7 @@ SHOW key_ranges_extended WHERE distribution_id = 'ds3';
  krid3_6      | sh1      | ds3             | 6000000000000000000 | 7000000000000000000 | 5.42%    | false
  krid3_7      | sh1      | ds3             | 7000000000000000000 | 8000000000000000000 | 5.42%    | false
  krid3_8      | sh1      | ds3             | 8000000000000000000 | 9223372036854775807 | 6.63%    | false
- krid3_9      | sh1      | ds3             | 9223372036854775807 | +inf                | 100.00%  | false
+ krid3_9      | sh1      | ds3             | 9223372036854775807 | +inf                | 0.00%    | false
 (10 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
