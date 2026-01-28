@@ -61,4 +61,5 @@ session s3
 step s3_clean             { select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;}
 
 # ok
-permutation s1_report s1_ev2 s1_i s1_s s1_begin s1_u s1_commit s2_redistribute s1_spqr_ctid s3_clean
+permutation s1_report s1_ev2 s1_i s1_s s1_begin s1_u s2_redistribute s1_commit  s1_spqr_ctid s3_clean
+#permutation s1_report s1_ev2 s1_i s1_s s1_begin s1_u s1_commit s2_redistribute s1_spqr_ctid s3_clean
