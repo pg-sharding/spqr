@@ -100,35 +100,35 @@ SHOW key_ranges WHERE shard_id = 'sh3';
 (1 row)
 
 -- order by for output stability which is otherwise not guaranteed.
-SHOW key_ranges_extended ORDER BY key_range_id;;
- key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage | locked 
---------------+----------+-----------------+-------------+-------------+----------+--------
- krid1        | sh1      | ds1             | 30          | 40          | 0.00%    | false
- krid2        | sh1      | ds1             | 40          | +inf        | 50.00%   | false
- krid21       | sh1      | ds2             | 1           | 11          | 0.00%    | false
- krid22       | sh1      | ds2             | 11          | +inf        | 50.00%   | false
- krid3        | sh4      | ds1             | 10          | 20          | 0.00%    | false
- krid4        | sh3      | ds1             | 20          | 30          | 0.00%    | false
+SHOW key_ranges_extended ORDER BY key_range_id;
+ key_range_id | shard_id | distribution_id | lower_bound | next_lower_bound | coverage | locked 
+--------------+----------+-----------------+-------------+------------------+----------+--------
+ krid1        | sh1      | ds1             | 30          | 40               | 0.00%    | false
+ krid2        | sh1      | ds1             | 40          | 10               | 0.00%    | false
+ krid21       | sh1      | ds2             | 1           | 11               | 0.00%    | false
+ krid22       | sh1      | ds2             | 11          | +inf             | 50.00%   | false
+ krid3        | sh4      | ds1             | 10          | 20               | 0.00%    | false
+ krid4        | sh3      | ds1             | 20          | +inf             | 50.00%   | false
 (6 rows)
 
-SHOW key_ranges_extended WHERE distribution_id = 'ds1' ORDER BY key_range_id;;
- key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage | locked 
---------------+----------+-----------------+-------------+-------------+----------+--------
- krid1        | sh1      | ds1             | 30          | 40          | 0.00%    | false
- krid2        | sh1      | ds1             | 40          | +inf        | 50.00%   | false
- krid3        | sh4      | ds1             | 10          | 20          | 0.00%    | false
- krid4        | sh3      | ds1             | 20          | 30          | 0.00%    | false
+SHOW key_ranges_extended WHERE distribution_id = 'ds1' ORDER BY key_range_id;
+ key_range_id | shard_id | distribution_id | lower_bound | next_lower_bound | coverage | locked 
+--------------+----------+-----------------+-------------+------------------+----------+--------
+ krid1        | sh1      | ds1             | 30          | 40               | 0.00%    | false
+ krid2        | sh1      | ds1             | 40          | 10               | 0.00%    | false
+ krid3        | sh4      | ds1             | 10          | 20               | 0.00%    | false
+ krid4        | sh3      | ds1             | 20          | +inf             | 50.00%   | false
 (4 rows)
 
 SHOW key_ranges_extended ORDER BY "lower_bound" ASC;
- key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage | locked 
---------------+----------+-----------------+-------------+-------------+----------+--------
- krid21       | sh1      | ds2             | 1           | 11          | 0.00%    | false
- krid3        | sh4      | ds1             | 10          | 20          | 0.00%    | false
- krid22       | sh1      | ds2             | 11          | +inf        | 50.00%   | false
- krid4        | sh3      | ds1             | 20          | 30          | 0.00%    | false
- krid1        | sh1      | ds1             | 30          | 40          | 0.00%    | false
- krid2        | sh1      | ds1             | 40          | +inf        | 50.00%   | false
+ key_range_id | shard_id | distribution_id | lower_bound | next_lower_bound | coverage | locked 
+--------------+----------+-----------------+-------------+------------------+----------+--------
+ krid21       | sh1      | ds2             | 1           | 11               | 0.00%    | false
+ krid3        | sh4      | ds1             | 10          | 20               | 0.00%    | false
+ krid22       | sh1      | ds2             | 11          | +inf             | 50.00%   | false
+ krid4        | sh3      | ds1             | 20          | +inf             | 50.00%   | false
+ krid1        | sh1      | ds1             | 30          | 40               | 0.00%    | false
+ krid2        | sh1      | ds1             | 40          | 10               | 0.00%    | false
 (6 rows)
 
 CREATE DISTRIBUTION ds3 COLUMN TYPES integer;
@@ -198,7 +198,7 @@ CREATE KEY RANGE krid3_9 FROM 9223372036854775807 ROUTE TO sh1 FOR DISTRIBUTION 
 (1 row)
 
 SHOW key_ranges_extended WHERE distribution_id = 'ds3';
- key_range_id | shard_id | distribution_id |     lower_bound     |     upper_bound     | coverage | locked 
+ key_range_id | shard_id | distribution_id |     lower_bound     |  next_lower_bound   | coverage | locked 
 --------------+----------+-----------------+---------------------+---------------------+----------+--------
  krid3_0      | sh1      | ds3             | 0                   | 1000000000000000000 | 5.42%    | false
  krid3_1      | sh1      | ds3             | 1000000000000000000 | 2000000000000000000 | 5.42%    | false
