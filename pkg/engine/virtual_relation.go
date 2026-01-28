@@ -139,7 +139,6 @@ func KeyRangeVirtualRelationScanExtended(
 				maxValue = "ffffffff-ffff-ffff-ffff-ffffffffffff"
 			default:
 				// For varchar, coverage is meaningless
-				coverage = "N/A"
 				maxValue = nil
 			}
 		}
