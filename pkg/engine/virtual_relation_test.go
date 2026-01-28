@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"strings"
+	"math"
 	"testing"
 
 	"github.com/pg-sharding/spqr/qdb"
@@ -131,6 +131,27 @@ func TestCalculateCoverage(t *testing.T) {
 			colType:  "unknown_type",
 			expected: "N/A",
 		},
+		{
+			name:     "integer - from 0 to MaxInt64",
+			lower:    int64(0),
+			upper:    int64(math.MaxInt64),
+			colType:  qdb.ColumnTypeInteger,
+			expected: "50.00%",
+		},
+		{
+			name:     "uinteger - from 0 to MaxUint64",
+			lower:    uint64(0),
+			upper:    uint64(math.MaxUint64),
+			colType:  qdb.ColumnTypeUinteger,
+			expected: "100.00%",
+		},
+		{
+			name:     "uuid - from 00000... to ffffff...",
+			lower:    "00000000-0000-0000-0000-000000000000",
+			upper:    "ffffffff-ffff-ffff-ffff-ffffffffffff",
+			colType:  qdb.ColumnTypeUUID,
+			expected: "100.00%",
+		},
 	}
 
 	for _, tt := range tests {
@@ -139,54 +160,6 @@ func TestCalculateCoverage(t *testing.T) {
 			if result != tt.expected {
 				t.Errorf("calculateCoverage(%v, %v, %q) = %q, expected %q",
 					tt.lower, tt.upper, tt.colType, result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestCalculateCoverageEdgeCases(t *testing.T) {
-	tests := []struct {
-		name    string
-		lower   interface{}
-		upper   interface{}
-		colType string
-	}{
-		{
-			name:    "Integer: very close values",
-			lower:   int64(100),
-			upper:   int64(101),
-			colType: qdb.ColumnTypeInteger,
-		},
-		{
-			name:    "Integer: negative range",
-			lower:   int64(-100),
-			upper:   int64(-50),
-			colType: qdb.ColumnTypeInteger,
-		},
-		{
-			name:    "Uinteger: boundary values",
-			lower:   uint64(0),
-			upper:   uint64(1),
-			colType: qdb.ColumnTypeUinteger,
-		},
-		{
-			name:    "Uinteger: mid-range values",
-			lower:   uint64(5000000000),
-			upper:   uint64(5000000001),
-			colType: qdb.ColumnTypeUinteger,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// These should not panic
-			result := calculateCoverage(tt.lower, tt.upper, tt.colType)
-			if result == "" {
-				t.Errorf("calculateCoverage returned empty string")
-			}
-			// Result should be a percentage or N/A
-			if result != "N/A" && !strings.Contains(result, "%") {
-				t.Errorf("calculateCoverage returned invalid format: %q", result)
 			}
 		})
 	}

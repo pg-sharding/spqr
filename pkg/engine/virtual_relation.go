@@ -68,7 +68,7 @@ func KeyRangeVirtualRelationScan(krs []*kr.KeyRange, locks []string) *tupleslot.
 
 func KeyRangeVirtualRelationScanExtended(krs []*kr.KeyRange, locks []string, distMap map[string]*distributions.Distribution) *tupleslot.TupleTableSlot {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "upper_bound", "coverage_percentage", "locked"),
+		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "upper_bound", "coverage", "locked"),
 	}
 
 	lockMap := make(map[string]string, len(locks))
@@ -105,7 +105,7 @@ func KeyRangeVirtualRelationScanExtended(krs []*kr.KeyRange, locks []string, dis
 		coverage := "100.00%"
 
 		dist, ok := distMap[keyRange.Distribution]
-		if ok && len(dist.ColTypes) > 0 {
+		if ok && len(dist.ColTypes) > 0 && len(keyRange.LowerBound) > 0 {
 			distKrs := distToKrs[keyRange.Distribution]
 
 			var nextKr *kr.KeyRange
@@ -116,13 +116,37 @@ func KeyRangeVirtualRelationScanExtended(krs []*kr.KeyRange, locks []string, dis
 				}
 			}
 
-			if nextKr != nil && len(keyRange.LowerBound) > 0 && len(nextKr.LowerBound) > 0 {
+			if nextKr != nil && len(nextKr.LowerBound) > 0 {
+				// Not the last key range
 				upperBound = strings.Join(nextKr.SendRaw(), ",")
 				coverage = calculateCoverage(
 					keyRange.LowerBound[0],
 					nextKr.LowerBound[0],
 					dist.ColTypes[0],
 				)
+			} else {
+				// Last key range - calculate coverage to max value
+				var maxValue interface{}
+				switch dist.ColTypes[0] {
+				case qdb.ColumnTypeInteger:
+					maxValue = int64(math.MaxInt64)
+				case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed:
+					maxValue = uint64(math.MaxUint64)
+				case qdb.ColumnTypeUUID:
+					maxValue = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+				default:
+					// For varchar, coverage is meaningless
+					coverage = "N/A"
+					maxValue = nil
+				}
+
+				if maxValue != nil {
+					coverage = calculateCoverage(
+						keyRange.LowerBound[0],
+						maxValue,
+						dist.ColTypes[0],
+					)
+				}
 			}
 		}
 

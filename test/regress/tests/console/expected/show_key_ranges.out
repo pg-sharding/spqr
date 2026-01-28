@@ -100,34 +100,34 @@ SHOW key_ranges WHERE shard_id = 'sh3';
 (1 row)
 
 SHOW key_ranges_extended;
- key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage_percentage | locked 
---------------+----------+-----------------+-------------+-------------+---------------------+--------
- krid1        | sh1      | ds1             | 30          | 40          | 0.00%               | false
- krid2        | sh1      | ds1             | 40          | +inf        | 100.00%             | false
- krid21       | sh1      | ds2             | 1           | 11          | 0.00%               | false
- krid22       | sh1      | ds2             | 11          | +inf        | 100.00%             | false
- krid3        | sh4      | ds1             | 10          | 20          | 0.00%               | false
- krid4        | sh3      | ds1             | 20          | 30          | 0.00%               | false
+ key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage | locked 
+--------------+----------+-----------------+-------------+-------------+----------+--------
+ krid1        | sh1      | ds1             | 30          | 40          | 0.00%    | false
+ krid2        | sh1      | ds1             | 40          | +inf        | 100.00%  | false
+ krid21       | sh1      | ds2             | 1           | 11          | 0.00%    | false
+ krid22       | sh1      | ds2             | 11          | +inf        | 100.00%  | false
+ krid3        | sh4      | ds1             | 10          | 20          | 0.00%    | false
+ krid4        | sh3      | ds1             | 20          | 30          | 0.00%    | false
 (6 rows)
 
 SHOW key_ranges_extended WHERE distribution_id = 'ds1';
- key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage_percentage | locked 
---------------+----------+-----------------+-------------+-------------+---------------------+--------
- krid1        | sh1      | ds1             | 30          | 40          | 0.00%               | false
- krid2        | sh1      | ds1             | 40          | +inf        | 100.00%             | false
- krid3        | sh4      | ds1             | 10          | 20          | 0.00%               | false
- krid4        | sh3      | ds1             | 20          | 30          | 0.00%               | false
+ key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage | locked 
+--------------+----------+-----------------+-------------+-------------+----------+--------
+ krid1        | sh1      | ds1             | 30          | 40          | 0.00%    | false
+ krid2        | sh1      | ds1             | 40          | +inf        | 100.00%  | false
+ krid3        | sh4      | ds1             | 10          | 20          | 0.00%    | false
+ krid4        | sh3      | ds1             | 20          | 30          | 0.00%    | false
 (4 rows)
 
 SHOW key_ranges_extended ORDER BY "lower_bound" ASC;
- key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage_percentage | locked 
---------------+----------+-----------------+-------------+-------------+---------------------+--------
- krid21       | sh1      | ds2             | 1           | 11          | 0.00%               | false
- krid3        | sh4      | ds1             | 10          | 20          | 0.00%               | false
- krid22       | sh1      | ds2             | 11          | +inf        | 100.00%             | false
- krid4        | sh3      | ds1             | 20          | 30          | 0.00%               | false
- krid1        | sh1      | ds1             | 30          | 40          | 0.00%               | false
- krid2        | sh1      | ds1             | 40          | +inf        | 100.00%             | false
+ key_range_id | shard_id | distribution_id | lower_bound | upper_bound | coverage | locked 
+--------------+----------+-----------------+-------------+-------------+----------+--------
+ krid21       | sh1      | ds2             | 1           | 11          | 0.00%    | false
+ krid3        | sh4      | ds1             | 10          | 20          | 0.00%    | false
+ krid22       | sh1      | ds2             | 11          | +inf        | 100.00%  | false
+ krid4        | sh3      | ds1             | 20          | 30          | 0.00%    | false
+ krid1        | sh1      | ds1             | 30          | 40          | 0.00%    | false
+ krid2        | sh1      | ds1             | 40          | +inf        | 100.00%  | false
 (6 rows)
 
 CREATE DISTRIBUTION ds3 COLUMN TYPES integer;
@@ -142,704 +142,74 @@ CREATE KEY RANGE krid3_0 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds3;
  bound -> 0
 (1 row)
 
-CREATE KEY RANGE krid3_1 FROM 10000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-    add key range     
-----------------------
- bound -> 10000000000
+CREATE KEY RANGE krid3_1 FROM 1000000000000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
+        add key range         
+------------------------------
+ bound -> 1000000000000000000
 (1 row)
 
-CREATE KEY RANGE krid3_2 FROM 20000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-    add key range     
-----------------------
- bound -> 20000000000
+CREATE KEY RANGE krid3_2 FROM 2000000000000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
+        add key range         
+------------------------------
+ bound -> 2000000000000000000
 (1 row)
 
-CREATE KEY RANGE krid3_3 FROM 30000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-    add key range     
-----------------------
- bound -> 30000000000
+CREATE KEY RANGE krid3_3 FROM 3000000000000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
+        add key range         
+------------------------------
+ bound -> 3000000000000000000
 (1 row)
 
-CREATE KEY RANGE krid3_4 FROM 40000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-    add key range     
-----------------------
- bound -> 40000000000
+CREATE KEY RANGE krid3_4 FROM 4000000000000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
+        add key range         
+------------------------------
+ bound -> 4000000000000000000
 (1 row)
 
-CREATE KEY RANGE krid3_5 FROM 50000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-    add key range     
-----------------------
- bound -> 50000000000
+CREATE KEY RANGE krid3_5 FROM 5000000000000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
+        add key range         
+------------------------------
+ bound -> 5000000000000000000
 (1 row)
 
-CREATE KEY RANGE krid3_6 FROM 60000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-    add key range     
-----------------------
- bound -> 60000000000
+CREATE KEY RANGE krid3_6 FROM 6000000000000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
+        add key range         
+------------------------------
+ bound -> 6000000000000000000
 (1 row)
 
-CREATE KEY RANGE krid3_7 FROM 70000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-    add key range     
-----------------------
- bound -> 70000000000
+CREATE KEY RANGE krid3_7 FROM 7000000000000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
+        add key range         
+------------------------------
+ bound -> 7000000000000000000
 (1 row)
 
-CREATE KEY RANGE krid3_8 FROM 80000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-    add key range     
-----------------------
- bound -> 80000000000
+CREATE KEY RANGE krid3_8 FROM 8000000000000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
+        add key range         
+------------------------------
+ bound -> 8000000000000000000
 (1 row)
 
-CREATE KEY RANGE krid3_9 FROM 90000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-    add key range     
-----------------------
- bound -> 90000000000
-(1 row)
-
-CREATE KEY RANGE krid3_10 FROM 100000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 100000000000
-(1 row)
-
-CREATE KEY RANGE krid3_11 FROM 110000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 110000000000
-(1 row)
-
-CREATE KEY RANGE krid3_12 FROM 120000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 120000000000
-(1 row)
-
-CREATE KEY RANGE krid3_13 FROM 130000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 130000000000
-(1 row)
-
-CREATE KEY RANGE krid3_14 FROM 140000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 140000000000
-(1 row)
-
-CREATE KEY RANGE krid3_15 FROM 150000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 150000000000
-(1 row)
-
-CREATE KEY RANGE krid3_16 FROM 160000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 160000000000
-(1 row)
-
-CREATE KEY RANGE krid3_17 FROM 170000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 170000000000
-(1 row)
-
-CREATE KEY RANGE krid3_18 FROM 180000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 180000000000
-(1 row)
-
-CREATE KEY RANGE krid3_19 FROM 190000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 190000000000
-(1 row)
-
-CREATE KEY RANGE krid3_20 FROM 200000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 200000000000
-(1 row)
-
-CREATE KEY RANGE krid3_21 FROM 210000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 210000000000
-(1 row)
-
-CREATE KEY RANGE krid3_22 FROM 220000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 220000000000
-(1 row)
-
-CREATE KEY RANGE krid3_23 FROM 230000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 230000000000
-(1 row)
-
-CREATE KEY RANGE krid3_24 FROM 240000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 240000000000
-(1 row)
-
-CREATE KEY RANGE krid3_25 FROM 250000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 250000000000
-(1 row)
-
-CREATE KEY RANGE krid3_26 FROM 260000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 260000000000
-(1 row)
-
-CREATE KEY RANGE krid3_27 FROM 270000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 270000000000
-(1 row)
-
-CREATE KEY RANGE krid3_28 FROM 280000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 280000000000
-(1 row)
-
-CREATE KEY RANGE krid3_29 FROM 290000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 290000000000
-(1 row)
-
-CREATE KEY RANGE krid3_30 FROM 300000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 300000000000
-(1 row)
-
-CREATE KEY RANGE krid3_31 FROM 310000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 310000000000
-(1 row)
-
-CREATE KEY RANGE krid3_32 FROM 320000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 320000000000
-(1 row)
-
-CREATE KEY RANGE krid3_33 FROM 330000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 330000000000
-(1 row)
-
-CREATE KEY RANGE krid3_34 FROM 340000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 340000000000
-(1 row)
-
-CREATE KEY RANGE krid3_35 FROM 350000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 350000000000
-(1 row)
-
-CREATE KEY RANGE krid3_36 FROM 360000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 360000000000
-(1 row)
-
-CREATE KEY RANGE krid3_37 FROM 370000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 370000000000
-(1 row)
-
-CREATE KEY RANGE krid3_38 FROM 380000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 380000000000
-(1 row)
-
-CREATE KEY RANGE krid3_39 FROM 390000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 390000000000
-(1 row)
-
-CREATE KEY RANGE krid3_40 FROM 400000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 400000000000
-(1 row)
-
-CREATE KEY RANGE krid3_41 FROM 410000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 410000000000
-(1 row)
-
-CREATE KEY RANGE krid3_42 FROM 420000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 420000000000
-(1 row)
-
-CREATE KEY RANGE krid3_43 FROM 430000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 430000000000
-(1 row)
-
-CREATE KEY RANGE krid3_44 FROM 440000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 440000000000
-(1 row)
-
-CREATE KEY RANGE krid3_45 FROM 450000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 450000000000
-(1 row)
-
-CREATE KEY RANGE krid3_46 FROM 460000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 460000000000
-(1 row)
-
-CREATE KEY RANGE krid3_47 FROM 470000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 470000000000
-(1 row)
-
-CREATE KEY RANGE krid3_48 FROM 480000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 480000000000
-(1 row)
-
-CREATE KEY RANGE krid3_49 FROM 490000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 490000000000
-(1 row)
-
-CREATE KEY RANGE krid3_50 FROM 500000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 500000000000
-(1 row)
-
-CREATE KEY RANGE krid3_51 FROM 510000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 510000000000
-(1 row)
-
-CREATE KEY RANGE krid3_52 FROM 520000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 520000000000
-(1 row)
-
-CREATE KEY RANGE krid3_53 FROM 530000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 530000000000
-(1 row)
-
-CREATE KEY RANGE krid3_54 FROM 540000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 540000000000
-(1 row)
-
-CREATE KEY RANGE krid3_55 FROM 550000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 550000000000
-(1 row)
-
-CREATE KEY RANGE krid3_56 FROM 560000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 560000000000
-(1 row)
-
-CREATE KEY RANGE krid3_57 FROM 570000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 570000000000
-(1 row)
-
-CREATE KEY RANGE krid3_58 FROM 580000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 580000000000
-(1 row)
-
-CREATE KEY RANGE krid3_59 FROM 590000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 590000000000
-(1 row)
-
-CREATE KEY RANGE krid3_60 FROM 600000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 600000000000
-(1 row)
-
-CREATE KEY RANGE krid3_61 FROM 610000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 610000000000
-(1 row)
-
-CREATE KEY RANGE krid3_62 FROM 620000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 620000000000
-(1 row)
-
-CREATE KEY RANGE krid3_63 FROM 630000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 630000000000
-(1 row)
-
-CREATE KEY RANGE krid3_64 FROM 640000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 640000000000
-(1 row)
-
-CREATE KEY RANGE krid3_65 FROM 650000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 650000000000
-(1 row)
-
-CREATE KEY RANGE krid3_66 FROM 660000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 660000000000
-(1 row)
-
-CREATE KEY RANGE krid3_67 FROM 670000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 670000000000
-(1 row)
-
-CREATE KEY RANGE krid3_68 FROM 680000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 680000000000
-(1 row)
-
-CREATE KEY RANGE krid3_69 FROM 690000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 690000000000
-(1 row)
-
-CREATE KEY RANGE krid3_70 FROM 700000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 700000000000
-(1 row)
-
-CREATE KEY RANGE krid3_71 FROM 710000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 710000000000
-(1 row)
-
-CREATE KEY RANGE krid3_72 FROM 720000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 720000000000
-(1 row)
-
-CREATE KEY RANGE krid3_73 FROM 730000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 730000000000
-(1 row)
-
-CREATE KEY RANGE krid3_74 FROM 740000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 740000000000
-(1 row)
-
-CREATE KEY RANGE krid3_75 FROM 750000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 750000000000
-(1 row)
-
-CREATE KEY RANGE krid3_76 FROM 760000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 760000000000
-(1 row)
-
-CREATE KEY RANGE krid3_77 FROM 770000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 770000000000
-(1 row)
-
-CREATE KEY RANGE krid3_78 FROM 780000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 780000000000
-(1 row)
-
-CREATE KEY RANGE krid3_79 FROM 790000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 790000000000
-(1 row)
-
-CREATE KEY RANGE krid3_80 FROM 800000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 800000000000
-(1 row)
-
-CREATE KEY RANGE krid3_81 FROM 810000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 810000000000
-(1 row)
-
-CREATE KEY RANGE krid3_82 FROM 820000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 820000000000
-(1 row)
-
-CREATE KEY RANGE krid3_83 FROM 830000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 830000000000
-(1 row)
-
-CREATE KEY RANGE krid3_84 FROM 840000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 840000000000
-(1 row)
-
-CREATE KEY RANGE krid3_85 FROM 850000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 850000000000
-(1 row)
-
-CREATE KEY RANGE krid3_86 FROM 860000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 860000000000
-(1 row)
-
-CREATE KEY RANGE krid3_87 FROM 870000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 870000000000
-(1 row)
-
-CREATE KEY RANGE krid3_88 FROM 880000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 880000000000
-(1 row)
-
-CREATE KEY RANGE krid3_89 FROM 890000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 890000000000
-(1 row)
-
-CREATE KEY RANGE krid3_90 FROM 900000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 900000000000
-(1 row)
-
-CREATE KEY RANGE krid3_91 FROM 910000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 910000000000
-(1 row)
-
-CREATE KEY RANGE krid3_92 FROM 920000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 920000000000
-(1 row)
-
-CREATE KEY RANGE krid3_93 FROM 930000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 930000000000
-(1 row)
-
-CREATE KEY RANGE krid3_94 FROM 940000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 940000000000
-(1 row)
-
-CREATE KEY RANGE krid3_95 FROM 950000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 950000000000
-(1 row)
-
-CREATE KEY RANGE krid3_96 FROM 960000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 960000000000
-(1 row)
-
-CREATE KEY RANGE krid3_97 FROM 970000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 970000000000
-(1 row)
-
-CREATE KEY RANGE krid3_98 FROM 980000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 980000000000
-(1 row)
-
-CREATE KEY RANGE krid3_99 FROM 990000000000 ROUTE TO sh1 FOR DISTRIBUTION ds3;
-     add key range     
------------------------
- bound -> 990000000000
+CREATE KEY RANGE krid3_9 FROM 9223372036854775807 ROUTE TO sh1 FOR DISTRIBUTION ds3;
+        add key range         
+------------------------------
+ bound -> 9223372036854775807
 (1 row)
 
 SHOW key_ranges_extended WHERE distribution_id = 'ds3';
- key_range_id | shard_id | distribution_id | lower_bound  | upper_bound  | coverage_percentage | locked 
---------------+----------+-----------------+--------------+--------------+---------------------+--------
- krid3_0      | sh1      | ds3             | 0            | 10000000000  | 0.00%               | false
- krid3_1      | sh1      | ds3             | 10000000000  | 20000000000  | 0.00%               | false
- krid3_10     | sh1      | ds3             | 100000000000 | 110000000000 | 0.00%               | false
- krid3_11     | sh1      | ds3             | 110000000000 | 120000000000 | 0.00%               | false
- krid3_12     | sh1      | ds3             | 120000000000 | 130000000000 | 0.00%               | false
- krid3_13     | sh1      | ds3             | 130000000000 | 140000000000 | 0.00%               | false
- krid3_14     | sh1      | ds3             | 140000000000 | 150000000000 | 0.00%               | false
- krid3_15     | sh1      | ds3             | 150000000000 | 160000000000 | 0.00%               | false
- krid3_16     | sh1      | ds3             | 160000000000 | 170000000000 | 0.00%               | false
- krid3_17     | sh1      | ds3             | 170000000000 | 180000000000 | 0.00%               | false
- krid3_18     | sh1      | ds3             | 180000000000 | 190000000000 | 0.00%               | false
- krid3_19     | sh1      | ds3             | 190000000000 | 200000000000 | 0.00%               | false
- krid3_2      | sh1      | ds3             | 20000000000  | 30000000000  | 0.00%               | false
- krid3_20     | sh1      | ds3             | 200000000000 | 210000000000 | 0.00%               | false
- krid3_21     | sh1      | ds3             | 210000000000 | 220000000000 | 0.00%               | false
- krid3_22     | sh1      | ds3             | 220000000000 | 230000000000 | 0.00%               | false
- krid3_23     | sh1      | ds3             | 230000000000 | 240000000000 | 0.00%               | false
- krid3_24     | sh1      | ds3             | 240000000000 | 250000000000 | 0.00%               | false
- krid3_25     | sh1      | ds3             | 250000000000 | 260000000000 | 0.00%               | false
- krid3_26     | sh1      | ds3             | 260000000000 | 270000000000 | 0.00%               | false
- krid3_27     | sh1      | ds3             | 270000000000 | 280000000000 | 0.00%               | false
- krid3_28     | sh1      | ds3             | 280000000000 | 290000000000 | 0.00%               | false
- krid3_29     | sh1      | ds3             | 290000000000 | 300000000000 | 0.00%               | false
- krid3_3      | sh1      | ds3             | 30000000000  | 40000000000  | 0.00%               | false
- krid3_30     | sh1      | ds3             | 300000000000 | 310000000000 | 0.00%               | false
- krid3_31     | sh1      | ds3             | 310000000000 | 320000000000 | 0.00%               | false
- krid3_32     | sh1      | ds3             | 320000000000 | 330000000000 | 0.00%               | false
- krid3_33     | sh1      | ds3             | 330000000000 | 340000000000 | 0.00%               | false
- krid3_34     | sh1      | ds3             | 340000000000 | 350000000000 | 0.00%               | false
- krid3_35     | sh1      | ds3             | 350000000000 | 360000000000 | 0.00%               | false
- krid3_36     | sh1      | ds3             | 360000000000 | 370000000000 | 0.00%               | false
- krid3_37     | sh1      | ds3             | 370000000000 | 380000000000 | 0.00%               | false
- krid3_38     | sh1      | ds3             | 380000000000 | 390000000000 | 0.00%               | false
- krid3_39     | sh1      | ds3             | 390000000000 | 400000000000 | 0.00%               | false
- krid3_4      | sh1      | ds3             | 40000000000  | 50000000000  | 0.00%               | false
- krid3_40     | sh1      | ds3             | 400000000000 | 410000000000 | 0.00%               | false
- krid3_41     | sh1      | ds3             | 410000000000 | 420000000000 | 0.00%               | false
- krid3_42     | sh1      | ds3             | 420000000000 | 430000000000 | 0.00%               | false
- krid3_43     | sh1      | ds3             | 430000000000 | 440000000000 | 0.00%               | false
- krid3_44     | sh1      | ds3             | 440000000000 | 450000000000 | 0.00%               | false
- krid3_45     | sh1      | ds3             | 450000000000 | 460000000000 | 0.00%               | false
- krid3_46     | sh1      | ds3             | 460000000000 | 470000000000 | 0.00%               | false
- krid3_47     | sh1      | ds3             | 470000000000 | 480000000000 | 0.00%               | false
- krid3_48     | sh1      | ds3             | 480000000000 | 490000000000 | 0.00%               | false
- krid3_49     | sh1      | ds3             | 490000000000 | 500000000000 | 0.00%               | false
- krid3_5      | sh1      | ds3             | 50000000000  | 60000000000  | 0.00%               | false
- krid3_50     | sh1      | ds3             | 500000000000 | 510000000000 | 0.00%               | false
- krid3_51     | sh1      | ds3             | 510000000000 | 520000000000 | 0.00%               | false
- krid3_52     | sh1      | ds3             | 520000000000 | 530000000000 | 0.00%               | false
- krid3_53     | sh1      | ds3             | 530000000000 | 540000000000 | 0.00%               | false
- krid3_54     | sh1      | ds3             | 540000000000 | 550000000000 | 0.00%               | false
- krid3_55     | sh1      | ds3             | 550000000000 | 560000000000 | 0.00%               | false
- krid3_56     | sh1      | ds3             | 560000000000 | 570000000000 | 0.00%               | false
- krid3_57     | sh1      | ds3             | 570000000000 | 580000000000 | 0.00%               | false
- krid3_58     | sh1      | ds3             | 580000000000 | 590000000000 | 0.00%               | false
- krid3_59     | sh1      | ds3             | 590000000000 | 600000000000 | 0.00%               | false
- krid3_6      | sh1      | ds3             | 60000000000  | 70000000000  | 0.00%               | false
- krid3_60     | sh1      | ds3             | 600000000000 | 610000000000 | 0.00%               | false
- krid3_61     | sh1      | ds3             | 610000000000 | 620000000000 | 0.00%               | false
- krid3_62     | sh1      | ds3             | 620000000000 | 630000000000 | 0.00%               | false
- krid3_63     | sh1      | ds3             | 630000000000 | 640000000000 | 0.00%               | false
- krid3_64     | sh1      | ds3             | 640000000000 | 650000000000 | 0.00%               | false
- krid3_65     | sh1      | ds3             | 650000000000 | 660000000000 | 0.00%               | false
- krid3_66     | sh1      | ds3             | 660000000000 | 670000000000 | 0.00%               | false
- krid3_67     | sh1      | ds3             | 670000000000 | 680000000000 | 0.00%               | false
- krid3_68     | sh1      | ds3             | 680000000000 | 690000000000 | 0.00%               | false
- krid3_69     | sh1      | ds3             | 690000000000 | 700000000000 | 0.00%               | false
- krid3_7      | sh1      | ds3             | 70000000000  | 80000000000  | 0.00%               | false
- krid3_70     | sh1      | ds3             | 700000000000 | 710000000000 | 0.00%               | false
- krid3_71     | sh1      | ds3             | 710000000000 | 720000000000 | 0.00%               | false
- krid3_72     | sh1      | ds3             | 720000000000 | 730000000000 | 0.00%               | false
- krid3_73     | sh1      | ds3             | 730000000000 | 740000000000 | 0.00%               | false
- krid3_74     | sh1      | ds3             | 740000000000 | 750000000000 | 0.00%               | false
- krid3_75     | sh1      | ds3             | 750000000000 | 760000000000 | 0.00%               | false
- krid3_76     | sh1      | ds3             | 760000000000 | 770000000000 | 0.00%               | false
- krid3_77     | sh1      | ds3             | 770000000000 | 780000000000 | 0.00%               | false
- krid3_78     | sh1      | ds3             | 780000000000 | 790000000000 | 0.00%               | false
- krid3_79     | sh1      | ds3             | 790000000000 | 800000000000 | 0.00%               | false
- krid3_8      | sh1      | ds3             | 80000000000  | 90000000000  | 0.00%               | false
- krid3_80     | sh1      | ds3             | 800000000000 | 810000000000 | 0.00%               | false
- krid3_81     | sh1      | ds3             | 810000000000 | 820000000000 | 0.00%               | false
- krid3_82     | sh1      | ds3             | 820000000000 | 830000000000 | 0.00%               | false
- krid3_83     | sh1      | ds3             | 830000000000 | 840000000000 | 0.00%               | false
- krid3_84     | sh1      | ds3             | 840000000000 | 850000000000 | 0.00%               | false
- krid3_85     | sh1      | ds3             | 850000000000 | 860000000000 | 0.00%               | false
- krid3_86     | sh1      | ds3             | 860000000000 | 870000000000 | 0.00%               | false
- krid3_87     | sh1      | ds3             | 870000000000 | 880000000000 | 0.00%               | false
- krid3_88     | sh1      | ds3             | 880000000000 | 890000000000 | 0.00%               | false
- krid3_89     | sh1      | ds3             | 890000000000 | 900000000000 | 0.00%               | false
- krid3_9      | sh1      | ds3             | 90000000000  | 100000000000 | 0.00%               | false
- krid3_90     | sh1      | ds3             | 900000000000 | 910000000000 | 0.00%               | false
- krid3_91     | sh1      | ds3             | 910000000000 | 920000000000 | 0.00%               | false
- krid3_92     | sh1      | ds3             | 920000000000 | 930000000000 | 0.00%               | false
- krid3_93     | sh1      | ds3             | 930000000000 | 940000000000 | 0.00%               | false
- krid3_94     | sh1      | ds3             | 940000000000 | 950000000000 | 0.00%               | false
- krid3_95     | sh1      | ds3             | 950000000000 | 960000000000 | 0.00%               | false
- krid3_96     | sh1      | ds3             | 960000000000 | 970000000000 | 0.00%               | false
- krid3_97     | sh1      | ds3             | 970000000000 | 980000000000 | 0.00%               | false
- krid3_98     | sh1      | ds3             | 980000000000 | 990000000000 | 0.00%               | false
- krid3_99     | sh1      | ds3             | 990000000000 | +inf         | 100.00%             | false
-(100 rows)
+ key_range_id | shard_id | distribution_id |     lower_bound     |     upper_bound     | coverage | locked 
+--------------+----------+-----------------+---------------------+---------------------+----------+--------
+ krid3_0      | sh1      | ds3             | 0                   | 1000000000000000000 | 5.42%    | false
+ krid3_1      | sh1      | ds3             | 1000000000000000000 | 2000000000000000000 | 5.42%    | false
+ krid3_2      | sh1      | ds3             | 2000000000000000000 | 3000000000000000000 | 5.42%    | false
+ krid3_3      | sh1      | ds3             | 3000000000000000000 | 4000000000000000000 | 5.42%    | false
+ krid3_4      | sh1      | ds3             | 4000000000000000000 | 5000000000000000000 | 5.42%    | false
+ krid3_5      | sh1      | ds3             | 5000000000000000000 | 6000000000000000000 | 5.42%    | false
+ krid3_6      | sh1      | ds3             | 6000000000000000000 | 7000000000000000000 | 5.42%    | false
+ krid3_7      | sh1      | ds3             | 7000000000000000000 | 8000000000000000000 | 5.42%    | false
+ krid3_8      | sh1      | ds3             | 8000000000000000000 | 9223372036854775807 | 6.63%    | false
+ krid3_9      | sh1      | ds3             | 9223372036854775807 | +inf                | 100.00%  | false
+(10 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
