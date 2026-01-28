@@ -3,11 +3,14 @@ package engine
 import (
 	"context"
 	"fmt"
+	"math"
+	"math/big"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/connmgr"
@@ -23,6 +26,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/statistics"
 )
 
@@ -34,8 +38,9 @@ func GetVPHeader(stmts ...string) []pgproto3.FieldDescription {
 	return desc
 }
 
-func KeyRangeVirtualRelationScan(krs []*kr.KeyRange, locks []string) *tupleslot.TupleTableSlot {
-
+func KeyRangeVirtualRelationScan(
+	krs []*kr.KeyRange,
+	locks []string) *tupleslot.TupleTableSlot {
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "locked"),
 	}
@@ -61,6 +66,194 @@ func KeyRangeVirtualRelationScan(krs []*kr.KeyRange, locks []string) *tupleslot.
 	}
 
 	return tts
+}
+
+func KeyRangeVirtualRelationScanExtended(
+	krs []*kr.KeyRange,
+	locks []string,
+	dists []*distributions.Distribution) (*tupleslot.TupleTableSlot, error) {
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("key_range_id", "shard_id", "distribution_id", "lower_bound", "next_lower_bound", "coverage", "locked"),
+	}
+
+	lockMap := make(map[string]string, len(locks))
+	for _, idKeyRange := range locks {
+		lockMap[idKeyRange] = "true"
+	}
+
+	// Build distribution map for lookup
+	distMap := make(map[string]*distributions.Distribution)
+	for _, d := range dists {
+		distMap[d.Id] = d
+		if len(d.ColTypes) == 0 {
+			return nil, fmt.Errorf("malformed distribution %v", d.Id)
+		}
+	}
+
+	distToKrs := make(map[string][]*kr.KeyRange)
+	for _, keyRange := range krs {
+		distToKrs[keyRange.Distribution] = append(distToKrs[keyRange.Distribution], keyRange)
+		if len(keyRange.LowerBound) == 0 {
+			return nil, fmt.Errorf("malformed key range %v", keyRange.ID)
+		}
+	}
+
+	for _, keyRange := range krs {
+		isLocked := "false"
+		if lockState, ok := lockMap[keyRange.ID]; ok {
+			isLocked = lockState
+		}
+
+		dist, ok := distMap[keyRange.Distribution]
+		if !ok {
+			return nil,
+				fmt.Errorf("could not find distribution %s for key range %v", keyRange.Distribution, keyRange.ID)
+		}
+
+		distKrs := distToKrs[keyRange.Distribution]
+
+		/* TODO: Fix this AI mess  */
+		var nextKr *kr.KeyRange
+		for i, kr := range distKrs {
+			if kr.ID == keyRange.ID && i < len(distKrs)-1 {
+				nextKr = distKrs[i+1]
+				break
+			}
+		}
+
+		next_lower_bound := "+inf"
+
+		var maxValue interface{}
+		if nextKr != nil {
+			maxValue = nextKr.LowerBound[0]
+
+			next_lower_bound = strings.Join(nextKr.SendRaw(), ",")
+		} else {
+			// Last key range - calculate coverage to max value
+
+			switch dist.ColTypes[0] {
+			case qdb.ColumnTypeInteger:
+				maxValue = int64(math.MaxInt64)
+			case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed:
+				maxValue = uint64(math.MaxUint64)
+			case qdb.ColumnTypeUUID:
+				maxValue = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+			default:
+				// For varchar, coverage is meaningless
+				maxValue = nil
+			}
+		}
+
+		var coverage string
+		if maxValue != nil {
+			/* TODO: multicolumn support? */
+			coverage = calculateCoverage(
+				keyRange.LowerBound[0],
+				maxValue,
+				dist.ColTypes[0],
+			)
+		} else {
+			coverage = "N/A"
+		}
+
+		tts.WriteDataRow(
+			keyRange.ID,
+			keyRange.ShardID,
+			keyRange.Distribution,
+			strings.Join(keyRange.SendRaw(), ","),
+			next_lower_bound,
+			coverage,
+			isLocked,
+		)
+	}
+
+	return tts, nil
+}
+
+func calculateCoverage(lowerBound, upperBound interface{}, colType string) string {
+	switch colType {
+	case qdb.ColumnTypeInteger:
+		lower, ok := lowerBound.(int64)
+		if !ok {
+			return "N/A"
+		}
+		upper, ok := upperBound.(int64)
+		if !ok {
+			return "N/A"
+		}
+		if upper <= lower {
+			return "0.00%"
+		}
+		totalRange := float64(math.MaxInt64) - float64(math.MinInt64)
+		keyRangeSize := float64(upper - lower)
+		percentage := (keyRangeSize / totalRange) * 100.0
+		return fmt.Sprintf("%.2f%%", percentage)
+
+	case qdb.ColumnTypeUinteger, qdb.ColumnTypeVarcharHashed:
+		lower, ok := lowerBound.(uint64)
+		if !ok {
+			return "N/A"
+		}
+		upper, ok := upperBound.(uint64)
+		if !ok {
+			return "N/A"
+		}
+		if upper <= lower {
+			return "0.00%"
+		}
+		totalRange := float64(math.MaxUint64)
+		keyRangeSize := float64(upper - lower)
+		percentage := (keyRangeSize / totalRange) * 100.0
+		return fmt.Sprintf("%.2f%%", percentage)
+
+	case qdb.ColumnTypeUUID:
+		lowerStr, ok := lowerBound.(string)
+		if !ok {
+			return "N/A"
+		}
+		upperStr, ok := upperBound.(string)
+		if !ok {
+			return "N/A"
+		}
+
+		lowerUUID, err := uuid.Parse(lowerStr)
+		if err != nil {
+			return "N/A"
+		}
+		upperUUID, err := uuid.Parse(upperStr)
+		if err != nil {
+			return "N/A"
+		}
+
+		// Convert UUIDs to big.Int for comparison
+		lowerBytes := lowerUUID[:]
+		upperBytes := upperUUID[:]
+
+		lowerBig := new(big.Int).SetBytes(lowerBytes)
+		upperBig := new(big.Int).SetBytes(upperBytes)
+
+		if upperBig.Cmp(lowerBig) <= 0 {
+			return "0.00%"
+		}
+
+		// UUID space is 2^128
+		uuidSpace := new(big.Int).Exp(big.NewInt(2), big.NewInt(128), nil)
+		keyRangeSize := new(big.Int).Sub(upperBig, lowerBig)
+
+		// Calculate coverage percentage
+		coverage := new(big.Float).Quo(
+			new(big.Float).SetInt(keyRangeSize),
+			new(big.Float).SetInt(uuidSpace),
+		)
+		percentage := new(big.Float).Mul(coverage, big.NewFloat(100.0))
+
+		percentageValue, _ := percentage.Float64()
+		return fmt.Sprintf("%.2f%%", percentageValue)
+
+	default:
+		// For varchar coverage is meaningless
+		return "N/A"
+	}
 }
 
 func HostsVirtualRelationScan(shards []*topology.DataShard, ihc map[string]tsa.CachedCheckResult) *tupleslot.TupleTableSlot {

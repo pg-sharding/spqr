@@ -384,6 +384,7 @@ const (
 	HostsStr              = "hosts"
 	ShardingRules         = "sharding_rules"
 	KeyRangesStr          = "key_ranges"
+	KeyRangesExtendedStr  = "key_ranges_extended"
 	ClientsStr            = "clients"
 	PoolsStr              = "pools"
 	InstanceStr           = "instance"

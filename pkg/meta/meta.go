@@ -1240,7 +1240,31 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+
 		tts = engine.KeyRangeVirtualRelationScan(ranges, locksKr)
+
+	case spqrparser.KeyRangesExtendedStr:
+		ranges, err := mngr.ListAllKeyRanges(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		locksKr, err := mngr.ListKeyRangeLocks(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		// Fetch distributions for column types.
+		dists, err := mngr.ListDistributions(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		tts, err = engine.KeyRangeVirtualRelationScanExtended(
+			ranges, locksKr, dists)
+		if err != nil {
+			return nil, err
+		}
 	case spqrparser.InstanceStr:
 		tts = engine.InstanceVirtualRelationScan(ctx, ci)
 
