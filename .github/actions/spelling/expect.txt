@@ -257,6 +257,8 @@ KFS
 killall
 kinit
 Kirill
+klepov
+Klepov
 kpass
 krb
 krdb
