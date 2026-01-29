@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pg-sharding/spqr/coordinator"
@@ -78,6 +79,11 @@ func (s *ShardServer) GetShard(ctx context.Context, shardRequest *protos.ShardRe
 type CoordShardInfo struct {
 	underlying *protos.BackendConnectionsInfo
 	router     string
+}
+
+// Cancel implements [shard.ShardHostCtl].
+func (c *CoordShardInfo) Cancel() error {
+	return fmt.Errorf("unimplemented")
 }
 
 // CreatedAt implements shard.ShardHostCtl.

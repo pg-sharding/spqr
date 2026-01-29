@@ -1149,11 +1149,15 @@ func ProcessKill(ctx context.Context,
 
 		ok := false
 
+		var cancelErr error
+
 		if err := ci.ForEachPool(func(p pool.Pool) error {
 			return p.ForEach(func(sh shard.ShardHostCtl) error {
 				if sh.ID() == stmt.Target {
 					ok = true
-					sh.MarkStale() /* request backend invalidation */
+
+					/* TODO: sh.Close() for TERMINATE BACKEND */
+					cancelErr = sh.Cancel()
 				}
 				return nil
 			})
@@ -1171,7 +1175,7 @@ func ProcessKill(ctx context.Context,
 
 		tts.WriteDataRow(fmt.Sprintf("backend id -> %d", stmt.Target))
 
-		return tts, nil
+		return tts, cancelErr
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
