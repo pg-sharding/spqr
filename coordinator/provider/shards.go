@@ -80,6 +80,11 @@ type CoordShardInfo struct {
 	router     string
 }
 
+// Cancel implements [shard.ShardHostCtl].
+func (c *CoordShardInfo) Cancel() error {
+	panic("unimplemented")
+}
+
 // CreatedAt implements shard.ShardHostCtl.
 func (c *CoordShardInfo) CreatedAt() time.Time {
 	return time.Now()
