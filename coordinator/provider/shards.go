@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pg-sharding/spqr/coordinator"
@@ -82,7 +83,7 @@ type CoordShardInfo struct {
 
 // Cancel implements [shard.ShardHostCtl].
 func (c *CoordShardInfo) Cancel() error {
-	panic("unimplemented")
+	return fmt.Errorf("unimplemented")
 }
 
 // CreatedAt implements shard.ShardHostCtl.
