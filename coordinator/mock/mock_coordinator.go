@@ -221,10 +221,10 @@ func (mr *MockCoordinatorMockRecorder) CommitTran(ctx, transaction any) *gomock.
 }
 
 // CreateDistribution mocks base method.
-func (m *MockCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) (*meta_transaction.MetaTransactionChunk, error) {
+func (m *MockCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateDistribution", ctx, ds)
-	ret0, _ := ret[0].(*meta_transaction.MetaTransactionChunk)
+	ret0, _ := ret[0].([]qdb.QdbStatement)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

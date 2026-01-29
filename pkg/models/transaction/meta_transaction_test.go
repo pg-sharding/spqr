@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
-	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,20 +32,13 @@ func TestTransactionFromProto(t *testing.T) {
 		}
 		transactionId, err := uuid.Parse("6ca41a0b-8446-4098-abcf-d9802bea3447")
 		is.NoError(err)
-		chunk, err := NewMetaTransactionChunk([]*proto.MetaTransactionGossipCommand{
+		chunk := NewMetaTransactionChunk([]*proto.MetaTransactionGossipCommand{
 			{
 				CreateDistribution: &proto.CreateDistributionGossip{
 					Distributions: []*proto.Distribution{distribution},
 				},
 			},
 		},
-			[]qdb.QdbStatement{{
-				CmdType:   0,
-				Key:       "ds1",
-				Value:     `{ "id": "ds1", "col_types": ["integer"], }`,
-				Extension: "RelationDistribution",
-			},
-			},
 		)
 		is.NoError(err)
 		expected := MetaTransaction{

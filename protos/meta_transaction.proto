@@ -29,7 +29,7 @@ message MetaTransactionGossipRequest {
 service MetaTransactionGossipService {
   rpc ApplyMeta(MetaTransactionGossipRequest) returns (google.protobuf.Empty) {}
 }
-
+// NEED REMOVE. This structure doesn't make sense right now.
 message QdbTransactionCmd {
   int32 command = 1;
   string key = 2;

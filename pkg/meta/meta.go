@@ -348,12 +348,13 @@ func createReplicatedDistribution(ctx context.Context, mngr EntityMgr) (*distrib
 			Id:       distributions.REPLICATED,
 			ColTypes: nil,
 		}
-		chunk, err := mngr.CreateDistribution(ctx, distribution)
+		tranMngr := NewTranEntityManager(mngr)
+		err := tranMngr.CreateDistribution(ctx, distribution)
 		if err != nil {
 			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution (prepare phase)")
 			return nil, err
 		}
-		if err = mngr.ExecNoTran(ctx, chunk); err != nil {
+		if err = tranMngr.ExecNoTran(ctx); err != nil {
 			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution (execute phase)")
 			return nil, err
 		}
@@ -398,12 +399,12 @@ func createNonReplicatedDistribution(ctx context.Context,
 			return nil, fmt.Errorf("attempt to create existing distribution")
 		}
 	}
-
-	chunk, err := mngr.CreateDistribution(ctx, distribution)
+	tranMngr := NewTranEntityManager(mngr)
+	err = tranMngr.CreateDistribution(ctx, distribution)
 	if err != nil {
 		return nil, err
 	}
-	if err = mngr.ExecNoTran(ctx, chunk); err != nil {
+	if err = tranMngr.ExecNoTran(ctx); err != nil {
 		return nil, err
 	}
 	if defaultShard != nil {
