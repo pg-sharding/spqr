@@ -15,7 +15,7 @@ require (
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/jcmturner/gofork v1.7.6
 	github.com/jcmturner/gokrb5/v8 v8.4.4
-	github.com/lib/pq v1.11.0
+	github.com/lib/pq v1.11.1
 	github.com/libp2p/go-reuseport v0.4.0
 	github.com/pg-sharding/lyx v0.0.0-20260119082018-b5c60c949352
 	github.com/rs/zerolog v1.34.0
