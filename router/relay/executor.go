@@ -1006,7 +1006,6 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 			s.SetTxStatus(txstatus.TXStatus(v.TxStatus))
 			return nil
 		case *pgproto3.ErrorResponse:
-
 			if replyCl {
 				s.es.eMsg = v
 			}
@@ -1014,7 +1013,6 @@ func (s *QueryStateExecutorImpl) executeSliceGuts(qd *QueryDesc, topPlan plan.Pl
 		case *pgproto3.BindComplete:
 			// skip
 		case *pgproto3.ParseComplete, *pgproto3.CloseComplete:
-
 			return rerrors.ErrExecutorSyncLost
 		case *pgproto3.CommandComplete:
 			/*
