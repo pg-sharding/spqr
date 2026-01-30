@@ -223,39 +223,6 @@ func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shkey kr.Shar
 var ErrMultiShardSyncBroken = fmt.Errorf("multishard state is out of sync")
 
 func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
-	rollback := func() {
-		for i := range m.activeShards {
-			spqrlog.Zero.Debug().
-				Uint("shard", m.activeShards[i].ID()).
-				Msg("rollback shard in multishard after error")
-			if m.activeShards[i].Sync() == 0 {
-				continue
-			}
-			// error state or something else
-			m.states[i] = ShardRFQState
-
-			go func(i int) {
-				for {
-					msg, err := m.activeShards[i].Receive()
-					if err != nil {
-						spqrlog.Zero.Error().Err(err).Msg("")
-						return
-					}
-
-					switch msg.(type) {
-					case *pgproto3.ReadyForQuery:
-						return
-					default:
-						spqrlog.Zero.Info().
-							Uint("shard", m.activeShards[i].ID()).
-							Type("message-type", msg).
-							Msg("multishard server: received message from shard while rollback after error")
-					}
-				}
-			}(i)
-		}
-	}
-
 	switch m.multistate {
 	case ServerErrorState:
 		m.multistate = InitialState
@@ -283,7 +250,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 						Err(err).
 						Msg("multishard server: encountered error while reading from shard")
 					m.states[i] = ErrorState
-					rollback()
+					m.multistate = ServerErrorState
 					return nil, uint(i), err
 				}
 
@@ -338,12 +305,11 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 						Msg("multishard server received error")
 					m.states[i] = ErrorState
 					m.multistate = ServerErrorState
-					rollback()
 					return msg, uint(i), nil
 				default:
 
 					m.states[i] = ErrorState
-					rollback()
+					m.multistate = ServerErrorState
 					// sync is broken
 					return nil, 0, ErrMultiShardSyncBroken
 				}
@@ -390,7 +356,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 					Err(err).
 					Msg("multishard server: encountered error while reading from shard")
 				m.states[i] = ErrorState
-				rollback()
+				m.multistate = ServerErrorState
 				return nil, 0, err
 			}
 
@@ -400,7 +366,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 				m.states[i] = ShardCCState
 			case *pgproto3.ReadyForQuery:
 				m.states[i] = ErrorState
-				rollback()
+				m.multistate = ServerErrorState
 				// sync is broken
 				return nil, 0, ErrMultiShardSyncBroken
 			default:
@@ -457,7 +423,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 					Err(err).
 					Msg("multishard server: encountered error while reading from shard")
 				m.states[i] = ErrorState
-				rollback()
+				m.multistate = ServerErrorState
 				return nil, 0, err
 			}
 		}
@@ -474,7 +440,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, uint, error) {
 				TxStatus: byte(txstatus.TXACT), // XXX : fix this
 			}, 0, nil
 		default:
-			rollback()
+			m.multistate = ServerErrorState
 			return nil, 0, fmt.Errorf("multishard server: unsync in tx status among shard connections")
 		}
 	}
