@@ -1800,6 +1800,16 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error getting destination shard: %s", err.Error())
 	}
 
+	tss, err := qc.ListMoveTaskGroups(ctx)
+	if err != nil {
+		return err
+	}
+	for _, ts := range tss {
+		if ts.KrIdFrom == req.KrId {
+			return fmt.Errorf("there is already a move task group \"%s\" for key range \"%s\"", ts.ID, ts.KrIdFrom)
+		}
+	}
+
 	if keyRange.ShardID == req.ShardId {
 		return nil
 	}
