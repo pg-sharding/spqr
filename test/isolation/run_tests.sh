@@ -18,3 +18,8 @@ export PGSSLMODE=allow
 
 if test -f /regress/regression.diffs; then cat /regress/regression.diffs; fi
 
+if test -s /regress/regression.diffs; then
+    exit 1
+fi
+exit 0
+
