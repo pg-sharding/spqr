@@ -538,11 +538,18 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		if err != nil {
 			return nil, err
 		}
+		columns := make([]string, len(stmt.Columns))
+		colTypes := make([]string, len(stmt.Columns))
+		for i, typedCol := range stmt.Columns {
+			columns[i] = typedCol.Column
+			colTypes[i] = typedCol.Type
+		}
 		if err := mngr.CreateUniqueIndex(ctx, ds.ID(), &distributions.UniqueIndex{
 			ID:           stmt.ID,
 			RelationName: stmt.TableName,
-			ColumnName:   stmt.Column,
-			ColType:      stmt.ColType}); err != nil {
+			Columns:      columns,
+			ColTypes:     colTypes,
+		}); err != nil {
 			return nil, err
 		}
 
@@ -556,10 +563,10 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 					fmt.Appendf(nil, "relation name -> %s", stmt.TableName.String()),
 				},
 				{
-					fmt.Appendf(nil, "column name -> %s", stmt.Column),
+					fmt.Appendf(nil, "column names  -> %s", strings.Join(columns, ", ")),
 				},
 				{
-					fmt.Appendf(nil, "column type -> %s", stmt.ColType),
+					fmt.Appendf(nil, "column types -> %s", strings.Join(colTypes, ", ")),
 				},
 			},
 		}, nil
