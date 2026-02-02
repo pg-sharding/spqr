@@ -414,6 +414,18 @@ func TestRedistribute(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query: "REDISTRIBUTE KEY RANGE kr1 TO sh2",
+			exp: &spqrparser.RedistributeKeyRange{
+				KeyRangeID:  "kr1",
+				DestShardID: "sh2",
+				BatchSize:   -1,
+				Check:       true,
+				Apply:       true,
+			},
+			err: nil,
+		},
+
+		{
 			query: "REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 500",
 			exp: &spqrparser.RedistributeKeyRange{
 				KeyRangeID:  "kr1",
@@ -421,6 +433,17 @@ func TestRedistribute(t *testing.T) {
 				BatchSize:   500,
 				Check:       true,
 				Apply:       true,
+			},
+			err: nil,
+		},
+		{
+			query: "REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 500 NOWAIT",
+			exp: &spqrparser.RedistributeKeyRange{
+				KeyRangeID:  "kr1",
+				DestShardID: "sh2",
+				BatchSize:   500,
+				Check:       true,
+				NoWait:      true,
 			},
 			err: nil,
 		},
@@ -457,7 +480,7 @@ func TestRedistribute(t *testing.T) {
 				KeyRangeID:  "kr1",
 				DestShardID: "sh2",
 				BatchSize:   -1,
-				Check:       false,
+				Check:       true,
 				Apply:       true,
 			},
 			err: nil,
@@ -2022,15 +2045,27 @@ func TestUniqueIndex(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "CREATE UNIQUE INDEX ui1 ON t COLUMN id TYPE integer",
+			query: "CREATE UNIQUE INDEX ui1 ON t COLUMNS (id integer)",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.UniqueIndexDefinition{
 					ID: "ui1",
 					TableName: &rfqn.RelationFQN{
 						RelationName: "t",
 					},
-					Column:  "id",
-					ColType: "integer",
+					Columns: []spqrparser.TypedColRef{{Column: "id", Type: "integer"}},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE UNIQUE INDEX ui1 ON t COLUMNS ( id1 integer, id2 varchar )",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.UniqueIndexDefinition{
+					ID: "ui1",
+					TableName: &rfqn.RelationFQN{
+						RelationName: "t",
+					},
+					Columns: []spqrparser.TypedColRef{{Column: "id1", Type: "integer"}, {Column: "id2", Type: "varchar"}},
 				},
 			},
 			err: nil,

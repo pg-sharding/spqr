@@ -1100,7 +1100,11 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on destination shard")
 	}
 
-	return datatransfers.SetupFDW(ctx, destConn, keyRange.ShardID, req.ShardId, schemas)
+	if err := datatransfers.SetupFDW(ctx, destConn, keyRange.ShardID, req.ShardId, schemas); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("failed to setup move data FDW")
+		return err
+	}
+	return nil
 }
 
 // TODO : unit tests
@@ -1791,15 +1795,19 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "key range \"%s\" not found", req.KrId)
 	}
+
 	if _, err = qc.GetShard(ctx, req.ShardId); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error getting destination shard: %s", err.Error())
 	}
+
 	if keyRange.ShardID == req.ShardId {
 		return nil
 	}
+
 	if req.BatchSize <= 0 {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "incorrect batch size %d", req.BatchSize)
 	}
+
 	if req.Check {
 		if err := qc.checkKeyRangeMove(ctx, &kr.BatchMoveKeyRange{
 			KrId:      req.KrId,
@@ -1812,11 +1820,31 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 			return err
 		}
 	}
-	if !req.Apply {
+
+	/* Apply or apply nowait */
+	execCtx := context.TODO()
+
+	/* Should we wait for the completion? */
+	if req.NoWait {
+		go func() {
+
+			err := qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
+				KrId:      req.KrId,
+				ShardId:   req.ShardId,
+				BatchSize: req.BatchSize,
+				TempKrId:  uuid.NewString(),
+				State:     tasks.RedistributeTaskPlanned,
+			})
+			/* We have no way to report error, but at least, log it */
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to execute redistribute")
+			}
+		}()
+
 		return nil
 	}
+
 	ch := make(chan error)
-	execCtx := context.TODO()
 	go func() {
 		ch <- qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
 			KrId:      req.KrId,

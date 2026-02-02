@@ -519,7 +519,7 @@ func (sh *Conn) fire(q string) error {
 					sh.SetTxStatus(txstatus.TXStatus(v.TxStatus))
 					return nil
 				}
-				return fmt.Errorf("unexpected tx status with rollback")
+				return fmt.Errorf("unexpected tx status with rollback: %d", v.TxStatus)
 			}
 		}
 	}

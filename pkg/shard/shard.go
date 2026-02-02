@@ -62,6 +62,7 @@ type ShardHostCtl interface {
 
 	MarkStale()
 	IsStale() bool
+	Cancel() error
 
 	ListPreparedStatements() []PreparedStatementsMgrDescriptor
 }

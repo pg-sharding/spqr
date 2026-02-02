@@ -539,11 +539,18 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		if err != nil {
 			return nil, err
 		}
+		columns := make([]string, len(stmt.Columns))
+		colTypes := make([]string, len(stmt.Columns))
+		for i, typedCol := range stmt.Columns {
+			columns[i] = typedCol.Column
+			colTypes[i] = typedCol.Type
+		}
 		if err := mngr.CreateUniqueIndex(ctx, ds.ID(), &distributions.UniqueIndex{
 			ID:           stmt.ID,
 			RelationName: stmt.TableName,
-			ColumnName:   stmt.Column,
-			ColType:      stmt.ColType}); err != nil {
+			Columns:      columns,
+			ColTypes:     colTypes,
+		}); err != nil {
 			return nil, err
 		}
 
@@ -557,10 +564,10 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 					fmt.Appendf(nil, "relation name -> %s", stmt.TableName.String()),
 				},
 				{
-					fmt.Appendf(nil, "column name -> %s", stmt.Column),
+					fmt.Appendf(nil, "column names  -> %s", strings.Join(columns, ", ")),
 				},
 				{
-					fmt.Appendf(nil, "column type -> %s", stmt.ColType),
+					fmt.Appendf(nil, "column types -> %s", strings.Join(colTypes, ", ")),
 				},
 			},
 		}, nil
@@ -1150,11 +1157,15 @@ func ProcessKill(ctx context.Context,
 
 		ok := false
 
+		var cancelErr error
+
 		if err := ci.ForEachPool(func(p pool.Pool) error {
 			return p.ForEach(func(sh shard.ShardHostCtl) error {
 				if sh.ID() == stmt.Target {
 					ok = true
-					sh.MarkStale() /* request backend invalidation */
+
+					/* TODO: sh.Close() for TERMINATE BACKEND */
+					cancelErr = sh.Cancel()
 				}
 				return nil
 			})
@@ -1172,7 +1183,7 @@ func ProcessKill(ctx context.Context,
 
 		tts.WriteDataRow(fmt.Sprintf("backend id -> %d", stmt.Target))
 
-		return tts, nil
+		return tts, cancelErr
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -1241,7 +1252,31 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+
 		tts = engine.KeyRangeVirtualRelationScan(ranges, locksKr)
+
+	case spqrparser.KeyRangesExtendedStr:
+		ranges, err := mngr.ListAllKeyRanges(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		locksKr, err := mngr.ListKeyRangeLocks(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		// Fetch distributions for column types.
+		dists, err := mngr.ListDistributions(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		tts, err = engine.KeyRangeVirtualRelationScanExtended(
+			ranges, locksKr, dists)
+		if err != nil {
+			return nil, err
+		}
 	case spqrparser.InstanceStr:
 		tts = engine.InstanceVirtualRelationScan(ctx, ci)
 
@@ -1676,6 +1711,7 @@ func processRedistribute(ctx context.Context,
 		BatchSize: stmt.BatchSize,
 		Check:     stmt.Check,
 		Apply:     stmt.Apply,
+		NoWait:    stmt.NoWait,
 	}); err != nil {
 		return nil, err
 	}

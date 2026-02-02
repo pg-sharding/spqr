@@ -204,11 +204,11 @@ MOVE KEY RANGE <keyRangeID> TO <shardID>
 
 `BATCH SIZE` is an integer value that controls the number of keys moved in each batch during redistribution. Default batch size is 500.
 
-You can also use optional keywords `CHECK` and `APPLY`. By default, command will check for the ability to move keys, then perform the actual movement. With `CHECK`, you can perform a dry-run.
-With `APPLY`, you can skip checks.
+You can also use optional keywords `CHECK`, `NOWAIT` and `APPLY`. By default, command will check for the ability to move keys, then perform the actual movement. With `CHECK`, you can perform a dry-run.
+With `APPLY`, you can skip checks. With `NOWAIT` you will NOT wait for data move completion, but you will get an error like in `CHECK` case if anything is misconfigured.
 
 ```sql
-REDISTRIBUTE KEY RANGE <keyRangeID> TO <shardID> [ BATCH SIZE <batchSize> ] [ CHECK | APPLY ];
+REDISTRIBUTE KEY RANGE <keyRangeID> TO <shardID> [ BATCH SIZE <batchSize> ] [ CHECK | APPLY | NOWAIT ];
 ```
 
 ### SPLIT KEY RANGE
@@ -234,7 +234,7 @@ This command is used to retrieve information about a specific entity of SPQR clu
 ```sql
 SHOW entity [WHERE where_clause]
 
-where entity is one of backend_connections, clients, coordinator_address, databases, distributions, hosts, instance, is_read_only, key_ranges, move_stats, move_task, pools, prepared_statements, reference_relations, relations, routers, sequences, sharding_rules, shards, status, task_group, time_quantiles, tsa_cache, users, version:
+where entity is one of backend_connections, clients, coordinator_address, databases, distributions, hosts, instance, is_read_only, key_ranges, key_ranges_extended, move_stats, move_task, pools, prepared_statements, reference_relations, relations, routers, sequences, sharding_rules, shards, status, task_group, time_quantiles, tsa_cache, users, version:
 ```
 
 The`where_clause` is used to filter the results based on specific conditions. It allows you to specify criteria for selecting the information to be shown.

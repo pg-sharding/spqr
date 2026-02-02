@@ -26,32 +26,55 @@ CREATE RELATION r2 (i HASH murmur);
  distribution id -> d
 (2 rows)
 
-CREATE UNIQUE INDEX ui ON r COLUMN j TYPE integer;
-  create unique index   
-------------------------
+CREATE RELATION r3 (i HASH murmur);
+     attach table      
+-----------------------
+ relation name   -> r3
+ distribution id -> d
+(2 rows)
+
+CREATE UNIQUE INDEX ui ON r COLUMNS (j integer);
+   create unique index   
+-------------------------
  index ID -> ui
  relation name -> r
- column name -> j
- column type -> integer
+ column names  -> j
+ column types -> integer
 (4 rows)
 
-CREATE UNIQUE INDEX ui1 ON r2 COLUMN j TYPE integer;
-  create unique index   
-------------------------
+CREATE UNIQUE INDEX ui1 ON r2 COLUMNS (j integer);
+   create unique index   
+-------------------------
  index ID -> ui1
  relation name -> r2
- column name -> j
- column type -> integer
+ column names  -> j
+ column types -> integer
 (4 rows)
 
-CREATE UNIQUE INDEX ui2 ON r2 COLUMN k TYPE integer;
-  create unique index   
-------------------------
+CREATE UNIQUE INDEX ui2 ON r2 COLUMNS (k integer);
+   create unique index   
+-------------------------
  index ID -> ui2
  relation name -> r2
- column name -> k
- column type -> integer
+ column names  -> k
+ column types -> integer
 (4 rows)
+
+CREATE UNIQUE INDEX ui3 ON r3 COLUMNS (j integer, k integer);
+       create unique index        
+----------------------------------
+ index ID -> ui3
+ relation name -> r3
+ column names  -> j, k
+ column types -> integer, integer
+(4 rows)
+
+CREATE RELATION ch3 (murmur [j integer, k integer]);
+      attach table      
+------------------------
+ relation name   -> ch3
+ distribution id -> d
+(2 rows)
 
 CREATE KEY RANGE k4 FROM 3221225472 ROUTE TO sh4;
     add key range    
@@ -96,6 +119,15 @@ CREATE TABLE ui2(k int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE UNIQUE INDEX ON ui2 USING btree(k);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE r3(i int, j int, k int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE ch3(j int, k int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- unique index is actually a reverse index (just another table)
+CREATE TABLE ui3(j int, k int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE UNIQUE INDEX ON ui3 USING btree(j, k);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__engine_v2 TO true;
 SELECT __spqr__ctid('r');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -103,7 +135,7 @@ SELECT __spqr__ctid('ui');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO r (i, j, k) VALUES(1, 2, 3);
 NOTICE: send query to shard(s) : sh2
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh3
 SELECT __spqr__ctid('r');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | i | j | k 
@@ -115,7 +147,7 @@ SELECT __spqr__ctid('ui');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | j 
 --------------+---
- shard sh4    | 2
+ shard sh3    | 2
 (1 row)
 
 INSERT INTO r (i, j, k) VALUES(3, 4, 5);
@@ -133,14 +165,14 @@ SELECT __spqr__ctid('ui');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | j 
 --------------+---
- shard sh4    | 2
+ shard sh3    | 2
  shard sh4    | 4
 (2 rows)
 
 -- should fail
 INSERT INTO r (i, j, k) VALUES(10, 2, 30);
 NOTICE: send query to shard(s) : sh4
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh3
 ERROR:  client processing error: failed to run inner slice, tx status error: duplicate key value violates unique constraint "ui_j_idx", tx status ACTIVE
 WITH s AS (select 1)
 INSERT INTO r (i, j, k) VALUES(10, 2, 30);
@@ -156,7 +188,7 @@ ERROR:  client processing error: error processing query 'UPDATE r SET k = k + 1 
 BEGIN;
 INSERT INTO r (i, j, k) VALUES(7, 8, 9);
 NOTICE: send query to shard(s) : sh4
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh1
 SELECT __spqr__ctid('r');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | i | j | k 
@@ -170,9 +202,9 @@ SELECT __spqr__ctid('ui');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | j 
 --------------+---
- shard sh4    | 2
  shard sh4    | 4
- shard sh4    | 8
+ shard sh1    | 8
+ shard sh3    | 2
 (3 rows)
 
 ROLLBACK;
@@ -188,7 +220,7 @@ SELECT __spqr__ctid('ui');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | j 
 --------------+---
- shard sh4    | 2
+ shard sh3    | 2
  shard sh4    | 4
 (2 rows)
 
@@ -201,8 +233,8 @@ SELECT __spqr__ctid('ui2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO r2 (i, j, k) VALUES(1, 2, 3);
 NOTICE: send query to shard(s) : sh2
-NOTICE: send query to shard(s) : sh4
 NOTICE: send query to shard(s) : sh3
+NOTICE: send query to shard(s) : sh1
 SELECT __spqr__ctid('r2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | i | j | k 
@@ -214,25 +246,25 @@ SELECT __spqr__ctid('ui1');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | j 
 --------------+---
- shard sh4    | 2
+ shard sh3    | 2
 (1 row)
 
 SELECT __spqr__ctid('ui2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | k 
 --------------+---
- shard sh3    | 3
+ shard sh1    | 3
 (1 row)
 
 -- should fail
 INSERT INTO r2 (i, j, k) VALUES(1, 2, 3);
 NOTICE: send query to shard(s) : sh2
-NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh3
 ERROR:  client processing error: failed to run inner slice, tx status error: duplicate key value violates unique constraint "ui1_j_idx", tx status ACTIVE
 INSERT INTO r2 (i, j, k) VALUES(4, 5, 6);
 NOTICE: send query to shard(s) : sh4
-NOTICE: send query to shard(s) : sh2
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh1
 SELECT __spqr__ctid('r2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | i | j | k 
@@ -245,17 +277,99 @@ SELECT __spqr__ctid('ui1');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | j 
 --------------+---
- shard sh2    | 5
- shard sh4    | 2
+ shard sh3    | 2
+ shard sh4    | 5
 (2 rows)
 
 SELECT __spqr__ctid('ui2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | k 
 --------------+---
- shard sh2    | 6
- shard sh3    | 3
+ shard sh1    | 3
+ shard sh1    | 6
 (2 rows)
+
+-- test multi-column index
+SELECT __spqr__ctid('r3');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT __spqr__ctid('ui3');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+INSERT INTO r3 (i, j, k) VALUES (1, 2, 3);
+NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh1
+INSERT INTO r3 (i, j, k) VALUES (2, 3, 2);
+NOTICE: send query to shard(s) : sh4
+NOTICE: send query to shard(s) : sh4
+SELECT __spqr__ctid('r3');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid | i | j | k 
+--------------+---+---+---
+ shard sh2    | 1 | 2 | 3
+ shard sh4    | 2 | 3 | 2
+(2 rows)
+
+SELECT __spqr__ctid('ui3');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid | j | k 
+--------------+---+---
+ shard sh1    | 2 | 3
+ shard sh4    | 3 | 2
+(2 rows)
+
+-- should fail
+INSERT INTO r3 (i, j, k) VALUES (1, 2, 3);
+NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh1
+ERROR:  client processing error: failed to run inner slice, tx status error: duplicate key value violates unique constraint "ui3_j_k_idx", tx status ACTIVE
+-- should fail
+INSERT INTO r3 (i, j, k) VALUES (1, 3, 2);
+NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh4
+ERROR:  client processing error: failed to run inner slice, tx status error: duplicate key value violates unique constraint "ui3_j_k_idx", tx status ACTIVE
+INSERT INTO r3 (i, j, k) VALUES (1, 2, 2);
+NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh4
+INSERT INTO r3 (i, j, k) VALUES (1, 3, 3);
+NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
+-- check distribution
+INSERT INTO ch3 (j, k) VALUES (2, 3);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO ch3 (j, k) VALUES (3, 2);
+NOTICE: send query to shard(s) : sh4
+INSERT INTO ch3 (j, k) VALUES (2, 2);
+NOTICE: send query to shard(s) : sh4
+INSERT INTO ch3 (j, k) VALUES (3, 3);
+NOTICE: send query to shard(s) : sh2
+SELECT __spqr__ctid('r3');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid | i | j | k 
+--------------+---+---+---
+ shard sh2    | 1 | 2 | 3
+ shard sh2    | 1 | 2 | 2
+ shard sh2    | 1 | 3 | 3
+ shard sh4    | 2 | 3 | 2
+(4 rows)
+
+SELECT __spqr__ctid('ui3');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid | j | k 
+--------------+---+---
+ shard sh1    | 2 | 3
+ shard sh2    | 3 | 3
+ shard sh4    | 3 | 2
+ shard sh4    | 2 | 2
+(4 rows)
+
+SELECT __spqr__ctid('ch3');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid | j | k 
+--------------+---+---
+ shard sh1    | 2 | 3
+ shard sh2    | 3 | 3
+ shard sh4    | 3 | 2
+ shard sh4    | 2 | 2
+(4 rows)
 
 DROP TABLE r;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -266,6 +380,10 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE ui1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE ui2;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE r3;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE ui3;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 

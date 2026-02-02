@@ -353,7 +353,11 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr meta.EntityMgr) 
 	return bound, nil
 }
 
-func SetupFDW(ctx context.Context, to *pgx.Conn, fromShardId, toShardId string, schemas map[string]struct{}) error {
+func SetupFDW(
+	ctx context.Context,
+	to *pgx.Conn,
+	fromShardId, toShardId string,
+	schemas map[string]struct{}) error {
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
@@ -383,29 +387,37 @@ func SetupFDW(ctx context.Context, to *pgx.Conn, fromShardId, toShardId string, 
 	// create foreign tables corresponding to such on sending shard
 	// TODO check if schemaName is not used by relations (needs schemas in distributions)
 	for schema := range schemas {
-		schemaName := fmt.Sprintf("%s_%s", serverName, schema)
-		tx, err := to.Begin(ctx)
-		if err != nil {
-			return err
-		}
-		row := tx.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as schema_exists FROM pg_namespace WHERE nspname = '%s'`, schemaName))
-		exist := false
-		if err := row.Scan(&exist); err != nil {
-			return err
-		}
-		if exist {
-			if err = tx.Rollback(ctx); err != nil {
+		if err := func() error {
+			schemaName := fmt.Sprintf("%s_%s", serverName, schema)
+			tx, err := to.Begin(ctx)
+			/* on any error, rollback */
+			defer func() {
+				err := tx.Rollback(ctx)
+				spqrlog.Zero.Error().Err(err).Msg("failed to rollback move data transaction")
+			}()
+
+			if err != nil {
 				return err
 			}
-			continue
-		}
-		if _, err = tx.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA %s`, schemaName)); err != nil {
-			return err
-		}
-		if _, err = tx.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA %s FROM SERVER %s INTO %s`, schema, serverName, schemaName)); err != nil {
-			return err
-		}
-		if err := tx.Commit(ctx); err != nil {
+			row := tx.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as schema_exists FROM pg_namespace WHERE nspname = '%s'`, schemaName))
+			exist := false
+			if err := row.Scan(&exist); err != nil {
+				return err
+			}
+			if exist {
+				return nil
+			}
+			if _, err = tx.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA %s`, schemaName)); err != nil {
+				return err
+			}
+			if _, err = tx.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA %s FROM SERVER %s INTO %s`, schema, serverName, schemaName)); err != nil {
+				return err
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
 			return err
 		}
 	}
@@ -509,6 +521,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		schemas[rel.GetSchema()] = struct{}{}
 	}
 	if err := SetupFDW(ctx, to, fromShardId, toShardId, schemas); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("failed to setup move data FDW")
 		return err
 	}
 	fromShard := shards.ShardsData[fromShardId]
@@ -581,6 +594,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 					INSERT INTO %s (%s)
 					SELECT %s FROM %s
 					WHERE %s
+					FOR UPDATE
 `, relFullName, colNames, colNames, fmt.Sprintf("%s_%s.%q", serverName, rel.GetSchema(), strings.ToLower(rel.Name)), krCondition)
 		_, err = tx.Exec(ctx, query)
 		if err != nil {
@@ -599,6 +613,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	schemas[rel.GetSchema()] = struct{}{}
 
 	if err := SetupFDW(ctx, to, fromId, toId, schemas); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("failed to setup move data FDW")
 		return err
 	}
 	fromShard := shards.ShardsData[fromId]

@@ -131,6 +131,7 @@ message RedistributeKeyRangeRequest {
   int64 batchSize = 3;
   bool check = 4;
   bool apply = 5;
+  bool noWait = 6;
 }
 
 message RenameKeyRangeRequest{

@@ -101,8 +101,7 @@ type ReferenceRelationDefinition struct {
 type UniqueIndexDefinition struct {
 	ID        string
 	TableName *rfqn.RelationFQN
-	Column    string
-	ColType   string
+	Columns   []TypedColRef
 }
 
 type AutoIncrementEntry struct {
@@ -154,6 +153,7 @@ type RedistributeKeyRange struct {
 	BatchSize   int
 	Check       bool
 	Apply       bool
+	NoWait      bool
 }
 
 type KeyRangeSelector struct {
@@ -384,6 +384,7 @@ const (
 	HostsStr              = "hosts"
 	ShardingRules         = "sharding_rules"
 	KeyRangesStr          = "key_ranges"
+	KeyRangesExtendedStr  = "key_ranges_extended"
 	ClientsStr            = "clients"
 	PoolsStr              = "pools"
 	InstanceStr           = "instance"

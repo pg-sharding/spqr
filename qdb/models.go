@@ -114,7 +114,6 @@ type DistributedRelation struct {
 	SchemaName         string                 `json:"schema_name,omitempty"`
 	DistributionKey    []DistributionKeyEntry `json:"column_names"`
 	ReplicatedRelation bool                   `json:"replicated_relation,omitempty"`
-	// UniqueIndexes      map[string]*UniqueIndex `json:"unique_indexes"`
 }
 
 func (r *DistributedRelation) QualifiedName() *rfqn.RelationFQN {
@@ -139,8 +138,8 @@ type ReferenceRelation struct {
 type UniqueIndex struct {
 	ID             string            `json:"id"`
 	Relation       *rfqn.RelationFQN `json:"relation"`
-	ColumnName     string            `json:"column"`
-	ColType        string            `json:"column_type"`
+	ColumnNames    []string          `json:"column"`
+	ColTypes       []string          `json:"column_type"`
 	DistributionId string            `json:"distribution_id"`
 }
 
