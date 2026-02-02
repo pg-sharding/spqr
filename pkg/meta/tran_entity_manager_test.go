@@ -392,7 +392,39 @@ func TestTranState(t *testing.T) {
 		},
 		)
 		is.Equal(state.Chunk, expected)
-
 	})
 
+	t.Run("test double execute chunk fails", func(t *testing.T) {
+		is := assert.New(t)
+		ctx := context.Background()
+		memqdb, err := prepareDB(ctx)
+		assert.NoError(t, err)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		tranMngr := meta.NewTranEntityManager(mngr)
+
+		ds1 := distributions.NewDistribution("ds1", []string{"integer"})
+		err = tranMngr.CreateDistribution(ctx, ds1)
+		is.NoError(err)
+		err = tranMngr.ExecNoTran(ctx)
+		is.NoError(err)
+		err = tranMngr.ExecNoTran(ctx)
+		is.EqualError(err, "can't double execute chunk")
+	})
+	t.Run("test double commit transaction fails", func(t *testing.T) {
+		is := assert.New(t)
+		ctx := context.Background()
+		memqdb, err := prepareDB(ctx)
+		assert.NoError(t, err)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		tranMngr := meta.NewTranEntityManager(mngr)
+		err = tranMngr.BeginTran(ctx)
+		is.NoError(err)
+		ds1 := distributions.NewDistribution("ds1", []string{"integer"})
+		err = tranMngr.CreateDistribution(ctx, ds1)
+		is.NoError(err)
+		err = tranMngr.CommitTran(ctx)
+		is.NoError(err)
+		err = tranMngr.CommitTran(ctx)
+		is.EqualError(err, "can't double transaction")
+	})
 }

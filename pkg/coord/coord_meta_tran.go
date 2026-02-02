@@ -20,14 +20,14 @@ func createDistributionPrepare(ctx context.Context, mngr meta.EntityMgr, gossip 
 		if err != nil {
 			return nil, err
 		}
-		if qdbStatements, err := mngr.CreateDistribution(ctx, mds); err != nil {
+		qdbStatements, err := mngr.CreateDistribution(ctx, mds)
+		if err != nil {
 			return nil, err
-		} else {
-			if len(qdbStatements) == 0 {
-				return nil, fmt.Errorf("transaction chunk must have a qdb statement (createDistributionPrepare)")
-			}
-			result = append(result, qdbStatements...)
 		}
+		if len(qdbStatements) == 0 {
+			return nil, fmt.Errorf("transaction chunk must have a qdb statement (createDistributionPrepare)")
+		}
+		result = append(result, qdbStatements...)
 	}
 	return result, nil
 }

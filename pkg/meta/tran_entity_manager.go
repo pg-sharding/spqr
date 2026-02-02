@@ -17,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
+// no thread safe struct
 type TransactionState struct {
 	// prevents double execution
 	isCommitted bool
@@ -50,6 +51,14 @@ func (s *TransactionState) Append(commands []*proto.MetaTransactionGossipCommand
 		s.Chunk = meta_transaction.NewEmptyMetaTransactionChunk()
 	}
 	return s.Chunk.Append(commands)
+}
+
+func (s *TransactionState) CanCommit() bool {
+	return !s.isCommitted
+}
+
+func (s *TransactionState) SetCommitted() {
+	s.isCommitted = true
 }
 
 // interface for read only methods of EntityMgr
@@ -136,6 +145,7 @@ func (t *TranEntityManager) BatchMoveKeyRange(ctx context.Context, req *kr.Batch
 // BeginTran implements [EntityMgr].
 func (t *TranEntityManager) BeginTran(ctx context.Context) error {
 	transaction, err := t.mngr.BeginTran(ctx)
+	transaction.Operations = meta_transaction.NewEmptyMetaTransactionChunk()
 	if err == nil {
 		return t.state.SetTransaction(transaction)
 	}
@@ -148,8 +158,16 @@ func (t *TranEntityManager) Cache() *cache.SchemaCache {
 }
 
 // CommitTran implements [EntityMgr].
-func (t *TranEntityManager) CommitTran(ctx context.Context, transaction *meta_transaction.MetaTransaction) error {
-	return t.mngr.CommitTran(ctx, transaction)
+func (t *TranEntityManager) CommitTran(ctx context.Context) error {
+	if t.state.CanCommit() {
+		err := t.mngr.CommitTran(ctx, t.state.Transaction)
+		if err != nil {
+			return err
+		}
+		t.state.SetCommitted()
+		return nil
+	}
+	return fmt.Errorf("can't double transaction")
 }
 
 // CreateDistribution implements [EntityMgr].
@@ -223,7 +241,15 @@ func (t *TranEntityManager) ExecNoTran(ctx context.Context) error {
 	if t.state.Chunk == nil {
 		return fmt.Errorf("invalid state for ExecNoTran")
 	}
-	return t.mngr.ExecNoTran(ctx, t.state.Chunk)
+	if t.state.CanCommit() {
+		err := t.mngr.ExecNoTran(ctx, t.state.Chunk)
+		if err != nil {
+			return err
+		}
+		t.state.SetCommitted()
+		return nil
+	}
+	return fmt.Errorf("can't double execute chunk")
 }
 
 // GetBalancerTask implements [EntityMgr].
