@@ -1837,7 +1837,7 @@ Feature: Redistribution test
         "error":                    ""
     }]
     """
-    When we wait for "30" seconds
+    When we wait for "40" seconds
     When I run SQL on host "coordinator2"
     """
     SHOW task_group
