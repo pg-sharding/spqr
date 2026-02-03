@@ -59,7 +59,6 @@ type TXManager interface {
 
 type TaskGroupStateKeeper interface {
 	TryTaskGroupLock(ctx context.Context, tgId string) error
-	ReleaseTaskGroupLock(ctx context.Context, tgId string) error
 	CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error)
 }
 

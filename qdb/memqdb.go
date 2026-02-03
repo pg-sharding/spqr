@@ -1785,7 +1785,3 @@ func (q *MemQDB) TryTaskGroupLock(ctx context.Context, tgId string) error {
 func (q *MemQDB) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error) {
 	return false, fmt.Errorf("not implemented")
 }
-
-func (q *MemQDB) ReleaseTaskGroupLock(ctx context.Context, tgId string) error {
-	return fmt.Errorf("not implemented")
-}

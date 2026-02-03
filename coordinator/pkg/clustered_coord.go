@@ -581,6 +581,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 	}
 
 	go qc.watchRouters(context.TODO())
+	go qc.watchTaskGroups(context.TODO())
 }
 
 // TODO : unit tests
@@ -1202,10 +1203,11 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 		spqrlog.Zero.Error().Str("task group ID", taskGroup.ID).Err(err).Msg("failed to write task group status")
 	}
 
-	execCtx := context.TODO()
+	execCtx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
 	ch := make(chan error)
 	go func() {
-		ch <- qc.executeMoveTasks(execCtx, taskGroup)
+		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)
 	}()
 
 	for {
@@ -1588,7 +1590,7 @@ func (qc *ClusteredCoordinator) getNextKeyRange(ctx context.Context, keyRange *k
 
 // TODO : unit tests
 
-// executeMoveTasks executes the given MoveTaskGroup.
+// executeMoveTaskGroup executes the given MoveTaskGroup.
 // All intermediary states of the task group are synced with the QDB for reliability.
 //
 // Parameters:
@@ -1597,7 +1599,7 @@ func (qc *ClusteredCoordinator) getNextKeyRange(ctx context.Context, keyRange *k
 //
 // Returns:
 //   - error: An error if any occurred.
-func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
+func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
 	if taskGroup == nil {
 		return nil
 	}
@@ -1631,6 +1633,9 @@ func (qc *ClusteredCoordinator) executeMoveTasks(ctx context.Context, taskGroup 
 		if !ok {
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" not found in distribution \"%s\"", taskGroup.BoundRel, ds.Id)
 		}
+	}
+	if err := qc.db.TryTaskGroupLock(ctx, taskGroup.ID); err != nil {
+		return fmt.Errorf("failed to acquire lock on task group \"%s\": %s", taskGroup.ID, err)
 	}
 	if err := qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupRunning)}); err != nil {
 		spqrlog.Zero.Error().Str("task group ID", taskGroup.ID).Err(err).Msg("failed to write task group status")
@@ -1746,10 +1751,11 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id strin
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get move task group: %s", err)
 	}
-	execCtx := context.TODO()
+	execCtx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
 	ch := make(chan error)
 	go func() {
-		ch <- qc.executeMoveTasks(execCtx, taskGroup)
+		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)
 	}()
 
 	for {
@@ -1757,9 +1763,6 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id strin
 		case <-ctx.Done():
 			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
 		case err := <-ch:
-			if err != nil {
-				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
-			}
 			if err != nil {
 				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
 			}
@@ -2731,4 +2734,46 @@ func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, c
 	}
 
 	return
+}
+
+func (qc *ClusteredCoordinator) watchTaskGroups(ctx context.Context) {
+	spqrlog.Zero.Debug().Msg("start task groups watch iteration")
+	for {
+		// TODO check we are still coordinator
+		if !qc.acquiredLock {
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+
+		tgs, err := qc.ListMoveTaskGroups(ctx)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("watch task groups iteration: failed to list task groups")
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
+		for id := range tgs {
+			locked, err := qc.db.CheckTaskGroupLocked(ctx, id)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Str("task group id", id).Msg("watch task groups iteration: failed to check task group lock")
+				time.Sleep(10 * time.Second)
+				continue
+			}
+			if !locked {
+				status, err := qc.db.GetTaskGroupStatus(ctx, id)
+				if err != nil {
+					spqrlog.Zero.Error().Err(err).Str("task group id", id).Msg("watch task groups iteration: failed to get task group status")
+					continue
+				}
+				if status.State == string(tasks.TaskGroupRunning) {
+					// Executor probably failed, update status
+					if err := qc.db.WriteTaskGroupStatus(ctx, id, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: "task group lost running"}); err != nil {
+						spqrlog.Zero.Error().Err(err).Str("task group id", id).Msg("watch task groups iteration: failed to update task group status")
+					}
+				}
+			}
+		}
+
+		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().IterationTimeout, defaultWatchRouterTimeout))
+	}
 }
