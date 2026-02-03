@@ -1214,7 +1214,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
 		case err := <-ch:
 			if statErr := statistics.RecordMoveFinish(time.Now()); statErr != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to record key range move finish in statistics")
+				spqrlog.Zero.Error().Err(statErr).Msg("failed to record key range move finish in statistics")
 			}
 			if err != nil {
 				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
