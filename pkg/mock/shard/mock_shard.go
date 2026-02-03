@@ -47,6 +47,20 @@ func (m *MockShardHostCtl) EXPECT() *MockShardHostCtlMockRecorder {
 	return m.recorder
 }
 
+// Cancel mocks base method.
+func (m *MockShardHostCtl) Cancel() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Cancel")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Cancel indicates an expected call of Cancel.
+func (mr *MockShardHostCtlMockRecorder) Cancel() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockShardHostCtl)(nil).Cancel))
+}
+
 // CreatedAt mocks base method.
 func (m *MockShardHostCtl) CreatedAt() time.Time {
 	m.ctrl.T.Helper()
@@ -263,6 +277,20 @@ func NewMockCoordShardinfo(ctrl *gomock.Controller) *MockCoordShardinfo {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockCoordShardinfo) EXPECT() *MockCoordShardinfoMockRecorder {
 	return m.recorder
+}
+
+// Cancel mocks base method.
+func (m *MockCoordShardinfo) Cancel() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Cancel")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Cancel indicates an expected call of Cancel.
+func (mr *MockCoordShardinfoMockRecorder) Cancel() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockCoordShardinfo)(nil).Cancel))
 }
 
 // CreatedAt mocks base method.
