@@ -2598,3 +2598,19 @@ func (q *EtcdQDB) BeginTransaction(ctx context.Context, transaction *QdbTransact
 	_, err := q.cli.Put(ctx, transactionRequest, transaction.transactionId.String())
 	return err
 }
+
+// ==============================================================================
+//                               TASK GROUP STATE
+// ==============================================================================
+
+func (q *EtcdQDB) TryTaskGroupLock(ctx context.Context, tgId string) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (q *EtcdQDB) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error) {
+	return false, fmt.Errorf("not implemented")
+}
+
+func (q *EtcdQDB) ReleaseTaskGroupLock(ctx context.Context, tgId string) error {
+	return fmt.Errorf("not implemented")
+}
