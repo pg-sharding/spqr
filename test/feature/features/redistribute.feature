@@ -1799,3 +1799,57 @@ Feature: Redistribution test
     there is already a move task group .*tgid1.* for key range .*kr1.*
     """
 
+
+  Scenario: move task group status is error after coordinator crash
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 4999), 'sample text value';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator", then stop the host after "10" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 1;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator2"
+    """
+    SHOW task_group
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+        "destination_shard_id":     "sh2",
+        "source_key_range_id":      "kr1",
+        "batch_size":               "1",
+        "state":                    "RUNNING",
+        "error":                    ""
+    }]
+    """
+    When we wait for "30" seconds
+    When I run SQL on host "coordinator2"
+    """
+    SHOW task_group
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+        "destination_shard_id":     "sh2",
+        "source_key_range_id":      "kr1",
+        "batch_size":               "1",
+        "state":                    "ERROR",
+        "error":                    "task group lost running"
+    }]
+    """
