@@ -1759,4 +1759,43 @@ Feature: Redistribution test
       "locked":"false"
     }]
     """
+  
+  Scenario: Cannot redistribute same key range twice
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
+    When I record in qdb move task group
+    """
+    {
+            "id":            "tgid1",
+            "shard_to_id":   "sh2",
+            "kr_id_from":    "kr1",
+            "kr_id_to":      "krid2",
+            "type":          1,
+            "limit":         -1,
+            "coeff":         0.75,
+            "bound_rel":     "test",
+            "total_keys":    200,
+            "task":
+            {
+                "id":            "2",
+                "kr_id_temp":    "temp_id",
+                "bound":         ["FAAAAAAAAAA="],
+                "state":         0,
+                "task_group_id": "tgid1"
+            }
+        }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE "kr1" TO "sh2";
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    there is already a move task group .*tgid1.* for key range .*kr1.*
+    """
 
