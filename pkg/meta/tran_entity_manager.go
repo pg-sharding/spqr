@@ -11,10 +11,63 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	meta_transaction "github.com/pg-sharding/spqr/pkg/models/transaction"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
+
+// no thread safe struct
+type TransactionState struct {
+	// prevents double execution
+	isCommitted bool
+
+	Chunk       *meta_transaction.MetaTransactionChunk
+	Transaction *meta_transaction.MetaTransaction
+}
+
+func NewTransactionState() TransactionState {
+	return TransactionState{isCommitted: false}
+}
+
+func (s *TransactionState) SetTransaction(transaction *meta_transaction.MetaTransaction) error {
+	if s.Transaction != nil {
+		return fmt.Errorf("corrupted transaction state (setTransaction)")
+	}
+	if s.Chunk != nil {
+		return fmt.Errorf("transaction state begins with no transaction flow")
+	}
+	s.Transaction = transaction
+	return nil
+}
+func (s *TransactionState) Append(commands []*proto.MetaTransactionGossipCommand) error {
+	if s.Transaction != nil && s.Chunk != nil {
+		return fmt.Errorf("corrupted transaction state (appendChunk)")
+	}
+	if s.Transaction != nil {
+		return s.Transaction.Operations.Append(commands)
+	}
+	if s.Chunk == nil {
+		s.Chunk = meta_transaction.NewEmptyMetaTransactionChunk()
+	}
+	return s.Chunk.Append(commands)
+}
+
+func (s *TransactionState) CanCommit() bool {
+	return !s.isCommitted
+}
+
+func (s *TransactionState) SetCommitted() {
+	s.isCommitted = true
+}
+
+// interface for read only methods of EntityMgr
+type EntityMgrReader interface {
+	GetShard(ctx context.Context, shardID string) (*topology.DataShard, error)
+	GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error)
+	GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error)
+	ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error)
+}
 
 // Wrapper of EntityManager. Keeps track of changes made during a transaction that have not yet been committed.
 // It's NO NOT THREAD-SAFE because process in single console thread.
@@ -23,9 +76,8 @@ type TranEntityManager struct {
 	mngr          EntityMgr
 	distributions MetaEntityList[*distributions.Distribution]
 	keyRanges     MetaEntityList[*kr.KeyRange]
+	state         TransactionState
 }
-
-var _ EntityMgr = &TranEntityManager{}
 
 // NewTranEntityManager creates a new instance of the TranEntityManager struct.
 //
@@ -41,6 +93,7 @@ func NewTranEntityManager(mngr EntityMgr) *TranEntityManager {
 		mngr:          mngr,
 		distributions: *distrList,
 		keyRanges:     *keyRangesList,
+		state:         NewTransactionState(),
 	}
 }
 
@@ -90,8 +143,13 @@ func (t *TranEntityManager) BatchMoveKeyRange(ctx context.Context, req *kr.Batch
 }
 
 // BeginTran implements [EntityMgr].
-func (t *TranEntityManager) BeginTran(ctx context.Context) (*meta_transaction.MetaTransaction, error) {
-	return t.mngr.BeginTran(ctx)
+func (t *TranEntityManager) BeginTran(ctx context.Context) error {
+	transaction, err := t.mngr.BeginTran(ctx)
+	transaction.Operations = meta_transaction.NewEmptyMetaTransactionChunk()
+	if err == nil {
+		return t.state.SetTransaction(transaction)
+	}
+	return err
 }
 
 // Cache implements [EntityMgr].
@@ -100,18 +158,27 @@ func (t *TranEntityManager) Cache() *cache.SchemaCache {
 }
 
 // CommitTran implements [EntityMgr].
-func (t *TranEntityManager) CommitTran(ctx context.Context, transaction *meta_transaction.MetaTransaction) error {
-	return t.mngr.CommitTran(ctx, transaction)
+func (t *TranEntityManager) CommitTran(ctx context.Context) error {
+	if t.state.CanCommit() {
+		err := t.mngr.CommitTran(ctx, t.state.Transaction)
+		if err != nil {
+			return err
+		}
+		t.state.SetCommitted()
+		return nil
+	}
+	return fmt.Errorf("can't double transaction")
 }
 
 // CreateDistribution implements [EntityMgr].
-func (t *TranEntityManager) CreateDistribution(ctx context.Context, ds *distributions.Distribution) (*meta_transaction.MetaTransactionChunk, error) {
-	if chunk, err := t.mngr.CreateDistribution(ctx, ds); err != nil {
-		return nil, err
-	} else {
-		t.distributions.Save(ds.Id, ds)
-		return chunk, nil
+func (t *TranEntityManager) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
+	t.distributions.Save(ds.Id, ds)
+	commands := []*proto.MetaTransactionGossipCommand{
+		{CreateDistribution: &proto.CreateDistributionGossip{
+			Distributions: []*proto.Distribution{distributions.DistributionToProto(ds)},
+		}},
 	}
+	return t.state.Append(commands)
 }
 
 // CreateKeyRange implements [EntityMgr].
@@ -170,8 +237,19 @@ func (t *TranEntityManager) DropShard(ctx context.Context, id string) error {
 }
 
 // ExecNoTran implements [EntityMgr].
-func (t *TranEntityManager) ExecNoTran(ctx context.Context, chunk *meta_transaction.MetaTransactionChunk) error {
-	return t.mngr.ExecNoTran(ctx, chunk)
+func (t *TranEntityManager) ExecNoTran(ctx context.Context) error {
+	if t.state.Chunk == nil {
+		return fmt.Errorf("invalid state for ExecNoTran")
+	}
+	if t.state.CanCommit() {
+		err := t.mngr.ExecNoTran(ctx, t.state.Chunk)
+		if err != nil {
+			return err
+		}
+		t.state.SetCommitted()
+		return nil
+	}
+	return fmt.Errorf("can't double execute chunk")
 }
 
 // GetBalancerTask implements [EntityMgr].

@@ -19,7 +19,7 @@ import (
 //
 // Returns:
 // - error: an error if validation is not passed
-func ValidateKeyRangeForCreate(ctx context.Context, mngr EntityMgr, keyRange *kr.KeyRange) error {
+func ValidateKeyRangeForCreate(ctx context.Context, mngr EntityMgrReader, keyRange *kr.KeyRange) error {
 	if _, err := mngr.GetShard(ctx, keyRange.ShardID); err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func ValidateKeyRangeForCreate(ctx context.Context, mngr EntityMgr, keyRange *kr
 //
 // Returns:
 // - error: an error if validation is not passed
-func ValidateKeyRangeForModify(ctx context.Context, mngr EntityMgr, keyRange *kr.KeyRange) error {
+func ValidateKeyRangeForModify(ctx context.Context, mngr EntityMgrReader, keyRange *kr.KeyRange) error {
 	krLock, err := mngr.GetKeyRange(ctx, keyRange.ID)
 	if err != nil {
 		return err

@@ -2502,22 +2502,10 @@ func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 	})
 }
 
-// CreateDistribution creates distribution in QDB
-// TODO: unit tests
-func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) (*mtran.MetaTransactionChunk, error) {
-	if transactionChunk, err := qc.Coordinator.CreateDistribution(ctx, ds); err != nil {
-		return nil, err
-	} else {
-		if len(transactionChunk.GossipRequests) > 0 {
-			return nil, fmt.Errorf("local coordinator unexpectedly returned gossip requests; expected empty gossip requests from local coordinator")
-		} else {
-			gossipReq := &proto.MetaTransactionGossipCommand{CreateDistribution: &proto.CreateDistributionGossip{
-				Distributions: []*proto.Distribution{distributions.DistributionToProto(ds)},
-			}}
-			transactionChunk.GossipRequests = []*proto.MetaTransactionGossipCommand{gossipReq}
-			return transactionChunk, nil
-		}
-	}
+// CreateDistribution creates distribution in QDB.
+// Sending data to routers is done through ExecNoTran or CommTran.
+func (qc *ClusteredCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.QdbStatement, error) {
+	return qc.Coordinator.CreateDistribution(ctx, ds)
 }
 
 // DropDistribution deletes distribution from QDB
@@ -2714,8 +2702,7 @@ func (qc *ClusteredCoordinator) ExecNoTran(ctx context.Context, chunk *mtran.Met
 			return fmt.Errorf("invalid meta transaction request (exec no tran)")
 		}
 	}
-	noGossipChunk, _ := mtran.NewMetaTransactionChunk(nil, chunk.QdbStatements)
-	if err := qc.Coordinator.ExecNoTran(ctx, noGossipChunk); err != nil {
+	if err := qc.Coordinator.ExecNoTran(ctx, chunk); err != nil {
 		return err
 	} else {
 		return qc.traverseRouters(ctx,

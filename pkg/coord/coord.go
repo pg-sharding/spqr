@@ -151,8 +151,7 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 	selectedDistribId := distributions.REPLICATED
 
 	if _, err := lc.GetDistribution(ctx, selectedDistribId); err != nil {
-		var chunk *mtran.MetaTransactionChunk
-		chunk, err = lc.CreateDistribution(ctx, &distributions.Distribution{
+		statements, err := lc.CreateDistribution(ctx, &distributions.Distribution{
 			Id:       distributions.REPLICATED,
 			ColTypes: nil,
 		})
@@ -160,7 +159,7 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution (prepare phase)")
 			return err
 		}
-		err = lc.ExecNoTran(ctx, chunk)
+		err = lc.qdb.ExecNoTransaction(ctx, statements)
 		if err != nil {
 			spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution (exec phase)")
 			return err
@@ -771,7 +770,7 @@ func (qc *Coordinator) ListDistributions(ctx context.Context) ([]*distributions.
 	return res, nil
 }
 
-func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) (*mtran.MetaTransactionChunk, error) {
+func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.QdbStatement, error) {
 	if len(ds.ColTypes) == 0 && ds.Id != distributions.REPLICATED {
 		return nil, fmt.Errorf("empty distributions are disallowed")
 	}
@@ -788,15 +787,11 @@ func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 			}
 		}
 	}
-	if stmts, err := qc.qdb.CreateDistribution(ctx, distributions.DistributionToDB(ds)); err != nil {
+	stmts, err := qc.qdb.CreateDistribution(ctx, distributions.DistributionToDB(ds))
+	if err != nil {
 		return nil, err
-	} else {
-		if result, err := mtran.NewMetaTransactionChunk(nil, stmts); err != nil {
-			return nil, err
-		} else {
-			return result, nil
-		}
 	}
+	return stmts, nil
 }
 
 // TODO : unit tests
@@ -1145,17 +1140,20 @@ func (lc *Coordinator) AlterSequenceDetachRelation(ctx context.Context, rel *rfq
 }
 
 func (lc *Coordinator) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionChunk) error {
-	if len(chunk.GossipRequests) > 0 {
-		return fmt.Errorf("gossip requests is supported in clustered mode only")
+	qdbStatements, err := transactionChunkToQdbStatements(ctx, lc, chunk)
+	if err != nil {
+		return err
 	}
-	return lc.qdb.ExecNoTransaction(ctx, chunk.QdbStatements)
+	return lc.qdb.ExecNoTransaction(ctx, qdbStatements)
 }
 
 func (lc *Coordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
-	if len(transaction.Operations.GossipRequests) > 0 {
-		return fmt.Errorf("gossip requests is supported in clustered mode only")
+	qdbStatements, err := transactionChunkToQdbStatements(ctx, lc, transaction.Operations)
+	if err != nil {
+		return err
 	}
-	return lc.qdb.CommitTransaction(ctx, mtran.ToQdbTransaction(transaction))
+	qdbTran := qdb.NewTransactionWithCmd(transaction.TransactionId, qdbStatements)
+	return lc.qdb.CommitTransaction(ctx, qdbTran)
 }
 
 func (lc *Coordinator) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error) {
