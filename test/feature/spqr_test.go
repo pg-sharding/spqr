@@ -1325,6 +1325,21 @@ func (tctx *testContext) stepQDBShouldNotContainTasks() error {
 	return nil
 }
 
+func (tctx *testContext) stepIKillHostAfterQuery(host string, delay int, body *godog.DocString) error {
+	query := strings.TrimSpace(body.Content)
+
+	db, err := tctx.getPostgresqlConnection(shardUser, host)
+	if err != nil {
+		return err
+	}
+	go func() {
+		_ = db.QueryRow(query)
+	}()
+	time.Sleep(time.Duration(delay) * time.Second)
+
+	return tctx.stepHostIsStopped(host)
+}
+
 func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	tctx, err := newTestContext(t)
 	if err != nil {
@@ -1426,6 +1441,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I wait for coordinator "([^"]*)" to take control$`, tctx.stepCoordinatorShouldTakeControl)
 	s.Step(`^I wait for "(\d+)" seconds for all key range moves to finish$`, tctx.stepWaitForAllKeyRangeMovesToFinish)
 	s.Step(`^qdb should not contain transfer tasks$`, tctx.stepQDBShouldNotContainTasks)
+	s.Step(`^I run SQL on host "([^"]*)", then stop the host after "(\d+)" seconds$`, tctx.stepIKillHostAfterQuery)
 
 	// variable manipulation
 	s.Step(`^we save response row "([^"]*)" column "([^"]*)"$`, tctx.stepSaveResponseBodyAtPathAsJSON)
@@ -1465,7 +1481,7 @@ func TestSpqr(t *testing.T) {
 			Format:        "pretty",
 			Paths:         paths,
 			Strict:        true,
-			NoColors:      true,
+			NoColors:      false,
 			StopOnFailure: true,
 			Concurrency:   1,
 		},

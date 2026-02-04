@@ -1759,4 +1759,97 @@ Feature: Redistribution test
       "locked":"false"
     }]
     """
+  
+  Scenario: Cannot redistribute same key range twice
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
+    When I record in qdb move task group
+    """
+    {
+            "id":            "tgid1",
+            "shard_to_id":   "sh2",
+            "kr_id_from":    "kr1",
+            "kr_id_to":      "krid2",
+            "type":          1,
+            "limit":         -1,
+            "coeff":         0.75,
+            "bound_rel":     "test",
+            "total_keys":    200,
+            "task":
+            {
+                "id":            "2",
+                "kr_id_temp":    "temp_id",
+                "bound":         ["FAAAAAAAAAA="],
+                "state":         0,
+                "task_group_id": "tgid1"
+            }
+        }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    REDISTRIBUTE KEY RANGE "kr1" TO "sh2";
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    there is already a move task group .*tgid1.* for key range .*kr1.*
+    """
 
+
+  Scenario: move task group status is error after coordinator crash
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 4999), 'sample text value';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator", then stop the host after "10" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 1;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator2"
+    """
+    SHOW task_group
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+        "destination_shard_id":     "sh2",
+        "source_key_range_id":      "kr1",
+        "batch_size":               "1",
+        "state":                    "RUNNING",
+        "error":                    ""
+    }]
+    """
+    When we wait for "40" seconds
+    When I run SQL on host "coordinator2"
+    """
+    SHOW task_group
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+        "destination_shard_id":     "sh2",
+        "source_key_range_id":      "kr1",
+        "batch_size":               "1",
+        "state":                    "ERROR",
+        "error":                    "task group lost running"
+    }]
+    """
