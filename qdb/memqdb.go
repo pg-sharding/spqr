@@ -1773,3 +1773,15 @@ func (q *MemQDB) TXStatus(gid string) string {
 	defer q.mu.Unlock()
 	return q.TwoPhaseTx[gid].State
 }
+
+// ==============================================================================
+//                               TASK GROUP STATE
+// ==============================================================================
+
+func (q *MemQDB) TryTaskGroupLock(ctx context.Context, tgId string) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (q *MemQDB) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error) {
+	return false, fmt.Errorf("not implemented")
+}

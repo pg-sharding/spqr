@@ -399,6 +399,59 @@ func (mr *MockTXManagerMockRecorder) ExecNoTransaction(ctx, operations any) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecNoTransaction", reflect.TypeOf((*MockTXManager)(nil).ExecNoTransaction), ctx, operations)
 }
 
+// MockTaskGroupStateKeeper is a mock of TaskGroupStateKeeper interface.
+type MockTaskGroupStateKeeper struct {
+	ctrl     *gomock.Controller
+	recorder *MockTaskGroupStateKeeperMockRecorder
+	isgomock struct{}
+}
+
+// MockTaskGroupStateKeeperMockRecorder is the mock recorder for MockTaskGroupStateKeeper.
+type MockTaskGroupStateKeeperMockRecorder struct {
+	mock *MockTaskGroupStateKeeper
+}
+
+// NewMockTaskGroupStateKeeper creates a new mock instance.
+func NewMockTaskGroupStateKeeper(ctrl *gomock.Controller) *MockTaskGroupStateKeeper {
+	mock := &MockTaskGroupStateKeeper{ctrl: ctrl}
+	mock.recorder = &MockTaskGroupStateKeeperMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTaskGroupStateKeeper) EXPECT() *MockTaskGroupStateKeeperMockRecorder {
+	return m.recorder
+}
+
+// CheckTaskGroupLocked mocks base method.
+func (m *MockTaskGroupStateKeeper) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckTaskGroupLocked", ctx, tgId)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckTaskGroupLocked indicates an expected call of CheckTaskGroupLocked.
+func (mr *MockTaskGroupStateKeeperMockRecorder) CheckTaskGroupLocked(ctx, tgId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckTaskGroupLocked", reflect.TypeOf((*MockTaskGroupStateKeeper)(nil).CheckTaskGroupLocked), ctx, tgId)
+}
+
+// TryTaskGroupLock mocks base method.
+func (m *MockTaskGroupStateKeeper) TryTaskGroupLock(ctx context.Context, tgId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TryTaskGroupLock", ctx, tgId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// TryTaskGroupLock indicates an expected call of TryTaskGroupLock.
+func (mr *MockTaskGroupStateKeeperMockRecorder) TryTaskGroupLock(ctx, tgId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryTaskGroupLock", reflect.TypeOf((*MockTaskGroupStateKeeper)(nil).TryTaskGroupLock), ctx, tgId)
+}
+
 // MockQDB is a mock of QDB interface.
 type MockQDB struct {
 	ctrl     *gomock.Controller
@@ -1938,6 +1991,21 @@ func (mr *MockXQDBMockRecorder) CheckMoveTaskGroupStopFlag(ctx, id any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckMoveTaskGroupStopFlag", reflect.TypeOf((*MockXQDB)(nil).CheckMoveTaskGroupStopFlag), ctx, id)
 }
 
+// CheckTaskGroupLocked mocks base method.
+func (m *MockXQDB) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckTaskGroupLocked", ctx, tgId)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckTaskGroupLocked indicates an expected call of CheckTaskGroupLocked.
+func (mr *MockXQDBMockRecorder) CheckTaskGroupLocked(ctx, tgId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckTaskGroupLocked", reflect.TypeOf((*MockXQDB)(nil).CheckTaskGroupLocked), ctx, tgId)
+}
+
 // CloseRouter mocks base method.
 func (m *MockXQDB) CloseRouter(ctx context.Context, rID string) error {
 	m.ctrl.T.Helper()
@@ -2854,6 +2922,20 @@ func (m *MockXQDB) TryCoordinatorLock(ctx context.Context, addr string) error {
 func (mr *MockXQDBMockRecorder) TryCoordinatorLock(ctx, addr any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryCoordinatorLock", reflect.TypeOf((*MockXQDB)(nil).TryCoordinatorLock), ctx, addr)
+}
+
+// TryTaskGroupLock mocks base method.
+func (m *MockXQDB) TryTaskGroupLock(ctx context.Context, tgId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TryTaskGroupLock", ctx, tgId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// TryTaskGroupLock indicates an expected call of TryTaskGroupLock.
+func (mr *MockXQDBMockRecorder) TryTaskGroupLock(ctx, tgId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryTaskGroupLock", reflect.TypeOf((*MockXQDB)(nil).TryTaskGroupLock), ctx, tgId)
 }
 
 // UnlockKeyRange mocks base method.

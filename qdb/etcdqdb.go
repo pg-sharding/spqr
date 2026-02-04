@@ -62,6 +62,7 @@ const (
 	relationMappingNamespace         = "/relation_mappings/"
 	taskGroupsNamespace              = "/move_task_groups/"
 	taskGroupStatusesNamespace       = "/task_group_statuses/"
+	taskGroupLocksNamespace          = "/task_group_locks/"
 	moveTaskNamespace                = "/move_tasks/"
 	redistributeTaskPath             = "/redistribute_task/"
 	balancerTaskPath                 = "/balancer_task/"
@@ -80,6 +81,8 @@ const (
 	coordLockKey       = "coordinator_exists"
 	sequenceSpace      = "sequence_space"
 	transactionRequest = "transaction_request"
+
+	TaskGroupLeaseTTL = 30 // generous lease
 
 	MaxLockRetry = 7
 )
@@ -142,6 +145,10 @@ func taskGroupNodePath(id string) string {
 
 func taskGroupStatusNodePath(id string) string {
 	return path.Join(taskGroupStatusesNamespace, id)
+}
+
+func taskGroupLockNodePath(id string) string {
+	return path.Join(taskGroupLocksNamespace, id)
 }
 
 func totalKeysNodePath(id string) string {
@@ -2597,4 +2604,70 @@ func (q *EtcdQDB) BeginTransaction(ctx context.Context, transaction *QdbTransact
 	}
 	_, err := q.cli.Put(ctx, transactionRequest, transaction.transactionId.String())
 	return err
+}
+
+// ==============================================================================
+//                               TASK GROUP STATE
+// ==============================================================================
+
+func (q *EtcdQDB) TryTaskGroupLock(ctx context.Context, tgId string) error {
+	spqrlog.Zero.Debug().
+		Str("id", tgId).
+		Msg("etcdqdb: try task group lock")
+
+	leaseGrantResp, err := q.cli.Grant(ctx, TaskGroupLeaseTTL)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease grant failed")
+		return err
+	}
+
+	// KeepAlive attempts to keep the given lease alive forever. If the keepalive responses posted
+	// to the channel are not consumed promptly the channel may become full. When full, the lease
+	// client will continue sending keep alive requests to the etcd server, but will drop responses
+	// until there is capacity on the channel to send more responses.
+
+	keepAliveCh, err := q.cli.KeepAlive(ctx, leaseGrantResp.ID)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease keep alive failed")
+		return err
+	}
+
+	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(taskGroupLockNodePath(tgId))).Then(clientv3.OpPut(taskGroupLockNodePath(tgId), "locked", clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID))))
+	stat, err := tx.Commit()
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: failed to commit task group lock")
+		return err
+	}
+
+	if !stat.Succeeded {
+		_, err := q.cli.Revoke(ctx, leaseGrantResp.ID)
+		if err != nil {
+			return err
+		}
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "qdb is already in use")
+	}
+
+	// okay, we acquired lock, time to spawn keep alive channel
+	go func() {
+		for resp := range keepAliveCh {
+			spqrlog.Zero.Debug().
+				Str("task group id", tgId).
+				Uint64("raft-term", resp.RaftTerm).
+				Int64("lease-id", int64(resp.ID)).
+				Msg("etcd keep alive channel")
+		}
+	}()
+
+	return nil
+}
+
+func (q *EtcdQDB) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error) {
+	spqrlog.Zero.Debug().
+		Str("id", tgId).
+		Msg("etcdqdb: try task group lock")
+	resp, err := q.cli.Get(ctx, taskGroupLockNodePath(tgId), clientv3.WithCountOnly())
+	if err != nil {
+		return false, err
+	}
+	return resp.Count == 1, nil
 }

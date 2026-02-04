@@ -69,6 +69,13 @@ CREATE UNIQUE INDEX ui3 ON r3 COLUMNS (j integer, k integer);
  column types -> integer, integer
 (4 rows)
 
+CREATE RELATION ch3 (murmur [j integer, k integer]);
+      attach table      
+------------------------
+ relation name   -> ch3
+ distribution id -> d
+(2 rows)
+
 CREATE KEY RANGE k4 FROM 3221225472 ROUTE TO sh4;
     add key range    
 ---------------------
@@ -113,6 +120,8 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE UNIQUE INDEX ON ui2 USING btree(k);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE r3(i int, j int, k int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE ch3(j int, k int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- unique index is actually a reverse index (just another table)
 CREATE TABLE ui3(j int, k int);
@@ -323,6 +332,15 @@ NOTICE: send query to shard(s) : sh4
 INSERT INTO r3 (i, j, k) VALUES (1, 3, 3);
 NOTICE: send query to shard(s) : sh2
 NOTICE: send query to shard(s) : sh2
+-- check distribution
+INSERT INTO ch3 (j, k) VALUES (2, 3);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO ch3 (j, k) VALUES (3, 2);
+NOTICE: send query to shard(s) : sh4
+INSERT INTO ch3 (j, k) VALUES (2, 2);
+NOTICE: send query to shard(s) : sh4
+INSERT INTO ch3 (j, k) VALUES (3, 3);
+NOTICE: send query to shard(s) : sh2
 SELECT __spqr__ctid('r3');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | i | j | k 
@@ -334,6 +352,16 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 (4 rows)
 
 SELECT __spqr__ctid('ui3');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid | j | k 
+--------------+---+---
+ shard sh1    | 2 | 3
+ shard sh2    | 3 | 3
+ shard sh4    | 3 | 2
+ shard sh4    | 2 | 2
+(4 rows)
+
+SELECT __spqr__ctid('ch3');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid | j | k 
 --------------+---+---

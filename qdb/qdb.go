@@ -57,6 +57,11 @@ type TXManager interface {
 	BeginTransaction(ctx context.Context, transaction *QdbTransaction) error
 }
 
+type TaskGroupStateKeeper interface {
+	TryTaskGroupLock(ctx context.Context, tgId string) error
+	CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error)
+}
+
 // QDB is a generic interface used by both the coordinator and the router.
 // The router uses a memory-based version of this interface to cache routing schema state
 // while the coordinator uses etcd-based implementation to synchronize distributed state.
@@ -189,6 +194,7 @@ type XQDB interface {
 	ShardingSchemaKeeper
 	TransferXactKeeper
 	TXManager
+	TaskGroupStateKeeper
 
 	TryCoordinatorLock(ctx context.Context, addr string) error
 }

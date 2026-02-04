@@ -16,5 +16,4 @@ export PGSSLMODE=allow
     --debug \
     --schedule /regress/schedule
 
-if test -f /regress/regression.diffs; then cat /regress/regression.diffs; fi
-
+if test -f /regress/regression.diffs; then cat /regress/regression.diffs; exit 1; fi
