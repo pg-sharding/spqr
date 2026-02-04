@@ -2170,7 +2170,7 @@ func (qc *ClusteredCoordinator) SyncRouterCoordinatorAddress(ctx context.Context
 		Str("address", qRouter.Address).
 		Msg("qdb coordinator: sync coordinator address")
 
-	return retry.Do(ctx, retry.NewExponential(time.Second), func(ctx context.Context) error {
+	return retry.Do(ctx, retry.WithMaxRetries(4, retry.NewExponential(time.Second)), func(ctx context.Context) error {
 		cc, err := qc.getOrCreateRouterConn(qRouter)
 		if err != nil {
 			return err
