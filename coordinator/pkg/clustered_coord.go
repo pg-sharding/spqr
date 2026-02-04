@@ -2371,7 +2371,6 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 	}
 }
 
-// TODO : unit tests
 func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
 	if err := qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.RawHosts)); err != nil {
 		return err
