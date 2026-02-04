@@ -954,7 +954,7 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		// TODO: after convert unite command into etcd transaction we no need in embracing "lock" "unlock".
 		// We'll just check existing lock at the start.
 		if err := lc.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
+			spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range in Unite")
 		}
 	}()
 
@@ -1050,7 +1050,7 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		// We'll just check existing lock at the start.
 		defer func() {
 			if err := qc.UnlockKeyRange(ctx, req.SourceID); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+				spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range in Split")
 			}
 		}()
 	}

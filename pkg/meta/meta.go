@@ -930,11 +930,11 @@ func ProcMetadataCommand(ctx context.Context,
 		}
 
 		if err := mgr.RegisterRouter(ctx, newRouter); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to register router: %s", err)
 		}
 
 		if err := mgr.SyncRouterMetadata(ctx, newRouter); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to sync router metadata: %s", err)
 		}
 
 		tts := &tupleslot.TupleTableSlot{

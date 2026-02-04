@@ -1481,7 +1481,7 @@ func TestSpqr(t *testing.T) {
 			Format:        "pretty",
 			Paths:         paths,
 			Strict:        true,
-			NoColors:      true,
+			NoColors:      false,
 			StopOnFailure: true,
 			Concurrency:   1,
 		},
