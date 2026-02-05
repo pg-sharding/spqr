@@ -2646,7 +2646,7 @@ func (q *EtcdQDB) TryTaskGroupLock(ctx context.Context, tgId string) error {
 		if err != nil {
 			return err
 		}
-		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "qdb is already in use")
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "lock is already taken")
 	}
 
 	// okay, we acquired lock, time to spawn keep alive channel
