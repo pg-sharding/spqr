@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	protos "github.com/pg-sharding/spqr/pkg/protos"
 )
 
 const (
@@ -34,22 +33,6 @@ func NewQdbStatementExt(cmdType int32, key string, value string, extension strin
 		stmt.Extension = extension
 		return stmt, nil
 	}
-}
-
-func (s *QdbStatement) ToProto() *protos.QdbTransactionCmd {
-	return &protos.QdbTransactionCmd{Command: s.CmdType, Key: s.Key, Value: s.Value}
-}
-
-func QdbStmtFromProto(protoStmt *protos.QdbTransactionCmd) (*QdbStatement, error) {
-	return NewQdbStatementExt(protoStmt.Command, protoStmt.Key, protoStmt.Value, protoStmt.Extension)
-}
-
-func SliceToProto(stmts []QdbStatement) []*protos.QdbTransactionCmd {
-	result := make([]*protos.QdbTransactionCmd, len(stmts))
-	for i, qdbStmt := range stmts {
-		result[i] = qdbStmt.ToProto()
-	}
-	return result
 }
 
 type QdbTransaction struct {

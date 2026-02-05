@@ -29,29 +29,19 @@ message MetaTransactionGossipRequest {
 service MetaTransactionGossipService {
   rpc ApplyMeta(MetaTransactionGossipRequest) returns (google.protobuf.Empty) {}
 }
-// NEED REMOVE. This structure doesn't make sense right now.
-message QdbTransactionCmd {
-  int32 command = 1;
-  string key = 2;
-  string value = 3;
-  string extension = 4;
-}
 
 message MetaTransactionReply {
     string transactionId = 1;
-    repeated QdbTransactionCmd cmdList = 2;
-    repeated MetaTransactionGossipCommand metaCmdList = 3;
+    repeated MetaTransactionGossipCommand metaCmdList = 2;
 }
 
 message MetaTransactionRequest {
     string transactionId = 1;
-    repeated QdbTransactionCmd cmdList = 2;
-    repeated MetaTransactionGossipCommand metaCmdList = 3;
+    repeated MetaTransactionGossipCommand metaCmdList = 2;
 }
 
 message ExecNoTranRequest {
-    repeated QdbTransactionCmd cmdList = 1;
-    repeated MetaTransactionGossipCommand metaCmdList = 2;
+    repeated MetaTransactionGossipCommand metaCmdList = 1;
 }
 
 service MetaTransactionService {

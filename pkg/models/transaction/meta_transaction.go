@@ -19,7 +19,6 @@ type TransactionMgr interface {
 	BeginTran(ctx context.Context) (*MetaTransaction, error)
 }
 
-// NEED REMOVE. This structure doesn't make sense right now.
 type MetaTransaction struct {
 	TransactionId uuid.UUID
 	Operations    *MetaTransactionChunk
@@ -29,18 +28,10 @@ func NewMetaTransaction(qdbTransaction qdb.QdbTransaction) *MetaTransaction {
 	return &MetaTransaction{TransactionId: qdbTransaction.Id()}
 }
 
-func innerFromProto(TransactionId string, CmdList []*proto.QdbTransactionCmd, MetaCmdList []*proto.MetaTransactionGossipCommand) (*MetaTransaction, error) {
+func innerFromProto(TransactionId string, MetaCmdList []*proto.MetaTransactionGossipCommand) (*MetaTransaction, error) {
 	if tranId, err := uuid.Parse(TransactionId); err != nil {
 		return nil, err
 	} else {
-		qdbCmdList := make([]qdb.QdbStatement, len(CmdList))
-		for index, stmtProto := range CmdList {
-			if stmtQdb, err := qdb.QdbStmtFromProto(stmtProto); err != nil {
-				return nil, err
-			} else {
-				qdbCmdList[index] = *stmtQdb
-			}
-		}
 		return &MetaTransaction{TransactionId: tranId,
 			Operations: NewMetaTransactionChunk(MetaCmdList),
 		}, nil
@@ -48,9 +39,6 @@ func innerFromProto(TransactionId string, CmdList []*proto.QdbTransactionCmd, Me
 }
 
 func BeginTranFromProto(tran *proto.MetaTransactionReply) (*MetaTransaction, error) {
-	if len(tran.CmdList) > 0 || len(tran.MetaCmdList) > 0 {
-		return nil, fmt.Errorf("begin from proto non empty transaction")
-	}
 	idTran, err := uuid.Parse(tran.TransactionId)
 	if err != nil {
 		return nil, fmt.Errorf("invalid transaction id=%s", tran.TransactionId)
@@ -59,11 +47,11 @@ func BeginTranFromProto(tran *proto.MetaTransactionReply) (*MetaTransaction, err
 }
 
 func TransactionFromProto(tran *proto.MetaTransactionReply) (*MetaTransaction, error) {
-	return innerFromProto(tran.TransactionId, tran.CmdList, tran.MetaCmdList)
+	return innerFromProto(tran.TransactionId, tran.MetaCmdList)
 }
 
 func TransactionFromProtoRequest(tran *proto.MetaTransactionRequest) (*MetaTransaction, error) {
-	return innerFromProto(tran.TransactionId, tran.CmdList, tran.MetaCmdList)
+	return innerFromProto(tran.TransactionId, tran.MetaCmdList)
 }
 
 type MetaTransactionChunk struct {
@@ -107,15 +95,6 @@ func NewTransaction() (*MetaTransaction, error) {
 			TransactionId: qdbTran.Id(),
 			Operations:    &MetaTransactionChunk{},
 		}, nil
-	}
-}
-
-func ToNoGossipTransaction(transaction *MetaTransaction) *MetaTransaction {
-	return &MetaTransaction{
-		TransactionId: transaction.TransactionId,
-		Operations: &MetaTransactionChunk{
-			GossipRequests: make([]*proto.MetaTransactionGossipCommand, 0),
-		},
 	}
 }
 
