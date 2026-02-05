@@ -857,17 +857,16 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 		return err
 	}
 
-	// no need to move data to the same shard
-	if keyRange.ShardID == req.ShardId {
-		return nil
-	}
-
 	move, err := qc.GetKeyRangeMove(ctx, req.Krid)
 	if err != nil {
 		return err
 	}
 
 	if move == nil {
+		// no need to move data to the same shard
+		if keyRange.ShardID == req.ShardId {
+			return nil
+		}
 		// No key range moves in progress
 		move = &qdb.MoveKeyRange{
 			MoveId:     uuid.NewString(),
