@@ -72,7 +72,7 @@ func ResetICP(name string) error {
 	defer mu.Unlock()
 
 	switch name {
-	case TwoPhaseDecisionCP:
+	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP:
 		/* OK */
 		delete(cpsMp, name)
 		return nil
