@@ -428,6 +428,779 @@ Feature: Move recover test
     And qdb should not contain transaction "krid2"
     And qdb should not contain key range moves
 
+Scenario: Started key range movement continues when router meta update failed
+    When I execute SQL on host "coordinator"
+    """
+    REGISTER ROUTER r2 ADDRESS "[regress_router_2]:7000";
+    DROP KEY RANGE ALL;
+    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    LOCK KEY RANGE krid2;
+    """
+    Then command return code should be "0"
+    When I record in qdb key range move
+    """
+    {
+    "move_id": "move1",
+    "key_range_id": "krid2",
+    "shard_id": "sh1",
+    "status": "STARTED"
+    }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values (1, '001'), (11, '002');
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "router-admin"
+    """
+    UNLOCK KEY RANGE krid2;
+    DROP KEY RANGE ALL;
+    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    LOCK KEY RANGE krid2;
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "router2-admin"
+    """
+    UNLOCK KEY RANGE krid2;
+    DROP KEY RANGE ALL;
+    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    LOCK KEY RANGE krid2;
+    """
+    Then command return code should be "0"
+    Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
+    When I execute SQL on host "coordinator2"
+    """
+    SHOW routers
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    001(.|\n)*002
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should not match regexp
+    """
+    002
+    """
+    And we wait for "5" seconds
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+          "key_range_id":"krid1",
+          "distribution_id":"ds1",
+          "lower_bound":"1",
+          "shard_id":"sh1",
+          "locked":"false"
+      },
+      {
+          "key_range_id":"krid2",
+          "distribution_id":"ds1",
+          "lower_bound":"11",
+          "shard_id":"sh1",
+          "locked":"false"
+      }
+    ]
+    """
+    And qdb should not contain transaction "krid2"
+    And qdb should not contain key range moves
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+          "key_range_id":"krid1",
+          "distribution_id":"ds1",
+          "lower_bound":"1",
+          "shard_id":"sh1",
+          "locked":"false"
+      },
+      {
+          "key_range_id":"krid2",
+          "distribution_id":"ds1",
+          "lower_bound":"11",
+          "shard_id":"sh1",
+          "locked":"false"
+      }
+    ]
+    """
+    When I run SQL on host "router2-admin"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+          "key_range_id":"krid1",
+          "distribution_id":"ds1",
+          "lower_bound":"1",
+          "shard_id":"sh1",
+          "locked":"false"
+      },
+      {
+          "key_range_id":"krid2",
+          "distribution_id":"ds1",
+          "lower_bound":"11",
+          "shard_id":"sh1",
+          "locked":"false"
+      }
+    ]
+    """
+  
+  Scenario: Started key range movement continues
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid2
+    """
+    Then command return code should be "0"
+    When I record in qdb key range move
+    """
+    {
+    "move_id": "move1",
+    "key_range_id": "krid2",
+    "shard_id": "sh1",
+    "status": "STARTED"
+    }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(11, '002');
+    """
+    Then command return code should be "0"
+    Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
+    When I execute SQL on host "coordinator2"
+    """
+    SHOW routers
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    001(.|\n)*002
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should not match regexp
+    """
+    002
+    """
+    And we wait for "5" seconds
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+          "key_range_id":"krid1",
+          "distribution_id":"ds1",
+          "lower_bound":"1",
+          "shard_id":"sh1",
+          "locked":"false"
+      },
+      {
+          "key_range_id":"krid2",
+          "distribution_id":"ds1",
+          "lower_bound":"11",
+          "shard_id":"sh1",
+          "locked":"false"
+      }
+    ]
+    """
+    And qdb should not contain transaction "krid2"
+    And qdb should not contain key range moves
+
+  Scenario: Locked key range movement continues with planned transaction
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid2
+    """
+    Then command return code should be "0"
+    When I record in qdb key range move
+    """
+    {
+    "move_id": "move1",
+    "key_range_id": "krid2",
+    "shard_id": "sh1",
+    "status": "LOCKED"
+    }
+    """
+    Then command return code should be "0"
+    When I record in qdb data transfer transaction with name "krid2"
+    """
+    {
+    "to_shard": "sh1",
+    "from_shard": "sh2",
+    "status": "planned"
+    }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(11, '002');
+    """
+    Then command return code should be "0"
+    Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
+    When I execute SQL on host "coordinator2"
+    """
+    SHOW routers
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    001(.|\n)*002
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should not match regexp
+    """
+    002
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+          "key_range_id":"krid1",
+          "distribution_id":"ds1",
+          "lower_bound":"1",
+          "shard_id":"sh1",
+          "locked":"false"
+      },
+      {
+          "key_range_id":"krid2",
+          "distribution_id":"ds1",
+          "lower_bound":"11",
+          "shard_id":"sh1",
+          "locked":"false"
+      }
+    ]
+    """
+    And qdb should not contain transaction "krid2"
+    And qdb should not contain key range moves
+
+  Scenario: Locked key range movement continues with dataCopied transaction
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid2
+    """
+    Then command return code should be "0"
+    When I record in qdb key range move
+    """
+    {
+    "move_id": "move1",
+    "key_range_id": "krid2",
+    "shard_id": "sh1",
+    "status": "LOCKED"
+    }
+    """
+    Then command return code should be "0"
+    When I record in qdb data transfer transaction with name "krid2"
+    """
+    {
+    "to_shard": "sh1",
+    "from_shard": "sh2",
+    "status": "data_copied"
+    }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values (1, '001'), (11, '002');
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(11, '002');
+    """
+    Then command return code should be "0"
+    Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
+    When I execute SQL on host "coordinator2"
+    """
+    SHOW routers
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    001(.|\n)*002
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should not match regexp
+    """
+    002
+    """
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+          "key_range_id":"krid1",
+          "distribution_id":"ds1",
+          "lower_bound":"1",
+          "shard_id":"sh1",
+          "locked":"false"
+      },
+      {
+          "key_range_id":"krid2",
+          "distribution_id":"ds1",
+          "lower_bound":"11",
+          "shard_id":"sh1",
+          "locked":"false"
+      }
+    ]
+    """
+    And qdb should not contain transaction "krid2"
+    And qdb should not contain key range moves
+
+  Scenario: Locked key range movement continues with completed transaction
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid2
+    """
+    Then command return code should be "0"
+    When I record in qdb key range move
+    """
+    {
+    "move_id": "move1",
+    "key_range_id": "krid2",
+    "shard_id": "sh1",
+    "status": "LOCKED"
+    }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values (1, '001'), (11, '002');
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
+    When I execute SQL on host "coordinator2"
+    """
+    SHOW routers
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    001(.|\n)*002
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should not match regexp
+    """
+    002
+    """
+    And we wait for "5" seconds
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+          "key_range_id":"krid1",
+          "distribution_id":"ds1",
+          "lower_bound":"1",
+          "shard_id":"sh1",
+          "locked":"false"
+      },
+      {
+          "key_range_id":"krid2",
+          "distribution_id":"ds1",
+          "lower_bound":"11",
+          "shard_id":"sh1",
+          "locked":"false"
+      }
+    ]
+    """
+    And qdb should not contain transaction "krid2"
+    And qdb should not contain key range moves
+  
+  Scenario: DataMoved key range movement continues
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid2
+    """
+    Then command return code should be "0"
+    When I record in qdb key range move
+    """
+    {
+    "move_id": "move1",
+    "key_range_id": "krid2",
+    "shard_id": "sh1",
+    "status": "DATA_MOVED"
+    }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values (1, '001'), (11, '002');
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
+    When I execute SQL on host "coordinator2"
+    """
+    SHOW routers
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    001(.|\n)*002
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should not match regexp
+    """
+    002
+    """
+    And we wait for "5" seconds
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+          "key_range_id":"krid1",
+          "distribution_id":"ds1",
+          "lower_bound":"1",
+          "shard_id":"sh1",
+          "locked":"false"
+      },
+      {
+          "key_range_id":"krid2",
+          "distribution_id":"ds1",
+          "lower_bound":"11",
+          "shard_id":"sh1",
+          "locked":"false"
+      }
+    ]
+    """
+    And qdb should not contain transaction "krid2"
+    And qdb should not contain key range moves
+  
+  Scenario: CoordMetaUpdated key range movement continues
+    When I execute SQL on host "coordinator"
+    """
+    REGISTER ROUTER r2 ADDRESS "[regress_router_2]:7000";
+    DROP KEY RANGE ALL;
+    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    LOCK KEY RANGE krid2;
+    """
+    Then command return code should be "0"
+    When I record in qdb key range move
+    """
+    {
+    "move_id": "move1",
+    "key_range_id": "krid2",
+    "shard_id": "sh1",
+    "status": "COORD_META_UPDATED"
+    }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values (1, '001'), (11, '002');
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "router-admin"
+    """
+    UNLOCK KEY RANGE krid2;
+    DROP KEY RANGE ALL;
+    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    LOCK KEY RANGE krid2;
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "router2-admin"
+    """
+    UNLOCK KEY RANGE krid2;
+    DROP KEY RANGE ALL;
+    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    LOCK KEY RANGE krid2;
+    """
+    Then command return code should be "0"
+    Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
+    When I execute SQL on host "coordinator2"
+    """
+    SHOW routers
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    001(.|\n)*002
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should not match regexp
+    """
+    002
+    """
+    And we wait for "5" seconds
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+          "key_range_id":"krid1",
+          "distribution_id":"ds1",
+          "lower_bound":"1",
+          "shard_id":"sh1",
+          "locked":"false"
+      },
+      {
+          "key_range_id":"krid2",
+          "distribution_id":"ds1",
+          "lower_bound":"11",
+          "shard_id":"sh1",
+          "locked":"false"
+      }
+    ]
+    """
+    And qdb should not contain transaction "krid2"
+    And qdb should not contain key range moves
+  
+  Scenario: CoordMetaUpdated key range movement continues after change on one router
+    When I execute SQL on host "coordinator"
+    """
+    REGISTER ROUTER r2 ADDRESS "[regress_router_2]:7000";
+    DROP KEY RANGE ALL;
+    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    LOCK KEY RANGE krid2;
+    """
+    Then command return code should be "0"
+    When I record in qdb key range move
+    """
+    {
+    "move_id": "move1",
+    "key_range_id": "krid2",
+    "shard_id": "sh1",
+    "status": "COORD_META_UPDATED"
+    }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values (1, '001'), (11, '002');
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "router-admin"
+    """
+    UNLOCK KEY RANGE krid2;
+    DROP KEY RANGE ALL;
+    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    LOCK KEY RANGE krid2;
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "router2-admin"
+    """
+    UNLOCK KEY RANGE krid2;
+    DROP KEY RANGE ALL;
+    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    LOCK KEY RANGE krid2;
+    """
+    Then command return code should be "0"
+    Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
+    When I execute SQL on host "coordinator2"
+    """
+    SHOW routers
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    001(.|\n)*002
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should not match regexp
+    """
+    002
+    """
+    And we wait for "5" seconds
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+          "key_range_id":"krid1",
+          "distribution_id":"ds1",
+          "lower_bound":"1",
+          "shard_id":"sh1",
+          "locked":"false"
+      },
+      {
+          "key_range_id":"krid2",
+          "distribution_id":"ds1",
+          "lower_bound":"11",
+          "shard_id":"sh1",
+          "locked":"false"
+      }
+    ]
+    """
+    And qdb should not contain transaction "krid2"
+    And qdb should not contain key range moves
+
   Scenario: Completed key range movement continues
     When I execute SQL on host "coordinator"
     """
@@ -662,7 +1435,7 @@ Feature: Move recover test
     8
     """
 
-    Scenario: Move task group graceful stop works
+  Scenario: Move task group graceful stop works
     When I record in qdb move task group
     """
     {

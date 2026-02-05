@@ -30,9 +30,14 @@ type internalKeyRange struct {
 type MoveKeyRangeStatus string
 
 const (
-	MoveKeyRangePlanned  = MoveKeyRangeStatus("PLANNED")
-	MoveKeyRangeStarted  = MoveKeyRangeStatus("STARTED")
-	MoveKeyRangeComplete = MoveKeyRangeStatus("COMPLETE")
+	MoveKeyRangePlanned              = MoveKeyRangeStatus("PLANNED")
+	MoveKeyRangeLocked               = MoveKeyRangeStatus("LOCKED")
+	MoveKeyRangeDataMoved            = MoveKeyRangeStatus("DATA_MOVED")
+	MoveKeyRangeDataCoordMetaUpdated = MoveKeyRangeStatus("COORD_META_UPDATED")
+	MoveKeyRangeComplete             = MoveKeyRangeStatus("COMPLETE")
+
+	// Deprecated: use MoveKeyRangeLocked
+	MoveKeyRangeStarted = MoveKeyRangeStatus("STARTED")
 )
 
 type MoveKeyRange struct {

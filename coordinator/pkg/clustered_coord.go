@@ -888,11 +888,54 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			if err != nil {
 				return err
 			}
-			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeStarted); err != nil {
+			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeLocked); err != nil {
 				return err
 			}
-			move.Status = qdb.MoveKeyRangeStarted
-		case qdb.MoveKeyRangeStarted:
+			move.Status = qdb.MoveKeyRangeLocked
+
+		case qdb.MoveKeyRangeStarted: // nolint: staticcheck
+			// move the data
+			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
+			if err != nil {
+				return err
+			}
+
+			if keyRange.ShardID != req.ShardId {
+				err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db, qc)
+				if err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
+					return err
+				}
+				keyRange.ShardID = req.ShardId
+				// TODO: move check to meta layer
+				if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
+					return err
+				}
+				if err := qc.db.UpdateKeyRange(ctx, keyRange.ToDB()); err != nil {
+					return err
+				}
+			}
+			// Notify all routers about scheme changes.
+			if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+				cl := proto.NewKeyRangeServiceClient(cc)
+				moveResp, err := cl.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
+					Id:        keyRange.ID,
+					ToShardId: keyRange.ShardID,
+				})
+				spqrlog.Zero.Debug().Err(err).
+					Interface("response", moveResp).
+					Msg("move key range response")
+				return err
+			}); err != nil {
+				return err
+			}
+
+			if err := qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeComplete); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to update key range move status")
+			}
+			move.Status = qdb.MoveKeyRangeComplete
+
+		case qdb.MoveKeyRangeLocked:
 			// move the data
 			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
 			if err != nil {
@@ -904,27 +947,30 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 				spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 				return err
 			}
-
-			// update key range
-			krg, err := qc.GetKeyRange(ctx, req.Krid)
-			if err != nil {
+			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeDataMoved); err != nil {
 				return err
 			}
-			krg.ShardID = req.ShardId
+			move.Status = qdb.MoveKeyRangeDataMoved
+		case qdb.MoveKeyRangeDataMoved:
+			keyRange.ShardID = req.ShardId
 			// TODO: move check to meta layer
-			if err := meta.ValidateKeyRangeForModify(ctx, qc, krg); err != nil {
+			if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
 				return err
 			}
-			if err := qc.db.UpdateKeyRange(ctx, krg.ToDB()); err != nil {
+			if err := qc.db.UpdateKeyRange(ctx, keyRange.ToDB()); err != nil {
 				return err
 			}
-
+			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeDataCoordMetaUpdated); err != nil {
+				return err
+			}
+			move.Status = qdb.MoveKeyRangeDataCoordMetaUpdated
+		case qdb.MoveKeyRangeDataCoordMetaUpdated:
 			// Notify all routers about scheme changes.
 			if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 				cl := proto.NewKeyRangeServiceClient(cc)
 				moveResp, err := cl.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
-					Id:        krg.ID,
-					ToShardId: krg.ShardID,
+					Id:        keyRange.ID,
+					ToShardId: keyRange.ShardID,
 				})
 				spqrlog.Zero.Debug().Err(err).
 					Interface("response", moveResp).

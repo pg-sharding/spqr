@@ -135,6 +135,9 @@ Steps:
 // Returns:
 //   - error: an error if the move fails.
 func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, mgr meta.EntityMgr) error {
+	if toId == fromId {
+		return fmt.Errorf("incorrect request to move data in key range \"%s\": source and destination shards are the same", krg.ID)
+	}
 	tx, err := db.GetTransferTx(ctx, krg.ID)
 	if err != nil {
 		return err
