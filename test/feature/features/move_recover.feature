@@ -578,7 +578,7 @@ Scenario: Started key range movement continues when router meta update failed
     ]
     """
   
-  Scenario: Started key range movement continues
+  Scenario: Locked key range movement continues
     When I execute SQL on host "coordinator"
     """
     LOCK KEY RANGE krid2
@@ -590,7 +590,7 @@ Scenario: Started key range movement continues when router meta update failed
     "move_id": "move1",
     "key_range_id": "krid2",
     "shard_id": "sh1",
-    "status": "STARTED"
+    "status": "LOCKED"
     }
     """
     Then command return code should be "0"
