@@ -17,11 +17,6 @@ func TestTransactionFromProto(t *testing.T) {
 		}
 		protoTran := &proto.MetaTransactionReply{
 			TransactionId: "6ca41a0b-8446-4098-abcf-d9802bea3447",
-			CmdList: []*proto.QdbTransactionCmd{
-				{Command: 0, Key: "ds1",
-					Value:     `{ "id": "ds1", "col_types": ["integer"], }`,
-					Extension: "RelationDistribution"},
-			},
 			MetaCmdList: []*proto.MetaTransactionGossipCommand{
 				{
 					CreateDistribution: &proto.CreateDistributionGossip{

@@ -1266,10 +1266,7 @@ func (a *Adapter) ListRelationSequences(ctx context.Context, relName *rfqn.Relat
 
 func (a *Adapter) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionChunk) error {
 	conn := proto.NewMetaTransactionServiceClient(a.conn)
-	request := &proto.ExecNoTranRequest{
-		MetaCmdList: chunk.GossipRequests,
-		CmdList:     nil,
-	}
+	request := &proto.ExecNoTranRequest{MetaCmdList: chunk.GossipRequests}
 	_, err := conn.ExecNoTran(ctx, request)
 	return err
 }
@@ -1279,7 +1276,6 @@ func (a *Adapter) CommitTran(ctx context.Context, transaction *mtran.MetaTransac
 	request := &proto.MetaTransactionRequest{
 		TransactionId: transaction.TransactionId.String(),
 		MetaCmdList:   transaction.Operations.GossipRequests,
-		CmdList:       nil,
 	}
 	_, err := conn.CommitTran(ctx, request)
 	return err

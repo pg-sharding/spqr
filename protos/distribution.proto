@@ -14,8 +14,7 @@ message CreateDistributionRequest{
 }
 
 message CreateDistributionReply{
-  repeated QdbTransactionCmd cmdList = 1;
-  repeated MetaTransactionGossipCommand metaCmdList = 2;
+  repeated MetaTransactionGossipCommand metaCmdList = 1;
 }
 
 message ListDistributionsReply {

@@ -2761,9 +2761,8 @@ func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtr
 			return fmt.Errorf("invalid meta transaction request (commit tran)")
 		}
 	}
-	noGossipTran := mtran.ToNoGossipTransaction(transaction)
 
-	if err := qc.Coordinator.CommitTran(ctx, noGossipTran); err != nil {
+	if err := qc.Coordinator.CommitTran(ctx, transaction); err != nil {
 		return err
 	}
 	return qc.traverseRouters(ctx,

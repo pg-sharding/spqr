@@ -207,86 +207,17 @@ func (x *MetaTransactionGossipRequest) GetCommands() []*MetaTransactionGossipCom
 	return nil
 }
 
-type QdbTransactionCmd struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Command       int32                  `protobuf:"varint,1,opt,name=command,proto3" json:"command,omitempty"`
-	Key           string                 `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
-	Value         string                 `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
-	Extension     string                 `protobuf:"bytes,4,opt,name=extension,proto3" json:"extension,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *QdbTransactionCmd) Reset() {
-	*x = QdbTransactionCmd{}
-	mi := &file_protos_meta_transaction_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *QdbTransactionCmd) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*QdbTransactionCmd) ProtoMessage() {}
-
-func (x *QdbTransactionCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_meta_transaction_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use QdbTransactionCmd.ProtoReflect.Descriptor instead.
-func (*QdbTransactionCmd) Descriptor() ([]byte, []int) {
-	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *QdbTransactionCmd) GetCommand() int32 {
-	if x != nil {
-		return x.Command
-	}
-	return 0
-}
-
-func (x *QdbTransactionCmd) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-func (x *QdbTransactionCmd) GetValue() string {
-	if x != nil {
-		return x.Value
-	}
-	return ""
-}
-
-func (x *QdbTransactionCmd) GetExtension() string {
-	if x != nil {
-		return x.Extension
-	}
-	return ""
-}
-
 type MetaTransactionReply struct {
 	state         protoimpl.MessageState          `protogen:"open.v1"`
 	TransactionId string                          `protobuf:"bytes,1,opt,name=transactionId,proto3" json:"transactionId,omitempty"`
-	CmdList       []*QdbTransactionCmd            `protobuf:"bytes,2,rep,name=cmdList,proto3" json:"cmdList,omitempty"`
-	MetaCmdList   []*MetaTransactionGossipCommand `protobuf:"bytes,3,rep,name=metaCmdList,proto3" json:"metaCmdList,omitempty"`
+	MetaCmdList   []*MetaTransactionGossipCommand `protobuf:"bytes,2,rep,name=metaCmdList,proto3" json:"metaCmdList,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MetaTransactionReply) Reset() {
 	*x = MetaTransactionReply{}
-	mi := &file_protos_meta_transaction_proto_msgTypes[5]
+	mi := &file_protos_meta_transaction_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -298,7 +229,7 @@ func (x *MetaTransactionReply) String() string {
 func (*MetaTransactionReply) ProtoMessage() {}
 
 func (x *MetaTransactionReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_meta_transaction_proto_msgTypes[5]
+	mi := &file_protos_meta_transaction_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -311,7 +242,7 @@ func (x *MetaTransactionReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetaTransactionReply.ProtoReflect.Descriptor instead.
 func (*MetaTransactionReply) Descriptor() ([]byte, []int) {
-	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{5}
+	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *MetaTransactionReply) GetTransactionId() string {
@@ -319,13 +250,6 @@ func (x *MetaTransactionReply) GetTransactionId() string {
 		return x.TransactionId
 	}
 	return ""
-}
-
-func (x *MetaTransactionReply) GetCmdList() []*QdbTransactionCmd {
-	if x != nil {
-		return x.CmdList
-	}
-	return nil
 }
 
 func (x *MetaTransactionReply) GetMetaCmdList() []*MetaTransactionGossipCommand {
@@ -338,15 +262,14 @@ func (x *MetaTransactionReply) GetMetaCmdList() []*MetaTransactionGossipCommand 
 type MetaTransactionRequest struct {
 	state         protoimpl.MessageState          `protogen:"open.v1"`
 	TransactionId string                          `protobuf:"bytes,1,opt,name=transactionId,proto3" json:"transactionId,omitempty"`
-	CmdList       []*QdbTransactionCmd            `protobuf:"bytes,2,rep,name=cmdList,proto3" json:"cmdList,omitempty"`
-	MetaCmdList   []*MetaTransactionGossipCommand `protobuf:"bytes,3,rep,name=metaCmdList,proto3" json:"metaCmdList,omitempty"`
+	MetaCmdList   []*MetaTransactionGossipCommand `protobuf:"bytes,2,rep,name=metaCmdList,proto3" json:"metaCmdList,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MetaTransactionRequest) Reset() {
 	*x = MetaTransactionRequest{}
-	mi := &file_protos_meta_transaction_proto_msgTypes[6]
+	mi := &file_protos_meta_transaction_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -358,7 +281,7 @@ func (x *MetaTransactionRequest) String() string {
 func (*MetaTransactionRequest) ProtoMessage() {}
 
 func (x *MetaTransactionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_meta_transaction_proto_msgTypes[6]
+	mi := &file_protos_meta_transaction_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -371,7 +294,7 @@ func (x *MetaTransactionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetaTransactionRequest.ProtoReflect.Descriptor instead.
 func (*MetaTransactionRequest) Descriptor() ([]byte, []int) {
-	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{6}
+	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *MetaTransactionRequest) GetTransactionId() string {
@@ -379,13 +302,6 @@ func (x *MetaTransactionRequest) GetTransactionId() string {
 		return x.TransactionId
 	}
 	return ""
-}
-
-func (x *MetaTransactionRequest) GetCmdList() []*QdbTransactionCmd {
-	if x != nil {
-		return x.CmdList
-	}
-	return nil
 }
 
 func (x *MetaTransactionRequest) GetMetaCmdList() []*MetaTransactionGossipCommand {
@@ -397,15 +313,14 @@ func (x *MetaTransactionRequest) GetMetaCmdList() []*MetaTransactionGossipComman
 
 type ExecNoTranRequest struct {
 	state         protoimpl.MessageState          `protogen:"open.v1"`
-	CmdList       []*QdbTransactionCmd            `protobuf:"bytes,1,rep,name=cmdList,proto3" json:"cmdList,omitempty"`
-	MetaCmdList   []*MetaTransactionGossipCommand `protobuf:"bytes,2,rep,name=metaCmdList,proto3" json:"metaCmdList,omitempty"`
+	MetaCmdList   []*MetaTransactionGossipCommand `protobuf:"bytes,1,rep,name=metaCmdList,proto3" json:"metaCmdList,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ExecNoTranRequest) Reset() {
 	*x = ExecNoTranRequest{}
-	mi := &file_protos_meta_transaction_proto_msgTypes[7]
+	mi := &file_protos_meta_transaction_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -417,7 +332,7 @@ func (x *ExecNoTranRequest) String() string {
 func (*ExecNoTranRequest) ProtoMessage() {}
 
 func (x *ExecNoTranRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_meta_transaction_proto_msgTypes[7]
+	mi := &file_protos_meta_transaction_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -430,14 +345,7 @@ func (x *ExecNoTranRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecNoTranRequest.ProtoReflect.Descriptor instead.
 func (*ExecNoTranRequest) Descriptor() ([]byte, []int) {
-	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *ExecNoTranRequest) GetCmdList() []*QdbTransactionCmd {
-	if x != nil {
-		return x.CmdList
-	}
-	return nil
+	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ExecNoTranRequest) GetMetaCmdList() []*MetaTransactionGossipCommand {
@@ -460,23 +368,15 @@ const file_protos_meta_transaction_proto_rawDesc = "" +
 	"\x12createDistribution\x18\x01 \x01(\v2\x1e.spqr.CreateDistributionGossipR\x12createDistribution\x12B\n" +
 	"\x0ecreateKeyRange\x18\x02 \x01(\v2\x1a.spqr.CreateKeyRangeGossipR\x0ecreateKeyRange\"^\n" +
 	"\x1cMetaTransactionGossipRequest\x12>\n" +
-	"\bcommands\x18\x01 \x03(\v2\".spqr.MetaTransactionGossipCommandR\bcommands\"s\n" +
-	"\x11QdbTransactionCmd\x12\x18\n" +
-	"\acommand\x18\x01 \x01(\x05R\acommand\x12\x10\n" +
-	"\x03key\x18\x02 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x03 \x01(\tR\x05value\x12\x1c\n" +
-	"\textension\x18\x04 \x01(\tR\textension\"\xb5\x01\n" +
+	"\bcommands\x18\x01 \x03(\v2\".spqr.MetaTransactionGossipCommandR\bcommands\"\x82\x01\n" +
 	"\x14MetaTransactionReply\x12$\n" +
-	"\rtransactionId\x18\x01 \x01(\tR\rtransactionId\x121\n" +
-	"\acmdList\x18\x02 \x03(\v2\x17.spqr.QdbTransactionCmdR\acmdList\x12D\n" +
-	"\vmetaCmdList\x18\x03 \x03(\v2\".spqr.MetaTransactionGossipCommandR\vmetaCmdList\"\xb7\x01\n" +
+	"\rtransactionId\x18\x01 \x01(\tR\rtransactionId\x12D\n" +
+	"\vmetaCmdList\x18\x02 \x03(\v2\".spqr.MetaTransactionGossipCommandR\vmetaCmdList\"\x84\x01\n" +
 	"\x16MetaTransactionRequest\x12$\n" +
-	"\rtransactionId\x18\x01 \x01(\tR\rtransactionId\x121\n" +
-	"\acmdList\x18\x02 \x03(\v2\x17.spqr.QdbTransactionCmdR\acmdList\x12D\n" +
-	"\vmetaCmdList\x18\x03 \x03(\v2\".spqr.MetaTransactionGossipCommandR\vmetaCmdList\"\x8c\x01\n" +
-	"\x11ExecNoTranRequest\x121\n" +
-	"\acmdList\x18\x01 \x03(\v2\x17.spqr.QdbTransactionCmdR\acmdList\x12D\n" +
-	"\vmetaCmdList\x18\x02 \x03(\v2\".spqr.MetaTransactionGossipCommandR\vmetaCmdList2i\n" +
+	"\rtransactionId\x18\x01 \x01(\tR\rtransactionId\x12D\n" +
+	"\vmetaCmdList\x18\x02 \x03(\v2\".spqr.MetaTransactionGossipCommandR\vmetaCmdList\"Y\n" +
+	"\x11ExecNoTranRequest\x12D\n" +
+	"\vmetaCmdList\x18\x01 \x03(\v2\".spqr.MetaTransactionGossipCommandR\vmetaCmdList2i\n" +
 	"\x1cMetaTransactionGossipService\x12I\n" +
 	"\tApplyMeta\x12\".spqr.MetaTransactionGossipRequest\x1a\x16.google.protobuf.Empty\"\x002\xe2\x01\n" +
 	"\x16MetaTransactionService\x12?\n" +
@@ -499,45 +399,41 @@ func file_protos_meta_transaction_proto_rawDescGZIP() []byte {
 	return file_protos_meta_transaction_proto_rawDescData
 }
 
-var file_protos_meta_transaction_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_protos_meta_transaction_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_protos_meta_transaction_proto_goTypes = []any{
 	(*CreateDistributionGossip)(nil),     // 0: spqr.CreateDistributionGossip
 	(*CreateKeyRangeGossip)(nil),         // 1: spqr.CreateKeyRangeGossip
 	(*MetaTransactionGossipCommand)(nil), // 2: spqr.MetaTransactionGossipCommand
 	(*MetaTransactionGossipRequest)(nil), // 3: spqr.MetaTransactionGossipRequest
-	(*QdbTransactionCmd)(nil),            // 4: spqr.QdbTransactionCmd
-	(*MetaTransactionReply)(nil),         // 5: spqr.MetaTransactionReply
-	(*MetaTransactionRequest)(nil),       // 6: spqr.MetaTransactionRequest
-	(*ExecNoTranRequest)(nil),            // 7: spqr.ExecNoTranRequest
-	(*Distribution)(nil),                 // 8: spqr.Distribution
-	(*KeyRangeInfo)(nil),                 // 9: spqr.KeyRangeInfo
-	(*emptypb.Empty)(nil),                // 10: google.protobuf.Empty
+	(*MetaTransactionReply)(nil),         // 4: spqr.MetaTransactionReply
+	(*MetaTransactionRequest)(nil),       // 5: spqr.MetaTransactionRequest
+	(*ExecNoTranRequest)(nil),            // 6: spqr.ExecNoTranRequest
+	(*Distribution)(nil),                 // 7: spqr.Distribution
+	(*KeyRangeInfo)(nil),                 // 8: spqr.KeyRangeInfo
+	(*emptypb.Empty)(nil),                // 9: google.protobuf.Empty
 }
 var file_protos_meta_transaction_proto_depIdxs = []int32{
-	8,  // 0: spqr.CreateDistributionGossip.distributions:type_name -> spqr.Distribution
-	9,  // 1: spqr.CreateKeyRangeGossip.key_range_info:type_name -> spqr.KeyRangeInfo
+	7,  // 0: spqr.CreateDistributionGossip.distributions:type_name -> spqr.Distribution
+	8,  // 1: spqr.CreateKeyRangeGossip.key_range_info:type_name -> spqr.KeyRangeInfo
 	0,  // 2: spqr.MetaTransactionGossipCommand.createDistribution:type_name -> spqr.CreateDistributionGossip
 	1,  // 3: spqr.MetaTransactionGossipCommand.createKeyRange:type_name -> spqr.CreateKeyRangeGossip
 	2,  // 4: spqr.MetaTransactionGossipRequest.commands:type_name -> spqr.MetaTransactionGossipCommand
-	4,  // 5: spqr.MetaTransactionReply.cmdList:type_name -> spqr.QdbTransactionCmd
-	2,  // 6: spqr.MetaTransactionReply.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
-	4,  // 7: spqr.MetaTransactionRequest.cmdList:type_name -> spqr.QdbTransactionCmd
-	2,  // 8: spqr.MetaTransactionRequest.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
-	4,  // 9: spqr.ExecNoTranRequest.cmdList:type_name -> spqr.QdbTransactionCmd
-	2,  // 10: spqr.ExecNoTranRequest.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
-	3,  // 11: spqr.MetaTransactionGossipService.ApplyMeta:input_type -> spqr.MetaTransactionGossipRequest
-	7,  // 12: spqr.MetaTransactionService.ExecNoTran:input_type -> spqr.ExecNoTranRequest
-	6,  // 13: spqr.MetaTransactionService.CommitTran:input_type -> spqr.MetaTransactionRequest
-	10, // 14: spqr.MetaTransactionService.BeginTran:input_type -> google.protobuf.Empty
-	10, // 15: spqr.MetaTransactionGossipService.ApplyMeta:output_type -> google.protobuf.Empty
-	10, // 16: spqr.MetaTransactionService.ExecNoTran:output_type -> google.protobuf.Empty
-	10, // 17: spqr.MetaTransactionService.CommitTran:output_type -> google.protobuf.Empty
-	5,  // 18: spqr.MetaTransactionService.BeginTran:output_type -> spqr.MetaTransactionReply
-	15, // [15:19] is the sub-list for method output_type
-	11, // [11:15] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	2,  // 5: spqr.MetaTransactionReply.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
+	2,  // 6: spqr.MetaTransactionRequest.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
+	2,  // 7: spqr.ExecNoTranRequest.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
+	3,  // 8: spqr.MetaTransactionGossipService.ApplyMeta:input_type -> spqr.MetaTransactionGossipRequest
+	6,  // 9: spqr.MetaTransactionService.ExecNoTran:input_type -> spqr.ExecNoTranRequest
+	5,  // 10: spqr.MetaTransactionService.CommitTran:input_type -> spqr.MetaTransactionRequest
+	9,  // 11: spqr.MetaTransactionService.BeginTran:input_type -> google.protobuf.Empty
+	9,  // 12: spqr.MetaTransactionGossipService.ApplyMeta:output_type -> google.protobuf.Empty
+	9,  // 13: spqr.MetaTransactionService.ExecNoTran:output_type -> google.protobuf.Empty
+	9,  // 14: spqr.MetaTransactionService.CommitTran:output_type -> google.protobuf.Empty
+	4,  // 15: spqr.MetaTransactionService.BeginTran:output_type -> spqr.MetaTransactionReply
+	12, // [12:16] is the sub-list for method output_type
+	8,  // [8:12] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_protos_meta_transaction_proto_init() }
@@ -553,7 +449,7 @@ func file_protos_meta_transaction_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_meta_transaction_proto_rawDesc), len(file_protos_meta_transaction_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
