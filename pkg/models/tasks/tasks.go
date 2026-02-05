@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"fmt"
+	"time"
 
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
@@ -50,6 +51,7 @@ type MoveTaskGroup struct {
 	Limit       int64     `json:"limit"`
 	TotalKeys   int64     `json:"total_keys"`
 	CurrentTask *MoveTask `json:"task"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type TaskGroupState string
@@ -61,8 +63,9 @@ const (
 )
 
 type MoveTaskGroupStatus struct {
-	State   TaskGroupState
-	Message string
+	State     TaskGroupState
+	Message   string
+	UpdatedAt time.Time
 }
 
 type RedistributeTaskState int
@@ -350,6 +353,7 @@ func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
 		Coeff:     group.Coeff,
 		BatchSize: group.BatchSize,
 		Limit:     group.Limit,
+		CreatedAt: group.CreatedAt,
 	}
 }
 
@@ -402,6 +406,7 @@ func TaskGroupFromDb(id string, group *qdb.MoveTaskGroup, moveTask *qdb.MoveTask
 		Limit:       group.Limit,
 		CurrentTask: TaskFromDb(moveTask),
 		TotalKeys:   totalKeys,
+		CreatedAt:   group.CreatedAt,
 	}
 }
 
@@ -659,7 +664,8 @@ func MoveTaskGroupStatusFromDb(status *qdb.TaskGroupStatus) *MoveTaskGroupStatus
 		state = TaskGroupPlanned
 	}
 	return &MoveTaskGroupStatus{
-		State:   state,
-		Message: status.Message,
+		State:     state,
+		Message:   status.Message,
+		UpdatedAt: status.UpdatedAt,
 	}
 }

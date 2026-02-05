@@ -1832,6 +1832,8 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, id string, group *Move
 
 	t := time.Now()
 
+	group.CreatedAt = t
+
 	groupJson, err := json.Marshal(group)
 	if err != nil {
 		return err
@@ -2184,6 +2186,7 @@ func (q *EtcdQDB) WriteTaskGroupStatus(ctx context.Context, id string, status *T
 		Str("msg", status.Message).
 		Msg("etcdqdb: write task group status")
 
+	status.UpdatedAt = time.Now()
 	data, err := json.Marshal(status)
 	if err != nil {
 		return err

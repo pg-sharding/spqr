@@ -1176,6 +1176,10 @@ func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, id string, group *MoveTas
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
+	if _, ok := q.MoveTaskGroups[id]; ok {
+		return fmt.Errorf("could not write move task group: task group with ID \"%s\" already exists", id)
+	}
+
 	q.MoveTaskGroups[id] = group
 	q.StopMoveTaskGroup[id] = false
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.MoveTaskGroups, id, group), NewUpdateCommand(q.StopMoveTaskGroup, id, false))

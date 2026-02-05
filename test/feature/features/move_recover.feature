@@ -1371,7 +1371,7 @@ Scenario: Started key range movement continues when router meta update failed
     SHOW task_group
     """
     Then command return code should be "0"
-    And SQL result should match json_exactly
+    And SQL result should match json
     """
     [{
         "task_group_id":            "tgid1",
@@ -1465,7 +1465,7 @@ Scenario: Started key range movement continues when router meta update failed
     SHOW task_group
     """
     Then command return code should be "0"
-    And SQL result should match json_exactly
+    And SQL result should match json
     """
     [{
         "task_group_id":            "tgid1",

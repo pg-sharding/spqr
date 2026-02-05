@@ -3,6 +3,7 @@ package qdb
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/pg-sharding/spqr/router/rfqn"
 )
@@ -167,19 +168,21 @@ type MoveTask struct {
 }
 
 type MoveTaskGroup struct {
-	Type      int     `json:"type"`
-	ShardToId string  `json:"shard_to_id"`
-	KrIdFrom  string  `json:"kr_id_from"`
-	KrIdTo    string  `json:"kr_id_to"`
-	BoundRel  string  `json:"rel"`
-	Coeff     float64 `json:"coeff"`
-	BatchSize int64   `json:"batch_size"`
-	Limit     int64   `json:"limit"`
+	Type      int       `json:"type"`
+	ShardToId string    `json:"shard_to_id"`
+	KrIdFrom  string    `json:"kr_id_from"`
+	KrIdTo    string    `json:"kr_id_to"`
+	BoundRel  string    `json:"rel"`
+	Coeff     float64   `json:"coeff"`
+	BatchSize int64     `json:"batch_size"`
+	Limit     int64     `json:"limit"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type TaskGroupStatus struct {
-	State   string `json:"state"`
-	Message string `json:"msg"`
+	State     string    `json:"state"`
+	Message   string    `json:"msg"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type RedistributeTask struct {
