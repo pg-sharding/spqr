@@ -25,6 +25,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		return nil
 	case *pgproto3.Sync:
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
+		statistics.OnRequest() // Track RPS
 
 		if err := rst.ProcessExtendedBuffer(context.Background()); err != nil {
 			return err
@@ -36,6 +37,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		return nil
 	case *pgproto3.Query:
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
+		statistics.OnRequest() // Track RPS
 
 		// copy interface
 		cpQ := *q

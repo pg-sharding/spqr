@@ -405,6 +405,7 @@ const (
 	MoveTaskStr           = "move_task"
 	MoveTasksStr          = "move_tasks"
 	UniqueIndexesStr      = "unique_indexes"
+	RouterRPSStr          = "router_rps"
 )
 
 // not SHOW target

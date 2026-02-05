@@ -734,6 +734,31 @@ func (pi *PSQLInteractor) MoveStats(ctx context.Context, stats map[string]time.D
 	return pi.CompleteMsg(len(stats))
 }
 
+// RouterRPS sends the current router RPS (Requests Per Second) statistics.
+//
+// Parameters:
+// - _ (context.Context): The context parameter (not used in the function).
+//
+// Returns:
+//   - error: An error if sending the messages fails, otherwise nil.
+func (pi *PSQLInteractor) RouterRPS(_ context.Context) error {
+	if err := pi.WriteHeader("current_rps", "avg_rps", "peak_rps"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	snapshot := statistics.GetRPSFullSnapshot()
+	if err := pi.WriteDataRow(
+		fmt.Sprintf("%.2f", snapshot.CurrentRPS),
+		fmt.Sprintf("%.2f", snapshot.AvgRPS),
+		fmt.Sprintf("%.2f", snapshot.PeakRPS),
+	); err != nil {
+		return err
+	}
+
+	return pi.CompleteMsg(1)
+}
+
 func (pi *PSQLInteractor) Users(ctx context.Context) error {
 	berules := config.RouterConfig().BackendRules
 	if err := pi.WriteHeader(
