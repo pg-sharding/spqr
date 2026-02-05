@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pg-sharding/spqr/coordinator/statistics"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -134,6 +135,9 @@ Steps:
 // Returns:
 //   - error: an error if the move fails.
 func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, mgr meta.EntityMgr) error {
+	if toId == fromId {
+		return fmt.Errorf("incorrect request to move data in key range \"%s\": source and destination shards are the same", krg.ID)
+	}
 	tx, err := db.GetTransferTx(ctx, krg.ID)
 	if err != nil {
 		return err
@@ -546,6 +550,13 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 			return fmt.Errorf("failed to disable triggers: %s", err)
 		}
 	}
+
+	if config.CoordinatorConfig().EnableICP {
+		if err := icp.CheckControlPoint(icp.CopyDataCP); err != nil {
+			spqrlog.Zero.Info().Str("cp", icp.CopyDataCP).Err(err).Msg("error while checking control point")
+		}
+	}
+
 	for _, rel := range ds.Relations {
 		krCondition, err := kr.GetKRCondition(rel, krg, upperBound, "")
 		if err != nil {

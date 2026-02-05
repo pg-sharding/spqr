@@ -2249,21 +2249,23 @@ func (q *EtcdQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error
 	}
 
 	moves := make([]*MoveKeyRange, 0, len(resp.Kvs))
+	ids := make([]string, 0, len(resp.Kvs))
 
 	for _, kv := range resp.Kvs {
 		// XXX: multi-column routing schemas
-		// A sharding rule currently supports only one column
-		var rule *MoveKeyRange
-		err := json.Unmarshal(kv.Value, &rule)
+		// A sharding krMove currently supports only one column
+		var krMove *MoveKeyRange
+		err := json.Unmarshal(kv.Value, &krMove)
 		if err != nil {
 			return nil, err
 		}
 
-		moves = append(moves, rule)
+		moves = append(moves, krMove)
+		ids = append(ids, krMove.KeyRangeID)
 	}
 
 	spqrlog.Zero.Debug().
-		Interface("response", resp).
+		Strs("ids", ids).
 		Msg("etcdqdb: list move key range operations")
 	statistics.RecordQDBOperation("ListKeyRangeMoves", time.Since(t))
 	return moves, nil

@@ -40,6 +40,8 @@ type Coordinator struct {
 	// Prevents connections from being closed by network intermediaries during idle periods
 	RouterKeepaliveTime    time.Duration `json:"router_keepalive_time" toml:"router_keepalive_time" yaml:"router_keepalive_time"`
 	RouterKeepaliveTimeout time.Duration `json:"router_keepalive_timeout" toml:"router_keepalive_timeout" yaml:"router_keepalive_timeout"`
+
+	EnableICP bool `json:"enable_icp" toml:"enable_icp" yaml:"enable_icp"`
 }
 
 // LoadCoordinatorCfg loads the coordinator configuration from the specified file path.
