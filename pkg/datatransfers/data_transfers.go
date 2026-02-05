@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pg-sharding/spqr/coordinator/statistics"
+	"github.com/pg-sharding/spqr/pkg/icp"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -546,6 +547,13 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 			return fmt.Errorf("failed to disable triggers: %s", err)
 		}
 	}
+
+	if config.CoordinatorConfig().EnableICP {
+		if err := icp.CheckControlPoint(icp.CopyDataCP); err != nil {
+			spqrlog.Zero.Info().Str("cp", icp.CopyDataCP).Err(err).Msg("error while checking control point")
+		}
+	}
+
 	for _, rel := range ds.Relations {
 		krCondition, err := kr.GetKRCondition(rel, krg, upperBound, "")
 		if err != nil {

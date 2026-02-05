@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -12,6 +13,8 @@ import (
 const (
 	TwoPhaseDecisionCP  = "2pc_decision_cp"
 	TwoPhaseDecisionCP2 = "2pc_after_decision_cp"
+
+	CopyDataCP = "copy_data_cp"
 )
 
 /* XXX: store name -> action? */
@@ -52,7 +55,7 @@ func DefineICP(name string, A *spqrparser.ICPointAction) error {
 	defer mu.Unlock()
 
 	switch name {
-	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2:
+	case TwoPhaseDecisionCP, TwoPhaseDecisionCP2, CopyDataCP:
 		/* OK */
 	default:
 		return fmt.Errorf("unknown control point name %s", name)
@@ -84,6 +87,7 @@ func CheckControlPoint(name string) error {
 
 	/* XXX: support more behaviour modes */
 	if act, ok := cpsMp[name]; ok {
+		spqrlog.Zero.Debug().Str("name", name).Msg("reached control point")
 		act()
 	}
 	return nil
