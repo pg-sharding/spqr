@@ -406,7 +406,7 @@ const (
 	MoveTaskStr             = "move_task"
 	MoveTasksStr            = "move_tasks"
 	UniqueIndexesStr        = "unique_indexes"
-	TaskGroupBoundsCacheStr = "task_group_bounds_cache"
+	TaskGroupBoundsCacheStr = "task_group_ext"
 )
 
 // not SHOW target
