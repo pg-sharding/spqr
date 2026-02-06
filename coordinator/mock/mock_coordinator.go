@@ -508,6 +508,22 @@ func (mr *MockCoordinatorMockRecorder) GetMoveTaskGroup(ctx, id any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).GetMoveTaskGroup), ctx, id)
 }
 
+// GetMoveTaskGroupBoundsCache mocks base method.
+func (m *MockCoordinator) GetMoveTaskGroupBoundsCache(ctx context.Context, id string) ([][][]byte, int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMoveTaskGroupBoundsCache", ctx, id)
+	ret0, _ := ret[0].([][][]byte)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetMoveTaskGroupBoundsCache indicates an expected call of GetMoveTaskGroupBoundsCache.
+func (mr *MockCoordinatorMockRecorder) GetMoveTaskGroupBoundsCache(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroupBoundsCache", reflect.TypeOf((*MockCoordinator)(nil).GetMoveTaskGroupBoundsCache), ctx, id)
+}
+
 // GetReferenceRelation mocks base method.
 func (m *MockCoordinator) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
 	m.ctrl.T.Helper()

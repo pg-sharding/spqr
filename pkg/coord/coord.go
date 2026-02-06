@@ -702,6 +702,10 @@ func (qc *Coordinator) RemoveMoveTaskGroup(ctx context.Context, id string) error
 	return qc.qdb.RemoveMoveTaskGroup(ctx, id)
 }
 
+func (qc *Coordinator) GetMoveTaskGroupBoundsCache(ctx context.Context, id string) ([][][]byte, int, error) {
+	return nil, 0, ErrNotCoordinator
+}
+
 // GetTaskGroupStatus gets the status of the task group from coordinator's QDB.
 //
 // Parameters:

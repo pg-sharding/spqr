@@ -31,10 +31,6 @@ enum KeyRangeStatus {
   AVAILABLE = 1;
 }
 
-message KeyRangeBound {
-  repeated bytes values = 1;
-}
-
 // key range info is mapped to shard
 message KeyRangeInfo {
   KeyRangeBound bound = 1;

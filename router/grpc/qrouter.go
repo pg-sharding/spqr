@@ -587,6 +587,18 @@ func (l *LocalQrouterServer) StopMoveTaskGroup(ctx context.Context, req *protos.
 	return nil, l.mgr.StopMoveTaskGroup(ctx, req.ID)
 }
 
+func (l *LocalQrouterServer) GetMoveTaskGroupBoundsCache(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupBoundsCache, error) {
+	bounds, ind, err := l.mgr.GetMoveTaskGroupBoundsCache(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	boundsProto := make([]*protos.KeyRangeBound, len(bounds))
+	for i := range bounds {
+		boundsProto[i] = &protos.KeyRangeBound{Values: bounds[i]}
+	}
+	return &protos.MoveTaskGroupBoundsCache{Bounds: boundsProto, Index: int64(ind)}, nil
+}
+
 // TODO: unit tests
 func (l *LocalQrouterServer) GetBalancerTask(ctx context.Context, _ *emptypb.Empty) (*protos.GetBalancerTaskReply, error) {
 	task, err := l.mgr.GetBalancerTask(ctx)

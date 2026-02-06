@@ -74,6 +74,18 @@ func (t TasksServer) StopMoveTaskGroup(ctx context.Context, req *protos.MoveTask
 	return nil, t.impl.StopMoveTaskGroup(ctx, req.ID)
 }
 
+func (t TasksServer) GetMoveTaskGroupBoundsCache(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupBoundsCache, error) {
+	bounds, ind, err := t.impl.GetMoveTaskGroupBoundsCache(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	boundsProto := make([]*protos.KeyRangeBound, len(bounds))
+	for i := range bounds {
+		boundsProto[i] = &protos.KeyRangeBound{Values: bounds[i]}
+	}
+	return &protos.MoveTaskGroupBoundsCache{Bounds: boundsProto, Index: int64(ind)}, nil
+}
+
 func (t TasksServer) GetBalancerTask(ctx context.Context, _ *emptypb.Empty) (*protos.GetBalancerTaskReply, error) {
 	task, err := t.impl.GetBalancerTask(ctx)
 	if err != nil {

@@ -99,3 +99,29 @@ func FilterRows(tts *tupleslot.TupleTableSlot, where lyx.Node) (*tupleslot.Tuple
 	tts.Raw = filtRows
 	return tts, nil
 }
+
+func AssertWhereClauseColString(condition lyx.Node, expectedColumn string) (string, error) {
+	reqErr := spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "WHERE clause with \"%s\" column is required", expectedColumn)
+	if condition == nil {
+		return "", reqErr
+	}
+	expr, ok := condition.(*lyx.AExprOp)
+	if !ok {
+		return "", reqErr
+	}
+	if expr.Op != "=" {
+		return "", reqErr
+	}
+	col, ok := expr.Left.(*lyx.ColumnRef)
+	if !ok {
+		return "", reqErr
+	}
+	if col.ColName != expectedColumn {
+		return "", reqErr
+	}
+	val, ok := expr.Right.(*lyx.AExprSConst)
+	if !ok {
+		return "", spqrerror.New(spqrerror.SPQR_COMPLEX_QUERY, "right operand is not a string const")
+	}
+	return val.Value, nil
+}
