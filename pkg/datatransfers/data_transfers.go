@@ -520,6 +520,10 @@ func unlockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, re
 // Returns:
 // - error: an error if the move fails.
 func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
+	// Await all current virtual transactions on source shard to stop
+	if err := awaitPIDs(ctx, from); err != nil {
+		return fmt.Errorf("failed to await virtual transactions to exit", err)
+	}
 	schemas := make(map[string]struct{})
 	for _, rel := range ds.Relations {
 		schemas[rel.GetSchema()] = struct{}{}
@@ -540,7 +544,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	serverName := fmt.Sprintf("spqr_transfer_server_%x", serverNameHash)
 	tx, err := to.Begin(ctx)
 	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not start transaction: %s", err)
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not start transaction on destination shard: %s", err)
 	}
 	if _, err := tx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: error deferring contraints: %s", err)
@@ -712,6 +716,56 @@ func getTableColumns(ctx context.Context, db Queryable, rfqn rfqn.RelationFQN) (
 		cols = append(cols, colName)
 	}
 	return cols, nil
+}
+
+func awaitPIDs(ctx context.Context, conn *pgx.Conn) error {
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `
+create or replace function pg_temp.await_pid() returns void language plpgsql as 
+$$
+declare
+	v_pids text;
+begin
+	SELECT coalesce(array_agg(l.virtualtransaction), '{}') INTO v_pids
+	FROM pg_locks AS l 
+	LEFT JOIN pg_stat_activity AS a 
+	ON l.pid = a.pid 
+	LEFT JOIN pg_database AS d 
+	ON a.datid = d.oid 
+	WHERE l.locktype = 'virtualxid' 
+	AND l.pid NOT IN (pg_backend_pid()) 
+	AND (l.virtualxid, l.virtualtransaction) <> ('1/1', '-1/0') 
+	AND a.query !~* E'^\\\\s*vacuum\\\\s+' 
+	AND a.query !~ E'^autovacuum: ' 
+	AND ((d.datname IS NULL OR d.datname = current_database()) OR l.database = 0);
+
+	RAISE NOTICE 'v_pids = %', v_pids;
+
+	loop
+		if (
+			SELECT count(pid) FROM pg_locks WHERE locktype = 'virtualxid'
+	 			AND pid <> pg_backend_pid() AND virtualtransaction = ANY(v_pids::text[])
+		) = 0 then
+			return;
+		end if;
+		perform pg_sleep(0.5);
+	end loop;
+
+end;
+$$;`,
+	); err != nil {
+		return err
+	}
+	if _, err := tx.Query(ctx, "SELECT pg_temp.await_pid()"); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 type Queryable interface {
