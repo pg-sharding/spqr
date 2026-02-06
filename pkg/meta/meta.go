@@ -1423,6 +1423,31 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+	case spqrparser.TaskGroupBoundsCacheStr:
+		taskGroupId, err := engine.AssertWhereClauseColString(stmt.Where, "task_group_id")
+		if err != nil {
+			return nil, err
+		}
+		bounds, ind, err := mngr.GetMoveTaskGroupBoundsCache(ctx, taskGroupId)
+		if err != nil {
+			return nil, err
+		}
+		taskGroup, err := mngr.GetMoveTaskGroup(ctx, taskGroupId)
+		keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+		if err != nil {
+			if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
+				var err2 error
+				keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
+				if err2 != nil {
+					return nil, fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
+				}
+			}
+		}
+
+		tts, err = engine.TaskGroupBoundsCacheVirtualRelationScan(bounds, ind, keyRange.ColumnTypes)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}

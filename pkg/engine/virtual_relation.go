@@ -626,3 +626,30 @@ func MoveTasksVirtualRelationScan(ts map[string]*tasks.MoveTask, dsIDColTypes ma
 	}
 	return tts, nil
 }
+
+func TaskGroupBoundsCacheVirtualRelationScan(bounds [][][]byte, index int, colTypes []string) (*tupleslot.TupleTableSlot, error) {
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("index", "bound", "status"),
+	}
+	for i, bound := range bounds {
+		krData := []string{""}
+		if bound != nil {
+			kRange, err := kr.KeyRangeFromBytes(bound, colTypes)
+			if err != nil {
+				return nil, err
+			}
+			krData = kRange.SendRaw()
+		}
+		tts.WriteDataRow(
+			strconv.FormatInt(int64(i), 10),
+			strings.Join(krData, ";"),
+			func() string {
+				if i < index {
+					return "USED"
+				}
+				return ""
+			}(),
+		)
+	}
+	return tts, nil
+}
