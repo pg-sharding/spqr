@@ -719,13 +719,8 @@ func getTableColumns(ctx context.Context, db Queryable, rfqn rfqn.RelationFQN) (
 }
 
 func awaitPIDs(ctx context.Context, conn *pgx.Conn) error {
-	tx, err := conn.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	if _, err := tx.Exec(ctx, `
-create or replace function pg_temp.await_pid() returns void language plpgsql as 
-$$
+	if _, err := conn.Exec(ctx, `
+do $$
 declare
 	v_pids text;
 begin
@@ -755,14 +750,9 @@ begin
 	end loop;
 
 end;
-$$;`,
+$$
+language plpgsql;`,
 	); err != nil {
-		return err
-	}
-	if _, err := tx.Query(ctx, "SELECT pg_temp.await_pid()"); err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
 	return nil
