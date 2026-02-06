@@ -1433,6 +1433,12 @@ func ProcessShowExtended(ctx context.Context,
 			return nil, err
 		}
 		taskGroup, err := mngr.GetMoveTaskGroup(ctx, taskGroupId)
+		if err != nil {
+			return nil, err
+		}
+		if taskGroup == nil {
+			return nil, fmt.Errorf("move task group \"%s\" not found", taskGroupId)
+		}
 		keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
 		if err != nil {
 			if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
@@ -1444,7 +1450,7 @@ func ProcessShowExtended(ctx context.Context,
 			}
 		}
 
-		tts, err = engine.TaskGroupBoundsCacheVirtualRelationScan(bounds, ind, keyRange.ColumnTypes)
+		tts, err = engine.TaskGroupBoundsCacheVirtualRelationScan(bounds, ind, keyRange.ColumnTypes, taskGroupId)
 		if err != nil {
 			return nil, err
 		}

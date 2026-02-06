@@ -627,9 +627,9 @@ func MoveTasksVirtualRelationScan(ts map[string]*tasks.MoveTask, dsIDColTypes ma
 	return tts, nil
 }
 
-func TaskGroupBoundsCacheVirtualRelationScan(bounds [][][]byte, index int, colTypes []string) (*tupleslot.TupleTableSlot, error) {
+func TaskGroupBoundsCacheVirtualRelationScan(bounds [][][]byte, index int, colTypes []string, id string) (*tupleslot.TupleTableSlot, error) {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("index", "bound", "status"),
+		Desc: GetVPHeader("index", "bound", "status", "task_group_id"),
 	}
 	for i, bound := range bounds {
 		krData := []string{""}
@@ -649,6 +649,7 @@ func TaskGroupBoundsCacheVirtualRelationScan(bounds [][][]byte, index int, colTy
 				}
 				return ""
 			}(),
+			id,
 		)
 	}
 	return tts, nil
