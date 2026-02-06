@@ -522,7 +522,7 @@ func unlockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, re
 func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
 	// Await all current virtual transactions on source shard to stop
 	if err := awaitPIDs(ctx, from); err != nil {
-		return fmt.Errorf("failed to await virtual transactions to exit", err)
+		return fmt.Errorf("failed to await virtual transactions to exit: %s", err)
 	}
 	schemas := make(map[string]struct{})
 	for _, rel := range ds.Relations {
