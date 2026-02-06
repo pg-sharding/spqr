@@ -1500,6 +1500,22 @@ func ProcessShowExtended(ctx context.Context,
 // Returns:
 // - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation encounters any issues.
+func getRouterClientCounts(ctx context.Context, ci connmgr.ConnectionMgr) (map[string]int, error) {
+	clientCounts := make(map[string]int)
+
+	err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
+		routerAddr := cl.RAddr()
+		clientCounts[routerAddr]++
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return clientCounts, nil
+}
+
 func ProcessShow(ctx context.Context,
 	stmt *spqrparser.Show,
 	mngr EntityMgr,
@@ -1513,12 +1529,31 @@ func ProcessShow(ctx context.Context,
 			return nil, err
 		}
 
+		// Get client connection counts by router address
+		clientCounts, err := getRouterClientCounts(ctx, ci)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to get client counts")
+			clientCounts = make(map[string]int)
+		}
+
 		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("router", "status"),
+			Desc: engine.GetVPHeader("router", "status", "client_connections", "version", "metadata_version"),
 		}
 
 		for _, msg := range resp {
-			tts.WriteDataRow(fmt.Sprintf("router -> %s-%s", msg.ID, msg.Address), string(msg.State))
+			address := msg.Address
+			status := string(msg.State)
+			connCount := clientCounts[address]
+			version := pkg.SpqrVersionRevision
+			metadataVersion := "N/A"
+
+			tts.WriteDataRow(
+				address,
+				status,
+				fmt.Sprintf("%d", connCount),
+				version,
+				metadataVersion,
+			)
 		}
 		return tts, nil
 
