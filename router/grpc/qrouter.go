@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -277,11 +278,15 @@ func (l *LocalQrouterServer) OpenRouter(ctx context.Context, _ *emptypb.Empty) (
 func (l *LocalQrouterServer) GetRouterStatus(ctx context.Context, _ *emptypb.Empty) (*protos.GetRouterStatusReply, error) {
 	if l.qr.Initialized() {
 		return &protos.GetRouterStatusReply{
-			Status: protos.RouterStatus_OPENED,
+			Status:          protos.RouterStatus_OPENED,
+			Version:         pkg.SpqrVersionRevision,
+			MetadataVersion: "N/A",
 		}, nil
 	}
 	return &protos.GetRouterStatusReply{
-		Status: protos.RouterStatus_CLOSED,
+		Status:          protos.RouterStatus_CLOSED,
+		Version:         pkg.SpqrVersionRevision,
+		MetadataVersion: "N/A",
 	}, nil
 }
 
