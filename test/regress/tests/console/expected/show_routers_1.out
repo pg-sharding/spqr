@@ -1,5 +1,5 @@
 SHOW routers;
- router | status 
---------+--------
+ router | status | client_connections | version | metadata_version 
+--------+--------+--------------------+---------+------------------
 (0 rows)
 

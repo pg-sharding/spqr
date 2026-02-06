@@ -238,11 +238,11 @@ Feature: Proxy console
         """
         Then SQL result should match regexp
         """
-        router -\\u003e r1-\[regress_router\]:7000
+        \[regress_router\]:7000
         """
         And SQL result should match regexp
         """
-        router -\\u003e r2-\[regress_router_2\]:7000
+        \[regress_router_2\]:7000
         """
     
     Scenario: SHOW move_task is executed in coordinator
