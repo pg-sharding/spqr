@@ -629,7 +629,7 @@ func MoveTasksVirtualRelationScan(ts map[string]*tasks.MoveTask, dsIDColTypes ma
 
 func TaskGroupBoundsCacheVirtualRelationScan(bounds [][][]byte, index int, colTypes []string, id string) (*tupleslot.TupleTableSlot, error) {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("index", "bound", "status", "task_group_id"),
+		Desc: GetVPHeader("task_group_id", "bound", "status"),
 	}
 	for i, bound := range bounds {
 		krData := []string{""}
@@ -641,7 +641,7 @@ func TaskGroupBoundsCacheVirtualRelationScan(bounds [][][]byte, index int, colTy
 			krData = kRange.SendRaw()
 		}
 		tts.WriteDataRow(
-			strconv.FormatInt(int64(i), 10),
+			id,
 			strings.Join(krData, ";"),
 			func() string {
 				if i < index {
@@ -649,7 +649,6 @@ func TaskGroupBoundsCacheVirtualRelationScan(bounds [][][]byte, index int, colTy
 				}
 				return ""
 			}(),
-			id,
 		)
 	}
 	return tts, nil
