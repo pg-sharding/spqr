@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -379,7 +380,38 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 				return nil, fmt.Errorf("failed to parse query \"%s\": %w", v.Value, err)
 			}
 
-			return meta.ProcMetadataCommand(ctx, tstmt, rm.Mgr, rm.CSM, rm.ClientRule, nil, false)
+			mgr := rm.Mgr
+			var cf func()
+
+			switch tstmt := tstmt.(type) {
+			case *spqrparser.Show:
+				/* TODO - fix
+				if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+					return err
+				}
+				*/
+				switch tstmt.Cmd {
+				case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr, spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr:
+					mgr, cf, err = coord.DistributedMgr(ctx, mgr)
+					if err != nil {
+						return nil, err
+					}
+					defer cf()
+				}
+			default:
+				/* TODO - fix
+				if err := gc.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
+					return nil, err
+				}
+				*/
+				mgr, cf, err = coord.DistributedMgr(ctx, mgr)
+				if err != nil {
+					return nil, err
+				}
+				defer cf()
+			}
+
+			return meta.ProcMetadataCommand(ctx, tstmt, mgr, rm.CSM, rm.ClientRule, nil, false)
 		default:
 			return nil, rerrors.ErrComplexQuery
 		}
