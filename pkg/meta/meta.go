@@ -1621,7 +1621,7 @@ func ProcessShow(ctx context.Context,
 			}
 
 			tts.WriteDataRow(
-				address,
+				fmt.Sprintf("%s-%s", msg.ID, address),
 				status,
 				fmt.Sprintf("%d", connCount),
 				version,
