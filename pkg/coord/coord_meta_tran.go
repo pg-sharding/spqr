@@ -64,23 +64,23 @@ func transactionChunkToQdbStatements(ctx context.Context, mngr meta.EntityMgr, c
 		cmdType := mtran.GetGossipRequestType(gossipCommand)
 		switch cmdType {
 		case mtran.GR_CreateDistributionRequest:
-			if cmdList, err := createDistributionPrepare(ctx, mngr, gossipCommand.CreateDistribution); err != nil {
+			cmdList, err := createDistributionPrepare(ctx, mngr, gossipCommand.CreateDistribution)
+			if err != nil {
 				return nil, err
-			} else {
-				if len(cmdList) == 0 {
-					return nil, fmt.Errorf("no QDB changes in gossip request:%d", cmdType)
-				}
-				qdbCmds = append(qdbCmds, cmdList...)
 			}
+			if len(cmdList) == 0 {
+				return nil, fmt.Errorf("no QDB changes in gossip request:%d", cmdType)
+			}
+			qdbCmds = append(qdbCmds, cmdList...)
 		case mtran.GR_CreateKeyRange:
-			if cmdList, err := createKeyRangePrepare(ctx, mngr, gossipCommand.CreateKeyRange); err != nil {
+			cmdList, err := createKeyRangePrepare(ctx, mngr, gossipCommand.CreateKeyRange)
+			if err != nil {
 				return nil, err
-			} else {
-				if len(cmdList) == 0 {
-					return nil, fmt.Errorf("no QDB changes in gossip request:%d", cmdType)
-				}
-				qdbCmds = append(qdbCmds, cmdList...)
 			}
+			if len(cmdList) == 0 {
+				return nil, fmt.Errorf("no QDB changes in gossip request:%d", cmdType)
+			}
+			qdbCmds = append(qdbCmds, cmdList...)
 		// TODO: run handlers converting gossip commands to chunk with qdb commands
 		default:
 			return nil, fmt.Errorf("invalid meta gossip request:%d", cmdType)
