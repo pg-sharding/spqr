@@ -152,7 +152,9 @@ func TestTranGetKeyRange(t *testing.T) {
 			ColumnTypes:  []string{qdb.ColumnTypeInteger},
 			IsLocked:     &boolTrue,
 		}
-		err = mngr.CreateKeyRange(ctx, kr1)
+		statements, err := mngr.CreateKeyRange(ctx, kr1)
+		is.NoError(err)
+		err = memqdb.ExecNoTransaction(ctx, statements)
 		is.NoError(err)
 
 		tranMngr := meta.NewTranEntityManager(mngr)

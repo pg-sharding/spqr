@@ -503,7 +503,8 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			}
 		}
 	case *spqrparser.KeyRangeDefinition:
-		createdKr, err := createKeyRange(ctx, mngr, stmt)
+		tranMngr := NewTranEntityManager(mngr)
+		createdKr, err := createKeyRange(ctx, tranMngr, stmt)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 			return nil, err

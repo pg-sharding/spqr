@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type SplitKeyRange struct {
@@ -50,7 +51,7 @@ type KeyRangeMgr interface {
 	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)
 	ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error)
 	ListKeyRangeLocks(ctx context.Context) ([]string, error)
-	CreateKeyRange(ctx context.Context, kr *KeyRange) error
+	CreateKeyRange(ctx context.Context, kr *KeyRange) ([]qdb.QdbStatement, error)
 	LockKeyRange(ctx context.Context, krid string) (*KeyRange, error)
 	UnlockKeyRange(ctx context.Context, krid string) error
 	Split(ctx context.Context, split *SplitKeyRange) error

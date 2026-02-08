@@ -105,7 +105,7 @@ func ValidateKeyRangeForModify(ctx context.Context, mngr EntityMgrReader, keyRan
 	return nil
 }
 
-func CreateKeyRangeStrict(ctx context.Context, mngr EntityMgr, keyRange *kr.KeyRange) error {
+func CreateKeyRangeStrict(ctx context.Context, mngr *TranEntityManager, keyRange *kr.KeyRange) error {
 	if err := ValidateKeyRangeForCreate(ctx, mngr, keyRange); err != nil {
 		return err
 	}
@@ -129,7 +129,10 @@ func CreateKeyRangeStrict(ctx context.Context, mngr EntityMgr, keyRange *kr.KeyR
 // Returns:
 // - *kr.KeyRange: created key range.
 // - error: An error if the creation encounters any issues.
-func createKeyRange(ctx context.Context, mngr EntityMgr, stmt *spqrparser.KeyRangeDefinition) (*kr.KeyRange, error) {
+func createKeyRange(ctx context.Context, mngr *TranEntityManager, stmt *spqrparser.KeyRangeDefinition) (*kr.KeyRange, error) {
+	if err := mngr.BeginTran(ctx); err != nil {
+		return nil, err
+	}
 	if stmt.Distribution.ID == "default" {
 		list, err := mngr.ListDistributions(ctx)
 		if err != nil {
@@ -163,6 +166,9 @@ func createKeyRange(ctx context.Context, mngr EntityMgr, stmt *spqrparser.KeyRan
 	err = CreateKeyRangeStrict(ctx, mngr, keyRange)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("CreateKeyRangeStrict failed while createKeyRange")
+		return nil, err
+	}
+	if err = mngr.CommitTran(ctx); err != nil {
 		return nil, err
 	}
 	return keyRange, nil

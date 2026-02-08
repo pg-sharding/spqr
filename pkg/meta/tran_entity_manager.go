@@ -172,17 +172,28 @@ func (t *TranEntityManager) CommitTran(ctx context.Context) error {
 
 // CreateDistribution implements [EntityMgr].
 func (t *TranEntityManager) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
-	t.distributions.Save(ds.Id, ds)
 	commands := []*proto.MetaTransactionGossipCommand{
 		{CreateDistribution: &proto.CreateDistributionGossip{
 			Distributions: []*proto.Distribution{distributions.DistributionToProto(ds)},
 		}},
 	}
-	return t.state.Append(commands)
+	if err := t.state.Append(commands); err != nil {
+		return err
+	}
+	t.distributions.Save(ds.Id, ds)
+	return nil
 }
 
 // CreateKeyRange implements [EntityMgr].
 func (t *TranEntityManager) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+	commands := []*proto.MetaTransactionGossipCommand{
+		{CreateKeyRange: &proto.CreateKeyRangeGossip{
+			KeyRangeInfo: kr.ToProto(),
+		}},
+	}
+	if err := t.state.Append(commands); err != nil {
+		return err
+	}
 	if _, ok := t.keyRanges.Items()[kr.ID]; ok {
 		return fmt.Errorf("key range %s already present in qdb", kr.ID)
 	}
