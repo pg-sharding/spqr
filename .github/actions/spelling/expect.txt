@@ -63,20 +63,14 @@ colname
 colocation
 colref
 coltypes
-commitcount
 commodi
 commodo
-condeferrable
 confrelid
-conname
 connectiterator
 connmgr
 connstring
-conrelid
 consequat
 consequatur
-contraints
-contsraints
 coorctl
 coordctl
 copymap
@@ -152,7 +146,6 @@ expd
 extldflags
 FAFBFF
 fdw
-feauter
 feda
 FFCCAC
 ffd
@@ -187,7 +180,6 @@ golangconf
 gomaxprocs
 gomock
 gomod
-gomodtidy
 goooal
 gorm
 goyacc
@@ -218,7 +210,6 @@ IKill
 illum
 incididunt
 inds
-initaited
 initsql
 innerhash
 innerres
@@ -345,8 +336,6 @@ netchecker
 netconn
 netutil
 Newf
-Nofity
-noid
 nolint
 nonexistentshard
 NOSHARD
@@ -448,12 +437,10 @@ rcfg
 rclient
 rconn
 rdistr
-receivepasswd
 regclass
 reloid
 relpersistence
 rels
-repeattimes
 reprehenderit
 rerr
 rerrors
@@ -473,7 +460,6 @@ RLoad
 rmeta
 rmgr
 rollbacked
-roolback
 routable
 routerproto
 routingstate
@@ -594,7 +580,6 @@ TOPENBR
 TOPENSQBR
 tpcc
 tran
-transfering
 TRASCE
 tsa
 TSEMICOLON
@@ -619,7 +604,6 @@ ullam
 ullamco
 umi
 unconfigured
-underyling
 unmarshalling
 unmatch
 unrecognised

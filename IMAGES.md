@@ -1,10 +1,10 @@
 # Release
 
-Create GitHub release via https://github.com/pg-sharding/spqr/releases
+Create GitHub release via <https://github.com/pg-sharding/spqr/releases>
 
 ## Docker Image Publishing
 
-SPQR automatically publishes Docker images to `pgsharding/spqr-router` on Docker Hub https://github.com/pg-sharding/spqr/pull/1681.
+SPQR automatically publishes Docker images to `pgsharding/spqr-router` on Docker Hub <https://github.com/pg-sharding/spqr/pull/1681>.
 
 Promote a nightly build with the helper script:
 
@@ -35,6 +35,7 @@ docker push pgsharding/spqr-router:stable
 ```
 
 Why this approach?
+
 - Every build is tested as nightly first
 - Promote any nightly to stable when ready
 - Simple - no complex release workflows
@@ -42,7 +43,7 @@ Why this approach?
 
 ## Version Format
 
-- **Nightly**: `2.7.3-1751-07a36a95` (tag-commitcount-hash)
+- **Nightly**: `2.7.3-1751-07a36a95` (tag-commit_count-hash)
 - **Release** (after promotion): `2.7.3`, `latest`, `stable`
 
 This matches `spqr-router --version` output.

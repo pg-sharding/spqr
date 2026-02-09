@@ -650,7 +650,7 @@ func (cl *PsqlClient) DB() string {
 	return DefaultDB
 }
 
-func (cl *PsqlClient) receivepasswd() (string, error) {
+func (cl *PsqlClient) receivePassword() (string, error) {
 	msg, err := cl.be.Receive()
 	if err != nil {
 		return "", err
@@ -673,7 +673,7 @@ func (cl *PsqlClient) PasswordCT() (string, error) {
 		return "", err
 	}
 
-	return cl.receivepasswd()
+	return cl.receivePassword()
 }
 
 func (cl *PsqlClient) PasswordMD5(salt [4]byte) (string, error) {
@@ -682,7 +682,7 @@ func (cl *PsqlClient) PasswordMD5(salt [4]byte) (string, error) {
 	}); err != nil {
 		return "", err
 	}
-	return cl.receivepasswd()
+	return cl.receivePassword()
 }
 
 func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {

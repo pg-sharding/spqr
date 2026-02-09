@@ -56,7 +56,7 @@ func (r *InstanceImpl) Console() console.Console {
 }
 
 func (r *InstanceImpl) ID() string {
-	return "noid"
+	return "no_id"
 }
 
 func (r *InstanceImpl) Addr() string {

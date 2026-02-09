@@ -549,7 +549,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not start transaction on destination shard: %s", err)
 	}
 	if _, err := tx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: error deferring contraints: %s", err)
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: error deferring constraints: %s", err)
 	}
 	if config.CoordinatorConfig().DataMoveDisableTriggers {
 		if _, err := tx.Exec(ctx, "SET session_replication_role = replica"); err != nil {
@@ -765,7 +765,7 @@ func CheckTableExists(ctx context.Context, tx Queryable, relName, schema string)
 // - bool: true if the column exists, false otherwise;
 // - error: an error if there was a problem executing the query.
 func CheckColumnExists(ctx context.Context, conn *pgx.Conn, relName, schema, colName string) (bool, error) {
-	res := conn.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as column_exists FROM information_schema.columns WHERE table_name = '%s' AND table_schema = '%s' AND column_name = '%s'`, relName, schema, colName))
+	res := conn.QueryRow(ctx, checkColumnExistsQuery(relName, schema, colName))
 	exists := false
 	if err := res.Scan(&exists); err != nil {
 		return false, err
@@ -773,7 +773,7 @@ func CheckColumnExists(ctx context.Context, conn *pgx.Conn, relName, schema, col
 	return exists, nil
 }
 
-// CheckConstraints checks for non-deferrable contsraints or constraints referencing external relations.
+// CheckConstraints checks for non-deferrable constraints or constraints referencing external relations.
 //
 // Parameters:
 // - ctx (context.Context): the context for database operations;
@@ -803,7 +803,7 @@ func CheckConstraints(ctx context.Context, conn *pgx.Conn, dsRels []string, rpRe
 		rpRelOids := strings.Join(refRelOidList, ", ")
 		rpRelsClause = fmt.Sprintf(" and not (confrelid IN (%s))", rpRelOids)
 	}
-	rows, err := conn.Query(ctx, fmt.Sprintf(`SELECT conname FROM pg_constraint WHERE conrelid IN (%s) and confrelid != 0 and (condeferrable=false or not (confrelid IN (%s)))%s LIMIT 1`, dsRelOids, dsRelOids, rpRelsClause))
+	rows, err := conn.Query(ctx, checkConstraintsQuery(dsRelOids, rpRelsClause))
 	if err != nil {
 		return false, "", err
 	}

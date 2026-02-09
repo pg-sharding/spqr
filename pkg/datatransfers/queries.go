@@ -38,3 +38,11 @@ end;
 $$
 language plpgsql;`, spqrTransferApplicationName)
 }
+
+func checkColumnExistsQuery(relName, schema, colName string) string {
+	return fmt.Sprintf(`SELECT count(*) > 0 as column_exists FROM information_schema.columns WHERE table_name = '%s' AND table_schema = '%s' AND column_name = '%s'`, relName, schema, colName)
+}
+
+func checkConstraintsQuery(dsRelOids, rpRelsClause string) string {
+	return fmt.Sprintf(`SELECT conname FROM pg_constraint WHERE conrelid IN (%s) and confrelid != 0 and (condeferrable=false or not (confrelid IN (%s)))%s LIMIT 1`, dsRelOids, dsRelOids, rpRelsClause)
+}

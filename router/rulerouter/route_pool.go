@@ -83,7 +83,7 @@ func (r *RoutePoolImpl) Shutdown() error {
 	r.pool.Range(func(k, v any) bool {
 		rt := v.(*route.Route)
 		go func() {
-			_ = rt.NofityClients(func(cl client.ClientInfo) error {
+			_ = rt.NotifyClients(func(cl client.ClientInfo) error {
 				return cl.Shutdown()
 			})
 		}()
