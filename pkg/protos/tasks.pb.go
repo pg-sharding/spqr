@@ -258,6 +258,50 @@ func (RedistributeTaskState) EnumDescriptor() ([]byte, []int) {
 	return file_protos_tasks_proto_rawDescGZIP(), []int{4}
 }
 
+type KeyRangeBound struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Values        [][]byte               `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KeyRangeBound) Reset() {
+	*x = KeyRangeBound{}
+	mi := &file_protos_tasks_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KeyRangeBound) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KeyRangeBound) ProtoMessage() {}
+
+func (x *KeyRangeBound) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_tasks_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KeyRangeBound.ProtoReflect.Descriptor instead.
+func (*KeyRangeBound) Descriptor() ([]byte, []int) {
+	return file_protos_tasks_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *KeyRangeBound) GetValues() [][]byte {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
 type MoveTask struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	ID             string                 `protobuf:"bytes,4,opt,name=ID,proto3" json:"ID,omitempty"`
@@ -271,7 +315,7 @@ type MoveTask struct {
 
 func (x *MoveTask) Reset() {
 	*x = MoveTask{}
-	mi := &file_protos_tasks_proto_msgTypes[0]
+	mi := &file_protos_tasks_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -283,7 +327,7 @@ func (x *MoveTask) String() string {
 func (*MoveTask) ProtoMessage() {}
 
 func (x *MoveTask) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[0]
+	mi := &file_protos_tasks_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -296,7 +340,7 @@ func (x *MoveTask) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveTask.ProtoReflect.Descriptor instead.
 func (*MoveTask) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{0}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *MoveTask) GetID() string {
@@ -343,7 +387,7 @@ type MoveTaskSelector struct {
 
 func (x *MoveTaskSelector) Reset() {
 	*x = MoveTaskSelector{}
-	mi := &file_protos_tasks_proto_msgTypes[1]
+	mi := &file_protos_tasks_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -355,7 +399,7 @@ func (x *MoveTaskSelector) String() string {
 func (*MoveTaskSelector) ProtoMessage() {}
 
 func (x *MoveTaskSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[1]
+	mi := &file_protos_tasks_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -368,7 +412,7 @@ func (x *MoveTaskSelector) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveTaskSelector.ProtoReflect.Descriptor instead.
 func (*MoveTaskSelector) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{1}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *MoveTaskSelector) GetID() string {
@@ -387,7 +431,7 @@ type MoveTaskReply struct {
 
 func (x *MoveTaskReply) Reset() {
 	*x = MoveTaskReply{}
-	mi := &file_protos_tasks_proto_msgTypes[2]
+	mi := &file_protos_tasks_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -399,7 +443,7 @@ func (x *MoveTaskReply) String() string {
 func (*MoveTaskReply) ProtoMessage() {}
 
 func (x *MoveTaskReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[2]
+	mi := &file_protos_tasks_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -412,7 +456,7 @@ func (x *MoveTaskReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveTaskReply.ProtoReflect.Descriptor instead.
 func (*MoveTaskReply) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{2}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *MoveTaskReply) GetTask() *MoveTask {
@@ -431,7 +475,7 @@ type MoveTasksReply struct {
 
 func (x *MoveTasksReply) Reset() {
 	*x = MoveTasksReply{}
-	mi := &file_protos_tasks_proto_msgTypes[3]
+	mi := &file_protos_tasks_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -443,7 +487,7 @@ func (x *MoveTasksReply) String() string {
 func (*MoveTasksReply) ProtoMessage() {}
 
 func (x *MoveTasksReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[3]
+	mi := &file_protos_tasks_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -456,7 +500,7 @@ func (x *MoveTasksReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveTasksReply.ProtoReflect.Descriptor instead.
 func (*MoveTasksReply) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{3}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *MoveTasksReply) GetTasks() []*MoveTask {
@@ -485,7 +529,7 @@ type MoveTaskGroup struct {
 
 func (x *MoveTaskGroup) Reset() {
 	*x = MoveTaskGroup{}
-	mi := &file_protos_tasks_proto_msgTypes[4]
+	mi := &file_protos_tasks_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -497,7 +541,7 @@ func (x *MoveTaskGroup) String() string {
 func (*MoveTaskGroup) ProtoMessage() {}
 
 func (x *MoveTaskGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[4]
+	mi := &file_protos_tasks_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -510,7 +554,7 @@ func (x *MoveTaskGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveTaskGroup.ProtoReflect.Descriptor instead.
 func (*MoveTaskGroup) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{4}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *MoveTaskGroup) GetID() string {
@@ -599,7 +643,7 @@ type GetMoveTaskGroupReply struct {
 
 func (x *GetMoveTaskGroupReply) Reset() {
 	*x = GetMoveTaskGroupReply{}
-	mi := &file_protos_tasks_proto_msgTypes[5]
+	mi := &file_protos_tasks_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -611,7 +655,7 @@ func (x *GetMoveTaskGroupReply) String() string {
 func (*GetMoveTaskGroupReply) ProtoMessage() {}
 
 func (x *GetMoveTaskGroupReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[5]
+	mi := &file_protos_tasks_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -624,7 +668,7 @@ func (x *GetMoveTaskGroupReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMoveTaskGroupReply.ProtoReflect.Descriptor instead.
 func (*GetMoveTaskGroupReply) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{5}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetMoveTaskGroupReply) GetTaskGroup() *MoveTaskGroup {
@@ -643,7 +687,7 @@ type ListMoveTaskGroupsReply struct {
 
 func (x *ListMoveTaskGroupsReply) Reset() {
 	*x = ListMoveTaskGroupsReply{}
-	mi := &file_protos_tasks_proto_msgTypes[6]
+	mi := &file_protos_tasks_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -655,7 +699,7 @@ func (x *ListMoveTaskGroupsReply) String() string {
 func (*ListMoveTaskGroupsReply) ProtoMessage() {}
 
 func (x *ListMoveTaskGroupsReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[6]
+	mi := &file_protos_tasks_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -668,7 +712,7 @@ func (x *ListMoveTaskGroupsReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMoveTaskGroupsReply.ProtoReflect.Descriptor instead.
 func (*ListMoveTaskGroupsReply) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{6}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListMoveTaskGroupsReply) GetTaskGroups() []*MoveTaskGroup {
@@ -687,7 +731,7 @@ type WriteMoveTaskGroupRequest struct {
 
 func (x *WriteMoveTaskGroupRequest) Reset() {
 	*x = WriteMoveTaskGroupRequest{}
-	mi := &file_protos_tasks_proto_msgTypes[7]
+	mi := &file_protos_tasks_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -699,7 +743,7 @@ func (x *WriteMoveTaskGroupRequest) String() string {
 func (*WriteMoveTaskGroupRequest) ProtoMessage() {}
 
 func (x *WriteMoveTaskGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[7]
+	mi := &file_protos_tasks_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -712,7 +756,7 @@ func (x *WriteMoveTaskGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WriteMoveTaskGroupRequest.ProtoReflect.Descriptor instead.
 func (*WriteMoveTaskGroupRequest) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{7}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *WriteMoveTaskGroupRequest) GetTaskGroup() *MoveTaskGroup {
@@ -731,7 +775,7 @@ type MoveTaskGroupSelector struct {
 
 func (x *MoveTaskGroupSelector) Reset() {
 	*x = MoveTaskGroupSelector{}
-	mi := &file_protos_tasks_proto_msgTypes[8]
+	mi := &file_protos_tasks_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -743,7 +787,7 @@ func (x *MoveTaskGroupSelector) String() string {
 func (*MoveTaskGroupSelector) ProtoMessage() {}
 
 func (x *MoveTaskGroupSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[8]
+	mi := &file_protos_tasks_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -756,7 +800,7 @@ func (x *MoveTaskGroupSelector) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveTaskGroupSelector.ProtoReflect.Descriptor instead.
 func (*MoveTaskGroupSelector) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{8}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *MoveTaskGroupSelector) GetID() string {
@@ -776,7 +820,7 @@ type MoveTaskGroupStatus struct {
 
 func (x *MoveTaskGroupStatus) Reset() {
 	*x = MoveTaskGroupStatus{}
-	mi := &file_protos_tasks_proto_msgTypes[9]
+	mi := &file_protos_tasks_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -788,7 +832,7 @@ func (x *MoveTaskGroupStatus) String() string {
 func (*MoveTaskGroupStatus) ProtoMessage() {}
 
 func (x *MoveTaskGroupStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[9]
+	mi := &file_protos_tasks_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -801,7 +845,7 @@ func (x *MoveTaskGroupStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveTaskGroupStatus.ProtoReflect.Descriptor instead.
 func (*MoveTaskGroupStatus) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{9}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *MoveTaskGroupStatus) GetState() string {
@@ -827,7 +871,7 @@ type GetAllMoveTaskGroupStatusesReply struct {
 
 func (x *GetAllMoveTaskGroupStatusesReply) Reset() {
 	*x = GetAllMoveTaskGroupStatusesReply{}
-	mi := &file_protos_tasks_proto_msgTypes[10]
+	mi := &file_protos_tasks_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -839,7 +883,7 @@ func (x *GetAllMoveTaskGroupStatusesReply) String() string {
 func (*GetAllMoveTaskGroupStatusesReply) ProtoMessage() {}
 
 func (x *GetAllMoveTaskGroupStatusesReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[10]
+	mi := &file_protos_tasks_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -852,7 +896,7 @@ func (x *GetAllMoveTaskGroupStatusesReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAllMoveTaskGroupStatusesReply.ProtoReflect.Descriptor instead.
 func (*GetAllMoveTaskGroupStatusesReply) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{10}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetAllMoveTaskGroupStatusesReply) GetStatuses() map[string]*MoveTaskGroupStatus {
@@ -860,6 +904,58 @@ func (x *GetAllMoveTaskGroupStatusesReply) GetStatuses() map[string]*MoveTaskGro
 		return x.Statuses
 	}
 	return nil
+}
+
+type MoveTaskGroupBoundsCache struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Bounds        []*KeyRangeBound       `protobuf:"bytes,1,rep,name=bounds,proto3" json:"bounds,omitempty"`
+	Index         int64                  `protobuf:"varint,2,opt,name=index,proto3" json:"index,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MoveTaskGroupBoundsCache) Reset() {
+	*x = MoveTaskGroupBoundsCache{}
+	mi := &file_protos_tasks_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MoveTaskGroupBoundsCache) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MoveTaskGroupBoundsCache) ProtoMessage() {}
+
+func (x *MoveTaskGroupBoundsCache) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_tasks_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MoveTaskGroupBoundsCache.ProtoReflect.Descriptor instead.
+func (*MoveTaskGroupBoundsCache) Descriptor() ([]byte, []int) {
+	return file_protos_tasks_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *MoveTaskGroupBoundsCache) GetBounds() []*KeyRangeBound {
+	if x != nil {
+		return x.Bounds
+	}
+	return nil
+}
+
+func (x *MoveTaskGroupBoundsCache) GetIndex() int64 {
+	if x != nil {
+		return x.Index
+	}
+	return 0
 }
 
 type BalancerTask struct {
@@ -877,7 +973,7 @@ type BalancerTask struct {
 
 func (x *BalancerTask) Reset() {
 	*x = BalancerTask{}
-	mi := &file_protos_tasks_proto_msgTypes[11]
+	mi := &file_protos_tasks_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -889,7 +985,7 @@ func (x *BalancerTask) String() string {
 func (*BalancerTask) ProtoMessage() {}
 
 func (x *BalancerTask) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[11]
+	mi := &file_protos_tasks_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -902,7 +998,7 @@ func (x *BalancerTask) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BalancerTask.ProtoReflect.Descriptor instead.
 func (*BalancerTask) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{11}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *BalancerTask) GetType() JoinType {
@@ -963,7 +1059,7 @@ type GetBalancerTaskReply struct {
 
 func (x *GetBalancerTaskReply) Reset() {
 	*x = GetBalancerTaskReply{}
-	mi := &file_protos_tasks_proto_msgTypes[12]
+	mi := &file_protos_tasks_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -975,7 +1071,7 @@ func (x *GetBalancerTaskReply) String() string {
 func (*GetBalancerTaskReply) ProtoMessage() {}
 
 func (x *GetBalancerTaskReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[12]
+	mi := &file_protos_tasks_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -988,7 +1084,7 @@ func (x *GetBalancerTaskReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBalancerTaskReply.ProtoReflect.Descriptor instead.
 func (*GetBalancerTaskReply) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{12}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetBalancerTaskReply) GetTask() *BalancerTask {
@@ -1007,7 +1103,7 @@ type WriteBalancerTaskRequest struct {
 
 func (x *WriteBalancerTaskRequest) Reset() {
 	*x = WriteBalancerTaskRequest{}
-	mi := &file_protos_tasks_proto_msgTypes[13]
+	mi := &file_protos_tasks_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1019,7 +1115,7 @@ func (x *WriteBalancerTaskRequest) String() string {
 func (*WriteBalancerTaskRequest) ProtoMessage() {}
 
 func (x *WriteBalancerTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[13]
+	mi := &file_protos_tasks_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1032,7 +1128,7 @@ func (x *WriteBalancerTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WriteBalancerTaskRequest.ProtoReflect.Descriptor instead.
 func (*WriteBalancerTaskRequest) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{13}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *WriteBalancerTaskRequest) GetTask() *BalancerTask {
@@ -1054,7 +1150,7 @@ type RedistributeTask struct {
 
 func (x *RedistributeTask) Reset() {
 	*x = RedistributeTask{}
-	mi := &file_protos_tasks_proto_msgTypes[14]
+	mi := &file_protos_tasks_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1066,7 +1162,7 @@ func (x *RedistributeTask) String() string {
 func (*RedistributeTask) ProtoMessage() {}
 
 func (x *RedistributeTask) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[14]
+	mi := &file_protos_tasks_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1079,7 +1175,7 @@ func (x *RedistributeTask) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RedistributeTask.ProtoReflect.Descriptor instead.
 func (*RedistributeTask) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{14}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *RedistributeTask) GetKeyRangeId() string {
@@ -1119,7 +1215,7 @@ type GetRedistributeTaskReply struct {
 
 func (x *GetRedistributeTaskReply) Reset() {
 	*x = GetRedistributeTaskReply{}
-	mi := &file_protos_tasks_proto_msgTypes[15]
+	mi := &file_protos_tasks_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1131,7 +1227,7 @@ func (x *GetRedistributeTaskReply) String() string {
 func (*GetRedistributeTaskReply) ProtoMessage() {}
 
 func (x *GetRedistributeTaskReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[15]
+	mi := &file_protos_tasks_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1144,7 +1240,7 @@ func (x *GetRedistributeTaskReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRedistributeTaskReply.ProtoReflect.Descriptor instead.
 func (*GetRedistributeTaskReply) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{15}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetRedistributeTaskReply) GetTask() *RedistributeTask {
@@ -1163,7 +1259,7 @@ type WriteRedistributeTaskRequest struct {
 
 func (x *WriteRedistributeTaskRequest) Reset() {
 	*x = WriteRedistributeTaskRequest{}
-	mi := &file_protos_tasks_proto_msgTypes[16]
+	mi := &file_protos_tasks_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1175,7 +1271,7 @@ func (x *WriteRedistributeTaskRequest) String() string {
 func (*WriteRedistributeTaskRequest) ProtoMessage() {}
 
 func (x *WriteRedistributeTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_tasks_proto_msgTypes[16]
+	mi := &file_protos_tasks_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1188,7 +1284,7 @@ func (x *WriteRedistributeTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WriteRedistributeTaskRequest.ProtoReflect.Descriptor instead.
 func (*WriteRedistributeTaskRequest) Descriptor() ([]byte, []int) {
-	return file_protos_tasks_proto_rawDescGZIP(), []int{16}
+	return file_protos_tasks_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *WriteRedistributeTaskRequest) GetTask() *RedistributeTask {
@@ -1202,7 +1298,9 @@ var File_protos_tasks_proto protoreflect.FileDescriptor
 
 const file_protos_tasks_proto_rawDesc = "" +
 	"\n" +
-	"\x12protos/tasks.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"\xa4\x01\n" +
+	"\x12protos/tasks.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"'\n" +
+	"\rKeyRangeBound\x12\x16\n" +
+	"\x06values\x18\x01 \x03(\fR\x06values\"\xa4\x01\n" +
 	"\bMoveTask\x12\x0e\n" +
 	"\x02ID\x18\x04 \x01(\tR\x02ID\x12&\n" +
 	"\x0ekeyRangeIdTemp\x18\x01 \x01(\tR\x0ekeyRangeIdTemp\x12\x14\n" +
@@ -1245,7 +1343,10 @@ const file_protos_tasks_proto_rawDesc = "" +
 	"\bstatuses\x18\x01 \x03(\v24.spqr.GetAllMoveTaskGroupStatusesReply.StatusesEntryR\bstatuses\x1aV\n" +
 	"\rStatusesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
-	"\x05value\x18\x02 \x01(\v2\x19.spqr.MoveTaskGroupStatusR\x05value:\x028\x01\"\x90\x02\n" +
+	"\x05value\x18\x02 \x01(\v2\x19.spqr.MoveTaskGroupStatusR\x05value:\x028\x01\"]\n" +
+	"\x18MoveTaskGroupBoundsCache\x12+\n" +
+	"\x06bounds\x18\x01 \x03(\v2\x13.spqr.KeyRangeBoundR\x06bounds\x12\x14\n" +
+	"\x05index\x18\x02 \x01(\x03R\x05index\"\x90\x02\n" +
 	"\fBalancerTask\x12\"\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x0e.spqr.JoinTypeR\x04type\x12&\n" +
 	"\x0ekeyRangeIdFrom\x18\x02 \x01(\tR\x0ekeyRangeIdFrom\x12\"\n" +
@@ -1287,7 +1388,7 @@ const file_protos_tasks_proto_rawDesc = "" +
 	"\x11BalancerTaskMoved\x10\x01*O\n" +
 	"\x15RedistributeTaskState\x12\x1b\n" +
 	"\x17RedistributeTaskPlanned\x10\x00\x12\x19\n" +
-	"\x15RedistributeTaskMoved\x10\x012\xdf\x05\n" +
+	"\x15RedistributeTaskMoved\x10\x012\xbd\x06\n" +
 	"\x10MoveTasksService\x12?\n" +
 	"\rListMoveTasks\x12\x16.google.protobuf.Empty\x1a\x14.spqr.MoveTasksReply\"\x00\x12M\n" +
 	"\x12ListMoveTaskGroups\x12\x16.google.protobuf.Empty\x1a\x1d.spqr.ListMoveTaskGroupsReply\"\x00\x12N\n" +
@@ -1295,7 +1396,8 @@ const file_protos_tasks_proto_rawDesc = "" +
 	"\x12WriteMoveTaskGroup\x12\x1f.spqr.WriteMoveTaskGroupRequest\x1a\x16.google.protobuf.Empty\"\x00\x12L\n" +
 	"\x13RemoveMoveTaskGroup\x12\x1b.spqr.MoveTaskGroupSelector\x1a\x16.google.protobuf.Empty\"\x00\x12K\n" +
 	"\x12RetryMoveTaskGroup\x12\x1b.spqr.MoveTaskGroupSelector\x1a\x16.google.protobuf.Empty\"\x00\x12J\n" +
-	"\x11StopMoveTaskGroup\x12\x1b.spqr.MoveTaskGroupSelector\x1a\x16.google.protobuf.Empty\"\x00\x12R\n" +
+	"\x11StopMoveTaskGroup\x12\x1b.spqr.MoveTaskGroupSelector\x1a\x16.google.protobuf.Empty\"\x00\x12\\\n" +
+	"\x1bGetMoveTaskGroupBoundsCache\x12\x1b.spqr.MoveTaskGroupSelector\x1a\x1e.spqr.MoveTaskGroupBoundsCache\"\x00\x12R\n" +
 	"\x16GetMoveTaskGroupStatus\x12\x1b.spqr.MoveTaskGroupSelector\x1a\x19.spqr.MoveTaskGroupStatus\"\x00\x12_\n" +
 	"\x1bGetAllMoveTaskGroupStatuses\x12\x16.google.protobuf.Empty\x1a&.spqr.GetAllMoveTaskGroupStatusesReply\"\x002\xf5\x01\n" +
 	"\x13BalancerTaskService\x12G\n" +
@@ -1321,86 +1423,91 @@ func file_protos_tasks_proto_rawDescGZIP() []byte {
 }
 
 var file_protos_tasks_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_protos_tasks_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_protos_tasks_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_protos_tasks_proto_goTypes = []any{
 	(TaskStatus)(0),                          // 0: spqr.TaskStatus
 	(JoinType)(0),                            // 1: spqr.JoinType
 	(SplitType)(0),                           // 2: spqr.SplitType
 	(BalancerTaskStatus)(0),                  // 3: spqr.BalancerTaskStatus
 	(RedistributeTaskState)(0),               // 4: spqr.RedistributeTaskState
-	(*MoveTask)(nil),                         // 5: spqr.MoveTask
-	(*MoveTaskSelector)(nil),                 // 6: spqr.MoveTaskSelector
-	(*MoveTaskReply)(nil),                    // 7: spqr.MoveTaskReply
-	(*MoveTasksReply)(nil),                   // 8: spqr.MoveTasksReply
-	(*MoveTaskGroup)(nil),                    // 9: spqr.MoveTaskGroup
-	(*GetMoveTaskGroupReply)(nil),            // 10: spqr.GetMoveTaskGroupReply
-	(*ListMoveTaskGroupsReply)(nil),          // 11: spqr.ListMoveTaskGroupsReply
-	(*WriteMoveTaskGroupRequest)(nil),        // 12: spqr.WriteMoveTaskGroupRequest
-	(*MoveTaskGroupSelector)(nil),            // 13: spqr.MoveTaskGroupSelector
-	(*MoveTaskGroupStatus)(nil),              // 14: spqr.MoveTaskGroupStatus
-	(*GetAllMoveTaskGroupStatusesReply)(nil), // 15: spqr.GetAllMoveTaskGroupStatusesReply
-	(*BalancerTask)(nil),                     // 16: spqr.BalancerTask
-	(*GetBalancerTaskReply)(nil),             // 17: spqr.GetBalancerTaskReply
-	(*WriteBalancerTaskRequest)(nil),         // 18: spqr.WriteBalancerTaskRequest
-	(*RedistributeTask)(nil),                 // 19: spqr.RedistributeTask
-	(*GetRedistributeTaskReply)(nil),         // 20: spqr.GetRedistributeTaskReply
-	(*WriteRedistributeTaskRequest)(nil),     // 21: spqr.WriteRedistributeTaskRequest
-	nil,                                      // 22: spqr.GetAllMoveTaskGroupStatusesReply.StatusesEntry
-	(*emptypb.Empty)(nil),                    // 23: google.protobuf.Empty
+	(*KeyRangeBound)(nil),                    // 5: spqr.KeyRangeBound
+	(*MoveTask)(nil),                         // 6: spqr.MoveTask
+	(*MoveTaskSelector)(nil),                 // 7: spqr.MoveTaskSelector
+	(*MoveTaskReply)(nil),                    // 8: spqr.MoveTaskReply
+	(*MoveTasksReply)(nil),                   // 9: spqr.MoveTasksReply
+	(*MoveTaskGroup)(nil),                    // 10: spqr.MoveTaskGroup
+	(*GetMoveTaskGroupReply)(nil),            // 11: spqr.GetMoveTaskGroupReply
+	(*ListMoveTaskGroupsReply)(nil),          // 12: spqr.ListMoveTaskGroupsReply
+	(*WriteMoveTaskGroupRequest)(nil),        // 13: spqr.WriteMoveTaskGroupRequest
+	(*MoveTaskGroupSelector)(nil),            // 14: spqr.MoveTaskGroupSelector
+	(*MoveTaskGroupStatus)(nil),              // 15: spqr.MoveTaskGroupStatus
+	(*GetAllMoveTaskGroupStatusesReply)(nil), // 16: spqr.GetAllMoveTaskGroupStatusesReply
+	(*MoveTaskGroupBoundsCache)(nil),         // 17: spqr.MoveTaskGroupBoundsCache
+	(*BalancerTask)(nil),                     // 18: spqr.BalancerTask
+	(*GetBalancerTaskReply)(nil),             // 19: spqr.GetBalancerTaskReply
+	(*WriteBalancerTaskRequest)(nil),         // 20: spqr.WriteBalancerTaskRequest
+	(*RedistributeTask)(nil),                 // 21: spqr.RedistributeTask
+	(*GetRedistributeTaskReply)(nil),         // 22: spqr.GetRedistributeTaskReply
+	(*WriteRedistributeTaskRequest)(nil),     // 23: spqr.WriteRedistributeTaskRequest
+	nil,                                      // 24: spqr.GetAllMoveTaskGroupStatusesReply.StatusesEntry
+	(*emptypb.Empty)(nil),                    // 25: google.protobuf.Empty
 }
 var file_protos_tasks_proto_depIdxs = []int32{
 	0,  // 0: spqr.MoveTask.status:type_name -> spqr.TaskStatus
-	5,  // 1: spqr.MoveTaskReply.task:type_name -> spqr.MoveTask
-	5,  // 2: spqr.MoveTasksReply.tasks:type_name -> spqr.MoveTask
+	6,  // 1: spqr.MoveTaskReply.task:type_name -> spqr.MoveTask
+	6,  // 2: spqr.MoveTasksReply.tasks:type_name -> spqr.MoveTask
 	2,  // 3: spqr.MoveTaskGroup.type:type_name -> spqr.SplitType
-	5,  // 4: spqr.MoveTaskGroup.currentTask:type_name -> spqr.MoveTask
-	9,  // 5: spqr.GetMoveTaskGroupReply.taskGroup:type_name -> spqr.MoveTaskGroup
-	9,  // 6: spqr.ListMoveTaskGroupsReply.taskGroups:type_name -> spqr.MoveTaskGroup
-	9,  // 7: spqr.WriteMoveTaskGroupRequest.taskGroup:type_name -> spqr.MoveTaskGroup
-	22, // 8: spqr.GetAllMoveTaskGroupStatusesReply.statuses:type_name -> spqr.GetAllMoveTaskGroupStatusesReply.StatusesEntry
-	1,  // 9: spqr.BalancerTask.type:type_name -> spqr.JoinType
-	3,  // 10: spqr.BalancerTask.state:type_name -> spqr.BalancerTaskStatus
-	16, // 11: spqr.GetBalancerTaskReply.task:type_name -> spqr.BalancerTask
-	16, // 12: spqr.WriteBalancerTaskRequest.task:type_name -> spqr.BalancerTask
-	4,  // 13: spqr.RedistributeTask.state:type_name -> spqr.RedistributeTaskState
-	19, // 14: spqr.GetRedistributeTaskReply.task:type_name -> spqr.RedistributeTask
-	19, // 15: spqr.WriteRedistributeTaskRequest.task:type_name -> spqr.RedistributeTask
-	14, // 16: spqr.GetAllMoveTaskGroupStatusesReply.StatusesEntry.value:type_name -> spqr.MoveTaskGroupStatus
-	23, // 17: spqr.MoveTasksService.ListMoveTasks:input_type -> google.protobuf.Empty
-	23, // 18: spqr.MoveTasksService.ListMoveTaskGroups:input_type -> google.protobuf.Empty
-	13, // 19: spqr.MoveTasksService.GetMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
-	12, // 20: spqr.MoveTasksService.WriteMoveTaskGroup:input_type -> spqr.WriteMoveTaskGroupRequest
-	13, // 21: spqr.MoveTasksService.RemoveMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
-	13, // 22: spqr.MoveTasksService.RetryMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
-	13, // 23: spqr.MoveTasksService.StopMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
-	13, // 24: spqr.MoveTasksService.GetMoveTaskGroupStatus:input_type -> spqr.MoveTaskGroupSelector
-	23, // 25: spqr.MoveTasksService.GetAllMoveTaskGroupStatuses:input_type -> google.protobuf.Empty
-	23, // 26: spqr.BalancerTaskService.GetBalancerTask:input_type -> google.protobuf.Empty
-	18, // 27: spqr.BalancerTaskService.WriteBalancerTask:input_type -> spqr.WriteBalancerTaskRequest
-	23, // 28: spqr.BalancerTaskService.RemoveBalancerTask:input_type -> google.protobuf.Empty
-	23, // 29: spqr.RedistributeTaskService.GetRedistributeTask:input_type -> google.protobuf.Empty
-	21, // 30: spqr.RedistributeTaskService.WriteRedistributeTask:input_type -> spqr.WriteRedistributeTaskRequest
-	23, // 31: spqr.RedistributeTaskService.RemoveRedistributeTask:input_type -> google.protobuf.Empty
-	8,  // 32: spqr.MoveTasksService.ListMoveTasks:output_type -> spqr.MoveTasksReply
-	11, // 33: spqr.MoveTasksService.ListMoveTaskGroups:output_type -> spqr.ListMoveTaskGroupsReply
-	10, // 34: spqr.MoveTasksService.GetMoveTaskGroup:output_type -> spqr.GetMoveTaskGroupReply
-	23, // 35: spqr.MoveTasksService.WriteMoveTaskGroup:output_type -> google.protobuf.Empty
-	23, // 36: spqr.MoveTasksService.RemoveMoveTaskGroup:output_type -> google.protobuf.Empty
-	23, // 37: spqr.MoveTasksService.RetryMoveTaskGroup:output_type -> google.protobuf.Empty
-	23, // 38: spqr.MoveTasksService.StopMoveTaskGroup:output_type -> google.protobuf.Empty
-	14, // 39: spqr.MoveTasksService.GetMoveTaskGroupStatus:output_type -> spqr.MoveTaskGroupStatus
-	15, // 40: spqr.MoveTasksService.GetAllMoveTaskGroupStatuses:output_type -> spqr.GetAllMoveTaskGroupStatusesReply
-	17, // 41: spqr.BalancerTaskService.GetBalancerTask:output_type -> spqr.GetBalancerTaskReply
-	23, // 42: spqr.BalancerTaskService.WriteBalancerTask:output_type -> google.protobuf.Empty
-	23, // 43: spqr.BalancerTaskService.RemoveBalancerTask:output_type -> google.protobuf.Empty
-	20, // 44: spqr.RedistributeTaskService.GetRedistributeTask:output_type -> spqr.GetRedistributeTaskReply
-	23, // 45: spqr.RedistributeTaskService.WriteRedistributeTask:output_type -> google.protobuf.Empty
-	23, // 46: spqr.RedistributeTaskService.RemoveRedistributeTask:output_type -> google.protobuf.Empty
-	32, // [32:47] is the sub-list for method output_type
-	17, // [17:32] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	6,  // 4: spqr.MoveTaskGroup.currentTask:type_name -> spqr.MoveTask
+	10, // 5: spqr.GetMoveTaskGroupReply.taskGroup:type_name -> spqr.MoveTaskGroup
+	10, // 6: spqr.ListMoveTaskGroupsReply.taskGroups:type_name -> spqr.MoveTaskGroup
+	10, // 7: spqr.WriteMoveTaskGroupRequest.taskGroup:type_name -> spqr.MoveTaskGroup
+	24, // 8: spqr.GetAllMoveTaskGroupStatusesReply.statuses:type_name -> spqr.GetAllMoveTaskGroupStatusesReply.StatusesEntry
+	5,  // 9: spqr.MoveTaskGroupBoundsCache.bounds:type_name -> spqr.KeyRangeBound
+	1,  // 10: spqr.BalancerTask.type:type_name -> spqr.JoinType
+	3,  // 11: spqr.BalancerTask.state:type_name -> spqr.BalancerTaskStatus
+	18, // 12: spqr.GetBalancerTaskReply.task:type_name -> spqr.BalancerTask
+	18, // 13: spqr.WriteBalancerTaskRequest.task:type_name -> spqr.BalancerTask
+	4,  // 14: spqr.RedistributeTask.state:type_name -> spqr.RedistributeTaskState
+	21, // 15: spqr.GetRedistributeTaskReply.task:type_name -> spqr.RedistributeTask
+	21, // 16: spqr.WriteRedistributeTaskRequest.task:type_name -> spqr.RedistributeTask
+	15, // 17: spqr.GetAllMoveTaskGroupStatusesReply.StatusesEntry.value:type_name -> spqr.MoveTaskGroupStatus
+	25, // 18: spqr.MoveTasksService.ListMoveTasks:input_type -> google.protobuf.Empty
+	25, // 19: spqr.MoveTasksService.ListMoveTaskGroups:input_type -> google.protobuf.Empty
+	14, // 20: spqr.MoveTasksService.GetMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
+	13, // 21: spqr.MoveTasksService.WriteMoveTaskGroup:input_type -> spqr.WriteMoveTaskGroupRequest
+	14, // 22: spqr.MoveTasksService.RemoveMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
+	14, // 23: spqr.MoveTasksService.RetryMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
+	14, // 24: spqr.MoveTasksService.StopMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
+	14, // 25: spqr.MoveTasksService.GetMoveTaskGroupBoundsCache:input_type -> spqr.MoveTaskGroupSelector
+	14, // 26: spqr.MoveTasksService.GetMoveTaskGroupStatus:input_type -> spqr.MoveTaskGroupSelector
+	25, // 27: spqr.MoveTasksService.GetAllMoveTaskGroupStatuses:input_type -> google.protobuf.Empty
+	25, // 28: spqr.BalancerTaskService.GetBalancerTask:input_type -> google.protobuf.Empty
+	20, // 29: spqr.BalancerTaskService.WriteBalancerTask:input_type -> spqr.WriteBalancerTaskRequest
+	25, // 30: spqr.BalancerTaskService.RemoveBalancerTask:input_type -> google.protobuf.Empty
+	25, // 31: spqr.RedistributeTaskService.GetRedistributeTask:input_type -> google.protobuf.Empty
+	23, // 32: spqr.RedistributeTaskService.WriteRedistributeTask:input_type -> spqr.WriteRedistributeTaskRequest
+	25, // 33: spqr.RedistributeTaskService.RemoveRedistributeTask:input_type -> google.protobuf.Empty
+	9,  // 34: spqr.MoveTasksService.ListMoveTasks:output_type -> spqr.MoveTasksReply
+	12, // 35: spqr.MoveTasksService.ListMoveTaskGroups:output_type -> spqr.ListMoveTaskGroupsReply
+	11, // 36: spqr.MoveTasksService.GetMoveTaskGroup:output_type -> spqr.GetMoveTaskGroupReply
+	25, // 37: spqr.MoveTasksService.WriteMoveTaskGroup:output_type -> google.protobuf.Empty
+	25, // 38: spqr.MoveTasksService.RemoveMoveTaskGroup:output_type -> google.protobuf.Empty
+	25, // 39: spqr.MoveTasksService.RetryMoveTaskGroup:output_type -> google.protobuf.Empty
+	25, // 40: spqr.MoveTasksService.StopMoveTaskGroup:output_type -> google.protobuf.Empty
+	17, // 41: spqr.MoveTasksService.GetMoveTaskGroupBoundsCache:output_type -> spqr.MoveTaskGroupBoundsCache
+	15, // 42: spqr.MoveTasksService.GetMoveTaskGroupStatus:output_type -> spqr.MoveTaskGroupStatus
+	16, // 43: spqr.MoveTasksService.GetAllMoveTaskGroupStatuses:output_type -> spqr.GetAllMoveTaskGroupStatusesReply
+	19, // 44: spqr.BalancerTaskService.GetBalancerTask:output_type -> spqr.GetBalancerTaskReply
+	25, // 45: spqr.BalancerTaskService.WriteBalancerTask:output_type -> google.protobuf.Empty
+	25, // 46: spqr.BalancerTaskService.RemoveBalancerTask:output_type -> google.protobuf.Empty
+	22, // 47: spqr.RedistributeTaskService.GetRedistributeTask:output_type -> spqr.GetRedistributeTaskReply
+	25, // 48: spqr.RedistributeTaskService.WriteRedistributeTask:output_type -> google.protobuf.Empty
+	25, // 49: spqr.RedistributeTaskService.RemoveRedistributeTask:output_type -> google.protobuf.Empty
+	34, // [34:50] is the sub-list for method output_type
+	18, // [18:34] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_protos_tasks_proto_init() }
@@ -1414,7 +1521,7 @@ func file_protos_tasks_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_tasks_proto_rawDesc), len(file_protos_tasks_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   18,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

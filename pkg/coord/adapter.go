@@ -1101,6 +1101,29 @@ func (a *Adapter) StopMoveTaskGroup(ctx context.Context, id string) error {
 	return err
 }
 
+// GetMoveTaskGroupBoundsCache gets the array of pre-select bounds to use in the task group.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+// - id  (string): The ID of the task group to stop.
+//
+// Returns:
+// - [][][]byte: the array of bounds.
+// - int: The index of next-to-be-used bound.
+// - error: An error if the operation fails, otherwise nil.
+func (a *Adapter) GetMoveTaskGroupBoundsCache(ctx context.Context, id string) ([][][]byte, int, error) {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	resp, err := tasksService.GetMoveTaskGroupBoundsCache(ctx, &proto.MoveTaskGroupSelector{ID: id})
+	if err != nil {
+		return nil, 0, err
+	}
+	bounds := make([][][]byte, len(resp.Bounds))
+	for i := range bounds {
+		bounds[i] = resp.Bounds[i].Values
+	}
+	return bounds, int(resp.Index), err
+}
+
 // GetTaskGroupStatus gets the status of the task group.
 //
 // Parameters:
@@ -1266,10 +1289,7 @@ func (a *Adapter) ListRelationSequences(ctx context.Context, relName *rfqn.Relat
 
 func (a *Adapter) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionChunk) error {
 	conn := proto.NewMetaTransactionServiceClient(a.conn)
-	request := &proto.ExecNoTranRequest{
-		MetaCmdList: chunk.GossipRequests,
-		CmdList:     nil,
-	}
+	request := &proto.ExecNoTranRequest{MetaCmdList: chunk.GossipRequests}
 	_, err := conn.ExecNoTran(ctx, request)
 	return err
 }
@@ -1279,7 +1299,6 @@ func (a *Adapter) CommitTran(ctx context.Context, transaction *mtran.MetaTransac
 	request := &proto.MetaTransactionRequest{
 		TransactionId: transaction.TransactionId.String(),
 		MetaCmdList:   transaction.Operations.GossipRequests,
-		CmdList:       nil,
 	}
 	_, err := conn.CommitTran(ctx, request)
 	return err

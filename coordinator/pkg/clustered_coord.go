@@ -1831,6 +1831,18 @@ func (qc *ClusteredCoordinator) StopMoveTaskGroup(ctx context.Context, id string
 	return qc.QDB().AddMoveTaskGroupStopFlag(ctx, id)
 }
 
+func (qc *ClusteredCoordinator) GetMoveTaskGroupBoundsCache(_ context.Context, id string) ([][][]byte, int, error) {
+	if qc.bounds != nil {
+		if groupBoundsInt, ok := qc.bounds.Load(id); ok {
+			indMap, _ := qc.index.Load(id)
+			groupBounds, _ := groupBoundsInt.([][][]byte)
+			ind := indMap.(int)
+			return groupBounds, ind, nil
+		}
+	}
+	return nil, 0, nil
+}
+
 // TODO : unit tests
 
 // RedistributeKeyRange moves the whole key range to another shard in batches
@@ -2761,9 +2773,8 @@ func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtr
 			return fmt.Errorf("invalid meta transaction request (commit tran)")
 		}
 	}
-	noGossipTran := mtran.ToNoGossipTransaction(transaction)
 
-	if err := qc.Coordinator.CommitTran(ctx, noGossipTran); err != nil {
+	if err := qc.Coordinator.CommitTran(ctx, transaction); err != nil {
 		return err
 	}
 	return qc.traverseRouters(ctx,

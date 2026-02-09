@@ -1832,6 +1832,8 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, id string, group *Move
 
 	t := time.Now()
 
+	group.CreatedAt = t
+
 	groupJson, err := json.Marshal(group)
 	if err != nil {
 		return err
@@ -1909,6 +1911,7 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context, id string) error {
 		clientv3.OpDelete(taskGroupNodePath(id)),
 		clientv3.OpDelete(totalKeysNodePath(id)),
 		clientv3.OpDelete(taskGroupStopFlagNodePath(id)),
+		clientv3.OpDelete(taskGroupStatusNodePath(id)),
 	).Commit(); err != nil {
 		return fmt.Errorf("failed to delete move task group metadata: %s", err)
 	}
@@ -2184,6 +2187,7 @@ func (q *EtcdQDB) WriteTaskGroupStatus(ctx context.Context, id string, status *T
 		Str("msg", status.Message).
 		Msg("etcdqdb: write task group status")
 
+	status.UpdatedAt = time.Now()
 	data, err := json.Marshal(status)
 	if err != nil {
 		return err
@@ -2646,7 +2650,7 @@ func (q *EtcdQDB) TryTaskGroupLock(ctx context.Context, tgId string) error {
 		if err != nil {
 			return err
 		}
-		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "qdb is already in use")
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "lock is already taken")
 	}
 
 	// okay, we acquired lock, time to spawn keep alive channel
