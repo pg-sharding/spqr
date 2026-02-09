@@ -258,8 +258,8 @@ KFS
 killall
 kinit
 Kirill
-klepov
 Klepov
+klepov
 kpass
 krb
 krdb
@@ -402,6 +402,7 @@ pgsync
 PGUSER
 pgx
 pgxconn
+PIDs
 pitr
 pkgclient
 podman

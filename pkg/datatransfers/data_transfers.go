@@ -28,6 +28,8 @@ import (
 
 const spqrguardReferenceRelationLock = 69
 
+const spqrTransferApplicationName = "spqr-transfer"
+
 type MoveTableRes struct {
 	TableSchema string `db:"table_schema"`
 	TableName   string `db:"table_name"`
@@ -520,6 +522,10 @@ func unlockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, re
 // Returns:
 // - error: an error if the move fails.
 func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
+	// Await all current virtual transactions on source shard to stop
+	if err := awaitPIDs(ctx, from); err != nil {
+		return fmt.Errorf("failed to await virtual transactions to exit: %s", err)
+	}
 	schemas := make(map[string]struct{})
 	for _, rel := range ds.Relations {
 		schemas[rel.GetSchema()] = struct{}{}
@@ -540,7 +546,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	serverName := fmt.Sprintf("spqr_transfer_server_%x", serverNameHash)
 	tx, err := to.Begin(ctx)
 	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not start transaction: %s", err)
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: could not start transaction on destination shard: %s", err)
 	}
 	if _, err := tx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: error deferring contraints: %s", err)
@@ -712,6 +718,13 @@ func getTableColumns(ctx context.Context, db Queryable, rfqn rfqn.RelationFQN) (
 		cols = append(cols, colName)
 	}
 	return cols, nil
+}
+
+func awaitPIDs(ctx context.Context, conn *pgx.Conn) error {
+	if _, err := conn.Exec(ctx, getAwaitPIDsQuery()); err != nil {
+		return err
+	}
+	return nil
 }
 
 type Queryable interface {

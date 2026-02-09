@@ -19,3 +19,4 @@ test/regress/tests/router/expected/expression_routing.out
 test/regress/tests/router/sql/expression_routing.sql
 test/regress/tests/router/expected/hash_multicolumn_1.out
 test/regress/tests/router/sql/hash_multicolumn_1.sql
+^pkg/datatransfers/queries.go
