@@ -38,6 +38,7 @@ func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		},
 		MaxCallSendMsgSize: maxCallSendMsgSize,
+		MaxUnaryRetries:    3,
 	})
 	if err != nil {
 		return nil, err
