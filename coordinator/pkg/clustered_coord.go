@@ -73,19 +73,19 @@ func (ci grpcConnMgr) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
 }
 
 // TODO implement it
-// ActiveTcpCount implements connectiterator.ConnectIterator.
+// ActiveTcpCount implements connmgr.ConnectionStatMgr.
 func (ci grpcConnMgr) ActiveTcpCount() int64 {
 	return 0
 }
 
 // TODO implement it
-// TotalCancelCount implements connectiterator.ConnectIterator.
+// ActiveTcpCount implements connmgr.ConnectionStatMgr
 func (ci grpcConnMgr) TotalCancelCount() int64 {
 	return 0
 }
 
 // TODO implement it
-// TotalTcpCount implements connectiterator.ConnectIterator.
+// ActiveTcpCount implements connmgr.ConnectionStatMgr
 func (ci grpcConnMgr) TotalTcpCount() int64 {
 	return 0
 }

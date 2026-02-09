@@ -1451,9 +1451,9 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 func TestSpqr(t *testing.T) {
 	paths := make([]string, 0)
 	featureDir := "features"
-	if feauterDirEnv, ok := os.LookupEnv("GODOG_FEATURE_DIR"); ok {
-		if len(feauterDirEnv) != 0 {
-			featureDir = feauterDirEnv
+	if featureDirEnv, ok := os.LookupEnv("GODOG_FEATURE_DIR"); ok {
+		if len(featureDirEnv) != 0 {
+			featureDir = featureDirEnv
 		}
 	}
 	if featureEnv, ok := os.LookupEnv("GODOG_FEATURE"); ok {

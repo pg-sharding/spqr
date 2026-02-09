@@ -52,7 +52,7 @@ jobs:
           root-path: './' # The relative root path to run goimports
           excludes: "./yacc/"
 
-  gomodtidy:
+  go-mod-tidy:
     name: go mod tidy check
     runs-on: ubuntu-latest
     steps:

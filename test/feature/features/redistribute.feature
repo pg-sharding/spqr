@@ -1476,7 +1476,7 @@ Feature: Redistribution test
     }]
     """
 
-  Scenario: REDISTRIBUTE KEY RANGE works in parallel when transfering between different shards
+  Scenario: REDISTRIBUTE KEY RANGE works in parallel when transferring between different shards
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr4 FROM 900 ROUTE TO sh2 FOR DISTRIBUTION ds1;
@@ -1645,7 +1645,7 @@ Feature: Redistribution test
     }]
     """
   
-  Scenario: REDISTRIBUTE KEY RANGE works in parallel when transfering between same shards
+  Scenario: REDISTRIBUTE KEY RANGE works in parallel when transferring between same shards
     When I execute SQL on host "coordinator"
     """
     CREATE KEY RANGE kr2 FROM 300 ROUTE TO sh1 FOR DISTRIBUTION ds1;

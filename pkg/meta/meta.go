@@ -66,9 +66,9 @@ var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 // - dstmt (spqrparser.Statement): The statement to be processed.
 // - isCascade (bool): Indicates whether cascade is enabled.
 // - mngr (EntityMgr): The entity manager handling the drop operation.
-// - cli (*clientinteractor.PSQLInteractor): The PSQL interactor for reporting errors.
 //
 // Returns:
+// - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if drop operation fails, otherwise nil.
 func processDrop(ctx context.Context,
 	dstmt spqrparser.Statement,
@@ -339,6 +339,7 @@ func processDrop(ctx context.Context,
 // Parameters:
 // - ctx (context.Context): The context of the operation.
 // - mngr (EntityMgr): The entity manager used to manage the entities.
+//
 // Returns:
 // - distribution: created distribution.
 // - error: An error if the creation encounters any issues.
@@ -372,6 +373,7 @@ func createReplicatedDistribution(ctx context.Context, mngr EntityMgr) (*distrib
 // - ctx (context.Context): The context of the operation.
 // - stmt (spqrparser.DistributionDefinition): The create distribution statement to be processed.
 // - mngr (EntityMgr): The entity manager used to manage the entities.
+//
 // Returns:
 // - distribution: created distribution.
 // - error: An error if the creation encounters any issues.
@@ -427,9 +429,9 @@ func createNonReplicatedDistribution(ctx context.Context,
 // - ctx (context.Context): The context of the operation.
 // - astmt (spqrparser.Statement): The statement to be processed.
 // - mngr (EntityMgr): The entity manager used to manage the entities.
-// - cli (*clientinteractor.PSQLInteractor): The PSQL interactor used to interact with the PSQL client.
 //
 // Returns:
+// - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the creation encounters any issues.
 func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
@@ -582,9 +584,9 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 // - ctx (context.Context): The context for the operation.
 // - astmt (spqrparser.Statement): The alter statement to be processed.
 // - mngr (EntityMgr): The entity manager for managing entities.
-// - cli (*clientinteractor.PSQLInteractor): The PSQL client interactor for interacting with the PSQL server.
 //
 // Returns:
+// - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation fails, otherwise nil.
 func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
@@ -604,9 +606,10 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 // - ctx (context.Context): The context for the operation.
 // - astmt (spqrparser.Statement): The alter distribution statement to be processed.
 // - mngr (EntityMgr): The entity manager for managing entities.
-// - cli (*clientinteractor.PSQLInteractor): The PSQL client interactor for interacting with the PSQL server.
+// - dsId (string): The ID of the distribution to alter.
 //
 // Returns:
+// - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation fails, otherwise nil.
 func processAlterDistribution(ctx context.Context,
 	astmt spqrparser.Statement,
@@ -738,11 +741,11 @@ func processAlterDistribution(ctx context.Context,
 // - ctx (context.Context): The context for the operation.
 // - astmt (spqrparser.Statement): The alter relation statement to be processed.
 // - mngr (EntityMgr): The entity manager for performing the operation.
-// - cli (*clientinteractor.PSQLInteractor): The PSQL client interactor for interacting with the PSQL server.
 // - dsId (string): ID of the distribution, to which the relation belongs.
 // - relName (string): the name of the relation to alter.
 //
 // Returns:
+// - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation fails, otherwise nil.
 func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, dsId string, relName string) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
@@ -801,11 +804,12 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 // - ctx (context.Context): The context for the function.
 // - tstmt (spqrparser.Statement): The statement to be processed.
 // - mgr (EntityMgr): The entity manager.
-// - ci (connectiterator.ConnectIterator): The connect iterator.
-// - cli (*clientinteractor.PSQLInteractor): The PSQL interactor.
+// - ci (connmgr.ConnectionMgr): The connection manager.
+// - rule (*config.FrontendRule): Rule, under which the command is executed. Used to check for user's roles.
 // - writer (workloadlog.WorkloadLog): The workload log writer.
 //
 // Returns:
+// - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation fails, otherwise nil.
 func ProcMetadataCommand(ctx context.Context,
 	tstmt spqrparser.Statement,
@@ -1127,9 +1131,9 @@ func ProcMetadataCommand(ctx context.Context,
 // - ctx (context.Context): The context for the operation.
 // - stmt (*spqrparser.Kill): The kill statement to process.
 // - mngr (EntityMgr): The entity manager for managing entities.
-// - pool (client.Pool): The pool of clients.
 //
 // Returns:
+// - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation encounters any issues.
 func ProcessKill(ctx context.Context,
 	stmt *spqrparser.Kill,
@@ -1489,10 +1493,11 @@ func ProcessShowExtended(ctx context.Context,
 // - ctx (context.Context): The context for the operation.
 // - stmt (*spqrparser.Show): The SHOW statement to process.
 // - mngr (EntityMgr): The entity manager for managing entities.
-// - ci (connectiterator.ConnectIterator): The connect iterator for connection interactions.
-// - cli (*clientinteractor.PSQLInteractor): The PSQL interactor for client interactions.
+// - ci (connmgr.ConnectionMgr): The connection manager.
+// - ro (bool): Whether server is read-only or not.
 //
 // Returns:
+// - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation encounters any issues.
 func ProcessShow(ctx context.Context,
 	stmt *spqrparser.Show,
@@ -1721,9 +1726,9 @@ func ProcessShow(ctx context.Context,
 //   - ctx (context.Context): The context for the operation.
 //   - stmt (*spqrparser.Show): The REDISTRIBUTE KEY RANGE statement to process.
 //   - mngr (EntityMgr): The entity manager for performing the redistribution.
-//   - cli (*clientinteractor.PSQLInteractor): The PSQL interactor for client interactions.
 //
 // Returns:
+// - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation encounters any issues.
 func processRedistribute(ctx context.Context,
 	stmt *spqrparser.RedistributeKeyRange,

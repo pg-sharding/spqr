@@ -373,9 +373,9 @@ func (cl *SimpleSessionParamHandler) RollbackToSP(name string) {
 			delete(cl.savepointParamSet, k)
 		}
 	}
-	/* XXX: not exactly correct with roolback to SP */
+	/* XXX: not exactly correct with rollback to SP */
 	cl.statementParamSet = map[string]string{}
-	/* XXX: not exactly correct with roolback to SP */
+	/* XXX: not exactly correct with rollback to SP */
 	cl.localTxParamSet = map[string]string{}
 
 	cl.txCnt = targetTxCnt + 1
