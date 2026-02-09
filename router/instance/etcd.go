@@ -20,6 +20,7 @@ type EtcdMetadataBootstrapper struct {
 }
 
 // InitializeMetadata implements RouterMetadataBootstrapper.
+// TODO: pack TranEntityManager commands to batches
 func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r RouterInstance) error {
 	etcdConn, err := qdb.NewEtcdQDB(e.QdbAddr, 0)
 	if err != nil {
@@ -88,14 +89,19 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 			r, _ := kr.KeyRangeFromDB(krs[j], d.ColTypes)
 			return !kr.CmpRangesLess(l.LowerBound, r.LowerBound, d.ColTypes)
 		})
-
+		// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
 		for _, ckr := range krs {
 			kRange, err := kr.KeyRangeFromDB(ckr, d.ColTypes)
 			if err != nil {
 				return err
 			}
-			if err := r.Console().Mgr().CreateKeyRange(ctx, kRange); err != nil {
+			tranMngr := meta.NewTranEntityManager(mngr)
+			if err := tranMngr.CreateKeyRange(ctx, kRange); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
+				return err
+			}
+			if err = tranMngr.ExecNoTran(ctx); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance (exec phase)")
 				return err
 			}
 		}

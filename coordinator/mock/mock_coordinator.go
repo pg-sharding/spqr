@@ -236,11 +236,12 @@ func (mr *MockCoordinatorMockRecorder) CreateDistribution(ctx, ds any) *gomock.C
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockCoordinator) CreateKeyRange(ctx context.Context, arg1 *kr.KeyRange) error {
+func (m *MockCoordinator) CreateKeyRange(ctx context.Context, arg1 *kr.KeyRange) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateKeyRange indicates an expected call of CreateKeyRange.

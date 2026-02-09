@@ -145,7 +145,7 @@ func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.Shard
 
 // CreateDistribution creates distribution in QDB
 func (l *LocalQrouterServer) CreateDistribution(ctx context.Context, request *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
-	return nil, fmt.Errorf("DEPRECATED, remove after meta transaction implementation")
+	return nil, fmt.Errorf("DEPRECATED (CreateDistribution), remove after meta transaction implementation")
 }
 
 // DropDistribution deletes distribution from QDB
@@ -321,20 +321,7 @@ func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.M
 
 // TODO : unit tests
 func (l *LocalQrouterServer) CreateKeyRange(ctx context.Context, request *protos.CreateKeyRangeRequest) (*protos.ModifyReply, error) {
-	ds, err := l.mgr.GetDistribution(ctx, request.KeyRangeInfo.DistributionId)
-	if err != nil {
-		return nil, err
-	}
-	kRange, err := kr.KeyRangeFromProto(request.KeyRangeInfo, ds.ColTypes)
-	if err != nil {
-		return nil, err
-	}
-	err = l.mgr.CreateKeyRange(ctx, kRange)
-	if err != nil {
-		return nil, err
-	}
-
-	return &protos.ModifyReply{}, nil
+	return nil, fmt.Errorf("DEPRECATED (CreateKeyRange), remove after meta transaction implementation")
 }
 
 // GetKeyRange gets key ranges with given ids

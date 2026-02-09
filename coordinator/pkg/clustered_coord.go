@@ -633,8 +633,7 @@ func (qc *ClusteredCoordinator) AddRouter(ctx context.Context, router *topology.
 	return qc.db.AddRouter(ctx, topology.RouterToDB(router))
 }
 
-// TODO : unit tests
-func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
+func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRange) ([]qdb.QdbStatement, error) {
 	// add key range to metadb
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.Raw()[0]).
@@ -642,20 +641,7 @@ func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr
 		Str("key-range-id", keyRange.ID).
 		Msg("add key range")
 
-	if err := qc.Coordinator.CreateKeyRange(ctx, keyRange); err != nil {
-		return err
-	}
-
-	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := proto.NewKeyRangeServiceClient(cc)
-		resp, err := cl.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{
-			KeyRangeInfo: keyRange.ToProto(),
-		})
-		spqrlog.Zero.Debug().Err(err).
-			Interface("response", resp).
-			Msg("add key range response")
-		return err
-	})
+	return qc.Coordinator.CreateKeyRange(ctx, keyRange)
 }
 
 // TODO : unit tests
@@ -2111,6 +2097,7 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 			return err
 		}
 		spqrlog.Zero.Debug().Msg("clustered coordinator: distributions dropped successfully")
+		gossipCl := proto.NewMetaTransactionGossipServiceClient(cc)
 		if len(dss) > 0 {
 			distribsToCreate := make([]*proto.Distribution, len(dss))
 			for i, ds := range dss {
@@ -2121,7 +2108,6 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 					Distributions: distribsToCreate,
 				},
 			}}
-			gossipCl := proto.NewMetaTransactionGossipServiceClient(cc)
 			if _, err := gossipCl.ApplyMeta(ctx, &proto.MetaTransactionGossipRequest{Commands: commands}); err != nil {
 				if st, ok := status.FromError(err); ok {
 					if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
@@ -2155,11 +2141,14 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 			sort.Slice(krsInt, func(i, j int) bool {
 				return !kr.CmpRangesLess(krsInt[i].LowerBound, krsInt[j].LowerBound, ds.ColTypes)
 			})
-
+			// TODO: We need to group the key ranges into batches. Executing in batches will improve performance.
 			for _, kRange := range krsInt {
-				resp, err := krClient.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{
-					KeyRangeInfo: kRange.ToProto(),
-				})
+				commands := []*proto.MetaTransactionGossipCommand{
+					{CreateKeyRange: &proto.CreateKeyRangeGossip{
+						KeyRangeInfo: kRange.ToProto(),
+					}},
+				}
+				resp, err := gossipCl.ApplyMeta(ctx, &proto.MetaTransactionGossipRequest{Commands: commands})
 				if err != nil {
 					if st, ok := status.FromError(err); ok {
 						if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
@@ -2168,7 +2157,6 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 					}
 					return err
 				}
-
 				spqrlog.Zero.Debug().
 					Interface("response", resp).
 					Msg("got response while adding key range")

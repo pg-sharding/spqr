@@ -99,7 +99,10 @@ func TestValidateKeyRangeForCreate_happyPath(t *testing.T) {
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	assert.NoError(t, meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
-	err = mngr.CreateKeyRange(ctx, kr2)
+	tranMngr := meta.NewTranEntityManager(mngr)
+	err = tranMngr.CreateKeyRange(ctx, kr2)
+	is.NoError(err)
+	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
 }
@@ -111,7 +114,10 @@ func TestValidateKeyRangeForCreate_intersectWithExistsSameShard(t *testing.T) {
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
-	err = mngr.CreateKeyRange(ctx, kr1)
+	tranMngr := meta.NewTranEntityManager(mngr)
+	err = tranMngr.CreateKeyRange(ctx, kr1)
+	is.NoError(err)
+	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
 }
@@ -123,7 +129,10 @@ func TestValidateKeyRangeForCreate_intersectWithExistsAnotherShard(t *testing.T)
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
-	err = mngr.CreateKeyRange(ctx, kr1)
+	tranMngr := meta.NewTranEntityManager(mngr)
+	err = tranMngr.CreateKeyRange(ctx, kr1)
+	is.NoError(err)
+	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
 	is.Error(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2_sh2),
 		"key range kr2 intersects with key range kr1 in QDB")
@@ -137,7 +146,10 @@ func TestValidateKeyRangeForCreate_equalBound(t *testing.T) {
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
-	err = mngr.CreateKeyRange(ctx, kr1)
+	tranMngr := meta.NewTranEntityManager(mngr)
+	err = tranMngr.CreateKeyRange(ctx, kr1)
+	is.NoError(err)
+	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
 	is.Error(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1_double),
 		"key range kr1DOUBLE equals key range kr1 in QDB")
@@ -151,7 +163,10 @@ func TestValidateKeyRangeForModify_happyPath(t *testing.T) {
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
-	err = mngr.CreateKeyRange(ctx, kr2)
+	tranMngr := meta.NewTranEntityManager(mngr)
+	err = tranMngr.CreateKeyRange(ctx, kr2)
+	is.NoError(err)
+	err = tranMngr.ExecNoTran(ctx)
 	is.NoError(err)
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1_locked))
 }
@@ -164,10 +179,16 @@ func TestValidateKeyRangeForModify_lock_fail(t *testing.T) {
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
-	err = mngr.CreateKeyRange(ctx, kr2)
+	tranMngr2 := meta.NewTranEntityManager(mngr)
+	err = tranMngr2.CreateKeyRange(ctx, kr2)
+	is.NoError(err)
+	err = tranMngr2.ExecNoTran(ctx)
 	is.NoError(err)
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
-	err = mngr.CreateKeyRange(ctx, kr1)
+	tranMngr1 := meta.NewTranEntityManager(mngr)
+	err = tranMngr1.CreateKeyRange(ctx, kr1)
+	is.NoError(err)
+	err = tranMngr1.ExecNoTran(ctx)
 	is.NoError(err)
 	//lock unknown
 	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1))
@@ -183,10 +204,16 @@ func TestValidateKeyRangeForModify_intersection(t *testing.T) {
 	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
 
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr2))
-	err = mngr.CreateKeyRange(ctx, kr2)
+	tranMngr2 := meta.NewTranEntityManager(mngr)
+	err = tranMngr2.CreateKeyRange(ctx, kr2)
+	is.NoError(err)
+	err = tranMngr2.ExecNoTran(ctx)
 	is.NoError(err)
 	is.NoError(meta.ValidateKeyRangeForCreate(ctx, mngr, kr1))
-	err = mngr.CreateKeyRange(ctx, kr1)
+	tranMngr1 := meta.NewTranEntityManager(mngr)
+	err = tranMngr1.CreateKeyRange(ctx, kr1)
+	is.NoError(err)
+	err = tranMngr1.ExecNoTran(ctx)
 	is.NoError(err)
 
 	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1_double))

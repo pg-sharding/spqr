@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
@@ -41,23 +42,9 @@ func (c *CoordinatorService) DropKeyRange(ctx context.Context, request *protos.D
 	return &protos.ModifyReply{}, nil
 }
 
-// TODO : unit tests
+// DEPRECATED
 func (c *CoordinatorService) CreateKeyRange(ctx context.Context, request *protos.CreateKeyRangeRequest) (*protos.ModifyReply, error) {
-	ds, err := c.impl.GetDistribution(ctx, request.KeyRangeInfo.DistributionId)
-	if err != nil {
-		return nil, err
-	}
-	protoKR, err := kr.KeyRangeFromProto(request.KeyRangeInfo, ds.ColTypes)
-	if err != nil {
-		return nil, err
-	}
-
-	err = c.impl.CreateKeyRange(ctx, protoKR)
-	if err != nil {
-		return nil, err
-	}
-
-	return &protos.ModifyReply{}, nil
+	return nil, fmt.Errorf("DEPRECATED (CreateKeyRange in CoordinatorService). Use ExecuteNoTran or CommitTran")
 }
 
 // TODO : unit tests

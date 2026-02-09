@@ -842,13 +842,10 @@ func (qc *Coordinator) ShareKeyRange(id string) error {
 // - kr (*kr.KeyRange): The key range object to be created.
 //
 // Returns:
+// - []qdb.QdbStatement: qdb statements to apply changes
 // - error: An error if the creation encounters any issues.
-func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	qdbStatements, err := lc.qdb.CreateKeyRange(ctx, kr.ToDB())
-	if err != nil {
-		return err
-	}
-	return lc.qdb.ExecNoTransaction(ctx, qdbStatements)
+func (lc *Coordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
+	return lc.qdb.CreateKeyRange(ctx, kr.ToDB())
 }
 
 // TODO : unit tests
@@ -1101,9 +1098,12 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	if err != nil {
 		return err
 	}
-
-	if err := meta.CreateKeyRangeStrict(ctx, qc, krTemp); err != nil {
+	tranMngr := meta.NewTranEntityManager(qc)
+	if err := meta.CreateKeyRangeStrict(ctx, tranMngr, krTemp); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
+	}
+	if err = tranMngr.ExecNoTran(ctx); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range: %s", err.Error())
 	}
 
 	spqrlog.Zero.Debug().

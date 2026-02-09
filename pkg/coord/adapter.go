@@ -271,23 +271,9 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 	return krs, nil
 }
 
-// TODO : unit tests
-
-// CreateKeyRange creates a new key range.
-//
-// Parameters:
-// - ctx (context.Context): The context for the request.
-// - kr (*kr.KeyRange): The key range object to be created.
-//
-// Returns:
-// - error: An error if creating the key range was unsuccessful.
-func (a *Adapter) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	c := proto.NewKeyRangeServiceClient(a.conn)
-	_, err := c.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{
-		KeyRangeInfo: kr.ToProto(),
-	})
-
-	return spqrerror.CleanGrpcError(err)
+// DEPRECATED
+func (a *Adapter) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (CreateKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
 // TODO : unit tests
@@ -793,16 +779,7 @@ func (a *Adapter) ListDistributions(ctx context.Context) ([]*distributions.Distr
 	return dss, nil
 }
 
-// TODO : unit tests
-
-// CreateDistribution creates a new distribution in the system.
-//
-// Parameters:
-// - ctx (context.Context): The context for the request.
-// - ds (*distributions.Distribution): The distributions.Distribution instance to create.
-//
-// Returns:
-// - error: An error if the creation of the distribution fails, otherwise nil.
+// DEPRECATED
 func (a *Adapter) CreateDistribution(ctx context.Context, ds *distributions.Distribution) ([]qdb.QdbStatement, error) {
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (CreateDistribution in Adapter). Use ExecuteNoTran or CommitTran")
 }

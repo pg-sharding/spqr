@@ -7,6 +7,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -15,7 +16,8 @@ import (
 
 type DefaultShardManager struct {
 	distribution *distributions.Distribution
-	mngr         EntityMgr
+	// TODO: after converting DropKeyRange to 2 phase execution need convert to TranEntityManager
+	mngr EntityMgr
 }
 
 func NewDefaultShardManager(distribution *distributions.Distribution,
@@ -79,10 +81,14 @@ func (manager *DefaultShardManager) CreateDefaultShardNoCheck(ctx context.Contex
 			manager.distribution.Id)
 		return err
 	}
-	if err := CreateKeyRangeStrict(ctx, manager.mngr, keyRange); err != nil {
+	tranMngr := NewTranEntityManager(manager.mngr)
+	if err := CreateKeyRangeStrict(ctx, tranMngr, keyRange); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error (2) when adding default key range for: " +
 			manager.distribution.Id)
 		return err
+	}
+	if err = tranMngr.ExecNoTran(ctx); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range as default: %s", err.Error())
 	}
 	return nil
 }
