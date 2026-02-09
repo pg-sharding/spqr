@@ -235,7 +235,9 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 
 	return grpc.NewClient(r.Address,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithKeepaliveParams(keepaliveParams))
+		grpc.WithKeepaliveParams(keepaliveParams),
+		grpc.WithDefaultServiceConfig(getRouterConnRetryPolicy()),
+	)
 }
 
 const defaultWatchRouterTimeout = time.Second
@@ -2898,4 +2900,30 @@ func (qc *ClusteredCoordinator) watchTaskGroups(ctx context.Context) {
 
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().IterationTimeout, defaultWatchRouterTimeout))
 	}
+}
+
+func getRouterConnRetryPolicy() string {
+	return `{
+            "methodConfig": [{
+                "name": [
+					{"service": "spqr.TopologyService"},
+					{"service": "spqr.DistributionService"},
+					{"service": "spqr.KeyRangeService"},
+					{"service": "spqr.MetaTransactionGossipService"},
+					{"service": "spqr.OperationService"},
+					{"service": "spqr.PoolService"},
+					{"service": "spqr.ReferenceRelationsService"},
+					{"service": "spqr.RouterService"},
+					{"service": "spqr.ShardService"},
+				],
+
+                "retryPolicy": {
+                    "MaxAttempts": 4,
+                    "InitialBackoff": "1s",
+                    "MaxBackoff": "20s",
+                    "BackoffMultiplier": 2.0,
+                    "RetryableStatusCodes": [ "UNAVAILABLE" ]
+                }
+            }]
+        }`
 }
