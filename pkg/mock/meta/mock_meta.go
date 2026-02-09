@@ -506,6 +506,22 @@ func (mr *MockEntityMgrMockRecorder) GetMoveTaskGroup(ctx, id any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).GetMoveTaskGroup), ctx, id)
 }
 
+// GetMoveTaskGroupBoundsCache mocks base method.
+func (m *MockEntityMgr) GetMoveTaskGroupBoundsCache(ctx context.Context, id string) ([][][]byte, int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMoveTaskGroupBoundsCache", ctx, id)
+	ret0, _ := ret[0].([][][]byte)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetMoveTaskGroupBoundsCache indicates an expected call of GetMoveTaskGroupBoundsCache.
+func (mr *MockEntityMgrMockRecorder) GetMoveTaskGroupBoundsCache(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTaskGroupBoundsCache", reflect.TypeOf((*MockEntityMgr)(nil).GetMoveTaskGroupBoundsCache), ctx, id)
+}
+
 // GetReferenceRelation mocks base method.
 func (m *MockEntityMgr) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
 	m.ctrl.T.Helper()
