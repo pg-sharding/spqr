@@ -26,7 +26,6 @@ aspernatur
 astmt
 authed
 Autoattach
-autovacuum
 basebackup
 bbc
 bcad
@@ -99,7 +98,6 @@ datadir
 datarow
 datashard
 datatransfer
-datid
 datname
 dbpool
 dbtpcc
@@ -260,8 +258,8 @@ KFS
 killall
 kinit
 Kirill
-Klepov
 klepov
+Klepov
 kpass
 krb
 krdb
@@ -296,7 +294,6 @@ libpq
 libreadline
 Linting
 localrouter
-locktype
 logdir
 logproxy
 lol
@@ -405,10 +402,8 @@ pgsync
 PGUSER
 pgx
 pgxconn
-pids
 pitr
 pkgclient
-plpgsql
 podman
 poolers
 poolmgr
@@ -639,8 +634,6 @@ valgrind
 vasya
 velit
 vguoyguoygoyy
-virtualtransaction
-virtualxid
 Vitess
 Volkov
 voluptate
