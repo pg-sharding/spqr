@@ -100,7 +100,7 @@ func FilterRows(tts *tupleslot.TupleTableSlot, where lyx.Node) (*tupleslot.Tuple
 	return tts, nil
 }
 
-func AssertWhereClauseColString(condition lyx.Node, expectedColumn string) (string, error) {
+func CheckWhereClauseColString(condition lyx.Node, expectedColumn string) (string, error) {
 	reqErr := spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "WHERE clause with \"%s\" column is required", expectedColumn)
 	if condition == nil {
 		return "", reqErr

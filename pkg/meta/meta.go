@@ -1424,7 +1424,7 @@ func ProcessShowExtended(ctx context.Context,
 			return nil, err
 		}
 	case spqrparser.TaskGroupBoundsCacheStr:
-		taskGroupId, err := engine.AssertWhereClauseColString(stmt.Where, "task_group_id")
+		taskGroupId, err := engine.CheckWhereClauseColString(stmt.Where, "task_group_id")
 		if err != nil {
 			return nil, err
 		}
