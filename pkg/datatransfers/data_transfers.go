@@ -28,6 +28,8 @@ import (
 
 const spqrguardReferenceRelationLock = 69
 
+const spqrTransferApplicationName = "spqr-transfer"
+
 type MoveTableRes struct {
 	TableSchema string `db:"table_schema"`
 	TableName   string `db:"table_name"`
@@ -719,7 +721,7 @@ func getTableColumns(ctx context.Context, db Queryable, rfqn rfqn.RelationFQN) (
 }
 
 func awaitPIDs(ctx context.Context, conn *pgx.Conn) error {
-	if _, err := conn.Exec(ctx, `
+	if _, err := conn.Exec(ctx, fmt.Sprintf(`
 do $$
 declare
 	v_pids text;
@@ -733,11 +735,12 @@ begin
 	WHERE l.locktype = 'virtualxid' 
 	AND l.pid NOT IN (pg_backend_pid()) 
 	AND (l.virtualxid, l.virtualtransaction) <> ('1/1', '-1/0') 
+	AND (a.application_name IS NULL OR a.application_name <> '%s')
 	AND a.query !~* E'^\\\\s*vacuum\\\\s+' 
 	AND a.query !~ E'^autovacuum: ' 
 	AND ((d.datname IS NULL OR d.datname = current_database()) OR l.database = 0);
 
-	RAISE NOTICE 'v_pids = %', v_pids;
+	RAISE NOTICE 'v_pids = %%', v_pids;
 
 	loop
 		if (
@@ -751,7 +754,7 @@ begin
 
 end;
 $$
-language plpgsql;`,
+language plpgsql;`, spqrTransferApplicationName),
 	); err != nil {
 		return err
 	}
