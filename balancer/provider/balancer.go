@@ -46,6 +46,7 @@ func NewBalancer() (*BalancerImpl, error) {
 	threshold := make([]float64, 2*metricsCount)
 	configThresholds := []float64{config.BalancerConfig().CpuThreshold, config.BalancerConfig().SpaceThreshold}
 	for i := range metricsCount {
+		panic("kek")
 		threshold[i] = configThresholds[i]
 		threshold[metricsCount+i] = configThresholds[i]
 	}
