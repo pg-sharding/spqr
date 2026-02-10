@@ -57,7 +57,7 @@ step s2_redistribute_sh2     { select __spqr__console_execute('REDISTRIBUTE KEY 
 step s2_redistribute_sh2_nw  { select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2 NOWAIT') /*__spqr__preferred_engine: v2 */; }
 step s2_redistribute_sh1     { select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh1') /*__spqr__preferred_engine: v2 */; }
 step s2_show_tg              { select __spqr__console_execute('SHOW task_groups;') /*__spqr__preferred_engine: v2 */; }
-step s2_await_task           { /* TODO: fix this */ select pg_sleep(10) /* __spqr__execute_on: shard1 */; }
+step s2_await_task           { /* TODO: fix this */ select pg_sleep(50) /* __spqr__execute_on: shard1 */; }
 
 step s2_show_kr              { select __spqr__console_execute('SHOW key_ranges;') /*__spqr__preferred_engine: v2 */; }
 
