@@ -18,10 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
       - uses: actions/setup-go@v6
         with:
           go-version: '1.25.0'
-          cache: false
+          cache: true
       - name: go fmt check
         run: make fmtcheck
 
@@ -30,10 +32,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
       - uses: actions/setup-go@v6
         with:
           go-version: '1.25.0'
-          cache: false
+          cache: true
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
@@ -46,6 +50,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
       - name: goimports check
         uses: DarthBenro008/goimports-check-action@v0.2.0
         with:
@@ -57,9 +63,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
+          cache: true
       - name: ensure go.mod is tidy
         run: |
           go mod tidy
@@ -67,3 +76,24 @@ jobs:
           if [ -n "$DIFF" ]; then
             echo "$DIFF" && echo "run 'go mod tidy' and commit the changes" && exit 1;
           fi
+
+  panic-check:
+    name: check for new panic() calls
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: check for new panic() calls
+        run: |
+          # Compare against master branch
+          BASE_REF="${{ github.base_ref || 'origin/master' }}"
+
+          # Check for panic() only in newly added lines (lines starting with +)
+          # Exclude lines with // nolint comments
+          if git diff origin/master...HEAD --unified=0 -- "*.go" | \
+             grep "^+" | grep -v "^+++" | grep -v "// nolint" | grep -q "panic("; then
+            echo "❌ Found panic() in new code"
+            exit 1
+          fi
+          echo "✓ No new panic() calls"
