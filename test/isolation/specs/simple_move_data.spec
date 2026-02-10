@@ -1,6 +1,10 @@
 
 # The most basic "REDISTRIBUTE KEY RANGE" behaviour test
 
+setup
+{
+    select __spqr__console_execute('REGISTER ROUTER r1 ADDRESS "[regress_router]:7000"') /*__spqr__preferred_engine: v2 */;
+}
 
 setup
 {
