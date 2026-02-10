@@ -16,4 +16,7 @@ export PGSSLMODE=allow
     --debug \
     --schedule /regress/schedule
 
+
+if test -f /var/log/spqr-router.log; then cat /var/log/spqr-router.log; exit 1; fi
+
 if test -f /regress/regression.diffs; then cat /regress/regression.diffs; exit 1; fi
