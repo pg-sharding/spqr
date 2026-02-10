@@ -178,14 +178,14 @@ Feature: Coordinator test
     """
     SHOW routers
     """
-    Then SQL result should match json_regexp
+    Then SQL result should match json
     """
     [{
       "client_connections":"1",
-      "metadata_version":"0"
+      "metadata_version":"0",
       "router":"r1-[regress_router]:7000",
       "status":"OPENED",
-      "version":"devel-0-devel",
+      "version":"devel-0-devel"
     }]
     """
 
