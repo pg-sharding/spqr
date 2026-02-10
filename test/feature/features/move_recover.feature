@@ -428,7 +428,7 @@ Feature: Move recover test
     And qdb should not contain transaction "krid2"
     And qdb should not contain key range moves
 
-Scenario: Started key range movement continues when router meta update failed
+  Scenario: Started key range movement continues when router meta update failed
     When I execute SQL on host "coordinator"
     """
     REGISTER ROUTER r2 ADDRESS "[regress_router_2]:7000";
@@ -582,6 +582,88 @@ Scenario: Started key range movement continues when router meta update failed
     When I execute SQL on host "coordinator"
     """
     LOCK KEY RANGE krid2
+    """
+    Then command return code should be "0"
+    When I record in qdb key range move
+    """
+    {
+    "move_id": "move1",
+    "key_range_id": "krid2",
+    "shard_id": "sh1",
+    "status": "LOCKED"
+    }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(11, '002');
+    """
+    Then command return code should be "0"
+    Given host "coordinator" is stopped
+    And I wait for "30" seconds for all key range moves to finish
+    When I execute SQL on host "coordinator2"
+    """
+    SHOW routers
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    001(.|\n)*002
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should not match regexp
+    """
+    002
+    """
+    And we wait for "5" seconds
+    When I run SQL on host "coordinator2"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+          "key_range_id":"krid1",
+          "distribution_id":"ds1",
+          "lower_bound":"1",
+          "shard_id":"sh1",
+          "locked":"false"
+      },
+      {
+          "key_range_id":"krid2",
+          "distribution_id":"ds1",
+          "lower_bound":"11",
+          "shard_id":"sh1",
+          "locked":"false"
+      }
+    ]
+    """
+    And qdb should not contain transaction "krid2"
+    And qdb should not contain key range moves
+
+  Scenario: Locked key range movement continues after router restart
+    When I execute SQL on host "coordinator"
+    """
+    LOCK KEY RANGE krid2;
+    REGISTER ROUTER r2 ADDRESS "[regress_router_2]:7000";
     """
     Then command return code should be "0"
     When I record in qdb key range move
