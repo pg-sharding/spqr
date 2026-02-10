@@ -8,7 +8,7 @@ export PGSSLMODE=allow
 
 while ! pg_isready -p 6432 -U regress -d regress -h regress_router
 do
-    echo "router still not repodning"
+    echo "router still not responding"
     sleep 1
 done
 
