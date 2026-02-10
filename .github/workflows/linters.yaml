@@ -90,8 +90,9 @@ jobs:
           BASE_REF="${{ github.base_ref || 'origin/master' }}"
 
           # Check for panic() only in newly added lines (lines starting with +)
+          # Exclude lines with // nolint comments
           if git diff origin/master...HEAD --unified=0 -- "*.go" | \
-             grep "^+" | grep -v "^+++" | grep -q "panic("; then
+             grep "^+" | grep -v "^+++" | grep -v "// nolint" | grep -q "panic("; then
             echo "❌ Found panic() in new code"
             exit 1
           fi
