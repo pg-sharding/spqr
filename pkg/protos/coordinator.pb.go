@@ -23,10 +23,12 @@ const (
 )
 
 type GetRouterStatusReply struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Status        RouterStatus           `protobuf:"varint,1,opt,name=status,proto3,enum=spqr.RouterStatus" json:"status,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Status          RouterStatus           `protobuf:"varint,1,opt,name=status,proto3,enum=spqr.RouterStatus" json:"status,omitempty"`
+	Version         string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	MetadataVersion int64                  `protobuf:"varint,3,opt,name=metadata_version,json=metadataVersion,proto3" json:"metadata_version,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GetRouterStatusReply) Reset() {
@@ -64,6 +66,20 @@ func (x *GetRouterStatusReply) GetStatus() RouterStatus {
 		return x.Status
 	}
 	return RouterStatus_CLOSED
+}
+
+func (x *GetRouterStatusReply) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *GetRouterStatusReply) GetMetadataVersion() int64 {
+	if x != nil {
+		return x.MetadataVersion
+	}
+	return 0
 }
 
 type UpdateCoordinatorRequest struct {
@@ -158,9 +174,11 @@ var File_protos_coordinator_proto protoreflect.FileDescriptor
 
 const file_protos_coordinator_proto_rawDesc = "" +
 	"\n" +
-	"\x18protos/coordinator.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\x13protos/router.proto\"B\n" +
+	"\x18protos/coordinator.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\x13protos/router.proto\"\x87\x01\n" +
 	"\x14GetRouterStatusReply\x12*\n" +
-	"\x06status\x18\x01 \x01(\x0e2\x12.spqr.RouterStatusR\x06status\"4\n" +
+	"\x06status\x18\x01 \x01(\x0e2\x12.spqr.RouterStatusR\x06status\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion\x12)\n" +
+	"\x10metadata_version\x18\x03 \x01(\x03R\x0fmetadataVersion\"4\n" +
 	"\x18UpdateCoordinatorRequest\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\"2\n" +
 	"\x16GetCoordinatorResponse\x12\x18\n" +

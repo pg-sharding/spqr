@@ -309,6 +309,12 @@ func (qc *ClusteredCoordinator) closeRouterConn(routerID string) {
 	}
 }
 
+// GetRouterConn implements meta.RouterConnector interface.
+// It returns a gRPC connection to the specified router.
+func (qc *ClusteredCoordinator) GetRouterConn(r *topology.Router) (*grpc.ClientConn, error) {
+	return qc.getOrCreateRouterConn(r)
+}
+
 // watchRouters traverse routers one check if they are opened
 // for clients. If not, initialize metadata and open router
 // TODO : unit tests

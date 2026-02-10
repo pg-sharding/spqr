@@ -23,6 +23,7 @@ import (
 	cache "github.com/pg-sharding/spqr/router/cache"
 	rfqn "github.com/pg-sharding/spqr/router/rfqn"
 	gomock "go.uber.org/mock/gomock"
+	grpc "google.golang.org/grpc"
 )
 
 // MockEntityMgr is a mock of EntityMgr interface.
@@ -1116,4 +1117,43 @@ func (m *MockEntityMgr) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks
 func (mr *MockEntityMgrMockRecorder) WriteMoveTaskGroup(ctx, taskGroup any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).WriteMoveTaskGroup), ctx, taskGroup)
+}
+
+// MockRouterConnector is a mock of RouterConnector interface.
+type MockRouterConnector struct {
+	ctrl     *gomock.Controller
+	recorder *MockRouterConnectorMockRecorder
+	isgomock struct{}
+}
+
+// MockRouterConnectorMockRecorder is the mock recorder for MockRouterConnector.
+type MockRouterConnectorMockRecorder struct {
+	mock *MockRouterConnector
+}
+
+// NewMockRouterConnector creates a new mock instance.
+func NewMockRouterConnector(ctrl *gomock.Controller) *MockRouterConnector {
+	mock := &MockRouterConnector{ctrl: ctrl}
+	mock.recorder = &MockRouterConnectorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRouterConnector) EXPECT() *MockRouterConnectorMockRecorder {
+	return m.recorder
+}
+
+// GetRouterConn mocks base method.
+func (m *MockRouterConnector) GetRouterConn(r *topology.Router) (*grpc.ClientConn, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRouterConn", r)
+	ret0, _ := ret[0].(*grpc.ClientConn)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRouterConn indicates an expected call of GetRouterConn.
+func (mr *MockRouterConnectorMockRecorder) GetRouterConn(r any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRouterConn", reflect.TypeOf((*MockRouterConnector)(nil).GetRouterConn), r)
 }

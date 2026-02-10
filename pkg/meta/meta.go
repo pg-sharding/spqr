@@ -23,6 +23,7 @@ import (
 	mtran "github.com/pg-sharding/spqr/pkg/models/transaction"
 	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
+	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -32,6 +33,8 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 	sts "github.com/pg-sharding/spqr/router/statistics"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 const (
@@ -53,6 +56,12 @@ type EntityMgr interface {
 	QDB() qdb.QDB
 	DCStateKeeper() qdb.DCStateKeeper
 	Cache() *cache.SchemaCache
+}
+
+// RouterConnector is an optional interface that EntityMgr can implement
+// to provide gRPC connections to routers for querying their status.
+type RouterConnector interface {
+	GetRouterConn(r *topology.Router) (*grpc.ClientConn, error)
 }
 
 var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
@@ -1500,6 +1509,71 @@ func ProcessShowExtended(ctx context.Context,
 // Returns:
 // - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation encounters any issues.
+func getRouterClientCounts(ctx context.Context, ci connmgr.ConnectionMgr) (map[string]int, error) {
+	clientCounts := make(map[string]int)
+
+	err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
+		routerAddr := cl.RAddr()
+		clientCounts[routerAddr]++
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return clientCounts, nil
+}
+
+// RouterVersionInfo contains version information retrieved from a router.
+type RouterVersionInfo struct {
+	Version         string
+	MetadataVersion int64
+	Error           error
+}
+
+// getRouterVersions queries each router via gRPC to get its version information.
+//
+// Parameters:
+// - ctx (context.Context): The context for the operation.
+// - routers ([]*topology.Router): The list of routers to query.
+// - getConnFunc (func(*topology.Router) (*grpc.ClientConn, error)): Function to get gRPC connection to a router.
+//
+// Returns:
+// - map[string]RouterVersionInfo: A map of router addresses to version information.
+func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnFunc func(*topology.Router) (*grpc.ClientConn, error)) map[string]RouterVersionInfo {
+	versions := make(map[string]RouterVersionInfo)
+
+	for _, router := range routers {
+		versionInfo := RouterVersionInfo{
+			Version:         "N/A",
+			MetadataVersion: 0,
+		}
+
+		if getConnFunc != nil {
+			conn, err := getConnFunc(router)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Str("router", router.Address).Msg("failed to get router connection")
+				versionInfo.Error = err
+			} else {
+				client := protos.NewTopologyServiceClient(conn)
+				resp, err := client.GetRouterStatus(ctx, &emptypb.Empty{})
+				if err != nil {
+					spqrlog.Zero.Error().Err(err).Str("router", router.Address).Msg("failed to query router status")
+					versionInfo.Error = err
+				} else {
+					versionInfo.Version = resp.Version
+					versionInfo.MetadataVersion = resp.MetadataVersion
+				}
+			}
+		}
+
+		versions[router.Address] = versionInfo
+	}
+
+	return versions
+}
+
 func ProcessShow(ctx context.Context,
 	stmt *spqrparser.Show,
 	mngr EntityMgr,
@@ -1513,15 +1587,49 @@ func ProcessShow(ctx context.Context,
 			return nil, err
 		}
 
+		// Get client connection counts by router address
+		clientCounts, err := getRouterClientCounts(ctx, ci)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to get client counts")
+			clientCounts = make(map[string]int)
+		}
+
+		// Try to get router versions via gRPC if the manager supports it
+		var routerVersions map[string]RouterVersionInfo
+		if rc, ok := mngr.(RouterConnector); ok {
+			routerVersions = getRouterVersions(ctx, resp, rc.GetRouterConn)
+		} else {
+			// Fallback to empty map if gRPC is not available
+			routerVersions = make(map[string]RouterVersionInfo)
+		}
+
 		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("router", "status"),
+			Desc: engine.GetVPHeader("router", "status", "client_connections", "version", "metadata_version"),
 		}
 
 		for _, msg := range resp {
-			tts.WriteDataRow(fmt.Sprintf("router -> %s-%s", msg.ID, msg.Address), string(msg.State))
-		}
-		return tts, nil
+			address := msg.Address
+			status := string(msg.State)
+			connCount := clientCounts[address]
 
+			// Get version from gRPC query, or fall back to static version
+			version := pkg.SpqrVersionRevision
+			metadataVersion := int64(0)
+			if vInfo, ok := routerVersions[address]; ok && vInfo.Error == nil {
+				version = vInfo.Version
+				metadataVersion = vInfo.MetadataVersion
+			}
+
+			tts.WriteDataRow(
+				fmt.Sprintf("%s-%s", msg.ID, address),
+				status,
+				fmt.Sprintf("%d", connCount),
+				version,
+				fmt.Sprintf("%d", metadataVersion),
+			)
+		}
+
+		return tts, nil
 	case spqrparser.PoolsStr:
 		var respPools []pool.Pool
 

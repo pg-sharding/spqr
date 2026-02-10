@@ -1,6 +1,6 @@
 SHOW routers;
-      router      | status 
-------------------+--------
- router -> local- | 
+ router | status | client_connections |    version    | metadata_version 
+--------+--------+--------------------+---------------+------------------
+ local- |        | 0                  | devel-0-devel | 0
 (1 row)
 
