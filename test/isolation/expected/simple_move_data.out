@@ -1,12 +1,12 @@
 Parsed test spec with 3 sessions
 
-starting permutation: s1_report s1_ev2 s1_i s1_s s1_begin s1_u s1_commit s2_redistribute s1_spqr_ctid s3_clean
-add distribution    
+starting permutation: s1_report s1_ev2 s1_i s1_spqr_ctid s2_redistribute_sh2 s2_show_kr s1_spqr_ctid s2_redistribute_sh1 s2_show_kr s1_spqr_ctid s3_clean
+add distribution
 --------------------
 distribution id -> d
 (1 row)
 
-attach table        
+attach table
 --------------------
 relation name   -> r
 distribution id -> d
@@ -14,57 +14,256 @@ distribution id -> d
 
 add key range
 -------------
-bound -> 300 
+bound -> 300
 (1 row)
 
 add key range
 -------------
-bound -> 200 
+bound -> 200
 (1 row)
 
 add key range
 -------------
-bound -> 100 
+bound -> 100
 (1 row)
 
 add key range
 -------------
-bound -> 0   
+bound -> 0
 (1 row)
 
 step s1_report: SET __spqr__reply_notice TO on;
 step s1_ev2: SET __spqr__engine_v2 TO on;
 s1: NOTICE: send query to shard(s) : sh1
-step s1_i: INSERT INTO r (i, c) VALUES (11, 2);
-s1: NOTICE: send query to shard(s) : sh1
-step s1_s: SELECT * FROM r WHERE i = 11;
- i|c
---+-
-11|2
+step s1_i: INSERT INTO r (i, c) VALUES (11, 1);
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_spqr_ctid: SELECT __spqr__ctid('r');
+__spqr__ctid| i|c
+------------+--+-
+shard sh1   |11|1
 (1 row)
 
-step s1_begin: BEGIN;
-s1: NOTICE: send query to shard(s) : sh1
-step s1_u: UPDATE r SET c = 3 WHERE i = 11;
-step s1_commit: COMMIT;
-step s2_redistribute: select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2') /*__spqr__preferred_engine: v2 */;
-redistribute key range     
+step s2_redistribute_sh2: select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2') /*__spqr__preferred_engine: v2 */;
+redistribute key range
 ---------------------------
-key range id         -> k0 
+key range id         -> k0
 destination shard id -> sh2
 batch size           -> 500
 (3 rows)
+
+step s2_show_kr: select __spqr__console_execute('SHOW key_ranges;') /*__spqr__preferred_engine: v2 */;
+key_range_id|shard_id|distribution_id|lower_bound|locked
+------------+--------+---------------+-----------+------
+k0          |sh2     |d              |          0|false
+k1          |sh2     |d              |        100|false
+k2          |sh3     |d              |        200|false
+k3          |sh4     |d              |        300|false
+(4 rows)
 
 s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 step s1_spqr_ctid: SELECT __spqr__ctid('r');
 __spqr__ctid| i|c
 ------------+--+-
-shard sh2   |11|3
+shard sh2   |11|1
+(1 row)
+
+step s2_redistribute_sh1: select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh1') /*__spqr__preferred_engine: v2 */;
+redistribute key range
+---------------------------
+key range id         -> k0
+destination shard id -> sh1
+batch size           -> 500
+(3 rows)
+
+step s2_show_kr: select __spqr__console_execute('SHOW key_ranges;') /*__spqr__preferred_engine: v2 */;
+key_range_id|shard_id|distribution_id|lower_bound|locked
+------------+--------+---------------+-----------+------
+k0          |sh1     |d              |          0|false
+k1          |sh2     |d              |        100|false
+k2          |sh3     |d              |        200|false
+k3          |sh4     |d              |        300|false
+(4 rows)
+
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_spqr_ctid: SELECT __spqr__ctid('r');
+__spqr__ctid| i|c
+------------+--+-
+shard sh1   |11|1
 (1 row)
 
 step s3_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
-drop distribution   
+drop distribution
 --------------------
 distribution id -> d
 (1 row)
 
+
+starting permutation: s1_report s1_ev2 s1_i s1_spqr_ctid s1_begin s1_u s2_redistribute_sh2_nw s1_commit s2_await_task s2_show_tg s2_show_kr s1_spqr_ctid s3_clean
+add distribution
+--------------------
+distribution id -> d
+(1 row)
+
+attach table
+--------------------
+relation name   -> r
+distribution id -> d
+(2 rows)
+
+add key range
+-------------
+bound -> 300
+(1 row)
+
+add key range
+-------------
+bound -> 200
+(1 row)
+
+add key range
+-------------
+bound -> 100
+(1 row)
+
+add key range
+-------------
+bound -> 0
+(1 row)
+
+step s1_report: SET __spqr__reply_notice TO on;
+step s1_ev2: SET __spqr__engine_v2 TO on;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_i: INSERT INTO r (i, c) VALUES (11, 1);
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_spqr_ctid: SELECT __spqr__ctid('r');
+__spqr__ctid| i|c
+------------+--+-
+shard sh1   |11|1
+(1 row)
+
+step s1_begin: BEGIN;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_u: UPDATE r SET c = c + 1 WHERE i = 11;
+step s2_redistribute_sh2_nw: select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2 NOWAIT') /*__spqr__preferred_engine: v2 */;
+redistribute key range
+---------------------------
+key range id         -> k0
+destination shard id -> sh2
+batch size           -> 500
+(3 rows)
+
+step s1_commit: COMMIT;
+step s2_await_task: /* TODO: fix this */ select pg_sleep(10) /* __spqr__execute_on: shard1 */;
+pg_sleep
+--------
+
+(1 row)
+
+step s2_show_tg: select __spqr__console_execute('SHOW task_groups;') /*__spqr__preferred_engine: v2 */;
+step s2_show_kr: select __spqr__console_execute('SHOW key_ranges;') /*__spqr__preferred_engine: v2 */;
+key_range_id|shard_id|distribution_id|lower_bound|locked
+------------+--------+---------------+-----------+------
+k0          |sh2     |d              |          0|false
+k1          |sh2     |d              |        100|false
+k2          |sh3     |d              |        200|false
+k3          |sh4     |d              |        300|false
+(4 rows)
+
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_spqr_ctid: SELECT __spqr__ctid('r');
+__spqr__ctid| i|c
+------------+--+-
+shard sh2   |11|2
+(1 row)
+
+step s3_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
+drop distribution
+--------------------
+distribution id -> d
+(1 row)
+
+
+starting permutation: s1_report s1_ev2 s1_i s1_spqr_ctid s1_begin s1_i s2_redistribute_sh2_nw s1_commit s2_await_task s2_show_tg s2_show_kr s1_spqr_ctid s3_clean
+add distribution
+--------------------
+distribution id -> d
+(1 row)
+
+attach table
+--------------------
+relation name   -> r
+distribution id -> d
+(2 rows)
+
+add key range
+-------------
+bound -> 300
+(1 row)
+
+add key range
+-------------
+bound -> 200
+(1 row)
+
+add key range
+-------------
+bound -> 100
+(1 row)
+
+add key range
+-------------
+bound -> 0
+(1 row)
+
+step s1_report: SET __spqr__reply_notice TO on;
+step s1_ev2: SET __spqr__engine_v2 TO on;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_i: INSERT INTO r (i, c) VALUES (11, 1);
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_spqr_ctid: SELECT __spqr__ctid('r');
+__spqr__ctid| i|c
+------------+--+-
+shard sh1   |11|1
+(1 row)
+
+step s1_begin: BEGIN;
+s1: NOTICE: send query to shard(s) : sh1
+step s1_i: INSERT INTO r (i, c) VALUES (11, 1);
+step s2_redistribute_sh2_nw: select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2 NOWAIT') /*__spqr__preferred_engine: v2 */;
+redistribute key range
+---------------------------
+key range id         -> k0
+destination shard id -> sh2
+batch size           -> 500
+(3 rows)
+
+step s1_commit: COMMIT;
+step s2_await_task: /* TODO: fix this */ select pg_sleep(10) /* __spqr__execute_on: shard1 */;
+pg_sleep
+--------
+
+(1 row)
+
+step s2_show_tg: select __spqr__console_execute('SHOW task_groups;') /*__spqr__preferred_engine: v2 */;
+step s2_show_kr: select __spqr__console_execute('SHOW key_ranges;') /*__spqr__preferred_engine: v2 */;
+key_range_id|shard_id|distribution_id|lower_bound|locked
+------------+--------+---------------+-----------+------
+k0          |sh2     |d              |          0|false
+k1          |sh2     |d              |        100|false
+k2          |sh3     |d              |        200|false
+k3          |sh4     |d              |        300|false
+(4 rows)
+
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+step s1_spqr_ctid: SELECT __spqr__ctid('r');
+__spqr__ctid| i|c
+------------+--+-
+shard sh2   |11|1
+shard sh2   |11|1
+(2 rows)
+
+step s3_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
+drop distribution
+--------------------
+distribution id -> d
+(1 row)

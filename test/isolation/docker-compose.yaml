@@ -129,6 +129,8 @@ services:
             - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
         hostname: regress_router
         container_name: regress_router
+        healthcheck:
+          <<: *shard-primary-healthcheck
         depends_on:
             shard1:
                 condition: service_healthy
