@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
@@ -35,7 +36,7 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clau
 		ShardIds:      shardIds,
 	}
 
-	mgr, cf, err := distributedMgr(ctx, localMngr)
+	mgr, cf, err := coord.DistributedMgr(ctx, localMngr)
 	if err != nil {
 		return err
 	}
@@ -94,7 +95,7 @@ func AlterDistributionAttach(ctx context.Context, localMngr meta.EntityMgr, clau
 	if distributionId == distributions.REPLICATED {
 		return fmt.Errorf("can't attach distributed relation to REPLICATED distribution")
 	}
-	mgr, cf, err := distributedMgr(ctx, localMngr)
+	mgr, cf, err := coord.DistributedMgr(ctx, localMngr)
 	if err != nil {
 		return err
 	}

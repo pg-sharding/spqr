@@ -1853,6 +1853,8 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "key range \"%s\" not found", req.KrId)
 	}
 
+	spqrlog.Zero.Debug().Msg("process redistribute in clustered coordinator")
+
 	if _, err = qc.GetShard(ctx, req.ShardId); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error getting destination shard: %s", err.Error())
 	}
