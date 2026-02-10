@@ -6,15 +6,10 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	meta_transaction "github.com/pg-sharding/spqr/pkg/models/transaction"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
-	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/router/cache"
-	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
 // no thread safe struct
@@ -73,7 +68,7 @@ type EntityMgrReader interface {
 // It's NO NOT THREAD-SAFE because process in single console thread.
 // WARNING: ALL implemented methods MUST have 100% test coverage
 type TranEntityManager struct {
-	mngr          EntityMgr
+	EntityMgr
 	distributions MetaEntityList[*distributions.Distribution]
 	keyRanges     MetaEntityList[*kr.KeyRange]
 	state         TransactionState
@@ -90,77 +85,27 @@ func NewTranEntityManager(mngr EntityMgr) *TranEntityManager {
 	distrList := NewMetaEntityList[*distributions.Distribution]()
 	keyRangesList := NewMetaEntityList[*kr.KeyRange]()
 	return &TranEntityManager{
-		mngr:          mngr,
+		EntityMgr:     mngr,
 		distributions: *distrList,
 		keyRanges:     *keyRangesList,
 		state:         NewTransactionState(),
 	}
 }
 
-// AddDataShard implements [EntityMgr].
-func (t *TranEntityManager) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
-	panic("AddDataShard unimplemented")
-}
-
-// AddWorldShard implements [EntityMgr].
-func (t *TranEntityManager) AddWorldShard(ctx context.Context, shard *topology.DataShard) error {
-	panic("AddWorldShard unimplemented")
-}
-
-// AlterDistributedRelation implements [EntityMgr].
-func (t *TranEntityManager) AlterDistributedRelation(ctx context.Context, id string, rel *distributions.DistributedRelation) error {
-	panic("AlterDistributedRelation unimplemented")
-}
-
-// AlterDistributedRelationDistributionKey implements [EntityMgr].
-func (t *TranEntityManager) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []distributions.DistributionKeyEntry) error {
-	panic("AlterDistributedRelationDistributionKey unimplemented")
-}
-
-// AlterDistributedRelationSchema implements [EntityMgr].
-func (t *TranEntityManager) AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
-	panic("AlterDistributedRelationSchema unimplemented")
-}
-
-// AlterDistributionAttach implements [EntityMgr].
-func (t *TranEntityManager) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
-	panic("AlterDistributionAttach unimplemented")
-}
-
-// AlterDistributionDetach implements [EntityMgr].
-func (t *TranEntityManager) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
-	panic("AlterDistributionDetach unimplemented")
-}
-
-// AlterReferenceRelationStorage implements [EntityMgr].
-func (t *TranEntityManager) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
-	panic("AlterReferenceRelationStorage unimplemented")
-}
-
-// BatchMoveKeyRange implements [EntityMgr].
-func (t *TranEntityManager) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
-	panic("BatchMoveKeyRange unimplemented")
-}
-
 // BeginTran implements [EntityMgr].
 func (t *TranEntityManager) BeginTran(ctx context.Context) error {
-	transaction, err := t.mngr.BeginTran(ctx)
-	transaction.Operations = meta_transaction.NewEmptyMetaTransactionChunk()
-	if err == nil {
-		return t.state.SetTransaction(transaction)
+	transaction, err := t.EntityMgr.BeginTran(ctx)
+	if err != nil {
+		return err
 	}
-	return err
-}
-
-// Cache implements [EntityMgr].
-func (t *TranEntityManager) Cache() *cache.SchemaCache {
-	panic("Cache unimplemented")
+	transaction.Operations = meta_transaction.NewEmptyMetaTransactionChunk()
+	return t.state.SetTransaction(transaction)
 }
 
 // CommitTran implements [EntityMgr].
 func (t *TranEntityManager) CommitTran(ctx context.Context) error {
 	if t.state.CanCommit() {
-		err := t.mngr.CommitTran(ctx, t.state.Transaction)
+		err := t.EntityMgr.CommitTran(ctx, t.state.Transaction)
 		if err != nil {
 			return err
 		}
@@ -201,50 +146,10 @@ func (t *TranEntityManager) CreateKeyRange(ctx context.Context, kr *kr.KeyRange)
 	return nil
 }
 
-// CreateReferenceRelation implements [EntityMgr].
-func (t *TranEntityManager) CreateReferenceRelation(ctx context.Context, r *rrelation.ReferenceRelation, e []*rrelation.AutoIncrementEntry) error {
-	panic("CreateReferenceRelation unimplemented")
-}
-
-// CurrVal implements [EntityMgr].
-func (t *TranEntityManager) CurrVal(ctx context.Context, seqName string) (int64, error) {
-	panic("CurrVal unimplemented")
-}
-
-// DCStateKeeper implements [EntityMgr].
-func (t *TranEntityManager) DCStateKeeper() qdb.DCStateKeeper {
-	panic("DCStateKeeper unimplemented")
-}
-
 // DropDistribution implements [EntityMgr].
 func (t *TranEntityManager) DropDistribution(ctx context.Context, id string) error {
 	t.distributions.Delete(id)
 	return nil
-}
-
-// DropKeyRange implements [EntityMgr].
-func (t *TranEntityManager) DropKeyRange(ctx context.Context, krid string) error {
-	panic("DropKeyRange unimplemented")
-}
-
-// DropKeyRangeAll implements [EntityMgr].
-func (t *TranEntityManager) DropKeyRangeAll(ctx context.Context) error {
-	panic("DropKeyRangeAll unimplemented")
-}
-
-// DropReferenceRelation implements [EntityMgr].
-func (t *TranEntityManager) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
-	panic("DropReferenceRelation unimplemented")
-}
-
-// DropSequence implements [EntityMgr].
-func (t *TranEntityManager) DropSequence(ctx context.Context, name string, force bool) error {
-	panic("DropSequence unimplemented")
-}
-
-// DropShard implements [EntityMgr].
-func (t *TranEntityManager) DropShard(ctx context.Context, id string) error {
-	panic("DropShard unimplemented")
 }
 
 // ExecNoTran implements [EntityMgr].
@@ -253,7 +158,7 @@ func (t *TranEntityManager) ExecNoTran(ctx context.Context) error {
 		return fmt.Errorf("invalid state for ExecNoTran")
 	}
 	if t.state.CanCommit() {
-		err := t.mngr.ExecNoTran(ctx, t.state.Chunk)
+		err := t.EntityMgr.ExecNoTran(ctx, t.state.Chunk)
 		if err != nil {
 			return err
 		}
@@ -261,16 +166,6 @@ func (t *TranEntityManager) ExecNoTran(ctx context.Context) error {
 		return nil
 	}
 	return fmt.Errorf("can't double execute chunk")
-}
-
-// GetBalancerTask implements [EntityMgr].
-func (t *TranEntityManager) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {
-	panic("GetBalancerTask unimplemented")
-}
-
-// GetCoordinator implements [EntityMgr].
-func (t *TranEntityManager) GetCoordinator(ctx context.Context) (string, error) {
-	panic("GetCoordinator unimplemented")
 }
 
 // GetDistribution implements [EntityMgr].
@@ -282,7 +177,7 @@ func (t *TranEntityManager) GetDistribution(ctx context.Context, id string) (*di
 		return savedDs, nil
 	}
 
-	if distribution, err := t.mngr.GetDistribution(ctx, id); err != nil {
+	if distribution, err := t.EntityMgr.GetDistribution(ctx, id); err != nil {
 		return nil, err
 	} else {
 		return distribution, nil
@@ -297,47 +192,22 @@ func (t *TranEntityManager) GetKeyRange(ctx context.Context, krId string) (*kr.K
 	if savedKr, ok := t.keyRanges.Items()[krId]; ok {
 		return savedKr, nil
 	}
-	if keyRangeFromQdb, err := t.mngr.GetKeyRange(ctx, krId); err != nil {
+	if keyRangeFromQdb, err := t.EntityMgr.GetKeyRange(ctx, krId); err != nil {
 		return nil, err
 	} else {
 		return keyRangeFromQdb, nil
 	}
 }
 
-// GetMoveTaskGroup implements [EntityMgr].
-func (t *TranEntityManager) GetMoveTaskGroup(ctx context.Context, id string) (*tasks.MoveTaskGroup, error) {
-	panic("GetMoveTaskGroup unimplemented")
-}
-
-// GetReferenceRelation implements [EntityMgr].
-func (t *TranEntityManager) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*rrelation.ReferenceRelation, error) {
-	panic("GetReferenceRelation unimplemented")
-}
-
-// GetRelationDistribution implements [EntityMgr].
-func (t *TranEntityManager) GetRelationDistribution(ctx context.Context, relation_name *rfqn.RelationFQN) (*distributions.Distribution, error) {
-	panic("GetRelationDistribution unimplemented")
-}
-
-// GetSequenceRelations implements [EntityMgr].
-func (t *TranEntityManager) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
-	panic("GetSequenceRelations unimplemented")
-}
-
 // GetShard implements [EntityMgr].
 func (t *TranEntityManager) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
 	// TODO convert track change behaviour
-	return t.mngr.GetShard(ctx, shardID)
-}
-
-// ListAllKeyRanges implements [EntityMgr].
-func (t *TranEntityManager) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
-	panic("ListAllKeyRanges unimplemented")
+	return t.EntityMgr.GetShard(ctx, shardID)
 }
 
 // ListDistributions implements [EntityMgr].
 func (t *TranEntityManager) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
-	if list, err := t.mngr.ListDistributions(ctx); err != nil {
+	if list, err := t.EntityMgr.ListDistributions(ctx); err != nil {
 		return nil, err
 	} else {
 		result := make([]*distributions.Distribution, 0, len(list)+len(t.distributions.Items()))
@@ -357,15 +227,10 @@ func (t *TranEntityManager) ListDistributions(ctx context.Context) ([]*distribut
 	}
 }
 
-// ListKeyRangeLocks implements [EntityMgr].
-func (t *TranEntityManager) ListKeyRangeLocks(ctx context.Context) ([]string, error) {
-	panic("ListKeyRangeLocks unimplemented")
-}
-
 // TODO: ADD more tests when altering key range will be realized
 // ListKeyRanges implements [EntityMgr].
 func (t *TranEntityManager) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
-	list, err := t.mngr.ListKeyRanges(ctx, distribution)
+	list, err := t.EntityMgr.ListKeyRanges(ctx, distribution)
 	if err != nil {
 		return nil, err
 	}
@@ -386,186 +251,6 @@ func (t *TranEntityManager) ListKeyRanges(ctx context.Context, distribution stri
 	}
 	return result, nil
 
-}
-
-// ListMoveTaskGroups implements [EntityMgr].
-func (t *TranEntityManager) ListMoveTaskGroups(ctx context.Context) (map[string]*tasks.MoveTaskGroup, error) {
-	panic("ListMoveTaskGroups unimplemented")
-}
-
-// ListMoveTasks implements [EntityMgr].
-func (t *TranEntityManager) ListMoveTasks(ctx context.Context) (map[string]*tasks.MoveTask, error) {
-	panic("ListMoveTasks unimplemented")
-}
-
-// ListReferenceRelations implements [EntityMgr].
-func (t *TranEntityManager) ListReferenceRelations(ctx context.Context) ([]*rrelation.ReferenceRelation, error) {
-	panic("ListReferenceRelations unimplemented")
-}
-
-// ListRelationSequences implements [EntityMgr].
-func (t *TranEntityManager) ListRelationSequences(ctx context.Context, rel *rfqn.RelationFQN) (map[string]string, error) {
-	panic("ListRelationSequences unimplemented")
-}
-
-// ListRouters implements [EntityMgr].
-func (t *TranEntityManager) ListRouters(ctx context.Context) ([]*topology.Router, error) {
-	panic("ListRouters unimplemented")
-}
-
-// ListSequences implements [EntityMgr].
-func (t *TranEntityManager) ListSequences(ctx context.Context) ([]string, error) {
-	panic("ListSequences unimplemented")
-}
-
-// ListShards implements [EntityMgr].
-func (t *TranEntityManager) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
-	panic("ListShards unimplemented")
-}
-
-// LockKeyRange implements [EntityMgr].
-func (t *TranEntityManager) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, error) {
-	panic("LockKeyRange unimplemented")
-}
-
-// Move implements [EntityMgr].
-func (t *TranEntityManager) Move(ctx context.Context, move *kr.MoveKeyRange) error {
-	panic("Move unimplemented")
-}
-
-// NextRange implements [EntityMgr].
-func (t *TranEntityManager) NextRange(ctx context.Context, seqName string, rangeSize uint64) (*qdb.SequenceIdRange, error) {
-	panic("NextRange unimplemented")
-}
-
-// QDB implements [EntityMgr].
-func (t *TranEntityManager) QDB() qdb.QDB {
-	panic("QDB unimplemented")
-}
-
-// RedistributeKeyRange implements [EntityMgr].
-func (t *TranEntityManager) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
-	panic("RedistributeKeyRange unimplemented")
-}
-
-// RegisterRouter implements [EntityMgr].
-func (t *TranEntityManager) RegisterRouter(ctx context.Context, r *topology.Router) error {
-	panic("RegisterRouter unimplemented")
-}
-
-// RemoveBalancerTask implements [EntityMgr].
-func (t *TranEntityManager) RemoveBalancerTask(ctx context.Context) error {
-	panic("RemoveBalancerTask unimplemented")
-}
-
-// RemoveMoveTaskGroup implements [EntityMgr].
-func (t *TranEntityManager) RemoveMoveTaskGroup(ctx context.Context, id string) error {
-	panic("RemoveMoveTaskGroup unimplemented")
-}
-
-// RenameKeyRange implements [EntityMgr].
-func (t *TranEntityManager) RenameKeyRange(ctx context.Context, krId string, krIdNew string) error {
-	panic("RenameKeyRange unimplemented")
-}
-
-// RetryMoveTaskGroup implements [EntityMgr].
-func (t *TranEntityManager) RetryMoveTaskGroup(ctx context.Context, id string) error {
-	panic("RetryMoveTaskGroup unimplemented")
-}
-
-// ShareKeyRange implements [EntityMgr].
-func (t *TranEntityManager) ShareKeyRange(id string) error {
-	panic("ShareKeyRange unimplemented")
-}
-
-// Split implements [EntityMgr].
-func (t *TranEntityManager) Split(ctx context.Context, split *kr.SplitKeyRange) error {
-	panic("Split unimplemented")
-}
-
-// StopMoveTaskGroup implements [EntityMgr].
-func (t *TranEntityManager) StopMoveTaskGroup(ctx context.Context, id string) error {
-	panic("StopMoveTaskGroup unimplemented")
-}
-
-// SyncReferenceRelations implements [EntityMgr].
-func (t *TranEntityManager) SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error {
-	panic("SyncReferenceRelations unimplemented")
-}
-
-// SyncRouterCoordinatorAddress implements [EntityMgr].
-func (t *TranEntityManager) SyncRouterCoordinatorAddress(ctx context.Context, router *topology.Router) error {
-	panic("SyncRouterCoordinatorAddress unimplemented")
-}
-
-// SyncRouterMetadata implements [EntityMgr].
-func (t *TranEntityManager) SyncRouterMetadata(ctx context.Context, router *topology.Router) error {
-	panic("SyncRouterMetadata unimplemented")
-}
-
-// Unite implements [EntityMgr].
-func (t *TranEntityManager) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
-	panic("Unite unimplemented")
-}
-
-// UnlockKeyRange implements [EntityMgr].
-func (t *TranEntityManager) UnlockKeyRange(ctx context.Context, krid string) error {
-	panic("UnlockKeyRange unimplemented")
-}
-
-// UnregisterRouter implements [EntityMgr].
-func (t *TranEntityManager) UnregisterRouter(ctx context.Context, id string) error {
-	panic("UnregisterRouter unimplemented")
-}
-
-// UpdateCoordinator implements [EntityMgr].
-func (t *TranEntityManager) UpdateCoordinator(ctx context.Context, address string) error {
-	panic("UpdateCoordinator unimplemented")
-}
-
-// WriteBalancerTask implements [EntityMgr].
-func (t *TranEntityManager) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
-	panic("WriteBalancerTask unimplemented")
-}
-
-// WriteMoveTaskGroup implements [EntityMgr].
-func (t *TranEntityManager) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
-	panic("WriteMoveTaskGroup unimplemented")
-}
-
-// CreateUniqueIndex implements [EntityMgr].
-func (t *TranEntityManager) CreateUniqueIndex(ctx context.Context, dsID string, idx *distributions.UniqueIndex) error {
-	panic("CreateUniqueIndex unimplemented")
-}
-
-// DropUniqueIndex implements [EntityMgr].
-func (t *TranEntityManager) DropUniqueIndex(ctx context.Context, idxID string) error {
-	panic("DropUniqueIndex unimplemented")
-}
-
-// ListDistributionIndexes implements [EntityMgr].
-func (t *TranEntityManager) ListDistributionIndexes(ctx context.Context, dsID string) (map[string]*distributions.UniqueIndex, error) {
-	panic("ListDistributionIndexes unimplemented")
-}
-
-// ListRelationIndexes implements [EntityMgr].
-func (t *TranEntityManager) ListRelationIndexes(ctx context.Context, relName *rfqn.RelationFQN) (map[string]*distributions.UniqueIndex, error) {
-	panic("ListRelationIndexes unimplemented")
-}
-
-// ListUniqueIndexes implements [EntityMgr].
-func (t *TranEntityManager) ListUniqueIndexes(ctx context.Context) (map[string]*distributions.UniqueIndex, error) {
-	panic("ListUniqueIndexes unimplemented")
-}
-
-// GetAllTaskGroupStatuses implements [EntityMgr].
-func (t *TranEntityManager) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.MoveTaskGroupStatus, error) {
-	panic("GetAllTaskGroupStatuses unimplemented")
-}
-
-// GetTaskGroupStatus implements [EntityMgr].
-func (t *TranEntityManager) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.MoveTaskGroupStatus, error) {
-	panic("GetTaskGroupStatus unimplemented")
 }
 
 type MetaEntityList[T any] struct {
