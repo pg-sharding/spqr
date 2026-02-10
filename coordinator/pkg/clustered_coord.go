@@ -2914,7 +2914,7 @@ func getRouterConnRetryPolicy() string {
 					{"service": "spqr.PoolService"},
 					{"service": "spqr.ReferenceRelationsService"},
 					{"service": "spqr.RouterService"},
-					{"service": "spqr.ShardService"},
+					{"service": "spqr.ShardService"}
 				],
 
                 "retryPolicy": {
