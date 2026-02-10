@@ -143,7 +143,7 @@ services:
             context: .
         ports:
             - "8433:6432"
-            - "7023:7003"
+            - "7023:7000"
         hostname: spqr_router_1_2
         container_name: spqr_router_1_2
         environment:

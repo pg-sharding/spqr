@@ -980,6 +980,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			// unlock key range
 			if err := qc.UnlockKeyRange(ctx, req.Krid); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range")
+				return err
 			}
 			if err := qc.db.DeleteKeyRangeMove(ctx, move.MoveId); err != nil {
 				return err
