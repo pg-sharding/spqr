@@ -29,8 +29,8 @@ RUN ./configure
 WORKDIR /postgres/src/test/isolation
 RUN make
 
-COPY ./ /regress/
-RUN chmod a+x /regress/run_tests.sh
-WORKDIR /regress
+COPY ./ /isolation/
+RUN chmod a+x /isolation/run_tests.sh
+WORKDIR /isolation
 
 ENTRYPOINT "./run_tests.sh"
