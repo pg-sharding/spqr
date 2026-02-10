@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -200,8 +199,6 @@ func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *pro
 
 // TODO: unit tests
 func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *protos.RedistributeKeyRangeRequest) (*emptypb.Empty, error) {
-	spqrlog.Zero.Debug().Msg("proxy RedistributeKeyRange got")
-
 	return nil, c.impl.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
 		KrId:      request.Id,
 		ShardId:   request.ShardId,
