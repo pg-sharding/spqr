@@ -126,6 +126,7 @@ services:
         environment:
             - ROUTER_CONFIG=/spqr/test/isolation/conf/router.yaml
             - ROUTER_LOG=/var/log/spqr-router.log
+            - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
         hostname: regress_router
         container_name: regress_router
         depends_on:
