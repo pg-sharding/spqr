@@ -280,13 +280,13 @@ func (l *LocalQrouterServer) GetRouterStatus(ctx context.Context, _ *emptypb.Emp
 		return &protos.GetRouterStatusReply{
 			Status:          protos.RouterStatus_OPENED,
 			Version:         pkg.SpqrVersionRevision,
-			MetadataVersion: "N/A",
+			MetadataVersion: 0,
 		}, nil
 	}
 	return &protos.GetRouterStatusReply{
 		Status:          protos.RouterStatus_CLOSED,
 		Version:         pkg.SpqrVersionRevision,
-		MetadataVersion: "N/A",
+		MetadataVersion: 0,
 	}, nil
 }
 

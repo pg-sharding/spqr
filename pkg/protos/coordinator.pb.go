@@ -26,7 +26,7 @@ type GetRouterStatusReply struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Status          RouterStatus           `protobuf:"varint,1,opt,name=status,proto3,enum=spqr.RouterStatus" json:"status,omitempty"`
 	Version         string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
-	MetadataVersion string                 `protobuf:"bytes,3,opt,name=metadata_version,json=metadataVersion,proto3" json:"metadata_version,omitempty"`
+	MetadataVersion int64                  `protobuf:"varint,3,opt,name=metadata_version,json=metadataVersion,proto3" json:"metadata_version,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -75,11 +75,11 @@ func (x *GetRouterStatusReply) GetVersion() string {
 	return ""
 }
 
-func (x *GetRouterStatusReply) GetMetadataVersion() string {
+func (x *GetRouterStatusReply) GetMetadataVersion() int64 {
 	if x != nil {
 		return x.MetadataVersion
 	}
-	return ""
+	return 0
 }
 
 type UpdateCoordinatorRequest struct {
@@ -178,7 +178,7 @@ const file_protos_coordinator_proto_rawDesc = "" +
 	"\x14GetRouterStatusReply\x12*\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x12.spqr.RouterStatusR\x06status\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12)\n" +
-	"\x10metadata_version\x18\x03 \x01(\tR\x0fmetadataVersion\"4\n" +
+	"\x10metadata_version\x18\x03 \x01(\x03R\x0fmetadataVersion\"4\n" +
 	"\x18UpdateCoordinatorRequest\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\"2\n" +
 	"\x16GetCoordinatorResponse\x12\x18\n" +

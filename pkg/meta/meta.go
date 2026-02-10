@@ -1528,7 +1528,7 @@ func getRouterClientCounts(ctx context.Context, ci connmgr.ConnectionMgr) (map[s
 // RouterVersionInfo contains version information retrieved from a router.
 type RouterVersionInfo struct {
 	Version         string
-	MetadataVersion string
+	MetadataVersion int64
 	Error           error
 }
 
@@ -1547,7 +1547,7 @@ func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnF
 	for _, router := range routers {
 		versionInfo := RouterVersionInfo{
 			Version:         "N/A",
-			MetadataVersion: "N/A",
+			MetadataVersion: 0,
 		}
 
 		if getConnFunc != nil {
@@ -1614,7 +1614,7 @@ func ProcessShow(ctx context.Context,
 
 			// Get version from gRPC query, or fall back to static version
 			version := pkg.SpqrVersionRevision
-			metadataVersion := "N/A"
+			metadataVersion := int64(0)
 			if vInfo, ok := routerVersions[address]; ok && vInfo.Error == nil {
 				version = vInfo.Version
 				metadataVersion = vInfo.MetadataVersion
@@ -1625,11 +1625,11 @@ func ProcessShow(ctx context.Context,
 				status,
 				fmt.Sprintf("%d", connCount),
 				version,
-				metadataVersion,
+				fmt.Sprintf("%d", metadataVersion),
 			)
 		}
-		return tts, nil
 
+		return tts, nil
 	case spqrparser.PoolsStr:
 		var respPools []pool.Pool
 

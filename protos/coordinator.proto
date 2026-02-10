@@ -19,7 +19,7 @@ service TopologyService {
 message GetRouterStatusReply {
   RouterStatus status = 1;
   string version = 2;
-  string metadata_version = 3;
+  int64 metadata_version = 3;
 }
 
 message UpdateCoordinatorRequest {

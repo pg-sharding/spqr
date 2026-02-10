@@ -181,11 +181,11 @@ Feature: Coordinator test
     Then SQL result should match json_regexp
     """
     [{
+      "client_connections":"1",
+      "metadata_version":"0"
       "router":"r1-[regress_router]:7000",
       "status":"OPENED",
-      "client_connections":"**IGNORE**",
       "version":"devel-0-devel",
-      "metadata_version":"N/A"
     }]
     """
 
