@@ -6,7 +6,7 @@ SPQR (Stateless Postgres Query Router) is a production-ready system for horizont
 
 ## Technology Stack
 
-- **Language**: Go 1.25.0
+- **Language**: Go 1.26.0
 - **Database**: SPQR acts as a proxy between applications and PostgreSQL clusters (shards). It supports any PostgreSQL version. Testing is performed against PostgreSQL versions 13-17.
 - **Testing**: Standard Go testing, godog for BDD, Docker Compose for integration tests
 - **Build Tool**: Make
