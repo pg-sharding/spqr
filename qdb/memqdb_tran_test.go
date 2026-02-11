@@ -184,3 +184,113 @@ func TestMemQdbTransactions(t *testing.T) {
 		})
 	})
 }
+
+func TestСreateKeyRangeQdbStatements(t *testing.T) {
+	t.Run("no locked key range", func(t *testing.T) {
+		is := assert.New(t)
+		memQdb, err := NewMemQDB("")
+		is.NoError(err)
+
+		keyRange := &KeyRange{
+			KeyRangeID:     "krid1",
+			LowerBound:     [][]byte{[]byte("1")},
+			ShardID:        "sh1",
+			DistributionId: "ds1",
+			Locked:         false,
+		}
+		actual, err := memQdb.createKeyRangeQdbStatements(keyRange)
+		is.NoError(err)
+		expected := []QdbStatement{
+			{
+				CmdType:   CMD_PUT,
+				Key:       "krid1",
+				Value:     "{\"LowerBound\":[\"MQ==\"],\"ShardID\":\"sh1\",\"KeyRangeID\":\"krid1\",\"DistributionId\":\"ds1\",\"Locked\":false}",
+				Extension: "Krs",
+			},
+			{
+				CmdType:   CMD_PUT,
+				Key:       "krid1",
+				Value:     "false",
+				Extension: "Locks",
+			},
+			{
+				CmdType:   CMD_PUT,
+				Key:       "krid1",
+				Value:     "false",
+				Extension: "Freq",
+			},
+		}
+		is.Equal(expected, actual)
+	})
+	t.Run("key range, no defined lock", func(t *testing.T) {
+		is := assert.New(t)
+		memQdb, err := NewMemQDB("")
+		is.NoError(err)
+
+		keyRange := &KeyRange{
+			KeyRangeID:     "krid1",
+			LowerBound:     [][]byte{[]byte("1")},
+			ShardID:        "sh1",
+			DistributionId: "ds1",
+		}
+		actual, err := memQdb.createKeyRangeQdbStatements(keyRange)
+		is.NoError(err)
+		expected := []QdbStatement{
+			{
+				CmdType:   CMD_PUT,
+				Key:       "krid1",
+				Value:     "{\"LowerBound\":[\"MQ==\"],\"ShardID\":\"sh1\",\"KeyRangeID\":\"krid1\",\"DistributionId\":\"ds1\",\"Locked\":false}",
+				Extension: "Krs",
+			},
+			{
+				CmdType:   CMD_PUT,
+				Key:       "krid1",
+				Value:     "false",
+				Extension: "Locks",
+			},
+			{
+				CmdType:   CMD_PUT,
+				Key:       "krid1",
+				Value:     "false",
+				Extension: "Freq",
+			},
+		}
+		is.Equal(expected, actual)
+	})
+	t.Run("locked key range", func(t *testing.T) {
+		is := assert.New(t)
+		memQdb, err := NewMemQDB("")
+		is.NoError(err)
+
+		keyRange := &KeyRange{
+			KeyRangeID:     "krid1",
+			LowerBound:     [][]byte{[]byte("1")},
+			ShardID:        "sh1",
+			DistributionId: "ds1",
+			Locked:         true,
+		}
+		actual, err := memQdb.createKeyRangeQdbStatements(keyRange)
+		is.NoError(err)
+		expected := []QdbStatement{
+			{
+				CmdType:   CMD_PUT,
+				Key:       "krid1",
+				Value:     "{\"LowerBound\":[\"MQ==\"],\"ShardID\":\"sh1\",\"KeyRangeID\":\"krid1\",\"DistributionId\":\"ds1\",\"Locked\":true}",
+				Extension: "Krs",
+			},
+			{
+				CmdType:   CMD_PUT,
+				Key:       "krid1",
+				Value:     "true",
+				Extension: "Locks",
+			},
+			{
+				CmdType:   CMD_PUT,
+				Key:       "krid1",
+				Value:     "true",
+				Extension: "Freq",
+			},
+		}
+		is.Equal(expected, actual)
+	})
+}
