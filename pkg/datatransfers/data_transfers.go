@@ -189,6 +189,18 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 		switch tx.Status {
 		case qdb.Planned:
 			t := time.Now()
+			// Await all current virtual transactions on source shard to stop
+			if err := awaitPIDs(ctx, from); err != nil {
+				return fmt.Errorf("failed to await virtual transactions to exit: %s", err)
+			}
+			tx.Status = qdb.Locked
+			err = db.RecordTransferTx(ctx, krg.ID, tx)
+			statistics.RecordShardOperation("awaitPIDs", time.Since(t))
+			if err != nil {
+				return err
+			}
+		case qdb.Locked:
+			t := time.Now()
 			// copy data of key range to receiving shard
 			if err = copyData(ctx, from, to, fromId, toId, krg, ds, upperBound); err != nil {
 				return err
@@ -522,10 +534,6 @@ func unlockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, re
 // Returns:
 // - error: an error if the move fails.
 func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
-	// Await all current virtual transactions on source shard to stop
-	if err := awaitPIDs(ctx, from); err != nil {
-		return fmt.Errorf("failed to await virtual transactions to exit: %s", err)
-	}
 	schemas := make(map[string]struct{})
 	for _, rel := range ds.Relations {
 		schemas[rel.GetSchema()] = struct{}{}
