@@ -163,5 +163,4 @@ DROP TABLE test_distr_ref_rel;
 \c spqr-console
 SHOW reference_relations;
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;
 

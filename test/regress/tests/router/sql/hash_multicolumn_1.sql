@@ -60,4 +60,3 @@ DROP TABLE hash_multi_xx;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;

@@ -41,4 +41,3 @@ RESET __spqr__engine_v2;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;

@@ -11,7 +11,6 @@ test: show_move_stats
 test: drop
 test: add
 test: hash
-test: teardown
 test: delete_distribution
 test: default_distribution
 test: sequence

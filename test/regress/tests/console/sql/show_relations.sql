@@ -16,4 +16,3 @@ SHOW relations WHERE unknown_param = 'ds1';
 SHOW reference_relations;
 
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;

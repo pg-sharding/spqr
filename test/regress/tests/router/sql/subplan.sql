@@ -33,5 +33,4 @@ DROP TABLE ref_rel_1;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;
 

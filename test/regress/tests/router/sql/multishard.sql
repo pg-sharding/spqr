@@ -66,4 +66,3 @@ DROP TABLE xxmultish;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;

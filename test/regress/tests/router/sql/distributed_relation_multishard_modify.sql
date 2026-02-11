@@ -49,4 +49,3 @@ DROP TABLE distrr_mm_test;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;

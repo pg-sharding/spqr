@@ -60,4 +60,3 @@ DROP TABLE xxmixeduuid;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;

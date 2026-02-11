@@ -38,4 +38,3 @@ DROP TABLE xx_insert_rel;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;

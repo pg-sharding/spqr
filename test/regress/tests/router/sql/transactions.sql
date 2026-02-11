@@ -30,4 +30,3 @@ DROP TABLE transactions_test;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;

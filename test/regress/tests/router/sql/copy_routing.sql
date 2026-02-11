@@ -152,4 +152,3 @@ DROP TABLE copy_test_multi_multi;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;
