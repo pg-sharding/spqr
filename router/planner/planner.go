@@ -381,30 +381,24 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 		case *lyx.AExprSConst:
 
 			for {
-
 				/* TODO: add CFI here*/
-				tgs, err := mgr.ListMoveTaskGroups(ctx)
+
+				tg, err := mgr.GetMoveTaskGroup(ctx, v.Value)
+				if err != nil {
+					/* TODO: better check that err is `not exists` */
+					break
+				}
+
+				st, err := mgr.GetTaskGroupStatus(ctx, v.Value)
 				if err != nil {
 					return nil, err
 				}
+				/* Still ongoing */
+				spqrlog.Zero.Info().Str("id", tg.ID).Str("status", string(st.State)).Msgf("move task still in-progress")
 
-				ok := false
+				/* Assert status == RUNNING here? */
 
-				for _, t := range tgs {
-					if t.ID == v.Value {
-						ok = true
-						/* Assert status == RUNNING here? */
-					}
-				}
-
-				if ok {
-					/* Still ongoing */
-					spqrlog.Zero.Info().Str("id", v.Value).Msgf("move task still in-progress")
-
-					/* Maybe notify client here */
-				} else {
-					break
-				}
+				/* Maybe notify client here */
 
 				time.Sleep(time.Second)
 			}
