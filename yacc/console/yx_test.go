@@ -426,14 +426,14 @@ func TestRedistribute(t *testing.T) {
 		},
 
 		{
-			query: "REDISTRIBUTE KEY RANGE k0 TO sh3 task group zzid;",
+			query: "REDISTRIBUTE KEY RANGE k0 TO sh3 task group zid;",
 			exp: &spqrparser.RedistributeKeyRange{
 				KeyRangeID:  "k0",
 				DestShardID: "sh3",
 				BatchSize:   -1,
 				Check:       true,
 				Apply:       true,
-				Id:          "zzid",
+				Id:          "zid",
 			},
 			err: nil,
 		},
