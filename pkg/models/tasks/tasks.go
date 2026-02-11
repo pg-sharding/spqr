@@ -9,11 +9,11 @@ import (
 )
 
 type MoveTask struct {
+	TaskGroupID string    `json:"task_group_id"`
 	ID          string    `json:"id"`
 	Bound       [][]byte  `json:"bound"`
 	KrIdTemp    string    `json:"kr_id_temp"`
 	State       TaskState `json:"state"`
-	TaskGroupID string    `json:"task_group_id"`
 }
 
 type TaskState int
@@ -76,11 +76,12 @@ const (
 )
 
 type RedistributeTask struct {
-	KrId      string
-	ShardId   string
-	BatchSize int
-	TempKrId  string
-	State     RedistributeTaskState
+	TaskGroupId string
+	KeyRangeId  string
+	ShardId     string
+	BatchSize   int
+	TempKrId    string
+	State       RedistributeTaskState
 }
 
 // TaskGroupToProto converts a MoveTaskGroup object to its corresponding protobuf representation.
@@ -553,36 +554,40 @@ func BalancerTaskFromDb(task *qdb.BalancerTask) *BalancerTask {
 
 func RedistributeTaskToProto(task *RedistributeTask) *protos.RedistributeTask {
 	return &protos.RedistributeTask{
-		KeyRangeId: task.KrId,
-		ShardId:    task.ShardId,
-		BatchSize:  int64(task.BatchSize),
-		State:      RedistributeTaskStateToProto(task.State),
+		TaskGroupId: task.TaskGroupId,
+		KeyRangeId:  task.KeyRangeId,
+		ShardId:     task.ShardId,
+		BatchSize:   int64(task.BatchSize),
+		State:       RedistributeTaskStateToProto(task.State),
 	}
 }
 
 func RedistributeTaskFromProto(task *protos.RedistributeTask) *RedistributeTask {
 	return &RedistributeTask{
-		KrId:      task.KeyRangeId,
-		ShardId:   task.ShardId,
-		BatchSize: int(task.BatchSize),
-		State:     RedistributeTaskStateFromProto(task.State),
+		TaskGroupId: task.TaskGroupId,
+		KeyRangeId:  task.KeyRangeId,
+		ShardId:     task.ShardId,
+		BatchSize:   int(task.BatchSize),
+		State:       RedistributeTaskStateFromProto(task.State),
 	}
 }
 
 func RedistributeTaskToDB(task *RedistributeTask) *qdb.RedistributeTask {
 	return &qdb.RedistributeTask{
-		KrId:      task.KrId,
-		ShardId:   task.ShardId,
-		BatchSize: task.BatchSize,
-		State:     int(task.State),
+		TaskGroupId: task.TaskGroupId,
+		KeyRangeId:  task.KeyRangeId,
+		ShardId:     task.ShardId,
+		BatchSize:   task.BatchSize,
+		State:       int(task.State),
 	}
 }
 
 func RedistributeTaskFromDB(task *qdb.RedistributeTask) *RedistributeTask {
 	return &RedistributeTask{
-		KrId:      task.KrId,
-		ShardId:   task.ShardId,
-		BatchSize: task.BatchSize,
+		TaskGroupId: task.TaskGroupId,
+		KeyRangeId:  task.KeyRangeId,
+		ShardId:     task.ShardId,
+		BatchSize:   task.BatchSize,
 		State: func() RedistributeTaskState {
 			switch task.State {
 			case RedistributeTaskPlanned:

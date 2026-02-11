@@ -284,7 +284,8 @@ func randomHex(n int) (string, error) {
 %type <unite> unite_key_range_stmt
 %type <register_router> register_router_stmt
 %type <unregister_router> unregister_router_stmt
-%type <integer> 	 opt_batch_size
+%type <integer> opt_batch_size
+%type <str> opt_redistr_id
 
 %type <typedColRef>  typed_col_ref
 %type <routingExpr> routing_expr_column_list
@@ -1303,38 +1304,44 @@ move_key_range_stmt:
 		$$ = &MoveKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4}
 	}
 
+opt_redistr_id:
+	TASK GROUP any_id {$$ = $3} | /* nothing */ {$$=""}
 
 /* All of this is kinda uggly, refactor to make it more Postgresy */
 redistribute_stmt:
-	REDISTRIBUTE key_range_stmt TO any_id opt_batch_size
+	REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id
 	{
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
 			BatchSize: $5,
+			Id: $6,
 			Check: true,
 			Apply: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size CHECK {
+	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id CHECK {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
 			BatchSize: $5,
+			Id: $6,
 			Check: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size APPLY {
+	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id APPLY {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
 			BatchSize: $5,
+			Id: $6,
 			Check: true,
 			Apply: true,
 		}
-	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size NOWAIT {
+	} | REDISTRIBUTE key_range_stmt TO any_id opt_batch_size opt_redistr_id NOWAIT {
 		$$ = &RedistributeKeyRange{
 			KeyRangeID: $2.KeyRangeID,
 			DestShardID: $4,
 			BatchSize: $5,
+			Id: $6,
 			Check: true, /* or false, doesnt matter */
 			NoWait: true,
 		}

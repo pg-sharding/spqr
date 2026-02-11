@@ -25,9 +25,10 @@ type UniteKeyRange struct {
 }
 
 type BatchMoveKeyRange struct {
-	KrId    string // KrId is the source key range id
-	ShardId string // ShardId is the destination shard id
-	Limit   int64  /* Limit is kr.RedistributeKeyLimit value specifying the number of keys to transfer.
+	TaskGroupId string // if empty, will be a random uuid. Otherwise user-input
+	KeyRangeId  string // KeyRangeId is the source key range id
+	ShardId     string // ShardId is the destination shard id
+	Limit       int64  /* Limit is kr.RedistributeKeyLimit value specifying the number of keys to transfer.
 	Can be either negative, in which case the whole key range will be moved,
 	or non-negative, where circa specified amount of keys will be moved. */
 	BatchSize int    // BatchSize is the amount of keys to be transferred in every transaction.
@@ -38,12 +39,13 @@ type BatchMoveKeyRange struct {
 }
 
 type RedistributeKeyRange struct {
-	KrId      string // KrId is the source key range id
-	ShardId   string // ShardId is the destination shard id
-	BatchSize int    // BatchSize is the amount of keys to be transferred in every transaction.
-	Check     bool   // if Check is set, we perform a pre-run check for the ability to redistribute
-	Apply     bool   // if Apply is not set, command will be a dry-run
-	NoWait    bool   // do we wait for redistribute completion?
+	TaskGroupId string // optional id.
+	KrId        string // KrId is the source key range id
+	ShardId     string // ShardId is the destination shard id
+	BatchSize   int    // BatchSize is the amount of keys to be transferred in every transaction.
+	Check       bool   // if Check is set, we perform a pre-run check for the ability to redistribute
+	Apply       bool   // if Apply is not set, command will be a dry-run
+	NoWait      bool   // do we wait for redistribute completion?
 }
 
 type KeyRangeMgr interface {

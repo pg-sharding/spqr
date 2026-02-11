@@ -1144,6 +1144,7 @@ type RedistributeTask struct {
 	ShardId       string                 `protobuf:"bytes,2,opt,name=shardId,proto3" json:"shardId,omitempty"`
 	BatchSize     int64                  `protobuf:"varint,3,opt,name=batchSize,proto3" json:"batchSize,omitempty"`
 	State         RedistributeTaskState  `protobuf:"varint,4,opt,name=state,proto3,enum=spqr.RedistributeTaskState" json:"state,omitempty"`
+	TaskGroupId   string                 `protobuf:"bytes,5,opt,name=taskGroupId,proto3" json:"taskGroupId,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1204,6 +1205,13 @@ func (x *RedistributeTask) GetState() RedistributeTaskState {
 		return x.State
 	}
 	return RedistributeTaskState_RedistributeTaskPlanned
+}
+
+func (x *RedistributeTask) GetTaskGroupId() string {
+	if x != nil {
+		return x.TaskGroupId
+	}
+	return ""
 }
 
 type GetRedistributeTaskReply struct {
@@ -1358,14 +1366,15 @@ const file_protos_tasks_proto_rawDesc = "" +
 	"\x14GetBalancerTaskReply\x12&\n" +
 	"\x04task\x18\x01 \x01(\v2\x12.spqr.BalancerTaskR\x04task\"B\n" +
 	"\x18WriteBalancerTaskRequest\x12&\n" +
-	"\x04task\x18\x01 \x01(\v2\x12.spqr.BalancerTaskR\x04task\"\x9d\x01\n" +
+	"\x04task\x18\x01 \x01(\v2\x12.spqr.BalancerTaskR\x04task\"\xbf\x01\n" +
 	"\x10RedistributeTask\x12\x1e\n" +
 	"\n" +
 	"keyRangeId\x18\x01 \x01(\tR\n" +
 	"keyRangeId\x12\x18\n" +
 	"\ashardId\x18\x02 \x01(\tR\ashardId\x12\x1c\n" +
 	"\tbatchSize\x18\x03 \x01(\x03R\tbatchSize\x121\n" +
-	"\x05state\x18\x04 \x01(\x0e2\x1b.spqr.RedistributeTaskStateR\x05state\"F\n" +
+	"\x05state\x18\x04 \x01(\x0e2\x1b.spqr.RedistributeTaskStateR\x05state\x12 \n" +
+	"\vtaskGroupId\x18\x05 \x01(\tR\vtaskGroupId\"F\n" +
 	"\x18GetRedistributeTaskReply\x12*\n" +
 	"\x04task\x18\x01 \x01(\v2\x16.spqr.RedistributeTaskR\x04task\"J\n" +
 	"\x1cWriteRedistributeTaskRequest\x12*\n" +

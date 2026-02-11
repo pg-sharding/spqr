@@ -1846,12 +1846,13 @@ func processRedistribute(ctx context.Context,
 	}
 
 	if err := mngr.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
-		KrId:      stmt.KeyRangeID,
-		ShardId:   stmt.DestShardID,
-		BatchSize: stmt.BatchSize,
-		Check:     stmt.Check,
-		Apply:     stmt.Apply,
-		NoWait:    stmt.NoWait,
+		TaskGroupId: stmt.Id,
+		KrId:        stmt.KeyRangeID,
+		ShardId:     stmt.DestShardID,
+		BatchSize:   stmt.BatchSize,
+		Check:       stmt.Check,
+		Apply:       stmt.Apply,
+		NoWait:      stmt.NoWait,
 	}); err != nil {
 		return nil, err
 	}

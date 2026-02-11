@@ -160,11 +160,11 @@ func NewDistribution(id string, coltypes []string) *Distribution {
 }
 
 type MoveTask struct {
+	TaskGroupID string `json:"task_group_id"`
 	ID          string
 	Bound       [][]byte `json:"bound"`
 	KrIdTemp    string   `json:"kr_id_temp"`
 	State       int      `json:"state"`
-	TaskGroupID string   `json:"task_group_id"`
 }
 
 type MoveTaskGroup struct {
@@ -186,11 +186,12 @@ type TaskGroupStatus struct {
 }
 
 type RedistributeTask struct {
-	KrId      string `json:"kr_id"`
-	ShardId   string `json:"shard_id"`
-	BatchSize int    `json:"batch_size"`
-	TempKrId  string `json:"temp_kr_id"`
-	State     int    `json:"state"`
+	TaskGroupId string `json:"task_group_id"`
+	KeyRangeId  string `json:"kr_id"`
+	ShardId     string `json:"shard_id"`
+	BatchSize   int    `json:"batch_size"`
+	TempKrId    string `json:"temp_kr_id"`
+	State       int    `json:"state"`
 }
 
 type BalancerTask struct {

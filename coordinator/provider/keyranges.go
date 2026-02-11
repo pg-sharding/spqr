@@ -170,9 +170,10 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 // TODO: unit tests
 func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *protos.BatchMoveKeyRangeRequest) (*emptypb.Empty, error) {
 	return nil, c.impl.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
-		KrId:     request.Id,
-		DestKrId: request.ToKrId,
-		ShardId:  request.ToShardId,
+		TaskGroupId: request.TaskGroupId,
+		KeyRangeId:  request.KeyRangeId,
+		DestKrId:    request.ToKrId,
+		ShardId:     request.ToShardId,
 		Limit: func() int64 {
 			switch request.LimitType {
 			case protos.RedistributeLimitType_RedistributeAllKeys:
@@ -200,12 +201,13 @@ func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *pro
 // TODO: unit tests
 func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *protos.RedistributeKeyRangeRequest) (*emptypb.Empty, error) {
 	return nil, c.impl.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
-		KrId:      request.Id,
-		ShardId:   request.ShardId,
-		BatchSize: int(request.BatchSize),
-		Check:     request.Check,
-		Apply:     request.Apply,
-		NoWait:    request.NoWait,
+		TaskGroupId: request.TaskGroupId,
+		KrId:        request.Krid,
+		ShardId:     request.ShardId,
+		BatchSize:   int(request.BatchSize),
+		Check:       request.Check,
+		Apply:       request.Apply,
+		NoWait:      request.NoWait,
 	})
 }
 

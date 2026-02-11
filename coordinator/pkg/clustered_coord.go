@@ -1003,7 +1003,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 // Returns:
 //   - error: An error if any occurred.
 func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.BatchMoveKeyRange) error {
-	keyRange, err := qc.GetKeyRange(ctx, req.KrId)
+	keyRange, err := qc.GetKeyRange(ctx, req.KeyRangeId)
 	if err != nil {
 		return err
 	}
@@ -1164,7 +1164,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 	if err := statistics.RecordMoveStart(time.Now()); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to record key range move start in statistics")
 	}
-	keyRange, err := qc.GetKeyRange(ctx, req.KrId)
+	keyRange, err := qc.GetKeyRange(ctx, req.KeyRangeId)
 	if err != nil {
 		return err
 	}
@@ -1206,11 +1206,18 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 		return err
 	}
 	var taskGroup *tasks.MoveTaskGroup
+
+	tgID := req.TaskGroupId
+
+	if tgID == "" {
+		tgID = uuid.NewString()
+	}
+
 	if totalCount != 0 {
 		biggestRelName, coeff := qc.getBiggestRelation(relCount, totalCount)
 		taskGroup = &tasks.MoveTaskGroup{
-			ID:        uuid.NewString(),
-			KrIdFrom:  req.KrId,
+			ID:        tgID,
+			KrIdFrom:  req.KeyRangeId,
 			KrIdTo:    req.DestKrId,
 			ShardToId: req.ShardId,
 			Type:      req.Type,
@@ -1220,10 +1227,9 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 			Limit:     req.Limit,
 		}
 	} else {
-		tgID := uuid.NewString()
 		taskGroup = &tasks.MoveTaskGroup{
 			ID:        tgID,
-			KrIdFrom:  req.KrId,
+			KrIdFrom:  req.KeyRangeId,
 			KrIdTo:    req.DestKrId,
 			ShardToId: req.ShardId,
 			Type:      req.Type,
@@ -1879,12 +1885,13 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 
 	if req.Check {
 		if err := qc.checkKeyRangeMove(ctx, &kr.BatchMoveKeyRange{
-			KrId:      req.KrId,
-			ShardId:   req.ShardId,
-			BatchSize: req.BatchSize,
-			Limit:     -1,
-			DestKrId:  uuid.NewString(),
-			Type:      tasks.SplitRight,
+			TaskGroupId: req.TaskGroupId,
+			KeyRangeId:  req.KrId,
+			ShardId:     req.ShardId,
+			BatchSize:   req.BatchSize,
+			Limit:       -1,
+			DestKrId:    uuid.NewString(),
+			Type:        tasks.SplitRight,
 		}); err != nil {
 			return err
 		}
@@ -1898,11 +1905,12 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		go func() {
 
 			err := qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
-				KrId:      req.KrId,
-				ShardId:   req.ShardId,
-				BatchSize: req.BatchSize,
-				TempKrId:  uuid.NewString(),
-				State:     tasks.RedistributeTaskPlanned,
+				TaskGroupId: req.TaskGroupId,
+				KeyRangeId:  req.KrId,
+				ShardId:     req.ShardId,
+				BatchSize:   req.BatchSize,
+				TempKrId:    uuid.NewString(),
+				State:       tasks.RedistributeTaskPlanned,
 			})
 			/* We have no way to report error, but at least, log it */
 			if err != nil {
@@ -1916,11 +1924,12 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 	ch := make(chan error)
 	go func() {
 		ch <- qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
-			KrId:      req.KrId,
-			ShardId:   req.ShardId,
-			BatchSize: req.BatchSize,
-			TempKrId:  uuid.NewString(),
-			State:     tasks.RedistributeTaskPlanned,
+			TaskGroupId: req.TaskGroupId,
+			KeyRangeId:  req.KrId,
+			ShardId:     req.ShardId,
+			BatchSize:   req.BatchSize,
+			TempKrId:    uuid.NewString(),
+			State:       tasks.RedistributeTaskPlanned,
 		})
 	}()
 
@@ -1950,12 +1959,13 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 		switch task.State {
 		case tasks.RedistributeTaskPlanned:
 			if err := qc.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
-				KrId:      task.KrId,
-				ShardId:   task.ShardId,
-				BatchSize: task.BatchSize,
-				Limit:     -1,
-				DestKrId:  task.TempKrId,
-				Type:      tasks.SplitRight,
+				TaskGroupId: task.TaskGroupId,
+				KeyRangeId:  task.KeyRangeId,
+				ShardId:     task.ShardId,
+				BatchSize:   task.BatchSize,
+				Limit:       -1,
+				DestKrId:    task.TempKrId,
+				Type:        tasks.SplitRight,
 			}); err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
 					spqrlog.Zero.Error().Msg("finishing redistribute task due to task group stop")
@@ -1971,7 +1981,7 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 				return err
 			}
 		case tasks.RedistributeTaskMoved:
-			if err := qc.RenameKeyRange(ctx, task.TempKrId, task.KrId); err != nil {
+			if err := qc.RenameKeyRange(ctx, task.TempKrId, task.KeyRangeId); err != nil {
 				return err
 			}
 			return qc.db.RemoveRedistributeTask(ctx)
