@@ -1913,6 +1913,7 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context, id string) error {
 		clientv3.OpDelete(totalKeysNodePath(id)),
 		clientv3.OpDelete(taskGroupStopFlagNodePath(id)),
 		clientv3.OpDelete(taskGroupStatusNodePath(id)),
+		clientv3.OpDelete(taskGroupLockNodePath(id)),
 	).Commit(); err != nil {
 		return fmt.Errorf("failed to delete move task group metadata: %s", err)
 	}
