@@ -629,33 +629,7 @@ func TestTransferCreateKeyRangeQdbCommand(t *testing.T) {
 		is.NoError(err)
 		chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
 		is.NoError(err)
-		err = memqdb.ExecNoTransaction(ctx, chunk)
-		is.NoError(err)
-		initKeyRange := &qdb.KeyRange{
-			KeyRangeID:     "krid1",
-			LowerBound:     [][]byte{[]byte("1")},
-			ShardID:        "sh1",
-			DistributionId: "ds1",
-			Locked:         false,
-		}
-		statements, err := memqdb.CreateKeyRange(ctx, initKeyRange)
-		is.NoError(err)
-		is.NoError(memqdb.ExecNoTransaction(ctx, statements))
-
-		lock, ok := memqdb.Locks["krid1"]
-		is.True(ok)
-		is.True(lock.TryLock())
-	})
-
-	t.Run("locked filed not defined", func(t *testing.T) {
-		ctx := context.TODO()
-		is := assert.New(t)
-		memqdb, err := qdb.NewMemQDB("")
-		is.NoError(err)
-		chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
-		is.NoError(err)
-		err = memqdb.ExecNoTransaction(ctx, chunk)
-		is.NoError(err)
+		is.NoError(memqdb.ExecNoTransaction(ctx, chunk))
 		initKeyRange := &qdb.KeyRange{
 			KeyRangeID:     "krid1",
 			LowerBound:     [][]byte{[]byte("1")},
@@ -679,8 +653,7 @@ func TestTransferCreateKeyRangeQdbCommand(t *testing.T) {
 		is.NoError(err)
 		chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
 		is.NoError(err)
-		err = memqdb.ExecNoTransaction(ctx, chunk)
-		is.NoError(err)
+		is.NoError(memqdb.ExecNoTransaction(ctx, chunk))
 		initKeyRange := &qdb.KeyRange{
 			KeyRangeID:     "krid1",
 			LowerBound:     [][]byte{[]byte("1")},
