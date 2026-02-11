@@ -238,7 +238,7 @@ batch size           -> 500
 (3 rows)
 
 step s1_commit: COMMIT;
-step s2_await_task: /* TODO: fix this */ select pg_sleep(50) /* __spqr__execute_on: shard1 */;
+step s2_await_task: /* TODO: fix this */ select pg_sleep(100) /* __spqr__execute_on: shard1 */;
 pg_sleep
 --------
         
