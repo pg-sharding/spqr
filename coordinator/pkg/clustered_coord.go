@@ -2895,6 +2895,9 @@ func (qc *ClusteredCoordinator) watchTaskGroups(ctx context.Context) {
 					spqrlog.Zero.Error().Err(err).Str("task group id", id).Msg("watch task groups iteration: failed to get task group status")
 					continue
 				}
+				if status == nil {
+					continue
+				}
 				if status.State == string(tasks.TaskGroupRunning) {
 					// Executor probably failed, update status
 					if err := qc.db.WriteTaskGroupStatus(ctx, id, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: "task group lost running"}); err != nil {
