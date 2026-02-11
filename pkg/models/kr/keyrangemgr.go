@@ -25,7 +25,7 @@ type UniteKeyRange struct {
 }
 
 type BatchMoveKeyRange struct {
-	TaskGroupId string // if fempty, will be a random uuid. Otherwise user-input
+	TaskGroupId string // if empty, will be a random uuid. Otherwise user-input
 	KeyRangeId  string // KeyRangeId is the source key range id
 	ShardId     string // ShardId is the destination shard id
 	Limit       int64  /* Limit is kr.RedistributeKeyLimit value specifying the number of keys to transfer.

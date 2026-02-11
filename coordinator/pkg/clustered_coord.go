@@ -1959,12 +1959,13 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 		switch task.State {
 		case tasks.RedistributeTaskPlanned:
 			if err := qc.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
-				KeyRangeId: task.KeyRangeId,
-				ShardId:    task.ShardId,
-				BatchSize:  task.BatchSize,
-				Limit:      -1,
-				DestKrId:   task.TempKrId,
-				Type:       tasks.SplitRight,
+				TaskGroupId: task.TaskGroupId,
+				KeyRangeId:  task.KeyRangeId,
+				ShardId:     task.ShardId,
+				BatchSize:   task.BatchSize,
+				Limit:       -1,
+				DestKrId:    task.TempKrId,
+				Type:        tasks.SplitRight,
 			}); err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
 					spqrlog.Zero.Error().Msg("finishing redistribute task due to task group stop")
