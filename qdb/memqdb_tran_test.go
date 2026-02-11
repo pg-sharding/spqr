@@ -185,7 +185,7 @@ func TestMemQdbTransactions(t *testing.T) {
 	})
 }
 
-func TestСreateKeyRangeQdbStatements(t *testing.T) {
+func TestCreateKeyRangeQdbStatements(t *testing.T) {
 	t.Run("no locked key range", func(t *testing.T) {
 		is := assert.New(t)
 		memQdb, err := NewMemQDB("")
