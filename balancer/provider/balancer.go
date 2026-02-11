@@ -658,12 +658,13 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 		switch task.State {
 		case tasks.BalancerTaskPlanned:
 			if _, err := keyRangeService.BatchMoveKeyRange(ctx, &protos.BatchMoveKeyRangeRequest{
-				Id:        task.KrIdFrom,
-				ToKrId:    task.KrIdTemp,
-				ToShardId: task.ShardIdTo,
-				BatchSize: int64(config.BalancerConfig().KeysPerMove),
-				Limit:     task.KeyCount,
-				LimitType: protos.RedistributeLimitType_RedistributeKeysLimit,
+				TaskGroupId: "",
+				KeyRangeId:  task.KrIdFrom,
+				ToKrId:      task.KrIdTemp,
+				ToShardId:   task.ShardIdTo,
+				BatchSize:   int64(config.BalancerConfig().KeysPerMove),
+				Limit:       task.KeyCount,
+				LimitType:   protos.RedistributeLimitType_RedistributeKeysLimit,
 				SplitType: func() protos.SplitType {
 					switch task.Type {
 					case tasks.JoinLeft:

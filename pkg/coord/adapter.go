@@ -474,12 +474,13 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 		limitType = proto.RedistributeLimitType_RedistributeKeysLimit
 	}
 	_, err := c.BatchMoveKeyRange(ctx, &proto.BatchMoveKeyRangeRequest{
-		Id:        req.KrId,
-		ToShardId: req.ShardId,
-		ToKrId:    req.DestKrId,
-		LimitType: limitType,
-		Limit:     limit,
-		BatchSize: int64(req.BatchSize),
+		TaskGroupId: req.TaskGroupId,
+		KeyRangeId:  req.KeyRangeId,
+		ToShardId:   req.ShardId,
+		ToKrId:      req.DestKrId,
+		LimitType:   limitType,
+		Limit:       limit,
+		BatchSize:   int64(req.BatchSize),
 		SplitType: func() proto.SplitType {
 			switch req.Type {
 			case tasks.SplitLeft:
@@ -506,12 +507,13 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.RedistributeKeyRange(ctx, &proto.RedistributeKeyRangeRequest{
-		Id:        req.KrId,
-		ShardId:   req.ShardId,
-		BatchSize: int64(req.BatchSize),
-		Check:     req.Check,
-		Apply:     req.Apply,
-		NoWait:    req.NoWait,
+		TaskGroupId: req.TaskGroupId,
+		Krid:        req.KrId,
+		ShardId:     req.ShardId,
+		BatchSize:   int64(req.BatchSize),
+		Check:       req.Check,
+		Apply:       req.Apply,
+		NoWait:      req.NoWait,
 	})
 
 	spqrlog.Zero.Debug().Err(err).Msg("proxy RedistributeKeyRange to coordinator")

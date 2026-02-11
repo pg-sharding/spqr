@@ -112,22 +112,24 @@ enum RedistributeLimitType {
 }
 
 message BatchMoveKeyRangeRequest {
-  string id = 1;
+  string keyRangeId = 1;
   string toShardId = 2;
   string toKrId = 3;
   RedistributeLimitType limitType = 4;
   int64 limit = 5;
   int64 batchSize = 6;
   SplitType splitType = 7;
+  string taskGroupId = 8;
 }
 
 message RedistributeKeyRangeRequest {
-  string id = 1;
+  string krid = 1;
   string shardId = 2;
   int64 batchSize = 3;
   bool check = 4;
   bool apply = 5;
   bool noWait = 6;
+  string taskGroupId = 7;
 }
 
 message RenameKeyRangeRequest{

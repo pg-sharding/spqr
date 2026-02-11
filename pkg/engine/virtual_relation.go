@@ -592,7 +592,7 @@ func TaskGroupsVirtualRelationScan(groups map[string]*tasks.MoveTaskGroup, statu
 
 func MoveTasksVirtualRelationScan(ts map[string]*tasks.MoveTask, dsIDColTypes map[string][]string, moveTaskDsID map[string]string) (*tupleslot.TupleTableSlot, error) {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("move_task_id", "temporary_key_range_id", "bound", "state", "task_group_id"),
+		Desc: GetVPHeader("task_group_id", "move_task_id", "temporary_key_range_id", "bound", "state"),
 	}
 
 	for _, task := range ts {
@@ -617,11 +617,11 @@ func MoveTasksVirtualRelationScan(ts map[string]*tasks.MoveTask, dsIDColTypes ma
 			krData = kRange.SendRaw()
 		}
 		tts.WriteDataRow(
+			task.TaskGroupID,
 			task.ID,
 			task.KrIdTemp,
 			strings.Join(krData, ";"),
 			tasks.TaskStateToStr(task.State),
-			task.TaskGroupID,
 		)
 	}
 	return tts, nil

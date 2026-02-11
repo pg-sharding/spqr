@@ -145,6 +145,7 @@ message RedistributeTask {
   string shardId = 2;
   int64 batchSize = 3;
   RedistributeTaskState state = 4;
+  string taskGroupId = 5;
 }
 
 message GetRedistributeTaskReply {

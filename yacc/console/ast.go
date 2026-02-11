@@ -151,6 +151,7 @@ type RedistributeKeyRange struct {
 	DestShardID string
 	KeyRangeID  string
 	BatchSize   int
+	Id          string
 	Check       bool
 	Apply       bool
 	NoWait      bool
