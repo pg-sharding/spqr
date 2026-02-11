@@ -72,5 +72,4 @@ select pg_is_in_recovery(), not pg_is_in_recovery(), __spqr__is_ready(), 1, 'a';
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;
 

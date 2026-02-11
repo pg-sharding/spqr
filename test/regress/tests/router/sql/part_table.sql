@@ -42,4 +42,3 @@ SELECT * FROM xxhash_part ORDER BY d /* __spqr__execute_on: sh2 */;
 DROP TABLE xxhash_part;
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;

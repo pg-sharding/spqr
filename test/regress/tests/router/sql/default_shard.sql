@@ -54,4 +54,3 @@ DROP TABLE def_sh_xx;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;

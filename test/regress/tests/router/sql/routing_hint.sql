@@ -128,4 +128,3 @@ DROP TABLE test_unmatch;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;

@@ -265,8 +265,3 @@ DROP DISTRIBUTION ALL CASCADE;
  distribution id -> ds1
 (1 row)
 
-DROP KEY RANGE ALL;
- drop key range 
-----------------
-(0 rows)
-

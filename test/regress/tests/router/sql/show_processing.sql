@@ -50,4 +50,3 @@ DROP TABLE xxtest_sw;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;

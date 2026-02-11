@@ -24,4 +24,3 @@ SHOW relations WHERE distribution_id = 'REPLICATED';
 SHOW reference_relations;
 
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;

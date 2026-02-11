@@ -11,11 +11,9 @@ SHOW key_ranges;
 
 DROP KEY RANGE ALL;
 
-
 -- intersecting key range
 CREATE KEY RANGE krid3 FROM -50 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
 SHOW key_ranges;
 
 DROP DISTRIBUTION ALL CASCADE;
-DROP KEY RANGE ALL;

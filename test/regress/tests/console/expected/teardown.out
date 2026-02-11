@@ -1,5 +1,0 @@
-DROP KEY RANGE ALL;
- drop key range 
-----------------
-(0 rows)
-
