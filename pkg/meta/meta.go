@@ -1497,34 +1497,6 @@ func ProcessShowExtended(ctx context.Context,
 	return tts, nil
 }
 
-// ProcessShow processes the SHOW statement and returns an error if any issue occurs.
-//
-// Parameters:
-// - ctx (context.Context): The context for the operation.
-// - stmt (*spqrparser.Show): The SHOW statement to process.
-// - mngr (EntityMgr): The entity manager for managing entities.
-// - ci (connmgr.ConnectionMgr): The connection manager.
-// - ro (bool): Whether server is read-only or not.
-//
-// Returns:
-// - *tupleslot.TupleTableSlot: the result of the query.
-// - error: An error if the operation encounters any issues.
-func getRouterClientCounts(ctx context.Context, ci connmgr.ConnectionMgr) (map[string]int, error) {
-	clientCounts := make(map[string]int)
-
-	err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
-		routerAddr := cl.RAddr()
-		clientCounts[routerAddr]++
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return clientCounts, nil
-}
-
 // RouterVersionInfo contains version information retrieved from a router.
 type RouterVersionInfo struct {
 	Version         string
@@ -1568,12 +1540,24 @@ func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnF
 			}
 		}
 
-		versions[router.Address] = versionInfo
+		versions[router.ID] = versionInfo
 	}
 
 	return versions
 }
 
+// ProcessShow processes the SHOW statement and returns an error if any issue occurs.
+//
+// Parameters:
+// - ctx (context.Context): The context for the operation.
+// - stmt (*spqrparser.Show): The SHOW statement to process.
+// - mngr (EntityMgr): The entity manager for managing entities.
+// - ci (connmgr.ConnectionMgr): The connection manager.
+// - ro (bool): Whether server is read-only or not.
+//
+// Returns:
+// - *tupleslot.TupleTableSlot: the result of the query.
+// - error: An error if the operation encounters any issues.
 func ProcessShow(ctx context.Context,
 	stmt *spqrparser.Show,
 	mngr EntityMgr,
@@ -1587,8 +1571,16 @@ func ProcessShow(ctx context.Context,
 			return nil, err
 		}
 
-		// Get client connection counts by router address
-		clientCounts, err := getRouterClientCounts(ctx, ci)
+		clientCounts := make(map[string]int)
+
+		if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
+			routerAddr := cl.RAddr()
+			clientCounts[routerAddr]++
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to get client counts")
 			clientCounts = make(map[string]int)
@@ -1608,22 +1600,20 @@ func ProcessShow(ctx context.Context,
 		}
 
 		for _, msg := range resp {
-			address := msg.Address
 			status := string(msg.State)
-			connCount := clientCounts[address]
-
 			// Get version from gRPC query, or fall back to static version
 			version := pkg.SpqrVersionRevision
 			metadataVersion := int64(0)
-			if vInfo, ok := routerVersions[address]; ok && vInfo.Error == nil {
+			if vInfo, ok := routerVersions[msg.ID]; ok && vInfo.Error == nil {
 				version = vInfo.Version
 				metadataVersion = vInfo.MetadataVersion
 			}
 
 			tts.WriteDataRow(
-				fmt.Sprintf("%s-%s", msg.ID, address),
+				fmt.Sprintf("%s-%s", msg.ID, msg.Address),
 				status,
-				fmt.Sprintf("%d", connCount),
+				/* TODO: use id here */
+				fmt.Sprintf("%d", clientCounts[msg.Address]),
 				version,
 				fmt.Sprintf("%d", metadataVersion),
 			)
