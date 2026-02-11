@@ -54,20 +54,23 @@ step s1_commit         { COMMIT; }
 
 session s2
 step s2_redistribute_sh2     { select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2') /*__spqr__preferred_engine: v2 */; }
-step s2_redistribute_sh2_nw  { select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2 NOWAIT') /*__spqr__preferred_engine: v2 */; }
+step s2_redistribute_sh2_nw  { select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2 TASK GROUP zid NOWAIT') /*__spqr__preferred_engine: v2 */; }
 step s2_redistribute_sh1     { select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh1') /*__spqr__preferred_engine: v2 */; }
 step s2_show_tg              { select __spqr__console_execute('SHOW task_groups;') /*__spqr__preferred_engine: v2 */; }
-step s2_await_task           { /* TODO: fix this */ select pg_sleep(50) /* __spqr__execute_on: shard1 */; }
+step s2_await_planning       { SELECT pg_sleep(10) /* __spqr__execute_on: sh1 */; }
+step s2_await_task           { SELECT __spqr__await_task('zid') /* __spqr__preferred_engine: v2 */; }
 
 step s2_show_kr              { select __spqr__console_execute('SHOW key_ranges;') /*__spqr__preferred_engine: v2 */; }
 
 session s3
 step s3_clean             { select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;}
+step s3_clean_tg          { /* TODO: fix */ select __spqr__console_execute('drop task group zid') /*__spqr__preferred_engine: v2 */;}
+
 
 # ok
 permutation s1_report s1_ev2 s1_i s1_spqr_ctid s2_redistribute_sh2 s2_show_kr s1_spqr_ctid s2_redistribute_sh1 s2_show_kr s1_spqr_ctid s3_clean
 
 # TODO: check task group status
 
-permutation s1_report s1_ev2 s1_i s1_spqr_ctid s1_begin s1_u s2_redistribute_sh2_nw s1_commit s2_await_task s2_show_tg s2_show_kr s1_spqr_ctid s3_clean
-permutation s1_report s1_ev2 s1_i s1_spqr_ctid s1_begin s1_i s2_redistribute_sh2_nw s1_commit s2_await_task s2_show_tg s2_show_kr s1_spqr_ctid s3_clean
+permutation s1_report s1_ev2 s1_i s1_spqr_ctid s1_begin s1_u s2_redistribute_sh2_nw s1_commit s2_await_planning s2_await_task s2_show_tg s2_show_kr s1_spqr_ctid s3_clean
+permutation s1_report s1_ev2 s1_i s1_spqr_ctid s1_begin s1_i s2_redistribute_sh2_nw s1_commit s2_await_planning s2_await_task s2_show_tg s2_show_kr s1_spqr_ctid s3_clean

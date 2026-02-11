@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
@@ -364,6 +365,55 @@ func PlanDistributedRelationInsert(
 
 func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataContext, fname string, args []lyx.Node) (*tupleslot.TupleTableSlot, error) {
 	switch fname {
+	case virtual.VirtualAwaitTask:
+
+		if len(args) != 1 {
+			return nil, fmt.Errorf("%s function only accept single arg", virtual.VirtualShow)
+		}
+
+		mgr, cf, err := coord.DistributedMgr(ctx, rm.Mgr)
+		if err != nil {
+			return nil, err
+		}
+		defer cf()
+
+		switch v := args[0].(type) {
+		case *lyx.AExprSConst:
+
+			for {
+				/* TODO: add CFI here*/
+
+				tg, err := mgr.GetMoveTaskGroup(ctx, v.Value)
+				if err != nil {
+					/* TODO: better check that err is `not exists` */
+					return nil, err
+				}
+				if tg == nil {
+					break
+				}
+
+				st, err := mgr.GetTaskGroupStatus(ctx, v.Value)
+				if err != nil {
+					return nil, err
+				}
+				/* Still ongoing */
+				spqrlog.Zero.Info().Str("id", tg.ID).Str("status", string(st.State)).Msgf("move task still in-progress")
+
+				/* Assert status == RUNNING here? */
+
+				/* Maybe notify client here */
+
+				time.Sleep(time.Second)
+			}
+
+			return &tupleslot.TupleTableSlot{
+				Desc: []pgproto3.FieldDescription{},
+			}, nil
+		default:
+			return nil, rerrors.ErrComplexQuery
+
+		}
+
 	case virtual.VirtualConsoleExecute:
 
 		/*  XXX: unite this code with client interactor internals */

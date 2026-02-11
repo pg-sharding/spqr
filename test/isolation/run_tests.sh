@@ -26,5 +26,4 @@ psql "host=regress_router port=6432 dbname=spqr-console user=regress" -c 'REGIST
     --debug \
     --schedule /regress/schedule
 
-
 if test -f /regress/regression.diffs; then cat /regress/regression.diffs; exit 1; fi
