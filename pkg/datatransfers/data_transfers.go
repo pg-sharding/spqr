@@ -189,7 +189,6 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 		switch tx.Status {
 		case qdb.Planned:
 			t := time.Now()
-			// copy data of key range to receiving shard
 			// Await all current virtual transactions on source shard to stop
 			if err := awaitPIDs(ctx, from); err != nil {
 				return fmt.Errorf("failed to await virtual transactions to exit: %s", err)
