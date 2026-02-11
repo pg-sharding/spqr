@@ -9,7 +9,7 @@ on:
     - cron: '30 06 * * 6'
 
 env:
-  GO_VERSION: 1.25.0
+  GO_VERSION: 1.26.0
 
 jobs:
   analyze:

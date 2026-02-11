@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"maps"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -87,9 +88,7 @@ func (r *RuleRouterImpl) TsaCacheEntries() map[pool.TsaKey]pool.CachedEntry {
 	rt := map[pool.TsaKey]pool.CachedEntry{}
 	_ = r.NotifyRoutes(func(r *route.Route) (bool, error) {
 		m := r.MultiShardPool().TsaCacheEntries()
-		for k, v := range m {
-			rt[k] = v
-		}
+		maps.Copy(rt, m)
 		return true, nil
 	})
 	return rt

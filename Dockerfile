@@ -2,7 +2,7 @@
 # This creates a minimal image with only the router binary and runtime dependencies
 
 # Stage 1: Build the router binary
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git make gcc musl-dev

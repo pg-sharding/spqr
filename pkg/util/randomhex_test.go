@@ -48,7 +48,7 @@ func TestRandomHexNotAllEqual(t *testing.T) {
 	)
 
 	values := make([]string, 0, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		v, err := RandomHex(n)
 		if err != nil {
 			t.Fatalf("randomHex(%d) returned error on iteration %d: %v", n, i, err)

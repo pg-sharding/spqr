@@ -141,8 +141,7 @@ func TestCheckMultithreading(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for range 100 {
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			tim := time.Now()
 
 			ca := genTestClient(t, tim)
@@ -158,8 +157,7 @@ func TestCheckMultithreading(t *testing.T) {
 				statistics.GetTotalTimeQuantile(statistics.StatisticsTypeRouter, 0.99)
 				statistics.GetTotalTimeQuantile(statistics.StatisticsTypeRouter, 0.99)
 			}
-			wg.Done()
-		}()
+		})
 	}
 
 	wg.Wait()

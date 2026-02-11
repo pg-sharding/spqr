@@ -50,7 +50,7 @@ func NewPSQLInteractor(cl client.Client) *PSQLInteractor {
 //   - error: An error if sending the message fails, otherwise nil.
 func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.CommandComplete{CommandTag: []byte(fmt.Sprintf("SELECT %d", rowCnt))},
+		&pgproto3.CommandComplete{CommandTag: fmt.Appendf(nil, "SELECT %d", rowCnt)},
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(txstatus.TXIDLE),
 		},
@@ -126,7 +126,7 @@ func (pi *PSQLInteractor) Databases(dbs []string) error {
 
 	for _, db := range dbs {
 		if err := pi.cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{[]byte(fmt.Sprintf("database %s", db))},
+			Values: [][]byte{fmt.Appendf(nil, "database %s", db)},
 		}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
