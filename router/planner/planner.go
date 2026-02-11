@@ -386,6 +386,9 @@ func MetadataVirtualFunctionCall(ctx context.Context, rm *rmeta.RoutingMetadataC
 				tg, err := mgr.GetMoveTaskGroup(ctx, v.Value)
 				if err != nil {
 					/* TODO: better check that err is `not exists` */
+					return nil, err
+				}
+				if tg == nil {
 					break
 				}
 
