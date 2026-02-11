@@ -128,8 +128,45 @@ func (ci grpcConnMgr) IterRouter(cb func(cc *grpc.ClientConn, addr string) error
 }
 
 // TODO : unit tests
+func (ci grpcConnMgr) IterRouterSkipUnreachable(cb func(cc *grpc.ClientConn, addr string) error) error {
+	ctx := context.TODO()
+	routers, err := ci.ClusteredCoordinator.QDB().ListRouters(ctx)
+
+	spqrlog.Zero.Log().Int("router counts", len(routers))
+
+	if err != nil {
+		return err
+	}
+
+	for _, r := range routers {
+		internalR := &topology.Router{
+			ID:      r.ID,
+			Address: r.Address,
+		}
+
+		cc, err := DialRouter(internalR)
+		if err != nil {
+			continue
+		}
+		defer func() {
+			if err := cc.Close(); err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to close connection")
+			}
+		}()
+
+		if err := cb(cc, r.Address); err != nil {
+			return err
+		}
+		if err := cc.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// TODO : unit tests
 func (ci grpcConnMgr) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
-	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
+	return ci.IterRouterSkipUnreachable(func(cc *grpc.ClientConn, addr string) error {
 		ctx := context.TODO()
 		rrClient := proto.NewClientInfoServiceClient(cc)
 
