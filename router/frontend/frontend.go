@@ -35,6 +35,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			Msg("client connection synced")
 		return nil
 	case *pgproto3.Query:
+		statistics.OnRequest()
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 
 		// copy interface

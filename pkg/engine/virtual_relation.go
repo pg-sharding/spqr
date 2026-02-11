@@ -346,12 +346,22 @@ func InstanceVirtualRelationScan(ctx context.Context, ci connmgr.ConnectionMgr) 
 		Desc: GetVPHeader(
 			"total_tcp_connection_count",
 			"total_cancel_requests",
-			"active_tcp_connections")}
+			"active_tcp_connections",
+			"total_requests",
+			"current_rps",
+			"avg_rps",
+			"peak_rps")}
+
+	stats := statistics.GetRPSFullSnapshot()
 
 	tts.WriteDataRow(
 		fmt.Sprintf("%v", ci.TotalTcpCount()),
 		fmt.Sprintf("%v", ci.TotalCancelCount()),
-		fmt.Sprintf("%v", ci.ActiveTcpCount()))
+		fmt.Sprintf("%v", ci.ActiveTcpCount()),
+		fmt.Sprintf("%d", stats.TotalRequests),
+		fmt.Sprintf("%.2f", stats.CurrentRPS),
+		fmt.Sprintf("%.2f", stats.AvgRPS),
+		fmt.Sprintf("%.2f", stats.PeakRPS))
 
 	return tts
 }
