@@ -1,0 +1,8 @@
+# using postmaster on localhost, port 6432
+ok 1         - simple                                     36 ms
+ok 2         - simple_lock_kr                            814 ms
+not ok 3     - simple_move_data                          585 ms
+1..3
+# 1 of 3 tests failed.
+# The differences that caused some tests to fail can be viewed in the file "/home/reshke/spqr/test/isolation/regression.diffs".
+# A copy of the test summary that you see above is saved in the file "/home/reshke/spqr/test/isolation/regression.out".

@@ -1,6 +1,6 @@
 Parsed test spec with 3 sessions
 
-starting permutation: s1_report s1_ev2 s1_i s1_spqr_ctid s2_redistribute_sh2 s2_show_kr s1_spqr_ctid s2_redistribute_sh1 s2_show_kr s1_spqr_ctid s3_clean
+starting permutation: s1_report s1_ev2 s1_i s1_spqr_ctid s2_redistribute_sh2 s2_show_kr s1_spqr_ctid s2_redistribute_sh1 s2_show_kr s1_spqr_ctid s3_clean s3_clean_tg
 add distribution    
 --------------------
 distribution id -> d
@@ -97,8 +97,14 @@ drop distribution
 distribution id -> d
 (1 row)
 
+step s3_clean_tg: /* TODO: fix */ select __spqr__console_execute('drop task group zid') /*__spqr__preferred_engine: v2 */;
+drop task group     
+--------------------
+task group id -> zid
+(1 row)
 
-starting permutation: s1_report s1_ev2 s1_i s1_spqr_ctid s1_begin s1_u s2_redistribute_sh2_nw s1_commit s2_await_task s2_show_tg s2_show_kr s1_spqr_ctid s3_clean
+
+starting permutation: s1_report s1_ev2 s1_i s1_spqr_ctid s1_begin s1_u s2_redistribute_sh2_nw1 s1_commit s2_await_planning s2_await_task1 s2_show_tg s2_show_kr s1_spqr_ctid s3_clean s3_clean_tg
 add distribution    
 --------------------
 distribution id -> d
@@ -144,7 +150,7 @@ shard sh1   |11|1
 step s1_begin: BEGIN;
 s1: NOTICE: send query to shard(s) : sh1
 step s1_u: UPDATE r SET c = c + 1 WHERE i = 11;
-step s2_redistribute_sh2_nw: select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2 NOWAIT') /*__spqr__preferred_engine: v2 */;
+step s2_redistribute_sh2_nw1: select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2 TASK GROUP zid1 NOWAIT') /*__spqr__preferred_engine: v2 */;
 redistribute key range     
 ---------------------------
 key range id         -> k0 
@@ -153,12 +159,13 @@ batch size           -> 500
 (3 rows)
 
 step s1_commit: COMMIT;
-step s2_await_task: /* TODO: fix this */ select pg_sleep(50) /* __spqr__execute_on: shard1 */;
+step s2_await_planning: SELECT pg_sleep(10) /* __spqr__execute_on: sh1 */;
 pg_sleep
 --------
         
 (1 row)
 
+step s2_await_task1: SELECT __spqr__await_task('zid1') /* __spqr__preferred_engine: v2 */;
 step s2_show_tg: select __spqr__console_execute('SHOW task_groups;') /*__spqr__preferred_engine: v2 */;
 step s2_show_kr: select __spqr__console_execute('SHOW key_ranges;') /*__spqr__preferred_engine: v2 */;
 key_range_id|shard_id|distribution_id|lower_bound|locked
@@ -182,8 +189,14 @@ drop distribution
 distribution id -> d
 (1 row)
 
+step s3_clean_tg: /* TODO: fix */ select __spqr__console_execute('drop task group zid') /*__spqr__preferred_engine: v2 */;
+drop task group     
+--------------------
+task group id -> zid
+(1 row)
 
-starting permutation: s1_report s1_ev2 s1_i s1_spqr_ctid s1_begin s1_i s2_redistribute_sh2_nw s1_commit s2_await_task s2_show_tg s2_show_kr s1_spqr_ctid s3_clean
+
+starting permutation: s1_report s1_ev2 s1_i s1_spqr_ctid s1_begin s1_i s2_redistribute_sh2_nw2 s1_commit s2_await_planning s2_await_task2 s2_show_tg s2_show_kr s1_spqr_ctid s3_clean s3_clean_tg
 add distribution    
 --------------------
 distribution id -> d
@@ -229,7 +242,7 @@ shard sh1   |11|1
 step s1_begin: BEGIN;
 s1: NOTICE: send query to shard(s) : sh1
 step s1_i: INSERT INTO r (i, c) VALUES (11, 1);
-step s2_redistribute_sh2_nw: select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2 NOWAIT') /*__spqr__preferred_engine: v2 */;
+step s2_redistribute_sh2_nw2: select __spqr__console_execute('REDISTRIBUTE KEY RANGE k0 TO sh2 TASK GROUP zid2 NOWAIT') /*__spqr__preferred_engine: v2 */;
 redistribute key range     
 ---------------------------
 key range id         -> k0 
@@ -238,12 +251,13 @@ batch size           -> 500
 (3 rows)
 
 step s1_commit: COMMIT;
-step s2_await_task: /* TODO: fix this */ select pg_sleep(50) /* __spqr__execute_on: shard1 */;
+step s2_await_planning: SELECT pg_sleep(10) /* __spqr__execute_on: sh1 */;
 pg_sleep
 --------
         
 (1 row)
 
+step s2_await_task2: SELECT __spqr__await_task('zid2') /* __spqr__preferred_engine: v2 */;
 step s2_show_tg: select __spqr__console_execute('SHOW task_groups;') /*__spqr__preferred_engine: v2 */;
 step s2_show_kr: select __spqr__console_execute('SHOW key_ranges;') /*__spqr__preferred_engine: v2 */;
 key_range_id|shard_id|distribution_id|lower_bound|locked
@@ -266,5 +280,11 @@ step s3_clean: select __spqr__console_execute('drop distribution all cascade') /
 drop distribution   
 --------------------
 distribution id -> d
+(1 row)
+
+step s3_clean_tg: /* TODO: fix */ select __spqr__console_execute('drop task group zid') /*__spqr__preferred_engine: v2 */;
+drop task group     
+--------------------
+task group id -> zid
 (1 row)
 
