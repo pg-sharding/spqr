@@ -168,7 +168,8 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 	// Build the new column list with the added column at the beginning
 	originalContent := query[colsOpenInd+1 : colsCloseInd]
 	newColumnList := formatInsertValue(colname, originalContent)
-	newQuery := query[:colsOpenInd+1] + newColumnList
+	var newQuery strings.Builder
+	newQuery.WriteString(query[:colsOpenInd+1] + newColumnList)
 
 	// Find the VALUES keyword
 	valuesKeywordStart := strings.Index(strings.ToUpper(query[colsCloseInd:]), "VALUES")
@@ -178,7 +179,7 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 	valuesKeywordStart += colsCloseInd
 
 	// Add the part between column list and VALUES
-	newQuery += query[colsCloseInd : valuesKeywordStart+6] // +6 for "VALUES"
+	newQuery.WriteString(query[colsCloseInd : valuesKeywordStart+6]) // +6 for "VALUES"
 
 	// Find and process each VALUES clause
 	pos := valuesKeywordStart + 6
@@ -224,10 +225,10 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 		if first {
 			// First VALUES clause - preserve original spacing after VALUES keyword
 			spaceBetween := query[valuesKeywordStart+6 : valuesOpenInd]
-			newQuery += spaceBetween + "(" + newValuesContent + ")"
+			newQuery.WriteString(spaceBetween + "(" + newValuesContent + ")")
 			first = false
 		} else {
-			newQuery += ", (" + newValuesContent + ")"
+			newQuery.WriteString(", (" + newValuesContent + ")")
 		}
 
 		// Move past this VALUES clause
@@ -242,7 +243,7 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 		if pos >= len(query) || query[pos] != ',' {
 			// No more VALUES clauses, preserve the whitespace and add remaining query
 			if whitespaceStart < len(query) {
-				newQuery += query[whitespaceStart:]
+				newQuery.WriteString(query[whitespaceStart:])
 			}
 			break
 		}
@@ -251,7 +252,7 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 		pos++
 	}
 
-	return newQuery, nil
+	return newQuery.String(), nil
 }
 
 // formatInsertValue formats a new value to insert while preserving original formatting

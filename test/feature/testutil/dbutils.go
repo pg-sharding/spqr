@@ -2,16 +2,16 @@ package testutil
 
 import "database/sql"
 
-func CurrenRowToMap(r *sql.Rows) (map[string]interface{}, error) {
+func CurrenRowToMap(r *sql.Rows) (map[string]any, error) {
 	rowmap := make(map[string]any)
 	columns, err := r.Columns()
 	if err != nil {
 		return nil, err
 	}
 
-	values := make([]interface{}, len(columns))
+	values := make([]any, len(columns))
 	for i := range values {
-		values[i] = new(interface{})
+		values[i] = new(any)
 	}
 
 	err = r.Scan(values...)
@@ -20,7 +20,7 @@ func CurrenRowToMap(r *sql.Rows) (map[string]interface{}, error) {
 	}
 
 	for i, column := range columns {
-		rowmap[column] = *(values[i].(*interface{}))
+		rowmap[column] = *(values[i].(*any))
 	}
 
 	return rowmap, nil

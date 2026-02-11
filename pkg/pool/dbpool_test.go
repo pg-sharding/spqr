@@ -169,7 +169,7 @@ func TestDbPoolRaces(t *testing.T) {
 
 		for hi, hst := range hosts {
 
-			for j := 0; j < sz; j++ {
+			for j := range sz {
 				sh := mockshard.NewMockShardHostInstance(ctrl)
 
 				ins1 := mockinst.NewMockDBInstance(ctrl)

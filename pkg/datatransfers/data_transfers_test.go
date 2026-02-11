@@ -29,15 +29,13 @@ func TestConnectCreds(t *testing.T) {
 	assert := assert.New(t)
 	var wg sync.WaitGroup
 	for range 100 {
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			for range 100 {
 				err := LoadConfig("")
 				assert.NoError(err)
 				createConnString("sh1")
 			}
-			wg.Done()
-		}()
+		})
 	}
 	wg.Wait()
 	assert.True(true)

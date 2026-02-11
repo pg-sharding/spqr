@@ -10,8 +10,8 @@ import (
 func TestCalculateCoverage(t *testing.T) {
 	tests := []struct {
 		name     string
-		lower    interface{}
-		upper    interface{}
+		lower    any
+		upper    any
 		colType  string
 		expected string
 	}{

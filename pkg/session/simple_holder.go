@@ -1,6 +1,8 @@
 package session
 
 import (
+	"maps"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
@@ -36,9 +38,7 @@ type SimpleSessionParamHandler struct {
 func copymap(params map[string]string) map[string]string {
 	ret := make(map[string]string)
 
-	for k, v := range params {
-		ret[k] = v
-	}
+	maps.Copy(ret, params)
 
 	return ret
 }

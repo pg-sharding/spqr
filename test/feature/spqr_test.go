@@ -156,11 +156,11 @@ func (tctx *testContext) saveLogs(scenario string) error {
 		}
 	}
 	if len(errs) > 0 {
-		msg := ""
+		var msg strings.Builder
 		for _, err := range errs {
-			msg += err.Error() + "\n"
+			msg.WriteString(err.Error() + "\n")
 		}
-		return errors.New(msg)
+		return errors.New(msg.String())
 	}
 	return nil
 }
@@ -442,7 +442,7 @@ func (tctx *testContext) prepareQueryPostgresql(host, user, query string) error 
 	return nil
 }
 
-func (tctx *testContext) queryPreparedPostgresql(host, query string, args []interface{}) ([]map[string]any, error) {
+func (tctx *testContext) queryPreparedPostgresql(host, query string, args []any) ([]map[string]any, error) {
 	tctx.sqlQueryResult = nil
 	result, err := tctx.doPrepQueryPostgresql(host, query, args)
 	tctx.commandRetcode = 0
@@ -465,7 +465,7 @@ func (tctx *testContext) closePreparedPostgresql() {
 	}
 }
 
-func (tctx *testContext) doPrepQueryPostgresql(host, query string, args []interface{}) ([]map[string]any, error) {
+func (tctx *testContext) doPrepQueryPostgresql(host, query string, args []any) ([]map[string]any, error) {
 	if stmts, ok := tctx.preparedQueries[host]; !ok {
 		return nil, fmt.Errorf("Query '%s' is not prepared", query)
 	} else {
@@ -498,7 +498,7 @@ func (tctx *testContext) doPrepQueryPostgresql(host, query string, args []interf
 	}
 }
 
-func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.Duration, args []interface{}) ([]map[string]any, error) {
+func (tctx *testContext) queryPostgresql(host, user, query string, timeout time.Duration, args []any) ([]map[string]any, error) {
 	db, err := tctx.getPostgresqlConnection(user, host)
 	if err != nil {
 		return nil, err
@@ -580,7 +580,7 @@ func (tctx *testContext) stepIExecuteSqlInParallel(host string, timeout int, bod
 	return execErr
 }
 
-func (tctx *testContext) doPostgresqlQuery(db *sql.DB, query string, timeout time.Duration, args []interface{}) ([]map[string]any, error) {
+func (tctx *testContext) doPostgresqlQuery(db *sql.DB, query string, timeout time.Duration, args []any) ([]map[string]any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	var rows *sql.Rows
@@ -876,7 +876,7 @@ func (tctx *testContext) stepWaitPostgresqlToRespond(host string) error {
 	const trials = 10
 	const timeout = 20 * time.Second
 	for range trials {
-		_, err := tctx.queryPostgresql(host, shardUser, "SELECT 1", postgresqlQueryTimeout, make([]interface{}, 0))
+		_, err := tctx.queryPostgresql(host, shardUser, "SELECT 1", postgresqlQueryTimeout, make([]any, 0))
 		if err == nil {
 			return nil
 		}
@@ -942,21 +942,21 @@ func (tctx *testContext) stepCommandOutputShouldMatch(matcher string, body *godo
 func (tctx *testContext) stepIRunSQLOnHost(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(host, shardUser, query, postgresqlQueryTimeout, make([]interface{}, 0))
+	_, err := tctx.queryPostgresql(host, shardUser, query, postgresqlQueryTimeout, make([]any, 0))
 	return err
 }
 
 func (tctx *testContext) stepIRunSQLOnHostWithTimeout(host string, timeout int, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(host, shardUser, query, time.Duration(timeout)*time.Second, make([]interface{}, 0))
+	_, err := tctx.queryPostgresql(host, shardUser, query, time.Duration(timeout)*time.Second, make([]any, 0))
 	return err
 }
 
 func (tctx *testContext) stepIRunSQLOnHostAsUser(host string, user string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(host, user, query, postgresqlQueryTimeout, make([]interface{}, 0))
+	_, err := tctx.queryPostgresql(host, user, query, postgresqlQueryTimeout, make([]any, 0))
 	return err
 }
 
@@ -968,7 +968,7 @@ func (tctx *testContext) stepIPrepareSQLOnHost(host string, body *godog.DocStrin
 
 func (tctx *testContext) stepIRunPreparedSQLOnHost(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
-	_, err := tctx.queryPreparedPostgresql(host, query, make([]interface{}, 0))
+	_, err := tctx.queryPreparedPostgresql(host, query, make([]any, 0))
 	return err
 }
 

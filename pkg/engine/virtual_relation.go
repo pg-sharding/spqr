@@ -123,7 +123,7 @@ func KeyRangeVirtualRelationScanExtended(
 
 		next_lower_bound := "+inf"
 
-		var maxValue interface{}
+		var maxValue any
 		if nextKr != nil {
 			maxValue = nextKr.LowerBound[0]
 
@@ -170,7 +170,7 @@ func KeyRangeVirtualRelationScanExtended(
 	return tts, nil
 }
 
-func calculateCoverage(lowerBound, upperBound interface{}, colType string) string {
+func calculateCoverage(lowerBound, upperBound any, colType string) string {
 	switch colType {
 	case qdb.ColumnTypeInteger:
 		lower, ok := lowerBound.(int64)

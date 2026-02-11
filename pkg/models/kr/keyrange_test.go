@@ -49,8 +49,7 @@ func TestGetKRCondition(t *testing.T) {
 					{Column: "col1", HashFunction: "ident"},
 				},
 			},
-			krg: &kr.KeyRange{ID: "kr1", LowerBound: []interface {
-			}{
+			krg: &kr.KeyRange{ID: "kr1", LowerBound: []any{
 				0,
 			},
 				ColumnTypes: []string{"integer"},

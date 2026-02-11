@@ -377,10 +377,10 @@ func TestMemQDB_NextVal(t *testing.T) {
 	const increments = 1000
 	wg.Add(goroutines)
 
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
-			for j := 0; j < increments; j++ {
+			for range increments {
 				_, err := memqdb.NextRange(ctx, "seq", 1)
 				assert.NoError(err)
 			}

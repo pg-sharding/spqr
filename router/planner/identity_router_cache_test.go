@@ -110,10 +110,10 @@ func TestStepOne_concurrent(t *testing.T) {
 	const increments = 1000
 	wg.Add(goroutines)
 
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
-			for j := 0; j < increments; j++ {
+			for range increments {
 				_, err := identityMgr.NextVal(ctx, "testSeq")
 				assert.NoError(err)
 			}
@@ -150,10 +150,10 @@ func TestStepFive_concurrent(t *testing.T) {
 	const increments = 1000
 	wg.Add(goroutines)
 
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
-			for j := 0; j < increments; j++ {
+			for range increments {
 				_, err := identityMgr.NextVal(ctx, "testSeq")
 				assert.NoError(err)
 			}
