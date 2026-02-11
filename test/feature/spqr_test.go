@@ -1046,7 +1046,7 @@ func (tctx *testContext) stepSaveResponseBodyAtPathAsJSON(rowIndex string, colum
 		return fmt.Errorf("failed to get row index: %q not a number", rowIndex)
 	}
 	if i >= len(tctx.sqlQueryResult) {
-		return fmt.Errorf("failed to get row at index %q: index is out of range", i)
+		return fmt.Errorf("failed to get row at index %d: index is out of range", i)
 	}
 
 	a, b := tctx.sqlQueryResult[i][column]
