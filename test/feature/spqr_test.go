@@ -1239,7 +1239,7 @@ func (tctx *testContext) stepCoordinatorShouldTakeControl(leader string) error {
 	return nil
 }
 
-func (tctx *testContext) stepIWaitForCoordinatorAddressToBe(host string, leader string) error {
+func (tctx *testContext) stepWaitForCoordinatorAddressToBe(host string, leader string) error {
 	retryRes := testutil.Retry(
 		func() bool {
 			res, err := tctx.queryPostgresql(host, shardUser, "SHOW "+spqrparser.CoordinatorAddrStr, postgresqlQueryTimeout, make([]any, 0))
@@ -1471,7 +1471,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
 	s.Step(`^I wait for host "([^"]*)" to respond$`, tctx.stepWaitPostgresqlToRespond)
 	s.Step(`^I wait for coordinator "([^"]*)" to take control$`, tctx.stepCoordinatorShouldTakeControl)
-	s.Step(`^I wait for coordinator address on router "([^"]*)" to become "([^"]*)"$`, tctx.stepIWaitForCoordinatorAddressToBe)
+	s.Step(`^I wait for coordinator address on router "([^"]*)" to become "([^"]*)"$`, tctx.stepWaitForCoordinatorAddressToBe)
 	s.Step(`^I wait for "(\d+)" seconds for all key range moves to finish$`, tctx.stepWaitForAllKeyRangeMovesToFinish)
 	s.Step(`^qdb should not contain transfer tasks$`, tctx.stepQDBShouldNotContainTasks)
 	s.Step(`^I run SQL on host "([^"]*)", then stop the host after "(\d+)" seconds$`, tctx.stepIKillHostAfterQuery)
