@@ -173,6 +173,13 @@ func (ci grpcConnMgr) ClientPoolForeach(cb func(client client.ClientInfo) error)
 		spqrlog.Zero.Debug().Msg("fetch clients with grpc")
 		resp, err := rrClient.ListClients(ctx, nil)
 		if err != nil {
+			if st, ok := status.FromError(err); ok {
+				if st.Code() == codes.Unavailable {
+					// ignore this router
+					spqrlog.Zero.Err(err).Msg("router is unavailable")
+					return nil
+				}
+			}
 			spqrlog.Zero.Error().Msg("error fetching clients with grpc")
 			return err
 		}
