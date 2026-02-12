@@ -646,7 +646,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	dbName := fromShard.DB
 	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
 	hasher := murmur3.New64()
-	if _, err := hasher.Write(fmt.Appendf(nil, "%s_%s_%s", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)); err != nil {
+	if _, err := hasher.Write(fmt.Appendf(nil, "%s_%s_%s_%s_%s", toId, strings.Split(toShard.Hosts[0], ":")[0], dbName, fromId, fromHost)); err != nil {
 		return err
 	}
 	serverNameHash := hasher.Sum64()
