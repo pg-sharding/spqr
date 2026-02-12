@@ -883,7 +883,6 @@ func (tctx *testContext) stepWaitPostgresqlToRespond(host string) error {
 		}
 		time.Sleep(timeout)
 	}
-	log.Printf("host \"%s\" responded successfully", host)
 	return fmt.Errorf("host \"%s\" did not respond until timeout", host)
 }
 
