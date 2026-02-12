@@ -20,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/sethvargo/go-retry"
 
 	"github.com/cucumber/godog"
@@ -882,6 +883,7 @@ func (tctx *testContext) stepWaitPostgresqlToRespond(host string) error {
 		}
 		time.Sleep(timeout)
 	}
+	log.Printf("host \"%s\" responded successfully", host)
 	return fmt.Errorf("host \"%s\" did not respond until timeout", host)
 }
 
@@ -1238,6 +1240,37 @@ func (tctx *testContext) stepCoordinatorShouldTakeControl(leader string) error {
 	return nil
 }
 
+func (tctx *testContext) stepIWaitForCoordinatorAddressToBe(host string, leader string) error {
+	retryRes := testutil.Retry(
+		func() bool {
+			res, err := tctx.queryPostgresql(host, shardUser, "SHOW "+spqrparser.CoordinatorAddrStr, postgresqlQueryTimeout, make([]any, 0))
+			if err != nil {
+				log.Printf("error waiting for coordinator address: %s", err)
+				return false
+			}
+			if len(res) == 0 {
+				return false
+			}
+			v, ok := res[0][spqrparser.CoordinatorAddrStr]
+			if !ok {
+				log.Printf("got incorrect result waiting for coordinator address: %s", res)
+			}
+			actualLeader, ok := v.(string)
+			if !ok {
+				log.Printf("got incorrect result waiting for coordinator address: %s", res)
+				return false
+			}
+			return actualLeader == leader
+		},
+		time.Minute,
+		time.Second,
+	)
+	if !retryRes {
+		return fmt.Errorf("timed out waiting for \"%s\"'s coordinator address to be updated", host)
+	}
+	return nil
+}
+
 func (tctx *testContext) stepWaitForAllKeyRangeMovesToFinish(timeout int64) error {
 	const interval = time.Second
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(timeout)*time.Second)
@@ -1439,6 +1472,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
 	s.Step(`^I wait for host "([^"]*)" to respond$`, tctx.stepWaitPostgresqlToRespond)
 	s.Step(`^I wait for coordinator "([^"]*)" to take control$`, tctx.stepCoordinatorShouldTakeControl)
+	s.Step(`^I wait for coordinator address on router "([^"]*)" to become "([^"]*)"$`, tctx.stepIWaitForCoordinatorAddressToBe)
 	s.Step(`^I wait for "(\d+)" seconds for all key range moves to finish$`, tctx.stepWaitForAllKeyRangeMovesToFinish)
 	s.Step(`^qdb should not contain transfer tasks$`, tctx.stepQDBShouldNotContainTasks)
 	s.Step(`^I run SQL on host "([^"]*)", then stop the host after "(\d+)" seconds$`, tctx.stepIKillHostAfterQuery)

@@ -19,6 +19,7 @@ Feature: Proxy console
         #
         Given host "router2" is stopped
         And I wait for coordinator "regress_router" to take control
+        And I wait for coordinator address on router "router-admin" to become "regress_router:7003"
         And host "router2" is started
         And I wait for host "router2" to respond
 
@@ -28,7 +29,7 @@ Feature: Proxy console
         REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
         REGISTER ROUTER r2 ADDRESS "[regress_router_2]:7000";
         """
-        Then command return code should be "0"
+        Then command return code should be "0"        
 
 # TODO: check distributions in this test
     Scenario: Add key_range is executed in coordinator
