@@ -19,6 +19,7 @@ Feature: Proxy console
         #
         Given host "router2" is stopped
         And I wait for coordinator "regress_router" to take control
+        And I wait for coordinator address on router "router-admin" to become "regress_router:7003"
         And host "router2" is started
         And I wait for host "router2" to respond
 
