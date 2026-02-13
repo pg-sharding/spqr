@@ -395,7 +395,7 @@ func SetupFDW(
 	serverNameHash := hasher.Sum64()
 	serverName := fmt.Sprintf("spqr_transfer_server_%x", serverNameHash)
 	// create postgres_fdw server on receiving shard
-	_, err := to.Exec(ctx, fmt.Sprintf(`CREATE server IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s', fetch_size '10000', extensions 'spqrhash', updatable 'false', truncatable 'false')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1]))
+	_, err := to.Exec(ctx, fmt.Sprintf(`CREATE SERVER IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s', fetch_size '10000', extensions 'spqrhash', updatable 'false', truncatable 'false')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1]))
 	if err != nil {
 		return err
 	}
