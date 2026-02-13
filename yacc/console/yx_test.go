@@ -2101,3 +2101,64 @@ func TestUniqueIndex(t *testing.T) {
 		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
+
+func TestADDDeprecation(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query      string
+		shouldFail bool
+		errMsg     string
+	}
+
+	for _, tt := range []tcase{
+		{
+			query:      "ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+			shouldFail: true,
+			errMsg:     "ADD KEY RANGE is deprecated, use CREATE KEY RANGE instead",
+		},
+		{
+			query:      "ADD SHARD sh1 WITH HOSTS 'localhost:5432';",
+			shouldFail: true,
+			errMsg:     "ADD SHARD is deprecated, use CREATE SHARD instead",
+		},
+		{
+			query:      "ADD DISTRIBUTION ds1 COLUMN TYPES integer;",
+			shouldFail: true,
+			errMsg:     "ADD DISTRIBUTION is deprecated, use CREATE DISTRIBUTION instead",
+		},
+		{
+			query:      "CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+			shouldFail: false,
+			errMsg:     "",
+		},
+		{
+			query:      "CREATE SHARD sh1 WITH HOSTS 'localhost:5432';",
+			shouldFail: false,
+			errMsg:     "",
+		},
+		{
+			query:      "CREATE DISTRIBUTION ds1 COLUMN TYPES integer;",
+			shouldFail: false,
+			errMsg:     "",
+		},
+		{
+			query:      "ALTER DISTRIBUTION ds1 ADD DEFAULT SHARD sh1;",
+			shouldFail: false,
+			errMsg:     "",
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		if tt.shouldFail {
+			assert.Error(err, "query %s should fail", tt.query)
+			assert.ErrorContains(err, tt.errMsg, "query %s", tt.query)
+			assert.Nil(tmp, "query %s should return nil", tt.query)
+		} else {
+			assert.NoError(err, "query %s", tt.query)
+			assert.NotNil(tmp, "query %s should return result", tt.query)
+		}
+	}
+}

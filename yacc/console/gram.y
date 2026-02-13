@@ -740,19 +740,22 @@ drop_stmt:
 	}
 
 add_stmt:
-	// TODO: drop
+	// Deprecated: ADD is no longer supported, use CREATE instead
 	ADD distribution_define_stmt
 	{
-		$$ = &Create{Element: $2}
+		yylex.Error("ADD DISTRIBUTION is deprecated, use CREATE DISTRIBUTION instead")
+		return 1
 	}
 	|
 	ADD key_range_define_stmt
 	{
-		$$ = &Create{Element: $2}
+		yylex.Error("ADD KEY RANGE is deprecated, use CREATE KEY RANGE instead")
+		return 1
 	} |
 	ADD shard_define_stmt
 	{
-		$$ = &Create{Element: $2}
+		yylex.Error("ADD SHARD is deprecated, use CREATE SHARD instead")
+		return 1
 	}
 
 trace_stmt:
