@@ -1104,6 +1104,10 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	if req.SplitLeft {
 		krTemp.ID = req.SourceID
 		krOld.ID = req.Krid
+		if krOld.IsLocked == nil {
+			return fmt.Errorf("Unexpected nil isLocked value in Split")
+		}
+		*krOld.IsLocked = false
 		err = tranMngr.CreateKeyRange(ctx, krTemp)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("CreateKeyRange failed in Split")
