@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/router/client"
@@ -35,7 +36,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			Msg("client connection synced")
 		return nil
 	case *pgproto3.Query:
-		statistics.OnRequest()
+		rps.OnRequest()
 		statistics.RecordStartTime(statistics.StatisticsTypeRouter, time.Now(), rst.Client())
 
 		// copy interface

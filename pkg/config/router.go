@@ -11,6 +11,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"gopkg.in/yaml.v2"
 )
@@ -262,7 +263,7 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 		statistics.InitStatistics(rcfg.TimeQuantiles)
 	}
 
-	statistics.SetEnableRPSAggregation(rcfg.Qr.RouterRpsAggregation)
+	rps.SetEnableRPSAggregation(rcfg.Qr.RouterRpsAggregation)
 
 	/* init default_target_session_attrs as read-write if nothing else specified */
 	if rcfg.Qr.DefaultTSA == "" {

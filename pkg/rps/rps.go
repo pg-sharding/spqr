@@ -1,4 +1,4 @@
-package statistics
+package rps
 
 import (
 	"sync"
@@ -28,9 +28,10 @@ type RPSStats struct {
 	numBuckets    int
 	lastBucket    int
 	lastTime      time.Time
-	total         int64     // counter for requests in current window
+	total         int64     // requests in current sliding window (NOT the same as totalRequests —
+	//                        this gets decremented as old buckets rotate out)
 	peakRPS       float64   // highest RPS seen
-	totalRequests int64     // lifetime request count (atomic)
+	totalRequests int64     // lifetime request count (atomic, monotonically increasing)
 	startTime     time.Time // when tracking started
 
 	enabled int32 // atomic boolean

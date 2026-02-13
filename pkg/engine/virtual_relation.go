@@ -22,6 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
+	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
@@ -352,7 +353,7 @@ func InstanceVirtualRelationScan(ctx context.Context, ci connmgr.ConnectionMgr) 
 			"avg_rps",
 			"peak_rps")}
 
-	stats := statistics.GetRPSFullSnapshot()
+	stats := rps.GetRPSFullSnapshot()
 
 	tts.WriteDataRow(
 		fmt.Sprintf("%v", ci.TotalTcpCount()),
