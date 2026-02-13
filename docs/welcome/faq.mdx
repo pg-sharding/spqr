@@ -266,7 +266,7 @@ ALTER DISTRIBUTION {distribution_id} ADD DEFAULT SHARD {shard};
 
 **A:**
 
-1. Add a new shard in `router.yaml` / `coordinator.yaml` or via `ADD SHARD`.
+1. Add a new shard in `router.yaml` / `coordinator.yaml` or via `CREATE SHARD`.
 2. Reassign key ranges using:
 
    * `SPLIT KEY RANGE` — split range
