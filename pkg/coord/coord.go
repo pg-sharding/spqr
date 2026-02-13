@@ -1085,6 +1085,30 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		}
 	}
 
+	if !req.SplitLeft {
+		kr, err := kr.KeyRangeFromDB(
+			&qdb.KeyRange{
+				// fix multidim case
+				LowerBound:     req.Bound,
+				KeyRangeID:     req.Krid,
+				ShardID:        krOld.ShardID,
+				DistributionId: krOld.Distribution,
+			},
+			ds.ColTypes,
+		)
+		if err != nil {
+			return err
+		}
+		tranMngr := meta.NewTranEntityManager(qc)
+		if err := meta.CreateKeyRangeStrict(ctx, tranMngr, kr); err != nil {
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
+		}
+		if err = tranMngr.ExecNoTran(ctx); err != nil {
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range: %s", err.Error())
+		}
+		return nil
+	}
+
 	krTemp, err := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
 			// fix multidim case
@@ -1106,18 +1130,10 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range: %s", err.Error())
 	}
 
-	spqrlog.Zero.Debug().
-		Bytes("lower-bound", krTemp.Raw()[0]).
-		Str("shard-id", krTemp.ShardID).
-		Str("id", krTemp.ID).
-		Msg("new key range")
-
 	rightKr := req.Krid
-	if req.SplitLeft {
-		rightKr = krOld.ID
-		if err := qc.qdb.RenameKeyRange(ctx, krOld.ID, req.Krid); err != nil {
-			return err
-		}
+	rightKr = krOld.ID
+	if err := qc.qdb.RenameKeyRange(ctx, krOld.ID, req.Krid); err != nil {
+		return err
 	}
 
 	if err := qc.qdb.RenameKeyRange(ctx, krTemp.ID, rightKr); err != nil {
