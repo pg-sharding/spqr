@@ -204,7 +204,6 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 	respKR[0] = *resp
 
 	if keyRange.Locked {
-		// TODO: put lock to QDB here
 		resp, err := NewQdbStatement(CMD_PUT, LockPath(keyRange.KeyRangeID), string(rawKeyRange))
 		if err != nil {
 			return nil, err

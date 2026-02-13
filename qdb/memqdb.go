@@ -252,17 +252,6 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
 
-	// if err := func() error {
-	// 	q.mu.RLock()
-	// 	defer q.mu.RUnlock()
-	// 	if _, ok := q.Krs[keyRange.KeyRangeID]; ok {
-	// 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" already exists", keyRange.KeyRangeID)
-	// 	}
-	// 	return nil
-	// }(); err != nil {
-	// 	return nil, err
-	// }
-
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
