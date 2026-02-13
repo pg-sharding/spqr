@@ -226,7 +226,7 @@ func randomHex(n int) (string, error) {
 %type <kill> kill_stmt
 
 %type <drop> drop_stmt
-%type <create> create_stmt
+%type <create> add_stmt create_stmt
 
 %type <trace> trace_stmt
 %type <stoptrace> stoptrace_stmt
@@ -325,7 +325,11 @@ command:
 		$$ = nil
 	}
 	|
-	create_stmt
+	add_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| create_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -733,6 +737,22 @@ drop_stmt:
 				ID: $4,
 			},
 		}
+	}
+
+add_stmt:
+	// TODO: drop
+	ADD distribution_define_stmt
+	{
+		$$ = &Create{Element: $2}
+	}
+	|
+	ADD key_range_define_stmt
+	{
+		$$ = &Create{Element: $2}
+	} |
+	ADD shard_define_stmt
+	{
+		$$ = &Create{Element: $2}
 	}
 
 trace_stmt:
