@@ -234,7 +234,7 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 		} else {
 			commands[0] = *cmd
 		}
-		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, "{}", MapLocks); err != nil {
+		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapLocks); err != nil {
 			return nil, err
 		} else {
 			commands[1] = *cmd
@@ -243,13 +243,6 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 			return nil, err
 		} else {
 			commands[2] = *cmd
-		}
-		if keyRange.Locked {
-			if cmd, err := NewQdbStatementExt(CMD_LOCK, keyRange.KeyRangeID, "", MapLocks); err != nil {
-				return nil, err
-			} else {
-				commands = append(commands, *cmd)
-			}
 		}
 	}
 	return commands, nil
@@ -1624,19 +1617,17 @@ func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
 	case CMD_DELETE:
 		return NewDeleteCommand(q.Locks, stmt.Key), nil
 	case CMD_PUT:
-		return NewUpdateCommand(q.Locks, stmt.Key, &sync.RWMutex{}), nil
-	case CMD_LOCK:
-		return NewCustomCommand(func() error {
-			if lock, ok := q.Locks[stmt.Key]; ok {
-				return q.tryLockKeyRange(lock, stmt.Key, false)
+		lock := &sync.RWMutex{}
+		isLocked, err := strconv.ParseBool(stmt.Value)
+		if err != nil {
+			return nil, err
+		}
+		if isLocked {
+			if !lock.TryLock() {
+				return nil, fmt.Errorf("can't set lock memDB cmd %d", stmt.CmdType)
 			}
-			return nil
-		}, func() error {
-			if lock, ok := q.Locks[stmt.Key]; ok {
-				lock.Unlock()
-			}
-			return nil
-		}), nil
+		}
+		return NewUpdateCommand(q.Locks, stmt.Key, lock), nil
 	default:
 		return nil, fmt.Errorf("unsupported memDB cmd %d (lock)", stmt.CmdType)
 	}

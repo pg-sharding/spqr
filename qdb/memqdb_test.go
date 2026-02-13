@@ -619,3 +619,54 @@ func TestRestoreQDB_ValidJSON(t *testing.T) {
 
 	assert.Equal("coord-1", q.Coordinator)
 }
+
+func TestTransferCreateKeyRangeQdbCommand(t *testing.T) {
+
+	t.Run("locked false", func(t *testing.T) {
+		ctx := context.TODO()
+		is := assert.New(t)
+		memqdb, err := qdb.NewMemQDB("")
+		is.NoError(err)
+		chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+		is.NoError(err)
+		is.NoError(memqdb.ExecNoTransaction(ctx, chunk))
+		initKeyRange := &qdb.KeyRange{
+			KeyRangeID:     "krid1",
+			LowerBound:     [][]byte{[]byte("1")},
+			ShardID:        "sh1",
+			DistributionId: "ds1",
+			Locked:         false,
+		}
+		statements, err := memqdb.CreateKeyRange(ctx, initKeyRange)
+		is.NoError(err)
+		is.NoError(memqdb.ExecNoTransaction(ctx, statements))
+
+		lock, ok := memqdb.Locks["krid1"]
+		is.True(ok)
+		is.True(lock.TryLock()) // no locked key range krid1
+	})
+
+	t.Run("locked true", func(t *testing.T) {
+		ctx := context.TODO()
+		is := assert.New(t)
+		memqdb, err := qdb.NewMemQDB("")
+		is.NoError(err)
+		chunk, err := memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+		is.NoError(err)
+		is.NoError(memqdb.ExecNoTransaction(ctx, chunk))
+		initKeyRange := &qdb.KeyRange{
+			KeyRangeID:     "krid1",
+			LowerBound:     [][]byte{[]byte("1")},
+			ShardID:        "sh1",
+			DistributionId: "ds1",
+			Locked:         true,
+		}
+		statements, err := memqdb.CreateKeyRange(ctx, initKeyRange)
+		is.NoError(err)
+		is.NoError(memqdb.ExecNoTransaction(ctx, statements))
+
+		lock, ok := memqdb.Locks["krid1"]
+		is.True(ok)
+		is.False(lock.TryLock()) // locked key range krid1
+	})
+}

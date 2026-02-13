@@ -9,7 +9,6 @@ import (
 const (
 	CMD_PUT = iota
 	CMD_DELETE
-	CMD_LOCK
 )
 
 type QdbStatement struct {
@@ -21,7 +20,7 @@ type QdbStatement struct {
 }
 
 func NewQdbStatement(cmdType int32, key string, value string) (*QdbStatement, error) {
-	if cmdType != CMD_PUT && cmdType != CMD_DELETE && cmdType != CMD_LOCK {
+	if cmdType != CMD_PUT && cmdType != CMD_DELETE {
 		return nil, fmt.Errorf("unknown type of QdbStatement: %d", cmdType)
 	}
 	return &QdbStatement{CmdType: cmdType, Key: key, Value: value}, nil
