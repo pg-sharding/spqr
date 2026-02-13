@@ -467,7 +467,7 @@ Feature: Coordinator test
   Scenario: Adding/dropping shards works
     When I run SQL on host "coordinator"
     """
-    ADD SHARD sh3 WITH HOSTS "spqr_shard_3:6432";
+    CREATE SHARD sh3 WITH HOSTS "spqr_shard_3:6432";
     """
     Then command return code should be "0"
     When I run SQL on host "coordinator"
@@ -492,7 +492,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    ADD SHARD sh3 WITH HOSTS "yandex:6432";
+    CREATE SHARD sh3 WITH HOSTS "yandex:6432";
     """
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp

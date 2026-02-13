@@ -91,9 +91,9 @@ func TestSimpleLex(t *testing.T) {
 		},
 
 		{
-			query: "ADD KEY RANGE krid2 FROM '88888888-8888-8888-8888-888888888889' ROUTE TO sh2;",
+			query: "CREATE KEY RANGE krid2 FROM '88888888-8888-8888-8888-888888888889' ROUTE TO sh2;",
 			exp: []int{
-				spqrparser.ADD,
+				spqrparser.CREATE,
 				spqrparser.KEY,
 				spqrparser.RANGE,
 				spqrparser.IDENT,

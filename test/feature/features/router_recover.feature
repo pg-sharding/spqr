@@ -7,7 +7,7 @@ Feature: Router bootstrap test
     When I execute SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES INTEGER;
-    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     LOCK KEY RANGE krid1;
     """
     Then command return code should be "0"

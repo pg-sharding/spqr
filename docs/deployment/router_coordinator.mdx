@@ -58,8 +58,8 @@ psql "host=localhost port=7002 dbname=spqr_console user=spqr-console sslmode=dis
 Configure your sharding setup:
 
 ```sql
-ADD SHARD shard1 WITH HOSTS 'shard1-host:5432';
-ADD SHARD shard2 WITH HOSTS 'shard2-host:5432';
+CREATE SHARD shard1 WITH HOSTS 'shard1-host:5432';
+CREATE SHARD shard2 WITH HOSTS 'shard2-host:5432';
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 
@@ -140,7 +140,7 @@ REGISTER ROUTER router2 ADDRESS '[localhost]:7011';
 All configuration changes are made through the Coordinator's admin console:
 
 ```sql
-ADD SHARD shard3 WITH HOSTS 'shard3-host:5432';
+CREATE SHARD shard3 WITH HOSTS 'shard3-host:5432';
 CREATE KEY RANGE krid3 FROM 20000 ROUTE TO shard3 FOR DISTRIBUTION ds1;
 ```
 

@@ -8,8 +8,8 @@ Feature: Move recover test
     """
     REGISTER ROUTER r1 ADDRESS "[regress_router]:7000";
     CREATE DISTRIBUTION ds1 COLUMN TYPES INTEGER;
-    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
     """
     Then command return code should be "0"
@@ -522,8 +522,8 @@ Feature: Move recover test
     """
     REGISTER ROUTER r2 ADDRESS "[regress_router_2]:7000";
     DROP KEY RANGE ALL;
-    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     LOCK KEY RANGE krid2;
     """
     Then command return code should be "0"
@@ -552,8 +552,8 @@ Feature: Move recover test
     """
     UNLOCK KEY RANGE krid2;
     DROP KEY RANGE ALL;
-    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     LOCK KEY RANGE krid2;
     """
     Then command return code should be "0"
@@ -561,8 +561,8 @@ Feature: Move recover test
     """
     UNLOCK KEY RANGE krid2;
     DROP KEY RANGE ALL;
-    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     LOCK KEY RANGE krid2;
     """
     Then command return code should be "0"
@@ -1262,8 +1262,8 @@ Feature: Move recover test
     """
     REGISTER ROUTER r2 ADDRESS "[regress_router_2]:7000";
     DROP KEY RANGE ALL;
-    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     LOCK KEY RANGE krid2;
     """
     Then command return code should be "0"
@@ -1292,8 +1292,8 @@ Feature: Move recover test
     """
     UNLOCK KEY RANGE krid2;
     DROP KEY RANGE ALL;
-    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     LOCK KEY RANGE krid2;
     """
     Then command return code should be "0"
@@ -1301,8 +1301,8 @@ Feature: Move recover test
     """
     UNLOCK KEY RANGE krid2;
     DROP KEY RANGE ALL;
-    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     LOCK KEY RANGE krid2;
     """
     Then command return code should be "0"
@@ -1364,8 +1364,8 @@ Feature: Move recover test
     """
     REGISTER ROUTER r2 ADDRESS "[regress_router_2]:7000";
     DROP KEY RANGE ALL;
-    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     LOCK KEY RANGE krid2;
     """
     Then command return code should be "0"
@@ -1394,8 +1394,8 @@ Feature: Move recover test
     """
     UNLOCK KEY RANGE krid2;
     DROP KEY RANGE ALL;
-    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     LOCK KEY RANGE krid2;
     """
     Then command return code should be "0"
@@ -1403,8 +1403,8 @@ Feature: Move recover test
     """
     UNLOCK KEY RANGE krid2;
     DROP KEY RANGE ALL;
-    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     LOCK KEY RANGE krid2;
     """
     Then command return code should be "0"
