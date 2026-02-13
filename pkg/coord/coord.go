@@ -1105,24 +1105,21 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		krTemp.ID = req.SourceID
 		krOld.ID = req.Krid
 		if krOld.IsLocked == nil {
-			return fmt.Errorf("Unexpected nil isLocked value in Split")
+			return fmt.Errorf("unexpected nil isLocked value in Split")
 		}
 		*krOld.IsLocked = false
 		err = tranMngr.CreateKeyRange(ctx, krTemp)
 		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("CreateKeyRange failed in Split")
 			return fmt.Errorf("could not update source key range in left key range split: %s", err)
 		}
 		err = tranMngr.CreateKeyRange(ctx, krOld)
 		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("CreateKeyRange failed in Split")
 			return fmt.Errorf("could not create new key range in left key range split: %s", err)
 		}
 	} else {
 		krTemp.ID = req.Krid
 		err = tranMngr.CreateKeyRange(ctx, krTemp)
 		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("CreateKeyRange failed in Split")
 			return fmt.Errorf("could not create new key range in right key range split: %s", err)
 		}
 	}
