@@ -1041,15 +1041,11 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return err
 	}
 
-	if !req.SplitLeft {
-		// TODO: after convert split command into etcd transaction we no need in embracing "lock" "unlock".
-		// We'll just check existing lock at the start.
-		defer func() {
-			if err := qc.UnlockKeyRange(ctx, req.SourceID); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range in Split")
-			}
-		}()
-	}
+	defer func() {
+		if err := qc.UnlockKeyRange(ctx, req.SourceID); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range in Split")
+		}
+	}()
 
 	ds, err := qc.qdb.GetDistribution(ctx, krOldDB.DistributionId)
 
@@ -1085,30 +1081,6 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		}
 	}
 
-	if !req.SplitLeft {
-		kr, err := kr.KeyRangeFromDB(
-			&qdb.KeyRange{
-				// fix multidim case
-				LowerBound:     req.Bound,
-				KeyRangeID:     req.Krid,
-				ShardID:        krOld.ShardID,
-				DistributionId: krOld.Distribution,
-			},
-			ds.ColTypes,
-		)
-		if err != nil {
-			return err
-		}
-		tranMngr := meta.NewTranEntityManager(qc)
-		if err := meta.CreateKeyRangeStrict(ctx, tranMngr, kr); err != nil {
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
-		}
-		if err = tranMngr.ExecNoTran(ctx); err != nil {
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range: %s", err.Error())
-		}
-		return nil
-	}
-
 	krTemp, err := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
 			// fix multidim case
@@ -1122,24 +1094,37 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	if err != nil {
 		return err
 	}
+
 	tranMngr := meta.NewTranEntityManager(qc)
-	if err := meta.CreateKeyRangeStrict(ctx, tranMngr, krTemp); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
+
+	if err := meta.ValidateKeyRangeForCreate(ctx, tranMngr, krTemp); err != nil {
+		return err
+	}
+
+	if req.SplitLeft {
+		krTemp.ID = req.SourceID
+		krOld.ID = req.Krid
+		err = tranMngr.CreateKeyRange(ctx, krTemp)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("CreateKeyRange failed in Split")
+			return fmt.Errorf("could not update source key range in left key range split: %s", err)
+		}
+		err = tranMngr.CreateKeyRange(ctx, krOld)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("CreateKeyRange failed in Split")
+			return fmt.Errorf("could not create new key range in left key range split: %s", err)
+		}
+	} else {
+		krTemp.ID = req.Krid
+		err = tranMngr.CreateKeyRange(ctx, krTemp)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("CreateKeyRange failed in Split")
+			return fmt.Errorf("could not create new key range in right key range split: %s", err)
+		}
 	}
 	if err = tranMngr.ExecNoTran(ctx); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range: %s", err.Error())
 	}
-
-	rightKr := req.Krid
-	rightKr = krOld.ID
-	if err := qc.qdb.RenameKeyRange(ctx, krOld.ID, req.Krid); err != nil {
-		return err
-	}
-
-	if err := qc.qdb.RenameKeyRange(ctx, krTemp.ID, rightKr); err != nil {
-		return err
-	}
-
 	return nil
 }
 
