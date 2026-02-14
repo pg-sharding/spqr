@@ -20,15 +20,15 @@ func (realClock) Now() time.Time { return time.Now() }
 // It's a bit heavier than a simple counter, but gives much smoother "instant" numbers.
 // Thread-safe, naturally.
 type RPSStats struct {
-	mu            sync.RWMutex
-	clock         Clock
-	windowSize    time.Duration
-	buckets       []int64 // request counts per bucket
-	bucketDur     time.Duration
-	numBuckets    int
-	lastBucket    int
-	lastTime      time.Time
-	total         int64     // requests in current sliding window (NOT the same as totalRequests —
+	mu         sync.RWMutex
+	clock      Clock
+	windowSize time.Duration
+	buckets    []int64 // request counts per bucket
+	bucketDur  time.Duration
+	numBuckets int
+	lastBucket int
+	lastTime   time.Time
+	total      int64 // requests in current sliding window (NOT the same as totalRequests —
 	//                        this gets decremented as old buckets rotate out)
 	peakRPS       float64   // highest RPS seen
 	totalRequests int64     // lifetime request count (atomic, monotonically increasing)
