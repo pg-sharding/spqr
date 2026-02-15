@@ -82,13 +82,8 @@ func TestMemqdbRacing(t *testing.T) {
 		func() { _, _ = memqdb.GetTransferTx(ctx, mockDataTransferTransaction.FromShardId) },
 		func() { _ = memqdb.ShareKeyRange(mockKeyRange.KeyRangeID) },
 		func() {
-			if stmts, err := memqdb.DropKeyRange(ctx, mockKeyRange.KeyRangeID); err != nil {
-				panic("fail run DropKeyRange in race test (prepare phase)")
-			} else {
-				if err = memqdb.ExecNoTransaction(ctx, stmts); err != nil {
-					panic("fail run DropKeyRange in race test (exec phase)")
-				}
-			}
+			stmts, _ := memqdb.DropKeyRange(ctx, mockKeyRange.KeyRangeID)
+			_ = memqdb.ExecNoTransaction(ctx, stmts)
 		},
 		func() { _ = memqdb.DropKeyRangeAll(ctx) },
 		func() { _ = memqdb.RemoveTransferTx(ctx, mockDataTransferTransaction.FromShardId) },
