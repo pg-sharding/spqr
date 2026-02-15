@@ -2806,7 +2806,7 @@ func gossipMetaChanges(ctx context.Context, gossip *proto.MetaTransactionGossipR
 
 func (qc *ClusteredCoordinator) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionChunk) error {
 	for _, gossipRequest := range chunk.GossipRequests {
-		if gossipType := mtran.GetGossipRequestType(gossipRequest); gossipType == mtran.GR_UNKNOWN {
+		if _, recognized := mtran.GetGossipRequestType(gossipRequest); !recognized {
 			return fmt.Errorf("invalid meta transaction request (exec no tran)")
 		}
 	}
@@ -2821,7 +2821,7 @@ func (qc *ClusteredCoordinator) ExecNoTran(ctx context.Context, chunk *mtran.Met
 
 func (qc *ClusteredCoordinator) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
 	for _, gossipRequest := range transaction.Operations.GossipRequests {
-		if gossipType := mtran.GetGossipRequestType(gossipRequest); gossipType == mtran.GR_UNKNOWN {
+		if _, recognized := mtran.GetGossipRequestType(gossipRequest); !recognized {
 			return fmt.Errorf("invalid meta transaction request (commit tran)")
 		}
 	}

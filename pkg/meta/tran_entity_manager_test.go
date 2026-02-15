@@ -217,6 +217,58 @@ func TestTranGetKeyRange(t *testing.T) {
 		is.NoError(err)
 
 	})
+
+	t.Run("test drop key range", func(t *testing.T) {
+		ctx := context.Background()
+		memqdb, err := prepareDbTestValidate(ctx)
+		is.NoError(err)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+		var kr1 = &kr.KeyRange{
+			ID:           "kr1",
+			ShardID:      "sh1",
+			Distribution: "ds1",
+			LowerBound:   []any{int64(0)},
+			ColumnTypes:  []string{qdb.ColumnTypeInteger},
+			IsLocked:     &boolTrue,
+		}
+		statements, err := mngr.CreateKeyRange(ctx, kr1)
+		is.NoError(err)
+		err = memqdb.ExecNoTransaction(ctx, statements)
+		is.NoError(err)
+
+		tranMngr := meta.NewTranEntityManager(mngr)
+
+		var kr2 = &kr.KeyRange{
+			ID:           "kr2",
+			ShardID:      "sh1",
+			Distribution: "ds1",
+			LowerBound:   []any{int64(10)},
+			ColumnTypes:  []string{qdb.ColumnTypeInteger},
+			IsLocked:     &boolTrue,
+		}
+		err = meta.ValidateKeyRangeForCreate(ctx, tranMngr, kr2)
+		is.NoError(err)
+		err = tranMngr.CreateKeyRange(ctx, kr2)
+		//NO COMMIT QDB!!!
+
+		//drop all kr one by one
+		actualList, err := tranMngr.ListKeyRanges(ctx, "ds1")
+		is.NoError(err)
+		is.Equal([]*kr.KeyRange{kr2, kr1}, actualList)
+		err = tranMngr.DropKeyRange(ctx, "kr2")
+		is.NoError(err)
+		actualList, err = tranMngr.ListKeyRanges(ctx, "ds1")
+		is.NoError(err)
+		is.Equal([]*kr.KeyRange{kr1}, actualList)
+
+		err = tranMngr.DropKeyRange(ctx, "kr1")
+		is.NoError(err)
+		actualList, err = tranMngr.ListKeyRanges(ctx, "ds1")
+		is.NoError(err)
+		is.Equal([]*kr.KeyRange{}, actualList)
+
+	})
+
 }
 
 func TestTranState(t *testing.T) {

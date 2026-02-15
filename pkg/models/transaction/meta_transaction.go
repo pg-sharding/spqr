@@ -3,10 +3,12 @@ package meta_transaction
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/google/uuid"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
+	googleProto "google.golang.org/protobuf/proto"
 )
 
 type TransactionMgr interface {
@@ -62,9 +64,14 @@ type MetaTransactionChunk struct {
 
 // Any change in this enum must change GetGossipRequestType function
 const (
-	GR_UNKNOWN = iota
+	GR_ERROR = iota - 1
+	GR_UNKNOWN
 	GR_CreateDistributionRequest
 	GR_CreateKeyRange
+	GR_DropKeyRange
+	GR_DropKeyRangeAll
+	GR_LockKeyRange
+	GR_UnLockKeyRange
 )
 
 func NewMetaTransactionChunk(gossipRequests []*proto.MetaTransactionGossipCommand) *MetaTransactionChunk {
@@ -79,7 +86,7 @@ func NewEmptyMetaTransactionChunk() *MetaTransactionChunk {
 
 func (tc *MetaTransactionChunk) Append(gossipRequests []*proto.MetaTransactionGossipCommand) error {
 	for _, req := range gossipRequests {
-		if gossipType := GetGossipRequestType(req); gossipType == GR_UNKNOWN {
+		if _, recognized := GetGossipRequestType(req); !recognized {
 			return fmt.Errorf("invalid meta gossip command request")
 		}
 	}
@@ -98,25 +105,43 @@ func NewTransaction() (*MetaTransaction, error) {
 	}
 }
 
+func checkCommandPart(part googleProto.Message, current int, target int) int {
+	if current == GR_ERROR {
+		return current
+	}
+	if part == nil {
+		return current
+	}
+	v := reflect.ValueOf(part)
+	if v.Kind() == reflect.Ptr && !v.IsNil() {
+		if current != GR_UNKNOWN {
+			return GR_ERROR
+		} else {
+			return target
+		}
+	}
+	return current
+}
+
 // Checks algebraic type MetaTransactionGossipCommand and returns the command type
-// or GR_UNKNOWN if check failed
+// or GR_UNKNOWN, GR_ERROR if check failed
 //
 // Parameters:
 // - (request *proto.MetaTransactionGossipCommand): generic command
 //
 // Returns:
 // - type of command
-func GetGossipRequestType(request *proto.MetaTransactionGossipCommand) int {
+// - type is recognized
+func GetGossipRequestType(request *proto.MetaTransactionGossipCommand) (int, bool) {
 	result := GR_UNKNOWN
 	if request.CreateDistribution != nil {
 		result = GR_CreateDistributionRequest
 	}
-	if request.CreateKeyRange != nil {
-		if result != GR_UNKNOWN {
-			return GR_UNKNOWN
-		} else {
-			result = GR_CreateKeyRange
-		}
+	result = checkCommandPart(request.CreateKeyRange, result, GR_CreateKeyRange)
+	result = checkCommandPart(request.DropKeyRange, result, GR_DropKeyRange)
+	isRecognized := true
+	if result == GR_UNKNOWN || result == GR_ERROR {
+		isRecognized = false
 	}
-	return result
+	return result, isRecognized
 }
