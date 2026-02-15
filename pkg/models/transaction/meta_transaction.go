@@ -139,9 +139,5 @@ func GetGossipRequestType(request *proto.MetaTransactionGossipCommand) (int, boo
 	}
 	result = checkCommandPart(request.CreateKeyRange, result, GR_CreateKeyRange)
 	result = checkCommandPart(request.DropKeyRange, result, GR_DropKeyRange)
-	isRecognized := true
-	if result == GR_UNKNOWN || result == GR_ERROR {
-		isRecognized = false
-	}
-	return result, isRecognized
+	return result, result != GR_UNKNOWN && result != GR_ERROR
 }

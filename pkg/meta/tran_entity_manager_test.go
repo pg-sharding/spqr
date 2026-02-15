@@ -249,6 +249,7 @@ func TestTranGetKeyRange(t *testing.T) {
 		err = meta.ValidateKeyRangeForCreate(ctx, tranMngr, kr2)
 		is.NoError(err)
 		err = tranMngr.CreateKeyRange(ctx, kr2)
+		is.NoError(err)
 		//NO COMMIT QDB!!!
 
 		//drop all kr one by one
