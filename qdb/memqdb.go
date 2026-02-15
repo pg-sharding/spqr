@@ -248,6 +248,28 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 	return commands, nil
 }
 
+func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeId string) ([]QdbStatement, error) {
+	commands := make([]QdbStatement, 3)
+
+	if cmd, err := NewQdbStatementExt(CMD_DELETE, keyRangeId, "", MapKrs); err != nil {
+		return nil, err
+	} else {
+		commands[0] = *cmd
+	}
+	if cmd, err := NewQdbStatementExt(CMD_DELETE, keyRangeId, "", MapLocks); err != nil {
+		return nil, err
+	} else {
+		commands[1] = *cmd
+	}
+	if cmd, err := NewQdbStatementExt(CMD_DELETE, keyRangeId, "", MapFreq); err != nil {
+		return nil, err
+	} else {
+		commands[2] = *cmd
+	}
+
+	return commands, nil
+}
+
 // TODO : unit tests
 func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
@@ -306,27 +328,26 @@ func (q *MemQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) DropKeyRange(_ context.Context, id string) error {
-	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: drop key range")
+func (q *MemQDB) DropKeyRange(_ context.Context, keyRangeId string) ([]QdbStatement, error) {
+	spqrlog.Zero.Debug().Str("key-range", keyRangeId).Msg("memqdb: drop key range")
 
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	_, ok := q.Krs[id]
+	_, ok := q.Krs[keyRangeId]
 	if !ok {
-		return nil
+		return []QdbStatement{}, nil
 	}
 
-	lock, ok := q.Locks[id]
+	lock, ok := q.Locks[keyRangeId]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("no lock in MemQDB for key range \"%s\"", id))
+		return nil, spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("no lock in MemQDB for key range \"%s\"", keyRangeId))
 	}
 	if !lock.TryLock() {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", keyRangeId)
 	}
 	defer lock.Unlock()
-
-	return ExecuteCommands(q.DumpState, q.dropKeyRangeCommands(id)...)
+	return q.dropKeyRangeQdbStatements(keyRangeId)
 }
 
 // TODO : unit tests
