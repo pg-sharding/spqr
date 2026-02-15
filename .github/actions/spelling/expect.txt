@@ -581,6 +581,7 @@ TOPENSQBR
 tpcc
 tran
 TRASCE
+truncatable
 tsa
 TSEMICOLON
 tstmt
@@ -652,5 +653,4 @@ YMid
 youtube
 yylex
 zerolog
-zid
 ZWQy
