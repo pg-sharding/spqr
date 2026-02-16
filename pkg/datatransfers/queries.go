@@ -20,6 +20,7 @@ begin
 	AND (a.application_name IS NULL OR NOT (a.application_name like '%s%%'))
 	AND a.query !~* E'^\\\\s*vacuum\\\\s+' 
 	AND a.query !~ E'^autovacuum: ' 
+	AND a.query !~ E'repack'
 	AND ((d.datname IS NULL OR d.datname = current_database()) OR l.database = 0);
 
 	RAISE NOTICE 'v_pids = %%', v_pids;
