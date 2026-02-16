@@ -1,6 +1,6 @@
 \c spqr-console
 -- SETUP
-CREATE DISTRIBUTION ds1 COLUMN TYPES int hash;
+CREATE DISTRIBUTION ds1 (int hash);
 
 -- MURMUR hash reduces input to one uint32 integer
 -- so we route on the set of all unsigned 32-bit integers (0 to 4294967295)

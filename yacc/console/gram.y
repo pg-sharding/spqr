@@ -1105,6 +1105,9 @@ distribution_define_stmt:
 opt_col_types:
 	COLUMN TYPES col_types_list {
 		$$ = $3
+	} | TOPENBR col_types_list TCLOSEBR {
+		/* modern variant */
+		$$ = $2
 	} | { 
 		/* empty column types should be prohibited */
 		$$ = nil 
