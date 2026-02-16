@@ -44,7 +44,7 @@ type MemQDB struct {
 	StopMoveTaskGroup    map[string]bool                     `json:"stop_move_task_group"`
 	MoveTasks            map[string]*MoveTask                `json:"move_tasks"`
 	TotalKeys            map[string]int64                    `json:"total_keys"`
-	RedistributeTask     *RedistributeTask                   `json:"redistribute_ask"`
+	RedistributeTasks    map[string]*RedistributeTask        `json:"redistribute_ask"`
 	BalancerTask         *BalancerTask                       `json:"balancer_task"`
 	ReferenceRelations   map[string]*ReferenceRelation       `json:"reference_relations"`
 	Sequences            map[string]bool                     `json:"sequences"`
@@ -81,6 +81,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		SequenceToValues:     map[string]int64{},
 		ReferenceRelations:   map[string]*ReferenceRelation{},
 		MoveTaskGroups:       map[string]*MoveTaskGroup{},
+		RedistributeTasks:    map[string]*RedistributeTask{},
 		TaskGroupIDToStatus:  map[string]*TaskGroupStatus{},
 		StopMoveTaskGroup:    map[string]bool{},
 		TotalKeys:            map[string]int64{},
@@ -1335,32 +1336,61 @@ func (q *MemQDB) RemoveMoveTask(ctx context.Context, id string) error {
 }
 
 // TODO: unit tests
-func (q *MemQDB) GetRedistributeTask(_ context.Context) (*RedistributeTask, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: get redistribute task")
+func (q *MemQDB) ListRedistributeTasks(_ context.Context) ([]*RedistributeTask, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: list redistribute tasks")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.RedistributeTask, nil
+	res := make([]*RedistributeTask, 0, len(q.RedistributeTasks))
+	for _, task := range q.RedistributeTasks {
+		res = append(res, task)
+	}
+	return res, nil
 }
 
 // TODO: unit tests
-func (q *MemQDB) WriteRedistributeTask(_ context.Context, task *RedistributeTask) error {
-	spqrlog.Zero.Debug().Msg("memqdb: write redistribute task")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+func (q *MemQDB) GetRedistributeTask(_ context.Context, id string) (*RedistributeTask, error) {
+	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: get redistribute task")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
-	q.RedistributeTask = task
-	return nil
+	return q.RedistributeTasks[id], nil
 }
 
 // TODO: unit tests
-func (q *MemQDB) RemoveRedistributeTask(_ context.Context) error {
-	spqrlog.Zero.Debug().Msg("memqdb: remove redistribute task")
+func (q *MemQDB) CreateRedistributeTask(_ context.Context, task *RedistributeTask) error {
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: create redistribute task")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.RedistributeTask = nil
-	return nil
+	if _, ok := q.RedistributeTasks[task.ID]; ok {
+		return fmt.Errorf("could not create redistribute task: redistribute task with ID \"%s\" already exists in QDB", task.ID)
+	}
+	q.RedistributeTasks[task.ID] = task
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.RedistributeTasks, task.ID, task))
+}
+
+// TODO: unit tests
+func (q *MemQDB) UpdateRedistributeTask(_ context.Context, task *RedistributeTask) error {
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: update redistribute task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if _, ok := q.RedistributeTasks[task.ID]; !ok {
+		return fmt.Errorf("could not udpate redistribute task: redistribute task with ID \"%s\" doesn't exist in QDB", task.ID)
+	}
+	q.RedistributeTasks[task.ID] = task
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.RedistributeTasks, task.ID, task))
+}
+
+// TODO: unit tests
+func (q *MemQDB) RemoveRedistributeTask(_ context.Context, id string) error {
+	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: remove redistribute task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	delete(q.RedistributeTasks, id)
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.RedistributeTasks, id))
 }
 
 // TODO: unit tests

@@ -76,6 +76,7 @@ const (
 )
 
 type RedistributeTask struct {
+	ID          string
 	TaskGroupId string
 	KeyRangeId  string
 	ShardId     string
@@ -574,6 +575,7 @@ func RedistributeTaskFromProto(task *protos.RedistributeTask) *RedistributeTask 
 
 func RedistributeTaskToDB(task *RedistributeTask) *qdb.RedistributeTask {
 	return &qdb.RedistributeTask{
+		ID:          task.ID,
 		TaskGroupId: task.TaskGroupId,
 		KeyRangeId:  task.KeyRangeId,
 		ShardId:     task.ShardId,
@@ -584,6 +586,7 @@ func RedistributeTaskToDB(task *RedistributeTask) *qdb.RedistributeTask {
 
 func RedistributeTaskFromDB(task *qdb.RedistributeTask) *RedistributeTask {
 	return &RedistributeTask{
+		ID:          task.ID,
 		TaskGroupId: task.TaskGroupId,
 		KeyRangeId:  task.KeyRangeId,
 		ShardId:     task.ShardId,

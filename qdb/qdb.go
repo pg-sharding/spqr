@@ -133,9 +133,11 @@ type QDB interface {
 	GetMoveTaskByGroup(ctx context.Context, taskGroupId string) (*MoveTask, error)
 
 	// Redistribute tasks
-	GetRedistributeTask(ctx context.Context) (*RedistributeTask, error)
-	WriteRedistributeTask(ctx context.Context, task *RedistributeTask) error
-	RemoveRedistributeTask(ctx context.Context) error
+	ListRedistributeTasks(ctx context.Context) ([]*RedistributeTask, error)
+	GetRedistributeTask(ctx context.Context, id string) (*RedistributeTask, error)
+	CreateRedistributeTask(ctx context.Context, task *RedistributeTask) error
+	UpdateRedistributeTask(ctx context.Context, task *RedistributeTask) error
+	RemoveRedistributeTask(ctx context.Context, id string) error
 
 	// Balancer interaction
 	GetBalancerTask(ctx context.Context) (*BalancerTask, error)

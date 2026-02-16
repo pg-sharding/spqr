@@ -65,7 +65,7 @@ const (
 	taskGroupStatusesNamespace       = "/task_group_statuses/"
 	taskGroupLocksNamespace          = "/task_group_locks/"
 	moveTaskNamespace                = "/move_tasks/"
-	redistributeTaskPath             = "/redistribute_task/"
+	redistributeTasksNamespace       = "/redistribute_tasks/"
 	balancerTaskPath                 = "/balancer_task/"
 	transactionNamespace             = "/transfer_txs/"
 	sequenceNamespace                = "/sequences/"
@@ -166,6 +166,10 @@ func moveTaskNodePath(id string) string {
 
 func moveTaskByGroupNodePath(taskGroupID string) string {
 	return path.Join(moveTaskByGroupNamespace, taskGroupID)
+}
+
+func redistributeTaskNodePath(id string) string {
+	return path.Join(redistributeTasksNamespace, id)
 }
 
 func keyRangeLockNamespace() string {
@@ -2092,12 +2096,35 @@ func (q *EtcdQDB) RemoveMoveTask(ctx context.Context, id string) error {
 	return err
 }
 
-// TODO: unit tests
-func (q *EtcdQDB) GetRedistributeTask(ctx context.Context) (*RedistributeTask, error) {
+func (q *EtcdQDB) ListRedistributeTasks(ctx context.Context) ([]*RedistributeTask, error) {
 	spqrlog.Zero.Debug().
+		Msg("etcdqdb: list redistribute tasks")
+
+	resp, err := q.cli.Get(ctx, redistributeTasksNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*RedistributeTask, len(resp.Kvs))
+
+	for i, kv := range resp.Kvs {
+		var task *RedistributeTask
+		if err := json.Unmarshal(kv.Value, &task); err != nil {
+			return nil, err
+		}
+		res[i] = task
+	}
+
+	return res, nil
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) GetRedistributeTask(ctx context.Context, id string) (*RedistributeTask, error) {
+	spqrlog.Zero.Debug().
+		Str("id", id).
 		Msg("etcdqdb: get redistribute task")
 
-	resp, err := q.cli.Get(ctx, redistributeTaskPath)
+	resp, err := q.cli.Get(ctx, redistributeTaskNodePath(id))
 	if err != nil {
 		return nil, err
 	}
@@ -2115,25 +2142,54 @@ func (q *EtcdQDB) GetRedistributeTask(ctx context.Context) (*RedistributeTask, e
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) WriteRedistributeTask(ctx context.Context, task *RedistributeTask) error {
+func (q *EtcdQDB) CreateRedistributeTask(ctx context.Context, task *RedistributeTask) error {
 	spqrlog.Zero.Debug().
-		Msg("etcdqdb: write redistribute task")
+		Str("id", task.ID).
+		Msg("etcdqdb: create redistribute task")
 
 	taskJson, err := json.Marshal(task)
 	if err != nil {
 		return err
 	}
 
-	_, err = q.cli.Put(ctx, redistributeTaskPath, string(taskJson))
-	return err
+	resp, err := q.cli.Txn(ctx).If(clientv3util.KeyMissing(redistributeTaskNodePath(task.ID))).Then(clientv3.OpPut(redistributeTaskNodePath(task.ID), string(taskJson))).Commit()
+	if err != nil {
+		return fmt.Errorf("could not create redistribute task: error executing transaction: %s", err)
+	}
+	if !resp.Succeeded {
+		return fmt.Errorf("could not create redistribute task: redistribute task with ID \"%s\" already exists in QDB", task.ID)
+	}
+	return nil
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) RemoveRedistributeTask(ctx context.Context) error {
+func (q *EtcdQDB) UpdateRedistributeTask(ctx context.Context, task *RedistributeTask) error {
 	spqrlog.Zero.Debug().
+		Str("id", task.ID).
+		Msg("etcdqdb: update redistribute task")
+
+	taskJson, err := json.Marshal(task)
+	if err != nil {
+		return err
+	}
+
+	resp, err := q.cli.Txn(ctx).If(clientv3util.KeyExists(redistributeTaskNodePath(task.ID))).Then(clientv3.OpPut(redistributeTaskNodePath(task.ID), string(taskJson))).Commit()
+	if err != nil {
+		return fmt.Errorf("could not update redistribute task: error executing transaction: %s", err)
+	}
+	if !resp.Succeeded {
+		return fmt.Errorf("could not update redistribute task: redistribute task with ID \"%s\" doesn't exist in QDB", task.ID)
+	}
+	return nil
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) RemoveRedistributeTask(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
 		Msg("etcdqdb: remove redistribute task")
 
-	_, err := q.cli.Delete(ctx, redistributeTaskPath)
+	_, err := q.cli.Delete(ctx, redistributeTaskNodePath(id))
 	return err
 }
 
