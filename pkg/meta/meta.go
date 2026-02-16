@@ -94,11 +94,11 @@ func processDrop(ctx context.Context,
 			} else {
 				tts := &tupleslot.TupleTableSlot{}
 
-				tts.Desc = engine.GetVPHeader("drop key range")
+				tts.Desc = engine.GetVPHeader("key_range_id")
 
 				for _, k := range krs {
 					tts.Raw = append(tts.Raw, [][]byte{
-						fmt.Appendf(nil, "key range id -> %s", k.ID),
+						[]byte(k.ID),
 					})
 				}
 
@@ -113,10 +113,10 @@ func processDrop(ctx context.Context,
 
 			tts := &tupleslot.TupleTableSlot{}
 
-			tts.Desc = engine.GetVPHeader("drop key range")
+			tts.Desc = engine.GetVPHeader("key_range_id")
 
 			tts.Raw = append(tts.Raw, [][]byte{
-				fmt.Appendf(nil, "key range id -> %s", stmt.KeyRangeID),
+				[]byte(stmt.KeyRangeID),
 			})
 
 			return tts, err
@@ -142,14 +142,12 @@ func processDrop(ctx context.Context,
 		}
 
 		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("drop reference relation"),
+			Desc: engine.GetVPHeader("relation_name"),
 		}
 
-		tts.Raw = [][][]byte{
-			{
-				fmt.Appendf(nil, "relation -> %s", stmt.ID),
-			},
-		}
+		tts.Raw = [][][]byte{{
+			[]byte(stmt.ID),
+		}}
 
 		return tts, nil
 	case *spqrparser.DistributionSelector:
@@ -210,11 +208,11 @@ func processDrop(ctx context.Context,
 			}
 
 			tts := &tupleslot.TupleTableSlot{
-				Desc: engine.GetVPHeader("drop distribution"),
+				Desc: engine.GetVPHeader("distribution_id"),
 			}
 
 			tts.Raw = append(tts.Raw, [][]byte{
-				fmt.Appendf(nil, "distribution id -> %s", stmt.ID),
+				[]byte(stmt.ID),
 			})
 
 			return tts, nil
@@ -240,12 +238,12 @@ func processDrop(ctx context.Context,
 		}
 
 		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("drop distribution"),
+			Desc: engine.GetVPHeader("distribution_id"),
 		}
 
 		for _, id := range ret {
 			tts.Raw = append(tts.Raw, [][]byte{
-				fmt.Appendf(nil, "distribution id -> %s", id),
+				[]byte(id),
 			})
 		}
 
@@ -275,9 +273,9 @@ func processDrop(ctx context.Context,
 		}
 		tts := &tupleslot.TupleTableSlot{}
 
-		tts.Desc = engine.GetVPHeader("drop shard")
+		tts.Desc = engine.GetVPHeader("shard_id")
 		tts.Raw = append(tts.Raw, [][]byte{
-			fmt.Appendf(nil, "shard id -> %s", stmt.ID),
+			[]byte(stmt.ID),
 		})
 
 		return tts, nil
@@ -288,14 +286,14 @@ func processDrop(ctx context.Context,
 		}
 
 		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("drop task group"),
+			Desc: engine.GetVPHeader("task_group_id"),
 		}
 		if tg != nil {
 			if err := mngr.RemoveMoveTaskGroup(ctx, stmt.ID); err != nil {
 				return nil, err
 			}
 			tts.Raw = append(tts.Raw, [][]byte{
-				fmt.Appendf(nil, "task group id -> %s", stmt.ID),
+				[]byte(stmt.ID),
 			})
 		}
 		return tts, nil
@@ -319,10 +317,10 @@ func processDrop(ctx context.Context,
 		}
 
 		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("drop sequence"),
+			Desc: engine.GetVPHeader("name"),
 			Raw: [][][]byte{
 				{
-					fmt.Appendf(nil, "sequence -> %s", stmt.Name),
+					[]byte(stmt.Name),
 				},
 			},
 		}
@@ -333,10 +331,10 @@ func processDrop(ctx context.Context,
 			return nil, err
 		}
 		return &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("drop unique index"),
+			Desc: engine.GetVPHeader("id"),
 			Raw: [][][]byte{
 				{
-					fmt.Appendf(nil, "unique index -> %s", stmt.ID),
+					[]byte(stmt.ID),
 				},
 			},
 		}, nil
