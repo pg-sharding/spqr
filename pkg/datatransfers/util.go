@@ -6,8 +6,10 @@ import (
 	"strings"
 
 	pgx "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/tracelog"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 // GetConnStrings generates connection strings based on the ShardConnect fields.
@@ -39,7 +41,19 @@ func GetConnStrings(s *config.ShardConnect) []string {
 // TODO: unit tests
 func GetMasterConnection(ctx context.Context, s *config.ShardConnect) (*pgx.Conn, error) {
 	for _, dsn := range GetConnStrings(s) {
-		conn, err := pgx.Connect(ctx, dsn)
+		connConfig, err := pgx.ParseConfig(dsn)
+		if err != nil {
+			return nil, err
+		}
+		level, err := tracelog.LogLevelFromString(config.CoordinatorConfig().DataMoveQueryLogLevel)
+		if err != nil {
+			return nil, err
+		}
+		connConfig.Tracer = &tracelog.TraceLog{
+			Logger:   &spqrlog.ZeroTraceLogger{},
+			LogLevel: level,
+		}
+		conn, err := pgx.ConnectConfig(ctx, connConfig)
 		if err != nil {
 			return nil, err
 		}
