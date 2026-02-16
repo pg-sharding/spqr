@@ -740,6 +740,22 @@ func (qc *Coordinator) GetAllTaskGroupStatuses(ctx context.Context) (map[string]
 	return res, nil
 }
 
+func (qc *Coordinator) ListRedistributeTasks(ctx context.Context) ([]*tasks.RedistributeTask, error) {
+	tasksDb, err := qc.qdb.ListRedistributeTasks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*tasks.RedistributeTask, len(tasksDb))
+	for i, taskDb := range tasksDb {
+		res[i] = tasks.RedistributeTaskFromDB(taskDb)
+	}
+	return res, nil
+}
+
+func (qc *Coordinator) DropRedistributeTask(ctx context.Context, id string) error {
+	return qc.qdb.RemoveRedistributeTask(ctx, id)
+}
+
 // TODO : unit tests
 
 // ListDistributions retrieves a list of distributions from the local coordinator's QDB.

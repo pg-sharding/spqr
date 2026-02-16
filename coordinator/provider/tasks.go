@@ -12,6 +12,7 @@ import (
 type TasksServer struct {
 	protos.UnimplementedMoveTasksServiceServer
 	protos.UnimplementedBalancerTaskServiceServer
+	protos.UnimplementedRedistributeTaskServiceServer
 
 	impl coordinator.Coordinator
 }
@@ -122,4 +123,20 @@ func (t TasksServer) GetAllMoveTaskGroupStatuses(ctx context.Context, _ *emptypb
 	return &protos.GetAllMoveTaskGroupStatusesReply{
 		Statuses: res,
 	}, nil
+}
+
+func (t TasksServer) ListRedistributeTasks(ctx context.Context, _ *emptypb.Empty) (*protos.ListRedistributeTasksReply, error) {
+	tasksInt, err := t.impl.ListRedistributeTasks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*protos.RedistributeTask, len(tasksInt))
+	for i, task := range tasksInt {
+		res[i] = tasks.RedistributeTaskToProto(task)
+	}
+	return &protos.ListRedistributeTasksReply{Tasks: res}, nil
+}
+
+func (t TasksServer) DropRedistributeTask(ctx context.Context, req *protos.RedistributeTaskSelector) (*emptypb.Empty, error) {
+	return nil, t.impl.DropRedistributeTask(ctx, req.Id)
 }

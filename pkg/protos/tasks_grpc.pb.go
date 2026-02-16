@@ -642,8 +642,7 @@ var BalancerTaskService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	RedistributeTaskService_GetRedistributeTask_FullMethodName    = "/spqr.RedistributeTaskService/GetRedistributeTask"
-	RedistributeTaskService_WriteRedistributeTask_FullMethodName  = "/spqr.RedistributeTaskService/WriteRedistributeTask"
+	RedistributeTaskService_ListRedistributeTasks_FullMethodName  = "/spqr.RedistributeTaskService/ListRedistributeTasks"
 	RedistributeTaskService_RemoveRedistributeTask_FullMethodName = "/spqr.RedistributeTaskService/RemoveRedistributeTask"
 )
 
@@ -651,9 +650,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RedistributeTaskServiceClient interface {
-	GetRedistributeTask(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetRedistributeTaskReply, error)
-	WriteRedistributeTask(ctx context.Context, in *WriteRedistributeTaskRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	RemoveRedistributeTask(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListRedistributeTasks(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListRedistributeTasksReply, error)
+	RemoveRedistributeTask(ctx context.Context, in *RedistributeTaskSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type redistributeTaskServiceClient struct {
@@ -664,27 +662,17 @@ func NewRedistributeTaskServiceClient(cc grpc.ClientConnInterface) RedistributeT
 	return &redistributeTaskServiceClient{cc}
 }
 
-func (c *redistributeTaskServiceClient) GetRedistributeTask(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetRedistributeTaskReply, error) {
+func (c *redistributeTaskServiceClient) ListRedistributeTasks(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListRedistributeTasksReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetRedistributeTaskReply)
-	err := c.cc.Invoke(ctx, RedistributeTaskService_GetRedistributeTask_FullMethodName, in, out, cOpts...)
+	out := new(ListRedistributeTasksReply)
+	err := c.cc.Invoke(ctx, RedistributeTaskService_ListRedistributeTasks_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *redistributeTaskServiceClient) WriteRedistributeTask(ctx context.Context, in *WriteRedistributeTaskRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, RedistributeTaskService_WriteRedistributeTask_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *redistributeTaskServiceClient) RemoveRedistributeTask(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *redistributeTaskServiceClient) RemoveRedistributeTask(ctx context.Context, in *RedistributeTaskSelector, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, RedistributeTaskService_RemoveRedistributeTask_FullMethodName, in, out, cOpts...)
@@ -698,9 +686,8 @@ func (c *redistributeTaskServiceClient) RemoveRedistributeTask(ctx context.Conte
 // All implementations must embed UnimplementedRedistributeTaskServiceServer
 // for forward compatibility.
 type RedistributeTaskServiceServer interface {
-	GetRedistributeTask(context.Context, *emptypb.Empty) (*GetRedistributeTaskReply, error)
-	WriteRedistributeTask(context.Context, *WriteRedistributeTaskRequest) (*emptypb.Empty, error)
-	RemoveRedistributeTask(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	ListRedistributeTasks(context.Context, *emptypb.Empty) (*ListRedistributeTasksReply, error)
+	RemoveRedistributeTask(context.Context, *RedistributeTaskSelector) (*emptypb.Empty, error)
 	mustEmbedUnimplementedRedistributeTaskServiceServer()
 }
 
@@ -711,13 +698,10 @@ type RedistributeTaskServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedRedistributeTaskServiceServer struct{}
 
-func (UnimplementedRedistributeTaskServiceServer) GetRedistributeTask(context.Context, *emptypb.Empty) (*GetRedistributeTaskReply, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetRedistributeTask not implemented")
+func (UnimplementedRedistributeTaskServiceServer) ListRedistributeTasks(context.Context, *emptypb.Empty) (*ListRedistributeTasksReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListRedistributeTasks not implemented")
 }
-func (UnimplementedRedistributeTaskServiceServer) WriteRedistributeTask(context.Context, *WriteRedistributeTaskRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method WriteRedistributeTask not implemented")
-}
-func (UnimplementedRedistributeTaskServiceServer) RemoveRedistributeTask(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+func (UnimplementedRedistributeTaskServiceServer) RemoveRedistributeTask(context.Context, *RedistributeTaskSelector) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RemoveRedistributeTask not implemented")
 }
 func (UnimplementedRedistributeTaskServiceServer) mustEmbedUnimplementedRedistributeTaskServiceServer() {
@@ -742,44 +726,26 @@ func RegisterRedistributeTaskServiceServer(s grpc.ServiceRegistrar, srv Redistri
 	s.RegisterService(&RedistributeTaskService_ServiceDesc, srv)
 }
 
-func _RedistributeTaskService_GetRedistributeTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _RedistributeTaskService_ListRedistributeTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RedistributeTaskServiceServer).GetRedistributeTask(ctx, in)
+		return srv.(RedistributeTaskServiceServer).ListRedistributeTasks(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RedistributeTaskService_GetRedistributeTask_FullMethodName,
+		FullMethod: RedistributeTaskService_ListRedistributeTasks_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RedistributeTaskServiceServer).GetRedistributeTask(ctx, req.(*emptypb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _RedistributeTaskService_WriteRedistributeTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(WriteRedistributeTaskRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RedistributeTaskServiceServer).WriteRedistributeTask(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: RedistributeTaskService_WriteRedistributeTask_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RedistributeTaskServiceServer).WriteRedistributeTask(ctx, req.(*WriteRedistributeTaskRequest))
+		return srv.(RedistributeTaskServiceServer).ListRedistributeTasks(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _RedistributeTaskService_RemoveRedistributeTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
+	in := new(RedistributeTaskSelector)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -791,7 +757,7 @@ func _RedistributeTaskService_RemoveRedistributeTask_Handler(srv interface{}, ct
 		FullMethod: RedistributeTaskService_RemoveRedistributeTask_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RedistributeTaskServiceServer).RemoveRedistributeTask(ctx, req.(*emptypb.Empty))
+		return srv.(RedistributeTaskServiceServer).RemoveRedistributeTask(ctx, req.(*RedistributeTaskSelector))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -804,12 +770,8 @@ var RedistributeTaskService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*RedistributeTaskServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetRedistributeTask",
-			Handler:    _RedistributeTaskService_GetRedistributeTask_Handler,
-		},
-		{
-			MethodName: "WriteRedistributeTask",
-			Handler:    _RedistributeTaskService_WriteRedistributeTask_Handler,
+			MethodName: "ListRedistributeTasks",
+			Handler:    _RedistributeTaskService_ListRedistributeTasks_Handler,
 		},
 		{
 			MethodName: "RemoveRedistributeTask",
