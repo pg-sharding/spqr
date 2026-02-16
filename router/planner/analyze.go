@@ -408,19 +408,25 @@ func AnalyzeQueryV1(
 			if d, err := rm.GetRelationDistribution(ctx, rqdn); err != nil {
 				return err
 			} else {
-				for _, c := range stmt.SetClause {
-					switch cc := c.(type) {
-					case *lyx.ResTarget:
-						r := d.GetRelation(rqdn)
-						cols, err := r.GetDistributionKeyColumns()
-						if err != nil {
-							return err
+				r, ok := d.TryGetRelation(rqdn)
+				/* Not all distribution guarantee that
+				* get relation will actually returns maaningfull
+				* `relation`. CatalogDistribution is one example. */
+				if ok {
+					cols, err := r.GetDistributionKeyColumns()
+					if err != nil {
+						return err
+					}
+
+					for _, c := range stmt.SetClause {
+						switch cc := c.(type) {
+						case *lyx.ResTarget:
+							if slices.Contains(cols, cc.Name) {
+								rm.IsSplitUpdate = true
+							}
+						default:
+							return rerrors.ErrComplexQuery
 						}
-						if slices.Contains(cols, cc.Name) {
-							rm.IsSplitUpdate = true
-						}
-					default:
-						return rerrors.ErrComplexQuery
 					}
 				}
 			}
