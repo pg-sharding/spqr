@@ -7,7 +7,7 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 -- SETUP
-CREATE DISTRIBUTION ds1 COLUMN TYPES int hash;
+CREATE DISTRIBUTION ds1 (int hash);
     add distribution    
 ------------------------
  distribution id -> ds1
