@@ -21,6 +21,7 @@ begin
 	AND a.query !~* E'^\\\\s*vacuum\\\\s+' 
 	AND a.query !~ E'^autovacuum: ' 
 	AND a.query !~ E'repack'
+	AND %s
 	AND ((d.datname IS NULL OR d.datname = current_database()) OR l.database = 0);
 
 	RAISE NOTICE 'v_pids = %%', v_pids;
@@ -37,7 +38,7 @@ begin
 
 end;
 $$
-language plpgsql;`, spqrTransferApplicationName)
+language plpgsql;`, spqrTransferApplicationName, )
 }
 
 func checkColumnExistsQuery(relName, schema, colName string) string {
