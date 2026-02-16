@@ -11,6 +11,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"gopkg.in/yaml.v2"
 )
@@ -137,6 +138,10 @@ type QRouter struct {
 
 	/* XXX: for now, supported only for single-shard topology */
 	AutoRouteRoOnStandby bool `json:"auto_route_ro_on_standby" toml:"auto_route_ro_on_standby" yaml:"auto_route_ro_on_standby"`
+
+	// Controls whether to calculate sliding window RPS stats (requires mutex).
+	// Total requests are always counted atomically.
+	RouterRpsAggregation bool `json:"router_rps_aggregation" toml:"router_rps_aggregation" yaml:"router_rps_aggregation"`
 }
 
 const (
@@ -257,6 +262,9 @@ func LoadRouterCfg(cfgPath string) (string, error) {
 	} else {
 		statistics.InitStatistics(rcfg.TimeQuantiles)
 	}
+
+	rps.SetEnableRPSAggregation(rcfg.Qr.RouterRpsAggregation)
+
 	/* init default_target_session_attrs as read-write if nothing else specified */
 	if rcfg.Qr.DefaultTSA == "" {
 		rcfg.Qr.DefaultTSA = TargetSessionAttrsSmartRW
