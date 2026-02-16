@@ -41,15 +41,19 @@ func GetConnStrings(s *config.ShardConnect) []string {
 // TODO: unit tests
 func GetMasterConnection(ctx context.Context, s *config.ShardConnect) (*pgx.Conn, error) {
 	for _, dsn := range GetConnStrings(s) {
-		config, err := pgx.ParseConfig(dsn)
+		connConfig, err := pgx.ParseConfig(dsn)
 		if err != nil {
 			return nil, err
 		}
-		config.Tracer = &tracelog.TraceLog{
-			Logger:   &spqrlog.ZeroTraceLogger{},
-			LogLevel: tracelog.LogLevelDebug,
+		level, err := tracelog.LogLevelFromString(config.CoordinatorConfig().DataMoveQueryLogLevel)
+		if err != nil {
+			return nil, err
 		}
-		conn, err := pgx.ConnectConfig(ctx, config)
+		connConfig.Tracer = &tracelog.TraceLog{
+			Logger:   &spqrlog.ZeroTraceLogger{},
+			LogLevel: level,
+		}
+		conn, err := pgx.ConnectConfig(ctx, connConfig)
 		if err != nil {
 			return nil, err
 		}
