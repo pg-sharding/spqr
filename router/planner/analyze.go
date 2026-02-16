@@ -410,7 +410,7 @@ func AnalyzeQueryV1(
 			} else {
 				r, ok := d.TryGetRelation(rqdn)
 				/* Not all distribution guarantee that
-				* get relation will actually return meaningfull
+				* get relation will actually return meaningful
 				* `relation`. CatalogDistribution is one example. */
 				if ok {
 					cols, err := r.GetDistributionKeyColumns()
