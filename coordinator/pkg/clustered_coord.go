@@ -1850,7 +1850,9 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id strin
 		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)
 	}()
 
-	qc.invalidateTaskGroupCache(taskGroup.ID)
+	if taskGroup != nil {
+		qc.invalidateTaskGroupCache(taskGroup.ID)
+	}
 
 	for {
 		select {
