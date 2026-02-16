@@ -1,6 +1,10 @@
 package datatransfers
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/pg-sharding/spqr/pkg/config"
+)
 
 func getAwaitPIDsQuery() string {
 	return fmt.Sprintf(`
@@ -38,7 +42,7 @@ begin
 
 end;
 $$
-language plpgsql;`, spqrTransferApplicationName, )
+language plpgsql;`, spqrTransferApplicationName, config.CoordinatorConfig().DataMoveAwaitPIDException)
 }
 
 func checkColumnExistsQuery(relName, schema, colName string) string {

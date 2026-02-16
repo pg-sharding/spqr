@@ -36,7 +36,7 @@ type Coordinator struct {
 	DataMoveDisableTriggers   bool   `json:"data_move_disable_triggers" toml:"data_move_disable_triggers" yaml:"data_move_disable_triggers"`
 	DataMoveBoundBatchSize    int64  `json:"data_move_bound_batch_size" toml:"data_move_bound_batch_size" yaml:"data_move_bound_batch_size"`
 	DataMoveQueryLogLevel     string `json:"data_move_query_log_level" toml:"data_move_query_log_level" yaml:"data_move_query_log_level"`
-	DataMoveAwautPIDException string `json:"data_move_await_pid_exception" toml:"data_move_await_pid_exception" yaml:"data_move_await_pid_exception"`
+	DataMoveAwaitPIDException string `json:"data_move_await_pid_exception" toml:"data_move_await_pid_exception" yaml:"data_move_await_pid_exception"`
 
 	// gRPC keepalive settings for router connections
 	// Prevents connections from being closed by network intermediaries during idle periods
@@ -58,7 +58,7 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 	cCfg := Coordinator{
 		DataMoveBoundBatchSize:    10_000,
 		DataMoveQueryLogLevel:     "debug",
-		DataMoveAwautPIDException: "true",
+		DataMoveAwaitPIDException: "true",
 	}
 	file, err := os.Open(cfgPath)
 	if err != nil {
