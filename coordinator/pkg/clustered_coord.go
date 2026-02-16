@@ -1850,6 +1850,8 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id strin
 		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)
 	}()
 
+	qc.invalidateTaskGroupCache(taskGroup.ID)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -2979,4 +2981,9 @@ func getRouterConnRetryPolicy() string {
                 }
             }]
         }`
+}
+
+func (qc *ClusteredCoordinator) invalidateTaskGroupCache(id string) {
+	qc.bounds.Delete(id)
+	qc.index.Delete(id)
 }

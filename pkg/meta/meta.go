@@ -283,18 +283,22 @@ func processDrop(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.TaskGroupSelector:
-		if err := mngr.RemoveMoveTaskGroup(ctx, stmt.ID); err != nil {
+		tg, err := mngr.GetMoveTaskGroup(ctx, stmt.ID)
+		if err != nil {
 			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("drop task group"),
 		}
-
-		tts.Raw = append(tts.Raw, [][]byte{
-			fmt.Appendf(nil, "task group id -> %s", stmt.ID),
-		})
-
+		if tg != nil {
+			if err := mngr.RemoveMoveTaskGroup(ctx, stmt.ID); err != nil {
+				return nil, err
+			}
+			tts.Raw = append(tts.Raw, [][]byte{
+				fmt.Appendf(nil, "task group id -> %s", stmt.ID),
+			})
+		}
 		return tts, nil
 	case *spqrparser.SequenceSelector:
 		rels, err := mngr.GetSequenceRelations(ctx, stmt.Name)
