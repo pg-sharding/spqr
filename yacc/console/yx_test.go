@@ -1381,6 +1381,20 @@ func TestDistribution(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		/* modern variant */
+		{
+			query: "CREATE DISTRIBUTION db1 (integer);",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID: "db1",
+					ColTypes: []string{
+						"integer",
+					},
+				},
+			},
+			err: nil,
+		},
 		{
 			query: "CREATE DISTRIBUTION db1 COLUMN TYPES varchar hash;",
 			exp: &spqrparser.Create{
