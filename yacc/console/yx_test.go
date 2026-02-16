@@ -203,6 +203,14 @@ func TestSimpleShow(t *testing.T) {
 				GroupBy: spqrparser.GroupByClauseEmpty{},
 			},
 		},
+		{
+			query: "SHOW redistribute_tasks",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.RedistributeTasksStr,
+				Where:   &lyx.AExprEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
@@ -2102,6 +2110,35 @@ func TestUniqueIndex(t *testing.T) {
 			exp: &spqrparser.Drop{
 				Element: &spqrparser.UniqueIndexSelector{
 					ID: "ui1",
+				},
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
+func TestRedistributeTasks(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "DROP REDISTRIBUTE TASK \"rt1\"",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.RedistributeTaskSelector{
+					ID: "rt1",
 				},
 			},
 			err: nil,
