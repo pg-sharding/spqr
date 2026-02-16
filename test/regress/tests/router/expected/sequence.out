@@ -101,21 +101,21 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP REFERENCE RELATION test;
- drop reference relation 
--------------------------
- relation -> test
+ relation_name 
+---------------
+ test
 (1 row)
 
 DROP REFERENCE RELATION test2;
- drop reference relation 
--------------------------
- relation -> test2
+ relation_name 
+---------------
+ test2
 (1 row)
 
 DROP REFERENCE RELATION test3;
- drop reference relation 
--------------------------
- relation -> test3
+ relation_name 
+---------------
+ test3
 (1 row)
 
 SHOW sequences;
@@ -124,8 +124,8 @@ SHOW sequences;
 (0 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
-       drop distribution       
--------------------------------
- distribution id -> REPLICATED
+ distribution_id 
+-----------------
+ REPLICATED
 (1 row)
 

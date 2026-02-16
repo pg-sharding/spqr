@@ -27,9 +27,9 @@ DROP SHARD sh1;
 ERROR:  cannot drop shard sh1 because other objects depend on it
 HINT: Use DROP ... CASCADE to drop the dependent objects too.
 DROP SHARD sh1 CASCADE;
-   drop shard    
------------------
- shard id -> sh1
+ shard_id 
+----------
+ sh1
 (1 row)
 
 SHOW shards;
@@ -59,10 +59,10 @@ CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 (1 row)
 
 DROP KEY RANGE ALL;
-    drop key range     
------------------------
- key range id -> krid1
- key range id -> krid2
+ key_range_id 
+--------------
+ krid1
+ krid2
 (2 rows)
 
 SHOW key_ranges;
@@ -71,8 +71,8 @@ SHOW key_ranges;
 (0 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds1
+ distribution_id 
+-----------------
+ ds1
 (1 row)
 

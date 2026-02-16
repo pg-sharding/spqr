@@ -31,9 +31,9 @@ DROP SEQUENCE t1_id;
 ERROR:  cannot drop sequence t1_id because other objects depend on it
 HINT: Use DROP ... CASCADE to drop the dependent objects too.
 DROP REFERENCE RELATION t1;
- drop reference relation 
--------------------------
- relation -> t1
+ relation_name 
+---------------
+ t1
 (1 row)
 
 SHOW sequences;
@@ -44,15 +44,15 @@ SHOW sequences;
 (2 rows)
 
 DROP SEQUENCE t1_id;
-   drop sequence   
--------------------
- sequence -> t1_id
+ name  
+-------
+ t1_id
 (1 row)
 
 DROP SEQUENCE t2_id CASCADE;
-   drop sequence   
--------------------
- sequence -> t2_id
+ name  
+-------
+ t2_id
 (1 row)
 
 CREATE DISTRIBUTION ds COLUMN TYPES integer;
@@ -64,15 +64,15 @@ CREATE DISTRIBUTION ds COLUMN TYPES integer;
 ALTER DISTRIBUTION ds ATTACH RELATION t2 DISTRIBUTION KEY id AUTO INCREMENT id1;
 ERROR:  sequence are supported for replicated relations only
 DROP REFERENCE RELATION t;
- drop reference relation 
--------------------------
- relation -> t
+ relation_name 
+---------------
+ t
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;
-       drop distribution       
--------------------------------
- distribution id -> REPLICATED
- distribution id -> ds
+ distribution_id 
+-----------------
+ REPLICATED
+ ds
 (2 rows)
 

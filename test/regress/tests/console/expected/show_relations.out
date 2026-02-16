@@ -78,11 +78,11 @@ SHOW reference_relations;
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;
-       drop distribution       
--------------------------------
- distribution id -> REPLICATED
- distribution id -> ds1
- distribution id -> ds2
- distribution id -> ds3
+ distribution_id 
+-----------------
+ REPLICATED
+ ds1
+ ds2
+ ds3
 (4 rows)
 

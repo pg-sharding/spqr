@@ -45,24 +45,24 @@ HINT: Use DROP ... CASCADE to drop the dependent objects too.
     
 -- non-cascade drop with attached relations
 DROP KEY RANGE krid1;
-    drop key range     
------------------------
- key range id -> krid1
+ key_range_id 
+--------------
+ krid1
 (1 row)
 
 DROP KEY RANGE krid2;
-    drop key range     
------------------------
- key range id -> krid2
+ key_range_id 
+--------------
+ krid2
 (1 row)
 
 DROP DISTRIBUTION ds1;
 ERROR:  cannot drop distribution ds1 because there are relations attached to it
 HINT: Use DROP ... CASCADE to detach relations automatically.
 DROP DISTRIBUTION ds1 CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds1
+ distribution_id 
+-----------------
+ ds1
 (1 row)
 
 SHOW distributions;
@@ -72,9 +72,9 @@ SHOW distributions;
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds2
+ distribution_id 
+-----------------
+ ds2
 (1 row)
 
 SHOW distributions;

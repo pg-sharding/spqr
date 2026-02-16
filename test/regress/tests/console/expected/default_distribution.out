@@ -50,9 +50,9 @@ SHOW key_ranges;
 (2 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds1
- distribution id -> ds2
+ distribution_id 
+-----------------
+ ds1
+ ds2
 (2 rows)
 
