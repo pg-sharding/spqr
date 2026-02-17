@@ -30,29 +30,30 @@ type MemQDB struct {
 	// TODO create more mutex per map if needed
 	mu sync.RWMutex
 
-	Locks                map[string]*sync.RWMutex            `json:"locks"`
-	Freq                 map[string]bool                     `json:"freq"`
-	Krs                  map[string]*internalKeyRange        `json:"krs"`
-	Shards               map[string]*Shard                   `json:"shards"`
-	Distributions        map[string]*Distribution            `json:"distributions"`
-	RelationDistribution map[string]string                   `json:"relation_distribution"`
-	Routers              map[string]*Router                  `json:"routers"`
-	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
-	Coordinator          string                              `json:"coordinator"`
-	MoveTaskGroups       map[string]*MoveTaskGroup           `json:"taskGroup"`
-	TaskGroupIDToStatus  map[string]*TaskGroupStatus         `json:"task_group_statuses"`
-	StopMoveTaskGroup    map[string]bool                     `json:"stop_move_task_group"`
-	MoveTasks            map[string]*MoveTask                `json:"move_tasks"`
-	TotalKeys            map[string]int64                    `json:"total_keys"`
-	RedistributeTasks    map[string]*RedistributeTask        `json:"redistribute_ask"`
-	BalancerTask         *BalancerTask                       `json:"balancer_task"`
-	ReferenceRelations   map[string]*ReferenceRelation       `json:"reference_relations"`
-	Sequences            map[string]bool                     `json:"sequences"`
-	ColumnSequence       map[string]string                   `json:"column_sequence"`
-	SequenceToValues     map[string]int64                    `json:"sequence_to_values"`
-	TaskGroupMoveTaskID  map[string]string                   `json:"task_group_move_task"`
-	UniqueIndexes        map[string]*UniqueIndex             `json:"unique_indexes"`
-	UniqueIndexesByRel   map[string]map[string]*UniqueIndex  `json:"unique_indexes_by_relation"`
+	Locks                     map[string]*sync.RWMutex            `json:"locks"`
+	Freq                      map[string]bool                     `json:"freq"`
+	Krs                       map[string]*internalKeyRange        `json:"krs"`
+	Shards                    map[string]*Shard                   `json:"shards"`
+	Distributions             map[string]*Distribution            `json:"distributions"`
+	RelationDistribution      map[string]string                   `json:"relation_distribution"`
+	Routers                   map[string]*Router                  `json:"routers"`
+	Transactions              map[string]*DataTransferTransaction `json:"transactions"`
+	Coordinator               string                              `json:"coordinator"`
+	MoveTaskGroups            map[string]*MoveTaskGroup           `json:"taskGroup"`
+	TaskGroupIDToStatus       map[string]*TaskGroupStatus         `json:"task_group_statuses"`
+	StopMoveTaskGroup         map[string]bool                     `json:"stop_move_task_group"`
+	MoveTasks                 map[string]*MoveTask                `json:"move_tasks"`
+	TotalKeys                 map[string]int64                    `json:"total_keys"`
+	RedistributeTasks         map[string]*RedistributeTask        `json:"redistribute_tasks"`
+	KeyRangeRedistributeTasks map[string]string                   `json:"key_range_redistribute_tasks"`
+	BalancerTask              *BalancerTask                       `json:"balancer_task"`
+	ReferenceRelations        map[string]*ReferenceRelation       `json:"reference_relations"`
+	Sequences                 map[string]bool                     `json:"sequences"`
+	ColumnSequence            map[string]string                   `json:"column_sequence"`
+	SequenceToValues          map[string]int64                    `json:"sequence_to_values"`
+	TaskGroupMoveTaskID       map[string]string                   `json:"task_group_move_task"`
+	UniqueIndexes             map[string]*UniqueIndex             `json:"unique_indexes"`
+	UniqueIndexesByRel        map[string]map[string]*UniqueIndex  `json:"unique_indexes_by_relation"`
 
 	TwoPhaseTx map[string]*TwoPCInfo `json:"two_phase_info"`
 
@@ -1366,6 +1367,9 @@ func (q *MemQDB) CreateRedistributeTask(_ context.Context, task *RedistributeTas
 	if _, ok := q.RedistributeTasks[task.ID]; ok {
 		return fmt.Errorf("could not create redistribute task: redistribute task with ID \"%s\" already exists in QDB", task.ID)
 	}
+	if _, ok := q.KeyRangeRedistributeTasks[task.KeyRangeId]; ok {
+		return fmt.Errorf("could not create redistribute task: task for key range \"%s\" already exists", task.KeyRangeId)
+	}
 	q.RedistributeTasks[task.ID] = task
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.RedistributeTasks, task.ID, task))
 }
@@ -1384,13 +1388,14 @@ func (q *MemQDB) UpdateRedistributeTask(_ context.Context, task *RedistributeTas
 }
 
 // TODO: unit tests
-func (q *MemQDB) RemoveRedistributeTask(_ context.Context, id string) error {
-	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: remove redistribute task")
+func (q *MemQDB) RemoveRedistributeTask(_ context.Context, task *RedistributeTask) error {
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: remove redistribute task")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	delete(q.RedistributeTasks, id)
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.RedistributeTasks, id))
+	delete(q.RedistributeTasks, task.ID)
+	delete(q.KeyRangeRedistributeTasks, task.KeyRangeId)
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.RedistributeTasks, task.ID), NewDeleteCommand(q.KeyRangeRedistributeTasks, task.KeyRangeId))
 }
 
 // TODO: unit tests

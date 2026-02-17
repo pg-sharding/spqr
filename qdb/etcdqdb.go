@@ -55,28 +55,29 @@ func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 }
 
 const (
-	keyRangesNamespace               = "/keyranges/"
-	distributionNamespace            = "/distributions/"
-	keyRangeMovesNamespace           = "/krmoves/"
-	routersNamespace                 = "/routers/"
-	shardsNamespace                  = "/shards/"
-	relationMappingNamespace         = "/relation_mappings/"
-	taskGroupsNamespace              = "/move_task_groups/"
-	taskGroupStatusesNamespace       = "/task_group_statuses/"
-	taskGroupLocksNamespace          = "/task_group_locks/"
-	moveTaskNamespace                = "/move_tasks/"
-	redistributeTasksNamespace       = "/redistribute_tasks/"
-	balancerTaskPath                 = "/balancer_task/"
-	transactionNamespace             = "/transfer_txs/"
-	sequenceNamespace                = "/sequences/"
-	referenceRelationsNamespace      = "/reference_relations"
-	uniqueIndexesNamespace           = "/unique_indexes"
-	columnSequenceMappingNamespace   = "/column_sequence_mappings/"
-	lockNamespace                    = "/lock"
-	totalKeysNamespace               = "/total_keys/"
-	stopMoveTaskGroupNamespace       = "/stop_move_task_group/"
-	moveTaskByGroupNamespace         = "/group_move_tasks/"
-	uniqueIndexesByRelationNamespace = "/relation_unique_indexes"
+	keyRangesNamespace                 = "/keyranges/"
+	distributionNamespace              = "/distributions/"
+	keyRangeMovesNamespace             = "/krmoves/"
+	routersNamespace                   = "/routers/"
+	shardsNamespace                    = "/shards/"
+	relationMappingNamespace           = "/relation_mappings/"
+	taskGroupsNamespace                = "/move_task_groups/"
+	taskGroupStatusesNamespace         = "/task_group_statuses/"
+	taskGroupLocksNamespace            = "/task_group_locks/"
+	moveTaskNamespace                  = "/move_tasks/"
+	redistributeTasksNamespace         = "/redistribute_tasks/"
+	keyRangeRedistributeTasksNamespace = "/key_range_redistribute_tasks/"
+	balancerTaskPath                   = "/balancer_task/"
+	transactionNamespace               = "/transfer_txs/"
+	sequenceNamespace                  = "/sequences/"
+	referenceRelationsNamespace        = "/reference_relations"
+	uniqueIndexesNamespace             = "/unique_indexes"
+	columnSequenceMappingNamespace     = "/column_sequence_mappings/"
+	lockNamespace                      = "/lock"
+	totalKeysNamespace                 = "/total_keys/"
+	stopMoveTaskGroupNamespace         = "/stop_move_task_group/"
+	moveTaskByGroupNamespace           = "/group_move_tasks/"
+	uniqueIndexesByRelationNamespace   = "/relation_unique_indexes"
 
 	CoordKeepAliveTtl  = 3
 	coordLockKey       = "coordinator_exists"
@@ -170,6 +171,10 @@ func moveTaskByGroupNodePath(taskGroupID string) string {
 
 func redistributeTaskNodePath(id string) string {
 	return path.Join(redistributeTasksNamespace, id)
+}
+
+func keyRangeRedistributeTaskNodePath(id string) string {
+	return path.Join(keyRangeRedistributeTasksNamespace, id)
 }
 
 func keyRangeLockNamespace() string {
@@ -2152,12 +2157,35 @@ func (q *EtcdQDB) CreateRedistributeTask(ctx context.Context, task *Redistribute
 		return err
 	}
 
-	resp, err := q.cli.Txn(ctx).If(clientv3util.KeyMissing(redistributeTaskNodePath(task.ID))).Then(clientv3.OpPut(redistributeTaskNodePath(task.ID), string(taskJson))).Commit()
+	resp, err := q.cli.Txn(ctx).
+		If(
+			clientv3util.KeyMissing(redistributeTaskNodePath(task.ID)),
+			clientv3util.KeyMissing(keyRangeRedistributeTaskNodePath(task.KeyRangeId)),
+		).
+		Then(
+			clientv3.OpPut(redistributeTaskNodePath(task.ID), string(taskJson)),
+			clientv3.OpPut(keyRangeRedistributeTaskNodePath(task.KeyRangeId), task.ID),
+		).
+		Else(
+			clientv3.OpGet(keyRangeRedistributeTaskNodePath(task.KeyRangeId)),
+			clientv3.OpGet(redistributeTaskNodePath(task.ID)),
+		).
+		Commit()
 	if err != nil {
 		return fmt.Errorf("could not create redistribute task: error executing transaction: %s", err)
 	}
 	if !resp.Succeeded {
-		return fmt.Errorf("could not create redistribute task: redistribute task with ID \"%s\" already exists in QDB", task.ID)
+		if len(resp.Responses) != 2 {
+			return fmt.Errorf("unexpected response count: create redistribute task \"%s\" response parts count=%d", task.ID, len(resp.Responses))
+		}
+		if resp.Responses[0].GetResponseRange().Count > 0 {
+			return fmt.Errorf("could not create redistribute task: task for key range \"%s\" already exists", task.KeyRangeId)
+		}
+		if resp.Responses[1].GetResponseRange().Count == 0 {
+			return fmt.Errorf("could not create redistribute task: redistribute task with ID \"%s\" already exists in QDB", task.ID)
+		}
+		return fmt.Errorf("could not create redistribute task: tx precondition failed, reason unknown")
+
 	}
 	return nil
 }
@@ -2184,12 +2212,12 @@ func (q *EtcdQDB) UpdateRedistributeTask(ctx context.Context, task *Redistribute
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) RemoveRedistributeTask(ctx context.Context, id string) error {
+func (q *EtcdQDB) RemoveRedistributeTask(ctx context.Context, task *RedistributeTask) error {
 	spqrlog.Zero.Debug().
-		Str("id", id).
+		Str("id", task.ID).
 		Msg("etcdqdb: remove redistribute task")
 
-	_, err := q.cli.Delete(ctx, redistributeTaskNodePath(id))
+	_, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(redistributeTaskNodePath(task.ID)), clientv3.OpDelete(keyRangeRedistributeTaskNodePath(task.KeyRangeId))).Commit()
 	return err
 }
 
