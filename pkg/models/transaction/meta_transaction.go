@@ -69,9 +69,6 @@ const (
 	GR_CreateDistributionRequest
 	GR_CreateKeyRange
 	GR_DropKeyRange
-	GR_DropKeyRangeAll
-	GR_LockKeyRange
-	GR_UnLockKeyRange
 )
 
 func NewMetaTransactionChunk(gossipRequests []*proto.MetaTransactionGossipCommand) *MetaTransactionChunk {
@@ -86,7 +83,7 @@ func NewEmptyMetaTransactionChunk() *MetaTransactionChunk {
 
 func (tc *MetaTransactionChunk) Append(gossipRequests []*proto.MetaTransactionGossipCommand) error {
 	for _, req := range gossipRequests {
-		if _, recognized := GetGossipRequestType(req); !recognized {
+		if _, ok := GetGossipRequestType(req); !ok {
 			return fmt.Errorf("invalid meta gossip command request")
 		}
 	}

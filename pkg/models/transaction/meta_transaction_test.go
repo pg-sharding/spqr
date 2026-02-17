@@ -95,16 +95,16 @@ func TestGetGossipRequestType(t *testing.T) {
 		cmd := &proto.MetaTransactionGossipCommand{
 			CreateDistribution: &proto.CreateDistributionGossip{},
 		}
-		actual, recognized := GetGossipRequestType(cmd)
-		is.True(recognized)
+		actual, ok := GetGossipRequestType(cmd)
+		is.True(ok)
 		is.Equal(GR_CreateDistributionRequest, actual)
 	})
 	t.Run("happy path proto.CreateDistributionGossip", func(t *testing.T) {
 		cmd := &proto.MetaTransactionGossipCommand{
 			CreateKeyRange: &proto.CreateKeyRangeGossip{},
 		}
-		actual, recognized := GetGossipRequestType(cmd)
-		is.True(recognized)
+		actual, ok := GetGossipRequestType(cmd)
+		is.True(ok)
 		is.Equal(GR_CreateKeyRange, actual)
 	})
 
@@ -113,8 +113,8 @@ func TestGetGossipRequestType(t *testing.T) {
 			CreateKeyRange:     &proto.CreateKeyRangeGossip{},
 			CreateDistribution: &proto.CreateDistributionGossip{},
 		}
-		actual, recognized := GetGossipRequestType(cmd)
-		is.False(recognized)
+		actual, ok := GetGossipRequestType(cmd)
+		is.False(ok)
 		is.Equal(GR_ERROR, actual)
 	})
 
@@ -122,8 +122,8 @@ func TestGetGossipRequestType(t *testing.T) {
 		cmd := &proto.MetaTransactionGossipCommand{
 			DropKeyRange: &proto.DropKeyRangeGossip{},
 		}
-		actual, recognized := GetGossipRequestType(cmd)
-		is.True(recognized)
+		actual, ok := GetGossipRequestType(cmd)
+		is.True(ok)
 		is.Equal(GR_DropKeyRange, actual)
 	})
 	t.Run("failed algebraic type parsing, case 2", func(t *testing.T) {
@@ -131,14 +131,14 @@ func TestGetGossipRequestType(t *testing.T) {
 			CreateKeyRange: &proto.CreateKeyRangeGossip{},
 			DropKeyRange:   &proto.DropKeyRangeGossip{},
 		}
-		actual, recognized := GetGossipRequestType(cmd)
-		is.False(recognized)
+		actual, ok := GetGossipRequestType(cmd)
+		is.False(ok)
 		is.Equal(GR_ERROR, actual)
 	})
 	t.Run("failed algebraic type parsing, case 2", func(t *testing.T) {
 		cmd := &proto.MetaTransactionGossipCommand{}
-		actual, recognized := GetGossipRequestType(cmd)
-		is.False(recognized)
+		actual, ok := GetGossipRequestType(cmd)
+		is.False(ok)
 		is.Equal(GR_UNKNOWN, actual)
 	})
 	t.Run("failed algebraic type parsing, case: NOT NILL, NIL, NOT NILL", func(t *testing.T) {
@@ -146,8 +146,8 @@ func TestGetGossipRequestType(t *testing.T) {
 			CreateDistribution: &proto.CreateDistributionGossip{},
 			DropKeyRange:       &proto.DropKeyRangeGossip{},
 		}
-		actual, recognized := GetGossipRequestType(cmd)
-		is.False(recognized)
+		actual, ok := GetGossipRequestType(cmd)
+		is.False(ok)
 		is.Equal(GR_ERROR, actual)
 	})
 }
