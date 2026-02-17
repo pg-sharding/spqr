@@ -23,6 +23,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/app"
 	"github.com/pg-sharding/spqr/router/instance"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/sevlyar/go-daemon"
 	"github.com/spf13/cobra"
 )
@@ -137,6 +138,27 @@ var runCmd = &cobra.Command{
 
 		spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLogging)
 		spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
+
+		// Initialize help registry for console help command
+		// Try multiple locations for the help directory
+		helpDirs := []string{
+			// Absolute path from SPQR installation (most common in Docker)
+			"/spqr/yacc/console/help",
+			// Relative to config file (development environment)
+			path.Join(path.Dir(rcfgPath), "..", "..", "yacc", "console", "help"),
+			// Relative to current working directory
+			"./yacc/console/help",
+		}
+
+		var initErr error
+		for _, helpDir := range helpDirs {
+			initErr = spqrparser.InitHelpRegistry(helpDir)
+			if initErr == nil {
+				spqrlog.Zero.Debug().Str("help_dir", helpDir).Msg("initialized help registry")
+				break
+			}
+			spqrlog.Zero.Debug().Err(initErr).Str("help_dir", helpDir).Msg("failed to initialize help registry from this location")
+		}
 
 		if err := logEffectiveConfig(config.RouterConfig()); err != nil {
 			return err

@@ -871,6 +871,13 @@ func ProcMetadataCommand(ctx context.Context,
 		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, ro)
 	}
 
+	if _, ok := tstmt.(*spqrparser.Help); ok {
+		if err := catalog.GC.CheckGrants(catalog.RoleReader, rule); err != nil {
+			return nil, err
+		}
+		return ProcessHelp(ctx, tstmt.(*spqrparser.Help))
+	}
+
 	if ro {
 		return nil, fmt.Errorf("console is in read only mode")
 	}
@@ -1967,6 +1974,24 @@ func processRedistribute(ctx context.Context,
 		fmt.Sprintf("destination shard id -> %s", stmt.DestShardID))
 	tts.WriteDataRow(
 		fmt.Sprintf("batch size           -> %d", stmt.BatchSize))
+
+	return tts, nil
+}
+
+// ProcessHelp processes HELP command and returns formatted help text
+func ProcessHelp(ctx context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTableSlot, error) {
+	spqrlog.Zero.Debug().Str("cmd", stmt.CommandName).Msg("process help statement")
+
+	helpEntry, err := spqrparser.GetHelp(stmt.CommandName)
+	if err != nil {
+		return nil, err
+	}
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: engine.GetVPHeader("COMMAND", "HELP TEXT"),
+	}
+
+	tts.WriteDataRow(helpEntry.Name, helpEntry.Content)
 
 	return tts, nil
 }

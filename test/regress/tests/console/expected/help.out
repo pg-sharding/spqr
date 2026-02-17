@@ -1,0 +1,53 @@
+HELP CREATE KEY RANGE;
+     COMMAND      |                                      HELP TEXT                                       
+------------------+--------------------------------------------------------------------------------------
+ CREATE KEY RANGE | NAME                                                                                +
+                  |     CREATE KEY RANGE - Create a new key range that maps value range to a shard      +
+                  |                                                                                     +
+                  | SYNTAX                                                                              +
+                  |     CREATE KEY RANGE <id> FROM <bound> ROUTE TO <shard> [FOR DISTRIBUTION <dist>]   +
+                  |                                                                                     +
+                  | DESCRIPTION                                                                         +
+                  |     Creates a new key range that routes values within the specified boundary        +
+                  |     to the given shard. If no distribution is specified, uses the default.          +
+                  |                                                                                     +
+                  |     Key ranges define the mapping between data ranges and physical shards.          +
+                  |     Lower bounds are inclusive, and ranges must be continuous without gaps          +
+                  |     or overlaps for proper routing.                                                 +
+                  |                                                                                     +
+                  | PARAMETERS                                                                          +
+                  |     <id>                - Unique identifier for the key range                       +
+                  |     <bound>             - Lower boundary value (inclusive). Can be integer or string+
+                  |     <shard>             - Target shard ID where data in this range is stored        +
+                  |     <dist> (optional)   - Distribution ID this key range belongs to                 +
+                  |                                                                                     +
+                  | EXAMPLES                                                                            +
+                  |     Create a key range for integer-based sharding:                                  +
+                  |                                                                                     +
+                  |         CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;            +
+                  |                                                                                     +
+                  |     Create another key range with higher boundary:                                  +
+                  |                                                                                     +
+                  |         CREATE KEY RANGE krid2 FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;          +
+                  |                                                                                     +
+                  |     Create a key range without specifying distribution:                             +
+                  |                                                                                     +
+                  |         CREATE KEY RANGE krid3 FROM 200 ROUTE TO sh3;                               +
+                  |                                                                                     +
+                  | TIPS                                                                                +
+                  |     - Value bounds should be continuous and non-overlapping                         +
+                  |     - Use SHOW KEY RANGES to list existing ranges                                   +
+                  |     - Lock key ranges during maintenance operations with LOCK KEY RANGE             +
+                  |     - Key ranges are immutable once created; use SPLIT or UNITE for modifications   +
+                  |     - Consider boundary values carefully to distribute data evenly                  +
+                  |                                                                                     +
+                  | RELATED COMMANDS                                                                    +
+                  |     SHOW KEY RANGES        - List all key ranges                                    +
+                  |     LOCK KEY RANGE         - Lock a key range for maintenance                       +
+                  |     UNLOCK KEY RANGE       - Unlock a locked key range                              +
+                  |     SPLIT KEY RANGE        - Split a key range into two ranges                      +
+                  |     UNITE KEY RANGE        - Merge two key ranges                                   +
+                  |     DROP KEY RANGE         - Remove a key range                                     +
+                  | 
+(1 row)
+

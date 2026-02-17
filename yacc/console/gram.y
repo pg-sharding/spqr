@@ -44,6 +44,7 @@ func randomHex(n int) (string, error) {
     set                    *Set
 	statement              Statement
 	show                   *Show
+	help                   *Help
 
 	drop                   *Drop
 	create                 *Create
@@ -129,7 +130,7 @@ func randomHex(n int) (string, error) {
 %token <str> IDENT COMMAND
 
 // DDL
-%token <str> SHOW KILL
+%token <str> HELP SHOW KILL
 
 // SQL
 %token <str> WHERE OR AND
@@ -223,6 +224,8 @@ func randomHex(n int) (string, error) {
 %type <str> kill_statement_type
 
 %type <show> show_stmt
+%type <help> help_stmt
+%type <str> help_command_name
 %type <kill> kill_stmt
 
 %type <drop> drop_stmt
@@ -355,6 +358,10 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| show_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| help_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -1083,7 +1090,19 @@ show_stmt:
 	{
 		$$ = &Show{Cmd: $2, Columns: $3, Where: $4, GroupBy: $5, Order: $6}
 	}
-	
+
+help_stmt:
+	HELP help_command_name
+	{
+		$$ = &Help{CommandName: $2}
+	}
+
+help_command_name:
+	CREATE KEY RANGE
+	{
+		$$ = "CREATE KEY RANGE"
+	}
+
 lock_stmt:
 	LOCK key_range_stmt
 	{
