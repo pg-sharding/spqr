@@ -1798,4 +1798,3 @@ Feature: Move recover test
     """
     3
     """
-    
