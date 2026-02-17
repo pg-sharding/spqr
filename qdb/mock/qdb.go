@@ -1339,17 +1339,17 @@ func (mr *MockQDBMockRecorder) RemoveMoveTaskGroup(ctx, id any) *gomock.Call {
 }
 
 // RemoveRedistributeTask mocks base method.
-func (m *MockQDB) RemoveRedistributeTask(ctx context.Context, id string) error {
+func (m *MockQDB) RemoveRedistributeTask(ctx context.Context, task *qdb.RedistributeTask) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveRedistributeTask", ctx, id)
+	ret := m.ctrl.Call(m, "RemoveRedistributeTask", ctx, task)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RemoveRedistributeTask indicates an expected call of RemoveRedistributeTask.
-func (mr *MockQDBMockRecorder) RemoveRedistributeTask(ctx, id any) *gomock.Call {
+func (mr *MockQDBMockRecorder) RemoveRedistributeTask(ctx, task any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveRedistributeTask", reflect.TypeOf((*MockQDB)(nil).RemoveRedistributeTask), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveRedistributeTask", reflect.TypeOf((*MockQDB)(nil).RemoveRedistributeTask), ctx, task)
 }
 
 // RenameKeyRange mocks base method.
@@ -2913,17 +2913,17 @@ func (mr *MockXQDBMockRecorder) RemoveMoveTaskGroup(ctx, id any) *gomock.Call {
 }
 
 // RemoveRedistributeTask mocks base method.
-func (m *MockXQDB) RemoveRedistributeTask(ctx context.Context, id string) error {
+func (m *MockXQDB) RemoveRedistributeTask(ctx context.Context, task *qdb.RedistributeTask) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveRedistributeTask", ctx, id)
+	ret := m.ctrl.Call(m, "RemoveRedistributeTask", ctx, task)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RemoveRedistributeTask indicates an expected call of RemoveRedistributeTask.
-func (mr *MockXQDBMockRecorder) RemoveRedistributeTask(ctx, id any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) RemoveRedistributeTask(ctx, task any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveRedistributeTask", reflect.TypeOf((*MockXQDB)(nil).RemoveRedistributeTask), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveRedistributeTask", reflect.TypeOf((*MockXQDB)(nil).RemoveRedistributeTask), ctx, task)
 }
 
 // RemoveTransferTx mocks base method.
