@@ -939,7 +939,6 @@ func ProcMetadataCommand(ctx context.Context,
 		return tts, nil
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, mgr)
-
 	case *spqrparser.Create:
 		return ProcessCreate(ctx, stmt.Element, mgr)
 	case *spqrparser.MoveKeyRange:

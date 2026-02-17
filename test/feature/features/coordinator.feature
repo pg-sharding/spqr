@@ -949,3 +949,81 @@ Feature: Coordinator test
       "locked":"false"
     }]
     """
+  
+  Scenario: DROP REDISTRUBUTE TASK works
+    When I record in qdb redistribute task
+    """
+    {
+      "ID": "rt1",
+      "KeyRangeId": "kr1",
+      "ShardId": "sh2"
+    }
+    """
+    Then command return code should be "0"
+    When I record in qdb redistribute task
+    """
+    {
+      "ID": "rt2",
+      "KeyRangeId": "kr2",
+      "ShardId": "sh2"
+    }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    SHOW redistribute_tasks;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "redistribute_task_id":"rt1",
+        "key_range_id":"kr1",
+        "destination_shard_id":"sh2",
+        "batch_size":"0"
+      },
+      {
+        "redistribute_task_id":"rt2",
+        "key_range_id":"kr2",
+        "destination_shard_id":"sh2",
+        "batch_size":"0"
+      }
+    ]
+    """
+    When I run SQL on host "coordinator"
+    """
+    DROP REDISTRIBUTE TASK "rt_nonexistent";
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """
+    When I run SQL on host "coordinator"
+    """
+    DROP REDISTRIBUTE TASK "rt1";
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "redistribute_task_id": "rt1"
+    }]
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW redistribute_tasks;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "redistribute_task_id":"rt2",
+        "key_range_id":"kr2",
+        "destination_shard_id":"sh2",
+        "batch_size":"0"
+      }
+    ]
+    """
