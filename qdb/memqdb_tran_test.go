@@ -294,3 +294,33 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 		is.Equal(expected, actual)
 	})
 }
+
+func TestDropKeyRangeQdbStatements(t *testing.T) {
+	t.Run("test drop key range happy path", func(t *testing.T) {
+		is := assert.New(t)
+		memQdb, err := NewMemQDB("")
+		is.NoError(err)
+		actual, err := memQdb.dropKeyRangeQdbStatements("testKr")
+		expected := []QdbStatement{
+			{
+				CmdType:   CMD_DELETE,
+				Key:       "testKr",
+				Value:     "",
+				Extension: "Krs",
+			},
+			{
+				CmdType:   CMD_DELETE,
+				Key:       "testKr",
+				Value:     "",
+				Extension: "Locks",
+			},
+			{
+				CmdType:   CMD_DELETE,
+				Key:       "testKr",
+				Value:     "",
+				Extension: "Freq",
+			},
+		}
+		is.Equal(expected, actual)
+	})
+}
