@@ -1473,6 +1473,15 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+	case spqrparser.RedistributeTasksStr:
+		redistributeTasks, err := mngr.ListRedistributeTasks(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts, err = engine.RedistributeTasksVirtualRelationScan(redistributeTasks)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}

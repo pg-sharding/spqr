@@ -664,3 +664,19 @@ func TaskGroupBoundsCacheVirtualRelationScan(bounds [][][]byte, index int, colTy
 	}
 	return tts, nil
 }
+
+func RedistributeTasksVirtualRelationScan(tasks []*tasks.RedistributeTask) (*tupleslot.TupleTableSlot, error) {
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("redistribute_task_id", "key_range_id", "destination_shard_id", "batch_size"),
+	}
+	for _, task := range tasks {
+		tts.WriteDataRow(
+			task.ID,
+			task.KeyRangeId,
+			task.ShardId,
+			strconv.FormatInt(int64(task.BatchSize), 10),
+		)
+	}
+
+	return tts, nil
+}
