@@ -70,9 +70,9 @@ SHOW unique_indexes;
 (2 rows)
 
 DROP UNIQUE INDEX ui1;
-  drop unique index  
----------------------
- unique index -> ui1
+ id  
+-----
+ ui1
 (1 row)
 
 SHOW unique_indexes;
@@ -82,26 +82,26 @@ SHOW unique_indexes;
 (1 row)
 
 DROP UNIQUE INDEX ui2;
-  drop unique index  
----------------------
- unique index -> ui2
+ id  
+-----
+ ui2
 (1 row)
 
 DROP DISTRIBUTION ds1 CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds1
+ distribution_id 
+-----------------
+ ds1
 (1 row)
 
 DROP DISTRIBUTION ds2 CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds2
+ distribution_id 
+-----------------
+ ds2
 (1 row)
 
 DROP DISTRIBUTION ds3 CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds3
+ distribution_id 
+-----------------
+ ds3
 (1 row)
 

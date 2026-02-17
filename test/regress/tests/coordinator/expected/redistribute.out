@@ -92,9 +92,9 @@ STOP TASK GROUP ALL;
 (0 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds1
+ distribution_id 
+-----------------
+ ds1
 (1 row)
 
 UNREGISTER ROUTER ALL;

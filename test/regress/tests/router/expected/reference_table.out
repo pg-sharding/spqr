@@ -484,9 +484,9 @@ SHOW reference_relations;
 (3 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
-       drop distribution       
--------------------------------
- distribution id -> REPLICATED
- distribution id -> ds1
+ distribution_id 
+-----------------
+ REPLICATED
+ ds1
 (2 rows)
 

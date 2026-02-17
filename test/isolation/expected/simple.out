@@ -16,8 +16,8 @@ step s1_s: SELECT 1 /* __spqr__execute_on: sh1 */;
 (1 row)
 
 step s1_commit: COMMIT;
-drop distribution   
---------------------
-distribution id -> d
+distribution_id
+---------------
+d              
 (1 row)
 

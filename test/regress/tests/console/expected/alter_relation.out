@@ -84,9 +84,9 @@ SHOW relations;
 CREATE DISTRIBUTED RELATION sh12.aa12 DISTRIBUTION KEY another2 SCHEMA schema_name3 IN ds2;
 ERROR:  failed to parse query "CREATE DISTRIBUTED RELATION sh12.aa12 DISTRIBUTION KEY another2 SCHEMA schema_name3 IN ds2;": it is forbidden to use both a qualified relation name and the keyword SCHEMA
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds1
- distribution id -> ds2
+ distribution_id 
+-----------------
+ ds1
+ ds2
 (2 rows)
 
