@@ -2179,7 +2179,7 @@ func (q *EtcdQDB) CreateRedistributeTask(ctx context.Context, task *Redistribute
 			return fmt.Errorf("unexpected response count: create redistribute task \"%s\" response parts count=%d", task.ID, len(resp.Responses))
 		}
 		if resp.Responses[0].GetResponseRange().Count > 0 {
-			return fmt.Errorf("could not create redistribute task: task for key range \"%s\" already exists", task.KeyRangeId)
+			return fmt.Errorf("could not create redistribute task: task \"%s\" for key range \"%s\" already exists", resp.Responses[0].GetResponseRange().Kvs[0].Value, task.KeyRangeId)
 		}
 		if resp.Responses[1].GetResponseRange().Count == 0 {
 			return fmt.Errorf("could not create redistribute task: redistribute task with ID \"%s\" already exists in QDB", task.ID)
