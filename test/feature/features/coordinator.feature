@@ -950,7 +950,7 @@ Feature: Coordinator test
     }]
     """
   
-  Scenario: DROP REDISTRUBUTE TASK works
+  Scenario: DROP REDISTRIBUTE TASK works
     When I record in qdb redistribute task
     """
     {

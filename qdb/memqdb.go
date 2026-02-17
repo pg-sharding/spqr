@@ -1381,7 +1381,7 @@ func (q *MemQDB) UpdateRedistributeTask(_ context.Context, task *RedistributeTas
 	defer q.mu.Unlock()
 
 	if _, ok := q.RedistributeTasks[task.ID]; !ok {
-		return fmt.Errorf("could not udpate redistribute task: redistribute task with ID \"%s\" doesn't exist in QDB", task.ID)
+		return fmt.Errorf("could not update redistribute task: redistribute task with ID \"%s\" doesn't exist in QDB", task.ID)
 	}
 	q.RedistributeTasks[task.ID] = task
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.RedistributeTasks, task.ID, task))
