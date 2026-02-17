@@ -1953,6 +1953,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		go func() {
 
 			err := qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
+				ID:          uuid.NewString(),
 				TaskGroupId: req.TaskGroupId,
 				KeyRangeId:  req.KrId,
 				ShardId:     req.ShardId,
@@ -1972,6 +1973,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 	ch := make(chan error)
 	go func() {
 		ch <- qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
+			ID:          uuid.NewString(),
 			TaskGroupId: req.TaskGroupId,
 			KeyRangeId:  req.KrId,
 			ShardId:     req.ShardId,
