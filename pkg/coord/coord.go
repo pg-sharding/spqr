@@ -1052,7 +1052,35 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		Str("source-id", req.SourceID).
 		Msg("split request is")
 
-	if _, err := qc.qdb.GetKeyRange(ctx, req.Krid); err == nil {
+	if kRange, err := qc.GetKeyRange(ctx, req.Krid); err == nil {
+		ds, err := qc.qdb.GetDistribution(ctx, kRange.Distribution)
+		if err != nil {
+			return err
+		}
+
+		var reqRange *kr.KeyRange
+		var cmpRange *kr.KeyRange
+		if req.SplitLeft {
+			sourceKr, err := qc.GetKeyRange(ctx, req.SourceID)
+			if err != nil {
+				return err
+			}
+			cmpRange = sourceKr
+			reqRange, err = kr.KeyRangeFromBytes(req.Bound, ds.ColTypes)
+			if err != nil {
+				return err
+			}
+		} else {
+			cmpRange = kRange
+			reqRange, err = kr.KeyRangeFromBytes(req.Bound, ds.ColTypes)
+			if err != nil {
+				return err
+			}
+		}
+		if kr.CmpRangesEqual(cmpRange.LowerBound, reqRange.LowerBound, ds.ColTypes) {
+			// already split, so no-op
+			return nil
+		}
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.Krid)
 	}
 
