@@ -1139,6 +1139,25 @@ func (a *Adapter) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*task
 	return res, err
 }
 
+func (a *Adapter) ListRedistributeTasks(ctx context.Context) ([]*tasks.RedistributeTask, error) {
+	tasksService := proto.NewRedistributeTaskServiceClient(a.conn)
+	ret, err := tasksService.ListRedistributeTasks(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*tasks.RedistributeTask, len(ret.Tasks))
+	for i, task := range ret.Tasks {
+		res[i] = tasks.RedistributeTaskFromProto(task)
+	}
+	return res, nil
+}
+
+func (a *Adapter) DropRedistributeTask(ctx context.Context, id string) error {
+	tasksService := proto.NewRedistributeTaskServiceClient(a.conn)
+	_, err := tasksService.RemoveRedistributeTask(ctx, &proto.RedistributeTaskSelector{Id: id})
+	return err
+}
+
 // GetBalancerTask retrieves current balancer task from the system.
 //
 // Parameters:

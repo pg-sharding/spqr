@@ -1953,6 +1953,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		go func() {
 
 			err := qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
+				ID:          uuid.NewString(),
 				TaskGroupId: req.TaskGroupId,
 				KeyRangeId:  req.KrId,
 				ShardId:     req.ShardId,
@@ -1972,6 +1973,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 	ch := make(chan error)
 	go func() {
 		ch <- qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
+			ID:          uuid.NewString(),
 			TaskGroupId: req.TaskGroupId,
 			KeyRangeId:  req.KrId,
 			ShardId:     req.ShardId,
@@ -2003,6 +2005,9 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 // Returns:
 //   - error: An error if any occurred.
 func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, task *tasks.RedistributeTask) error {
+	if err := qc.db.CreateRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err != nil {
+		return err
+	}
 	for {
 		switch task.State {
 		case tasks.RedistributeTaskPlanned:
@@ -2017,7 +2022,7 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 			}); err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
 					spqrlog.Zero.Error().Msg("finishing redistribute task due to task group stop")
-					if err2 := qc.db.RemoveRedistributeTask(ctx); err2 != nil {
+					if err2 := qc.db.RemoveRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err2 != nil {
 						return err2
 					}
 					return err
@@ -2025,14 +2030,14 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 				return err
 			}
 			task.State = tasks.RedistributeTaskMoved
-			if err := qc.db.WriteRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err != nil {
+			if err := qc.db.UpdateRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err != nil {
 				return err
 			}
 		case tasks.RedistributeTaskMoved:
 			if err := qc.RenameKeyRange(ctx, task.TempKrId, task.KeyRangeId); err != nil {
 				return err
 			}
-			return qc.db.RemoveRedistributeTask(ctx)
+			return qc.db.RemoveRedistributeTask(ctx, tasks.RedistributeTaskToDB(task))
 		default:
 			return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, "invalid redistribute task state")
 		}

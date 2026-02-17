@@ -1125,6 +1125,17 @@ func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
 	return tctx.qdb.WriteMoveTaskGroup(context.TODO(), taskGroup.ID, tasks.TaskGroupToDb(&taskGroup), taskGroup.TotalKeys, taskDb)
 }
 
+func (tctx *testContext) stepRecordQDBRedistributeTask(body *godog.DocString) error {
+	query := strings.TrimSpace(body.Content)
+	var task *tasks.RedistributeTask
+	if err := json.Unmarshal([]byte(query), &task); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal request")
+		return err
+	}
+
+	return tctx.qdb.CreateRedistributeTask(context.TODO(), tasks.RedistributeTaskToDB(task))
+}
+
 func (tctx *testContext) stepRecordQDBTaskGroupStatus(id string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 	var status *qdb.TaskGroupStatus
@@ -1275,14 +1286,14 @@ func (tctx *testContext) stepWaitForAllKeyRangeMovesToFinish(timeout int64) erro
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(timeout)*time.Second)
 	defer cancel()
 	return retry.Do(ctx, retry.NewConstant(interval), func(ctx context.Context) error {
-		redistributeTask, err := tctx.qdb.GetRedistributeTask(ctx)
+		redistributeTasks, err := tctx.qdb.ListRedistributeTasks(ctx)
 		if err != nil {
 			log.Printf("error getting redistribute task: %s", err)
 			return err
 		}
-		if redistributeTask != nil {
-			log.Println("redistribute task present in qdb")
-			return retry.RetryableError(fmt.Errorf("redistribute task still present"))
+		if len(redistributeTasks) > 0 {
+			log.Println("redistribute task(s) present in qdb")
+			return retry.RetryableError(fmt.Errorf("redistribute task(s) still present"))
 		}
 		taskGroups, err := tctx.qdb.ListTaskGroups(ctx)
 		if err != nil {
@@ -1318,14 +1329,14 @@ func (tctx *testContext) stepWaitForAllKeyRangeMovesToFinish(timeout int64) erro
 func (tctx *testContext) stepQDBShouldNotContainTasks() error {
 	ctx, cancel := context.WithTimeout(context.TODO(), qdbQueriesTimeout)
 	defer cancel()
-	redistributeTask, err := tctx.qdb.GetRedistributeTask(ctx)
+	redistributeTasks, err := tctx.qdb.ListRedistributeTasks(ctx)
 	if err != nil {
 		log.Printf("error getting redistribute task: %s", err)
 		return err
 	}
-	if redistributeTask != nil {
-		log.Println("redistribute task present in qdb")
-		return retry.RetryableError(fmt.Errorf("redistribute task still present"))
+	if len(redistributeTasks) > 0 {
+		log.Println("redistribute task(s) present in qdb")
+		return retry.RetryableError(fmt.Errorf("redistribute task(s) still present"))
 	}
 	taskGroups, err := tctx.qdb.ListTaskGroups(ctx)
 	if err != nil {
@@ -1464,6 +1475,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I record in qdb key range move$`, tctx.stepRecordQDBKRMove)
 	s.Step(`^I record in qdb move task group$`, tctx.stepRecordQDBTaskGroup)
 	s.Step(`^I record in qdb status of move task group "([^"]*)"$`, tctx.stepRecordQDBTaskGroupStatus)
+	s.Step(`^I record in qdb redistribute task$`, tctx.stepRecordQDBRedistributeTask)
 	s.Step(`^qdb should contain transaction "([^"]*)"$`, tctx.stepQDBShouldContainTx)
 	s.Step(`^qdb should not contain transaction "([^"]*)"$`, tctx.stepQDBShouldNotContainTx)
 	s.Step(`^qdb should not contain key range moves$`, tctx.stepQDBShouldNotContainKRMoves)

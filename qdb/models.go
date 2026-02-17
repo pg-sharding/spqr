@@ -186,6 +186,7 @@ type TaskGroupStatus struct {
 }
 
 type RedistributeTask struct {
+	ID          string `json:"id"`
 	TaskGroupId string `json:"task_group_id"`
 	KeyRangeId  string `json:"kr_id"`
 	ShardId     string `json:"shard_id"`

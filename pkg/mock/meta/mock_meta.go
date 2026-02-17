@@ -348,6 +348,20 @@ func (mr *MockEntityMgrMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropKeyRangeAll", reflect.TypeOf((*MockEntityMgr)(nil).DropKeyRangeAll), ctx)
 }
 
+// DropRedistributeTask mocks base method.
+func (m *MockEntityMgr) DropRedistributeTask(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropRedistributeTask", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropRedistributeTask indicates an expected call of DropRedistributeTask.
+func (mr *MockEntityMgrMockRecorder) DropRedistributeTask(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropRedistributeTask", reflect.TypeOf((*MockEntityMgr)(nil).DropRedistributeTask), ctx, id)
+}
+
 // DropReferenceRelation mocks base method.
 func (m *MockEntityMgr) DropReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) error {
 	m.ctrl.T.Helper()
@@ -702,6 +716,21 @@ func (m *MockEntityMgr) ListMoveTasks(ctx context.Context) (map[string]*tasks.Mo
 func (mr *MockEntityMgrMockRecorder) ListMoveTasks(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMoveTasks", reflect.TypeOf((*MockEntityMgr)(nil).ListMoveTasks), ctx)
+}
+
+// ListRedistributeTasks mocks base method.
+func (m *MockEntityMgr) ListRedistributeTasks(ctx context.Context) ([]*tasks.RedistributeTask, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRedistributeTasks", ctx)
+	ret0, _ := ret[0].([]*tasks.RedistributeTask)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRedistributeTasks indicates an expected call of ListRedistributeTasks.
+func (mr *MockEntityMgrMockRecorder) ListRedistributeTasks(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRedistributeTasks", reflect.TypeOf((*MockEntityMgr)(nil).ListRedistributeTasks), ctx)
 }
 
 // ListReferenceRelations mocks base method.

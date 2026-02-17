@@ -339,6 +339,24 @@ func processDrop(ctx context.Context,
 				},
 			},
 		}, nil
+	case *spqrparser.RedistributeTaskSelector:
+		tasks, err := mngr.ListRedistributeTasks(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("redistribute_task_id"),
+		}
+		for _, task := range tasks {
+			if task.ID == stmt.ID {
+				if err := mngr.DropRedistributeTask(ctx, stmt.ID); err != nil {
+					return nil, err
+				}
+				tts.WriteDataRow(stmt.ID)
+				break
+			}
+		}
+		return tts, nil
 	default:
 		return nil, fmt.Errorf("unknown drop statement")
 	}
@@ -919,7 +937,6 @@ func ProcMetadataCommand(ctx context.Context,
 		return tts, nil
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, mgr)
-
 	case *spqrparser.Create:
 		return ProcessCreate(ctx, stmt.Element, mgr)
 	case *spqrparser.MoveKeyRange:
@@ -1468,6 +1485,15 @@ func ProcessShowExtended(ctx context.Context,
 		}
 
 		tts, err = engine.TaskGroupBoundsCacheVirtualRelationScan(bounds, ind, keyRange.ColumnTypes, taskGroupId)
+		if err != nil {
+			return nil, err
+		}
+	case spqrparser.RedistributeTasksStr:
+		redistributeTasks, err := mngr.ListRedistributeTasks(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts, err = engine.RedistributeTasksVirtualRelationScan(redistributeTasks)
 		if err != nil {
 			return nil, err
 		}

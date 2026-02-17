@@ -33,6 +33,7 @@ type LocalQrouterServer struct {
 	protos.UnimplementedPoolServiceServer
 	protos.UnimplementedDistributionServiceServer
 	protos.UnimplementedMoveTasksServiceServer
+	protos.UnimplementedRedistributeTaskServiceServer
 	protos.UnimplementedShardServiceServer
 	protos.UnimplementedBalancerTaskServiceServer
 	protos.UnimplementedReferenceRelationsServiceServer
@@ -591,6 +592,22 @@ func (l *LocalQrouterServer) GetMoveTaskGroupBoundsCache(ctx context.Context, re
 	return &protos.MoveTaskGroupBoundsCache{Bounds: boundsProto, Index: int64(ind)}, nil
 }
 
+func (l *LocalQrouterServer) ListRedistributeTasks(ctx context.Context, _ *emptypb.Empty) (*protos.ListRedistributeTasksReply, error) {
+	tasksInt, err := l.mgr.ListRedistributeTasks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*protos.RedistributeTask, len(tasksInt))
+	for i, task := range tasksInt {
+		res[i] = tasks.RedistributeTaskToProto(task)
+	}
+	return &protos.ListRedistributeTasksReply{Tasks: res}, nil
+}
+
+func (l *LocalQrouterServer) DropRedistributeTask(ctx context.Context, req *protos.RedistributeTaskSelector) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropRedistributeTask(ctx, req.Id)
+}
+
 // TODO: unit tests
 func (l *LocalQrouterServer) GetBalancerTask(ctx context.Context, _ *emptypb.Empty) (*protos.GetBalancerTaskReply, error) {
 	task, err := l.mgr.GetBalancerTask(ctx)
@@ -730,6 +747,7 @@ var _ protos.BackendConnectionsServiceServer = &LocalQrouterServer{}
 var _ protos.PoolServiceServer = &LocalQrouterServer{}
 var _ protos.DistributionServiceServer = &LocalQrouterServer{}
 var _ protos.MoveTasksServiceServer = &LocalQrouterServer{}
+var _ protos.RedistributeTaskServiceServer = &LocalQrouterServer{}
 var _ protos.BalancerTaskServiceServer = &LocalQrouterServer{}
 var _ protos.ShardServiceServer = &LocalQrouterServer{}
 var _ protos.ReferenceRelationsServiceServer = &LocalQrouterServer{}
