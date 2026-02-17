@@ -20,7 +20,7 @@ var someShards = []*topology.DataShard{
 		Cfg: &config.Shard{
 			RawHosts: []string{
 				"aboba:1337:kapusta",
-				"eshkere:228",
+				"sample:228",
 			},
 		},
 	},
@@ -37,7 +37,7 @@ var someShards = []*topology.DataShard{
 var someProtoShards = []*proto.Shard{
 	{
 		Id:    "id-first",
-		Hosts: []string{"aboba:1337", "eshkere:228"},
+		Hosts: []string{"aboba:1337", "sample:228"},
 	},
 	{
 		Id:    "id-second",
