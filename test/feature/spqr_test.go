@@ -1275,14 +1275,14 @@ func (tctx *testContext) stepWaitForAllKeyRangeMovesToFinish(timeout int64) erro
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(timeout)*time.Second)
 	defer cancel()
 	return retry.Do(ctx, retry.NewConstant(interval), func(ctx context.Context) error {
-		redistributeTask, err := tctx.qdb.GetRedistributeTask(ctx)
+		redistributeTasks, err := tctx.qdb.ListRedistributeTasks(ctx)
 		if err != nil {
 			log.Printf("error getting redistribute task: %s", err)
 			return err
 		}
-		if redistributeTask != nil {
-			log.Println("redistribute task present in qdb")
-			return retry.RetryableError(fmt.Errorf("redistribute task still present"))
+		if len(redistributeTasks) > 0 {
+			log.Println("redistribute task(s) present in qdb")
+			return retry.RetryableError(fmt.Errorf("redistribute task(s) still present"))
 		}
 		taskGroups, err := tctx.qdb.ListTaskGroups(ctx)
 		if err != nil {
@@ -1318,14 +1318,14 @@ func (tctx *testContext) stepWaitForAllKeyRangeMovesToFinish(timeout int64) erro
 func (tctx *testContext) stepQDBShouldNotContainTasks() error {
 	ctx, cancel := context.WithTimeout(context.TODO(), qdbQueriesTimeout)
 	defer cancel()
-	redistributeTask, err := tctx.qdb.GetRedistributeTask(ctx)
+	redistributeTasks, err := tctx.qdb.ListRedistributeTasks(ctx)
 	if err != nil {
 		log.Printf("error getting redistribute task: %s", err)
 		return err
 	}
-	if redistributeTask != nil {
-		log.Println("redistribute task present in qdb")
-		return retry.RetryableError(fmt.Errorf("redistribute task still present"))
+	if len(redistributeTasks) > 0 {
+		log.Println("redistribute task(s) present in qdb")
+		return retry.RetryableError(fmt.Errorf("redistribute task(s) still present"))
 	}
 	taskGroups, err := tctx.qdb.ListTaskGroups(ctx)
 	if err != nil {
