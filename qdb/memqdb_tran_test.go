@@ -301,6 +301,7 @@ func TestDropKeyRangeQdbStatements(t *testing.T) {
 		memQdb, err := NewMemQDB("")
 		is.NoError(err)
 		actual, err := memQdb.dropKeyRangeQdbStatements("testKr")
+		is.NoError(err)
 		expected := []QdbStatement{
 			{
 				CmdType:   CMD_DELETE,
