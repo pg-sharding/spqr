@@ -341,6 +341,24 @@ func processDrop(ctx context.Context,
 				},
 			},
 		}, nil
+	case *spqrparser.RedistributeTaskSelector:
+		tasks, err := mngr.ListRedistributeTasks(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("redistribute_task_id"),
+		}
+		for _, task := range tasks {
+			if task.ID == stmt.ID {
+				if err := mngr.DropRedistributeTask(ctx, stmt.ID); err != nil {
+					return nil, err
+				}
+				tts.WriteDataRow(stmt.ID)
+				break
+			}
+		}
+		return tts, nil
 	default:
 		return nil, fmt.Errorf("unknown drop statement")
 	}
