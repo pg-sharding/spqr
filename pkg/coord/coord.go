@@ -753,7 +753,11 @@ func (qc *Coordinator) ListRedistributeTasks(ctx context.Context) ([]*tasks.Redi
 }
 
 func (qc *Coordinator) DropRedistributeTask(ctx context.Context, id string) error {
-	return qc.qdb.RemoveRedistributeTask(ctx, id)
+	task, err := qc.qdb.GetRedistributeTask(ctx, id)
+	if err != nil {
+		return err
+	}
+	return qc.qdb.RemoveRedistributeTask(ctx, task)
 }
 
 // TODO : unit tests
