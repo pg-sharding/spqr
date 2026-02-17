@@ -11,6 +11,8 @@ import (
 
 	_ "net/http/pprof"
 
+	"path"
+
 	"github.com/pg-sharding/spqr/coordinator/app"
 	coord "github.com/pg-sharding/spqr/coordinator/pkg"
 	"github.com/pg-sharding/spqr/pkg"
@@ -18,6 +20,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/spf13/cobra"
 )
 
@@ -65,6 +68,27 @@ var rootCmd = &cobra.Command{
 		}
 
 		spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, config.CoordinatorConfig().PrettyLogging)
+
+		// Initialize help registry for console help command
+		// Try multiple locations for the help directory
+		helpDirs := []string{
+			// Absolute path from SPQR installation (most common in Docker)
+			"/spqr/yacc/console/help",
+			// Relative to config file (development environment)
+			path.Join(path.Dir(cfgPath), "..", "..", "yacc", "console", "help"),
+			// Relative to current working directory
+			"./yacc/console/help",
+		}
+
+		var initErr error
+		for _, helpDir := range helpDirs {
+			initErr = spqrparser.InitHelpRegistry(helpDir)
+			if initErr == nil {
+				spqrlog.Zero.Debug().Str("help_dir", helpDir).Msg("initialized help registry")
+				break
+			}
+			spqrlog.Zero.Debug().Err(initErr).Str("help_dir", helpDir).Msg("failed to initialize help registry from this location")
+		}
 
 		if gomaxprocs > 0 {
 			runtime.GOMAXPROCS(gomaxprocs)
