@@ -538,11 +538,15 @@ func (l *LocalQrouterServer) ListMoveTasks(ctx context.Context, _ *emptypb.Empty
 }
 
 func (l *LocalQrouterServer) GetMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*protos.MoveTaskReply, error) {
-	return nil, fmt.Errorf("not implemented")
+	task, err := l.mgr.GetMoveTask(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.MoveTaskReply{Task: tasks.MoveTaskToProto(task)}, nil
 }
 
 func (l *LocalQrouterServer) RemoveMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, l.mgr.RemoveMoveTask(ctx, req.ID)
 }
 
 func (l *LocalQrouterServer) GetMoveTaskGroupStatus(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupStatus, error) {

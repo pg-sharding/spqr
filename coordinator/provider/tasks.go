@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
@@ -40,11 +39,15 @@ func (t *TasksServer) ListMoveTasks(ctx context.Context, _ *emptypb.Empty) (*pro
 }
 
 func (t *TasksServer) GetMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*protos.MoveTaskReply, error) {
-	return nil, fmt.Errorf("not implemented")
+	task, err := t.impl.GetMoveTask(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.MoveTaskReply{Task: tasks.MoveTaskToProto(task)}, nil
 }
 
 func (t *TasksServer) RemoveMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, t.impl.RemoveMoveTask(ctx, req.ID)
 }
 
 func (t *TasksServer) ListMoveTaskGroups(ctx context.Context, _ *emptypb.Empty) (*protos.ListMoveTaskGroupsReply, error) {
