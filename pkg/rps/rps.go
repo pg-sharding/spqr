@@ -122,7 +122,7 @@ func (r *RPSStats) advanceWindow(now time.Time) {
 		r.lastBucket = 0
 	} else {
 		// We've moved forward, so these intermediate buckets are ancient history. Clear 'em.
-		for i := 0; i < bucketsToAdvance; i++ {
+		for range bucketsToAdvance {
 			nextBucket := (r.lastBucket + 1) % r.numBuckets
 			r.total -= r.buckets[nextBucket]
 			if r.total < 0 {
