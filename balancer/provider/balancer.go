@@ -179,7 +179,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.BalancerTask, 
 //   - error: an error if any occurred.
 func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shardId string, shard *config.ShardConnect) (*ShardMetrics, error) {
 	spqrlog.Zero.Debug().Str("shard id", shardId).Msg("getting shard state")
-	connStrings := datatransfers.GetConnStrings(shard)
+	connStrings := datatransfers.GetConnStrings(shard, "spqr-balancer")
 	res := NewShardMetrics()
 	res.ShardId = shardId
 	replicaMetrics := NewHostMetrics()

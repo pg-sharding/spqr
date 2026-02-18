@@ -19,7 +19,10 @@ import (
 //
 // Returns:
 // - []string: a slice of strings containing connection strings.
-func GetConnStrings(s *config.ShardConnect) []string {
+func GetConnStrings(s *config.ShardConnect, applicationName string) []string {
+	if applicationName == "" {
+		applicationName = spqrTransferApplicationName
+	}
 	res := make([]string, len(s.Hosts))
 	for i, host := range s.Hosts {
 		address := strings.Split(host, ":")[0]
@@ -39,8 +42,12 @@ func GetConnStrings(s *config.ShardConnect) []string {
 //   - error: error if any occurred
 //
 // TODO: unit tests
-func GetMasterConnection(ctx context.Context, s *config.ShardConnect) (*pgx.Conn, error) {
-	for _, dsn := range GetConnStrings(s) {
+func GetMasterConnection(ctx context.Context, s *config.ShardConnect, taskGroupId string) (*pgx.Conn, error) {
+	applicationName := ""
+	if taskGroupId != "" {
+		applicationName = spqrTransferApplicationName + "_" + taskGroupId
+	}
+	for _, dsn := range GetConnStrings(s, applicationName) {
 		connConfig, err := pgx.ParseConfig(dsn)
 		if err != nil {
 			return nil, err
