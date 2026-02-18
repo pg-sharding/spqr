@@ -1731,6 +1731,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 	}
 	if err := qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupRunning)}); err != nil {
 		spqrlog.Zero.Error().Str("task group ID", taskGroup.ID).Err(err).Msg("failed to write task group status")
+		return err
 	}
 
 	var delayedError error
