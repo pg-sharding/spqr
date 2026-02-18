@@ -749,7 +749,7 @@ func (qc *ClusteredCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID s
 // TODO : unit tests
 func (qc *ClusteredCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	if err := qc.Coordinator.Split(ctx, req); err != nil {
-		return err
+		return fmt.Errorf("failed to split key range in coordinator: %s", err)
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -763,7 +763,10 @@ func (qc *ClusteredCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange
 		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
 			Msg("split key range response")
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to split key range in router \"%s\": %s", cc.Target(), err)
+		}
+		return nil
 	}); err != nil {
 		return err
 	}
