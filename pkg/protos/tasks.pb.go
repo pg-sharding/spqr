@@ -1406,9 +1406,11 @@ const file_protos_tasks_proto_rawDesc = "" +
 	"\x11BalancerTaskMoved\x10\x01*O\n" +
 	"\x15RedistributeTaskState\x12\x1b\n" +
 	"\x17RedistributeTaskPlanned\x10\x00\x12\x19\n" +
-	"\x15RedistributeTaskMoved\x10\x012\xbd\x06\n" +
+	"\x15RedistributeTaskMoved\x10\x012\xbf\a\n" +
 	"\x10MoveTasksService\x12?\n" +
-	"\rListMoveTasks\x12\x16.google.protobuf.Empty\x1a\x14.spqr.MoveTasksReply\"\x00\x12M\n" +
+	"\rListMoveTasks\x12\x16.google.protobuf.Empty\x1a\x14.spqr.MoveTasksReply\"\x00\x12<\n" +
+	"\vGetMoveTask\x12\x16.spqr.MoveTaskSelector\x1a\x13.spqr.MoveTaskReply\"\x00\x12B\n" +
+	"\x0eRemoveMoveTask\x12\x16.spqr.MoveTaskSelector\x1a\x16.google.protobuf.Empty\"\x00\x12M\n" +
 	"\x12ListMoveTaskGroups\x12\x16.google.protobuf.Empty\x1a\x1d.spqr.ListMoveTaskGroupsReply\"\x00\x12N\n" +
 	"\x10GetMoveTaskGroup\x12\x1b.spqr.MoveTaskGroupSelector\x1a\x1b.spqr.GetMoveTaskGroupReply\"\x00\x12O\n" +
 	"\x12WriteMoveTaskGroup\x12\x1f.spqr.WriteMoveTaskGroupRequest\x1a\x16.google.protobuf.Empty\"\x00\x12L\n" +
@@ -1488,37 +1490,41 @@ var file_protos_tasks_proto_depIdxs = []int32{
 	21, // 15: spqr.ListRedistributeTasksReply.tasks:type_name -> spqr.RedistributeTask
 	15, // 16: spqr.GetAllMoveTaskGroupStatusesReply.StatusesEntry.value:type_name -> spqr.MoveTaskGroupStatus
 	25, // 17: spqr.MoveTasksService.ListMoveTasks:input_type -> google.protobuf.Empty
-	25, // 18: spqr.MoveTasksService.ListMoveTaskGroups:input_type -> google.protobuf.Empty
-	14, // 19: spqr.MoveTasksService.GetMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
-	13, // 20: spqr.MoveTasksService.WriteMoveTaskGroup:input_type -> spqr.WriteMoveTaskGroupRequest
-	14, // 21: spqr.MoveTasksService.RemoveMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
-	14, // 22: spqr.MoveTasksService.RetryMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
-	14, // 23: spqr.MoveTasksService.StopMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
-	14, // 24: spqr.MoveTasksService.GetMoveTaskGroupBoundsCache:input_type -> spqr.MoveTaskGroupSelector
-	14, // 25: spqr.MoveTasksService.GetMoveTaskGroupStatus:input_type -> spqr.MoveTaskGroupSelector
-	25, // 26: spqr.MoveTasksService.GetAllMoveTaskGroupStatuses:input_type -> google.protobuf.Empty
-	25, // 27: spqr.BalancerTaskService.GetBalancerTask:input_type -> google.protobuf.Empty
-	20, // 28: spqr.BalancerTaskService.WriteBalancerTask:input_type -> spqr.WriteBalancerTaskRequest
-	25, // 29: spqr.BalancerTaskService.RemoveBalancerTask:input_type -> google.protobuf.Empty
-	25, // 30: spqr.RedistributeTaskService.ListRedistributeTasks:input_type -> google.protobuf.Empty
-	22, // 31: spqr.RedistributeTaskService.RemoveRedistributeTask:input_type -> spqr.RedistributeTaskSelector
-	9,  // 32: spqr.MoveTasksService.ListMoveTasks:output_type -> spqr.MoveTasksReply
-	12, // 33: spqr.MoveTasksService.ListMoveTaskGroups:output_type -> spqr.ListMoveTaskGroupsReply
-	11, // 34: spqr.MoveTasksService.GetMoveTaskGroup:output_type -> spqr.GetMoveTaskGroupReply
-	25, // 35: spqr.MoveTasksService.WriteMoveTaskGroup:output_type -> google.protobuf.Empty
-	25, // 36: spqr.MoveTasksService.RemoveMoveTaskGroup:output_type -> google.protobuf.Empty
-	25, // 37: spqr.MoveTasksService.RetryMoveTaskGroup:output_type -> google.protobuf.Empty
-	25, // 38: spqr.MoveTasksService.StopMoveTaskGroup:output_type -> google.protobuf.Empty
-	17, // 39: spqr.MoveTasksService.GetMoveTaskGroupBoundsCache:output_type -> spqr.MoveTaskGroupBoundsCache
-	15, // 40: spqr.MoveTasksService.GetMoveTaskGroupStatus:output_type -> spqr.MoveTaskGroupStatus
-	16, // 41: spqr.MoveTasksService.GetAllMoveTaskGroupStatuses:output_type -> spqr.GetAllMoveTaskGroupStatusesReply
-	19, // 42: spqr.BalancerTaskService.GetBalancerTask:output_type -> spqr.GetBalancerTaskReply
-	25, // 43: spqr.BalancerTaskService.WriteBalancerTask:output_type -> google.protobuf.Empty
-	25, // 44: spqr.BalancerTaskService.RemoveBalancerTask:output_type -> google.protobuf.Empty
-	23, // 45: spqr.RedistributeTaskService.ListRedistributeTasks:output_type -> spqr.ListRedistributeTasksReply
-	25, // 46: spqr.RedistributeTaskService.RemoveRedistributeTask:output_type -> google.protobuf.Empty
-	32, // [32:47] is the sub-list for method output_type
-	17, // [17:32] is the sub-list for method input_type
+	7,  // 18: spqr.MoveTasksService.GetMoveTask:input_type -> spqr.MoveTaskSelector
+	7,  // 19: spqr.MoveTasksService.RemoveMoveTask:input_type -> spqr.MoveTaskSelector
+	25, // 20: spqr.MoveTasksService.ListMoveTaskGroups:input_type -> google.protobuf.Empty
+	14, // 21: spqr.MoveTasksService.GetMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
+	13, // 22: spqr.MoveTasksService.WriteMoveTaskGroup:input_type -> spqr.WriteMoveTaskGroupRequest
+	14, // 23: spqr.MoveTasksService.RemoveMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
+	14, // 24: spqr.MoveTasksService.RetryMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
+	14, // 25: spqr.MoveTasksService.StopMoveTaskGroup:input_type -> spqr.MoveTaskGroupSelector
+	14, // 26: spqr.MoveTasksService.GetMoveTaskGroupBoundsCache:input_type -> spqr.MoveTaskGroupSelector
+	14, // 27: spqr.MoveTasksService.GetMoveTaskGroupStatus:input_type -> spqr.MoveTaskGroupSelector
+	25, // 28: spqr.MoveTasksService.GetAllMoveTaskGroupStatuses:input_type -> google.protobuf.Empty
+	25, // 29: spqr.BalancerTaskService.GetBalancerTask:input_type -> google.protobuf.Empty
+	20, // 30: spqr.BalancerTaskService.WriteBalancerTask:input_type -> spqr.WriteBalancerTaskRequest
+	25, // 31: spqr.BalancerTaskService.RemoveBalancerTask:input_type -> google.protobuf.Empty
+	25, // 32: spqr.RedistributeTaskService.ListRedistributeTasks:input_type -> google.protobuf.Empty
+	22, // 33: spqr.RedistributeTaskService.RemoveRedistributeTask:input_type -> spqr.RedistributeTaskSelector
+	9,  // 34: spqr.MoveTasksService.ListMoveTasks:output_type -> spqr.MoveTasksReply
+	8,  // 35: spqr.MoveTasksService.GetMoveTask:output_type -> spqr.MoveTaskReply
+	25, // 36: spqr.MoveTasksService.RemoveMoveTask:output_type -> google.protobuf.Empty
+	12, // 37: spqr.MoveTasksService.ListMoveTaskGroups:output_type -> spqr.ListMoveTaskGroupsReply
+	11, // 38: spqr.MoveTasksService.GetMoveTaskGroup:output_type -> spqr.GetMoveTaskGroupReply
+	25, // 39: spqr.MoveTasksService.WriteMoveTaskGroup:output_type -> google.protobuf.Empty
+	25, // 40: spqr.MoveTasksService.RemoveMoveTaskGroup:output_type -> google.protobuf.Empty
+	25, // 41: spqr.MoveTasksService.RetryMoveTaskGroup:output_type -> google.protobuf.Empty
+	25, // 42: spqr.MoveTasksService.StopMoveTaskGroup:output_type -> google.protobuf.Empty
+	17, // 43: spqr.MoveTasksService.GetMoveTaskGroupBoundsCache:output_type -> spqr.MoveTaskGroupBoundsCache
+	15, // 44: spqr.MoveTasksService.GetMoveTaskGroupStatus:output_type -> spqr.MoveTaskGroupStatus
+	16, // 45: spqr.MoveTasksService.GetAllMoveTaskGroupStatuses:output_type -> spqr.GetAllMoveTaskGroupStatusesReply
+	19, // 46: spqr.BalancerTaskService.GetBalancerTask:output_type -> spqr.GetBalancerTaskReply
+	25, // 47: spqr.BalancerTaskService.WriteBalancerTask:output_type -> google.protobuf.Empty
+	25, // 48: spqr.BalancerTaskService.RemoveBalancerTask:output_type -> google.protobuf.Empty
+	23, // 49: spqr.RedistributeTaskService.ListRedistributeTasks:output_type -> spqr.ListRedistributeTasksReply
+	25, // 50: spqr.RedistributeTaskService.RemoveRedistributeTask:output_type -> google.protobuf.Empty
+	34, // [34:51] is the sub-list for method output_type
+	17, // [17:34] is the sub-list for method input_type
 	17, // [17:17] is the sub-list for extension type_name
 	17, // [17:17] is the sub-list for extension extendee
 	0,  // [0:17] is the sub-list for field type_name
