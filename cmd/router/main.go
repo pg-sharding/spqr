@@ -140,24 +140,9 @@ var runCmd = &cobra.Command{
 		spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
 
 		// Initialize help registry for console help command
-		// Try multiple locations for the help directory
-		helpDirs := []string{
-			// Absolute path from SPQR installation (most common in Docker)
-			"/spqr/yacc/console/help",
-			// Relative to config file (development environment)
-			path.Join(path.Dir(rcfgPath), "..", "..", "yacc", "console", "help"),
-			// Relative to current working directory
-			"./yacc/console/help",
-		}
-
-		var initErr error
-		for _, helpDir := range helpDirs {
-			initErr = spqrparser.InitHelpRegistry(helpDir)
-			if initErr == nil {
-				spqrlog.Zero.Debug().Str("help_dir", helpDir).Msg("initialized help registry")
-				break
-			}
-			spqrlog.Zero.Debug().Err(initErr).Str("help_dir", helpDir).Msg("failed to initialize help registry from this location")
+		// Help files are embedded in the binary at build time
+		if err := spqrparser.InitHelpRegistry(); err != nil {
+			spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
 		}
 
 		if err := logEffectiveConfig(config.RouterConfig()); err != nil {
