@@ -1072,6 +1072,9 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = destConn.Close(ctx)
+	}()
 
 	sourceShardConn, ok := conns.ShardsData[keyRange.ShardID]
 	if !ok {
@@ -1081,6 +1084,9 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = sourceConn.Close(ctx)
+	}()
 
 	ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
 	if err != nil {
@@ -1247,6 +1253,9 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = sourceConn.Close(ctx)
+	}()
 
 	totalCount, relCount, err := qc.getKeyStats(ctx, sourceConn, ds.Relations, keyRange, nextBound)
 	if err != nil {
@@ -1715,6 +1724,9 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = sourceConn.Close(ctx)
+	}()
 
 	ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
 	if err != nil {
@@ -1747,6 +1759,9 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 				if err != nil {
 					return fmt.Errorf("failed to re-setup connection with source shard: %s", err)
 				}
+				defer func() {
+					_ = sourceConn.Close(ctx)
+				}()
 			}
 
 			newTask, err := qc.getNextMoveTask(ctx, sourceConn, taskGroup, rel, ds)

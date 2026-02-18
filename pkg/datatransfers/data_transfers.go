@@ -170,6 +170,9 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
 	}
+	defer func() {
+		_ = from.Close(ctx)
+	}()
 	toCfg, ok := shards.ShardsData[toId]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", toId)
@@ -179,6 +182,9 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
 	}
+	defer func() {
+		_ = to.Close(ctx)
+	}()
 
 	upperBound, err := resolveNextBound(ctx, krg, mgr)
 	if err != nil {
@@ -294,6 +300,9 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
 	}
+	defer func() {
+		_ = from.Close(ctx)
+	}()
 	toCfg, ok := shards.ShardsData[toId]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", toId)
@@ -303,6 +312,9 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
 	}
+	defer func() {
+		_ = to.Close(ctx)
+	}()
 
 	for tx != nil {
 		switch tx.Status {
@@ -452,6 +464,9 @@ func lockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRel
 		if err != nil {
 			return fmt.Errorf("can't lock relation \"%s\": %s", relation.GetFullName(), err)
 		}
+		defer func() {
+			_ = shardConn.Close(ctx)
+		}()
 		if err = lockReferenceRelationOnShard(ctx, shardConn, relation.QualifiedName()); err != nil {
 			return fmt.Errorf("can't lock relation \"%s\": %s", relation.GetFullName(), err)
 		}
@@ -495,6 +510,9 @@ func unlockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceR
 		if err != nil {
 			return fmt.Errorf("can't lock relation \"%s\": %s", relation.GetFullName(), err)
 		}
+		defer func() {
+			_ = shardConn.Close(ctx)
+		}()
 		if err = unlockReferenceRelationOnShard(ctx, shardConn, relation.QualifiedName()); err != nil {
 			return fmt.Errorf("can't lock relation \"%s\": %s", relation.GetFullName(), err)
 		}
