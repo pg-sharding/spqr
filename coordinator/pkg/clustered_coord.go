@@ -942,7 +942,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			}
 
 			if keyRange.ShardID != req.ShardId {
-				err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db, qc)
+				err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId)
 				if err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 					return err
@@ -983,7 +983,7 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 				return err
 			}
 
-			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db, qc)
+			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 				return err
@@ -1068,7 +1068,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("destination shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
-	destConn, err := datatransfers.GetMasterConnection(ctx, destShardConn)
+	destConn, err := datatransfers.GetMasterConnection(ctx, destShardConn, "redistribute_check_dest_conn")
 	if err != nil {
 		return err
 	}
@@ -1077,7 +1077,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
-	sourceConn, err := datatransfers.GetMasterConnection(ctx, sourceShardConn)
+	sourceConn, err := datatransfers.GetMasterConnection(ctx, sourceShardConn, "redistribute_check_source_conn")
 	if err != nil {
 		return err
 	}
@@ -1243,7 +1243,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
 	sourceShardConn := conns.ShardsData[keyRange.ShardID]
-	sourceConn, err := datatransfers.GetMasterConnection(ctx, sourceShardConn)
+	sourceConn, err := datatransfers.GetMasterConnection(ctx, sourceShardConn, "get_key_stats")
 	if err != nil {
 		return err
 	}
@@ -1711,7 +1711,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
 	sourceShardConn := conns.ShardsData[keyRange.ShardID]
-	sourceConn, err := datatransfers.GetMasterConnection(ctx, sourceShardConn)
+	sourceConn, err := datatransfers.GetMasterConnection(ctx, sourceShardConn, "move_task_group_service_conn")
 	if err != nil {
 		return err
 	}
@@ -1744,7 +1744,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 				break
 			}
 			if err := sourceConn.Ping(ctx); err != nil {
-				sourceConn, err = datatransfers.GetMasterConnection(ctx, sourceShardConn)
+				sourceConn, err = datatransfers.GetMasterConnection(ctx, sourceShardConn, "move_task_group_service_conn")
 				if err != nil {
 					return fmt.Errorf("failed to re-setup connection with source shard: %s", err)
 				}

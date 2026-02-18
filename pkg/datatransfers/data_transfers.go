@@ -136,7 +136,7 @@ Steps:
 //
 // Returns:
 //   - error: an error if the move fails.
-func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, mgr meta.EntityMgr) error {
+func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, mgr meta.EntityMgr, executorId string) error {
 	if toId == fromId {
 		return fmt.Errorf("incorrect request to move data in key range \"%s\": source and destination shards are the same", krg.ID)
 	}
@@ -165,7 +165,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", fromId)
 	}
-	from, err := GetMasterConnection(ctx, fromCfg)
+	from, err := GetMasterConnection(ctx, fromCfg, executorId)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
@@ -174,7 +174,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", toId)
 	}
-	to, err := GetMasterConnection(ctx, toCfg)
+	to, err := GetMasterConnection(ctx, toCfg, executorId)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
@@ -289,7 +289,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", fromId)
 	}
-	from, err := GetMasterConnection(ctx, fromCfg)
+	from, err := GetMasterConnection(ctx, fromCfg, "")
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
@@ -298,7 +298,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", toId)
 	}
-	to, err := GetMasterConnection(ctx, toCfg)
+	to, err := GetMasterConnection(ctx, toCfg, "reference_table_sync")
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
@@ -450,7 +450,7 @@ func lockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRel
 		if !ok {
 			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.GetFullName())
 		}
-		shardConn, err := GetMasterConnection(ctx, connInfo)
+		shardConn, err := GetMasterConnection(ctx, connInfo, "lock_reference_relation")
 		if err != nil {
 			return fmt.Errorf("can't lock relation \"%s\": %s", relation.GetFullName(), err)
 		}
@@ -493,7 +493,7 @@ func unlockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceR
 		if !ok {
 			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.GetFullName())
 		}
-		shardConn, err := GetMasterConnection(ctx, connInfo)
+		shardConn, err := GetMasterConnection(ctx, connInfo, "unlock_reference_relation")
 		if err != nil {
 			return fmt.Errorf("can't lock relation \"%s\": %s", relation.GetFullName(), err)
 		}
