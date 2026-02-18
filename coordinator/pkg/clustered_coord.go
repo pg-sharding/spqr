@@ -1197,6 +1197,42 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	return nil
 }
 
+/*
+* Workhorse for all move data operations
+ */
+func (qc *ClusteredCoordinator) executeMoveInternal(
+	ctx context.Context,
+	taskGroup *tasks.MoveTaskGroup,
+	invalidateTG bool,
+) error {
+
+	/* TODO: do not lose move data goroutine here,
+	* remember its id in structure similar to client pool. */
+
+	execCtx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+	ch := make(chan error)
+	go func() {
+		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)
+	}()
+
+	if invalidateTG && taskGroup != nil {
+		qc.invalidateTaskGroupCache(taskGroup.ID)
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
+		case err := <-ch:
+			if err != nil {
+				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
+			}
+			return err
+		}
+	}
+}
+
 // TODO : unit tests
 
 // BatchMoveKeyRange moves specified amount of keys from a key range to another shard.
@@ -1298,27 +1334,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 		spqrlog.Zero.Error().Str("task group ID", taskGroup.ID).Err(err).Msg("failed to write task group status")
 	}
 
-	execCtx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
-	ch := make(chan error)
-	go func() {
-		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)
-	}()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
-		case err := <-ch:
-			if statErr := statistics.RecordMoveFinish(time.Now()); statErr != nil {
-				spqrlog.Zero.Error().Err(statErr).Msg("failed to record key range move finish in statistics")
-			}
-			if err != nil {
-				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
-			}
-			return err
-		}
-	}
+	return qc.executeMoveInternal(ctx, taskGroup, false /*actually, does not matter here*/)
 }
 
 // TODO : unit tests
@@ -1847,28 +1863,7 @@ func (qc *ClusteredCoordinator) RetryMoveTaskGroup(ctx context.Context, id strin
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "failed to get move task group: %s", err)
 	}
-	execCtx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
-	ch := make(chan error)
-	go func() {
-		ch <- qc.executeMoveTaskGroup(execCtx, taskGroup)
-	}()
-
-	if taskGroup != nil {
-		qc.invalidateTaskGroupCache(taskGroup.ID)
-	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
-		case err := <-ch:
-			if err != nil {
-				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
-			}
-			return err
-		}
-	}
+	return qc.executeMoveInternal(ctx, taskGroup, true)
 }
 
 // StopMoveTaskGroup gracefully stops the execution of current move task group.
