@@ -1,16 +1,18 @@
 package spqrparser
 
 import (
+	"embed"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 )
 
+//go:embed help/*.txt
+var helpFS embed.FS
+
 type HelpEntry struct {
-	Name        string
-	Content     string
+	Name    string
+	Content string
 }
 
 var (
@@ -19,8 +21,8 @@ var (
 	initialized  bool
 )
 
-// InitHelpRegistry loads all help files from the help directory
-func InitHelpRegistry(helpDir string) error {
+// InitHelpRegistry loads all help files from the embedded filesystem
+func InitHelpRegistry() error {
 	registryMu.Lock()
 	defer registryMu.Unlock()
 
@@ -30,23 +32,15 @@ func InitHelpRegistry(helpDir string) error {
 
 	helpRegistry = make(map[string]*HelpEntry)
 
-	// Check if help directory exists
-	if _, err := os.Stat(helpDir); os.IsNotExist(err) {
-		// Help directory doesn't exist, this is OK - continue with empty registry
-		initialized = true
-		return nil
-	}
-
-	// Read all .txt files from help directory
-	entries, err := os.ReadDir(helpDir)
+	// Read all .txt files from embedded help directory
+	entries, err := helpFS.ReadDir("help")
 	if err != nil {
-		return fmt.Errorf("failed to read help directory %s: %w", helpDir, err)
+		return fmt.Errorf("failed to read embedded help directory: %w", err)
 	}
 
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".txt") {
-			filePath := filepath.Join(helpDir, entry.Name())
-			content, err := os.ReadFile(filePath)
+			content, err := helpFS.ReadFile("help/" + entry.Name())
 			if err != nil {
 				return fmt.Errorf("failed to read help file %s: %w", entry.Name(), err)
 			}
