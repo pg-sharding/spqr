@@ -27,7 +27,7 @@ func GetConnStrings(s *config.ShardConnect, applicationName string) []string {
 	for i, host := range s.Hosts {
 		address := strings.Split(host, ":")[0]
 		port := strings.Split(host, ":")[1]
-		res[i] = fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s application_name=%s", s.User, address, port, s.DB, s.Password, spqrTransferApplicationName)
+		res[i] = fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s application_name=%s", s.User, address, port, s.DB, s.Password, applicationName)
 	}
 	return res
 }
