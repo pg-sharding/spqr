@@ -1911,7 +1911,7 @@ func (q *EtcdQDB) UpdateMoveTaskGroupTotalKeys(ctx context.Context, id string, t
 
 // TODO: unit tests
 // TODO: drop move task
-func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context, id string) error {
+func (q *EtcdQDB) DropMoveTaskGroup(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: remove task group")
@@ -1927,7 +1927,7 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to delete move task group metadata: %s", err)
 	}
 
-	statistics.RecordQDBOperation("RemoveMoveTaskGroup", time.Since(t))
+	statistics.RecordQDBOperation("DropMoveTaskGroup", time.Since(t))
 	return nil
 }
 
@@ -2089,7 +2089,7 @@ func (q *EtcdQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error)
 }
 
 // TODO unit test
-func (q *EtcdQDB) RemoveMoveTask(ctx context.Context, id string) error {
+func (q *EtcdQDB) DropMoveTask(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().Msg("etcdqdb: remove move task")
 
 	task, err := q.GetMoveTask(ctx, id)
@@ -2212,7 +2212,7 @@ func (q *EtcdQDB) UpdateRedistributeTask(ctx context.Context, task *Redistribute
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) RemoveRedistributeTask(ctx context.Context, task *RedistributeTask) error {
+func (q *EtcdQDB) DropRedistributeTask(ctx context.Context, task *RedistributeTask) error {
 	spqrlog.Zero.Debug().
 		Str("id", task.ID).
 		Msg("etcdqdb: remove redistribute task")
@@ -2258,7 +2258,7 @@ func (q *EtcdQDB) WriteBalancerTask(ctx context.Context, task *BalancerTask) err
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) RemoveBalancerTask(ctx context.Context) error {
+func (q *EtcdQDB) DropBalancerTask(ctx context.Context) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: remove balancer task")
 

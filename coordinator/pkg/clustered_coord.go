@@ -1823,12 +1823,12 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 			if err := qc.QDB().UpdateMoveTaskGroupTotalKeys(ctx, taskGroup.ID, taskGroup.TotalKeys); err != nil {
 				return err
 			}
-			if err := qc.QDB().RemoveMoveTask(ctx, task.ID); err != nil {
+			if err := qc.QDB().DropMoveTask(ctx, task.ID); err != nil {
 				return err
 			}
 		}
 	}
-	if err := qc.RemoveMoveTaskGroup(ctx, taskGroup.ID); err != nil {
+	if err := qc.DropMoveTaskGroup(ctx, taskGroup.ID); err != nil {
 		return err
 	}
 	return delayedError
@@ -2026,7 +2026,7 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 			}); err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
 					spqrlog.Zero.Error().Msg("finishing redistribute task due to task group stop")
-					if err2 := qc.db.RemoveRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err2 != nil {
+					if err2 := qc.db.DropRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err2 != nil {
 						return err2
 					}
 					return err
@@ -2041,7 +2041,7 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 			if err := qc.RenameKeyRange(ctx, task.TempKrId, task.KeyRangeId); err != nil {
 				return err
 			}
-			return qc.db.RemoveRedistributeTask(ctx, tasks.RedistributeTaskToDB(task))
+			return qc.db.DropRedistributeTask(ctx, tasks.RedistributeTaskToDB(task))
 		default:
 			return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, "invalid redistribute task state")
 		}

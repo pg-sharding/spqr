@@ -378,9 +378,9 @@ func (lc *Coordinator) RegisterRouter(ctx context.Context, r *topology.Router) e
 	return lc.qdb.AddRouter(ctx, qdb.NewRouter(r.Address, r.ID, qdb.OPENED))
 }
 
-// RemoveBalancerTask implements meta.EntityMgr.
-func (lc *Coordinator) RemoveBalancerTask(ctx context.Context) error {
-	return lc.qdb.RemoveBalancerTask(ctx)
+// DropBalancerTask implements meta.EntityMgr.
+func (lc *Coordinator) DropBalancerTask(ctx context.Context) error {
+	return lc.qdb.DropBalancerTask(ctx)
 }
 
 // RenameKeyRange implements meta.EntityMgr.
@@ -524,7 +524,7 @@ func (qc *Coordinator) ListMoveTasks(ctx context.Context) (map[string]*tasks.Mov
 	return res, nil
 }
 
-func (qc *Coordinator) RemoveMoveTask(ctx context.Context, id string) error {
+func (qc *Coordinator) DropMoveTask(ctx context.Context, id string) error {
 	task, err := qc.GetMoveTask(ctx, id)
 	if err != nil {
 		return err
@@ -536,7 +536,7 @@ func (qc *Coordinator) RemoveMoveTask(ctx context.Context, id string) error {
 	if status != nil && status.State != tasks.TaskGroupError {
 		return fmt.Errorf("cannot remove move task: it's forbidden to remove move tasks when its task group is being executed")
 	}
-	return qc.qdb.RemoveMoveTask(ctx, id)
+	return qc.qdb.DropMoveTask(ctx, id)
 }
 
 // GetDistribution retrieves info about distribution from QDB
@@ -697,24 +697,24 @@ func (qc *Coordinator) UpdateMoveTask(ctx context.Context, task *tasks.MoveTask)
 	return qc.qdb.UpdateMoveTask(ctx, tasks.MoveTaskToDb(task))
 }
 
-// RemoveMoveTaskGroup removes the task group from the local coordinator's QDB.
+// DropMoveTaskGroup removes the task group from the local coordinator's QDB.
 //
 // Parameters:
 // - ctx (context.Context): the context.Context object for managing the request's lifetime.
 //
 // Returns:
 // - error: an error if the removal operation fails.
-func (qc *Coordinator) RemoveMoveTaskGroup(ctx context.Context, id string) error {
+func (qc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string) error {
 	task, err := qc.qdb.GetMoveTaskByGroup(ctx, id)
 	if err != nil {
 		return err
 	}
 	if task != nil {
-		if err := qc.qdb.RemoveMoveTask(ctx, task.ID); err != nil {
+		if err := qc.qdb.DropMoveTask(ctx, task.ID); err != nil {
 			return err
 		}
 	}
-	return qc.qdb.RemoveMoveTaskGroup(ctx, id)
+	return qc.qdb.DropMoveTaskGroup(ctx, id)
 }
 
 func (qc *Coordinator) GetMoveTaskGroupBoundsCache(ctx context.Context, id string) ([][][]byte, int, error) {
@@ -772,7 +772,7 @@ func (qc *Coordinator) DropRedistributeTask(ctx context.Context, id string) erro
 	if err != nil {
 		return err
 	}
-	return qc.qdb.RemoveRedistributeTask(ctx, task)
+	return qc.qdb.DropRedistributeTask(ctx, task)
 }
 
 // TODO : unit tests

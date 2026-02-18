@@ -117,7 +117,7 @@ type QDB interface {
 	WriteMoveTaskGroup(ctx context.Context, id string, group *MoveTaskGroup, totalKeys int64, moveTask *MoveTask) error
 	GetMoveTaskGroupTotalKeys(ctx context.Context, id string) (int64, error)
 	UpdateMoveTaskGroupTotalKeys(ctx context.Context, id string, totalKeys int64) error
-	RemoveMoveTaskGroup(ctx context.Context, id string) error
+	DropMoveTaskGroup(ctx context.Context, id string) error
 	AddMoveTaskGroupStopFlag(ctx context.Context, id string) error
 	CheckMoveTaskGroupStopFlag(ctx context.Context, id string) (bool, error)
 	WriteTaskGroupStatus(ctx context.Context, id string, status *TaskGroupStatus) error
@@ -129,7 +129,7 @@ type QDB interface {
 	GetMoveTask(ctx context.Context, id string) (*MoveTask, error)
 	WriteMoveTask(ctx context.Context, task *MoveTask) error
 	UpdateMoveTask(ctx context.Context, task *MoveTask) error
-	RemoveMoveTask(ctx context.Context, id string) error
+	DropMoveTask(ctx context.Context, id string) error
 	GetMoveTaskByGroup(ctx context.Context, taskGroupId string) (*MoveTask, error)
 
 	// Redistribute tasks
@@ -137,12 +137,12 @@ type QDB interface {
 	GetRedistributeTask(ctx context.Context, id string) (*RedistributeTask, error)
 	CreateRedistributeTask(ctx context.Context, task *RedistributeTask) error
 	UpdateRedistributeTask(ctx context.Context, task *RedistributeTask) error
-	RemoveRedistributeTask(ctx context.Context, task *RedistributeTask) error
+	DropRedistributeTask(ctx context.Context, task *RedistributeTask) error
 
 	// Balancer interaction
 	GetBalancerTask(ctx context.Context) (*BalancerTask, error)
 	WriteBalancerTask(ctx context.Context, task *BalancerTask) error
-	RemoveBalancerTask(ctx context.Context) error
+	DropBalancerTask(ctx context.Context) error
 
 	// Coordinator interaction
 	UpdateCoordinator(ctx context.Context, address string) error

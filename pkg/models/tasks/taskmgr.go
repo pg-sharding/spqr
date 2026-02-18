@@ -6,7 +6,7 @@ type TaskMgr interface {
 	ListMoveTaskGroups(ctx context.Context) (map[string]*MoveTaskGroup, error)
 	GetMoveTaskGroup(ctx context.Context, id string) (*MoveTaskGroup, error)
 	WriteMoveTaskGroup(ctx context.Context, taskGroup *MoveTaskGroup) error
-	RemoveMoveTaskGroup(ctx context.Context, id string) error
+	DropMoveTaskGroup(ctx context.Context, id string) error
 	RetryMoveTaskGroup(ctx context.Context, id string) error
 	StopMoveTaskGroup(ctx context.Context, id string) error
 	GetMoveTaskGroupBoundsCache(ctx context.Context, id string) ([][][]byte, int, error)
@@ -16,12 +16,12 @@ type TaskMgr interface {
 
 	ListMoveTasks(ctx context.Context) (map[string]*MoveTask, error)
 	GetMoveTask(ctx context.Context, id string) (*MoveTask, error)
-	RemoveMoveTask(ctx context.Context, id string) error
+	DropMoveTask(ctx context.Context, id string) error
 
 	ListRedistributeTasks(ctx context.Context) ([]*RedistributeTask, error)
 	DropRedistributeTask(ctx context.Context, id string) error
 
 	GetBalancerTask(ctx context.Context) (*BalancerTask, error)
 	WriteBalancerTask(ctx context.Context, task *BalancerTask) error
-	RemoveBalancerTask(ctx context.Context) error
+	DropBalancerTask(ctx context.Context) error
 }

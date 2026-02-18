@@ -46,8 +46,13 @@ func (t *TasksServer) GetMoveTask(ctx context.Context, req *protos.MoveTaskSelec
 	return &protos.MoveTaskReply{Task: tasks.MoveTaskToProto(task)}, nil
 }
 
+func (t *TasksServer) DropMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
+	return nil, t.impl.DropMoveTask(ctx, req.ID)
+}
+
+// Deprecated
 func (t *TasksServer) RemoveMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, t.impl.RemoveMoveTask(ctx, req.ID)
+	return nil, t.impl.DropMoveTask(ctx, req.ID)
 }
 
 func (t *TasksServer) ListMoveTaskGroups(ctx context.Context, _ *emptypb.Empty) (*protos.ListMoveTaskGroupsReply, error) {
@@ -75,8 +80,12 @@ func (t TasksServer) WriteMoveTaskGroup(ctx context.Context, request *protos.Wri
 	return nil, err
 }
 
+func (t TasksServer) DropMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
+	return nil, t.impl.DropMoveTaskGroup(ctx, req.ID)
+}
+
 func (t TasksServer) RemoveMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, t.impl.RemoveMoveTaskGroup(ctx, req.ID)
+	return nil, t.impl.DropMoveTaskGroup(ctx, req.ID)
 }
 
 func (t TasksServer) RetryMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
@@ -111,8 +120,12 @@ func (t TasksServer) WriteBalancerTask(ctx context.Context, request *protos.Writ
 	return nil, t.impl.WriteBalancerTask(ctx, tasks.BalancerTaskFromProto(request.Task))
 }
 
+func (t TasksServer) DropBalancerTask(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, t.impl.DropBalancerTask(ctx)
+}
+
 func (t TasksServer) RemoveBalancerTask(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, t.impl.RemoveBalancerTask(ctx)
+	return nil, t.impl.DropBalancerTask(ctx)
 }
 
 func (t TasksServer) GetMoveTaskGroupStatus(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupStatus, error) {
