@@ -301,7 +301,7 @@ Feature: Redistribution retries test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    key range .*kr_tmp.* does not exist
+    no key range found at /keyranges/kr_temp
     """
 
     # move task can be finished manually
@@ -314,6 +314,8 @@ Feature: Redistribution retries test
     """
     DROP MOVE TASK "mt1"
     """
+    Then command return code should be "0"
+    When I delete key "/task_group_locks/tgid1" from etcd
     Then command return code should be "0"
     When I run SQL on host "coordinator" with timeout "150" seconds
     """
