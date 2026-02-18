@@ -15,6 +15,8 @@ type TaskMgr interface {
 	GetAllTaskGroupStatuses(ctx context.Context) (map[string]*MoveTaskGroupStatus, error)
 
 	ListMoveTasks(ctx context.Context) (map[string]*MoveTask, error)
+	GetMoveTask(ctx context.Context, id string) (*MoveTask, error)
+	RemoveMoveTask(ctx context.Context, id string) error
 
 	ListRedistributeTasks(ctx context.Context) ([]*RedistributeTask, error)
 	DropRedistributeTask(ctx context.Context, id string) error

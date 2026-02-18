@@ -181,6 +181,10 @@ type TaskGroupSelector struct {
 	ID string
 }
 
+type MoveTaskSelector struct {
+	ID string
+}
+
 type RedistributeTaskSelector struct {
 	ID string
 }
@@ -191,6 +195,7 @@ func (*ReferenceRelationSelector) iDrop() {}
 func (*UniqueIndexSelector) iDrop()       {}
 func (*ShardSelector) iDrop()             {}
 func (*TaskGroupSelector) iDrop()         {}
+func (*MoveTaskSelector) iDrop()          {}
 func (*RedistributeTaskSelector) iDrop()  {}
 
 type Lock struct {
@@ -440,6 +445,7 @@ func (*ReferenceRelationSelector) iStatement()   {}
 func (*UniqueIndexSelector) iStatement()         {}
 func (*ShardSelector) iStatement()               {}
 func (*TaskGroupSelector) iStatement()           {}
+func (*MoveTaskSelector) iStatement()            {}
 func (*RedistributeTaskSelector) iStatement()    {}
 func (*SequenceSelector) iStatement()            {}
 func (*Lock) iStatement()                        {}

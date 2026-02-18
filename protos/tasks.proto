@@ -93,6 +93,8 @@ message MoveTaskGroupBoundsCache {
 
 service MoveTasksService {
   rpc ListMoveTasks(google.protobuf.Empty) returns (MoveTasksReply) {}
+  rpc GetMoveTask(MoveTaskSelector) returns (MoveTaskReply) {}
+  rpc RemoveMoveTask(MoveTaskSelector) returns (google.protobuf.Empty) {}
 
   rpc ListMoveTaskGroups(google.protobuf.Empty) returns (ListMoveTaskGroupsReply) {}
   rpc GetMoveTaskGroup(MoveTaskGroupSelector) returns (GetMoveTaskGroupReply) {}

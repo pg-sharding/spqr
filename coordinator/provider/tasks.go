@@ -38,6 +38,18 @@ func (t *TasksServer) ListMoveTasks(ctx context.Context, _ *emptypb.Empty) (*pro
 	return &protos.MoveTasksReply{Tasks: tasksProto}, nil
 }
 
+func (t *TasksServer) GetMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*protos.MoveTaskReply, error) {
+	task, err := t.impl.GetMoveTask(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.MoveTaskReply{Task: tasks.MoveTaskToProto(task)}, nil
+}
+
+func (t *TasksServer) RemoveMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
+	return nil, t.impl.RemoveMoveTask(ctx, req.ID)
+}
+
 func (t *TasksServer) ListMoveTaskGroups(ctx context.Context, _ *emptypb.Empty) (*protos.ListMoveTaskGroupsReply, error) {
 	groups, err := t.impl.ListMoveTaskGroups(ctx)
 	if err != nil {

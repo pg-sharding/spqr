@@ -746,6 +746,14 @@ drop_stmt:
 			},
 		}
 	}
+	| DROP MOVE TASK any_id
+	{
+		$$ = &Drop{
+			Element: &MoveTaskSelector{
+				ID: $4,
+			},
+		}
+	}
 
 add_stmt:
 	// TODO: drop

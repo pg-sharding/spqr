@@ -537,6 +537,40 @@ func (l *LocalQrouterServer) ListMoveTasks(ctx context.Context, _ *emptypb.Empty
 	return &protos.MoveTasksReply{Tasks: tasksProto}, nil
 }
 
+func (l *LocalQrouterServer) GetMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*protos.MoveTaskReply, error) {
+	task, err := l.mgr.GetMoveTask(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.MoveTaskReply{Task: tasks.MoveTaskToProto(task)}, nil
+}
+
+func (l *LocalQrouterServer) RemoveMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
+	return nil, l.mgr.RemoveMoveTask(ctx, req.ID)
+}
+
+func (l *LocalQrouterServer) GetMoveTaskGroupStatus(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupStatus, error) {
+	status, err := l.mgr.GetTaskGroupStatus(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	return tasks.MoveTaskGroupStatusToProto(status), err
+}
+
+func (l *LocalQrouterServer) GetAllMoveTaskGroupStatuses(ctx context.Context, _ *emptypb.Empty) (*protos.GetAllMoveTaskGroupStatusesReply, error) {
+	statuses, err := l.mgr.GetAllTaskGroupStatuses(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*protos.MoveTaskGroupStatus)
+	for id, status := range statuses {
+		res[id] = tasks.MoveTaskGroupStatusToProto(status)
+	}
+	return &protos.GetAllMoveTaskGroupStatusesReply{
+		Statuses: res,
+	}, nil
+}
+
 func (l *LocalQrouterServer) ListMoveTaskGroups(ctx context.Context, _ *emptypb.Empty) (*protos.ListMoveTaskGroupsReply, error) {
 	groups, err := l.mgr.ListMoveTaskGroups(ctx)
 	if err != nil {

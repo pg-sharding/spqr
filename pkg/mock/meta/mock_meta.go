@@ -507,6 +507,21 @@ func (mr *MockEntityMgrMockRecorder) GetKeyRange(ctx, krId any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).GetKeyRange), ctx, krId)
 }
 
+// GetMoveTask mocks base method.
+func (m *MockEntityMgr) GetMoveTask(ctx context.Context, id string) (*tasks.MoveTask, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMoveTask", ctx, id)
+	ret0, _ := ret[0].(*tasks.MoveTask)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMoveTask indicates an expected call of GetMoveTask.
+func (mr *MockEntityMgrMockRecorder) GetMoveTask(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMoveTask", reflect.TypeOf((*MockEntityMgr)(nil).GetMoveTask), ctx, id)
+}
+
 // GetMoveTaskGroup mocks base method.
 func (m *MockEntityMgr) GetMoveTaskGroup(ctx context.Context, id string) (*tasks.MoveTaskGroup, error) {
 	m.ctrl.T.Helper()
@@ -936,6 +951,20 @@ func (m *MockEntityMgr) RemoveBalancerTask(ctx context.Context) error {
 func (mr *MockEntityMgrMockRecorder) RemoveBalancerTask(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveBalancerTask", reflect.TypeOf((*MockEntityMgr)(nil).RemoveBalancerTask), ctx)
+}
+
+// RemoveMoveTask mocks base method.
+func (m *MockEntityMgr) RemoveMoveTask(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveMoveTask", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveMoveTask indicates an expected call of RemoveMoveTask.
+func (mr *MockEntityMgrMockRecorder) RemoveMoveTask(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMoveTask", reflect.TypeOf((*MockEntityMgr)(nil).RemoveMoveTask), ctx, id)
 }
 
 // RemoveMoveTaskGroup mocks base method.

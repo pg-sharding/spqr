@@ -22,6 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/sethvargo/go-retry"
+	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/cucumber/godog"
 	"github.com/jackc/pgx/v5"
@@ -1383,6 +1384,26 @@ func (tctx *testContext) stepIKillHostAfterQuery(host string, delay int, body *g
 	return tctx.stepHostIsStopped(host)
 }
 
+func (tctx *testContext) stepDeleteFromEtcd(key string) error {
+	addr, err := tctx.composer.GetAddr("qdb01", 2379)
+	if err != nil {
+		return err
+	}
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints: []string{addr},
+		DialOptions: []grpc.DialOption{
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		},
+	})
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.TODO(), postgresqlQueryTimeout)
+	defer cancel()
+	_, err = cli.Delete(ctx, key)
+	return err
+}
+
 func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	tctx, err := newTestContext(t)
 	if err != nil {
@@ -1487,6 +1508,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I wait for "(\d+)" seconds for all key range moves to finish$`, tctx.stepWaitForAllKeyRangeMovesToFinish)
 	s.Step(`^qdb should not contain transfer tasks$`, tctx.stepQDBShouldNotContainTasks)
 	s.Step(`^I run SQL on host "([^"]*)", then stop the host after "(\d+)" seconds$`, tctx.stepIKillHostAfterQuery)
+	s.Step(`^I delete key "([^"]*)" from etcd$`, tctx.stepDeleteFromEtcd)
 
 	// variable manipulation
 	s.Step(`^we save response row "([^"]*)" column "([^"]*)"$`, tctx.stepSaveResponseBodyAtPathAsJSON)

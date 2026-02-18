@@ -524,6 +524,21 @@ func (qc *Coordinator) ListMoveTasks(ctx context.Context) (map[string]*tasks.Mov
 	return res, nil
 }
 
+func (qc *Coordinator) RemoveMoveTask(ctx context.Context, id string) error {
+	task, err := qc.GetMoveTask(ctx, id)
+	if err != nil {
+		return err
+	}
+	status, err := qc.GetTaskGroupStatus(ctx, task.TaskGroupID)
+	if err != nil {
+		return err
+	}
+	if status != nil && status.State != tasks.TaskGroupError {
+		return fmt.Errorf("cannot remove move task: it's forbidden to remove move tasks when its task group is being executed")
+	}
+	return qc.qdb.RemoveMoveTask(ctx, id)
+}
+
 // GetDistribution retrieves info about distribution from QDB
 // TODO: unit tests
 func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {

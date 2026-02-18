@@ -983,6 +983,38 @@ func (a *Adapter) ListMoveTasks(ctx context.Context) (map[string]*tasks.MoveTask
 	return res, nil
 }
 
+// GetMoveTask retrieves move task with given ID from the system.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+// - id  (string): The ID of the move task to retrieve.
+//
+// Returns:
+// - *tasks.MoveTask: The requested task or nil, if no tasks with given id present.
+// - error: An error if the retrieval of tasks fails, otherwise nil.
+func (a *Adapter) GetMoveTask(ctx context.Context, id string) (*tasks.MoveTask, error) {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	reply, err := tasksService.GetMoveTask(ctx, &proto.MoveTaskSelector{ID: id})
+	if err != nil {
+		return nil, err
+	}
+	return tasks.MoveTaskFromProto(reply.Task), nil
+}
+
+// RemoveMoveTask removes move task with given ID from the system.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+// - id  (string): The ID of the move task to remove.
+//
+// Returns:
+// - error: An error if the retrieval of tasks fails, otherwise nil.
+func (a *Adapter) RemoveMoveTask(ctx context.Context, id string) error {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	_, err := tasksService.RemoveMoveTask(ctx, &proto.MoveTaskSelector{ID: id})
+	return err
+}
+
 // ListMoveTaskGroups retrieves all task groups from the system.
 //
 // Parameters:

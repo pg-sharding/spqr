@@ -357,6 +357,21 @@ func processDrop(ctx context.Context,
 			}
 		}
 		return tts, nil
+	case *spqrparser.MoveTaskSelector:
+		task, err := mngr.GetMoveTask(ctx, stmt.ID)
+		if err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("move_task_id"),
+		}
+		if task != nil {
+			if err = mngr.RemoveMoveTask(ctx, task.ID); err != nil {
+				return nil, err
+			}
+			tts.WriteDataRow(task.ID)
+		}
+		return tts, nil
 	default:
 		return nil, fmt.Errorf("unknown drop statement")
 	}
