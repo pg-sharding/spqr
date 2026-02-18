@@ -524,6 +524,10 @@ func (qc *Coordinator) ListMoveTasks(ctx context.Context) (map[string]*tasks.Mov
 	return res, nil
 }
 
+func (qc *Coordinator) RemoveMoveTask(ctx context.Context, id string) error {
+	return qc.qdb.RemoveMoveTask(ctx, id)
+}
+
 // GetDistribution retrieves info about distribution from QDB
 // TODO: unit tests
 func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
