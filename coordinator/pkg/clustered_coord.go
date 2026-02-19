@@ -564,7 +564,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		if err == nil {
 			break
 		}
-		spqrlog.Zero.Error().Err(err).Msg("error getting qdb lock, retrying")
+		spqrlog.Zero.Log().Err(err).Msg("error getting qdb lock, retrying")
 
 		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().LockIterationTimeout, defaultLockCoordinatorTimeout))
 	}
