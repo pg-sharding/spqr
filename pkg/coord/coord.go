@@ -231,7 +231,7 @@ func (lc *Coordinator) DropDistribution(ctx context.Context, id string) error {
 func (lc *Coordinator) DropKeyRange(ctx context.Context, id string) error {
 	statements, err := lc.qdb.DropKeyRange(ctx, id)
 	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an key range: %s (prepare)", err.Error())
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop a key range: %s (prepare)", err.Error())
 	}
 	if err = lc.qdb.ExecNoTransaction(ctx, statements); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an key range: %s (exec)", err.Error())
