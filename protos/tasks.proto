@@ -94,12 +94,18 @@ message MoveTaskGroupBoundsCache {
 service MoveTasksService {
   rpc ListMoveTasks(google.protobuf.Empty) returns (MoveTasksReply) {}
   rpc GetMoveTask(MoveTaskSelector) returns (MoveTaskReply) {}
-  rpc RemoveMoveTask(MoveTaskSelector) returns (google.protobuf.Empty) {}
+  rpc RemoveMoveTask(MoveTaskSelector) returns (google.protobuf.Empty) {
+    option deprecated = true;
+  }
+  rpc DropMoveTask(MoveTaskSelector) returns (google.protobuf.Empty) {}
 
   rpc ListMoveTaskGroups(google.protobuf.Empty) returns (ListMoveTaskGroupsReply) {}
   rpc GetMoveTaskGroup(MoveTaskGroupSelector) returns (GetMoveTaskGroupReply) {}
   rpc WriteMoveTaskGroup(WriteMoveTaskGroupRequest) returns(google.protobuf.Empty) {}
-  rpc RemoveMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
+  rpc RemoveMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {
+    option deprecated = true;
+  }
+  rpc DropMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
   rpc RetryMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
   rpc StopMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
   rpc GetMoveTaskGroupBoundsCache(MoveTaskGroupSelector) returns(MoveTaskGroupBoundsCache) {}
@@ -134,7 +140,10 @@ message WriteBalancerTaskRequest {
 service BalancerTaskService {
   rpc GetBalancerTask(google.protobuf.Empty) returns (GetBalancerTaskReply) {}
   rpc WriteBalancerTask(WriteBalancerTaskRequest) returns (google.protobuf.Empty) {}
-  rpc RemoveBalancerTask(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+  rpc RemoveBalancerTask(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option deprecated = true;
+  }
+  rpc DropBalancerTask(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 enum RedistributeTaskState {
@@ -161,5 +170,8 @@ message ListRedistributeTasksReply {
 
 service RedistributeTaskService {
   rpc ListRedistributeTasks(google.protobuf.Empty) returns (ListRedistributeTasksReply) {}
-  rpc RemoveRedistributeTask(RedistributeTaskSelector) returns (google.protobuf.Empty) {}
+  rpc DropRedistributeTask(RedistributeTaskSelector) returns (google.protobuf.Empty) {}
+  rpc RemoveRedistributeTask(RedistributeTaskSelector) returns (google.protobuf.Empty) {
+    option deprecated = true;
+  }
 }

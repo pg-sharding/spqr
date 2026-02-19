@@ -680,7 +680,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 			}); err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
 					spqrlog.Zero.Error().Msg("finishing redistribute task due to task group stop")
-					if _, err2 := taskService.RemoveBalancerTask(ctx, nil); err2 != nil {
+					if _, err2 := taskService.DropBalancerTask(ctx, nil); err2 != nil {
 						return err2
 					}
 					return err
@@ -709,7 +709,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 			if err != nil {
 				return err
 			}
-			if _, err = taskService.RemoveBalancerTask(ctx, nil); err != nil {
+			if _, err = taskService.DropBalancerTask(ctx, nil); err != nil {
 				return err
 			}
 			return nil

@@ -290,7 +290,7 @@ func processDrop(ctx context.Context,
 			Desc: engine.GetVPHeader("task_group_id"),
 		}
 		if tg != nil {
-			if err := mngr.RemoveMoveTaskGroup(ctx, stmt.ID); err != nil {
+			if err := mngr.DropMoveTaskGroup(ctx, stmt.ID); err != nil {
 				return nil, err
 			}
 			tts.Raw = append(tts.Raw, [][]byte{
@@ -366,7 +366,7 @@ func processDrop(ctx context.Context,
 			Desc: engine.GetVPHeader("move_task_id"),
 		}
 		if task != nil {
-			if err = mngr.RemoveMoveTask(ctx, task.ID); err != nil {
+			if err = mngr.DropMoveTask(ctx, task.ID); err != nil {
 				return nil, err
 			}
 			tts.WriteDataRow(task.ID)

@@ -545,8 +545,13 @@ func (l *LocalQrouterServer) GetMoveTask(ctx context.Context, req *protos.MoveTa
 	return &protos.MoveTaskReply{Task: tasks.MoveTaskToProto(task)}, nil
 }
 
+func (l *LocalQrouterServer) DropMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropMoveTask(ctx, req.ID)
+}
+
+// Deprecated
 func (l *LocalQrouterServer) RemoveMoveTask(ctx context.Context, req *protos.MoveTaskSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.RemoveMoveTask(ctx, req.ID)
+	return nil, l.mgr.DropMoveTask(ctx, req.ID)
 }
 
 func (l *LocalQrouterServer) GetMoveTaskGroupStatus(ctx context.Context, req *protos.MoveTaskGroupSelector) (*protos.MoveTaskGroupStatus, error) {
@@ -600,8 +605,13 @@ func (l *LocalQrouterServer) WriteMoveTaskGroup(ctx context.Context, request *pr
 }
 
 // TODO: unit tests
+func (l *LocalQrouterServer) DropMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID)
+}
+
+// Deprecated
 func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.RemoveMoveTaskGroup(ctx, req.ID)
+	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID)
 }
 
 // TODO: unit tests
@@ -657,8 +667,13 @@ func (l *LocalQrouterServer) WriteBalancerTask(ctx context.Context, request *pro
 }
 
 // TODO: unit tests
+func (l *LocalQrouterServer) DropBalancerTask(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropBalancerTask(ctx)
+}
+
+// Deprecated
 func (l *LocalQrouterServer) RemoveBalancerTask(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, l.mgr.RemoveBalancerTask(ctx)
+	return nil, l.mgr.DropBalancerTask(ctx)
 }
 
 // TODO : unit tests

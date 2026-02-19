@@ -1177,7 +1177,7 @@ func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, id string, group *MoveTas
 }
 
 // TODO: unit tests
-func (q *MemQDB) RemoveMoveTaskGroup(_ context.Context, id string) error {
+func (q *MemQDB) DropMoveTaskGroup(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("memqdb: remove task group")
@@ -1314,7 +1314,7 @@ func (q *MemQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
 }
 
 // TODO: unit tests
-func (q *MemQDB) RemoveMoveTask(ctx context.Context, id string) error {
+func (q *MemQDB) DropMoveTask(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("memqdb: remove move task")
@@ -1377,7 +1377,7 @@ func (q *MemQDB) UpdateRedistributeTask(_ context.Context, task *RedistributeTas
 }
 
 // TODO: unit tests
-func (q *MemQDB) RemoveRedistributeTask(_ context.Context, task *RedistributeTask) error {
+func (q *MemQDB) DropRedistributeTask(_ context.Context, task *RedistributeTask) error {
 	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: remove redistribute task")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -1407,7 +1407,7 @@ func (q *MemQDB) WriteBalancerTask(_ context.Context, task *BalancerTask) error 
 }
 
 // TODO: unit tests
-func (q *MemQDB) RemoveBalancerTask(_ context.Context) error {
+func (q *MemQDB) DropBalancerTask(_ context.Context) error {
 	spqrlog.Zero.Debug().Msg("memqdb: remove balancer task")
 	q.mu.Lock()
 	defer q.mu.Unlock()

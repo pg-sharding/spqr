@@ -23,10 +23,12 @@ const (
 	MoveTasksService_ListMoveTasks_FullMethodName               = "/spqr.MoveTasksService/ListMoveTasks"
 	MoveTasksService_GetMoveTask_FullMethodName                 = "/spqr.MoveTasksService/GetMoveTask"
 	MoveTasksService_RemoveMoveTask_FullMethodName              = "/spqr.MoveTasksService/RemoveMoveTask"
+	MoveTasksService_DropMoveTask_FullMethodName                = "/spqr.MoveTasksService/DropMoveTask"
 	MoveTasksService_ListMoveTaskGroups_FullMethodName          = "/spqr.MoveTasksService/ListMoveTaskGroups"
 	MoveTasksService_GetMoveTaskGroup_FullMethodName            = "/spqr.MoveTasksService/GetMoveTaskGroup"
 	MoveTasksService_WriteMoveTaskGroup_FullMethodName          = "/spqr.MoveTasksService/WriteMoveTaskGroup"
 	MoveTasksService_RemoveMoveTaskGroup_FullMethodName         = "/spqr.MoveTasksService/RemoveMoveTaskGroup"
+	MoveTasksService_DropMoveTaskGroup_FullMethodName           = "/spqr.MoveTasksService/DropMoveTaskGroup"
 	MoveTasksService_RetryMoveTaskGroup_FullMethodName          = "/spqr.MoveTasksService/RetryMoveTaskGroup"
 	MoveTasksService_StopMoveTaskGroup_FullMethodName           = "/spqr.MoveTasksService/StopMoveTaskGroup"
 	MoveTasksService_GetMoveTaskGroupBoundsCache_FullMethodName = "/spqr.MoveTasksService/GetMoveTaskGroupBoundsCache"
@@ -40,11 +42,15 @@ const (
 type MoveTasksServiceClient interface {
 	ListMoveTasks(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*MoveTasksReply, error)
 	GetMoveTask(ctx context.Context, in *MoveTaskSelector, opts ...grpc.CallOption) (*MoveTaskReply, error)
+	// Deprecated: Do not use.
 	RemoveMoveTask(ctx context.Context, in *MoveTaskSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DropMoveTask(ctx context.Context, in *MoveTaskSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListMoveTaskGroups(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListMoveTaskGroupsReply, error)
 	GetMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*GetMoveTaskGroupReply, error)
 	WriteMoveTaskGroup(ctx context.Context, in *WriteMoveTaskGroupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Deprecated: Do not use.
 	RemoveMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DropMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	RetryMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	StopMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetMoveTaskGroupBoundsCache(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*MoveTaskGroupBoundsCache, error)
@@ -80,10 +86,21 @@ func (c *moveTasksServiceClient) GetMoveTask(ctx context.Context, in *MoveTaskSe
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *moveTasksServiceClient) RemoveMoveTask(ctx context.Context, in *MoveTaskSelector, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, MoveTasksService_RemoveMoveTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *moveTasksServiceClient) DropMoveTask(ctx context.Context, in *MoveTaskSelector, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MoveTasksService_DropMoveTask_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -120,10 +137,21 @@ func (c *moveTasksServiceClient) WriteMoveTaskGroup(ctx context.Context, in *Wri
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *moveTasksServiceClient) RemoveMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, MoveTasksService_RemoveMoveTaskGroup_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *moveTasksServiceClient) DropMoveTaskGroup(ctx context.Context, in *MoveTaskGroupSelector, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MoveTasksService_DropMoveTaskGroup_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -186,11 +214,15 @@ func (c *moveTasksServiceClient) GetAllMoveTaskGroupStatuses(ctx context.Context
 type MoveTasksServiceServer interface {
 	ListMoveTasks(context.Context, *emptypb.Empty) (*MoveTasksReply, error)
 	GetMoveTask(context.Context, *MoveTaskSelector) (*MoveTaskReply, error)
+	// Deprecated: Do not use.
 	RemoveMoveTask(context.Context, *MoveTaskSelector) (*emptypb.Empty, error)
+	DropMoveTask(context.Context, *MoveTaskSelector) (*emptypb.Empty, error)
 	ListMoveTaskGroups(context.Context, *emptypb.Empty) (*ListMoveTaskGroupsReply, error)
 	GetMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*GetMoveTaskGroupReply, error)
 	WriteMoveTaskGroup(context.Context, *WriteMoveTaskGroupRequest) (*emptypb.Empty, error)
+	// Deprecated: Do not use.
 	RemoveMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error)
+	DropMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error)
 	RetryMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error)
 	StopMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error)
 	GetMoveTaskGroupBoundsCache(context.Context, *MoveTaskGroupSelector) (*MoveTaskGroupBoundsCache, error)
@@ -215,6 +247,9 @@ func (UnimplementedMoveTasksServiceServer) GetMoveTask(context.Context, *MoveTas
 func (UnimplementedMoveTasksServiceServer) RemoveMoveTask(context.Context, *MoveTaskSelector) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RemoveMoveTask not implemented")
 }
+func (UnimplementedMoveTasksServiceServer) DropMoveTask(context.Context, *MoveTaskSelector) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DropMoveTask not implemented")
+}
 func (UnimplementedMoveTasksServiceServer) ListMoveTaskGroups(context.Context, *emptypb.Empty) (*ListMoveTaskGroupsReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMoveTaskGroups not implemented")
 }
@@ -226,6 +261,9 @@ func (UnimplementedMoveTasksServiceServer) WriteMoveTaskGroup(context.Context, *
 }
 func (UnimplementedMoveTasksServiceServer) RemoveMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RemoveMoveTaskGroup not implemented")
+}
+func (UnimplementedMoveTasksServiceServer) DropMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DropMoveTaskGroup not implemented")
 }
 func (UnimplementedMoveTasksServiceServer) RetryMoveTaskGroup(context.Context, *MoveTaskGroupSelector) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RetryMoveTaskGroup not implemented")
@@ -317,6 +355,24 @@ func _MoveTasksService_RemoveMoveTask_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MoveTasksService_DropMoveTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MoveTaskSelector)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MoveTasksServiceServer).DropMoveTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MoveTasksService_DropMoveTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MoveTasksServiceServer).DropMoveTask(ctx, req.(*MoveTaskSelector))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MoveTasksService_ListMoveTaskGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -385,6 +441,24 @@ func _MoveTasksService_RemoveMoveTaskGroup_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MoveTasksServiceServer).RemoveMoveTaskGroup(ctx, req.(*MoveTaskGroupSelector))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MoveTasksService_DropMoveTaskGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MoveTaskGroupSelector)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MoveTasksServiceServer).DropMoveTaskGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MoveTasksService_DropMoveTaskGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MoveTasksServiceServer).DropMoveTaskGroup(ctx, req.(*MoveTaskGroupSelector))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -499,6 +573,10 @@ var MoveTasksService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MoveTasksService_RemoveMoveTask_Handler,
 		},
 		{
+			MethodName: "DropMoveTask",
+			Handler:    _MoveTasksService_DropMoveTask_Handler,
+		},
+		{
 			MethodName: "ListMoveTaskGroups",
 			Handler:    _MoveTasksService_ListMoveTaskGroups_Handler,
 		},
@@ -513,6 +591,10 @@ var MoveTasksService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveMoveTaskGroup",
 			Handler:    _MoveTasksService_RemoveMoveTaskGroup_Handler,
+		},
+		{
+			MethodName: "DropMoveTaskGroup",
+			Handler:    _MoveTasksService_DropMoveTaskGroup_Handler,
 		},
 		{
 			MethodName: "RetryMoveTaskGroup",
@@ -543,6 +625,7 @@ const (
 	BalancerTaskService_GetBalancerTask_FullMethodName    = "/spqr.BalancerTaskService/GetBalancerTask"
 	BalancerTaskService_WriteBalancerTask_FullMethodName  = "/spqr.BalancerTaskService/WriteBalancerTask"
 	BalancerTaskService_RemoveBalancerTask_FullMethodName = "/spqr.BalancerTaskService/RemoveBalancerTask"
+	BalancerTaskService_DropBalancerTask_FullMethodName   = "/spqr.BalancerTaskService/DropBalancerTask"
 )
 
 // BalancerTaskServiceClient is the client API for BalancerTaskService service.
@@ -551,7 +634,9 @@ const (
 type BalancerTaskServiceClient interface {
 	GetBalancerTask(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetBalancerTaskReply, error)
 	WriteBalancerTask(ctx context.Context, in *WriteBalancerTaskRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Deprecated: Do not use.
 	RemoveBalancerTask(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DropBalancerTask(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type balancerTaskServiceClient struct {
@@ -582,10 +667,21 @@ func (c *balancerTaskServiceClient) WriteBalancerTask(ctx context.Context, in *W
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *balancerTaskServiceClient) RemoveBalancerTask(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, BalancerTaskService_RemoveBalancerTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *balancerTaskServiceClient) DropBalancerTask(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, BalancerTaskService_DropBalancerTask_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -598,7 +694,9 @@ func (c *balancerTaskServiceClient) RemoveBalancerTask(ctx context.Context, in *
 type BalancerTaskServiceServer interface {
 	GetBalancerTask(context.Context, *emptypb.Empty) (*GetBalancerTaskReply, error)
 	WriteBalancerTask(context.Context, *WriteBalancerTaskRequest) (*emptypb.Empty, error)
+	// Deprecated: Do not use.
 	RemoveBalancerTask(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	DropBalancerTask(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedBalancerTaskServiceServer()
 }
 
@@ -617,6 +715,9 @@ func (UnimplementedBalancerTaskServiceServer) WriteBalancerTask(context.Context,
 }
 func (UnimplementedBalancerTaskServiceServer) RemoveBalancerTask(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RemoveBalancerTask not implemented")
+}
+func (UnimplementedBalancerTaskServiceServer) DropBalancerTask(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DropBalancerTask not implemented")
 }
 func (UnimplementedBalancerTaskServiceServer) mustEmbedUnimplementedBalancerTaskServiceServer() {}
 func (UnimplementedBalancerTaskServiceServer) testEmbeddedByValue()                             {}
@@ -693,6 +794,24 @@ func _BalancerTaskService_RemoveBalancerTask_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BalancerTaskService_DropBalancerTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BalancerTaskServiceServer).DropBalancerTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BalancerTaskService_DropBalancerTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BalancerTaskServiceServer).DropBalancerTask(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BalancerTaskService_ServiceDesc is the grpc.ServiceDesc for BalancerTaskService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -712,6 +831,10 @@ var BalancerTaskService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "RemoveBalancerTask",
 			Handler:    _BalancerTaskService_RemoveBalancerTask_Handler,
 		},
+		{
+			MethodName: "DropBalancerTask",
+			Handler:    _BalancerTaskService_DropBalancerTask_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "protos/tasks.proto",
@@ -719,6 +842,7 @@ var BalancerTaskService_ServiceDesc = grpc.ServiceDesc{
 
 const (
 	RedistributeTaskService_ListRedistributeTasks_FullMethodName  = "/spqr.RedistributeTaskService/ListRedistributeTasks"
+	RedistributeTaskService_DropRedistributeTask_FullMethodName   = "/spqr.RedistributeTaskService/DropRedistributeTask"
 	RedistributeTaskService_RemoveRedistributeTask_FullMethodName = "/spqr.RedistributeTaskService/RemoveRedistributeTask"
 )
 
@@ -727,6 +851,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RedistributeTaskServiceClient interface {
 	ListRedistributeTasks(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListRedistributeTasksReply, error)
+	DropRedistributeTask(ctx context.Context, in *RedistributeTaskSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Deprecated: Do not use.
 	RemoveRedistributeTask(ctx context.Context, in *RedistributeTaskSelector, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -748,6 +874,17 @@ func (c *redistributeTaskServiceClient) ListRedistributeTasks(ctx context.Contex
 	return out, nil
 }
 
+func (c *redistributeTaskServiceClient) DropRedistributeTask(ctx context.Context, in *RedistributeTaskSelector, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, RedistributeTaskService_DropRedistributeTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Deprecated: Do not use.
 func (c *redistributeTaskServiceClient) RemoveRedistributeTask(ctx context.Context, in *RedistributeTaskSelector, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -763,6 +900,8 @@ func (c *redistributeTaskServiceClient) RemoveRedistributeTask(ctx context.Conte
 // for forward compatibility.
 type RedistributeTaskServiceServer interface {
 	ListRedistributeTasks(context.Context, *emptypb.Empty) (*ListRedistributeTasksReply, error)
+	DropRedistributeTask(context.Context, *RedistributeTaskSelector) (*emptypb.Empty, error)
+	// Deprecated: Do not use.
 	RemoveRedistributeTask(context.Context, *RedistributeTaskSelector) (*emptypb.Empty, error)
 	mustEmbedUnimplementedRedistributeTaskServiceServer()
 }
@@ -776,6 +915,9 @@ type UnimplementedRedistributeTaskServiceServer struct{}
 
 func (UnimplementedRedistributeTaskServiceServer) ListRedistributeTasks(context.Context, *emptypb.Empty) (*ListRedistributeTasksReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListRedistributeTasks not implemented")
+}
+func (UnimplementedRedistributeTaskServiceServer) DropRedistributeTask(context.Context, *RedistributeTaskSelector) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DropRedistributeTask not implemented")
 }
 func (UnimplementedRedistributeTaskServiceServer) RemoveRedistributeTask(context.Context, *RedistributeTaskSelector) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RemoveRedistributeTask not implemented")
@@ -820,6 +962,24 @@ func _RedistributeTaskService_ListRedistributeTasks_Handler(srv interface{}, ctx
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RedistributeTaskService_DropRedistributeTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RedistributeTaskSelector)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RedistributeTaskServiceServer).DropRedistributeTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RedistributeTaskService_DropRedistributeTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RedistributeTaskServiceServer).DropRedistributeTask(ctx, req.(*RedistributeTaskSelector))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _RedistributeTaskService_RemoveRedistributeTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RedistributeTaskSelector)
 	if err := dec(in); err != nil {
@@ -848,6 +1008,10 @@ var RedistributeTaskService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListRedistributeTasks",
 			Handler:    _RedistributeTaskService_ListRedistributeTasks_Handler,
+		},
+		{
+			MethodName: "DropRedistributeTask",
+			Handler:    _RedistributeTaskService_DropRedistributeTask_Handler,
 		},
 		{
 			MethodName: "RemoveRedistributeTask",

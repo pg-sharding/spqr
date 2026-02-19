@@ -306,6 +306,20 @@ func (mr *MockEntityMgrMockRecorder) DCStateKeeper() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DCStateKeeper", reflect.TypeOf((*MockEntityMgr)(nil).DCStateKeeper))
 }
 
+// DropBalancerTask mocks base method.
+func (m *MockEntityMgr) DropBalancerTask(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropBalancerTask", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropBalancerTask indicates an expected call of DropBalancerTask.
+func (mr *MockEntityMgrMockRecorder) DropBalancerTask(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropBalancerTask", reflect.TypeOf((*MockEntityMgr)(nil).DropBalancerTask), ctx)
+}
+
 // DropDistribution mocks base method.
 func (m *MockEntityMgr) DropDistribution(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
@@ -346,6 +360,34 @@ func (m *MockEntityMgr) DropKeyRangeAll(ctx context.Context) error {
 func (mr *MockEntityMgrMockRecorder) DropKeyRangeAll(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropKeyRangeAll", reflect.TypeOf((*MockEntityMgr)(nil).DropKeyRangeAll), ctx)
+}
+
+// DropMoveTask mocks base method.
+func (m *MockEntityMgr) DropMoveTask(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropMoveTask", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropMoveTask indicates an expected call of DropMoveTask.
+func (mr *MockEntityMgrMockRecorder) DropMoveTask(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropMoveTask", reflect.TypeOf((*MockEntityMgr)(nil).DropMoveTask), ctx, id)
+}
+
+// DropMoveTaskGroup mocks base method.
+func (m *MockEntityMgr) DropMoveTaskGroup(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropMoveTaskGroup", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropMoveTaskGroup indicates an expected call of DropMoveTaskGroup.
+func (mr *MockEntityMgrMockRecorder) DropMoveTaskGroup(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).DropMoveTaskGroup), ctx, id)
 }
 
 // DropRedistributeTask mocks base method.
@@ -937,48 +979,6 @@ func (m *MockEntityMgr) RegisterRouter(ctx context.Context, r *topology.Router) 
 func (mr *MockEntityMgrMockRecorder) RegisterRouter(ctx, r any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterRouter", reflect.TypeOf((*MockEntityMgr)(nil).RegisterRouter), ctx, r)
-}
-
-// RemoveBalancerTask mocks base method.
-func (m *MockEntityMgr) RemoveBalancerTask(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveBalancerTask", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RemoveBalancerTask indicates an expected call of RemoveBalancerTask.
-func (mr *MockEntityMgrMockRecorder) RemoveBalancerTask(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveBalancerTask", reflect.TypeOf((*MockEntityMgr)(nil).RemoveBalancerTask), ctx)
-}
-
-// RemoveMoveTask mocks base method.
-func (m *MockEntityMgr) RemoveMoveTask(ctx context.Context, id string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveMoveTask", ctx, id)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RemoveMoveTask indicates an expected call of RemoveMoveTask.
-func (mr *MockEntityMgrMockRecorder) RemoveMoveTask(ctx, id any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMoveTask", reflect.TypeOf((*MockEntityMgr)(nil).RemoveMoveTask), ctx, id)
-}
-
-// RemoveMoveTaskGroup mocks base method.
-func (m *MockEntityMgr) RemoveMoveTaskGroup(ctx context.Context, id string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveMoveTaskGroup", ctx, id)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RemoveMoveTaskGroup indicates an expected call of RemoveMoveTaskGroup.
-func (mr *MockEntityMgrMockRecorder) RemoveMoveTaskGroup(ctx, id any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMoveTaskGroup", reflect.TypeOf((*MockEntityMgr)(nil).RemoveMoveTaskGroup), ctx, id)
 }
 
 // RenameKeyRange mocks base method.
