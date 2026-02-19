@@ -1,8 +1,123 @@
 ---
 title: 'Statistics'
+description: 'Monitor and analyze SPQR performance metrics'
 ---
 
-You can get access to statistics in router's administrative console via [SHOW command](https://github.com/pg-sharding/spqr/blob/master/yacc/console/gram.y#L319).
+SPQR provides built-in statistics collection and monitoring capabilities to help you understand query performance, track data movement operations, and monitor cluster state.
+
+## Overview
+
+SPQR collects various types of metrics that can be accessed through the router's administrative console:
+
+- **Query Time Statistics**: Measure query execution time at router and shard levels
+- **Data Movement Statistics**: Track performance of key range redistribution operations
+- **Connection Statistics**: Monitor client and backend connections
+- **Cluster State Statistics**: View information about routers, shards, and distributions
+
+All statistics are accessed via the [SHOW command](/sharding/console/sql_commands#show) in the admin console.
+
+## Query Time Statistics
+
+SPQR can collect query execution time statistics when configured with time quantiles. These metrics help identify performance bottlenecks by measuring:
+
+- **Router Time**: Time spent processing queries at the router level
+- **Shard Time**: Time spent executing queries on backend shards
+
+### Enabling Query Time Statistics
+
+To enable query time statistics, configure the `time_quantiles` setting in your router configuration file:
+
+```yaml
+# router.yaml
+time_quantiles:
+  - 0.5   # median (50th percentile)
+  - 0.9   # 90th percentile
+  - 0.99  # 99th percentile
+```
+
+<Note>
+When `time_quantiles` is empty or not specified, no statistics are collected. Setting quantiles enables collection at a small performance cost.
+</Note>
+
+### Viewing Query Time Statistics
+
+Once enabled, view query time statistics using the `SHOW time_quantiles` command:
+
+```sql
+SHOW time_quantiles;
+ quantile_type  | time, ms
+----------------+----------
+ router_time_0.5  |    12.50
+ shard_time_0.5   |     8.30
+ router_time_0.9  |    45.20
+ shard_time_0.9   |    38.10
+ router_time_0.99 |   120.75
+ shard_time_0.99  |   105.40
+(6 rows)
+```
+
+**Interpreting Results:**
+- `router_time_X`: The X-th percentile of total query processing time at the router level
+- `shard_time_X`: The X-th percentile of query execution time on shards
+- Values are in milliseconds
+- Higher percentiles (e.g., 0.99) show worst-case performance
+
+### Use Cases
+
+Query time statistics are useful for:
+- Identifying slow queries and performance degradation
+- Measuring impact of configuration changes
+- Understanding latency distribution across your workload
+- Setting SLA thresholds based on actual performance data
+
+## Data Movement Statistics
+
+SPQR tracks performance metrics for data movement operations when using the `REDISTRIBUTE KEY RANGE` command. These statistics help optimize balancing operations.
+
+### Viewing Data Movement Statistics
+
+Use the `SHOW move_stats` command to view average execution times:
+
+```sql
+SHOW move_stats;
+       statistic        |      time
+------------------------+--------------
+ total                  | 5.234s
+ router                 | 125ms
+ shard.Total            | 4.891s
+ shard.copyData         | 4.632s
+ shard.dropData         | 210ms
+ qdb.Total              | 218ms
+ qdb.LockKeyRange       | 45ms
+ qdb.UnlockKeyRange     | 12ms
+ qdb.UpdateKeyRange     | 156ms
+(9 rows)
+```
+
+**Statistics Breakdown:**
+- `total`: Total time for the entire move operation
+- `router`: Time spent coordinating the move at router level
+- `shard.Total`: Total time for all shard operations
+- `shard.copyData`: Time spent copying data to the target shard
+- `shard.dropData`: Time spent removing data from the source shard
+- `qdb.Total`: Total time for all QDB (metadata) operations
+- `qdb.LockKeyRange`: Time spent locking the key range
+- `qdb.UnlockKeyRange`: Time spent unlocking the key range
+- `qdb.UpdateKeyRange`: Time spent updating key range metadata
+
+<Note>
+The exact statistics shown depend on which operations were performed during data movement. Not all statistics may appear in every output.
+</Note>
+
+These metrics represent **average values** across all completed move operations since the router started.
+
+## Connection Statistics
+
+Monitor active connections and cluster state using various SHOW commands.
+
+### Client Connections
+
+View current client connections to the router:
 
 ```sql
 SHOW clients WHERE dbname = testdb;
@@ -12,9 +127,26 @@ SHOW clients WHERE dbname = testdb;
  824686914368 | test_app | testdb | no backend connection | local
  824656201120 | test_app | testdb | no backend connection | local
  824657328608 | test_app | testdb | example.com:6432      | local
- 824656165344 | test_app | testdb | example.com:6432      | local
- 824655861952 | test_app | testdb | no backend connection | local
-(6 rows)
+(4 rows)
 ```
 
-For more information, see [SHOW command](/sharding/console/sql_commands#show) reference.
+### Backend Connections
+
+View connections from router to backend shards:
+
+```sql
+SHOW backend_connections WHERE hostname='shard1:6432';
+ backend connection id | router  | shard key name |   hostname    |     user     | dbname | sync | tx_served | tx status
+-----------------------+---------+----------------+---------------+--------------+--------+------+-----------+-----------
+ 824694216064          | no data | sh1            | shard1:6432   | app_user     | testdb | 0    | 10102     | IDLE
+ 824646300800          | no data | sh1            | shard1:6432   | app_user     | testdb | 0    | 7508      | IDLE
+(2 rows)
+```
+
+## Configuration Reference
+
+See the [Router Configuration](/configuration/router#statistics-settings) page for detailed information on configuring statistics collection.
+
+## Additional Resources
+
+For a complete list of available SHOW commands and filtering options, see the [SHOW command](/sharding/console/sql_commands#show) reference.
