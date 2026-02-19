@@ -75,7 +75,7 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 		return "", err
 	}
 
-	configBytes, err := json.MarshalIndent(&cfgCoordinator, "", "  ")
+	configBytes, err := json.MarshalIndent(&cCfg, "", "  ")
 	if err != nil {
 		return "", err
 	}
