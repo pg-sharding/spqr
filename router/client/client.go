@@ -766,10 +766,10 @@ func (cl *PsqlClient) Close() error {
 	return cl.conn.Close()
 }
 
-func (cl *PsqlClient) replyErrMsgHint(
+func (cl *PsqlClient) replyErrMsgOps(
 	msg string,
 	code string,
-	hint string, pos int32, s txstatus.TXStatus) error {
+	hint string, detail string, pos int32, s txstatus.TXStatus) error {
 	var clErrMsg string
 
 	if cl.ReplyClientId {
@@ -784,6 +784,7 @@ func (cl *PsqlClient) replyErrMsgHint(
 			Severity: "ERROR",
 			Code:     code,
 			Hint:     hint,
+			Detail:   detail,
 			Position: pos,
 		},
 		&pgproto3.ReadyForQuery{
@@ -798,7 +799,7 @@ func (cl *PsqlClient) replyErrMsgHint(
 }
 
 func (cl *PsqlClient) ReplyErrMsg(msg string, code string, pos int32, s txstatus.TXStatus) error {
-	return cl.replyErrMsgHint(msg, code, "", pos, s)
+	return cl.replyErrMsgOps(msg, code, "", "", pos, s)
 }
 
 func (cl *PsqlClient) ReplyErrWithTxStatus(e error, s txstatus.TXStatus) error {
@@ -814,7 +815,7 @@ func (cl *PsqlClient) ReplyErr(e error) error {
 
 	switch er := e.(type) {
 	case *spqrerror.SpqrError:
-		return cl.replyErrMsgHint(er.Error(), er.ErrorCode, er.ErrHint, er.Position, txstatus.TXIDLE)
+		return cl.replyErrMsgOps(er.Error(), er.ErrorCode, er.ErrHint, er.ErrDetail, er.Position, txstatus.TXIDLE)
 	default:
 		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, 0, txstatus.TXIDLE)
 	}

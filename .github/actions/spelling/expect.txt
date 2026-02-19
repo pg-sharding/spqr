@@ -137,7 +137,7 @@ enim
 epn
 errdefs
 errhint
-eshkere
+errdetail
 etcdctl
 etcdqdb
 Excepteur
