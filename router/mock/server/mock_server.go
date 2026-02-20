@@ -48,17 +48,17 @@ func (m *MockServer) EXPECT() *MockServerMockRecorder {
 }
 
 // AllocateGangMember mocks base method.
-func (m *MockServer) AllocateGangMember(clid uint, shardKey kr.ShardKey, arg2 tsa.TSA) error {
+func (m *MockServer) AllocateGangMember(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AllocateGangMember", clid, shardKey, arg2)
+	ret := m.ctrl.Call(m, "AllocateGangMember", clid, shardKey, tsa)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AllocateGangMember indicates an expected call of AllocateGangMember.
-func (mr *MockServerMockRecorder) AllocateGangMember(clid, shardKey, arg2 any) *gomock.Call {
+func (mr *MockServerMockRecorder) AllocateGangMember(clid, shardKey, tsa any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllocateGangMember", reflect.TypeOf((*MockServer)(nil).AllocateGangMember), clid, shardKey, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllocateGangMember", reflect.TypeOf((*MockServer)(nil).AllocateGangMember), clid, shardKey, tsa)
 }
 
 // Cancel mocks base method.
@@ -104,17 +104,17 @@ func (mr *MockServerMockRecorder) Datashards() *gomock.Call {
 }
 
 // ExpandGang mocks base method.
-func (m *MockServer) ExpandGang(clid uint, shkey kr.ShardKey, arg2 tsa.TSA, deployTX bool) error {
+func (m *MockServer) ExpandGang(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExpandGang", clid, shkey, arg2, deployTX)
+	ret := m.ctrl.Call(m, "ExpandGang", clid, shkey, tsa, deployTX)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ExpandGang indicates an expected call of ExpandGang.
-func (mr *MockServerMockRecorder) ExpandGang(clid, shkey, arg2, deployTX any) *gomock.Call {
+func (mr *MockServerMockRecorder) ExpandGang(clid, shkey, tsa, deployTX any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpandGang", reflect.TypeOf((*MockServer)(nil).ExpandGang), clid, shkey, arg2, deployTX)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpandGang", reflect.TypeOf((*MockServer)(nil).ExpandGang), clid, shkey, tsa, deployTX)
 }
 
 // HasPrepareStatement mocks base method.

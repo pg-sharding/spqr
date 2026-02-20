@@ -2693,28 +2693,45 @@ func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
 	return nextval, err
 }
 
-func packEtcdCommands(operations []QdbStatement) ([]clientv3.Op, error) {
-	etcdOperations := make([]clientv3.Op, len(operations))
-	for index, v := range operations {
+func packEtcdCommands(operations []QdbStatement) ([]clientv3.Cmp, []clientv3.Op, error) {
+	checkOperations := make([]clientv3.Cmp, 0)
+	writeOperations := make([]clientv3.Op, 0)
+	for _, v := range operations {
 		switch v.CmdType {
 		case CMD_PUT:
-			etcdOperations[index] = clientv3.OpPut(v.Key, v.Value)
+			val, ok := v.Value.(string)
+			if !ok {
+				return nil, nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", v.Value)
+			}
+			writeOperations = append(writeOperations, clientv3.OpPut(v.Key, val))
 		case CMD_DELETE:
-			etcdOperations[index] = clientv3.OpDelete(v.Key)
+			writeOperations = append(writeOperations, clientv3.OpDelete(v.Key))
+		case CMD_CMP_VERSION:
+			val, ok := v.Value.(int)
+			if !ok {
+				return nil, nil, fmt.Errorf("incorrect value type %T for CMD_CMP_VERSION, int is expected", v.Value)
+			}
+			checkOperations = append(checkOperations, clientv3.Compare(clientv3.Version(v.Key), "=", val))
 		default:
-			return nil, fmt.Errorf("not found operation type: %d", v.CmdType)
+			return nil, nil, fmt.Errorf("not found operation type: %d", v.CmdType)
 		}
 	}
-	return etcdOperations, nil
+	return checkOperations, writeOperations, nil
 }
 
 func (q *EtcdQDB) ExecNoTransaction(ctx context.Context, operations []QdbStatement) error {
-	etcdOperations, err := packEtcdCommands(operations)
+	cmps, ops, err := packEtcdCommands(operations)
 	if err != nil {
 		return err
 	}
-	_, err = q.cli.Txn(ctx).Then(etcdOperations...).Commit()
-	return err
+	resp, err := q.cli.Txn(ctx).If(cmps...).Then(ops...).Commit()
+	if err != nil {
+		return err
+	}
+	if !resp.Succeeded {
+		return fmt.Errorf("could not commit transaction: comparison value not equal")
+	}
+	return nil
 }
 
 func (q *EtcdQDB) CommitTransaction(ctx context.Context, transaction *QdbTransaction) error {
@@ -2724,14 +2741,15 @@ func (q *EtcdQDB) CommitTransaction(ctx context.Context, transaction *QdbTransac
 	if err := transaction.Validate(); err != nil {
 		return fmt.Errorf("invalid transaction %s: %w", transaction.Id(), err)
 	}
-	etcdOperations, err := packEtcdCommands(transaction.commands)
+	cmps, ops, err := packEtcdCommands(transaction.commands)
 	if err != nil {
 		return err
 	}
-	etcdOperations = append(etcdOperations, clientv3.OpDelete(transactionRequest))
+	ops = append(ops, clientv3.OpDelete(transactionRequest))
+	cmps = append(cmps, clientv3.Compare(clientv3.Value(transactionRequest), "=", transaction.transactionId.String))
 	resp, err := q.cli.Txn(ctx).
-		If(clientv3.Compare(clientv3.Value(transactionRequest), "=", transaction.transactionId.String())).
-		Then(etcdOperations...).
+		If(cmps...).
+		Then(ops...).
 		Commit()
 
 	if err != nil {

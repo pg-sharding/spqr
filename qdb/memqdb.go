@@ -1628,7 +1628,11 @@ func (q *MemQDB) toRelationDistributionOperation(stmt QdbStatement) (Command, er
 	case CMD_DELETE:
 		return NewDeleteCommand(q.RelationDistribution, stmt.Key), nil
 	case CMD_PUT:
-		return NewUpdateCommand(q.RelationDistribution, stmt.Key, stmt.Value), nil
+		val, ok := stmt.Value.(string)
+		if !ok {
+			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
+		}
+		return NewUpdateCommand(q.RelationDistribution, stmt.Key, val), nil
 	default:
 		return nil, fmt.Errorf("unsupported memqdb cmd %d (relation distribution)", stmt.CmdType)
 	}
@@ -1639,7 +1643,11 @@ func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
 		return NewDeleteCommand(q.Distributions, stmt.Key), nil
 	case CMD_PUT:
 		var distr Distribution
-		if err := json.Unmarshal([]byte(stmt.Value), &distr); err != nil {
+		val, ok := stmt.Value.(string)
+		if !ok {
+			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
+		}
+		if err := json.Unmarshal([]byte(val), &distr); err != nil {
 			return nil, err
 		} else {
 			return NewUpdateCommand(q.Distributions, stmt.Key, &distr), nil
@@ -1654,8 +1662,12 @@ func (q *MemQDB) toKeyRange(stmt QdbStatement) (Command, error) {
 	case CMD_DELETE:
 		return NewDeleteCommand(q.Krs, stmt.Key), nil
 	case CMD_PUT:
+		val, ok := stmt.Value.(string)
+		if !ok {
+			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
+		}
 		var kr KeyRange
-		if err := json.Unmarshal([]byte(stmt.Value), &kr); err != nil {
+		if err := json.Unmarshal([]byte(val), &kr); err != nil {
 			return nil, err
 		}
 		return NewUpdateCommand(q.Krs, stmt.Key, keyRangeToInternal(&kr)), nil
@@ -1684,8 +1696,12 @@ func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
 	case CMD_DELETE:
 		return NewDeleteCommand(q.Locks, stmt.Key), nil
 	case CMD_PUT:
+		val, ok := stmt.Value.(string)
+		if !ok {
+			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
+		}
 		lock := &sync.RWMutex{}
-		isLocked, err := strconv.ParseBool(stmt.Value)
+		isLocked, err := strconv.ParseBool(val)
 		if err != nil {
 			return nil, err
 		}
