@@ -28,6 +28,12 @@ type internalKeyRange struct {
 	KeyRangeID     string   `json:"key_range_id"`
 	DistributionId string   `json:"distribution_id"`
 }
+
+type KeyRangeMeta struct {
+	UpdatedAt  time.Time `json:"updated_at"`
+	ModifiedBy string    `json:"modified_by"`
+}
+
 type MoveKeyRangeStatus string
 
 const (
