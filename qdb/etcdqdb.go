@@ -255,14 +255,15 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) fetchKeyRange(ctx context.Context, krNodePath string) (*KeyRange, error) {
+func (q *EtcdQDB) fetchKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().
-		Interface("path", krNodePath).
+		Interface("id", id).
 		Msg("etcdqdb: fetch key range")
 
+	krNodePath := keyRangeNodePath(id)
 	resp, err := q.cli.Txn(ctx).
 		If(clientv3.Compare(clientv3.Version(krNodePath), "!=", 0)).
-		Then(clientv3.OpGet(krNodePath), clientv3.OpGet(LockPath(krNodePath))).
+		Then(clientv3.OpGet(krNodePath), clientv3.OpGet(LockPath(krNodePath)), clientv3.OpGet(keyRangeMetaNodePath(id))).
 		Commit()
 
 	if err != nil {
@@ -271,7 +272,7 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, krNodePath string) (*KeyRan
 	if !resp.Succeeded {
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "no key range found at %v", krNodePath)
 	}
-	if len(resp.Responses) != 2 {
+	if len(resp.Responses) != 3 {
 		return nil, fmt.Errorf("failed to fetch key range at \"%s\": unexpected etcd response count %d", krNodePath, len(resp.Responses))
 	}
 	kRange := &internalKeyRange{}
@@ -280,7 +281,9 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, krNodePath string) (*KeyRan
 	}
 	isLocked := resp.Responses[1].GetResponseRange().Count > 0 && string(resp.Responses[1].GetResponseRange().Kvs[0].Value) == "locked"
 
-	return keyRangeFromInternal(kRange, isLocked), nil
+	version := resp.Responses[2].GetResponseRange().Kvs[0].Version
+
+	return keyRangeFromInternal(kRange, isLocked, int(version)), nil
 }
 
 // TODO : unit tests
@@ -291,7 +294,7 @@ func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 
 	t := time.Now()
 
-	kRange, err := q.fetchKeyRange(ctx, keyRangeNodePath(id))
+	kRange, err := q.fetchKeyRange(ctx, id)
 
 	spqrlog.Zero.Debug().
 		Interface("ret", kRange).
@@ -408,11 +411,11 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 
 	t := time.Now()
 
-	resp, err := q.cli.Txn(ctx).Then(clientv3.OpGet(keyRangesNamespace, clientv3.WithPrefix()), clientv3.OpGet(keyRangeLockNamespace(), clientv3.WithPrefix())).Commit()
+	resp, err := q.cli.Txn(ctx).Then(clientv3.OpGet(keyRangesNamespace, clientv3.WithPrefix()), clientv3.OpGet(keyRangeLockNamespace(), clientv3.WithPrefix()), clientv3.OpGet(keyRangesMetadataNamespace, clientv3.WithPrefix())).Commit()
 	if err != nil {
 		return nil, err
 	}
-	if len(resp.Responses) != 2 {
+	if len(resp.Responses) != 3 {
 		return nil, fmt.Errorf("failed to list key ranges: unexpected txn response number %d", len(resp.Responses))
 	}
 	krDbs := resp.Responses[0].GetResponseRange().Kvs
@@ -421,6 +424,12 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 		id := string(kv.Key[len(keyRangeLockNamespace())+1:])
 		locks[id] = string(kv.Value) == "locked"
 		spqrlog.Zero.Debug().Str("key", string(kv.Key)).Str("id", id).Str("value", string(kv.Value)).Msg("got lock")
+	}
+
+	versions := make(map[string]int)
+	for _, kv := range resp.Responses[2].GetResponseRange().Kvs {
+		id := strings.TrimPrefix(string(kv.Key), keyRangesMetadataNamespace)
+		versions[id] = int(kv.Version)
 	}
 
 	keyRanges := make([]*KeyRange, 0, len(krDbs))
@@ -436,7 +445,12 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 		if ok {
 			krLocked = v
 		}
-		keyRanges = append(keyRanges, keyRangeFromInternal(kRange, krLocked))
+		version := 0
+		ver, ok := versions[kRange.KeyRangeID]
+		if !ok {
+			version = ver
+		}
+		keyRanges = append(keyRanges, keyRangeFromInternal(kRange, krLocked, version))
 	}
 
 	spqrlog.Zero.Debug().
@@ -457,21 +471,22 @@ func (q *EtcdQDB) NoWaitLockKeyRange(ctx context.Context, idKeyRange string) (*K
 	return kr, err
 }
 
-func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
+func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId string) (*KeyRange, error) {
 	resp, err := q.cli.Txn(ctx).
 		If(
 			//check exists key range lock
-			clientv3.Compare(clientv3.Version(LockPath(keyRangeNodePath(idKeyRange))), "=", 0),
+			clientv3.Compare(clientv3.Version(LockPath(keyRangeNodePath(keyRangeId))), "=", 0),
 			//check exists key range
-			clientv3.Compare(clientv3.Version(keyRangeNodePath(idKeyRange)), ">", 0),
+			clientv3.Compare(clientv3.Version(keyRangeNodePath(keyRangeId)), ">", 0),
 		).
 		Then(
-			clientv3.OpPut(LockPath(keyRangeNodePath(idKeyRange)), "locked"),
-			clientv3.OpGet(keyRangeNodePath(idKeyRange)),
+			clientv3.OpPut(LockPath(keyRangeNodePath(keyRangeId)), "locked"),
+			clientv3.OpGet(keyRangeNodePath(keyRangeId)),
+			clientv3.OpGet(keyRangeMetaNodePath(keyRangeId)),
 		).
 		Else(
-			clientv3.OpGet(LockPath(keyRangeNodePath(idKeyRange)), clientv3.WithCountOnly()),
-			clientv3.OpGet(keyRangeNodePath(idKeyRange), clientv3.WithCountOnly()),
+			clientv3.OpGet(LockPath(keyRangeNodePath(keyRangeId)), clientv3.WithCountOnly()),
+			clientv3.OpGet(keyRangeNodePath(keyRangeId), clientv3.WithCountOnly()),
 		).
 		Commit()
 	if err != nil {
@@ -480,39 +495,40 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, idKeyRange str
 	if !resp.Succeeded {
 		if len(resp.Responses) != 2 {
 			return nil, fmt.Errorf("unexpected (case 0) etcd lock '%s' response parts count=%d",
-				idKeyRange, len(resp.Responses))
+				keyRangeId, len(resp.Responses))
 		}
 		if resp.Responses[1].GetResponseRange().Count == 0 {
-			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "cant't lock non existent key range %v", idKeyRange)
+			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "cant't lock non existent key range %v", keyRangeId)
 		}
 		spqrlog.Zero.Debug().
-			Str("id", idKeyRange).
-			Msg(fmt.Sprintf("unsuccessful lock '%s' LS:%d, KR:%d", idKeyRange, resp.Responses[0], resp.Responses[1]))
-		return nil, retry.RetryableError(spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", idKeyRange))
+			Str("id", keyRangeId).
+			Msg(fmt.Sprintf("unsuccessful lock '%s' LS:%d, KR:%d", keyRangeId, resp.Responses[0], resp.Responses[1]))
+		return nil, retry.RetryableError(spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", keyRangeId))
 	} else {
-		if len(resp.Responses) != 2 {
+		if len(resp.Responses) != 3 {
 			return nil, fmt.Errorf("unexpected (case 1) etcd lock '%s' response parts count=%d",
-				idKeyRange, len(resp.Responses))
+				keyRangeId, len(resp.Responses))
 		} else {
 			rng := resp.Responses[1].GetResponseRange()
 			if len(rng.Kvs) != 1 {
 				return nil, fmt.Errorf("unexpected (case 2) etcd lock '%s' response parts count=%d",
-					idKeyRange, len(rng.Kvs))
+					keyRangeId, len(rng.Kvs))
 			}
 			if rng.Kvs[0] == nil {
 				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 0)",
-					idKeyRange)
+					keyRangeId)
 			}
 			kv := rng.Kvs[0].Value
 			if kv == nil {
 				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 1)",
-					idKeyRange)
+					keyRangeId)
 			}
+			ver := int(rng.Kvs[2].Version)
 			keyRange := &internalKeyRange{}
 			if err := json.Unmarshal(kv, &keyRange); err != nil {
 				return nil, err
 			}
-			return keyRangeFromInternal(keyRange, true), nil
+			return keyRangeFromInternal(keyRange, true, ver), nil
 		}
 	}
 }
@@ -609,7 +625,7 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 
 	t := time.Now()
 
-	kr, err := q.fetchKeyRange(ctx, keyRangeNodePath(krId))
+	kr, err := q.fetchKeyRange(ctx, krId)
 	if err != nil {
 		return err
 	}

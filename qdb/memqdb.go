@@ -339,7 +339,7 @@ func (q *MemQDB) getKeyrangeInternal(id string) (*KeyRange, error) {
 		isLocked = v
 	}
 
-	return keyRangeFromInternal(kRangeInt, isLocked), nil
+	return keyRangeFromInternal(kRangeInt, isLocked, q.KrVersions[id]), nil
 }
 
 // TODO : unit tests
@@ -412,7 +412,7 @@ func (q *MemQDB) ListKeyRanges(_ context.Context, distribution string) ([]*KeyRa
 			if v, ok := q.Freq[el.KeyRangeID]; ok {
 				isLocked = v
 			}
-			ret = append(ret, keyRangeFromInternal(el, isLocked))
+			ret = append(ret, keyRangeFromInternal(el, isLocked, q.KrVersions[el.KeyRangeID]))
 		}
 	}
 
@@ -435,7 +435,7 @@ func (q *MemQDB) ListAllKeyRanges(_ context.Context) ([]*KeyRange, error) {
 		if v, ok := q.Freq[el.KeyRangeID]; ok {
 			isLocked = v
 		}
-		ret = append(ret, keyRangeFromInternal(el, isLocked))
+		ret = append(ret, keyRangeFromInternal(el, isLocked, q.KrVersions[el.KeyRangeID]))
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
@@ -494,7 +494,7 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 		return nil, err
 	}
 
-	return keyRangeFromInternal(krs, true), nil
+	return keyRangeFromInternal(krs, true, q.KrVersions[id]), nil
 }
 
 // TODO : unit tests
@@ -596,7 +596,7 @@ func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
 	kr.KeyRangeID = krIdNew
 	commands := make([]Command, 0)
 	commands = append(commands, q.dropKeyRangeCommands(krId)...)
-	commands = append(commands, q.createKeyRangeCommands(keyRangeFromInternal(kr, false))...)
+	commands = append(commands, q.createKeyRangeCommands(keyRangeFromInternal(kr, false, 1))...)
 	return ExecuteCommands(q.DumpState, commands...)
 }
 
