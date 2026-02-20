@@ -1625,11 +1625,6 @@ func ProcessShow(ctx context.Context,
 			return nil, err
 		}
 
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to get client counts")
-			clientCounts = make(map[string]int)
-		}
-
 		// Try to get router versions via gRPC if the manager supports it
 		var routerVersions map[string]RouterVersionInfo
 		if rc, ok := mngr.(RouterConnector); ok {
