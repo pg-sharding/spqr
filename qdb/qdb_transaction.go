@@ -20,14 +20,14 @@ type QdbStatement struct {
 	Extension string
 }
 
-func NewQdbStatement(cmdType int32, key string, value string) (*QdbStatement, error) {
+func NewQdbStatement(cmdType int32, key string, value any) (*QdbStatement, error) {
 	if cmdType != CMD_PUT && cmdType != CMD_DELETE && cmdType != CMD_CMP_VERSION {
 		return nil, fmt.Errorf("unknown type of QdbStatement: %d", cmdType)
 	}
 	return &QdbStatement{CmdType: cmdType, Key: key, Value: value}, nil
 }
 
-func NewQdbStatementExt(cmdType int32, key string, value string, extension string) (*QdbStatement, error) {
+func NewQdbStatementExt(cmdType int32, key string, value any, extension string) (*QdbStatement, error) {
 	if stmt, err := NewQdbStatement(cmdType, key, value); err != nil {
 		return nil, err
 	} else {
