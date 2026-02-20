@@ -235,18 +235,18 @@ func (mr *MockEntityMgrMockRecorder) CreateDistribution(ctx, ds any) *gomock.Cal
 }
 
 // CreateKeyRange mocks base method.
-func (m *MockEntityMgr) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
+func (m *MockEntityMgr) CreateKeyRange(ctx context.Context, arg1 *kr.KeyRange) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, kr)
+	ret := m.ctrl.Call(m, "CreateKeyRange", ctx, arg1)
 	ret0, _ := ret[0].([]qdb.QdbStatement)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateKeyRange indicates an expected call of CreateKeyRange.
-func (mr *MockEntityMgrMockRecorder) CreateKeyRange(ctx, kr any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) CreateKeyRange(ctx, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).CreateKeyRange), ctx, kr)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).CreateKeyRange), ctx, arg1)
 }
 
 // CreateReferenceRelation mocks base method.
@@ -1147,6 +1147,21 @@ func (m *MockEntityMgr) UpdateCoordinator(ctx context.Context, address string) e
 func (mr *MockEntityMgrMockRecorder) UpdateCoordinator(ctx, address any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCoordinator", reflect.TypeOf((*MockEntityMgr)(nil).UpdateCoordinator), ctx, address)
+}
+
+// UpdateKeyRange mocks base method.
+func (m *MockEntityMgr) UpdateKeyRange(ctx context.Context, arg1 *kr.KeyRange) ([]qdb.QdbStatement, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateKeyRange", ctx, arg1)
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateKeyRange indicates an expected call of UpdateKeyRange.
+func (mr *MockEntityMgrMockRecorder) UpdateKeyRange(ctx, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).UpdateKeyRange), ctx, arg1)
 }
 
 // WriteBalancerTask mocks base method.

@@ -301,31 +301,39 @@ func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
+func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: update key range")
 
 	rawKeyRange, err := json.Marshal(keyRangeToInternal(keyRange))
 	if err != nil {
-		return err
+		return nil, err
 	}
-
 	meta, err := json.Marshal(KeyRangeMeta{UpdatedAt: time.Now(), ModifiedBy: "etcdqdb_update"})
 	if err != nil {
-		return fmt.Errorf("failed to update key range: failed to marshal metadata: %s", err)
+		return nil, fmt.Errorf("failed to update key range: failed to marshal metadata: %s", err)
 	}
-	resp, err := q.cli.Txn(ctx).If(clientv3util.KeyExists(keyRangeNodePath(keyRange.KeyRangeID))).Then(clientv3.OpPut(keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange)), clientv3.OpPut(keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))).Commit()
+	respKR := make([]QdbStatement, 3)
+	resp, err := NewQdbStatement(CMD_CMP_VERSION, keyRangeNodePath(keyRange.KeyRangeID), keyRange.Version)
+	if err != nil {
+		return nil, err
+	}
+	respKR[0] = *resp
+	resp, err = NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	if err != nil {
+		return nil, err
+	}
+	respKR[1] = *resp
+	resp, err = NewQdbStatement(CMD_PUT, keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))
+	if err != nil {
+		return nil, err
+	}
+	respKR[2] = *resp
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: put key range to qdb")
-	if err != nil {
-		return err
-	}
-	if !resp.Succeeded {
-		return fmt.Errorf("could not update key range: could not commit transaction")
-	}
-	return nil
+	return respKR, nil
 }
 
 // TODO : unit tests

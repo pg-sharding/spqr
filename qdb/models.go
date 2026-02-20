@@ -19,6 +19,7 @@ type KeyRange struct {
 	KeyRangeID     string
 	DistributionId string
 	Locked         bool
+	Version        int
 }
 
 // Do not marshal Locked field

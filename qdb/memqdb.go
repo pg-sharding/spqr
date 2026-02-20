@@ -281,7 +281,30 @@ func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeId string) ([]QdbStatement, e
 		return nil, err
 	}
 	commands[2] = *cmd
+	return commands, nil
+}
 
+func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement, error) {
+	commands := make([]QdbStatement, 3)
+	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
+		return nil, err
+	} else {
+		if cmd, err := NewQdbStatementExt(CMD_CMP_VERSION, keyRange.KeyRangeID, keyRange.Version, MapKrVersions); err != nil {
+			return nil, err
+		} else {
+			commands[0] = *cmd
+		}
+		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs); err != nil {
+			return nil, err
+		} else {
+			commands[1] = *cmd
+		}
+		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, keyRange.Version+1, MapKrVersions); err != nil {
+			return nil, err
+		} else {
+			commands[4] = *cmd
+		}
+	}
 	return commands, nil
 }
 
@@ -320,17 +343,10 @@ func (q *MemQDB) getKeyrangeInternal(id string) (*KeyRange, error) {
 }
 
 // TODO : unit tests
-func (q *MemQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) error {
+func (q *MemQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: update key range")
-	q.mu.Lock()
-	defer q.mu.Unlock()
 
-	if _, ok := q.Krs[keyRange.KeyRangeID]; !ok {
-		return fmt.Errorf("failed to update key range: key range with id \"%s\" does not exist", keyRange.KeyRangeID)
-	}
-	ver := q.KrVersions[keyRange.KeyRangeID] + 1
-
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRangeToInternal(keyRange)), NewUpdateCommand(q.KrVersions, keyRange.KeyRangeID, ver))
+	return q.updateKeyRangeQdbStatements(keyRange)
 }
 
 // TODO : unit tests

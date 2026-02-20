@@ -159,6 +159,23 @@ func (t *TranEntityManager) DropKeyRange(ctx context.Context, idKeyRange string)
 	return nil
 }
 
+// UpdateKeyRange implements [EntityMgr].
+func (t *TranEntityManager) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+	commands := []*proto.MetaTransactionGossipCommand{
+		{UpdateKeyRange: &proto.UpdateKeyRangeGossip{
+			KeyRangeInfo: kr.ToProto(),
+		}},
+	}
+	if err := t.state.Append(commands); err != nil {
+		return err
+	}
+	if _, ok := t.keyRanges.Items()[kr.ID]; ok {
+		return fmt.Errorf("key range %s already present in qdb", kr.ID)
+	}
+	t.keyRanges.Save(kr.ID, kr)
+	return nil
+}
+
 // DropDistribution implements [EntityMgr].
 func (t *TranEntityManager) DropDistribution(ctx context.Context, id string) error {
 	t.distributions.Delete(id)

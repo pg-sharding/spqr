@@ -54,6 +54,7 @@ type KeyRangeMgr interface {
 	ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error)
 	ListKeyRangeLocks(ctx context.Context) ([]string, error)
 	CreateKeyRange(ctx context.Context, kr *KeyRange) ([]qdb.QdbStatement, error)
+	UpdateKeyRange(ctx context.Context, kr *KeyRange) ([]qdb.QdbStatement, error)
 	LockKeyRange(ctx context.Context, krid string) (*KeyRange, error)
 	UnlockKeyRange(ctx context.Context, krid string) error
 	Split(ctx context.Context, split *SplitKeyRange) error

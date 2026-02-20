@@ -30,6 +30,7 @@ type KeyRange struct {
 	Distribution string
 	IsLocked     *bool //if nil then is not checked lock state in qdb
 	ColumnTypes  []string
+	Version      int
 }
 
 /*
@@ -344,6 +345,7 @@ func KeyRangeFromDB(krdb *qdb.KeyRange, colTypes []string) (*KeyRange, error) {
 		Distribution: krdb.DistributionId,
 		ColumnTypes:  colTypes,
 		IsLocked:     &krdb.Locked,
+		Version:      krdb.Version,
 
 		LowerBound: make(KeyRangeBound, len(colTypes)),
 	}
@@ -468,6 +470,7 @@ func (kr *KeyRange) ToDB() *qdb.KeyRange {
 		KeyRangeID:     kr.ID,
 		DistributionId: kr.Distribution,
 		Locked:         isLocked,
+		Version:        kr.Version,
 	}
 	for i := range len(kr.ColumnTypes) {
 		krDb.LowerBound[i] = kr.OutFunc(i)

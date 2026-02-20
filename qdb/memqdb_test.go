@@ -88,7 +88,7 @@ func TestMemqdbRacing(t *testing.T) {
 			_, _ = memqdb.LockKeyRange(ctx, mockKeyRange.KeyRangeID)
 			_ = memqdb.UnlockKeyRange(ctx, mockKeyRange.KeyRangeID)
 		},
-		func() { _ = memqdb.UpdateKeyRange(ctx, mockKeyRange) },
+		func() { _, _ = memqdb.UpdateKeyRange(ctx, mockKeyRange) },
 		func() { _ = memqdb.DeleteRouter(ctx, mockRouter.ID) },
 		func() {
 			tran1, err := qdb.NewTransaction()
