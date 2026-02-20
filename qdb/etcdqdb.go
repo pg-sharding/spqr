@@ -616,15 +616,13 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 	kr.KeyRangeID = krIdNew
 	kr.Locked = false
 
-	if _, err = q.cli.Delete(ctx, keyRangeNodePath(krId)); err != nil {
-		return err
-	}
-
-	_, err = q.cli.Delete(ctx, LockPath(keyRangeNodePath(krId)))
+	resp, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(keyRangeNodePath(krId)), clientv3.OpDelete(LockPath(keyRangeNodePath(krId))), clientv3.OpDelete(keyRangeMetaNodePath(krId))).Commit()
 	if err != nil {
 		return err
 	}
-
+	if !resp.Succeeded {
+		return fmt.Errorf("failed to rename key range: failed to delete old key range")
+	}
 	statements, err := q.CreateKeyRange(ctx, kr)
 	if err != nil {
 		return err

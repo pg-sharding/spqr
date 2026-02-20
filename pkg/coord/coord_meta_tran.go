@@ -105,7 +105,14 @@ func transactionChunkToQdbStatements(ctx context.Context, mngr meta.EntityMgr, c
 			}
 			qdbCmds = append(qdbCmds, cmdList...)
 		case mtran.GR_UpdateKeyRange:
-
+			cmdList, err := updateKeyRangePrepare(ctx, mngr, gossipCommand.UpdateKeyRange)
+			if err != nil {
+				return nil, err
+			}
+			if len(cmdList) == 0 {
+				return nil, fmt.Errorf("no QDB changes in gossip request:%d", cmdType)
+			}
+			qdbCmds = append(qdbCmds, cmdList...)
 		// TODO: run handlers converting gossip commands to chunk with qdb commands
 		default:
 			return nil, fmt.Errorf("invalid meta gossip request:%d", cmdType)
