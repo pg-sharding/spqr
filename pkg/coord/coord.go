@@ -229,7 +229,14 @@ func (lc *Coordinator) DropDistribution(ctx context.Context, id string) error {
 
 // DropKeyRange implements meta.EntityMgr.
 func (lc *Coordinator) DropKeyRange(ctx context.Context, id string) error {
-	return lc.qdb.DropKeyRange(ctx, id)
+	statements, err := lc.qdb.DropKeyRange(ctx, id)
+	if err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop a key range: %s (prepare)", err.Error())
+	}
+	if err = lc.qdb.ExecNoTransaction(ctx, statements); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop a key range: %s (exec)", err.Error())
+	}
+	return nil
 }
 
 // DropKeyRangeAll implements meta.EntityMgr.
@@ -1032,8 +1039,12 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		}
 	}
 
-	if err := lc.qdb.DropKeyRange(ctx, krAppendage.ID); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s", err.Error())
+	statements, err := lc.qdb.DropKeyRange(ctx, krAppendage.ID)
+	if err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (prepare)", err.Error())
+	}
+	if err = lc.qdb.ExecNoTransaction(ctx, statements); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (exec)", err.Error())
 	}
 
 	if krLeft.ID != krBase.ID {
