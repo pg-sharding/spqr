@@ -56,6 +56,7 @@ func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 
 const (
 	keyRangesNamespace                   = "/keyranges/"
+	keyRangesMetadataNamespace           = "/key_range_meta/"
 	distributionNamespace                = "/distributions/"
 	keyRangeMovesNamespace               = "/krmoves/"
 	routersNamespace                     = "/routers/"
@@ -96,6 +97,10 @@ func LockPath(key string) string {
 
 func keyRangeNodePath(key string) string {
 	return path.Join(keyRangesNamespace, key)
+}
+
+func keyRangeMetaNodePath(id string) string {
+	return path.Join(keyRangesMetadataNamespace, id)
 }
 
 func routerNodePath(key string) string {
@@ -211,7 +216,7 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 	if err != nil {
 		return nil, err
 	}
-	respKR := make([]QdbStatement, 1, 2)
+	respKR := make([]QdbStatement, 1, 3)
 	resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
 	if err != nil {
 		return nil, err
@@ -225,6 +230,16 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 		}
 		respKR = append(respKR, *resp)
 	}
+
+	meta, err := json.Marshal(KeyRangeMeta{UpdatedAt: time.Now(), ModifiedBy: "etcdqdb_create"})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create key range: failed to marshal metadata: %s", err)
+	}
+	resp, err = NewQdbStatement(CMD_PUT, keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))
+	if err != nil {
+		return nil, err
+	}
+	respKR = append(respKR, *resp)
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
@@ -286,23 +301,26 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: update key range")
 
-	t := time.Now()
-
 	rawKeyRange, err := json.Marshal(keyRangeToInternal(keyRange))
 	if err != nil {
 		return err
 	}
 
-	resp, err := q.cli.Put(ctx, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	meta, err := json.Marshal(KeyRangeMeta{UpdatedAt: time.Now(), ModifiedBy: "etcdqdb_create"})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update key range: failed to marshal metadata: %s", err)
 	}
-
+	resp, err := q.cli.Txn(ctx).If(clientv3util.KeyExists(keyRangeNodePath(keyRange.KeyRangeID))).Then(clientv3.OpPut(keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange)), clientv3.OpPut(keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))).Commit()
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: put key range to qdb")
-	statistics.RecordQDBOperation("UpdateKeyRange", time.Since(t))
-	return err
+	if err != nil {
+		return err
+	}
+	if !resp.Succeeded {
+		return fmt.Errorf("could not update key range: could not commit transaction")
+	}
+	return nil
 }
 
 // TODO : unit tests
@@ -327,11 +345,17 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) ([]QdbStatement, 
 		Str("id", id).
 		Msg("etcdqdb: drop key range")
 
+	resp := make([]QdbStatement, 2)
 	statement, err := NewQdbStatement(CMD_DELETE, keyRangeNodePath(id), "")
 	if err != nil {
 		return nil, err
 	}
-	resp := []QdbStatement{*statement}
+	resp[0] = *statement
+	statement, err = NewQdbStatement(CMD_DELETE, keyRangeMetaNodePath(id), "")
+	if err != nil {
+		return nil, err
+	}
+	resp[1] = *statement
 
 	return resp, err
 }
