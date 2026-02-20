@@ -202,6 +202,12 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 		is.NoError(err)
 		expected := []QdbStatement{
 			{
+				CmdType:   CMD_CMP_VERSION,
+				Key:       "krid1",
+				Value:     0,
+				Extension: MapKrVersions,
+			},
+			{
 				CmdType:   CMD_PUT,
 				Key:       "krid1",
 				Value:     "{\"LowerBound\":[\"MQ==\"],\"ShardID\":\"sh1\",\"KeyRangeID\":\"krid1\",\"DistributionId\":\"ds1\",\"Locked\":false}",
@@ -218,6 +224,12 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 				Key:       "krid1",
 				Value:     "false",
 				Extension: "Freq",
+			},
+			{
+				CmdType:   CMD_PUT,
+				Key:       "krid1",
+				Value:     1,
+				Extension: MapKrVersions,
 			},
 		}
 		is.Equal(expected, actual)
@@ -237,6 +249,12 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 		is.NoError(err)
 		expected := []QdbStatement{
 			{
+				CmdType:   CMD_CMP_VERSION,
+				Key:       "krid1",
+				Value:     0,
+				Extension: MapKrVersions,
+			},
+			{
 				CmdType:   CMD_PUT,
 				Key:       "krid1",
 				Value:     "{\"LowerBound\":[\"MQ==\"],\"ShardID\":\"sh1\",\"KeyRangeID\":\"krid1\",\"DistributionId\":\"ds1\",\"Locked\":false}",
@@ -253,6 +271,12 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 				Key:       "krid1",
 				Value:     "false",
 				Extension: "Freq",
+			},
+			{
+				CmdType:   CMD_PUT,
+				Key:       "krid1",
+				Value:     1,
+				Extension: MapKrVersions,
 			},
 		}
 		is.Equal(expected, actual)
@@ -273,6 +297,12 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 		is.NoError(err)
 		expected := []QdbStatement{
 			{
+				CmdType:   CMD_CMP_VERSION,
+				Key:       "krid1",
+				Value:     0,
+				Extension: MapKrVersions,
+			},
+			{
 				CmdType:   CMD_PUT,
 				Key:       "krid1",
 				Value:     "{\"LowerBound\":[\"MQ==\"],\"ShardID\":\"sh1\",\"KeyRangeID\":\"krid1\",\"DistributionId\":\"ds1\",\"Locked\":true}",
@@ -289,6 +319,12 @@ func TestCreateKeyRangeQdbStatements(t *testing.T) {
 				Key:       "krid1",
 				Value:     "true",
 				Extension: "Freq",
+			},
+			{
+				CmdType:   CMD_PUT,
+				Key:       "krid1",
+				Value:     1,
+				Extension: MapKrVersions,
 			},
 		}
 		is.Equal(expected, actual)
