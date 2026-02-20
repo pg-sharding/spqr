@@ -56,6 +56,7 @@ func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 
 const (
 	keyRangesNamespace                 = "/keyranges/"
+	keyRangesMetadataNamespace         = "/key_range_meta/"
 	distributionNamespace              = "/distributions/"
 	keyRangeMovesNamespace             = "/krmoves/"
 	routersNamespace                   = "/routers/"
@@ -95,6 +96,10 @@ func LockPath(key string) string {
 
 func keyRangeNodePath(key string) string {
 	return path.Join(keyRangesNamespace, key)
+}
+
+func keyRangeMetaNodePath(id string) string {
+	return path.Join(keyRangesMetadataNamespace, id)
 }
 
 func routerNodePath(key string) string {
@@ -205,12 +210,27 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 	if err != nil {
 		return nil, err
 	}
-	respKR := make([]QdbStatement, 1, 2)
-	resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	respKR := make([]QdbStatement, 3, 4)
+	resp, err := NewQdbStatement(CMD_CMP_VERSION, keyRangeNodePath(keyRange.KeyRangeID), 0)
 	if err != nil {
 		return nil, err
 	}
 	respKR[0] = *resp
+	resp, err = NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	if err != nil {
+		return nil, err
+	}
+	respKR[1] = *resp
+
+	meta, err := json.Marshal(KeyRangeMeta{UpdatedAt: time.Now(), ModifiedBy: "etcdqdb_create"})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create key range: failed to marshal metadata: %s", err)
+	}
+	resp, err = NewQdbStatement(CMD_PUT, keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))
+	if err != nil {
+		return nil, err
+	}
+	respKR[2] = *resp
 
 	if keyRange.Locked {
 		resp, err := NewQdbStatement(CMD_PUT, LockPath(keyRange.KeyRangeID), string(rawKeyRange))
@@ -280,23 +300,26 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: update key range")
 
-	t := time.Now()
-
 	rawKeyRange, err := json.Marshal(keyRangeToInternal(keyRange))
 	if err != nil {
 		return err
 	}
 
-	resp, err := q.cli.Put(ctx, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	meta, err := json.Marshal(KeyRangeMeta{UpdatedAt: time.Now(), ModifiedBy: "etcdqdb_update"})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update key range: failed to marshal metadata: %s", err)
 	}
-
+	resp, err := q.cli.Txn(ctx).If(clientv3util.KeyExists(keyRangeNodePath(keyRange.KeyRangeID))).Then(clientv3.OpPut(keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange)), clientv3.OpPut(keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))).Commit()
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: put key range to qdb")
-	statistics.RecordQDBOperation("UpdateKeyRange", time.Since(t))
-	return err
+	if err != nil {
+		return err
+	}
+	if !resp.Succeeded {
+		return fmt.Errorf("could not update key range: could not commit transaction")
+	}
+	return nil
 }
 
 // TODO : unit tests
@@ -321,16 +344,17 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) error {
 		Str("id", id).
 		Msg("etcdqdb: drop key range")
 
-	t := time.Now()
-
-	resp, err := q.cli.Delete(ctx, keyRangeNodePath(id))
-
+	resp, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(keyRangeNodePath(id)), clientv3.OpDelete(keyRangeMetaNodePath(id))).Commit()
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: drop key range")
-
-	statistics.RecordQDBOperation("DropKeyRange", time.Since(t))
-	return err
+	if err != nil {
+		return err
+	}
+	if !resp.Succeeded {
+		return fmt.Errorf("could not drop key range: could not commit transaction")
+	}
+	return nil
 }
 
 // TODO : unit tests
@@ -2640,28 +2664,45 @@ func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
 	return nextval, err
 }
 
-func packEtcdCommands(operations []QdbStatement) ([]clientv3.Op, error) {
-	etcdOperations := make([]clientv3.Op, len(operations))
-	for index, v := range operations {
+func packEtcdCommands(operations []QdbStatement) ([]clientv3.Cmp, []clientv3.Op, error) {
+	checkOperations := make([]clientv3.Cmp, 0)
+	writeOperations := make([]clientv3.Op, 0)
+	for _, v := range operations {
 		switch v.CmdType {
 		case CMD_PUT:
-			etcdOperations[index] = clientv3.OpPut(v.Key, v.Value)
+			val, ok := v.Value.(string)
+			if !ok {
+				return nil, nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", v.Value)
+			}
+			writeOperations = append(writeOperations, clientv3.OpPut(v.Key, val))
 		case CMD_DELETE:
-			etcdOperations[index] = clientv3.OpDelete(v.Key)
+			writeOperations = append(writeOperations, clientv3.OpDelete(v.Key))
+		case CMD_CMP_VERSION:
+			val, ok := v.Value.(int)
+			if !ok {
+				return nil, nil, fmt.Errorf("incorrect value type %T for CMD_CMP_VERSION, int is expected", v.Value)
+			}
+			checkOperations = append(checkOperations, clientv3.Compare(clientv3.Version(v.Key), "=", val))
 		default:
-			return nil, fmt.Errorf("not found operation type: %d", v.CmdType)
+			return nil, nil, fmt.Errorf("not found operation type: %d", v.CmdType)
 		}
 	}
-	return etcdOperations, nil
+	return checkOperations, writeOperations, nil
 }
 
 func (q *EtcdQDB) ExecNoTransaction(ctx context.Context, operations []QdbStatement) error {
-	etcdOperations, err := packEtcdCommands(operations)
+	cmps, ops, err := packEtcdCommands(operations)
 	if err != nil {
 		return err
 	}
-	_, err = q.cli.Txn(ctx).Then(etcdOperations...).Commit()
-	return err
+	resp, err := q.cli.Txn(ctx).If(cmps...).Then(ops...).Commit()
+	if err != nil {
+		return err
+	}
+	if !resp.Succeeded {
+		return fmt.Errorf("could not commit transaction: comparison value not equal")
+	}
+	return nil
 }
 
 func (q *EtcdQDB) CommitTransaction(ctx context.Context, transaction *QdbTransaction) error {
@@ -2671,14 +2712,15 @@ func (q *EtcdQDB) CommitTransaction(ctx context.Context, transaction *QdbTransac
 	if err := transaction.Validate(); err != nil {
 		return fmt.Errorf("invalid transaction %s: %w", transaction.Id(), err)
 	}
-	etcdOperations, err := packEtcdCommands(transaction.commands)
+	cmps, ops, err := packEtcdCommands(transaction.commands)
 	if err != nil {
 		return err
 	}
-	etcdOperations = append(etcdOperations, clientv3.OpDelete(transactionRequest))
+	ops = append(ops, clientv3.OpDelete(transactionRequest))
+	cmps = append(cmps, clientv3.Compare(clientv3.Value(transactionRequest), "=", transaction.transactionId.String()))
 	resp, err := q.cli.Txn(ctx).
-		If(clientv3.Compare(clientv3.Value(transactionRequest), "=", transaction.transactionId.String())).
-		Then(etcdOperations...).
+		If(cmps...).
+		Then(ops...).
 		Commit()
 
 	if err != nil {
