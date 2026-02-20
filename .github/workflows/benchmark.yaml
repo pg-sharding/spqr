@@ -1,0 +1,60 @@
+name: Run benchmarks
+
+on:
+  pull_request:
+    types: [labeled]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.label.name == 'performance'
+
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Yandex Cloud CR "Login" Action for GitHub Actions
+        uses: yc-actions/yc-cr-login@v2
+        with:
+          yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
+          cr-endpoint: cr.yandex
+
+      - name: Build, tag, and push image to Yandex Cloud Container Registry
+        env:
+          CR_REGISTRY: ${{ secrets.YC_REGISTRY_ID }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t spqr-base-image -f docker/spqr/Dockerfile .
+          docker build -t cr.yandex/$CR_REGISTRY/spqr:$IMAGE_TAG -f docker/router/Dockerfile .
+          docker push cr.yandex/$CR_REGISTRY/spqr:$IMAGE_TAG
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Prepare Infra
+        env:
+          CR_REGISTRY: ${{ secrets.YC_REGISTRY_ID }}
+          IMAGE_TAG: ${{ github.sha }}
+          YC_SERVICE_ACCOUNT_KEY_FILE: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
+          TF_VAR_cr_registry: ${{ secrets.YC_REGISTRY_ID }}
+          TF_VAR_image_tag: ${{ github.sha }}
+          TF_VAR_image_id: cr.yandex/$CR_REGISTRY/spqr:$IMAGE_TAG
+          TF_VAR_pr_number: ${{ github.event.pull_request.number }}
+        run: |
+          terraform -chdir=.github/actions/benchmarks init
+          terraform -chdir=.github/actions/benchmarks apply -auto-approve
+
+      - name: Send link
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            [Benchmark report](https://storage.yandexcloud.net/spqr-benchmark-reports/index.html?pr=${{ github.event.pull_request.number }})

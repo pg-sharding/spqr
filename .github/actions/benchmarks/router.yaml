@@ -1,0 +1,46 @@
+host: '0.0.0.0'
+router_port: '6432'
+admin_console_port: '7432'
+grpc_api_port: '7000'
+log_filename: "/var/log/router.log"
+log_level: debug
+
+init_sql: /etc/spqr/init.sql
+use_init_sql: true
+
+router_mode: PROXY
+frontend_rules:
+  - usr: user1
+    db: db1
+    pool_default: true
+    pool_mode: TRANSACTION
+    pool_prepared_statement: false
+    auth_rule:
+      auth_method: ok
+world_shard_fallback: true
+shards:
+%{ for i, ip in shard_ips ~}
+  sh${i}:
+    db: db1
+    usr: user1
+    pwd: password
+    type: DATA
+    tls:
+      sslmode: require
+      root_cert_file: /etc/spqr/shard.pem
+    hosts:
+      - ${ip}:6432
+%{ endfor }
+backend_rules:
+  - usr: user1
+    db: db1
+    connection_limit: 50
+    pool_discard: true
+    pool_rollback: true
+    auth_rule:
+      password: password
+schema_cache_backend_rule:
+  usr: user1
+  db: db1
+  pool_discard: true
+  pool_rollback: true
