@@ -30,29 +30,30 @@ type MemQDB struct {
 	// TODO create more mutex per map if needed
 	mu sync.RWMutex
 
-	Locks                map[string]*sync.RWMutex            `json:"locks"`
-	Freq                 map[string]bool                     `json:"freq"`
-	Krs                  map[string]*internalKeyRange        `json:"krs"`
-	Shards               map[string]*Shard                   `json:"shards"`
-	Distributions        map[string]*Distribution            `json:"distributions"`
-	RelationDistribution map[string]string                   `json:"relation_distribution"`
-	Routers              map[string]*Router                  `json:"routers"`
-	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
-	Coordinator          string                              `json:"coordinator"`
-	MoveTaskGroups       map[string]*MoveTaskGroup           `json:"taskGroup"`
-	TaskGroupIDToStatus  map[string]*TaskGroupStatus         `json:"task_group_statuses"`
-	StopMoveTaskGroup    map[string]bool                     `json:"stop_move_task_group"`
-	MoveTasks            map[string]*MoveTask                `json:"move_tasks"`
-	TotalKeys            map[string]int64                    `json:"total_keys"`
-	RedistributeTask     *RedistributeTask                   `json:"redistribute_ask"`
-	BalancerTask         *BalancerTask                       `json:"balancer_task"`
-	ReferenceRelations   map[string]*ReferenceRelation       `json:"reference_relations"`
-	Sequences            map[string]bool                     `json:"sequences"`
-	ColumnSequence       map[string]string                   `json:"column_sequence"`
-	SequenceToValues     map[string]int64                    `json:"sequence_to_values"`
-	TaskGroupMoveTaskID  map[string]string                   `json:"task_group_move_task"`
-	UniqueIndexes        map[string]*UniqueIndex             `json:"unique_indexes"`
-	UniqueIndexesByRel   map[string]map[string]*UniqueIndex  `json:"unique_indexes_by_relation"`
+	Locks                     map[string]*sync.RWMutex            `json:"locks"`
+	Freq                      map[string]bool                     `json:"freq"`
+	Krs                       map[string]*internalKeyRange        `json:"krs"`
+	Shards                    map[string]*Shard                   `json:"shards"`
+	Distributions             map[string]*Distribution            `json:"distributions"`
+	RelationDistribution      map[string]string                   `json:"relation_distribution"`
+	Routers                   map[string]*Router                  `json:"routers"`
+	Transactions              map[string]*DataTransferTransaction `json:"transactions"`
+	Coordinator               string                              `json:"coordinator"`
+	MoveTaskGroups            map[string]*MoveTaskGroup           `json:"taskGroup"`
+	TaskGroupIDToStatus       map[string]*TaskGroupStatus         `json:"task_group_statuses"`
+	StopMoveTaskGroup         map[string]bool                     `json:"stop_move_task_group"`
+	MoveTasks                 map[string]*MoveTask                `json:"move_tasks"`
+	TotalKeys                 map[string]int64                    `json:"total_keys"`
+	RedistributeTasks         map[string]*RedistributeTask        `json:"redistribute_tasks"`
+	KeyRangeRedistributeTasks map[string]string                   `json:"key_range_redistribute_tasks"`
+	BalancerTask              *BalancerTask                       `json:"balancer_task"`
+	ReferenceRelations        map[string]*ReferenceRelation       `json:"reference_relations"`
+	Sequences                 map[string]bool                     `json:"sequences"`
+	ColumnSequence            map[string]string                   `json:"column_sequence"`
+	SequenceToValues          map[string]int64                    `json:"sequence_to_values"`
+	TaskGroupMoveTaskID       map[string]string                   `json:"task_group_move_task"`
+	UniqueIndexes             map[string]*UniqueIndex             `json:"unique_indexes"`
+	UniqueIndexesByRel        map[string]map[string]*UniqueIndex  `json:"unique_indexes_by_relation"`
 
 	TwoPhaseTx map[string]*TwoPCInfo `json:"two_phase_info"`
 
@@ -81,6 +82,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		SequenceToValues:     map[string]int64{},
 		ReferenceRelations:   map[string]*ReferenceRelation{},
 		MoveTaskGroups:       map[string]*MoveTaskGroup{},
+		RedistributeTasks:    map[string]*RedistributeTask{},
 		TaskGroupIDToStatus:  map[string]*TaskGroupStatus{},
 		StopMoveTaskGroup:    map[string]bool{},
 		TotalKeys:            map[string]int64{},
@@ -251,17 +253,6 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 // TODO : unit tests
 func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
-
-	if err := func() error {
-		q.mu.RLock()
-		defer q.mu.RUnlock()
-		if _, ok := q.Krs[keyRange.KeyRangeID]; ok {
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" already exists", keyRange.KeyRangeID)
-		}
-		return nil
-	}(); err != nil {
-		return nil, err
-	}
 
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -1186,7 +1177,7 @@ func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, id string, group *MoveTas
 }
 
 // TODO: unit tests
-func (q *MemQDB) RemoveMoveTaskGroup(_ context.Context, id string) error {
+func (q *MemQDB) DropMoveTaskGroup(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("memqdb: remove task group")
@@ -1323,7 +1314,7 @@ func (q *MemQDB) UpdateMoveTask(ctx context.Context, task *MoveTask) error {
 }
 
 // TODO: unit tests
-func (q *MemQDB) RemoveMoveTask(ctx context.Context, id string) error {
+func (q *MemQDB) DropMoveTask(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("memqdb: remove move task")
@@ -1335,32 +1326,65 @@ func (q *MemQDB) RemoveMoveTask(ctx context.Context, id string) error {
 }
 
 // TODO: unit tests
-func (q *MemQDB) GetRedistributeTask(_ context.Context) (*RedistributeTask, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: get redistribute task")
+func (q *MemQDB) ListRedistributeTasks(_ context.Context) ([]*RedistributeTask, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: list redistribute tasks")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	return q.RedistributeTask, nil
+	res := make([]*RedistributeTask, 0, len(q.RedistributeTasks))
+	for _, task := range q.RedistributeTasks {
+		res = append(res, task)
+	}
+	return res, nil
 }
 
 // TODO: unit tests
-func (q *MemQDB) WriteRedistributeTask(_ context.Context, task *RedistributeTask) error {
-	spqrlog.Zero.Debug().Msg("memqdb: write redistribute task")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+func (q *MemQDB) GetRedistributeTask(_ context.Context, id string) (*RedistributeTask, error) {
+	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: get redistribute task")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
-	q.RedistributeTask = task
-	return nil
+	return q.RedistributeTasks[id], nil
 }
 
 // TODO: unit tests
-func (q *MemQDB) RemoveRedistributeTask(_ context.Context) error {
-	spqrlog.Zero.Debug().Msg("memqdb: remove redistribute task")
+func (q *MemQDB) CreateRedistributeTask(_ context.Context, task *RedistributeTask) error {
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: create redistribute task")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.RedistributeTask = nil
-	return nil
+	if _, ok := q.RedistributeTasks[task.ID]; ok {
+		return fmt.Errorf("could not create redistribute task: redistribute task with ID \"%s\" already exists in QDB", task.ID)
+	}
+	if _, ok := q.KeyRangeRedistributeTasks[task.KeyRangeId]; ok {
+		return fmt.Errorf("could not create redistribute task: task for key range \"%s\" already exists", task.KeyRangeId)
+	}
+	q.RedistributeTasks[task.ID] = task
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.RedistributeTasks, task.ID, task))
+}
+
+// TODO: unit tests
+func (q *MemQDB) UpdateRedistributeTask(_ context.Context, task *RedistributeTask) error {
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: update redistribute task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if _, ok := q.RedistributeTasks[task.ID]; !ok {
+		return fmt.Errorf("could not update redistribute task: redistribute task with ID \"%s\" doesn't exist in QDB", task.ID)
+	}
+	q.RedistributeTasks[task.ID] = task
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.RedistributeTasks, task.ID, task))
+}
+
+// TODO: unit tests
+func (q *MemQDB) DropRedistributeTask(_ context.Context, task *RedistributeTask) error {
+	spqrlog.Zero.Debug().Str("id", task.ID).Msg("memqdb: remove redistribute task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	delete(q.RedistributeTasks, task.ID)
+	delete(q.KeyRangeRedistributeTasks, task.KeyRangeId)
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.RedistributeTasks, task.ID), NewDeleteCommand(q.KeyRangeRedistributeTasks, task.KeyRangeId))
 }
 
 // TODO: unit tests
@@ -1383,7 +1407,7 @@ func (q *MemQDB) WriteBalancerTask(_ context.Context, task *BalancerTask) error 
 }
 
 // TODO: unit tests
-func (q *MemQDB) RemoveBalancerTask(_ context.Context) error {
+func (q *MemQDB) DropBalancerTask(_ context.Context) error {
 	spqrlog.Zero.Debug().Msg("memqdb: remove balancer task")
 	q.mu.Lock()
 	defer q.mu.Unlock()

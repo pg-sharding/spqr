@@ -7,7 +7,7 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 -- SETUP
-CREATE DISTRIBUTION ds1 COLUMN TYPES int hash;
+CREATE DISTRIBUTION ds1 (int hash);
     add distribution    
 ------------------------
  distribution id -> ds1
@@ -174,8 +174,8 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds1
+ distribution_id 
+-----------------
+ ds1
 (1 row)
 

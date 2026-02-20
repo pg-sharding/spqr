@@ -76,6 +76,7 @@ const (
 )
 
 type RedistributeTask struct {
+	ID          string
 	TaskGroupId string
 	KeyRangeId  string
 	ShardId     string
@@ -553,7 +554,11 @@ func BalancerTaskFromDb(task *qdb.BalancerTask) *BalancerTask {
 }
 
 func RedistributeTaskToProto(task *RedistributeTask) *protos.RedistributeTask {
+	if task == nil {
+		return nil
+	}
 	return &protos.RedistributeTask{
+		Id:          task.ID,
 		TaskGroupId: task.TaskGroupId,
 		KeyRangeId:  task.KeyRangeId,
 		ShardId:     task.ShardId,
@@ -563,7 +568,11 @@ func RedistributeTaskToProto(task *RedistributeTask) *protos.RedistributeTask {
 }
 
 func RedistributeTaskFromProto(task *protos.RedistributeTask) *RedistributeTask {
+	if task == nil {
+		return nil
+	}
 	return &RedistributeTask{
+		ID:          task.Id,
 		TaskGroupId: task.TaskGroupId,
 		KeyRangeId:  task.KeyRangeId,
 		ShardId:     task.ShardId,
@@ -573,7 +582,11 @@ func RedistributeTaskFromProto(task *protos.RedistributeTask) *RedistributeTask 
 }
 
 func RedistributeTaskToDB(task *RedistributeTask) *qdb.RedistributeTask {
+	if task == nil {
+		return nil
+	}
 	return &qdb.RedistributeTask{
+		ID:          task.ID,
 		TaskGroupId: task.TaskGroupId,
 		KeyRangeId:  task.KeyRangeId,
 		ShardId:     task.ShardId,
@@ -583,7 +596,11 @@ func RedistributeTaskToDB(task *RedistributeTask) *qdb.RedistributeTask {
 }
 
 func RedistributeTaskFromDB(task *qdb.RedistributeTask) *RedistributeTask {
+	if task == nil {
+		return nil
+	}
 	return &RedistributeTask{
+		ID:          task.ID,
 		TaskGroupId: task.TaskGroupId,
 		KeyRangeId:  task.KeyRangeId,
 		ShardId:     task.ShardId,

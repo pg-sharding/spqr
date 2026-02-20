@@ -660,7 +660,7 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, KeyRangesExtendedStr, StatusStr, DistributionsStr, CoordinatorAddrStr, VersionStr, ReferenceRelationsStr, TaskGroupStr, TaskGroupsStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users, MoveTaskStr, MoveTasksStr, UniqueIndexesStr, TaskGroupBoundsCacheStr:
+		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, KeyRangesExtendedStr, StatusStr, DistributionsStr, CoordinatorAddrStr, VersionStr, ReferenceRelationsStr, TaskGroupStr, TaskGroupsStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users, MoveTaskStr, MoveTasksStr, UniqueIndexesStr, TaskGroupBoundsCacheStr, RedistributeTasksStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -734,6 +734,22 @@ drop_stmt:
 	{
 		$$ = &Drop{
 			Element: &UniqueIndexSelector{
+				ID: $4,
+			},
+		}
+	}
+	| DROP REDISTRIBUTE TASK any_id
+	{
+		$$ = &Drop{
+			Element: &RedistributeTaskSelector{
+				ID: $4,
+			},
+		}
+	}
+	| DROP MOVE TASK any_id
+	{
+		$$ = &Drop{
+			Element: &MoveTaskSelector{
 				ID: $4,
 			},
 		}
@@ -1105,6 +1121,9 @@ distribution_define_stmt:
 opt_col_types:
 	COLUMN TYPES col_types_list {
 		$$ = $3
+	} | TOPENBR col_types_list TCLOSEBR {
+		/* modern variant */
+		$$ = $2
 	} | { 
 		/* empty column types should be prohibited */
 		$$ = nil 

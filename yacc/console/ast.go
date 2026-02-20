@@ -181,12 +181,22 @@ type TaskGroupSelector struct {
 	ID string
 }
 
+type MoveTaskSelector struct {
+	ID string
+}
+
+type RedistributeTaskSelector struct {
+	ID string
+}
+
 func (*KeyRangeSelector) iDrop()          {}
 func (*DistributionSelector) iDrop()      {}
 func (*ReferenceRelationSelector) iDrop() {}
 func (*UniqueIndexSelector) iDrop()       {}
 func (*ShardSelector) iDrop()             {}
 func (*TaskGroupSelector) iDrop()         {}
+func (*MoveTaskSelector) iDrop()          {}
+func (*RedistributeTaskSelector) iDrop()  {}
 
 type Lock struct {
 	KeyRangeID string
@@ -408,6 +418,7 @@ const (
 	MoveTasksStr            = "move_tasks"
 	UniqueIndexesStr        = "unique_indexes"
 	TaskGroupBoundsCacheStr = "task_group_ext"
+	RedistributeTasksStr    = "redistribute_tasks"
 )
 
 // not SHOW target
@@ -434,6 +445,8 @@ func (*ReferenceRelationSelector) iStatement()   {}
 func (*UniqueIndexSelector) iStatement()         {}
 func (*ShardSelector) iStatement()               {}
 func (*TaskGroupSelector) iStatement()           {}
+func (*MoveTaskSelector) iStatement()            {}
+func (*RedistributeTaskSelector) iStatement()    {}
 func (*SequenceSelector) iStatement()            {}
 func (*Lock) iStatement()                        {}
 func (*Unlock) iStatement()                      {}

@@ -22,6 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/netutil"
 	"github.com/pg-sharding/spqr/pkg/pool"
+	"github.com/pg-sharding/spqr/pkg/rps"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
@@ -346,12 +347,22 @@ func InstanceVirtualRelationScan(ctx context.Context, ci connmgr.ConnectionMgr) 
 		Desc: GetVPHeader(
 			"total_tcp_connection_count",
 			"total_cancel_requests",
-			"active_tcp_connections")}
+			"active_tcp_connections",
+			"total_requests",
+			"current_rps",
+			"avg_rps",
+			"peak_rps")}
+
+	stats := rps.GetRPSFullSnapshot()
 
 	tts.WriteDataRow(
 		fmt.Sprintf("%v", ci.TotalTcpCount()),
 		fmt.Sprintf("%v", ci.TotalCancelCount()),
-		fmt.Sprintf("%v", ci.ActiveTcpCount()))
+		fmt.Sprintf("%v", ci.ActiveTcpCount()),
+		fmt.Sprintf("%d", stats.TotalRequests),
+		fmt.Sprintf("%.2f", stats.CurrentRPS),
+		fmt.Sprintf("%.2f", stats.AvgRPS),
+		fmt.Sprintf("%.2f", stats.PeakRPS))
 
 	return tts
 }
@@ -651,5 +662,21 @@ func TaskGroupBoundsCacheVirtualRelationScan(bounds [][][]byte, index int, colTy
 			}(),
 		)
 	}
+	return tts, nil
+}
+
+func RedistributeTasksVirtualRelationScan(tasks []*tasks.RedistributeTask) (*tupleslot.TupleTableSlot, error) {
+	tts := &tupleslot.TupleTableSlot{
+		Desc: GetVPHeader("redistribute_task_id", "key_range_id", "destination_shard_id", "batch_size"),
+	}
+	for _, task := range tasks {
+		tts.WriteDataRow(
+			task.ID,
+			task.KeyRangeId,
+			task.ShardId,
+			strconv.FormatInt(int64(task.BatchSize), 10),
+		)
+	}
+
 	return tts, nil
 }

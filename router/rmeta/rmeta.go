@@ -104,7 +104,7 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 }
 
 var CatalogDistribution = distributions.Distribution{
-	Relations: nil,
+	Relations: map[string]*distributions.DistributedRelation{},
 	Id:        distributions.REPLICATED,
 	ColTypes:  nil,
 }

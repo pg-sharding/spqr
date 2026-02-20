@@ -426,6 +426,7 @@ qrouter
 qstate
 qstmt
 qtype
+querylog
 quisquam
 qury
 RAddr
@@ -579,8 +580,10 @@ topbar
 TOPENBR
 TOPENSQBR
 tpcc
+tracelog
 tran
 TRASCE
+truncatable
 tsa
 TSEMICOLON
 tstmt
@@ -652,5 +655,4 @@ YMid
 youtube
 yylex
 zerolog
-zid
 ZWQy

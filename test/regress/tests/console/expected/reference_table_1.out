@@ -28,9 +28,9 @@ ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 SCHEMA my_schema;
 ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 DISTRIBUTION KEY id;
 ERROR:  setting distribution key is forbidden for reference relations
 DROP REFERENCE RELATION zz2;
- drop reference relation 
--------------------------
- relation -> zz2
+ relation_name 
+---------------
+ zz2
 (1 row)
 
 --should fail
@@ -44,9 +44,9 @@ CREATE REFERENCE RELATION r;
 (2 rows)
 
 DROP DISTRIBUTION 'REPLICATED' CASCADE;
-       drop distribution       
--------------------------------
- distribution id -> REPLICATED
+ distribution_id 
+-----------------
+ REPLICATED
 (1 row)
 
 SHOW relations WHERE distribution_id = 'REPLICATED';
@@ -83,8 +83,8 @@ SHOW reference_relations;
 (2 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
-       drop distribution       
--------------------------------
- distribution id -> REPLICATED
+ distribution_id 
+-----------------
+ REPLICATED
 (1 row)
 

@@ -38,7 +38,7 @@ func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		},
 		MaxCallSendMsgSize: maxCallSendMsgSize,
-		MaxUnaryRetries:    3,
+		BackoffWaitBetween: 500 * time.Millisecond,
 	})
 	if err != nil {
 		return nil, err
@@ -55,28 +55,29 @@ func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 }
 
 const (
-	keyRangesNamespace               = "/keyranges/"
-	distributionNamespace            = "/distributions/"
-	keyRangeMovesNamespace           = "/krmoves/"
-	routersNamespace                 = "/routers/"
-	shardsNamespace                  = "/shards/"
-	relationMappingNamespace         = "/relation_mappings/"
-	taskGroupsNamespace              = "/move_task_groups/"
-	taskGroupStatusesNamespace       = "/task_group_statuses/"
-	taskGroupLocksNamespace          = "/task_group_locks/"
-	moveTaskNamespace                = "/move_tasks/"
-	redistributeTaskPath             = "/redistribute_task/"
-	balancerTaskPath                 = "/balancer_task/"
-	transactionNamespace             = "/transfer_txs/"
-	sequenceNamespace                = "/sequences/"
-	referenceRelationsNamespace      = "/reference_relations"
-	uniqueIndexesNamespace           = "/unique_indexes"
-	columnSequenceMappingNamespace   = "/column_sequence_mappings/"
-	lockNamespace                    = "/lock"
-	totalKeysNamespace               = "/total_keys/"
-	stopMoveTaskGroupNamespace       = "/stop_move_task_group/"
-	moveTaskByGroupNamespace         = "/group_move_tasks/"
-	uniqueIndexesByRelationNamespace = "/relation_unique_indexes"
+	keyRangesNamespace                 = "/keyranges/"
+	distributionNamespace              = "/distributions/"
+	keyRangeMovesNamespace             = "/krmoves/"
+	routersNamespace                   = "/routers/"
+	shardsNamespace                    = "/shards/"
+	relationMappingNamespace           = "/relation_mappings/"
+	taskGroupsNamespace                = "/move_task_groups/"
+	taskGroupStatusesNamespace         = "/task_group_statuses/"
+	taskGroupLocksNamespace            = "/task_group_locks/"
+	moveTaskNamespace                  = "/move_tasks/"
+	redistributeTasksNamespace         = "/redistribute_tasks/"
+	keyRangeRedistributeTasksNamespace = "/key_range_redistribute_tasks/"
+	balancerTaskPath                   = "/balancer_task/"
+	transactionNamespace               = "/transfer_txs/"
+	sequenceNamespace                  = "/sequences/"
+	referenceRelationsNamespace        = "/reference_relations"
+	uniqueIndexesNamespace             = "/unique_indexes"
+	columnSequenceMappingNamespace     = "/column_sequence_mappings/"
+	lockNamespace                      = "/lock"
+	totalKeysNamespace                 = "/total_keys/"
+	stopMoveTaskGroupNamespace         = "/stop_move_task_group/"
+	moveTaskByGroupNamespace           = "/group_move_tasks/"
+	uniqueIndexesByRelationNamespace   = "/relation_unique_indexes"
 
 	CoordKeepAliveTtl  = 3
 	coordLockKey       = "coordinator_exists"
@@ -168,6 +169,14 @@ func moveTaskByGroupNodePath(taskGroupID string) string {
 	return path.Join(moveTaskByGroupNamespace, taskGroupID)
 }
 
+func redistributeTaskNodePath(id string) string {
+	return path.Join(redistributeTasksNamespace, id)
+}
+
+func keyRangeRedistributeTaskNodePath(id string) string {
+	return path.Join(keyRangeRedistributeTasksNamespace, id)
+}
+
 func keyRangeLockNamespace() string {
 	return path.Join(lockNamespace, keyRangesNamespace)
 }
@@ -204,7 +213,7 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 	respKR[0] = *resp
 
 	if keyRange.Locked {
-		resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+		resp, err := NewQdbStatement(CMD_PUT, LockPath(keyRange.KeyRangeID), string(rawKeyRange))
 		if err != nil {
 			return nil, err
 		}
@@ -1902,7 +1911,7 @@ func (q *EtcdQDB) UpdateMoveTaskGroupTotalKeys(ctx context.Context, id string, t
 
 // TODO: unit tests
 // TODO: drop move task
-func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context, id string) error {
+func (q *EtcdQDB) DropMoveTaskGroup(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: remove task group")
@@ -1918,7 +1927,7 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to delete move task group metadata: %s", err)
 	}
 
-	statistics.RecordQDBOperation("RemoveMoveTaskGroup", time.Since(t))
+	statistics.RecordQDBOperation("DropMoveTaskGroup", time.Since(t))
 	return nil
 }
 
@@ -2080,7 +2089,7 @@ func (q *EtcdQDB) GetMoveTask(ctx context.Context, id string) (*MoveTask, error)
 }
 
 // TODO unit test
-func (q *EtcdQDB) RemoveMoveTask(ctx context.Context, id string) error {
+func (q *EtcdQDB) DropMoveTask(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().Msg("etcdqdb: remove move task")
 
 	task, err := q.GetMoveTask(ctx, id)
@@ -2092,12 +2101,35 @@ func (q *EtcdQDB) RemoveMoveTask(ctx context.Context, id string) error {
 	return err
 }
 
-// TODO: unit tests
-func (q *EtcdQDB) GetRedistributeTask(ctx context.Context) (*RedistributeTask, error) {
+func (q *EtcdQDB) ListRedistributeTasks(ctx context.Context) ([]*RedistributeTask, error) {
 	spqrlog.Zero.Debug().
+		Msg("etcdqdb: list redistribute tasks")
+
+	resp, err := q.cli.Get(ctx, redistributeTasksNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*RedistributeTask, len(resp.Kvs))
+
+	for i, kv := range resp.Kvs {
+		var task *RedistributeTask
+		if err := json.Unmarshal(kv.Value, &task); err != nil {
+			return nil, err
+		}
+		res[i] = task
+	}
+
+	return res, nil
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) GetRedistributeTask(ctx context.Context, id string) (*RedistributeTask, error) {
+	spqrlog.Zero.Debug().
+		Str("id", id).
 		Msg("etcdqdb: get redistribute task")
 
-	resp, err := q.cli.Get(ctx, redistributeTaskPath)
+	resp, err := q.cli.Get(ctx, redistributeTaskNodePath(id))
 	if err != nil {
 		return nil, err
 	}
@@ -2115,25 +2147,77 @@ func (q *EtcdQDB) GetRedistributeTask(ctx context.Context) (*RedistributeTask, e
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) WriteRedistributeTask(ctx context.Context, task *RedistributeTask) error {
+func (q *EtcdQDB) CreateRedistributeTask(ctx context.Context, task *RedistributeTask) error {
 	spqrlog.Zero.Debug().
-		Msg("etcdqdb: write redistribute task")
+		Str("id", task.ID).
+		Msg("etcdqdb: create redistribute task")
 
 	taskJson, err := json.Marshal(task)
 	if err != nil {
 		return err
 	}
 
-	_, err = q.cli.Put(ctx, redistributeTaskPath, string(taskJson))
-	return err
+	resp, err := q.cli.Txn(ctx).
+		If(
+			clientv3util.KeyMissing(redistributeTaskNodePath(task.ID)),
+			clientv3util.KeyMissing(keyRangeRedistributeTaskNodePath(task.KeyRangeId)),
+		).
+		Then(
+			clientv3.OpPut(redistributeTaskNodePath(task.ID), string(taskJson)),
+			clientv3.OpPut(keyRangeRedistributeTaskNodePath(task.KeyRangeId), task.ID),
+		).
+		Else(
+			clientv3.OpGet(keyRangeRedistributeTaskNodePath(task.KeyRangeId)),
+			clientv3.OpGet(redistributeTaskNodePath(task.ID)),
+		).
+		Commit()
+	if err != nil {
+		return fmt.Errorf("could not create redistribute task: error executing transaction: %s", err)
+	}
+	if !resp.Succeeded {
+		if len(resp.Responses) != 2 {
+			return fmt.Errorf("unexpected response count: create redistribute task \"%s\" response parts count=%d", task.ID, len(resp.Responses))
+		}
+		if resp.Responses[0].GetResponseRange().Count > 0 {
+			return fmt.Errorf("could not create redistribute task: task \"%s\" for key range \"%s\" already exists", resp.Responses[0].GetResponseRange().Kvs[0].Value, task.KeyRangeId)
+		}
+		if resp.Responses[1].GetResponseRange().Count == 0 {
+			return fmt.Errorf("could not create redistribute task: redistribute task with ID \"%s\" already exists in QDB", task.ID)
+		}
+		return fmt.Errorf("could not create redistribute task: tx precondition failed, reason unknown")
+
+	}
+	return nil
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) RemoveRedistributeTask(ctx context.Context) error {
+func (q *EtcdQDB) UpdateRedistributeTask(ctx context.Context, task *RedistributeTask) error {
 	spqrlog.Zero.Debug().
+		Str("id", task.ID).
+		Msg("etcdqdb: update redistribute task")
+
+	taskJson, err := json.Marshal(task)
+	if err != nil {
+		return err
+	}
+
+	resp, err := q.cli.Txn(ctx).If(clientv3util.KeyExists(redistributeTaskNodePath(task.ID))).Then(clientv3.OpPut(redistributeTaskNodePath(task.ID), string(taskJson))).Commit()
+	if err != nil {
+		return fmt.Errorf("could not update redistribute task: error executing transaction: %s", err)
+	}
+	if !resp.Succeeded {
+		return fmt.Errorf("could not update redistribute task: redistribute task with ID \"%s\" doesn't exist in QDB", task.ID)
+	}
+	return nil
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) DropRedistributeTask(ctx context.Context, task *RedistributeTask) error {
+	spqrlog.Zero.Debug().
+		Str("id", task.ID).
 		Msg("etcdqdb: remove redistribute task")
 
-	_, err := q.cli.Delete(ctx, redistributeTaskPath)
+	_, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(redistributeTaskNodePath(task.ID)), clientv3.OpDelete(keyRangeRedistributeTaskNodePath(task.KeyRangeId))).Commit()
 	return err
 }
 
@@ -2174,7 +2258,7 @@ func (q *EtcdQDB) WriteBalancerTask(ctx context.Context, task *BalancerTask) err
 }
 
 // TODO: unit tests
-func (q *EtcdQDB) RemoveBalancerTask(ctx context.Context) error {
+func (q *EtcdQDB) DropBalancerTask(ctx context.Context) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: remove balancer task")
 

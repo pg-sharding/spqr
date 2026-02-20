@@ -93,11 +93,19 @@ message MoveTaskGroupBoundsCache {
 
 service MoveTasksService {
   rpc ListMoveTasks(google.protobuf.Empty) returns (MoveTasksReply) {}
+  rpc GetMoveTask(MoveTaskSelector) returns (MoveTaskReply) {}
+  rpc RemoveMoveTask(MoveTaskSelector) returns (google.protobuf.Empty) {
+    option deprecated = true;
+  }
+  rpc DropMoveTask(MoveTaskSelector) returns (google.protobuf.Empty) {}
 
   rpc ListMoveTaskGroups(google.protobuf.Empty) returns (ListMoveTaskGroupsReply) {}
   rpc GetMoveTaskGroup(MoveTaskGroupSelector) returns (GetMoveTaskGroupReply) {}
   rpc WriteMoveTaskGroup(WriteMoveTaskGroupRequest) returns(google.protobuf.Empty) {}
-  rpc RemoveMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
+  rpc RemoveMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {
+    option deprecated = true;
+  }
+  rpc DropMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
   rpc RetryMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
   rpc StopMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
   rpc GetMoveTaskGroupBoundsCache(MoveTaskGroupSelector) returns(MoveTaskGroupBoundsCache) {}
@@ -132,7 +140,10 @@ message WriteBalancerTaskRequest {
 service BalancerTaskService {
   rpc GetBalancerTask(google.protobuf.Empty) returns (GetBalancerTaskReply) {}
   rpc WriteBalancerTask(WriteBalancerTaskRequest) returns (google.protobuf.Empty) {}
-  rpc RemoveBalancerTask(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+  rpc RemoveBalancerTask(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option deprecated = true;
+  }
+  rpc DropBalancerTask(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 enum RedistributeTaskState {
@@ -141,6 +152,7 @@ enum RedistributeTaskState {
 }
 
 message RedistributeTask {
+  string id = 6;
   string keyRangeId = 1;
   string shardId = 2;
   int64 batchSize = 3;
@@ -148,16 +160,18 @@ message RedistributeTask {
   string taskGroupId = 5;
 }
 
-message GetRedistributeTaskReply {
-    RedistributeTask task = 1;
-} 
-
-message WriteRedistributeTaskRequest {
-    RedistributeTask task = 1;
+message RedistributeTaskSelector {
+  string id = 1;
 }
 
+message ListRedistributeTasksReply {
+  repeated RedistributeTask tasks = 1;
+} 
+
 service RedistributeTaskService {
-  rpc GetRedistributeTask(google.protobuf.Empty) returns (GetRedistributeTaskReply) {}
-  rpc WriteRedistributeTask(WriteRedistributeTaskRequest) returns (google.protobuf.Empty) {}
-  rpc RemoveRedistributeTask(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+  rpc ListRedistributeTasks(google.protobuf.Empty) returns (ListRedistributeTasksReply) {}
+  rpc DropRedistributeTask(RedistributeTaskSelector) returns (google.protobuf.Empty) {}
+  rpc RemoveRedistributeTask(RedistributeTaskSelector) returns (google.protobuf.Empty) {
+    option deprecated = true;
+  }
 }
