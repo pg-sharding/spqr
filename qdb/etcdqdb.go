@@ -306,7 +306,7 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 		return err
 	}
 
-	meta, err := json.Marshal(KeyRangeMeta{UpdatedAt: time.Now(), ModifiedBy: "etcdqdb_create"})
+	meta, err := json.Marshal(KeyRangeMeta{UpdatedAt: time.Now(), ModifiedBy: "etcdqdb_update"})
 	if err != nil {
 		return fmt.Errorf("failed to update key range: failed to marshal metadata: %s", err)
 	}
