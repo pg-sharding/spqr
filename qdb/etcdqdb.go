@@ -2751,7 +2751,7 @@ func (q *EtcdQDB) CommitTransaction(ctx context.Context, transaction *QdbTransac
 		return err
 	}
 	ops = append(ops, clientv3.OpDelete(transactionRequest))
-	cmps = append(cmps, clientv3.Compare(clientv3.Value(transactionRequest), "=", transaction.transactionId.String))
+	cmps = append(cmps, clientv3.Compare(clientv3.Value(transactionRequest), "=", transaction.transactionId.String()))
 	resp, err := q.cli.Txn(ctx).
 		If(cmps...).
 		Then(ops...).
