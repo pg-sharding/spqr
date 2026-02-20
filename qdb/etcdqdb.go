@@ -216,20 +216,17 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 	if err != nil {
 		return nil, err
 	}
-	respKR := make([]QdbStatement, 1, 3)
-	resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	respKR := make([]QdbStatement, 3, 4)
+	resp, err := NewQdbStatement(CMD_CMP_VERSION, keyRangeNodePath(keyRange.KeyRangeID), 0)
 	if err != nil {
 		return nil, err
 	}
 	respKR[0] = *resp
-
-	if keyRange.Locked {
-		resp, err := NewQdbStatement(CMD_PUT, LockPath(keyRange.KeyRangeID), string(rawKeyRange))
-		if err != nil {
-			return nil, err
-		}
-		respKR = append(respKR, *resp)
+	resp, err = NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	if err != nil {
+		return nil, err
 	}
+	respKR[1] = *resp
 
 	meta, err := json.Marshal(KeyRangeMeta{UpdatedAt: time.Now(), ModifiedBy: "etcdqdb_create"})
 	if err != nil {
@@ -239,7 +236,15 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 	if err != nil {
 		return nil, err
 	}
-	respKR = append(respKR, *resp)
+	respKR[2] = *resp
+
+	if keyRange.Locked {
+		resp, err := NewQdbStatement(CMD_PUT, LockPath(keyRange.KeyRangeID), string(rawKeyRange))
+		if err != nil {
+			return nil, err
+		}
+		respKR = append(respKR, *resp)
+	}
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
