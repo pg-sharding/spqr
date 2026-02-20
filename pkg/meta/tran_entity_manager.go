@@ -146,6 +146,19 @@ func (t *TranEntityManager) CreateKeyRange(ctx context.Context, kr *kr.KeyRange)
 	return nil
 }
 
+func (t *TranEntityManager) DropKeyRange(ctx context.Context, idKeyRange string) error {
+	commands := []*proto.MetaTransactionGossipCommand{
+		{DropKeyRange: &proto.DropKeyRangeGossip{
+			Id: []string{idKeyRange},
+		}},
+	}
+	if err := t.state.Append(commands); err != nil {
+		return err
+	}
+	t.keyRanges.Delete(idKeyRange)
+	return nil
+}
+
 // DropDistribution implements [EntityMgr].
 func (t *TranEntityManager) DropDistribution(ctx context.Context, id string) error {
 	t.distributions.Delete(id)

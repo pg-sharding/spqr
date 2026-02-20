@@ -61,7 +61,7 @@ func createKeyRangePrepare(ctx context.Context,
 func transactionChunkToQdbStatements(ctx context.Context, mngr meta.EntityMgr, chunk *mtran.MetaTransactionChunk) ([]qdb.QdbStatement, error) {
 	qdbCmds := make([]qdb.QdbStatement, 0, len(chunk.GossipRequests))
 	for _, gossipCommand := range chunk.GossipRequests {
-		cmdType := mtran.GetGossipRequestType(gossipCommand)
+		cmdType, _ := mtran.GetGossipRequestType(gossipCommand)
 		switch cmdType {
 		case mtran.GR_CreateDistributionRequest:
 			cmdList, err := createDistributionPrepare(ctx, mngr, gossipCommand.CreateDistribution)
