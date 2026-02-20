@@ -385,9 +385,9 @@ func (lc *Coordinator) RegisterRouter(ctx context.Context, r *topology.Router) e
 	return lc.qdb.AddRouter(ctx, qdb.NewRouter(r.Address, r.ID, qdb.OPENED))
 }
 
-// RemoveBalancerTask implements meta.EntityMgr.
-func (lc *Coordinator) RemoveBalancerTask(ctx context.Context) error {
-	return lc.qdb.RemoveBalancerTask(ctx)
+// DropBalancerTask implements meta.EntityMgr.
+func (lc *Coordinator) DropBalancerTask(ctx context.Context) error {
+	return lc.qdb.DropBalancerTask(ctx)
 }
 
 // RenameKeyRange implements meta.EntityMgr.
@@ -529,6 +529,21 @@ func (qc *Coordinator) ListMoveTasks(ctx context.Context) (map[string]*tasks.Mov
 		res[id] = tasks.TaskFromDb(taskDB)
 	}
 	return res, nil
+}
+
+func (qc *Coordinator) DropMoveTask(ctx context.Context, id string) error {
+	task, err := qc.GetMoveTask(ctx, id)
+	if err != nil {
+		return err
+	}
+	status, err := qc.GetTaskGroupStatus(ctx, task.TaskGroupID)
+	if err != nil {
+		return err
+	}
+	if status != nil && status.State != tasks.TaskGroupError {
+		return fmt.Errorf("cannot remove move task: it's forbidden to remove move tasks when its task group is being executed")
+	}
+	return qc.qdb.DropMoveTask(ctx, id)
 }
 
 // GetDistribution retrieves info about distribution from QDB
@@ -689,24 +704,24 @@ func (qc *Coordinator) UpdateMoveTask(ctx context.Context, task *tasks.MoveTask)
 	return qc.qdb.UpdateMoveTask(ctx, tasks.MoveTaskToDb(task))
 }
 
-// RemoveMoveTaskGroup removes the task group from the local coordinator's QDB.
+// DropMoveTaskGroup removes the task group from the local coordinator's QDB.
 //
 // Parameters:
 // - ctx (context.Context): the context.Context object for managing the request's lifetime.
 //
 // Returns:
 // - error: an error if the removal operation fails.
-func (qc *Coordinator) RemoveMoveTaskGroup(ctx context.Context, id string) error {
+func (qc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string) error {
 	task, err := qc.qdb.GetMoveTaskByGroup(ctx, id)
 	if err != nil {
 		return err
 	}
 	if task != nil {
-		if err := qc.qdb.RemoveMoveTask(ctx, task.ID); err != nil {
+		if err := qc.qdb.DropMoveTask(ctx, task.ID); err != nil {
 			return err
 		}
 	}
-	return qc.qdb.RemoveMoveTaskGroup(ctx, id)
+	return qc.qdb.DropMoveTaskGroup(ctx, id)
 }
 
 func (qc *Coordinator) GetMoveTaskGroupBoundsCache(ctx context.Context, id string) ([][][]byte, int, error) {
@@ -745,6 +760,26 @@ func (qc *Coordinator) GetAllTaskGroupStatuses(ctx context.Context) (map[string]
 		res[id] = tasks.MoveTaskGroupStatusFromDb(status)
 	}
 	return res, nil
+}
+
+func (qc *Coordinator) ListRedistributeTasks(ctx context.Context) ([]*tasks.RedistributeTask, error) {
+	tasksDb, err := qc.qdb.ListRedistributeTasks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*tasks.RedistributeTask, len(tasksDb))
+	for i, taskDb := range tasksDb {
+		res[i] = tasks.RedistributeTaskFromDB(taskDb)
+	}
+	return res, nil
+}
+
+func (qc *Coordinator) DropRedistributeTask(ctx context.Context, id string) error {
+	task, err := qc.qdb.GetRedistributeTask(ctx, id)
+	if err != nil {
+		return err
+	}
+	return qc.qdb.DropRedistributeTask(ctx, task)
 }
 
 // TODO : unit tests
@@ -1043,7 +1078,35 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		Str("source-id", req.SourceID).
 		Msg("split request is")
 
-	if _, err := qc.qdb.GetKeyRange(ctx, req.Krid); err == nil {
+	if kRange, err := qc.GetKeyRange(ctx, req.Krid); err == nil {
+		ds, err := qc.qdb.GetDistribution(ctx, kRange.Distribution)
+		if err != nil {
+			return err
+		}
+
+		var reqRange *kr.KeyRange
+		var cmpRange *kr.KeyRange
+		if req.SplitLeft {
+			sourceKr, err := qc.GetKeyRange(ctx, req.SourceID)
+			if err != nil {
+				return err
+			}
+			cmpRange = sourceKr
+			reqRange, err = kr.KeyRangeFromBytes(req.Bound, ds.ColTypes)
+			if err != nil {
+				return err
+			}
+		} else {
+			cmpRange = kRange
+			reqRange, err = kr.KeyRangeFromBytes(req.Bound, ds.ColTypes)
+			if err != nil {
+				return err
+			}
+		}
+		if kr.CmpRangesEqual(cmpRange.LowerBound, reqRange.LowerBound, ds.ColTypes) {
+			// already split, so no-op
+			return nil
+		}
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.Krid)
 	}
 
@@ -1052,15 +1115,11 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return err
 	}
 
-	if !req.SplitLeft {
-		// TODO: after convert split command into etcd transaction we no need in embracing "lock" "unlock".
-		// We'll just check existing lock at the start.
-		defer func() {
-			if err := qc.UnlockKeyRange(ctx, req.SourceID); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range in Split")
-			}
-		}()
-	}
+	defer func() {
+		if err := qc.UnlockKeyRange(ctx, req.SourceID); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to unlock key range in Split")
+		}
+	}()
 
 	ds, err := qc.qdb.GetDistribution(ctx, krOldDB.DistributionId)
 
@@ -1109,32 +1168,38 @@ func (qc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	if err != nil {
 		return err
 	}
+
 	tranMngr := meta.NewTranEntityManager(qc)
-	if err := meta.CreateKeyRangeStrict(ctx, tranMngr, krTemp); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
+
+	if err := meta.ValidateKeyRangeForCreate(ctx, tranMngr, krTemp); err != nil {
+		return err
+	}
+
+	if req.SplitLeft {
+		krTemp.ID = req.SourceID
+		krOld.ID = req.Krid
+		if krOld.IsLocked == nil {
+			return fmt.Errorf("unexpected nil isLocked value in Split")
+		}
+		*krOld.IsLocked = false
+		err = tranMngr.CreateKeyRange(ctx, krTemp)
+		if err != nil {
+			return fmt.Errorf("could not update source key range in left key range split: %s", err)
+		}
+		err = tranMngr.CreateKeyRange(ctx, krOld)
+		if err != nil {
+			return fmt.Errorf("could not create new key range in left key range split: %s", err)
+		}
+	} else {
+		krTemp.ID = req.Krid
+		err = tranMngr.CreateKeyRange(ctx, krTemp)
+		if err != nil {
+			return fmt.Errorf("could not create new key range in right key range split: %s", err)
+		}
 	}
 	if err = tranMngr.ExecNoTran(ctx); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to commit a new key range: %s", err.Error())
 	}
-
-	spqrlog.Zero.Debug().
-		Bytes("lower-bound", krTemp.Raw()[0]).
-		Str("shard-id", krTemp.ShardID).
-		Str("id", krTemp.ID).
-		Msg("new key range")
-
-	rightKr := req.Krid
-	if req.SplitLeft {
-		rightKr = krOld.ID
-		if err := qc.qdb.RenameKeyRange(ctx, krOld.ID, req.Krid); err != nil {
-			return err
-		}
-	}
-
-	if err := qc.qdb.RenameKeyRange(ctx, krTemp.ID, rightKr); err != nil {
-		return err
-	}
-
 	return nil
 }
 

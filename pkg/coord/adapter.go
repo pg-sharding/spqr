@@ -983,6 +983,38 @@ func (a *Adapter) ListMoveTasks(ctx context.Context) (map[string]*tasks.MoveTask
 	return res, nil
 }
 
+// GetMoveTask retrieves move task with given ID from the system.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+// - id  (string): The ID of the move task to retrieve.
+//
+// Returns:
+// - *tasks.MoveTask: The requested task or nil, if no tasks with given id present.
+// - error: An error if the retrieval of tasks fails, otherwise nil.
+func (a *Adapter) GetMoveTask(ctx context.Context, id string) (*tasks.MoveTask, error) {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	reply, err := tasksService.GetMoveTask(ctx, &proto.MoveTaskSelector{ID: id})
+	if err != nil {
+		return nil, err
+	}
+	return tasks.MoveTaskFromProto(reply.Task), nil
+}
+
+// DropMoveTask removes move task with given ID from the system.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+// - id  (string): The ID of the move task to remove.
+//
+// Returns:
+// - error: An error if the retrieval of tasks fails, otherwise nil.
+func (a *Adapter) DropMoveTask(ctx context.Context, id string) error {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	_, err := tasksService.DropMoveTask(ctx, &proto.MoveTaskSelector{ID: id})
+	return err
+}
+
 // ListMoveTaskGroups retrieves all task groups from the system.
 //
 // Parameters:
@@ -1039,7 +1071,7 @@ func (a *Adapter) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveT
 	return err
 }
 
-// RemoveMoveTaskGroup removes a task group from the system.
+// DropMoveTaskGroup removes a task group from the system.
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
@@ -1047,9 +1079,9 @@ func (a *Adapter) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveT
 //
 // Returns:
 // - error: An error if the removal of the task group fails, otherwise nil.
-func (a *Adapter) RemoveMoveTaskGroup(ctx context.Context, id string) error {
+func (a *Adapter) DropMoveTaskGroup(ctx context.Context, id string) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
-	_, err := tasksService.RemoveMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
+	_, err := tasksService.DropMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
 	return err
 }
 
@@ -1139,6 +1171,25 @@ func (a *Adapter) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*task
 	return res, err
 }
 
+func (a *Adapter) ListRedistributeTasks(ctx context.Context) ([]*tasks.RedistributeTask, error) {
+	tasksService := proto.NewRedistributeTaskServiceClient(a.conn)
+	ret, err := tasksService.ListRedistributeTasks(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*tasks.RedistributeTask, len(ret.Tasks))
+	for i, task := range ret.Tasks {
+		res[i] = tasks.RedistributeTaskFromProto(task)
+	}
+	return res, nil
+}
+
+func (a *Adapter) DropRedistributeTask(ctx context.Context, id string) error {
+	tasksService := proto.NewRedistributeTaskServiceClient(a.conn)
+	_, err := tasksService.DropRedistributeTask(ctx, &proto.RedistributeTaskSelector{Id: id})
+	return err
+}
+
 // GetBalancerTask retrieves current balancer task from the system.
 //
 // Parameters:
@@ -1170,16 +1221,16 @@ func (a *Adapter) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTas
 	return err
 }
 
-// RemoveBalancerTask removes a balancer task from the system.
+// DropBalancerTask removes a balancer task from the system.
 //
 // Parameters:
 //   - ctx (context.Context): The context for the request.
 //
 // Returns:
 //   - error: An error if the removal of the balancer task fails, otherwise nil.
-func (a *Adapter) RemoveBalancerTask(ctx context.Context) error {
+func (a *Adapter) DropBalancerTask(ctx context.Context) error {
 	tasksService := proto.NewBalancerTaskServiceClient(a.conn)
-	_, err := tasksService.RemoveBalancerTask(ctx, nil)
+	_, err := tasksService.DropBalancerTask(ctx, nil)
 	return err
 }
 

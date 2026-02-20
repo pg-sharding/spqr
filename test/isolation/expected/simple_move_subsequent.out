@@ -103,8 +103,8 @@ shard sh1   |11|1
 (3 rows)
 
 step s3_clean: select __spqr__console_execute('drop distribution all cascade') /*__spqr__preferred_engine: v2 */;
-drop distribution   
---------------------
-distribution id -> d
+distribution_id
+---------------
+d              
 (1 row)
 

@@ -25,10 +25,10 @@ SHOW distributions;
 (3 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds1
- distribution id -> ds2
- distribution id -> ds3
+ distribution_id 
+-----------------
+ ds1
+ ds2
+ ds3
 (3 rows)
 

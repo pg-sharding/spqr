@@ -46,7 +46,7 @@ LOCK KEY RANGE krid1;
 (1 row)
 
 SPLIT KEY RANGE krid4 FROM krid1 BY 5;
-ERROR:  retryable: key range krid1 is locked
+ERROR:  failed to split key range in coordinator: retryable: key range krid1 is locked
 UNLOCK KEY RANGE krid1;
    unlock key range    
 -----------------------
@@ -54,9 +54,9 @@ UNLOCK KEY RANGE krid1;
 (1 row)
 
 SPLIT KEY RANGE krid4 FROM krid1 BY 50;
-ERROR:  failed to split because bound intersects with "krid2" key range
+ERROR:  failed to split key range in coordinator: failed to split because bound intersects with "krid2" key range
 SPLIT KEY RANGE krid4 FROM krid2 BY 5;
-ERROR:  failed to split because bound is out of key range
+ERROR:  failed to split key range in coordinator: failed to split because bound is out of key range
 CREATE DISTRIBUTION ds2 COLUMN TYPES UUID;
     add distribution    
 ------------------------
@@ -83,7 +83,7 @@ SPLIT KEY RANGE krid6 FROM krid5 BY 'FF000000-0000-0000-0000-000000000000';
 
 -- intersecting key range
 SPLIT KEY RANGE krid7 FROM krid5 BY 'FF000000-0000-0000-0000-F00000000000';
-ERROR:  failed to split because bound intersects with "krid6" key range
+ERROR:  failed to split key range in coordinator: failed to split because bound intersects with "krid6" key range
 -- lowercase
 SPLIT KEY RANGE krid7 FROM krid5 BY 'fe000000-0000-0000-0000-000000000000';
                    split key range                    
@@ -93,9 +93,9 @@ SPLIT KEY RANGE krid7 FROM krid5 BY 'fe000000-0000-0000-0000-000000000000';
 (2 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds1
- distribution id -> ds2
+ distribution_id 
+-----------------
+ ds1
+ ds2
 (2 rows)
 

@@ -22,6 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/sethvargo/go-retry"
+	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/cucumber/godog"
 	"github.com/jackc/pgx/v5"
@@ -1125,6 +1126,17 @@ func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
 	return tctx.qdb.WriteMoveTaskGroup(context.TODO(), taskGroup.ID, tasks.TaskGroupToDb(&taskGroup), taskGroup.TotalKeys, taskDb)
 }
 
+func (tctx *testContext) stepRecordQDBRedistributeTask(body *godog.DocString) error {
+	query := strings.TrimSpace(body.Content)
+	var task *tasks.RedistributeTask
+	if err := json.Unmarshal([]byte(query), &task); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal request")
+		return err
+	}
+
+	return tctx.qdb.CreateRedistributeTask(context.TODO(), tasks.RedistributeTaskToDB(task))
+}
+
 func (tctx *testContext) stepRecordQDBTaskGroupStatus(id string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 	var status *qdb.TaskGroupStatus
@@ -1275,14 +1287,14 @@ func (tctx *testContext) stepWaitForAllKeyRangeMovesToFinish(timeout int64) erro
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(timeout)*time.Second)
 	defer cancel()
 	return retry.Do(ctx, retry.NewConstant(interval), func(ctx context.Context) error {
-		redistributeTask, err := tctx.qdb.GetRedistributeTask(ctx)
+		redistributeTasks, err := tctx.qdb.ListRedistributeTasks(ctx)
 		if err != nil {
 			log.Printf("error getting redistribute task: %s", err)
 			return err
 		}
-		if redistributeTask != nil {
-			log.Println("redistribute task present in qdb")
-			return retry.RetryableError(fmt.Errorf("redistribute task still present"))
+		if len(redistributeTasks) > 0 {
+			log.Println("redistribute task(s) present in qdb")
+			return retry.RetryableError(fmt.Errorf("redistribute task(s) still present"))
 		}
 		taskGroups, err := tctx.qdb.ListTaskGroups(ctx)
 		if err != nil {
@@ -1318,14 +1330,14 @@ func (tctx *testContext) stepWaitForAllKeyRangeMovesToFinish(timeout int64) erro
 func (tctx *testContext) stepQDBShouldNotContainTasks() error {
 	ctx, cancel := context.WithTimeout(context.TODO(), qdbQueriesTimeout)
 	defer cancel()
-	redistributeTask, err := tctx.qdb.GetRedistributeTask(ctx)
+	redistributeTasks, err := tctx.qdb.ListRedistributeTasks(ctx)
 	if err != nil {
 		log.Printf("error getting redistribute task: %s", err)
 		return err
 	}
-	if redistributeTask != nil {
-		log.Println("redistribute task present in qdb")
-		return retry.RetryableError(fmt.Errorf("redistribute task still present"))
+	if len(redistributeTasks) > 0 {
+		log.Println("redistribute task(s) present in qdb")
+		return retry.RetryableError(fmt.Errorf("redistribute task(s) still present"))
 	}
 	taskGroups, err := tctx.qdb.ListTaskGroups(ctx)
 	if err != nil {
@@ -1370,6 +1382,26 @@ func (tctx *testContext) stepIKillHostAfterQuery(host string, delay int, body *g
 	time.Sleep(time.Duration(delay) * time.Second)
 
 	return tctx.stepHostIsStopped(host)
+}
+
+func (tctx *testContext) stepDeleteFromEtcd(key string) error {
+	addr, err := tctx.composer.GetAddr("qdb01", 2379)
+	if err != nil {
+		return err
+	}
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints: []string{addr},
+		DialOptions: []grpc.DialOption{
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		},
+	})
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.TODO(), postgresqlQueryTimeout)
+	defer cancel()
+	_, err = cli.Delete(ctx, key)
+	return err
 }
 
 func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
@@ -1464,6 +1496,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I record in qdb key range move$`, tctx.stepRecordQDBKRMove)
 	s.Step(`^I record in qdb move task group$`, tctx.stepRecordQDBTaskGroup)
 	s.Step(`^I record in qdb status of move task group "([^"]*)"$`, tctx.stepRecordQDBTaskGroupStatus)
+	s.Step(`^I record in qdb redistribute task$`, tctx.stepRecordQDBRedistributeTask)
 	s.Step(`^qdb should contain transaction "([^"]*)"$`, tctx.stepQDBShouldContainTx)
 	s.Step(`^qdb should not contain transaction "([^"]*)"$`, tctx.stepQDBShouldNotContainTx)
 	s.Step(`^qdb should not contain key range moves$`, tctx.stepQDBShouldNotContainKRMoves)
@@ -1475,6 +1508,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I wait for "(\d+)" seconds for all key range moves to finish$`, tctx.stepWaitForAllKeyRangeMovesToFinish)
 	s.Step(`^qdb should not contain transfer tasks$`, tctx.stepQDBShouldNotContainTasks)
 	s.Step(`^I run SQL on host "([^"]*)", then stop the host after "(\d+)" seconds$`, tctx.stepIKillHostAfterQuery)
+	s.Step(`^I delete key "([^"]*)" from etcd$`, tctx.stepDeleteFromEtcd)
 
 	// variable manipulation
 	s.Step(`^we save response row "([^"]*)" column "([^"]*)"$`, tctx.stepSaveResponseBodyAtPathAsJSON)

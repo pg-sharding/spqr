@@ -78,8 +78,8 @@ UNITE KEY RANGE krid3 WITH krid1;
 UNITE KEY RANGE krid3 WITH krid4;
 ERROR:  failed to unite key ranges routing different shards
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds1
+ distribution_id 
+-----------------
+ ds1
 (1 row)
 

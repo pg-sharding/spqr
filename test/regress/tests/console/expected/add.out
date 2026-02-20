@@ -24,9 +24,9 @@ SHOW key_ranges;
 (2 rows)
 
 DROP KEY RANGE krid1;
-    drop key range     
------------------------
- key range id -> krid1
+ key_range_id 
+--------------
+ krid1
 (1 row)
 
 CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
@@ -40,8 +40,8 @@ SHOW key_ranges;
 CREATE KEY RANGE krid2 FROM 33 ROUTE TO nonexistentshard FOR DISTRIBUTION ds1;
 ERROR:  unknown shard nonexistentshard
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds1
+ distribution_id 
+-----------------
+ ds1
 (1 row)
 

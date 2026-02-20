@@ -28,10 +28,10 @@ SHOW key_ranges;
 (2 rows)
 
 DROP KEY RANGE ALL;
-    drop key range     
------------------------
- key range id -> krid1
- key range id -> krid2
+ key_range_id 
+--------------
+ krid1
+ krid2
 (2 rows)
 
 -- intersecting key range
@@ -48,8 +48,8 @@ SHOW key_ranges;
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution    
-------------------------
- distribution id -> ds1
+ distribution_id 
+-----------------
+ ds1
 (1 row)
 

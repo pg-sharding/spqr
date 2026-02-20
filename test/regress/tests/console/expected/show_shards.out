@@ -1,25 +1,25 @@
 DROP SHARD sh1;
-   drop shard    
------------------
- shard id -> sh1
+ shard_id 
+----------
+ sh1
 (1 row)
 
 DROP SHARD sh2;
-   drop shard    
------------------
- shard id -> sh2
+ shard_id 
+----------
+ sh2
 (1 row)
 
 DROP SHARD sh3;
-   drop shard    
------------------
- shard id -> sh3
+ shard_id 
+----------
+ sh3
 (1 row)
 
 DROP SHARD sh4;
-   drop shard    
------------------
- shard id -> sh4
+ shard_id 
+----------
+ sh4
 (1 row)
 
 CREATE SHARD sh1 WITH HOSTS "spqr_shard_1:6432","spqr_shard_1_replica:6432";
@@ -101,9 +101,9 @@ SHOW hosts;
 (9 rows)
 
 DROP SHARD sh5;
-   drop shard    
------------------
- shard id -> sh5
+ shard_id 
+----------
+ sh5
 (1 row)
 
 SHOW shards;

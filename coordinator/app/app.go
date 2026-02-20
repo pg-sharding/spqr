@@ -160,6 +160,7 @@ func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
 	protos.RegisterDistributionServiceServer(serv, dsServ)
 	protos.RegisterMoveTasksServiceServer(serv, tasksServ)
 	protos.RegisterBalancerTaskServiceServer(serv, tasksServ)
+	protos.RegisterRedistributeTaskServiceServer(serv, tasksServ)
 	protos.RegisterReferenceRelationsServiceServer(serv, refRelServ)
 	protos.RegisterMetaTransactionServiceServer(serv, metaTranServ)
 

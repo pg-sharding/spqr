@@ -6,8 +6,10 @@ import (
 	"strings"
 
 	pgx "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/tracelog"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 // GetConnStrings generates connection strings based on the ShardConnect fields.
@@ -17,12 +19,15 @@ import (
 //
 // Returns:
 // - []string: a slice of strings containing connection strings.
-func GetConnStrings(s *config.ShardConnect) []string {
+func GetConnStrings(s *config.ShardConnect, applicationName string) []string {
+	if applicationName == "" {
+		applicationName = spqrTransferApplicationName
+	}
 	res := make([]string, len(s.Hosts))
 	for i, host := range s.Hosts {
 		address := strings.Split(host, ":")[0]
 		port := strings.Split(host, ":")[1]
-		res[i] = fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s application_name=%s", s.User, address, port, s.DB, s.Password, spqrTransferApplicationName)
+		res[i] = fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s application_name=%s", s.User, address, port, s.DB, s.Password, applicationName)
 	}
 	return res
 }
@@ -37,9 +42,25 @@ func GetConnStrings(s *config.ShardConnect) []string {
 //   - error: error if any occurred
 //
 // TODO: unit tests
-func GetMasterConnection(ctx context.Context, s *config.ShardConnect) (*pgx.Conn, error) {
-	for _, dsn := range GetConnStrings(s) {
-		conn, err := pgx.Connect(ctx, dsn)
+func GetMasterConnection(ctx context.Context, s *config.ShardConnect, taskGroupId string) (*pgx.Conn, error) {
+	applicationName := ""
+	if taskGroupId != "" {
+		applicationName = spqrTransferApplicationName + "_" + taskGroupId
+	}
+	for _, dsn := range GetConnStrings(s, applicationName) {
+		connConfig, err := pgx.ParseConfig(dsn)
+		if err != nil {
+			return nil, err
+		}
+		level, err := tracelog.LogLevelFromString(config.CoordinatorConfig().DataMoveQueryLogLevel)
+		if err != nil {
+			return nil, err
+		}
+		connConfig.Tracer = &tracelog.TraceLog{
+			Logger:   &spqrlog.ZeroTraceLogger{},
+			LogLevel: level,
+		}
+		conn, err := pgx.ConnectConfig(ctx, connConfig)
 		if err != nil {
 			return nil, err
 		}

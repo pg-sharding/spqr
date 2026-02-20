@@ -31,6 +31,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/rfqn"
+
 	sts "github.com/pg-sharding/spqr/router/statistics"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"google.golang.org/grpc"
@@ -94,11 +95,11 @@ func processDrop(ctx context.Context,
 			} else {
 				tts := &tupleslot.TupleTableSlot{}
 
-				tts.Desc = engine.GetVPHeader("drop key range")
+				tts.Desc = engine.GetVPHeader("key_range_id")
 
 				for _, k := range krs {
 					tts.Raw = append(tts.Raw, [][]byte{
-						fmt.Appendf(nil, "key range id -> %s", k.ID),
+						[]byte(k.ID),
 					})
 				}
 
@@ -113,10 +114,10 @@ func processDrop(ctx context.Context,
 
 			tts := &tupleslot.TupleTableSlot{}
 
-			tts.Desc = engine.GetVPHeader("drop key range")
+			tts.Desc = engine.GetVPHeader("key_range_id")
 
 			tts.Raw = append(tts.Raw, [][]byte{
-				fmt.Appendf(nil, "key range id -> %s", stmt.KeyRangeID),
+				[]byte(stmt.KeyRangeID),
 			})
 
 			return tts, err
@@ -142,14 +143,12 @@ func processDrop(ctx context.Context,
 		}
 
 		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("drop reference relation"),
+			Desc: engine.GetVPHeader("relation_name"),
 		}
 
-		tts.Raw = [][][]byte{
-			{
-				fmt.Appendf(nil, "relation -> %s", stmt.ID),
-			},
-		}
+		tts.Raw = [][][]byte{{
+			[]byte(stmt.ID),
+		}}
 
 		return tts, nil
 	case *spqrparser.DistributionSelector:
@@ -210,11 +209,11 @@ func processDrop(ctx context.Context,
 			}
 
 			tts := &tupleslot.TupleTableSlot{
-				Desc: engine.GetVPHeader("drop distribution"),
+				Desc: engine.GetVPHeader("distribution_id"),
 			}
 
 			tts.Raw = append(tts.Raw, [][]byte{
-				fmt.Appendf(nil, "distribution id -> %s", stmt.ID),
+				[]byte(stmt.ID),
 			})
 
 			return tts, nil
@@ -240,12 +239,12 @@ func processDrop(ctx context.Context,
 		}
 
 		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("drop distribution"),
+			Desc: engine.GetVPHeader("distribution_id"),
 		}
 
 		for _, id := range ret {
 			tts.Raw = append(tts.Raw, [][]byte{
-				fmt.Appendf(nil, "distribution id -> %s", id),
+				[]byte(id),
 			})
 		}
 
@@ -275,25 +274,29 @@ func processDrop(ctx context.Context,
 		}
 		tts := &tupleslot.TupleTableSlot{}
 
-		tts.Desc = engine.GetVPHeader("drop shard")
+		tts.Desc = engine.GetVPHeader("shard_id")
 		tts.Raw = append(tts.Raw, [][]byte{
-			fmt.Appendf(nil, "shard id -> %s", stmt.ID),
+			[]byte(stmt.ID),
 		})
 
 		return tts, nil
 	case *spqrparser.TaskGroupSelector:
-		if err := mngr.RemoveMoveTaskGroup(ctx, stmt.ID); err != nil {
+		tg, err := mngr.GetMoveTaskGroup(ctx, stmt.ID)
+		if err != nil {
 			return nil, err
 		}
 
 		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("drop task group"),
+			Desc: engine.GetVPHeader("task_group_id"),
 		}
-
-		tts.Raw = append(tts.Raw, [][]byte{
-			fmt.Appendf(nil, "task group id -> %s", stmt.ID),
-		})
-
+		if tg != nil {
+			if err := mngr.DropMoveTaskGroup(ctx, stmt.ID); err != nil {
+				return nil, err
+			}
+			tts.Raw = append(tts.Raw, [][]byte{
+				[]byte(stmt.ID),
+			})
+		}
 		return tts, nil
 	case *spqrparser.SequenceSelector:
 		rels, err := mngr.GetSequenceRelations(ctx, stmt.Name)
@@ -315,10 +318,10 @@ func processDrop(ctx context.Context,
 		}
 
 		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("drop sequence"),
+			Desc: engine.GetVPHeader("name"),
 			Raw: [][][]byte{
 				{
-					fmt.Appendf(nil, "sequence -> %s", stmt.Name),
+					[]byte(stmt.Name),
 				},
 			},
 		}
@@ -329,13 +332,46 @@ func processDrop(ctx context.Context,
 			return nil, err
 		}
 		return &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("drop unique index"),
+			Desc: engine.GetVPHeader("id"),
 			Raw: [][][]byte{
 				{
-					fmt.Appendf(nil, "unique index -> %s", stmt.ID),
+					[]byte(stmt.ID),
 				},
 			},
 		}, nil
+	case *spqrparser.RedistributeTaskSelector:
+		tasks, err := mngr.ListRedistributeTasks(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("redistribute_task_id"),
+		}
+		for _, task := range tasks {
+			if task.ID == stmt.ID {
+				if err := mngr.DropRedistributeTask(ctx, stmt.ID); err != nil {
+					return nil, err
+				}
+				tts.WriteDataRow(stmt.ID)
+				break
+			}
+		}
+		return tts, nil
+	case *spqrparser.MoveTaskSelector:
+		task, err := mngr.GetMoveTask(ctx, stmt.ID)
+		if err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("move_task_id"),
+		}
+		if task != nil {
+			if err = mngr.DropMoveTask(ctx, task.ID); err != nil {
+				return nil, err
+			}
+			tts.WriteDataRow(task.ID)
+		}
+		return tts, nil
 	default:
 		return nil, fmt.Errorf("unknown drop statement")
 	}
@@ -916,7 +952,6 @@ func ProcMetadataCommand(ctx context.Context,
 		return tts, nil
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, mgr)
-
 	case *spqrparser.Create:
 		return ProcessCreate(ctx, stmt.Element, mgr)
 	case *spqrparser.MoveKeyRange:
@@ -1468,6 +1503,15 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+	case spqrparser.RedistributeTasksStr:
+		redistributeTasks, err := mngr.ListRedistributeTasks(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tts, err = engine.RedistributeTasksVirtualRelationScan(redistributeTasks)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -1579,11 +1623,6 @@ func ProcessShow(ctx context.Context,
 			return nil
 		}); err != nil {
 			return nil, err
-		}
-
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to get client counts")
-			clientCounts = make(map[string]int)
 		}
 
 		// Try to get router versions via gRPC if the manager supports it

@@ -40,8 +40,8 @@ func (lc *LocalInstanceMetadataMgr) WriteBalancerTask(context.Context, *tasks.Ba
 	return ErrNotCoordinator
 }
 
-// RemoveBalancerTask is disabled in LocalCoordinator
-func (lc *LocalInstanceMetadataMgr) RemoveBalancerTask(context.Context) error {
+// DropBalancerTask is disabled in LocalCoordinator
+func (lc *LocalInstanceMetadataMgr) DropBalancerTask(context.Context) error {
 	return ErrNotCoordinator
 }
 
