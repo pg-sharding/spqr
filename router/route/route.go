@@ -70,7 +70,7 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 		params: shard.ParameterSet{},
 	}
 
-	/* NewRoute can be called from coordinator console, which does not need to allocate actaul backend */
+	/* NewRoute can be called from coordinator console, which does not need to allocate actual backend */
 	if beRule != nil {
 		hostCheckInterval := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCheckInterval, pool.DefaultCheckInterval)
 		hostCheckTTL := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCacheTTL, pool.DefaultCacheTTL)
