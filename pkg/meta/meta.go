@@ -1351,13 +1351,13 @@ func ProcessShowExtended(ctx context.Context,
 		}
 
 	case spqrparser.ErrorStr:
-		cnts := ci.ErrorCounts()
+		counters := ci.ErrorCounts()
 
 		tts = &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("error_type", "count"),
 		}
 
-		for k, v := range cnts {
+		for k, v := range counters {
 			tts.WriteDataRow(k, fmt.Sprintf("%v", v))
 		}
 	case spqrparser.RelationsStr:

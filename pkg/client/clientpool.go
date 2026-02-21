@@ -55,13 +55,13 @@ type PoolImpl struct {
 	healthCheckCancel context.CancelFunc
 	deadCheckInterval time.Duration
 
-	cntr map[string]*atomic.Uint64
+	counters map[string]*atomic.Uint64
 }
 
 // ErrorCounts implements [Pool].
 func (c *PoolImpl) ErrorCounts() map[string]uint64 {
 	rep := map[string]uint64{}
-	for k, v := range c.cntr {
+	for k, v := range c.counters {
 		rep[k] = v.Load()
 	}
 
@@ -71,7 +71,7 @@ func (c *PoolImpl) ErrorCounts() map[string]uint64 {
 // ReportError implements [Pool].
 func (c *PoolImpl) ReportError(errtype string) {
 	/* If reported error is of unknown type, ignore */
-	if v, ok := c.cntr[errtype]; ok {
+	if v, ok := c.counters[errtype]; ok {
 		v.Add(1)
 	}
 }
@@ -242,16 +242,16 @@ func NewClientPool(clientDeadCheckInterval time.Duration) Pool {
 		pool: sync.Map{},
 
 		deadCheckInterval: config.ValueOrDefaultDuration(config.RouterConfig().ClientPoolDeadCheckInterval, clientDeadCheckInterval),
-		cntr: map[string]*atomic.Uint64{},
+		counters:          map[string]*atomic.Uint64{},
 	}
 
 	for k := range spqrerror.ExistingErrorCodeMap {
-		pl.cntr[k] = &atomic.Uint64{}
+		pl.counters[k] = &atomic.Uint64{}
 	}
 
-	/* PG errors, which are still very interestic for us.*/
-	pl.cntr[spqrerror.PG_PORTAl_DOES_NOT_EXISTS] = &atomic.Uint64{}
-	pl.cntr[spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS] = &atomic.Uint64{}
+	/* PG errors, which are still very interesting for us.*/
+	pl.counters[spqrerror.PG_PORTAl_DOES_NOT_EXISTS] = &atomic.Uint64{}
+	pl.counters[spqrerror.PG_PREPARED_STATEMENT_DOES_NOT_EXISTS] = &atomic.Uint64{}
 
 	pl.StartBackgroundHealthCheck()
 

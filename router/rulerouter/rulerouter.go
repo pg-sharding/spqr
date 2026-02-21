@@ -69,17 +69,17 @@ type RuleRouterImpl struct {
 
 // ErrorCounts implements [RuleRouter].
 func (r *RuleRouterImpl) ErrorCounts() map[string]uint64 {
-	cnts := map[string]uint64{}
-	r.NotifyRoutes(func(route *route.Route) (bool, error) {
+	counters := map[string]uint64{}
+	_ = r.NotifyRoutes(func(route *route.Route) (bool, error) {
 		curr := route.ErrorCounts()
 		for k, v := range curr {
-			cnts[k] += v
+			counters[k] += v
 		}
 
 		return true, nil
 	})
 
-	return cnts
+	return counters
 }
 
 // ReportError implements [RuleRouter].
