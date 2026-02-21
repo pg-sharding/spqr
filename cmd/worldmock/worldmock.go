@@ -96,7 +96,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		return err
 	}
 
-	r := route.NewRoute(nil, nil, nil, time.Duration(0) /* never do healhcheck */)
+	r := route.NewRoute(nil, nil, nil, time.Duration(0) /* never do healthcheck */)
 	r.SetParams(shard.ParameterSet{})
 	if err := cl.Auth(r); err != nil {
 		return err

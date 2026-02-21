@@ -137,7 +137,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*config.Shard{
 		"sh1": {},
-	}, time.Duration(0) /* never do healhcheck */)
+	}, time.Duration(0) /* never do healthcheck */)
 
 	cl.EXPECT().Route().AnyTimes().Return(route)
 
@@ -251,7 +251,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*config.Shard{
 		"sh1": {},
-	}, time.Duration(0) /* never do healhcheck */)
+	}, time.Duration(0) /* never do healthcheck */)
 
 	// route to any route
 	cl.EXPECT().Route().AnyTimes().Return(route)

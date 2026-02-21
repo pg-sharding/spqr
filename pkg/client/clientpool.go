@@ -216,8 +216,6 @@ func NewClientPool(clientDeadCheckInterval time.Duration) Pool {
 		pool: sync.Map{},
 
 		deadCheckInterval: config.ValueOrDefaultDuration(config.RouterConfig().ClientPoolDeadCheckInterval, clientDeadCheckInterval),
-
-		cntr: map[string]*atomic.Uint64{},
 	}
 
 	pl.StartBackgroundHealthCheck()
