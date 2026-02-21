@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 
@@ -95,7 +96,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		return err
 	}
 
-	r := route.NewRoute(nil, nil, nil)
+	r := route.NewRoute(nil, nil, nil, time.Duration(0) /* never do healhcheck */)
 	r.SetParams(shard.ParameterSet{})
 	if err := cl.Auth(r); err != nil {
 		return err

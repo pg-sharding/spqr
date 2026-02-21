@@ -211,11 +211,13 @@ const (
 //
 // Returns:
 // - Pool: A pointer to the newly created PoolImpl instance.
-func NewClientPool() Pool {
+func NewClientPool(clientDeadCheckInterval time.Duration) Pool {
 	pl := &PoolImpl{
 		pool: sync.Map{},
 
-		deadCheckInterval: config.ValueOrDefaultDuration(config.RouterConfig().ClientPoolDeadCheckInterval, DefaultClientDeadCheckInterval),
+		deadCheckInterval: config.ValueOrDefaultDuration(config.RouterConfig().ClientPoolDeadCheckInterval, clientDeadCheckInterval),
+
+		cntr: map[string]*atomic.Uint64{},
 	}
 
 	pl.StartBackgroundHealthCheck()

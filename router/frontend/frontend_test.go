@@ -3,6 +3,7 @@ package frontend_test
 import (
 	"io"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -136,7 +137,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*config.Shard{
 		"sh1": {},
-	})
+	}, time.Duration(0) /* never do healhcheck */)
 
 	cl.EXPECT().Route().AnyTimes().Return(route)
 
@@ -250,7 +251,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	route := route.NewRoute(&config.BackendRule{}, frrule, map[string]*config.Shard{
 		"sh1": {},
-	})
+	}, time.Duration(0) /* never do healhcheck */)
 
 	// route to any route
 	cl.EXPECT().Route().AnyTimes().Return(route)

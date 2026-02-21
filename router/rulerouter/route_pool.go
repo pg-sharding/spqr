@@ -111,12 +111,18 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 		Str("db", key.DB()).
 		Msg("allocate route")
 
-	nroute := route.NewRoute(beRule, frRule, r.shardMapping)
+	nroute := route.NewRoute(
+		beRule,
+		frRule,
+		r.shardMapping,
+		client.DefaultClientDeadCheckInterval)
+
 	act, loaded := r.pool.LoadOrStore(key, nroute)
 
 	if !loaded {
 		// conflict, release goroutines
 		nroute.MultiShardPool().StopCacheWatchdog()
+		_ = nroute.ClientPool().Shutdown()
 	}
 	return act.(*route.Route), nil
 }

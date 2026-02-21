@@ -2,6 +2,7 @@ package route
 
 import (
 	"sync"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -52,7 +53,11 @@ type Route struct {
 	params       shard.ParameterSet
 }
 
-func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping map[string]*config.Shard) *Route {
+func NewRoute(beRule *config.BackendRule,
+	frRule *config.FrontendRule,
+	mapping map[string]*config.Shard,
+	clientDeadCheckInterval time.Duration,
+) *Route {
 	sp := &startup.StartupParams{}
 	if frRule != nil {
 		sp.SearchPath = frRule.SearchPath
@@ -66,7 +71,7 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 	route := &Route{
 		beRule: beRule,
 		frRule: frRule,
-		clPool: client.NewClientPool(),
+		clPool: client.NewClientPool(clientDeadCheckInterval),
 		params: shard.ParameterSet{},
 	}
 
@@ -125,6 +130,10 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 
 func (r *Route) MultiShardPool() pool.MultiShardTSAPool {
 	return r.mShardPool
+}
+
+func (r *Route) ClientPool() client.Pool {
+	return r.clPool
 }
 
 func (r *Route) BeRule() *config.BackendRule {

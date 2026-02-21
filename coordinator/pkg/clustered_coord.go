@@ -2424,7 +2424,7 @@ func (qc *ClusteredCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPort
 		return nil, err
 	}
 
-	r := route.NewRoute(nil, nil, nil)
+	r := route.NewRoute(nil, nil, nil, time.Duration(0) /* never do healhcheck */)
 
 	params := map[string]string{
 		"client_encoding": "UTF8",
