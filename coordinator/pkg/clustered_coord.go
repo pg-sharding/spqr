@@ -2387,7 +2387,7 @@ func (qc *ClusteredCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPort
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
 		Bool("ssl", tlsconfig != nil).
-		Msg("init client connection...")
+		Msg("init client connection")
 
 	if err := cl.Init(tlsconfig); err != nil {
 		return nil, err
