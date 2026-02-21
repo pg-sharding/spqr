@@ -63,17 +63,23 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 		preferAZ = config.RouterConfig().AvailabilityZone
 	}
 
-	hostCheckInterval := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCheckInterval, pool.DefaultCheckInterval)
-	hostCheckTTL := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCacheTTL, pool.DefaultCacheTTL)
-
 	route := &Route{
-		beRule:     beRule,
-		frRule:     frRule,
-		mShardPool: pool.NewDBPool(mapping, sp, preferAZ, hostCheckTTL, hostCheckInterval),
-		clPool:     client.NewClientPool(),
-		params:     shard.ParameterSet{},
+		beRule: beRule,
+		frRule: frRule,
+		clPool: client.NewClientPool(),
+		params: shard.ParameterSet{},
 	}
-	route.mShardPool.SetRule(beRule)
+
+	/* NewRoute can be called from coordinator console, which does not need to allocate actaul backend */
+	if beRule != nil {
+		hostCheckInterval := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCheckInterval, pool.DefaultCheckInterval)
+		hostCheckTTL := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCacheTTL, pool.DefaultCacheTTL)
+
+		route.mShardPool = pool.NewDBPool(mapping, sp, preferAZ, hostCheckTTL, hostCheckInterval)
+
+		route.mShardPool.SetRule(beRule)
+	}
+
 	return route
 }
 
