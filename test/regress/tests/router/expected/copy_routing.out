@@ -73,13 +73,13 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- should fail
 COPY copy_test_multi_multi (id1, id3, id4) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-ERROR:  client processing error: failed to resolve target copy column offset, tx status ACTIVE
+ERROR:  failed to resolve target copy column offset
 COPY copy_test_multi_multi (id3, id4) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-ERROR:  client processing error: failed to resolve target copy column offset, tx status ACTIVE
+ERROR:  failed to resolve target copy column offset
 COPY copy_test_multi_multi (id4, id2) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-ERROR:  client processing error: failed to resolve target copy column offset, tx status ACTIVE
+ERROR:  failed to resolve target copy column offset
 -- should be ok
 COPY copy_test(id) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
@@ -308,7 +308,7 @@ NOTICE: send query to shard(s) : sh4
 
 COPY copy_test_mult (uid, id) FROM stdin;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-ERROR:  client processing error: insufficient data in routing tuple, tx status ACTIVE
+ERROR:  insufficient data in routing tuple
 DROP TABLE copy_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE copy_test_mult;

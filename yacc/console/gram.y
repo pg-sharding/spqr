@@ -660,7 +660,15 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, InstanceStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, KeyRangesExtendedStr, StatusStr, DistributionsStr, CoordinatorAddrStr, VersionStr, ReferenceRelationsStr, TaskGroupStr, TaskGroupsStr, PreparedStatementsStr, QuantilesStr, SequencesStr, IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users, MoveTaskStr, MoveTasksStr, UniqueIndexesStr, TaskGroupBoundsCacheStr, RedistributeTasksStr:
+		case DatabasesStr, RoutersStr, PoolsStr, 
+			InstanceStr, ShardsStr, BackendConnectionsStr, 
+			KeyRangesStr, KeyRangesExtendedStr, StatusStr,
+			DistributionsStr, CoordinatorAddrStr, VersionStr,
+			ReferenceRelationsStr, TaskGroupStr, TaskGroupsStr,
+			PreparedStatementsStr, QuantilesStr, SequencesStr,
+			IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
+			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
+			TaskGroupBoundsCacheStr, RedistributeTasksStr, ErrorStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr

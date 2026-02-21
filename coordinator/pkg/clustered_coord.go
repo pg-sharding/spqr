@@ -202,6 +202,15 @@ func (ci grpcConnMgr) Put(client client.Client) error {
 
 // TODO : implement
 // TODO : unit tests
+func (ci grpcConnMgr) ReportError(string) {
+}
+
+func (ci grpcConnMgr) ErrorCounts() map[string]uint64 {
+	return nil
+}
+
+// TODO : implement
+// TODO : unit tests
 func (ci grpcConnMgr) Pop(id uint) (bool, error) {
 	return true, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator pop not implemented")
 }

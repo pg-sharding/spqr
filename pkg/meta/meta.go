@@ -1349,6 +1349,17 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+
+	case spqrparser.ErrorStr:
+		cnts := ci.ErrorCounts()
+
+		tts = &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("error_type", "count"),
+		}
+
+		for k, v := range cnts {
+			tts.WriteDataRow(k, fmt.Sprintf("%v", v))
+		}
 	case spqrparser.RelationsStr:
 		dss, err := mngr.ListDistributions(ctx)
 		if err != nil {
@@ -1499,7 +1510,11 @@ func ProcessShowExtended(ctx context.Context,
 			}
 		}
 
-		tts, err = engine.TaskGroupBoundsCacheVirtualRelationScan(bounds, ind, keyRange.ColumnTypes, taskGroupId)
+		tts, err = engine.TaskGroupBoundsCacheVirtualRelationScan(
+			bounds,
+			ind,
+			keyRange.ColumnTypes,
+			taskGroupId)
 		if err != nil {
 			return nil, err
 		}
@@ -1702,6 +1717,7 @@ func ProcessShow(ctx context.Context,
 		tts.WriteDataRow(pkg.SpqrVersionRevision)
 
 		return tts, nil
+
 	case spqrparser.CoordinatorAddrStr:
 		addr, err := mngr.GetCoordinator(ctx)
 		if err != nil {

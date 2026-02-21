@@ -62,13 +62,13 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 
 -- should be rejected.
 SELECT 1, __spqr__ctid('r');
-ERROR:  client processing error: error processing query 'SELECT 1, __spqr__ctid('r');': too complex query to route, tx status IDLE
+ERROR:  error processing query 'SELECT 1, __spqr__ctid('r');': too complex query to route
 WITH s as (SELECT 1) SELECT __spqr__ctid('r');
-ERROR:  client processing error: error processing query 'WITH s as (SELECT 1) SELECT __spqr__ctid('r');': too complex query to route, tx status IDLE
+ERROR:  error processing query 'WITH s as (SELECT 1) SELECT __spqr__ctid('r');': too complex query to route
 SELECT __spqr__ctid('r') UNION ALL SELECT __spqr__ctid('r');
-ERROR:  client processing error: error processing query 'SELECT __spqr__ctid('r') UNION ALL SELECT __spqr__ctid('r');': too complex query to route, tx status IDLE
+ERROR:  error processing query 'SELECT __spqr__ctid('r') UNION ALL SELECT __spqr__ctid('r');': too complex query to route
 SELECT  __spqr__ctid('r'), now();
-ERROR:  client processing error: error processing query 'SELECT  __spqr__ctid('r'), now();': too complex query to route, tx status IDLE
+ERROR:  error processing query 'SELECT  __spqr__ctid('r'), now();': too complex query to route
 DROP TABLE r;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console

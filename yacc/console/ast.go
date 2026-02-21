@@ -419,6 +419,7 @@ const (
 	UniqueIndexesStr        = "unique_indexes"
 	TaskGroupBoundsCacheStr = "task_group_ext"
 	RedistributeTasksStr    = "redistribute_tasks"
+	ErrorStr                = "errors"
 )
 
 // not SHOW target

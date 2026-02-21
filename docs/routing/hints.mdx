@@ -154,7 +154,7 @@ Possible values:
 
 ```sql
 DROP DATABASE prod;
-ERROR:  client processing error: query is blocked due to the default_route_behavior.
+ERROR:  query is blocked due to the default_route_behavior.
 
 DROP DATABASE prod /* __spqr__default_route_behaviour: allow */;
 NOTICE: send query to shard(s) : shard1,shard2,shard3,shard4
@@ -235,7 +235,7 @@ CREATE TABLE tax_rates (
     country_code VARCHAR(2),
     state_code VARCHAR(2)
 );
-ERROR:  client processing error: error processing query 'CREATE TABLE zz(i int, j int, k int);': distribution for relation "zz" not found, tx status IDLE
+ERROR:  error processing query 'CREATE TABLE zz(i int, j int, k int);': distribution for relation "zz" not found
 
 CREATE TABLE tax_rates (
     country_code VARCHAR(2),

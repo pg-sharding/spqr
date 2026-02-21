@@ -17,6 +17,7 @@ import (
 
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	config "github.com/pg-sharding/spqr/pkg/config"
+	errcounter "github.com/pg-sharding/spqr/pkg/errcounter"
 	prepstatement "github.com/pg-sharding/spqr/pkg/prepstatement"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	tsa "github.com/pg-sharding/spqr/pkg/tsa"
@@ -1104,6 +1105,18 @@ func (m *MockRouterClient) SetEnhancedMultiShardProcessing(level string, val boo
 func (mr *MockRouterClientMockRecorder) SetEnhancedMultiShardProcessing(level, val any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEnhancedMultiShardProcessing", reflect.TypeOf((*MockRouterClient)(nil).SetEnhancedMultiShardProcessing), level, val)
+}
+
+// SetErrCounter mocks base method.
+func (m *MockRouterClient) SetErrCounter(arg0 errcounter.ErrCounter) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetErrCounter", arg0)
+}
+
+// SetErrCounter indicates an expected call of SetErrCounter.
+func (mr *MockRouterClientMockRecorder) SetErrCounter(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetErrCounter", reflect.TypeOf((*MockRouterClient)(nil).SetErrCounter), arg0)
 }
 
 // SetExecuteOn mocks base method.
