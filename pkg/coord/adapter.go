@@ -721,6 +721,9 @@ func (a *Adapter) AddWorldShard(ctx context.Context, shard *topology.DataShard) 
 func (a *Adapter) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
 	c := proto.NewShardServiceClient(a.conn)
 	resp, err := c.ListShards(ctx, nil)
+	if err != nil {
+		return nil, spqrerror.CleanGrpcError(err)
+	}
 	shards := resp.Shards
 	var ds []*topology.DataShard
 	for _, shard := range shards {
@@ -1150,6 +1153,9 @@ func (a *Adapter) GetMoveTaskGroupBoundsCache(ctx context.Context, id string) ([
 func (a *Adapter) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.MoveTaskGroupStatus, error) {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	status, err := tasksService.GetMoveTaskGroupStatus(ctx, &proto.MoveTaskGroupSelector{ID: id})
+	if err != nil {
+		return nil, spqrerror.CleanGrpcError(err)
+	}
 	return tasks.MoveTaskGroupStatusFromProto(status), err
 }
 
@@ -1164,6 +1170,9 @@ func (a *Adapter) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.Mov
 func (a *Adapter) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.MoveTaskGroupStatus, error) {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	ret, err := tasksService.GetAllMoveTaskGroupStatuses(ctx, nil)
+	if err != nil {
+		return nil, spqrerror.CleanGrpcError(err)
+	}
 	res := make(map[string]*tasks.MoveTaskGroupStatus)
 	for id, status := range ret.Statuses {
 		res[id] = tasks.MoveTaskGroupStatusFromProto(status)
