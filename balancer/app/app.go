@@ -2,10 +2,11 @@ package app
 
 import (
 	"context"
+	"time"
+
 	"github.com/pg-sharding/spqr/balancer"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"time"
 )
 
 type App struct {
@@ -19,7 +20,7 @@ func NewApp(b balancer.Balancer) *App {
 }
 
 func (app *App) Run() error {
-	spqrlog.Zero.Info().Msg("running balancer")
+	spqrlog.Zero.Info().Msg("Running balancer")
 
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(config.BalancerConfig().TimeoutSec)*time.Second)
 	defer cancel()
