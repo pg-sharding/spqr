@@ -67,7 +67,7 @@ SHOW distributions;
  ds2             | integer      | not exists
 (2 rows)
 
-CREATE DISTRIBUTED RELATION aa DISTRIBUTION KEY another2 SCHEMA schema_name2 IN ds2;
+CREATE DISTRIBUTED RELATION schema_name2.aa DISTRIBUTION KEY another2 IN ds2;
             attach table            
 ------------------------------------
  relation name   -> schema_name2.aa
@@ -81,8 +81,6 @@ SHOW relations;
  aa            | ds2             | ("another2", identity) | schema_name2
 (2 rows)
 
-CREATE DISTRIBUTED RELATION sh12.aa12 DISTRIBUTION KEY another2 SCHEMA schema_name3 IN ds2;
-ERROR:  failed to parse query "CREATE DISTRIBUTED RELATION sh12.aa12 DISTRIBUTION KEY another2 SCHEMA schema_name3 IN ds2;": it is forbidden to use both a qualified relation name and the keyword SCHEMA
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------
