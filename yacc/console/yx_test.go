@@ -952,6 +952,29 @@ func TestAlter(t *testing.T) {
 		},
 
 		{
+			query: "CREATE RELATION sh.t (id) IN ds1;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					Element: &spqrparser.AttachRelation{
+						Relations: []*spqrparser.DistributedRelation{
+							{
+								Name:       "t",
+								SchemaName: "sh",
+								DistributionKey: []spqrparser.DistributionKeyEntry{
+									{
+										Column: "id",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
 			query: "CREATE RELATION t (id);",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
@@ -1301,7 +1324,7 @@ func TestAlter(t *testing.T) {
 			},
 		},
 		{
-			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id SCHEMA test;",
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION test.t DISTRIBUTION KEY id;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
@@ -1921,11 +1944,6 @@ func TestRelationQualifiedName(t *testing.T) {
 				},
 			},
 			err: nil,
-		},
-		{
-			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION sch1.table1 DISTRIBUTION KEY id SCHEMA sch1;",
-			exp:   nil,
-			err:   fmt.Errorf("it is forbidden to use both a qualified relation name and the keyword SCHEMA"),
 		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)

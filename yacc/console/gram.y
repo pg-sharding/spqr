@@ -240,7 +240,6 @@ func randomHex(n int) (string, error) {
 %type<aiEntrieslist> opt_auto_increment
 %type<aiEntrieslist> auto_inc_argument_list
 %type<uinteger> opt_auto_increment_start_clause
-%type<str> opt_schema_name
 %type<distribution_selector> opt_distribution_selector
 
 %type<distrKeyEntry> distribution_key_entry routing_expr
@@ -892,46 +891,22 @@ distribution_key_entry:
 	}
 
 distributed_relation_def:
-	RELATION qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment opt_schema_name
+	RELATION qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
 	{
-		if 	len($2.SchemaName)>0 && len($7)>0 {
-			yylex.Error("it is forbidden to use both a qualified relation name and the keyword SCHEMA")
-			return 1
-		} else if len($2.SchemaName)>0 {
-			$$ = &DistributedRelation{
-				Name: 	 $2.RelationName,
-				DistributionKey: $5,
-				AutoIncrementEntries: $6,
-				SchemaName: $2.SchemaName,
-			}
-		} else {
-			$$ = &DistributedRelation{
-				Name: 	 $2.RelationName,
-				DistributionKey: $5,
-				AutoIncrementEntries: $6,
-				SchemaName: $7,
-			}
+		$$ = &DistributedRelation{
+			Name: 	 $2.RelationName,
+			DistributionKey: $5,
+			AutoIncrementEntries: $6,
+			SchemaName: $2.SchemaName,
 		}
 	} 
-	| RELATION qualified_name TOPENBR distribution_key_argument_list opt_auto_increment opt_schema_name TCLOSEBR
+	| RELATION qualified_name TOPENBR distribution_key_argument_list opt_auto_increment TCLOSEBR
 	{
-		if 	len($2.SchemaName)>0 && len($7)>0 {
-			yylex.Error("it is forbidden to use both a qualified relation name and the keyword SCHEMA")
-			return 1
-		} else if len($2.SchemaName)>0 {
-			$$ = &DistributedRelation{
-				Name: 	 $2.RelationName,
-				DistributionKey: $4,
-				AutoIncrementEntries: $5,
-				SchemaName: $2.SchemaName,
-			}
-		} else {
-			$$ = &DistributedRelation{
-				Name: 	 $2.RelationName,
-				DistributionKey: $4,
-				AutoIncrementEntries: $5,
-				SchemaName: $6,
-			}
+		$$ = &DistributedRelation{
+			Name: 	 $2.RelationName,
+			DistributionKey: $4,
+			AutoIncrementEntries: $5,
+			SchemaName: $2.SchemaName,
 		}
 	} 
 
@@ -969,12 +944,6 @@ opt_auto_increment_start_clause:
 		$$ = 0
 	}
 
-opt_schema_name:
-	SCHEMA any_id {
-		$$ = $2
-	} | /* EMPTY */ {
-		$$ = ""
-	}
 
 distributed_relation_list_def:
 	distributed_relation_def {
