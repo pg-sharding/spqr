@@ -849,7 +849,6 @@ func (qr *ProxyQrouter) plannerV1(
 ) (plan.Plan, error) {
 	/* Top level plan */
 	p, err := qr.RouteWithRules(ctx, rm, rm.Stmt)
-
 	if err != nil {
 		return nil, err
 	}

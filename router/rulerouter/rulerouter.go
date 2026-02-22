@@ -67,6 +67,26 @@ type RuleRouterImpl struct {
 	cancelConnCount atomic.Int64
 }
 
+// ErrorCounts implements [RuleRouter].
+func (r *RuleRouterImpl) ErrorCounts() map[string]uint64 {
+	counters := map[string]uint64{}
+	_ = r.NotifyRoutes(func(route *route.Route) (bool, error) {
+		curr := route.ErrorCounts()
+		for k, v := range curr {
+			counters[k] += v
+		}
+
+		return true, nil
+	})
+
+	return counters
+}
+
+// ReportError implements [RuleRouter].
+func (r *RuleRouterImpl) ReportError(errtype string) {
+	/* nothing */
+}
+
 // InstanceHealthChecks implements RuleRouter.
 func (r *RuleRouterImpl) InstanceHealthChecks() map[string]tsa.CachedCheckResult {
 	rt := map[string]tsa.CachedCheckResult{}
@@ -180,7 +200,11 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	r.tcpConnCount.Add(1)
 	r.activeTcpCount.Add(1)
 
-	cl := rclient.NewPsqlClient(conn, pt, string(config.RouterConfig().Qr.DefaultRouteBehaviour), config.RouterConfig().ShowNoticeMessages, config.RouterConfig().Qr.DefaultTSA)
+	cl := rclient.NewPsqlClient(conn,
+		pt,
+		string(config.RouterConfig().Qr.DefaultRouteBehaviour),
+		config.RouterConfig().ShowNoticeMessages,
+		config.RouterConfig().Qr.DefaultTSA)
 
 	tlsConfig := r.tlsconfig
 	if pt == port.UnixSocketPortType {

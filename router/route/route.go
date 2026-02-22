@@ -148,6 +148,10 @@ func (r *Route) NotifyClients(cb func(cl client.ClientInfo) error) error {
 	return r.clPool.ClientPoolForeach(cb)
 }
 
+func (r *Route) ErrorCounts() map[string]uint64 {
+	return r.clPool.ErrorCounts()
+}
+
 func (r *Route) AddClient(cl client.Client) error {
 	return r.clPool.Put(cl)
 }

@@ -241,7 +241,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO fff (id) VALUES(1);
-ERROR:  client processing error: distribution for relation "fff" not found, tx status ERROR
+ERROR:  distribution for relation "fff" not found
 INSERT INTO fff (id) VALUES(1);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 INSERT INTO fff (id) VALUES(1);
