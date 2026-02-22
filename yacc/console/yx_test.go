@@ -1324,7 +1324,7 @@ func TestAlter(t *testing.T) {
 			},
 		},
 		{
-			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id SCHEMA test;",
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION test.t DISTRIBUTION KEY id;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
