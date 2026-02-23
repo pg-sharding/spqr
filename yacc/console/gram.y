@@ -962,7 +962,7 @@ relation_attach_stmt:
 relation_alter_stmt_v2:
 	ALTER RELATION qualified_name DISTRIBUTION KEY distribution_key_argument_list {
 		$$ = &AlterRelationV2{
-			RelationName: $3.RelationName,
+			RelationName: $3,
 			Element: &AlterRelationDistributionKey{
 				DistributionKey: $6,
 			},
@@ -970,7 +970,7 @@ relation_alter_stmt_v2:
 	} |
 	ALTER RELATION qualified_name SCHEMA any_id {
 		$$ = &AlterRelationV2{
-			RelationName: $3.RelationName,
+			RelationName: $3,
 			Element: &AlterRelationSchema {
 				SchemaName: $5,
 			},
