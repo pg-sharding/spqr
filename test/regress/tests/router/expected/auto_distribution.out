@@ -21,7 +21,7 @@ CREATE KEY RANGE FROM 0 ROUTE TO sh1;
 \c regress
 -- should fail
 CREATE TABLE zz(i int, j int, k int);
-ERROR:  client processing error: error processing query 'CREATE TABLE zz(i int, j int, k int);': distribution for relation "zz" not found, tx status IDLE
+ERROR:  error processing query 'CREATE TABLE zz(i int, j int, k int);': distribution for relation "zz" not found
 CREATE TABLE zz(i int, j int, k int) /* __spqr__auto_distribution: REPLICATED */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO zz (i,j,k) VALUES(1,2,3);
@@ -68,7 +68,7 @@ NOTICE: send query to shard(s) : sh4
 
 -- should fail
 CREATE TABLE d_zz (i int, j int);
-ERROR:  client processing error: error processing query 'CREATE TABLE d_zz (i int, j int);': distribution for relation "d_zz" not found, tx status IDLE
+ERROR:  error processing query 'CREATE TABLE d_zz (i int, j int);': distribution for relation "d_zz" not found
 CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO d_zz (i, j) VALUES(1,2); 

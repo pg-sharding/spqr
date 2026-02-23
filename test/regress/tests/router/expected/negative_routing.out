@@ -69,9 +69,9 @@ NOTICE: send query to shard(s) : sh1
 INSERT INTO nr_table1(i) values(-19);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO nr_table1(i) values(-21);
-ERROR:  client processing error: error processing query 'INSERT INTO nr_table1(i) values(-21);': failed to match key with ranges, tx status IDLE
+ERROR:  error processing query 'INSERT INTO nr_table1(i) values(-21);': failed to match key with ranges
 INSERT INTO nr_table1(i) values(-100);
-ERROR:  client processing error: error processing query 'INSERT INTO nr_table1(i) values(-100);': failed to match key with ranges, tx status IDLE
+ERROR:  error processing query 'INSERT INTO nr_table1(i) values(-100);': failed to match key with ranges
 SELECT * FROM nr_table1 WHERE i = 100;
 NOTICE: send query to shard(s) : sh4
   i  
@@ -150,9 +150,9 @@ NOTICE: send query to shard(s) : sh1
 (1 row)
 
 SELECT * FROM nr_table1 WHERE i = -21;
-ERROR:  client processing error: error processing query 'SELECT * FROM nr_table1 WHERE i = -21;': failed to match key with ranges, tx status IDLE
+ERROR:  error processing query 'SELECT * FROM nr_table1 WHERE i = -21;': failed to match key with ranges
 SELECT * FROM nr_table1 WHERE i = -100;
-ERROR:  client processing error: error processing query 'SELECT * FROM nr_table1 WHERE i = -100;': failed to match key with ranges, tx status IDLE
+ERROR:  error processing query 'SELECT * FROM nr_table1 WHERE i = -100;': failed to match key with ranges
 DROP TABLE nr_table1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console

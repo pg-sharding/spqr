@@ -6,6 +6,38 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 )
 
+const CalculateSplitBounds = `
+WITH 
+sub as (
+    SELECT %s, row_number() OVER(ORDER BY %s) as row_n
+    FROM (
+        SELECT * FROM %s
+        WHERE %s
+		ORDER BY %s
+        LIMIT %d
+        OFFSET %d
+    ) AS t
+),
+constants AS (
+    SELECT %d as row_count, %d as batch_size
+),
+max_row AS (
+    SELECT count(1) as row_n
+    FROM sub
+),
+total_rows AS (
+	SELECT count(1)
+	FROM %s
+	WHERE %s
+)
+SELECT DISTINCT ON (%s) sub.*, total_rows.count <= constants.row_count
+FROM sub JOIN max_row ON true JOIN constants ON true JOIN total_rows ON true
+WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count)
+   OR (sub.row_n = constants.row_count)
+   OR (max_row.row_n < constants.row_count AND sub.row_n = max_row.row_n)
+ORDER BY (%s) %s;
+`
+
 func getAwaitPIDsQuery() string {
 	return fmt.Sprintf(`
 do $$

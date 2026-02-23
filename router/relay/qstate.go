@@ -121,22 +121,18 @@ func (rst *RelayStateImpl) ProcQueryAdvancedTx(query string, binderQ func() erro
 	case io.ErrUnexpectedEOF:
 		fallthrough
 	case io.EOF:
-		_ = rst.Client().ReplyErr(err)
-		err := rst.Reset()
-		return nil, err
+		return nil, rst.ResetWithError(err)
 		// ok
 	default:
 		spqrlog.Zero.Error().
 			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
 			Msg("client iteration done with error")
 
-		rerr := fmt.Errorf("client processing error: %v, tx status %s", err, rst.QueryExecutor().TxStatus().String())
-
 		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
-			return nil, rst.Client().ReplyErrWithTxStatus(rerr, txstatus.TXERR)
+			return nil, rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
 		}
 
-		return nil, rst.ResetWithError(rerr)
+		return nil, rst.ResetWithError(err)
 	}
 }
 

@@ -139,7 +139,6 @@ func (rm *RoutingMetadataContext) routingTuples(ctx context.Context,
 }
 
 func (rm *RoutingMetadataContext) RouteByTuples(ctx context.Context, tsa tsa.TSA) (plan.Plan, error) {
-
 	var queryPlan plan.Plan
 	/*
 	 * Step 2: traverse all aggregated relation distribution tuples and route on them.

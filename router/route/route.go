@@ -2,6 +2,7 @@ package route
 
 import (
 	"sync"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -52,7 +53,11 @@ type Route struct {
 	params       shard.ParameterSet
 }
 
-func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping map[string]*config.Shard) *Route {
+func NewRoute(beRule *config.BackendRule,
+	frRule *config.FrontendRule,
+	mapping map[string]*config.Shard,
+	clientDeadCheckInterval time.Duration,
+) *Route {
 	sp := &startup.StartupParams{}
 	if frRule != nil {
 		sp.SearchPath = frRule.SearchPath
@@ -63,17 +68,23 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 		preferAZ = config.RouterConfig().AvailabilityZone
 	}
 
-	hostCheckInterval := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCheckInterval, pool.DefaultCheckInterval)
-	hostCheckTTL := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCacheTTL, pool.DefaultCacheTTL)
-
 	route := &Route{
-		beRule:     beRule,
-		frRule:     frRule,
-		mShardPool: pool.NewDBPool(mapping, sp, preferAZ, hostCheckTTL, hostCheckInterval),
-		clPool:     client.NewClientPool(),
-		params:     shard.ParameterSet{},
+		beRule: beRule,
+		frRule: frRule,
+		clPool: client.NewClientPool(clientDeadCheckInterval),
+		params: shard.ParameterSet{},
 	}
-	route.mShardPool.SetRule(beRule)
+
+	/* NewRoute can be called from coordinator console, which does not need to allocate actual backend */
+	if beRule != nil {
+		hostCheckInterval := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCheckInterval, pool.DefaultCheckInterval)
+		hostCheckTTL := config.ValueOrDefaultDuration(config.RouterConfig().DbpoolCacheTTL, pool.DefaultCacheTTL)
+
+		route.mShardPool = pool.NewDBPool(mapping, sp, preferAZ, hostCheckTTL, hostCheckInterval)
+
+		route.mShardPool.SetRule(beRule)
+	}
+
 	return route
 }
 
@@ -121,6 +132,10 @@ func (r *Route) MultiShardPool() pool.MultiShardTSAPool {
 	return r.mShardPool
 }
 
+func (r *Route) ClientPool() client.Pool {
+	return r.clPool
+}
+
 func (r *Route) BeRule() *config.BackendRule {
 	return r.beRule
 }
@@ -131,6 +146,10 @@ func (r *Route) FrRule() *config.FrontendRule {
 
 func (r *Route) NotifyClients(cb func(cl client.ClientInfo) error) error {
 	return r.clPool.ClientPoolForeach(cb)
+}
+
+func (r *Route) ErrorCounts() map[string]uint64 {
+	return r.clPool.ErrorCounts()
 }
 
 func (r *Route) AddClient(cl client.Client) error {

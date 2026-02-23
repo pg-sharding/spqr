@@ -50,7 +50,7 @@ COPY r (i, j, t) FROM STDIN DELIMITER '|';
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__allow_split_update TO off;
 UPDATE r SET i = 110 WHERE i = 10;
-ERROR:  client processing error: error processing query 'UPDATE r SET i = 110 WHERE i = 10;': updating distribution column is not yet supported, tx status IDLE
+ERROR:  error processing query 'UPDATE r SET i = 110 WHERE i = 10;': updating distribution column is not yet supported
 UPDATE r SET i = 110 WHERE i = 100;
 NOTICE: send query to shard(s) : sh2
 SET __spqr__engine_v2 TO on;

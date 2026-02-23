@@ -202,6 +202,15 @@ func (ci grpcConnMgr) Put(client client.Client) error {
 
 // TODO : implement
 // TODO : unit tests
+func (ci grpcConnMgr) ReportError(string) {
+}
+
+func (ci grpcConnMgr) ErrorCounts() map[string]uint64 {
+	return nil
+}
+
+// TODO : implement
+// TODO : unit tests
 func (ci grpcConnMgr) Pop(id uint) (bool, error) {
 	return true, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator pop not implemented")
 }
@@ -1441,7 +1450,7 @@ func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn
 	krFound := true
 	if et, ok := err.(*spqrerror.SpqrError); ok && et.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
 		krFound = false
-		spqrlog.Zero.Debug().Str("key range", taskGroup.KrIdFrom).Msg("key range already moved")
+		spqrlog.Zero.Debug().Str("task group id", taskGroup.ID).Str("key range", taskGroup.KrIdFrom).Msg("key range already moved")
 	}
 	if krFound && err != nil {
 		return nil, err
@@ -1498,37 +1507,7 @@ func (qc *ClusteredCoordinator) getNextBound(ctx context.Context, conn *pgx.Conn
 		}
 	}()
 	orderByClause := columns + " " + sort
-	query := fmt.Sprintf(`
-WITH 
-sub as (
-    SELECT %s, row_number() OVER(ORDER BY %s) as row_n
-    FROM (
-        SELECT * FROM %s
-        WHERE %s
-		ORDER BY %s
-        LIMIT %d
-        OFFSET %d
-    ) AS t
-),
-constants AS (
-    SELECT %d as row_count, %d as batch_size
-),
-max_row AS (
-    SELECT count(1) as row_n
-    FROM sub
-),
-total_rows AS (
-	SELECT count(1)
-	FROM %s
-	WHERE %s
-)
-SELECT DISTINCT ON (%s) sub.*, total_rows.count <= constants.row_count
-FROM sub JOIN max_row ON true JOIN constants ON true JOIN total_rows ON true
-WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count)
-   OR (sub.row_n = constants.row_count)
-   OR (max_row.row_n < constants.row_count AND sub.row_n = max_row.row_n)
-ORDER BY (%s) %s;
-`,
+	query := fmt.Sprintf(datatransfers.CalculateSplitBounds,
 		selectAsColumns,
 		orderByClause,
 		rel.GetFullName(),
@@ -1553,7 +1532,8 @@ ORDER BY (%s) %s;
 		subColumns,
 		sort,
 	)
-	spqrlog.Zero.Debug().Str("query", query).Msg("get split bound")
+
+	spqrlog.Zero.Debug().Str("task group id", taskGroup.ID).Str("query", query).Msg("get split bound")
 	t := time.Now()
 	rows, err := conn.Query(ctx, query)
 	if err != nil {
@@ -1570,11 +1550,11 @@ ORDER BY (%s) %s;
 		}
 		links[len(links)-1] = &moveWhole
 		if err = rows.Scan(links...); err != nil {
-			spqrlog.Zero.Error().Err(err).Str("rel", rel.Name).Msg("error getting move tasks")
+			spqrlog.Zero.Error().Str("task group id", taskGroup.ID).Err(err).Str("rel", rel.Name).Msg("error getting move tasks")
 			return nil, err
 		}
 		for i, value := range values[:len(values)-1] {
-			spqrlog.Zero.Debug().Str("value", value).Int("index", i).Msg("got split bound")
+			spqrlog.Zero.Debug().Str("task group id", taskGroup.ID).Str("value", value).Int("index", i).Msg("got split bound")
 		}
 		bound := make([][]byte, len(colsArr))
 		for i, t := range ds.ColTypes {
@@ -2387,7 +2367,7 @@ func (qc *ClusteredCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPort
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
 		Bool("ssl", tlsconfig != nil).
-		Msg("init client connection...")
+		Msg("init client connection")
 
 	if err := cl.Init(tlsconfig); err != nil {
 		return nil, err
@@ -2424,8 +2404,7 @@ func (qc *ClusteredCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPort
 		return nil, err
 	}
 
-	r := route.NewRoute(nil, nil, nil)
-
+	r := route.NewRoute(nil, nil, nil, time.Duration(0) /* never do healthcheck */)
 	params := map[string]string{
 		"client_encoding": "UTF8",
 		"DateStyle":       "ISO",

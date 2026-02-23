@@ -55,7 +55,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxtt1 DISTRIBUTION KEY w_id;
 CREATE TABLE xx (w_id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE xxerr (i int);
-ERROR:  client processing error: error processing query 'CREATE TABLE xxerr (i int);': create table stmt ignored: no matching distribution found, tx status IDLE
+ERROR:  error processing query 'CREATE TABLE xxerr (i int);': create table stmt ignored: no matching distribution found
 CREATE TABLE xxtt1 (i int, j int, w_id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xx (w_id) VALUES (1);
@@ -134,7 +134,7 @@ NOTICE: send query to shard(s) : sh2
 INSERT INTO xxtt1 VALUES(333, 333, 333);
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xxtt1 VALUES(333, 333);
-ERROR:  client processing error: error processing query 'INSERT INTO xxtt1 VALUES(333, 333);': too complex query to route, tx status IDLE
+ERROR:  error processing query 'INSERT INTO xxtt1 VALUES(333, 333);': too complex query to route
 SELECT * FROM xxtt1 WHERE w_id >= 1;
 NOTICE: send query to shard(s) : sh1
   i  |   j    | w_id 

@@ -137,6 +137,8 @@ enim
 epn
 errdefs
 errhint
+errcounter
+errtype
 eshkere
 etcdctl
 etcdqdb
