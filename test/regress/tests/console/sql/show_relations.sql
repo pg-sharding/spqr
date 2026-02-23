@@ -10,6 +10,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION d DISTRIBUTION KEY d_id;
 CREATE REFERENCE RELATION z_rf;
 
 SHOW relations;
+SHOW relations (relation_name, distribution_id, relation_name);
 SHOW relations WHERE distribution_id = 'ds1';
 SHOW relations WHERE unknown_param = 'ds1';
 

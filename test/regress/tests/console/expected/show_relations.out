@@ -62,6 +62,16 @@ SHOW relations;
  z_rf          | REPLICATED      |                                       | $search_path
 (5 rows)
 
+SHOW relations (relation_name, distribution_id, relation_name);
+ relation_name | distribution_id | relation_name 
+---------------+-----------------+---------------
+ a             | ds1             | a
+ b             | ds3             | b
+ c             | ds2             | c
+ d             | ds1             | d
+ z_rf          | REPLICATED      | z_rf
+(5 rows)
+
 SHOW relations WHERE distribution_id = 'ds1';
  relation_name | distribution_id |  distribution_key  | schema_name  
 ---------------+-----------------+--------------------+--------------
