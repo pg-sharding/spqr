@@ -33,7 +33,7 @@ const (
 	PG_PORTAl_DOES_NOT_EXISTS             = "34000"
 )
 
-var existingErrorCodeMap = map[string]string{
+var ExistingErrorCodeMap = map[string]string{
 	SPQR_NO_DATASHARD:         "failed to match any datashard",
 	SPQR_SKIP:                 "skip executing this query, wait for next",
 	SPQR_COMPLEX_QUERY:        "ComplexQuery",
@@ -63,7 +63,7 @@ var existingErrorCodeMap = map[string]string{
 // Returns:
 //   - string: The error message associated with the provided error code.
 func GetMessageByCode(errorCode string) string {
-	rep, ok := existingErrorCodeMap[errorCode]
+	rep, ok := ExistingErrorCodeMap[errorCode]
 	if ok {
 		return rep
 	}

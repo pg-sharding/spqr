@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/caio/go-tdigest"
+	"github.com/pg-sharding/spqr/pkg/errcounter"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/spaolacci/murmur3"
@@ -99,6 +100,8 @@ type PsqlClient struct {
 
 	TimeData *statistics.StartTimes
 
+	ec errcounter.ErrCounter
+
 	serverP atomic.Pointer[server.Server]
 }
 
@@ -115,6 +118,10 @@ func (r *PsqlClient) Add(st statistics.StatisticsType, value float64) error {
 		// panic?
 		return nil
 	}
+}
+
+func (r *PsqlClient) SetErrCounter(ec errcounter.ErrCounter) {
+	r.ec = ec
 }
 
 // Conn implements RouterClient.
@@ -798,12 +805,18 @@ func (cl *PsqlClient) replyErrMsgHint(
 }
 
 func (cl *PsqlClient) ReplyErrMsg(msg string, code string, pos int32, s txstatus.TXStatus) error {
+	if cl.ec != nil {
+		cl.ec.ReportError(code)
+	}
 	return cl.replyErrMsgHint(msg, code, "", pos, s)
 }
 
 func (cl *PsqlClient) ReplyErrWithTxStatus(e error, s txstatus.TXStatus) error {
 	switch er := e.(type) {
 	case *spqrerror.SpqrError:
+		if cl.ec != nil {
+			cl.ec.ReportError(er.ErrorCode)
+		}
 		return cl.ReplyErrMsg(er.Error(), er.ErrorCode, er.Position, s)
 	default:
 		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, 0, s)
@@ -811,9 +824,13 @@ func (cl *PsqlClient) ReplyErrWithTxStatus(e error, s txstatus.TXStatus) error {
 }
 
 func (cl *PsqlClient) ReplyErr(e error) error {
-
 	switch er := e.(type) {
 	case *spqrerror.SpqrError:
+
+		if cl.ec != nil {
+			cl.ec.ReportError(er.ErrorCode)
+		}
+
 		return cl.replyErrMsgHint(er.Error(), er.ErrorCode, er.ErrHint, er.Position, txstatus.TXIDLE)
 	default:
 		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, 0, txstatus.TXIDLE)

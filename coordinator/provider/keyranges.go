@@ -58,7 +58,6 @@ func (c *CoordinatorService) LockKeyRange(ctx context.Context, request *protos.L
 	return &protos.ModifyReply{}, nil
 }
 
-// TODO : unit tests
 func (c *CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
 		if err := c.impl.UnlockKeyRange(ctx, id); err != nil {

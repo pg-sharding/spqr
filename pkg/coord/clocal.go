@@ -3,6 +3,7 @@ package coord
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -29,6 +30,9 @@ type LocalInstanceMetadataMgr struct {
 	shardMapping        map[string]*config.Shard
 	shardMappingMutex   sync.Mutex
 }
+
+const DefaultRouterId = "r1"
+const DefaultLocalRouterState = "OPENED"
 
 // GetBalancerTask is disabled in LocalCoordinator
 func (lc *LocalInstanceMetadataMgr) GetBalancerTask(context.Context) (*tasks.BalancerTask, error) {
@@ -260,7 +264,26 @@ func (lc *LocalInstanceMetadataMgr) ListAllKeyRanges(ctx context.Context) ([]*kr
 	}
 }
 
-// TODO : unit tests
+func listRoutersInner(host string, port string) *topology.Router {
+	var localRouter *topology.Router
+	if host != "" && port != "" {
+		if strings.Index(host, "[") != 0 {
+			// host format is like in feature test
+			host = "[" + host + "]"
+		}
+		localRouter = &topology.Router{
+			ID:      DefaultRouterId,
+			Address: host + ":" + port,
+			State:   DefaultLocalRouterState,
+		}
+	} else {
+		localRouter = &topology.Router{
+			ID:    "local",
+			State: DefaultLocalRouterState,
+		}
+	}
+	return localRouter
+}
 
 // ListRouters retrieves a list of routers stored in the LocalCoordinator.
 //
@@ -271,9 +294,9 @@ func (lc *LocalInstanceMetadataMgr) ListAllKeyRanges(ctx context.Context) ([]*kr
 // - []*topology.Router: a slice of Router objects representing all routers.
 // - error: an error if the retrieval encounters any issues.
 func (lc *LocalInstanceMetadataMgr) ListRouters(ctx context.Context) ([]*topology.Router, error) {
-	return []*topology.Router{{
-		ID: "local",
-	}}, nil
+	host := config.RouterConfig().Host
+	port := config.RouterConfig().GrpcApiPort
+	return []*topology.Router{listRoutersInner(host, port)}, nil
 }
 
 // MoveKeyRange is disabled in LocalCoordinator

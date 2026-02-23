@@ -42,6 +42,7 @@ type GroupBy struct {
 }
 type Show struct {
 	Cmd     string
+	Columns []string
 	Where   lyx.Node
 	Order   OrderClause
 	GroupBy GroupByClause
@@ -419,6 +420,7 @@ const (
 	UniqueIndexesStr        = "unique_indexes"
 	TaskGroupBoundsCacheStr = "task_group_ext"
 	RedistributeTasksStr    = "redistribute_tasks"
+	ErrorStr                = "errors"
 )
 
 // not SHOW target

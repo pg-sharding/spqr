@@ -1358,7 +1358,7 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 
 	for _, rel := range rels {
 		if _, ok := distribution.Relations[rel.Name]; ok {
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.Name)
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.QualifiedName().String())
 		}
 		distribution.Relations[rel.Name] = rel
 		qname := rel.QualifiedName()
@@ -1366,10 +1366,10 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 		switch e := err.(type) {
 		case *spqrerror.SpqrError:
 			if e.ErrorCode != spqrerror.SPQR_OBJECT_NOT_EXIST {
-				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.Name)
+				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", qname.String())
 			}
 		default:
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.Name)
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", qname.String())
 		}
 
 		resp, err := q.cli.Put(ctx, relationMappingNodePath(rel.Name), id)
@@ -1882,9 +1882,6 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, id string, group *Move
 
 // TODO: unit tests
 func (q *EtcdQDB) GetMoveTaskGroupTotalKeys(ctx context.Context, id string) (int64, error) {
-	spqrlog.Zero.Debug().
-		Str("id", id).
-		Msg("etcdqdb: get move task group total key count")
 	resp, err := q.cli.Get(ctx, totalKeysNodePath(id))
 	if err != nil {
 		return -1, err
@@ -1894,8 +1891,15 @@ func (q *EtcdQDB) GetMoveTaskGroupTotalKeys(ctx context.Context, id string) (int
 	}
 	res, err := strconv.ParseInt(string(resp.Kvs[0].Value), 10, 64)
 	if err != nil {
+		spqrlog.Zero.Debug().
+			Str("id", id).Err(err).Msg("etcdqdb: failed to get total key count")
+
 		return -1, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "failed to convert current task index to integer: %s", resp.Kvs[0].Value)
 	}
+
+	spqrlog.Zero.Debug().
+		Str("id", id).Int64("keys", res).Msg("etcdqdb: total key count")
+
 	return res, nil
 }
 

@@ -138,7 +138,7 @@ func (a *Adapter) ListReferenceRelations(ctx context.Context) ([]*rrelation.Refe
 	c := proto.NewReferenceRelationsServiceClient(a.conn)
 	ret, err := c.ListReferenceRelations(ctx, &emptypb.Empty{})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 
 	for _, r := range ret.Relations {
@@ -167,7 +167,7 @@ func (a *Adapter) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, e
 		Ids: []string{krId},
 	})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	// what if len > 1 ?
 	if len(reply.KeyRangesInfo) == 0 {
@@ -178,7 +178,7 @@ func (a *Adapter) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, e
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 
 	return kr.KeyRangeFromProto(reply.KeyRangesInfo[0], ds.Distribution.ColumnTypes)
@@ -233,7 +233,7 @@ func (a *Adapter) ListKeyRangeLocks(ctx context.Context) ([]string, error) {
 	client := proto.NewKeyRangeServiceClient(a.conn)
 	reply, err := client.ListKeyRangeLocks(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	return reply.KeyRangesLocks, nil
 }
@@ -252,7 +252,7 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	reply, err := c.ListAllKeyRanges(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 
 	dc := proto.NewDistributionServiceClient(a.conn)
@@ -261,7 +261,7 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 	for i, keyRange := range reply.KeyRangesInfo {
 		ds, err := dc.GetDistribution(ctx, &proto.GetDistributionRequest{Id: keyRange.DistributionId})
 		if err != nil {
-			return nil, err
+			return nil, spqrerror.CleanGrpcError(err)
 		}
 		krs[i], err = kr.KeyRangeFromProto(keyRange, ds.Distribution.ColumnTypes)
 		if err != nil {
@@ -294,7 +294,7 @@ func (a *Adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, 
 		Id: []string{krid},
 	})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 
 	krs, err := a.ListAllKeyRanges(ctx)
@@ -327,7 +327,7 @@ func (a *Adapter) UnlockKeyRange(ctx context.Context, krid string) error {
 		Id: []string{krid},
 	})
 	if err != nil {
-		return err
+		return spqrerror.CleanGrpcError(err)
 	}
 
 	return nil
@@ -446,7 +446,7 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 				Id:        keyRange.ID,
 				ToShardId: move.ShardId,
 			})
-			return err
+			return spqrerror.CleanGrpcError(err)
 		}
 	}
 
@@ -492,7 +492,7 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 			}
 		}(),
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // RedistributeKeyRange moves a key range to the specified shard.
@@ -517,7 +517,7 @@ func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.Redistribute
 	})
 
 	spqrlog.Zero.Debug().Err(err).Msg("proxy RedistributeKeyRange to coordinator")
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // RenameKeyRange renames a key range.
@@ -535,7 +535,7 @@ func (a *Adapter) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 		KeyRangeId:    krId,
 		NewKeyRangeId: krIdNew,
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -553,7 +553,7 @@ func (a *Adapter) DropKeyRange(ctx context.Context, krid string) error {
 	_, err := c.DropKeyRange(ctx, &proto.DropKeyRangeRequest{
 		Id: []string{krid},
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -568,7 +568,7 @@ func (a *Adapter) DropKeyRange(ctx context.Context, krid string) error {
 func (a *Adapter) DropKeyRangeAll(ctx context.Context) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.DropAllKeyRanges(ctx, nil)
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -586,7 +586,7 @@ func (a *Adapter) RegisterRouter(ctx context.Context, r *topology.Router) error 
 	_, err := c.AddRouter(ctx, &proto.AddRouterRequest{
 		Router: topology.RouterToProto(r),
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -603,7 +603,7 @@ func (a *Adapter) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 	c := proto.NewRouterServiceClient(a.conn)
 	resp, err := c.ListRouters(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	routers := []*topology.Router{}
 	for _, r := range resp.Routers {
@@ -645,7 +645,7 @@ func (a *Adapter) SyncRouterMetadata(ctx context.Context, router *topology.Route
 	_, err := c.SyncMetadata(ctx, &proto.SyncMetadataRequest{
 		Router: topology.RouterToProto(router),
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // SyncRouterCoordinatorAddress implements meta.EntityMgr.
@@ -662,7 +662,7 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 	_, err := c.SyncMetadata(ctx, &proto.SyncMetadataRequest{
 		Router: topology.RouterToProto(router),
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // AddDataShard adds a data shard to the system.
@@ -676,7 +676,7 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
 	client := proto.NewShardServiceClient(a.conn)
 	_, err := client.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(shard)})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // DropShard drops a data shard from the system.
@@ -690,7 +690,7 @@ func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) e
 func (a *Adapter) DropShard(ctx context.Context, shardId string) error {
 	client := proto.NewShardServiceClient(a.conn)
 	_, err := client.DropShard(ctx, &proto.DropShardRequest{Id: shardId})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -721,6 +721,9 @@ func (a *Adapter) AddWorldShard(ctx context.Context, shard *topology.DataShard) 
 func (a *Adapter) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
 	c := proto.NewShardServiceClient(a.conn)
 	resp, err := c.ListShards(ctx, nil)
+	if err != nil {
+		return nil, spqrerror.CleanGrpcError(err)
+	}
 	shards := resp.Shards
 	var ds []*topology.DataShard
 	for _, shard := range shards {
@@ -745,14 +748,14 @@ func (a *Adapter) ListShards(ctx context.Context) ([]*topology.DataShard, error)
 // - error: An error if the retrieval of the shard fails, otherwise nil.
 func (a *Adapter) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
 	c := proto.NewShardServiceClient(a.conn)
-	if resp, err := c.GetShard(ctx, &proto.ShardRequest{Id: shardID}); err != nil {
-		return nil, err
-	} else {
-		return &topology.DataShard{
-			ID:  resp.Shard.Id,
-			Cfg: &config.Shard{RawHosts: resp.Shard.Hosts},
-		}, err
+	resp, err := c.GetShard(ctx, &proto.ShardRequest{Id: shardID})
+	if err != nil {
+		return nil, spqrerror.CleanGrpcError(err)
 	}
+	return &topology.DataShard{
+		ID:  resp.Shard.Id,
+		Cfg: &config.Shard{RawHosts: resp.Shard.Hosts},
+	}, nil
 }
 
 // TODO : unit tests
@@ -770,7 +773,7 @@ func (a *Adapter) ListDistributions(ctx context.Context) ([]*distributions.Distr
 
 	resp, err := c.ListDistributions(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 
 	dss := make([]*distributions.Distribution, len(resp.Distributions))
@@ -873,7 +876,7 @@ func (a *Adapter) AlterDistributedRelationSchema(ctx context.Context, id string,
 		RelationName: relName,
 		SchemaName:   schemaName,
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // AlterDistributedRelationDistributionKey alters the distribution key metadata of a distributed relation.
@@ -912,7 +915,7 @@ func (a *Adapter) AlterDistributionDetach(ctx context.Context, id string, relNam
 		RelNames: []*proto.QualifiedName{rfqn.RelationFQNToProto(relName)},
 	})
 
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -955,7 +958,7 @@ func (a *Adapter) GetRelationDistribution(ctx context.Context, relationName *rfq
 		SchemaName: relationName.SchemaName,
 	})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 
 	return distributions.DistributionFromProto(resp.Distribution)
@@ -973,7 +976,7 @@ func (a *Adapter) ListMoveTasks(ctx context.Context) (map[string]*tasks.MoveTask
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	reply, err := tasksService.ListMoveTasks(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	res := make(map[string]*tasks.MoveTask)
 	for _, taskProto := range reply.Tasks {
@@ -996,7 +999,7 @@ func (a *Adapter) GetMoveTask(ctx context.Context, id string) (*tasks.MoveTask, 
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	reply, err := tasksService.GetMoveTask(ctx, &proto.MoveTaskSelector{ID: id})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	return tasks.MoveTaskFromProto(reply.Task), nil
 }
@@ -1012,7 +1015,7 @@ func (a *Adapter) GetMoveTask(ctx context.Context, id string) (*tasks.MoveTask, 
 func (a *Adapter) DropMoveTask(ctx context.Context, id string) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	_, err := tasksService.DropMoveTask(ctx, &proto.MoveTaskSelector{ID: id})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // ListMoveTaskGroups retrieves all task groups from the system.
@@ -1027,7 +1030,7 @@ func (a *Adapter) ListMoveTaskGroups(ctx context.Context) (map[string]*tasks.Mov
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	reply, err := tasksService.ListMoveTaskGroups(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	res := make(map[string]*tasks.MoveTaskGroup)
 	for _, taskGroupProto := range reply.TaskGroups {
@@ -1050,7 +1053,7 @@ func (a *Adapter) GetMoveTaskGroup(ctx context.Context, id string) (*tasks.MoveT
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	res, err := tasksService.GetMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	return tasks.TaskGroupFromProto(res.TaskGroup), nil
 }
@@ -1068,7 +1071,7 @@ func (a *Adapter) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveT
 	_, err := tasksService.WriteMoveTaskGroup(ctx, &proto.WriteMoveTaskGroupRequest{
 		TaskGroup: tasks.TaskGroupToProto(taskGroup),
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // DropMoveTaskGroup removes a task group from the system.
@@ -1082,7 +1085,7 @@ func (a *Adapter) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveT
 func (a *Adapter) DropMoveTaskGroup(ctx context.Context, id string) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	_, err := tasksService.DropMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // RetryMoveTaskGroup re-launches the current move task group.
@@ -1097,7 +1100,7 @@ func (a *Adapter) DropMoveTaskGroup(ctx context.Context, id string) error {
 func (a *Adapter) RetryMoveTaskGroup(ctx context.Context, id string) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	_, err := tasksService.RetryMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // StopMoveTaskGroup gracefully stops the execution of current move task group.
@@ -1112,7 +1115,7 @@ func (a *Adapter) RetryMoveTaskGroup(ctx context.Context, id string) error {
 func (a *Adapter) StopMoveTaskGroup(ctx context.Context, id string) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	_, err := tasksService.StopMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // GetMoveTaskGroupBoundsCache gets the array of pre-select bounds to use in the task group.
@@ -1129,13 +1132,13 @@ func (a *Adapter) GetMoveTaskGroupBoundsCache(ctx context.Context, id string) ([
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	resp, err := tasksService.GetMoveTaskGroupBoundsCache(ctx, &proto.MoveTaskGroupSelector{ID: id})
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, spqrerror.CleanGrpcError(err)
 	}
 	bounds := make([][][]byte, len(resp.Bounds))
 	for i := range bounds {
 		bounds[i] = resp.Bounds[i].Values
 	}
-	return bounds, int(resp.Index), err
+	return bounds, int(resp.Index), nil
 }
 
 // GetTaskGroupStatus gets the status of the task group.
@@ -1150,7 +1153,10 @@ func (a *Adapter) GetMoveTaskGroupBoundsCache(ctx context.Context, id string) ([
 func (a *Adapter) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.MoveTaskGroupStatus, error) {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	status, err := tasksService.GetMoveTaskGroupStatus(ctx, &proto.MoveTaskGroupSelector{ID: id})
-	return tasks.MoveTaskGroupStatusFromProto(status), err
+	if err != nil {
+		return nil, spqrerror.CleanGrpcError(err)
+	}
+	return tasks.MoveTaskGroupStatusFromProto(status), nil
 }
 
 // GetAllTaskGroupStatuses gets statuses of all task groups.
@@ -1164,18 +1170,21 @@ func (a *Adapter) GetTaskGroupStatus(ctx context.Context, id string) (*tasks.Mov
 func (a *Adapter) GetAllTaskGroupStatuses(ctx context.Context) (map[string]*tasks.MoveTaskGroupStatus, error) {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	ret, err := tasksService.GetAllMoveTaskGroupStatuses(ctx, nil)
+	if err != nil {
+		return nil, spqrerror.CleanGrpcError(err)
+	}
 	res := make(map[string]*tasks.MoveTaskGroupStatus)
 	for id, status := range ret.Statuses {
 		res[id] = tasks.MoveTaskGroupStatusFromProto(status)
 	}
-	return res, err
+	return res, nil
 }
 
 func (a *Adapter) ListRedistributeTasks(ctx context.Context) ([]*tasks.RedistributeTask, error) {
 	tasksService := proto.NewRedistributeTaskServiceClient(a.conn)
 	ret, err := tasksService.ListRedistributeTasks(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	res := make([]*tasks.RedistributeTask, len(ret.Tasks))
 	for i, task := range ret.Tasks {
@@ -1187,7 +1196,7 @@ func (a *Adapter) ListRedistributeTasks(ctx context.Context) ([]*tasks.Redistrib
 func (a *Adapter) DropRedistributeTask(ctx context.Context, id string) error {
 	tasksService := proto.NewRedistributeTaskServiceClient(a.conn)
 	_, err := tasksService.DropRedistributeTask(ctx, &proto.RedistributeTaskSelector{Id: id})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // GetBalancerTask retrieves current balancer task from the system.
@@ -1202,7 +1211,7 @@ func (a *Adapter) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, err
 	tasksService := proto.NewBalancerTaskServiceClient(a.conn)
 	res, err := tasksService.GetBalancerTask(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	return tasks.BalancerTaskFromProto(res.Task), nil
 }
@@ -1218,7 +1227,7 @@ func (a *Adapter) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, err
 func (a *Adapter) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
 	tasksService := proto.NewBalancerTaskServiceClient(a.conn)
 	_, err := tasksService.WriteBalancerTask(ctx, &proto.WriteBalancerTaskRequest{Task: tasks.BalancerTaskToProto(task)})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // DropBalancerTask removes a balancer task from the system.
@@ -1231,7 +1240,7 @@ func (a *Adapter) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTas
 func (a *Adapter) DropBalancerTask(ctx context.Context) error {
 	tasksService := proto.NewBalancerTaskServiceClient(a.conn)
 	_, err := tasksService.DropBalancerTask(ctx, nil)
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -1247,7 +1256,7 @@ func (a *Adapter) DropBalancerTask(ctx context.Context) error {
 func (a *Adapter) UpdateCoordinator(ctx context.Context, address string) error {
 	c := proto.NewTopologyServiceClient(a.conn)
 	_, err := c.UpdateCoordinator(ctx, &proto.UpdateCoordinatorRequest{Address: address})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // TODO : unit tests
@@ -1263,14 +1272,14 @@ func (a *Adapter) UpdateCoordinator(ctx context.Context, address string) error {
 func (a *Adapter) GetCoordinator(ctx context.Context) (string, error) {
 	c := proto.NewTopologyServiceClient(a.conn)
 	resp, err := c.GetCoordinator(ctx, nil)
-	return resp.Address, err
+	return resp.Address, spqrerror.CleanGrpcError(err)
 }
 
 func (a *Adapter) ListSequences(ctx context.Context) ([]string, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 	resp, err := c.ListSequences(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	return resp.Names, nil
 }
@@ -1291,7 +1300,7 @@ func (a *Adapter) NextRange(ctx context.Context, seqName string, rangeSize uint6
 		RangeSize: int64(rangeSize),
 	})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	return qdb.NewSequenceIdRange(resp.Left, resp.Right)
 }
@@ -1302,9 +1311,9 @@ func (a *Adapter) CurrVal(ctx context.Context, seqName string) (int64, error) {
 		Seq: seqName,
 	})
 	if err != nil {
-		return -1, err
+		return -1, spqrerror.CleanGrpcError(err)
 	}
-	return resp.Value, err
+	return resp.Value, nil
 }
 
 func (a *Adapter) ListRelationSequences(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error) {
@@ -1314,7 +1323,7 @@ func (a *Adapter) ListRelationSequences(ctx context.Context, relName *rfqn.Relat
 		SchemaName: relName.SchemaName,
 	})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 
 	return resp.ColumnSequences, nil
@@ -1324,7 +1333,7 @@ func (a *Adapter) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionCh
 	conn := proto.NewMetaTransactionServiceClient(a.conn)
 	request := &proto.ExecNoTranRequest{MetaCmdList: chunk.GossipRequests}
 	_, err := conn.ExecNoTran(ctx, request)
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 func (a *Adapter) CommitTran(ctx context.Context, transaction *mtran.MetaTransaction) error {
@@ -1334,13 +1343,13 @@ func (a *Adapter) CommitTran(ctx context.Context, transaction *mtran.MetaTransac
 		MetaCmdList:   transaction.Operations.GossipRequests,
 	}
 	_, err := conn.CommitTran(ctx, request)
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 func (a *Adapter) BeginTran(ctx context.Context) (*mtran.MetaTransaction, error) {
 	conn := proto.NewMetaTransactionServiceClient(a.conn)
 	if transactionProto, err := conn.BeginTran(ctx, nil); err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	} else {
 		if transactionMeta, err := mtran.TransactionFromProto(transactionProto); err != nil {
 			return nil, err
@@ -1357,7 +1366,7 @@ func (a *Adapter) CreateUniqueIndex(ctx context.Context, dsId string, idx *distr
 		DistributionId: dsId,
 		Idx:            distributions.UniqueIndexToProto(idx),
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // DropUniqueIndex implements meta.EntityMgr.
@@ -1366,7 +1375,7 @@ func (a *Adapter) DropUniqueIndex(ctx context.Context, idxId string) error {
 	_, err := c.DropUniqueIndex(ctx, &proto.DropUniqueIndexRequest{
 		IdxId: idxId,
 	})
-	return err
+	return spqrerror.CleanGrpcError(err)
 }
 
 // ListDistributionIndexes implements meta.EntityMgr.
@@ -1376,7 +1385,7 @@ func (a *Adapter) ListDistributionIndexes(ctx context.Context, dsId string) (map
 		DistributionId: dsId,
 	})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	res := make(map[string]*distributions.UniqueIndex)
 	for id, idx := range idxs.Indexes {
@@ -1390,7 +1399,7 @@ func (a *Adapter) ListUniqueIndexes(ctx context.Context) (map[string]*distributi
 	c := proto.NewDistributionServiceClient(a.conn)
 	idxs, err := c.ListUniqueIndexes(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	res := make(map[string]*distributions.UniqueIndex)
 	for id, idx := range idxs.Indexes {
@@ -1404,7 +1413,7 @@ func (a *Adapter) ListRelationIndexes(ctx context.Context, relName *rfqn.Relatio
 	c := proto.NewDistributionServiceClient(a.conn)
 	idxs, err := c.ListRelationUniqueIndexes(ctx, &proto.ListRelationUniqueIndexesRequest{RelationName: /* fix that */ relName.RelationName})
 	if err != nil {
-		return nil, err
+		return nil, spqrerror.CleanGrpcError(err)
 	}
 	res := make(map[string]*distributions.UniqueIndex)
 	for id, idx := range idxs.Indexes {

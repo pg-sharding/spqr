@@ -1,6 +1,6 @@
 SHOW routers;
- router | status | client_connections |    version    | metadata_version 
---------+--------+--------------------+---------------+------------------
- local- |        | 0                  | devel-0-devel | 0
+          router          | status | client_connections |    version    | metadata_version 
+--------------------------+--------+--------------------+---------------+------------------
+ r1-[regress_router]:7000 | OPENED | 0                  | devel-0-devel | 0
 (1 row)
 

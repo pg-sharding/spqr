@@ -1349,6 +1349,17 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+
+	case spqrparser.ErrorStr:
+		counters := ci.ErrorCounts()
+
+		tts = &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("error_type", "count"),
+		}
+
+		for k, v := range counters {
+			tts.WriteDataRow(k, fmt.Sprintf("%v", v))
+		}
 	case spqrparser.RelationsStr:
 		dss, err := mngr.ListDistributions(ctx)
 		if err != nil {
@@ -1499,7 +1510,11 @@ func ProcessShowExtended(ctx context.Context,
 			}
 		}
 
-		tts, err = engine.TaskGroupBoundsCacheVirtualRelationScan(bounds, ind, keyRange.ColumnTypes, taskGroupId)
+		tts, err = engine.TaskGroupBoundsCacheVirtualRelationScan(
+			bounds,
+			ind,
+			keyRange.ColumnTypes,
+			taskGroupId)
 		if err != nil {
 			return nil, err
 		}
@@ -1590,6 +1605,58 @@ func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnF
 	return versions
 }
 
+func showRouters(ctx context.Context, mngr EntityMgr, ci connmgr.ConnectionMgr) (*tupleslot.TupleTableSlot, error) {
+	resp, err := mngr.ListRouters(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	clientCounts := make(map[string]int)
+
+	if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
+		routerAddr := cl.RAddr()
+		clientCounts[routerAddr]++
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	// Try to get router versions via gRPC if the manager supports it
+	var routerVersions map[string]RouterVersionInfo
+	if rc, ok := mngr.(RouterConnector); ok {
+		routerVersions = getRouterVersions(ctx, resp, rc.GetRouterConn)
+	} else {
+		// Fallback to empty map if gRPC is not available
+		routerVersions = make(map[string]RouterVersionInfo)
+	}
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: engine.GetVPHeader("router", "status", "client_connections", "version", "metadata_version"),
+	}
+
+	for _, msg := range resp {
+		status := string(msg.State)
+		// Get version from gRPC query, or fall back to static version
+		version := pkg.SpqrVersionRevision
+		metadataVersion := int64(0)
+		if vInfo, ok := routerVersions[msg.ID]; ok && vInfo.Error == nil {
+			version = vInfo.Version
+			metadataVersion = vInfo.MetadataVersion
+		}
+
+		tts.WriteDataRow(
+			fmt.Sprintf("%s-%s", msg.ID, msg.Address),
+			status,
+			/* TODO: use id here */
+			fmt.Sprintf("%d", clientCounts[msg.Address]),
+			version,
+			fmt.Sprintf("%d", metadataVersion),
+		)
+	}
+
+	return tts, nil
+}
+
 // ProcessShow processes the SHOW statement and returns an error if any issue occurs.
 //
 // Parameters:
@@ -1608,57 +1675,51 @@ func ProcessShow(ctx context.Context,
 	ci connmgr.ConnectionMgr, ro bool) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
 
+	tts, err := processShowInner(ctx, stmt, mngr, ci, ro)
+	if err != nil {
+		return nil, err
+	}
+
+	/* Do tuple projection */
+	if stmt.Columns != nil {
+		colMp := tts.Desc.GetColumnsMap()
+		offsets := []int{}
+
+		tuplesProjected := &tupleslot.TupleTableSlot{}
+
+		for _, c := range stmt.Columns {
+			off, ok := colMp[c]
+			if !ok {
+				return nil, fmt.Errorf("no such column %s", c)
+			}
+			offsets = append(offsets, off)
+			tuplesProjected.Desc = append(tuplesProjected.Desc, tts.Desc[off])
+		}
+
+		for _, r := range tts.Raw {
+			rowProjection := [][]byte{}
+			for _, off := range offsets {
+				rowProjection = append(rowProjection, r[off])
+			}
+			tuplesProjected.Raw = append(tuplesProjected.Raw, rowProjection)
+		}
+
+		return tuplesProjected, nil
+	} /* nil means all cols */
+
+	return tts, nil
+}
+
+/* workhorse for ProcessShow. Retrieve tuples for virtual relation */
+func processShowInner(ctx context.Context,
+	stmt *spqrparser.Show,
+	mngr EntityMgr,
+	ci connmgr.ConnectionMgr, ro bool) (*tupleslot.TupleTableSlot, error) {
+	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
+
 	switch stmt.Cmd {
 	case spqrparser.RoutersStr:
-		resp, err := mngr.ListRouters(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		clientCounts := make(map[string]int)
-
-		if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
-			routerAddr := cl.RAddr()
-			clientCounts[routerAddr]++
-			return nil
-		}); err != nil {
-			return nil, err
-		}
-
-		// Try to get router versions via gRPC if the manager supports it
-		var routerVersions map[string]RouterVersionInfo
-		if rc, ok := mngr.(RouterConnector); ok {
-			routerVersions = getRouterVersions(ctx, resp, rc.GetRouterConn)
-		} else {
-			// Fallback to empty map if gRPC is not available
-			routerVersions = make(map[string]RouterVersionInfo)
-		}
-
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("router", "status", "client_connections", "version", "metadata_version"),
-		}
-
-		for _, msg := range resp {
-			status := string(msg.State)
-			// Get version from gRPC query, or fall back to static version
-			version := pkg.SpqrVersionRevision
-			metadataVersion := int64(0)
-			if vInfo, ok := routerVersions[msg.ID]; ok && vInfo.Error == nil {
-				version = vInfo.Version
-				metadataVersion = vInfo.MetadataVersion
-			}
-
-			tts.WriteDataRow(
-				fmt.Sprintf("%s-%s", msg.ID, msg.Address),
-				status,
-				/* TODO: use id here */
-				fmt.Sprintf("%d", clientCounts[msg.Address]),
-				version,
-				fmt.Sprintf("%d", metadataVersion),
-			)
-		}
-
-		return tts, nil
+		return showRouters(ctx, mngr, ci)
 	case spqrparser.PoolsStr:
 		var respPools []pool.Pool
 
@@ -1702,6 +1763,7 @@ func ProcessShow(ctx context.Context,
 		tts.WriteDataRow(pkg.SpqrVersionRevision)
 
 		return tts, nil
+
 	case spqrparser.CoordinatorAddrStr:
 		addr, err := mngr.GetCoordinator(ctx)
 		if err != nil {

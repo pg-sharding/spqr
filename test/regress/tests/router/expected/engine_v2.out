@@ -52,11 +52,11 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__engine_v2 TO false;
 BEGIN;
 DELETE FROM table1; 
-ERROR:  client processing error: cannot route in an active transaction, tx status ERROR
+ERROR:  cannot route in an active transaction
 ROLLBACK;
 BEGIN;
 DELETE FROM table1 /* __spqr__engine_v2: off */;
-ERROR:  client processing error: cannot route in an active transaction, tx status ERROR
+ERROR:  cannot route in an active transaction
 ROLLBACK;
 -- should succeed
 BEGIN;
@@ -72,7 +72,7 @@ ROLLBACK;
 -- should fail
 BEGIN;
 DELETE FROM table1; 
-ERROR:  client processing error: cannot route in an active transaction, tx status ERROR
+ERROR:  cannot route in an active transaction
 ROLLBACK;
 -- now success
 SET __spqr__engine_v2 TO true;
@@ -123,7 +123,7 @@ NOTICE: send query to shard(s) : sh3
 INSERT INTO table1 (id) VALUES(350),(351);
 NOTICE: send query to shard(s) : sh4
 WITH a AS (SELECT 1) INSERT INTO table1 (id) VALUES(52),(53);
-ERROR:  client processing error: error processing query 'WITH a AS (SELECT 1) INSERT INTO table1 (id) VALUES(52),(53);': too complex query to route, tx status IDLE
+ERROR:  error processing query 'WITH a AS (SELECT 1) INSERT INTO table1 (id) VALUES(52),(53);': too complex query to route
 DROP TABLE table1 CASCADE;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
