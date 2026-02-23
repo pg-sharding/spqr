@@ -1685,7 +1685,7 @@ func ProcessShow(ctx context.Context,
 		colMp := tts.Desc.GetColumnsMap()
 		offsets := []int{}
 
-		ttsProjected := &tupleslot.TupleTableSlot{}
+		tuplesProjected := &tupleslot.TupleTableSlot{}
 
 		for _, c := range stmt.Columns {
 			off, ok := colMp[c]
@@ -1693,18 +1693,18 @@ func ProcessShow(ctx context.Context,
 				return nil, fmt.Errorf("no such column %s", c)
 			}
 			offsets = append(offsets, off)
-			ttsProjected.Desc = append(ttsProjected.Desc, tts.Desc[off])
+			tuplesProjected.Desc = append(tuplesProjected.Desc, tts.Desc[off])
 		}
 
 		for _, r := range tts.Raw {
-			rowPrj := [][]byte{}
+			rowProjection := [][]byte{}
 			for _, off := range offsets {
-				rowPrj = append(rowPrj, r[off])
+				rowProjection = append(rowProjection, r[off])
 			}
-			ttsProjected.Raw = append(ttsProjected.Raw, rowPrj)
+			tuplesProjected.Raw = append(tuplesProjected.Raw, rowProjection)
 		}
 
-		return ttsProjected, nil
+		return tuplesProjected, nil
 	} /* nil means all cols */
 
 	return tts, nil
