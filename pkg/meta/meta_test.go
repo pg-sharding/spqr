@@ -180,7 +180,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 				RelationName: "xtab",
 			},
 		}
-		ttsExpected := &tupleslot.TupleTableSlot{
+		tupleslotExpected := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("create reference table"),
 			Raw: [][][]byte{
 				{
@@ -191,9 +191,9 @@ func TestCreateReferenceRelation(t *testing.T) {
 				},
 			},
 		}
-		ttsActual, err := meta.CreateReferenceRelation(ctx, mngr, createCmd)
+		tupleslotActual, err := meta.CreateReferenceRelation(ctx, mngr, createCmd)
 		is.NoError(err)
-		is.Equal(ttsExpected, ttsActual)
+		is.Equal(tupleslotExpected, tupleslotActual)
 		relActual, err := mngr.GetReferenceRelation(ctx, rfqn.RelationFQNFromFullName("", "xtab"))
 		relExpected := rrelation.ReferenceRelation{
 			SchemaName:            "",
@@ -218,7 +218,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 			},
 			ShardIds: []string{"sh2"},
 		}
-		ttsExpected := &tupleslot.TupleTableSlot{
+		tupleslotExpected := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("create reference table"),
 			Raw: [][][]byte{
 				{
@@ -229,9 +229,9 @@ func TestCreateReferenceRelation(t *testing.T) {
 				},
 			},
 		}
-		ttsActual, err := meta.CreateReferenceRelation(ctx, mngr, createCmd)
+		tupleslotActual, err := meta.CreateReferenceRelation(ctx, mngr, createCmd)
 		is.NoError(err)
-		is.Equal(ttsExpected, ttsActual)
+		is.Equal(tupleslotExpected, tupleslotActual)
 		relActual, err := mngr.GetReferenceRelation(ctx, rfqn.RelationFQNFromFullName("", "xtab"))
 		relExpected := rrelation.ReferenceRelation{
 			SchemaName:            "",
