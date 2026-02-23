@@ -231,7 +231,9 @@ func (l *LocalQrouterServer) AlterDistributedRelation(ctx context.Context, reque
 // AlterDistributedRelation alters the distributed relation
 // TODO: unit tests
 func (l *LocalQrouterServer) AlterDistributedRelationSchema(ctx context.Context, request *protos.AlterDistributedRelationSchemaRequest) (*emptypb.Empty, error) {
-	return nil, l.mgr.AlterDistributedRelationSchema(ctx, request.GetId(), request.GetRelationName(), request.GetSchemaName())
+	return nil, l.mgr.AlterDistributedRelationSchema(ctx, request.GetId(), &rfqn.RelationFQN{
+		RelationName: request.GetRelationName(),
+	}, request.GetSchemaName())
 }
 
 // AlterDistributedRelation alters the distributed relation
@@ -241,7 +243,9 @@ func (l *LocalQrouterServer) AlterDistributedRelationDistributionKey(ctx context
 	if err != nil {
 		return nil, err
 	}
-	return nil, l.mgr.AlterDistributedRelationDistributionKey(ctx, request.GetId(), request.GetRelationName(), key)
+
+	/* TODO: fix */
+	return nil, l.mgr.AlterDistributedRelationDistributionKey(ctx, request.GetId(), &rfqn.RelationFQN{RelationName: request.GetRelationName()}, key)
 }
 
 // GetDistribution retrieves info about distribution from QDB

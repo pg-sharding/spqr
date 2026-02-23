@@ -1853,7 +1853,7 @@ yydefault:
 //line gram.y:963
 		{
 			yyVAL.alter_relation = &AlterRelationV2{
-				RelationName: yyDollar[3].qname.RelationName,
+				RelationName: yyDollar[3].qname,
 				Element: &AlterRelationDistributionKey{
 					DistributionKey: yyDollar[6].dEntrieslist,
 				},
@@ -1864,7 +1864,7 @@ yydefault:
 //line gram.y:971
 		{
 			yyVAL.alter_relation = &AlterRelationV2{
-				RelationName: yyDollar[3].qname.RelationName,
+				RelationName: yyDollar[3].qname,
 				Element: &AlterRelationSchema{
 					SchemaName: yyDollar[5].str,
 				},

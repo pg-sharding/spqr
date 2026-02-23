@@ -1362,7 +1362,9 @@ func TestAlter(t *testing.T) {
 				Element: &spqrparser.AlterDistribution{
 					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AlterRelationV2{
-						RelationName: "t",
+						RelationName: &rfqn.RelationFQN{
+							RelationName: "t",
+						},
 						Element: &spqrparser.AlterRelationDistributionKey{
 							DistributionKey: []spqrparser.DistributionKeyEntry{
 								{
@@ -1381,7 +1383,9 @@ func TestAlter(t *testing.T) {
 				Element: &spqrparser.AlterDistribution{
 					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AlterRelationV2{
-						RelationName: "t",
+						RelationName: &rfqn.RelationFQN{
+							RelationName: "t",
+						},
 						Element: &spqrparser.AlterRelationSchema{
 							SchemaName: "test",
 						},
