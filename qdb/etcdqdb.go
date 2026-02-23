@@ -1358,7 +1358,7 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 
 	for _, rel := range rels {
 		if _, ok := distribution.Relations[rel.Name]; ok {
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.Name)
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.QualifiedName().String())
 		}
 		distribution.Relations[rel.Name] = rel
 		qname := rel.QualifiedName()
@@ -1366,10 +1366,10 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 		switch e := err.(type) {
 		case *spqrerror.SpqrError:
 			if e.ErrorCode != spqrerror.SPQR_OBJECT_NOT_EXIST {
-				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.Name)
+				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", qname.String())
 			}
 		default:
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.Name)
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", qname.String())
 		}
 
 		resp, err := q.cli.Put(ctx, relationMappingNodePath(rel.Name), id)

@@ -883,7 +883,7 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 	} else {
 		for _, r := range rels {
 			if _, ok := q.RelationDistribution[r.Name]; ok {
-				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", r.Name)
+				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", r.QualifiedName().String())
 			}
 
 			ds.Relations[r.Name] = r
