@@ -19,10 +19,10 @@ ERROR:  SYNC REFERENCE TABLES/RELATIONS currently unsupported
 SYNC REFERENCE TABLE zz2 ON sh1;
 ERROR:  request is unprocessable in router
 ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 SCHEMA my_schema;
-          alter relation          
-----------------------------------
+        alter relation         
+-------------------------------
  distribution id -> REPLICATED
- relation name   -> my_schema.zz2
+ relation name   -> zz2
 (2 rows)
 
 ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 DISTRIBUTION KEY id;
