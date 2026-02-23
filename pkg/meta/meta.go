@@ -1605,6 +1605,58 @@ func getRouterVersions(ctx context.Context, routers []*topology.Router, getConnF
 	return versions
 }
 
+func showRouters(ctx context.Context, mngr EntityMgr, ci connmgr.ConnectionMgr) (*tupleslot.TupleTableSlot, error) {
+	resp, err := mngr.ListRouters(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	clientCounts := make(map[string]int)
+
+	if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
+		routerAddr := cl.RAddr()
+		clientCounts[routerAddr]++
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	// Try to get router versions via gRPC if the manager supports it
+	var routerVersions map[string]RouterVersionInfo
+	if rc, ok := mngr.(RouterConnector); ok {
+		routerVersions = getRouterVersions(ctx, resp, rc.GetRouterConn)
+	} else {
+		// Fallback to empty map if gRPC is not available
+		routerVersions = make(map[string]RouterVersionInfo)
+	}
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: engine.GetVPHeader("router", "status", "client_connections", "version", "metadata_version"),
+	}
+
+	for _, msg := range resp {
+		status := string(msg.State)
+		// Get version from gRPC query, or fall back to static version
+		version := pkg.SpqrVersionRevision
+		metadataVersion := int64(0)
+		if vInfo, ok := routerVersions[msg.ID]; ok && vInfo.Error == nil {
+			version = vInfo.Version
+			metadataVersion = vInfo.MetadataVersion
+		}
+
+		tts.WriteDataRow(
+			fmt.Sprintf("%s-%s", msg.ID, msg.Address),
+			status,
+			/* TODO: use id here */
+			fmt.Sprintf("%d", clientCounts[msg.Address]),
+			version,
+			fmt.Sprintf("%d", metadataVersion),
+		)
+	}
+
+	return tts, nil
+}
+
 // ProcessShow processes the SHOW statement and returns an error if any issue occurs.
 //
 // Parameters:
@@ -1625,55 +1677,7 @@ func ProcessShow(ctx context.Context,
 
 	switch stmt.Cmd {
 	case spqrparser.RoutersStr:
-		resp, err := mngr.ListRouters(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		clientCounts := make(map[string]int)
-
-		if err := ci.ClientPoolForeach(func(cl client.ClientInfo) error {
-			routerAddr := cl.RAddr()
-			clientCounts[routerAddr]++
-			return nil
-		}); err != nil {
-			return nil, err
-		}
-
-		// Try to get router versions via gRPC if the manager supports it
-		var routerVersions map[string]RouterVersionInfo
-		if rc, ok := mngr.(RouterConnector); ok {
-			routerVersions = getRouterVersions(ctx, resp, rc.GetRouterConn)
-		} else {
-			// Fallback to empty map if gRPC is not available
-			routerVersions = make(map[string]RouterVersionInfo)
-		}
-
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("router", "status", "client_connections", "version", "metadata_version"),
-		}
-
-		for _, msg := range resp {
-			status := string(msg.State)
-			// Get version from gRPC query, or fall back to static version
-			version := pkg.SpqrVersionRevision
-			metadataVersion := int64(0)
-			if vInfo, ok := routerVersions[msg.ID]; ok && vInfo.Error == nil {
-				version = vInfo.Version
-				metadataVersion = vInfo.MetadataVersion
-			}
-
-			tts.WriteDataRow(
-				fmt.Sprintf("%s-%s", msg.ID, msg.Address),
-				status,
-				/* TODO: use id here */
-				fmt.Sprintf("%d", clientCounts[msg.Address]),
-				version,
-				fmt.Sprintf("%d", metadataVersion),
-			)
-		}
-
-		return tts, nil
+		return showRouters(ctx, mngr, ci)
 	case spqrparser.PoolsStr:
 		var respPools []pool.Pool
 
