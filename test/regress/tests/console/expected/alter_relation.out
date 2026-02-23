@@ -39,10 +39,10 @@ SHOW relations;
 ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;
 ERROR:  failed to parse query "ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;": syntax error
 ALTER DISTRIBUTION ds1 ALTER RELATION a SCHEMA schema_name;
-     alter relation     
-------------------------
+          alter relation          
+----------------------------------
  distribution id -> ds1
- relation name   -> a
+ relation name   -> schema_name.a
 (2 rows)
 
 SHOW relations;

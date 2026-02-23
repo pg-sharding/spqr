@@ -800,6 +800,9 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 			return nil, err
 		}
 
+		nRelationName := relationName
+		nRelationName.SchemaName = stmt.SchemaName
+
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("alter relation"),
 			Raw: [][][]byte{
@@ -808,7 +811,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 				},
 
 				{
-					fmt.Appendf(nil, "relation name   -> %s", relationName.String()),
+					fmt.Appendf(nil, "relation name   -> %s", nRelationName.String()),
 				},
 			},
 		}
