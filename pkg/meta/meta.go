@@ -1675,6 +1675,48 @@ func ProcessShow(ctx context.Context,
 	ci connmgr.ConnectionMgr, ro bool) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
 
+	tts, err := processShowInner(ctx, stmt, mngr, ci, ro)
+	if err != nil {
+		return nil, err
+	}
+
+	/* Do tuple projection */
+	if stmt.Columns != nil {
+		colMp := tts.Desc.GetColumnsMap()
+		offsets := []int{}
+
+		tuplesProjected := &tupleslot.TupleTableSlot{}
+
+		for _, c := range stmt.Columns {
+			off, ok := colMp[c]
+			if !ok {
+				return nil, fmt.Errorf("no such column %s", c)
+			}
+			offsets = append(offsets, off)
+			tuplesProjected.Desc = append(tuplesProjected.Desc, tts.Desc[off])
+		}
+
+		for _, r := range tts.Raw {
+			rowProjection := [][]byte{}
+			for _, off := range offsets {
+				rowProjection = append(rowProjection, r[off])
+			}
+			tuplesProjected.Raw = append(tuplesProjected.Raw, rowProjection)
+		}
+
+		return tuplesProjected, nil
+	} /* nil means all cols */
+
+	return tts, nil
+}
+
+/* workhorse for ProcessShow. Retrieve tuples for virtual relation */
+func processShowInner(ctx context.Context,
+	stmt *spqrparser.Show,
+	mngr EntityMgr,
+	ci connmgr.ConnectionMgr, ro bool) (*tupleslot.TupleTableSlot, error) {
+	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
+
 	switch stmt.Cmd {
 	case spqrparser.RoutersStr:
 		return showRouters(ctx, mngr, ci)

@@ -42,6 +42,7 @@ type GroupBy struct {
 }
 type Show struct {
 	Cmd     string
+	Columns []string
 	Where   lyx.Node
 	Order   OrderClause
 	GroupBy GroupByClause

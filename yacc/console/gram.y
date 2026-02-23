@@ -261,6 +261,8 @@ func randomHex(n int) (string, error) {
 
 %type<distributed_relation> distributed_relation_def
 
+%type<strlist> opt_show_columns show_columns_list
+
 %type<alter_relation> relation_alter_stmt_v2
 
 %type<strlist> col_types_list opt_col_types any_id_list opt_on_shards
@@ -1071,10 +1073,17 @@ group_clause:
 	| /* empty */	 {$$ = GroupByClauseEmpty{}}
 
 
+show_columns_list:
+	any_id { $$ = []string{$1}} | show_columns_list TCOMMA any_id { $$ = append($1, $3)}
+
+opt_show_columns:
+	/* Empty */ { $$ = nil } | 
+	TOPENBR show_columns_list TCLOSEBR {$$ = $2}
+
 show_stmt:
-	SHOW show_statement_type where_clause group_clause order_clause
+	SHOW show_statement_type opt_show_columns where_clause group_clause order_clause
 	{
-		$$ = &Show{Cmd: $2, Where: $3, GroupBy: $4, Order: $5}
+		$$ = &Show{Cmd: $2, Columns: $3, Where: $4, GroupBy: $5, Order: $6}
 	}
 	
 lock_stmt:
