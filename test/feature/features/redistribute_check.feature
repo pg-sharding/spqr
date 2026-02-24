@@ -243,7 +243,7 @@ Feature: Redistribution test
     Then command return code should be "1"
     And command output should match regexp
     """
-    distribution key column "w_id" not found in relation "public.xmove" on source shard
+    distribution key column "w_id" not found in relation "xMove" on source shard
     """
 
   Scenario: REDISTRIBUTE KEY RANGE CHECK checks for distribution key in destination relation
@@ -272,7 +272,7 @@ Feature: Redistribution test
     Then command return code should be "1"
     And command output should match regexp
     """
-    distribution key column "w_id" not found in relation "public.xmove" on destination shard
+    distribution key column "w_id" not found in relation "xMove" on destination shard
     """
   
   Scenario: REDISTRIBUTE KEY RANGE checks for non-deferrable constraints
