@@ -1618,7 +1618,7 @@ func (qc *ClusteredCoordinator) getNextMoveTask(
 	}
 	// TODO create special error type here, use it to stop redistribute/balancer tasks
 	if stop {
-		spqrlog.Zero.Info().Msg("recieved stop flag, gracefully stopping move task group")
+		spqrlog.Zero.Info().Msg("received stop flag, gracefully stopping move task group")
 		return nil, spqrerror.Newf(
 			spqrerror.SPQR_STOP_MOVE_TASK_GROUP,
 			"move task stopped by STOP MOVE TASK GROUP command")
