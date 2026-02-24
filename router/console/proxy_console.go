@@ -50,7 +50,7 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clau
 	return nil
 }
 
-func innerAlterDistributionAttach(ctx context.Context, mngr meta.EntityMgr, clauseNode *lyx.RangeVar,
+func innerAlterDistributionAttach(ctx context.Context, mngr meta.EntityMgr, rv *lyx.RangeVar,
 	distributionId string, distributionKey string) error {
 	distribution, err := mngr.GetDistribution(ctx, distributionId)
 	if err != nil {
@@ -66,7 +66,7 @@ func innerAlterDistributionAttach(ctx context.Context, mngr meta.EntityMgr, clau
 	}
 	attachRelation := []*distributions.DistributedRelation{
 		{
-			Relation:           rfqn.RelationFQNFromFullName(clauseNode.RelationName, clauseNode.SchemaName),
+			Relation:           rfqn.RelationFQNFromFullName(rv.SchemaName, rv.RelationName),
 			ReplicatedRelation: false,
 			DistributionKey: []distributions.DistributionKeyEntry{
 				{
@@ -91,7 +91,7 @@ func innerAlterDistributionAttach(ctx context.Context, mngr meta.EntityMgr, clau
 //
 // Returns:
 //   - error: An error when fails.
-func AlterDistributionAttach(ctx context.Context, localMngr meta.EntityMgr, clauseNode *lyx.RangeVar,
+func AlterDistributionAttach(ctx context.Context, localMngr meta.EntityMgr, rv *lyx.RangeVar,
 	distributionId string, distributionKey string) error {
 	if distributionId == distributions.REPLICATED {
 		return fmt.Errorf("can't attach distributed relation to REPLICATED distribution")
@@ -102,6 +102,6 @@ func AlterDistributionAttach(ctx context.Context, localMngr meta.EntityMgr, clau
 	}
 	defer cf()
 
-	return innerAlterDistributionAttach(ctx, mgr, clauseNode,
+	return innerAlterDistributionAttach(ctx, mgr, rv,
 		distributionId, distributionKey)
 }

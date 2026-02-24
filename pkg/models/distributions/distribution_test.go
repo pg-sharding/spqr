@@ -167,6 +167,7 @@ func TestHashableKeyChecks(t *testing.T) {
 			rel: &distributions.DistributedRelation{
 				Relation: &rfqn.RelationFQN{
 					RelationName: "r1",
+					SchemaName:   "public",
 				},
 				DistributionKey: []distributions.DistributionKeyEntry{
 					{Column: "a"},
@@ -192,6 +193,7 @@ func TestHashableKeyChecks(t *testing.T) {
 			rel: &distributions.DistributedRelation{
 				Relation: &rfqn.RelationFQN{
 					RelationName: "r1",
+					SchemaName:   "public",
 				},
 				DistributionKey: []distributions.DistributionKeyEntry{
 					{Column: "b", HashFunction: "ident"},

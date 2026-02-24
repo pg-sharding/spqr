@@ -49,7 +49,7 @@ func (n RelationFQN) String() string {
 func ParseFQN(str string) (*RelationFQN, error) {
 	parts := strings.Split(str, ".")
 	if len(str) == 0 || len(strings.TrimSpace(str)) == 0 {
-		return nil, fmt.Errorf("invalid qualified name='%v' (case0)", str)
+		return nil, fmt.Errorf("invalid qualified name='%v", str)
 	}
 	if len(parts) == 1 {
 		return &RelationFQN{RelationName: parts[0]}, nil
@@ -58,10 +58,10 @@ func ParseFQN(str string) (*RelationFQN, error) {
 		table := parts[1]
 		if len(schema) == 0 || len(table) == 0 ||
 			strings.TrimSpace(schema) != schema || strings.TrimSpace(table) != table {
-			return nil, fmt.Errorf("invalid qualified name='%v' (case2)", str)
+			return nil, fmt.Errorf("invalid qualified name='%v'", str)
 		}
 		return &RelationFQN{SchemaName: schema, RelationName: table}, nil
 	}
 	/* TODO: support 3 dots: db.schema.relation */
-	return nil, fmt.Errorf("invalid qualified name='%v' (case1)", str)
+	return nil, fmt.Errorf("invalid qualified name='%v'", str)
 }
