@@ -191,7 +191,7 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation, idxsByColumns 
 	}
 
 	return &DistributedRelation{
-		Relation:              rfqn.RelationFQNFromFullName(rel.Name, rel.SchemaName),
+		Relation:              rfqn.RelationFQNFromFullName(rel.SchemaName, rel.Name),
 		ColumnSequenceMapping: rel.SequenceColumns,
 		DistributionKey:       key,
 		ReplicatedRelation:    rel.ReplicatedRelation,
