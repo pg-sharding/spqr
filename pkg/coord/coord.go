@@ -792,8 +792,8 @@ func (qc *Coordinator) DropRedistributeTask(ctx context.Context, id string, casc
 	}
 	if taskGroup, err := qc.GetMoveTaskGroup(ctx, taskGroupId); err != nil {
 		return err
-	} else if taskGroup != nil {
-		return fmt.Errorf("cannot drop redistribute task \"%s\" because other objects depend on it\nDETAILS: move task group \"%s\" \"%\"\nHINT: Use DROP ... CASCADE to drop task group automatically", id, taskGroupId)
+	} else if taskGroup != nil && !cascade {
+		return fmt.Errorf("cannot drop redistribute task \"%s\" because other objects depend on it\nDETAILS: move task group \"%s\"\nHINT: Use DROP ... CASCADE to drop task group automatically", id, taskGroupId)
 	}
 
 	// TODO use meta transactions

@@ -1326,6 +1326,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 			Coeff:     coeff,
 			BatchSize: int64(req.BatchSize),
 			Limit:     req.Limit,
+			Parent:    parent,
 		}
 	} else {
 		taskGroup = &tasks.MoveTaskGroup{
@@ -1341,6 +1342,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 				State:       tasks.TaskPlanned,
 				Bound:       nil,
 			},
+			Parent: parent,
 		}
 	}
 	spqrlog.Zero.Debug().Str("taskGroup", fmt.Sprintf("%#v", taskGroup)).Msg("got task group")

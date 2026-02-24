@@ -991,7 +991,7 @@ Feature: Coordinator test
             },
             "parent": {
               "type": 1,
-              "id": rt1
+              "id": "rt1"
             }
         }
     """

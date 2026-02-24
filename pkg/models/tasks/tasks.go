@@ -101,6 +101,9 @@ type RedistributeTask struct {
 }
 
 func TaskGroupParentToProto(parent *MoveTaskGroupParent) *protos.MoveTaskGroupParent {
+	if parent == nil {
+		return nil
+	}
 	return &protos.MoveTaskGroupParent{
 		Type: func() protos.MoveTaskGroupParentType {
 			switch parent.Type {
@@ -117,6 +120,9 @@ func TaskGroupParentToProto(parent *MoveTaskGroupParent) *protos.MoveTaskGroupPa
 }
 
 func TaskGroupParentFromProto(parent *protos.MoveTaskGroupParent) *MoveTaskGroupParent {
+	if parent == nil {
+		return nil
+	}
 	return &MoveTaskGroupParent{
 		Type: func() MoveTaskGroupParentType {
 			switch parent.Type {
@@ -133,6 +139,9 @@ func TaskGroupParentFromProto(parent *protos.MoveTaskGroupParent) *MoveTaskGroup
 }
 
 func TaskGroupParentToDB(parent *MoveTaskGroupParent) *qdb.MoveTaskGroupParent {
+	if parent == nil {
+		return nil
+	}
 	return &qdb.MoveTaskGroupParent{
 		Type: int(parent.Type),
 		Id:   parent.Id,
@@ -140,6 +149,9 @@ func TaskGroupParentToDB(parent *MoveTaskGroupParent) *qdb.MoveTaskGroupParent {
 }
 
 func TaskGroupParentFromDB(parent *qdb.MoveTaskGroupParent) *MoveTaskGroupParent {
+	if parent == nil {
+		return nil
+	}
 	return &MoveTaskGroupParent{
 		Type: func() MoveTaskGroupParentType {
 			switch parent.Type {

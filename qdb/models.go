@@ -168,7 +168,7 @@ type MoveTask struct {
 }
 
 const (
-	ParentRedistributeTask = iota
+	ParentRedistributeTask = iota + 1
 	ParentBalancerTask
 )
 
