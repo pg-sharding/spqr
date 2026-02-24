@@ -179,11 +179,17 @@ message RedistributeTaskSelector {
 
 message ListRedistributeTasksReply {
   repeated RedistributeTask tasks = 1;
-} 
+}
+
+message DropRedistributeTaskRequest {
+  string id = 1;
+  bool cascade = 2;
+}
 
 service RedistributeTaskService {
   rpc ListRedistributeTasks(google.protobuf.Empty) returns (ListRedistributeTasksReply) {}
   rpc DropRedistributeTask(RedistributeTaskSelector) returns (google.protobuf.Empty) {}
+  rpc DropRedistributeTaskV2(DropRedistributeTaskRequest) returns (google.protobuf.Empty) {}
   rpc RemoveRedistributeTask(RedistributeTaskSelector) returns (google.protobuf.Empty) {
     option deprecated = true;
   }

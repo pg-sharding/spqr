@@ -1194,9 +1194,9 @@ func (a *Adapter) ListRedistributeTasks(ctx context.Context) ([]*tasks.Redistrib
 	return res, nil
 }
 
-func (a *Adapter) DropRedistributeTask(ctx context.Context, id string) error {
+func (a *Adapter) DropRedistributeTask(ctx context.Context, id string, cascade bool) error {
 	tasksService := proto.NewRedistributeTaskServiceClient(a.conn)
-	_, err := tasksService.DropRedistributeTask(ctx, &proto.RedistributeTaskSelector{Id: id})
+	_, err := tasksService.DropRedistributeTaskV2(ctx, &proto.DropRedistributeTaskRequest{Id: id, Cascade: cascade})
 	return spqrerror.CleanGrpcError(err)
 }
 

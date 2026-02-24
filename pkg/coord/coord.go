@@ -781,9 +781,23 @@ func (qc *Coordinator) ListRedistributeTasks(ctx context.Context) ([]*tasks.Redi
 	return res, nil
 }
 
-func (qc *Coordinator) DropRedistributeTask(ctx context.Context, id string) error {
+func (qc *Coordinator) DropRedistributeTask(ctx context.Context, id string, cascade bool) error {
 	task, err := qc.qdb.GetRedistributeTask(ctx, id)
 	if err != nil {
+		return err
+	}
+	taskGroupId, err := qc.qdb.GetRedistributeTaskTaskGroupId(ctx, task.ID)
+	if err != nil {
+		return err
+	}
+	if taskGroup, err := qc.GetMoveTaskGroup(ctx, taskGroupId); err != nil {
+		return err
+	} else if taskGroup != nil {
+		return fmt.Errorf("cannot drop redistribute task \"%s\" because other objects depend on it\nDETAILS: move task group \"%s\" \"%\"\nHINT: Use DROP ... CASCADE to drop task group automatically", id, taskGroupId)
+	}
+
+	// TODO use meta transactions
+	if err := qc.DropMoveTaskGroup(ctx, taskGroupId); err != nil {
 		return err
 	}
 	return qc.qdb.DropRedistributeTask(ctx, task)

@@ -350,7 +350,7 @@ func processDrop(ctx context.Context,
 		}
 		for _, task := range tasks {
 			if task.ID == stmt.ID {
-				if err := mngr.DropRedistributeTask(ctx, stmt.ID); err != nil {
+				if err := mngr.DropRedistributeTask(ctx, stmt.ID, isCascade); err != nil {
 					return nil, err
 				}
 				tts.WriteDataRow(stmt.ID)

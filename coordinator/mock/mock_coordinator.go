@@ -392,17 +392,17 @@ func (mr *MockCoordinatorMockRecorder) DropMoveTaskGroup(ctx, id any) *gomock.Ca
 }
 
 // DropRedistributeTask mocks base method.
-func (m *MockCoordinator) DropRedistributeTask(ctx context.Context, id string) error {
+func (m *MockCoordinator) DropRedistributeTask(ctx context.Context, id string, cascade bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DropRedistributeTask", ctx, id)
+	ret := m.ctrl.Call(m, "DropRedistributeTask", ctx, id, cascade)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DropRedistributeTask indicates an expected call of DropRedistributeTask.
-func (mr *MockCoordinatorMockRecorder) DropRedistributeTask(ctx, id any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) DropRedistributeTask(ctx, id, cascade any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropRedistributeTask", reflect.TypeOf((*MockCoordinator)(nil).DropRedistributeTask), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropRedistributeTask", reflect.TypeOf((*MockCoordinator)(nil).DropRedistributeTask), ctx, id, cascade)
 }
 
 // DropReferenceRelation mocks base method.

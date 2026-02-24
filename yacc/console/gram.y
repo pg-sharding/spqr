@@ -747,12 +747,13 @@ drop_stmt:
 			},
 		}
 	}
-	| DROP REDISTRIBUTE TASK any_id
+	| DROP REDISTRIBUTE TASK any_id opt_cascade
 	{
 		$$ = &Drop{
 			Element: &RedistributeTaskSelector{
 				ID: $4,
 			},
+			CascadeDelete: $5,
 		}
 	}
 	| DROP MOVE TASK any_id
