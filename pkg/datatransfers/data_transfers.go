@@ -245,7 +245,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				if err != nil {
 					return err
 				}
-				_, err = ftx.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, rel.GetFullName(), cond))
+				_, err = ftx.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, rel.QualifiedName().String(), cond))
 				if err != nil {
 					return fmt.Errorf("could not delete data: error executing DELETE FROM: %s", err)
 				}
@@ -272,7 +272,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 		return err
 	}
 
-	transferKey := rel.GetFullName()
+	transferKey := rel.QualifiedName().String()
 
 	if tx == nil {
 		// No transaction in progress
@@ -460,17 +460,17 @@ func lockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRel
 	for _, shard := range relation.ShardIds {
 		connInfo, ok := shards.ShardsData[shard]
 		if !ok {
-			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.GetFullName())
+			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.QualifiedName().String())
 		}
 		shardConn, err := GetMasterConnection(ctx, connInfo, "lock_reference_relation")
 		if err != nil {
-			return fmt.Errorf("can't lock relation \"%s\": %s", relation.GetFullName(), err)
+			return fmt.Errorf("can't lock relation \"%s\": %s", relation.QualifiedName().String(), err)
 		}
 		defer func() {
 			_ = shardConn.Close(ctx)
 		}()
 		if err = lockReferenceRelationOnShard(ctx, shardConn, relation.QualifiedName()); err != nil {
-			return fmt.Errorf("can't lock relation \"%s\": %s", relation.GetFullName(), err)
+			return fmt.Errorf("can't lock relation \"%s\": %s", relation.QualifiedName().String(), err)
 		}
 	}
 	return nil
@@ -506,17 +506,17 @@ func unlockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceR
 	for _, shard := range relation.ShardIds {
 		connInfo, ok := shards.ShardsData[shard]
 		if !ok {
-			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.GetFullName())
+			return fmt.Errorf("no connection info for shard \"%s\", relation \"%s\"", shard, relation.QualifiedName().String())
 		}
 		shardConn, err := GetMasterConnection(ctx, connInfo, "unlock_reference_relation")
 		if err != nil {
-			return fmt.Errorf("can't lock relation \"%s\": %s", relation.GetFullName(), err)
+			return fmt.Errorf("can't lock relation \"%s\": %s", relation.QualifiedName().String(), err)
 		}
 		defer func() {
 			_ = shardConn.Close(ctx)
 		}()
 		if err = unlockReferenceRelationOnShard(ctx, shardConn, relation.QualifiedName()); err != nil {
-			return fmt.Errorf("can't lock relation \"%s\": %s", relation.GetFullName(), err)
+			return fmt.Errorf("can't lock relation \"%s\": %s", relation.QualifiedName().String(), err)
 		}
 	}
 	return nil
@@ -605,7 +605,8 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		if !fromTableExists {
 			continue
 		}
-		relFullName := rel.GetFullName()
+
+		relFullName := rel.QualifiedName().String()
 		fromCount, err := getEntriesCount(ctx, from, relFullName, krCondition)
 		if err != nil {
 			return err
@@ -682,7 +683,7 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	if !fromTableExists {
 		return nil
 	}
-	relFullName := rel.GetFullName()
+	relFullName := rel.QualifiedName().String()
 	fromCount, err := getEntriesCount(ctx, from, relFullName, "true")
 	if err != nil {
 		return err

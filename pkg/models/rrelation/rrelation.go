@@ -1,9 +1,6 @@
 package rrelation
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
@@ -41,10 +38,6 @@ func (r *ReferenceRelation) GetSchema() string {
 		return "public"
 	}
 	return r.SchemaName
-}
-
-func (r *ReferenceRelation) GetFullName() string {
-	return fmt.Sprintf("%s.%s", r.GetSchema(), strings.ToLower(r.TableName))
 }
 
 func (r *ReferenceRelation) QualifiedName() rfqn.RelationFQN {
