@@ -718,8 +718,6 @@ func processAlterDistribution(ctx context.Context,
 		if err := mngr.AlterDistributedRelation(ctx, dsId, distributions.DistributedRelationFromSQL(stmt.Relation)); err != nil {
 			return nil, err
 		}
-		qName := rfqn.RelationFQN{RelationName: stmt.Relation.Name, SchemaName: stmt.Relation.SchemaName}
-
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("alter relation"),
 			Raw: [][][]byte{
@@ -727,7 +725,7 @@ func processAlterDistribution(ctx context.Context,
 					fmt.Appendf(nil, "relation name   -> %s", dsId),
 				},
 				{
-					fmt.Appendf(nil, "distribution id -> %s", qName.String()),
+					fmt.Appendf(nil, "distribution id -> %s", stmt.Relation.Relation.String()),
 				},
 			},
 		}
