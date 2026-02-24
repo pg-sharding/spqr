@@ -231,22 +231,44 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
 		return nil, err
 	} else {
-		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs); err != nil {
+		cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs)
+		if err != nil {
 			return nil, err
-		} else {
-			commands[0] = *cmd
 		}
-		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapLocks); err != nil {
+		commands[0] = *cmd
+		cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapLocks)
+		if err != nil {
 			return nil, err
-		} else {
-			commands[1] = *cmd
 		}
-		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapFreq); err != nil {
+		commands[1] = *cmd
+		cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapFreq)
+		if err != nil {
 			return nil, err
-		} else {
-			commands[2] = *cmd
 		}
+		commands[2] = *cmd
 	}
+	return commands, nil
+}
+
+func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeId string) ([]QdbStatement, error) {
+	commands := make([]QdbStatement, 3)
+
+	cmd, err := NewQdbStatementExt(CMD_DELETE, keyRangeId, "", MapKrs)
+	if err != nil {
+		return nil, err
+	}
+	commands[0] = *cmd
+	cmd, err = NewQdbStatementExt(CMD_DELETE, keyRangeId, "", MapLocks)
+	if err != nil {
+		return nil, err
+	}
+	commands[1] = *cmd
+	cmd, err = NewQdbStatementExt(CMD_DELETE, keyRangeId, "", MapFreq)
+	if err != nil {
+		return nil, err
+	}
+	commands[2] = *cmd
+
 	return commands, nil
 }
 
@@ -297,7 +319,7 @@ func (q *MemQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) DropKeyRange(_ context.Context, id string) error {
+func (q *MemQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: drop key range")
 
 	q.mu.Lock()
@@ -305,19 +327,18 @@ func (q *MemQDB) DropKeyRange(_ context.Context, id string) error {
 
 	_, ok := q.Krs[id]
 	if !ok {
-		return nil
+		return []QdbStatement{}, nil
 	}
 
 	lock, ok := q.Locks[id]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("no lock in MemQDB for key range \"%s\"", id))
+		return nil, spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("no lock in MemQDB for key range \"%s\"", id))
 	}
 	if !lock.TryLock() {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", id)
 	}
 	defer lock.Unlock()
-
-	return ExecuteCommands(q.DumpState, q.dropKeyRangeCommands(id)...)
+	return q.dropKeyRangeQdbStatements(id)
 }
 
 // TODO : unit tests

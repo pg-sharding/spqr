@@ -81,7 +81,10 @@ func TestMemqdbRacing(t *testing.T) {
 		func() { _, _ = memqdb.GetShard(ctx, mockShard.ID) },
 		func() { _, _ = memqdb.GetTransferTx(ctx, mockDataTransferTransaction.FromShardId) },
 		func() { _ = memqdb.ShareKeyRange(mockKeyRange.KeyRangeID) },
-		func() { _ = memqdb.DropKeyRange(ctx, mockKeyRange.KeyRangeID) },
+		func() {
+			stmts, _ := memqdb.DropKeyRange(ctx, mockKeyRange.KeyRangeID)
+			_ = memqdb.ExecNoTransaction(ctx, stmts)
+		},
 		func() { _ = memqdb.DropKeyRangeAll(ctx) },
 		func() { _ = memqdb.RemoveTransferTx(ctx, mockDataTransferTransaction.FromShardId) },
 		func() {
@@ -265,7 +268,9 @@ func TestDropReferenceRelation(t *testing.T) {
 	assert.Equal(0, len(memqdb.SequenceToValues))
 	assert.Equal(0, len(memqdb.ReferenceRelations))
 
-	assert.NoError(memqdb.DropKeyRange(ctx, "nonexistentKeyRange"))
+	statements, err := memqdb.DropKeyRange(ctx, "nonexistentKeyRange")
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 }
 
 func TestKeyRanges(t *testing.T) {
@@ -306,7 +311,9 @@ func TestKeyRanges(t *testing.T) {
 	})
 	assert.Error(err)
 
-	assert.NoError(memqdb.DropKeyRange(ctx, "nonexistentKeyRange"))
+	statements, err = memqdb.DropKeyRange(ctx, "nonexistentKeyRange")
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 }
 
 func Test_MemQDB_GetKeyRange(t *testing.T) {
@@ -426,14 +433,18 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 	_, ok = memqdb.Locks["krid1"]
 	assert.True(ok)
 
-	assert.NoError(memqdb.DropKeyRange(ctx, "krid1"))
+	statements, err = memqdb.DropKeyRange(ctx, "krid1")
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 	_, ok = memqdb.Krs["krid1"]
 	assert.False(ok)
 	_, ok = memqdb.Locks["krid1"]
 	assert.False(ok)
 
 	// Drop non-existent KR
-	assert.NoError(memqdb.DropKeyRange(ctx, "krid1"))
+	statements, err = memqdb.DropKeyRange(ctx, "krid1")
+	assert.NoError(err)
+	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
 	// Lock missing
 	keyRange2 := &qdb.KeyRange{
@@ -447,7 +458,7 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 	assert.NoError(memqdb.ExecNoTransaction(ctx, statements))
 
 	delete(memqdb.Locks, "krid2")
-	err = memqdb.DropKeyRange(ctx, "krid2")
+	_, err = memqdb.DropKeyRange(ctx, "krid2")
 	assert.Error(err)
 	assert.Contains(err.Error(), "no lock in MemQDB")
 
@@ -476,7 +487,7 @@ func TestMemQDB_DropKeyRange(t *testing.T) {
 
 	lock3.Lock()
 	defer lock3.Unlock()
-	err = memqdb.DropKeyRange(ctx, "krid3")
+	_, err = memqdb.DropKeyRange(ctx, "krid3")
 	assert.Error(err)
 	assert.Contains(err.Error(), "is locked")
 
