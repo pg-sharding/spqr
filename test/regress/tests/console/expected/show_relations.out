@@ -59,7 +59,7 @@ SHOW relations;
  b             | ds3             | ("b_id", murmur)                      | $search_path
  c             | ds2             | ("c_id_1", identity),("c_id_2", city) | $search_path
  d             | ds1             | ("d_id", identity)                    | $search_path
- z_rf          | REPLICATED      |                                       | $search_path
+ z_rf          | REPLICATED      |                                       | public
 (5 rows)
 
 SHOW relations (relation_name, distribution_id, relation_name);

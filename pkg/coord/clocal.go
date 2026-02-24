@@ -67,7 +67,7 @@ func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context
 	}
 
 	if ds.ID != distributions.REPLICATED && len(rel.DistributionKey) != len(ds.ColTypes) {
-		return fmt.Errorf("cannot attach relation %v to distribution %v: number of column mismatch", rel.Name, ds.ID)
+		return fmt.Errorf("cannot attach relation %v to distribution %v: number of column mismatch", rel.Relation, ds.ID)
 	}
 	if !rel.ReplicatedRelation && len(rel.ColumnSequenceMapping) > 0 {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "sequence are supported for replicated relations only")
@@ -82,7 +82,7 @@ func (lc *LocalInstanceMetadataMgr) AlterDistributedRelation(ctx context.Context
 		if err := lc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
 			return err
 		}
-		qualifiedName := rel.ToRFQN()
+		qualifiedName := rel.QualifiedName()
 		if err := lc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName); err != nil {
 			return err
 		}

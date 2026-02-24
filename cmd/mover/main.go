@@ -83,11 +83,11 @@ FROM information_schema.tables;
 	rows.Close()
 
 	for _, rel := range rels {
-		if _, ok := res[strings.ToLower(rel.Name)]; !ok {
+		if _, ok := res[strings.ToLower(rel.Relation.RelationName)]; !ok {
 			continue
 		}
 		spqrlog.Zero.Debug().
-			Str("relation", rel.Name).
+			Str("relation", rel.QualifiedName().String()).
 			Msg("moving table")
 
 		r, w, err := os.Pipe()
@@ -103,10 +103,10 @@ FROM information_schema.tables;
 
 		// TODO: support multi-column move in SPQR2
 		if nextKeyRange == nil {
-			qry = fmt.Sprintf("copy (delete from %s WHERE %s >= %s returning *) to stdout", rel.Name,
+			qry = fmt.Sprintf("copy (delete from %s WHERE %s >= %s returning *) to stdout", rel.Relation.RelationName,
 				rel.DistributionKey[0].Column, keyRange.SendRaw()[0])
 		} else {
-			qry = fmt.Sprintf("copy (delete from %s WHERE %s >= %s and %s < %s returning *) to stdout", rel.Name,
+			qry = fmt.Sprintf("copy (delete from %s WHERE %s >= %s and %s < %s returning *) to stdout", rel.Relation.RelationName,
 				rel.DistributionKey[0].Column, keyRange.SendRaw()[0], rel.DistributionKey[0].Column, nextKeyRange.SendRaw()[0])
 		}
 
@@ -124,7 +124,7 @@ FROM information_schema.tables;
 		}
 
 		_, err = txTo.Conn().PgConn().CopyFrom(ctx,
-			r, fmt.Sprintf("COPY %s FROM STDIN", rel.Name))
+			r, fmt.Sprintf("COPY %s FROM STDIN", rel.Relation.RelationName))
 		if err != nil {
 			spqrlog.Zero.Debug().Msg("copy in failed")
 			return err

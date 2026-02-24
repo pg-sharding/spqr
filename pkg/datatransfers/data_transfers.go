@@ -233,7 +233,8 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				}
 			}
 			for _, rel := range ds.Relations {
-				res := ftx.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = '%s'`, strings.ToLower(rel.Name), rel.GetSchema()))
+				res := ftx.QueryRow(ctx, fmt.Sprintf(
+					`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = '%s'`, strings.ToLower(rel.Relation.RelationName), rel.GetSchema()))
 				fromTableExists := false
 				if err = res.Scan(&fromTableExists); err != nil {
 					return err
@@ -476,7 +477,7 @@ func lockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceRel
 	return nil
 }
 
-func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, relation rfqn.RelationFQN) error {
+func lockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, relation *rfqn.RelationFQN) error {
 	tx, err := shardConn.Begin(ctx)
 	if err != nil {
 		return err
@@ -522,7 +523,7 @@ func unlockReferenceRelation(ctx context.Context, relation *rrelation.ReferenceR
 	return nil
 }
 
-func unlockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, relation rfqn.RelationFQN) error {
+func unlockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, relation *rfqn.RelationFQN) error {
 	tx, err := shardConn.Begin(ctx)
 	if err != nil {
 		return err
@@ -598,7 +599,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		}
 		// check that relation exists on sending shard and there is data to copy. If not, skip the relation
 		relSchemaName := rel.GetSchema()
-		fromTableExists, err := CheckTableExists(ctx, from, strings.ToLower(rel.Name), relSchemaName)
+		fromTableExists, err := CheckTableExists(ctx, from, strings.ToLower(rel.Relation.RelationName), relSchemaName)
 		if err != nil {
 			return err
 		}
@@ -612,12 +613,12 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 			return err
 		}
 		// check that relation exists on receiving shard. If not, exit
-		toTableExists, err := CheckTableExists(ctx, tx, strings.ToLower(rel.Name), relSchemaName)
+		toTableExists, err := CheckTableExists(ctx, tx, strings.ToLower(rel.Relation.RelationName), relSchemaName)
 		if err != nil {
 			return err
 		}
 		if !toTableExists {
-			return fmt.Errorf("relation %s does not exist on receiving shard", rel.Name)
+			return fmt.Errorf("relation %s does not exist on receiving shard", rel.Relation)
 		}
 		toCount, err := getEntriesCount(ctx, tx, relFullName, krCondition)
 		if err != nil {
@@ -631,7 +632,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		if toCount > 0 && fromCount != 0 {
 			return fmt.Errorf("key count on sender & receiver mismatch")
 		}
-		cols, err := getTableColumns(ctx, tx, rfqn.RelationFQN{RelationName: strings.ToLower(rel.Name), SchemaName: rel.GetSchema()})
+		cols, err := getTableColumns(ctx, tx, rfqn.RelationFQN{RelationName: strings.ToLower(rel.Relation.RelationName), SchemaName: rel.GetSchema()})
 		if err != nil {
 			return err
 		}
@@ -641,7 +642,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 					SELECT %s FROM %s
 					WHERE %s
 					FOR UPDATE
-`, relFullName, colNames, colNames, fmt.Sprintf("%s_%s.%q", serverName, rel.GetSchema(), strings.ToLower(rel.Name)), krCondition)
+`, relFullName, colNames, colNames, fmt.Sprintf("%s_%s.%q", serverName, rel.GetSchema(), strings.ToLower(rel.Relation.RelationName)), krCondition)
 		_, err = tx.Exec(ctx, query)
 		if err != nil {
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)

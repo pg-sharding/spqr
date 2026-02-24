@@ -416,11 +416,11 @@ func RelationsVirtualRelationScan(
 				}
 				dsKey[i] = fmt.Sprintf("(\"%s\", %s)", e.Column, hashfunction.ToString(t))
 			}
-			schema := rel.SchemaName
+			schema := rel.Relation.SchemaName
 			if schema == "" {
 				schema = "$search_path"
 			}
-			tts.WriteDataRow(rel.Name, ds, strings.Join(dsKey, ","), schema)
+			tts.WriteDataRow(rel.Relation.RelationName, ds, strings.Join(dsKey, ","), schema)
 			c++
 		}
 	}

@@ -40,8 +40,8 @@ func (r *ReferenceRelation) GetSchema() string {
 	return r.SchemaName
 }
 
-func (r *ReferenceRelation) QualifiedName() rfqn.RelationFQN {
-	return rfqn.RelationFQN{RelationName: r.TableName, SchemaName: r.GetSchema()}
+func (r *ReferenceRelation) QualifiedName() *rfqn.RelationFQN {
+	return &rfqn.RelationFQN{RelationName: r.TableName, SchemaName: r.GetSchema()}
 }
 
 func ReferenceRelationEntriesFromSQL(inEntries []*spqrparser.AutoIncrementEntry) []*AutoIncrementEntry {
