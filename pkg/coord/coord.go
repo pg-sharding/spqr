@@ -95,7 +95,7 @@ func (lc *Coordinator) AlterDistributedRelation(ctx context.Context, id string, 
 	}
 
 	for colName, seqName := range rel.ColumnSequenceMapping {
-		qualifiedName := rel.ToRFQN()
+		qualifiedName := rel.QualifiedName()
 		if err := lc.qdb.AlterSequenceAttach(ctx, seqName, &qualifiedName, colName); err != nil {
 			return err
 		}
@@ -198,8 +198,7 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 
 	return lc.AlterDistributionAttach(ctx, selectedDistribId, []*distributions.DistributedRelation{
 		{
-			Name:                  r.TableName,
-			SchemaName:            r.SchemaName,
+			Relation:              r.QualifiedName(),
 			ReplicatedRelation:    true,
 			ColumnSequenceMapping: ret,
 		},
@@ -826,7 +825,7 @@ func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 			if err := qc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
 				return nil, err
 			}
-			qualifiedName := rel.ToRFQN()
+			qualifiedName := rel.QualifiedName()
 			err := qc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName)
 			if err != nil {
 				return nil, err
@@ -952,7 +951,7 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 	dRels := []*qdb.DistributedRelation{}
 	for _, r := range rels {
 		if !r.ReplicatedRelation && len(r.DistributionKey) != len(ds.ColTypes) {
-			return fmt.Errorf("cannot attach relation %v to distribution %v: number of column mismatch", r.Name, ds.ID)
+			return fmt.Errorf("cannot attach relation %v to distribution %v: number of column mismatch", r.Relation, ds.ID)
 		}
 		if err := distributions.CheckRelationKeys(ds, r); err != nil {
 			return err

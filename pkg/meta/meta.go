@@ -186,7 +186,9 @@ func processDrop(ctx context.Context,
 				return nil, err
 			}
 			if len(ds.Relations) != 0 && !isCascade {
-				return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID)
+				return nil, spqrerror.Newf(
+					spqrerror.SPQR_INVALID_REQUEST,
+					"cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID)
 			}
 
 			for _, idx := range ds.UniqueIndexesByID {
@@ -197,8 +199,7 @@ func processDrop(ctx context.Context,
 
 			if stmt.ID != distributions.REPLICATED {
 				for _, rel := range ds.Relations {
-					qualifiedName := &rfqn.RelationFQN{RelationName: rel.Name, SchemaName: rel.SchemaName}
-					if err := mngr.AlterDistributionDetach(ctx, ds.Id, qualifiedName); err != nil {
+					if err := mngr.AlterDistributionDetach(ctx, ds.Id, rel.Relation); err != nil {
 						return nil, err
 					}
 				}

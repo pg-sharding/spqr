@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
 // Create reference relation on master coordinator. Be careful, it's a network-based operation.
@@ -65,7 +66,7 @@ func innerAlterDistributionAttach(ctx context.Context, mngr meta.EntityMgr, clau
 	}
 	attachRelation := []*distributions.DistributedRelation{
 		{
-			Name:               clauseNode.RelationName,
+			Relation:           rfqn.RelationFQNFromFullName(clauseNode.RelationName, clauseNode.SchemaName),
 			ReplicatedRelation: false,
 			DistributionKey: []distributions.DistributionKeyEntry{
 				{

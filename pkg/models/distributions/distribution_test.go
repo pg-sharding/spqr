@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -152,7 +153,9 @@ func TestHashableKeyChecks(t *testing.T) {
 		{
 			distribution: distribution1Hashed,
 			rel: &distributions.DistributedRelation{
-				Name: "r1",
+				Relation: &rfqn.RelationFQN{
+					RelationName: "r1",
+				},
 				DistributionKey: []distributions.DistributionKeyEntry{
 					{Column: "a", HashFunction: "ident"},
 				},
@@ -162,7 +165,9 @@ func TestHashableKeyChecks(t *testing.T) {
 		{
 			distribution: distribution1Hashed,
 			rel: &distributions.DistributedRelation{
-				Name: "r1",
+				Relation: &rfqn.RelationFQN{
+					RelationName: "r1",
+				},
 				DistributionKey: []distributions.DistributionKeyEntry{
 					{Column: "a"},
 				},
@@ -172,7 +177,9 @@ func TestHashableKeyChecks(t *testing.T) {
 		{
 			distribution: distribution2Hashed,
 			rel: &distributions.DistributedRelation{
-				Name: "r1",
+				Relation: &rfqn.RelationFQN{
+					RelationName: "r1",
+				},
 				DistributionKey: []distributions.DistributionKeyEntry{
 					{Column: "b"},
 					{Column: "a", HashFunction: "ident"},
@@ -183,7 +190,9 @@ func TestHashableKeyChecks(t *testing.T) {
 		{
 			distribution: distribution2Hashed,
 			rel: &distributions.DistributedRelation{
-				Name: "r1",
+				Relation: &rfqn.RelationFQN{
+					RelationName: "r1",
+				},
 				DistributionKey: []distributions.DistributionKeyEntry{
 					{Column: "b", HashFunction: "ident"},
 					{Column: "a"},

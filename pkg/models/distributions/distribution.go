@@ -27,8 +27,7 @@ type DistributionKeyEntry struct {
 }
 
 type DistributedRelation struct {
-	Name                  string
-	SchemaName            string
+	Relation              *rfqn.RelationFQN
 	DistributionKey       []DistributionKeyEntry
 	ReplicatedRelation    bool
 	ColumnSequenceMapping map[string]string
@@ -36,10 +35,7 @@ type DistributedRelation struct {
 }
 
 func (r *DistributedRelation) QualifiedName() rfqn.RelationFQN {
-	return rfqn.RelationFQN{RelationName: r.Name, SchemaName: r.SchemaName}
-}
-func (r *DistributedRelation) ToRFQN() rfqn.RelationFQN {
-	return rfqn.RelationFQN{RelationName: r.Name, SchemaName: r.SchemaName}
+	return *r.Relation
 }
 
 const (
@@ -55,8 +51,7 @@ const (
 //   - *DistributedRelation: The created DistributedRelation object.
 func DistributedRelationFromDB(rel *qdb.DistributedRelation, idxs map[string]*UniqueIndex) *DistributedRelation {
 	rdistr := &DistributedRelation{
-		Name:       rel.Name,
-		SchemaName: rel.SchemaName,
+		Relation: rel.QualifiedName(),
 	}
 
 	for _, e := range rel.DistributionKey {
@@ -85,8 +80,8 @@ func DistributedRelationFromDB(rel *qdb.DistributedRelation, idxs map[string]*Un
 //   - *qdb.DistributedRelation: The converted qdb.DistributedRelation object.
 func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation {
 	return &qdb.DistributedRelation{
-		Name:               rel.Name,
-		SchemaName:         rel.SchemaName,
+		Name:               rel.QualifiedName().RelationName,
+		SchemaName:         rel.QualifiedName().SchemaName,
 		DistributionKey:    DistributionKeyToDB(rel.DistributionKey),
 		ReplicatedRelation: rel.ReplicatedRelation,
 	}
@@ -128,8 +123,8 @@ func RoutingExprFromProto(in *proto.RoutingExpr) RoutingExpr {
 //   - *proto.DistributedRelation: The converted proto.DistributedRelation object.
 func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRelation {
 	rdistr := &proto.DistributedRelation{
-		Name:               rel.Name,
-		SchemaName:         rel.SchemaName,
+		Name:               rel.QualifiedName().RelationName,
+		SchemaName:         rel.QualifiedName().SchemaName,
 		SequenceColumns:    rel.ColumnSequenceMapping,
 		DistributionKey:    DistributionKeyToProto(rel.DistributionKey),
 		ReplicatedRelation: rel.ReplicatedRelation,
@@ -196,8 +191,7 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation, idxsByColumns 
 	}
 
 	return &DistributedRelation{
-		Name:                  rel.Name,
-		SchemaName:            rel.SchemaName,
+		Relation:              rfqn.RelationFQNFromFullName(rel.Name, rel.SchemaName),
 		ColumnSequenceMapping: rel.SequenceColumns,
 		DistributionKey:       key,
 		ReplicatedRelation:    rel.ReplicatedRelation,
@@ -253,8 +247,7 @@ func TypedColRefFromDB(in []qdb.TypedColRef) []TypedColRef {
 //   - *DistributedRelation: The created DistributedRelation object.
 func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *DistributedRelation {
 	return &DistributedRelation{
-		Name:                  rel.Relation.RelationName,
-		SchemaName:            rel.Relation.SchemaName,
+		Relation:              rel.Relation,
 		DistributionKey:       DistributionKeyFromSQL(rel.DistributionKey),
 		ColumnSequenceMapping: ColumnSequenceMappingFromSQL(rel.Relation.RelationName, rel.AutoIncrementEntries),
 		ReplicatedRelation:    rel.ReplicatedRelation,
@@ -475,7 +468,7 @@ func DistributionToDB(ds *Distribution) *qdb.Distribution {
 	}
 
 	for _, r := range ds.Relations {
-		d.Relations[r.Name] = DistributedRelationToDB(r)
+		d.Relations[r.Relation.RelationName] = DistributedRelationToDB(r)
 	}
 
 	for id, idx := range ds.UniqueIndexesByID {
@@ -530,14 +523,10 @@ func SequenceName(relName, colName string) string {
 }
 
 func (r *DistributedRelation) GetSchema() string {
-	if r.SchemaName == "" {
+	if r.Relation.SchemaName == "" {
 		return "public"
 	}
-	return r.SchemaName
-}
-
-func (r *DistributedRelation) GetFullName() string {
-	return fmt.Sprintf("%s.%s", r.GetSchema(), strings.ToLower(r.Name))
+	return r.Relation.SchemaName
 }
 
 // CheckRelation checks dows it's keys match to distribution.
@@ -551,7 +540,7 @@ func (r *DistributedRelation) GetFullName() string {
 //   - error: error if a mismatch found.
 func CheckRelationKeys(ds *qdb.Distribution, rel *DistributedRelation) error {
 	if len(ds.ColTypes) != len(rel.DistributionKey) {
-		return fmt.Errorf("relation %v to distribution %v: number of column mismatch", rel.GetFullName(), ds.ID)
+		return fmt.Errorf("relation %v to distribution %v: number of column mismatch", rel.QualifiedName(), ds.ID)
 	}
 	for i, colType := range ds.ColTypes {
 		switch colType {
@@ -559,7 +548,9 @@ func CheckRelationKeys(ds *qdb.Distribution, rel *DistributedRelation) error {
 			fallthrough
 		case qdb.ColumnTypeUinteger:
 			if len(rel.DistributionKey[i].HashFunction) < 1 {
-				return fmt.Errorf("hashed type %s of distribution %s needs hashfunction to attach %s", colType, ds.ID, rel.GetFullName())
+				return fmt.Errorf(
+					"hashed type %s of distribution %s needs hashfunction to attach %s",
+					colType, ds.ID, rel.QualifiedName())
 			}
 		case qdb.ColumnTypeInteger:
 			fallthrough
@@ -569,7 +560,9 @@ func CheckRelationKeys(ds *qdb.Distribution, rel *DistributedRelation) error {
 			fallthrough
 		case qdb.ColumnTypeUUID:
 			if len(rel.DistributionKey[i].HashFunction) > 0 {
-				return fmt.Errorf("type %s of distribution %s does not support hashfunction to attach relation %s", colType, ds.ID, rel.GetFullName())
+				return fmt.Errorf(
+					"type %s of distribution %s does not support hashfunction to attach relation %s",
+					colType, ds.ID, rel.QualifiedName())
 			}
 		default:
 			return fmt.Errorf("unknown type %s of distribution %s", colType, ds.ID)
