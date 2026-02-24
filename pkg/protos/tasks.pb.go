@@ -169,22 +169,22 @@ func (SplitType) EnumDescriptor() ([]byte, []int) {
 type MoveTaskGroupParentType int32
 
 const (
-	MoveTaskGroupParentType_ParentUnknown         MoveTaskGroupParentType = 0
-	MoveTaskGroupParentType_ParentRedstributeTask MoveTaskGroupParentType = 1
-	MoveTaskGroupParentType_ParentBalancerTask    MoveTaskGroupParentType = 2
+	MoveTaskGroupParentType_ParentUnknown          MoveTaskGroupParentType = 0
+	MoveTaskGroupParentType_ParentRedistributeTask MoveTaskGroupParentType = 1
+	MoveTaskGroupParentType_ParentBalancerTask     MoveTaskGroupParentType = 2
 )
 
 // Enum value maps for MoveTaskGroupParentType.
 var (
 	MoveTaskGroupParentType_name = map[int32]string{
 		0: "ParentUnknown",
-		1: "ParentRedstributeTask",
+		1: "ParentRedistributeTask",
 		2: "ParentBalancerTask",
 	}
 	MoveTaskGroupParentType_value = map[string]int32{
-		"ParentUnknown":         0,
-		"ParentRedstributeTask": 1,
-		"ParentBalancerTask":    2,
+		"ParentUnknown":          0,
+		"ParentRedistributeTask": 1,
+		"ParentBalancerTask":     2,
 	}
 )
 
@@ -1577,10 +1577,10 @@ const file_protos_tasks_proto_rawDesc = "" +
 	"\tSplitType\x12\r\n" +
 	"\tSplitLeft\x10\x00\x12\x0e\n" +
 	"\n" +
-	"SplitRight\x10\x01*_\n" +
+	"SplitRight\x10\x01*`\n" +
 	"\x17MoveTaskGroupParentType\x12\x11\n" +
-	"\rParentUnknown\x10\x00\x12\x19\n" +
-	"\x15ParentRedstributeTask\x10\x01\x12\x16\n" +
+	"\rParentUnknown\x10\x00\x12\x1a\n" +
+	"\x16ParentRedistributeTask\x10\x01\x12\x16\n" +
 	"\x12ParentBalancerTask\x10\x02*D\n" +
 	"\x12BalancerTaskStatus\x12\x17\n" +
 	"\x13BalancerTaskPlanned\x10\x00\x12\x15\n" +

@@ -108,7 +108,7 @@ func TaskGroupParentToProto(parent *MoveTaskGroupParent) *protos.MoveTaskGroupPa
 		Type: func() protos.MoveTaskGroupParentType {
 			switch parent.Type {
 			case ParentRedistributeTask:
-				return protos.MoveTaskGroupParentType_ParentRedstributeTask
+				return protos.MoveTaskGroupParentType_ParentRedistributeTask
 			case ParentBalancerTask:
 				return protos.MoveTaskGroupParentType_ParentBalancerTask
 			default:
@@ -126,7 +126,7 @@ func TaskGroupParentFromProto(parent *protos.MoveTaskGroupParent) *MoveTaskGroup
 	return &MoveTaskGroupParent{
 		Type: func() MoveTaskGroupParentType {
 			switch parent.Type {
-			case protos.MoveTaskGroupParentType_ParentRedstributeTask:
+			case protos.MoveTaskGroupParentType_ParentRedistributeTask:
 				return ParentRedistributeTask
 			case protos.MoveTaskGroupParentType_ParentBalancerTask:
 				return ParentBalancerTask

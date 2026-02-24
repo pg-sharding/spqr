@@ -49,7 +49,7 @@ enum SplitType {
 
 enum MoveTaskGroupParentType {
   ParentUnknown = 0;
-  ParentRedstributeTask = 1;
+  ParentRedistributeTask = 1;
   ParentBalancerTask = 2;
 }
 
