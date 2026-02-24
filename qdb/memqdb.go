@@ -30,30 +30,31 @@ type MemQDB struct {
 	// TODO create more mutex per map if needed
 	mu sync.RWMutex
 
-	Locks                     map[string]*sync.RWMutex            `json:"locks"`
-	Freq                      map[string]bool                     `json:"freq"`
-	Krs                       map[string]*internalKeyRange        `json:"krs"`
-	Shards                    map[string]*Shard                   `json:"shards"`
-	Distributions             map[string]*Distribution            `json:"distributions"`
-	RelationDistribution      map[string]string                   `json:"relation_distribution"`
-	Routers                   map[string]*Router                  `json:"routers"`
-	Transactions              map[string]*DataTransferTransaction `json:"transactions"`
-	Coordinator               string                              `json:"coordinator"`
-	MoveTaskGroups            map[string]*MoveTaskGroup           `json:"taskGroup"`
-	TaskGroupIDToStatus       map[string]*TaskGroupStatus         `json:"task_group_statuses"`
-	StopMoveTaskGroup         map[string]bool                     `json:"stop_move_task_group"`
-	MoveTasks                 map[string]*MoveTask                `json:"move_tasks"`
-	TotalKeys                 map[string]int64                    `json:"total_keys"`
-	RedistributeTasks         map[string]*RedistributeTask        `json:"redistribute_tasks"`
-	KeyRangeRedistributeTasks map[string]string                   `json:"key_range_redistribute_tasks"`
-	BalancerTask              *BalancerTask                       `json:"balancer_task"`
-	ReferenceRelations        map[string]*ReferenceRelation       `json:"reference_relations"`
-	Sequences                 map[string]bool                     `json:"sequences"`
-	ColumnSequence            map[string]string                   `json:"column_sequence"`
-	SequenceToValues          map[string]int64                    `json:"sequence_to_values"`
-	TaskGroupMoveTaskID       map[string]string                   `json:"task_group_move_task"`
-	UniqueIndexes             map[string]*UniqueIndex             `json:"unique_indexes"`
-	UniqueIndexesByRel        map[string]map[string]*UniqueIndex  `json:"unique_indexes_by_relation"`
+	Locks                       map[string]*sync.RWMutex            `json:"locks"`
+	Freq                        map[string]bool                     `json:"freq"`
+	Krs                         map[string]*internalKeyRange        `json:"krs"`
+	Shards                      map[string]*Shard                   `json:"shards"`
+	Distributions               map[string]*Distribution            `json:"distributions"`
+	RelationDistribution        map[string]string                   `json:"relation_distribution"`
+	Routers                     map[string]*Router                  `json:"routers"`
+	Transactions                map[string]*DataTransferTransaction `json:"transactions"`
+	Coordinator                 string                              `json:"coordinator"`
+	MoveTaskGroups              map[string]*MoveTaskGroup           `json:"taskGroup"`
+	TaskGroupIDToStatus         map[string]*TaskGroupStatus         `json:"task_group_statuses"`
+	StopMoveTaskGroup           map[string]bool                     `json:"stop_move_task_group"`
+	MoveTasks                   map[string]*MoveTask                `json:"move_tasks"`
+	TotalKeys                   map[string]int64                    `json:"total_keys"`
+	RedistributeTasks           map[string]*RedistributeTask        `json:"redistribute_tasks"`
+	RedistributeTaskTaskGroupId map[string]string                   `json:"redistribute_task_task_group"`
+	KeyRangeRedistributeTasks   map[string]string                   `json:"key_range_redistribute_tasks"`
+	BalancerTask                *BalancerTask                       `json:"balancer_task"`
+	ReferenceRelations          map[string]*ReferenceRelation       `json:"reference_relations"`
+	Sequences                   map[string]bool                     `json:"sequences"`
+	ColumnSequence              map[string]string                   `json:"column_sequence"`
+	SequenceToValues            map[string]int64                    `json:"sequence_to_values"`
+	TaskGroupMoveTaskID         map[string]string                   `json:"task_group_move_task"`
+	UniqueIndexes               map[string]*UniqueIndex             `json:"unique_indexes"`
+	UniqueIndexesByRel          map[string]map[string]*UniqueIndex  `json:"unique_indexes_by_relation"`
 
 	TwoPhaseTx map[string]*TwoPCInfo `json:"two_phase_info"`
 
@@ -69,27 +70,28 @@ var _ DCStateKeeper = &MemQDB{}
 
 func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
-		Freq:                 map[string]bool{},
-		Krs:                  map[string]*internalKeyRange{},
-		Locks:                map[string]*sync.RWMutex{},
-		Shards:               map[string]*Shard{},
-		Distributions:        map[string]*Distribution{},
-		RelationDistribution: map[string]string{},
-		Routers:              map[string]*Router{},
-		Transactions:         map[string]*DataTransferTransaction{},
-		Sequences:            map[string]bool{},
-		ColumnSequence:       map[string]string{},
-		SequenceToValues:     map[string]int64{},
-		ReferenceRelations:   map[string]*ReferenceRelation{},
-		MoveTaskGroups:       map[string]*MoveTaskGroup{},
-		RedistributeTasks:    map[string]*RedistributeTask{},
-		TaskGroupIDToStatus:  map[string]*TaskGroupStatus{},
-		StopMoveTaskGroup:    map[string]bool{},
-		TotalKeys:            map[string]int64{},
-		MoveTasks:            map[string]*MoveTask{},
-		TwoPhaseTx:           map[string]*TwoPCInfo{},
-		UniqueIndexes:        map[string]*UniqueIndex{},
-		UniqueIndexesByRel:   map[string]map[string]*UniqueIndex{},
+		Freq:                        map[string]bool{},
+		Krs:                         map[string]*internalKeyRange{},
+		Locks:                       map[string]*sync.RWMutex{},
+		Shards:                      map[string]*Shard{},
+		Distributions:               map[string]*Distribution{},
+		RelationDistribution:        map[string]string{},
+		Routers:                     map[string]*Router{},
+		Transactions:                map[string]*DataTransferTransaction{},
+		Sequences:                   map[string]bool{},
+		ColumnSequence:              map[string]string{},
+		SequenceToValues:            map[string]int64{},
+		ReferenceRelations:          map[string]*ReferenceRelation{},
+		MoveTaskGroups:              map[string]*MoveTaskGroup{},
+		RedistributeTasks:           map[string]*RedistributeTask{},
+		RedistributeTaskTaskGroupId: map[string]string{},
+		TaskGroupIDToStatus:         map[string]*TaskGroupStatus{},
+		StopMoveTaskGroup:           map[string]bool{},
+		TotalKeys:                   map[string]int64{},
+		MoveTasks:                   map[string]*MoveTask{},
+		TwoPhaseTx:                  map[string]*TwoPCInfo{},
+		UniqueIndexes:               map[string]*UniqueIndex{},
+		UniqueIndexesByRel:          map[string]map[string]*UniqueIndex{},
 
 		backupPath: backupPath,
 	}, nil
@@ -1194,6 +1196,9 @@ func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, id string, group *MoveTas
 
 	q.MoveTaskGroups[id] = group
 	q.StopMoveTaskGroup[id] = false
+	if group.Parent != nil && group.Parent.Type == ParentRedistributeTask {
+		q.RedistributeTaskTaskGroupId[group.Parent.Id] = id
+	}
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.MoveTaskGroups, id, group), NewUpdateCommand(q.StopMoveTaskGroup, id, false))
 }
 
@@ -1409,11 +1414,11 @@ func (q *MemQDB) DropRedistributeTask(_ context.Context, task *RedistributeTask)
 }
 
 func (q *MemQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, id string) (string, error) {
-	return "", fmt.Errorf("not implemented")
-}
+	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: get redistribute task task group ID")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
-func (q *MemQDB) UpdateRedistributeTaskTaskGroupId(ctx context.Context, redistributeTaskId string, taskGroupId string) error {
-	return fmt.Errorf("not implemented")
+	return q.RedistributeTaskTaskGroupId[id], nil
 }
 
 // TODO: unit tests
