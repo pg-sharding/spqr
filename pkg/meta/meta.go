@@ -793,13 +793,15 @@ func processAlterDistribution(ctx context.Context,
 // Returns:
 // - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation fails, otherwise nil.
-func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, dsId string, relName string) (*tupleslot.TupleTableSlot, error) {
+func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, dsId string, relationName *rfqn.RelationFQN) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AlterRelationSchema:
-		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, relName, stmt.SchemaName); err != nil {
+		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, relationName, stmt.SchemaName); err != nil {
 			return nil, err
 		}
-		qName := rfqn.RelationFQN{RelationName: relName, SchemaName: stmt.SchemaName}
+
+		nRelationName := relationName
+		nRelationName.SchemaName = stmt.SchemaName
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("alter relation"),
@@ -809,19 +811,16 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 				},
 
 				{
-					fmt.Appendf(nil, "relation name   -> %s", qName.String()),
+					fmt.Appendf(nil, "relation name   -> %s", nRelationName.String()),
 				},
 			},
 		}
 
 		return tts, nil
 	case *spqrparser.AlterRelationDistributionKey:
-		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relName, distributions.DistributionKeyFromSQL(stmt.DistributionKey)); err != nil {
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, distributions.DistributionKeyFromSQL(stmt.DistributionKey)); err != nil {
 			return nil, err
 		}
-
-		/* Schema name? */
-		qName := rfqn.RelationFQN{RelationName: relName}
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("alter relation"),
@@ -831,7 +830,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 				},
 
 				{
-					fmt.Appendf(nil, "relation name   -> %s", qName.String()),
+					fmt.Appendf(nil, "relation name   -> %s", relationName.String()),
 				},
 			},
 		}
