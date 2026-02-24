@@ -677,6 +677,10 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 						panic("unknown split type")
 					}
 				}(),
+				Parent: &protos.MoveTaskGroupParent{
+					Type: protos.MoveTaskGroupParentType_ParentBalancerTask,
+					Id:   "",
+				},
 			}); err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
 					spqrlog.Zero.Error().Msg("finishing redistribute task due to task group stop")

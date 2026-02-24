@@ -901,6 +901,7 @@ type BatchMoveKeyRangeRequest struct {
 	BatchSize     int64                  `protobuf:"varint,6,opt,name=batchSize,proto3" json:"batchSize,omitempty"`
 	SplitType     SplitType              `protobuf:"varint,7,opt,name=splitType,proto3,enum=spqr.SplitType" json:"splitType,omitempty"`
 	TaskGroupId   string                 `protobuf:"bytes,8,opt,name=taskGroupId,proto3" json:"taskGroupId,omitempty"`
+	Parent        *MoveTaskGroupParent   `protobuf:"bytes,9,opt,name=parent,proto3" json:"parent,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -989,6 +990,13 @@ func (x *BatchMoveKeyRangeRequest) GetTaskGroupId() string {
 		return x.TaskGroupId
 	}
 	return ""
+}
+
+func (x *BatchMoveKeyRangeRequest) GetParent() *MoveTaskGroupParent {
+	if x != nil {
+		return x.Parent
+	}
+	return nil
 }
 
 type RedistributeKeyRangeRequest struct {
@@ -1182,7 +1190,7 @@ const file_protos_key_range_proto_rawDesc = "" +
 	"\x14ResolveKeyRangeReply\x12\x1e\n" +
 	"\vkey_range_d\x18\x01 \x03(\tR\tkeyRangeD\"&\n" +
 	"\x12GetKeyRangeRequest\x12\x10\n" +
-	"\x03ids\x18\x01 \x03(\tR\x03ids\"\xb0\x02\n" +
+	"\x03ids\x18\x01 \x03(\tR\x03ids\"\xe3\x02\n" +
 	"\x18BatchMoveKeyRangeRequest\x12\x1e\n" +
 	"\n" +
 	"keyRangeId\x18\x01 \x01(\tR\n" +
@@ -1193,7 +1201,8 @@ const file_protos_key_range_proto_rawDesc = "" +
 	"\x05limit\x18\x05 \x01(\x03R\x05limit\x12\x1c\n" +
 	"\tbatchSize\x18\x06 \x01(\x03R\tbatchSize\x12-\n" +
 	"\tsplitType\x18\a \x01(\x0e2\x0f.spqr.SplitTypeR\tsplitType\x12 \n" +
-	"\vtaskGroupId\x18\b \x01(\tR\vtaskGroupId\"\xcf\x01\n" +
+	"\vtaskGroupId\x18\b \x01(\tR\vtaskGroupId\x121\n" +
+	"\x06parent\x18\t \x01(\v2\x19.spqr.MoveTaskGroupParentR\x06parent\"\xcf\x01\n" +
 	"\x1bRedistributeKeyRangeRequest\x12\x12\n" +
 	"\x04krid\x18\x01 \x01(\tR\x04krid\x12\x18\n" +
 	"\ashardId\x18\x02 \x01(\tR\ashardId\x12\x1c\n" +
@@ -1271,7 +1280,8 @@ var file_protos_key_range_proto_goTypes = []any{
 	(*RenameKeyRangeRequest)(nil),       // 20: spqr.RenameKeyRangeRequest
 	(*KeyRangeBound)(nil),               // 21: spqr.KeyRangeBound
 	(SplitType)(0),                      // 22: spqr.SplitType
-	(*emptypb.Empty)(nil),               // 23: google.protobuf.Empty
+	(*MoveTaskGroupParent)(nil),         // 23: spqr.MoveTaskGroupParent
+	(*emptypb.Empty)(nil),               // 24: google.protobuf.Empty
 }
 var file_protos_key_range_proto_depIdxs = []int32{
 	21, // 0: spqr.KeyRangeInfo.bound:type_name -> spqr.KeyRangeBound
@@ -1280,43 +1290,44 @@ var file_protos_key_range_proto_depIdxs = []int32{
 	2,  // 3: spqr.KeyRangeReply.key_ranges_info:type_name -> spqr.KeyRangeInfo
 	1,  // 4: spqr.BatchMoveKeyRangeRequest.limitType:type_name -> spqr.RedistributeLimitType
 	22, // 5: spqr.BatchMoveKeyRangeRequest.splitType:type_name -> spqr.SplitType
-	17, // 6: spqr.KeyRangeService.GetKeyRange:input_type -> spqr.GetKeyRangeRequest
-	3,  // 7: spqr.KeyRangeService.ListKeyRange:input_type -> spqr.ListKeyRangeRequest
-	23, // 8: spqr.KeyRangeService.ListAllKeyRanges:input_type -> google.protobuf.Empty
-	23, // 9: spqr.KeyRangeService.ListKeyRangeLocks:input_type -> google.protobuf.Empty
-	10, // 10: spqr.KeyRangeService.LockKeyRange:input_type -> spqr.LockKeyRangeRequest
-	4,  // 11: spqr.KeyRangeService.CreateKeyRange:input_type -> spqr.CreateKeyRangeRequest
-	8,  // 12: spqr.KeyRangeService.DropKeyRange:input_type -> spqr.DropKeyRangeRequest
-	23, // 13: spqr.KeyRangeService.DropAllKeyRanges:input_type -> google.protobuf.Empty
-	11, // 14: spqr.KeyRangeService.UnlockKeyRange:input_type -> spqr.UnlockKeyRangeRequest
-	5,  // 15: spqr.KeyRangeService.SplitKeyRange:input_type -> spqr.SplitKeyRangeRequest
-	6,  // 16: spqr.KeyRangeService.MergeKeyRange:input_type -> spqr.MergeKeyRangeRequest
-	7,  // 17: spqr.KeyRangeService.MoveKeyRange:input_type -> spqr.MoveKeyRangeRequest
-	15, // 18: spqr.KeyRangeService.ResolveKeyRange:input_type -> spqr.ResolveKeyRangeRequest
-	18, // 19: spqr.KeyRangeService.BatchMoveKeyRange:input_type -> spqr.BatchMoveKeyRangeRequest
-	19, // 20: spqr.KeyRangeService.RedistributeKeyRange:input_type -> spqr.RedistributeKeyRangeRequest
-	20, // 21: spqr.KeyRangeService.RenameKeyRange:input_type -> spqr.RenameKeyRangeRequest
-	12, // 22: spqr.KeyRangeService.GetKeyRange:output_type -> spqr.KeyRangeReply
-	12, // 23: spqr.KeyRangeService.ListKeyRange:output_type -> spqr.KeyRangeReply
-	12, // 24: spqr.KeyRangeService.ListAllKeyRanges:output_type -> spqr.KeyRangeReply
-	13, // 25: spqr.KeyRangeService.ListKeyRangeLocks:output_type -> spqr.KeyRangeLocksReply
-	14, // 26: spqr.KeyRangeService.LockKeyRange:output_type -> spqr.ModifyReply
-	14, // 27: spqr.KeyRangeService.CreateKeyRange:output_type -> spqr.ModifyReply
-	14, // 28: spqr.KeyRangeService.DropKeyRange:output_type -> spqr.ModifyReply
-	9,  // 29: spqr.KeyRangeService.DropAllKeyRanges:output_type -> spqr.DropAllKeyRangesResponse
-	14, // 30: spqr.KeyRangeService.UnlockKeyRange:output_type -> spqr.ModifyReply
-	14, // 31: spqr.KeyRangeService.SplitKeyRange:output_type -> spqr.ModifyReply
-	14, // 32: spqr.KeyRangeService.MergeKeyRange:output_type -> spqr.ModifyReply
-	14, // 33: spqr.KeyRangeService.MoveKeyRange:output_type -> spqr.ModifyReply
-	16, // 34: spqr.KeyRangeService.ResolveKeyRange:output_type -> spqr.ResolveKeyRangeReply
-	23, // 35: spqr.KeyRangeService.BatchMoveKeyRange:output_type -> google.protobuf.Empty
-	23, // 36: spqr.KeyRangeService.RedistributeKeyRange:output_type -> google.protobuf.Empty
-	23, // 37: spqr.KeyRangeService.RenameKeyRange:output_type -> google.protobuf.Empty
-	22, // [22:38] is the sub-list for method output_type
-	6,  // [6:22] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	23, // 6: spqr.BatchMoveKeyRangeRequest.parent:type_name -> spqr.MoveTaskGroupParent
+	17, // 7: spqr.KeyRangeService.GetKeyRange:input_type -> spqr.GetKeyRangeRequest
+	3,  // 8: spqr.KeyRangeService.ListKeyRange:input_type -> spqr.ListKeyRangeRequest
+	24, // 9: spqr.KeyRangeService.ListAllKeyRanges:input_type -> google.protobuf.Empty
+	24, // 10: spqr.KeyRangeService.ListKeyRangeLocks:input_type -> google.protobuf.Empty
+	10, // 11: spqr.KeyRangeService.LockKeyRange:input_type -> spqr.LockKeyRangeRequest
+	4,  // 12: spqr.KeyRangeService.CreateKeyRange:input_type -> spqr.CreateKeyRangeRequest
+	8,  // 13: spqr.KeyRangeService.DropKeyRange:input_type -> spqr.DropKeyRangeRequest
+	24, // 14: spqr.KeyRangeService.DropAllKeyRanges:input_type -> google.protobuf.Empty
+	11, // 15: spqr.KeyRangeService.UnlockKeyRange:input_type -> spqr.UnlockKeyRangeRequest
+	5,  // 16: spqr.KeyRangeService.SplitKeyRange:input_type -> spqr.SplitKeyRangeRequest
+	6,  // 17: spqr.KeyRangeService.MergeKeyRange:input_type -> spqr.MergeKeyRangeRequest
+	7,  // 18: spqr.KeyRangeService.MoveKeyRange:input_type -> spqr.MoveKeyRangeRequest
+	15, // 19: spqr.KeyRangeService.ResolveKeyRange:input_type -> spqr.ResolveKeyRangeRequest
+	18, // 20: spqr.KeyRangeService.BatchMoveKeyRange:input_type -> spqr.BatchMoveKeyRangeRequest
+	19, // 21: spqr.KeyRangeService.RedistributeKeyRange:input_type -> spqr.RedistributeKeyRangeRequest
+	20, // 22: spqr.KeyRangeService.RenameKeyRange:input_type -> spqr.RenameKeyRangeRequest
+	12, // 23: spqr.KeyRangeService.GetKeyRange:output_type -> spqr.KeyRangeReply
+	12, // 24: spqr.KeyRangeService.ListKeyRange:output_type -> spqr.KeyRangeReply
+	12, // 25: spqr.KeyRangeService.ListAllKeyRanges:output_type -> spqr.KeyRangeReply
+	13, // 26: spqr.KeyRangeService.ListKeyRangeLocks:output_type -> spqr.KeyRangeLocksReply
+	14, // 27: spqr.KeyRangeService.LockKeyRange:output_type -> spqr.ModifyReply
+	14, // 28: spqr.KeyRangeService.CreateKeyRange:output_type -> spqr.ModifyReply
+	14, // 29: spqr.KeyRangeService.DropKeyRange:output_type -> spqr.ModifyReply
+	9,  // 30: spqr.KeyRangeService.DropAllKeyRanges:output_type -> spqr.DropAllKeyRangesResponse
+	14, // 31: spqr.KeyRangeService.UnlockKeyRange:output_type -> spqr.ModifyReply
+	14, // 32: spqr.KeyRangeService.SplitKeyRange:output_type -> spqr.ModifyReply
+	14, // 33: spqr.KeyRangeService.MergeKeyRange:output_type -> spqr.ModifyReply
+	14, // 34: spqr.KeyRangeService.MoveKeyRange:output_type -> spqr.ModifyReply
+	16, // 35: spqr.KeyRangeService.ResolveKeyRange:output_type -> spqr.ResolveKeyRangeReply
+	24, // 36: spqr.KeyRangeService.BatchMoveKeyRange:output_type -> google.protobuf.Empty
+	24, // 37: spqr.KeyRangeService.RedistributeKeyRange:output_type -> google.protobuf.Empty
+	24, // 38: spqr.KeyRangeService.RenameKeyRange:output_type -> google.protobuf.Empty
+	23, // [23:39] is the sub-list for method output_type
+	7,  // [7:23] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_protos_key_range_proto_init() }

@@ -1408,6 +1408,14 @@ func (q *MemQDB) DropRedistributeTask(_ context.Context, task *RedistributeTask)
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.RedistributeTasks, task.ID), NewDeleteCommand(q.KeyRangeRedistributeTasks, task.KeyRangeId))
 }
 
+func (q *MemQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, id string) (string, error) {
+	return "", fmt.Errorf("not implemented")
+}
+
+func (q *MemQDB) UpdateRedistributeTaskTaskGroupId(ctx context.Context, redistributeTaskId string, taskGroupId string) error {
+	return fmt.Errorf("not implemented")
+}
+
 // TODO: unit tests
 func (q *MemQDB) GetBalancerTask(_ context.Context) (*BalancerTask, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get balancer task")

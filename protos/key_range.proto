@@ -120,6 +120,7 @@ message BatchMoveKeyRangeRequest {
   int64 batchSize = 6;
   SplitType splitType = 7;
   string taskGroupId = 8;
+  MoveTaskGroupParent parent = 9;
 }
 
 message RedistributeKeyRangeRequest {

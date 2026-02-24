@@ -127,7 +127,7 @@ func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id st
 }
 
 // BatchMoveKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
+func (lc *Coordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, parent *tasks.MoveTaskGroupParent) error {
 	panic("unimplemented")
 }
 
@@ -768,7 +768,15 @@ func (qc *Coordinator) ListRedistributeTasks(ctx context.Context) ([]*tasks.Redi
 	}
 	res := make([]*tasks.RedistributeTask, len(tasksDb))
 	for i, taskDb := range tasksDb {
-		res[i] = tasks.RedistributeTaskFromDB(taskDb)
+		taskGroupId, err := qc.qdb.GetRedistributeTaskTaskGroupId(ctx, taskDb.ID)
+		if err != nil {
+			return nil, err
+		}
+		taskGroup, err := qc.GetMoveTaskGroup(ctx, taskGroupId)
+		if err != nil {
+			return nil, err
+		}
+		res[i] = tasks.RedistributeTaskFromDB(taskDb, taskGroup)
 	}
 	return res, nil
 }

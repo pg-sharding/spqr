@@ -1053,6 +1053,21 @@ func (mr *MockQDBMockRecorder) GetRedistributeTask(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRedistributeTask", reflect.TypeOf((*MockQDB)(nil).GetRedistributeTask), ctx, id)
 }
 
+// GetRedistributeTaskTaskGroupId mocks base method.
+func (m *MockQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, redistributeTaskId string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRedistributeTaskTaskGroupId", ctx, redistributeTaskId)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRedistributeTaskTaskGroupId indicates an expected call of GetRedistributeTaskTaskGroupId.
+func (mr *MockQDBMockRecorder) GetRedistributeTaskTaskGroupId(ctx, redistributeTaskId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRedistributeTaskTaskGroupId", reflect.TypeOf((*MockQDB)(nil).GetRedistributeTaskTaskGroupId), ctx, redistributeTaskId)
+}
+
 // GetReferenceRelation mocks base method.
 func (m *MockQDB) GetReferenceRelation(ctx context.Context, relName *rfqn.RelationFQN) (*qdb.ReferenceRelation, error) {
 	m.ctrl.T.Helper()
@@ -2524,6 +2539,21 @@ func (m *MockXQDB) GetRedistributeTask(ctx context.Context, id string) (*qdb.Red
 func (mr *MockXQDBMockRecorder) GetRedistributeTask(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRedistributeTask", reflect.TypeOf((*MockXQDB)(nil).GetRedistributeTask), ctx, id)
+}
+
+// GetRedistributeTaskTaskGroupId mocks base method.
+func (m *MockXQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, redistributeTaskId string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRedistributeTaskTaskGroupId", ctx, redistributeTaskId)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRedistributeTaskTaskGroupId indicates an expected call of GetRedistributeTaskTaskGroupId.
+func (mr *MockXQDBMockRecorder) GetRedistributeTaskTaskGroupId(ctx, redistributeTaskId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRedistributeTaskTaskGroupId", reflect.TypeOf((*MockXQDB)(nil).GetRedistributeTaskTaskGroupId), ctx, redistributeTaskId)
 }
 
 // GetReferenceRelation mocks base method.

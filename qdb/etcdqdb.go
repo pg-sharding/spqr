@@ -55,29 +55,30 @@ func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 }
 
 const (
-	keyRangesNamespace                 = "/keyranges/"
-	distributionNamespace              = "/distributions/"
-	keyRangeMovesNamespace             = "/krmoves/"
-	routersNamespace                   = "/routers/"
-	shardsNamespace                    = "/shards/"
-	relationMappingNamespace           = "/relation_mappings/"
-	taskGroupsNamespace                = "/move_task_groups/"
-	taskGroupStatusesNamespace         = "/task_group_statuses/"
-	taskGroupLocksNamespace            = "/task_group_locks/"
-	moveTaskNamespace                  = "/move_tasks/"
-	redistributeTasksNamespace         = "/redistribute_tasks/"
-	keyRangeRedistributeTasksNamespace = "/key_range_redistribute_tasks/"
-	balancerTaskPath                   = "/balancer_task/"
-	transactionNamespace               = "/transfer_txs/"
-	sequenceNamespace                  = "/sequences/"
-	referenceRelationsNamespace        = "/reference_relations"
-	uniqueIndexesNamespace             = "/unique_indexes"
-	columnSequenceMappingNamespace     = "/column_sequence_mappings/"
-	lockNamespace                      = "/lock"
-	totalKeysNamespace                 = "/total_keys/"
-	stopMoveTaskGroupNamespace         = "/stop_move_task_group/"
-	moveTaskByGroupNamespace           = "/group_move_tasks/"
-	uniqueIndexesByRelationNamespace   = "/relation_unique_indexes"
+	keyRangesNamespace                   = "/keyranges/"
+	distributionNamespace                = "/distributions/"
+	keyRangeMovesNamespace               = "/krmoves/"
+	routersNamespace                     = "/routers/"
+	shardsNamespace                      = "/shards/"
+	relationMappingNamespace             = "/relation_mappings/"
+	taskGroupsNamespace                  = "/move_task_groups/"
+	taskGroupStatusesNamespace           = "/task_group_statuses/"
+	taskGroupLocksNamespace              = "/task_group_locks/"
+	moveTaskNamespace                    = "/move_tasks/"
+	redistributeTasksNamespace           = "/redistribute_tasks/"
+	redistributeTaskTaskGroupIdNamespace = "/redistribute_task_task_group_id"
+	keyRangeRedistributeTasksNamespace   = "/key_range_redistribute_tasks/"
+	balancerTaskPath                     = "/balancer_task/"
+	transactionNamespace                 = "/transfer_txs/"
+	sequenceNamespace                    = "/sequences/"
+	referenceRelationsNamespace          = "/reference_relations"
+	uniqueIndexesNamespace               = "/unique_indexes"
+	columnSequenceMappingNamespace       = "/column_sequence_mappings/"
+	lockNamespace                        = "/lock"
+	totalKeysNamespace                   = "/total_keys/"
+	stopMoveTaskGroupNamespace           = "/stop_move_task_group/"
+	moveTaskByGroupNamespace             = "/group_move_tasks/"
+	uniqueIndexesByRelationNamespace     = "/relation_unique_indexes"
 
 	CoordKeepAliveTtl  = 3
 	coordLockKey       = "coordinator_exists"
@@ -171,6 +172,10 @@ func moveTaskByGroupNodePath(taskGroupID string) string {
 
 func redistributeTaskNodePath(id string) string {
 	return path.Join(redistributeTasksNamespace, id)
+}
+
+func redistributeTaskTaskGroupIdNodePath(id string) string {
+	return path.Join(redistributeTaskTaskGroupIdNamespace, id)
 }
 
 func keyRangeRedistributeTaskNodePath(id string) string {
@@ -1854,6 +1859,9 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, id string, group *Move
 		clientv3.OpPut(totalKeysNodePath(id), fmt.Sprintf("%d", totalKeys)),
 		clientv3.OpDelete(taskGroupStopFlagNodePath(id)),
 	}
+	if group.Parent != nil && group.Parent.Type == ParentRedistributeTask {
+		ops = append(ops, clientv3.OpPut(redistributeTaskTaskGroupIdNodePath(group.Parent.Id), id))
+	}
 	if task != nil {
 		taskJson, err := json.Marshal(task)
 		if err != nil {
@@ -2220,6 +2228,21 @@ func (q *EtcdQDB) DropRedistributeTask(ctx context.Context, task *RedistributeTa
 
 	_, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(redistributeTaskNodePath(task.ID)), clientv3.OpDelete(keyRangeRedistributeTaskNodePath(task.KeyRangeId))).Commit()
 	return err
+}
+
+func (q *EtcdQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, id string) (string, error) {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: get redistribute task task group id")
+
+	resp, err := q.cli.Get(ctx, redistributeTaskTaskGroupIdNodePath(id))
+	if err != nil {
+		return "", err
+	}
+	if resp.Count == 0 {
+		return "", nil
+	}
+	return string(resp.Kvs[0].Value), nil
 }
 
 // TODO: unit tests

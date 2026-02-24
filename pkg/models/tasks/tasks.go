@@ -39,19 +39,33 @@ const (
 	SplitRight
 )
 
+type MoveTaskGroupParentType int
+
+const (
+	ParentTypeUnknown MoveTaskGroupParentType = iota
+	ParentRedistributeTask
+	ParentBalancerTask
+)
+
+type MoveTaskGroupParent struct {
+	Type MoveTaskGroupParentType `json:"type"`
+	Id   string                  `json:"id"`
+}
+
 type MoveTaskGroup struct {
-	ID          string    `json:"id"`
-	ShardToId   string    `json:"shard_to_id"`
-	KrIdFrom    string    `json:"kr_id_from"`
-	KrIdTo      string    `json:"kr_id_to"`
-	Type        SplitType `json:"type"`
-	BoundRel    string    `json:"bound_rel"`
-	Coeff       float64   `json:"coeff"`
-	BatchSize   int64     `json:"batch_size"`
-	Limit       int64     `json:"limit"`
-	TotalKeys   int64     `json:"total_keys"`
-	CurrentTask *MoveTask `json:"task"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          string               `json:"id"`
+	ShardToId   string               `json:"shard_to_id"`
+	KrIdFrom    string               `json:"kr_id_from"`
+	KrIdTo      string               `json:"kr_id_to"`
+	Type        SplitType            `json:"type"`
+	BoundRel    string               `json:"bound_rel"`
+	Coeff       float64              `json:"coeff"`
+	BatchSize   int64                `json:"batch_size"`
+	Limit       int64                `json:"limit"`
+	TotalKeys   int64                `json:"total_keys"`
+	CurrentTask *MoveTask            `json:"task"`
+	CreatedAt   time.Time            `json:"created_at"`
+	Parent      *MoveTaskGroupParent `json:"parent"`
 }
 
 type TaskGroupState string
@@ -83,6 +97,62 @@ type RedistributeTask struct {
 	BatchSize   int
 	TempKrId    string
 	State       RedistributeTaskState
+	TaskGroup   *MoveTaskGroup
+}
+
+func TaskGroupParentToProto(parent *MoveTaskGroupParent) *protos.MoveTaskGroupParent {
+	return &protos.MoveTaskGroupParent{
+		Type: func() protos.MoveTaskGroupParentType {
+			switch parent.Type {
+			case ParentRedistributeTask:
+				return protos.MoveTaskGroupParentType_ParentRedstributeTask
+			case ParentBalancerTask:
+				return protos.MoveTaskGroupParentType_ParentBalancerTask
+			default:
+				return protos.MoveTaskGroupParentType_ParentUnknown
+			}
+		}(),
+		Id: parent.Id,
+	}
+}
+
+func TaskGroupParentFromProto(parent *protos.MoveTaskGroupParent) *MoveTaskGroupParent {
+	return &MoveTaskGroupParent{
+		Type: func() MoveTaskGroupParentType {
+			switch parent.Type {
+			case protos.MoveTaskGroupParentType_ParentRedstributeTask:
+				return ParentRedistributeTask
+			case protos.MoveTaskGroupParentType_ParentBalancerTask:
+				return ParentBalancerTask
+			default:
+				return ParentTypeUnknown
+			}
+		}(),
+		Id: parent.Id,
+	}
+}
+
+func TaskGroupParentToDB(parent *MoveTaskGroupParent) *qdb.MoveTaskGroupParent {
+	return &qdb.MoveTaskGroupParent{
+		Type: int(parent.Type),
+		Id:   parent.Id,
+	}
+}
+
+func TaskGroupParentFromDB(parent *qdb.MoveTaskGroupParent) *MoveTaskGroupParent {
+	return &MoveTaskGroupParent{
+		Type: func() MoveTaskGroupParentType {
+			switch parent.Type {
+			case int(ParentRedistributeTask):
+				return ParentRedistributeTask
+			case int(ParentBalancerTask):
+				return ParentBalancerTask
+			default:
+				return ParentTypeUnknown
+			}
+		}(),
+		Id: parent.Id,
+	}
 }
 
 // TaskGroupToProto converts a MoveTaskGroup object to its corresponding protobuf representation.
@@ -109,6 +179,7 @@ func TaskGroupToProto(group *MoveTaskGroup) *protos.MoveTaskGroup {
 		TotalKeys:      group.TotalKeys,
 		BatchSize:      group.BatchSize,
 		BoundRel:       group.BoundRel,
+		Parent:         TaskGroupParentToProto(group.Parent),
 	}
 }
 
@@ -243,6 +314,7 @@ func TaskGroupFromProto(group *protos.MoveTaskGroup) *MoveTaskGroup {
 		TotalKeys:   group.TotalKeys,
 		BatchSize:   group.BatchSize,
 		BoundRel:    group.BoundRel,
+		Parent:      TaskGroupParentFromProto(group.Parent),
 	}
 }
 
@@ -356,6 +428,7 @@ func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
 		BatchSize: group.BatchSize,
 		Limit:     group.Limit,
 		CreatedAt: group.CreatedAt,
+		Parent:    TaskGroupParentToDB(group.Parent),
 	}
 }
 
@@ -409,6 +482,7 @@ func TaskGroupFromDb(id string, group *qdb.MoveTaskGroup, moveTask *qdb.MoveTask
 		CurrentTask: TaskFromDb(moveTask),
 		TotalKeys:   totalKeys,
 		CreatedAt:   group.CreatedAt,
+		Parent:      TaskGroupParentFromDB(group.Parent),
 	}
 }
 
@@ -564,6 +638,7 @@ func RedistributeTaskToProto(task *RedistributeTask) *protos.RedistributeTask {
 		ShardId:     task.ShardId,
 		BatchSize:   int64(task.BatchSize),
 		State:       RedistributeTaskStateToProto(task.State),
+		TaskGroup:   TaskGroupToProto(task.TaskGroup),
 	}
 }
 
@@ -578,6 +653,7 @@ func RedistributeTaskFromProto(task *protos.RedistributeTask) *RedistributeTask 
 		ShardId:     task.ShardId,
 		BatchSize:   int(task.BatchSize),
 		State:       RedistributeTaskStateFromProto(task.State),
+		TaskGroup:   TaskGroupFromProto(task.TaskGroup),
 	}
 }
 
@@ -595,7 +671,7 @@ func RedistributeTaskToDB(task *RedistributeTask) *qdb.RedistributeTask {
 	}
 }
 
-func RedistributeTaskFromDB(task *qdb.RedistributeTask) *RedistributeTask {
+func RedistributeTaskFromDB(task *qdb.RedistributeTask, taskGroup *MoveTaskGroup) *RedistributeTask {
 	if task == nil {
 		return nil
 	}
@@ -615,6 +691,7 @@ func RedistributeTaskFromDB(task *qdb.RedistributeTask) *RedistributeTask {
 				panic("unknown redistribute task type")
 			}
 		}(),
+		TaskGroup: taskGroup,
 	}
 }
 
