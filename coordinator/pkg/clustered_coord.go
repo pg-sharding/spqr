@@ -2697,8 +2697,8 @@ func (qc *ClusteredCoordinator) AlterDistributedRelation(ctx context.Context, id
 
 // AlterDistributedRelationSchema changes the schema name of a relation attached to a distribution
 // TODO: unit tests
-func (qc *ClusteredCoordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
-	if err := qc.Coordinator.AlterDistributedRelationSchema(ctx, id, relName, schemaName); err != nil {
+func (qc *ClusteredCoordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relationName *rfqn.RelationFQN, schemaName string) error {
+	if err := qc.Coordinator.AlterDistributedRelationSchema(ctx, id, relationName, schemaName); err != nil {
 		return err
 	}
 
@@ -2706,7 +2706,7 @@ func (qc *ClusteredCoordinator) AlterDistributedRelationSchema(ctx context.Conte
 		cl := proto.NewDistributionServiceClient(cc)
 		resp, err := cl.AlterDistributedRelationSchema(ctx, &proto.AlterDistributedRelationSchemaRequest{
 			Id:           id,
-			RelationName: relName,
+			RelationName: relationName.RelationName,
 			SchemaName:   schemaName,
 		})
 		if err != nil {
@@ -2722,10 +2722,12 @@ func (qc *ClusteredCoordinator) AlterDistributedRelationSchema(ctx context.Conte
 
 // AlterDistributedRelationSchema changes the distribution key of a relation attached to a distribution
 // TODO: unit tests
-func (qc *ClusteredCoordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []distributions.DistributionKeyEntry) error {
-	if err := qc.Coordinator.AlterDistributedRelationDistributionKey(ctx, id, relName, distributionKey); err != nil {
+func (qc *ClusteredCoordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationName *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
+	if err := qc.Coordinator.AlterDistributedRelationDistributionKey(ctx, id, relationName, distributionKey); err != nil {
 		return err
 	}
+
+	relName := relationName.RelationName
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)

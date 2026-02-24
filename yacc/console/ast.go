@@ -305,7 +305,7 @@ func (*AlterRelation) iAlter()             {}
 func (*AlterRelation) iAlterDistribution() {}
 
 type AlterRelationV2 struct {
-	RelationName string
+	RelationName *rfqn.RelationFQN
 	Element      RelationAlterStmt
 }
 
