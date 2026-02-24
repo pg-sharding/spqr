@@ -218,7 +218,7 @@ Feature: Reference relation test
         "relation_name": "test",
         "distribution_id": "REPLICATED",
         "distribution_key":"",
-        "schema_name": "$search_path"
+        "schema_name": "public"
       }
     ]
     """
