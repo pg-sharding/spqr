@@ -2226,7 +2226,7 @@ func (q *EtcdQDB) DropRedistributeTask(ctx context.Context, task *RedistributeTa
 		Str("id", task.ID).
 		Msg("etcdqdb: remove redistribute task")
 
-	_, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(redistributeTaskNodePath(task.ID)), clientv3.OpDelete(keyRangeRedistributeTaskNodePath(task.KeyRangeId))).Commit()
+	_, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(redistributeTaskNodePath(task.ID)), clientv3.OpDelete(keyRangeRedistributeTaskNodePath(task.KeyRangeId)), clientv3.OpDelete(redistributeTaskTaskGroupIdNodePath(task.ID))).Commit()
 	return err
 }
 
