@@ -786,6 +786,9 @@ func (qc *Coordinator) DropRedistributeTask(ctx context.Context, id string, casc
 	if err != nil {
 		return err
 	}
+	if task == nil {
+		return nil
+	}
 	taskGroupId, err := qc.qdb.GetRedistributeTaskTaskGroupId(ctx, task.ID)
 	if err != nil {
 		return err
