@@ -491,7 +491,7 @@ func createReferenceRelation(ctx context.Context, mngr EntityMgr, stmt *spqrpars
 
 	tableName := r.TableName
 	if r.SchemaName != "" {
-		tableName = r.SchemaName + "." + r.TableName
+		tableName = r.QualifiedName().String()
 	}
 	/* XXX: can we already make this more SQL compliant?  */
 	tts := &tupleslot.TupleTableSlot{
