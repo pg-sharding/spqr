@@ -86,6 +86,7 @@ func AutoIncrementEntriesFromProto(inEntries []*protos.AutoIncrementEntry) []*Au
 func RefRelationFromProto(p *protos.ReferenceRelation) *ReferenceRelation {
 	return &ReferenceRelation{
 		TableName:             p.Name,
+		SchemaName:            p.SchemaName,
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.SequenceColumns,
 		ShardIds:              p.ShardIds,
@@ -95,6 +96,7 @@ func RefRelationFromProto(p *protos.ReferenceRelation) *ReferenceRelation {
 func RefRelationToProto(p *ReferenceRelation) *protos.ReferenceRelation {
 	return &protos.ReferenceRelation{
 		Name:            p.TableName,
+		SchemaName:      p.SchemaName,
 		SchemaVersion:   p.SchemaVersion,
 		SequenceColumns: p.ColumnSequenceMapping,
 		ShardIds:        p.ShardIds,

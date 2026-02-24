@@ -12,6 +12,7 @@ message ReferenceRelation {
   map<string, string> sequenceColumns = 2;
   uint64 schema_version = 3;
   repeated string shardIds = 4;
+  string schema_name = 5;
 }
 
 message AutoIncrementEntry {

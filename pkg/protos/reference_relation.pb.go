@@ -28,6 +28,7 @@ type ReferenceRelation struct {
 	SequenceColumns map[string]string      `protobuf:"bytes,2,rep,name=sequenceColumns,proto3" json:"sequenceColumns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	SchemaVersion   uint64                 `protobuf:"varint,3,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
 	ShardIds        []string               `protobuf:"bytes,4,rep,name=shardIds,proto3" json:"shardIds,omitempty"`
+	SchemaName      string                 `protobuf:"bytes,5,opt,name=schema_name,json=schemaName,proto3" json:"schema_name,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -88,6 +89,13 @@ func (x *ReferenceRelation) GetShardIds() []string {
 		return x.ShardIds
 	}
 	return nil
+}
+
+func (x *ReferenceRelation) GetSchemaName() string {
+	if x != nil {
+		return x.SchemaName
+	}
+	return ""
 }
 
 type AutoIncrementEntry struct {
@@ -390,12 +398,14 @@ var File_protos_reference_relation_proto protoreflect.FileDescriptor
 
 const file_protos_reference_relation_proto_rawDesc = "" +
 	"\n" +
-	"\x1fprotos/reference_relation.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1bprotos/qualified_name.proto\"\x86\x02\n" +
+	"\x1fprotos/reference_relation.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1bprotos/qualified_name.proto\"\xa7\x02\n" +
 	"\x11ReferenceRelation\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12V\n" +
 	"\x0fsequenceColumns\x18\x02 \x03(\v2,.spqr.ReferenceRelation.SequenceColumnsEntryR\x0fsequenceColumns\x12%\n" +
 	"\x0eschema_version\x18\x03 \x01(\x04R\rschemaVersion\x12\x1a\n" +
-	"\bshardIds\x18\x04 \x03(\tR\bshardIds\x1aB\n" +
+	"\bshardIds\x18\x04 \x03(\tR\bshardIds\x12\x1f\n" +
+	"\vschema_name\x18\x05 \x01(\tR\n" +
+	"schemaName\x1aB\n" +
 	"\x14SequenceColumnsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"N\n" +
