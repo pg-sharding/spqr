@@ -203,7 +203,7 @@ Feature: Redistribution test
     Then command return code should be "1"
     And command output should match regexp
     """
-    relation "public.xmove" does not exist on the destination shard
+    relation "xMove" does not exist on the destination shard
     """
   
   Scenario: REDISTRIBUTE KEY RANGE CHECK checks for tables on the source shard
@@ -220,7 +220,7 @@ Feature: Redistribution test
     Then command return code should be "1"
     And command output should match regexp
     """
-    relation "public.xmove" does not exist on the source shard, possible misconfiguration of schema names
+    relation "xMove" does not exist on the source shard, possible misconfiguration of schema names
     """
 
   Scenario: REDISTRIBUTE KEY RANGE CHECK checks for distribution key in source relation
