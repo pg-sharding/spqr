@@ -253,10 +253,10 @@ func TypedColRefFromDB(in []qdb.TypedColRef) []TypedColRef {
 //   - *DistributedRelation: The created DistributedRelation object.
 func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *DistributedRelation {
 	return &DistributedRelation{
-		Name:                  rel.Name,
-		SchemaName:            rel.SchemaName,
+		Name:                  rel.Relation.RelationName,
+		SchemaName:            rel.Relation.SchemaName,
 		DistributionKey:       DistributionKeyFromSQL(rel.DistributionKey),
-		ColumnSequenceMapping: ColumnSequenceMappingFromSQL(rel.Name, rel.AutoIncrementEntries),
+		ColumnSequenceMapping: ColumnSequenceMappingFromSQL(rel.Relation.RelationName, rel.AutoIncrementEntries),
 		ReplicatedRelation:    rel.ReplicatedRelation,
 	}
 }

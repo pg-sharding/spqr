@@ -281,8 +281,7 @@ type DistributionKeyEntry struct {
 }
 
 type DistributedRelation struct {
-	Name                 string
-	SchemaName           string
+	Relation             *rfqn.RelationFQN
 	DistributionKey      []DistributionKeyEntry
 	ReplicatedRelation   bool
 	AutoIncrementEntries []*AutoIncrementEntry

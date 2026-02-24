@@ -896,19 +896,17 @@ distributed_relation_def:
 	RELATION qualified_name DISTRIBUTION KEY distribution_key_argument_list opt_auto_increment
 	{
 		$$ = &DistributedRelation{
-			Name: 	 $2.RelationName,
+			Relation:    	 $2,
 			DistributionKey: $5,
 			AutoIncrementEntries: $6,
-			SchemaName: $2.SchemaName,
 		}
 	} 
 	| RELATION qualified_name TOPENBR distribution_key_argument_list opt_auto_increment TCLOSEBR
 	{
 		$$ = &DistributedRelation{
-			Name: 	 $2.RelationName,
+			Relation:    	 $2,
 			DistributionKey: $4,
 			AutoIncrementEntries: $5,
-			SchemaName: $2.SchemaName,
 		}
 	} 
 
