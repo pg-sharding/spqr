@@ -638,29 +638,39 @@ func MoveTasksVirtualRelationScan(ts map[string]*tasks.MoveTask, dsIDColTypes ma
 	return tts, nil
 }
 
-func TaskGroupBoundsCacheVirtualRelationScan(bounds [][][]byte, index int, colTypes []string, id string) (*tupleslot.TupleTableSlot, error) {
+func TaskGroupBoundsCacheVirtualRelationScan(boundsMap map[string][][][]byte, indexMap map[string]int, colTypesMap map[string][]string) (*tupleslot.TupleTableSlot, error) {
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader("task_group_id", "bound", "status"),
 	}
-	for i, bound := range bounds {
-		krData := []string{""}
-		if bound != nil {
-			kRange, err := kr.KeyRangeFromBytes(bound, colTypes)
-			if err != nil {
-				return nil, err
-			}
-			krData = kRange.SendRaw()
+	for id, bounds := range boundsMap {
+		index, ok := indexMap[id]
+		if !ok {
+			return nil, fmt.Errorf("index for task group \"%s\" not present", id)
 		}
-		tts.WriteDataRow(
-			id,
-			strings.Join(krData, ";"),
-			func() string {
-				if i < index {
-					return "USED"
+		colTypes, ok := colTypesMap[id]
+		if !ok {
+			return nil, fmt.Errorf("column types for task group \"%s\" not present", id)
+		}
+		for i, bound := range bounds {
+			krData := []string{""}
+			if bound != nil {
+				kRange, err := kr.KeyRangeFromBytes(bound, colTypes)
+				if err != nil {
+					return nil, err
 				}
-				return ""
-			}(),
-		)
+				krData = kRange.SendRaw()
+			}
+			tts.WriteDataRow(
+				id,
+				strings.Join(krData, ";"),
+				func() string {
+					if i < index {
+						return "USED"
+					}
+					return ""
+				}(),
+			)
+		}
 	}
 	return tts, nil
 }
