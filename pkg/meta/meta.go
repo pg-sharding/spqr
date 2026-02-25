@@ -1481,38 +1481,41 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-	case spqrparser.TaskGroupBoundsCacheStr:
-		taskGroupId, err := engine.CheckWhereClauseColString(stmt.Where, "task_group_id")
+	case spqrparser.TaskGroupExtendedStr, spqrparser.TaskGroupsExtendedStr:
+		taskGroups, err := mngr.ListMoveTaskGroups(ctx)
 		if err != nil {
 			return nil, err
 		}
-		bounds, ind, err := mngr.GetMoveTaskGroupBoundsCache(ctx, taskGroupId)
-		if err != nil {
-			return nil, err
-		}
-		taskGroup, err := mngr.GetMoveTaskGroup(ctx, taskGroupId)
-		if err != nil {
-			return nil, err
-		}
-		if taskGroup == nil {
-			return nil, fmt.Errorf("move task group \"%s\" not found", taskGroupId)
-		}
-		keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
-		if err != nil {
-			if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
-				var err2 error
-				keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
-				if err2 != nil {
-					return nil, fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
+		boundsMap := make(map[string][][][]byte)
+		indexMap := make(map[string]int)
+		dsIdToColTypes := make(map[string][]string)
+		taskGroupIdToColTypes := make(map[string][]string)
+		for _, taskGroup := range taskGroups {
+			bounds, ind, err := mngr.GetMoveTaskGroupBoundsCache(ctx, taskGroup.ID)
+			if err != nil {
+				return nil, err
+			}
+			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+			if err != nil {
+				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
+					var err2 error
+					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
+					if err2 != nil {
+						return nil, fmt.Errorf("could not get source key range \"%s\": %s, nor destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
+					}
 				}
 			}
+			boundsMap[taskGroup.ID] = bounds
+			indexMap[taskGroup.ID] = ind
+			if _, ok := dsIdToColTypes[keyRange.Distribution]; !ok {
+				dsIdToColTypes[keyRange.Distribution] = keyRange.ColumnTypes
+			}
+			taskGroupIdToColTypes[taskGroup.ID] = dsIdToColTypes[keyRange.Distribution]
 		}
-
 		tts, err = engine.TaskGroupBoundsCacheVirtualRelationScan(
-			bounds,
-			ind,
-			keyRange.ColumnTypes,
-			taskGroupId)
+			boundsMap,
+			indexMap,
+			taskGroupIdToColTypes)
 		if err != nil {
 			return nil, err
 		}

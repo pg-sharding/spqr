@@ -669,7 +669,8 @@ show_statement_type:
 			PreparedStatementsStr, QuantilesStr, SequencesStr,
 			IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
-			TaskGroupBoundsCacheStr, RedistributeTasksStr, ErrorStr:
+			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
+			ErrorStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
