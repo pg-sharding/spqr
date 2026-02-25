@@ -2421,6 +2421,9 @@ func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s
 	if err != nil {
 		return err
 	}
+	if resp.Count == 0 {
+		return fmt.Errorf("failed to update key range move status: key range move \"%s\" not found", moveId)
+	}
 	var moveKr MoveKeyRange
 	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
 		return err
@@ -2453,6 +2456,9 @@ func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId))
 	if err != nil {
 		return err
+	}
+	if resp.Count == 0 {
+		return fmt.Errorf("failed to delete key range move: key range move \"%s\" not found", moveId)
 	}
 	var moveKr MoveKeyRange
 	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
