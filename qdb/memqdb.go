@@ -234,31 +234,27 @@ func (q *MemQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 // ==============================================================================
 
 func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement, error) {
-	commands := make([]QdbStatement, 5)
+	commands := make([]QdbStatement, 4)
 	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
 		return nil, err
 	} else {
-		cmd, err := NewQdbStatementExt(CMD_CMP_VERSION, keyRange.KeyRangeID, 0, MapKrVersions)
+		cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs)
 		if err != nil {
 			return nil, err
 		}
 		commands[0] = *cmd
-		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs); err != nil {
-			return nil, err
-		}
-		commands[1] = *cmd
 		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapLocks); err != nil {
 			return nil, err
 		}
-		commands[2] = *cmd
+		commands[1] = *cmd
 		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapFreq); err != nil {
 			return nil, err
 		}
-		commands[3] = *cmd
+		commands[2] = *cmd
 		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, 1, MapKrVersions); err != nil {
 			return nil, err
 		}
-		commands[4] = *cmd
+		commands[3] = *cmd
 	}
 	return commands, nil
 }
@@ -285,24 +281,19 @@ func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeId string) ([]QdbStatement, e
 }
 
 func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement, error) {
-	commands := make([]QdbStatement, 3)
+	commands := make([]QdbStatement, 2)
 	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
 		return nil, err
 	} else {
-		if cmd, err := NewQdbStatementExt(CMD_CMP_VERSION, keyRange.KeyRangeID, keyRange.Version, MapKrVersions); err != nil {
+		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs); err != nil {
 			return nil, err
 		} else {
 			commands[0] = *cmd
 		}
-		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs); err != nil {
-			return nil, err
-		} else {
-			commands[1] = *cmd
-		}
 		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, keyRange.Version+1, MapKrVersions); err != nil {
 			return nil, err
 		} else {
-			commands[4] = *cmd
+			commands[1] = *cmd
 		}
 	}
 	return commands, nil
@@ -1755,17 +1746,6 @@ func (q *MemQDB) toKrVersion(stmt QdbStatement) (Command, error) {
 			return nil, fmt.Errorf("incorrect value type %T for MapKrVersions, int is expected", stmt.Value)
 		}
 		return NewUpdateCommand(q.KrVersions, stmt.Key, val), nil
-	case CMD_CMP_VERSION:
-		val, ok := stmt.Value.(int)
-		if !ok {
-			return nil, fmt.Errorf("incorrect value type %T for MapKrVersions, int is expected", stmt.Value)
-		}
-		return NewCustomCommand(func() error {
-			if q.KrVersions[stmt.Key] != val {
-				return fmt.Errorf("failed to exec statements: key range \"%s\" unexpected version", stmt.Key)
-			}
-			return nil
-		}, func() error { return nil }), nil
 	default:
 		return nil, fmt.Errorf("unsupported memDB cmd %d (lock)", stmt.CmdType)
 	}
