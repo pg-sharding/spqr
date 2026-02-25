@@ -1819,7 +1819,7 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context, id string) (*MoveTaskGro
 
 	t := time.Now()
 
-	resp, err := q.cli.Get(ctx, taskGroupNodePath(id), clientv3.WithFirstKey()...)
+	resp, err := q.cli.Get(ctx, taskGroupNodePath(id))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task group: %s", err)
 	}
