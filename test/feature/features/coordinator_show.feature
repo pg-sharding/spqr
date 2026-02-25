@@ -638,6 +638,6 @@ Feature: Coordinator show clients, pools and backend_connections
             "batch_size":               "0",
             "move_task_id":             "2",
             "state":                    "ERROR",
-            "error":                    "sample error message"
+            "message":                  "sample error message"
         }]
         """
