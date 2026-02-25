@@ -61,7 +61,7 @@ type KeyRangeMgr interface {
 	Move(ctx context.Context, move *MoveKeyRange) error
 	DropKeyRange(ctx context.Context, krid string) error
 	DropKeyRangeAll(ctx context.Context) error
-	BatchMoveKeyRange(ctx context.Context, req *BatchMoveKeyRange) error
+	BatchMoveKeyRange(ctx context.Context, req *BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error
 	RedistributeKeyRange(ctx context.Context, req *RedistributeKeyRange) error
 	RenameKeyRange(ctx context.Context, krId, krIdNew string) error
 }

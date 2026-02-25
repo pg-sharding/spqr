@@ -1258,7 +1258,7 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 //
 // Returns:
 //   - error: Any error occurred during transfer.
-func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
+func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
 	if err := statistics.RecordMoveStart(time.Now()); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to record key range move start in statistics")
 	}
@@ -1326,6 +1326,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 			Coeff:     coeff,
 			BatchSize: int64(req.BatchSize),
 			Limit:     req.Limit,
+			Issuer:    issuer,
 		}
 	} else {
 		taskGroup = &tasks.MoveTaskGroup{
@@ -1341,6 +1342,7 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 				State:       tasks.TaskPlanned,
 				Bound:       nil,
 			},
+			Issuer: issuer,
 		}
 	}
 	spqrlog.Zero.Debug().Str("taskGroup", fmt.Sprintf("%#v", taskGroup)).Msg("got task group")
@@ -2020,7 +2022,7 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 				Limit:       -1,
 				DestKrId:    task.TempKrId,
 				Type:        tasks.SplitRight,
-			}); err != nil {
+			}, &tasks.MoveTaskGroupIssuer{Type: tasks.IssuerRedistributeTask, Id: task.ID}); err != nil {
 				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
 					spqrlog.Zero.Error().Msg("finishing redistribute task due to task group stop")
 					if err2 := qc.db.DropRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err2 != nil {

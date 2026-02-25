@@ -19,7 +19,7 @@ type TaskMgr interface {
 	DropMoveTask(ctx context.Context, id string) error
 
 	ListRedistributeTasks(ctx context.Context) ([]*RedistributeTask, error)
-	DropRedistributeTask(ctx context.Context, id string) error
+	DropRedistributeTask(ctx context.Context, id string, cascade bool) error
 
 	GetBalancerTask(ctx context.Context) (*BalancerTask, error)
 	WriteBalancerTask(ctx context.Context, task *BalancerTask) error

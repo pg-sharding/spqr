@@ -163,5 +163,9 @@ func (t TasksServer) ListRedistributeTasks(ctx context.Context, _ *emptypb.Empty
 }
 
 func (t TasksServer) DropRedistributeTask(ctx context.Context, req *protos.RedistributeTaskSelector) (*emptypb.Empty, error) {
-	return nil, t.impl.DropRedistributeTask(ctx, req.Id)
+	return nil, t.impl.DropRedistributeTask(ctx, req.Id, false)
+}
+
+func (t TasksServer) DropRedistributeTaskV2(ctx context.Context, req *protos.DropRedistributeTaskRequest) (*emptypb.Empty, error) {
+	return nil, t.impl.DropRedistributeTask(ctx, req.Id, req.Cascade)
 }

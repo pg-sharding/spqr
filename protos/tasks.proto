@@ -47,6 +47,17 @@ enum SplitType {
   SplitRight = 1;
 }
 
+enum MoveTaskGroupIssuerType {
+  IssuerUnknown = 0;
+  IssuerRedistributeTask = 1;
+  IssuerBalancerTask = 2;
+}
+
+message MoveTaskGroupIssuer {
+  MoveTaskGroupIssuerType type = 1;
+  string id = 2;
+}
+
 message MoveTaskGroup {
   string ID = 13;
   SplitType type = 2;
@@ -59,6 +70,7 @@ message MoveTaskGroup {
   int64 batchSize = 10;
   int64 limit = 11;
   int64 totalKeys = 12;
+  MoveTaskGroupIssuer issuer = 14;
 }
 
 message GetMoveTaskGroupReply {
@@ -158,6 +170,7 @@ message RedistributeTask {
   int64 batchSize = 3;
   RedistributeTaskState state = 4;
   string taskGroupId = 5;
+  MoveTaskGroup taskGroup = 7;
 }
 
 message RedistributeTaskSelector {
@@ -166,11 +179,17 @@ message RedistributeTaskSelector {
 
 message ListRedistributeTasksReply {
   repeated RedistributeTask tasks = 1;
-} 
+}
+
+message DropRedistributeTaskRequest {
+  string id = 1;
+  bool cascade = 2;
+}
 
 service RedistributeTaskService {
   rpc ListRedistributeTasks(google.protobuf.Empty) returns (ListRedistributeTasksReply) {}
   rpc DropRedistributeTask(RedistributeTaskSelector) returns (google.protobuf.Empty) {}
+  rpc DropRedistributeTaskV2(DropRedistributeTaskRequest) returns (google.protobuf.Empty) {}
   rpc RemoveRedistributeTask(RedistributeTaskSelector) returns (google.protobuf.Empty) {
     option deprecated = true;
   }

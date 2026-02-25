@@ -163,17 +163,17 @@ func (mr *MockEntityMgrMockRecorder) AlterReferenceRelationStorage(ctx, relName,
 }
 
 // BatchMoveKeyRange mocks base method.
-func (m *MockEntityMgr) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
+func (m *MockEntityMgr) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BatchMoveKeyRange", ctx, req)
+	ret := m.ctrl.Call(m, "BatchMoveKeyRange", ctx, req, issuer)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // BatchMoveKeyRange indicates an expected call of BatchMoveKeyRange.
-func (mr *MockEntityMgrMockRecorder) BatchMoveKeyRange(ctx, req any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) BatchMoveKeyRange(ctx, req, issuer any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).BatchMoveKeyRange), ctx, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).BatchMoveKeyRange), ctx, req, issuer)
 }
 
 // BeginTran mocks base method.
@@ -391,17 +391,17 @@ func (mr *MockEntityMgrMockRecorder) DropMoveTaskGroup(ctx, id any) *gomock.Call
 }
 
 // DropRedistributeTask mocks base method.
-func (m *MockEntityMgr) DropRedistributeTask(ctx context.Context, id string) error {
+func (m *MockEntityMgr) DropRedistributeTask(ctx context.Context, id string, cascade bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DropRedistributeTask", ctx, id)
+	ret := m.ctrl.Call(m, "DropRedistributeTask", ctx, id, cascade)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DropRedistributeTask indicates an expected call of DropRedistributeTask.
-func (mr *MockEntityMgrMockRecorder) DropRedistributeTask(ctx, id any) *gomock.Call {
+func (mr *MockEntityMgrMockRecorder) DropRedistributeTask(ctx, id, cascade any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropRedistributeTask", reflect.TypeOf((*MockEntityMgr)(nil).DropRedistributeTask), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropRedistributeTask", reflect.TypeOf((*MockEntityMgr)(nil).DropRedistributeTask), ctx, id, cascade)
 }
 
 // DropReferenceRelation mocks base method.

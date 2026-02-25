@@ -463,7 +463,7 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 //
 // Returns:
 // - error: An error if moving the data was unsuccessful.
-func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
+func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	var limitType proto.RedistributeLimitType
 	limit := int64(0)
@@ -491,6 +491,7 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 				panic("unknown split type")
 			}
 		}(),
+		Issuer: tasks.TaskGroupIssuerToProto(issuer),
 	})
 	return spqrerror.CleanGrpcError(err)
 }
@@ -1193,9 +1194,9 @@ func (a *Adapter) ListRedistributeTasks(ctx context.Context) ([]*tasks.Redistrib
 	return res, nil
 }
 
-func (a *Adapter) DropRedistributeTask(ctx context.Context, id string) error {
+func (a *Adapter) DropRedistributeTask(ctx context.Context, id string, cascade bool) error {
 	tasksService := proto.NewRedistributeTaskServiceClient(a.conn)
-	_, err := tasksService.DropRedistributeTask(ctx, &proto.RedistributeTaskSelector{Id: id})
+	_, err := tasksService.DropRedistributeTaskV2(ctx, &proto.DropRedistributeTaskRequest{Id: id, Cascade: cascade})
 	return spqrerror.CleanGrpcError(err)
 }
 

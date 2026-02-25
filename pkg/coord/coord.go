@@ -127,7 +127,7 @@ func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id st
 }
 
 // BatchMoveKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
+func (lc *Coordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
 	panic("unimplemented")
 }
 
@@ -768,14 +768,39 @@ func (qc *Coordinator) ListRedistributeTasks(ctx context.Context) ([]*tasks.Redi
 	}
 	res := make([]*tasks.RedistributeTask, len(tasksDb))
 	for i, taskDb := range tasksDb {
-		res[i] = tasks.RedistributeTaskFromDB(taskDb)
+		taskGroupId, err := qc.qdb.GetRedistributeTaskTaskGroupId(ctx, taskDb.ID)
+		if err != nil {
+			return nil, err
+		}
+		taskGroup, err := qc.GetMoveTaskGroup(ctx, taskGroupId)
+		if err != nil {
+			return nil, err
+		}
+		res[i] = tasks.RedistributeTaskFromDB(taskDb, taskGroup)
 	}
 	return res, nil
 }
 
-func (qc *Coordinator) DropRedistributeTask(ctx context.Context, id string) error {
+func (qc *Coordinator) DropRedistributeTask(ctx context.Context, id string, cascade bool) error {
 	task, err := qc.qdb.GetRedistributeTask(ctx, id)
 	if err != nil {
+		return err
+	}
+	if task == nil {
+		return nil
+	}
+	taskGroupId, err := qc.qdb.GetRedistributeTaskTaskGroupId(ctx, task.ID)
+	if err != nil {
+		return err
+	}
+	if taskGroup, err := qc.GetMoveTaskGroup(ctx, taskGroupId); err != nil {
+		return err
+	} else if taskGroup != nil && !cascade {
+		return fmt.Errorf("cannot drop redistribute task \"%s\" because other objects depend on it\nDETAILS: move task group \"%s\"\nHINT: Use DROP ... CASCADE to drop task group automatically", id, taskGroupId)
+	}
+
+	// TODO use meta transactions
+	if err := qc.DropMoveTaskGroup(ctx, taskGroupId); err != nil {
 		return err
 	}
 	return qc.qdb.DropRedistributeTask(ctx, task)

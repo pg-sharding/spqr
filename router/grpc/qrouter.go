@@ -653,7 +653,11 @@ func (l *LocalQrouterServer) ListRedistributeTasks(ctx context.Context, _ *empty
 }
 
 func (l *LocalQrouterServer) DropRedistributeTask(ctx context.Context, req *protos.RedistributeTaskSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropRedistributeTask(ctx, req.Id)
+	return nil, l.mgr.DropRedistributeTask(ctx, req.Id, false)
+}
+
+func (l *LocalQrouterServer) DropRedistributeTaskV2(ctx context.Context, req *protos.DropRedistributeTaskRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropRedistributeTask(ctx, req.Id, req.Cascade)
 }
 
 // TODO: unit tests
