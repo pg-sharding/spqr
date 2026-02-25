@@ -88,20 +88,20 @@ func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.Sc
 			break
 		}
 
-		// Look for opening parenthesis of VALUES clause
+		// Look for opening issuerhesis of VALUES clause
 		if query[pos] != '(' {
-			// If not a parenthesis and we've processed at least one VALUES clause, we're done
+			// If not a issuerhesis and we've processed at least one VALUES clause, we're done
 			if valIndx == len(shs) {
 				break
 			}
-			return nil, fmt.Errorf("invalid query: expected opening parenthesis for VALUES clause")
+			return nil, fmt.Errorf("invalid query: expected opening issuerhesis for VALUES clause")
 		}
 
-		// Find matching closing parenthesis for this VALUES clause
+		// Find matching closing issuerhesis for this VALUES clause
 		valuesOpenInd := pos
-		valuesCloseInd := findMatchingClosingParenthesis(query, valuesOpenInd)
+		valuesCloseInd := findMatchingClosingIssuerhesis(query, valuesOpenInd)
 		if valuesCloseInd == -1 {
-			return nil, fmt.Errorf("invalid query: missing closing parenthesis in VALUES clause")
+			return nil, fmt.Errorf("invalid query: missing closing issuerhesis in VALUES clause")
 		}
 
 		// Format the VALUES clause content
@@ -153,16 +153,16 @@ func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.Sc
 }
 
 func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextvalGen func() (string, error)) (string, error) {
-	// Find the position of the opening parenthesis for the column list
+	// Find the position of the opening issuerhesis for the column list
 	colsOpenInd := strings.Index(query, "(")
 	if colsOpenInd == -1 {
 		return "", fmt.Errorf("invalid query: missing column list")
 	}
 
-	// Find the position of the closing parenthesis for the column list using balanced parentheses
-	colsCloseInd := findMatchingClosingParenthesis(query, colsOpenInd)
+	// Find the position of the closing issuerhesis for the column list using balanced issuerheses
+	colsCloseInd := findMatchingClosingIssuerhesis(query, colsOpenInd)
 	if colsCloseInd == -1 {
-		return "", fmt.Errorf("invalid query: missing closing parenthesis in column list")
+		return "", fmt.Errorf("invalid query: missing closing issuerhesis in column list")
 	}
 
 	// Build the new column list with the added column at the beginning
@@ -195,20 +195,20 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 			break
 		}
 
-		// Look for opening parenthesis of VALUES clause
+		// Look for opening issuerhesis of VALUES clause
 		if query[pos] != '(' {
-			// If not a parenthesis and we've processed at least one VALUES clause, we're done
+			// If not a issuerhesis and we've processed at least one VALUES clause, we're done
 			if !first {
 				break
 			}
-			return "", fmt.Errorf("invalid query: expected opening parenthesis for VALUES clause")
+			return "", fmt.Errorf("invalid query: expected opening issuerhesis for VALUES clause")
 		}
 
-		// Find matching closing parenthesis for this VALUES clause
+		// Find matching closing issuerhesis for this VALUES clause
 		valuesOpenInd := pos
-		valuesCloseInd := findMatchingClosingParenthesis(query, valuesOpenInd)
+		valuesCloseInd := findMatchingClosingIssuerhesis(query, valuesOpenInd)
 		if valuesCloseInd == -1 {
-			return "", fmt.Errorf("invalid query: missing closing parenthesis in VALUES clause")
+			return "", fmt.Errorf("invalid query: missing closing issuerhesis in VALUES clause")
 		}
 
 		// Generate next value
@@ -265,9 +265,9 @@ func formatInsertValue(newValue, originalContent string) string {
 	return newValue + ", " + originalContent
 }
 
-// findMatchingClosingParenthesis finds the matching closing parenthesis for an opening parenthesis at the given position
-// It properly handles nested parentheses and string literals
-func findMatchingClosingParenthesis(query string, openPos int) int {
+// findMatchingClosingIssuerhesis finds the matching closing issuerhesis for an opening issuerhesis at the given position
+// It properly handles nested issuerheses and string literals
+func findMatchingClosingIssuerhesis(query string, openPos int) int {
 	if openPos >= len(query) || query[openPos] != '(' {
 		return -1
 	}
@@ -285,7 +285,7 @@ func findMatchingClosingParenthesis(query string, openPos int) int {
 		} else if !inSingleQuote && char == '"' {
 			inDoubleQuote = !inDoubleQuote
 		} else if !inSingleQuote && !inDoubleQuote {
-			// Only count parentheses outside of string literals
+			// Only count issuerheses outside of string literals
 			switch char {
 			case '(':
 				level++
@@ -298,7 +298,7 @@ func findMatchingClosingParenthesis(query string, openPos int) int {
 		}
 	}
 
-	return -1 // No matching closing parenthesis found
+	return -1 // No matching closing issuerhesis found
 }
 
 func InsertSequenceValue(ctx context.Context,

@@ -47,14 +47,14 @@ enum SplitType {
   SplitRight = 1;
 }
 
-enum MoveTaskGroupParentType {
-  ParentUnknown = 0;
-  ParentRedistributeTask = 1;
-  ParentBalancerTask = 2;
+enum MoveTaskGroupIssuerType {
+  IssuerUnknown = 0;
+  IssuerRedistributeTask = 1;
+  IssuerBalancerTask = 2;
 }
 
-message MoveTaskGroupParent {
-  MoveTaskGroupParentType type = 1;
+message MoveTaskGroupIssuer {
+  MoveTaskGroupIssuerType type = 1;
   string id = 2;
 }
 
@@ -70,7 +70,7 @@ message MoveTaskGroup {
   int64 batchSize = 10;
   int64 limit = 11;
   int64 totalKeys = 12;
-  MoveTaskGroupParent parent = 14;
+  MoveTaskGroupIssuer issuer = 14;
 }
 
 message GetMoveTaskGroupReply {

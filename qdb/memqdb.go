@@ -1196,8 +1196,8 @@ func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, id string, group *MoveTas
 
 	q.MoveTaskGroups[id] = group
 	q.StopMoveTaskGroup[id] = false
-	if group.Parent != nil && group.Parent.Type == ParentRedistributeTask {
-		q.RedistributeTaskTaskGroupId[group.Parent.Id] = id
+	if group.Issuer != nil && group.Issuer.Type == IssuerRedistributeTask {
+		q.RedistributeTaskTaskGroupId[group.Issuer.Id] = id
 	}
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.MoveTaskGroups, id, group), NewUpdateCommand(q.StopMoveTaskGroup, id, false))
 }

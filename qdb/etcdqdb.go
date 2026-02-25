@@ -1859,8 +1859,8 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, id string, group *Move
 		clientv3.OpPut(totalKeysNodePath(id), fmt.Sprintf("%d", totalKeys)),
 		clientv3.OpDelete(taskGroupStopFlagNodePath(id)),
 	}
-	if group.Parent != nil && group.Parent.Type == ParentRedistributeTask {
-		ops = append(ops, clientv3.OpPut(redistributeTaskTaskGroupIdNodePath(group.Parent.Id), id))
+	if group.Issuer != nil && group.Issuer.Type == IssuerRedistributeTask {
+		ops = append(ops, clientv3.OpPut(redistributeTaskTaskGroupIdNodePath(group.Issuer.Id), id))
 	}
 	if task != nil {
 		taskJson, err := json.Marshal(task)

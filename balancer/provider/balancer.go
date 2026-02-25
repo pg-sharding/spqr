@@ -677,8 +677,8 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 						panic("unknown split type")
 					}
 				}(),
-				Parent: &protos.MoveTaskGroupParent{
-					Type: protos.MoveTaskGroupParentType_ParentBalancerTask,
+				Issuer: &protos.MoveTaskGroupIssuer{
+					Type: protos.MoveTaskGroupIssuerType_IssuerBalancerTask,
 					Id:   "",
 				},
 			}); err != nil {

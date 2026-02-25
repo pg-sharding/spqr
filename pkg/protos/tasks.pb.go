@@ -166,52 +166,52 @@ func (SplitType) EnumDescriptor() ([]byte, []int) {
 	return file_protos_tasks_proto_rawDescGZIP(), []int{2}
 }
 
-type MoveTaskGroupParentType int32
+type MoveTaskGroupIssuerType int32
 
 const (
-	MoveTaskGroupParentType_ParentUnknown          MoveTaskGroupParentType = 0
-	MoveTaskGroupParentType_ParentRedistributeTask MoveTaskGroupParentType = 1
-	MoveTaskGroupParentType_ParentBalancerTask     MoveTaskGroupParentType = 2
+	MoveTaskGroupIssuerType_IssuerUnknown          MoveTaskGroupIssuerType = 0
+	MoveTaskGroupIssuerType_IssuerRedistributeTask MoveTaskGroupIssuerType = 1
+	MoveTaskGroupIssuerType_IssuerBalancerTask     MoveTaskGroupIssuerType = 2
 )
 
-// Enum value maps for MoveTaskGroupParentType.
+// Enum value maps for MoveTaskGroupIssuerType.
 var (
-	MoveTaskGroupParentType_name = map[int32]string{
-		0: "ParentUnknown",
-		1: "ParentRedistributeTask",
-		2: "ParentBalancerTask",
+	MoveTaskGroupIssuerType_name = map[int32]string{
+		0: "IssuerUnknown",
+		1: "IssuerRedistributeTask",
+		2: "IssuerBalancerTask",
 	}
-	MoveTaskGroupParentType_value = map[string]int32{
-		"ParentUnknown":          0,
-		"ParentRedistributeTask": 1,
-		"ParentBalancerTask":     2,
+	MoveTaskGroupIssuerType_value = map[string]int32{
+		"IssuerUnknown":          0,
+		"IssuerRedistributeTask": 1,
+		"IssuerBalancerTask":     2,
 	}
 )
 
-func (x MoveTaskGroupParentType) Enum() *MoveTaskGroupParentType {
-	p := new(MoveTaskGroupParentType)
+func (x MoveTaskGroupIssuerType) Enum() *MoveTaskGroupIssuerType {
+	p := new(MoveTaskGroupIssuerType)
 	*p = x
 	return p
 }
 
-func (x MoveTaskGroupParentType) String() string {
+func (x MoveTaskGroupIssuerType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (MoveTaskGroupParentType) Descriptor() protoreflect.EnumDescriptor {
+func (MoveTaskGroupIssuerType) Descriptor() protoreflect.EnumDescriptor {
 	return file_protos_tasks_proto_enumTypes[3].Descriptor()
 }
 
-func (MoveTaskGroupParentType) Type() protoreflect.EnumType {
+func (MoveTaskGroupIssuerType) Type() protoreflect.EnumType {
 	return &file_protos_tasks_proto_enumTypes[3]
 }
 
-func (x MoveTaskGroupParentType) Number() protoreflect.EnumNumber {
+func (x MoveTaskGroupIssuerType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use MoveTaskGroupParentType.Descriptor instead.
-func (MoveTaskGroupParentType) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use MoveTaskGroupIssuerType.Descriptor instead.
+func (MoveTaskGroupIssuerType) EnumDescriptor() ([]byte, []int) {
 	return file_protos_tasks_proto_rawDescGZIP(), []int{3}
 }
 
@@ -559,28 +559,28 @@ func (x *MoveTasksReply) GetTasks() []*MoveTask {
 	return nil
 }
 
-type MoveTaskGroupParent struct {
+type MoveTaskGroupIssuer struct {
 	state         protoimpl.MessageState  `protogen:"open.v1"`
-	Type          MoveTaskGroupParentType `protobuf:"varint,1,opt,name=type,proto3,enum=spqr.MoveTaskGroupParentType" json:"type,omitempty"`
+	Type          MoveTaskGroupIssuerType `protobuf:"varint,1,opt,name=type,proto3,enum=spqr.MoveTaskGroupIssuerType" json:"type,omitempty"`
 	Id            string                  `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *MoveTaskGroupParent) Reset() {
-	*x = MoveTaskGroupParent{}
+func (x *MoveTaskGroupIssuer) Reset() {
+	*x = MoveTaskGroupIssuer{}
 	mi := &file_protos_tasks_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *MoveTaskGroupParent) String() string {
+func (x *MoveTaskGroupIssuer) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*MoveTaskGroupParent) ProtoMessage() {}
+func (*MoveTaskGroupIssuer) ProtoMessage() {}
 
-func (x *MoveTaskGroupParent) ProtoReflect() protoreflect.Message {
+func (x *MoveTaskGroupIssuer) ProtoReflect() protoreflect.Message {
 	mi := &file_protos_tasks_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -592,19 +592,19 @@ func (x *MoveTaskGroupParent) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use MoveTaskGroupParent.ProtoReflect.Descriptor instead.
-func (*MoveTaskGroupParent) Descriptor() ([]byte, []int) {
+// Deprecated: Use MoveTaskGroupIssuer.ProtoReflect.Descriptor instead.
+func (*MoveTaskGroupIssuer) Descriptor() ([]byte, []int) {
 	return file_protos_tasks_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *MoveTaskGroupParent) GetType() MoveTaskGroupParentType {
+func (x *MoveTaskGroupIssuer) GetType() MoveTaskGroupIssuerType {
 	if x != nil {
 		return x.Type
 	}
-	return MoveTaskGroupParentType_ParentUnknown
+	return MoveTaskGroupIssuerType_IssuerUnknown
 }
 
-func (x *MoveTaskGroupParent) GetId() string {
+func (x *MoveTaskGroupIssuer) GetId() string {
 	if x != nil {
 		return x.Id
 	}
@@ -624,7 +624,7 @@ type MoveTaskGroup struct {
 	BatchSize      int64                  `protobuf:"varint,10,opt,name=batchSize,proto3" json:"batchSize,omitempty"`
 	Limit          int64                  `protobuf:"varint,11,opt,name=limit,proto3" json:"limit,omitempty"`
 	TotalKeys      int64                  `protobuf:"varint,12,opt,name=totalKeys,proto3" json:"totalKeys,omitempty"`
-	Parent         *MoveTaskGroupParent   `protobuf:"bytes,14,opt,name=parent,proto3" json:"parent,omitempty"`
+	Issuer         *MoveTaskGroupIssuer   `protobuf:"bytes,14,opt,name=issuer,proto3" json:"issuer,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -736,9 +736,9 @@ func (x *MoveTaskGroup) GetTotalKeys() int64 {
 	return 0
 }
 
-func (x *MoveTaskGroup) GetParent() *MoveTaskGroupParent {
+func (x *MoveTaskGroup) GetIssuer() *MoveTaskGroupIssuer {
 	if x != nil {
-		return x.Parent
+		return x.Issuer
 	}
 	return nil
 }
@@ -1498,8 +1498,8 @@ const file_protos_tasks_proto_rawDesc = "" +
 	"\x04task\x18\x01 \x01(\v2\x0e.spqr.MoveTaskR\x04task\"6\n" +
 	"\x0eMoveTasksReply\x12$\n" +
 	"\x05tasks\x18\x01 \x03(\v2\x0e.spqr.MoveTaskR\x05tasks\"X\n" +
-	"\x13MoveTaskGroupParent\x121\n" +
-	"\x04type\x18\x01 \x01(\x0e2\x1d.spqr.MoveTaskGroupParentTypeR\x04type\x12\x0e\n" +
+	"\x13MoveTaskGroupIssuer\x121\n" +
+	"\x04type\x18\x01 \x01(\x0e2\x1d.spqr.MoveTaskGroupIssuerTypeR\x04type\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\"\x97\x03\n" +
 	"\rMoveTaskGroup\x12\x0e\n" +
 	"\x02ID\x18\r \x01(\tR\x02ID\x12#\n" +
@@ -1514,7 +1514,7 @@ const file_protos_tasks_proto_rawDesc = "" +
 	" \x01(\x03R\tbatchSize\x12\x14\n" +
 	"\x05limit\x18\v \x01(\x03R\x05limit\x12\x1c\n" +
 	"\ttotalKeys\x18\f \x01(\x03R\ttotalKeys\x121\n" +
-	"\x06parent\x18\x0e \x01(\v2\x19.spqr.MoveTaskGroupParentR\x06parent\"J\n" +
+	"\x06issuer\x18\x0e \x01(\v2\x19.spqr.MoveTaskGroupIssuerR\x06issuer\"J\n" +
 	"\x15GetMoveTaskGroupReply\x121\n" +
 	"\ttaskGroup\x18\x01 \x01(\v2\x13.spqr.MoveTaskGroupR\ttaskGroup\"N\n" +
 	"\x17ListMoveTaskGroupsReply\x123\n" +
@@ -1578,10 +1578,10 @@ const file_protos_tasks_proto_rawDesc = "" +
 	"\tSplitLeft\x10\x00\x12\x0e\n" +
 	"\n" +
 	"SplitRight\x10\x01*`\n" +
-	"\x17MoveTaskGroupParentType\x12\x11\n" +
-	"\rParentUnknown\x10\x00\x12\x1a\n" +
-	"\x16ParentRedistributeTask\x10\x01\x12\x16\n" +
-	"\x12ParentBalancerTask\x10\x02*D\n" +
+	"\x17MoveTaskGroupIssuerType\x12\x11\n" +
+	"\rIssuerUnknown\x10\x00\x12\x1a\n" +
+	"\x16IssuerRedistributeTask\x10\x01\x12\x16\n" +
+	"\x12IssuerBalancerTask\x10\x02*D\n" +
 	"\x12BalancerTaskStatus\x12\x17\n" +
 	"\x13BalancerTaskPlanned\x10\x00\x12\x15\n" +
 	"\x11BalancerTaskMoved\x10\x01*O\n" +
@@ -1633,7 +1633,7 @@ var file_protos_tasks_proto_goTypes = []any{
 	(TaskStatus)(0),                          // 0: spqr.TaskStatus
 	(JoinType)(0),                            // 1: spqr.JoinType
 	(SplitType)(0),                           // 2: spqr.SplitType
-	(MoveTaskGroupParentType)(0),             // 3: spqr.MoveTaskGroupParentType
+	(MoveTaskGroupIssuerType)(0),             // 3: spqr.MoveTaskGroupIssuerType
 	(BalancerTaskStatus)(0),                  // 4: spqr.BalancerTaskStatus
 	(RedistributeTaskState)(0),               // 5: spqr.RedistributeTaskState
 	(*KeyRangeBound)(nil),                    // 6: spqr.KeyRangeBound
@@ -1641,7 +1641,7 @@ var file_protos_tasks_proto_goTypes = []any{
 	(*MoveTaskSelector)(nil),                 // 8: spqr.MoveTaskSelector
 	(*MoveTaskReply)(nil),                    // 9: spqr.MoveTaskReply
 	(*MoveTasksReply)(nil),                   // 10: spqr.MoveTasksReply
-	(*MoveTaskGroupParent)(nil),              // 11: spqr.MoveTaskGroupParent
+	(*MoveTaskGroupIssuer)(nil),              // 11: spqr.MoveTaskGroupIssuer
 	(*MoveTaskGroup)(nil),                    // 12: spqr.MoveTaskGroup
 	(*GetMoveTaskGroupReply)(nil),            // 13: spqr.GetMoveTaskGroupReply
 	(*ListMoveTaskGroupsReply)(nil),          // 14: spqr.ListMoveTaskGroupsReply
@@ -1664,10 +1664,10 @@ var file_protos_tasks_proto_depIdxs = []int32{
 	0,  // 0: spqr.MoveTask.status:type_name -> spqr.TaskStatus
 	7,  // 1: spqr.MoveTaskReply.task:type_name -> spqr.MoveTask
 	7,  // 2: spqr.MoveTasksReply.tasks:type_name -> spqr.MoveTask
-	3,  // 3: spqr.MoveTaskGroupParent.type:type_name -> spqr.MoveTaskGroupParentType
+	3,  // 3: spqr.MoveTaskGroupIssuer.type:type_name -> spqr.MoveTaskGroupIssuerType
 	2,  // 4: spqr.MoveTaskGroup.type:type_name -> spqr.SplitType
 	7,  // 5: spqr.MoveTaskGroup.currentTask:type_name -> spqr.MoveTask
-	11, // 6: spqr.MoveTaskGroup.parent:type_name -> spqr.MoveTaskGroupParent
+	11, // 6: spqr.MoveTaskGroup.issuer:type_name -> spqr.MoveTaskGroupIssuer
 	12, // 7: spqr.GetMoveTaskGroupReply.taskGroup:type_name -> spqr.MoveTaskGroup
 	12, // 8: spqr.ListMoveTaskGroupsReply.taskGroups:type_name -> spqr.MoveTaskGroup
 	12, // 9: spqr.WriteMoveTaskGroupRequest.taskGroup:type_name -> spqr.MoveTaskGroup

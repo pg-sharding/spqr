@@ -901,7 +901,7 @@ type BatchMoveKeyRangeRequest struct {
 	BatchSize     int64                  `protobuf:"varint,6,opt,name=batchSize,proto3" json:"batchSize,omitempty"`
 	SplitType     SplitType              `protobuf:"varint,7,opt,name=splitType,proto3,enum=spqr.SplitType" json:"splitType,omitempty"`
 	TaskGroupId   string                 `protobuf:"bytes,8,opt,name=taskGroupId,proto3" json:"taskGroupId,omitempty"`
-	Parent        *MoveTaskGroupParent   `protobuf:"bytes,9,opt,name=parent,proto3" json:"parent,omitempty"`
+	Issuer        *MoveTaskGroupIssuer   `protobuf:"bytes,9,opt,name=issuer,proto3" json:"issuer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -992,9 +992,9 @@ func (x *BatchMoveKeyRangeRequest) GetTaskGroupId() string {
 	return ""
 }
 
-func (x *BatchMoveKeyRangeRequest) GetParent() *MoveTaskGroupParent {
+func (x *BatchMoveKeyRangeRequest) GetIssuer() *MoveTaskGroupIssuer {
 	if x != nil {
-		return x.Parent
+		return x.Issuer
 	}
 	return nil
 }
@@ -1202,7 +1202,7 @@ const file_protos_key_range_proto_rawDesc = "" +
 	"\tbatchSize\x18\x06 \x01(\x03R\tbatchSize\x12-\n" +
 	"\tsplitType\x18\a \x01(\x0e2\x0f.spqr.SplitTypeR\tsplitType\x12 \n" +
 	"\vtaskGroupId\x18\b \x01(\tR\vtaskGroupId\x121\n" +
-	"\x06parent\x18\t \x01(\v2\x19.spqr.MoveTaskGroupParentR\x06parent\"\xcf\x01\n" +
+	"\x06issuer\x18\t \x01(\v2\x19.spqr.MoveTaskGroupIssuerR\x06issuer\"\xcf\x01\n" +
 	"\x1bRedistributeKeyRangeRequest\x12\x12\n" +
 	"\x04krid\x18\x01 \x01(\tR\x04krid\x12\x18\n" +
 	"\ashardId\x18\x02 \x01(\tR\ashardId\x12\x1c\n" +
@@ -1280,7 +1280,7 @@ var file_protos_key_range_proto_goTypes = []any{
 	(*RenameKeyRangeRequest)(nil),       // 20: spqr.RenameKeyRangeRequest
 	(*KeyRangeBound)(nil),               // 21: spqr.KeyRangeBound
 	(SplitType)(0),                      // 22: spqr.SplitType
-	(*MoveTaskGroupParent)(nil),         // 23: spqr.MoveTaskGroupParent
+	(*MoveTaskGroupIssuer)(nil),         // 23: spqr.MoveTaskGroupIssuer
 	(*emptypb.Empty)(nil),               // 24: google.protobuf.Empty
 }
 var file_protos_key_range_proto_depIdxs = []int32{
@@ -1290,7 +1290,7 @@ var file_protos_key_range_proto_depIdxs = []int32{
 	2,  // 3: spqr.KeyRangeReply.key_ranges_info:type_name -> spqr.KeyRangeInfo
 	1,  // 4: spqr.BatchMoveKeyRangeRequest.limitType:type_name -> spqr.RedistributeLimitType
 	22, // 5: spqr.BatchMoveKeyRangeRequest.splitType:type_name -> spqr.SplitType
-	23, // 6: spqr.BatchMoveKeyRangeRequest.parent:type_name -> spqr.MoveTaskGroupParent
+	23, // 6: spqr.BatchMoveKeyRangeRequest.issuer:type_name -> spqr.MoveTaskGroupIssuer
 	17, // 7: spqr.KeyRangeService.GetKeyRange:input_type -> spqr.GetKeyRangeRequest
 	3,  // 8: spqr.KeyRangeService.ListKeyRange:input_type -> spqr.ListKeyRangeRequest
 	24, // 9: spqr.KeyRangeService.ListAllKeyRanges:input_type -> google.protobuf.Empty

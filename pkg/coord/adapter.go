@@ -463,7 +463,7 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 //
 // Returns:
 // - error: An error if moving the data was unsuccessful.
-func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, parent *tasks.MoveTaskGroupParent) error {
+func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	var limitType proto.RedistributeLimitType
 	limit := int64(0)
@@ -491,7 +491,7 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 				panic("unknown split type")
 			}
 		}(),
-		Parent: tasks.TaskGroupParentToProto(parent),
+		Issuer: tasks.TaskGroupIssuerToProto(issuer),
 	})
 	return spqrerror.CleanGrpcError(err)
 }

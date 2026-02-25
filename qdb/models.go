@@ -168,11 +168,11 @@ type MoveTask struct {
 }
 
 const (
-	ParentRedistributeTask = iota + 1
-	ParentBalancerTask
+	IssuerRedistributeTask = iota + 1
+	IssuerBalancerTask
 )
 
-type MoveTaskGroupParent struct {
+type MoveTaskGroupIssuer struct {
 	Type int    `json:"type"`
 	Id   string `json:"id"`
 }
@@ -187,7 +187,7 @@ type MoveTaskGroup struct {
 	BatchSize int64                `json:"batch_size"`
 	Limit     int64                `json:"limit"`
 	CreatedAt time.Time            `json:"created_at"`
-	Parent    *MoveTaskGroupParent `json:"parent"`
+	Issuer    *MoveTaskGroupIssuer `json:"issuer"`
 }
 
 type TaskGroupStatus struct {

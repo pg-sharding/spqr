@@ -194,7 +194,7 @@ func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *pro
 				panic("incorrect split type")
 			}
 		}(),
-	}, tasks.TaskGroupParentFromProto(request.Parent))
+	}, tasks.TaskGroupIssuerFromProto(request.Issuer))
 }
 
 // TODO: unit tests

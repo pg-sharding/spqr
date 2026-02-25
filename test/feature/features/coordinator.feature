@@ -989,7 +989,7 @@ Feature: Coordinator test
                 "state":         0,
                 "task_group_id": "tgid1"
             },
-            "parent": {
+            "issuer": {
               "type": 1,
               "id": "rt1"
             }

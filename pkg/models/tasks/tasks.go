@@ -39,16 +39,16 @@ const (
 	SplitRight
 )
 
-type MoveTaskGroupParentType int
+type MoveTaskGroupIssuerType int
 
 const (
-	ParentTypeUnknown MoveTaskGroupParentType = iota
-	ParentRedistributeTask
-	ParentBalancerTask
+	IssuerTypeUnknown MoveTaskGroupIssuerType = iota
+	IssuerRedistributeTask
+	IssuerBalancerTask
 )
 
-type MoveTaskGroupParent struct {
-	Type MoveTaskGroupParentType `json:"type"`
+type MoveTaskGroupIssuer struct {
+	Type MoveTaskGroupIssuerType `json:"type"`
 	Id   string                  `json:"id"`
 }
 
@@ -65,7 +65,7 @@ type MoveTaskGroup struct {
 	TotalKeys   int64                `json:"total_keys"`
 	CurrentTask *MoveTask            `json:"task"`
 	CreatedAt   time.Time            `json:"created_at"`
-	Parent      *MoveTaskGroupParent `json:"parent"`
+	Issuer      *MoveTaskGroupIssuer `json:"issuer"`
 }
 
 type TaskGroupState string
@@ -100,70 +100,70 @@ type RedistributeTask struct {
 	TaskGroup   *MoveTaskGroup
 }
 
-func TaskGroupParentToProto(parent *MoveTaskGroupParent) *protos.MoveTaskGroupParent {
-	if parent == nil {
+func TaskGroupIssuerToProto(issuer *MoveTaskGroupIssuer) *protos.MoveTaskGroupIssuer {
+	if issuer == nil {
 		return nil
 	}
-	return &protos.MoveTaskGroupParent{
-		Type: func() protos.MoveTaskGroupParentType {
-			switch parent.Type {
-			case ParentRedistributeTask:
-				return protos.MoveTaskGroupParentType_ParentRedistributeTask
-			case ParentBalancerTask:
-				return protos.MoveTaskGroupParentType_ParentBalancerTask
+	return &protos.MoveTaskGroupIssuer{
+		Type: func() protos.MoveTaskGroupIssuerType {
+			switch issuer.Type {
+			case IssuerRedistributeTask:
+				return protos.MoveTaskGroupIssuerType_IssuerRedistributeTask
+			case IssuerBalancerTask:
+				return protos.MoveTaskGroupIssuerType_IssuerBalancerTask
 			default:
-				return protos.MoveTaskGroupParentType_ParentUnknown
+				return protos.MoveTaskGroupIssuerType_IssuerUnknown
 			}
 		}(),
-		Id: parent.Id,
+		Id: issuer.Id,
 	}
 }
 
-func TaskGroupParentFromProto(parent *protos.MoveTaskGroupParent) *MoveTaskGroupParent {
-	if parent == nil {
+func TaskGroupIssuerFromProto(issuer *protos.MoveTaskGroupIssuer) *MoveTaskGroupIssuer {
+	if issuer == nil {
 		return nil
 	}
-	return &MoveTaskGroupParent{
-		Type: func() MoveTaskGroupParentType {
-			switch parent.Type {
-			case protos.MoveTaskGroupParentType_ParentRedistributeTask:
-				return ParentRedistributeTask
-			case protos.MoveTaskGroupParentType_ParentBalancerTask:
-				return ParentBalancerTask
+	return &MoveTaskGroupIssuer{
+		Type: func() MoveTaskGroupIssuerType {
+			switch issuer.Type {
+			case protos.MoveTaskGroupIssuerType_IssuerRedistributeTask:
+				return IssuerRedistributeTask
+			case protos.MoveTaskGroupIssuerType_IssuerBalancerTask:
+				return IssuerBalancerTask
 			default:
-				return ParentTypeUnknown
+				return IssuerTypeUnknown
 			}
 		}(),
-		Id: parent.Id,
+		Id: issuer.Id,
 	}
 }
 
-func TaskGroupParentToDB(parent *MoveTaskGroupParent) *qdb.MoveTaskGroupParent {
-	if parent == nil {
+func TaskGroupIssuerToDB(issuer *MoveTaskGroupIssuer) *qdb.MoveTaskGroupIssuer {
+	if issuer == nil {
 		return nil
 	}
-	return &qdb.MoveTaskGroupParent{
-		Type: int(parent.Type),
-		Id:   parent.Id,
+	return &qdb.MoveTaskGroupIssuer{
+		Type: int(issuer.Type),
+		Id:   issuer.Id,
 	}
 }
 
-func TaskGroupParentFromDB(parent *qdb.MoveTaskGroupParent) *MoveTaskGroupParent {
-	if parent == nil {
+func TaskGroupIssuerFromDB(issuer *qdb.MoveTaskGroupIssuer) *MoveTaskGroupIssuer {
+	if issuer == nil {
 		return nil
 	}
-	return &MoveTaskGroupParent{
-		Type: func() MoveTaskGroupParentType {
-			switch parent.Type {
-			case int(ParentRedistributeTask):
-				return ParentRedistributeTask
-			case int(ParentBalancerTask):
-				return ParentBalancerTask
+	return &MoveTaskGroupIssuer{
+		Type: func() MoveTaskGroupIssuerType {
+			switch issuer.Type {
+			case int(IssuerRedistributeTask):
+				return IssuerRedistributeTask
+			case int(IssuerBalancerTask):
+				return IssuerBalancerTask
 			default:
-				return ParentTypeUnknown
+				return IssuerTypeUnknown
 			}
 		}(),
-		Id: parent.Id,
+		Id: issuer.Id,
 	}
 }
 
@@ -191,7 +191,7 @@ func TaskGroupToProto(group *MoveTaskGroup) *protos.MoveTaskGroup {
 		TotalKeys:      group.TotalKeys,
 		BatchSize:      group.BatchSize,
 		BoundRel:       group.BoundRel,
-		Parent:         TaskGroupParentToProto(group.Parent),
+		Issuer:         TaskGroupIssuerToProto(group.Issuer),
 	}
 }
 
@@ -326,7 +326,7 @@ func TaskGroupFromProto(group *protos.MoveTaskGroup) *MoveTaskGroup {
 		TotalKeys:   group.TotalKeys,
 		BatchSize:   group.BatchSize,
 		BoundRel:    group.BoundRel,
-		Parent:      TaskGroupParentFromProto(group.Parent),
+		Issuer:      TaskGroupIssuerFromProto(group.Issuer),
 	}
 }
 
@@ -440,7 +440,7 @@ func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
 		BatchSize: group.BatchSize,
 		Limit:     group.Limit,
 		CreatedAt: group.CreatedAt,
-		Parent:    TaskGroupParentToDB(group.Parent),
+		Issuer:    TaskGroupIssuerToDB(group.Issuer),
 	}
 }
 
@@ -494,7 +494,7 @@ func TaskGroupFromDb(id string, group *qdb.MoveTaskGroup, moveTask *qdb.MoveTask
 		CurrentTask: TaskFromDb(moveTask),
 		TotalKeys:   totalKeys,
 		CreatedAt:   group.CreatedAt,
-		Parent:      TaskGroupParentFromDB(group.Parent),
+		Issuer:      TaskGroupIssuerFromDB(group.Issuer),
 	}
 }
 

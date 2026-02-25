@@ -164,17 +164,17 @@ func (mr *MockCoordinatorMockRecorder) AlterReferenceRelationStorage(ctx, relNam
 }
 
 // BatchMoveKeyRange mocks base method.
-func (m *MockCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, parent *tasks.MoveTaskGroupParent) error {
+func (m *MockCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BatchMoveKeyRange", ctx, req, parent)
+	ret := m.ctrl.Call(m, "BatchMoveKeyRange", ctx, req, issuer)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // BatchMoveKeyRange indicates an expected call of BatchMoveKeyRange.
-func (mr *MockCoordinatorMockRecorder) BatchMoveKeyRange(ctx, req, parent any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) BatchMoveKeyRange(ctx, req, issuer any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockCoordinator)(nil).BatchMoveKeyRange), ctx, req, parent)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockCoordinator)(nil).BatchMoveKeyRange), ctx, req, issuer)
 }
 
 // BeginTran mocks base method.
