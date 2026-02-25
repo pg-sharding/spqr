@@ -332,26 +332,26 @@ func TestGetMoveTaskGroup(t *testing.T) {
 		db, err := setupSubTest(ctx)
 		assert.NoError(err)
 		t.Run("empty request returns no task groups", func(t *testing.T) {
-			db.WriteMoveTaskGroup(
+			assert.NoError(db.WriteMoveTaskGroup(
 				ctx,
 				"tg1",
 				&qdb.MoveTaskGroup{},
 				0,
 				nil,
-			)
+			))
 			taskGroup, err := db.GetMoveTaskGroup(ctx, "")
 			assert.NoError(err)
 			assert.Nil(taskGroup)
 		})
 		t.Run("base case", func(t *testing.T) {
 			tg := &qdb.MoveTaskGroup{ShardToId: "shard_to", KrIdFrom: "kr_from", KrIdTo: "kr_to"}
-			db.WriteMoveTaskGroup(
+			assert.NoError(db.WriteMoveTaskGroup(
 				ctx,
 				"some_task_group",
 				tg,
 				0,
 				nil,
-			)
+			))
 			taskGroup, err := db.GetMoveTaskGroup(ctx, "some_task_group")
 			assert.NoError(err)
 			assert.Equal(tg.KrIdFrom, taskGroup.KrIdFrom)
