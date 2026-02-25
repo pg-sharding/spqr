@@ -139,8 +139,6 @@ var runCmd = &cobra.Command{
 		spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLogging)
 		spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
 
-		// Initialize help registry for console help command
-		// Help files are embedded in the binary at build time
 		if err := spqrparser.InitHelpRegistry(); err != nil {
 			spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
 		}

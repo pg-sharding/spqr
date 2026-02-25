@@ -141,7 +141,6 @@ func main() {
 }
 
 func run() error {
-	// Find project root (where go.mod is)
 	root, err := findProjectRoot()
 	if err != nil {
 		return fmt.Errorf("finding project root: %w", err)
@@ -150,7 +149,6 @@ func run() error {
 	commandsDir := filepath.Join(root, "yacc", "console", "commands")
 	helpDir := filepath.Join(root, "yacc", "console", "help")
 
-	// Load all commands
 	commands, err := loadCommands(commandsDir)
 	if err != nil {
 		return fmt.Errorf("loading commands: %w", err)
@@ -162,7 +160,6 @@ func run() error {
 
 	fmt.Printf("Loaded %d commands from %s\n", len(commands), commandsDir)
 
-	// Generate help .txt files
 	if err := generateHelpFiles(commands, helpDir); err != nil {
 		return fmt.Errorf("generating help files: %w", err)
 	}
@@ -221,7 +218,6 @@ func loadCommands(dir string) ([]*Command, error) {
 		commands = append(commands, &cmd)
 	}
 
-	// Sort by command name for consistent output
 	sort.Slice(commands, func(i, j int) bool {
 		return commands[i].Name < commands[j].Name
 	})
@@ -230,7 +226,6 @@ func loadCommands(dir string) ([]*Command, error) {
 }
 
 func generateHelpFiles(commands []*Command, dir string) error {
-	// Ensure directory exists
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("creating directory %s: %w", dir, err)
 	}

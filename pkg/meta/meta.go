@@ -1999,10 +1999,10 @@ func ProcessHelp(ctx context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTa
 	}
 
 	tts := &tupleslot.TupleTableSlot{
-		Desc: engine.GetVPHeader("COMMAND", "HELP TEXT"),
+		Desc: engine.GetVPHeader("help"),
 	}
 
-	tts.WriteDataRow(helpEntry.Name, helpEntry.Content)
+	tts.WriteDataRow(helpEntry.Content)
 
 	return tts, nil
 }

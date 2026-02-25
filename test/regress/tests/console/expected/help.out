@@ -1,52 +1,52 @@
 HELP CREATE KEY RANGE;
-     COMMAND      |                                                         HELP TEXT                                                         
-------------------+---------------------------------------------------------------------------------------------------------------------------
- CREATE KEY RANGE | NAME                                                                                                                     +
-                  |     CREATE KEY RANGE - This command is used to create a new key range. Since the key space is an ordered set,            +
-                  |                                                                                                                          +
-                  | SYNTAX                                                                                                                   +
-                  |     CREATE KEY RANGE [ <keyRangeID> ]                                                                                    +
-                  |     FROM <lowerBound>                                                                                                    +
-                  |     ROUTE TO <shardID>                                                                                                   +
-                  |     FOR DISTRIBUTION <distributionID>                                                                                    +
-                  |                                                                                                                          +
-                  |     where lowerBound is a single value or comma-separated values for composite keys                                      +
-                  |     (e.g., "100, 'value'" for a two-column key)                                                                          +
-                  |                                                                                                                          +
-                  | DESCRIPTION                                                                                                              +
-                  |     This command is used to create a new key range. Since the key space is an ordered set,                               +
-                  |     it is enough to specify only one end of the range.                                                                   +
-                  |                                                                                                                          +
-                  |     For composite sharding keys, specify multiple values separated by commas that correspond                             +
-                  |     to each column in the distribution.                                                                                  +
-                  |                                                                                                                          +
-                  | PARAMETERS                                                                                                               +
-                  |     <keyRangeID> - Unique identifier for the key range (optional, auto-generated if omitted)                             +
-                  |     <lowerBound> - Lower boundary value (inclusive). Can be integer, string, or comma-separated values for composite keys+
-                  |     <shardID> - Target shard ID where data in this range is stored                                                       +
-                  |     <distributionID> - Distribution ID this key range belongs to                                                         +
-                  |                                                                                                                          +
-                  | EXAMPLES                                                                                                                 +
-                  |     Single column key range:                                                                                             +
-                  |         CREATE KEY RANGE krid1 FROM 1000 ROUTE TO shard1 FOR DISTRIBUTION ds1;                                           +
-                  |     Composite key range with two integers:                                                                               +
-                  |         CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;                                         +
-                  |     Composite key range with integer and varchar:                                                                        +
-                  |         CREATE KEY RANGE krid3 FROM 100, 'aaaaa' ROUTE TO shard3 FOR DISTRIBUTION ds3;                                   +
-                  |                                                                                                                          +
-                  | TIPS                                                                                                                     +
-                  |     - Value bounds should be continuous and non-overlapping                                                              +
-                  |     - Use SHOW KEY RANGES to list existing ranges                                                                        +
-                  |     - Lock key ranges during maintenance operations with LOCK KEY RANGE                                                  +
-                  |     - Key ranges are immutable once created; use SPLIT or UNITE for modifications                                        +
-                  |     - Consider boundary values carefully to distribute data evenly                                                       +
-                  |                                                                                                                          +
-                  | RELATED COMMANDS                                                                                                         +
-                  |     SHOW KEY RANGES                                                                                                      +
-                  |     LOCK KEY RANGE                                                                                                       +
-                  |     UNLOCK KEY RANGE                                                                                                     +
-                  |     SPLIT KEY RANGE                                                                                                      +
-                  |     UNITE KEY RANGE                                                                                                      +
-                  |     DROP KEY RANGE
+                                                           help                                                            
+---------------------------------------------------------------------------------------------------------------------------
+ NAME                                                                                                                     +
+     CREATE KEY RANGE - This command is used to create a new key range. Since the key space is an ordered set,            +
+                                                                                                                          +
+ SYNTAX                                                                                                                   +
+     CREATE KEY RANGE [ <keyRangeID> ]                                                                                    +
+     FROM <lowerBound>                                                                                                    +
+     ROUTE TO <shardID>                                                                                                   +
+     FOR DISTRIBUTION <distributionID>                                                                                    +
+                                                                                                                          +
+     where lowerBound is a single value or comma-separated values for composite keys                                      +
+     (e.g., "100, 'value'" for a two-column key)                                                                          +
+                                                                                                                          +
+ DESCRIPTION                                                                                                              +
+     This command is used to create a new key range. Since the key space is an ordered set,                               +
+     it is enough to specify only one end of the range.                                                                   +
+                                                                                                                          +
+     For composite sharding keys, specify multiple values separated by commas that correspond                             +
+     to each column in the distribution.                                                                                  +
+                                                                                                                          +
+ PARAMETERS                                                                                                               +
+     <keyRangeID> - Unique identifier for the key range (optional, auto-generated if omitted)                             +
+     <lowerBound> - Lower boundary value (inclusive). Can be integer, string, or comma-separated values for composite keys+
+     <shardID> - Target shard ID where data in this range is stored                                                       +
+     <distributionID> - Distribution ID this key range belongs to                                                         +
+                                                                                                                          +
+ EXAMPLES                                                                                                                 +
+     Single column key range:                                                                                             +
+         CREATE KEY RANGE krid1 FROM 1000 ROUTE TO shard1 FOR DISTRIBUTION ds1;                                           +
+     Composite key range with two integers:                                                                               +
+         CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;                                         +
+     Composite key range with integer and varchar:                                                                        +
+         CREATE KEY RANGE krid3 FROM 100, 'aaaaa' ROUTE TO shard3 FOR DISTRIBUTION ds3;                                   +
+                                                                                                                          +
+ TIPS                                                                                                                     +
+     - Value bounds should be continuous and non-overlapping                                                              +
+     - Use SHOW KEY RANGES to list existing ranges                                                                        +
+     - Lock key ranges during maintenance operations with LOCK KEY RANGE                                                  +
+     - Key ranges are immutable once created; use SPLIT or UNITE for modifications                                        +
+     - Consider boundary values carefully to distribute data evenly                                                       +
+                                                                                                                          +
+ RELATED COMMANDS                                                                                                         +
+     SHOW KEY RANGES                                                                                                      +
+     LOCK KEY RANGE                                                                                                       +
+     UNLOCK KEY RANGE                                                                                                     +
+     SPLIT KEY RANGE                                                                                                      +
+     UNITE KEY RANGE                                                                                                      +
+     DROP KEY RANGE
 (1 row)
 
