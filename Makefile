@@ -21,6 +21,12 @@ deps:
 	go mod download
 	go mod vendor
 
+#################### GENERATION ####################
+
+# Generate help .txt files and MDX docs from YAML command definitions
+generate_help:
+	go run ./cmd/helpgen
+
 ####################### BUILD #######################
 
 codename ?= jammy

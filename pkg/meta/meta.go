@@ -1982,6 +1982,17 @@ func processRedistribute(ctx context.Context,
 func ProcessHelp(ctx context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTableSlot, error) {
 	spqrlog.Zero.Debug().Str("cmd", stmt.CommandName).Msg("process help statement")
 
+	// If no command specified, list all available commands
+	if stmt.CommandName == "" {
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("AVAILABLE COMMANDS"),
+		}
+		for _, cmd := range spqrparser.ListAvailableCommands() {
+			tts.WriteDataRow(cmd)
+		}
+		return tts, nil
+	}
+
 	helpEntry, err := spqrparser.GetHelp(stmt.CommandName)
 	if err != nil {
 		return nil, err

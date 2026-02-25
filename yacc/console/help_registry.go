@@ -3,6 +3,7 @@ package spqrparser
 import (
 	"embed"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -49,9 +50,10 @@ func InitHelpRegistry() error {
 			commandName := strings.TrimSuffix(entry.Name(), ".txt")
 			commandName = strings.ReplaceAll(commandName, "_", " ")
 
+			// Trim trailing whitespace/newlines from content
 			helpRegistry[commandName] = &HelpEntry{
 				Name:    commandName,
-				Content: string(content),
+				Content: strings.TrimRight(string(content), "\n\r\t "),
 			}
 		}
 	}
@@ -77,7 +79,7 @@ func GetHelp(commandName string) (*HelpEntry, error) {
 	return help, nil
 }
 
-// ListAvailableCommands returns list of all available help commands
+// ListAvailableCommands returns list of all available help commands (sorted)
 func ListAvailableCommands() []string {
 	registryMu.RLock()
 	defer registryMu.RUnlock()
@@ -86,5 +88,6 @@ func ListAvailableCommands() []string {
 	for cmd := range helpRegistry {
 		commands = append(commands, cmd)
 	}
+	sort.Strings(commands)
 	return commands
 }
