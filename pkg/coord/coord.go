@@ -95,7 +95,7 @@ func (lc *Coordinator) AlterDistributedRelation(ctx context.Context, id string, 
 	}
 
 	for colName, seqName := range rel.ColumnSequenceMapping {
-		qualifiedName := rel.ToRFQN()
+		qualifiedName := rel.QualifiedName()
 		if err := lc.qdb.AlterSequenceAttach(ctx, seqName, &qualifiedName, colName); err != nil {
 			return err
 		}
@@ -104,7 +104,7 @@ func (lc *Coordinator) AlterDistributedRelation(ctx context.Context, id string, 
 }
 
 // AlterDistributedRelationDistributionKey implements meta.EntityMgr.
-func (lc *Coordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []distributions.DistributionKeyEntry) error {
+func (lc *Coordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationName *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
 	if id == distributions.REPLICATED {
 		return fmt.Errorf("setting distribution key is forbidden for reference relations")
 	}
@@ -113,17 +113,17 @@ func (lc *Coordinator) AlterDistributedRelationDistributionKey(ctx context.Conte
 		return err
 	}
 	if len(ds.ColTypes) != len(distributionKey) {
-		return fmt.Errorf("cannot alter relation \"%s\" distribution key: numbers of columns mismatch", relName)
+		return fmt.Errorf("cannot alter relation \"%s\" distribution key: numbers of columns mismatch", relationName.String())
 	}
-	return lc.qdb.AlterDistributedRelationDistributionKey(ctx, id, relName, distributions.DistributionKeyToDB(distributionKey))
+	return lc.qdb.AlterDistributedRelationDistributionKey(ctx, id, relationName.RelationName, distributions.DistributionKeyToDB(distributionKey))
 }
 
 // AlterDistributedRelationSchema implements meta.EntityMgr.
-func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
+func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relationName *rfqn.RelationFQN, schemaName string) error {
 	if id == distributions.REPLICATED {
-		return lc.qdb.AlterReplicatedRelationSchema(ctx, distributions.REPLICATED, relName, schemaName)
+		return lc.qdb.AlterReplicatedRelationSchema(ctx, distributions.REPLICATED, relationName.RelationName, schemaName)
 	}
-	return lc.qdb.AlterDistributedRelationSchema(ctx, id, relName, schemaName)
+	return lc.qdb.AlterDistributedRelationSchema(ctx, id, relationName.RelationName, schemaName)
 }
 
 // BatchMoveKeyRange implements meta.EntityMgr.
@@ -187,8 +187,7 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 
 	return lc.AlterDistributionAttach(ctx, selectedDistribId, []*distributions.DistributedRelation{
 		{
-			Name:                  r.TableName,
-			SchemaName:            r.SchemaName,
+			Relation:              r.QualifiedName(),
 			ReplicatedRelation:    true,
 			ColumnSequenceMapping: ret,
 		},
@@ -218,7 +217,14 @@ func (lc *Coordinator) DropDistribution(ctx context.Context, id string) error {
 
 // DropKeyRange implements meta.EntityMgr.
 func (lc *Coordinator) DropKeyRange(ctx context.Context, id string) error {
-	return lc.qdb.DropKeyRange(ctx, id)
+	statements, err := lc.qdb.DropKeyRange(ctx, id)
+	if err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop a key range: %s (prepare)", err.Error())
+	}
+	if err = lc.qdb.ExecNoTransaction(ctx, statements); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop a key range: %s (exec)", err.Error())
+	}
+	return nil
 }
 
 // DropKeyRangeAll implements meta.EntityMgr.
@@ -808,7 +814,7 @@ func (qc *Coordinator) CreateDistribution(ctx context.Context, ds *distributions
 			if err := qc.qdb.CreateSequence(ctx, SeqName, 0); err != nil {
 				return nil, err
 			}
-			qualifiedName := rel.ToRFQN()
+			qualifiedName := rel.QualifiedName()
 			err := qc.qdb.AlterSequenceAttach(ctx, SeqName, &qualifiedName, colName)
 			if err != nil {
 				return nil, err
@@ -934,7 +940,7 @@ func (lc *Coordinator) AlterDistributionAttach(ctx context.Context, id string, r
 	dRels := []*qdb.DistributedRelation{}
 	for _, r := range rels {
 		if !r.ReplicatedRelation && len(r.DistributionKey) != len(ds.ColTypes) {
-			return fmt.Errorf("cannot attach relation %v to distribution %v: number of column mismatch", r.Name, ds.ID)
+			return fmt.Errorf("cannot attach relation %v to distribution %v: number of column mismatch", r.Relation, ds.ID)
 		}
 		if err := distributions.CheckRelationKeys(ds, r); err != nil {
 			return err
@@ -1021,8 +1027,12 @@ func (lc *Coordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRang
 		}
 	}
 
-	if err := lc.qdb.DropKeyRange(ctx, krAppendage.ID); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s", err.Error())
+	statements, err := lc.qdb.DropKeyRange(ctx, krAppendage.ID)
+	if err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (prepare)", err.Error())
+	}
+	if err = lc.qdb.ExecNoTransaction(ctx, statements); err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s (exec)", err.Error())
 	}
 
 	if krLeft.ID != krBase.ID {

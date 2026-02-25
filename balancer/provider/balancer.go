@@ -347,7 +347,7 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 			if err != nil {
 				return err
 			}
-			query := fmt.Sprintf(queryRaw, rel.Name, condition)
+			query := fmt.Sprintf(queryRaw, rel.Relation.RelationName, condition)
 			spqrlog.Zero.Debug().Str("query", query).Msg("getting space usage & key count")
 
 			row := conn.QueryRow(ctx, query)
@@ -363,7 +363,7 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 			if _, ok := shard.KeyCountRelKR[krg.ID]; !ok {
 				shard.KeyCountRelKR[krg.ID] = make(map[string]int64)
 			}
-			shard.KeyCountRelKR[krg.ID][rel.Name] = count
+			shard.KeyCountRelKR[krg.ID][rel.Relation.RelationName] = count
 		}
 	}
 	return nil

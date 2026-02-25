@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +30,9 @@ func TestGetKRCondition(t *testing.T) {
 		{
 			ds: &distributions.Distribution{ColTypes: []string{"integer"}},
 			rel: &distributions.DistributedRelation{
-				Name: "rel",
+				Relation: &rfqn.RelationFQN{
+					RelationName: "rel",
+				},
 				DistributionKey: []distributions.DistributionKeyEntry{
 					{Column: "col1", HashFunction: "ident"},
 				},
@@ -44,7 +47,9 @@ func TestGetKRCondition(t *testing.T) {
 		{
 			ds: &distributions.Distribution{ColTypes: []string{"integer"}},
 			rel: &distributions.DistributedRelation{
-				Name: "rel",
+				Relation: &rfqn.RelationFQN{
+					RelationName: "rel",
+				},
 				DistributionKey: []distributions.DistributionKeyEntry{
 					{Column: "col1", HashFunction: "ident"},
 				},
@@ -63,7 +68,9 @@ func TestGetKRCondition(t *testing.T) {
 		{
 			ds: &distributions.Distribution{ColTypes: []string{"integer"}},
 			rel: &distributions.DistributedRelation{
-				Name: "rel",
+				Relation: &rfqn.RelationFQN{
+					RelationName: "rel",
+				},
 				DistributionKey: []distributions.DistributionKeyEntry{
 					{Column: "col1", HashFunction: "ident"},
 				},
@@ -78,7 +85,9 @@ func TestGetKRCondition(t *testing.T) {
 		{
 			ds: &distributions.Distribution{ColTypes: []string{"varchar"}},
 			rel: &distributions.DistributedRelation{
-				Name: "rel",
+				Relation: &rfqn.RelationFQN{
+					RelationName: "rel",
+				},
 				DistributionKey: []distributions.DistributionKeyEntry{
 					{Column: "col1", HashFunction: "ident"},
 				},
@@ -93,7 +102,9 @@ func TestGetKRCondition(t *testing.T) {
 		{
 			ds: &distributions.Distribution{ColTypes: []string{"varchar"}},
 			rel: &distributions.DistributedRelation{
-				Name: "rel",
+				Relation: &rfqn.RelationFQN{
+					RelationName: "rel",
+				},
 				DistributionKey: []distributions.DistributionKeyEntry{
 					{Column: "col1", HashFunction: "city"},
 				},
@@ -108,7 +119,9 @@ func TestGetKRCondition(t *testing.T) {
 		{
 			ds: &distributions.Distribution{ColTypes: []string{"varchar"}},
 			rel: &distributions.DistributedRelation{
-				Name: "rel",
+				Relation: &rfqn.RelationFQN{
+					RelationName: "rel",
+				},
 				DistributionKey: []distributions.DistributionKeyEntry{
 					{Column: "col1", HashFunction: "murmur"},
 				},
@@ -123,7 +136,9 @@ func TestGetKRCondition(t *testing.T) {
 		{
 			ds: &distributions.Distribution{ColTypes: []string{"varchar"}},
 			rel: &distributions.DistributedRelation{
-				Name: "rel",
+				Relation: &rfqn.RelationFQN{
+					RelationName: "rel",
+				},
 				DistributionKey: []distributions.DistributionKeyEntry{
 					{Column: "col1", HashFunction: "nonexistent"},
 				},

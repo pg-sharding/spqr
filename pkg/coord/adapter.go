@@ -869,11 +869,11 @@ func (a *Adapter) AlterDistributedRelation(ctx context.Context, id string, rel *
 //
 // Returns:
 // - error: An error if the alteration of the distribution's attachments fails, otherwise nil.
-func (a *Adapter) AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
+func (a *Adapter) AlterDistributedRelationSchema(ctx context.Context, id string, relationName *rfqn.RelationFQN, schemaName string) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.AlterDistributedRelationSchema(ctx, &proto.AlterDistributedRelationSchemaRequest{
 		Id:           id,
-		RelationName: relName,
+		RelationName: relationName.RelationName,
 		SchemaName:   schemaName,
 	})
 	return spqrerror.CleanGrpcError(err)
@@ -889,11 +889,11 @@ func (a *Adapter) AlterDistributedRelationSchema(ctx context.Context, id string,
 //
 // Returns:
 // - error: An error if the alteration of the distribution's attachments fails, otherwise nil.
-func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []distributions.DistributionKeyEntry) error {
+func (a *Adapter) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationName *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 	_, err := c.AlterDistributedRelationDistributionKey(ctx, &proto.AlterDistributedRelationDistributionKeyRequest{
 		Id:              id,
-		RelationName:    relName,
+		RelationName:    relationName.RelationName,
 		DistributionKey: distributions.DistributionKeyToProto(distributionKey),
 	})
 	return spqrerror.CleanGrpcError(err)

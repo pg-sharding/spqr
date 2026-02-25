@@ -316,21 +316,18 @@ func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) error {
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) error {
+func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: drop key range")
 
-	t := time.Now()
+	statement, err := NewQdbStatement(CMD_DELETE, keyRangeNodePath(id), "")
+	if err != nil {
+		return nil, err
+	}
+	resp := []QdbStatement{*statement}
 
-	resp, err := q.cli.Delete(ctx, keyRangeNodePath(id))
-
-	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Msg("etcdqdb: drop key range")
-
-	statistics.RecordQDBOperation("DropKeyRange", time.Since(t))
-	return err
+	return resp, err
 }
 
 // TODO : unit tests

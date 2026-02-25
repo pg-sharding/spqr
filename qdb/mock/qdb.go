@@ -791,11 +791,12 @@ func (mr *MockQDBMockRecorder) DropDistribution(ctx, id any) *gomock.Call {
 }
 
 // DropKeyRange mocks base method.
-func (m *MockQDB) DropKeyRange(ctx context.Context, id string) error {
+func (m *MockQDB) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DropKeyRange", ctx, id)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // DropKeyRange indicates an expected call of DropKeyRange.
@@ -2235,11 +2236,12 @@ func (mr *MockXQDBMockRecorder) DropDistribution(ctx, id any) *gomock.Call {
 }
 
 // DropKeyRange mocks base method.
-func (m *MockXQDB) DropKeyRange(ctx context.Context, id string) error {
+func (m *MockXQDB) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DropKeyRange", ctx, id)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // DropKeyRange indicates an expected call of DropKeyRange.

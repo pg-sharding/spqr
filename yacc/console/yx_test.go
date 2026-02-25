@@ -905,7 +905,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "t",
+								Relation: &rfqn.RelationFQN{RelationName: "t"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id",
@@ -926,7 +926,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "t",
+								Relation: &rfqn.RelationFQN{RelationName: "t"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id",
@@ -948,7 +948,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "t",
+								Relation: &rfqn.RelationFQN{RelationName: "t"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id",
@@ -970,8 +970,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name:       "t",
-								SchemaName: "sh",
+								Relation: &rfqn.RelationFQN{RelationName: "t", SchemaName: "sh"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id",
@@ -993,7 +992,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "t",
+								Relation: &rfqn.RelationFQN{RelationName: "t"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id",
@@ -1015,7 +1014,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "t",
+								Relation: &rfqn.RelationFQN{RelationName: "t"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id",
@@ -1037,7 +1036,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "t",
+								Relation: &rfqn.RelationFQN{RelationName: "t"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										HashFunction: "murmur",
@@ -1069,7 +1068,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "ss",
+								Relation: &rfqn.RelationFQN{RelationName: "ss"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column:       "uid",
@@ -1092,7 +1091,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "ss",
+								Relation: &rfqn.RelationFQN{RelationName: "ss"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column:       "uid",
@@ -1115,7 +1114,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "t",
+								Relation: &rfqn.RelationFQN{RelationName: "t"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id1",
@@ -1140,7 +1139,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "t",
+								Relation: &rfqn.RelationFQN{RelationName: "t"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id1",
@@ -1164,7 +1163,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "t",
+								Relation: &rfqn.RelationFQN{RelationName: "t"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id1",
@@ -1190,7 +1189,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "t",
+								Relation: &rfqn.RelationFQN{RelationName: "t"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id1",
@@ -1222,7 +1221,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "t",
+								Relation: &rfqn.RelationFQN{RelationName: "t"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id1",
@@ -1234,7 +1233,7 @@ func TestAlter(t *testing.T) {
 								},
 							},
 							{
-								Name: "t2",
+								Relation: &rfqn.RelationFQN{RelationName: "t2"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "xd1",
@@ -1284,7 +1283,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "t",
+								Relation: &rfqn.RelationFQN{RelationName: "t"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id1",
@@ -1312,7 +1311,7 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name: "t",
+								Relation: &rfqn.RelationFQN{RelationName: "t"},
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id1",
@@ -1342,8 +1341,9 @@ func TestAlter(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name:       "t",
-								SchemaName: "test",
+
+								Relation: &rfqn.RelationFQN{RelationName: "t", SchemaName: "test"},
+
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id",
@@ -1362,7 +1362,9 @@ func TestAlter(t *testing.T) {
 				Element: &spqrparser.AlterDistribution{
 					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AlterRelationV2{
-						RelationName: "t",
+						RelationName: &rfqn.RelationFQN{
+							RelationName: "t",
+						},
 						Element: &spqrparser.AlterRelationDistributionKey{
 							DistributionKey: []spqrparser.DistributionKeyEntry{
 								{
@@ -1381,7 +1383,9 @@ func TestAlter(t *testing.T) {
 				Element: &spqrparser.AlterDistribution{
 					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					Element: &spqrparser.AlterRelationV2{
-						RelationName: "t",
+						RelationName: &rfqn.RelationFQN{
+							RelationName: "t",
+						},
 						Element: &spqrparser.AlterRelationSchema{
 							SchemaName: "test",
 						},
@@ -1942,8 +1946,9 @@ func TestRelationQualifiedName(t *testing.T) {
 					Element: &spqrparser.AttachRelation{
 						Relations: []*spqrparser.DistributedRelation{
 							{
-								Name:       "table1",
-								SchemaName: "sch1",
+
+								Relation: &rfqn.RelationFQN{RelationName: "table1", SchemaName: "sch1"},
+
 								DistributionKey: []spqrparser.DistributionKeyEntry{
 									{
 										Column: "id",

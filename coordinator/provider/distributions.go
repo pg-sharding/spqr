@@ -95,7 +95,7 @@ func (d *DistributionsServer) AlterDistributedRelation(ctx context.Context, req 
 }
 
 func (d *DistributionsServer) AlterDistributedRelationSchema(ctx context.Context, req *protos.AlterDistributedRelationSchemaRequest) (*emptypb.Empty, error) {
-	return nil, d.impl.AlterDistributedRelationSchema(ctx, req.GetId(), req.GetRelationName(), req.GetSchemaName())
+	return nil, d.impl.AlterDistributedRelationSchema(ctx, req.GetId(), &rfqn.RelationFQN{RelationName: req.GetRelationName()}, req.GetSchemaName())
 }
 
 func (d *DistributionsServer) AlterDistributedRelationDistributionKey(ctx context.Context, req *protos.AlterDistributedRelationDistributionKeyRequest) (*emptypb.Empty, error) {
@@ -103,7 +103,9 @@ func (d *DistributionsServer) AlterDistributedRelationDistributionKey(ctx contex
 	if err != nil {
 		return nil, err
 	}
-	return nil, d.impl.AlterDistributedRelationDistributionKey(ctx, req.GetId(), req.GetRelationName(), key)
+	return nil, d.impl.AlterDistributedRelationDistributionKey(ctx, req.GetId(), &rfqn.RelationFQN{
+		RelationName: req.GetRelationName(),
+	}, key)
 }
 
 func (d *DistributionsServer) GetDistribution(ctx context.Context, req *protos.GetDistributionRequest) (*protos.GetDistributionReply, error) {

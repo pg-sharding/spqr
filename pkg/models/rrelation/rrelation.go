@@ -1,9 +1,6 @@
 package rrelation
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
@@ -43,12 +40,8 @@ func (r *ReferenceRelation) GetSchema() string {
 	return r.SchemaName
 }
 
-func (r *ReferenceRelation) GetFullName() string {
-	return fmt.Sprintf("%s.%s", r.GetSchema(), strings.ToLower(r.TableName))
-}
-
-func (r *ReferenceRelation) QualifiedName() rfqn.RelationFQN {
-	return rfqn.RelationFQN{RelationName: r.TableName, SchemaName: r.GetSchema()}
+func (r *ReferenceRelation) QualifiedName() *rfqn.RelationFQN {
+	return &rfqn.RelationFQN{RelationName: r.TableName, SchemaName: r.GetSchema()}
 }
 
 func ReferenceRelationEntriesFromSQL(inEntries []*spqrparser.AutoIncrementEntry) []*AutoIncrementEntry {
@@ -93,6 +86,7 @@ func AutoIncrementEntriesFromProto(inEntries []*protos.AutoIncrementEntry) []*Au
 func RefRelationFromProto(p *protos.ReferenceRelation) *ReferenceRelation {
 	return &ReferenceRelation{
 		TableName:             p.Name,
+		SchemaName:            p.SchemaName,
 		SchemaVersion:         p.SchemaVersion,
 		ColumnSequenceMapping: p.SequenceColumns,
 		ShardIds:              p.ShardIds,
@@ -102,6 +96,7 @@ func RefRelationFromProto(p *protos.ReferenceRelation) *ReferenceRelation {
 func RefRelationToProto(p *ReferenceRelation) *protos.ReferenceRelation {
 	return &protos.ReferenceRelation{
 		Name:            p.TableName,
+		SchemaName:      p.SchemaName,
 		SchemaVersion:   p.SchemaVersion,
 		SequenceColumns: p.ColumnSequenceMapping,
 		ShardIds:        p.ShardIds,

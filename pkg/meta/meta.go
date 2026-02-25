@@ -186,7 +186,9 @@ func processDrop(ctx context.Context,
 				return nil, err
 			}
 			if len(ds.Relations) != 0 && !isCascade {
-				return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID)
+				return nil, spqrerror.Newf(
+					spqrerror.SPQR_INVALID_REQUEST,
+					"cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID)
 			}
 
 			for _, idx := range ds.UniqueIndexesByID {
@@ -197,8 +199,7 @@ func processDrop(ctx context.Context,
 
 			if stmt.ID != distributions.REPLICATED {
 				for _, rel := range ds.Relations {
-					qualifiedName := &rfqn.RelationFQN{RelationName: rel.Name, SchemaName: rel.SchemaName}
-					if err := mngr.AlterDistributionDetach(ctx, ds.Id, qualifiedName); err != nil {
+					if err := mngr.AlterDistributionDetach(ctx, ds.Id, rel.Relation); err != nil {
 						return nil, err
 					}
 				}
@@ -732,8 +733,6 @@ func processAlterDistribution(ctx context.Context,
 		if err := mngr.AlterDistributedRelation(ctx, dsId, distributions.DistributedRelationFromSQL(stmt.Relation)); err != nil {
 			return nil, err
 		}
-		qName := rfqn.RelationFQN{RelationName: stmt.Relation.Name, SchemaName: stmt.Relation.SchemaName}
-
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("alter relation"),
 			Raw: [][][]byte{
@@ -741,7 +740,7 @@ func processAlterDistribution(ctx context.Context,
 					fmt.Appendf(nil, "relation name   -> %s", dsId),
 				},
 				{
-					fmt.Appendf(nil, "distribution id -> %s", qName.String()),
+					fmt.Appendf(nil, "distribution id -> %s", stmt.Relation.Relation.String()),
 				},
 			},
 		}
@@ -807,13 +806,15 @@ func processAlterDistribution(ctx context.Context,
 // Returns:
 // - *tupleslot.TupleTableSlot: the result of the query.
 // - error: An error if the operation fails, otherwise nil.
-func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, dsId string, relName string) (*tupleslot.TupleTableSlot, error) {
+func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, dsId string, relationName *rfqn.RelationFQN) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AlterRelationSchema:
-		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, relName, stmt.SchemaName); err != nil {
+		if err := mngr.AlterDistributedRelationSchema(ctx, dsId, relationName, stmt.SchemaName); err != nil {
 			return nil, err
 		}
-		qName := rfqn.RelationFQN{RelationName: relName, SchemaName: stmt.SchemaName}
+
+		nRelationName := relationName
+		nRelationName.SchemaName = stmt.SchemaName
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("alter relation"),
@@ -823,19 +824,16 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 				},
 
 				{
-					fmt.Appendf(nil, "relation name   -> %s", qName.String()),
+					fmt.Appendf(nil, "relation name   -> %s", nRelationName.String()),
 				},
 			},
 		}
 
 		return tts, nil
 	case *spqrparser.AlterRelationDistributionKey:
-		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relName, distributions.DistributionKeyFromSQL(stmt.DistributionKey)); err != nil {
+		if err := mngr.AlterDistributedRelationDistributionKey(ctx, dsId, relationName, distributions.DistributionKeyFromSQL(stmt.DistributionKey)); err != nil {
 			return nil, err
 		}
-
-		/* Schema name? */
-		qName := rfqn.RelationFQN{RelationName: relName}
 
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("alter relation"),
@@ -845,7 +843,7 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 				},
 
 				{
-					fmt.Appendf(nil, "relation name   -> %s", qName.String()),
+					fmt.Appendf(nil, "relation name   -> %s", relationName.String()),
 				},
 			},
 		}
