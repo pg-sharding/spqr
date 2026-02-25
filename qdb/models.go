@@ -31,6 +31,7 @@ type internalKeyRange struct {
 }
 
 type KeyRangeMeta struct {
+	Version    int       `json:"version"`
 	UpdatedAt  time.Time `json:"updated_at"`
 	ModifiedBy string    `json:"modified_by"`
 }

@@ -223,7 +223,7 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 	}
 	respKR[0] = *resp
 
-	meta, err := json.Marshal(KeyRangeMeta{UpdatedAt: time.Now(), ModifiedBy: "etcdqdb_create"})
+	meta, err := json.Marshal(KeyRangeMeta{Version: 1, UpdatedAt: time.Now(), ModifiedBy: "etcdqdb_create"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create key range: failed to marshal metadata: %s", err)
 	}
@@ -276,9 +276,17 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, id string) (*KeyRange, erro
 	}
 	isLocked := resp.Responses[1].GetResponseRange().Count > 0 && string(resp.Responses[1].GetResponseRange().Kvs[0].Value) == "locked"
 
-	version := resp.Responses[2].GetResponseRange().Kvs[0].Version
+	version := 0
+	// TODO fail if meta not found(will break compatibility)
+	if resp.Responses[2].GetResponseRange().Count > 0 {
+		var meta *KeyRangeMeta
+		if err := json.Unmarshal(resp.Responses[2].GetResponseRange().Kvs[0].Value, &meta); err != nil {
+			return nil, err
+		}
+		version = meta.Version
+	}
 
-	return keyRangeFromInternal(kRange, isLocked, int(version)), nil
+	return keyRangeFromInternal(kRange, isLocked, version), nil
 }
 
 // TODO : unit tests
@@ -308,7 +316,7 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 	if err != nil {
 		return nil, err
 	}
-	meta, err := json.Marshal(KeyRangeMeta{UpdatedAt: time.Now(), ModifiedBy: "etcdqdb_update"})
+	meta, err := json.Marshal(KeyRangeMeta{Version: keyRange.Version + 1, UpdatedAt: time.Now(), ModifiedBy: "etcdqdb_update"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to update key range: failed to marshal metadata: %s", err)
 	}
@@ -357,6 +365,7 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) ([]QdbStatement, 
 		return nil, err
 	}
 	resp[0] = *statement
+	// TODO: update to INT_MAX instead of deleting
 	statement, err = NewQdbStatement(CMD_DELETE, keyRangeMetaNodePath(id), "")
 	if err != nil {
 		return nil, err
@@ -513,7 +522,16 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId str
 				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 1)",
 					keyRangeId)
 			}
-			ver := int(rng.Kvs[2].Version)
+
+			rng = resp.Responses[2].GetResponseRange()
+			ver := 0
+			if rng.Count > 0 {
+				var meta *KeyRangeMeta
+				if err := json.Unmarshal(rng.Kvs[0].Value, &meta); err != nil {
+					return nil, err
+				}
+				ver = meta.Version
+			}
 			keyRange := &internalKeyRange{}
 			if err := json.Unmarshal(kv, &keyRange); err != nil {
 				return nil, err
