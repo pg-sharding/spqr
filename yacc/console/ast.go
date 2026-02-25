@@ -418,6 +418,7 @@ const (
 	MoveTasksStr          = "move_tasks"
 	UniqueIndexesStr      = "unique_indexes"
 	TaskGroupExtendedStr  = "task_group_ext"
+	TaskGroupsExtendedStr = "task_groups_ext"
 	RedistributeTasksStr  = "redistribute_tasks"
 	ErrorStr              = "errors"
 )
