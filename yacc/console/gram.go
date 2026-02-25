@@ -1467,7 +1467,7 @@ yydefault:
 				PreparedStatementsStr, QuantilesStr, SequencesStr,
 				IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
 				MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
-				TaskGroupBoundsCacheStr, RedistributeTasksStr, ErrorStr:
+				TaskGroupExtendedStr, RedistributeTasksStr, ErrorStr:
 				yyVAL.str = v
 			default:
 				yyVAL.str = UnsupportedStr

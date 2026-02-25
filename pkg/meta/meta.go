@@ -1481,7 +1481,7 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-	case spqrparser.TaskGroupBoundsCacheStr:
+	case spqrparser.TaskGroupExtendedStr:
 		taskGroups, err := mngr.ListMoveTaskGroups(ctx)
 		if err != nil {
 			return nil, err
