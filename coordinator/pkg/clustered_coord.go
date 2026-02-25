@@ -1746,10 +1746,15 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" not found in distribution \"%s\"", taskGroup.BoundRel, ds.Id)
 		}
 	}
-	if err := qc.db.TryTaskGroupLock(ctx, taskGroup.ID); err != nil {
+	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
+	if err != nil {
+		return err
+	}
+	addr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
+	if err := qc.db.TryTaskGroupLock(ctx, taskGroup.ID, addr); err != nil {
 		return fmt.Errorf("failed to acquire lock on task group \"%s\": %s", taskGroup.ID, err)
 	}
-	if err := qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupRunning)}); err != nil {
+	if err := qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupRunning), Message: fmt.Sprintf("executed by \"%s\"", addr)}); err != nil {
 		spqrlog.Zero.Error().Str("task group ID", taskGroup.ID).Err(err).Msg("failed to write task group status")
 		return err
 	}

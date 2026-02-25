@@ -1641,7 +1641,7 @@ Feature: Move recover test
         "batch_size":               "5",
         "move_task_id":             "1",
         "state":                    "PLANNED",
-        "error":                    ""
+        "message":                  ""
     }]
     """
     When I run SQL on host "coordinator"
@@ -1735,7 +1735,7 @@ Feature: Move recover test
         "batch_size":               "5",
         "move_task_id":              "1",
         "state":                    "PLANNED",
-        "error":                    ""
+        "message":                  ""
     }]
     """
     When I run SQL on host "coordinator"

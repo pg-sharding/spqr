@@ -598,7 +598,7 @@ Feature: Coordinator show clients, pools and backend_connections
             "move_task_id":             "2",
             "batch_size":               "0",
             "state":                    "PLANNED",
-            "error":                    ""
+            "message":                  ""
         }]
         """
         When I run SQL on host "coordinator"
@@ -638,6 +638,6 @@ Feature: Coordinator show clients, pools and backend_connections
             "batch_size":               "0",
             "move_task_id":             "2",
             "state":                    "ERROR",
-            "error":                    "sample error message"
+            "message":                  "sample error message"
         }]
         """
