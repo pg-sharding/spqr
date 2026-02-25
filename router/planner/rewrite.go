@@ -159,7 +159,7 @@ func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextval
 		return "", fmt.Errorf("invalid query: missing column list")
 	}
 
-	// Find the position of the closing parenthesis for the column list using balanced issuerheses
+	// Find the position of the closing parenthesis for the column list using balanced parentheses
 	colsCloseInd := findMatchingClosingParenthesis(query, colsOpenInd)
 	if colsCloseInd == -1 {
 		return "", fmt.Errorf("invalid query: missing closing parenthesis in column list")
@@ -266,7 +266,7 @@ func formatInsertValue(newValue, originalContent string) string {
 }
 
 // findMatchingClosingParenthesis finds the matching closing parenthesis for an opening parenthesis at the given position
-// It properly handles nested issuerheses and string literals
+// It properly handles nested parentheses and string literals
 func findMatchingClosingParenthesis(query string, openPos int) int {
 	if openPos >= len(query) || query[openPos] != '(' {
 		return -1
@@ -285,7 +285,7 @@ func findMatchingClosingParenthesis(query string, openPos int) int {
 		} else if !inSingleQuote && char == '"' {
 			inDoubleQuote = !inDoubleQuote
 		} else if !inSingleQuote && !inDoubleQuote {
-			// Only count issuerheses outside of string literals
+			// Only count parentheses outside of string literals
 			switch char {
 			case '(':
 				level++

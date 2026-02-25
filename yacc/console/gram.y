@@ -523,7 +523,7 @@ AexprConst:
  *
  * Note: productions that refer recursively to a_expr or b_expr mostly
  * cannot appear here.	However, it's OK to refer to a_exprs that occur
- * inside issuerheses, such as function arguments; that cannot introduce
+ * inside parentheses, such as function arguments; that cannot introduce
  * ambiguity to the b_expr syntax.
  */
 c_expr:	
