@@ -2726,7 +2726,7 @@ func (q *EtcdQDB) BeginTransaction(ctx context.Context, transaction *QdbTransact
 //                               TASK GROUP STATE
 // ==============================================================================
 
-func (q *EtcdQDB) TryTaskGroupLock(ctx context.Context, tgId string) error {
+func (q *EtcdQDB) TryTaskGroupLock(ctx context.Context, tgId string, holder string) error {
 	spqrlog.Zero.Debug().
 		Str("id", tgId).
 		Msg("etcdqdb: try task group lock")
@@ -2748,7 +2748,10 @@ func (q *EtcdQDB) TryTaskGroupLock(ctx context.Context, tgId string) error {
 		return err
 	}
 
-	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(taskGroupLockNodePath(tgId))).Then(clientv3.OpPut(taskGroupLockNodePath(tgId), "locked", clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID))))
+	if holder == "" {
+		holder = "no_holder_id"
+	}
+	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(taskGroupLockNodePath(tgId))).Then(clientv3.OpPut(taskGroupLockNodePath(tgId), holder, clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID))))
 	stat, err := tx.Commit()
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: failed to commit task group lock")

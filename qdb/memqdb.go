@@ -1850,7 +1850,7 @@ func (q *MemQDB) TXStatus(gid string) string {
 //                               TASK GROUP STATE
 // ==============================================================================
 
-func (q *MemQDB) TryTaskGroupLock(ctx context.Context, tgId string) error {
+func (q *MemQDB) TryTaskGroupLock(ctx context.Context, tgId string, holder string) error {
 	return fmt.Errorf("not implemented")
 }
 

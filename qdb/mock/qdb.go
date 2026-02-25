@@ -439,17 +439,17 @@ func (mr *MockTaskGroupStateKeeperMockRecorder) CheckTaskGroupLocked(ctx, tgId a
 }
 
 // TryTaskGroupLock mocks base method.
-func (m *MockTaskGroupStateKeeper) TryTaskGroupLock(ctx context.Context, tgId string) error {
+func (m *MockTaskGroupStateKeeper) TryTaskGroupLock(ctx context.Context, tgId, holder string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TryTaskGroupLock", ctx, tgId)
+	ret := m.ctrl.Call(m, "TryTaskGroupLock", ctx, tgId, holder)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TryTaskGroupLock indicates an expected call of TryTaskGroupLock.
-func (mr *MockTaskGroupStateKeeperMockRecorder) TryTaskGroupLock(ctx, tgId any) *gomock.Call {
+func (mr *MockTaskGroupStateKeeperMockRecorder) TryTaskGroupLock(ctx, tgId, holder any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryTaskGroupLock", reflect.TypeOf((*MockTaskGroupStateKeeper)(nil).TryTaskGroupLock), ctx, tgId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryTaskGroupLock", reflect.TypeOf((*MockTaskGroupStateKeeper)(nil).TryTaskGroupLock), ctx, tgId, holder)
 }
 
 // MockQDB is a mock of QDB interface.
@@ -3015,17 +3015,17 @@ func (mr *MockXQDBMockRecorder) TryCoordinatorLock(ctx, addr any) *gomock.Call {
 }
 
 // TryTaskGroupLock mocks base method.
-func (m *MockXQDB) TryTaskGroupLock(ctx context.Context, tgId string) error {
+func (m *MockXQDB) TryTaskGroupLock(ctx context.Context, tgId, holder string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TryTaskGroupLock", ctx, tgId)
+	ret := m.ctrl.Call(m, "TryTaskGroupLock", ctx, tgId, holder)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TryTaskGroupLock indicates an expected call of TryTaskGroupLock.
-func (mr *MockXQDBMockRecorder) TryTaskGroupLock(ctx, tgId any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) TryTaskGroupLock(ctx, tgId, holder any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryTaskGroupLock", reflect.TypeOf((*MockXQDB)(nil).TryTaskGroupLock), ctx, tgId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryTaskGroupLock", reflect.TypeOf((*MockXQDB)(nil).TryTaskGroupLock), ctx, tgId, holder)
 }
 
 // UnlockKeyRange mocks base method.
