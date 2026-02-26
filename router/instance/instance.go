@@ -81,8 +81,6 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 
 	cache := cache.NewSchemaCache(config.RouterConfig().ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
 
-	lc := coord.NewLocalInstanceMetadataMgr(db, db, cache, config.RouterConfig().ShardMapping, config.RouterConfig().ManageShardsByCoordinator)
-
 	var notifier *sdnotifier.Notifier
 	if config.RouterConfig().UseSystemdNotifier {
 		// systemd notifier
@@ -99,10 +97,6 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	spqrlog.Zero.Debug().
 		Type("qtype", qtype).
 		Msg("creating QueryRouter with type")
-
-	var seqMngr sequences.SequenceMgr = lc
-	idRangeSize := config.RouterConfig().IdentityRangeSize
-	var identityMgr planner.IdentityRouterCache = planner.NewIdentityRouterCache(idRangeSize, &seqMngr)
 
 	// frontend
 	frTLS, err := config.RouterConfig().FrontendTLS.Init(config.RouterConfig().Host)
@@ -123,6 +117,17 @@ func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 
 	// request router
 	rr := rulerouter.NewRouter(frTLS, config.RouterConfig(), notifier)
+	lc := coord.NewLocalInstanceMetadataMgr(
+		db,
+		db,
+		cache,
+		config.RouterConfig().ShardMapping,
+		config.RouterConfig().ManageShardsByCoordinator,
+		rr,
+	)
+	var seqMngr sequences.SequenceMgr = lc
+	idRangeSize := config.RouterConfig().IdentityRangeSize
+	var identityMgr planner.IdentityRouterCache = planner.NewIdentityRouterCache(idRangeSize, &seqMngr)
 
 	stchan := make(chan struct{})
 	localConsole, err := console.NewLocalInstanceConsole(lc, rr, stchan, writ)

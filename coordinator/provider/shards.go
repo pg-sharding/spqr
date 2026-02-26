@@ -35,7 +35,14 @@ func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShard
 		return nil, err
 	}
 
-	return nil, nil
+	return &emptypb.Empty{}, nil
+}
+
+func (s *ShardServer) UpdateShard(ctx context.Context, request *protos.UpdateShardRequest) (*emptypb.Empty, error) {
+	if err := s.impl.UpdateShard(ctx, topology.DataShardFromProto(request.GetShard())); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
 }
 
 func (s *ShardServer) DropShard(ctx context.Context, request *protos.DropShardRequest) (*emptypb.Empty, error) {

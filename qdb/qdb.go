@@ -37,6 +37,7 @@ type TopologyKeeper interface {
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShard(ctx context.Context, shardID string) (*Shard, error)
+	UpdateShard(ctx context.Context, shard *Shard) error
 	DropShard(ctx context.Context, shardID string) error
 }
 
