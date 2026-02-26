@@ -52,8 +52,8 @@ resource "yandex_compute_instance" "routers" {
 
   platform_id = "standard-v3"
   resources {
-    cores = 4
-    memory = 8
+    cores = 32
+    memory = 32
     core_fraction = 100
   }
 
@@ -66,6 +66,8 @@ resource "yandex_compute_instance" "routers" {
       init_sql = local.init_sql
     })
   }
+
+  depends_on = [yandex_mdb_postgresql_cluster_v2.shards, yandex_mdb_postgresql_user.user, yandex_mdb_postgresql_database.db]
 }
 
 resource "yandex_compute_instance" "benchmark-loader" {
@@ -75,7 +77,7 @@ resource "yandex_compute_instance" "benchmark-loader" {
   
   boot_disk {
     initialize_params {
-      name       = "disk-ubuntu-24-04-lts-1771340993035"
+      name       = "disk-loader-${var.pr_number}"
       type       = "network-ssd"
       size       = 20
       block_size = 4096
@@ -90,8 +92,8 @@ resource "yandex_compute_instance" "benchmark-loader" {
 
   platform_id = "standard-v3"
   resources {
-    cores = 4
-    memory = 8
+    cores = 32
+    memory = 32
     core_fraction = 100
   }
 

@@ -8,10 +8,8 @@
     <password>password</password>
     <preferQueryMode>simple</preferQueryMode>
     <reconnectOnConnectionFailure>true</reconnectOnConnectionFailure>
-    <isolation>TRANSACTION_SERIALIZABLE</isolation>
-    <batchsize>128</batchsize>
-
-    <scalefactor>1</scalefactor>
+    <isolation>TRANSACTION_READ_COMMITTED</isolation>
+    <batchsize>1024</batchsize>
 
     <shardUrls>
 %{ for ip in shard_ips ~}
@@ -22,15 +20,15 @@
     <!-- Upper limits are the highest warehouse id (up to and including) that is stored at corresponding shard-->
     <upperLimits>
 %{ for i, ip in shard_ips ~}
-        <upperLimit>${(i+1)*2}</upperLimit>
+        <upperLimit>${(i+1)*250 - 1}</upperLimit>
 %{ endfor }
     </upperLimits>
     <!-- The workload -->
-    <terminals>2</terminals>
+    <terminals>2048</terminals>
     <works>
         <work>
-            <warmup>30</warmup>
-            <time>300</time>
+            <warmup>300</warmup>
+            <time>3000</time>
             <rate>unlimited</rate>
             <weights>45,43,4,4,4</weights>
         </work>
@@ -40,28 +38,18 @@
     <transactiontypes>
         <transactiontype>
             <name>NewOrder</name>
-            <preExecutionWait>180</preExecutionWait>
-            <postExecutionWait>120</postExecutionWait>
         </transactiontype>
         <transactiontype>
             <name>Payment</name>
-            <preExecutionWait>30</preExecutionWait>
-            <postExecutionWait>120</postExecutionWait>
         </transactiontype>
         <transactiontype>
             <name>OrderStatus</name>
-            <preExecutionWait>20</preExecutionWait>
-            <postExecutionWait>100</postExecutionWait>
         </transactiontype>
         <transactiontype>
             <name>Delivery</name>
-            <preExecutionWait>20</preExecutionWait>
-            <postExecutionWait>50</postExecutionWait>
         </transactiontype>
         <transactiontype>
             <name>StockLevel</name>
-            <preExecutionWait>20</preExecutionWait>
-            <postExecutionWait>50</postExecutionWait>
         </transactiontype>
     </transactiontypes>
 </parameters>

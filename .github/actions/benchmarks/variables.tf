@@ -8,7 +8,7 @@ variable "router_count" {
 }
 
 variable "shards_count" {
-  default = 3
+  default = 4
 }
 
 variable "pr_number" {
