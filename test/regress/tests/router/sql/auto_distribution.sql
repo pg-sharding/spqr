@@ -27,7 +27,7 @@ CREATE TABLE d_zz (i int, j int);
 -- should succeed .
 CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 
--- should failx.
+-- should fail.
 CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 
 -- should succeed .

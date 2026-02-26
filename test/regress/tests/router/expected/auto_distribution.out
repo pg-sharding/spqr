@@ -72,7 +72,7 @@ ERROR:  error processing query 'CREATE TABLE d_zz (i int, j int);': distribution
 -- should succeed .
 CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
--- should failx.
+-- should fail.
 CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 ERROR:  error processing query 'CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;': relation "d_zz" is already attached
 -- should succeed .
