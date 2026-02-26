@@ -69,7 +69,14 @@ NOTICE: send query to shard(s) : sh4
 -- should fail
 CREATE TABLE d_zz (i int, j int);
 ERROR:  error processing query 'CREATE TABLE d_zz (i int, j int);': distribution for relation "d_zz" not found
+-- should succed.
 CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- should failx.
+CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
+ERROR:  error processing query 'CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;': relation "d_zz" is already attached
+-- should succed.
+CREATE TABLE IF NOT EXISTS d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO d_zz (i, j) VALUES(1,2); 
 NOTICE: send query to shard(s) : sh1
