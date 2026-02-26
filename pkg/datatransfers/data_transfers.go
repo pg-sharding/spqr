@@ -638,11 +638,12 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		}
 		colNames := strings.Join(cols, ", ")
 		query := fmt.Sprintf(`
+					SET postgres_fdw.application_name TO '%s';
 					INSERT INTO %s (%s)
 					SELECT %s FROM %s
 					WHERE %s
 					FOR UPDATE
-`, relFullName, colNames, colNames, fmt.Sprintf("%s_%s.%q", serverName, rel.GetSchema(), strings.ToLower(rel.Relation.RelationName)), krCondition)
+`, spqrTransferApplicationName, relFullName, colNames, colNames, fmt.Sprintf("%s_%s.%q", serverName, rel.GetSchema(), strings.ToLower(rel.Relation.RelationName)), krCondition)
 		_, err = tx.Exec(ctx, query)
 		if err != nil {
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
@@ -719,9 +720,10 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 		return err
 	}
 	query := fmt.Sprintf(`
+					SET postgres_fdw.application_name TO '%s';
 					INSERT INTO %s (%s)
 					SELECT %s FROM %s
-`, relFullName, strings.Join(cols, ", "), strings.Join(cols, ", "), fmt.Sprintf("%s_%s.%q", serverName, rel.GetSchema(), strings.ToLower(rel.TableName)))
+`, spqrTransferApplicationName, relFullName, strings.Join(cols, ", "), strings.Join(cols, ", "), fmt.Sprintf("%s_%s.%q", serverName, rel.GetSchema(), strings.ToLower(rel.TableName)))
 	_, err = tx.Exec(ctx, query)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "could not move the data: %s", err)
