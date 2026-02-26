@@ -104,7 +104,7 @@ func (lc *Coordinator) AlterDistributedRelation(ctx context.Context, id string, 
 }
 
 // AlterDistributedRelationDistributionKey implements meta.EntityMgr.
-func (lc *Coordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationName *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
+func (lc *Coordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relation *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
 	if id == distributions.REPLICATED {
 		return fmt.Errorf("setting distribution key is forbidden for reference relations")
 	}
@@ -113,17 +113,17 @@ func (lc *Coordinator) AlterDistributedRelationDistributionKey(ctx context.Conte
 		return err
 	}
 	if len(ds.ColTypes) != len(distributionKey) {
-		return fmt.Errorf("cannot alter relation \"%s\" distribution key: numbers of columns mismatch", relationName.String())
+		return fmt.Errorf("cannot alter relation \"%s\" distribution key: numbers of columns mismatch", relation.String())
 	}
-	return lc.qdb.AlterDistributedRelationDistributionKey(ctx, id, relationName.RelationName, distributions.DistributionKeyToDB(distributionKey))
+	return lc.qdb.AlterDistributedRelationDistributionKey(ctx, id, relation, distributions.DistributionKeyToDB(distributionKey))
 }
 
 // AlterDistributedRelationSchema implements meta.EntityMgr.
-func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relationName *rfqn.RelationFQN, schemaName string) error {
+func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error {
 	if id == distributions.REPLICATED {
-		return lc.qdb.AlterReplicatedRelationSchema(ctx, distributions.REPLICATED, relationName.RelationName, schemaName)
+		return lc.qdb.AlterReplicatedRelationSchema(ctx, distributions.REPLICATED, relation, schemaName)
 	}
-	return lc.qdb.AlterDistributedRelationSchema(ctx, id, relationName.RelationName, schemaName)
+	return lc.qdb.AlterDistributedRelationSchema(ctx, id, relation, schemaName)
 }
 
 // BatchMoveKeyRange implements meta.EntityMgr.

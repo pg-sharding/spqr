@@ -957,7 +957,10 @@ func (q *MemQDB) AlterDistributedRelation(ctx context.Context, id string, rel *D
 	if dsID, ok := q.RelationDistribution[rel.Name]; !ok {
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", rel.Name)
 	} else if dsID != id {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", rel.Name, dsID, id)
+		return spqrerror.Newf(
+			spqrerror.SPQR_INVALID_REQUEST,
+			"relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"",
+			rel.QualifiedName().String(), dsID, id)
 	}
 
 	ds.Relations[rel.Name] = rel
@@ -969,7 +972,7 @@ func (q *MemQDB) AlterDistributedRelation(ctx context.Context, id string, rel *D
 }
 
 // TODO : unit tests
-func (q *MemQDB) AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
+func (q *MemQDB) AlterDistributedRelationSchema(ctx context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: alter distributed relation schema")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -978,14 +981,17 @@ func (q *MemQDB) AlterDistributedRelationSchema(ctx context.Context, id string, 
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	}
-	if dsID, ok := q.RelationDistribution[relName]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relName)
+	if dsID, ok := q.RelationDistribution[relation.RelationName]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
 	} else if dsID != id {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relName, dsID, id)
+		return spqrerror.Newf(
+			spqrerror.SPQR_INVALID_REQUEST,
+			"relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"",
+			relation.String(), dsID, id)
 	}
 
-	ds.Relations[relName].SchemaName = schemaName
-	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, relName, id)); err != nil {
+	ds.Relations[relation.RelationName].SchemaName = schemaName
+	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, relation.RelationName, id)); err != nil {
 		return err
 	}
 
@@ -993,7 +999,7 @@ func (q *MemQDB) AlterDistributedRelationSchema(ctx context.Context, id string, 
 }
 
 // TODO : unit tests
-func (q *MemQDB) AlterReplicatedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error {
+func (q *MemQDB) AlterReplicatedRelationSchema(ctx context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: alter distributed relation schema")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -1002,25 +1008,28 @@ func (q *MemQDB) AlterReplicatedRelationSchema(ctx context.Context, id string, r
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	}
-	if dsID, ok := q.RelationDistribution[relName]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relName)
+	if dsID, ok := q.RelationDistribution[relation.RelationName]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
 	} else if dsID != id {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relName, dsID, id)
+		return spqrerror.Newf(
+			spqrerror.SPQR_INVALID_REQUEST,
+			"relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"",
+			relation.String(), dsID, id)
 	}
 
-	rel, ok := q.ReferenceRelations[relName]
+	rel, ok := q.ReferenceRelations[relation.RelationName]
 	if !ok {
-		return fmt.Errorf("reference relation \"%s\" not found", relName)
+		return fmt.Errorf("reference relation \"%s\" not found", relation.String())
 	}
 
-	ds.Relations[relName].SchemaName = schemaName
+	ds.Relations[relation.RelationName].SchemaName = schemaName
 	rel.SchemaName = schemaName
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds), NewUpdateCommand(q.ReferenceRelations, relName, rel))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds), NewUpdateCommand(q.ReferenceRelations, relation.RelationName, rel))
 }
 
 // TODO : unit tests
-func (q *MemQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []DistributionKeyEntry) error {
+func (q *MemQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relation *rfqn.RelationFQN, distributionKey []DistributionKeyEntry) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: alter distributed relation distribution key")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -1029,14 +1038,14 @@ func (q *MemQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	}
-	if dsID, ok := q.RelationDistribution[relName]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relName)
+	if dsID, ok := q.RelationDistribution[relation.RelationName]; !ok {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is not attached", relation.String())
 	} else if dsID != id {
-		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relName, dsID, id)
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is attached to distribution \"%s\", attempt to alter in distribution \"%s\"", relation.String(), dsID, id)
 	}
 
-	ds.Relations[relName].DistributionKey = distributionKey
-	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, relName, id)); err != nil {
+	ds.Relations[relation.RelationName].DistributionKey = distributionKey
+	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, relation.RelationName, id)); err != nil {
 		return err
 	}
 
