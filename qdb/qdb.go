@@ -101,9 +101,9 @@ type QDB interface {
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
 	AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error
 	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
-	AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error
-	AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []DistributionKeyEntry) error
-	AlterReplicatedRelationSchema(ctx context.Context, dsID string, relName string, schemaName string) error
+	AlterDistributedRelationSchema(ctx context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error
+	AlterDistributedRelationDistributionKey(ctx context.Context, id string, relation *rfqn.RelationFQN, distributionKey []DistributionKeyEntry) error
+	AlterReplicatedRelationSchema(ctx context.Context, dsID string, relation *rfqn.RelationFQN, schemaName string) error
 
 	// Unique indexes
 	CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
