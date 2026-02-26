@@ -1,0 +1,15 @@
+shards:
+  sh1:
+    hosts:
+      - 'shard1:5432'
+    db: db1
+    usr: user1
+    tls:
+      sslmode: require
+  sh2:
+    hosts:
+      - 'shard2:5432'
+    db: db1
+    usr: user1
+    tls:
+      sslmode: require

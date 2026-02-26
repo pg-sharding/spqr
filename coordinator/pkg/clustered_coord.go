@@ -595,7 +595,16 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 						Msg("already exists. creating shard skipped")
 					continue
 				}
-				if err := qc.db.AddShard(context.TODO(), qdb.NewShard(id, cfg.Hosts)); err != nil {
+				newShard := qdb.NewShard(id, cfg.Hosts)
+				if cfg.TLS != nil {
+					newShard.TLS = &qdb.TLSConfig{
+						SslMode:      cfg.TLS.SslMode,
+						CertFile:     cfg.TLS.CertFile,
+						KeyFile:      cfg.TLS.KeyFile,
+						RootCertFile: cfg.TLS.RootCertFile,
+					}
+				}
+				if err := qc.db.AddShard(context.TODO(), newShard); err != nil {
 					spqrlog.Zero.Error().
 						Err(err).
 						Msg("failed to add shard")
@@ -2497,7 +2506,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 }
 
 func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
-	if err := qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.RawHosts)); err != nil {
+	if err := qc.db.AddShard(ctx, topology.DataShardToDB(shard)); err != nil {
 		return err
 	}
 
