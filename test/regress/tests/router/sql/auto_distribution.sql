@@ -24,13 +24,13 @@ TABLE zz /* __spqr__execute_on: sh4 */;
 -- should fail
 CREATE TABLE d_zz (i int, j int);
 
--- should succed.
+-- should succeed .
 CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 
 -- should failx.
 CREATE TABLE d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 
--- should succed.
+-- should succeed .
 CREATE TABLE IF NOT EXISTS d_zz (i int, j int) /* __spqr__auto_distribution: ds1, __spqr__distribution_key: j */;
 
 INSERT INTO d_zz (i, j) VALUES(1,2); 
