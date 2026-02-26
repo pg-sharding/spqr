@@ -111,7 +111,7 @@ func distributionNodePath(key string) string {
 }
 
 func referenceRelationNodePath(relation *rfqn.RelationFQN) string {
-	return path.Join(referenceRelationsNamespace, relation.String())
+	return path.Join(referenceRelationsNamespace, relation.RelationName)
 }
 
 func uniqueIndexNodePath(key string) string {
