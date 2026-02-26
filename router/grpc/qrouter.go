@@ -609,13 +609,18 @@ func (l *LocalQrouterServer) WriteMoveTaskGroup(ctx context.Context, request *pr
 }
 
 // TODO: unit tests
+func (l *LocalQrouterServer) DropMoveTaskGroupV2(ctx context.Context, req *protos.DropMoveTaskGroupRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID, req.Cascade)
+}
+
+// TODO: unit tests
 func (l *LocalQrouterServer) DropMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID)
+	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID, false)
 }
 
 // Deprecated
 func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID)
+	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID, false)
 }
 
 // TODO: unit tests

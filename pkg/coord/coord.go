@@ -710,7 +710,7 @@ func (qc *Coordinator) UpdateMoveTask(ctx context.Context, task *tasks.MoveTask)
 //
 // Returns:
 // - error: an error if the removal operation fails.
-func (qc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string) error {
+func (qc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string, cascade bool) error {
 	task, err := qc.qdb.GetMoveTaskByGroup(ctx, id)
 	if err != nil {
 		return err
@@ -800,7 +800,7 @@ func (qc *Coordinator) DropRedistributeTask(ctx context.Context, id string, casc
 	}
 
 	// TODO use meta transactions
-	if err := qc.DropMoveTaskGroup(ctx, taskGroupId); err != nil {
+	if err := qc.DropMoveTaskGroup(ctx, taskGroupId, false); err != nil {
 		return err
 	}
 	return qc.qdb.DropRedistributeTask(ctx, task)

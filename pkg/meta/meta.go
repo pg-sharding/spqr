@@ -291,7 +291,7 @@ func processDrop(ctx context.Context,
 			Desc: engine.GetVPHeader("task_group_id"),
 		}
 		if tg != nil {
-			if err := mngr.DropMoveTaskGroup(ctx, stmt.ID); err != nil {
+			if err := mngr.DropMoveTaskGroup(ctx, stmt.ID, isCascade); err != nil {
 				return nil, err
 			}
 			tts.Raw = append(tts.Raw, [][]byte{

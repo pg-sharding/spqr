@@ -1853,7 +1853,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 			}
 		}
 	}
-	if err := qc.DropMoveTaskGroup(ctx, taskGroup.ID); err != nil {
+	if err := qc.DropMoveTaskGroup(ctx, taskGroup.ID, false); err != nil {
 		return err
 	}
 	return delayedError
