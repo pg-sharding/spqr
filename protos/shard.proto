@@ -6,9 +6,17 @@ option go_package = "spqr/proto";
 
 import "google/protobuf/empty.proto";
 
+message TLSConfig {
+  string sslmode = 1;
+  string cert_file = 2;
+  string key_file = 3;
+  string root_cert_file = 4;
+}
+
 message Shard {
   string id = 1;
   repeated string hosts = 2;
+  TLSConfig tls = 3;
 }
 
 message ShardInfo {

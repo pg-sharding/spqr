@@ -36,6 +36,54 @@ func NewDataShard(name string, cfg *config.Shard) *DataShard {
 	}
 }
 
+func tlsConfigToProto(cfg *config.TLSConfig) *proto.TLSConfig {
+	if cfg == nil {
+		return nil
+	}
+	return &proto.TLSConfig{
+		Sslmode:      cfg.SslMode,
+		CertFile:     cfg.CertFile,
+		KeyFile:      cfg.KeyFile,
+		RootCertFile: cfg.RootCertFile,
+	}
+}
+
+func tlsConfigFromProto(cfg *proto.TLSConfig) *config.TLSConfig {
+	if cfg == nil {
+		return nil
+	}
+	return &config.TLSConfig{
+		SslMode:      cfg.Sslmode,
+		CertFile:     cfg.CertFile,
+		KeyFile:      cfg.KeyFile,
+		RootCertFile: cfg.RootCertFile,
+	}
+}
+
+func tlsConfigToDB(cfg *config.TLSConfig) *qdb.TLSConfig {
+	if cfg == nil {
+		return nil
+	}
+	return &qdb.TLSConfig{
+		SslMode:      cfg.SslMode,
+		CertFile:     cfg.CertFile,
+		KeyFile:      cfg.KeyFile,
+		RootCertFile: cfg.RootCertFile,
+	}
+}
+
+func tlsConfigFromDB(cfg *qdb.TLSConfig) *config.TLSConfig {
+	if cfg == nil {
+		return nil
+	}
+	return &config.TLSConfig{
+		SslMode:      cfg.SslMode,
+		CertFile:     cfg.CertFile,
+		KeyFile:      cfg.KeyFile,
+		RootCertFile: cfg.RootCertFile,
+	}
+}
+
 // DataShardToProto converts a DataShard object to a proto.Shard object.
 // It takes a pointer to a DataShard as input and returns a pointer to a proto.Shard.
 //
@@ -48,6 +96,7 @@ func DataShardToProto(shard *DataShard) *proto.Shard {
 	return &proto.Shard{
 		Hosts: shard.Cfg.Hosts(),
 		Id:    shard.ID,
+		Tls:   tlsConfigToProto(shard.Cfg.TLS),
 	}
 }
 
@@ -64,6 +113,7 @@ func DataShardFromProto(shard *proto.Shard) *DataShard {
 	return NewDataShard(shard.Id, &config.Shard{
 		RawHosts: shard.Hosts,
 		Type:     config.DataShard,
+		TLS:      tlsConfigFromProto(shard.Tls),
 	})
 }
 
@@ -80,6 +130,7 @@ func DataShardFromDB(shard *qdb.Shard) *DataShard {
 	return NewDataShard(shard.ID, &config.Shard{
 		RawHosts: shard.RawHosts,
 		Type:     config.DataShard,
+		TLS:      tlsConfigFromDB(shard.TLS),
 	})
 }
 
@@ -87,5 +138,6 @@ func DataShardToDB(shard *DataShard) *qdb.Shard {
 	return &qdb.Shard{
 		ID:       shard.ID,
 		RawHosts: shard.Cfg.RawHosts,
+		TLS:      tlsConfigToDB(shard.Cfg.TLS),
 	}
 }
