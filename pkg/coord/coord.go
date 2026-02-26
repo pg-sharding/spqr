@@ -711,6 +711,16 @@ func (qc *Coordinator) UpdateMoveTask(ctx context.Context, task *tasks.MoveTask)
 // Returns:
 // - error: an error if the removal operation fails.
 func (qc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string, cascade bool) error {
+	taskGroup, err := qc.GetMoveTaskGroup(ctx, id)
+	if err != nil {
+		return err
+	}
+	if taskGroup == nil {
+		return nil
+	}
+	if cascade && taskGroup.Issuer != nil && taskGroup.Issuer.Type == tasks.IssuerRedistributeTask {
+		return qc.DropRedistributeTask(ctx, taskGroup.Issuer.Id, true)
+	}
 	task, err := qc.qdb.GetMoveTaskByGroup(ctx, id)
 	if err != nil {
 		return err
