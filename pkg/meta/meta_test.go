@@ -9,12 +9,16 @@ import (
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
+	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/tupleslot"
 	"github.com/pg-sharding/spqr/qdb"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
+	"github.com/pg-sharding/spqr/router/rfqn"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -161,4 +165,82 @@ func TestMoveKeyRangeReplyIncludesHint(t *testing.T) {
 
 	assert.Contains(t, rows, "move key range krid3 to shard sh2")
 	assert.Contains(t, rows, "HINT: MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.")
+}
+
+func TestCreateReferenceRelation(t *testing.T) {
+	t.Run("shard is non defined", func(t *testing.T) {
+		is := assert.New(t)
+		ctx := context.TODO()
+		memqdb, err := prepareDbTestValidate(ctx)
+		assert.NoError(t, err)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+
+		createCmd := &spqrparser.ReferenceRelationDefinition{
+			TableName: &rfqn.RelationFQN{
+				RelationName: "xtab",
+			},
+		}
+		tupleslotExpected := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("create reference table"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "table    -> xtab"),
+				},
+				{
+					fmt.Appendf(nil, "shard id -> sh1,sh2"),
+				},
+			},
+		}
+		tupleslotActual, err := meta.CreateReferenceRelation(ctx, mngr, createCmd)
+		is.NoError(err)
+		is.Equal(tupleslotExpected, tupleslotActual)
+		relActual, err := mngr.GetReferenceRelation(ctx, rfqn.RelationFQNFromFullName("", "xtab"))
+		relExpected := rrelation.ReferenceRelation{
+			SchemaName:            "",
+			TableName:             "xtab",
+			ShardIds:              []string{"sh1", "sh2"},
+			SchemaVersion:         1,
+			ColumnSequenceMapping: make(map[string]string),
+		}
+		is.NoError(err)
+		is.Equal(relExpected, *relActual)
+	})
+	t.Run("shard is defined", func(t *testing.T) {
+		is := assert.New(t)
+		ctx := context.TODO()
+		memqdb, err := prepareDbTestValidate(ctx)
+		assert.NoError(t, err)
+		mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+
+		createCmd := &spqrparser.ReferenceRelationDefinition{
+			TableName: &rfqn.RelationFQN{
+				RelationName: "xtab",
+			},
+			ShardIds: []string{"sh2"},
+		}
+		tupleslotExpected := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("create reference table"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "table    -> xtab"),
+				},
+				{
+					fmt.Appendf(nil, "shard id -> sh2"),
+				},
+			},
+		}
+		tupleslotActual, err := meta.CreateReferenceRelation(ctx, mngr, createCmd)
+		is.NoError(err)
+		is.Equal(tupleslotExpected, tupleslotActual)
+		relActual, err := mngr.GetReferenceRelation(ctx, rfqn.RelationFQNFromFullName("", "xtab"))
+		relExpected := rrelation.ReferenceRelation{
+			SchemaName:            "",
+			TableName:             "xtab",
+			ShardIds:              []string{"sh2"},
+			SchemaVersion:         1,
+			ColumnSequenceMapping: make(map[string]string),
+		}
+		is.NoError(err)
+		is.Equal(relExpected, *relActual)
+	})
 }

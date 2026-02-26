@@ -467,6 +467,49 @@ func createNonReplicatedDistribution(ctx context.Context,
 }
 
 // TODO : unit tests
+func createReferenceRelation(ctx context.Context, mngr EntityMgr, stmt *spqrparser.ReferenceRelationDefinition) (*tupleslot.TupleTableSlot, error) {
+	r := &rrelation.ReferenceRelation{
+		TableName:     stmt.TableName.RelationName,
+		SchemaName:    stmt.TableName.SchemaName,
+		SchemaVersion: 1,
+		ShardIds:      stmt.ShardIds,
+	}
+
+	if len(stmt.ShardIds) == 0 {
+		// default is all shards
+		shs, err := mngr.ListShards(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, sh := range shs {
+			r.ShardIds = append(r.ShardIds, sh.ID)
+		}
+	}
+
+	if err := mngr.CreateReferenceRelation(ctx, r, rrelation.ReferenceRelationEntriesFromSQL(stmt.AutoIncrementEntries)); err != nil {
+		return nil, err
+	}
+
+	tableName := r.TableName
+	if r.SchemaName != "" {
+		tableName = r.QualifiedName().String()
+	}
+	/* XXX: can we already make this more SQL compliant?  */
+	tts := &tupleslot.TupleTableSlot{
+		Desc: engine.GetVPHeader("create reference table"),
+		Raw: [][][]byte{
+			{
+				fmt.Appendf(nil, "table    -> %s", tableName),
+			},
+			{
+				fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIds, ",")),
+			},
+		},
+	}
+	return tts, nil
+}
+
+// TODO : unit tests
 
 // processCreate processes the given astmt statement of type spqrparser.Statement by creating a new distribution,
 // sharding rule, key range, or data shard depending on the type of the statement.
@@ -482,36 +525,7 @@ func createNonReplicatedDistribution(ctx context.Context,
 func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.ReferenceRelationDefinition:
-
-		r := &rrelation.ReferenceRelation{
-			TableName:     stmt.TableName.RelationName,
-			SchemaName:    stmt.TableName.SchemaName,
-			SchemaVersion: 1,
-			ShardIds:      stmt.ShardIds,
-		}
-
-		if err := mngr.CreateReferenceRelation(ctx, r, rrelation.ReferenceRelationEntriesFromSQL(stmt.AutoIncrementEntries)); err != nil {
-			return nil, err
-		}
-
-		tableName := r.TableName
-		if r.SchemaName != "" {
-			tableName = r.SchemaName + "." + r.TableName
-		}
-		/* XXX: can we already make this more SQL compliant?  */
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("create reference table"),
-			Raw: [][][]byte{
-				{
-					fmt.Appendf(nil, "table    -> %s", tableName),
-				},
-				{
-					fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIds, ",")),
-				},
-			},
-		}
-
-		return tts, nil
+		return createReferenceRelation(ctx, mngr, stmt)
 
 	case *spqrparser.DistributionDefinition:
 		if stmt.ID == "default" {
