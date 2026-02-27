@@ -58,7 +58,7 @@ type TXManager interface {
 }
 
 type TaskGroupStateKeeper interface {
-	TryTaskGroupLock(ctx context.Context, tgId string) error
+	TryTaskGroupLock(ctx context.Context, tgId string, holder string) error
 	CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error)
 }
 
@@ -101,9 +101,9 @@ type QDB interface {
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
 	AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error
 	AlterDistributedRelation(ctx context.Context, id string, rel *DistributedRelation) error
-	AlterDistributedRelationSchema(ctx context.Context, id string, relName string, schemaName string) error
-	AlterDistributedRelationDistributionKey(ctx context.Context, id string, relName string, distributionKey []DistributionKeyEntry) error
-	AlterReplicatedRelationSchema(ctx context.Context, dsID string, relName string, schemaName string) error
+	AlterDistributedRelationSchema(ctx context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error
+	AlterDistributedRelationDistributionKey(ctx context.Context, id string, relation *rfqn.RelationFQN, distributionKey []DistributionKeyEntry) error
+	AlterReplicatedRelationSchema(ctx context.Context, dsID string, relation *rfqn.RelationFQN, schemaName string) error
 
 	// Unique indexes
 	CreateUniqueIndex(ctx context.Context, idx *UniqueIndex) error
@@ -138,6 +138,7 @@ type QDB interface {
 	CreateRedistributeTask(ctx context.Context, task *RedistributeTask) error
 	UpdateRedistributeTask(ctx context.Context, task *RedistributeTask) error
 	DropRedistributeTask(ctx context.Context, task *RedistributeTask) error
+	GetRedistributeTaskTaskGroupId(ctx context.Context, redistributeTaskId string) (string, error)
 
 	// Balancer interaction
 	GetBalancerTask(ctx context.Context) (*BalancerTask, error)

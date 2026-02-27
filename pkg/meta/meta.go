@@ -291,7 +291,7 @@ func processDrop(ctx context.Context,
 			Desc: engine.GetVPHeader("task_group_id"),
 		}
 		if tg != nil {
-			if err := mngr.DropMoveTaskGroup(ctx, stmt.ID); err != nil {
+			if err := mngr.DropMoveTaskGroup(ctx, stmt.ID, isCascade); err != nil {
 				return nil, err
 			}
 			tts.Raw = append(tts.Raw, [][]byte{
@@ -350,7 +350,7 @@ func processDrop(ctx context.Context,
 		}
 		for _, task := range tasks {
 			if task.ID == stmt.ID {
-				if err := mngr.DropRedistributeTask(ctx, stmt.ID); err != nil {
+				if err := mngr.DropRedistributeTask(ctx, stmt.ID, isCascade); err != nil {
 					return nil, err
 				}
 				tts.WriteDataRow(stmt.ID)
@@ -484,8 +484,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	case *spqrparser.ReferenceRelationDefinition:
 
 		r := &rrelation.ReferenceRelation{
-			TableName:     stmt.TableName.RelationName,
-			SchemaName:    stmt.TableName.SchemaName,
+			RelationName:  stmt.TableName,
 			SchemaVersion: 1,
 			ShardIds:      stmt.ShardIds,
 		}
@@ -494,16 +493,12 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return nil, err
 		}
 
-		tableName := r.TableName
-		if r.SchemaName != "" {
-			tableName = r.SchemaName + "." + r.TableName
-		}
 		/* XXX: can we already make this more SQL compliant?  */
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("create reference table"),
 			Raw: [][][]byte{
 				{
-					fmt.Appendf(nil, "table    -> %s", tableName),
+					fmt.Appendf(nil, "table    -> %s", r.QualifiedName()),
 				},
 				{
 					fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIds, ",")),
@@ -1488,38 +1483,41 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
-	case spqrparser.TaskGroupBoundsCacheStr:
-		taskGroupId, err := engine.CheckWhereClauseColString(stmt.Where, "task_group_id")
+	case spqrparser.TaskGroupExtendedStr, spqrparser.TaskGroupsExtendedStr:
+		taskGroups, err := mngr.ListMoveTaskGroups(ctx)
 		if err != nil {
 			return nil, err
 		}
-		bounds, ind, err := mngr.GetMoveTaskGroupBoundsCache(ctx, taskGroupId)
-		if err != nil {
-			return nil, err
-		}
-		taskGroup, err := mngr.GetMoveTaskGroup(ctx, taskGroupId)
-		if err != nil {
-			return nil, err
-		}
-		if taskGroup == nil {
-			return nil, fmt.Errorf("move task group \"%s\" not found", taskGroupId)
-		}
-		keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
-		if err != nil {
-			if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
-				var err2 error
-				keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
-				if err2 != nil {
-					return nil, fmt.Errorf("could not get source key range \"%s\": %s, not destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
+		boundsMap := make(map[string][][][]byte)
+		indexMap := make(map[string]int)
+		dsIdToColTypes := make(map[string][]string)
+		taskGroupIdToColTypes := make(map[string][]string)
+		for _, taskGroup := range taskGroups {
+			bounds, ind, err := mngr.GetMoveTaskGroupBoundsCache(ctx, taskGroup.ID)
+			if err != nil {
+				return nil, err
+			}
+			keyRange, err := mngr.GetKeyRange(ctx, taskGroup.KrIdFrom)
+			if err != nil {
+				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_KEYRANGE_ERROR {
+					var err2 error
+					keyRange, err2 = mngr.GetKeyRange(ctx, taskGroup.KrIdTo)
+					if err2 != nil {
+						return nil, fmt.Errorf("could not get source key range \"%s\": %s, nor destination key range \"%s\": %s", taskGroup.KrIdFrom, err, taskGroup.KrIdTo, err2)
+					}
 				}
 			}
+			boundsMap[taskGroup.ID] = bounds
+			indexMap[taskGroup.ID] = ind
+			if _, ok := dsIdToColTypes[keyRange.Distribution]; !ok {
+				dsIdToColTypes[keyRange.Distribution] = keyRange.ColumnTypes
+			}
+			taskGroupIdToColTypes[taskGroup.ID] = dsIdToColTypes[keyRange.Distribution]
 		}
-
 		tts, err = engine.TaskGroupBoundsCacheVirtualRelationScan(
-			bounds,
-			ind,
-			keyRange.ColumnTypes,
-			taskGroupId)
+			boundsMap,
+			indexMap,
+			taskGroupIdToColTypes)
 		if err != nil {
 			return nil, err
 		}

@@ -184,7 +184,7 @@ func (lc *LocalInstanceMetadataMgr) Move(ctx context.Context, req *kr.MoveKeyRan
 }
 
 // BatchMoveKeyRange is disabled in LocalCoordinator
-func (lc *LocalInstanceMetadataMgr) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange) error {
+func (lc *LocalInstanceMetadataMgr) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange, _ *tasks.MoveTaskGroupIssuer) error {
 	return ErrNotCoordinator
 }
 

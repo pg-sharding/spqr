@@ -53,12 +53,12 @@ CREATE REFERENCE RELATION z_rf;
 (2 rows)
 
 SHOW relations;
- relation_name | distribution_id |           distribution_key            | schema_name  
----------------+-----------------+---------------------------------------+--------------
- a             | ds1             | ("a_id", identity)                    | $search_path
- b             | ds3             | ("b_id", murmur)                      | $search_path
- c             | ds2             | ("c_id_1", identity),("c_id_2", city) | $search_path
- d             | ds1             | ("d_id", identity)                    | $search_path
+ relation_name | distribution_id |           distribution_key            | schema_name 
+---------------+-----------------+---------------------------------------+-------------
+ a             | ds1             | ("a_id", identity)                    | public
+ b             | ds3             | ("b_id", murmur)                      | public
+ c             | ds2             | ("c_id_1", identity),("c_id_2", city) | public
+ d             | ds1             | ("d_id", identity)                    | public
  z_rf          | REPLICATED      |                                       | public
 (5 rows)
 
@@ -73,18 +73,18 @@ SHOW relations (relation_name, distribution_id, relation_name);
 (5 rows)
 
 SHOW relations WHERE distribution_id = 'ds1';
- relation_name | distribution_id |  distribution_key  | schema_name  
----------------+-----------------+--------------------+--------------
- a             | ds1             | ("a_id", identity) | $search_path
- d             | ds1             | ("d_id", identity) | $search_path
+ relation_name | distribution_id |  distribution_key  | schema_name 
+---------------+-----------------+--------------------+-------------
+ a             | ds1             | ("a_id", identity) | public
+ d             | ds1             | ("d_id", identity) | public
 (2 rows)
 
 SHOW relations WHERE unknown_param = 'ds1';
 ERROR:  column unknown_param does not exist
 SHOW reference_relations;
- table_name | schema_name  | schema_version |      shards       | column_sequence_mapping 
-------------+--------------+----------------+-------------------+-------------------------
- z_rf       | $search_path | 1              | [sh1 sh2 sh3 sh4] | map[]
+ table_name | schema_name | schema_version |      shards       | column_sequence_mapping 
+------------+-------------+----------------+-------------------+-------------------------
+ z_rf       | public      | 1              | [sh1 sh2 sh3 sh4] | map[]
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;

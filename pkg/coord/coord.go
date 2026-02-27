@@ -104,7 +104,7 @@ func (lc *Coordinator) AlterDistributedRelation(ctx context.Context, id string, 
 }
 
 // AlterDistributedRelationDistributionKey implements meta.EntityMgr.
-func (lc *Coordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relationName *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
+func (lc *Coordinator) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relation *rfqn.RelationFQN, distributionKey []distributions.DistributionKeyEntry) error {
 	if id == distributions.REPLICATED {
 		return fmt.Errorf("setting distribution key is forbidden for reference relations")
 	}
@@ -113,21 +113,21 @@ func (lc *Coordinator) AlterDistributedRelationDistributionKey(ctx context.Conte
 		return err
 	}
 	if len(ds.ColTypes) != len(distributionKey) {
-		return fmt.Errorf("cannot alter relation \"%s\" distribution key: numbers of columns mismatch", relationName.String())
+		return fmt.Errorf("cannot alter relation \"%s\" distribution key: numbers of columns mismatch", relation.String())
 	}
-	return lc.qdb.AlterDistributedRelationDistributionKey(ctx, id, relationName.RelationName, distributions.DistributionKeyToDB(distributionKey))
+	return lc.qdb.AlterDistributedRelationDistributionKey(ctx, id, relation, distributions.DistributionKeyToDB(distributionKey))
 }
 
 // AlterDistributedRelationSchema implements meta.EntityMgr.
-func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relationName *rfqn.RelationFQN, schemaName string) error {
+func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error {
 	if id == distributions.REPLICATED {
-		return lc.qdb.AlterReplicatedRelationSchema(ctx, distributions.REPLICATED, relationName.RelationName, schemaName)
+		return lc.qdb.AlterReplicatedRelationSchema(ctx, distributions.REPLICATED, relation, schemaName)
 	}
-	return lc.qdb.AlterDistributedRelationSchema(ctx, id, relationName.RelationName, schemaName)
+	return lc.qdb.AlterDistributedRelationSchema(ctx, id, relation, schemaName)
 }
 
 // BatchMoveKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
+func (lc *Coordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
 	panic("unimplemented")
 }
 
@@ -140,12 +140,8 @@ func (lc *Coordinator) Cache() *cache.SchemaCache {
 func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation.ReferenceRelation, entry []*rrelation.AutoIncrementEntry) error {
 	/* XXX: fix this */
 
-	relName := &rfqn.RelationFQN{
-		RelationName: r.TableName,
-	}
-
-	if _, err := lc.qdb.GetReferenceRelation(ctx, relName); err == nil {
-		return fmt.Errorf("reference relation %+v already exists", r.TableName)
+	if _, err := lc.qdb.GetReferenceRelation(ctx, r.RelationName); err == nil {
+		return fmt.Errorf("reference relation %+v already exists", r.RelationName)
 	}
 
 	selectedDistribId := distributions.REPLICATED
@@ -168,13 +164,13 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 
 	ret := map[string]string{}
 	for _, entry := range entry {
-		ret[entry.Column] = distributions.SequenceName(r.TableName, entry.Column)
+		/* Ahh... fix this*/
+		ret[entry.Column] = distributions.SequenceName(r.RelationName.RelationName, entry.Column)
 
 		if err := lc.qdb.CreateSequence(ctx, ret[entry.Column], int64(entry.Start)); err != nil {
 			return err
 		}
-		qualifiedName := rfqn.RelationFQN{RelationName: r.TableName}
-		if err := lc.qdb.AlterSequenceAttach(ctx, ret[entry.Column], &qualifiedName, entry.Column); err != nil {
+		if err := lc.qdb.AlterSequenceAttach(ctx, ret[entry.Column], r.RelationName, entry.Column); err != nil {
 			return err
 		}
 	}
@@ -710,7 +706,17 @@ func (qc *Coordinator) UpdateMoveTask(ctx context.Context, task *tasks.MoveTask)
 //
 // Returns:
 // - error: an error if the removal operation fails.
-func (qc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string) error {
+func (qc *Coordinator) DropMoveTaskGroup(ctx context.Context, id string, cascade bool) error {
+	taskGroup, err := qc.GetMoveTaskGroup(ctx, id)
+	if err != nil {
+		return err
+	}
+	if taskGroup == nil {
+		return nil
+	}
+	if cascade && taskGroup.Issuer != nil && taskGroup.Issuer.Type == tasks.IssuerRedistributeTask {
+		return qc.DropRedistributeTask(ctx, taskGroup.Issuer.Id, true)
+	}
 	task, err := qc.qdb.GetMoveTaskByGroup(ctx, id)
 	if err != nil {
 		return err
@@ -768,14 +774,39 @@ func (qc *Coordinator) ListRedistributeTasks(ctx context.Context) ([]*tasks.Redi
 	}
 	res := make([]*tasks.RedistributeTask, len(tasksDb))
 	for i, taskDb := range tasksDb {
-		res[i] = tasks.RedistributeTaskFromDB(taskDb)
+		taskGroupId, err := qc.qdb.GetRedistributeTaskTaskGroupId(ctx, taskDb.ID)
+		if err != nil {
+			return nil, err
+		}
+		taskGroup, err := qc.GetMoveTaskGroup(ctx, taskGroupId)
+		if err != nil {
+			return nil, err
+		}
+		res[i] = tasks.RedistributeTaskFromDB(taskDb, taskGroup)
 	}
 	return res, nil
 }
 
-func (qc *Coordinator) DropRedistributeTask(ctx context.Context, id string) error {
+func (qc *Coordinator) DropRedistributeTask(ctx context.Context, id string, cascade bool) error {
 	task, err := qc.qdb.GetRedistributeTask(ctx, id)
 	if err != nil {
+		return err
+	}
+	if task == nil {
+		return nil
+	}
+	taskGroupId, err := qc.qdb.GetRedistributeTaskTaskGroupId(ctx, task.ID)
+	if err != nil {
+		return err
+	}
+	if taskGroup, err := qc.GetMoveTaskGroup(ctx, taskGroupId); err != nil {
+		return err
+	} else if taskGroup != nil && !cascade {
+		return fmt.Errorf("cannot drop redistribute task \"%s\" because other objects depend on it\nDETAILS: move task group \"%s\"\nHINT: Use DROP ... CASCADE to drop task group automatically", id, taskGroupId)
+	}
+
+	// TODO use meta transactions
+	if err := qc.DropMoveTaskGroup(ctx, taskGroupId, false); err != nil {
 		return err
 	}
 	return qc.qdb.DropRedistributeTask(ctx, task)

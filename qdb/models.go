@@ -167,16 +167,27 @@ type MoveTask struct {
 	State       int      `json:"state"`
 }
 
+const (
+	IssuerRedistributeTask = iota + 1
+	IssuerBalancerTask
+)
+
+type MoveTaskGroupIssuer struct {
+	Type int    `json:"type"`
+	Id   string `json:"id"`
+}
+
 type MoveTaskGroup struct {
-	Type      int       `json:"type"`
-	ShardToId string    `json:"shard_to_id"`
-	KrIdFrom  string    `json:"kr_id_from"`
-	KrIdTo    string    `json:"kr_id_to"`
-	BoundRel  string    `json:"rel"`
-	Coeff     float64   `json:"coeff"`
-	BatchSize int64     `json:"batch_size"`
-	Limit     int64     `json:"limit"`
-	CreatedAt time.Time `json:"created_at"`
+	Type      int                  `json:"type"`
+	ShardToId string               `json:"shard_to_id"`
+	KrIdFrom  string               `json:"kr_id_from"`
+	KrIdTo    string               `json:"kr_id_to"`
+	BoundRel  string               `json:"rel"`
+	Coeff     float64              `json:"coeff"`
+	BatchSize int64                `json:"batch_size"`
+	Limit     int64                `json:"limit"`
+	CreatedAt time.Time            `json:"created_at"`
+	Issuer    *MoveTaskGroupIssuer `json:"issuer"`
 }
 
 type TaskGroupStatus struct {

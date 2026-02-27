@@ -1827,14 +1827,14 @@ Feature: Redistribution test
     SHOW task_group
     """
     Then command return code should be "0"
-    And SQL result should match json
+    And SQL result should match json_regexp
     """
     [{
         "destination_shard_id":     "sh2",
         "source_key_range_id":      "kr1",
         "batch_size":               "1",
         "state":                    "RUNNING",
-        "error":                    ""
+        "message":                  "executed by .*regress_coordinator:7003.*"
     }]
     """
     When we wait for "40" seconds
@@ -1850,7 +1850,7 @@ Feature: Redistribution test
         "source_key_range_id":      "kr1",
         "batch_size":               "1",
         "state":                    "ERROR",
-        "error":                    "task group lost running"
+        "message":                  "task group lost running"
     }]
     """
 

@@ -8,7 +8,7 @@ import "google/protobuf/empty.proto";
 import "protos/qualified_name.proto";
 
 message ReferenceRelation {
-  string name = 1;
+  QualifiedName relName = 1;
   map<string, string> sequenceColumns = 2;
   uint64 schema_version = 3;
   repeated string shardIds = 4;

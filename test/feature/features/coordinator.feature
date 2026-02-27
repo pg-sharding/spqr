@@ -818,7 +818,7 @@ Feature: Coordinator test
         "batch_size":               "0",
         "move_task_id":             "2",
         "state":                    "PLANNED",
-        "error":                    ""
+        "message":                  ""
     }]
     """
     When I run SQL on host "coordinator"
@@ -969,6 +969,33 @@ Feature: Coordinator test
     }
     """
     Then command return code should be "0"
+    When I record in qdb move task group
+    """
+    {
+            "id":            "tgid1",
+            "shard_to_id":   "sh_to",
+            "kr_id_from":    "krid1",
+            "kr_id_to":      "krid2",
+            "type":          1,
+            "limit":         -1,
+            "coeff":         0.75,
+            "bound_rel":     "test",
+            "total_keys":    200,
+            "task":
+            {
+                "id":            "2",
+                "kr_id_temp":    "temp_id",
+                "bound":         ["FAAAAAAAAAA="],
+                "state":         0,
+                "task_group_id": "tgid1"
+            },
+            "issuer": {
+              "type": 1,
+              "id": "rt1"
+            }
+        }
+    """
+    Then command return code should be "0"
     When I run SQL on host "coordinator"
     """
     SHOW redistribute_tasks;
@@ -1004,6 +1031,15 @@ Feature: Coordinator test
     """
     DROP REDISTRIBUTE TASK "rt1";
     """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    cannot drop redistribute task .*rt1.* because other objects depend on it
+    """
+    When I run SQL on host "coordinator"
+    """
+    DROP REDISTRIBUTE TASK "rt1" CASCADE;
+    """
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
@@ -1026,4 +1062,108 @@ Feature: Coordinator test
         "batch_size":"0"
       }
     ]
+    """
+  
+  Scenario: Dropping move task group with cascade option works
+    When I record in qdb redistribute task
+    """
+    {
+      "ID": "rt1",
+      "KeyRangeId": "kr1",
+      "ShardId": "sh2"
+    }
+    """
+    Then command return code should be "0"
+    When I record in qdb move task group
+    """
+    {
+            "id":            "tgid1",
+            "shard_to_id":   "sh_to",
+            "kr_id_from":    "krid1",
+            "kr_id_to":      "krid2",
+            "type":          1,
+            "limit":         -1,
+            "coeff":         0.75,
+            "bound_rel":     "test",
+            "total_keys":    200,
+            "task":
+            {
+                "id":            "2",
+                "kr_id_temp":    "temp_id",
+                "bound":         ["FAAAAAAAAAA="],
+                "state":         0,
+                "task_group_id": "tgid1"
+            },
+            "issuer":
+            {
+                "type": 1,
+                "id":   "rt1"
+            }
+        }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    SHOW task_group
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+        "task_group_id":            "tgid1",
+        "destination_shard_id":     "sh_to",
+        "source_key_range_id":      "krid1",
+        "destination_key_range_id": "krid2",
+        "batch_size":               "0",
+        "move_task_id":             "2",
+        "state":                    "PLANNED",
+        "message":                  ""
+    }]
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW move_task
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+        "move_task_id":             "2",
+        "state":                    "PLANNED",
+        "bound":                    "10",
+        "temporary_key_range_id":   "temp_id",
+        "task_group_id":            "tgid1"
+    }]
+    """
+    When I run SQL on host "coordinator"
+    """
+    DROP TASK GROUP tgid1 CASCADE;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    SHOW task_group
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    []
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW move_task
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW redistribute_tasks
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
     """
