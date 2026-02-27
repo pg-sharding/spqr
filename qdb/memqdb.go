@@ -24,6 +24,7 @@ const (
 	MapKrs                  = "Krs"
 	MapFreq                 = "Freq"
 	MapLocks                = "Locks"
+	MapKrVersions           = "KrVersions"
 )
 
 type MemQDB struct {
@@ -33,6 +34,7 @@ type MemQDB struct {
 	Locks                       map[string]*sync.RWMutex            `json:"locks"`
 	Freq                        map[string]bool                     `json:"freq"`
 	Krs                         map[string]*internalKeyRange        `json:"krs"`
+	KrVersions                  map[string]int                      `json:"kr_versions"`
 	Shards                      map[string]*Shard                   `json:"shards"`
 	Distributions               map[string]*Distribution            `json:"distributions"`
 	RelationDistribution        map[string]string                   `json:"relation_distribution"`
@@ -72,6 +74,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
 		Freq:                        map[string]bool{},
 		Krs:                         map[string]*internalKeyRange{},
+		KrVersions:                  map[string]int{},
 		Locks:                       map[string]*sync.RWMutex{},
 		Shards:                      map[string]*Shard{},
 		Distributions:               map[string]*Distribution{},
@@ -189,6 +192,7 @@ func (q *MemQDB) dropKeyRangeCommands(krId string) []Command {
 		NewDeleteCommand(q.Krs, krId),
 		NewDeleteCommand(q.Freq, krId),
 		NewDeleteCommand(q.Locks, krId),
+		NewDeleteCommand(q.KrVersions, krId),
 	}
 }
 
@@ -197,6 +201,7 @@ func (q *MemQDB) createKeyRangeCommands(keyRange *KeyRange) []Command {
 		NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRangeToInternal(keyRange)),
 		NewUpdateCommand(q.Locks, keyRange.KeyRangeID, &sync.RWMutex{}),
 		NewUpdateCommand(q.Freq, keyRange.KeyRangeID, keyRange.Locked),
+		NewUpdateCommand(q.KrVersions, keyRange.KeyRangeID, 1),
 	}
 }
 
@@ -229,7 +234,7 @@ func (q *MemQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
 // ==============================================================================
 
 func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement, error) {
-	commands := make([]QdbStatement, 3)
+	commands := make([]QdbStatement, 4)
 	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
 		return nil, err
 	} else {
@@ -238,16 +243,18 @@ func (q *MemQDB) createKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement
 			return nil, err
 		}
 		commands[0] = *cmd
-		cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapLocks)
-		if err != nil {
+		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapLocks); err != nil {
 			return nil, err
 		}
 		commands[1] = *cmd
-		cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapFreq)
-		if err != nil {
+		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, strconv.FormatBool(keyRange.Locked), MapFreq); err != nil {
 			return nil, err
 		}
 		commands[2] = *cmd
+		if cmd, err = NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, 1, MapKrVersions); err != nil {
+			return nil, err
+		}
+		commands[3] = *cmd
 	}
 	return commands, nil
 }
@@ -270,16 +277,31 @@ func (q *MemQDB) dropKeyRangeQdbStatements(keyRangeId string) ([]QdbStatement, e
 		return nil, err
 	}
 	commands[2] = *cmd
+	return commands, nil
+}
 
+func (q *MemQDB) updateKeyRangeQdbStatements(keyRange *KeyRange) ([]QdbStatement, error) {
+	commands := make([]QdbStatement, 2)
+	if keyRangeJSON, err := json.Marshal(*keyRange); err != nil {
+		return nil, err
+	} else {
+		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, string(keyRangeJSON), MapKrs); err != nil {
+			return nil, err
+		} else {
+			commands[0] = *cmd
+		}
+		if cmd, err := NewQdbStatementExt(CMD_PUT, keyRange.KeyRangeID, keyRange.Version+1, MapKrVersions); err != nil {
+			return nil, err
+		} else {
+			commands[1] = *cmd
+		}
+	}
 	return commands, nil
 }
 
 // TODO : unit tests
 func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
-
-	q.mu.Lock()
-	defer q.mu.Unlock()
 
 	if len(keyRange.DistributionId) > 0 && keyRange.DistributionId != "default" {
 		if _, ok := q.Distributions[keyRange.DistributionId]; !ok {
@@ -308,16 +330,14 @@ func (q *MemQDB) getKeyrangeInternal(id string) (*KeyRange, error) {
 		isLocked = v
 	}
 
-	return keyRangeFromInternal(kRangeInt, isLocked), nil
+	return keyRangeFromInternal(kRangeInt, isLocked, q.KrVersions[id]), nil
 }
 
 // TODO : unit tests
-func (q *MemQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) error {
+func (q *MemQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: update key range")
-	q.mu.Lock()
-	defer q.mu.Unlock()
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRangeToInternal(keyRange)))
+	return q.updateKeyRangeQdbStatements(keyRange)
 }
 
 // TODO : unit tests
@@ -364,7 +384,7 @@ func (q *MemQDB) DropKeyRangeAll(_ context.Context) error {
 	}
 	spqrlog.Zero.Debug().Msg("memqdb: acquired all locks")
 
-	return ExecuteCommands(q.DumpState, NewDropCommand(q.Krs), NewDropCommand(q.Locks))
+	return ExecuteCommands(q.DumpState, NewDropCommand(q.Krs), NewDropCommand(q.Locks), NewDropCommand(q.KrVersions))
 }
 
 // TODO : unit tests
@@ -383,7 +403,7 @@ func (q *MemQDB) ListKeyRanges(_ context.Context, distribution string) ([]*KeyRa
 			if v, ok := q.Freq[el.KeyRangeID]; ok {
 				isLocked = v
 			}
-			ret = append(ret, keyRangeFromInternal(el, isLocked))
+			ret = append(ret, keyRangeFromInternal(el, isLocked, q.KrVersions[el.KeyRangeID]))
 		}
 	}
 
@@ -406,7 +426,7 @@ func (q *MemQDB) ListAllKeyRanges(_ context.Context) ([]*KeyRange, error) {
 		if v, ok := q.Freq[el.KeyRangeID]; ok {
 			isLocked = v
 		}
-		ret = append(ret, keyRangeFromInternal(el, isLocked))
+		ret = append(ret, keyRangeFromInternal(el, isLocked, q.KrVersions[el.KeyRangeID]))
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
@@ -465,7 +485,7 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 		return nil, err
 	}
 
-	return keyRangeFromInternal(krs, true), nil
+	return keyRangeFromInternal(krs, true, q.KrVersions[id]), nil
 }
 
 // TODO : unit tests
@@ -567,7 +587,7 @@ func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
 	kr.KeyRangeID = krIdNew
 	commands := make([]Command, 0)
 	commands = append(commands, q.dropKeyRangeCommands(krId)...)
-	commands = append(commands, q.createKeyRangeCommands(keyRangeFromInternal(kr, false))...)
+	commands = append(commands, q.createKeyRangeCommands(keyRangeFromInternal(kr, false, 1))...)
 	return ExecuteCommands(q.DumpState, commands...)
 }
 
@@ -1628,7 +1648,11 @@ func (q *MemQDB) toRelationDistributionOperation(stmt QdbStatement) (Command, er
 	case CMD_DELETE:
 		return NewDeleteCommand(q.RelationDistribution, stmt.Key), nil
 	case CMD_PUT:
-		return NewUpdateCommand(q.RelationDistribution, stmt.Key, stmt.Value), nil
+		val, ok := stmt.Value.(string)
+		if !ok {
+			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
+		}
+		return NewUpdateCommand(q.RelationDistribution, stmt.Key, val), nil
 	default:
 		return nil, fmt.Errorf("unsupported memqdb cmd %d (relation distribution)", stmt.CmdType)
 	}
@@ -1639,7 +1663,11 @@ func (q *MemQDB) toDistributions(stmt QdbStatement) (Command, error) {
 		return NewDeleteCommand(q.Distributions, stmt.Key), nil
 	case CMD_PUT:
 		var distr Distribution
-		if err := json.Unmarshal([]byte(stmt.Value), &distr); err != nil {
+		val, ok := stmt.Value.(string)
+		if !ok {
+			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
+		}
+		if err := json.Unmarshal([]byte(val), &distr); err != nil {
 			return nil, err
 		} else {
 			return NewUpdateCommand(q.Distributions, stmt.Key, &distr), nil
@@ -1654,8 +1682,12 @@ func (q *MemQDB) toKeyRange(stmt QdbStatement) (Command, error) {
 	case CMD_DELETE:
 		return NewDeleteCommand(q.Krs, stmt.Key), nil
 	case CMD_PUT:
+		val, ok := stmt.Value.(string)
+		if !ok {
+			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
+		}
 		var kr KeyRange
-		if err := json.Unmarshal([]byte(stmt.Value), &kr); err != nil {
+		if err := json.Unmarshal([]byte(val), &kr); err != nil {
 			return nil, err
 		}
 		return NewUpdateCommand(q.Krs, stmt.Key, keyRangeToInternal(&kr)), nil
@@ -1684,8 +1716,12 @@ func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
 	case CMD_DELETE:
 		return NewDeleteCommand(q.Locks, stmt.Key), nil
 	case CMD_PUT:
+		val, ok := stmt.Value.(string)
+		if !ok {
+			return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", stmt.Value)
+		}
 		lock := &sync.RWMutex{}
-		isLocked, err := strconv.ParseBool(stmt.Value)
+		isLocked, err := strconv.ParseBool(val)
 		if err != nil {
 			return nil, err
 		}
@@ -1695,6 +1731,21 @@ func (q *MemQDB) toLock(stmt QdbStatement) (Command, error) {
 			}
 		}
 		return NewUpdateCommand(q.Locks, stmt.Key, lock), nil
+	default:
+		return nil, fmt.Errorf("unsupported memDB cmd %d (lock)", stmt.CmdType)
+	}
+}
+
+func (q *MemQDB) toKrVersion(stmt QdbStatement) (Command, error) {
+	switch stmt.CmdType {
+	case CMD_DELETE:
+		return NewDeleteCommand(q.KrVersions, stmt.Key), nil
+	case CMD_PUT:
+		val, ok := stmt.Value.(int)
+		if !ok {
+			return nil, fmt.Errorf("incorrect value type %T for MapKrVersions, int is expected", stmt.Value)
+		}
+		return NewUpdateCommand(q.KrVersions, stmt.Key, val), nil
 	default:
 		return nil, fmt.Errorf("unsupported memDB cmd %d (lock)", stmt.CmdType)
 	}
@@ -1730,6 +1781,12 @@ func (q *MemQDB) packMemqdbCommands(operations []QdbStatement) ([]Command, error
 			memOperations = append(memOperations, operation)
 		case MapLocks:
 			operation, err := q.toLock(stmt)
+			if err != nil {
+				return nil, err
+			}
+			memOperations = append(memOperations, operation)
+		case MapKrVersions:
+			operation, err := q.toKrVersion(stmt)
 			if err != nil {
 				return nil, err
 			}

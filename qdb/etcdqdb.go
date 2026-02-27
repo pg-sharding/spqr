@@ -56,6 +56,7 @@ func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 
 const (
 	keyRangesNamespace                   = "/keyranges/"
+	keyRangesMetadataNamespace           = "/key_range_meta/"
 	distributionNamespace                = "/distributions/"
 	keyRangeMovesNamespace               = "/krmoves/"
 	routersNamespace                     = "/routers/"
@@ -96,6 +97,10 @@ func LockPath(key string) string {
 
 func keyRangeNodePath(key string) string {
 	return path.Join(keyRangesNamespace, key)
+}
+
+func keyRangeMetaNodePath(id string) string {
+	return path.Join(keyRangesMetadataNamespace, id)
 }
 
 func routerNodePath(key string) string {
@@ -211,12 +216,22 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 	if err != nil {
 		return nil, err
 	}
-	respKR := make([]QdbStatement, 1, 2)
+	respKR := make([]QdbStatement, 2, 3)
 	resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
 	if err != nil {
 		return nil, err
 	}
 	respKR[0] = *resp
+
+	meta, err := json.Marshal(KeyRangeMeta{Version: 1, UpdatedAt: time.Now(), ModifiedBy: "etcdqdb_create"})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create key range: failed to marshal metadata: %s", err)
+	}
+	resp, err = NewQdbStatement(CMD_PUT, keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))
+	if err != nil {
+		return nil, err
+	}
+	respKR[1] = *resp
 
 	if keyRange.Locked {
 		resp, err := NewQdbStatement(CMD_PUT, LockPath(keyRange.KeyRangeID), string(rawKeyRange))
@@ -235,14 +250,15 @@ func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]Qdb
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) fetchKeyRange(ctx context.Context, krNodePath string) (*KeyRange, error) {
+func (q *EtcdQDB) fetchKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().
-		Interface("path", krNodePath).
+		Interface("id", id).
 		Msg("etcdqdb: fetch key range")
 
+	krNodePath := keyRangeNodePath(id)
 	resp, err := q.cli.Txn(ctx).
 		If(clientv3.Compare(clientv3.Version(krNodePath), "!=", 0)).
-		Then(clientv3.OpGet(krNodePath), clientv3.OpGet(LockPath(krNodePath))).
+		Then(clientv3.OpGet(krNodePath), clientv3.OpGet(LockPath(krNodePath)), clientv3.OpGet(keyRangeMetaNodePath(id))).
 		Commit()
 
 	if err != nil {
@@ -251,7 +267,7 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, krNodePath string) (*KeyRan
 	if !resp.Succeeded {
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "no key range found at %v", krNodePath)
 	}
-	if len(resp.Responses) != 2 {
+	if len(resp.Responses) != 3 {
 		return nil, fmt.Errorf("failed to fetch key range at \"%s\": unexpected etcd response count %d", krNodePath, len(resp.Responses))
 	}
 	kRange := &internalKeyRange{}
@@ -260,7 +276,17 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, krNodePath string) (*KeyRan
 	}
 	isLocked := resp.Responses[1].GetResponseRange().Count > 0 && string(resp.Responses[1].GetResponseRange().Kvs[0].Value) == "locked"
 
-	return keyRangeFromInternal(kRange, isLocked), nil
+	version := 0
+	// TODO fail if meta not found(will break compatibility)
+	if resp.Responses[2].GetResponseRange().Count > 0 {
+		var meta *KeyRangeMeta
+		if err := json.Unmarshal(resp.Responses[2].GetResponseRange().Kvs[0].Value, &meta); err != nil {
+			return nil, err
+		}
+		version = meta.Version
+	}
+
+	return keyRangeFromInternal(kRange, isLocked, version), nil
 }
 
 // TODO : unit tests
@@ -271,7 +297,7 @@ func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 
 	t := time.Now()
 
-	kRange, err := q.fetchKeyRange(ctx, keyRangeNodePath(id))
+	kRange, err := q.fetchKeyRange(ctx, id)
 
 	spqrlog.Zero.Debug().
 		Interface("ret", kRange).
@@ -281,28 +307,34 @@ func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
+func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error) {
 	spqrlog.Zero.Debug().
 		Interface("key-range", keyRange).
 		Msg("etcdqdb: update key range")
 
-	t := time.Now()
-
 	rawKeyRange, err := json.Marshal(keyRangeToInternal(keyRange))
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	resp, err := q.cli.Put(ctx, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	meta, err := json.Marshal(KeyRangeMeta{Version: keyRange.Version + 1, UpdatedAt: time.Now(), ModifiedBy: "etcdqdb_update"})
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed to update key range: failed to marshal metadata: %s", err)
 	}
-
+	respKR := make([]QdbStatement, 2)
+	resp, err := NewQdbStatement(CMD_PUT, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	if err != nil {
+		return nil, err
+	}
+	respKR[0] = *resp
+	resp, err = NewQdbStatement(CMD_PUT, keyRangeMetaNodePath(keyRange.KeyRangeID), string(meta))
+	if err != nil {
+		return nil, err
+	}
+	respKR[1] = *resp
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: put key range to qdb")
-	statistics.RecordQDBOperation("UpdateKeyRange", time.Since(t))
-	return err
+	return respKR, nil
 }
 
 // TODO : unit tests
@@ -327,11 +359,18 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) ([]QdbStatement, 
 		Str("id", id).
 		Msg("etcdqdb: drop key range")
 
+	resp := make([]QdbStatement, 2)
 	statement, err := NewQdbStatement(CMD_DELETE, keyRangeNodePath(id), "")
 	if err != nil {
 		return nil, err
 	}
-	resp := []QdbStatement{*statement}
+	resp[0] = *statement
+	// TODO: update to INT_MAX instead of deleting
+	statement, err = NewQdbStatement(CMD_DELETE, keyRangeMetaNodePath(id), "")
+	if err != nil {
+		return nil, err
+	}
+	resp[1] = *statement
 
 	return resp, err
 }
@@ -371,11 +410,11 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 
 	t := time.Now()
 
-	resp, err := q.cli.Txn(ctx).Then(clientv3.OpGet(keyRangesNamespace, clientv3.WithPrefix()), clientv3.OpGet(keyRangeLockNamespace(), clientv3.WithPrefix())).Commit()
+	resp, err := q.cli.Txn(ctx).Then(clientv3.OpGet(keyRangesNamespace, clientv3.WithPrefix()), clientv3.OpGet(keyRangeLockNamespace(), clientv3.WithPrefix()), clientv3.OpGet(keyRangesMetadataNamespace, clientv3.WithPrefix())).Commit()
 	if err != nil {
 		return nil, err
 	}
-	if len(resp.Responses) != 2 {
+	if len(resp.Responses) != 3 {
 		return nil, fmt.Errorf("failed to list key ranges: unexpected txn response number %d", len(resp.Responses))
 	}
 	krDbs := resp.Responses[0].GetResponseRange().Kvs
@@ -384,6 +423,12 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 		id := string(kv.Key[len(keyRangeLockNamespace())+1:])
 		locks[id] = string(kv.Value) == "locked"
 		spqrlog.Zero.Debug().Str("key", string(kv.Key)).Str("id", id).Str("value", string(kv.Value)).Msg("got lock")
+	}
+
+	versions := make(map[string]int)
+	for _, kv := range resp.Responses[2].GetResponseRange().Kvs {
+		id := strings.TrimPrefix(string(kv.Key), keyRangesMetadataNamespace)
+		versions[id] = int(kv.Version)
 	}
 
 	keyRanges := make([]*KeyRange, 0, len(krDbs))
@@ -399,7 +444,12 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 		if ok {
 			krLocked = v
 		}
-		keyRanges = append(keyRanges, keyRangeFromInternal(kRange, krLocked))
+		version := 0
+		ver, ok := versions[kRange.KeyRangeID]
+		if !ok {
+			version = ver
+		}
+		keyRanges = append(keyRanges, keyRangeFromInternal(kRange, krLocked, version))
 	}
 
 	spqrlog.Zero.Debug().
@@ -420,21 +470,22 @@ func (q *EtcdQDB) NoWaitLockKeyRange(ctx context.Context, idKeyRange string) (*K
 	return kr, err
 }
 
-func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
+func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId string) (*KeyRange, error) {
 	resp, err := q.cli.Txn(ctx).
 		If(
 			//check exists key range lock
-			clientv3.Compare(clientv3.Version(LockPath(keyRangeNodePath(idKeyRange))), "=", 0),
+			clientv3.Compare(clientv3.Version(LockPath(keyRangeNodePath(keyRangeId))), "=", 0),
 			//check exists key range
-			clientv3.Compare(clientv3.Version(keyRangeNodePath(idKeyRange)), ">", 0),
+			clientv3.Compare(clientv3.Version(keyRangeNodePath(keyRangeId)), ">", 0),
 		).
 		Then(
-			clientv3.OpPut(LockPath(keyRangeNodePath(idKeyRange)), "locked"),
-			clientv3.OpGet(keyRangeNodePath(idKeyRange)),
+			clientv3.OpPut(LockPath(keyRangeNodePath(keyRangeId)), "locked"),
+			clientv3.OpGet(keyRangeNodePath(keyRangeId)),
+			clientv3.OpGet(keyRangeMetaNodePath(keyRangeId)),
 		).
 		Else(
-			clientv3.OpGet(LockPath(keyRangeNodePath(idKeyRange)), clientv3.WithCountOnly()),
-			clientv3.OpGet(keyRangeNodePath(idKeyRange), clientv3.WithCountOnly()),
+			clientv3.OpGet(LockPath(keyRangeNodePath(keyRangeId)), clientv3.WithCountOnly()),
+			clientv3.OpGet(keyRangeNodePath(keyRangeId), clientv3.WithCountOnly()),
 		).
 		Commit()
 	if err != nil {
@@ -443,39 +494,49 @@ func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, idKeyRange str
 	if !resp.Succeeded {
 		if len(resp.Responses) != 2 {
 			return nil, fmt.Errorf("unexpected (case 0) etcd lock '%s' response parts count=%d",
-				idKeyRange, len(resp.Responses))
+				keyRangeId, len(resp.Responses))
 		}
 		if resp.Responses[1].GetResponseRange().Count == 0 {
-			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "cant't lock non existent key range %v", idKeyRange)
+			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "cant't lock non existent key range %v", keyRangeId)
 		}
 		spqrlog.Zero.Debug().
-			Str("id", idKeyRange).
-			Msg(fmt.Sprintf("unsuccessful lock '%s' LS:%d, KR:%d", idKeyRange, resp.Responses[0], resp.Responses[1]))
-		return nil, retry.RetryableError(spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", idKeyRange))
+			Str("id", keyRangeId).
+			Msg(fmt.Sprintf("unsuccessful lock '%s' LS:%d, KR:%d", keyRangeId, resp.Responses[0], resp.Responses[1]))
+		return nil, retry.RetryableError(spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v is locked", keyRangeId))
 	} else {
-		if len(resp.Responses) != 2 {
+		if len(resp.Responses) != 3 {
 			return nil, fmt.Errorf("unexpected (case 1) etcd lock '%s' response parts count=%d",
-				idKeyRange, len(resp.Responses))
+				keyRangeId, len(resp.Responses))
 		} else {
 			rng := resp.Responses[1].GetResponseRange()
 			if len(rng.Kvs) != 1 {
 				return nil, fmt.Errorf("unexpected (case 2) etcd lock '%s' response parts count=%d",
-					idKeyRange, len(rng.Kvs))
+					keyRangeId, len(rng.Kvs))
 			}
 			if rng.Kvs[0] == nil {
 				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 0)",
-					idKeyRange)
+					keyRangeId)
 			}
 			kv := rng.Kvs[0].Value
 			if kv == nil {
 				return nil, fmt.Errorf("unexpected etcd lock '%s' invalid key range value  (case 1)",
-					idKeyRange)
+					keyRangeId)
+			}
+
+			rng = resp.Responses[2].GetResponseRange()
+			ver := 0
+			if rng.Count > 0 {
+				var meta *KeyRangeMeta
+				if err := json.Unmarshal(rng.Kvs[0].Value, &meta); err != nil {
+					return nil, err
+				}
+				ver = meta.Version
 			}
 			keyRange := &internalKeyRange{}
 			if err := json.Unmarshal(kv, &keyRange); err != nil {
 				return nil, err
 			}
-			return keyRangeFromInternal(keyRange, true), nil
+			return keyRangeFromInternal(keyRange, true, ver), nil
 		}
 	}
 }
@@ -572,22 +633,20 @@ func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 
 	t := time.Now()
 
-	kr, err := q.fetchKeyRange(ctx, keyRangeNodePath(krId))
+	kr, err := q.fetchKeyRange(ctx, krId)
 	if err != nil {
 		return err
 	}
 	kr.KeyRangeID = krIdNew
 	kr.Locked = false
 
-	if _, err = q.cli.Delete(ctx, keyRangeNodePath(krId)); err != nil {
-		return err
-	}
-
-	_, err = q.cli.Delete(ctx, LockPath(keyRangeNodePath(krId)))
+	resp, err := q.cli.Txn(ctx).Then(clientv3.OpDelete(keyRangeNodePath(krId)), clientv3.OpDelete(LockPath(keyRangeNodePath(krId))), clientv3.OpDelete(keyRangeMetaNodePath(krId))).Commit()
 	if err != nil {
 		return err
 	}
-
+	if !resp.Succeeded {
+		return fmt.Errorf("failed to rename key range: failed to delete old key range")
+	}
 	statements, err := q.CreateKeyRange(ctx, kr)
 	if err != nil {
 		return err
@@ -2670,27 +2729,37 @@ func (q *EtcdQDB) CurrVal(ctx context.Context, seqName string) (int64, error) {
 }
 
 func packEtcdCommands(operations []QdbStatement) ([]clientv3.Op, error) {
-	etcdOperations := make([]clientv3.Op, len(operations))
-	for index, v := range operations {
+	writeOperations := make([]clientv3.Op, 0)
+	for _, v := range operations {
 		switch v.CmdType {
 		case CMD_PUT:
-			etcdOperations[index] = clientv3.OpPut(v.Key, v.Value)
+			val, ok := v.Value.(string)
+			if !ok {
+				return nil, fmt.Errorf("incorrect value type %T for CMD_PUT, string is expected", v.Value)
+			}
+			writeOperations = append(writeOperations, clientv3.OpPut(v.Key, val))
 		case CMD_DELETE:
-			etcdOperations[index] = clientv3.OpDelete(v.Key)
+			writeOperations = append(writeOperations, clientv3.OpDelete(v.Key))
 		default:
 			return nil, fmt.Errorf("not found operation type: %d", v.CmdType)
 		}
 	}
-	return etcdOperations, nil
+	return writeOperations, nil
 }
 
 func (q *EtcdQDB) ExecNoTransaction(ctx context.Context, operations []QdbStatement) error {
-	etcdOperations, err := packEtcdCommands(operations)
+	ops, err := packEtcdCommands(operations)
 	if err != nil {
 		return err
 	}
-	_, err = q.cli.Txn(ctx).Then(etcdOperations...).Commit()
-	return err
+	resp, err := q.cli.Txn(ctx).Then(ops...).Commit()
+	if err != nil {
+		return err
+	}
+	if !resp.Succeeded {
+		return fmt.Errorf("could not commit transaction: comparison value not equal")
+	}
+	return nil
 }
 
 func (q *EtcdQDB) CommitTransaction(ctx context.Context, transaction *QdbTransaction) error {
@@ -2700,14 +2769,14 @@ func (q *EtcdQDB) CommitTransaction(ctx context.Context, transaction *QdbTransac
 	if err := transaction.Validate(); err != nil {
 		return fmt.Errorf("invalid transaction %s: %w", transaction.Id(), err)
 	}
-	etcdOperations, err := packEtcdCommands(transaction.commands)
+	ops, err := packEtcdCommands(transaction.commands)
 	if err != nil {
 		return err
 	}
-	etcdOperations = append(etcdOperations, clientv3.OpDelete(transactionRequest))
+	ops = append(ops, clientv3.OpDelete(transactionRequest))
 	resp, err := q.cli.Txn(ctx).
 		If(clientv3.Compare(clientv3.Value(transactionRequest), "=", transaction.transactionId.String())).
-		Then(etcdOperations...).
+		Then(ops...).
 		Commit()
 
 	if err != nil {

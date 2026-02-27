@@ -1190,6 +1190,21 @@ func (mr *MockCoordinatorMockRecorder) UpdateCoordinator(ctx, address any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCoordinator", reflect.TypeOf((*MockCoordinator)(nil).UpdateCoordinator), ctx, address)
 }
 
+// UpdateKeyRange mocks base method.
+func (m *MockCoordinator) UpdateKeyRange(ctx context.Context, arg1 *kr.KeyRange) ([]qdb.QdbStatement, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateKeyRange", ctx, arg1)
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateKeyRange indicates an expected call of UpdateKeyRange.
+func (mr *MockCoordinatorMockRecorder) UpdateKeyRange(ctx, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateKeyRange", reflect.TypeOf((*MockCoordinator)(nil).UpdateKeyRange), ctx, arg1)
+}
+
 // WriteBalancerTask mocks base method.
 func (m *MockCoordinator) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
 	m.ctrl.T.Helper()

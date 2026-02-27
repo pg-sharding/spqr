@@ -706,15 +706,6 @@ func (qc *ClusteredCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr
 }
 
 // TODO : unit tests
-func (qc *ClusteredCoordinator) MoveKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
-	// TODO: move check to meta layer
-	if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
-		return err
-	}
-	return qc.db.UpdateKeyRange(ctx, keyRange.ToDB())
-}
-
-// TODO : unit tests
 func (qc *ClusteredCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
 	keyRange, err := qc.Coordinator.LockKeyRange(ctx, keyRangeID)
 	if err != nil {
@@ -961,8 +952,12 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 				if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
 					return err
 				}
-				if err := qc.db.UpdateKeyRange(ctx, keyRange.ToDB()); err != nil {
+				tranMngr := meta.NewTranEntityManager(qc)
+				if err := tranMngr.UpdateKeyRange(ctx, keyRange); err != nil {
 					return err
+				}
+				if err := tranMngr.ExecNoTran(ctx); err != nil {
+					return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
 				}
 			}
 			// Notify all routers about scheme changes.
@@ -1007,8 +1002,12 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			if err := meta.ValidateKeyRangeForModify(ctx, qc, keyRange); err != nil {
 				return err
 			}
-			if err := qc.db.UpdateKeyRange(ctx, keyRange.ToDB()); err != nil {
+			tranMngr := meta.NewTranEntityManager(qc)
+			if err := tranMngr.UpdateKeyRange(ctx, keyRange); err != nil {
 				return err
+			}
+			if err := tranMngr.ExecNoTran(ctx); err != nil {
+				return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err)
 			}
 			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeDataCoordMetaUpdated); err != nil {
 				return err

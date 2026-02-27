@@ -69,7 +69,7 @@ type QDB interface {
 	// Key ranges
 	CreateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error)
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
-	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
+	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) ([]QdbStatement, error)
 	DropKeyRange(ctx context.Context, id string) ([]QdbStatement, error)
 	DropKeyRangeAll(ctx context.Context) error
 	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)

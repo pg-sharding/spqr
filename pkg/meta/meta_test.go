@@ -94,6 +94,7 @@ func TestCreateDistrWithDefaultShardSuccess(t *testing.T) {
 		ShardID:        "sh1",
 		KeyRangeID:     "dbTestDefault.DEFAULT",
 		DistributionId: "dbTestDefault",
+		Version:        1,
 	}
 	actualKr, errKr := memqdb.GetKeyRange(ctx, "dbTestDefault.DEFAULT")
 	assert.Nil(t, errKr)

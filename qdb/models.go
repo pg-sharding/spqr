@@ -19,6 +19,7 @@ type KeyRange struct {
 	KeyRangeID     string
 	DistributionId string
 	Locked         bool
+	Version        int
 }
 
 // Do not marshal Locked field
@@ -28,6 +29,13 @@ type internalKeyRange struct {
 	KeyRangeID     string   `json:"key_range_id"`
 	DistributionId string   `json:"distribution_id"`
 }
+
+type KeyRangeMeta struct {
+	Version    int       `json:"version"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	ModifiedBy string    `json:"modified_by"`
+}
+
 type MoveKeyRangeStatus string
 
 const (
@@ -256,13 +264,14 @@ func keyRangeToInternal(keyRange *KeyRange) *internalKeyRange {
 	}
 }
 
-func keyRangeFromInternal(keyRange *internalKeyRange, locked bool) *KeyRange {
+func keyRangeFromInternal(keyRange *internalKeyRange, locked bool, version int) *KeyRange {
 	return &KeyRange{
 		LowerBound:     keyRange.LowerBound,
 		ShardID:        keyRange.ShardID,
 		KeyRangeID:     keyRange.KeyRangeID,
 		DistributionId: keyRange.DistributionId,
 		Locked:         locked,
+		Version:        version,
 	}
 }
 
