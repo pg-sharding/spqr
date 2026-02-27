@@ -192,6 +192,13 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 						p = plan.Combine(p, tmp)
 						deduced = true
 					}
+				case *lyx.SubLink:
+					if tmp, err := plr.PlanQueryTopLevel(ctx, rm, iE.SubSelect); err != nil {
+						return nil, err
+					} else {
+						p = plan.Combine(p, tmp)
+						deduced = true
+					}
 				}
 			}
 			if !deduced {
@@ -240,6 +247,12 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 			}
 		case *lyx.Select:
 			if tmp, err := plr.PlanQueryTopLevel(ctx, rm, e); err != nil {
+				return nil, err
+			} else {
+				p = plan.Combine(p, tmp)
+			}
+		case *lyx.SubLink:
+			if tmp, err := plr.PlanQueryTopLevel(ctx, rm, e.SubSelect); err != nil {
 				return nil, err
 			} else {
 				p = plan.Combine(p, tmp)
