@@ -241,7 +241,13 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 		/* should not happen */
 	case *lyx.AExprEmpty:
 		/*skip*/
+	case *lyx.SubLink:
+
+		if err := analyzeWhereClause(ctx, texpr.SubSelect, rm); err != nil {
+			return err
+		}
 	case *lyx.Select:
+
 		/* in engine v2 we skip subplans */
 	case *lyx.FuncApplication:
 		// there are several types of queries like DELETE FROM rel WHERE colref = func_application
