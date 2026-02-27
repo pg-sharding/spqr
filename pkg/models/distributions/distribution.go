@@ -522,13 +522,6 @@ func SequenceName(relName, colName string) string {
 	return fmt.Sprintf("%s_%s", relName, colName)
 }
 
-func (r *DistributedRelation) GetSchema() string {
-	if r.Relation.SchemaName == "" {
-		return "public"
-	}
-	return r.Relation.SchemaName
-}
-
 // CheckRelation checks dows it's keys match to distribution.
 // It takes a pointer to a Distribution struct (ds) as input and returns a pointer to a qdb.Distribution struct.
 //

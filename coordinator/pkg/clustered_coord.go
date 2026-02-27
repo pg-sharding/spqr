@@ -1105,10 +1105,9 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	schemas := make(map[string]struct{})
 	rels := make([]string, 0, len(ds.Relations))
 	for _, rel := range ds.Relations {
-		schemas[rel.GetSchema()] = struct{}{}
-		relName := strings.ToLower(rel.Relation.RelationName)
+		schemas[rel.Relation.GetSchema()] = struct{}{}
 		rels = append(rels, rel.QualifiedName().String())
-		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, relName, rel.GetSchema())
+		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, rel.Relation)
 		if err != nil {
 			return err
 		}
@@ -1117,7 +1116,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 			return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "relation \"%s\" does not exist on the source shard, possible misconfiguration of schema names", rel.QualifiedName())
 		}
 		for _, col := range rel.DistributionKey {
-			exists, err := datatransfers.CheckColumnExists(ctx, sourceConn, relName, rel.GetSchema(), col.Column)
+			exists, err := datatransfers.CheckColumnExists(ctx, sourceConn, rel.Relation, col.Column)
 			if err != nil {
 				return err
 			}
@@ -1125,7 +1124,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 				return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "distribution key column \"%s\" not found in relation \"%s\" on source shard", col.Column, rel.QualifiedName())
 			}
 		}
-		destTable, err := datatransfers.CheckTableExists(ctx, destConn, relName, rel.GetSchema())
+		destTable, err := datatransfers.CheckTableExists(ctx, destConn, rel.Relation)
 		if err != nil {
 			return err
 		}
@@ -1134,7 +1133,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		}
 		// TODO check whole table schema for compatibility
 		for _, col := range rel.DistributionKey {
-			exists, err := datatransfers.CheckColumnExists(ctx, destConn, relName, rel.GetSchema(), col.Column)
+			exists, err := datatransfers.CheckColumnExists(ctx, destConn, rel.Relation, col.Column)
 			if err != nil {
 				return err
 			}
@@ -1156,12 +1155,12 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		}
 		replRels = make([]string, 0, len(replDs.Relations))
 		for _, r := range replDs.Relations {
-			relExists, err := datatransfers.CheckTableExists(ctx, sourceConn, r.Relation.RelationName, r.GetSchema())
+			relExists, err := datatransfers.CheckTableExists(ctx, sourceConn, r.Relation)
 			if err != nil {
 				return fmt.Errorf("failed to check for relation \"%s\" existence on source shard: %s", r.QualifiedName(), err)
 			}
 			if relExists {
-				destRelExists, err := datatransfers.CheckTableExists(ctx, destConn, r.Relation.RelationName, r.GetSchema())
+				destRelExists, err := datatransfers.CheckTableExists(ctx, destConn, r.Relation)
 				if err != nil {
 					return fmt.Errorf("failed to check for relation \"%s\" existence on destination shard: %s", r.QualifiedName(), err)
 				}
@@ -1382,7 +1381,7 @@ func (*ClusteredCoordinator) getKeyStats(
 	t := time.Now()
 	relationCount = make(map[string]int64)
 	for _, rel := range relations {
-		relExists, err := datatransfers.CheckTableExists(ctx, conn, strings.ToLower(rel.Relation.RelationName), rel.GetSchema())
+		relExists, err := datatransfers.CheckTableExists(ctx, conn, rel.Relation)
 		if err != nil {
 			return 0, nil, err
 		}
