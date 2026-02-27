@@ -925,10 +925,11 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	} else {
 		for _, r := range rels {
-			if _, ok := q.RelationDistribution[r.Name]; ok {
+			if _, err := q.GetRelationDistribution(ctx, r.QualifiedName()); err == nil {
 				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", r.QualifiedName().String())
 			}
 
+			/* Now attach old-style. */
 			ds.Relations[r.Name] = r
 			q.RelationDistribution[r.Name] = id
 			if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, r.Name, id)); err != nil {

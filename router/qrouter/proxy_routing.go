@@ -409,7 +409,10 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, err
 		}
 
-		distributedRelation := ds.GetRelation(qualName)
+		distributedRelation, ok := ds.TryGetRelation(qualName)
+		if !ok {
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_OBJECT_NOT_EXIST)
+		}
 
 		for _, is := range iis {
 
@@ -1035,7 +1038,11 @@ func (qr *ProxyQrouter) planSplitUpdate(
 				return nil, err
 			}
 
-			r = d.GetRelation(rqdn)
+			r, ok := d.TryGetRelation(rqdn)
+			if !ok {
+				/* We are updating non-distributed relation */
+				return nil, nil
+			}
 			distribCols, err = r.GetDistributionKeyColumns()
 			if err != nil {
 				return nil, err

@@ -138,6 +138,7 @@ type Distribution struct {
 	ID            string                          `json:"id"`
 	ColTypes      []string                        `json:"col_types,omitempty"`
 	Relations     map[string]*DistributedRelation `json:"relations"`
+	FQNRelations  map[string]*DistributedRelation `json:"fqn_relations",omitempty`
 	UniqueIndexes map[string]*UniqueIndex         `json:"unique_indexes"`
 }
 
@@ -283,4 +284,14 @@ type TwoPCInfo struct {
 
 	/* ephemeral part of state */
 	Locked bool `json:"-"`
+}
+
+func (d *Distribution) GetRelation(fqn *rfqn.RelationFQN) (*DistributedRelation, bool) {
+	r, ok := d.Relations[fqn.RelationName]
+	if ok {
+		return r, ok
+	}
+
+	r, ok = d.FQNRelations[fqn.String()]
+	return r, ok
 }
