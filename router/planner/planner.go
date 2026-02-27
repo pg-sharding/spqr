@@ -609,6 +609,8 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 		}, nil
 	case *lyx.ExplainStmt:
 		return plr.PlanDistributedQuery(ctx, rm, v.Query, allowRewrite)
+	case *lyx.SubLink:
+		return plr.PlanDistributedQuery(ctx, rm, v.SubSelect, allowRewrite)
 	case *lyx.Select:
 		/* Should be single-relation scan or values. Join to be supported */
 		if len(v.FromClause) == 0 {
