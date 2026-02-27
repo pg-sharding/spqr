@@ -17,7 +17,7 @@ ERROR:  reference relation zz2 already exists
 SYNC REFERENCE TABLES ON sh1;
 ERROR:  SYNC REFERENCE TABLES/RELATIONS currently unsupported
 SYNC REFERENCE TABLE zz2 ON sh1;
-ERROR:  can't lock relation "public.zz2": ERROR: relation "public.zz2" does not exist (SQLSTATE 42P01)
+ERROR:  can't lock relation "zz2": ERROR: relation "zz2" does not exist (SQLSTATE 42P01)
 ALTER DISTRIBUTION 'REPLICATED' ALTER RELATION zz2 SCHEMA my_schema;
           alter relation          
 ----------------------------------
