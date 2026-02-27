@@ -23,6 +23,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/app"
 	"github.com/pg-sharding/spqr/router/instance"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/sevlyar/go-daemon"
 	"github.com/spf13/cobra"
 )
@@ -137,6 +138,10 @@ var runCmd = &cobra.Command{
 
 		spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, config.RouterConfig().PrettyLogging)
 		spqrlog.ReloadSLogger(config.RouterConfig().LogMinDurationStatement)
+
+		if err := spqrparser.InitHelpRegistry(); err != nil {
+			spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
+		}
 
 		if err := logEffectiveConfig(config.RouterConfig()); err != nil {
 			return err

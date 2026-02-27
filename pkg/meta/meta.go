@@ -866,6 +866,13 @@ func ProcMetadataCommand(ctx context.Context,
 		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, ro)
 	}
 
+	if _, ok := tstmt.(*spqrparser.Help); ok {
+		if err := catalog.GC.CheckGrants(catalog.RoleReader, rule); err != nil {
+			return nil, err
+		}
+		return ProcessHelp(ctx, tstmt.(*spqrparser.Help))
+	}
+
 	if ro {
 		return nil, fmt.Errorf("console is in read only mode")
 	}
@@ -1965,6 +1972,35 @@ func processRedistribute(ctx context.Context,
 		fmt.Sprintf("destination shard id -> %s", stmt.DestShardID))
 	tts.WriteDataRow(
 		fmt.Sprintf("batch size           -> %d", stmt.BatchSize))
+
+	return tts, nil
+}
+
+// ProcessHelp processes HELP command and returns formatted help text
+func ProcessHelp(ctx context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTableSlot, error) {
+	spqrlog.Zero.Debug().Str("cmd", stmt.CommandName).Msg("process help statement")
+
+	// If no command specified, list all available commands
+	if stmt.CommandName == "" {
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("AVAILABLE COMMANDS"),
+		}
+		for _, cmd := range spqrparser.ListAvailableCommands() {
+			tts.WriteDataRow(cmd)
+		}
+		return tts, nil
+	}
+
+	helpEntry, err := spqrparser.GetHelp(stmt.CommandName)
+	if err != nil {
+		return nil, err
+	}
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: engine.GetVPHeader("help"),
+	}
+
+	tts.WriteDataRow(helpEntry.Content)
 
 	return tts, nil
 }

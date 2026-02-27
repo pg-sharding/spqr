@@ -48,6 +48,12 @@ type Show struct {
 	GroupBy GroupByClause
 }
 
+type Help struct {
+	CommandName string
+}
+
+func (*Help) iStatement() {}
+
 type Set struct {
 	Element Statement
 }
