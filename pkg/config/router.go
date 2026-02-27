@@ -193,6 +193,8 @@ type Shard struct {
 
 	Type ShardType  `json:"type" toml:"type" yaml:"type"`
 	TLS  *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
+
+	Options map[string]string
 }
 
 type Host struct {

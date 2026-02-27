@@ -87,6 +87,7 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*r
 
 // AddDataShard implements meta.EntityMgr.
 func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
+	spqrlog.Zero.Debug().Interface("shard", shard.Cfg.Options).Interface("datashard", topology.DataShardToDB(shard)).Msg("here112")
 	return lc.qdb.AddShard(ctx, topology.DataShardToDB(shard))
 }
 
@@ -181,6 +182,14 @@ func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id st
 		return lc.qdb.AlterReplicatedRelationSchema(ctx, distributions.REPLICATED, relation, schemaName)
 	}
 	return lc.qdb.AlterDistributedRelationSchema(ctx, id, relation, schemaName)
+}
+
+func (lc *Coordinator) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
+	return lc.qdb.AlterShardHosts(ctx, shardID, hosts)
+}
+
+func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
+	return lc.qdb.AlterShardOptions(ctx, shardID, options)
 }
 
 // BatchMoveKeyRange implements meta.EntityMgr.

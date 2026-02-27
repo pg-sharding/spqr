@@ -38,7 +38,12 @@ type TopologyKeeper interface {
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShard(ctx context.Context, shardID string) (*Shard, error)
 	DropShard(ctx context.Context, shardID string) error
+<<<<<<< HEAD
 	AlterShard(ctx context.Context, newShard *Shard) error
+=======
+	AlterShardHosts(ctx context.Context, shardID string, hosts []string) error
+	AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error
+>>>>>>> 89fb9351 (impl)
 }
 
 // Keep track of the status of the two-phase data move transaction.
@@ -61,6 +66,11 @@ type TaskStateKeeper interface {
 	DropTaskGroupLock(ctx context.Context, tgId string) error
 	LockRedistributeTask(ctx context.Context, id string, holder string) error
 	DropRedistributeTaskLock(ctx context.Context, id string) error
+}
+
+type ShardDataKeeper interface {
+	//AddShardData(ctx context.Context)
+	//ListShardsData(ctx context.Context) []*config.ShardConnect
 }
 
 // QDB is a generic interface used by both the coordinator and the router.
@@ -218,6 +228,8 @@ type XQDB interface {
 	TXManager
 	TaskStateKeeper
 	TwoPhaseTxMetaKeeper
+	TaskGroupStateKeeper
+	ShardDataKeeper
 
 	TryCoordinatorLock(ctx context.Context, addr string) error
 }

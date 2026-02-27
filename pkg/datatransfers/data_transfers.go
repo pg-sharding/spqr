@@ -142,7 +142,7 @@ Steps:
 //
 // Returns:
 //   - error: an error if the move fails.
-func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, mgr meta.EntityMgr, executorId string) error {
+func MoveKeys(ctx context.Context, fromId, toId string, shardsData map[string]*config.ShardConnect, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, mgr meta.EntityMgr, executorId string) error {
 	if toId == fromId {
 		return fmt.Errorf("incorrect request to move data in key range \"%s\": source and destination shards are the same", krg.ID)
 	}
@@ -161,13 +161,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			return err
 		}
 	}
-	if shards == nil {
-		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error loading config")
-		}
-	}
-	fromCfg, ok := shards.ShardsData[fromId]
+	fromCfg, ok := shardsData[fromId]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", fromId)
 	}
@@ -179,7 +173,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	defer func() {
 		_ = from.Close(ctx)
 	}()
-	toCfg, ok := shards.ShardsData[toId]
+	toCfg, ok := shardsData[toId]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", toId)
 	}

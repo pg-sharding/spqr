@@ -713,6 +713,18 @@ func (a *Adapter) DropShard(ctx context.Context, shardId string) error {
 
 // TODO : unit tests
 // TODO : implement
+func (a *Adapter) AlterShardHosts(ctx context.Context, shardId string, hosts []string) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "alterShardHosts not implemented")
+}
+
+// TODO : unit tests
+// TODO : implement
+func (a *Adapter) AlterShardOptions(ctx context.Context, shardId string, options map[string]string) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "alterShardOptions not implemented")
+}
+
+// TODO : unit tests
+// TODO : implement
 
 // AddWorldShard adds a world shard to the system.
 //
