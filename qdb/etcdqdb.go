@@ -1044,6 +1044,7 @@ func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 	spqrlog.Zero.Debug().
 		Str("id", shard.ID).
 		Strs("hosts", shard.RawHosts).
+		Interface("options", shard.Options).
 		Msg("etcdqdb: add shard")
 	t := time.Now()
 
@@ -1145,6 +1146,44 @@ func (q *EtcdQDB) DropShard(ctx context.Context, id string) error {
 	_, err := q.cli.Delete(ctx, nodePath)
 	statistics.RecordQDBOperation("DropShard", time.Since(t))
 	return err
+}
+
+func (q *EtcdQDB) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
+	spqrlog.Zero.Debug().
+		Str("id", shardID).
+		Msg("etcdqdb: alter shard hosts")
+
+	shard, err := q.GetShard(ctx, shardID)
+	if err != nil {
+		return err
+	}
+
+	shard.RawHosts = hosts
+
+	if err := q.AddShard(ctx, shard); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (q *EtcdQDB) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
+	spqrlog.Zero.Debug().
+		Str("id", shardID).
+		Msg("etcdqdb: alter shard options")
+
+	shard, err := q.GetShard(ctx, shardID)
+	if err != nil {
+		return err
+	}
+
+	shard.Options = options
+
+	if err := q.AddShard(ctx, shard); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // ==============================================================================

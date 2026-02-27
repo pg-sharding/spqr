@@ -19,6 +19,8 @@ type ShardsMgr interface {
 	ListShards(ctx context.Context) ([]*DataShard, error)
 	GetShard(ctx context.Context, shardID string) (*DataShard, error)
 	DropShard(ctx context.Context, id string) error
+	AlterShardHosts(ctx context.Context, shardID string, hosts []string) error
+	AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error
 }
 
 // NewDataShard creates a new DataShard instance with the given name and configuration.
@@ -80,6 +82,7 @@ func DataShardFromDB(shard *qdb.Shard) *DataShard {
 	return NewDataShard(shard.ID, &config.Shard{
 		RawHosts: shard.RawHosts,
 		Type:     config.DataShard,
+		Options:  shard.Options,
 	})
 }
 
@@ -87,5 +90,6 @@ func DataShardToDB(shard *DataShard) *qdb.Shard {
 	return &qdb.Shard{
 		ID:       shard.ID,
 		RawHosts: shard.Cfg.RawHosts,
+		Options:  shard.Cfg.Options,
 	}
 }

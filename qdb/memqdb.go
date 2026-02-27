@@ -782,6 +782,36 @@ func (q *MemQDB) DropShard(_ context.Context, id string) error {
 	return nil
 }
 
+func (q *MemQDB) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
+	spqrlog.Zero.Debug().Str("shard", shardID).Msg("memqdb: alter shard hosts")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	shard, ok := q.Shards[shardID]
+	if ok {
+		return fmt.Errorf("shard with id %s already exists", shard.ID)
+	}
+
+	shard.RawHosts = hosts
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, shard))
+}
+
+func (q *MemQDB) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
+	spqrlog.Zero.Debug().Str("shard", shardID).Msg("memqdb: alter shard hosts")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	shard, ok := q.Shards[shardID]
+	if ok {
+		return fmt.Errorf("shard with id %s already exists", shard.ID)
+	}
+
+	shard.Options = options
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, shard))
+}
+
 // ==============================================================================
 //                              REFERENCE RELATIONS
 // ==============================================================================

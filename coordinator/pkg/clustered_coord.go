@@ -579,8 +579,8 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 	}
 
 	// sync shards
-	if config.CoordinatorConfig().ShardDataCfg != "" {
-		shards, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	if config.CoordinatorConfig().ShardDataCfg != "" && !config.CoordinatorConfig().ManageShardsByCoordinator {
+		shards, err := qc.loadShardsConnectionData()
 		if err != nil {
 			spqrlog.Zero.Error().
 				Err(err).
@@ -588,7 +588,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		}
 
 		if shards != nil {
-			for id, cfg := range shards.ShardsData {
+			for id, cfg := range shards {
 				if _, err := qc.db.GetShard(context.TODO(), id); err == nil {
 					spqrlog.Zero.Debug().
 						Str("shard", id).
@@ -942,7 +942,13 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 			}
 
 			if keyRange.ShardID != req.ShardId {
-				err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId)
+				shardsData, err := qc.loadShardsConnectionData()
+				if err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("failed to load shards connection data")
+					return err
+				}
+
+				err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, shardsData, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId)
 				if err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 					return err
@@ -987,7 +993,12 @@ func (qc *ClusteredCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) 
 				return err
 			}
 
-			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId)
+			shardsData, err := qc.loadShardsConnectionData()
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to load shards connection data")
+				return err
+			}
+			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, shardsData, keyRange, ds, qc.db, qc, "key_range_move_"+move.MoveId)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 				return err
@@ -1068,11 +1079,11 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	if _, err = qc.GetKeyRange(ctx, req.DestKrId); err == nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "key range \"%s\" already exists", req.DestKrId)
 	}
-	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	conns, err := qc.loadShardsConnectionData()
 	if err != nil {
 		return err
 	}
-	destShardConn, ok := conns.ShardsData[req.ShardId]
+	destShardConn, ok := conns[req.ShardId]
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("destination shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
@@ -1084,7 +1095,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		_ = destConn.Close(ctx)
 	}()
 
-	sourceShardConn, ok := conns.ShardsData[keyRange.ShardID]
+	sourceShardConn, ok := conns[keyRange.ShardID]
 	if !ok {
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
@@ -1290,14 +1301,14 @@ func (qc *ClusteredCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.B
 	}
 
 	// Get connection to source shard's master
-	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	conns, err := qc.loadShardsConnectionData()
 	if err != nil {
 		return err
 	}
-	if _, ok := conns.ShardsData[keyRange.ShardID]; !ok {
+	if _, ok := conns[keyRange.ShardID]; !ok {
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
-	sourceShardConn := conns.ShardsData[keyRange.ShardID]
+	sourceShardConn := conns[keyRange.ShardID]
 	sourceConn, err := datatransfers.GetMasterConnection(ctx, sourceShardConn, "get_key_stats")
 	if err != nil {
 		return err
@@ -1721,14 +1732,14 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 		return err
 	}
 	// Get connection to source shard's master
-	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	conns, err := qc.loadShardsConnectionData()
 	if err != nil {
 		return err
 	}
-	if _, ok := conns.ShardsData[keyRange.ShardID]; !ok {
+	if _, ok := conns[keyRange.ShardID]; !ok {
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
-	sourceShardConn := conns.ShardsData[keyRange.ShardID]
+	sourceShardConn := conns[keyRange.ShardID]
 	sourceConn, err := datatransfers.GetMasterConnection(ctx, sourceShardConn, "move_task_group_service_conn")
 	if err != nil {
 		return err
@@ -2496,7 +2507,7 @@ func (qc *ClusteredCoordinator) ProcClient(ctx context.Context, nconn net.Conn, 
 }
 
 func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
-	if err := qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.RawHosts)); err != nil {
+	if err := qc.Coordinator.AddDataShard(ctx, shard); err != nil {
 		return err
 	}
 
@@ -3001,4 +3012,13 @@ func getRouterConnRetryPolicy() string {
 func (qc *ClusteredCoordinator) invalidateTaskGroupCache(id string) {
 	qc.bounds.Delete(id)
 	qc.index.Delete(id)
+}
+
+func (qc *ClusteredCoordinator) loadShardsConnectionData() (map[string]*config.ShardConnect, error) {
+	if config.CoordinatorConfig().ManageShardsByCoordinator {
+		//qc.db.ListShardsData()
+	}
+
+	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	return conns.ShardsData, err
 }

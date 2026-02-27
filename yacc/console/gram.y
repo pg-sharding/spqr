@@ -83,6 +83,7 @@ func randomHex(n int) (string, error) {
 
 	alter                  *Alter
 	alter_distribution     *AlterDistribution
+	alter_shard 		   *AlterShard
 	distributed_relation   *DistributedRelation
 	alter_default_shard    *AlterDefaultShard
 
@@ -101,6 +102,9 @@ func randomHex(n int) (string, error) {
 	key_range_selector     *KeyRangeSelector
 	distribution_selector  *DistributionSelector
 	aiEntrieslist          []*AutoIncrementEntry
+
+	option				   GenericOption
+	options				   []GenericOption
 
     colref                 ColumnRef
 	colreflist			   []ColumnRef
@@ -188,7 +192,7 @@ func randomHex(n int) (string, error) {
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE
 %token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX
-%token <str> SHARDS ROUTERS SHARD HOST RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
+%token <str> SHARDS ROUTERS SHARD HOST RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS OPTIONS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
 %token <str> BATCH SIZE NOWAIT
@@ -253,6 +257,7 @@ func randomHex(n int) (string, error) {
 
 %type<alter> alter_stmt create_distributed_relation_stmt
 %type<alter_distribution> distribution_alter_stmt
+%type<alter_shard> shard_alter_stmt
 
 %type<icp> icp_stmt
 
@@ -273,6 +278,8 @@ func randomHex(n int) (string, error) {
 %type<bool> opt_cascade
 %type<str> opt_default_shard
 
+%type<options> options opt_options generic_option_list
+%type<option> generic_option_elem
 
 %token <str> ASC DESC ORDER
 %type <order_clause> order_clause
@@ -811,6 +818,11 @@ alter_stmt:
 	{
 		$$ = &Alter{Element: $2}
 	}
+	|
+	ALTER shard_alter_stmt
+	{
+		$$ = &Alter{Element: $2}
+	}
 
 distribution_alter_stmt:
 	distribution_select_stmt relation_attach_stmt
@@ -1311,19 +1323,66 @@ key_range_define_stmt:
 	}
 
 shard_define_stmt:
-	SHARD any_id WITH HOSTS any_id_list
+	SHARD any_id WITH HOSTS any_id_list opt_options
 	{
-		$$ = &ShardDefinition{Id: $2, Hosts: $5}
+		$$ = &ShardDefinition{Id: $2, Hosts: $5, Options: $6}
 	}
 	|
-	SHARD WITH HOSTS any_id_list
+	SHARD WITH HOSTS any_id_list opt_options
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &ShardDefinition{Id: "shard" + str, Hosts: $4}
+		$$ = &ShardDefinition{Id: "shard" + str, Hosts: $4, Options: $5}
 	}
+
+shard_alter_stmt:
+	SHARD any_id HOSTS any_id_list
+	{
+		$$ = &AlterShard{
+			Shard: &ShardSelector{ID: $2},
+			Element: &AlterShardHosts{
+				Hosts: $4,
+			},
+		}
+	}
+	|
+	SHARD any_id options
+	{
+		$$ = &AlterShard{
+			Shard: &ShardSelector{ID: $2},
+			Element: &AlterShardOptions{
+				Options: $3,
+			},
+		}
+	}
+
+options:
+	OPTIONS TOPENBR generic_option_list TCLOSEBR { $$ = $3; }
+
+opt_options:
+	options
+	{
+		$$ = $1
+	}
+	| /* EMPTY */ { $$ = nil; }
+
+generic_option_list:
+	generic_option_elem
+		{
+			$$ = []GenericOption{$1};
+		}
+	| generic_option_list TCOMMA generic_option_elem
+		{
+			$$ = append($1, $3);
+		}
+
+generic_option_elem:
+	IDENT IDENT
+		{
+			$$ = GenericOption{Name: $1, Arg: $2};
+		}
 
 any_id_list:
 	any_val

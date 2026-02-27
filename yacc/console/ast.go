@@ -128,8 +128,14 @@ type KeyRangeDefinition struct {
 }
 
 type ShardDefinition struct {
-	Id    string
-	Hosts []string
+	Id      string
+	Hosts   []string
+	Options []GenericOption
+}
+
+type GenericOption struct {
+	Name string
+	Arg  string
 }
 
 func (*KeyRangeDefinition) iCreate()          {}
@@ -359,6 +365,26 @@ type DropDefaultShard struct {
 func (*DropDefaultShard) iStatement()         {}
 func (*DropDefaultShard) iAlter()             {}
 func (*DropDefaultShard) iAlterDistribution() {}
+
+type AlterShard struct {
+	Shard   *ShardSelector
+	Element Statement
+}
+
+func (*AlterShard) iStatement()  {}
+func (*AlterShard) iAlterShard() {}
+
+type AlterShardHosts struct {
+	Hosts []string
+}
+
+func (*AlterShardHosts) iStatement() {}
+
+type AlterShardOptions struct {
+	Options []GenericOption
+}
+
+func (*AlterShardOptions) iStatement() {}
 
 type SequenceSelector struct {
 	Name string
