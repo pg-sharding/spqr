@@ -995,7 +995,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 				cptr := rst.Qr.SchemaCache()
 				if cptr != nil {
 					var schemaErr error
-					stm.Columns, schemaErr = cptr.GetColumns(rst.Cl.DB(), *rfqn.RelationFQNFromFullName(rv.SchemaName, rv.RelationName))
+					stm.Columns, schemaErr = cptr.GetColumns(rst.Cl.DB(), rfqn.RelationFQNFromFullName(rv.SchemaName, rv.RelationName))
 					if schemaErr != nil {
 						spqrlog.Zero.Err(schemaErr).Msg("get columns from schema cache")
 						return state, comm, spqrerror.Newf(spqrerror.SPQR_FAILED_MATCH, "failed to get schema cache: %s", err)
