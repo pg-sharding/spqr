@@ -1229,11 +1229,11 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 			return fmt.Errorf("unexpected nil isLocked value in Split")
 		}
 		*krOld.IsLocked = false
-		err = tranMngr.CreateKeyRange(ctx, krTemp)
+		err = tranMngr.CreateKeyRange(ctx, krOld)
 		if err != nil {
 			return fmt.Errorf("could not update source key range in left key range split: %s", err)
 		}
-		err = tranMngr.UpdateKeyRange(ctx, krOld)
+		err = tranMngr.UpdateKeyRange(ctx, krTemp)
 		if err != nil {
 			return fmt.Errorf("could not create new key range in left key range split: %s", err)
 		}
