@@ -4,8 +4,9 @@ ADD SHARD shard2 WITH HOSTS 'localhost1:6432', 'localhost2:6432' OPTIONS (dbname
 SHOW shards;
 
 ALTER SHARD shard1 OPTIONS (dbname db1);
-ALTER SHARD shard2 WITH HOSTS 'localhost3:6432' OPTIONS (password password);
+ALTER SHARD shard2 HOSTS 'localhost3:6432';
 
 SHOW shards;
 
-DROP SHARDS ALL;
+DROP SHARD shard1;
+DROP SHARD shard2;

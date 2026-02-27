@@ -1077,6 +1077,31 @@ func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 	return nil
 }
 
+func (q *EtcdQDB) alterShard(ctx context.Context, shard *Shard) error {
+	bytes, err := json.Marshal(shard)
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Txn(ctx).
+		If(
+			//check exists shard with key
+			clientv3.Compare(clientv3.Version(shardNodePath(shard.ID)), "!=", 0),
+		).
+		Then(
+			clientv3.OpPut(shardNodePath(shard.ID), string(bytes)),
+		).
+		Commit()
+
+	if err != nil {
+		return err
+	}
+	if len(resp.Responses) == 0 {
+		return fmt.Errorf("shard with id %s does not exist", shard.ID)
+	}
+
+	return nil
+}
+
 // TODO : unit tests
 func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list shards")
@@ -1160,11 +1185,7 @@ func (q *EtcdQDB) AlterShardHosts(ctx context.Context, shardID string, hosts []s
 
 	shard.RawHosts = hosts
 
-	if err := q.AddShard(ctx, shard); err != nil {
-		return err
-	}
-
-	return nil
+	return q.alterShard(ctx, shard)
 }
 
 func (q *EtcdQDB) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
@@ -1179,11 +1200,7 @@ func (q *EtcdQDB) AlterShardOptions(ctx context.Context, shardID string, options
 
 	shard.Options = options
 
-	if err := q.AddShard(ctx, shard); err != nil {
-		return err
-	}
-
-	return nil
+	return q.alterShard(ctx, shard)
 }
 
 // ==============================================================================
