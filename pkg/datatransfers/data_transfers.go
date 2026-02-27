@@ -745,7 +745,7 @@ func getTableColumns(ctx context.Context, db Queryable, rfqn rfqn.RelationFQN) (
 	FROM
 		information_schema.columns
 	WHERE table_schema = $1 AND table_name = $2`,
-		rfqn.SchemaName, strings.ToLower(rfqn.RelationName))
+		rfqn.GetSchema(), strings.ToLower(rfqn.RelationName))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get columns of table \"%s\": %s", rfqn.String(), err)
 	}
@@ -755,6 +755,10 @@ func getTableColumns(ctx context.Context, db Queryable, rfqn rfqn.RelationFQN) (
 			return nil, fmt.Errorf("error scanning column name: %s", err)
 		}
 		cols = append(cols, colName)
+	}
+	if len(cols) == 0 {
+		/* Is that expected? */
+		return nil, fmt.Errorf("failed to fetch relation columns")
 	}
 	return cols, nil
 }
