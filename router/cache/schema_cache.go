@@ -35,7 +35,7 @@ func (c *SchemaCache) GetColumns(db string, rel *rfqn.RelationFQN) ([]string, er
 		return nil, fmt.Errorf("backend rule was not provided")
 	}
 
-	if v, ok := c.tableColumnsCache.Load(fmt.Sprintf("%s", rel.String())); ok {
+	if v, ok := c.tableColumnsCache.Load(rel.String()); ok {
 		return v.([]string), nil
 	}
 
@@ -70,7 +70,7 @@ func (c *SchemaCache) GetColumns(db string, rel *rfqn.RelationFQN) ([]string, er
 		case *pgproto3.ParseComplete:
 		case *pgproto3.BindComplete:
 		case *pgproto3.ReadyForQuery:
-			c.tableColumnsCache.Store(fmt.Sprintf("%s", rel.String()), columns)
+			c.tableColumnsCache.Store(rel.String(), columns)
 			return columns, nil
 		case *pgproto3.DataRow:
 			for _, value := range v.Values {
