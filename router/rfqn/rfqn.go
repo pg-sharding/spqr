@@ -46,6 +46,13 @@ func (n RelationFQN) String() string {
 	return n.SchemaName + "." + n.RelationName
 }
 
+func (r *RelationFQN) GetSchema() string {
+	if r.SchemaName == "" {
+		return "public"
+	}
+	return r.SchemaName
+}
+
 func ParseFQN(str string) (*RelationFQN, error) {
 	parts := strings.Split(str, ".")
 	if len(str) == 0 || len(strings.TrimSpace(str)) == 0 {

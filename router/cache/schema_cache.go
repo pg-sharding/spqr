@@ -35,7 +35,7 @@ func (c *SchemaCache) GetColumns(db, schemaName, tableName string) ([]string, er
 	}
 
 	if schemaName == "" {
-		schemaName = "public"
+		return nil, fmt.Errorf("schema for relation was not provided")
 	}
 
 	if v, ok := c.tableColumnsCache.Load(fmt.Sprintf("%s.%s", schemaName, tableName)); ok {

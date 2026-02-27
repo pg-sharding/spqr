@@ -140,12 +140,8 @@ func (lc *Coordinator) Cache() *cache.SchemaCache {
 func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation.ReferenceRelation, entry []*rrelation.AutoIncrementEntry) error {
 	/* XXX: fix this */
 
-	relName := &rfqn.RelationFQN{
-		RelationName: r.TableName,
-	}
-
-	if _, err := lc.qdb.GetReferenceRelation(ctx, relName); err == nil {
-		return fmt.Errorf("reference relation %+v already exists", r.TableName)
+	if _, err := lc.qdb.GetReferenceRelation(ctx, r.RelationName); err == nil {
+		return fmt.Errorf("reference relation %+v already exists", r.RelationName)
 	}
 
 	selectedDistribId := distributions.REPLICATED
@@ -168,13 +164,13 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 
 	ret := map[string]string{}
 	for _, entry := range entry {
-		ret[entry.Column] = distributions.SequenceName(r.TableName, entry.Column)
+		/* Ahh... fix this*/
+		ret[entry.Column] = distributions.SequenceName(r.RelationName.RelationName, entry.Column)
 
 		if err := lc.qdb.CreateSequence(ctx, ret[entry.Column], int64(entry.Start)); err != nil {
 			return err
 		}
-		qualifiedName := rfqn.RelationFQN{RelationName: r.TableName}
-		if err := lc.qdb.AlterSequenceAttach(ctx, ret[entry.Column], &qualifiedName, entry.Column); err != nil {
+		if err := lc.qdb.AlterSequenceAttach(ctx, ret[entry.Column], r.RelationName, entry.Column); err != nil {
 			return err
 		}
 	}

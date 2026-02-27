@@ -22,7 +22,7 @@ import (
 //
 // Returns:
 //   - error: An error when fails.
-func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clauseNode *lyx.RangeVar) error {
+func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, rv *lyx.RangeVar) error {
 	shs, err := localMngr.ListShards(ctx)
 	if err != nil {
 		return err
@@ -32,7 +32,7 @@ func CreateReferenceRelation(ctx context.Context, localMngr meta.EntityMgr, clau
 		shardIds = append(shardIds, sh.ID)
 	}
 	newReferenceRelation := &rrelation.ReferenceRelation{
-		TableName:     clauseNode.RelationName,
+		RelationName:  rfqn.RelationFQNFromFullName(rv.SchemaName, rv.RelationName),
 		SchemaVersion: 1,
 		ShardIds:      shardIds,
 	}
