@@ -505,31 +505,31 @@ func (mr *MockQDBMockRecorder) AlterDistributedRelation(ctx, id, rel any) *gomoc
 }
 
 // AlterDistributedRelationDistributionKey mocks base method.
-func (m *MockQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id, relName string, distributionKey []qdb.DistributionKeyEntry) error {
+func (m *MockQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relation *rfqn.RelationFQN, distributionKey []qdb.DistributionKeyEntry) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterDistributedRelationDistributionKey", ctx, id, relName, distributionKey)
+	ret := m.ctrl.Call(m, "AlterDistributedRelationDistributionKey", ctx, id, relation, distributionKey)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AlterDistributedRelationDistributionKey indicates an expected call of AlterDistributedRelationDistributionKey.
-func (mr *MockQDBMockRecorder) AlterDistributedRelationDistributionKey(ctx, id, relName, distributionKey any) *gomock.Call {
+func (mr *MockQDBMockRecorder) AlterDistributedRelationDistributionKey(ctx, id, relation, distributionKey any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationDistributionKey", reflect.TypeOf((*MockQDB)(nil).AlterDistributedRelationDistributionKey), ctx, id, relName, distributionKey)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationDistributionKey", reflect.TypeOf((*MockQDB)(nil).AlterDistributedRelationDistributionKey), ctx, id, relation, distributionKey)
 }
 
 // AlterDistributedRelationSchema mocks base method.
-func (m *MockQDB) AlterDistributedRelationSchema(ctx context.Context, id, relName, schemaName string) error {
+func (m *MockQDB) AlterDistributedRelationSchema(ctx context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterDistributedRelationSchema", ctx, id, relName, schemaName)
+	ret := m.ctrl.Call(m, "AlterDistributedRelationSchema", ctx, id, relation, schemaName)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AlterDistributedRelationSchema indicates an expected call of AlterDistributedRelationSchema.
-func (mr *MockQDBMockRecorder) AlterDistributedRelationSchema(ctx, id, relName, schemaName any) *gomock.Call {
+func (mr *MockQDBMockRecorder) AlterDistributedRelationSchema(ctx, id, relation, schemaName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationSchema", reflect.TypeOf((*MockQDB)(nil).AlterDistributedRelationSchema), ctx, id, relName, schemaName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationSchema", reflect.TypeOf((*MockQDB)(nil).AlterDistributedRelationSchema), ctx, id, relation, schemaName)
 }
 
 // AlterDistributionAttach mocks base method.
@@ -575,17 +575,17 @@ func (mr *MockQDBMockRecorder) AlterReferenceRelationStorage(ctx, relName, shs a
 }
 
 // AlterReplicatedRelationSchema mocks base method.
-func (m *MockQDB) AlterReplicatedRelationSchema(ctx context.Context, dsID, relName, schemaName string) error {
+func (m *MockQDB) AlterReplicatedRelationSchema(ctx context.Context, dsID string, relation *rfqn.RelationFQN, schemaName string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterReplicatedRelationSchema", ctx, dsID, relName, schemaName)
+	ret := m.ctrl.Call(m, "AlterReplicatedRelationSchema", ctx, dsID, relation, schemaName)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AlterReplicatedRelationSchema indicates an expected call of AlterReplicatedRelationSchema.
-func (mr *MockQDBMockRecorder) AlterReplicatedRelationSchema(ctx, dsID, relName, schemaName any) *gomock.Call {
+func (mr *MockQDBMockRecorder) AlterReplicatedRelationSchema(ctx, dsID, relation, schemaName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReplicatedRelationSchema", reflect.TypeOf((*MockQDB)(nil).AlterReplicatedRelationSchema), ctx, dsID, relName, schemaName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReplicatedRelationSchema", reflect.TypeOf((*MockQDB)(nil).AlterReplicatedRelationSchema), ctx, dsID, relation, schemaName)
 }
 
 // AlterSequenceAttach mocks base method.
@@ -1866,31 +1866,31 @@ func (mr *MockXQDBMockRecorder) AlterDistributedRelation(ctx, id, rel any) *gomo
 }
 
 // AlterDistributedRelationDistributionKey mocks base method.
-func (m *MockXQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id, relName string, distributionKey []qdb.DistributionKeyEntry) error {
+func (m *MockXQDB) AlterDistributedRelationDistributionKey(ctx context.Context, id string, relation *rfqn.RelationFQN, distributionKey []qdb.DistributionKeyEntry) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterDistributedRelationDistributionKey", ctx, id, relName, distributionKey)
+	ret := m.ctrl.Call(m, "AlterDistributedRelationDistributionKey", ctx, id, relation, distributionKey)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AlterDistributedRelationDistributionKey indicates an expected call of AlterDistributedRelationDistributionKey.
-func (mr *MockXQDBMockRecorder) AlterDistributedRelationDistributionKey(ctx, id, relName, distributionKey any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) AlterDistributedRelationDistributionKey(ctx, id, relation, distributionKey any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationDistributionKey", reflect.TypeOf((*MockXQDB)(nil).AlterDistributedRelationDistributionKey), ctx, id, relName, distributionKey)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationDistributionKey", reflect.TypeOf((*MockXQDB)(nil).AlterDistributedRelationDistributionKey), ctx, id, relation, distributionKey)
 }
 
 // AlterDistributedRelationSchema mocks base method.
-func (m *MockXQDB) AlterDistributedRelationSchema(ctx context.Context, id, relName, schemaName string) error {
+func (m *MockXQDB) AlterDistributedRelationSchema(ctx context.Context, id string, relation *rfqn.RelationFQN, schemaName string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterDistributedRelationSchema", ctx, id, relName, schemaName)
+	ret := m.ctrl.Call(m, "AlterDistributedRelationSchema", ctx, id, relation, schemaName)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AlterDistributedRelationSchema indicates an expected call of AlterDistributedRelationSchema.
-func (mr *MockXQDBMockRecorder) AlterDistributedRelationSchema(ctx, id, relName, schemaName any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) AlterDistributedRelationSchema(ctx, id, relation, schemaName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationSchema", reflect.TypeOf((*MockXQDB)(nil).AlterDistributedRelationSchema), ctx, id, relName, schemaName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterDistributedRelationSchema", reflect.TypeOf((*MockXQDB)(nil).AlterDistributedRelationSchema), ctx, id, relation, schemaName)
 }
 
 // AlterDistributionAttach mocks base method.
@@ -1936,17 +1936,17 @@ func (mr *MockXQDBMockRecorder) AlterReferenceRelationStorage(ctx, relName, shs 
 }
 
 // AlterReplicatedRelationSchema mocks base method.
-func (m *MockXQDB) AlterReplicatedRelationSchema(ctx context.Context, dsID, relName, schemaName string) error {
+func (m *MockXQDB) AlterReplicatedRelationSchema(ctx context.Context, dsID string, relation *rfqn.RelationFQN, schemaName string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AlterReplicatedRelationSchema", ctx, dsID, relName, schemaName)
+	ret := m.ctrl.Call(m, "AlterReplicatedRelationSchema", ctx, dsID, relation, schemaName)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AlterReplicatedRelationSchema indicates an expected call of AlterReplicatedRelationSchema.
-func (mr *MockXQDBMockRecorder) AlterReplicatedRelationSchema(ctx, dsID, relName, schemaName any) *gomock.Call {
+func (mr *MockXQDBMockRecorder) AlterReplicatedRelationSchema(ctx, dsID, relation, schemaName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReplicatedRelationSchema", reflect.TypeOf((*MockXQDB)(nil).AlterReplicatedRelationSchema), ctx, dsID, relName, schemaName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReplicatedRelationSchema", reflect.TypeOf((*MockXQDB)(nil).AlterReplicatedRelationSchema), ctx, dsID, relation, schemaName)
 }
 
 // AlterSequenceAttach mocks base method.

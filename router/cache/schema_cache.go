@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/pool"
+	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
 type SchemaCache struct {
@@ -29,16 +30,12 @@ func NewSchemaCache(shardMapping map[string]*config.Shard, be *config.BackendRul
 	}
 }
 
-func (c *SchemaCache) GetColumns(db, schemaName, tableName string) ([]string, error) {
+func (c *SchemaCache) GetColumns(db string, rel *rfqn.RelationFQN) ([]string, error) {
 	if c.be == nil {
 		return nil, fmt.Errorf("backend rule was not provided")
 	}
 
-	if schemaName == "" {
-		schemaName = "public"
-	}
-
-	if v, ok := c.tableColumnsCache.Load(fmt.Sprintf("%s.%s", schemaName, tableName)); ok {
+	if v, ok := c.tableColumnsCache.Load(rel.String()); ok {
 		return v.([]string), nil
 	}
 
@@ -52,7 +49,7 @@ func (c *SchemaCache) GetColumns(db, schemaName, tableName string) ([]string, er
 
 	for _, msg := range []pgproto3.FrontendMessage{
 		&pgproto3.Parse{Query: `SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2`},
-		&pgproto3.Bind{Parameters: [][]byte{[]byte(schemaName), []byte(tableName)}},
+		&pgproto3.Bind{Parameters: [][]byte{[]byte(rel.GetSchema()), []byte(rel.RelationName)}},
 		&pgproto3.Execute{},
 		&pgproto3.Close{ObjectType: 'S'},
 		&pgproto3.Sync{},
@@ -73,7 +70,7 @@ func (c *SchemaCache) GetColumns(db, schemaName, tableName string) ([]string, er
 		case *pgproto3.ParseComplete:
 		case *pgproto3.BindComplete:
 		case *pgproto3.ReadyForQuery:
-			c.tableColumnsCache.Store(fmt.Sprintf("%s.%s", schemaName, tableName), columns)
+			c.tableColumnsCache.Store(rel.String(), columns)
 			return columns, nil
 		case *pgproto3.DataRow:
 			for _, value := range v.Values {
