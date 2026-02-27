@@ -774,7 +774,7 @@ Feature: Coordinator test
         "relation_name": "test",
         "distribution_id": "ds1",
         "distribution_key": "(\"id\", identity)",
-        "schema_name": "$search_path"
+        "schema_name": "public"
       }
     ]
     """
