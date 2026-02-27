@@ -452,5 +452,6 @@ Scenario: REDISTRIBUTE KEY RANGE fails if no replicated relation on destination 
     Then command return code should be "1"
     And command output should match regexp
     """
-    replicated relation "public.ref" exists on source shard, but not on destination shard
+    replicated relation "
+    ref" exists on source shard, but not on destination shard
     """
