@@ -1083,9 +1083,9 @@ func (a *Adapter) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveT
 //
 // Returns:
 // - error: An error if the removal of the task group fails, otherwise nil.
-func (a *Adapter) DropMoveTaskGroup(ctx context.Context, id string) error {
+func (a *Adapter) DropMoveTaskGroup(ctx context.Context, id string, cascade bool) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
-	_, err := tasksService.DropMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
+	_, err := tasksService.DropMoveTaskGroupV2(ctx, &proto.DropMoveTaskGroupRequest{ID: id, Cascade: cascade})
 	return spqrerror.CleanGrpcError(err)
 }
 

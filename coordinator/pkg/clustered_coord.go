@@ -1730,7 +1730,9 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 		return err
 	}
 	defer func() {
-		_ = sourceConn.Close(ctx)
+		if sourceConn != nil {
+			_ = sourceConn.Close(ctx)
+		}
 	}()
 
 	ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
@@ -1853,7 +1855,7 @@ func (qc *ClusteredCoordinator) executeMoveTaskGroup(ctx context.Context, taskGr
 			}
 		}
 	}
-	if err := qc.DropMoveTaskGroup(ctx, taskGroup.ID); err != nil {
+	if err := qc.DropMoveTaskGroup(ctx, taskGroup.ID, delayedError != nil); err != nil {
 		return err
 	}
 	return delayedError
@@ -2028,13 +2030,6 @@ func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, tas
 				DestKrId:    task.TempKrId,
 				Type:        tasks.SplitRight,
 			}, &tasks.MoveTaskGroupIssuer{Type: tasks.IssuerRedistributeTask, Id: task.ID}); err != nil {
-				if te, ok := err.(*spqrerror.SpqrError); ok && te.ErrorCode == spqrerror.SPQR_STOP_MOVE_TASK_GROUP {
-					spqrlog.Zero.Error().Msg("finishing redistribute task due to task group stop")
-					if err2 := qc.db.DropRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err2 != nil {
-						return err2
-					}
-					return err
-				}
 				return err
 			}
 			task.State = tasks.RedistributeTaskMoved
