@@ -144,6 +144,9 @@ isolation_regress: build_images
 stress: build_images
 	docker compose -f test/stress/docker-compose.yaml up --remove-orphans --exit-code-from stress --build router shard1 shard2 stress
 
+tls_test:
+	cd test/tls-integration && bash run-test.sh
+
 split_feature_test_old:
 	docker compose build slicer
 	(cd test/feature/features; tar -c .) | docker compose run slicer | (mkdir test/feature/generatedFeatures; cd test/feature/generatedFeatures; tar -x)

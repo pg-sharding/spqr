@@ -1,0 +1,161 @@
+services:
+
+  # --- etcd ---
+  etcd:
+    image: quay.io/coreos/etcd:v3.6.4
+    container_name: tls_test_etcd
+    hostname: etcd
+    entrypoint:
+      - /usr/local/bin/etcd
+      - --advertise-client-urls=http://etcd:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - tls-test-net
+
+  # --- PostgreSQL Shard 1 (SSL required) ---
+  shard1:
+    image: postgres:17-alpine
+    container_name: tls_test_shard1
+    hostname: shard1
+    environment:
+      POSTGRES_USER: user1
+      POSTGRES_DB: db1
+      POSTGRES_HOST_AUTH_METHOD: trust
+    command:
+      - postgres
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/var/lib/postgresql/server.crt
+      - -c
+      - ssl_key_file=/var/lib/postgresql/server.key
+      - -c
+      - ssl_ca_file=/var/lib/postgresql/ca.crt
+      - -c
+      - log_connections=on
+      - -c
+      - log_statement=all
+    volumes:
+      - ./certs/server.crt:/var/lib/postgresql/server.crt:ro
+      - ./certs/server.key:/var/lib/postgresql/server.key:ro
+      - ./certs/ca.crt:/var/lib/postgresql/ca.crt:ro
+      - ./conf/pg_hba_ssl.conf:/var/lib/postgresql/pg_hba.conf:ro
+      - ./conf/init.sql:/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user1 -d db1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - tls-test-net
+
+  # --- PostgreSQL Shard 2 (SSL required) ---
+  shard2:
+    image: postgres:17-alpine
+    container_name: tls_test_shard2
+    hostname: shard2
+    environment:
+      POSTGRES_USER: user1
+      POSTGRES_DB: db1
+      POSTGRES_HOST_AUTH_METHOD: trust
+    command:
+      - postgres
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/var/lib/postgresql/server.crt
+      - -c
+      - ssl_key_file=/var/lib/postgresql/server.key
+      - -c
+      - ssl_ca_file=/var/lib/postgresql/ca.crt
+      - -c
+      - log_connections=on
+      - -c
+      - log_statement=all
+    volumes:
+      - ./certs/server.crt:/var/lib/postgresql/server.crt:ro
+      - ./certs/server.key:/var/lib/postgresql/server.key:ro
+      - ./certs/ca.crt:/var/lib/postgresql/ca.crt:ro
+      - ./conf/pg_hba_ssl.conf:/var/lib/postgresql/pg_hba.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user1 -d db1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - tls-test-net
+
+  # --- SPQR build ---
+  spqr-build:
+    image: spqr-tls-test
+    build:
+      context: ../../
+      dockerfile: docker/spqr/Dockerfile
+
+  # --- SPQR Coordinator ---
+  spqr-coordinator:
+    image: spqr-tls-test
+    container_name: tls_test_coordinator
+    hostname: spqr-coordinator
+    depends_on:
+      spqr-build:
+        condition: service_completed_successfully
+      etcd:
+        condition: service_healthy
+    volumes:
+      - ./conf/coordinator.yaml:/etc/spqr/coordinator.yaml:ro
+      - ./conf/shard_data.yaml:/etc/spqr/shard_data.yaml:ro
+    command: ["/spqr/spqr-coordinator", "-c", "/etc/spqr/coordinator.yaml"]
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/7003' 2>/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - tls-test-net
+
+  # --- SPQR Router (manage_shards_by_coordinator: true) ---
+  spqr-router:
+    image: spqr-tls-test
+    container_name: tls_test_router
+    hostname: spqr-router
+    depends_on:
+      spqr-build:
+        condition: service_completed_successfully
+      spqr-coordinator:
+        condition: service_healthy
+      shard1:
+        condition: service_healthy
+      shard2:
+        condition: service_healthy
+    volumes:
+      - ./conf/router.yaml:/etc/spqr/router.yaml:ro
+      - ./conf/coordinator-router.yaml:/etc/spqr/coordinator.yaml:ro
+      - ./certs/router.crt:/etc/spqr/ssl/server.crt:ro
+      - ./certs/router.key:/etc/spqr/ssl/server.key:ro
+    ports:
+      - "6432:6432"
+      - "7432:7432"
+    command:
+      - /spqr/spqr-router
+      - run
+      - --config
+      - /etc/spqr/router.yaml
+      - --coordinator-config
+      - /etc/spqr/coordinator.yaml
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6432' 2>/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - tls-test-net
+
+networks:
+  tls-test-net:
+    driver: bridge
