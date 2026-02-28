@@ -925,7 +925,8 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	} else {
 		for _, r := range rels {
-			if _, err := q.GetRelationDistribution(ctx, r.QualifiedName()); err == nil {
+			/* Do not use public iface function, bacuase we already got lock. */
+			if _, err := q.relationDistributionInternal(r.QualifiedName()); err == nil {
 				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", r.QualifiedName().String())
 			}
 
@@ -1097,11 +1098,7 @@ func (q *MemQDB) CheckDistribution(_ context.Context, id string) (bool, error) {
 	return ok, nil
 }
 
-func (q *MemQDB) GetRelationDistribution(_ context.Context, relation *rfqn.RelationFQN) (*Distribution, error) {
-	spqrlog.Zero.Debug().Str("relation", relation.RelationName).Msg("memqdb: get distribution for table")
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-
+func (q *MemQDB) relationDistributionInternal(relation *rfqn.RelationFQN) (*Distribution, error) {
 	if ds, ok := q.RelationDistribution[relation.RelationName]; !ok {
 		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution for relation \"%s\" not found", relation)
 	} else {
@@ -1109,6 +1106,14 @@ func (q *MemQDB) GetRelationDistribution(_ context.Context, relation *rfqn.Relat
 		// then we have corruption
 		return q.Distributions[ds], nil
 	}
+
+}
+
+func (q *MemQDB) GetRelationDistribution(_ context.Context, relation *rfqn.RelationFQN) (*Distribution, error) {
+	spqrlog.Zero.Debug().Str("relation", relation.RelationName).Msg("memqdb: get distribution for table")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	return q.relationDistributionInternal(relation)
 }
 
 // ==============================================================================

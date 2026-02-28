@@ -160,6 +160,7 @@ fmtcheck
 forumsys
 forwardable
 FQNTo
+fqn
 frmp
 frrule
 frsm
