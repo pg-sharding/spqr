@@ -1425,7 +1425,7 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 	}
 
 	for _, rel := range rels {
-		if _, ok := distribution.GetRelation(rel.QualifiedName()); ok {
+		if _, ok := distribution.TryGetRelation(rel.QualifiedName()); ok {
 			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.QualifiedName().String())
 		}
 
