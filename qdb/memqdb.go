@@ -329,7 +329,7 @@ func (q *MemQDB) DropKeyRange(_ context.Context, id string) ([]QdbStatement, err
 
 	_, ok := q.Krs[id]
 	if !ok {
-		return []QdbStatement{}, nil
+		return q.dropKeyRangeQdbStatements(id)
 	}
 
 	lock, ok := q.Locks[id]

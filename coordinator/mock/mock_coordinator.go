@@ -336,11 +336,12 @@ func (mr *MockCoordinatorMockRecorder) DropDistribution(ctx, id any) *gomock.Cal
 }
 
 // DropKeyRange mocks base method.
-func (m *MockCoordinator) DropKeyRange(ctx context.Context, krid string) error {
+func (m *MockCoordinator) DropKeyRange(ctx context.Context, krid string) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DropKeyRange", ctx, krid)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // DropKeyRange indicates an expected call of DropKeyRange.

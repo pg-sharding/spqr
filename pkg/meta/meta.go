@@ -107,15 +107,14 @@ func processDrop(ctx context.Context,
 			}
 		} else {
 			spqrlog.Zero.Debug().Str("kr", stmt.KeyRangeID).Msg("parsed drop")
-			err := mngr.DropKeyRange(ctx, stmt.KeyRangeID)
+			tranMngr := NewTranEntityManager(mngr)
+			err := dropKeyRange(ctx, tranMngr, stmt.KeyRangeID)
 			if err != nil {
 				return nil, err
 			}
 
 			tts := &tupleslot.TupleTableSlot{}
-
 			tts.Desc = engine.GetVPHeader("key_range_id")
-
 			tts.Raw = append(tts.Raw, [][]byte{
 				[]byte(stmt.KeyRangeID),
 			})
@@ -172,9 +171,10 @@ func processDrop(ctx context.Context,
 		if len(krs) != 0 && !isCascade {
 			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop distribution %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
 		}
-
+		// TODO: need pack to batch
 		for _, kr := range krs {
-			err = mngr.DropKeyRange(ctx, kr.ID)
+			tranMngr := NewTranEntityManager(mngr)
+			err := dropKeyRange(ctx, tranMngr, kr.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -264,8 +264,11 @@ func processDrop(ctx context.Context,
 		if len(shardKrs) != 0 && !isCascade {
 			return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "cannot drop shard %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
 		}
+		// TODO: need pack to batch
 		for _, kr := range shardKrs {
-			if err := mngr.DropKeyRange(ctx, kr.ID); err != nil {
+			tranMngr := NewTranEntityManager(mngr)
+			err := dropKeyRange(ctx, tranMngr, kr.ID)
+			if err != nil {
 				return nil, err
 			}
 		}

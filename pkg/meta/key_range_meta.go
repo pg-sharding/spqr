@@ -173,3 +173,16 @@ func createKeyRange(ctx context.Context, mngr *TranEntityManager, stmt *spqrpars
 	}
 	return keyRange, nil
 }
+
+func dropKeyRange(ctx context.Context, mngr *TranEntityManager, id string) error {
+	if err := mngr.BeginTran(ctx); err != nil {
+		return err
+	}
+	if err := mngr.DropKeyRange(ctx, id); err != nil {
+		return err
+	}
+	if err := mngr.CommitTran(ctx); err != nil {
+		return err
+	}
+	return nil
+}

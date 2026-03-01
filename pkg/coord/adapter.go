@@ -539,22 +539,9 @@ func (a *Adapter) RenameKeyRange(ctx context.Context, krId, krIdNew string) erro
 	return spqrerror.CleanGrpcError(err)
 }
 
-// TODO : unit tests
-
-// DropKeyRange drops a key range using the provided ID.
-//
-// Parameters:
-// - ctx (context.Context): The context for the request.
-// - krid (string): The ID of the key range to unlock.
-//
-// Returns:
-// - error: An error if the key range drop fails, otherwise nil.
-func (a *Adapter) DropKeyRange(ctx context.Context, krid string) error {
-	c := proto.NewKeyRangeServiceClient(a.conn)
-	_, err := c.DropKeyRange(ctx, &proto.DropKeyRangeRequest{
-		Id: []string{krid},
-	})
-	return spqrerror.CleanGrpcError(err)
+// DEPRECATED
+func (a *Adapter) DropKeyRange(ctx context.Context, krid string) ([]qdb.QdbStatement, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (DropKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
 // TODO : unit tests

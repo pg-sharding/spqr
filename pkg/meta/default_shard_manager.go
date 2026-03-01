@@ -98,6 +98,11 @@ func (manager *DefaultShardManager) DropDefaultShard(ctx context.Context) (strin
 		return "", fmt.Errorf("distribution id=%s have not default shard", manager.distribution.Id)
 	} else {
 		spqrlog.Zero.Debug().Str("default key range", defaultKeyRange.ID).Msg("parsed drop")
-		return defaultKeyRange.ShardID, manager.mngr.DropKeyRange(ctx, defaultKeyRange.ID)
+		tranMngr := NewTranEntityManager(manager.mngr)
+		err := dropKeyRange(ctx, tranMngr, defaultKeyRange.ID)
+		if err != nil {
+			return defaultKeyRange.ShardID, err
+		}
+		return defaultKeyRange.ShardID, nil
 	}
 }
