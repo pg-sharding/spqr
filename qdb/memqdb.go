@@ -934,7 +934,7 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 			/* Do not use public iface function, because we already got lock. */
 			if ds, err := q.relationDistributionInternal(r.QualifiedName()); err == nil {
 				/* Well, okay. We already have distribution for relation with
-				* this exact relname. What bout schema?
+				* this exact relname. What about schema?
 				* If schema matches, throw error. Otherwise, try to simple place this
 				* relation to fqn_relations. TODO: remove this nonsence after complete
 				* SPQR 3.0.0 transition. */
