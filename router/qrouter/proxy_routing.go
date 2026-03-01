@@ -1025,6 +1025,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 		var distribCols []string
 		var d *distributions.Distribution
 		var r *distributions.DistributedRelation
+		var ok bool
 
 		var rqdn *rfqn.RelationFQN
 
@@ -1038,7 +1039,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 				return nil, err
 			}
 
-			r, ok := d.TryGetRelation(rqdn)
+			r, ok = d.TryGetRelation(rqdn)
 			if !ok {
 				/* We are updating non-distributed relation */
 				return nil, nil
