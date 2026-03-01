@@ -1102,8 +1102,8 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	}
 
 	schemas := make(map[string]struct{})
-	rels := make([]string, 0, len(ds.Relations))
-	for _, rel := range ds.Relations {
+	rels := make([]string, 0, len(ds.ListRelations()))
+	for _, rel := range ds.ListRelations() {
 		schemas[rel.Relation.GetSchema()] = struct{}{}
 		rels = append(rels, rel.QualifiedName().String())
 		sourceTable, err := datatransfers.CheckTableExists(ctx, sourceConn, rel.Relation)
@@ -1150,21 +1150,27 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 	if exists {
 		replDs, err := qc.GetDistribution(ctx, distributions.REPLICATED)
 		if err != nil {
-			return fmt.Errorf("error getting replicated distribution: %s", err)
+			return fmt.Errorf(
+				"error getting replicated distribution: %s", err)
 		}
 		replRels = make([]string, 0, len(replDs.Relations))
-		for _, r := range replDs.Relations {
+
+		for _, r := range replDs.ListRelations() {
+
 			relExists, err := datatransfers.CheckTableExists(ctx, sourceConn, r.Relation)
 			if err != nil {
-				return fmt.Errorf("failed to check for relation \"%s\" existence on source shard: %s", r.QualifiedName(), err)
+				return fmt.Errorf(
+					"failed to check for relation \"%s\" existence on source shard: %s", r.QualifiedName(), err)
 			}
 			if relExists {
 				destRelExists, err := datatransfers.CheckTableExists(ctx, destConn, r.Relation)
 				if err != nil {
-					return fmt.Errorf("failed to check for relation \"%s\" existence on destination shard: %s", r.QualifiedName(), err)
+					return fmt.Errorf(
+						"failed to check for relation \"%s\" existence on destination shard: %s", r.QualifiedName(), err)
 				}
 				if !destRelExists {
-					return fmt.Errorf("replicated relation \"%s\" exists on source shard, but not on destination shard", r.QualifiedName())
+					return fmt.Errorf(
+						"replicated relation \"%s\" exists on source shard, but not on destination shard", r.QualifiedName())
 				}
 				replRels = append(replRels, r.QualifiedName().String())
 			}

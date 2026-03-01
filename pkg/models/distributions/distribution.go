@@ -333,6 +333,18 @@ func (s *Distribution) TryGetRelation(relname *rfqn.RelationFQN) (*DistributedRe
 	return r, ok
 }
 
+func (s *Distribution) ListRelations() []*DistributedRelation {
+	ret := []*DistributedRelation{}
+
+	for _, r := range s.Relations {
+		ret = append(ret, r)
+	}
+	for _, r := range s.FQNRelations {
+		ret = append(ret, r)
+	}
+	return ret
+}
+
 // local table sharding distr -> route to world
 
 // NewDistribution creates a new Distribution with the specified ID and column types.
@@ -347,6 +359,7 @@ func NewDistribution(id string, coltypes []string) *Distribution {
 	return &Distribution{
 		Id:                id,
 		ColTypes:          coltypes,
+		FQNRelations:      map[string]*DistributedRelation{},
 		Relations:         map[string]*DistributedRelation{},
 		UniqueIndexesByID: map[string]*UniqueIndex{},
 	}
@@ -382,6 +395,11 @@ func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 		}
 		ret.Relations[name] = DistributedRelationFromDB(val, relIdxs)
 	}
+
+	for name, val := range distr.FQNRelations {
+		ret.FQNRelations[name] = DistributedRelationFromDB(val, make(map[string]*UniqueIndex))
+	}
+
 	return ret
 }
 
@@ -473,11 +491,16 @@ func DistributionToDB(ds *Distribution) *qdb.Distribution {
 		ID:            ds.Id,
 		ColTypes:      ds.ColTypes,
 		Relations:     map[string]*qdb.DistributedRelation{},
+		FQNRelations:  map[string]*qdb.DistributedRelation{},
 		UniqueIndexes: map[string]*qdb.UniqueIndex{},
 	}
 
 	for _, r := range ds.Relations {
 		d.Relations[r.Relation.RelationName] = DistributedRelationToDB(r)
+	}
+
+	for _, r := range ds.FQNRelations {
+		d.FQNRelations[r.Relation.String()] = DistributedRelationToDB(r)
 	}
 
 	for id, idx := range ds.UniqueIndexesByID {

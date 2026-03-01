@@ -185,7 +185,7 @@ func processDrop(ctx context.Context,
 			if err != nil {
 				return nil, err
 			}
-			if len(ds.Relations) != 0 && !isCascade {
+			if len(ds.ListRelations()) != 0 && !isCascade {
 				return nil, spqrerror.Newf(
 					spqrerror.SPQR_INVALID_REQUEST,
 					"cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID)
@@ -198,7 +198,7 @@ func processDrop(ctx context.Context,
 			}
 
 			if stmt.ID != distributions.REPLICATED {
-				for _, rel := range ds.Relations {
+				for _, rel := range ds.ListRelations() {
 					if err := mngr.AlterDistributionDetach(ctx, ds.Id, rel.Relation); err != nil {
 						return nil, err
 					}
@@ -228,7 +228,7 @@ func processDrop(ctx context.Context,
 		ret := make([]string, 0)
 		for _, ds := range dss {
 			if ds.Id != "default" {
-				if len(ds.Relations) != 0 && !isCascade {
+				if len(ds.ListRelations()) != 0 && !isCascade {
 					return nil, spqrerror.NewWithHint(spqrerror.SPQR_INVALID_REQUEST, fmt.Sprintf("cannot drop distribution %s because there are relations attached to it", ds.Id), "HINT: Use DROP ... CASCADE to detach relations automatically.")
 				}
 				ret = append(ret, ds.ID())
@@ -1363,10 +1363,7 @@ func ProcessShowExtended(ctx context.Context,
 			if _, ok := dsToRels[ds.Id]; ok {
 				return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "Duplicate values on \"%s\" distribution ID", ds.Id)
 			}
-			dsToRels[ds.Id] = make([]*distributions.DistributedRelation, 0)
-			for _, rel := range ds.Relations {
-				dsToRels[ds.Id] = append(dsToRels[ds.Id], rel)
-			}
+			dsToRels[ds.Id] = ds.ListRelations()
 		}
 
 		tts, err = engine.RelationsVirtualRelationScan(dsToRels)

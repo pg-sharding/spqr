@@ -160,9 +160,11 @@ type UniqueIndex struct {
 
 func NewDistribution(id string, coltypes []string) *Distribution {
 	distr := &Distribution{
-		ID:        id,
-		ColTypes:  coltypes,
-		Relations: map[string]*DistributedRelation{},
+		ID:            id,
+		ColTypes:      coltypes,
+		Relations:     map[string]*DistributedRelation{},
+		FQNRelations:  map[string]*DistributedRelation{},
+		UniqueIndexes: map[string]*UniqueIndex{},
 	}
 
 	return distr
