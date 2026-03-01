@@ -3,6 +3,8 @@ title: 'SQL commands'
 description: 'Create distributions, key ranges and tables and see cluster info'
 ---
 
+import KeyRangeCommands from '/snippets/key_range_commands.mdx'
+
 ### CREATE DISTRIBUTION
 
 This command is used to create a new distribution with the specified name. Optionally, you can specify the column types for the distribution using the COLUMN TYPES clause. Optionally, you can specify a default shard for distribution using the "DEFAULT SHARD" clause.
@@ -150,82 +152,7 @@ SYNC REFERENCE TABLE tax_rates ON sh3;
 - The reference table must already be created in SPQR metadata and the table structure must exist on the destination shard before running this command.
 - `SYNC REFERENCE TABLES` (plural) to sync all reference tables at once is currently not supported.
 
-### CREATE KEY RANGE
-
-This command is used to create a new key range. Since the key space is an ordered set, it is enough to specify only one end of the range.
-
-For composite sharding keys, specify multiple values separated by commas that correspond to each column in the distribution.
-
-```sql
-CREATE KEY RANGE [ <keyRangeID> ]
-FROM <lowerBound>
-ROUTE TO <shardID> 
-FOR DISTRIBUTION <distributionID>
-
-where lowerBound is a single value or comma-separated values for composite keys (e.g., "100, 'value'" for a two-column key)
-```
-
-**Examples:**
-
-```sql
--- Single column key range
-CREATE KEY RANGE krid1 FROM 1000 ROUTE TO shard1 FOR DISTRIBUTION ds1;
-
--- Composite key range with two integers
-CREATE KEY RANGE krid2 FROM 0, 100 ROUTE TO shard2 FOR DISTRIBUTION ds2;
-
--- Composite key range with integer and varchar
-CREATE KEY RANGE krid3 FROM 100, 'aaaaa' ROUTE TO shard3 FOR DISTRIBUTION ds3;
-```
-
-### DROP KEY RANGE
-
-This command is used to drop an existing key range.
-
-```sql
-DROP KEY RANGE <keyRangeID>
-```
-
-### MOVE KEY RANGE
-
-<Warning>If you don’t fully understand how SPQR works, you should not use this command in production. Use REDISTRIBUTE instead. </Warning>
-
-This command is used to move an existing key range to a different shard.
-
-```sql
-MOVE KEY RANGE <keyRangeID> TO <shardID>
-```
-
-### REDISTRIBUTE KEY RANGE
-
-<Warning>This command is not available for installations without SPQR coordinator.</Warning>
-
-`REDISTRIBUTE KEY RANGE` command is similar to `MOVE KEY RANGE`, but with one key difference: `REDISTRIBUTE` moves the key range in smaller chunks to minimize downtime for write operations.
-
-`BATCH SIZE` is an integer value that controls the number of keys moved in each batch during redistribution. Default batch size is 500.
-
-You can also use optional keywords `CHECK`, `NOWAIT` and `APPLY`. By default, command will check for the ability to move keys, then perform the actual movement. With `CHECK`, you can perform a dry-run.
-With `APPLY`, you can skip checks. With `NOWAIT` you will NOT wait for data move completion, but you will get an error like in `CHECK` case if anything is misconfigured.
-
-```sql
-REDISTRIBUTE KEY RANGE <keyRangeID> TO <shardID> [ BATCH SIZE <batchSize> ] [ CHECK | APPLY | NOWAIT ];
-```
-
-### SPLIT KEY RANGE
-
-This command is used to split an existing key range into two separate key ranges.
-
-```sql
-SPLIT KEY RANGE <keyRangeID> FROM <keyRangeFromID> BY <border>
-```
-
-### UNITE KEY RANGE
-
-This command is used to unite two adjacent key ranges into a single key range.
-
-```sql
-UNITE KEY RANGE <keyRangeIDLeft> WITH <keyRangeIDRight>
-```
+<KeyRangeCommands />
 
 ### SHOW
 
