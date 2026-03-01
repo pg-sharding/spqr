@@ -89,6 +89,7 @@ RELATED COMMANDS
 {{- end}}
 `
 
+//nolint:unused
 const mdxHeaderTemplate = `---
 title: 'SQL commands'
 description: 'Create distributions, key ranges and tables and see cluster info'
@@ -99,6 +100,7 @@ description: 'Create distributions, key ranges and tables and see cluster info'
 
 `
 
+//nolint:unused
 const mdxCommandTemplate = `### {{.Name}}
 
 {{.Description}}
@@ -274,6 +276,7 @@ func generateHelpFiles(commands []*Command, dir string) error {
 	return nil
 }
 
+//nolint:unused
 func generateMDX(commands []*Command, path string) error {
 	funcMap := template.FuncMap{
 		"trimSpace": strings.TrimSpace,
