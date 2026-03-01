@@ -163,7 +163,6 @@ func NewDistribution(id string, coltypes []string) *Distribution {
 		ID:            id,
 		ColTypes:      coltypes,
 		Relations:     map[string]*DistributedRelation{},
-		FQNRelations:  map[string]*DistributedRelation{},
 		UniqueIndexes: map[string]*UniqueIndex{},
 	}
 
