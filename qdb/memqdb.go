@@ -936,7 +936,7 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 				/* Well, okay. We already have distribution for relation with
 				* this exact relname. What about schema?
 				* If schema matches, throw error. Otherwise, try to simple place this
-				* relation to fqn_relations. TODO: remove this nonsence after complete
+				* relation to fqn_relations. TODO: remove this nonsense after complete
 				* SPQR 3.0.0 transition. */
 				if dr := ds.Relations[r.QualifiedName().RelationName]; dr.SchemaName == r.SchemaName {
 					return spqrerror.Newf(
