@@ -44,6 +44,7 @@ func randomHex(n int) (string, error) {
     set                    *Set
 	statement              Statement
 	show                   *Show
+	help                   *Help
 
 	drop                   *Drop
 	create                 *Create
@@ -129,7 +130,7 @@ func randomHex(n int) (string, error) {
 %token <str> IDENT COMMAND
 
 // DDL
-%token <str> SHOW KILL
+%token <str> HELP SHOW KILL
 
 // SQL
 %token <str> WHERE OR AND
@@ -223,6 +224,8 @@ func randomHex(n int) (string, error) {
 %type <str> kill_statement_type
 
 %type <show> show_stmt
+%type <help> help_stmt
+%type <str> help_command_name help_word
 %type <kill> kill_stmt
 
 %type <drop> drop_stmt
@@ -355,6 +358,10 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| show_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| help_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -1085,7 +1092,70 @@ show_stmt:
 	{
 		$$ = &Show{Cmd: $2, Columns: $3, Where: $4, GroupBy: $5, Order: $6}
 	}
-	
+
+help_stmt:
+	HELP
+	{
+		$$ = &Help{CommandName: ""}
+	}
+	| HELP help_command_name
+	{
+		$$ = &Help{CommandName: $2}
+	}
+
+// help_command_name accepts any sequence of keywords/identifiers
+// to allow flexible command lookup like "HELP CREATE DISTRIBUTION"
+help_command_name:
+	help_word
+	{
+		$$ = $1
+	}
+	| help_command_name help_word
+	{
+		$$ = $1 + " " + $2
+	}
+
+// help_word matches keywords and identifiers that can appear in command names
+help_word:
+	IDENT { $$ = $1 }
+	| CREATE { $$ = "CREATE" }
+	| DROP { $$ = "DROP" }
+	| ALTER { $$ = "ALTER" }
+	| SHOW { $$ = "SHOW" }
+	| KEY { $$ = "KEY" }
+	| RANGE { $$ = "RANGE" }
+	| DISTRIBUTION { $$ = "DISTRIBUTION" }
+	| SHARD { $$ = "SHARD" }
+	| SHARDS { $$ = "SHARDS" }
+	| LOCK { $$ = "LOCK" }
+	| UNLOCK { $$ = "UNLOCK" }
+	| SPLIT { $$ = "SPLIT" }
+	| UNITE { $$ = "UNITE" }
+	| MOVE { $$ = "MOVE" }
+	| REDISTRIBUTE { $$ = "REDISTRIBUTE" }
+	| ROUTER { $$ = "ROUTER" }
+	| REGISTER { $$ = "REGISTER" }
+	| UNREGISTER { $$ = "UNREGISTER" }
+	| TABLE { $$ = "TABLE" }
+	| TABLES { $$ = "TABLES" }
+	| RELATION { $$ = "RELATION" }
+	| RELATIONS { $$ = "RELATIONS" }
+	| REFERENCE { $$ = "REFERENCE" }
+	| ATTACH { $$ = "ATTACH" }
+	| DETACH { $$ = "DETACH" }
+	| SEQUENCE { $$ = "SEQUENCE" }
+	| CLIENT { $$ = "CLIENT" }
+	| CLIENTS { $$ = "CLIENTS" }
+	| CACHE { $$ = "CACHE" }
+	| INVALIDATE { $$ = "INVALIDATE" }
+	| SYNC { $$ = "SYNC" }
+	| TASK { $$ = "TASK" }
+	| GROUP { $$ = "GROUP" }
+	| INDEX { $$ = "INDEX" }
+	| UNIQUE { $$ = "UNIQUE" }
+	| DEFAULT { $$ = "DEFAULT" }
+	| ALL { $$ = "ALL" }
+
 lock_stmt:
 	LOCK key_range_stmt
 	{
