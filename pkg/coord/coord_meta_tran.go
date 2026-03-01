@@ -58,6 +58,29 @@ func createKeyRangePrepare(ctx context.Context,
 	return result, nil
 }
 
+func updateKeyRangePrepare(ctx context.Context,
+	mngr meta.EntityMgr,
+	gossip *proto.UpdateKeyRangeGossip) ([]qdb.QdbStatement, error) {
+	result := make([]qdb.QdbStatement, 0)
+	ds, err := mngr.GetDistribution(ctx, gossip.KeyRangeInfo.DistributionId)
+	if err != nil {
+		return nil, err
+	}
+	krToCreate, err := kr.KeyRangeFromProto(gossip.KeyRangeInfo, ds.ColTypes)
+	if err != nil {
+		return nil, err
+	}
+	qdbStatements, err := mngr.UpdateKeyRange(ctx, krToCreate)
+	if err != nil {
+		return nil, err
+	}
+	if len(qdbStatements) == 0 {
+		return nil, fmt.Errorf("transaction chunk must have a qdb statement (createKeyRangePrepare)")
+	}
+	result = append(result, qdbStatements...)
+	return result, nil
+}
+
 func dropKeyRangePrepare(ctx context.Context, mngr meta.EntityMgr, gossip *proto.DropKeyRangeGossip) ([]qdb.QdbStatement, error) {
 	result := make([]qdb.QdbStatement, 0, len(gossip.GetId()))
 	for _, idKeyRange := range gossip.GetId() {
@@ -83,6 +106,8 @@ func transactionChunkToQdbStatements(ctx context.Context, mngr meta.EntityMgr, c
 			cmdList, err = createDistributionPrepare(ctx, mngr, gossipCommand.CreateDistribution)
 		case mtran.GR_CreateKeyRange:
 			cmdList, err = createKeyRangePrepare(ctx, mngr, gossipCommand.CreateKeyRange)
+		case mtran.GR_UpdateKeyRange:
+			cmdList, err = updateKeyRangePrepare(ctx, mngr, gossipCommand.UpdateKeyRange)
 		case mtran.GR_DropKeyRange:
 			cmdList, err = dropKeyRangePrepare(ctx, mngr, gossipCommand.DropKeyRange)
 		// TODO: run handlers converting gossip commands to chunk with qdb commands
@@ -91,9 +116,6 @@ func transactionChunkToQdbStatements(ctx context.Context, mngr meta.EntityMgr, c
 		}
 		if err != nil {
 			return nil, err
-		}
-		if len(cmdList) == 0 {
-			return nil, fmt.Errorf("no QDB changes in gossip request:%d", cmdType)
 		}
 		qdbCmds = append(qdbCmds, cmdList...)
 	}

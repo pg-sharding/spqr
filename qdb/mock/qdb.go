@@ -1425,11 +1425,12 @@ func (mr *MockQDBMockRecorder) UpdateCoordinator(ctx, address any) *gomock.Call 
 }
 
 // UpdateKeyRange mocks base method.
-func (m *MockQDB) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
+func (m *MockQDB) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateKeyRange", ctx, keyRange)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // UpdateKeyRange indicates an expected call of UpdateKeyRange.
@@ -3057,11 +3058,12 @@ func (mr *MockXQDBMockRecorder) UpdateCoordinator(ctx, address any) *gomock.Call
 }
 
 // UpdateKeyRange mocks base method.
-func (m *MockXQDB) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
+func (m *MockXQDB) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) ([]qdb.QdbStatement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateKeyRange", ctx, keyRange)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // UpdateKeyRange indicates an expected call of UpdateKeyRange.

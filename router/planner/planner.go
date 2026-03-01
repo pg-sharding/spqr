@@ -253,7 +253,10 @@ func PlanDistributedRelationInsert(
 
 	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 	tupleShards := make([]kr.ShardKey, len(routingList))
-	relation := ds.GetRelation(qualName)
+	relation, ok := ds.TryGetRelation(qualName)
+	if !ok {
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+	}
 
 	for i := range routingList {
 		tup := make([]any, len(ds.ColTypes))
@@ -609,6 +612,8 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 		}, nil
 	case *lyx.ExplainStmt:
 		return plr.PlanDistributedQuery(ctx, rm, v.Query, allowRewrite)
+	case *lyx.SubLink:
+		return plr.PlanDistributedQuery(ctx, rm, v.SubSelect, allowRewrite)
 	case *lyx.Select:
 		/* Should be single-relation scan or values. Join to be supported */
 		if len(v.FromClause) == 0 {

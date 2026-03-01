@@ -34,6 +34,9 @@ func analyzeFromClauseList(
 func analyzeSelectStmt(ctx context.Context, selectStmt lyx.Node, meta *rmeta.RoutingMetadataContext) error {
 
 	switch s := selectStmt.(type) {
+
+	case *lyx.SubLink:
+		return analyzeSelectStmt(ctx, s.SubSelect, meta)
 	case *lyx.Select:
 		if clause := s.FromClause; clause != nil {
 			// route `insert into rel select from` stmt
@@ -138,6 +141,13 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 				if err := AnalyzeQueryV1(ctx, rm, q); err != nil {
 					return err
 				}
+			case *lyx.SubLink:
+				/* TODO properly support subquery here */
+				/* SELECT * FROM t WHERE id IN (SELECT 1, 2) */
+
+				if err := AnalyzeQueryV1(ctx, rm, q); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -227,6 +237,10 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 			if err := AnalyzeQueryV1(ctx, rm, lft); err != nil {
 				return err
 			}
+		case *lyx.SubLink:
+			if err := AnalyzeQueryV1(ctx, rm, lft.SubSelect); err != nil {
+				return err
+			}
 		default:
 			if err := analyzeWhereClause(ctx, texpr.Left, rm); err != nil {
 				return err
@@ -241,7 +255,13 @@ func analyzeWhereClause(ctx context.Context, expr lyx.Node, rm *rmeta.RoutingMet
 		/* should not happen */
 	case *lyx.AExprEmpty:
 		/*skip*/
+	case *lyx.SubLink:
+
+		if err := analyzeWhereClause(ctx, texpr.SubSelect, rm); err != nil {
+			return err
+		}
 	case *lyx.Select:
+
 		/* in engine v2 we skip subplans */
 	case *lyx.FuncApplication:
 		// there are several types of queries like DELETE FROM rel WHERE colref = func_application
@@ -320,6 +340,8 @@ func AnalyzeQueryV1(
 	}
 
 	switch stmt := qstmt.(type) {
+	case *lyx.SubLink:
+		return AnalyzeQueryV1(ctx, rm, stmt.SubSelect)
 	case *lyx.ExplainStmt:
 		return AnalyzeQueryV1(ctx, rm, stmt.Query)
 	case *lyx.Select:
@@ -347,7 +369,12 @@ func AnalyzeQueryV1(
 						if err := AnalyzeQueryV1(ctx, rm, iE); err != nil {
 							return err
 						}
+					case *lyx.SubLink:
+						if err := AnalyzeQueryV1(ctx, rm, iE.SubSelect); err != nil {
+							return err
+						}
 					}
+
 				}
 			/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
 			case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst, *lyx.ColumnRef:
@@ -356,7 +383,12 @@ func AnalyzeQueryV1(
 				if err := AnalyzeQueryV1(ctx, rm, e); err != nil {
 					return err
 				}
+			case *lyx.SubLink:
+				if err := AnalyzeQueryV1(ctx, rm, e.SubSelect); err != nil {
+					return err
+				}
 			}
+
 		}
 
 		/*

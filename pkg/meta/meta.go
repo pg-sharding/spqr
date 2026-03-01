@@ -294,7 +294,7 @@ func processDrop(ctx context.Context,
 			Desc: engine.GetVPHeader("task_group_id"),
 		}
 		if tg != nil {
-			if err := mngr.DropMoveTaskGroup(ctx, stmt.ID); err != nil {
+			if err := mngr.DropMoveTaskGroup(ctx, stmt.ID, isCascade); err != nil {
 				return nil, err
 			}
 			tts.Raw = append(tts.Raw, [][]byte{
@@ -487,8 +487,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	case *spqrparser.ReferenceRelationDefinition:
 
 		r := &rrelation.ReferenceRelation{
-			TableName:     stmt.TableName.RelationName,
-			SchemaName:    stmt.TableName.SchemaName,
+			RelationName:  stmt.TableName,
 			SchemaVersion: 1,
 			ShardIds:      stmt.ShardIds,
 		}
@@ -497,16 +496,12 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return nil, err
 		}
 
-		tableName := r.TableName
-		if r.SchemaName != "" {
-			tableName = r.SchemaName + "." + r.TableName
-		}
 		/* XXX: can we already make this more SQL compliant?  */
 		tts := &tupleslot.TupleTableSlot{
 			Desc: engine.GetVPHeader("create reference table"),
 			Raw: [][][]byte{
 				{
-					fmt.Appendf(nil, "table    -> %s", tableName),
+					fmt.Appendf(nil, "table    -> %s", r.QualifiedName()),
 				},
 				{
 					fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIds, ",")),

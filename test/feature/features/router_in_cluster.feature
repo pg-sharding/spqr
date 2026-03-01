@@ -57,7 +57,7 @@ Feature: Router in cluster test
         "relation_name": "d_zz",
         "distribution_id": "ds1",
         "distribution_key": "(\"j\", identity)",
-        "schema_name": "$search_path"
+        "schema_name": "public"
       }
     ]
     """
@@ -74,7 +74,7 @@ Feature: Router in cluster test
         "relation_name": "d_zz",
         "distribution_id": "ds1",
         "distribution_key": "(\"j\", identity)",
-        "schema_name": "$search_path"
+        "schema_name": "public"
       }
     ]
     """

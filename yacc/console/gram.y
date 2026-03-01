@@ -724,9 +724,9 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &ShardSelector{ID: $3}, CascadeDelete: $4}
 	}
-	| DROP TASK GROUP any_id
+	| DROP TASK GROUP any_id opt_cascade
 	{
-		$$ = &Drop{Element: &TaskGroupSelector{ ID: $4 }}
+		$$ = &Drop{Element: &TaskGroupSelector{ ID: $4 }, CascadeDelete: $5}
 	}
 	| DROP SEQUENCE any_id opt_cascade
 	{

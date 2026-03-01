@@ -18,9 +18,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id;
 (2 rows)
 
 SHOW relations;
- relation_name | distribution_id |  distribution_key  | schema_name  
----------------+-----------------+--------------------+--------------
- a             | ds1             | ("a_id", identity) | $search_path
+ relation_name | distribution_id |  distribution_key  | schema_name 
+---------------+-----------------+--------------------+-------------
+ a             | ds1             | ("a_id", identity) | public
 (1 row)
 
 ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another;
@@ -31,9 +31,9 @@ ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another;
 (2 rows)
 
 SHOW relations;
- relation_name | distribution_id |   distribution_key    | schema_name  
----------------+-----------------+-----------------------+--------------
- a             | ds1             | ("another", identity) | $search_path
+ relation_name | distribution_id |   distribution_key    | schema_name 
+---------------+-----------------+-----------------------+-------------
+ a             | ds1             | ("another", identity) | public
 (1 row)
 
 ALTER DISTRIBUTION ds1 ALTER RELATION a DISTRIBUTION KEY another SCHEMA schema_name;

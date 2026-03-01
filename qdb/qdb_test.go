@@ -14,13 +14,13 @@ func TestPackToEtcdCommands(t *testing.T) {
 			{CmdType: CMD_PUT, Key: "test1", Value: "val1"},
 			{CmdType: CMD_DELETE, Key: "test3"},
 		}
-		expected := []clientv3.Op{
+		expectedOps := []clientv3.Op{
 			clientv3.OpPut("test1", "val1"),
 			clientv3.OpDelete("test3"),
 		}
-		actual, err := packEtcdCommands(statements)
+		actualOps, err := packEtcdCommands(statements)
 		is.NoError(err)
-		is.Equal(expected, actual)
+		is.Equal(expectedOps, actualOps)
 	})
 	t.Run("test unknown type", func(t *testing.T) {
 		is := assert.New(t)

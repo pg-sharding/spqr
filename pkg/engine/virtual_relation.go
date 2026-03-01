@@ -301,12 +301,9 @@ func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.Tuple
 		Desc: GetVPHeader("table_name", "schema_name", "schema_version", "shards", "column_sequence_mapping"),
 	}
 	for _, r := range rrs {
-		schema := r.SchemaName
-		if schema == "" {
-			schema = "$search_path"
-		}
+		schema := r.RelationName.GetSchema()
 		tts.Raw = append(tts.Raw, [][]byte{
-			[]byte(r.TableName),
+			[]byte(r.RelationName.RelationName),
 			[]byte(schema),
 			fmt.Appendf(nil, "%d", r.SchemaVersion),
 			fmt.Appendf(nil, "%+v", r.ShardIds),
@@ -416,10 +413,7 @@ func RelationsVirtualRelationScan(
 				}
 				dsKey[i] = fmt.Sprintf("(\"%s\", %s)", e.Column, hashfunction.ToString(t))
 			}
-			schema := rel.Relation.SchemaName
-			if schema == "" {
-				schema = "$search_path"
-			}
+			schema := rel.Relation.GetSchema()
 			tts.WriteDataRow(rel.Relation.RelationName, ds, strings.Join(dsKey, ","), schema)
 			c++
 		}

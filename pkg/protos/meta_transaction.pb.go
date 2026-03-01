@@ -154,19 +154,64 @@ func (x *DropKeyRangeGossip) GetId() []string {
 	return nil
 }
 
+type UpdateKeyRangeGossip struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	KeyRangeInfo  *KeyRangeInfo          `protobuf:"bytes,1,opt,name=key_range_info,json=keyRangeInfo,proto3" json:"key_range_info,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateKeyRangeGossip) Reset() {
+	*x = UpdateKeyRangeGossip{}
+	mi := &file_protos_meta_transaction_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateKeyRangeGossip) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateKeyRangeGossip) ProtoMessage() {}
+
+func (x *UpdateKeyRangeGossip) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_meta_transaction_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateKeyRangeGossip.ProtoReflect.Descriptor instead.
+func (*UpdateKeyRangeGossip) Descriptor() ([]byte, []int) {
+	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *UpdateKeyRangeGossip) GetKeyRangeInfo() *KeyRangeInfo {
+	if x != nil {
+		return x.KeyRangeInfo
+	}
+	return nil
+}
+
 // This is an algebraic type. At the same time, only one command can be non-null.
 type MetaTransactionGossipCommand struct {
 	state              protoimpl.MessageState    `protogen:"open.v1"`
 	CreateDistribution *CreateDistributionGossip `protobuf:"bytes,1,opt,name=createDistribution,proto3" json:"createDistribution,omitempty"`
 	CreateKeyRange     *CreateKeyRangeGossip     `protobuf:"bytes,2,opt,name=createKeyRange,proto3" json:"createKeyRange,omitempty"`
 	DropKeyRange       *DropKeyRangeGossip       `protobuf:"bytes,3,opt,name=dropKeyRange,proto3" json:"dropKeyRange,omitempty"`
+	UpdateKeyRange     *UpdateKeyRangeGossip     `protobuf:"bytes,4,opt,name=updateKeyRange,proto3" json:"updateKeyRange,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
 
 func (x *MetaTransactionGossipCommand) Reset() {
 	*x = MetaTransactionGossipCommand{}
-	mi := &file_protos_meta_transaction_proto_msgTypes[3]
+	mi := &file_protos_meta_transaction_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -178,7 +223,7 @@ func (x *MetaTransactionGossipCommand) String() string {
 func (*MetaTransactionGossipCommand) ProtoMessage() {}
 
 func (x *MetaTransactionGossipCommand) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_meta_transaction_proto_msgTypes[3]
+	mi := &file_protos_meta_transaction_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -191,7 +236,7 @@ func (x *MetaTransactionGossipCommand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetaTransactionGossipCommand.ProtoReflect.Descriptor instead.
 func (*MetaTransactionGossipCommand) Descriptor() ([]byte, []int) {
-	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{3}
+	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *MetaTransactionGossipCommand) GetCreateDistribution() *CreateDistributionGossip {
@@ -215,6 +260,13 @@ func (x *MetaTransactionGossipCommand) GetDropKeyRange() *DropKeyRangeGossip {
 	return nil
 }
 
+func (x *MetaTransactionGossipCommand) GetUpdateKeyRange() *UpdateKeyRangeGossip {
+	if x != nil {
+		return x.UpdateKeyRange
+	}
+	return nil
+}
+
 type MetaTransactionGossipRequest struct {
 	state         protoimpl.MessageState          `protogen:"open.v1"`
 	Commands      []*MetaTransactionGossipCommand `protobuf:"bytes,1,rep,name=commands,proto3" json:"commands,omitempty"`
@@ -224,7 +276,7 @@ type MetaTransactionGossipRequest struct {
 
 func (x *MetaTransactionGossipRequest) Reset() {
 	*x = MetaTransactionGossipRequest{}
-	mi := &file_protos_meta_transaction_proto_msgTypes[4]
+	mi := &file_protos_meta_transaction_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -236,7 +288,7 @@ func (x *MetaTransactionGossipRequest) String() string {
 func (*MetaTransactionGossipRequest) ProtoMessage() {}
 
 func (x *MetaTransactionGossipRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_meta_transaction_proto_msgTypes[4]
+	mi := &file_protos_meta_transaction_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -249,7 +301,7 @@ func (x *MetaTransactionGossipRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetaTransactionGossipRequest.ProtoReflect.Descriptor instead.
 func (*MetaTransactionGossipRequest) Descriptor() ([]byte, []int) {
-	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{4}
+	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *MetaTransactionGossipRequest) GetCommands() []*MetaTransactionGossipCommand {
@@ -269,7 +321,7 @@ type MetaTransactionReply struct {
 
 func (x *MetaTransactionReply) Reset() {
 	*x = MetaTransactionReply{}
-	mi := &file_protos_meta_transaction_proto_msgTypes[5]
+	mi := &file_protos_meta_transaction_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -281,7 +333,7 @@ func (x *MetaTransactionReply) String() string {
 func (*MetaTransactionReply) ProtoMessage() {}
 
 func (x *MetaTransactionReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_meta_transaction_proto_msgTypes[5]
+	mi := &file_protos_meta_transaction_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -294,7 +346,7 @@ func (x *MetaTransactionReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetaTransactionReply.ProtoReflect.Descriptor instead.
 func (*MetaTransactionReply) Descriptor() ([]byte, []int) {
-	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{5}
+	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *MetaTransactionReply) GetTransactionId() string {
@@ -321,7 +373,7 @@ type MetaTransactionRequest struct {
 
 func (x *MetaTransactionRequest) Reset() {
 	*x = MetaTransactionRequest{}
-	mi := &file_protos_meta_transaction_proto_msgTypes[6]
+	mi := &file_protos_meta_transaction_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -333,7 +385,7 @@ func (x *MetaTransactionRequest) String() string {
 func (*MetaTransactionRequest) ProtoMessage() {}
 
 func (x *MetaTransactionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_meta_transaction_proto_msgTypes[6]
+	mi := &file_protos_meta_transaction_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -346,7 +398,7 @@ func (x *MetaTransactionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetaTransactionRequest.ProtoReflect.Descriptor instead.
 func (*MetaTransactionRequest) Descriptor() ([]byte, []int) {
-	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{6}
+	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *MetaTransactionRequest) GetTransactionId() string {
@@ -372,7 +424,7 @@ type ExecNoTranRequest struct {
 
 func (x *ExecNoTranRequest) Reset() {
 	*x = ExecNoTranRequest{}
-	mi := &file_protos_meta_transaction_proto_msgTypes[7]
+	mi := &file_protos_meta_transaction_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -384,7 +436,7 @@ func (x *ExecNoTranRequest) String() string {
 func (*ExecNoTranRequest) ProtoMessage() {}
 
 func (x *ExecNoTranRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_meta_transaction_proto_msgTypes[7]
+	mi := &file_protos_meta_transaction_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -397,7 +449,7 @@ func (x *ExecNoTranRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecNoTranRequest.ProtoReflect.Descriptor instead.
 func (*ExecNoTranRequest) Descriptor() ([]byte, []int) {
-	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{7}
+	return file_protos_meta_transaction_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ExecNoTranRequest) GetMetaCmdList() []*MetaTransactionGossipCommand {
@@ -417,11 +469,14 @@ const file_protos_meta_transaction_proto_rawDesc = "" +
 	"\x14CreateKeyRangeGossip\x128\n" +
 	"\x0ekey_range_info\x18\x01 \x01(\v2\x12.spqr.KeyRangeInfoR\fkeyRangeInfo\"$\n" +
 	"\x12DropKeyRangeGossip\x12\x0e\n" +
-	"\x02id\x18\x01 \x03(\tR\x02id\"\xf0\x01\n" +
+	"\x02id\x18\x01 \x03(\tR\x02id\"P\n" +
+	"\x14UpdateKeyRangeGossip\x128\n" +
+	"\x0ekey_range_info\x18\x01 \x01(\v2\x12.spqr.KeyRangeInfoR\fkeyRangeInfo\"\xb4\x02\n" +
 	"\x1cMetaTransactionGossipCommand\x12N\n" +
 	"\x12createDistribution\x18\x01 \x01(\v2\x1e.spqr.CreateDistributionGossipR\x12createDistribution\x12B\n" +
 	"\x0ecreateKeyRange\x18\x02 \x01(\v2\x1a.spqr.CreateKeyRangeGossipR\x0ecreateKeyRange\x12<\n" +
-	"\fdropKeyRange\x18\x03 \x01(\v2\x18.spqr.DropKeyRangeGossipR\fdropKeyRange\"^\n" +
+	"\fdropKeyRange\x18\x03 \x01(\v2\x18.spqr.DropKeyRangeGossipR\fdropKeyRange\x12B\n" +
+	"\x0eupdateKeyRange\x18\x04 \x01(\v2\x1a.spqr.UpdateKeyRangeGossipR\x0eupdateKeyRange\"^\n" +
 	"\x1cMetaTransactionGossipRequest\x12>\n" +
 	"\bcommands\x18\x01 \x03(\v2\".spqr.MetaTransactionGossipCommandR\bcommands\"\x82\x01\n" +
 	"\x14MetaTransactionReply\x12$\n" +
@@ -454,43 +509,46 @@ func file_protos_meta_transaction_proto_rawDescGZIP() []byte {
 	return file_protos_meta_transaction_proto_rawDescData
 }
 
-var file_protos_meta_transaction_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_protos_meta_transaction_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_protos_meta_transaction_proto_goTypes = []any{
 	(*CreateDistributionGossip)(nil),     // 0: spqr.CreateDistributionGossip
 	(*CreateKeyRangeGossip)(nil),         // 1: spqr.CreateKeyRangeGossip
 	(*DropKeyRangeGossip)(nil),           // 2: spqr.DropKeyRangeGossip
-	(*MetaTransactionGossipCommand)(nil), // 3: spqr.MetaTransactionGossipCommand
-	(*MetaTransactionGossipRequest)(nil), // 4: spqr.MetaTransactionGossipRequest
-	(*MetaTransactionReply)(nil),         // 5: spqr.MetaTransactionReply
-	(*MetaTransactionRequest)(nil),       // 6: spqr.MetaTransactionRequest
-	(*ExecNoTranRequest)(nil),            // 7: spqr.ExecNoTranRequest
-	(*Distribution)(nil),                 // 8: spqr.Distribution
-	(*KeyRangeInfo)(nil),                 // 9: spqr.KeyRangeInfo
-	(*emptypb.Empty)(nil),                // 10: google.protobuf.Empty
+	(*UpdateKeyRangeGossip)(nil),         // 3: spqr.UpdateKeyRangeGossip
+	(*MetaTransactionGossipCommand)(nil), // 4: spqr.MetaTransactionGossipCommand
+	(*MetaTransactionGossipRequest)(nil), // 5: spqr.MetaTransactionGossipRequest
+	(*MetaTransactionReply)(nil),         // 6: spqr.MetaTransactionReply
+	(*MetaTransactionRequest)(nil),       // 7: spqr.MetaTransactionRequest
+	(*ExecNoTranRequest)(nil),            // 8: spqr.ExecNoTranRequest
+	(*Distribution)(nil),                 // 9: spqr.Distribution
+	(*KeyRangeInfo)(nil),                 // 10: spqr.KeyRangeInfo
+	(*emptypb.Empty)(nil),                // 11: google.protobuf.Empty
 }
 var file_protos_meta_transaction_proto_depIdxs = []int32{
-	8,  // 0: spqr.CreateDistributionGossip.distributions:type_name -> spqr.Distribution
-	9,  // 1: spqr.CreateKeyRangeGossip.key_range_info:type_name -> spqr.KeyRangeInfo
-	0,  // 2: spqr.MetaTransactionGossipCommand.createDistribution:type_name -> spqr.CreateDistributionGossip
-	1,  // 3: spqr.MetaTransactionGossipCommand.createKeyRange:type_name -> spqr.CreateKeyRangeGossip
-	2,  // 4: spqr.MetaTransactionGossipCommand.dropKeyRange:type_name -> spqr.DropKeyRangeGossip
-	3,  // 5: spqr.MetaTransactionGossipRequest.commands:type_name -> spqr.MetaTransactionGossipCommand
-	3,  // 6: spqr.MetaTransactionReply.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
-	3,  // 7: spqr.MetaTransactionRequest.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
-	3,  // 8: spqr.ExecNoTranRequest.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
-	4,  // 9: spqr.MetaTransactionGossipService.ApplyMeta:input_type -> spqr.MetaTransactionGossipRequest
-	7,  // 10: spqr.MetaTransactionService.ExecNoTran:input_type -> spqr.ExecNoTranRequest
-	6,  // 11: spqr.MetaTransactionService.CommitTran:input_type -> spqr.MetaTransactionRequest
-	10, // 12: spqr.MetaTransactionService.BeginTran:input_type -> google.protobuf.Empty
-	10, // 13: spqr.MetaTransactionGossipService.ApplyMeta:output_type -> google.protobuf.Empty
-	10, // 14: spqr.MetaTransactionService.ExecNoTran:output_type -> google.protobuf.Empty
-	10, // 15: spqr.MetaTransactionService.CommitTran:output_type -> google.protobuf.Empty
-	5,  // 16: spqr.MetaTransactionService.BeginTran:output_type -> spqr.MetaTransactionReply
-	13, // [13:17] is the sub-list for method output_type
-	9,  // [9:13] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	9,  // 0: spqr.CreateDistributionGossip.distributions:type_name -> spqr.Distribution
+	10, // 1: spqr.CreateKeyRangeGossip.key_range_info:type_name -> spqr.KeyRangeInfo
+	10, // 2: spqr.UpdateKeyRangeGossip.key_range_info:type_name -> spqr.KeyRangeInfo
+	0,  // 3: spqr.MetaTransactionGossipCommand.createDistribution:type_name -> spqr.CreateDistributionGossip
+	1,  // 4: spqr.MetaTransactionGossipCommand.createKeyRange:type_name -> spqr.CreateKeyRangeGossip
+	2,  // 5: spqr.MetaTransactionGossipCommand.dropKeyRange:type_name -> spqr.DropKeyRangeGossip
+	3,  // 6: spqr.MetaTransactionGossipCommand.updateKeyRange:type_name -> spqr.UpdateKeyRangeGossip
+	4,  // 7: spqr.MetaTransactionGossipRequest.commands:type_name -> spqr.MetaTransactionGossipCommand
+	4,  // 8: spqr.MetaTransactionReply.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
+	4,  // 9: spqr.MetaTransactionRequest.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
+	4,  // 10: spqr.ExecNoTranRequest.metaCmdList:type_name -> spqr.MetaTransactionGossipCommand
+	5,  // 11: spqr.MetaTransactionGossipService.ApplyMeta:input_type -> spqr.MetaTransactionGossipRequest
+	8,  // 12: spqr.MetaTransactionService.ExecNoTran:input_type -> spqr.ExecNoTranRequest
+	7,  // 13: spqr.MetaTransactionService.CommitTran:input_type -> spqr.MetaTransactionRequest
+	11, // 14: spqr.MetaTransactionService.BeginTran:input_type -> google.protobuf.Empty
+	11, // 15: spqr.MetaTransactionGossipService.ApplyMeta:output_type -> google.protobuf.Empty
+	11, // 16: spqr.MetaTransactionService.ExecNoTran:output_type -> google.protobuf.Empty
+	11, // 17: spqr.MetaTransactionService.CommitTran:output_type -> google.protobuf.Empty
+	6,  // 18: spqr.MetaTransactionService.BeginTran:output_type -> spqr.MetaTransactionReply
+	15, // [15:19] is the sub-list for method output_type
+	11, // [11:15] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_protos_meta_transaction_proto_init() }
@@ -506,7 +564,7 @@ func file_protos_meta_transaction_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_meta_transaction_proto_rawDesc), len(file_protos_meta_transaction_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

@@ -89,6 +89,11 @@ message MoveTaskGroupSelector {
   string ID = 1;
 }
 
+message DropMoveTaskGroupRequest {
+  string ID = 1;
+  bool cascade = 2;
+}
+
 message MoveTaskGroupStatus {
   string state = 1;
   string message = 2; 
@@ -117,7 +122,10 @@ service MoveTasksService {
   rpc RemoveMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {
     option deprecated = true;
   }
-  rpc DropMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
+  rpc DropMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {
+    option deprecated = true;
+  }
+  rpc DropMoveTaskGroupV2(DropMoveTaskGroupRequest) returns(google.protobuf.Empty) {}
   rpc RetryMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
   rpc StopMoveTaskGroup(MoveTaskGroupSelector) returns(google.protobuf.Empty) {}
   rpc GetMoveTaskGroupBoundsCache(MoveTaskGroupSelector) returns(MoveTaskGroupBoundsCache) {}

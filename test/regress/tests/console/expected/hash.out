@@ -39,12 +39,12 @@ SHOW DISTRIBUTIONS;
 (1 row)
 
 SHOW RELATIONS;
- relation_name | distribution_id |  distribution_key  | schema_name  
----------------+-----------------+--------------------+--------------
- r1            | ds1             | ("col1", identity) | $search_path
- r2            | ds1             | ("col1", identity) | $search_path
- r3            | ds1             | ("col1", murmur)   | $search_path
- r4            | ds1             | ("col1", city)     | $search_path
+ relation_name | distribution_id |  distribution_key  | schema_name 
+---------------+-----------------+--------------------+-------------
+ r1            | ds1             | ("col1", identity) | public
+ r2            | ds1             | ("col1", identity) | public
+ r3            | ds1             | ("col1", murmur)   | public
+ r4            | ds1             | ("col1", city)     | public
 (4 rows)
 
 DROP DISTRIBUTION ALL CASCADE;

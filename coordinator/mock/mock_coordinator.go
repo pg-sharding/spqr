@@ -379,17 +379,17 @@ func (mr *MockCoordinatorMockRecorder) DropMoveTask(ctx, id any) *gomock.Call {
 }
 
 // DropMoveTaskGroup mocks base method.
-func (m *MockCoordinator) DropMoveTaskGroup(ctx context.Context, id string) error {
+func (m *MockCoordinator) DropMoveTaskGroup(ctx context.Context, id string, cascade bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DropMoveTaskGroup", ctx, id)
+	ret := m.ctrl.Call(m, "DropMoveTaskGroup", ctx, id, cascade)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DropMoveTaskGroup indicates an expected call of DropMoveTaskGroup.
-func (mr *MockCoordinatorMockRecorder) DropMoveTaskGroup(ctx, id any) *gomock.Call {
+func (mr *MockCoordinatorMockRecorder) DropMoveTaskGroup(ctx, id, cascade any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).DropMoveTaskGroup), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropMoveTaskGroup", reflect.TypeOf((*MockCoordinator)(nil).DropMoveTaskGroup), ctx, id, cascade)
 }
 
 // DropRedistributeTask mocks base method.
@@ -1189,6 +1189,21 @@ func (m *MockCoordinator) UpdateCoordinator(ctx context.Context, address string)
 func (mr *MockCoordinatorMockRecorder) UpdateCoordinator(ctx, address any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCoordinator", reflect.TypeOf((*MockCoordinator)(nil).UpdateCoordinator), ctx, address)
+}
+
+// UpdateKeyRange mocks base method.
+func (m *MockCoordinator) UpdateKeyRange(ctx context.Context, arg1 *kr.KeyRange) ([]qdb.QdbStatement, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateKeyRange", ctx, arg1)
+	ret0, _ := ret[0].([]qdb.QdbStatement)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateKeyRange indicates an expected call of UpdateKeyRange.
+func (mr *MockCoordinatorMockRecorder) UpdateKeyRange(ctx, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateKeyRange", reflect.TypeOf((*MockCoordinator)(nil).UpdateKeyRange), ctx, arg1)
 }
 
 // WriteBalancerTask mocks base method.

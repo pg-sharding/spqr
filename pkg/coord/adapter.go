@@ -277,6 +277,11 @@ func (a *Adapter) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.Qd
 	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (CreateKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
 }
 
+// DEPRECATED
+func (a *Adapter) UpdateKeyRange(ctx context.Context, kr *kr.KeyRange) ([]qdb.QdbStatement, error) {
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DEPRECATED (UpdateKeyRange in Adapter). Use ExecuteNoTran or CommitTran")
+}
+
 // TODO : unit tests
 
 // LockKeyRange locks the key range with the given ID.
@@ -1070,9 +1075,9 @@ func (a *Adapter) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveT
 //
 // Returns:
 // - error: An error if the removal of the task group fails, otherwise nil.
-func (a *Adapter) DropMoveTaskGroup(ctx context.Context, id string) error {
+func (a *Adapter) DropMoveTaskGroup(ctx context.Context, id string, cascade bool) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
-	_, err := tasksService.DropMoveTaskGroup(ctx, &proto.MoveTaskGroupSelector{ID: id})
+	_, err := tasksService.DropMoveTaskGroupV2(ctx, &proto.DropMoveTaskGroupRequest{ID: id, Cascade: cascade})
 	return spqrerror.CleanGrpcError(err)
 }
 
@@ -1237,7 +1242,7 @@ func (a *Adapter) DropBalancerTask(ctx context.Context) error {
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - address (string): The address of the coordinator to update.
+// - address (string): The address of the coordinator to Create.
 //
 // Returns:
 // - error: An error if the update operation fails, otherwise nil.
