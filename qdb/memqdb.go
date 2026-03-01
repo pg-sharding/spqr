@@ -925,7 +925,7 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	} else {
 		for _, r := range rels {
-			/* Do not use public iface function, becuase we already got lock. */
+			/* Do not use public iface function, because we already got lock. */
 			if _, err := q.relationDistributionInternal(r.QualifiedName()); err == nil {
 				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", r.QualifiedName().String())
 			}
