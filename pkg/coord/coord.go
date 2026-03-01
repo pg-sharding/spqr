@@ -549,6 +549,8 @@ func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distrib
 		return nil, err
 	}
 	ds := distributions.DistributionFromDB(ret)
+
+	/* TODO: fix that to use ListRelations() */
 	for relName := range ds.Relations {
 		qualifiedName, err := rfqn.ParseFQN(relName)
 		if err != nil {

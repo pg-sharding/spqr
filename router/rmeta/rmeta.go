@@ -104,9 +104,11 @@ func NewRoutingMetadataContext(sph session.SessionParamsHolder,
 }
 
 var CatalogDistribution = distributions.Distribution{
-	Relations: map[string]*distributions.DistributedRelation{},
-	Id:        distributions.REPLICATED,
-	ColTypes:  nil,
+	Relations:         map[string]*distributions.DistributedRelation{},
+	FQNRelations:      map[string]*distributions.DistributedRelation{},
+	UniqueIndexesByID: map[string]*distributions.UniqueIndex{},
+	Id:                distributions.REPLICATED,
+	ColTypes:          nil,
 }
 
 func IsRelationCatalog(resolvedRelation *rfqn.RelationFQN) bool {
@@ -331,7 +333,7 @@ func (rm *RoutingMetadataContext) ResolveRouteHint(ctx context.Context) (plan.Pl
 			}
 		} else {
 			first := true
-			for _, dr := range distrib.Relations {
+			for _, dr := range distrib.ListRelations() {
 				hfLocal, err := hashfunction.HashFunctionByName(dr.DistributionKey[0].HashFunction)
 				if err != nil {
 					return nil, err

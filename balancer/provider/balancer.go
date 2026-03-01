@@ -389,9 +389,7 @@ func (b *BalancerImpl) getKRRelations(ctx context.Context, kRange *kr.KeyRange) 
 		return nil, err
 	}
 	rels := make([]*distributions.DistributedRelation, 0, len(res.Distribution.Relations))
-	for _, rel := range ds.Relations {
-		rels = append(rels, rel)
-	}
+	rels = append(rels, ds.ListRelations()...)
 	return rels, nil
 }
 
