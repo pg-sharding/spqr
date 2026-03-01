@@ -695,6 +695,12 @@ func (l *LocalQrouterServer) DropSequence(ctx context.Context, request *protos.D
 	return nil, err
 }
 
+func (l *LocalQrouterServer) AlterSequenceDetachRelation(ctx context.Context, request *protos.AlterSequenceDetachRelationRequest) (*emptypb.Empty, error) {
+	rel := rfqn.RelationFQNFromProto(request.RelationName)
+	err := l.mgr.AlterSequenceDetachRelation(ctx, rel)
+	return nil, err
+}
+
 func (l *LocalQrouterServer) ApplyMeta(ctx context.Context, request *protos.MetaTransactionGossipRequest) (*emptypb.Empty, error) {
 	chunkCmd := mtran.NewMetaTransactionChunk(request.Commands)
 	return nil, l.mgr.ExecNoTran(ctx, chunkCmd)

@@ -309,7 +309,7 @@ func processDrop(ctx context.Context,
 		}
 
 		for _, rel := range rels {
-			if err := mngr.QDB().AlterSequenceDetachRelation(ctx, rel); err != nil {
+			if err := mngr.AlterSequenceDetachRelation(ctx, rel); err != nil {
 				return nil, err
 			}
 		}

@@ -153,6 +153,10 @@ func (d *DistributionsServer) ListRelationSequences(ctx context.Context, req *pr
 	return &protos.ListRelationSequencesReply{ColumnSequences: val}, nil
 }
 
+func (d *DistributionsServer) AlterSequenceDetachRelation(ctx context.Context, req *protos.AlterSequenceDetachRelationRequest) (*emptypb.Empty, error) {
+	return nil, d.impl.AlterSequenceDetachRelation(ctx, rfqn.RelationFQNFromProto(req.GetRelationName()))
+}
+
 func (d *DistributionsServer) ListSequences(ctx context.Context, _ *emptypb.Empty) (*protos.ListSequencesReply, error) {
 	seqs, err := d.impl.ListSequences(ctx)
 	if err != nil {
