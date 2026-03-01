@@ -19,3 +19,5 @@ test/feature/logs
 yacc/console/gram.y.save
 .DS_Store
 *.log
+*.tfstate*
+.terraform*

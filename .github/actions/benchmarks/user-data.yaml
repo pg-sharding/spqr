@@ -1,0 +1,39 @@
+#cloud-config
+datasource:
+ Ec2:
+  strict_id: false
+ssh_pwauth: no
+users:
+- name: diphantxm
+  sudo: ALL=(ALL) NOPASSWD:ALL
+  shell: /bin/bash
+  ssh_authorized_keys:
+  - ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBIYJu4nrqghhdnmV1hsvueRbF9mXkygFTuoY737g5a2nbypzn0b6tySunng1vFpiBfmnRx71yOcHJw2btdF8DZc= # Skotty key legacy on yubikey
+
+write_files:
+  - path: /etc/spqr/router.yaml
+    permissions: '0644'
+    content: |
+          ${indent(10, router_config)}
+  - path: /etc/spqr/init.sql
+    permissions: '0644'
+    content: |
+          ${indent(10, init_sql)}
+  - path: /etc/spqr/run.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      set -x
+
+      mkdir -p /etc/spqr/ && \
+      wget "https://storage.yandexcloud.net/cloud-certs/CA.pem" \
+          --output-document /etc/spqr/shard.pem && \
+      chmod 0600 /etc/spqr/shard.pem
+
+      /spqr/spqr-router run -c /etc/spqr/router.yaml &
+
+      while true; do sleep 1; done
+
+runcmd:
+  - mkdir -p /etc/spqr
