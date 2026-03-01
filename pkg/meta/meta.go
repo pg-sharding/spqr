@@ -1516,6 +1516,7 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+
 		tts, err = engine.RedistributeTasksVirtualRelationScan(redistributeTasks)
 		if err != nil {
 			return nil, err

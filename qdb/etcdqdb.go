@@ -1424,25 +1424,41 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 		return err
 	}
 
+	if distribution.FQNRelations == nil {
+		distribution.FQNRelations = map[string]*DistributedRelation{}
+	}
+
 	for _, rel := range rels {
-		if _, ok := distribution.GetRelation(rel.QualifiedName()); ok {
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.QualifiedName().String())
-		}
 
 		/* Now attach. For now, always attach to old path.
 		 * In future, we will attach new relation to fqn_relations.
 		 */
 
-		distribution.Relations[rel.Name] = rel
 		qname := rel.QualifiedName()
-		_, err := q.GetRelationDistribution(ctx, qname)
+		ds, err := q.GetRelationDistribution(ctx, qname)
+
 		switch e := err.(type) {
 		case *spqrerror.SpqrError:
 			if e.ErrorCode != spqrerror.SPQR_OBJECT_NOT_EXIST {
 				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", qname.String())
 			}
+
+			distribution.Relations[rel.Name] = rel
 		default:
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", qname.String())
+			if err != nil {
+				return err
+			}
+			if r, ok := ds.GetRelation(qname); ok {
+				if r.SchemaName == rel.SchemaName {
+					return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", qname.String())
+				} else {
+					/* Ok, store this to FQN relations. */
+
+					distribution.FQNRelations[rel.QualifiedName().MetadataKey()] = rel
+				}
+			} else {
+				return spqrerror.NewByCode(spqrerror.SPQR_METADATA_CORRUPTION)
+			}
 		}
 
 		resp, err := q.cli.Put(ctx, relationMappingNodePath(rel.QualifiedName()), id)
