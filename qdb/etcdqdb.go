@@ -127,6 +127,10 @@ func relationMappingNodePath(relation *rfqn.RelationFQN) string {
 	return path.Join(relationMappingNamespace, relation.RelationName)
 }
 
+func relationMappingNodePathV2(relation *rfqn.RelationFQN) string {
+	return path.Join(relationMappingNamespace, relation.String())
+}
+
 func keyRangeMovesNodePath(key string) string {
 	return path.Join(keyRangeMovesNamespace, key)
 }
@@ -1421,9 +1425,14 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 	}
 
 	for _, rel := range rels {
-		if _, ok := distribution.Relations[rel.Name]; ok {
+		if _, ok := distribution.GetRelation(rel.QualifiedName()); ok {
 			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.QualifiedName().String())
 		}
+
+		/* Now attach. For now, always attach to old path.
+		 * In future, we will attach new relation to fqn_relations.
+		 */
+
 		distribution.Relations[rel.Name] = rel
 		qname := rel.QualifiedName()
 		_, err := q.GetRelationDistribution(ctx, qname)
@@ -1661,8 +1670,24 @@ func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName *rfqn.Rel
 	}
 	switch len(resp.Kvs) {
 	case 0:
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution for relation \"%s\" not found", relName)
+		/* If /relation_mapping/relname is missing, we are not done yet.
+		* Try lookup by full name.
+		 */
 
+		{
+			respModern, err := q.cli.Get(ctx, relationMappingNodePathV2(relName))
+			if err != nil {
+				return nil, err
+			}
+
+			/*  case 0 here is not much different from first one. */
+			if len(respModern.Kvs) == 1 {
+				id := string(respModern.Kvs[0].Value)
+				return q.GetDistribution(ctx, id)
+			}
+		}
+
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution for relation \"%s\" not found", relName)
 	case 1:
 		id := string(resp.Kvs[0].Value)
 		return q.GetDistribution(ctx, id)

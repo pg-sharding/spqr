@@ -313,14 +313,23 @@ type Distribution struct {
 	ColTypes          []string
 	Relations         map[string]*DistributedRelation
 	UniqueIndexesByID map[string]*UniqueIndex
+
+	FQNRelations map[string]*DistributedRelation
 }
 
 func (s *Distribution) GetRelation(relname *rfqn.RelationFQN) *DistributedRelation {
-	return s.Relations[relname.RelationName]
+	if r, ok := s.Relations[relname.RelationName]; ok {
+		return r
+	}
+	return s.FQNRelations[relname.String()]
 }
 
 func (s *Distribution) TryGetRelation(relname *rfqn.RelationFQN) (*DistributedRelation, bool) {
 	r, ok := s.Relations[relname.RelationName]
+	if ok {
+		return r, ok
+	}
+	r, ok = s.FQNRelations[relname.RelationName]
 	return r, ok
 }
 
