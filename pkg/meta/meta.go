@@ -198,7 +198,8 @@ func processDrop(ctx context.Context,
 			}
 
 			if stmt.ID != distributions.REPLICATED {
-				for _, rel := range ds.ListRelations() {
+				/* Do not try to detach FQN relations. */
+				for _, rel := range ds.Relations {
 					if err := mngr.AlterDistributionDetach(ctx, ds.Id, rel.Relation); err != nil {
 						return nil, err
 					}
