@@ -669,7 +669,8 @@ show_statement_type:
 			PreparedStatementsStr, QuantilesStr, SequencesStr,
 			IsReadOnlyStr, MoveStatsStr, TsaCacheStr, Users,
 			MoveTaskStr, MoveTasksStr, UniqueIndexesStr,
-			TaskGroupBoundsCacheStr, RedistributeTasksStr, ErrorStr:
+			TaskGroupExtendedStr, TaskGroupsExtendedStr, RedistributeTasksStr,
+			ErrorStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -723,9 +724,9 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &ShardSelector{ID: $3}, CascadeDelete: $4}
 	}
-	| DROP TASK GROUP any_id
+	| DROP TASK GROUP any_id opt_cascade
 	{
-		$$ = &Drop{Element: &TaskGroupSelector{ ID: $4 }}
+		$$ = &Drop{Element: &TaskGroupSelector{ ID: $4 }, CascadeDelete: $5}
 	}
 	| DROP SEQUENCE any_id opt_cascade
 	{
@@ -747,12 +748,13 @@ drop_stmt:
 			},
 		}
 	}
-	| DROP REDISTRIBUTE TASK any_id
+	| DROP REDISTRIBUTE TASK any_id opt_cascade
 	{
 		$$ = &Drop{
 			Element: &RedistributeTaskSelector{
 				ID: $4,
 			},
+			CascadeDelete: $5,
 		}
 	}
 	| DROP MOVE TASK any_id

@@ -19,6 +19,7 @@ type KeyRange struct {
 	KeyRangeID     string
 	DistributionId string
 	Locked         bool
+	Version        int
 }
 
 // Do not marshal Locked field
@@ -28,6 +29,13 @@ type internalKeyRange struct {
 	KeyRangeID     string   `json:"key_range_id"`
 	DistributionId string   `json:"distribution_id"`
 }
+
+type KeyRangeMeta struct {
+	Version    int       `json:"version"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	ModifiedBy string    `json:"modified_by"`
+}
+
 type MoveKeyRangeStatus string
 
 const (
@@ -130,6 +138,7 @@ type Distribution struct {
 	ID            string                          `json:"id"`
 	ColTypes      []string                        `json:"col_types,omitempty"`
 	Relations     map[string]*DistributedRelation `json:"relations"`
+	FQNRelations  map[string]*DistributedRelation `json:"fqn_relations,omitempty"`
 	UniqueIndexes map[string]*UniqueIndex         `json:"unique_indexes"`
 }
 
@@ -167,16 +176,27 @@ type MoveTask struct {
 	State       int      `json:"state"`
 }
 
+const (
+	IssuerRedistributeTask = iota + 1
+	IssuerBalancerTask
+)
+
+type MoveTaskGroupIssuer struct {
+	Type int    `json:"type"`
+	Id   string `json:"id"`
+}
+
 type MoveTaskGroup struct {
-	Type      int       `json:"type"`
-	ShardToId string    `json:"shard_to_id"`
-	KrIdFrom  string    `json:"kr_id_from"`
-	KrIdTo    string    `json:"kr_id_to"`
-	BoundRel  string    `json:"rel"`
-	Coeff     float64   `json:"coeff"`
-	BatchSize int64     `json:"batch_size"`
-	Limit     int64     `json:"limit"`
-	CreatedAt time.Time `json:"created_at"`
+	Type      int                  `json:"type"`
+	ShardToId string               `json:"shard_to_id"`
+	KrIdFrom  string               `json:"kr_id_from"`
+	KrIdTo    string               `json:"kr_id_to"`
+	BoundRel  string               `json:"rel"`
+	Coeff     float64              `json:"coeff"`
+	BatchSize int64                `json:"batch_size"`
+	Limit     int64                `json:"limit"`
+	CreatedAt time.Time            `json:"created_at"`
+	Issuer    *MoveTaskGroupIssuer `json:"issuer"`
 }
 
 type TaskGroupStatus struct {
@@ -245,13 +265,14 @@ func keyRangeToInternal(keyRange *KeyRange) *internalKeyRange {
 	}
 }
 
-func keyRangeFromInternal(keyRange *internalKeyRange, locked bool) *KeyRange {
+func keyRangeFromInternal(keyRange *internalKeyRange, locked bool, version int) *KeyRange {
 	return &KeyRange{
 		LowerBound:     keyRange.LowerBound,
 		ShardID:        keyRange.ShardID,
 		KeyRangeID:     keyRange.KeyRangeID,
 		DistributionId: keyRange.DistributionId,
 		Locked:         locked,
+		Version:        version,
 	}
 }
 
@@ -263,4 +284,14 @@ type TwoPCInfo struct {
 
 	/* ephemeral part of state */
 	Locked bool `json:"-"`
+}
+
+func (d *Distribution) GetRelation(fqn *rfqn.RelationFQN) (*DistributedRelation, bool) {
+	r, ok := d.Relations[fqn.RelationName]
+	if ok {
+		return r, ok
+	}
+
+	r, ok = d.FQNRelations[fqn.String()]
+	return r, ok
 }

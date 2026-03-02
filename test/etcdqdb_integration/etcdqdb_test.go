@@ -317,3 +317,46 @@ func TestTransactions(t *testing.T) {
 
 	})
 }
+
+func TestGetMoveTaskGroup(t *testing.T) {
+	assert := assert.New(t)
+	err := setupTestSet(t)
+	assert.NoError(err)
+	defer func() {
+		_ = Down()
+	}()
+	assert.NoError(err)
+	t.Run("test Begin tran", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.TODO(), TestTimeout)
+		defer cancel()
+		db, err := setupSubTest(ctx)
+		assert.NoError(err)
+		t.Run("empty request returns no task groups", func(t *testing.T) {
+			assert.NoError(db.WriteMoveTaskGroup(
+				ctx,
+				"tg1",
+				&qdb.MoveTaskGroup{},
+				0,
+				nil,
+			))
+			taskGroup, err := db.GetMoveTaskGroup(ctx, "")
+			assert.NoError(err)
+			assert.Nil(taskGroup)
+		})
+		t.Run("base case", func(t *testing.T) {
+			tg := &qdb.MoveTaskGroup{ShardToId: "shard_to", KrIdFrom: "kr_from", KrIdTo: "kr_to"}
+			assert.NoError(db.WriteMoveTaskGroup(
+				ctx,
+				"some_task_group",
+				tg,
+				0,
+				nil,
+			))
+			taskGroup, err := db.GetMoveTaskGroup(ctx, "some_task_group")
+			assert.NoError(err)
+			assert.Equal(tg.KrIdFrom, taskGroup.KrIdFrom)
+			assert.Equal(tg.KrIdTo, taskGroup.KrIdTo)
+			assert.Equal(tg.ShardToId, taskGroup.ShardToId)
+		})
+	})
+}

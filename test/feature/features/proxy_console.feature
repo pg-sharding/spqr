@@ -292,7 +292,7 @@ Feature: Proxy console
             "batch_size":               "0",
             "move_task_id":             "2",
             "state":                    "PLANNED",
-            "error":                    ""
+            "message":                  ""
         }]
         """
         When I run SQL on host "router-admin"

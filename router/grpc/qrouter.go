@@ -609,13 +609,18 @@ func (l *LocalQrouterServer) WriteMoveTaskGroup(ctx context.Context, request *pr
 }
 
 // TODO: unit tests
+func (l *LocalQrouterServer) DropMoveTaskGroupV2(ctx context.Context, req *protos.DropMoveTaskGroupRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID, req.Cascade)
+}
+
+// TODO: unit tests
 func (l *LocalQrouterServer) DropMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID)
+	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID, false)
 }
 
 // Deprecated
 func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, req *protos.MoveTaskGroupSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID)
+	return nil, l.mgr.DropMoveTaskGroup(ctx, req.ID, false)
 }
 
 // TODO: unit tests
@@ -653,7 +658,11 @@ func (l *LocalQrouterServer) ListRedistributeTasks(ctx context.Context, _ *empty
 }
 
 func (l *LocalQrouterServer) DropRedistributeTask(ctx context.Context, req *protos.RedistributeTaskSelector) (*emptypb.Empty, error) {
-	return nil, l.mgr.DropRedistributeTask(ctx, req.Id)
+	return nil, l.mgr.DropRedistributeTask(ctx, req.Id, false)
+}
+
+func (l *LocalQrouterServer) DropRedistributeTaskV2(ctx context.Context, req *protos.DropRedistributeTaskRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.DropRedistributeTask(ctx, req.Id, req.Cascade)
 }
 
 // TODO: unit tests

@@ -39,19 +39,33 @@ const (
 	SplitRight
 )
 
+type MoveTaskGroupIssuerType int
+
+const (
+	IssuerTypeUnknown MoveTaskGroupIssuerType = iota
+	IssuerRedistributeTask
+	IssuerBalancerTask
+)
+
+type MoveTaskGroupIssuer struct {
+	Type MoveTaskGroupIssuerType `json:"type"`
+	Id   string                  `json:"id"`
+}
+
 type MoveTaskGroup struct {
-	ID          string    `json:"id"`
-	ShardToId   string    `json:"shard_to_id"`
-	KrIdFrom    string    `json:"kr_id_from"`
-	KrIdTo      string    `json:"kr_id_to"`
-	Type        SplitType `json:"type"`
-	BoundRel    string    `json:"bound_rel"`
-	Coeff       float64   `json:"coeff"`
-	BatchSize   int64     `json:"batch_size"`
-	Limit       int64     `json:"limit"`
-	TotalKeys   int64     `json:"total_keys"`
-	CurrentTask *MoveTask `json:"task"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          string               `json:"id"`
+	ShardToId   string               `json:"shard_to_id"`
+	KrIdFrom    string               `json:"kr_id_from"`
+	KrIdTo      string               `json:"kr_id_to"`
+	Type        SplitType            `json:"type"`
+	BoundRel    string               `json:"bound_rel"`
+	Coeff       float64              `json:"coeff"`
+	BatchSize   int64                `json:"batch_size"`
+	Limit       int64                `json:"limit"`
+	TotalKeys   int64                `json:"total_keys"`
+	CurrentTask *MoveTask            `json:"task"`
+	CreatedAt   time.Time            `json:"created_at"`
+	Issuer      *MoveTaskGroupIssuer `json:"issuer"`
 }
 
 type TaskGroupState string
@@ -83,6 +97,74 @@ type RedistributeTask struct {
 	BatchSize   int
 	TempKrId    string
 	State       RedistributeTaskState
+	TaskGroup   *MoveTaskGroup
+}
+
+func TaskGroupIssuerToProto(issuer *MoveTaskGroupIssuer) *protos.MoveTaskGroupIssuer {
+	if issuer == nil {
+		return nil
+	}
+	return &protos.MoveTaskGroupIssuer{
+		Type: func() protos.MoveTaskGroupIssuerType {
+			switch issuer.Type {
+			case IssuerRedistributeTask:
+				return protos.MoveTaskGroupIssuerType_IssuerRedistributeTask
+			case IssuerBalancerTask:
+				return protos.MoveTaskGroupIssuerType_IssuerBalancerTask
+			default:
+				return protos.MoveTaskGroupIssuerType_IssuerUnknown
+			}
+		}(),
+		Id: issuer.Id,
+	}
+}
+
+func TaskGroupIssuerFromProto(issuer *protos.MoveTaskGroupIssuer) *MoveTaskGroupIssuer {
+	if issuer == nil {
+		return nil
+	}
+	return &MoveTaskGroupIssuer{
+		Type: func() MoveTaskGroupIssuerType {
+			switch issuer.Type {
+			case protos.MoveTaskGroupIssuerType_IssuerRedistributeTask:
+				return IssuerRedistributeTask
+			case protos.MoveTaskGroupIssuerType_IssuerBalancerTask:
+				return IssuerBalancerTask
+			default:
+				return IssuerTypeUnknown
+			}
+		}(),
+		Id: issuer.Id,
+	}
+}
+
+func TaskGroupIssuerToDB(issuer *MoveTaskGroupIssuer) *qdb.MoveTaskGroupIssuer {
+	if issuer == nil {
+		return nil
+	}
+	return &qdb.MoveTaskGroupIssuer{
+		Type: int(issuer.Type),
+		Id:   issuer.Id,
+	}
+}
+
+func TaskGroupIssuerFromDB(issuer *qdb.MoveTaskGroupIssuer) *MoveTaskGroupIssuer {
+	if issuer == nil {
+		return nil
+	}
+	return &MoveTaskGroupIssuer{
+		Type: func() MoveTaskGroupIssuerType {
+			switch issuer.Type {
+			case int(IssuerRedistributeTask):
+				return IssuerRedistributeTask
+			case int(IssuerBalancerTask):
+				return IssuerBalancerTask
+			default:
+				return IssuerTypeUnknown
+			}
+		}(),
+		Id: issuer.Id,
+	}
 }
 
 // TaskGroupToProto converts a MoveTaskGroup object to its corresponding protobuf representation.
@@ -109,6 +191,7 @@ func TaskGroupToProto(group *MoveTaskGroup) *protos.MoveTaskGroup {
 		TotalKeys:      group.TotalKeys,
 		BatchSize:      group.BatchSize,
 		BoundRel:       group.BoundRel,
+		Issuer:         TaskGroupIssuerToProto(group.Issuer),
 	}
 }
 
@@ -243,6 +326,7 @@ func TaskGroupFromProto(group *protos.MoveTaskGroup) *MoveTaskGroup {
 		TotalKeys:   group.TotalKeys,
 		BatchSize:   group.BatchSize,
 		BoundRel:    group.BoundRel,
+		Issuer:      TaskGroupIssuerFromProto(group.Issuer),
 	}
 }
 
@@ -356,6 +440,7 @@ func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
 		BatchSize: group.BatchSize,
 		Limit:     group.Limit,
 		CreatedAt: group.CreatedAt,
+		Issuer:    TaskGroupIssuerToDB(group.Issuer),
 	}
 }
 
@@ -409,6 +494,7 @@ func TaskGroupFromDb(id string, group *qdb.MoveTaskGroup, moveTask *qdb.MoveTask
 		CurrentTask: TaskFromDb(moveTask),
 		TotalKeys:   totalKeys,
 		CreatedAt:   group.CreatedAt,
+		Issuer:      TaskGroupIssuerFromDB(group.Issuer),
 	}
 }
 
@@ -564,6 +650,7 @@ func RedistributeTaskToProto(task *RedistributeTask) *protos.RedistributeTask {
 		ShardId:     task.ShardId,
 		BatchSize:   int64(task.BatchSize),
 		State:       RedistributeTaskStateToProto(task.State),
+		TaskGroup:   TaskGroupToProto(task.TaskGroup),
 	}
 }
 
@@ -578,6 +665,7 @@ func RedistributeTaskFromProto(task *protos.RedistributeTask) *RedistributeTask 
 		ShardId:     task.ShardId,
 		BatchSize:   int(task.BatchSize),
 		State:       RedistributeTaskStateFromProto(task.State),
+		TaskGroup:   TaskGroupFromProto(task.TaskGroup),
 	}
 }
 
@@ -595,7 +683,7 @@ func RedistributeTaskToDB(task *RedistributeTask) *qdb.RedistributeTask {
 	}
 }
 
-func RedistributeTaskFromDB(task *qdb.RedistributeTask) *RedistributeTask {
+func RedistributeTaskFromDB(task *qdb.RedistributeTask, taskGroup *MoveTaskGroup) *RedistributeTask {
 	if task == nil {
 		return nil
 	}
@@ -615,6 +703,7 @@ func RedistributeTaskFromDB(task *qdb.RedistributeTask) *RedistributeTask {
 				panic("unknown redistribute task type")
 			}
 		}(),
+		TaskGroup: taskGroup,
 	}
 }
 

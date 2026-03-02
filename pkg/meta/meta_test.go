@@ -98,6 +98,7 @@ func TestCreateDistrWithDefaultShardSuccess(t *testing.T) {
 		ShardID:        "sh1",
 		KeyRangeID:     "dbTestDefault.DEFAULT",
 		DistributionId: "dbTestDefault",
+		Version:        1,
 	}
 	actualKr, errKr := memqdb.GetKeyRange(ctx, "dbTestDefault.DEFAULT")
 	assert.Nil(t, errKr)
@@ -196,8 +197,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 		is.Equal(tupleslotExpected, tupleslotActual)
 		relActual, err := mngr.GetReferenceRelation(ctx, rfqn.RelationFQNFromFullName("", "xtab"))
 		relExpected := rrelation.ReferenceRelation{
-			SchemaName:            "",
-			TableName:             "xtab",
+			RelationName:          rfqn.RelationFQNFromFullName("", "xtab"),
 			ShardIds:              []string{"sh1", "sh2"},
 			SchemaVersion:         1,
 			ColumnSequenceMapping: make(map[string]string),
@@ -234,8 +234,7 @@ func TestCreateReferenceRelation(t *testing.T) {
 		is.Equal(tupleslotExpected, tupleslotActual)
 		relActual, err := mngr.GetReferenceRelation(ctx, rfqn.RelationFQNFromFullName("", "xtab"))
 		relExpected := rrelation.ReferenceRelation{
-			SchemaName:            "",
-			TableName:             "xtab",
+			RelationName:          rfqn.RelationFQNFromFullName("", "xtab"),
 			ShardIds:              []string{"sh2"},
 			SchemaVersion:         1,
 			ColumnSequenceMapping: make(map[string]string),

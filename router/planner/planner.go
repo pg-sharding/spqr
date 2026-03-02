@@ -64,9 +64,26 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 					return nil, err
 				}
 			} else {
-				err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionId, rm.SPH.DistributionKey())
-				if err != nil {
-					return nil, err
+				if v.IfNotExists {
+					if d, err := rm.Mgr.GetDistribution(ctx, distributionId); err != nil {
+						// ok
+						return nil, err
+					} else {
+						/* Attached */
+						if d.GetRelation(rfqn.RelationFQNFromRangeRangeVar(q)) != nil {
+							/* ok */
+						} else {
+							err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionId, rm.SPH.DistributionKey())
+							if err != nil {
+								return nil, err
+							}
+						}
+					}
+				} else {
+					err := console.AlterDistributionAttach(ctx, rm.Mgr, q, distributionId, rm.SPH.DistributionKey())
+					if err != nil {
+						return nil, err
+					}
 				}
 			}
 		}
@@ -236,7 +253,10 @@ func PlanDistributedRelationInsert(
 
 	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 	tupleShards := make([]kr.ShardKey, len(routingList))
-	relation := ds.GetRelation(qualName)
+	relation, ok := ds.TryGetRelation(qualName)
+	if !ok {
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+	}
 
 	for i := range routingList {
 		tup := make([]any, len(ds.ColTypes))
@@ -592,6 +612,8 @@ func (plr *PlannerV2) PlanDistributedQuery(ctx context.Context,
 		}, nil
 	case *lyx.ExplainStmt:
 		return plr.PlanDistributedQuery(ctx, rm, v.Query, allowRewrite)
+	case *lyx.SubLink:
+		return plr.PlanDistributedQuery(ctx, rm, v.SubSelect, allowRewrite)
 	case *lyx.Select:
 		/* Should be single-relation scan or values. Join to be supported */
 		if len(v.FromClause) == 0 {

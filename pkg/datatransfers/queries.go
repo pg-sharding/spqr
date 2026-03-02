@@ -2,8 +2,10 @@ package datatransfers
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router/rfqn"
 )
 
 const CalculateSplitBounds = `
@@ -77,10 +79,18 @@ $$
 language plpgsql;`, spqrTransferApplicationName, config.CoordinatorConfig().DataMoveAwaitPIDException)
 }
 
-func checkColumnExistsQuery(relName, schema, colName string) string {
-	return fmt.Sprintf(`SELECT count(*) > 0 as column_exists FROM information_schema.columns WHERE table_name = '%s' AND table_schema = '%s' AND column_name = '%s'`, relName, schema, colName)
+func checkColumnExistsQuery(relation *rfqn.RelationFQN, colName string) string {
+	return fmt.Sprintf(`
+	SELECT
+		count(*) > 0 as column_exists
+	FROM information_schema.columns
+	WHERE table_name = '%s' AND table_schema = '%s' AND column_name = '%s'`, strings.ToLower(relation.RelationName), strings.ToLower(relation.GetSchema()), colName)
 }
 
 func checkConstraintsQuery(dsRelOids, rpRelsClause string) string {
-	return fmt.Sprintf(`SELECT conname FROM pg_constraint WHERE conrelid IN (%s) and confrelid != 0 and (condeferrable=false or not (confrelid IN (%s)))%s LIMIT 1`, dsRelOids, dsRelOids, rpRelsClause)
+	return fmt.Sprintf(`
+	SELECT
+		conname
+	FROM pg_constraint
+	WHERE conrelid IN (%s) and confrelid != 0 and (condeferrable=false or not (confrelid IN (%s)))%s LIMIT 1`, dsRelOids, dsRelOids, rpRelsClause)
 }

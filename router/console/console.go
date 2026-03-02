@@ -75,7 +75,9 @@ func (l *LocalInstanceConsole) ExecuteMetadataQuery(
 			return err
 		}
 		switch tstmt.Cmd {
-		case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr, spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr, spqrparser.RedistributeTasksStr:
+		case spqrparser.RoutersStr, spqrparser.TaskGroupStr, spqrparser.TaskGroupsStr,
+			spqrparser.MoveTaskStr, spqrparser.MoveTasksStr, spqrparser.SequencesStr,
+			spqrparser.RedistributeTasksStr, spqrparser.TaskGroupExtendedStr, spqrparser.TaskGroupsExtendedStr:
 			mgr, cf, err = coord.DistributedMgr(ctx, l.entityMgr)
 			if err != nil {
 				return err

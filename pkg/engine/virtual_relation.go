@@ -301,12 +301,9 @@ func ReferenceRelationsScan(rrs []*rrelation.ReferenceRelation) *tupleslot.Tuple
 		Desc: GetVPHeader("table_name", "schema_name", "schema_version", "shards", "column_sequence_mapping"),
 	}
 	for _, r := range rrs {
-		schema := r.SchemaName
-		if schema == "" {
-			schema = "$search_path"
-		}
+		schema := r.RelationName.GetSchema()
 		tts.Raw = append(tts.Raw, [][]byte{
-			[]byte(r.TableName),
+			[]byte(r.RelationName.RelationName),
 			[]byte(schema),
 			fmt.Appendf(nil, "%d", r.SchemaVersion),
 			fmt.Appendf(nil, "%+v", r.ShardIds),
@@ -416,10 +413,7 @@ func RelationsVirtualRelationScan(
 				}
 				dsKey[i] = fmt.Sprintf("(\"%s\", %s)", e.Column, hashfunction.ToString(t))
 			}
-			schema := rel.Relation.SchemaName
-			if schema == "" {
-				schema = "$search_path"
-			}
+			schema := rel.Relation.GetSchema()
 			tts.WriteDataRow(rel.Relation.RelationName, ds, strings.Join(dsKey, ","), schema)
 			c++
 		}
@@ -585,7 +579,7 @@ func UniqueIndexesVirtualRelationScan(idToidxs map[string]*distributions.UniqueI
 
 func TaskGroupsVirtualRelationScan(groups map[string]*tasks.MoveTaskGroup, statuses map[string]*tasks.MoveTaskGroupStatus) *tupleslot.TupleTableSlot {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("task_group_id", "destination_shard_id", "source_key_range_id", "destination_key_range_id", "batch_size", "move_task_id", "state", "error", "created_at", "updated_at"),
+		Desc: GetVPHeader("task_group_id", "destination_shard_id", "source_key_range_id", "destination_key_range_id", "batch_size", "move_task_id", "state", "message", "created_at", "updated_at"),
 	}
 	for id, group := range groups {
 		status, ok := statuses[id]
@@ -638,29 +632,39 @@ func MoveTasksVirtualRelationScan(ts map[string]*tasks.MoveTask, dsIDColTypes ma
 	return tts, nil
 }
 
-func TaskGroupBoundsCacheVirtualRelationScan(bounds [][][]byte, index int, colTypes []string, id string) (*tupleslot.TupleTableSlot, error) {
+func TaskGroupBoundsCacheVirtualRelationScan(boundsMap map[string][][][]byte, indexMap map[string]int, colTypesMap map[string][]string) (*tupleslot.TupleTableSlot, error) {
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader("task_group_id", "bound", "status"),
 	}
-	for i, bound := range bounds {
-		krData := []string{""}
-		if bound != nil {
-			kRange, err := kr.KeyRangeFromBytes(bound, colTypes)
-			if err != nil {
-				return nil, err
-			}
-			krData = kRange.SendRaw()
+	for id, bounds := range boundsMap {
+		index, ok := indexMap[id]
+		if !ok {
+			return nil, fmt.Errorf("index for task group \"%s\" not present", id)
 		}
-		tts.WriteDataRow(
-			id,
-			strings.Join(krData, ";"),
-			func() string {
-				if i < index {
-					return "USED"
+		colTypes, ok := colTypesMap[id]
+		if !ok {
+			return nil, fmt.Errorf("column types for task group \"%s\" not present", id)
+		}
+		for i, bound := range bounds {
+			krData := []string{""}
+			if bound != nil {
+				kRange, err := kr.KeyRangeFromBytes(bound, colTypes)
+				if err != nil {
+					return nil, err
 				}
-				return ""
-			}(),
-		)
+				krData = kRange.SendRaw()
+			}
+			tts.WriteDataRow(
+				id,
+				strings.Join(krData, ";"),
+				func() string {
+					if i < index {
+						return "USED"
+					}
+					return ""
+				}(),
+			)
+		}
 	}
 	return tts, nil
 }

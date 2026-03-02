@@ -76,10 +76,10 @@ SHOW relations WHERE distribution_id = 'REPLICATED';
 (2 rows)
 
 SHOW reference_relations;
- table_name | schema_name  | schema_version |      shards       | column_sequence_mapping 
-------------+--------------+----------------+-------------------+-------------------------
- r          | $search_path | 1              | [sh1 sh2 sh3 sh4] | map[]
- rr         | nsp1         | 1              | [sh1 sh2 sh3 sh4] | map[]
+ table_name | schema_name | schema_version |      shards       | column_sequence_mapping 
+------------+-------------+----------------+-------------------+-------------------------
+ r          | public      | 1              | [sh1 sh2 sh3 sh4] | map[]
+ rr         | nsp1        | 1              | [sh1 sh2 sh3 sh4] | map[]
 (2 rows)
 
 DROP DISTRIBUTION ALL CASCADE;

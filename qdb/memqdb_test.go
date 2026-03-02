@@ -62,11 +62,8 @@ func TestMemqdbRacing(t *testing.T) {
 		},
 		func() {
 			if stmts, err := memqdb.CreateKeyRange(ctx, mockKeyRange); err == nil {
-				if err = memqdb.ExecNoTransaction(ctx, stmts); err != nil {
-					panic("fail run CreateKeyRange in race test (exec phase)")
-				}
+				_ = memqdb.ExecNoTransaction(ctx, stmts)
 			}
-
 		},
 		func() { _ = memqdb.AddRouter(ctx, mockRouter) },
 		func() { _ = memqdb.AddShard(ctx, mockShard) },
@@ -91,7 +88,7 @@ func TestMemqdbRacing(t *testing.T) {
 			_, _ = memqdb.LockKeyRange(ctx, mockKeyRange.KeyRangeID)
 			_ = memqdb.UnlockKeyRange(ctx, mockKeyRange.KeyRangeID)
 		},
-		func() { _ = memqdb.UpdateKeyRange(ctx, mockKeyRange) },
+		func() { _, _ = memqdb.UpdateKeyRange(ctx, mockKeyRange) },
 		func() { _ = memqdb.DeleteRouter(ctx, mockRouter.ID) },
 		func() {
 			tran1, err := qdb.NewTransaction()

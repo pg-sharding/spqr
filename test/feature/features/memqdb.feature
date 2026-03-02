@@ -64,19 +64,19 @@ Feature: MemQDB save state into a file
         "relation_name": "a",
         "distribution_id": "ds1",
         "distribution_key": "(\"a_id\", murmur)",
-        "schema_name": "$search_path"
+        "schema_name": "public"
       },
       {
         "relation_name": "b",
         "distribution_id": "ds2",
         "distribution_key": "(\"b_id\", identity)",
-        "schema_name": "$search_path"
+        "schema_name": "public"
       },
       {
         "relation_name": "c",
         "distribution_id": "ds2",
         "distribution_key": "(\"c_id\", identity)",
-        "schema_name": "$search_path"
+        "schema_name": "public"
       }
     ]
     """

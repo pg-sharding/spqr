@@ -1117,7 +1117,7 @@ func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 	var taskGroup tasks.MoveTaskGroup
 	if err := json.Unmarshal([]byte(query), &taskGroup); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal request")
+		spqrlog.Zero.Error().Str("func", "stepRecordQDBTaskGroup").Err(err).Msg("failed to unmarshal request")
 		return err
 	}
 
@@ -1130,7 +1130,7 @@ func (tctx *testContext) stepRecordQDBRedistributeTask(body *godog.DocString) er
 	query := strings.TrimSpace(body.Content)
 	var task *tasks.RedistributeTask
 	if err := json.Unmarshal([]byte(query), &task); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("failed to unmarshal request")
+		spqrlog.Zero.Error().Str("func", "stepRecordQDBRedistributeTask").Err(err).Msg("failed to unmarshal request")
 		return err
 	}
 
