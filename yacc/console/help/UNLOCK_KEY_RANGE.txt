@@ -1,0 +1,22 @@
+NAME
+    UNLOCK KEY RANGE - Releases the lock on a key range that was previously locked with LOCK KEY RANGE.
+
+SYNTAX
+    UNLOCK KEY RANGE <keyRangeID>
+
+DESCRIPTION
+    Releases the lock on a key range that was previously locked with LOCK KEY RANGE.
+    After unlocking, queries routed to this key range will resume normal processing.
+
+PARAMETERS
+    <keyRangeID> - Identifier of the key range to unlock
+
+TIPS
+    - Always unlock key ranges after completing maintenance operations
+    - Forgetting to unlock will block queries routed to the key range
+
+RELATED COMMANDS
+    LOCK KEY RANGE
+    SPLIT KEY RANGE
+    UNITE KEY RANGE
+    SHOW KEY RANGES

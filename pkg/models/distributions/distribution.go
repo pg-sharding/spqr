@@ -325,12 +325,25 @@ func (s *Distribution) GetRelation(relname *rfqn.RelationFQN) *DistributedRelati
 }
 
 func (s *Distribution) TryGetRelation(relname *rfqn.RelationFQN) (*DistributedRelation, bool) {
-	r, ok := s.Relations[relname.RelationName]
+	r, ok := s.FQNRelations[relname.MetadataKey()]
 	if ok {
 		return r, ok
 	}
-	r, ok = s.FQNRelations[relname.RelationName]
+
+	r, ok = s.Relations[relname.RelationName]
 	return r, ok
+}
+
+func (s *Distribution) ListRelations() []*DistributedRelation {
+	ret := []*DistributedRelation{}
+
+	for _, r := range s.Relations {
+		ret = append(ret, r)
+	}
+	for _, r := range s.FQNRelations {
+		ret = append(ret, r)
+	}
+	return ret
 }
 
 // local table sharding distr -> route to world
@@ -347,6 +360,7 @@ func NewDistribution(id string, coltypes []string) *Distribution {
 	return &Distribution{
 		Id:                id,
 		ColTypes:          coltypes,
+		FQNRelations:      map[string]*DistributedRelation{},
 		Relations:         map[string]*DistributedRelation{},
 		UniqueIndexesByID: map[string]*UniqueIndex{},
 	}
@@ -381,6 +395,10 @@ func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 			}
 		}
 		ret.Relations[name] = DistributedRelationFromDB(val, relIdxs)
+	}
+
+	for name, val := range distr.FQNRelations {
+		ret.FQNRelations[name] = DistributedRelationFromDB(val, make(map[string]*UniqueIndex))
 	}
 	return ret
 }
@@ -420,6 +438,18 @@ func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
 			return nil, err
 		}
 	}
+
+	fqn_rels := make(map[string]*DistributedRelation)
+	for _, rel := range ds.FqnRelations {
+
+		var err error
+
+		fqn_rels[rfqn.RelationFQNFromFullName(rel.SchemaName, rel.Name).MetadataKey()], err = DistributedRelationFromProto(rel, map[string]*UniqueIndex{})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if len(idxsByRel) > 0 {
 		rels := make([]string, 0, len(idxsByRel))
 		for rel := range idxsByRel {
@@ -433,6 +463,7 @@ func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
 		ColTypes:          ds.ColumnTypes,
 		Relations:         rels,
 		UniqueIndexesByID: idxsById,
+		FQNRelations:      fqn_rels,
 	}, nil
 }
 
@@ -445,8 +476,12 @@ func DistributionFromProto(ds *proto.Distribution) (*Distribution, error) {
 //   - *proto.Distribution: The converted proto.Distribution object.
 func DistributionToProto(ds *Distribution) *proto.Distribution {
 	drels := make([]*proto.DistributedRelation, 0)
+	fqn_rels := make([]*proto.DistributedRelation, 0)
 	for _, r := range ds.Relations {
 		drels = append(drels, DistributedRelationToProto(r))
+	}
+	for _, r := range ds.FQNRelations {
+		fqn_rels = append(fqn_rels, DistributedRelationToProto(r))
 	}
 	dsIdxs := make([]*proto.UniqueIndex, 0, len(ds.UniqueIndexesByID))
 	for _, idx := range ds.UniqueIndexesByID {
@@ -457,6 +492,7 @@ func DistributionToProto(ds *Distribution) *proto.Distribution {
 		ColumnTypes:   ds.ColTypes,
 		Relations:     drels,
 		UniqueIndexes: dsIdxs,
+		FqnRelations:  fqn_rels,
 	}
 }
 
@@ -473,11 +509,16 @@ func DistributionToDB(ds *Distribution) *qdb.Distribution {
 		ID:            ds.Id,
 		ColTypes:      ds.ColTypes,
 		Relations:     map[string]*qdb.DistributedRelation{},
+		FQNRelations:  map[string]*qdb.DistributedRelation{},
 		UniqueIndexes: map[string]*qdb.UniqueIndex{},
 	}
 
 	for _, r := range ds.Relations {
 		d.Relations[r.Relation.RelationName] = DistributedRelationToDB(r)
+	}
+
+	for _, r := range ds.FQNRelations {
+		d.FQNRelations[r.Relation.String()] = DistributedRelationToDB(r)
 	}
 
 	for id, idx := range ds.UniqueIndexesByID {
