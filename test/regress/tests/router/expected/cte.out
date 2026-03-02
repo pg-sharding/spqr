@@ -258,6 +258,20 @@ NOTICE: send query to shard(s) : sh1
  2 | 23 | 33
 (2 rows)
 
+with vals (z) as (values (1), (88)) insert into table2 (a) select z from vals;
+NOTICE: send query to shard(s) : sh1
+SELECT * FROM table2 ORDER BY a /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ a  | b  | c  
+----+----+----
+  1 | 23 | 33
+  1 |    |   
+  2 | 23 | 33
+ 88 |    |   
+(4 rows)
+
+with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals;
+ERROR:  error processing query 'with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals;': too complex query to route
 DROP TABLE table1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE table2;
