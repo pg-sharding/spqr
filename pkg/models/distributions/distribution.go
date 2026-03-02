@@ -399,7 +399,6 @@ func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 	for name, val := range distr.FQNRelations {
 		ret.FQNRelations[name] = DistributedRelationFromDB(val, make(map[string]*UniqueIndex))
 	}
-
 	return ret
 }
 
@@ -481,7 +480,7 @@ func DistributionToProto(ds *Distribution) *proto.Distribution {
 		drels = append(drels, DistributedRelationToProto(r))
 	}
 	for _, r := range ds.FQNRelations {
-		fqn_rels = append(drels, DistributedRelationToProto(r))
+		fqn_rels = append(fqn_rels, DistributedRelationToProto(r))
 	}
 	dsIdxs := make([]*proto.UniqueIndex, 0, len(ds.UniqueIndexesByID))
 	for _, idx := range ds.UniqueIndexesByID {
