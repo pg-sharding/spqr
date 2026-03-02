@@ -27,7 +27,7 @@ Feature: Coordinator test
     """
     Then command return code should be "0"
 
-    When I run SQL on host "router"q
+    When I run SQL on host "router"
     """
     CREATE TABLE test(id int, name text)
     """
