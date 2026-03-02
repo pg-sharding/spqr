@@ -679,9 +679,13 @@ func RedistributeTasksVirtualRelationScan(tasks []*tasks.RedistributeTask) (*tup
 			"batch_size"),
 	}
 	for _, task := range tasks {
+		id := ""
+		if task.TaskGroup != nil {
+			id = task.TaskGroup.ID
+		}
 		tts.WriteDataRow(
 			task.ID,
-			task.TaskGroup.ID,
+			id,
 			task.KeyRangeId,
 			task.ShardId,
 			strconv.FormatInt(int64(task.BatchSize), 10),
