@@ -673,7 +673,7 @@ func RedistributeTasksVirtualRelationScan(tasks []*tasks.RedistributeTask) (*tup
 	tts := &tupleslot.TupleTableSlot{
 		Desc: GetVPHeader(
 			"redistribute_task_id",
-			"task group id",
+			"task_group_id",
 			"key_range_id",
 			"destination_shard_id",
 			"batch_size"),
