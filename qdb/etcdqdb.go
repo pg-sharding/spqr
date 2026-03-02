@@ -1364,7 +1364,7 @@ func (q *EtcdQDB) ListDistributions(ctx context.Context) ([]*Distribution, error
 	})
 
 	spqrlog.Zero.Debug().
-		Interface("response", resp).
+		Interface("response", dds).
 		Msg("etcdqdb: list distributions")
 	return dds, nil
 }
