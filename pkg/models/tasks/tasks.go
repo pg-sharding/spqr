@@ -680,6 +680,7 @@ func RedistributeTaskToDB(task *RedistributeTask) *qdb.RedistributeTask {
 		ShardId:     task.ShardId,
 		BatchSize:   task.BatchSize,
 		State:       int(task.State),
+		TempKrId:    task.TempKrId,
 	}
 }
 
@@ -693,6 +694,7 @@ func RedistributeTaskFromDB(task *qdb.RedistributeTask, taskGroup *MoveTaskGroup
 		KeyRangeId:  task.KeyRangeId,
 		ShardId:     task.ShardId,
 		BatchSize:   task.BatchSize,
+		TempKrId:    task.TempKrId,
 		State: func() RedistributeTaskState {
 			switch task.State {
 			case RedistributeTaskPlanned:
