@@ -64,11 +64,6 @@ type TaskGroupStateKeeper interface {
 	CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error)
 }
 
-type ShardDataKeeper interface {
-	//AddShardData(ctx context.Context)
-	//ListShardsData(ctx context.Context) []*config.ShardConnect
-}
-
 // QDB is a generic interface used by both the coordinator and the router.
 // The router uses a memory-based version of this interface to cache routing schema state
 // while the coordinator uses etcd-based implementation to synchronize distributed state.
@@ -205,7 +200,6 @@ type XQDB interface {
 	TransferXactKeeper
 	TXManager
 	TaskGroupStateKeeper
-	ShardDataKeeper
 
 	TryCoordinatorLock(ctx context.Context, addr string) error
 }

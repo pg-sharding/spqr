@@ -480,30 +480,6 @@ func (mr *MockTaskGroupStateKeeperMockRecorder) TryTaskGroupLock(ctx, tgId, hold
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryTaskGroupLock", reflect.TypeOf((*MockTaskGroupStateKeeper)(nil).TryTaskGroupLock), ctx, tgId, holder)
 }
 
-// MockShardDataKeeper is a mock of ShardDataKeeper interface.
-type MockShardDataKeeper struct {
-	ctrl     *gomock.Controller
-	recorder *MockShardDataKeeperMockRecorder
-	isgomock struct{}
-}
-
-// MockShardDataKeeperMockRecorder is the mock recorder for MockShardDataKeeper.
-type MockShardDataKeeperMockRecorder struct {
-	mock *MockShardDataKeeper
-}
-
-// NewMockShardDataKeeper creates a new mock instance.
-func NewMockShardDataKeeper(ctrl *gomock.Controller) *MockShardDataKeeper {
-	mock := &MockShardDataKeeper{ctrl: ctrl}
-	mock.recorder = &MockShardDataKeeperMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockShardDataKeeper) EXPECT() *MockShardDataKeeperMockRecorder {
-	return m.recorder
-}
-
 // MockQDB is a mock of QDB interface.
 type MockQDB struct {
 	ctrl     *gomock.Controller
