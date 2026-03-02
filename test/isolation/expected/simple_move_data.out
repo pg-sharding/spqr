@@ -15,11 +15,6 @@ distribution id -> d
 
 add key range
 -------------
-bound -> 300 
-(1 row)
-
-add key range
--------------
 bound -> 200 
 (1 row)
 
@@ -37,7 +32,7 @@ step s1_report: SET __spqr__reply_notice TO on;
 step s1_ev2: SET __spqr__engine_v2 TO on;
 s1: NOTICE: send query to shard(s) : sh1
 step s1_i: INSERT INTO r (i, c) VALUES (11, 1);
-s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3
 step s1_spqr_ctid: SELECT __spqr__ctid('r');
 __spqr__ctid| i|c
 ------------+--+-
@@ -58,10 +53,9 @@ key_range_id|shard_id|distribution_id|lower_bound|locked
 k0          |sh2     |d              |          0|false 
 k1          |sh2     |d              |        100|false 
 k2          |sh3     |d              |        200|false 
-k3          |sh4     |d              |        300|false 
-(4 rows)
+(3 rows)
 
-s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3
 step s1_spqr_ctid: SELECT __spqr__ctid('r');
 __spqr__ctid| i|c
 ------------+--+-
@@ -82,10 +76,9 @@ key_range_id|shard_id|distribution_id|lower_bound|locked
 k0          |sh1     |d              |          0|false 
 k1          |sh2     |d              |        100|false 
 k2          |sh3     |d              |        200|false 
-k3          |sh4     |d              |        300|false 
-(4 rows)
+(3 rows)
 
-s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3
 step s1_spqr_ctid: SELECT __spqr__ctid('r');
 __spqr__ctid| i|c
 ------------+--+-
@@ -113,11 +106,6 @@ distribution id -> d
 
 add key range
 -------------
-bound -> 300 
-(1 row)
-
-add key range
--------------
 bound -> 200 
 (1 row)
 
@@ -135,7 +123,7 @@ step s1_report: SET __spqr__reply_notice TO on;
 step s1_ev2: SET __spqr__engine_v2 TO on;
 s1: NOTICE: send query to shard(s) : sh1
 step s1_i: INSERT INTO r (i, c) VALUES (11, 1);
-s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3
 step s1_spqr_ctid: SELECT __spqr__ctid('r');
 __spqr__ctid| i|c
 ------------+--+-
@@ -168,10 +156,9 @@ key_range_id|shard_id|distribution_id|lower_bound|locked
 k0          |sh2     |d              |          0|false 
 k1          |sh2     |d              |        100|false 
 k2          |sh3     |d              |        200|false 
-k3          |sh4     |d              |        300|false 
-(4 rows)
+(3 rows)
 
-s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3
 step s1_spqr_ctid: SELECT __spqr__ctid('r');
 __spqr__ctid| i|c
 ------------+--+-
@@ -199,11 +186,6 @@ distribution id -> d
 
 add key range
 -------------
-bound -> 300 
-(1 row)
-
-add key range
--------------
 bound -> 200 
 (1 row)
 
@@ -221,7 +203,7 @@ step s1_report: SET __spqr__reply_notice TO on;
 step s1_ev2: SET __spqr__engine_v2 TO on;
 s1: NOTICE: send query to shard(s) : sh1
 step s1_i: INSERT INTO r (i, c) VALUES (11, 1);
-s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3
 step s1_spqr_ctid: SELECT __spqr__ctid('r');
 __spqr__ctid| i|c
 ------------+--+-
@@ -254,10 +236,9 @@ key_range_id|shard_id|distribution_id|lower_bound|locked
 k0          |sh2     |d              |          0|false 
 k1          |sh2     |d              |        100|false 
 k2          |sh3     |d              |        200|false 
-k3          |sh4     |d              |        300|false 
-(4 rows)
+(3 rows)
 
-s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3
 step s1_spqr_ctid: SELECT __spqr__ctid('r');
 __spqr__ctid| i|c
 ------------+--+-

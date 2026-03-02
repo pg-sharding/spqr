@@ -163,6 +163,34 @@ func (mr *MockCoordinatorMockRecorder) AlterReferenceRelationStorage(ctx, relNam
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorage", reflect.TypeOf((*MockCoordinator)(nil).AlterReferenceRelationStorage), ctx, relName, shs)
 }
 
+// AlterShardHosts mocks base method.
+func (m *MockCoordinator) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterShardHosts", ctx, shardID, hosts)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterShardHosts indicates an expected call of AlterShardHosts.
+func (mr *MockCoordinatorMockRecorder) AlterShardHosts(ctx, shardID, hosts any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardHosts", reflect.TypeOf((*MockCoordinator)(nil).AlterShardHosts), ctx, shardID, hosts)
+}
+
+// AlterShardOptions mocks base method.
+func (m *MockCoordinator) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterShardOptions", ctx, shardID, options)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterShardOptions indicates an expected call of AlterShardOptions.
+func (mr *MockCoordinatorMockRecorder) AlterShardOptions(ctx, shardID, options any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardOptions", reflect.TypeOf((*MockCoordinator)(nil).AlterShardOptions), ctx, shardID, options)
+}
+
 // BatchMoveKeyRange mocks base method.
 func (m *MockCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
 	m.ctrl.T.Helper()

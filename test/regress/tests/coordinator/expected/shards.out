@@ -1,0 +1,60 @@
+ADD SHARD shard1 WITH HOSTS 'localhost:6432' OPTIONS (user user1);
+     add shard      
+--------------------
+ shard id -> shard1
+(1 row)
+
+ADD SHARD shard2 WITH HOSTS 'localhost1:6432', 'localhost2:6432' OPTIONS (dbname db1);
+     add shard      
+--------------------
+ shard id -> shard2
+(1 row)
+
+SHOW shards;
+ shard  |   options    
+--------+--------------
+ sh1    | {}
+ sh2    | {}
+ sh3    | {}
+ sh4    | {}
+ shard1 | {user=user1}
+ shard2 | {dbname=db1}
+(6 rows)
+
+ALTER SHARD shard1 OPTIONS (dbname db1);
+   alter shard options    
+--------------------------
+ shard id -> shard1
+ options  -> {dbname=db1}
+(2 rows)
+
+ALTER SHARD shard2 HOSTS 'localhost3:6432';
+      alter shard hosts      
+-----------------------------
+ shard id -> shard2
+ hosts    -> localhost3:6432
+(2 rows)
+
+SHOW shards;
+ shard  |   options    
+--------+--------------
+ sh1    | {}
+ sh2    | {}
+ sh3    | {}
+ sh4    | {}
+ shard1 | {dbname=db1}
+ shard2 | {dbname=db1}
+(6 rows)
+
+DROP SHARD shard1;
+ shard_id 
+----------
+ shard1
+(1 row)
+
+DROP SHARD shard2;
+ shard_id 
+----------
+ shard2
+(1 row)
+

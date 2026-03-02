@@ -9,6 +9,7 @@ import "google/protobuf/empty.proto";
 message Shard {
   string id = 1;
   repeated string hosts = 2;
+  map<string, string> options = 3;
 }
 
 message ShardInfo {

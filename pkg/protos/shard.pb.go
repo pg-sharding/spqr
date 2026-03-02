@@ -26,6 +26,7 @@ type Shard struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Hosts         []string               `protobuf:"bytes,2,rep,name=hosts,proto3" json:"hosts,omitempty"`
+	Options       map[string]string      `protobuf:"bytes,3,rep,name=options,proto3" json:"options,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -70,6 +71,13 @@ func (x *Shard) GetId() string {
 func (x *Shard) GetHosts() []string {
 	if x != nil {
 		return x.Hosts
+	}
+	return nil
+}
+
+func (x *Shard) GetOptions() map[string]string {
+	if x != nil {
+		return x.Options
 	}
 	return nil
 }
@@ -394,10 +402,14 @@ var File_protos_shard_proto protoreflect.FileDescriptor
 
 const file_protos_shard_proto_rawDesc = "" +
 	"\n" +
-	"\x12protos/shard.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"-\n" +
+	"\x12protos/shard.proto\x12\x04spqr\x1a\x1bgoogle/protobuf/empty.proto\"\x9d\x01\n" +
 	"\x05Shard\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
-	"\x05hosts\x18\x02 \x03(\tR\x05hosts\"1\n" +
+	"\x05hosts\x18\x02 \x03(\tR\x05hosts\x122\n" +
+	"\aoptions\x18\x03 \x03(\v2\x18.spqr.Shard.OptionsEntryR\aoptions\x1a:\n" +
+	"\fOptionsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"1\n" +
 	"\tShardInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05hosts\x18\x02 \x03(\tR\x05hosts\"/\n" +
@@ -435,7 +447,7 @@ func file_protos_shard_proto_rawDescGZIP() []byte {
 	return file_protos_shard_proto_rawDescData
 }
 
-var file_protos_shard_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_protos_shard_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_protos_shard_proto_goTypes = []any{
 	(*Shard)(nil),                // 0: spqr.Shard
 	(*ShardInfo)(nil),            // 1: spqr.ShardInfo
@@ -445,28 +457,30 @@ var file_protos_shard_proto_goTypes = []any{
 	(*AddShardRequest)(nil),      // 5: spqr.AddShardRequest
 	(*AddWorldShardRequest)(nil), // 6: spqr.AddWorldShardRequest
 	(*DropShardRequest)(nil),     // 7: spqr.DropShardRequest
-	(*emptypb.Empty)(nil),        // 8: google.protobuf.Empty
+	nil,                          // 8: spqr.Shard.OptionsEntry
+	(*emptypb.Empty)(nil),        // 9: google.protobuf.Empty
 }
 var file_protos_shard_proto_depIdxs = []int32{
-	0, // 0: spqr.ShardReply.shard:type_name -> spqr.Shard
-	0, // 1: spqr.ListShardsReply.shards:type_name -> spqr.Shard
-	0, // 2: spqr.AddShardRequest.shard:type_name -> spqr.Shard
-	0, // 3: spqr.AddWorldShardRequest.shard:type_name -> spqr.Shard
-	8, // 4: spqr.ShardService.ListShards:input_type -> google.protobuf.Empty
-	5, // 5: spqr.ShardService.AddDataShard:input_type -> spqr.AddShardRequest
-	7, // 6: spqr.ShardService.DropShard:input_type -> spqr.DropShardRequest
-	6, // 7: spqr.ShardService.AddWorldShard:input_type -> spqr.AddWorldShardRequest
-	3, // 8: spqr.ShardService.GetShard:input_type -> spqr.ShardRequest
-	4, // 9: spqr.ShardService.ListShards:output_type -> spqr.ListShardsReply
-	8, // 10: spqr.ShardService.AddDataShard:output_type -> google.protobuf.Empty
-	8, // 11: spqr.ShardService.DropShard:output_type -> google.protobuf.Empty
-	8, // 12: spqr.ShardService.AddWorldShard:output_type -> google.protobuf.Empty
-	2, // 13: spqr.ShardService.GetShard:output_type -> spqr.ShardReply
-	9, // [9:14] is the sub-list for method output_type
-	4, // [4:9] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	8,  // 0: spqr.Shard.options:type_name -> spqr.Shard.OptionsEntry
+	0,  // 1: spqr.ShardReply.shard:type_name -> spqr.Shard
+	0,  // 2: spqr.ListShardsReply.shards:type_name -> spqr.Shard
+	0,  // 3: spqr.AddShardRequest.shard:type_name -> spqr.Shard
+	0,  // 4: spqr.AddWorldShardRequest.shard:type_name -> spqr.Shard
+	9,  // 5: spqr.ShardService.ListShards:input_type -> google.protobuf.Empty
+	5,  // 6: spqr.ShardService.AddDataShard:input_type -> spqr.AddShardRequest
+	7,  // 7: spqr.ShardService.DropShard:input_type -> spqr.DropShardRequest
+	6,  // 8: spqr.ShardService.AddWorldShard:input_type -> spqr.AddWorldShardRequest
+	3,  // 9: spqr.ShardService.GetShard:input_type -> spqr.ShardRequest
+	4,  // 10: spqr.ShardService.ListShards:output_type -> spqr.ListShardsReply
+	9,  // 11: spqr.ShardService.AddDataShard:output_type -> google.protobuf.Empty
+	9,  // 12: spqr.ShardService.DropShard:output_type -> google.protobuf.Empty
+	9,  // 13: spqr.ShardService.AddWorldShard:output_type -> google.protobuf.Empty
+	2,  // 14: spqr.ShardService.GetShard:output_type -> spqr.ShardReply
+	10, // [10:15] is the sub-list for method output_type
+	5,  // [5:10] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_protos_shard_proto_init() }
@@ -480,7 +494,7 @@ func file_protos_shard_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_shard_proto_rawDesc), len(file_protos_shard_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

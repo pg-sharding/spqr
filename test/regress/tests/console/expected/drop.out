@@ -33,11 +33,11 @@ DROP SHARD sh1 CASCADE;
 (1 row)
 
 SHOW shards;
- shard 
--------
- sh2
- sh3
- sh4
+ shard | options 
+-------+---------
+ sh2   | {}
+ sh3   | {}
+ sh4   | {}
 (3 rows)
 
 SHOW key_ranges;

@@ -162,6 +162,34 @@ func (mr *MockEntityMgrMockRecorder) AlterReferenceRelationStorage(ctx, relName,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorage", reflect.TypeOf((*MockEntityMgr)(nil).AlterReferenceRelationStorage), ctx, relName, shs)
 }
 
+// AlterShardHosts mocks base method.
+func (m *MockEntityMgr) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterShardHosts", ctx, shardID, hosts)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterShardHosts indicates an expected call of AlterShardHosts.
+func (mr *MockEntityMgrMockRecorder) AlterShardHosts(ctx, shardID, hosts any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardHosts", reflect.TypeOf((*MockEntityMgr)(nil).AlterShardHosts), ctx, shardID, hosts)
+}
+
+// AlterShardOptions mocks base method.
+func (m *MockEntityMgr) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterShardOptions", ctx, shardID, options)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterShardOptions indicates an expected call of AlterShardOptions.
+func (mr *MockEntityMgrMockRecorder) AlterShardOptions(ctx, shardID, options any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterShardOptions", reflect.TypeOf((*MockEntityMgr)(nil).AlterShardOptions), ctx, shardID, options)
+}
+
 // BatchMoveKeyRange mocks base method.
 func (m *MockEntityMgr) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
 	m.ctrl.T.Helper()

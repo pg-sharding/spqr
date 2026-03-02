@@ -564,6 +564,7 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		dataShard := topology.NewDataShard(stmt.Id, &config.Shard{
 			RawHosts: stmt.Hosts,
 			Type:     config.DataShard,
+			Options:  optionsToMap(stmt.Options),
 		})
 		if err := mngr.AddDataShard(ctx, dataShard); err != nil {
 			return nil, err
@@ -638,6 +639,11 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 			return nil, fmt.Errorf("failed to process 'ALTER DISTRIBUTION' statement: distribution ID is nil")
 		}
 		return processAlterDistribution(ctx, stmt.Element, mngr, stmt.Distribution.ID)
+	case *spqrparser.AlterShard:
+		if stmt.Shard == nil {
+			return nil, fmt.Errorf("failed to process 'ALTER SHARD' statement: shard ID is nil")
+		}
+		return processAlterShard(ctx, stmt.Element, mngr, stmt.Shard.ID)
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}
@@ -833,6 +839,54 @@ func processAlterRelation(ctx context.Context, astmt spqrparser.Statement, mngr 
 		return tts, nil
 	default:
 		return nil, fmt.Errorf("unexpected 'ALTER RELATION' request type %T", stmt)
+	}
+}
+
+func processAlterShard(ctx context.Context,
+	astmt spqrparser.Statement,
+	mngr EntityMgr, shardId string) (*tupleslot.TupleTableSlot, error) {
+	switch stmt := astmt.(type) {
+	case *spqrparser.AlterShardHosts:
+		if err := mngr.AlterShardHosts(ctx, shardId, stmt.Hosts); err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("alter shard hosts"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "shard id -> %s", shardId),
+				},
+
+				{
+					fmt.Appendf(nil, "hosts    -> %s", strings.Join(stmt.Hosts, ",")),
+				},
+			},
+		}
+
+		return tts, nil
+	case *spqrparser.AlterShardOptions:
+		optionsMap := optionsToMap(stmt.Options)
+		if err := mngr.AlterShardOptions(ctx, shardId, optionsMap); err != nil {
+			return nil, err
+		}
+
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("alter shard options"),
+			Raw: [][][]byte{
+				{
+					fmt.Appendf(nil, "shard id -> %s", shardId),
+				},
+
+				{
+					fmt.Appendf(nil, "options  -> %s", optionsToTuple(optionsMap)),
+				},
+			},
+		}
+
+		return tts, nil
+	default:
+		return nil, ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -1274,13 +1328,14 @@ func ProcessShowExtended(ctx context.Context,
 		}
 
 		tts = &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("shard"),
+			Desc: engine.GetVPHeader("shard", "options"),
 		}
 
 		for _, shard := range shards {
 			tts.Raw = append(tts.Raw,
 				[][]byte{
 					[]byte(shard.ID),
+					optionsToTuple(shard.Cfg.Options),
 				},
 			)
 		}
@@ -2002,4 +2057,20 @@ func ProcessHelp(ctx context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTa
 	tts.WriteDataRow(helpEntry.Content)
 
 	return tts, nil
+}
+
+func optionsToMap(opts []spqrparser.GenericOption) map[string]string {
+	m := make(map[string]string)
+	for _, opt := range opts {
+		m[opt.Name] = opt.Arg
+	}
+	return m
+}
+
+func optionsToTuple(opts map[string]string) []byte {
+	t := []string{}
+	for k, v := range opts {
+		t = append(t, fmt.Sprintf("%s=%v", k, v))
+	}
+	return []byte(fmt.Sprintf("{%s}", strings.Join(t, ",")))
 }

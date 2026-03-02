@@ -1044,6 +1044,7 @@ func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 	spqrlog.Zero.Debug().
 		Str("id", shard.ID).
 		Strs("hosts", shard.RawHosts).
+		Interface("options", shard.Options).
 		Msg("etcdqdb: add shard")
 	t := time.Now()
 
@@ -1073,6 +1074,31 @@ func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 		Msg("etcdqdb: add shard")
 
 	statistics.RecordQDBOperation("AddShard", time.Since(t))
+	return nil
+}
+
+func (q *EtcdQDB) alterShard(ctx context.Context, shard *Shard) error {
+	bytes, err := json.Marshal(shard)
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Txn(ctx).
+		If(
+			//check exists shard with key
+			clientv3.Compare(clientv3.Version(shardNodePath(shard.ID)), "!=", 0),
+		).
+		Then(
+			clientv3.OpPut(shardNodePath(shard.ID), string(bytes)),
+		).
+		Commit()
+
+	if err != nil {
+		return err
+	}
+	if len(resp.Responses) == 0 {
+		return fmt.Errorf("shard with id %s does not exist", shard.ID)
+	}
+
 	return nil
 }
 
@@ -1145,6 +1171,36 @@ func (q *EtcdQDB) DropShard(ctx context.Context, id string) error {
 	_, err := q.cli.Delete(ctx, nodePath)
 	statistics.RecordQDBOperation("DropShard", time.Since(t))
 	return err
+}
+
+func (q *EtcdQDB) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
+	spqrlog.Zero.Debug().
+		Str("id", shardID).
+		Msg("etcdqdb: alter shard hosts")
+
+	shard, err := q.GetShard(ctx, shardID)
+	if err != nil {
+		return err
+	}
+
+	shard.RawHosts = hosts
+
+	return q.alterShard(ctx, shard)
+}
+
+func (q *EtcdQDB) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
+	spqrlog.Zero.Debug().
+		Str("id", shardID).
+		Msg("etcdqdb: alter shard options")
+
+	shard, err := q.GetShard(ctx, shardID)
+	if err != nil {
+		return err
+	}
+
+	shard.Options = options
+
+	return q.alterShard(ctx, shard)
 }
 
 // ==============================================================================

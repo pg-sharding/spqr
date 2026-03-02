@@ -126,6 +126,14 @@ func (lc *Coordinator) AlterDistributedRelationSchema(ctx context.Context, id st
 	return lc.qdb.AlterDistributedRelationSchema(ctx, id, relation, schemaName)
 }
 
+func (lc *Coordinator) AlterShardHosts(ctx context.Context, shardID string, hosts []string) error {
+	return lc.qdb.AlterShardHosts(ctx, shardID, hosts)
+}
+
+func (lc *Coordinator) AlterShardOptions(ctx context.Context, shardID string, options map[string]string) error {
+	return lc.qdb.AlterShardOptions(ctx, shardID, options)
+}
+
 // BatchMoveKeyRange implements meta.EntityMgr.
 func (lc *Coordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
 	panic("unimplemented")
@@ -609,6 +617,7 @@ func (lc *Coordinator) ListShards(ctx context.Context) ([]*topology.DataShard, e
 			ID: sh.ID,
 			Cfg: &config.Shard{
 				RawHosts: sh.RawHosts,
+				Options:  sh.Options,
 			},
 		})
 	}
