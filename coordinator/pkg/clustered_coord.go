@@ -1965,7 +1965,6 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 	/* Should we wait for the completion? */
 	if req.NoWait {
 		go func() {
-
 			err := qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
 				ID:          uuid.NewString(),
 				TaskGroupId: req.TaskGroupId,
@@ -2019,6 +2018,9 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 // Returns:
 //   - error: An error if any occurred.
 func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, task *tasks.RedistributeTask) error {
+	if err := qc.db.LockRedistributeTask(ctx, task.ID, ""); err != nil {
+		return fmt.Errorf("failed to execute redistribute task: unable to acquire lock in qdb: %s", err)
+	}
 	if err := qc.db.CreateRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err != nil {
 		return err
 	}
