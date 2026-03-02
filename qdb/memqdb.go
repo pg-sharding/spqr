@@ -1484,6 +1484,10 @@ func (q *MemQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, id string) 
 	return q.RedistributeTaskTaskGroupId[id], nil
 }
 
+func (q *MemQDB) GetKeyRangeRedistributeTaskId(ctx context.Context, keyRangeId string) (string, error) {
+	return "", fmt.Errorf("not implemented")
+}
+
 // TODO: unit tests
 func (q *MemQDB) GetBalancerTask(_ context.Context) (*BalancerTask, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get balancer task")

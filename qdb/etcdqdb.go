@@ -2355,6 +2355,10 @@ func (q *EtcdQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, id string)
 	return string(resp.Kvs[0].Value), nil
 }
 
+func (q *EtcdQDB) GetKeyRangeRedistributeTaskId(ctx context.Context, keyRangeId string) (string, error) {
+	return "", fmt.Errorf("not implemented")
+}
+
 // TODO: unit tests
 func (q *EtcdQDB) GetBalancerTask(ctx context.Context) (*BalancerTask, error) {
 	spqrlog.Zero.Debug().

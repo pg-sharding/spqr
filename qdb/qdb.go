@@ -140,6 +140,7 @@ type QDB interface {
 	UpdateRedistributeTask(ctx context.Context, task *RedistributeTask) error
 	DropRedistributeTask(ctx context.Context, task *RedistributeTask) error
 	GetRedistributeTaskTaskGroupId(ctx context.Context, redistributeTaskId string) (string, error)
+	GetKeyRangeRedistributeTaskId(ctx context.Context, keyRangeId string) (string, error)
 
 	// Balancer interaction
 	GetBalancerTask(ctx context.Context) (*BalancerTask, error)
