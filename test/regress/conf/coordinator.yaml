@@ -3,8 +3,7 @@ host: regress_coordinator
 coordinator_port: 7002
 grpc_api_port: 7003
 qdb_addr: '[regress_qdb_0_1]:2379'
-shard_data: '/spqr/test/regress/conf/shard_data.yaml'
-manage_shards_by_coordinator: true
+shard_data_in_qdb: true
 frontend_rules:
   - db: regress
     usr: regress
