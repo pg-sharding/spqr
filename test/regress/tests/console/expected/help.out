@@ -6,9 +6,9 @@ HELP CREATE KEY RANGE;
                                                                                                                           +
  SYNTAX                                                                                                                   +
      CREATE KEY RANGE [ <keyRangeID> ]                                                                                    +
-     FROM <lowerBound>                                                                                                    +
-     ROUTE TO <shardID>                                                                                                   +
-     FOR DISTRIBUTION <distributionID>                                                                                    +
+       FROM <lowerBound>                                                                                                  +
+       ROUTE TO <shardID>                                                                                                 +
+       FOR DISTRIBUTION <distributionID>                                                                                  +
                                                                                                                           +
      where lowerBound is a single value or comma-separated values for composite keys                                      +
      (e.g., "100, 'value'" for a two-column key)                                                                          +
@@ -48,5 +48,276 @@ HELP CREATE KEY RANGE;
      SPLIT KEY RANGE                                                                                                      +
      UNITE KEY RANGE                                                                                                      +
      DROP KEY RANGE
+(1 row)
+
+HELP DROP KEY RANGE;
+                                              help                                              
+------------------------------------------------------------------------------------------------
+ NAME                                                                                          +
+     DROP KEY RANGE - Removes a key range from the cluster. This deletes the key range metadata+
+                                                                                               +
+ SYNTAX                                                                                        +
+     DROP KEY RANGE <keyRangeID>                                                               +
+     DROP KEY RANGE ALL                                                                        +
+                                                                                               +
+ DESCRIPTION                                                                                   +
+     Removes a key range from the cluster. This deletes the key range metadata                 +
+     but does not affect the actual data stored on the shard.                                  +
+                                                                                               +
+     Use DROP KEY RANGE ALL to remove all key ranges at once.                                  +
+                                                                                               +
+ PARAMETERS                                                                                    +
+     <keyRangeID> - Identifier of the key range to drop                                        +
+     <ALL> - Special keyword to drop all key ranges                                            +
+                                                                                               +
+ EXAMPLES                                                                                      +
+     Drop a specific key range:                                                                +
+         DROP KEY RANGE krid1;                                                                 +
+     Drop all key ranges:                                                                      +
+         DROP KEY RANGE ALL;                                                                   +
+                                                                                               +
+ TIPS                                                                                          +
+     - Dropping a key range does not migrate or delete the underlying data                     +
+     - Use SHOW KEY RANGES to verify which key ranges exist before dropping                    +
+     - Consider the impact on routing before dropping key ranges in production                 +
+                                                                                               +
+ RELATED COMMANDS                                                                              +
+     CREATE KEY RANGE                                                                          +
+     SHOW KEY RANGES                                                                           +
+     MOVE KEY RANGE
+(1 row)
+
+HELP LOCK KEY RANGE;
+                                             help                                              
+-----------------------------------------------------------------------------------------------
+ NAME                                                                                         +
+     LOCK KEY RANGE - Locks a key range to prevent concurrent modifications. This is typically+
+                                                                                              +
+ SYNTAX                                                                                       +
+     LOCK KEY RANGE <keyRangeID>                                                              +
+                                                                                              +
+ DESCRIPTION                                                                                  +
+     Locks a key range to prevent concurrent modifications. This is typically                 +
+     used before performing operations like SPLIT or UNITE that require                       +
+     exclusive access to the key range.                                                       +
+                                                                                              +
+     While a key range is locked, queries routed to it will wait until the                    +
+     lock is released.                                                                        +
+                                                                                              +
+ PARAMETERS                                                                                   +
+     <keyRangeID> - Identifier of the key range to lock                                       +
+                                                                                              +
+ TIPS                                                                                         +
+     - Always pair LOCK with UNLOCK to avoid blocking queries indefinitely                    +
+     - Use SHOW key_ranges to check the current lock status                                   +
+                                                                                              +
+ RELATED COMMANDS                                                                             +
+     UNLOCK KEY RANGE                                                                         +
+     SPLIT KEY RANGE                                                                          +
+     UNITE KEY RANGE                                                                          +
+     SHOW KEY RANGES
+(1 row)
+
+HELP UNLOCK KEY RANGE;
+                                                  help                                                   
+---------------------------------------------------------------------------------------------------------
+ NAME                                                                                                   +
+     UNLOCK KEY RANGE - Releases the lock on a key range that was previously locked with LOCK KEY RANGE.+
+                                                                                                        +
+ SYNTAX                                                                                                 +
+     UNLOCK KEY RANGE <keyRangeID>                                                                      +
+                                                                                                        +
+ DESCRIPTION                                                                                            +
+     Releases the lock on a key range that was previously locked with LOCK KEY RANGE.                   +
+     After unlocking, queries routed to this key range will resume normal processing.                   +
+                                                                                                        +
+ PARAMETERS                                                                                             +
+     <keyRangeID> - Identifier of the key range to unlock                                               +
+                                                                                                        +
+ TIPS                                                                                                   +
+     - Always unlock key ranges after completing maintenance operations                                 +
+     - Forgetting to unlock will block queries routed to the key range                                  +
+                                                                                                        +
+ RELATED COMMANDS                                                                                       +
+     LOCK KEY RANGE                                                                                     +
+     SPLIT KEY RANGE                                                                                    +
+     UNITE KEY RANGE                                                                                    +
+     SHOW KEY RANGES
+(1 row)
+
+HELP SPLIT KEY RANGE;
+                                                              help                                                              
+--------------------------------------------------------------------------------------------------------------------------------
+ NAME                                                                                                                          +
+     SPLIT KEY RANGE - Splits an existing key range into two key ranges at the specified boundary value.                       +
+                                                                                                                               +
+ SYNTAX                                                                                                                        +
+     SPLIT KEY RANGE <newKeyRangeID> FROM <sourceKeyRangeID> BY <splitBound>                                                   +
+                                                                                                                               +
+     where splitBound is a single value or comma-separated values for composite keys                                           +
+                                                                                                                               +
+ DESCRIPTION                                                                                                                   +
+     Splits an existing key range into two key ranges at the specified boundary value.                                         +
+     The new key range takes the upper portion of the original range (from the split                                           +
+     point to the original upper bound), while the source range keeps the lower portion.                                       +
+                                                                                                                               +
+     Both resulting key ranges remain on the same shard. Use REDISTRIBUTE KEY RANGE                                            +
+     afterwards to relocate one of them if needed.                                                                             +
+                                                                                                                               +
+ PARAMETERS                                                                                                                    +
+     <newKeyRangeID> - Identifier for the newly created key range (upper portion)                                              +
+     <sourceKeyRangeID> - Identifier of the existing key range to split                                                        +
+     <splitBound> - Boundary value where the split occurs. Can be integer, string, or comma-separated values for composite keys+
+                                                                                                                               +
+ EXAMPLES                                                                                                                      +
+     Split a key range at integer boundary:                                                                                    +
+         SPLIT KEY RANGE krid2 FROM krid1 BY 100;                                                                              +
+     Split a key range at UUID boundary:                                                                                       +
+         SPLIT KEY RANGE krid4 FROM krid3 BY 'FF000000-0000-0000-0000-000000000000';                                           +
+                                                                                                                               +
+ TIPS                                                                                                                          +
+     - Lock the source key range before splitting to prevent concurrent modifications                                          +
+     - The split bound must fall within the source key range boundaries                                                        +
+     - After splitting, use MOVE KEY RANGE to relocate a range to another shard                                                +
+     - Use UNITE KEY RANGE to reverse a split operation                                                                        +
+                                                                                                                               +
+ RELATED COMMANDS                                                                                                              +
+     LOCK KEY RANGE                                                                                                            +
+     UNLOCK KEY RANGE                                                                                                          +
+     UNITE KEY RANGE                                                                                                           +
+     MOVE KEY RANGE                                                                                                            +
+     CREATE KEY RANGE
+(1 row)
+
+HELP MOVE KEY RANGE;
+                                             help                                              
+-----------------------------------------------------------------------------------------------
+ NAME                                                                                         +
+     MOVE KEY RANGE - Updates the routing metadata to assign a key range to a different shard.+
+                                                                                              +
+ SYNTAX                                                                                       +
+     MOVE KEY RANGE <keyRangeID> TO <shardID>                                                 +
+                                                                                              +
+ DESCRIPTION                                                                                  +
+     Updates the routing metadata to assign a key range to a different shard.                 +
+     This only changes where new queries for this key range are routed — it does NOT          +
+     migrate the actual data between shards.                                                  +
+                                                                                              +
+     To move both metadata and data, use REDISTRIBUTE KEY RANGE instead.                      +
+                                                                                              +
+ WARNINGS                                                                                     +
+     - MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data. +
+                                                                                              +
+ PARAMETERS                                                                                   +
+     <keyRangeID> - Identifier of the key range to move                                       +
+     <shardID> - Target shard ID to route this key range to                                   +
+                                                                                              +
+ EXAMPLES                                                                                     +
+     Move a key range to a different shard:                                                   +
+         MOVE KEY RANGE krid1 TO sh2;                                                         +
+                                                                                              +
+ TIPS                                                                                         +
+     - Use this command when data has already been migrated externally                        +
+     - For a complete migration including data, use REDISTRIBUTE KEY RANGE                    +
+     - Verify the target shard exists with SHOW SHARDS before moving                          +
+                                                                                              +
+ RELATED COMMANDS                                                                             +
+     REDISTRIBUTE KEY RANGE                                                                   +
+     SHOW KEY RANGES                                                                          +
+     CREATE KEY RANGE                                                                         +
+     DROP KEY RANGE
+(1 row)
+
+HELP UNITE KEY RANGE;
+                                                   help                                                   
+----------------------------------------------------------------------------------------------------------
+ NAME                                                                                                    +
+     UNITE KEY RANGE - Merges two adjacent key ranges into a single key range. The left key range absorbs+
+                                                                                                         +
+ SYNTAX                                                                                                  +
+     UNITE KEY RANGE <leftKeyRangeID> WITH <rightKeyRangeID>                                             +
+                                                                                                         +
+ DESCRIPTION                                                                                             +
+     Merges two adjacent key ranges into a single key range. The left key range absorbs                  +
+     the right key range, extending its upper bound to cover both ranges.                                +
+                                                                                                         +
+     The two key ranges must be adjacent (share a boundary) and must route to the same shard.            +
+     After the operation, the right key range is removed.                                                +
+                                                                                                         +
+ PARAMETERS                                                                                              +
+     <leftKeyRangeID> - Identifier of the left (lower) key range that will absorb the other              +
+     <rightKeyRangeID> - Identifier of the right (upper) key range that will be merged into the left     +
+                                                                                                         +
+ EXAMPLES                                                                                                +
+     Unite two adjacent key ranges:                                                                      +
+         UNITE KEY RANGE krid1 WITH krid2;                                                               +
+                                                                                                         +
+ TIPS                                                                                                    +
+     - Both key ranges must be adjacent and on the same shard                                            +
+     - The right key range is removed after the operation                                                +
+     - Lock both key ranges before uniting to prevent concurrent modifications                           +
+     - This is the inverse operation of SPLIT KEY RANGE                                                  +
+                                                                                                         +
+ RELATED COMMANDS                                                                                        +
+     SPLIT KEY RANGE                                                                                     +
+     LOCK KEY RANGE                                                                                      +
+     UNLOCK KEY RANGE                                                                                    +
+     SHOW KEY RANGES                                                                                     +
+     DROP KEY RANGE
+(1 row)
+
+HELP REDISTRIBUTE KEY RANGE;
+                                                   help                                                    
+-----------------------------------------------------------------------------------------------------------
+ NAME                                                                                                     +
+     REDISTRIBUTE KEY RANGE - Moves a key range to a different shard, including the actual data migration.+
+                                                                                                          +
+ SYNTAX                                                                                                   +
+     REDISTRIBUTE KEY RANGE <keyRangeID> TO <shardID>                                                     +
+       [BATCH SIZE <batchSize>]                                                                           +
+       [TASK GROUP <taskGroupID>]                                                                         +
+       [CHECK | APPLY | NOWAIT]                                                                           +
+                                                                                                          +
+ DESCRIPTION                                                                                              +
+     Moves a key range to a different shard, including the actual data migration.                         +
+                                                                                                          +
+     The operation can be run in check-only mode to validate before applying, and                         +
+     supports batch processing to control the migration pace.                                             +
+                                                                                                          +
+ WARNINGS                                                                                                 +
+     - This command is not available for installations without SPQR coordinator.                          +
+                                                                                                          +
+ PARAMETERS                                                                                               +
+     <keyRangeID> - Identifier of the key range to redistribute                                           +
+     <shardID> - Target shard ID to migrate data to                                                       +
+     <batchSize> - Number of rows to migrate per batch (optional, default 500)                            +
+     <taskGroupID> - Task group identifier for tracking the operation (optional)                          +
+     <CHECK> - Only validate the redistribution without applying changes                                  +
+     <APPLY> - Validate and apply the redistribution (default behavior)                                   +
+     <NOWAIT> - Start the redistribution and return immediately without waiting for completion            +
+                                                                                                          +
+ EXAMPLES                                                                                                 +
+     Redistribute with default settings:                                                                  +
+         REDISTRIBUTE KEY RANGE krid1 TO sh2;                                                             +
+     Redistribute with custom batch size:                                                                 +
+         REDISTRIBUTE KEY RANGE krid1 TO sh2 BATCH SIZE 100;                                              +
+     Check redistribution without applying:                                                               +
+         REDISTRIBUTE KEY RANGE krid1 TO sh2 CHECK;                                                       +
+     Non-blocking redistribution:                                                                         +
+         REDISTRIBUTE KEY RANGE krid1 TO sh2 BATCH SIZE 500 NOWAIT;                                       +
+     Redistribute with task group for tracking:                                                           +
+         REDISTRIBUTE KEY RANGE krid1 TO sh2 TASK GROUP taskgroup1;                                       +
+                                                                                                          +
+ TIPS                                                                                                     +
+     - Use CHECK mode first to validate before applying in production                                     +
+     - Adjust BATCH SIZE to balance migration speed vs. cluster load                                      +
+     - Use NOWAIT for large migrations and monitor progress with SHOW task_group                          +
+     - For metadata-only changes (when data is already on the target), use MOVE KEY RANGE instead         +
+                                                                                                          +
+ RELATED COMMANDS                                                                                         +
+     MOVE KEY RANGE                                                                                       +
+     SHOW KEY RANGES                                                                                      +
+     CREATE KEY RANGE                                                                                     +
+     SPLIT KEY RANGE
 (1 row)
 
