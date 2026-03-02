@@ -33,6 +33,7 @@ BConst
 bda
 bebc
 bemp
+benchbase
 Benro
 berule
 Bootstrapper
@@ -121,6 +122,7 @@ dssd
 dstmt
 Duis
 dumbo
+dvkashapov
 ebff
 eda
 edabaf
@@ -190,6 +192,7 @@ gss
 gssapi
 GSSREQ
 hashfunction
+hashicorp
 hba
 healthcheck
 helpgen
@@ -570,6 +573,7 @@ testdb
 testutil
 texpr
 textoid
+tfstate
 tgid
 timeb
 timestamptz
@@ -653,6 +657,7 @@ xxtest
 xxtt
 yaccgen
 yandex
+yandexcloud
 yjoin
 YMid
 youtube

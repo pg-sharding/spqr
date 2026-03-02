@@ -1,5 +1,6 @@
 [^/]\.png$
 ^.git/
+^.github/actions/benchmarks/
 ^\Q.github/actions/spelling/
 ^\Q.github/actions/spelling/expect.txt\E$
 ^\Q.github/actions/workflows/spelling.yaml\E?$
