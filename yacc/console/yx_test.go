@@ -1716,7 +1716,7 @@ func TestShard(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: `CREATE SHARD sh1 WITH HOSTS "localhost:6432", "other_hosts:6432" OPTIONS (dbname db1, user user1, password password);`,
+			query: `CREATE SHARD sh1 WITH HOSTS "localhost:6432", "other_hosts:6432" OPTIONS (dbname db1, user user1, password "1234");`,
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ShardDefinition{
 					Id: "sh1",
@@ -1727,7 +1727,7 @@ func TestShard(t *testing.T) {
 					Options: []spqrparser.GenericOption{
 						{Name: "dbname", Arg: "db1"},
 						{Name: "user", Arg: "user1"},
-						{Name: "password", Arg: "password"},
+						{Name: "password", Arg: "1234"},
 					},
 				},
 			},
