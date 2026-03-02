@@ -589,7 +589,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 	}
 
 	// sync shards
-	if config.CoordinatorConfig().ShardDataCfg != "" && !config.CoordinatorConfig().ManageShardsByCoordinator {
+	if config.CoordinatorConfig().ShardDataCfg != "" && !config.CoordinatorConfig().ShardDataInQDB {
 		shards, err := qc.loadShardsConnectionData()
 		if err != nil {
 			spqrlog.Zero.Error().
@@ -3380,7 +3380,7 @@ func (qc *ClusteredCoordinator) invalidateTaskGroupCache(id string) {
 }
 
 func (qc *ClusteredCoordinator) loadShardsConnectionData() (map[string]*config.ShardConnect, error) {
-	if config.CoordinatorConfig().ManageShardsByCoordinator {
+	if config.CoordinatorConfig().ShardDataInQDB {
 		shards, err := qc.db.ListShards(context.TODO())
 		if err != nil {
 			return nil, err

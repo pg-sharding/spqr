@@ -26,6 +26,7 @@ type Coordinator struct {
 	EnableRoleSystem          bool            `json:"enable_role_system" toml:"enable_role_system" yaml:"enable_role_system"`
 	RolesFile                 string          `json:"roles_file" toml:"roles_file" yaml:"roles_file"`
 	ManageShardsByCoordinator bool            `json:"manage_shards_by_coordinator" yaml:"manage_shards_by_coordinator" toml:"manage_shards_by_coordinator"`
+	ShardDataInQDB            bool            `json:"shard_data_in_qdb" yaml:"shard_data_in_qdb" toml:"shard_data_in_qdb"`
 
 	EtcdMaxSendBytes          int    `json:"etcd_max_send_bytes" toml:"etcd_max_send_bytes" yaml:"etcd_max_send_bytes"`
 	EtcdMaxTxnOps             int    `json:"etcd_max_txn_ops" toml:"etcd_max_txn_ops" yaml:"etcd_max_txn_ops"`
