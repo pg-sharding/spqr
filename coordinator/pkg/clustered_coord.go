@@ -1994,8 +1994,12 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 }
 
 func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.Context, req *kr.RedistributeKeyRange, task *tasks.RedistributeTask, exists bool) error {
-	// TODO: add executor addr as lock holder
-	if err := qc.db.LockRedistributeTask(ctx, task.ID, ""); err != nil {
+	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
+	if err != nil {
+		return err
+	}
+	addr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
+	if err := qc.db.LockRedistributeTask(ctx, task.ID, addr); err != nil {
 		return fmt.Errorf("failed to execute redistribute task: unable to acquire lock in qdb: %s", err)
 	}
 	// TODO: update batch size if exists
