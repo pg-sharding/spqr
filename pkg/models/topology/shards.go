@@ -60,7 +60,7 @@ func tlsConfigFromProto(cfg *proto.TLSConfig) *config.TLSConfig {
 	}
 }
 
-func tlsConfigToDB(cfg *config.TLSConfig) *qdb.TLSConfig {
+func TlsConfigToDB(cfg *config.TLSConfig) *qdb.TLSConfig {
 	if cfg == nil {
 		return nil
 	}
@@ -138,6 +138,6 @@ func DataShardToDB(shard *DataShard) *qdb.Shard {
 	return &qdb.Shard{
 		ID:       shard.ID,
 		RawHosts: shard.Cfg.RawHosts,
-		TLS:      tlsConfigToDB(shard.Cfg.TLS),
+		TLS:      TlsConfigToDB(shard.Cfg.TLS),
 	}
 }
