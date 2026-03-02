@@ -3016,7 +3016,20 @@ func (qc *ClusteredCoordinator) invalidateTaskGroupCache(id string) {
 
 func (qc *ClusteredCoordinator) loadShardsConnectionData() (map[string]*config.ShardConnect, error) {
 	if config.CoordinatorConfig().ManageShardsByCoordinator {
-		//qc.db.ListShardsData()
+		shards, err := qc.db.ListShards(context.TODO())
+		if err != nil {
+			return nil, err
+		}
+		m := map[string]*config.ShardConnect{}
+		for _, sh := range shards {
+			m[sh.ID] = &config.ShardConnect{
+				Hosts:    sh.RawHosts,
+				DB:       sh.Options["dbname"],
+				User:     sh.Options["user"],
+				Password: sh.Options["password"],
+			}
+		}
+		return m, nil
 	}
 
 	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)

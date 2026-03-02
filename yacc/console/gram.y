@@ -1381,7 +1381,7 @@ generic_option_list:
 generic_option_elem:
 	IDENT IDENT
 		{
-			$$ = GenericOption{Name: $1, Arg: $2};
+			$$ = GenericOption{Name: $1, Arg: string($2)};
 		}
 
 any_id_list:

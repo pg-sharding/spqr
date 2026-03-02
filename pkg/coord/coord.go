@@ -76,7 +76,6 @@ func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*r
 
 // AddDataShard implements meta.EntityMgr.
 func (lc *Coordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
-	spqrlog.Zero.Debug().Interface("shard", shard.Cfg.Options).Interface("datashard", topology.DataShardToDB(shard)).Msg("here112")
 	return lc.qdb.AddShard(ctx, topology.DataShardToDB(shard))
 }
 

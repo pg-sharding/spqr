@@ -16,11 +16,6 @@ distribution id -> d
 
 add key range
 -------------
-bound -> 300 
-(1 row)
-
-add key range
--------------
 bound -> 200 
 (1 row)
 
@@ -42,7 +37,7 @@ s1: NOTICE: send query to shard(s) : sh1
 step s1_i: INSERT INTO r (i, c) VALUES (11, 1);
 s1: NOTICE: send query to shard(s) : sh1
 step s1_i: INSERT INTO r (i, c) VALUES (11, 1);
-s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3
 step s1_spqr_ctid: SELECT __spqr__ctid('r');
 __spqr__ctid| i|c
 ------------+--+-
@@ -59,7 +54,7 @@ destination shard id -> sh2
 batch size           -> 500
 (3 rows)
 
-s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3
 step s1_spqr_ctid: SELECT __spqr__ctid('r');
 __spqr__ctid| i|c
 ------------+--+-
@@ -76,7 +71,7 @@ destination shard id -> sh3
 batch size           -> 500
 (3 rows)
 
-s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3
 step s1_spqr_ctid: SELECT __spqr__ctid('r');
 __spqr__ctid| i|c
 ------------+--+-
@@ -93,7 +88,7 @@ destination shard id -> sh1
 batch size           -> 500
 (3 rows)
 
-s1: NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+s1: NOTICE: send query to shard(s) : sh1,sh2,sh3
 step s1_spqr_ctid: SELECT __spqr__ctid('r');
 __spqr__ctid| i|c
 ------------+--+-

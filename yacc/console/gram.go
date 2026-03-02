@@ -2670,7 +2670,7 @@ yydefault:
 		yyDollar = yyS[yypt-2 : yypt+1]
 //line gram.y:1383
 		{
-			yyVAL.option = GenericOption{Name: yyDollar[1].str, Arg: yyDollar[2].str}
+			yyVAL.option = GenericOption{Name: yyDollar[1].str, Arg: string(yyDollar[2].str)}
 		}
 	case 234:
 		yyDollar = yyS[yypt-1 : yypt+1]

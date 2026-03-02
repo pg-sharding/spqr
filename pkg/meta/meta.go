@@ -561,7 +561,6 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 		return tts, nil
 	case *spqrparser.ShardDefinition:
-		spqrlog.Zero.Debug().Interface("shard opts", stmt.Options).Msg("here111")
 		dataShard := topology.NewDataShard(stmt.Id, &config.Shard{
 			RawHosts: stmt.Hosts,
 			Type:     config.DataShard,
@@ -1333,7 +1332,6 @@ func ProcessShowExtended(ctx context.Context,
 		}
 
 		for _, shard := range shards {
-			spqrlog.Zero.Debug().Interface("shard options", shard.Cfg.Options).Str("tuple", string(optionsToTuple(shard.Cfg.Options))).Msg("here113")
 			tts.Raw = append(tts.Raw,
 				[][]byte{
 					[]byte(shard.ID),
