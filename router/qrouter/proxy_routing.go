@@ -112,7 +112,7 @@ func (qr *ProxyQrouter) planInsertV1(
 					switch cc := colRef.(type) {
 					case *lyx.ColumnRef:
 						/* Check if this is actual sharding column reference.
-						* Currently, only single-columnn case is supported.
+						* Currently, only single-column case is supported.
 						 */
 						if v, ok := rm.AuxValues[rmeta.AuxValuesKey{
 							CTEName:   sRv.RelationName,
