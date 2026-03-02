@@ -2356,7 +2356,19 @@ func (q *EtcdQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, id string)
 }
 
 func (q *EtcdQDB) GetKeyRangeRedistributeTaskId(ctx context.Context, keyRangeId string) (string, error) {
-	return "", fmt.Errorf("not implemented")
+	spqrlog.Zero.Debug().
+		Str("key range id", keyRangeId).
+		Msg("etcdqdb: get redistribute task of the key range")
+
+	resp, err := q.cli.Get(ctx, keyRangeRedistributeTaskNodePath(keyRangeId))
+	if err != nil {
+		return "", err
+	}
+	if resp.Count == 0 {
+		return "", nil
+	}
+
+	return string(resp.Kvs[0].Value), nil
 }
 
 // TODO: unit tests
