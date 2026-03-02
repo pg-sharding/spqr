@@ -992,6 +992,21 @@ func (mr *MockQDBMockRecorder) GetKeyRange(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKeyRange", reflect.TypeOf((*MockQDB)(nil).GetKeyRange), ctx, id)
 }
 
+// GetKeyRangeRedistributeTaskId mocks base method.
+func (m *MockQDB) GetKeyRangeRedistributeTaskId(ctx context.Context, keyRangeId string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetKeyRangeRedistributeTaskId", ctx, keyRangeId)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetKeyRangeRedistributeTaskId indicates an expected call of GetKeyRangeRedistributeTaskId.
+func (mr *MockQDBMockRecorder) GetKeyRangeRedistributeTaskId(ctx, keyRangeId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKeyRangeRedistributeTaskId", reflect.TypeOf((*MockQDB)(nil).GetKeyRangeRedistributeTaskId), ctx, keyRangeId)
+}
+
 // GetMoveTask mocks base method.
 func (m *MockQDB) GetMoveTask(ctx context.Context, id string) (*qdb.MoveTask, error) {
 	m.ctrl.T.Helper()
@@ -2479,6 +2494,21 @@ func (m *MockXQDB) GetKeyRange(ctx context.Context, id string) (*qdb.KeyRange, e
 func (mr *MockXQDBMockRecorder) GetKeyRange(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKeyRange", reflect.TypeOf((*MockXQDB)(nil).GetKeyRange), ctx, id)
+}
+
+// GetKeyRangeRedistributeTaskId mocks base method.
+func (m *MockXQDB) GetKeyRangeRedistributeTaskId(ctx context.Context, keyRangeId string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetKeyRangeRedistributeTaskId", ctx, keyRangeId)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetKeyRangeRedistributeTaskId indicates an expected call of GetKeyRangeRedistributeTaskId.
+func (mr *MockXQDBMockRecorder) GetKeyRangeRedistributeTaskId(ctx, keyRangeId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKeyRangeRedistributeTaskId", reflect.TypeOf((*MockXQDB)(nil).GetKeyRangeRedistributeTaskId), ctx, keyRangeId)
 }
 
 // GetMoveTask mocks base method.
