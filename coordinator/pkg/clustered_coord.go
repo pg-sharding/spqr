@@ -2003,11 +2003,6 @@ func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.
 		if err := qc.db.CreateRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err != nil {
 			return err
 		}
-	} else {
-		task.BatchSize = req.BatchSize
-		if err := qc.db.UpdateRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err != nil {
-			return err
-		}
 	}
 
 	/* Apply or apply nowait */
