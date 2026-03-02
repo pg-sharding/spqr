@@ -46,6 +46,11 @@ func (n RelationFQN) String() string {
 	return n.SchemaName + "." + n.RelationName
 }
 
+func (n RelationFQN) MetadataKey() string {
+	sch := n.GetSchema()
+	return sch + "." + n.RelationName
+}
+
 func (r *RelationFQN) GetSchema() string {
 	if r.SchemaName == "" {
 		return "public"

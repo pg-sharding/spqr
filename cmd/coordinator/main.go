@@ -18,6 +18,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/spf13/cobra"
 )
 
@@ -65,6 +66,10 @@ var rootCmd = &cobra.Command{
 		}
 
 		spqrlog.ReloadLogger(config.CoordinatorConfig().LogFileName, config.CoordinatorConfig().LogLevel, config.CoordinatorConfig().PrettyLogging)
+
+		if err := spqrparser.InitHelpRegistry(); err != nil {
+			spqrlog.Zero.Warn().Err(err).Msg("failed to initialize help registry")
+		}
 
 		if gomaxprocs > 0 {
 			runtime.GOMAXPROCS(gomaxprocs)
