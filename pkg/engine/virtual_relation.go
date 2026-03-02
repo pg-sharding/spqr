@@ -671,11 +671,17 @@ func TaskGroupBoundsCacheVirtualRelationScan(boundsMap map[string][][][]byte, in
 
 func RedistributeTasksVirtualRelationScan(tasks []*tasks.RedistributeTask) (*tupleslot.TupleTableSlot, error) {
 	tts := &tupleslot.TupleTableSlot{
-		Desc: GetVPHeader("redistribute_task_id", "key_range_id", "destination_shard_id", "batch_size"),
+		Desc: GetVPHeader(
+			"redistribute_task_id",
+			"task_group_id",
+			"key_range_id",
+			"destination_shard_id",
+			"batch_size"),
 	}
 	for _, task := range tasks {
 		tts.WriteDataRow(
 			task.ID,
+			task.TaskGroup.ID,
 			task.KeyRangeId,
 			task.ShardId,
 			strconv.FormatInt(int64(task.BatchSize), 10),
