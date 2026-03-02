@@ -10,10 +10,6 @@ parameters:
   - name: keyRangeID
     description: Identifier of the key range to unlock
 
-examples:
-  - description: Unlock a key range after a split operation
-    code: UNLOCK KEY RANGE krid1;
-
 tips:
   - Always unlock key ranges after completing maintenance operations
   - Forgetting to unlock will block queries routed to the key range

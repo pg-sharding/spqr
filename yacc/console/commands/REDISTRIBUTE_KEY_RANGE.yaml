@@ -1,11 +1,12 @@
 name: REDISTRIBUTE KEY RANGE
 description: |
   Moves a key range to a different shard, including the actual data migration.
-  Unlike MOVE KEY RANGE which only updates routing metadata, this command transfers
-  the rows belonging to the key range from the source shard to the destination shard.
 
   The operation can be run in check-only mode to validate before applying, and
   supports batch processing to control the migration pace.
+
+warnings:
+  - This command is not available for installations without SPQR coordinator.
 
 syntax: |
   REDISTRIBUTE KEY RANGE <keyRangeID> TO <shardID>

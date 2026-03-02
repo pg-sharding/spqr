@@ -54,6 +54,13 @@ SYNTAX
 
 DESCRIPTION
 {{indent .Description 4}}
+{{- if .Warnings}}
+
+WARNINGS
+{{- range .Warnings}}
+    - {{.}}
+{{- end}}
+{{- end}}
 {{- if .Parameters}}
 
 PARAMETERS

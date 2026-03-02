@@ -11,6 +11,9 @@ DESCRIPTION
 
     To move both metadata and data, use REDISTRIBUTE KEY RANGE instead.
 
+WARNINGS
+    - MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.
+
 PARAMETERS
     <keyRangeID> - Identifier of the key range to move
     <shardID> - Target shard ID to route this key range to

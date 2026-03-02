@@ -6,9 +6,9 @@ HELP CREATE KEY RANGE;
                                                                                                                           +
  SYNTAX                                                                                                                   +
      CREATE KEY RANGE [ <keyRangeID> ]                                                                                    +
-     FROM <lowerBound>                                                                                                    +
-     ROUTE TO <shardID>                                                                                                   +
-     FOR DISTRIBUTION <distributionID>                                                                                    +
+       FROM <lowerBound>                                                                                                    +
+       ROUTE TO <shardID>                                                                                                   +
+       FOR DISTRIBUTION <distributionID>                                                                                    +
                                                                                                                           +
      where lowerBound is a single value or comma-separated values for composite keys                                      +
      (e.g., "100, 'value'" for a two-column key)                                                                          +
@@ -107,14 +107,9 @@ HELP LOCK KEY RANGE;
  PARAMETERS                                                                                   +
      <keyRangeID> - Identifier of the key range to lock                                       +
                                                                                               +
- EXAMPLES                                                                                     +
-     Lock a key range before splitting:                                                       +
-         LOCK KEY RANGE krid1;                                                                +
-                                                                                              +
  TIPS                                                                                         +
      - Always pair LOCK with UNLOCK to avoid blocking queries indefinitely                    +
-     - Lock key ranges before SPLIT or UNITE operations                                       +
-     - Use SHOW KEY RANGES to check the current lock status                                   +
+     - Use SHOW key_ranges to check the current lock status                                   +
                                                                                               +
  RELATED COMMANDS                                                                             +
      UNLOCK KEY RANGE                                                                         +
@@ -138,10 +133,6 @@ HELP UNLOCK KEY RANGE;
                                                                                                         +
  PARAMETERS                                                                                             +
      <keyRangeID> - Identifier of the key range to unlock                                               +
-                                                                                                        +
- EXAMPLES                                                                                               +
-     Unlock a key range after a split operation:                                                        +
-         UNLOCK KEY RANGE krid1;                                                                        +
                                                                                                         +
  TIPS                                                                                                   +
      - Always unlock key ranges after completing maintenance operations                                 +
@@ -170,8 +161,8 @@ HELP SPLIT KEY RANGE;
      The new key range takes the upper portion of the original range (from the split                                           +
      point to the original upper bound), while the source range keeps the lower portion.                                       +
                                                                                                                                +
-     Both resulting key ranges remain on the same shard. Use MOVE KEY RANGE or                                                 +
-     REDISTRIBUTE KEY RANGE afterwards to relocate one of them if needed.                                                      +
+     Both resulting key ranges remain on the same shard. Use REDISTRIBUTE KEY RANGE                                            +
+     afterwards to relocate one of them if needed.                                                                             +
                                                                                                                                +
  PARAMETERS                                                                                                                    +
      <newKeyRangeID> - Identifier for the newly created key range (upper portion)                                              +
@@ -213,6 +204,9 @@ HELP MOVE KEY RANGE;
      migrate the actual data between shards.                                                  +
                                                                                               +
      To move both metadata and data, use REDISTRIBUTE KEY RANGE instead.                      +
+                                                                                              +
+ WARNINGS                                                                                     +
+     - MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data. +
                                                                                               +
  PARAMETERS                                                                                   +
      <keyRangeID> - Identifier of the key range to move                                       +
@@ -286,11 +280,12 @@ HELP REDISTRIBUTE KEY RANGE;
                                                                                                           +
  DESCRIPTION                                                                                              +
      Moves a key range to a different shard, including the actual data migration.                         +
-     Unlike MOVE KEY RANGE which only updates routing metadata, this command transfers                    +
-     the rows belonging to the key range from the source shard to the destination shard.                  +
                                                                                                           +
      The operation can be run in check-only mode to validate before applying, and                         +
      supports batch processing to control the migration pace.                                             +
+                                                                                                          +
+ WARNINGS                                                                                                 +
+     - This command is not available for installations without SPQR coordinator.                          +
                                                                                                           +
  PARAMETERS                                                                                               +
      <keyRangeID> - Identifier of the key range to redistribute                                           +

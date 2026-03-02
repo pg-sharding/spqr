@@ -11,9 +11,9 @@ to each column in the distribution.
 
 ```sql
 CREATE KEY RANGE [ <keyRangeID> ]
-FROM <lowerBound>
-ROUTE TO <shardID> 
-FOR DISTRIBUTION <distributionID>
+  FROM <lowerBound>
+  ROUTE TO <shardID> 
+  FOR DISTRIBUTION <distributionID>
 
 where lowerBound is a single value or comma-separated values for composite keys 
 (e.g., "100, 'value'" for a two-column key)
@@ -66,23 +66,14 @@ lock is released.
 LOCK KEY RANGE <keyRangeID>
 ```
 
-**Examples:**
-
-```sql
--- Lock a key range before splitting
-LOCK KEY RANGE krid1;
-```
-
 ### MOVE KEY RANGE
 
 Updates the routing metadata to assign a key range to a different shard.
 This only changes where new queries for this key range are routed — it does NOT
 migrate the actual data between shards.
 
-To move both metadata and data, use REDISTRIBUTE KEY RANGE instead.
 
-
-<Warning>MOVE KEY RANGE only updates metadata. Use REDISTRIBUTE KEY RANGE to also migrate data.</Warning>
+<Warning>MOVE KEY RANGE only updates metadata. To move both metadata and data, use REDISTRIBUTE KEY RANGE instead.</Warning>
 
 
 ```sql
@@ -99,11 +90,12 @@ MOVE KEY RANGE krid1 TO sh2;
 ### REDISTRIBUTE KEY RANGE
 
 Moves a key range to a different shard, including the actual data migration.
-Unlike MOVE KEY RANGE which only updates routing metadata, this command transfers
-the rows belonging to the key range from the source shard to the destination shard.
 
 The operation can be run in check-only mode to validate before applying, and
 supports batch processing to control the migration pace.
+
+
+<Warning>This command is not available for installations without SPQR coordinator.</Warning>
 
 
 ```sql
@@ -134,8 +126,7 @@ Splits an existing key range into two key ranges at the specified boundary value
 The new key range takes the upper portion of the original range (from the split
 point to the original upper bound), while the source range keeps the lower portion.
 
-Both resulting key ranges remain on the same shard. Use MOVE KEY RANGE or
-REDISTRIBUTE KEY RANGE afterwards to relocate one of them if needed.
+Both resulting key ranges remain on the same shard. Use REDISTRIBUTE KEY RANGE afterwards to relocate one of them if needed.
 
 
 ```sql

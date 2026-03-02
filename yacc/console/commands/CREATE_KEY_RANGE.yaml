@@ -8,9 +8,9 @@ description: |
 
 syntax: |
   CREATE KEY RANGE [ <keyRangeID> ]
-  FROM <lowerBound>
-  ROUTE TO <shardID> 
-  FOR DISTRIBUTION <distributionID>
+    FROM <lowerBound>
+    ROUTE TO <shardID> 
+    FOR DISTRIBUTION <distributionID>
   
   where lowerBound is a single value or comma-separated values for composite keys 
   (e.g., "100, 'value'" for a two-column key)

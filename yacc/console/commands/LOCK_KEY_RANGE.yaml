@@ -14,14 +14,9 @@ parameters:
   - name: keyRangeID
     description: Identifier of the key range to lock
 
-examples:
-  - description: Lock a key range before splitting
-    code: LOCK KEY RANGE krid1;
-
 tips:
   - Always pair LOCK with UNLOCK to avoid blocking queries indefinitely
-  - Lock key ranges before SPLIT or UNITE operations
-  - Use SHOW KEY RANGES to check the current lock status
+  - Use SHOW key_ranges to check the current lock status
 
 related_commands:
   - UNLOCK KEY RANGE

@@ -4,8 +4,8 @@ description: |
   The new key range takes the upper portion of the original range (from the split
   point to the original upper bound), while the source range keeps the lower portion.
 
-  Both resulting key ranges remain on the same shard. Use MOVE KEY RANGE or
-  REDISTRIBUTE KEY RANGE afterwards to relocate one of them if needed.
+  Both resulting key ranges remain on the same shard. Use REDISTRIBUTE KEY RANGE
+  afterwards to relocate one of them if needed.
 
 syntax: |
   SPLIT KEY RANGE <newKeyRangeID> FROM <sourceKeyRangeID> BY <splitBound>
