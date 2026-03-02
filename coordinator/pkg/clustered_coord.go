@@ -596,14 +596,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 					continue
 				}
 				newShard := qdb.NewShard(id, cfg.Hosts)
-				if cfg.TLS != nil {
-					newShard.TLS = &qdb.TLSConfig{
-						SslMode:      cfg.TLS.SslMode,
-						CertFile:     cfg.TLS.CertFile,
-						KeyFile:      cfg.TLS.KeyFile,
-						RootCertFile: cfg.TLS.RootCertFile,
-					}
-				}
+				newShard.TLS = topology.TlsConfigToDB(cfg.TLS)
 				if err := qc.db.AddShard(context.TODO(), newShard); err != nil {
 					spqrlog.Zero.Error().
 						Err(err).
