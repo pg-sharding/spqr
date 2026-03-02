@@ -129,6 +129,12 @@ UPDATE table2 SET b = b + 1;
 
 SELECT * FROM table2 ORDER BY a /* __spqr__execute_on: sh1 */;
 
+with vals (z) as (values (1), (88)) insert into table2 (a) select z from vals;
+
+SELECT * FROM table2 ORDER BY a /* __spqr__execute_on: sh1 */;
+
+with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals;
+
 DROP TABLE table1;
 DROP TABLE table2;
 DROP TABLE ref_rel_1;

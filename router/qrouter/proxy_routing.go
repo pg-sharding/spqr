@@ -103,9 +103,51 @@ func (qr *ProxyQrouter) planInsertV1(
 
 		p, _ = qr.planQueryV1(ctx, rm, subS)
 
-		/* try target list */
-		spqrlog.Zero.Debug().Msgf("routing insert stmt on target list:%T", p)
-		/* this target list for some insert (...) sharding column */
+		if len(subS.FromClause) == 1 {
+
+			switch sRv := subS.FromClause[0].(type) {
+			case *lyx.RangeVar:
+
+				for _, colRef := range subS.TargetList {
+					switch cc := colRef.(type) {
+					case *lyx.ColumnRef:
+						/* Check if this is actual sharding column reference.
+						* Currently, only single-columnn case is supported.
+						 */
+						if v, ok := rm.AuxValues[rmeta.AuxValuesKey{
+							CTEName:   sRv.RelationName,
+							ValueName: cc.ColName,
+						}]; ok {
+
+							rList := [][]lyx.Node{}
+							for _, vv := range v {
+								rList = append(rList, []lyx.Node{vv})
+							}
+
+							shs, err := planner.PlanDistributedRelationInsert(ctx, rList, rm, stmt)
+							if err != nil {
+								return nil, err
+							}
+							for _, sh := range shs {
+								if sh.Name != shs[0].Name {
+									return nil, rerrors.ErrComplexQuery
+								}
+							}
+							if len(shs) > 0 {
+								p = plan.Combine(p, &plan.ShardDispatchPlan{
+									ExecTarget:         shs[0],
+									TargetSessionAttrs: config.TargetSessionAttrsRW,
+								})
+							}
+							return p, nil
+						}
+					}
+				}
+			}
+		}
+
+		/* try target list, check if
+		* this target list has sharding column for some insert (...) */
 
 		routingList = [][]lyx.Node{subS.TargetList}
 		/* record all values from tl */
