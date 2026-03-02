@@ -6,7 +6,6 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -400,8 +399,6 @@ func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 	for name, val := range distr.FQNRelations {
 		ret.FQNRelations[name] = DistributedRelationFromDB(val, make(map[string]*UniqueIndex))
 	}
-
-	spqrlog.Zero.Debug().Interface("distribution", ret).Msg("construct")
 	return ret
 }
 
