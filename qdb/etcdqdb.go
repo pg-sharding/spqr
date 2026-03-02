@@ -127,6 +127,10 @@ func relationMappingNodePath(relation *rfqn.RelationFQN) string {
 	return path.Join(relationMappingNamespace, relation.RelationName)
 }
 
+func relationMappingNodePathV2(relation *rfqn.RelationFQN) string {
+	return path.Join(relationMappingNamespace, relation.String())
+}
+
 func keyRangeMovesNodePath(key string) string {
 	return path.Join(keyRangeMovesNamespace, key)
 }
@@ -1360,7 +1364,7 @@ func (q *EtcdQDB) ListDistributions(ctx context.Context) ([]*Distribution, error
 	})
 
 	spqrlog.Zero.Debug().
-		Interface("response", resp).
+		Interface("response", dds).
 		Msg("etcdqdb: list distributions")
 	return dds, nil
 }
@@ -1420,20 +1424,41 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 		return err
 	}
 
+	if distribution.FQNRelations == nil {
+		distribution.FQNRelations = map[string]*DistributedRelation{}
+	}
+
 	for _, rel := range rels {
-		if _, ok := distribution.Relations[rel.Name]; ok {
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.QualifiedName().String())
-		}
-		distribution.Relations[rel.Name] = rel
+
+		/* Now attach. For now, always attach to old path.
+		 * In future, we will attach new relation to fqn_relations.
+		 */
+
 		qname := rel.QualifiedName()
-		_, err := q.GetRelationDistribution(ctx, qname)
+		ds, err := q.GetRelationDistribution(ctx, qname)
+
 		switch e := err.(type) {
 		case *spqrerror.SpqrError:
 			if e.ErrorCode != spqrerror.SPQR_OBJECT_NOT_EXIST {
 				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", qname.String())
 			}
+
+			distribution.Relations[rel.Name] = rel
 		default:
-			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", qname.String())
+			if err != nil {
+				return err
+			}
+			if r, ok := ds.GetRelation(qname); ok {
+				if r.SchemaName == rel.SchemaName {
+					return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", qname.String())
+				} else {
+					/* Ok, store this to FQN relations. */
+
+					distribution.FQNRelations[rel.QualifiedName().MetadataKey()] = rel
+				}
+			} else {
+				return spqrerror.NewByCode(spqrerror.SPQR_METADATA_CORRUPTION)
+			}
 		}
 
 		resp, err := q.cli.Put(ctx, relationMappingNodePath(rel.QualifiedName()), id)
@@ -1661,8 +1686,24 @@ func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName *rfqn.Rel
 	}
 	switch len(resp.Kvs) {
 	case 0:
-		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution for relation \"%s\" not found", relName)
+		/* If /relation_mapping/relname is missing, we are not done yet.
+		* Try lookup by full name.
+		 */
 
+		{
+			respModern, err := q.cli.Get(ctx, relationMappingNodePathV2(relName))
+			if err != nil {
+				return nil, err
+			}
+
+			/*  case 0 here is not much different from first one. */
+			if len(respModern.Kvs) == 1 {
+				id := string(respModern.Kvs[0].Value)
+				return q.GetDistribution(ctx, id)
+			}
+		}
+
+		return nil, spqrerror.Newf(spqrerror.SPQR_OBJECT_NOT_EXIST, "distribution for relation \"%s\" not found", relName)
 	case 1:
 		id := string(resp.Kvs[0].Value)
 		return q.GetDistribution(ctx, id)

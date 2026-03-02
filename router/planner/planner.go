@@ -253,7 +253,10 @@ func PlanDistributedRelationInsert(
 
 	queryParamsFormatCodes := prepstatement.GetParams(rm.SPH.BindParamFormatCodes(), rm.SPH.BindParams())
 	tupleShards := make([]kr.ShardKey, len(routingList))
-	relation := ds.GetRelation(qualName)
+	relation, ok := ds.TryGetRelation(qualName)
+	if !ok {
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+	}
 
 	for i := range routingList {
 		tup := make([]any, len(ds.ColTypes))
