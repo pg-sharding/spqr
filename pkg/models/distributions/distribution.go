@@ -325,11 +325,12 @@ func (s *Distribution) GetRelation(relname *rfqn.RelationFQN) *DistributedRelati
 }
 
 func (s *Distribution) TryGetRelation(relname *rfqn.RelationFQN) (*DistributedRelation, bool) {
-	r, ok := s.Relations[relname.RelationName]
+	r, ok := s.FQNRelations[relname.MetadataKey()]
 	if ok {
 		return r, ok
 	}
-	r, ok = s.FQNRelations[relname.RelationName]
+
+	r, ok = s.Relations[relname.RelationName]
 	return r, ok
 }
 
