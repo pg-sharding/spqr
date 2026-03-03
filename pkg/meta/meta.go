@@ -582,10 +582,19 @@ func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 		return tts, nil
 	case *spqrparser.ShardDefinition:
-		dataShard := topology.NewDataShard(stmt.Id, &config.Shard{
+		shardCfg := &config.Shard{
 			RawHosts: stmt.Hosts,
 			Type:     config.DataShard,
-		})
+		}
+		if stmt.SslMode != "" {
+			if !topology.ValidSslMode(stmt.SslMode) {
+				return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", stmt.SslMode)
+			}
+			shardCfg.TLS = &config.TLSConfig{
+				SslMode: stmt.SslMode,
+			}
+		}
+		dataShard := topology.NewDataShard(stmt.Id, shardCfg)
 		if err := mngr.AddDataShard(ctx, dataShard); err != nil {
 			return nil, err
 		}
@@ -659,6 +668,45 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 			return nil, fmt.Errorf("failed to process 'ALTER DISTRIBUTION' statement: distribution ID is nil")
 		}
 		return processAlterDistribution(ctx, stmt.Element, mngr, stmt.Distribution.ID)
+	case *spqrparser.AlterShard:
+		existing, err := mngr.GetShard(ctx, stmt.Id)
+		if err != nil {
+			return nil, err
+		}
+		if stmt.SslMode != "" {
+			if !topology.ValidSslMode(stmt.SslMode) {
+				return nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "invalid sslmode %q; valid values are: disable, allow, prefer, require, verify-ca, verify-full", stmt.SslMode)
+			}
+		}
+		if len(stmt.Hosts) > 0 {
+			existing.Cfg.RawHosts = stmt.Hosts
+		}
+		needsTLS := stmt.SslMode != "" || stmt.CertFile != "" || stmt.KeyFile != "" || stmt.RootCertFile != ""
+		if needsTLS && existing.Cfg.TLS == nil {
+			existing.Cfg.TLS = &config.TLSConfig{}
+		}
+		if stmt.SslMode != "" {
+			existing.Cfg.TLS.SslMode = stmt.SslMode
+		}
+		if stmt.CertFile != "" {
+			existing.Cfg.TLS.CertFile = stmt.CertFile
+		}
+		if stmt.KeyFile != "" {
+			existing.Cfg.TLS.KeyFile = stmt.KeyFile
+		}
+		if stmt.RootCertFile != "" {
+			existing.Cfg.TLS.RootCertFile = stmt.RootCertFile
+		}
+		if err := mngr.UpdateShard(ctx, existing); err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("alter shard"),
+			Raw: [][][]byte{
+				{fmt.Appendf(nil, "shard id -> %s", stmt.Id)},
+			},
+		}
+		return tts, nil
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}

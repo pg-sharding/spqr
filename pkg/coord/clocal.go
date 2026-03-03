@@ -29,6 +29,10 @@ type LocalInstanceMetadataMgr struct {
 	updateShardsMapping bool
 	shardMapping        map[string]*config.Shard
 	shardMappingMutex   sync.Mutex
+
+	// PoolInvalidator, when set, is called after a shard config change
+	// to mark idle pooled connections for the given shard as stale.
+	PoolInvalidator func(shardID string)
 }
 
 const DefaultRouterId = "r1"
@@ -220,6 +224,25 @@ func (lc *LocalInstanceMetadataMgr) AddDataShard(ctx context.Context, ds *topolo
 		lc.shardMappingMutex.Unlock()
 	}
 	return lc.Coordinator.AddDataShard(ctx, ds)
+}
+
+func (lc *LocalInstanceMetadataMgr) UpdateShard(ctx context.Context, ds *topology.DataShard) error {
+	spqrlog.Zero.Info().
+		Str("node", ds.ID).
+		Msg("updating datashard node in local coordinator")
+
+	if lc.updateShardsMapping {
+		lc.shardMappingMutex.Lock()
+		lc.shardMapping[ds.ID] = ds.Cfg
+		lc.shardMappingMutex.Unlock()
+	}
+	if err := lc.Coordinator.UpdateShard(ctx, ds); err != nil {
+		return err
+	}
+	if lc.PoolInvalidator != nil {
+		lc.PoolInvalidator(ds.ID)
+	}
+	return nil
 }
 
 func (lc *LocalInstanceMetadataMgr) DropShard(ctx context.Context, shardId string) error {

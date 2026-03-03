@@ -105,8 +105,18 @@ type KeyRangeDefinition struct {
 }
 
 type ShardDefinition struct {
-	Id    string
-	Hosts []string
+	Id      string
+	Hosts   []string
+	SslMode string
+}
+
+type AlterShard struct {
+	Id           string
+	SslMode      string
+	Hosts        []string
+	CertFile     string
+	KeyFile      string
+	RootCertFile string
 }
 
 func (*KeyRangeDefinition) iCreate()          {}
@@ -461,6 +471,8 @@ func (*ReferenceRelationDefinition) iStatement() {}
 func (*UniqueIndexDefinition) iStatement()       {}
 func (*KeyRangeDefinition) iStatement()          {}
 func (*ShardDefinition) iStatement()             {}
+func (*AlterShard) iStatement()                  {}
+func (*AlterShard) iAlter()                      {}
 func (*Kill) iStatement()                        {}
 func (*Invalidate) iStatement()                  {}
 func (*SyncReferenceTables) iStatement()         {}

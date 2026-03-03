@@ -2,6 +2,7 @@ package topology
 
 import (
 	"context"
+	"slices"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
@@ -18,6 +19,7 @@ type ShardsMgr interface {
 	AddWorldShard(ctx context.Context, shard *DataShard) error
 	ListShards(ctx context.Context) ([]*DataShard, error)
 	GetShard(ctx context.Context, shardID string) (*DataShard, error)
+	UpdateShard(ctx context.Context, shard *DataShard) error
 	DropShard(ctx context.Context, id string) error
 }
 
@@ -140,4 +142,58 @@ func DataShardToDB(shard *DataShard) *qdb.Shard {
 		RawHosts: shard.Cfg.RawHosts,
 		TLS:      TlsConfigToDB(shard.Cfg.TLS),
 	}
+}
+
+// tlsConfigEqual reports whether two TLS configs are semantically equal.
+func tlsConfigEqual(a, b *config.TLSConfig) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.SslMode == b.SslMode &&
+		a.CertFile == b.CertFile &&
+		a.KeyFile == b.KeyFile &&
+		a.RootCertFile == b.RootCertFile
+}
+
+// ShardConfigEqual reports whether two DataShards have identical configuration
+// (hosts and TLS). This is used by SyncRouterMetadata to detect shards
+// that exist on both the coordinator and the router but have drifted.
+func ShardConfigEqual(a, b *DataShard) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	if a.ID != b.ID {
+		return false
+	}
+	if a.Cfg == nil && b.Cfg == nil {
+		return true
+	}
+	if a.Cfg == nil || b.Cfg == nil {
+		return false
+	}
+	if !slices.Equal(a.Cfg.RawHosts, b.Cfg.RawHosts) {
+		return false
+	}
+	return tlsConfigEqual(a.Cfg.TLS, b.Cfg.TLS)
+}
+
+// validSslModes is the set of SSL modes recognised by SPQR.
+var validSslModes = map[string]bool{
+	"disable":     true,
+	"allow":       true,
+	"prefer":      true,
+	"require":     true,
+	"verify-ca":   true,
+	"verify-full": true,
+}
+
+// ValidSslMode reports whether mode is a recognised SSL mode.
+func ValidSslMode(mode string) bool {
+	return validSslModes[mode]
 }

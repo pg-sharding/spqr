@@ -102,4 +102,9 @@ var reservedWords = map[string]int{
 	"storage":      STORAGE,
 	"sleep":        SLEEP,
 	"rename":       RENAME,
+
+	"sslmode":        SSLMODE,
+	"cert_file":      CERT_FILE,
+	"key_file":       KEY_FILE,
+	"root_cert_file": ROOT_CERT_FILE,
 }
