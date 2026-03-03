@@ -1,0 +1,41 @@
+host: '0.0.0.0'
+router_port: '6432'
+admin_console_port: '7432'
+grpc_api_port: '7010'
+
+router_mode: PROXY
+log_level: debug
+
+# --- Frontend TLS (client → router) ---
+frontend_tls:
+  sslmode: allow
+  cert_file: /etc/spqr/ssl/server.crt
+  key_file: /etc/spqr/ssl/server.key
+
+# --- Coordinator integration ---
+# use_coordinator_init: load distributions and key ranges from etcd
+# manage_shards_by_coordinator: load SHARD DEFINITIONS from etcd
+use_coordinator_init: true
+manage_shards_by_coordinator: true
+
+# --- Frontend auth ---
+frontend_rules:
+  - db: db1
+    usr: user1
+    pool_default: true
+    pool_mode: TRANSACTION
+    auth_rule:
+      auth_method: ok
+
+# --- Shard definitions (empty – filled from coordinator) ---
+# manage_shards_by_coordinator=true means the router loads shard configs from
+# etcd, but ShardMapping must be an initialized (non-nil) map.
+shards: {}
+
+# --- Backend rules ---
+backend_rules:
+  - db: db1
+    usr: user1
+    connection_limit: 50
+    pool_discard: true
+    pool_rollback: true
