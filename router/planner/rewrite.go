@@ -156,8 +156,7 @@ func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.Sc
 	return CommonValuesRewrite(query, 0, shs)
 }
 
-/* We assume that all sanity check about query CTE collocation are already done.
-* This currently works only for aux CTE beign first CTE in query. */
+/* We assume that all sanity check about query CTE collocation are already done. */
 func RewriteDistributedRelWithValues(query string, auxCTE string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
 	// Find the VALUES keyword
 	targetWithClause := strings.Index(strings.ToUpper(query), "WITH")
