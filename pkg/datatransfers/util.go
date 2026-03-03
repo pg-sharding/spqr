@@ -95,7 +95,9 @@ func GetMasterHost(ctx context.Context, s *config.ShardConnect) (string, error) 
 		if err != nil {
 			return "", err
 		}
-		defer conn.Close(ctx)
+		defer func() {
+			_ = conn.Close(ctx)
+		}()
 		var isMaster bool
 		row := conn.QueryRow(ctx, "SELECT NOT pg_is_in_recovery() as is_master;")
 		if err = row.Scan(&isMaster); err != nil {
