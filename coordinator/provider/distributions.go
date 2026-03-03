@@ -155,6 +155,18 @@ func (d *DistributionsServer) ListRelationSequences(ctx context.Context, req *pr
 	return &protos.ListRelationSequencesReply{ColumnSequences: val}, nil
 }
 
+func (d *DistributionsServer) GetSequenceRelations(ctx context.Context, req *protos.GetSequenceRelationsRequest) (*protos.GetSequenceRelationsReply, error) {
+	relations, err := d.impl.GetSequenceRelations(ctx, req.GetName())
+	if err != nil {
+		return nil, err
+	}
+	protoRel := make([]*protos.QualifiedName, 0, len(relations))
+	for _, rel := range relations {
+		protoRel = append(protoRel, rfqn.RelationFQNToProto(rel))
+	}
+	return &protos.GetSequenceRelationsReply{RelNames: protoRel}, nil
+}
+
 func (d *DistributionsServer) AlterSequenceDetachRelation(ctx context.Context, req *protos.AlterSequenceDetachRelationRequest) (*emptypb.Empty, error) {
 	return nil, d.impl.AlterSequenceDetachRelation(ctx, rfqn.RelationFQNFromProto(req.GetRelationName()))
 }
