@@ -98,4 +98,9 @@ var reservedWords = map[string]int{
 	"unique":       UNIQUE,
 	"index":        INDEX,
 	"nowait":       NOWAIT,
+	"tls":            TLS,
+	"sslmode":        SSLMODE,
+	"cert_file":      CERT_FILE,
+	"key_file":       KEY_FILE,
+	"root_cert_file": ROOT_CERT_FILE,
 }

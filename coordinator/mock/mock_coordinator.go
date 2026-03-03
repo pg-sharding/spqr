@@ -1190,6 +1190,20 @@ func (mr *MockCoordinatorMockRecorder) UpdateCoordinator(ctx, address any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCoordinator", reflect.TypeOf((*MockCoordinator)(nil).UpdateCoordinator), ctx, address)
 }
 
+// UpdateShard mocks base method.
+func (m *MockCoordinator) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateShard", ctx, shard)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateShard indicates an expected call of UpdateShard.
+func (mr *MockCoordinatorMockRecorder) UpdateShard(ctx, shard any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateShard", reflect.TypeOf((*MockCoordinator)(nil).UpdateShard), ctx, shard)
+}
+
 // WriteBalancerTask mocks base method.
 func (m *MockCoordinator) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
 	m.ctrl.T.Helper()

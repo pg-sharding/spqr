@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -689,6 +690,50 @@ func (qc *ClusteredCoordinator) traverseRouters(ctx context.Context, cb func(cc 
 
 	statistics.RecordRouterOperation(time.Since(t))
 	return nil
+}
+
+// traverseRoutersAll is like traverseRouters but does not fast-fail.
+// It attempts the callback on every opened router and returns a combined
+// error (via errors.Join) if any router(s) failed, so that healthy routers
+// are not blocked by a single unhealthy one.  Use this for propagation
+// operations (e.g. UpdateShard) where partial success is better than
+// all-or-nothing.
+func (qc *ClusteredCoordinator) traverseRoutersAll(ctx context.Context, cb func(cc *grpc.ClientConn) error) error {
+	spqrlog.Zero.Debug().Msg("qdb coordinator traverse (all routers)")
+	t := time.Now()
+
+	routers, err := qc.db.ListRouters(ctx)
+	if err != nil {
+		return err
+	}
+
+	var errs []error
+	for _, rtr := range routers {
+		if err := func() error {
+			if rtr.State != qdb.OPENED {
+				return spqrerror.New(spqrerror.SPQR_ROUTER_ERROR, "router is closed")
+			}
+
+			cc, err := qc.getOrCreateRouterConn(&topology.Router{
+				ID:      rtr.ID,
+				Address: rtr.Addr(),
+			})
+			if err != nil {
+				return err
+			}
+
+			if err := cb(cc); err != nil {
+				spqrlog.Zero.Debug().Err(err).Str("router id", rtr.ID).Msg("traverse routers (all)")
+				return err
+			}
+			return nil
+		}(); err != nil {
+			errs = append(errs, fmt.Errorf("router %s: %w", rtr.ID, err))
+		}
+	}
+
+	statistics.RecordRouterOperation(time.Since(t))
+	return errors.Join(errs...)
 }
 
 // TODO : unit tests
@@ -2109,17 +2154,57 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 		for _, sh := range shardResp.Shards {
 			routerShards = append(routerShards, topology.DataShardFromProto(sh))
 		}
-		needToAdd, needToDelete := qc.shardsDiff(routerShards, coordShards)
+		needToAdd, needToDelete, needToUpdate := qc.shardsDiff(routerShards, coordShards)
+
+		// Process adds, updates and deletes with continue-on-error so that a
+		// single shard failure does not block progress on remaining shards.
+		// Connection-level errors (gRPC connection closing) still abort
+		// immediately because the transport is broken for all operations.
+		var shardErrs []error
+		hasRetryable := false
 
 		for _, sh := range needToAdd {
 			_, err = shCl.AddDataShard(ctx, &proto.AddShardRequest{Shard: topology.DataShardToProto(sh)})
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
 					if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-						return retry.RetryableError(err)
+						// Connection broken — abort immediately as retryable.
+						return retry.RetryableError(errors.Join(append(shardErrs, fmt.Errorf("shard %s (add): %w", sh.ID, err))...))
 					}
 				}
-				return err
+				spqrlog.Zero.Warn().Err(err).Str("shard", sh.ID).Msg("shard add failed; continuing to next shard")
+				shardErrs = append(shardErrs, fmt.Errorf("shard %s (add): %w", sh.ID, err))
+				continue
+			}
+		}
+
+		for _, sh := range needToUpdate {
+			_, err = shCl.UpdateShard(ctx, &proto.UpdateShardRequest{Shard: topology.DataShardToProto(sh)})
+			if err != nil {
+				if st, ok := status.FromError(err); ok {
+					switch st.Code() {
+					case codes.Canceled:
+						if st.Message() == "grpc: the client connection is closing" {
+							// Connection broken — abort immediately as retryable.
+							return retry.RetryableError(errors.Join(append(shardErrs, fmt.Errorf("shard %s: %w", sh.ID, err))...))
+						}
+					case codes.Unimplemented:
+						// Router is an older version that doesn't support UpdateShard.
+						// Fall back to drop + add to achieve the same effect.
+						spqrlog.Zero.Warn().
+							Str("shard", sh.ID).
+							Msg("router does not support UpdateShard (older version); falling back to drop + add")
+						if fbErr := fallbackDropAndAdd(ctx, shCl, sh); fbErr != nil {
+							spqrlog.Zero.Warn().Err(fbErr).Str("shard", sh.ID).Msg("fallback drop+add failed; continuing to next shard")
+							shardErrs = append(shardErrs, fmt.Errorf("shard %s (fallback): %w", sh.ID, fbErr))
+							hasRetryable = true
+						}
+						continue
+					}
+				}
+				spqrlog.Zero.Warn().Err(err).Str("shard", sh.ID).Msg("shard update failed; continuing to next shard")
+				shardErrs = append(shardErrs, fmt.Errorf("shard %s: %w", sh.ID, err))
+				continue
 			}
 		}
 		for _, sh := range needToDelete {
@@ -2129,11 +2214,22 @@ func (qc *ClusteredCoordinator) SyncRouterMetadata(ctx context.Context, qRouter 
 			if err != nil {
 				if st, ok := status.FromError(err); ok {
 					if st.Code() == codes.Canceled && st.Message() == "grpc: the client connection is closing" {
-						return retry.RetryableError(err)
+						// Connection broken — abort immediately as retryable.
+						return retry.RetryableError(errors.Join(append(shardErrs, fmt.Errorf("shard %s (delete): %w", sh.ID, err))...))
 					}
 				}
-				return err
+				spqrlog.Zero.Warn().Err(err).Str("shard", sh.ID).Msg("shard delete failed; continuing to next shard")
+				shardErrs = append(shardErrs, fmt.Errorf("shard %s (delete): %w", sh.ID, err))
+				continue
 			}
+		}
+
+		if len(shardErrs) > 0 {
+			combined := errors.Join(shardErrs...)
+			if hasRetryable {
+				return retry.RetryableError(combined)
+			}
+			return combined
 		}
 		return nil
 	}); err != nil {
@@ -2509,6 +2605,116 @@ func (qc *ClusteredCoordinator) AddDataShard(ctx context.Context, shard *topolog
 			Shard: topology.DataShardToProto(shard),
 		})
 		return err
+	})
+}
+
+// fallbackDropAndAdd emulates UpdateShard on routers that don't support it
+// by dropping and re-adding the shard. It snapshots the old config first so it
+// can attempt rollback if the re-add fails, and retries the re-add for transient
+// errors before giving up.
+//
+// Known limitation (mixed-version compatibility):
+// If DropShard succeeds but both the re-add retries AND the rollback attempt
+// fail (e.g. sustained network partition), the shard will be absent on that
+// router until the next SyncRouterMetadata reconciliation cycle restores it.
+// This is an accepted trade-off for backward compatibility with older routers
+// that do not implement the UpdateShard RPC.
+func fallbackDropAndAdd(ctx context.Context, cl proto.ShardServiceClient, shard *topology.DataShard) error {
+	shardID := shard.ID
+
+	// 1. Snapshot the current shard config from the router for rollback.
+	//    GetShard may be unimplemented (very old routers) or return NotFound —
+	//    those are safe to proceed without a snapshot.  Any other error
+	//    (network, permission, etc.) makes it unsafe to proceed with a
+	//    destructive drop because we would have no rollback capability.
+	var oldShard *proto.Shard
+	if resp, err := cl.GetShard(ctx, &proto.ShardRequest{Id: shardID}); err == nil && resp != nil {
+		oldShard = resp.Shard
+	} else if err != nil {
+		if st, ok := status.FromError(err); ok && (st.Code() == codes.Unimplemented || st.Code() == codes.NotFound) {
+			spqrlog.Zero.Warn().Err(err).
+				Str("shard", shardID).
+				Msg("could not snapshot shard config (Unimplemented/NotFound); proceeding without rollback capability")
+		} else {
+			// Unexpected error — abort before destructive drop.
+			spqrlog.Zero.Error().Err(err).
+				Str("shard", shardID).
+				Msg("aborting fallback: cannot snapshot shard config due to unexpected error")
+			return fmt.Errorf("fallback aborted for shard %s: snapshot failed: %w", shardID, err)
+		}
+	}
+
+	// 2. Drop the shard.
+	if _, err := cl.DropShard(ctx, &proto.DropShardRequest{Id: shardID}); err != nil {
+		return err
+	}
+
+	// 3. Re-add with the new config, retrying up to 3 times for transient errors.
+	newShardProto := topology.DataShardToProto(shard)
+	var addErr error
+	const maxAddAttempts = 3
+	for attempt := 0; attempt < maxAddAttempts; attempt++ {
+		if _, addErr = cl.AddDataShard(ctx, &proto.AddShardRequest{Shard: newShardProto}); addErr == nil {
+			return nil // success
+		}
+		spqrlog.Zero.Warn().Err(addErr).
+			Str("shard", shardID).
+			Int("attempt", attempt+1).
+			Int("max_attempts", maxAddAttempts).
+			Msg("fallback re-add failed; retrying")
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Duration(attempt+1) * 200 * time.Millisecond):
+		}
+	}
+
+	// 4. Re-add exhausted retries — shard is missing from this router.
+	spqrlog.Zero.Error().Err(addErr).
+		Str("shard", shardID).
+		Msg("fallback re-add exhausted retries; shard is missing from router until next reconciliation")
+
+	// 5. Attempt rollback to the previous config if we have a snapshot.
+	if oldShard != nil {
+		spqrlog.Zero.Warn().
+			Str("shard", shardID).
+			Msg("attempting rollback to previous shard config on router")
+		if _, rbErr := cl.AddDataShard(ctx, &proto.AddShardRequest{Shard: oldShard}); rbErr != nil {
+			spqrlog.Zero.Error().Err(rbErr).
+				Str("shard", shardID).
+				Msg("rollback also failed; shard remains missing on router until next reconciliation")
+		} else {
+			spqrlog.Zero.Warn().
+				Str("shard", shardID).
+				Msg("rollback succeeded; shard restored with previous config on router")
+		}
+	}
+
+	return addErr
+}
+
+func (qc *ClusteredCoordinator) UpdateShard(ctx context.Context, shard *topology.DataShard) error {
+	if err := qc.db.UpdateShard(ctx, topology.DataShardToDB(shard)); err != nil {
+		return err
+	}
+
+	return qc.traverseRoutersAll(ctx, func(cc *grpc.ClientConn) error {
+		c := proto.NewShardServiceClient(cc)
+		_, err := c.UpdateShard(ctx, &proto.UpdateShardRequest{
+			Shard: topology.DataShardToProto(shard),
+		})
+		if err != nil {
+			if st, ok := status.FromError(err); ok && st.Code() == codes.Unimplemented {
+				// Router is an older version that doesn't support UpdateShard.
+				// Fall back to drop + add to achieve the same effect.
+				spqrlog.Zero.Warn().
+					Str("shard", shard.ID).
+					Msg("router does not support UpdateShard (older version); falling back to drop + add")
+				return fallbackDropAndAdd(ctx, c, shard)
+			}
+			return err
+		}
+		return nil
 	})
 }
 
@@ -2905,7 +3111,7 @@ func (qc *ClusteredCoordinator) DropUniqueIndex(ctx context.Context, idxId strin
 	})
 }
 
-func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, coordShards []*topology.DataShard) (added []*topology.DataShard, deleted []*topology.DataShard) {
+func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, coordShards []*topology.DataShard) (added []*topology.DataShard, deleted []*topology.DataShard, updated []*topology.DataShard) {
 	routerShardsMap := map[string]*topology.DataShard{}
 	coordShardsMap := map[string]*topology.DataShard{}
 
@@ -2917,8 +3123,10 @@ func (qc *ClusteredCoordinator) shardsDiff(routerShards []*topology.DataShard, c
 	}
 
 	for id, sh := range coordShardsMap {
-		if _, exist := routerShardsMap[id]; !exist {
+		if rSh, exist := routerShardsMap[id]; !exist {
 			added = append(added, sh)
+		} else if !topology.ShardConfigEqual(rSh, sh) {
+			updated = append(updated, sh)
 		}
 	}
 	for id, sh := range routerShardsMap {

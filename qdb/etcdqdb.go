@@ -1071,6 +1071,36 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	return shardInfo, nil
 }
 
+func (q *EtcdQDB) UpdateShard(ctx context.Context, shard *Shard) error {
+	spqrlog.Zero.Debug().
+		Str("id", shard.ID).
+		Msg("etcdqdb: update shard")
+	t := time.Now()
+
+	bytes, err := json.Marshal(shard)
+	if err != nil {
+		return err
+	}
+	nodePath := shardNodePath(shard.ID)
+	resp, err := q.cli.Txn(ctx).
+		If(
+			clientv3.Compare(clientv3.Version(nodePath), ">", 0),
+		).
+		Then(
+			clientv3.OpPut(nodePath, string(bytes)),
+		).
+		Commit()
+	if err != nil {
+		return err
+	}
+	if !resp.Succeeded {
+		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard %s does not exist", shard.ID)
+	}
+
+	statistics.RecordQDBOperation("UpdateShard", time.Since(t))
+	return nil
+}
+
 // TODO : unit tests
 func (q *EtcdQDB) DropShard(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
