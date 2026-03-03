@@ -1484,6 +1484,10 @@ func (q *MemQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, id string) 
 	return q.RedistributeTaskTaskGroupId[id], nil
 }
 
+func (q *MemQDB) GetKeyRangeRedistributeTaskId(ctx context.Context, keyRangeId string) (string, error) {
+	return "", fmt.Errorf("not implemented")
+}
+
 // TODO: unit tests
 func (q *MemQDB) GetBalancerTask(_ context.Context) (*BalancerTask, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get balancer task")
@@ -1956,4 +1960,8 @@ func (q *MemQDB) TryTaskGroupLock(ctx context.Context, tgId string, holder strin
 
 func (q *MemQDB) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error) {
 	return false, fmt.Errorf("not implemented")
+}
+
+func (q *MemQDB) LockRedistributeTask(ctx context.Context, _, _ string) error {
+	return fmt.Errorf("not implemented")
 }

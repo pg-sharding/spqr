@@ -1921,6 +1921,29 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "key range \"%s\" not found", req.KrId)
 	}
 
+	taskId, err := qc.db.GetKeyRangeRedistributeTaskId(ctx, req.KrId)
+	if err != nil {
+		return err
+	}
+	if taskId != "" {
+		task, err := qc.db.GetRedistributeTask(ctx, taskId)
+		if err != nil {
+			return nil
+		}
+		if task == nil {
+			return fmt.Errorf("failed to redistribute key range \"%s\": it's linked to redistribute task \"%s\" not present in qdb", req.KrId, taskId)
+		}
+		taskGroupId, err := qc.db.GetRedistributeTaskTaskGroupId(ctx, task.ID)
+		if err != nil {
+			return err
+		}
+		taskGroup, err := qc.GetMoveTaskGroup(ctx, taskGroupId)
+		if err != nil {
+			return err
+		}
+		return qc.internalExecRedistributeTaskWrapper(ctx, req, tasks.RedistributeTaskFromDB(task, taskGroup), true)
+	}
+
 	spqrlog.Zero.Debug().Msg("process redistribute in clustered coordinator")
 
 	if _, err = qc.GetShard(ctx, req.ShardId); err != nil {
@@ -1959,22 +1982,40 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 		}
 	}
 
+	return qc.internalExecRedistributeTaskWrapper(ctx, req, &tasks.RedistributeTask{
+		ID:          uuid.NewString(),
+		TaskGroupId: req.TaskGroupId,
+		KeyRangeId:  req.KrId,
+		ShardId:     req.ShardId,
+		BatchSize:   req.BatchSize,
+		TempKrId:    uuid.NewString(),
+		State:       tasks.RedistributeTaskPlanned,
+	}, false)
+}
+
+func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.Context, req *kr.RedistributeKeyRange, task *tasks.RedistributeTask, exists bool) error {
+	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
+	if err != nil {
+		return err
+	}
+	addr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
+	if err := qc.db.LockRedistributeTask(ctx, task.ID, addr); err != nil {
+		return fmt.Errorf("failed to execute redistribute task: unable to acquire lock in qdb: %s", err)
+	}
+	// TODO: update batch size if exists
+	if !exists {
+		if err := qc.db.CreateRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err != nil {
+			return err
+		}
+	}
+
 	/* Apply or apply nowait */
 	execCtx := context.TODO()
 
 	/* Should we wait for the completion? */
 	if req.NoWait {
 		go func() {
-
-			err := qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
-				ID:          uuid.NewString(),
-				TaskGroupId: req.TaskGroupId,
-				KeyRangeId:  req.KrId,
-				ShardId:     req.ShardId,
-				BatchSize:   req.BatchSize,
-				TempKrId:    uuid.NewString(),
-				State:       tasks.RedistributeTaskPlanned,
-			})
+			err := qc.executeRedistributeTask(execCtx, task)
 			/* We have no way to report error, but at least, log it */
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to execute redistribute")
@@ -1986,15 +2027,7 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 
 	ch := make(chan error)
 	go func() {
-		ch <- qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
-			ID:          uuid.NewString(),
-			TaskGroupId: req.TaskGroupId,
-			KeyRangeId:  req.KrId,
-			ShardId:     req.ShardId,
-			BatchSize:   req.BatchSize,
-			TempKrId:    uuid.NewString(),
-			State:       tasks.RedistributeTaskPlanned,
-		})
+		ch <- qc.executeRedistributeTask(execCtx, task)
 	}()
 
 	for {
@@ -2019,12 +2052,19 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 // Returns:
 //   - error: An error if any occurred.
 func (qc *ClusteredCoordinator) executeRedistributeTask(ctx context.Context, task *tasks.RedistributeTask) error {
-	if err := qc.db.CreateRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err != nil {
-		return err
-	}
 	for {
 		switch task.State {
 		case tasks.RedistributeTaskPlanned:
+			if task.TaskGroup != nil {
+				if err := qc.executeMoveTaskGroup(ctx, task.TaskGroup); err != nil {
+					return err
+				}
+				task.State = tasks.RedistributeTaskMoved
+				if err := qc.db.UpdateRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err != nil {
+					return err
+				}
+				break
+			}
 			if err := qc.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
 				TaskGroupId: task.TaskGroupId,
 				KeyRangeId:  task.KeyRangeId,
