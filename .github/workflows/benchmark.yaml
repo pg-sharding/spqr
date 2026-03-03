@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Yandex Cloud CR "Login" Action for GitHub Actions
-        uses: yc-actions/yc-cr-login@v2
+        uses: yc-actions/yc-cr-login@v3
         with:
           yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
           cr-endpoint: cr.yandex
