@@ -604,6 +604,9 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		}
 	}
 
+	go qc.watchRouters(context.TODO())
+	go qc.watchTaskGroups(context.TODO())
+
 	ranges, err := qc.db.ListAllKeyRanges(context.TODO())
 	if err != nil {
 		spqrlog.Zero.Error().
@@ -637,15 +640,15 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		}
 
 		if krm != nil {
-			err = qc.Move(context.TODO(), krm)
-			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("error moving key range")
-			}
+			go func() {
+				spqrlog.Zero.Error().Str("key range id", krm.Krid).Str("shard id", krm.ShardId).Msg("finish key range move in progress")
+				err = qc.Move(context.TODO(), krm)
+				if err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("error moving key range")
+				}
+			}()
 		}
 	}
-
-	go qc.watchRouters(context.TODO())
-	go qc.watchTaskGroups(context.TODO())
 }
 
 // TODO : unit tests
