@@ -319,6 +319,25 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (3, now(), 'kodewkoe', '{"a" : "b()"}'), (34, now(), 'jkdiowiew', '{"c" : "d()"}') /* __spqr__engine_v2: false */;`,
+			exp: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (3, now(), 'kodewkoe', '{"a" : "b()"}') /* __spqr__engine_v2: false */;`,
+					"sh2": `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (34, now(), 'jkdiowiew', '{"c" : "d()"}') /* __spqr__engine_v2: false */;`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			err: nil,
+		},
+		{
 			query: "INSERT INTO distrr_mm_test (id) VALUES (3), (34) /* __spqr__engine_v2: true */;",
 			exp: &plan.ScatterPlan{
 				SubPlan: &plan.ModifyTable{},
