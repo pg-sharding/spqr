@@ -162,6 +162,20 @@ func (mr *MockEntityMgrMockRecorder) AlterReferenceRelationStorage(ctx, relName,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorage", reflect.TypeOf((*MockEntityMgr)(nil).AlterReferenceRelationStorage), ctx, relName, shs)
 }
 
+// AlterSequenceDetachRelation mocks base method.
+func (m *MockEntityMgr) AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterSequenceDetachRelation", ctx, rel)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterSequenceDetachRelation indicates an expected call of AlterSequenceDetachRelation.
+func (mr *MockEntityMgrMockRecorder) AlterSequenceDetachRelation(ctx, rel any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterSequenceDetachRelation", reflect.TypeOf((*MockEntityMgr)(nil).AlterSequenceDetachRelation), ctx, rel)
+}
+
 // BatchMoveKeyRange mocks base method.
 func (m *MockEntityMgr) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error {
 	m.ctrl.T.Helper()

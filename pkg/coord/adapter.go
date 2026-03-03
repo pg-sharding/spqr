@@ -1335,6 +1335,18 @@ func (a *Adapter) ListRelationSequences(ctx context.Context, relName *rfqn.Relat
 	return resp.ColumnSequences, nil
 }
 
+func (a *Adapter) AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error {
+	c := proto.NewDistributionServiceClient(a.conn)
+	_, err := c.AlterSequenceDetachRelation(ctx, &proto.AlterSequenceDetachRelationRequest{
+		RelationName: rfqn.RelationFQNToProto(rel),
+	})
+	if err != nil {
+		return spqrerror.CleanGrpcError(err)
+	}
+
+	return nil
+}
+
 func (a *Adapter) ExecNoTran(ctx context.Context, chunk *mtran.MetaTransactionChunk) error {
 	conn := proto.NewMetaTransactionServiceClient(a.conn)
 	request := &proto.ExecNoTranRequest{MetaCmdList: chunk.GossipRequests}

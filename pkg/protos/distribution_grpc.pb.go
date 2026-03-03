@@ -35,6 +35,7 @@ const (
 	DistributionService_ListSequences_FullMethodName                           = "/spqr.DistributionService/ListSequences"
 	DistributionService_ListRelationSequences_FullMethodName                   = "/spqr.DistributionService/ListRelationSequences"
 	DistributionService_DropSequence_FullMethodName                            = "/spqr.DistributionService/DropSequence"
+	DistributionService_AlterSequenceDetachRelation_FullMethodName             = "/spqr.DistributionService/AlterSequenceDetachRelation"
 	DistributionService_ListUniqueIndexes_FullMethodName                       = "/spqr.DistributionService/ListUniqueIndexes"
 	DistributionService_ListDistributionUniqueIndexes_FullMethodName           = "/spqr.DistributionService/ListDistributionUniqueIndexes"
 	DistributionService_CreateUniqueIndex_FullMethodName                       = "/spqr.DistributionService/CreateUniqueIndex"
@@ -61,6 +62,7 @@ type DistributionServiceClient interface {
 	ListSequences(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListSequencesReply, error)
 	ListRelationSequences(ctx context.Context, in *ListRelationSequencesRequest, opts ...grpc.CallOption) (*ListRelationSequencesReply, error)
 	DropSequence(ctx context.Context, in *DropSequenceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	AlterSequenceDetachRelation(ctx context.Context, in *AlterSequenceDetachRelationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListUniqueIndexes(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListUniqueIndexesReply, error)
 	ListDistributionUniqueIndexes(ctx context.Context, in *ListDistributionUniqueIndexesRequest, opts ...grpc.CallOption) (*ListUniqueIndexesReply, error)
 	CreateUniqueIndex(ctx context.Context, in *CreateUniqueIndexRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -226,6 +228,16 @@ func (c *distributionServiceClient) DropSequence(ctx context.Context, in *DropSe
 	return out, nil
 }
 
+func (c *distributionServiceClient) AlterSequenceDetachRelation(ctx context.Context, in *AlterSequenceDetachRelationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, DistributionService_AlterSequenceDetachRelation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *distributionServiceClient) ListUniqueIndexes(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListUniqueIndexesReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListUniqueIndexesReply)
@@ -295,6 +307,7 @@ type DistributionServiceServer interface {
 	ListSequences(context.Context, *emptypb.Empty) (*ListSequencesReply, error)
 	ListRelationSequences(context.Context, *ListRelationSequencesRequest) (*ListRelationSequencesReply, error)
 	DropSequence(context.Context, *DropSequenceRequest) (*emptypb.Empty, error)
+	AlterSequenceDetachRelation(context.Context, *AlterSequenceDetachRelationRequest) (*emptypb.Empty, error)
 	ListUniqueIndexes(context.Context, *emptypb.Empty) (*ListUniqueIndexesReply, error)
 	ListDistributionUniqueIndexes(context.Context, *ListDistributionUniqueIndexesRequest) (*ListUniqueIndexesReply, error)
 	CreateUniqueIndex(context.Context, *CreateUniqueIndexRequest) (*emptypb.Empty, error)
@@ -354,6 +367,9 @@ func (UnimplementedDistributionServiceServer) ListRelationSequences(context.Cont
 }
 func (UnimplementedDistributionServiceServer) DropSequence(context.Context, *DropSequenceRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DropSequence not implemented")
+}
+func (UnimplementedDistributionServiceServer) AlterSequenceDetachRelation(context.Context, *AlterSequenceDetachRelationRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method AlterSequenceDetachRelation not implemented")
 }
 func (UnimplementedDistributionServiceServer) ListUniqueIndexes(context.Context, *emptypb.Empty) (*ListUniqueIndexesReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListUniqueIndexes not implemented")
@@ -661,6 +677,24 @@ func _DistributionService_DropSequence_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DistributionService_AlterSequenceDetachRelation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AlterSequenceDetachRelationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistributionServiceServer).AlterSequenceDetachRelation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistributionService_AlterSequenceDetachRelation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistributionServiceServer).AlterSequenceDetachRelation(ctx, req.(*AlterSequenceDetachRelationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _DistributionService_ListUniqueIndexes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -817,6 +851,10 @@ var DistributionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DropSequence",
 			Handler:    _DistributionService_DropSequence_Handler,
+		},
+		{
+			MethodName: "AlterSequenceDetachRelation",
+			Handler:    _DistributionService_AlterSequenceDetachRelation_Handler,
 		},
 		{
 			MethodName: "ListUniqueIndexes",

@@ -2821,6 +2821,25 @@ func (qc *ClusteredCoordinator) DropSequence(ctx context.Context, seqName string
 	})
 }
 
+func (qc *ClusteredCoordinator) AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error {
+	if err := qc.Coordinator.AlterSequenceDetachRelation(ctx, rel); err != nil {
+		return err
+	}
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := proto.NewDistributionServiceClient(cc)
+		_, err := cl.AlterSequenceDetachRelation(ctx, &proto.AlterSequenceDetachRelationRequest{
+			RelationName: rfqn.RelationFQNToProto(rel),
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Msg("alter sequence detach relation response")
+		return nil
+	})
+}
+
 // AlterDistributionDetach detaches relation from distribution
 // TODO: unit tests
 func (qc *ClusteredCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName *rfqn.RelationFQN) error {
