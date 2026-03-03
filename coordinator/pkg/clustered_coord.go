@@ -590,16 +590,15 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 
 	// sync shards
 	if config.CoordinatorConfig().ShardDataCfg != "" && !config.CoordinatorConfig().ShardDataInQDB {
-		shards, err := qc.loadShardsConnectionData()
+		conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
 			spqrlog.Zero.Error().
 				Err(err).
 				Msg("failed to load shard data config")
 		}
 
-		if shards != nil {
-			topologyMap := topology.DataShardMapFromShardConnectConfig(shards.ShardsData)
-			for id, shard := range topologyMap {
+		if conns != nil {
+			for id, shard := range conns.ShardsData {
 				if _, err := qc.db.GetShard(context.TODO(), id); err == nil {
 					spqrlog.Zero.Debug().
 						Str("shard", id).
@@ -615,9 +614,9 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 			shardList, err := qc.db.GetTxMetaStorage(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to get two phase tx storage shards")
-			} else if len(shardList) == 0 && len(shards.ShardsData) > 0 {
-				shardIds := make([]string, 0, len(shards.ShardsData))
-				for id := range shards.ShardsData {
+			} else if len(shardList) == 0 && len(conns.ShardsData) > 0 {
+				shardIds := make([]string, 0, len(conns.ShardsData))
+				for id := range conns.ShardsData {
 					shardIds = append(shardIds, id)
 				}
 				firstShardId := slices.Min(shardIds)
