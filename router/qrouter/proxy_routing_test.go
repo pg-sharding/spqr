@@ -319,12 +319,12 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (3, now(), 'kodewkoe', '{"a" : "b()"}'), (34, now(), 'jkdiowiew', '{"c" : "d()"}') /* __spqr__engine_v2: false */;`,
+			query: `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (3, now(), 'abb', '{"a" : "b()"}'), (34, now(), 'bcc', '{"c" : "d()"}') /* __spqr__engine_v2: false */;`,
 			exp: &plan.ScatterPlan{
 				SubPlan: &plan.ModifyTable{},
 				OverwriteQuery: map[string]string{
-					"sh1": `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (3, now(), 'kodewkoe', '{"a" : "b()"}') /* __spqr__engine_v2: false */;`,
-					"sh2": `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (34, now(), 'jkdiowiew', '{"c" : "d()"}') /* __spqr__engine_v2: false */;`,
+					"sh1": `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (3, now(), 'abb', '{"a" : "b()"}') /* __spqr__engine_v2: false */;`,
+					"sh2": `INSERT INTO distrr_mm_test (id, a, b, c) VALUES (34, now(), 'bcc', '{"c" : "d()"}') /* __spqr__engine_v2: false */;`,
 				},
 				ExecTargets: []kr.ShardKey{
 					{
