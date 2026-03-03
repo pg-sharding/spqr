@@ -177,17 +177,6 @@ func (lc *Coordinator) CreateReferenceRelation(ctx context.Context, r *rrelation
 
 	r.ColumnSequenceMapping = ret
 
-	if r.ShardIds == nil {
-		// default is all shards
-		shs, err := lc.ListShards(ctx)
-		if err != nil {
-			return err
-		}
-		for _, sh := range shs {
-			r.ShardIds = append(r.ShardIds, sh.ID)
-		}
-	}
-
 	if err := lc.qdb.CreateReferenceRelation(ctx, rrelation.RefRelationToDB(r)); err != nil {
 		return err
 	}
@@ -542,6 +531,8 @@ func (lc *Coordinator) GetDistribution(ctx context.Context, id string) (*distrib
 		return nil, err
 	}
 	ds := distributions.DistributionFromDB(ret)
+
+	/* TODO: fix that to use ListRelations() */
 	for relName := range ds.Relations {
 		qualifiedName, err := rfqn.ParseFQN(relName)
 		if err != nil {

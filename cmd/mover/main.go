@@ -207,6 +207,7 @@ func main() {
 		return
 	}
 
+	/* Fix this to use ListRelations() */
 	if err := moveData(ctx,
 		connFrom, connTo, keyRange, nextKeyRange,
 		distributions.DistributionFromDB(dbDs).Relations); err != nil {

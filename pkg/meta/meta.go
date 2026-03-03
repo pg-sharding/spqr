@@ -185,7 +185,7 @@ func processDrop(ctx context.Context,
 			if err != nil {
 				return nil, err
 			}
-			if len(ds.Relations) != 0 && !isCascade {
+			if len(ds.ListRelations()) != 0 && !isCascade {
 				return nil, spqrerror.Newf(
 					spqrerror.SPQR_INVALID_REQUEST,
 					"cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID)
@@ -198,6 +198,7 @@ func processDrop(ctx context.Context,
 			}
 
 			if stmt.ID != distributions.REPLICATED {
+				/* Do not try to detach FQN relations. */
 				for _, rel := range ds.Relations {
 					if err := mngr.AlterDistributionDetach(ctx, ds.Id, rel.Relation); err != nil {
 						return nil, err
@@ -228,7 +229,7 @@ func processDrop(ctx context.Context,
 		ret := make([]string, 0)
 		for _, ds := range dss {
 			if ds.Id != "default" {
-				if len(ds.Relations) != 0 && !isCascade {
+				if len(ds.ListRelations()) != 0 && !isCascade {
 					return nil, spqrerror.NewWithHint(spqrerror.SPQR_INVALID_REQUEST, fmt.Sprintf("cannot drop distribution %s because there are relations attached to it", ds.Id), "HINT: Use DROP ... CASCADE to detach relations automatically.")
 				}
 				ret = append(ret, ds.ID())
@@ -470,6 +471,44 @@ func createNonReplicatedDistribution(ctx context.Context,
 }
 
 // TODO : unit tests
+func createReferenceRelation(ctx context.Context, mngr EntityMgr, stmt *spqrparser.ReferenceRelationDefinition) (*tupleslot.TupleTableSlot, error) {
+	r := &rrelation.ReferenceRelation{
+		RelationName:  stmt.TableName,
+		SchemaVersion: 1,
+		ShardIds:      stmt.ShardIds,
+	}
+
+	if len(stmt.ShardIds) == 0 {
+		// default is all shards
+		shs, err := mngr.ListShards(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, sh := range shs {
+			r.ShardIds = append(r.ShardIds, sh.ID)
+		}
+	}
+
+	if err := mngr.CreateReferenceRelation(ctx, r, rrelation.ReferenceRelationEntriesFromSQL(stmt.AutoIncrementEntries)); err != nil {
+		return nil, err
+	}
+
+	/* XXX: can we already make this more SQL compliant?  */
+	tts := &tupleslot.TupleTableSlot{
+		Desc: engine.GetVPHeader("create reference table"),
+		Raw: [][][]byte{
+			{
+				fmt.Appendf(nil, "table    -> %s", r.QualifiedName()),
+			},
+			{
+				fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIds, ",")),
+			},
+		},
+	}
+	return tts, nil
+}
+
+// TODO : unit tests
 
 // processCreate processes the given astmt statement of type spqrparser.Statement by creating a new distribution,
 // sharding rule, key range, or data shard depending on the type of the statement.
@@ -485,31 +524,7 @@ func createNonReplicatedDistribution(ctx context.Context,
 func ProcessCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr) (*tupleslot.TupleTableSlot, error) {
 	switch stmt := astmt.(type) {
 	case *spqrparser.ReferenceRelationDefinition:
-
-		r := &rrelation.ReferenceRelation{
-			RelationName:  stmt.TableName,
-			SchemaVersion: 1,
-			ShardIds:      stmt.ShardIds,
-		}
-
-		if err := mngr.CreateReferenceRelation(ctx, r, rrelation.ReferenceRelationEntriesFromSQL(stmt.AutoIncrementEntries)); err != nil {
-			return nil, err
-		}
-
-		/* XXX: can we already make this more SQL compliant?  */
-		tts := &tupleslot.TupleTableSlot{
-			Desc: engine.GetVPHeader("create reference table"),
-			Raw: [][][]byte{
-				{
-					fmt.Appendf(nil, "table    -> %s", r.QualifiedName()),
-				},
-				{
-					fmt.Appendf(nil, "shard id -> %s", strings.Join(r.ShardIds, ",")),
-				},
-			},
-		}
-
-		return tts, nil
+		return createReferenceRelation(ctx, mngr, stmt)
 
 	case *spqrparser.DistributionDefinition:
 		if stmt.ID == "default" {
@@ -867,6 +882,13 @@ func ProcMetadataCommand(ctx context.Context,
 			return nil, err
 		}
 		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, ro)
+	}
+
+	if _, ok := tstmt.(*spqrparser.Help); ok {
+		if err := catalog.GC.CheckGrants(catalog.RoleReader, rule); err != nil {
+			return nil, err
+		}
+		return ProcessHelp(ctx, tstmt.(*spqrparser.Help))
 	}
 
 	if ro {
@@ -1366,10 +1388,7 @@ func ProcessShowExtended(ctx context.Context,
 			if _, ok := dsToRels[ds.Id]; ok {
 				return nil, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "Duplicate values on \"%s\" distribution ID", ds.Id)
 			}
-			dsToRels[ds.Id] = make([]*distributions.DistributedRelation, 0)
-			for _, rel := range ds.Relations {
-				dsToRels[ds.Id] = append(dsToRels[ds.Id], rel)
-			}
+			dsToRels[ds.Id] = ds.ListRelations()
 		}
 
 		tts, err = engine.RelationsVirtualRelationScan(dsToRels)
@@ -1522,6 +1541,7 @@ func ProcessShowExtended(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+
 		tts, err = engine.RedistributeTasksVirtualRelationScan(redistributeTasks)
 		if err != nil {
 			return nil, err
@@ -1968,6 +1988,35 @@ func processRedistribute(ctx context.Context,
 		fmt.Sprintf("destination shard id -> %s", stmt.DestShardID))
 	tts.WriteDataRow(
 		fmt.Sprintf("batch size           -> %d", stmt.BatchSize))
+
+	return tts, nil
+}
+
+// ProcessHelp processes HELP command and returns formatted help text
+func ProcessHelp(ctx context.Context, stmt *spqrparser.Help) (*tupleslot.TupleTableSlot, error) {
+	spqrlog.Zero.Debug().Str("cmd", stmt.CommandName).Msg("process help statement")
+
+	// If no command specified, list all available commands
+	if stmt.CommandName == "" {
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("AVAILABLE COMMANDS"),
+		}
+		for _, cmd := range spqrparser.ListAvailableCommands() {
+			tts.WriteDataRow(cmd)
+		}
+		return tts, nil
+	}
+
+	helpEntry, err := spqrparser.GetHelp(stmt.CommandName)
+	if err != nil {
+		return nil, err
+	}
+
+	tts := &tupleslot.TupleTableSlot{
+		Desc: engine.GetVPHeader("help"),
+	}
+
+	tts.WriteDataRow(helpEntry.Content)
 
 	return tts, nil
 }

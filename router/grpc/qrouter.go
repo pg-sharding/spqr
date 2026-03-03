@@ -213,11 +213,13 @@ func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, reques
 // AlterDistributedRelation alters the distributed relation
 // TODO: unit tests
 func (l *LocalQrouterServer) AlterDistributedRelation(ctx context.Context, request *protos.AlterDistributedRelationRequest) (*emptypb.Empty, error) {
-	ds, err := l.mgr.GetRelationDistribution(ctx, &rfqn.RelationFQN{RelationName: request.Relation.Name, SchemaName: request.Relation.SchemaName})
+	rfqn := &rfqn.RelationFQN{RelationName: request.Relation.Name, SchemaName: request.Relation.SchemaName}
+
+	ds, err := l.mgr.GetRelationDistribution(ctx, rfqn)
 	if err != nil {
 		return nil, err
 	}
-	curRel, ok := ds.Relations[request.Relation.Name]
+	curRel, ok := ds.TryGetRelation(rfqn)
 	if !ok {
 		return nil, fmt.Errorf("relation \"%s\" not found in distribution \"%s\"", request.Relation.Name, ds.Id)
 	}

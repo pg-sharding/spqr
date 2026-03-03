@@ -1,0 +1,10 @@
+services:
+    router:
+        image: cr.yandex/crp3gpd7ub30kqhvghqs/spqr:bb5522632e86b4083f22f193c89395d3e45b5724
+        entrypoint: ["/etc/spqr/run.sh"]
+        ports:
+            - "6432:6432"
+        hostname: router
+        container_name: router
+        volumes:
+            - /etc/spqr/:/etc/spqr/

@@ -232,7 +232,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 					return fmt.Errorf("failed to disable triggers: %s", err)
 				}
 			}
-			for _, rel := range ds.Relations {
+			for _, rel := range ds.ListRelations() {
 				res := ftx.QueryRow(ctx, fmt.Sprintf(
 					`
 					SELECT 
@@ -560,7 +560,7 @@ func unlockReferenceRelationOnShard(ctx context.Context, shardConn *pgx.Conn, re
 // - error: an error if the move fails.
 func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
 	schemas := make(map[string]struct{})
-	for _, rel := range ds.Relations {
+	for _, rel := range ds.ListRelations() {
 		schemas[rel.Relation.GetSchema()] = struct{}{}
 	}
 	if err := SetupFDW(ctx, to, fromShardId, toShardId, schemas); err != nil {
@@ -596,7 +596,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 		}
 	}
 
-	for _, rel := range ds.Relations {
+	for _, rel := range ds.ListRelations() {
 		krCondition, err := kr.GetKRCondition(rel, krg, upperBound, "")
 		if err != nil {
 			return err

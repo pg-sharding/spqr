@@ -54,7 +54,7 @@ func RewriteDistributedRelInsertForIndexes(query string, iis []*distributions.Un
 	return query, nil
 }
 
-func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
+func CommonValuesRewrite(query string, scanStart int, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
 
 	p := &plan.ScatterPlan{
 		SubPlan: &plan.ModifyTable{},
@@ -150,6 +150,56 @@ func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.Sc
 	p.OverwriteQuery = mp
 
 	return p, nil
+}
+
+func RewriteDistributedRelBatchInsert(query string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
+	return CommonValuesRewrite(query, 0, shs)
+}
+
+/* We assume that all sanity check about query CTE collocation are already done. */
+func RewriteDistributedRelWithValues(query string, auxCTE string, shs []kr.ShardKey) (*plan.ScatterPlan, error) {
+	// Find the VALUES keyword
+	targetWithClause := strings.Index(strings.ToUpper(query), "WITH")
+	if targetWithClause == -1 {
+		return nil, fmt.Errorf("invalid query: missing WITH clause")
+	}
+
+	offsetStart := targetWithClause + 4 /* WITH */
+	// Skip whitespace
+	for offsetStart < len(query) && unicode.IsSpace(rune(query[offsetStart])) {
+		offsetStart++
+	}
+
+	if offsetStart >= len(query) {
+		return nil, fmt.Errorf("malformed query for rewrite")
+	}
+
+	offsetStart = strings.Index(strings.ToUpper(query[offsetStart:]), strings.ToUpper(auxCTE))
+	if offsetStart == -1 {
+		return nil, fmt.Errorf("invalid query: missing WITH name clause")
+	}
+
+	offsetStart = targetWithClause + len(auxCTE) /* WITH %name */
+	// Skip whitespace
+	for offsetStart < len(query) && unicode.IsSpace(rune(query[offsetStart])) {
+		offsetStart++
+	}
+
+	if offsetStart >= len(query) {
+		return nil, fmt.Errorf("malformed query for rewrite")
+	}
+
+	if query[offsetStart] == '(' {
+		/* WITH vals (a, b, c) case*/
+		offsetStart = findMatchingClosingParenthesis(query, offsetStart)
+	}
+
+	offsetStart = strings.Index(strings.ToUpper(query[offsetStart:]), "AS")
+	if offsetStart == -1 {
+		return nil, fmt.Errorf("invalid query: missing AS %s clause", auxCTE)
+	}
+
+	return CommonValuesRewrite(query, offsetStart+2 /* + AS */, shs)
 }
 
 func RewriteReferenceRelationAutoIncInsert(query string, colname string, nextvalGen func() (string, error)) (string, error) {
