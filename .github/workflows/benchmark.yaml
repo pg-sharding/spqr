@@ -33,7 +33,7 @@ jobs:
           docker push cr.yandex/$CR_REGISTRY/spqr:$IMAGE_TAG
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.1.9
 
