@@ -303,14 +303,9 @@ func (l *LocalQrouterServer) CloseRouter(ctx context.Context, _ *emptypb.Empty) 
 }
 
 // TODO : unit tests
+
 func (l *LocalQrouterServer) DropKeyRange(ctx context.Context, request *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
-	for _, id := range request.Id {
-		err := l.mgr.DropKeyRange(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return &protos.ModifyReply{}, nil
+	return nil, fmt.Errorf("DEPRECATED (DropKeyRange), remove after meta transaction implementation")
 }
 
 // TODO : unit tests

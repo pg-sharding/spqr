@@ -2842,7 +2842,7 @@ func (q *EtcdQDB) CommitTransaction(ctx context.Context, transaction *QdbTransac
 		Commit()
 
 	if err != nil {
-		return fmt.Errorf("failed to commit transaction: %s", transaction.Id())
+		return fmt.Errorf("failed to commit transaction %s: %w", transaction.Id(), err)
 	}
 	if !resp.Succeeded {
 		return fmt.Errorf("transaction '%s' can't be committed", transaction.Id())

@@ -60,7 +60,7 @@ type KeyRangeMgr interface {
 	Split(ctx context.Context, split *SplitKeyRange) error
 	Unite(ctx context.Context, unite *UniteKeyRange) error
 	Move(ctx context.Context, move *MoveKeyRange) error
-	DropKeyRange(ctx context.Context, krid string) error
+	DropKeyRange(ctx context.Context, krid string) ([]qdb.QdbStatement, error)
 	DropKeyRangeAll(ctx context.Context) error
 	BatchMoveKeyRange(ctx context.Context, req *BatchMoveKeyRange, issuer *tasks.MoveTaskGroupIssuer) error
 	RedistributeKeyRange(ctx context.Context, req *RedistributeKeyRange) error

@@ -794,22 +794,9 @@ func (qc *ClusteredCoordinator) DropKeyRangeAll(ctx context.Context) error {
 }
 
 // TODO : unit tests
-func (qc *ClusteredCoordinator) DropKeyRange(ctx context.Context, id string) error {
+func (qc *ClusteredCoordinator) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbStatement, error) {
 	// TODO: exclusive lock all routers
 	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all sharding keys")
-
-	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := proto.NewKeyRangeServiceClient(cc)
-		resp, err := cl.DropKeyRange(ctx, &proto.DropKeyRangeRequest{
-			Id: []string{id},
-		})
-		spqrlog.Zero.Debug().Err(err).
-			Interface("response", resp).
-			Msg("drop key range response")
-		return err
-	}); err != nil {
-		return err
-	}
 
 	// Drop key range from qdb.
 	return qc.Coordinator.DropKeyRange(ctx, id)

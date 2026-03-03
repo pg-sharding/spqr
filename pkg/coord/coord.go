@@ -212,15 +212,8 @@ func (lc *Coordinator) DropDistribution(ctx context.Context, id string) error {
 }
 
 // DropKeyRange implements meta.EntityMgr.
-func (lc *Coordinator) DropKeyRange(ctx context.Context, id string) error {
-	statements, err := lc.qdb.DropKeyRange(ctx, id)
-	if err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop a key range: %s (prepare)", err.Error())
-	}
-	if err = lc.qdb.ExecNoTransaction(ctx, statements); err != nil {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop a key range: %s (exec)", err.Error())
-	}
-	return nil
+func (lc *Coordinator) DropKeyRange(ctx context.Context, id string) ([]qdb.QdbStatement, error) {
+	return lc.qdb.DropKeyRange(ctx, id)
 }
 
 // DropKeyRangeAll implements meta.EntityMgr.
