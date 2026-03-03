@@ -1,0 +1,32 @@
+name: DROP KEY RANGE
+description: |
+  Removes a key range from the cluster. This deletes the key range metadata
+  but does not affect the actual data stored on the shard.
+
+  Use DROP KEY RANGE ALL to remove all key ranges at once.
+
+syntax: |
+  DROP KEY RANGE <keyRangeID>
+  DROP KEY RANGE ALL
+
+parameters:
+  - name: keyRangeID
+    description: Identifier of the key range to drop
+  - name: ALL
+    description: Special keyword to drop all key ranges
+
+examples:
+  - description: Drop a specific key range
+    code: DROP KEY RANGE krid1;
+  - description: Drop all key ranges
+    code: DROP KEY RANGE ALL;
+
+tips:
+  - Dropping a key range does not migrate or delete the underlying data
+  - Use SHOW KEY RANGES to verify which key ranges exist before dropping
+  - Consider the impact on routing before dropping key ranges in production
+
+related_commands:
+  - CREATE KEY RANGE
+  - SHOW KEY RANGES
+  - MOVE KEY RANGE

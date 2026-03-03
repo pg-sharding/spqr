@@ -1008,13 +1008,15 @@ Feature: Coordinator test
         "redistribute_task_id":"rt1",
         "key_range_id":"kr1",
         "destination_shard_id":"sh2",
-        "batch_size":"0"
+        "batch_size":"0",
+        "task_group_id":"tgid1"
       },
       {
         "redistribute_task_id":"rt2",
         "key_range_id":"kr2",
         "destination_shard_id":"sh2",
-        "batch_size":"0"
+        "batch_size":"0",
+        "task_group_id":""
       }
     ]
     """
@@ -1059,7 +1061,8 @@ Feature: Coordinator test
         "redistribute_task_id":"rt2",
         "key_range_id":"kr2",
         "destination_shard_id":"sh2",
-        "batch_size":"0"
+        "batch_size":"0",
+        "task_group_id":""
       }
     ]
     """

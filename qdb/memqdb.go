@@ -924,10 +924,39 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 	if ds, ok := q.Distributions[id]; !ok {
 		return spqrerror.New(spqrerror.SPQR_OBJECT_NOT_EXIST, "no such distribution")
 	} else {
+
+		if ds.FQNRelations == nil {
+			/* Initialize metadata from previous db version. */
+			ds.FQNRelations = map[string]*DistributedRelation{}
+		}
+
 		for _, r := range rels {
 			/* Do not use public iface function, because we already got lock. */
-			if _, err := q.relationDistributionInternal(r.QualifiedName()); err == nil {
-				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", r.QualifiedName().String())
+			if ds, err := q.relationDistributionInternal(r.QualifiedName()); err == nil {
+				/* Well, okay. We already have distribution for relation with
+				* this exact relname. What about schema?
+				* If schema matches, throw error. Otherwise, try to simple place this
+				* relation to fqn_relations. TODO: remove this nonsense after complete
+				* SPQR 3.0.0 transition. */
+				if dr := ds.Relations[r.QualifiedName().RelationName]; dr.SchemaName == r.SchemaName {
+					return spqrerror.Newf(
+						spqrerror.SPQR_INVALID_REQUEST,
+						"relation \"%s\" is already attached", r.QualifiedName().String())
+				} else {
+					_, ok := ds.FQNRelations[r.QualifiedName().String()]
+					if ok {
+						/* error */
+						return spqrerror.Newf(
+							spqrerror.SPQR_INVALID_REQUEST,
+							"relation \"%s\" is already attached", r.QualifiedName().String())
+
+					} else {
+						ds.FQNRelations[r.QualifiedName().String()] = r
+
+						/* Note we do not store relation distribution index here. */
+						return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds))
+					}
+				}
 			}
 
 			/* Now attach old-style. */
@@ -1106,7 +1135,6 @@ func (q *MemQDB) relationDistributionInternal(relation *rfqn.RelationFQN) (*Dist
 		// then we have corruption
 		return q.Distributions[ds], nil
 	}
-
 }
 
 func (q *MemQDB) GetRelationDistribution(_ context.Context, relation *rfqn.RelationFQN) (*Distribution, error) {
@@ -1454,6 +1482,10 @@ func (q *MemQDB) GetRedistributeTaskTaskGroupId(ctx context.Context, id string) 
 	defer q.mu.RUnlock()
 
 	return q.RedistributeTaskTaskGroupId[id], nil
+}
+
+func (q *MemQDB) GetKeyRangeRedistributeTaskId(ctx context.Context, keyRangeId string) (string, error) {
+	return "", fmt.Errorf("not implemented")
 }
 
 // TODO: unit tests
@@ -1928,4 +1960,8 @@ func (q *MemQDB) TryTaskGroupLock(ctx context.Context, tgId string, holder strin
 
 func (q *MemQDB) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error) {
 	return false, fmt.Errorf("not implemented")
+}
+
+func (q *MemQDB) LockRedistributeTask(ctx context.Context, _, _ string) error {
+	return fmt.Errorf("not implemented")
 }

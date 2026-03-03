@@ -1,0 +1,26 @@
+NAME
+    LOCK KEY RANGE - Locks a key range to prevent concurrent modifications. This is typically
+
+SYNTAX
+    LOCK KEY RANGE <keyRangeID>
+
+DESCRIPTION
+    Locks a key range to prevent concurrent modifications. This is typically
+    used before performing operations like SPLIT or UNITE that require
+    exclusive access to the key range.
+
+    While a key range is locked, queries routed to it will wait until the
+    lock is released.
+
+PARAMETERS
+    <keyRangeID> - Identifier of the key range to lock
+
+TIPS
+    - Always pair LOCK with UNLOCK to avoid blocking queries indefinitely
+    - Use SHOW key_ranges to check the current lock status
+
+RELATED COMMANDS
+    UNLOCK KEY RANGE
+    SPLIT KEY RANGE
+    UNITE KEY RANGE
+    SHOW KEY RANGES

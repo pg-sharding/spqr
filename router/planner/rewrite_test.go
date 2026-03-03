@@ -862,6 +862,129 @@ func TestModifyDistributedInsertQuery(t *testing.T) {
 	}
 }
 
+func TestModifyDistributedWithAUXQuery(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		name     string
+		query    string
+		cteName  string
+		expected plan.Plan
+		shs      []kr.ShardKey
+		wantErr  bool
+	}
+
+	for _, tt := range []tcase{
+		{
+			name:    "simple rewrite",
+			query:   `with vals (i) as (VALUES (1), (300)) INSERT INTO t select i from vals;`,
+			cteName: "vals",
+			shs: []kr.ShardKey{
+				{
+					Name: "sh1",
+				},
+				{
+					Name: "sh2",
+				},
+			},
+			expected: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `with vals (i) as (VALUES (1)) INSERT INTO t select i from vals;`,
+					"sh2": `with vals (i) as (VALUES (300)) INSERT INTO t select i from vals;`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			wantErr: false,
+		},
+
+		{
+			name:    "simple rewrite",
+			query:   `with vals as (VALUES (1), (300)) INSERT INTO t select * from vals;`,
+			cteName: "vals",
+			shs: []kr.ShardKey{
+				{
+					Name: "sh1",
+				},
+				{
+					Name: "sh2",
+				},
+			},
+			expected: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `with vals as (VALUES (1)) INSERT INTO t select * from vals;`,
+					"sh2": `with vals as (VALUES (300)) INSERT INTO t select * from vals;`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			wantErr: false,
+		},
+
+		{
+			name:    "simple rewrite",
+			query:   `with s as (select * from tt), vals (i) as (VALUES (1), (300)) INSERT INTO t select i from vals;`,
+			cteName: "vals",
+			shs: []kr.ShardKey{
+				{
+					Name: "sh1",
+				},
+				{
+					Name: "sh2",
+				},
+			},
+			expected: &plan.ScatterPlan{
+				SubPlan: &plan.ModifyTable{},
+				OverwriteQuery: map[string]string{
+					"sh1": `with s as (select * from tt), vals (i) as (VALUES (1)) INSERT INTO t select i from vals;`,
+					"sh2": `with s as (select * from tt), vals (i) as (VALUES (300)) INSERT INTO t select i from vals;`,
+				},
+				ExecTargets: []kr.ShardKey{
+					{
+						Name: "sh1",
+					},
+					{
+						Name: "sh2",
+					},
+				},
+			},
+			wantErr: false,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := RewriteDistributedRelWithValues(tt.query, tt.cteName, tt.shs)
+
+			if tt.wantErr && err == nil {
+				t.Errorf("ModifyQuery/%s expected error, got nil. Plan: %+v", tt.name, result)
+				return
+			}
+
+			if err != nil {
+				if (err != nil) != tt.wantErr {
+					t.Errorf("ModifyQuery/%s error = %v", tt.name, err)
+				}
+				return
+			}
+
+			assert.Equal(tt.expected, result)
+		})
+	}
+}
+
 func BenchmarkModifyQuery(b *testing.B) {
 	query := "INSERT INTO table_name (col1, col3) VALUES (1, 3);"
 	colname := "col2"

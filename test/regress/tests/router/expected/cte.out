@@ -258,6 +258,59 @@ NOTICE: send query to shard(s) : sh1
  2 | 23 | 33
 (2 rows)
 
+with vals (z) as (values (1), (88)) insert into table2 (a) select z from vals;
+NOTICE: send query to shard(s) : sh1
+SELECT * FROM table2 ORDER BY a /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ a  | b  | c  
+----+----+----
+  1 | 23 | 33
+  1 |    |   
+  2 | 23 | 33
+ 88 |    |   
+(4 rows)
+
+with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals;
+ERROR:  error processing query 'with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals;': too complex query to route
+with vals (i) as (values (201), (288)),
+	z as (insert into table2 (a)
+		select i from vals returning *) table z;
+NOTICE: send query to shard(s) : sh3
+  a  | b | c 
+-----+---+---
+ 201 |   |  
+ 288 |   |  
+(2 rows)
+
+-- should fail
+with vals (i) as (values (101), (288)),
+	z as (insert into table2 (a)
+		select i from vals returning *) table z;
+ERROR:  error processing query 'with vals (i) as (values (101), (288)),
+	z as (insert into table2 (a)
+		select i from vals returning *) table z;': too complex query to route
+with vals (i) as (values (201), (288)),
+	z as (insert into table2 (a) select i from vals returning *),
+		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
+			table z union all table zz;
+NOTICE: send query to shard(s) : sh3
+  a  | b | c  
+-----+---+----
+ 201 |   |   
+ 288 |   |   
+ 201 |   | 12
+ 288 |   | 12
+(4 rows)
+
+-- should fail
+with vals (i) as (values (101), (288)),
+	z as (insert into table2 (a) select i from vals returning *),
+		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
+			table z union all table zz;
+ERROR:  error processing query 'with vals (i) as (values (101), (288)),
+	z as (insert into table2 (a) select i from vals returning *),
+		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
+			table z union all table zz;': too complex query to route
 DROP TABLE table1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE table2;

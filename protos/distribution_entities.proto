@@ -34,6 +34,7 @@ message Distribution {
   repeated string ColumnTypes = 2;
   repeated DistributedRelation relations = 3;
   repeated UniqueIndex uniqueIndexes = 4;
+  repeated DistributedRelation fqn_relations = 5;
 }
 
 message UniqueIndex {

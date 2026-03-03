@@ -1,0 +1,33 @@
+name: MOVE KEY RANGE
+
+warnings:
+  - MOVE KEY RANGE only updates metadata. To move both metadata and data, use REDISTRIBUTE KEY RANGE instead.
+
+description: |
+  Updates the routing metadata to assign a key range to a different shard.
+  This only changes where new queries for this key range are routed — it does NOT
+  migrate the actual data between shards.
+
+syntax: |
+  MOVE KEY RANGE <keyRangeID> TO <shardID>
+
+parameters:
+  - name: keyRangeID
+    description: Identifier of the key range to move
+  - name: shardID
+    description: Target shard ID to route this key range to
+
+examples:
+  - description: Move a key range to a different shard
+    code: MOVE KEY RANGE krid1 TO sh2;
+
+tips:
+  - Use this command when data has already been migrated externally
+  - For a complete migration including data, use REDISTRIBUTE KEY RANGE
+  - Verify the target shard exists with SHOW SHARDS before moving
+
+related_commands:
+  - REDISTRIBUTE KEY RANGE
+  - SHOW KEY RANGES
+  - CREATE KEY RANGE
+  - DROP KEY RANGE

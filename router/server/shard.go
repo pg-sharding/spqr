@@ -51,7 +51,6 @@ func (srv *ShardServer) HasPrepareStatement(hash uint64, shardId uint) (bool, *p
 	return b, rd
 }
 
-// TODO : unit tests
 func (srv *ShardServer) Name() string {
 	v := srv.shard.Load()
 	if v == nil {
