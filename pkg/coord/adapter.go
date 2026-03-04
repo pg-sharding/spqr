@@ -100,18 +100,7 @@ func (a *Adapter) GetSequenceRelations(ctx context.Context, seqName string) ([]*
 
 // SyncReferenceRelations implements meta.EntityMgr.
 func (a *Adapter) SyncReferenceRelations(ctx context.Context, ids []*rfqn.RelationFQN, destShard string) error {
-	c := proto.NewReferenceRelationsServiceClient(a.conn)
-
-	qRels := []*proto.QualifiedName{}
-	for _, r := range ids {
-		qRels = append(qRels, rfqn.RelationFQNToProto(r))
-	}
-
-	_, err := c.SyncReferenceRelations(ctx, &proto.SyncReferenceRelationsRequest{
-		Relations: qRels,
-		ShardId:   destShard,
-	})
-	return spqrerror.CleanGrpcError(err)
+	return fmt.Errorf("request is unprocessable in router")
 }
 
 // AlterReferenceRelationStorage implements meta.EntityMgr.
