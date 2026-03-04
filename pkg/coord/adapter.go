@@ -86,7 +86,16 @@ func (a *Adapter) GetSequenceColumns(ctx context.Context, seqName string) ([]str
 
 // GetSequenceColumns implements meta.EntityMgr.
 func (a *Adapter) GetSequenceRelations(ctx context.Context, seqName string) ([]*rfqn.RelationFQN, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetSequenceRelations not implemented")
+	c := proto.NewDistributionServiceClient(a.conn)
+	resp, err := c.GetSequenceRelations(ctx, &proto.GetSequenceRelationsRequest{Name: seqName})
+	if err != nil {
+		return nil, spqrerror.CleanGrpcError(err)
+	}
+	result := make([]*rfqn.RelationFQN, 0, len(resp.GetRelNames()))
+	for _, relName := range resp.GetRelNames() {
+		result = append(result, rfqn.RelationFQNFromProto(relName))
+	}
+	return result, nil
 }
 
 // SyncReferenceRelations implements meta.EntityMgr.

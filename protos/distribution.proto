@@ -130,6 +130,14 @@ message AlterSequenceDetachRelationRequest {
   QualifiedName relationName = 1;
 }
 
+message GetSequenceRelationsRequest {
+  string name  = 1;
+}
+
+message GetSequenceRelationsReply {
+  repeated QualifiedName relNames = 1;
+}
+
 service DistributionService {
   rpc CreateDistribution(CreateDistributionRequest) returns (CreateDistributionReply) {}
   rpc DropDistribution(DropDistributionRequest) returns (google.protobuf.Empty) {}
@@ -152,6 +160,7 @@ service DistributionService {
   rpc ListRelationSequences(ListRelationSequencesRequest) returns (ListRelationSequencesReply) {}
   rpc DropSequence(DropSequenceRequest) returns (google.protobuf.Empty) {}
   rpc AlterSequenceDetachRelation(AlterSequenceDetachRelationRequest) returns (google.protobuf.Empty) {}
+  rpc GetSequenceRelations(GetSequenceRelationsRequest) returns (GetSequenceRelationsReply) {}
 
   rpc ListUniqueIndexes(google.protobuf.Empty) returns (ListUniqueIndexesReply) {}
   rpc ListDistributionUniqueIndexes(ListDistributionUniqueIndexesRequest) returns (ListUniqueIndexesReply) {}
