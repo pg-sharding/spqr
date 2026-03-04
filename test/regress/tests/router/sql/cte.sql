@@ -165,7 +165,12 @@ with vals (i) as (values (101), (288)),
 		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
 			table z union all table zz;
 
- select __spqr__ctid ('table2');
+select __spqr__ctid ('table2');
+
+INSERT INTO ref_rel_1 (i, j) VALUES (100, 100);
+
+with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
+with vals (i) as (values(101)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
 
 DROP TABLE table1;
 DROP TABLE table2;
