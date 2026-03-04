@@ -2919,7 +2919,7 @@ func (q *EtcdQDB) TryTaskGroupLock(ctx context.Context, tgId string, holder stri
 func (q *EtcdQDB) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error) {
 	spqrlog.Zero.Debug().
 		Str("id", tgId).
-		Msg("etcdqdb: try task group lock")
+		Msg("etcdqdb: check for group lock")
 	resp, err := q.cli.Get(ctx, taskGroupLockNodePath(tgId), clientv3.WithCountOnly())
 	if err != nil {
 		return false, err

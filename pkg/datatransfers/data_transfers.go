@@ -404,7 +404,10 @@ func SetupFDW(
 	fromShard := shards.ShardsData[fromShardId]
 	toShard := shards.ShardsData[toShardId]
 	dbName := fromShard.DB
-	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
+	fromHost, err := GetMasterHost(ctx, fromShard)
+	if err != nil {
+		return err
+	}
 	hasher := murmur3.New64()
 	if _, err := hasher.Write(fmt.Appendf(nil, "%s_%s_%s_%s_%s", toShardId, strings.Split(toShard.Hosts[0], ":")[0], dbName, fromShardId, fromHost)); err != nil {
 		return err
@@ -412,7 +415,7 @@ func SetupFDW(
 	serverNameHash := hasher.Sum64()
 	serverName := fmt.Sprintf("spqr_transfer_server_%x", serverNameHash)
 	// create postgres_fdw server on receiving shard
-	_, err := to.Exec(ctx, fmt.Sprintf(`CREATE SERVER IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s', fetch_size '10000', extensions 'spqrhash', updatable 'false', truncatable 'false', application_name '%s')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1], spqrTransferApplicationName))
+	_, err = to.Exec(ctx, fmt.Sprintf(`CREATE SERVER IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s', fetch_size '10000', extensions 'spqrhash', updatable 'false', truncatable 'false', application_name '%s')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1], spqrTransferApplicationName))
 	if err != nil {
 		return err
 	}
@@ -570,7 +573,10 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromShardId, toShardId st
 	fromShard := shards.ShardsData[fromShardId]
 	toShard := shards.ShardsData[toShardId]
 	dbName := fromShard.DB
-	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
+	fromHost, err := GetMasterHost(ctx, fromShard)
+	if err != nil {
+		return err
+	}
 	hasher := murmur3.New64()
 	if _, err := hasher.Write(fmt.Appendf(nil, "%s_%s_%s_%s_%s", toShardId, strings.Split(toShard.Hosts[0], ":")[0], dbName, fromShardId, fromHost)); err != nil {
 		return err
@@ -670,7 +676,10 @@ func copyReferenceRelationData(ctx context.Context, from, to *pgx.Conn, fromId, 
 	fromShard := shards.ShardsData[fromId]
 	toShard := shards.ShardsData[toId]
 	dbName := fromShard.DB
-	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
+	fromHost, err := GetMasterHost(ctx, fromShard)
+	if err != nil {
+		return err
+	}
 	hasher := murmur3.New64()
 	if _, err := hasher.Write(fmt.Appendf(nil, "%s_%s_%s_%s_%s", toId, strings.Split(toShard.Hosts[0], ":")[0], dbName, fromId, fromHost)); err != nil {
 		return err
