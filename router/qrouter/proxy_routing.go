@@ -130,6 +130,12 @@ func (qr *ProxyQrouter) planInsertV1(
 							}
 							for _, sh := range shs {
 								if sh.Name != shs[0].Name {
+
+									/* try to rewrite, but only for simple protocol */
+									if len(rm.ParamRefs) == 0 {
+										return planner.RewriteDistributedRelWithValues(rm.Query, sRv.RelationName, shs)
+									}
+
 									return nil, rerrors.ErrComplexQuery
 								}
 							}
