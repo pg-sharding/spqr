@@ -217,7 +217,7 @@ yaccgen:
 
 gen: gogen yaccgen mockgen
 
-generate: build_images
+generate:
 	docker build -f docker/generator/Dockerfile -t spqr-generator .
 	docker run --name spqr-generator-1 spqr-generator
 	docker cp spqr-generator-1:/spqr/pkg/protos/. pkg/protos
