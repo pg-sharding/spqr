@@ -1962,6 +1962,10 @@ func (q *MemQDB) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, e
 	return false, fmt.Errorf("not implemented")
 }
 
+func (q *MemQDB) DropTaskGroupLock(ctx context.Context, tgId string) error {
+	return fmt.Errorf("not implemented")
+}
+
 func (q *MemQDB) LockRedistributeTask(ctx context.Context, _, _ string) error {
 	return fmt.Errorf("not implemented")
 }

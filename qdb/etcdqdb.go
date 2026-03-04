@@ -2927,6 +2927,16 @@ func (q *EtcdQDB) CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, 
 	return resp.Count == 1, nil
 }
 
+func (q *EtcdQDB) DropTaskGroupLock(ctx context.Context, tgId string) error {
+	spqrlog.Zero.Debug().
+		Str("id", tgId).
+		Msg("etcdqdb: drop task group lock")
+
+	_, err := q.cli.Delete(ctx, taskGroupLockNodePath(tgId))
+
+	return err
+}
+
 func (q *EtcdQDB) LockRedistributeTask(ctx context.Context, id, holder string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
