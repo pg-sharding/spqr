@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
@@ -42,4 +43,8 @@ func (rr *ReferenceRelationServer) DropReferenceRelations(ctx context.Context, r
 		}
 	}
 	return nil, nil
+}
+
+func (rr *ReferenceRelationServer) SyncReferenceRelations(_ context.Context, _ *protos.SyncReferenceRelationsRequest) (*emptypb.Empty, error) {
+	return nil, fmt.Errorf("request is unprocessable in router")
 }
