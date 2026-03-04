@@ -438,6 +438,20 @@ func (mr *MockTaskStateKeeperMockRecorder) CheckTaskGroupLocked(ctx, tgId any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckTaskGroupLocked", reflect.TypeOf((*MockTaskStateKeeper)(nil).CheckTaskGroupLocked), ctx, tgId)
 }
 
+// DropTaskGroupLock mocks base method.
+func (m *MockTaskStateKeeper) DropTaskGroupLock(ctx context.Context, tgId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropTaskGroupLock", ctx, tgId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropTaskGroupLock indicates an expected call of DropTaskGroupLock.
+func (mr *MockTaskStateKeeperMockRecorder) DropTaskGroupLock(ctx, tgId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropTaskGroupLock", reflect.TypeOf((*MockTaskStateKeeper)(nil).DropTaskGroupLock), ctx, tgId)
+}
+
 // LockRedistributeTask mocks base method.
 func (m *MockTaskStateKeeper) LockRedistributeTask(ctx context.Context, id, holder string) error {
 	m.ctrl.T.Helper()
@@ -2391,6 +2405,20 @@ func (m *MockXQDB) DropShard(ctx context.Context, shardID string) error {
 func (mr *MockXQDBMockRecorder) DropShard(ctx, shardID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropShard", reflect.TypeOf((*MockXQDB)(nil).DropShard), ctx, shardID)
+}
+
+// DropTaskGroupLock mocks base method.
+func (m *MockXQDB) DropTaskGroupLock(ctx context.Context, tgId string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropTaskGroupLock", ctx, tgId)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropTaskGroupLock indicates an expected call of DropTaskGroupLock.
+func (mr *MockXQDBMockRecorder) DropTaskGroupLock(ctx, tgId any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropTaskGroupLock", reflect.TypeOf((*MockXQDB)(nil).DropTaskGroupLock), ctx, tgId)
 }
 
 // DropUniqueIndex mocks base method.

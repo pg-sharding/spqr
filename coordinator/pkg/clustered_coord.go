@@ -1237,6 +1237,7 @@ func (qc *ClusteredCoordinator) executeMoveInternal(
 			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
 		case err := <-ch:
 			if err != nil {
+				_ = qc.db.DropTaskGroupLock(ctx, taskGroup.ID)
 				_ = qc.QDB().WriteTaskGroupStatus(ctx, taskGroup.ID, &qdb.TaskGroupStatus{State: string(tasks.TaskGroupError), Message: err.Error()})
 			}
 			return err
