@@ -31,9 +31,9 @@ type EtcdQDB struct {
 
 var _ XQDB = &EtcdQDB{}
 
-func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
+func NewEtcdQDB(addrs []string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 	cli, err := clientv3.New(clientv3.Config{
-		Endpoints: []string{addr},
+		Endpoints: addrs,
 		DialOptions: []grpc.DialOption{
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		},
@@ -45,7 +45,7 @@ func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 	}
 
 	spqrlog.Zero.Debug().
-		Str("address", addr).
+		Strs("addresses", addrs).
 		Uint("client", spqrlog.GetPointer(cli)).
 		Msg("etcdqdb: NewEtcdQDB")
 

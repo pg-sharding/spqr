@@ -61,7 +61,7 @@ func cleanupDb(ctx context.Context, db *qdb.EtcdQDB) error {
 }
 
 func setupSubTest(ctx context.Context) (*qdb.EtcdQDB, error) {
-	db, err := qdb.NewEtcdQDB(fmt.Sprintf("http://localhost:%d", EtcdPort), 0)
+	db, err := qdb.NewEtcdQDB([]string{fmt.Sprintf("http://localhost:%d", EtcdPort)}, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to SPQR QDB: %s", err)
 	}

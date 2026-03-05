@@ -15,10 +15,12 @@ import (
 var cfgCoordinator Coordinator
 
 type Coordinator struct {
-	LogFileName          string          `json:"log_filename" toml:"log_filename" yaml:"log_filename"`
-	LogLevel             string          `json:"log_level" toml:"log_level" yaml:"log_level"`
-	PrettyLogging        bool            `json:"pretty_logging" toml:"pretty_logging" yaml:"pretty_logging"`
+	LogFileName   string `json:"log_filename" toml:"log_filename" yaml:"log_filename"`
+	LogLevel      string `json:"log_level" toml:"log_level" yaml:"log_level"`
+	PrettyLogging bool   `json:"pretty_logging" toml:"pretty_logging" yaml:"pretty_logging"`
+	// QdbAddr is deprecated, use QdbAddrs instead
 	QdbAddr              string          `json:"qdb_addr" toml:"qdb_addr" yaml:"qdb_addr"`
+	QdbAddrs             []string        `json:"qdb_addrs" toml:"qdb_addrs" yaml:"qdb_addrs"`
 	CoordinatorPort      string          `json:"coordinator_port" toml:"coordinator_port" yaml:"coordinator_port"`
 	GrpcApiPort          string          `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
 	Host                 string          `json:"host" toml:"host" yaml:"host"`
@@ -73,6 +75,10 @@ func LoadCoordinatorCfg(cfgPath string) (string, error) {
 
 	if err := initCoordinatorConfig(file, cfgPath, &cCfg); err != nil {
 		return "", err
+	}
+
+	if cCfg.QdbAddr != "" && cCfg.QdbAddrs == nil {
+		cCfg.QdbAddrs = []string{cCfg.QdbAddr}
 	}
 
 	configBytes, err := json.MarshalIndent(&cCfg, "", "  ")
