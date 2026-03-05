@@ -112,9 +112,6 @@ jobs:
       matrix:
         os-version: ['jammy', 'noble']
         version: ['14', '15', '16', '17', '18']
-        # temporary solution due to problems with yandex registry
-        # version: ['13', '14', '15', '16', '17', '13-mdb', '14-mdb', '15-mdb', '16-mdb', '17-mdb']
-
     steps:
 
       - name: Check out code
