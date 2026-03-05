@@ -249,6 +249,20 @@ ERROR:  current transaction is aborted, commands ignored until end of transactio
 INSERT INTO fff (id) VALUES(1);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
+\set VERBOSITY terse
+BEGIN;
+BEGIN;
+WARNING:  there is already transaction in progress
+ROLLBACK;
+ROLLBACK;
+WARNING:  there is no transaction in progress
+\set VERBOSITY sqlstate
+BEGIN;
+BEGIN;
+WARNING:  25001
+ROLLBACK;
+ROLLBACK;
+WARNING:  25P01
 DROP TABLE test_beg;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
