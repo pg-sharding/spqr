@@ -281,7 +281,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, shardsData map[string]*c
 	return nil
 }
 
-func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelation.ReferenceRelation, db qdb.XQDB) error {
+func SyncReferenceRelation(ctx context.Context, fromId, toId string, shards map[string]*config.ShardConnect, rel *rrelation.ReferenceRelation, db qdb.XQDB) error {
 	tx, err := db.GetTransferTx(ctx, rel.RelationName.String())
 	if err != nil {
 		return err
@@ -300,13 +300,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 			return err
 		}
 	}
-	if shards == nil {
-		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error loading config")
-		}
-	}
-	fromCfg, ok := shards.ShardsData[fromId]
+	fromCfg, ok := shards[fromId]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", fromId)
 	}
@@ -318,7 +312,7 @@ func SyncReferenceRelation(ctx context.Context, fromId, toId string, rel *rrelat
 	defer func() {
 		_ = from.Close(ctx)
 	}()
-	toCfg, ok := shards.ShardsData[toId]
+	toCfg, ok := shards[toId]
 	if !ok {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "shard with ID \"%s\" not found in config", toId)
 	}

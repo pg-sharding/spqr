@@ -3,11 +3,9 @@ package coord
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/google/uuid"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -55,34 +53,7 @@ func (lc *Coordinator) AlterReferenceRelationStorageAdvanced(_ context.Context, 
 
 // SyncReferenceRelations implements meta.EntityMgr.
 func (lc *Coordinator) SyncReferenceRelations(ctx context.Context, relNames []*rfqn.RelationFQN, destShard string) error {
-	for _, qualName := range relNames {
-		rel, err := lc.GetReferenceRelation(ctx, qualName)
-		if err != nil {
-			return err
-		}
-
-		if len(rel.ShardIds) == 0 {
-			// XXX: should we error-our here?
-			return fmt.Errorf("failed to sync reference relation with no storage shards: %v", qualName)
-		}
-		fromShard := rel.ShardIds[0]
-
-		// XXX: should we ignore the command/error here?
-		destShards := rel.ShardIds
-		if !slices.Contains(rel.ShardIds, destShard) {
-			destShards = append(rel.ShardIds, destShard)
-		}
-
-		if err = datatransfers.SyncReferenceRelation(ctx, fromShard, destShard, rel, lc.qdb); err != nil {
-			return err
-		}
-
-		if err := lc.qdb.AlterReferenceRelationStorage(ctx, qualName, destShards); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	panic("unimplemented")
 }
 
 // AddDataShard implements meta.EntityMgr.

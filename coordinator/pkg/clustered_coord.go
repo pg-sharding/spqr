@@ -2861,8 +2861,35 @@ func (qc *ClusteredCoordinator) CreateReferenceRelation(ctx context.Context,
 }
 
 func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relNames []*rfqn.RelationFQN, destShard string) error {
-	if err := qc.Coordinator.SyncReferenceRelations(ctx, relNames, destShard); err != nil {
-		return err
+	for _, qualName := range relNames {
+		rel, err := qc.GetReferenceRelation(ctx, qualName)
+		if err != nil {
+			return err
+		}
+
+		if len(rel.ShardIds) == 0 {
+			// XXX: should we error-our here?
+			return fmt.Errorf("failed to sync reference relation with no storage shards: %v", qualName)
+		}
+		fromShard := rel.ShardIds[0]
+
+		// XXX: should we ignore the command/error here?
+		destShards := rel.ShardIds
+		if !slices.Contains(rel.ShardIds, destShard) {
+			destShards = append(rel.ShardIds, destShard)
+		}
+
+		shards, err := qc.loadShardsConnectionData()
+		if err != nil {
+			return err
+		}
+		if err = datatransfers.SyncReferenceRelation(ctx, fromShard, destShard, shards, rel, qc.db); err != nil {
+			return err
+		}
+
+		if err := qc.db.AlterReferenceRelationStorage(ctx, qualName, destShards); err != nil {
+			return err
+		}
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
