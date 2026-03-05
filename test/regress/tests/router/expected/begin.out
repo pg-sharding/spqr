@@ -252,7 +252,7 @@ ROLLBACK;
 \set VERBOSITY terse
 BEGIN;
 BEGIN;
-WARNING:  there is already transaction in progress
+WARNING:  there is already a transaction in progress
 ROLLBACK;
 ROLLBACK;
 WARNING:  there is no transaction in progress

@@ -346,7 +346,7 @@ func (cl *PsqlClient) ReplyDebugNoticef(fmtString string, args ...any) error {
 
 func (cl *PsqlClient) ReplyWarningMsg(code string, errmsg string) error {
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.ErrorResponse{
+		&pgproto3.NoticeResponse{
 			Message:  errmsg,
 			Severity: "WARNING",
 			Detail:   fmt.Sprintf("client id %d", cl.ID()),

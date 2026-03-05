@@ -247,7 +247,7 @@ func (rst *RelayStateImpl) ProcQueryAdvanced(query string, state parser.ParseSta
 
 		if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
 			// ignore this
-			_ = rst.Client().ReplyWarningf(spqrerror.PG_ACTIVE_SQL_TRANSACTION, "there is already transaction in progress")
+			_ = rst.Client().ReplyWarningf(spqrerror.PG_ACTIVE_SQL_TRANSACTION, "there is already a transaction in progress")
 			return noDataPd, rst.QueryExecutor().ReplyCommandComplete("BEGIN")
 		}
 		err := rst.QueryExecutor().ExecBegin(query, &st)
