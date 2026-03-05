@@ -291,7 +291,9 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 		if !config.RouterConfig().DisableObsoleteClient {
 			route := r.Obsolete(key)
 			/* Stop watchdogs, if any */
-			route.MultiShardPool().StopCacheWatchdog()
+			if route != nil {
+				route.MultiShardPool().StopCacheWatchdog()
+			}
 		}
 		return cl, err
 	}
