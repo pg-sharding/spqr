@@ -84,7 +84,7 @@ func (qr *ProxyQrouter) planFromClauseList(
 func (qr *ProxyQrouter) planInsertV1(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
-	stmt *lyx.Insert, rf *lyx.RangeVar) (plan.Plan, error) {
+	stmt *lyx.Insert, qualName *rfqn.RelationFQN) (plan.Plan, error) {
 
 	p, err := planner.PlanWithClause(ctx, rm, qr, stmt.WithClause)
 	if err != nil {
@@ -108,12 +108,39 @@ func (qr *ProxyQrouter) planInsertV1(
 			switch sRv := subS.FromClause[0].(type) {
 			case *lyx.RangeVar:
 
-				for _, colRef := range subS.TargetList {
+				var ds *distributions.Distribution
+				var err error
+
+				if ds, err = rm.GetRelationDistribution(ctx, qualName); err != nil {
+					return nil, err
+				}
+
+				/* Omit distributed relations */
+				if ds.Id == distributions.REPLICATED {
+					break
+				}
+
+				insertColsPos, _, err := planner.ProcessInsertFromSelectOffsets(ctx, stmt, rm)
+				if err != nil {
+					return nil, err
+				}
+
+				cols, err := ds.GetRelation(qualName).GetDistributionKeyColumns()
+				if err != nil {
+					return nil, err
+				}
+
+				for i, colRef := range subS.TargetList {
 					switch cc := colRef.(type) {
 					case *lyx.ColumnRef:
+
 						/* Check if this is actual sharding column reference.
 						* Currently, only single-column case is supported.
 						 */
+						if !slices.Contains(cols, stmt.Columns[i]) {
+							continue
+						}
+
 						if v, ok := rm.AuxValues[rmeta.AuxValuesKey{
 							CTEName:   sRv.RelationName,
 							ValueName: cc.ColName,
@@ -121,10 +148,15 @@ func (qr *ProxyQrouter) planInsertV1(
 
 							rList := [][]lyx.Node{}
 							for _, vv := range v {
-								rList = append(rList, []lyx.Node{vv})
+								/* XXX: ugly hack. We want this list size to match insert columns*/
+								inner := []lyx.Node{}
+								for range len(insertColsPos) {
+									inner = append(inner, vv)
+								}
+								rList = append(rList, inner)
 							}
 
-							shs, err := planner.PlanDistributedRelationInsert(ctx, rList, rm, stmt)
+							shs, err := planner.PlanDistributedRelationInsert(ctx, rList, rm, insertColsPos, qualName)
 							if err != nil {
 								return nil, err
 							}
@@ -158,9 +190,7 @@ func (qr *ProxyQrouter) planInsertV1(
 		routingList = [][]lyx.Node{subS.TargetList}
 		/* record all values from tl */
 
-		qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
-
-		if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
+		if rs, err := rm.IsReferenceRelation(ctx, qualName); err != nil {
 			return nil, err
 		} else if rs {
 			rel, err := rm.Mgr.GetReferenceRelation(ctx, qualName)
@@ -195,7 +225,13 @@ func (qr *ProxyQrouter) planInsertV1(
 			}
 			return nil, rerrors.ErrComplexQuery
 		} else {
-			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, stmt)
+
+			insertColsPos, _, err := planner.ProcessInsertFromSelectOffsets(ctx, stmt, rm)
+			if err != nil {
+				return nil, err
+			}
+
+			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, insertColsPos, qualName)
 			if err != nil {
 				return nil, err
 			}
@@ -217,11 +253,11 @@ func (qr *ProxyQrouter) planInsertV1(
 		/* record all values from values scan */
 		routingList = subS.Values
 
-		if rs, err := rm.IsReferenceRelation(ctx, rf); err != nil {
+		if rs, err := rm.IsReferenceRelation(ctx, qualName); err != nil {
 			return nil, err
 		} else if rs {
 			/* If reference relation, use planner v2 */
-			p, err := planner.PlanReferenceRelationInsertValues(ctx, rm, stmt.Columns, rf, subS, qr.idRangeCache)
+			p, err := planner.PlanReferenceRelationInsertValues(ctx, rm, stmt.Columns, qualName, subS, qr.idRangeCache)
 
 			if err != nil {
 				return nil, err
@@ -234,7 +270,12 @@ func (qr *ProxyQrouter) planInsertV1(
 			}
 			return p, nil
 		} else {
-			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, stmt)
+			insertColsPos, _, err := planner.ProcessInsertFromSelectOffsets(ctx, stmt, rm)
+			if err != nil {
+				return nil, err
+			}
+
+			shs, err := planner.PlanDistributedRelationInsert(ctx, routingList, rm, insertColsPos, qualName)
 			if err != nil {
 				return nil, err
 			}
@@ -329,12 +370,12 @@ func (qr *ProxyQrouter) planQueryV1(
 			return nil, rerrors.ErrComplexQuery
 		}
 
-		p, err := qr.planInsertV1(ctx, rm, stmt, rf)
+		qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
+
+		p, err := qr.planInsertV1(ctx, rm, stmt, qualName)
 		if err != nil {
 			return nil, err
 		}
-
-		qualName := rfqn.RelationFQNFromRangeRangeVar(rf)
 
 		/* plan one slice per unique index */
 		iisMP, err := rm.Mgr.ListRelationIndexes(ctx, qualName)

@@ -365,6 +365,35 @@ NOTICE: send query to shard(s) : sh2
 ---+---+---+---
 (0 rows)
 
+with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
+NOTICE: send query to shard(s) : sh3
+  a  | b | c 
+-----+---+---
+ 233 | 1 |  
+(1 row)
+
+TRUNCATE table2;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+with vals( b,c, a,d) as (values ( 1, 2, 233, 4), ( 1, 2, 133, 4), ( 1, 2, 132, 4), ( 1, 2, 33, 4)) insert into table2 (b,a) select b,a from vals returning *;
+NOTICE: send query to shard(s) : sh1,sh2,sh3
+  a  | b | c 
+-----+---+---
+  33 | 1 |  
+ 133 | 1 |  
+ 132 | 1 |  
+ 233 | 1 |  
+(4 rows)
+
+select __spqr__ctid ('table2');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid |  a  | b | c 
+--------------+-----+---+---
+ shard sh1    |  33 | 1 |  
+ shard sh2    | 133 | 1 |  
+ shard sh2    | 132 | 1 |  
+ shard sh3    | 233 | 1 |  
+(4 rows)
+
 DROP TABLE table1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE table2;
