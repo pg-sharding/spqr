@@ -118,8 +118,7 @@ func IsRelationCatalog(resolvedRelation *rfqn.RelationFQN) bool {
 	return len(resolvedRelation.RelationName) >= 3 && resolvedRelation.RelationName[0:3] == "pg_"
 }
 
-func (rm *RoutingMetadataContext) IsReferenceRelation(ctx context.Context, q *lyx.RangeVar) (bool, error) {
-	qualName := rfqn.RelationFQNFromRangeRangeVar(q)
+func (rm *RoutingMetadataContext) IsReferenceRelation(ctx context.Context, qualName *rfqn.RelationFQN) (bool, error) {
 
 	ds, err := rm.GetRelationDistribution(ctx, qualName)
 	if err != nil {
