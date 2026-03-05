@@ -1987,23 +1987,23 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 }
 
 func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.Context, req *kr.RedistributeKeyRange, task *tasks.RedistributeTask, exists bool) error {
+	execCtx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
 	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
 	if err != nil {
 		return err
 	}
 	addr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
-	if err := qc.db.LockRedistributeTask(ctx, task.ID, addr); err != nil {
+	if err := qc.db.LockRedistributeTask(execCtx, task.ID, addr); err != nil {
 		return fmt.Errorf("failed to execute redistribute task: unable to acquire lock in qdb: %s", err)
 	}
 	// TODO: update batch size if exists
 	if !exists {
-		if err := qc.db.CreateRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err != nil {
+		if err := qc.db.CreateRedistributeTask(execCtx, tasks.RedistributeTaskToDB(task)); err != nil {
 			return err
 		}
 	}
-
-	/* Apply or apply nowait */
-	execCtx := context.TODO()
 
 	/* Should we wait for the completion? */
 	if req.NoWait {
