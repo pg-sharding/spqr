@@ -83,6 +83,20 @@ INSERT INTO fff (id) VALUES(1);
 ROLLBACK;
 
 
+\set VERBOSITY terse
+
+BEGIN;
+BEGIN;
+ROLLBACK;
+ROLLBACK;
+
+\set VERBOSITY sqlstate
+
+BEGIN;
+BEGIN;
+ROLLBACK;
+ROLLBACK;
+
 DROP TABLE test_beg;
 
 \c spqr-console
