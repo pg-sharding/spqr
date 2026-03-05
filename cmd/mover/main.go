@@ -156,7 +156,7 @@ func main() {
 		return
 	}
 
-	db, err := qdb.NewEtcdQDB(*etcdAddr, 0)
+	db, err := qdb.NewEtcdQDB([]string{*etcdAddr}, 0)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return
