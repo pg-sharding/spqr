@@ -125,7 +125,7 @@ func (qr *ProxyQrouter) planInsertV1(
 					return nil, err
 				}
 
-				cols, err := ds.GetRelation(qualName).GetDistributionKeyColumns()
+				cols, err := ds.GetRelation(qualName).GetDistributionKeyColumnNames()
 				if err != nil {
 					return nil, err
 				}
@@ -1122,7 +1122,7 @@ func (qr *ProxyQrouter) planSplitUpdate(
 				/* We are updating non-distributed relation */
 				return nil, nil
 			}
-			distribCols, err = r.GetDistributionKeyColumns()
+			distribCols, err = r.GetDistributionKeyColumnNames()
 			if err != nil {
 				return nil, err
 			}
