@@ -62,6 +62,7 @@ type TaskStateKeeper interface {
 	CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error)
 	DropTaskGroupLock(ctx context.Context, tgId string) error
 	LockRedistributeTask(ctx context.Context, id string, holder string) error
+	DropRedistributeTaskLock(ctx context.Context, id string) error
 }
 
 // QDB is a generic interface used by both the coordinator and the router.

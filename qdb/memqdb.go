@@ -1969,3 +1969,7 @@ func (q *MemQDB) DropTaskGroupLock(ctx context.Context, tgId string) error {
 func (q *MemQDB) LockRedistributeTask(ctx context.Context, _, _ string) error {
 	return fmt.Errorf("not implemented")
 }
+
+func (q *MemQDB) DropRedistributeTaskLock(ctx context.Context, id string) error {
+	return fmt.Errorf("not implemented")
+}

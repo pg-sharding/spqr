@@ -1987,20 +1987,21 @@ func (qc *ClusteredCoordinator) RedistributeKeyRange(ctx context.Context, req *k
 }
 
 func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.Context, req *kr.RedistributeKeyRange, task *tasks.RedistributeTask, exists bool) error {
-	execCtx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
-
 	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
 	if err != nil {
 		return err
 	}
 	addr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
+
+	execCtx, cancel := context.WithCancel(context.TODO())
 	if err := qc.db.LockRedistributeTask(execCtx, task.ID, addr); err != nil {
+		cancel()
 		return fmt.Errorf("failed to execute redistribute task: unable to acquire lock in qdb: %s", err)
 	}
 	// TODO: update batch size if exists
 	if !exists {
 		if err := qc.db.CreateRedistributeTask(execCtx, tasks.RedistributeTaskToDB(task)); err != nil {
+			cancel()
 			return err
 		}
 	}
@@ -2008,15 +2009,21 @@ func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.
 	/* Should we wait for the completion? */
 	if req.NoWait {
 		go func() {
+			defer cancel()
 			err := qc.executeRedistributeTask(execCtx, task)
 			/* We have no way to report error, but at least, log it */
 			if err != nil {
+				if err2 := qc.db.DropRedistributeTaskLock(ctx, task.ID); err2 != nil {
+					spqrlog.Zero.Error().Err(err2).Msg("failed to drop redistribute task lock")
+				}
 				spqrlog.Zero.Error().Err(err).Msg("failed to execute redistribute")
 			}
 		}()
 
 		return nil
 	}
+
+	defer cancel()
 
 	ch := make(chan error)
 	go func() {
@@ -2026,6 +2033,9 @@ func (qc *ClusteredCoordinator) internalExecRedistributeTaskWrapper(ctx context.
 	for {
 		select {
 		case err := <-ch:
+			if err2 := qc.db.DropRedistributeTaskLock(ctx, task.ID); err2 != nil {
+				spqrlog.Zero.Error().Err(err2).Msg("failed to drop redistribute task lock")
+			}
 			return err
 		case <-ctx.Done():
 			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
