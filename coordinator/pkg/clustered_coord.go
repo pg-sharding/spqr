@@ -2779,6 +2779,16 @@ func (qc *ClusteredCoordinator) AlterDistributionAttach(ctx context.Context, id 
 		return err
 	}
 
+	rfqns := make([]*rfqn.RelationFQN, len(rels))
+	for i, rel := range rels {
+		rfqns[i] = rel.Relation
+	}
+	go func() {
+		if err := datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(rfqns)); err != nil {
+			spqrlog.Zero.Err(err).Msg("failed to set up spqrguard")
+		}
+	}()
+
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := proto.NewDistributionServiceClient(cc)
 		resp, err := cl.AlterDistributionAttach(ctx, &proto.AlterDistributionAttachRequest{

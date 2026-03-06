@@ -906,7 +906,13 @@ func getEntriesCount(ctx context.Context, conn Queryable, relName string, condit
 	return count, nil
 }
 
-func TraverseShards(ctx context.Context, shards *config.DatatransferConnections, cb func(ctx context.Context, conn *pgx.Conn) error) error {
+func TraverseShards(ctx context.Context, cb func(ctx context.Context, conn *pgx.Conn) error) error {
+	if shards == nil {
+		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error loading config")
+		}
+	}
 	for id, shard := range shards.ShardsData {
 		conn, err := retry.DoValue(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) (*pgx.Conn, error) {
 			return GetMasterConnection(ctx, shard, "traverse_shards")
@@ -947,12 +953,15 @@ func SetUpSPQRGuard(relations []*rfqn.RelationFQN) func(context.Context, *pgx.Co
 				}
 			}
 		}
-		if _, err = tx.Exec(ctx, "LOCK TABLE spqr_metadata.spqr_global_settings IN ACCESS EXCLUSIVE MODE"); err != nil {
-			return err
-		}
 
-		if _, err := tx.Exec(ctx, fmt.Sprintf("INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES (%d, true);", spqrguardDistributedRelationsLock)); err != nil {
-			return err
+		if config.CoordinatorConfig().ForbidDirectShardQueries {
+			if _, err = tx.Exec(ctx, "LOCK TABLE spqr_metadata.spqr_global_settings IN ACCESS EXCLUSIVE MODE"); err != nil {
+				return err
+			}
+
+			if _, err := tx.Exec(ctx, fmt.Sprintf("INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES (%d, true);", spqrguardDistributedRelationsLock)); err != nil {
+				return err
+			}
 		}
 
 		err = tx.Commit(ctx)
