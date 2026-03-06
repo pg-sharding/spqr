@@ -602,6 +602,9 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 				}
 			}
 		}
+		if err := qc.setUpSPQRGuard(ctx, shards); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to set up spqrguard on shards")
+		}
 	}
 
 	go qc.watchTaskGroups(context.TODO())
@@ -651,6 +654,24 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 	wg.Wait()
 
 	go qc.watchRouters(context.TODO())
+}
+
+// TODO: move down
+func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context, shards *config.DatatransferConnections) error {
+	spqrlog.Zero.Debug().Msg("start setting up spqrguard")
+
+	relations := make([]*rfqn.RelationFQN, 0)
+	dss, err := qc.ListDistributions(ctx)
+	if err != nil {
+		return err
+	}
+	for _, ds := range dss {
+		for _, rel := range ds.FQNRelations {
+			relations = append(relations, rel.Relation)
+		}
+	}
+
+	return datatransfers.TraverseShards(ctx, shards, datatransfers.SetUpSPQRGuard(relations))
 }
 
 // TODO : unit tests
@@ -1185,7 +1206,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "found non-deferrable constraint or constraint referencing non-distributed table on destination shard: \"%s\"", constraintName)
 	}
 
-	hasSpqrHash, err := datatransfers.CheckHashExtension(ctx, sourceConn)
+	hasSpqrHash, err := datatransfers.CheckExtension(ctx, sourceConn, "spqrhash")
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on source shard: %s", err)
 	}
@@ -1193,7 +1214,7 @@ func (qc *ClusteredCoordinator) checkKeyRangeMove(ctx context.Context, req *kr.B
 		return spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "extension \"spqrhash\" not installed on source shard")
 	}
 
-	hasSpqrHash, err = datatransfers.CheckHashExtension(ctx, destConn)
+	hasSpqrHash, err = datatransfers.CheckExtension(ctx, destConn, "spqrhash")
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error checking for spqrhash extension on destination shard: %s", err)
 	}
