@@ -468,7 +468,7 @@ func AnalyzeQueryV1(
 				* get relation will actually return meaningful
 				* `relation`. CatalogDistribution is one example. */
 				if ok {
-					cols, err := r.GetDistributionKeyColumns()
+					cols, err := r.GetDistributionKeyColumnNames()
 					if err != nil {
 						return err
 					}
