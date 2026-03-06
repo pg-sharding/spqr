@@ -138,6 +138,7 @@ func (qr *ProxyQrouter) planInsertV1(
 						* Currently, only single-column case is supported.
 						 */
 						if !slices.Contains(cols, stmt.Columns[i]) {
+							spqrlog.Zero.Debug().Str("column name", cc.ColName).Msg("skip column reference")
 							continue
 						}
 
@@ -675,12 +676,6 @@ func (qr *ProxyQrouter) planQueryV1(
 				return p, nil
 			}
 
-			// iis := make([]*distributions.UniqueIndex, 0)
-
-			// for _, is := range iisMP {
-			// 	iis = append(iis, is)
-			// }
-
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 
 		default:
@@ -732,12 +727,6 @@ func (qr *ProxyQrouter) planQueryV1(
 				/* simple case */
 				return p, nil
 			}
-
-			// iis := make([]*distributions.UniqueIndex, 0)
-
-			// for _, is := range iisMP {
-			// 	iis = append(iis, is)
-			// }
 
 			return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		default:
