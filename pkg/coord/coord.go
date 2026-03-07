@@ -1137,7 +1137,7 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.Krid)
 	}
 
-	krOldDB, err := lc.qdb.LockKeyRange(ctx, req.SourceID)
+	krOld, err := lc.LockKeyRange(ctx, req.SourceID)
 	if err != nil {
 		return err
 	}
@@ -1148,13 +1148,8 @@ func (lc *Coordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		}
 	}()
 
-	ds, err := lc.qdb.GetDistribution(ctx, krOldDB.DistributionId)
+	ds, err := lc.qdb.GetDistribution(ctx, krOld.Distribution)
 
-	if err != nil {
-		return err
-	}
-
-	krOld, err := kr.KeyRangeFromDB(krOldDB, ds.ColTypes)
 	if err != nil {
 		return err
 	}
