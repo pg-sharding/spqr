@@ -947,6 +947,97 @@ func (qr *ProxyQrouter) plannerV1(
 			ExecTargets: qr.DataShardsRoutes(),
 		}
 	}
+
+	/* Okay, we got some plan. If case of multishard processing,
+	* fix bogus limit support, if enabled. */
+
+	if config.RouterConfig().Qr.AllowPostProcessing {
+		scatterSlice, ok := p.(*plan.ScatterPlan)
+
+		spqrlog.Zero.Debug().
+			Bool("ok", ok).
+			Msgf("plan select limit postprocessing %+v", p)
+
+		switch stmt := rm.Stmt.(type) {
+		case *lyx.Select:
+			if ok && stmt.Limit != nil {
+
+				limitVal := 0
+				selectLim, ok := stmt.Limit.(*lyx.SelectLimit)
+				if !ok {
+					return nil, rerrors.ErrComplexQuery
+				}
+
+				q, ok := selectLim.LimitCount.(*lyx.AExprIConst)
+
+				if !ok {
+					/* no support */
+					return p, nil
+				}
+				limitVal = q.Value
+
+				retSlice := &plan.VirtualPlan{
+					TTS: &tupleslot.TupleTableSlot{},
+				}
+
+				retSlice.SubPlan = scatterSlice
+
+				scatterSlice.OverwriteQuery = map[string]string{}
+
+				for _, sh := range scatterSlice.ExecTargets {
+					scatterSlice.OverwriteQuery[sh.Name] = rm.Query
+				}
+
+				scatterSlice.RunF = func(serv server.Server) error {
+					spqrlog.Zero.Debug().Msg("run bottom-level plan slice")
+					for _, sh := range serv.Datashards() {
+						if !slices.ContainsFunc(scatterSlice.ExecTargets, func(el kr.ShardKey) bool {
+							return sh.Name() == el.Name
+						}) {
+							continue
+						}
+
+						var errmsg *pgproto3.ErrorResponse
+					shLoop:
+						for {
+							msg, err := serv.ReceiveShard(sh.ID())
+							if err != nil {
+								return err
+							}
+
+							switch v := msg.(type) {
+							case *pgproto3.ReadyForQuery:
+								if v.TxStatus == byte(txstatus.TXERR) {
+									return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+								}
+
+								break shLoop
+							case *pgproto3.RowDescription:
+								if len(retSlice.TTS.Desc) == 0 {
+									retSlice.TTS.Desc = v.Fields
+								}
+							case *pgproto3.ErrorResponse:
+								errmsg = v
+							case *pgproto3.DataRow:
+
+								if len(retSlice.TTS.Raw) < limitVal {
+									retSlice.TTS.Raw = append(retSlice.TTS.Raw, v.Values)
+								}
+
+							default:
+								/* All ok? */
+							}
+						}
+					}
+
+					return nil
+				}
+
+				return retSlice, nil
+			}
+		}
+	}
+
 	return p, nil
 }
 
