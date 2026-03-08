@@ -155,7 +155,8 @@ type QDB interface {
 	ListRouters(ctx context.Context) ([]*Router, error)
 
 	// Sequences for reference relation
-	CreateSequence(ctx context.Context, seqName string, initialValue int64) error
+	CreateSequence(ctx context.Context, seqName string, initialValue int64) ([]QdbStatement, error)
+	CheckSequence(ctx context.Context, seqName string) (bool, error)
 	ListSequences(ctx context.Context) ([]string, error)
 	AlterSequenceAttach(ctx context.Context, seqName string, relName *rfqn.RelationFQN, colName string) error
 	GetRelationSequence(ctx context.Context, relName *rfqn.RelationFQN) (map[string]string, error)

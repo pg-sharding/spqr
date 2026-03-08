@@ -369,7 +369,9 @@ func TestMemQDB_NextVal(t *testing.T) {
 	memqdb, err := qdb.NewMemQDB("")
 	assert.NoError(err)
 
-	err = memqdb.CreateSequence(ctx, "seq", 0)
+	statements, err := memqdb.CreateSequence(ctx, "seq", 0)
+	assert.NoError(err)
+	err = memqdb.ExecNoTransaction(context.TODO(), statements)
 	assert.NoError(err)
 
 	err = memqdb.AlterSequenceAttach(ctx, "seq", &rfqn.RelationFQN{RelationName: "test"}, "id")
