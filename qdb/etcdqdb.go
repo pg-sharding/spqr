@@ -2672,8 +2672,8 @@ func (q *EtcdQDB) CreateSequence(ctx context.Context, seqName string, initialVal
 	spqrlog.Zero.Debug().
 		Str("sequence", seqName).
 		Msg("etcdqdb: add sequence")
-
-	statement, err := NewQdbStatement(CMD_PUT, seqName, fmt.Sprintf("%d", initialValue))
+	key := sequenceNodePath(seqName)
+	statement, err := NewQdbStatement(CMD_PUT, key, fmt.Sprintf("%d", initialValue))
 	if err != nil {
 		return nil, err
 	}
