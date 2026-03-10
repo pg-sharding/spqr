@@ -797,23 +797,23 @@ func (mr *MockRouterClientMockRecorder) ReplyRFQ(arg0 any) *gomock.Call {
 }
 
 // ReplyWarningMsg mocks base method.
-func (m *MockRouterClient) ReplyWarningMsg(msg string) error {
+func (m *MockRouterClient) ReplyWarningMsg(code, msg string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReplyWarningMsg", msg)
+	ret := m.ctrl.Call(m, "ReplyWarningMsg", code, msg)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReplyWarningMsg indicates an expected call of ReplyWarningMsg.
-func (mr *MockRouterClientMockRecorder) ReplyWarningMsg(msg any) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) ReplyWarningMsg(code, msg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyWarningMsg", reflect.TypeOf((*MockRouterClient)(nil).ReplyWarningMsg), msg)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyWarningMsg", reflect.TypeOf((*MockRouterClient)(nil).ReplyWarningMsg), code, msg)
 }
 
 // ReplyWarningf mocks base method.
-func (m *MockRouterClient) ReplyWarningf(fmt string, args ...any) error {
+func (m *MockRouterClient) ReplyWarningf(code, fmt string, args ...any) error {
 	m.ctrl.T.Helper()
-	varargs := []any{fmt}
+	varargs := []any{code, fmt}
 	for _, a := range args {
 		varargs = append(varargs, a)
 	}
@@ -823,9 +823,9 @@ func (m *MockRouterClient) ReplyWarningf(fmt string, args ...any) error {
 }
 
 // ReplyWarningf indicates an expected call of ReplyWarningf.
-func (mr *MockRouterClientMockRecorder) ReplyWarningf(fmt any, args ...any) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) ReplyWarningf(code, fmt any, args ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{fmt}, args...)
+	varargs := append([]any{code, fmt}, args...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyWarningf", reflect.TypeOf((*MockRouterClient)(nil).ReplyWarningf), varargs...)
 }
 

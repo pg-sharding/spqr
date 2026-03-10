@@ -367,7 +367,7 @@ var runCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			e := instance.NewEtcdMetadataBootstrapper(config.CoordinatorConfig().QdbAddr)
+			e := instance.NewEtcdMetadataBootstrapper(config.CoordinatorConfig().QdbAddrs)
 			if err := e.InitializeMetadata(ctx, router); err != nil {
 				return err
 			}

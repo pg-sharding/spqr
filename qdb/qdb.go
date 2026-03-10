@@ -62,6 +62,7 @@ type TaskStateKeeper interface {
 	CheckTaskGroupLocked(ctx context.Context, tgId string) (bool, error)
 	DropTaskGroupLock(ctx context.Context, tgId string) error
 	LockRedistributeTask(ctx context.Context, id string, holder string) error
+	DropRedistributeTaskLock(ctx context.Context, id string) error
 }
 
 // QDB is a generic interface used by both the coordinator and the router.
@@ -208,7 +209,7 @@ type XQDB interface {
 func NewXQDB(qdbType string) (XQDB, error) {
 	switch qdbType {
 	case "etcd":
-		return NewEtcdQDB(config.CoordinatorConfig().QdbAddr, config.CoordinatorConfig().EtcdMaxSendBytes)
+		return NewEtcdQDB(config.CoordinatorConfig().QdbAddrs, config.CoordinatorConfig().EtcdMaxSendBytes)
 	case "mem":
 		return GetMemQDB()
 	default:

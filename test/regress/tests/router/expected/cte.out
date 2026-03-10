@@ -341,7 +341,7 @@ NOTICE: send query to shard(s) : sh2,sh3
  288 |   | 12
 (3 rows)
 
- select __spqr__ctid ('table2');
+select __spqr__ctid ('table2');
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  __spqr__ctid |  a  | b | c  
 --------------+-----+---+----
@@ -349,6 +349,49 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  shard sh3    | 201 |   |   
  shard sh3    | 288 |   |   
  shard sh3    | 288 |   | 12
+(4 rows)
+
+INSERT INTO ref_rel_1 (i, j) VALUES (100, 100);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
+NOTICE: send query to shard(s) : sh1
+ a | b | c | i 
+---+---+---+---
+(0 rows)
+
+with vals (i) as (values(101)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
+NOTICE: send query to shard(s) : sh2
+ a | b | c | i 
+---+---+---+---
+(0 rows)
+
+with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
+NOTICE: send query to shard(s) : sh3
+  a  | b | c 
+-----+---+---
+ 233 | 1 |  
+(1 row)
+
+TRUNCATE table2;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+with vals( b,c, a,d) as (values ( 1, 2, 233, 4), ( 1, 2, 133, 4), ( 1, 2, 132, 4), ( 1, 2, 33, 4)) insert into table2 (b,a) select b,a from vals returning *;
+NOTICE: send query to shard(s) : sh1,sh2,sh3
+  a  | b | c 
+-----+---+---
+  33 | 1 |  
+ 133 | 1 |  
+ 132 | 1 |  
+ 233 | 1 |  
+(4 rows)
+
+select __spqr__ctid ('table2');
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ __spqr__ctid |  a  | b | c 
+--------------+-----+---+---
+ shard sh1    |  33 | 1 |  
+ shard sh2    | 133 | 1 |  
+ shard sh2    | 132 | 1 |  
+ shard sh3    | 233 | 1 |  
 (4 rows)
 
 DROP TABLE table1;

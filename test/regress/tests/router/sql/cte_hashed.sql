@@ -1,17 +1,17 @@
 \c spqr-console
 
-CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+CREATE DISTRIBUTION ds1 (integer HASH);
 
-CREATE KEY RANGE FROM 301 ROUTE TO sh4 FOR DISTRIBUTION ds1;
-CREATE KEY RANGE FROM 201 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 3221225472 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 2147483648 ROUTE TO sh3 FOR DISTRIBUTION ds1;
 
-CREATE KEY RANGE FROM 101 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 1073741824 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 CREATE KEY RANGE FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 
 CREATE REFERENCE TABLE ref_rel_1;
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY i;
-CREATE DISTRIBUTED RELATION table2 (a) FOR DISTRIBUTION ds1;
+CREATE DISTRIBUTED RELATION table1 (i HASH MURMUR) FOR DISTRIBUTION ds1;
+CREATE DISTRIBUTED RELATION table2 (a HASH MURMUR) FOR DISTRIBUTION ds1;
 
 \c regress
 
@@ -54,17 +54,9 @@ WITH vv AS (SELECT 1) INSERT INTO table1 (i) VALUES(11);
 
 WITH vv AS (SELECT i + 1 FROM table1 WHERE i = 11) INSERT INTO table1 (i) TABLE vv;
 
-INSERT INTO table1 WITH s AS (SELECT i + 1 FROM table1 WHERE i = 12) TABLE s;
+select __spqr__ctid ('table1');
 
-SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh1 */;
-SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh2 */;
-SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh3 */;
-SELECT * FROM table1 ORDER BY i /* __spqr__execute_on: sh4 */;
-
-INSERT INTO table2 (a,b,c) VALUES (1, 22, 33);
-INSERT INTO table2 (a,b,c) VALUES (2, 22, 33);
-INSERT INTO table2 (a,b,c) VALUES (101, 22, 33);
-INSERT INTO table2 (a,b,c) VALUES (301, 22, 33);
+INSERT INTO table2 (a,b,c) VALUES (1, 22, 33), (2, 23, 34), (3, 24, 35), (4, 25, 36);
 
 WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv WHERE t.a = vv.x;
 WITH vv (x, y, z) AS (VALUES (1, 2, 3)) SELECT * FROM table2 t, vv v WHERE t.a = v.x;
@@ -127,23 +119,19 @@ ttttt AS (
 )
 UPDATE table2 SET b = b + 1;
 
-SELECT * FROM table2 ORDER BY a /* __spqr__execute_on: sh1 */;
+select __spqr__ctid ('table2');
 
-with vals (z) as (values (1), (88)) insert into table2 (a) select z from vals;
-
-SELECT * FROM table2 ORDER BY a /* __spqr__execute_on: sh1 */;
-
-TRUNCATE table2;
-
-with vals (z) as (values (1), (188)) insert into table2 (a) select z from vals;
+with vals (z) as (values (1), (44), (55), (88)) insert into table2 (a) select z from vals;
 
 select __spqr__ctid ('table2');
 
 TRUNCATE table2;
 
-with vals (i) as (values (201), (288)),
-	z as (insert into table2 (a)
-		select i from vals returning *) table z;
+with vals (z) as (values (1), (2), (288), (388), (188)) insert into table2 (a) select z from vals;
+
+select __spqr__ctid ('table2');
+
+TRUNCATE table2;
 
 -- should create overwrite query map
 with vals (i) as (values (101), (288)),
@@ -153,11 +141,6 @@ with vals (i) as (values (101), (288)),
 select __spqr__ctid ('table2');
 
 TRUNCATE table2;
-
-with vals (i) as (values (201), (288)),
-	z as (insert into table2 (a) select i from vals returning *),
-		zz as (update table2 t set c = 12 from vals v where t.a = v.i returning t.*)
-			table z union all table zz;
 
 -- should create overwrite query map
 with vals (i) as (values (101), (288)),
@@ -169,16 +152,43 @@ select __spqr__ctid ('table2');
 
 INSERT INTO ref_rel_1 (i, j) VALUES (100, 100);
 
-with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
-with vals (i) as (values(101)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
+SET __spqr__engine_v2 to false;
 
-with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
-
+with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) insert into table2 (a) select v.i from vals_ext v;
+-- 3 out of 4 shards.
+with vals (i) as (values(101),(102),(103),(104),(105)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+select __spqr__ctid ('table2');
 TRUNCATE table2;
 
+-- all shards.
+with vals (i) as (values(101),(102),(103),(104),(105), (112)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+select __spqr__ctid ('table2');
+TRUNCATE table2;
+
+with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
 with vals( b,c, a,d) as (values ( 1, 2, 233, 4), ( 1, 2, 133, 4), ( 1, 2, 132, 4), ( 1, 2, 33, 4)) insert into table2 (b,a) select b,a from vals returning *;
 
 select __spqr__ctid ('table2');
+TRUNCATE table2;
+
+SET __spqr__engine_v2 to true;
+
+with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) insert into table2 (a) select v.i from vals_ext v;
+-- 3 out of 4 shards.
+with vals (i) as (values(101),(102),(103),(104),(105)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+select __spqr__ctid ('table2');
+TRUNCATE table2;
+
+-- all shards.
+with vals (i) as (values(101),(102),(103),(104),(105), (112)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+select __spqr__ctid ('table2');
+TRUNCATE table2;
+
+with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
+with vals( b,c, a,d) as (values ( 1, 2, 233, 4), ( 1, 2, 133, 4), ( 1, 2, 132, 4), ( 1, 2, 33, 4)) insert into table2 (b,a) select b,a from vals returning *;
+
+select __spqr__ctid ('table2');
+TRUNCATE table2;
 
 DROP TABLE table1;
 DROP TABLE table2;

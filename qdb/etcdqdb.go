@@ -31,9 +31,9 @@ type EtcdQDB struct {
 
 var _ XQDB = &EtcdQDB{}
 
-func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
+func NewEtcdQDB(addrs []string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 	cli, err := clientv3.New(clientv3.Config{
-		Endpoints: []string{addr},
+		Endpoints: addrs,
 		DialOptions: []grpc.DialOption{
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		},
@@ -45,7 +45,7 @@ func NewEtcdQDB(addr string, maxCallSendMsgSize int) (*EtcdQDB, error) {
 	}
 
 	spqrlog.Zero.Debug().
-		Str("address", addr).
+		Strs("addresses", addrs).
 		Uint("client", spqrlog.GetPointer(cli)).
 		Msg("etcdqdb: NewEtcdQDB")
 
@@ -2965,7 +2965,7 @@ func (q *EtcdQDB) LockRedistributeTask(ctx context.Context, id, holder string) e
 	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(redistributeTaskLockNodePath(id))).Then(clientv3.OpPut(redistributeTaskLockNodePath(id), holder, clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID))))
 	stat, err := tx.Commit()
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: failed to commit task group lock")
+		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: failed to commit redistribute task lock")
 		return err
 	}
 
@@ -2989,4 +2989,13 @@ func (q *EtcdQDB) LockRedistributeTask(ctx context.Context, id, holder string) e
 	}()
 
 	return nil
+}
+
+func (q *EtcdQDB) DropRedistributeTaskLock(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: drop redistribute task lock")
+
+	_, err := q.cli.Delete(ctx, redistributeTaskLockNodePath(id))
+	return err
 }

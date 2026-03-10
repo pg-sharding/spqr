@@ -438,6 +438,20 @@ func (mr *MockTaskStateKeeperMockRecorder) CheckTaskGroupLocked(ctx, tgId any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckTaskGroupLocked", reflect.TypeOf((*MockTaskStateKeeper)(nil).CheckTaskGroupLocked), ctx, tgId)
 }
 
+// DropRedistributeTaskLock mocks base method.
+func (m *MockTaskStateKeeper) DropRedistributeTaskLock(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropRedistributeTaskLock", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropRedistributeTaskLock indicates an expected call of DropRedistributeTaskLock.
+func (mr *MockTaskStateKeeperMockRecorder) DropRedistributeTaskLock(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropRedistributeTaskLock", reflect.TypeOf((*MockTaskStateKeeper)(nil).DropRedistributeTaskLock), ctx, id)
+}
+
 // DropTaskGroupLock mocks base method.
 func (m *MockTaskStateKeeper) DropTaskGroupLock(ctx context.Context, tgId string) error {
 	m.ctrl.T.Helper()
@@ -2363,6 +2377,20 @@ func (m *MockXQDB) DropRedistributeTask(ctx context.Context, task *qdb.Redistrib
 func (mr *MockXQDBMockRecorder) DropRedistributeTask(ctx, task any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropRedistributeTask", reflect.TypeOf((*MockXQDB)(nil).DropRedistributeTask), ctx, task)
+}
+
+// DropRedistributeTaskLock mocks base method.
+func (m *MockXQDB) DropRedistributeTaskLock(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DropRedistributeTaskLock", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DropRedistributeTaskLock indicates an expected call of DropRedistributeTaskLock.
+func (mr *MockXQDBMockRecorder) DropRedistributeTaskLock(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropRedistributeTaskLock", reflect.TypeOf((*MockXQDB)(nil).DropRedistributeTaskLock), ctx, id)
 }
 
 // DropReferenceRelation mocks base method.

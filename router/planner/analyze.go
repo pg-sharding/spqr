@@ -303,6 +303,29 @@ func AnalyzeWithClause(ctx context.Context, rm *rmeta.RoutingMetadataContext, Wi
 					}
 				}
 			}
+		case *lyx.Select:
+			/* Check that with CTE has plain aux values in from. */
+			if len(qq.FromClause) == 1 {
+				switch jE := qq.FromClause[0].(type) {
+				case *lyx.JoinExpr:
+					switch rv := jE.Larg.(type) {
+					case *lyx.RangeVar:
+						for auxValKey, val := range rm.AuxValues {
+							if auxValKey.CTEName == rv.RelationName {
+								rm.AuxValues[rmeta.AuxValuesKey{
+									CTEName:   cte.Name,
+									ValueName: auxValKey.ValueName,
+								}] = val
+							}
+						}
+					}
+				}
+			}
+
+			if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
+				return err
+			}
+
 		default:
 			if err := AnalyzeQueryV1(ctx, rm, cte.SubQuery); err != nil {
 				return err
@@ -445,7 +468,7 @@ func AnalyzeQueryV1(
 				* get relation will actually return meaningful
 				* `relation`. CatalogDistribution is one example. */
 				if ok {
-					cols, err := r.GetDistributionKeyColumns()
+					cols, err := r.GetDistributionKeyColumnNames()
 					if err != nil {
 						return err
 					}

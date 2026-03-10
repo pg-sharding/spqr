@@ -16,13 +16,13 @@ import (
 )
 
 type EtcdMetadataBootstrapper struct {
-	QdbAddr string
+	QdbAddrs []string
 }
 
 // InitializeMetadata implements RouterMetadataBootstrapper.
 // TODO: pack TranEntityManager commands to batches
 func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r RouterInstance) error {
-	etcdConn, err := qdb.NewEtcdQDB(e.QdbAddr, 0)
+	etcdConn, err := qdb.NewEtcdQDB(e.QdbAddrs, 0)
 	if err != nil {
 		return err
 	}
@@ -165,6 +165,6 @@ func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r Rou
 	return nil
 }
 
-func NewEtcdMetadataBootstrapper(QdbAddr string) RouterMetadataBootstrapper {
-	return &EtcdMetadataBootstrapper{QdbAddr: QdbAddr}
+func NewEtcdMetadataBootstrapper(QdbAddrs []string) RouterMetadataBootstrapper {
+	return &EtcdMetadataBootstrapper{QdbAddrs: QdbAddrs}
 }

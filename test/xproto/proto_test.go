@@ -232,6 +232,69 @@ func TestSimpleQuery(t *testing.T) {
 
 	for _, msgroup := range []MessageGroup{
 		{
+
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+				&pgproto3.Query{
+					String: "ROLLBACK",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.NoticeResponse{
+					Severity: "WARNING",
+					Message:  "there is already a transaction in progress",
+					Code:     spqrerror.PG_ACTIVE_SQL_TRANSACTION,
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.NoticeResponse{
+					Severity: "WARNING",
+					Message:  "there is no transaction in progress",
+					Code:     spqrerror.PG_NO_ACTIVE_SQL_TRANSACTION,
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Query{
 					String: "BEGIN",
@@ -318,6 +381,12 @@ func TestSimpleQuery(t *testing.T) {
 					// We don't want to check table OID
 					retMsgType.Fields[i].TableOID = 0
 				}
+			case *pgproto3.NoticeResponse:
+				retMsgType.File = ""
+				retMsgType.Line = 0
+				retMsgType.SeverityUnlocalized = ""
+				retMsgType.Routine = ""
+				retMsgType.Detail = ""
 			case *pgproto3.ReadyForQuery:
 				switch msg.(type) {
 				case *pgproto3.ReadyForQuery:
