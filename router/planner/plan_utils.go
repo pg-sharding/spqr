@@ -5,16 +5,20 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/plan"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/pg-sharding/spqr/router/server"
 )
 
 func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {
@@ -57,17 +61,101 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 			IsDDL: true,
 		}, nil
 	case *lyx.CreateTable:
-		ds, err := PlanCreateTable(ctx, rm, node)
+		p, err := PlanCreateTable(ctx, rm, node)
 		if err != nil {
 			return nil, err
 		}
 		/*
 		 * Disallow to create table which does not contain any sharding column
 		 */
+
+		tmpPlan := &plan.ScatterPlan{
+			IsDDL:   true,
+			SubPlan: p,
+		}
+
+		/* TODO: do we need this? */
+		p.RunF = func(serv server.Server) error {
+			spqrlog.Zero.Debug().Msg("run bottom-level insert slice")
+			for _, sh := range serv.Datashards() {
+				var errmsg *pgproto3.ErrorResponse
+			shLoop:
+				for {
+					msg, err := serv.ReceiveShard(sh.ID())
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+						}
+
+						break shLoop
+					case *pgproto3.ErrorResponse:
+						errmsg = v
+					default:
+						/* All ok? */
+					}
+				}
+			}
+
+			return nil
+		}
+		rvNode, ok := node.TableRv.(*lyx.RangeVar)
+		if !ok {
+			// check for setting as well?
+			return nil, fmt.Errorf("cannot mark relation in spqrguard: unknown relation name")
+		}
+		relFQN := rfqn.RelationFQNFromFullName(rvNode.SchemaName, rvNode.RelationName)
+		tmpPlan.OverwriteQuery = make(map[string]string)
+		oq := fmt.Sprintf("SELECT spqr_metadata.mark_distributed_relation(%s)", relFQN.String())
+		shards, err := rm.Mgr.ListShards(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, sh := range shards {
+			if sh.Cfg.Type == config.DataShard {
+				tmpPlan.OverwriteQuery[sh.ID] = oq
+			}
+		}
+
+		/* TODO: do we need this? */
+		tmpPlan.RunF = func(serv server.Server) error {
+			spqrlog.Zero.Debug().Msg("run bottom-level insert slice")
+			for _, sh := range serv.Datashards() {
+				var errmsg *pgproto3.ErrorResponse
+			shLoop:
+				for {
+					msg, err := serv.ReceiveShard(sh.ID())
+					if err != nil {
+						return err
+					}
+
+					switch v := msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						if v.TxStatus == byte(txstatus.TXERR) {
+							return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+						}
+
+						break shLoop
+					case *pgproto3.ErrorResponse:
+						/* TODO: add setting for ignoring this error */
+						errmsg = v
+					default:
+						/* All ok? */
+					}
+				}
+			}
+
+			return nil
+		}
+
 		if err := CheckRelationIsRoutable(ctx, rm.Mgr, node); err != nil {
 			return nil, err
 		}
-		return ds, nil
+		return tmpPlan, nil
 	case *lyx.VacuumStmt:
 		/* Send vacuum to each shard */
 		return &plan.ScatterPlan{
