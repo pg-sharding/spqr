@@ -66,9 +66,12 @@ CREATE DISTRIBUTED RELATION copy_test_multi_multi (id1, id2) IN ds2;
 \c regress
 CREATE TABLE copy_test (id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE copy_test_mult (id int, uid int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE copy_test_multi_multi (id1 int, id2 TEXT, id3 int, id4 int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- should fail
 COPY copy_test_multi_multi (id1, id3, id4) FROM STDIN;

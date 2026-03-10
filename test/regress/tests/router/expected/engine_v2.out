@@ -46,6 +46,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY id;
 \c regress
 CREATE TABLE table1(id INT PRIMARY KEY);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY table1 (id) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- should fail

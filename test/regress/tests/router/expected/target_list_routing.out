@@ -36,6 +36,7 @@ CREATE SCHEMA sh2;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE sh2.tlt1(i int, j int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO sh2.tlt1 (i, j) VALUES(1, 12);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO sh2.tlt1 (i, j) VALUES(1, 12);

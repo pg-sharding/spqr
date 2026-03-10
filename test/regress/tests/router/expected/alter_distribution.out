@@ -65,6 +65,7 @@ DROP TABLE IF EXISTS xx;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE xx (w_id int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xx(w_id) VALUES(5);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx(w_id) VALUES(20);
@@ -77,6 +78,7 @@ NOTICE: send query to shard(s) : sh1
 (1 row)
 
 CREATE TABLE yy (w_id int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM yy WHERE w_id=5;
 NOTICE: send query to shard(s) : sh2

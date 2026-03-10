@@ -34,6 +34,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION sshjt1 DISTRIBUTION KEY i;
 \c regress
 CREATE TABLE sshjt1(i int, j int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO sshjt1 (i, j) VALUES(1, 12);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO sshjt1 (i, j) VALUES(12, 12);
