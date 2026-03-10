@@ -428,7 +428,6 @@ func (qr *ProxyQrouter) planQueryV1(
 		/* rewrite initial query adding insert */
 
 		rewriteQuery, err := planner.RewriteDistributedRelInsertForIndexes(rm.Query, iis)
-
 		if err != nil {
 			return nil, err
 		}
@@ -882,7 +881,7 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 
 		if rm.SPH.EnhancedMultiShardProcessing() {
 			var err error
-			if v.SubPlan == nil {
+			if v.SubPlan == nil && v.OverwriteQuery == nil {
 				switch rm.Stmt.(type) {
 				case *lyx.Select:
 				default:
