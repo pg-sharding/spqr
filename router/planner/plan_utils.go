@@ -7,7 +7,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -70,8 +69,11 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 		 */
 
 		tmpPlan := &plan.ScatterPlan{
-			IsDDL:   true,
-			SubPlan: p,
+			IsDDL:    true,
+			SubSlice: p,
+			OverwriteCC: &pgproto3.CommandComplete{
+				CommandTag: []byte("CREATE TABLE"),
+			},
 		}
 
 		/* TODO: do we need this? */
@@ -110,20 +112,24 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 		}
 		relFQN := rfqn.RelationFQNFromFullName(rvNode.SchemaName, rvNode.RelationName)
 		tmpPlan.OverwriteQuery = make(map[string]string)
-		oq := fmt.Sprintf("SELECT spqr_metadata.mark_distributed_relation(%s)", relFQN.String())
+		p.OverwriteQuery = make(map[string]string)
+		oq := fmt.Sprintf("SELECT spqr_metadata.mark_distributed_relation('%s')", relFQN.String())
 		shards, err := rm.Mgr.ListShards(ctx)
 		if err != nil {
 			return nil, err
 		}
-		for _, sh := range shards {
-			if sh.Cfg.Type == config.DataShard {
-				tmpPlan.OverwriteQuery[sh.ID] = oq
+		targets := make([]kr.ShardKey, len(shards))
+		for i, sh := range shards {
+			tmpPlan.OverwriteQuery[sh.ID] = oq
+			p.OverwriteQuery[sh.ID] = rm.Query
+			targets[i] = kr.ShardKey{
+				Name: sh.ID,
 			}
 		}
+		p.ExecTargets = targets
 
 		/* TODO: do we need this? */
 		tmpPlan.RunF = func(serv server.Server) error {
-			spqrlog.Zero.Debug().Msg("run bottom-level insert slice")
 			for _, sh := range serv.Datashards() {
 				var errmsg *pgproto3.ErrorResponse
 			shLoop:

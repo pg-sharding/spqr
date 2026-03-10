@@ -46,6 +46,7 @@ type ScatterPlan struct {
 	RunF func(server.Server) error `json:"-"`
 
 	OverwriteQuery map[string]string
+	OverwriteCC    *pgproto3.CommandComplete
 	/* Empty means execute everywhere */
 	ExecTargets []kr.ShardKey
 }
