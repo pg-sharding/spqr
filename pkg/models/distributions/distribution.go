@@ -553,7 +553,7 @@ func (rel *DistributedRelation) GetDistributionKeyColumns() ([]string, error) {
 //
 // Returns:
 //   - string: Column type.
-//   - bool: falg indicating fact of success.
+//   - bool: flag indicating fact of success.
 func (rel *DistributedRelation) GetDistributionKeyColumnType(
 	d *Distribution,
 	col string) (string, bool) {
