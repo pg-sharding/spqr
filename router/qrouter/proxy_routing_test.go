@@ -615,26 +615,6 @@ func TestReferenceRelationSequenceRouting(t *testing.T) {
 					"sh1": `INSERT INTO test_ref_rel (id1, i) VALUES (11, 1), (12, 2);`,
 					"sh2": `INSERT INTO test_ref_rel (id1, i) VALUES (11, 1), (12, 2);`,
 				},
-				SubPlan: &plan.ScatterPlan{
-					SubPlan: &plan.ModifyTable{
-						ExecTargets: []kr.ShardKey{
-							{
-								Name: "sh1",
-							},
-							{
-								Name: "sh2",
-							},
-						},
-					},
-					ExecTargets: []kr.ShardKey{
-						{
-							Name: "sh1",
-						},
-						{
-							Name: "sh2",
-						},
-					},
-				},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -717,9 +697,6 @@ func TestReferenceRelationRouting(t *testing.T) {
 			exp: &plan.DataRowFilter{
 				SubPlan: &plan.ScatterPlan{
 					OverwriteQuery: map[string]string{},
-					SubPlan: &plan.ScatterPlan{
-						SubPlan: &plan.ModifyTable{},
-					},
 					ExecTargets: []kr.ShardKey{
 						{
 							Name: "sh1",
@@ -735,9 +712,6 @@ func TestReferenceRelationRouting(t *testing.T) {
 			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
 			exp: &plan.ScatterPlan{
 				OverwriteQuery: map[string]string{},
-				SubPlan: &plan.ScatterPlan{
-					SubPlan: &plan.ModifyTable{},
-				},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -752,7 +726,6 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `WITH data as (VALUES(1)) INSERT INTO test_ref_rel SELECT * FROM data;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]string{},
 				SubPlan: &plan.ScatterPlan{
 					SubPlan: &plan.ModifyTable{},
 				},
@@ -770,10 +743,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 			/* XXX: with (proper) engine v2, this should we 2-slice split-update plan */
 			query: `UPDATE test_ref_rel SET i = i + 1 ;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]string{},
-				SubPlan: &plan.ScatterPlan{
-					SubPlan: &plan.ModifyTable{},
-				},
+				SubPlan: &plan.ModifyTable{},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",
@@ -787,10 +757,7 @@ func TestReferenceRelationRouting(t *testing.T) {
 		{
 			query: `DELETE FROM test_ref_rel WHERE i = 2;`,
 			exp: &plan.ScatterPlan{
-				OverwriteQuery: map[string]string{},
-				SubPlan: &plan.ScatterPlan{
-					SubPlan: &plan.ModifyTable{},
-				},
+				SubPlan: &plan.ModifyTable{},
 				ExecTargets: []kr.ShardKey{
 					{
 						Name: "sh1",

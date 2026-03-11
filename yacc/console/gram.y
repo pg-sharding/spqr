@@ -102,13 +102,13 @@ func randomHex(n int) (string, error) {
 	distribution_selector  *DistributionSelector
 	aiEntrieslist          []*AutoIncrementEntry
 
-    colref                 ColumnRef
-	colreflist			   []ColumnRef
+    colref                 *lyx.ColumnRef
+	colreflist			   []*lyx.ColumnRef
     where                  lyx.Node
 	expr				   lyx.Node
 
-	order_clause 		   OrderClause
-	opt_asc_desc		   OptAscDesc
+	order_clause 		   lyx.Node
+	opt_asc_desc		   int
 
 	group_clause		   GroupByClause
 
@@ -494,7 +494,7 @@ qualified_name:
 
 ColRef:
     any_id {
-        $$ = ColumnRef{
+        $$ = &lyx.ColumnRef{
             ColName: $1,
         }
     }
@@ -504,7 +504,7 @@ ColRef_list:
     {
       $$ = append($1, $3)
     } | ColRef {
-      $$ = []ColumnRef {
+      $$ = []*lyx.ColumnRef {
 		  $1,
 	  }
     } 
@@ -1060,16 +1060,19 @@ create_distributed_relation_stmt:
 	}
 
 
-opt_asc_desc: ASC							{ $$ = &SortByAsc{} }
-			| DESC							{ $$ = &SortByDesc{} }
-			| /*EMPTY*/						{ $$ = &SortByDefault{} }
+opt_asc_desc: ASC							{ $$ = lyx.SORTBY_ASC }
+			| DESC							{ $$ = lyx.SORTBY_DESC }
+			| /*EMPTY*/						{ $$ = lyx.SORTBY_DEFAULT }
 
 order_clause:
     ORDER BY ColRef opt_asc_desc 
 	{
-		$$ = &Order{Col:$3, OptAscDesc:$4}
+		$$ = &lyx.SortBy{
+			Node: $3,
+			SortbyDir: $4,
+		}
 	} 
-	| /* empty */    {$$ = OrderClause(nil)}
+	| /* empty */    {$$ = nil}
 
 
 group_clause:

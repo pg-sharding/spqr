@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/coordinator/statistics"
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/catalog"
@@ -1398,8 +1399,8 @@ func ProcessShowExtended(ctx context.Context,
 
 		/* XXX: remove this hack */
 		if stmt.Order == nil {
-			stmt.Order = &spqrparser.Order{
-				Col: spqrparser.ColumnRef{ColName: "table name"},
+			stmt.Order = &lyx.SortBy{
+				Node: &lyx.ColumnRef{ColName: "table name"},
 			}
 		}
 
@@ -1413,8 +1414,8 @@ func ProcessShowExtended(ctx context.Context,
 
 		/* XXX: remove this hack */
 		if stmt.Order == nil {
-			stmt.Order = &spqrparser.Order{
-				Col: spqrparser.ColumnRef{ColName: "table name"},
+			stmt.Order = &lyx.SortBy{
+				Node: &lyx.ColumnRef{ColName: "table name"},
 			}
 		}
 

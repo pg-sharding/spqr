@@ -152,16 +152,43 @@ select __spqr__ctid ('table2');
 
 INSERT INTO ref_rel_1 (i, j) VALUES (100, 100);
 
-with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
-with vals (i) as (values(101)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) select * from table2 t join vals_ext v on t.a = v.i;
+SET __spqr__engine_v2 to false;
 
-with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
-
+with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) insert into table2 (a) select v.i from vals_ext v;
+-- 3 out of 4 shards.
+with vals (i) as (values(101),(102),(103),(104),(105)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+select __spqr__ctid ('table2');
 TRUNCATE table2;
 
+-- all shards.
+with vals (i) as (values(101),(102),(103),(104),(105), (112)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+select __spqr__ctid ('table2');
+TRUNCATE table2;
+
+with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
 with vals( b,c, a,d) as (values ( 1, 2, 233, 4), ( 1, 2, 133, 4), ( 1, 2, 132, 4), ( 1, 2, 33, 4)) insert into table2 (b,a) select b,a from vals returning *;
 
 select __spqr__ctid ('table2');
+TRUNCATE table2;
+
+SET __spqr__engine_v2 to true;
+
+with vals (i) as (values(100)), vals_ext as (select vals.* from vals join ref_rel_1 rf on rf.i=vals.i) insert into table2 (a) select v.i from vals_ext v;
+-- 3 out of 4 shards.
+with vals (i) as (values(101),(102),(103),(104),(105)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+select __spqr__ctid ('table2');
+TRUNCATE table2;
+
+-- all shards.
+with vals (i) as (values(101),(102),(103),(104),(105), (112)), vals_ext as (select vals.* from vals join ref_rel_1 rf on true) insert into table2 (a) select v.i from vals_ext v;
+select __spqr__ctid ('table2');
+TRUNCATE table2;
+
+with vals( b,c, a,d) as (values( 1, 2, 233, 4)) insert into table2 (b,a) select b,a from vals returning *;
+with vals( b,c, a,d) as (values ( 1, 2, 233, 4), ( 1, 2, 133, 4), ( 1, 2, 132, 4), ( 1, 2, 33, 4)) insert into table2 (b,a) select b,a from vals returning *;
+
+select __spqr__ctid ('table2');
+TRUNCATE table2;
 
 DROP TABLE table1;
 DROP TABLE table2;

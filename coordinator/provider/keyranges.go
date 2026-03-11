@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -43,7 +44,7 @@ func (c *CoordinatorService) CreateKeyRange(ctx context.Context, request *protos
 // TODO : unit tests
 func (c *CoordinatorService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
-		_, err := c.impl.LockKeyRange(ctx, id)
+		_, err := meta.LockKeyRange(ctx, c.impl, id)
 		if err != nil {
 			return nil, err
 		}

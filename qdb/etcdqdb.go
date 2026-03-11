@@ -89,7 +89,6 @@ const (
 
 	TaskGroupLeaseTTL = 30 // generous lease
 
-	MaxLockRetry = 7
 )
 
 func LockPath(key string) string {
@@ -469,16 +468,6 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	return keyRanges, nil
 }
 
-func (q *EtcdQDB) NoWaitLockKeyRange(ctx context.Context, idKeyRange string) (*KeyRange, error) {
-	spqrlog.Zero.Debug().
-		Str("id", idKeyRange).
-		Msg("etcdqdb: lock key range (nowait)")
-	t := time.Now()
-	kr, err := q.internalNoWaitLockKeyRange(ctx, idKeyRange)
-	statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
-	return kr, err
-}
-
 func (q *EtcdQDB) internalNoWaitLockKeyRange(ctx context.Context, keyRangeId string) (*KeyRange, error) {
 	resp, err := q.cli.Txn(ctx).
 		If(
@@ -555,19 +544,8 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, idKeyRange string) (*KeyRang
 	spqrlog.Zero.Debug().
 		Str("id", idKeyRange).
 		Msg("etcdqdb: lock key range")
+	return q.internalNoWaitLockKeyRange(ctx, idKeyRange)
 
-	t := time.Now()
-	if kr, err := retry.DoValue(ctx, retry.WithMaxRetries(MaxLockRetry,
-		retry.NewFibonacci(LockRetryStep)),
-		func(ctx context.Context) (*KeyRange, error) {
-			return q.internalNoWaitLockKeyRange(ctx, idKeyRange)
-		}); err != nil {
-		statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
-		return nil, err
-	} else {
-		statistics.RecordQDBOperation("LockKeyRange", time.Since(t))
-		return kr, nil
-	}
 }
 
 // TODO : unit tests
