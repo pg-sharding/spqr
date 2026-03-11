@@ -2650,34 +2650,35 @@ func (qc *ClusteredCoordinator) AlterReferenceRelationStorage(ctx context.Contex
 	if err != nil {
 		return err
 	}
-	shardsReqSet := make(map[string]struct{})
 	shardsExSet := make(map[string]struct{})
 	shardsToAdd := make([]string, 0)
 	shardsIntersect := make([]string, 0)
-	for _, sh := range shs {
-		shardsReqSet[sh] = struct{}{}
-	}
 	for _, sh := range rel.ShardIds {
 		shardsExSet[sh] = struct{}{}
-		if _, ok := shardsReqSet[sh]; !ok {
+	}
+	for _, sh := range shs {
+		if _, ok := shardsExSet[sh]; !ok {
 			shardsToAdd = append(shardsToAdd, sh)
 		} else if ok {
 			shardsIntersect = append(shardsIntersect, sh)
 		}
 	}
 
-	if err := qc.db.AlterReferenceRelationStorage(ctx, relName, shardsIntersect); err != nil {
-		return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in coordinator: %s", err)
-	}
-	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		c := proto.NewReferenceRelationsServiceClient(cc)
-		_, err := c.AlterReferenceRelationStorage(ctx, &proto.AlterReferenceRelationStorageRequest{
-			Relation: rfqn.RelationFQNToProto(relName),
-			ShardIds: shardsIntersect,
-		})
-		return err
-	}); err != nil {
-		return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in routers: %s", err)
+	if len(shardsIntersect) < len(rel.ShardIds) {
+		// We need to drop shards
+		if err := qc.db.AlterReferenceRelationStorage(ctx, relName, shardsIntersect); err != nil {
+			return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in coordinator: %s", err)
+		}
+		if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+			c := proto.NewReferenceRelationsServiceClient(cc)
+			_, err := c.AlterReferenceRelationStorage(ctx, &proto.AlterReferenceRelationStorageRequest{
+				Relation: rfqn.RelationFQNToProto(relName),
+				ShardIds: shardsIntersect,
+			})
+			return err
+		}); err != nil {
+			return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in routers: %s", err)
+		}
 	}
 
 	rels := []*rfqn.RelationFQN{relName}

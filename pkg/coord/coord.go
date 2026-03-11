@@ -40,19 +40,19 @@ func NewCoordinator(q qdb.XQDB, d qdb.DCStateKeeper) Coordinator {
 // AlterReferenceRelationStorage alters shards, on which reference relation is contained.
 // In local coordinator it's only allowed to remove shards.
 func (lc *Coordinator) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
-	rel, err := lc.GetReferenceRelation(ctx, relName)
-	if err != nil {
-		return err
-	}
-	shardsExSet := make(map[string]struct{})
-	for _, sh := range rel.ShardIds {
-		shardsExSet[sh] = struct{}{}
-	}
-	for _, sh := range rel.ShardIds {
-		if _, ok := shardsExSet[sh]; !ok {
-			return fmt.Errorf("failed to alter reference relation storage: relation is not on shard \"%s\", and it's not allowed to add new shards in local coordinator", sh)
-		}
-	}
+	// rel, err := lc.GetReferenceRelation(ctx, relName)
+	// if err != nil {
+	// 	return err
+	// }
+	// shardsExSet := make(map[string]struct{})
+	// for _, sh := range rel.ShardIds {
+	// 	shardsExSet[sh] = struct{}{}
+	// }
+	// for _, sh := range rel.ShardIds {
+	// 	if _, ok := shardsExSet[sh]; !ok {
+	// 		return fmt.Errorf("failed to alter reference relation storage: relation is not on shard \"%s\", and it's not allowed to add new shards in local coordinator", sh)
+	// 	}
+	// }
 	return lc.qdb.AlterReferenceRelationStorage(ctx, relName, shs)
 }
 
