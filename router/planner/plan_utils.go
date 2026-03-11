@@ -114,6 +114,9 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 		tmpPlan.OverwriteQuery = make(map[string]string)
 		p.OverwriteQuery = make(map[string]string)
 		oq := fmt.Sprintf("SELECT spqr_metadata.mark_distributed_relation('%s')", relFQN.String())
+		if node.IfNotExists {
+			oq = fmt.Sprintf("INSERT INTO spqr_metadata.spqr_distributed_relations (reloid) VALUES ('%s'::regclass::oid) ON CONFLICT DO NOTHING", relFQN.String())
+		}
 		shards, err := rm.Mgr.ListShards(ctx)
 		if err != nil {
 			return nil, err
