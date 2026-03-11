@@ -384,7 +384,7 @@ func (l *LocalQrouterServer) ListAllKeyRanges(ctx context.Context, _ *emptypb.Em
 // TODO : unit tests
 func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
-		if _, err := l.mgr.LockKeyRange(ctx, id); err != nil {
+		if _, err := meta.LockKeyRange(ctx, l.mgr, id); err != nil {
 			return nil, err
 		}
 	}
