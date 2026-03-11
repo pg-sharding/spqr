@@ -548,6 +548,30 @@ func (rel *DistributedRelation) GetDistributionKeyColumns() ([]string, error) {
 	return res, nil
 }
 
+// GetDistributionKeyColumnType returns type of a distributed relation
+// column, identified by name.
+//
+// Returns:
+//   - string: Column type.
+//   - bool: falg indicating fact of success.
+func (rel *DistributedRelation) GetDistributionKeyColumnType(
+	d *Distribution,
+	col string) (string, bool) {
+
+	for i, colEntry := range rel.DistributionKey {
+		if colEntry.Column == col {
+			return d.ColTypes[i], true
+		}
+		for _, tcr := range colEntry.Expr.ColRefs {
+			if tcr.ColName == col {
+				return tcr.ColType, true
+			}
+		}
+
+	}
+	return "", false
+}
+
 // GetDistributionKeyColumnNames returns array of a DistributedRelation column names.
 //
 // Returns:
