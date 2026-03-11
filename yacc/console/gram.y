@@ -72,6 +72,7 @@ func randomHex(n int) (string, error) {
 
 	invalidate             *Invalidate
 	sync_reference_tables  *SyncReferenceTables
+	alter_reference_table_storage *AlterReferenceTableStorage
 
 	shutdown               *Shutdown
 	listen                 *Listen
@@ -187,7 +188,7 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE CHECK APPLY UNIQUE
-%token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX
+%token <str> COLUMN TABLE TABLES RELATIONS BACKENDS HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED AUTO INCREMENT SEQUENCE SCHEMA INDEX STORAGE
 %token <str> SHARDS ROUTERS SHARD HOST RULE COLUMNS VERSION HOSTS SEQUENCES IS_READ_ONLY MOVE_STATS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
@@ -258,6 +259,7 @@ func randomHex(n int) (string, error) {
 
 %type<invalidate> invalidate_stmt
 %type<sync_reference_tables> sync_reference_tables_stmt
+%type<alter_reference_table_storage> alter_reference_table_storage_stmt
 
 %type<relations> relation_attach_stmt
 %type<relations> distributed_relation_list_def
@@ -418,6 +420,10 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| sync_reference_tables_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| alter_reference_table_storage_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -1481,6 +1487,15 @@ sync_reference_tables_stmt:
 		$$ = &SyncReferenceTables {
 			ShardID: $6,
 			RelationSelector: $4,
+		}
+	}
+
+alter_reference_table_storage_stmt:
+	ALTER REFERENCE table_or_relation any_id STORAGE TO TOPENBR any_id_list TCLOSEBR
+	{
+		$$ = &AlterReferenceTableStorage {
+			RelationSelector: $4,
+			Shards: $8,
 		}
 	}
 

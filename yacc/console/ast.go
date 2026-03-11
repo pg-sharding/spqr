@@ -217,6 +217,11 @@ type SyncReferenceTables struct {
 	RelationSelector string
 }
 
+type AlterReferenceTableStorage struct {
+	RelationSelector string
+	Shards           []string
+}
+
 // coordinator
 
 type RegisterRouter struct {
@@ -449,6 +454,7 @@ func (*ShardDefinition) iStatement()             {}
 func (*Kill) iStatement()                        {}
 func (*Invalidate) iStatement()                  {}
 func (*SyncReferenceTables) iStatement()         {}
+func (*AlterReferenceTableStorage) iStatement()  {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
