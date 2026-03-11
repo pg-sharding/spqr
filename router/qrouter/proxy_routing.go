@@ -923,6 +923,153 @@ func (qr *ProxyQrouter) InitExecutionTargets(ctx context.Context,
 	}
 }
 
+func (qr *ProxyQrouter) addSortToPlan(
+	ctx context.Context,
+	rm *rmeta.RoutingMetadataContext,
+	p plan.Plan,
+) (plan.Plan, error) {
+	/* No point in cluster-wide sorting */
+	if len(p.ExecutionTargets()) == 1 {
+		return p, nil
+	}
+
+	scatterSlice, ok := p.(*plan.ScatterPlan)
+
+	if !ok {
+		return p, nil
+	}
+
+	spqrlog.Zero.Debug().
+		Msgf("plan select sort postprocessing %+v", p)
+
+	switch stmt := rm.Stmt.(type) {
+	case *lyx.Select:
+		/* This currently support sorting for one column. */
+		for _, n := range stmt.SortClause {
+			switch sb := n.(type) {
+			case *lyx.SortBy:
+				colRef, ok := sb.Node.(*lyx.ColumnRef)
+
+				if !ok {
+					return p, nil
+				}
+				/* We can sort by column reference only if we know type of column.
+				* For now, all we know in advance is type of distribution column. */
+				rfqn, err := rm.ResolveRelationByAlias(colRef.TableAlias)
+				if err != nil {
+					/* We can receive `complex query` error from ResolveRelationByAlias.
+					* log it and ignore */
+					spqrlog.Zero.
+						Error().
+						Str("alias", colRef.TableAlias).
+						Err(err).Msg("failed to resolve relation by alias")
+					return p, nil
+				}
+
+				d, err := rm.GetRelationDistribution(ctx, rfqn)
+				if err != nil {
+					return nil, err
+				}
+				r, ok := d.TryGetRelation(rfqn)
+				if !ok {
+					return p, nil
+				}
+				tp, ok := r.GetDistributionKeyColumnType(d, colRef.ColName)
+				if !ok {
+					return p, nil
+				}
+
+				/* TODO: refactor this */
+				if tp != qdb.ColumnTypeVarchar && tp != qdb.ColumnTypeVarcharHashed && tp != qdb.ColumnTypeVarcharDeprecated {
+					return p, nil
+				}
+				columnOff := -1
+				for i, tle := range stmt.TargetList {
+					switch cf := tle.(type) {
+					case *lyx.ColumnRef:
+						if cf.ColName == colRef.ColName {
+							columnOff = i
+						}
+					}
+				}
+
+				/* XXX: error out here? */
+				if columnOff == -1 {
+					return p, nil
+				}
+
+				/* Okay, we are ready for result post-processing sort.*/
+
+				retSlice := &plan.VirtualPlan{
+					TTS: &tupleslot.TupleTableSlot{},
+				}
+
+				retSlice.SubPlan = scatterSlice
+
+				scatterSlice.OverwriteQuery = map[string]string{}
+
+				for _, sh := range scatterSlice.ExecTargets {
+					scatterSlice.OverwriteQuery[sh.Name] = rm.Query
+				}
+
+				scatterSlice.RunF = func(serv server.Server) error {
+					spqrlog.Zero.Debug().Msg("run bottom-level plan slice")
+					for _, sh := range serv.Datashards() {
+						if !slices.ContainsFunc(scatterSlice.ExecTargets, func(el kr.ShardKey) bool {
+							return sh.Name() == el.Name
+						}) {
+							continue
+						}
+
+						var errmsg *pgproto3.ErrorResponse
+					shLoop:
+						for {
+							msg, err := serv.ReceiveShard(sh.ID())
+							if err != nil {
+								return err
+							}
+
+							switch v := msg.(type) {
+							case *pgproto3.ReadyForQuery:
+								if v.TxStatus == byte(txstatus.TXERR) {
+									return fmt.Errorf("failed to run inner slice, tx status error: %s", errmsg.Message)
+								}
+								break shLoop
+							case *pgproto3.RowDescription:
+								if len(retSlice.TTS.Desc) == 0 {
+									retSlice.TTS.Desc = v.Fields
+								}
+							case *pgproto3.ErrorResponse:
+								errmsg = v
+							case *pgproto3.DataRow:
+								vals := make([][]byte, len(v.Values))
+								copy(vals, v.Values)
+								retSlice.TTS.Raw = append(retSlice.TTS.Raw, vals)
+							default:
+								/* All ok? */
+							}
+						}
+					}
+
+					retSlice.TTS.Raw, err = engine.ProcessOrderBy(retSlice.TTS.Raw, retSlice.TTS.Desc.GetColumnsMap(), sb)
+					if err != nil {
+						return err
+					}
+
+					return nil
+				}
+
+				return retSlice, nil
+			default:
+				/* ??? */
+			}
+		}
+
+	}
+
+	return p, nil
+}
+
 func (qr *ProxyQrouter) addLimitToPlan(
 	ctx context.Context,
 	rm *rmeta.RoutingMetadataContext,
@@ -935,7 +1082,6 @@ func (qr *ProxyQrouter) addLimitToPlan(
 	}
 
 	spqrlog.Zero.Debug().
-		Bool("ok", ok).
 		Msgf("plan select limit postprocessing %+v", p)
 
 	switch stmt := rm.Stmt.(type) {
@@ -1003,7 +1149,9 @@ func (qr *ProxyQrouter) addLimitToPlan(
 					case *pgproto3.DataRow:
 
 						if len(retSlice.TTS.Raw) < limitVal {
-							retSlice.TTS.Raw = append(retSlice.TTS.Raw, v.Values)
+							vals := make([][]byte, len(v.Values))
+							copy(vals, v.Values)
+							retSlice.TTS.Raw = append(retSlice.TTS.Raw, vals)
 						}
 
 					default:
@@ -1048,6 +1196,10 @@ func (qr *ProxyQrouter) plannerV1(
 	* fix bogus limit support, if enabled. */
 
 	if config.RouterConfig().Qr.AllowPostProcessing {
+		p, err = qr.addSortToPlan(ctx, rm, p)
+		if err != nil {
+			return nil, err
+		}
 		p, err = qr.addLimitToPlan(ctx, rm, p)
 		if err != nil {
 			return nil, err

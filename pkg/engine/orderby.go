@@ -6,9 +6,14 @@ import (
 
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/catalog"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 func ProcessOrderBy(data [][][]byte, colOrder map[string]int, order lyx.Node) ([][][]byte, error) {
+
+	for _, r := range data {
+		spqrlog.Zero.Debug().Str("data", string(r[0])).Msg("print row before")
+	}
 
 	switch order.(type) {
 	case *lyx.SortBy:
@@ -37,6 +42,10 @@ func ProcessOrderBy(data [][][]byte, colOrder map[string]int, order lyx.Node) ([
 			Op:        op,
 		}
 		sort.Sort(sortable)
+	}
+
+	for _, r := range data {
+		spqrlog.Zero.Debug().Str("data", string(r[0])).Msg("print row after")
 	}
 	return data, nil
 }
