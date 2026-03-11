@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/sethvargo/go-retry"
 )
 
 // GetConnStrings generates connection strings based on the ShardConnect fields.
@@ -62,7 +63,8 @@ func GetMasterConnection(ctx context.Context, s *config.ShardConnect, taskGroupI
 		}
 		conn, err := pgx.ConnectConfig(ctx, connConfig)
 		if err != nil {
-			return nil, err
+			spqrlog.Zero.Error().Str("dsn", dsn).Err(err).Msg("get master connection: failed to connect to host")
+			continue
 		}
 		var isMaster bool
 		row := conn.QueryRow(ctx, "SELECT NOT pg_is_in_recovery() as is_master;")
@@ -74,7 +76,7 @@ func GetMasterConnection(ctx context.Context, s *config.ShardConnect, taskGroupI
 		}
 		_ = conn.Close(ctx)
 	}
-	return nil, spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "unable to find master")
+	return nil, retry.RetryableError(spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "unable to find master"))
 }
 
 func GetMasterHost(ctx context.Context, s *config.ShardConnect) (string, error) {

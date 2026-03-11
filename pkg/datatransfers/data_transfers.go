@@ -16,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"github.com/sethvargo/go-retry"
 	"github.com/spaolacci/murmur3"
 
 	pgx "github.com/jackc/pgx/v5"
@@ -907,11 +908,13 @@ func getEntriesCount(ctx context.Context, conn Queryable, relName string, condit
 
 func TraverseShards(ctx context.Context, shards *config.DatatransferConnections, cb func(ctx context.Context, conn *pgx.Conn) error) error {
 	for id, shard := range shards.ShardsData {
-		conn, err := GetMasterConnection(ctx, shard, "traverse_shards")
+		conn, err := retry.DoValue(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) (*pgx.Conn, error) {
+			return GetMasterConnection(ctx, shard, "traverse_shards")
+		})
 		if err != nil {
 			return err
 		}
-		if err := cb(ctx, conn); err != nil {
+		if err := retry.Do(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) error { return cb(ctx, conn) }); err != nil {
 			spqrlog.Zero.Error().Str("shard id", id).Err(err).Msg("error in traverse shards")
 			return err
 		}
@@ -948,10 +951,14 @@ func SetUpSPQRGuard(relations []*rfqn.RelationFQN) func(context.Context, *pgx.Co
 			return err
 		}
 
-		if _, err := tx.Exec(ctx, fmt.Sprintf("INSERT INTO spqr_metadata.spqr_global_settings (name, value) VALUES (%d, true);", spqrguardDistributedRelationsLock)); err != nil {
+		if _, err := tx.Exec(ctx, fmt.Sprintf("INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES (%d, true);", spqrguardDistributedRelationsLock)); err != nil {
 			return err
 		}
 
-		return tx.Commit(ctx)
+		err = tx.Commit(ctx)
+		if err != nil {
+			return retry.RetryableError(err)
+		}
+		return nil
 	}
 }
