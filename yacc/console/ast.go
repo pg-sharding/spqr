@@ -218,7 +218,7 @@ type SyncReferenceTables struct {
 }
 
 type AlterReferenceTableStorage struct {
-	RelationSelector string
+	RelationSelector *rfqn.RelationFQN
 	Shards           []string
 }
 

@@ -1182,6 +1182,17 @@ func ProcMetadataCommand(ctx context.Context,
 		}
 
 		return tts, nil
+	case *spqrparser.AlterReferenceTableStorage:
+		if err := mgr.AlterReferenceRelationStorage(ctx, stmt.RelationSelector, stmt.Shards); err != nil {
+			return nil, err
+		}
+		tts := &tupleslot.TupleTableSlot{
+			Desc: engine.GetVPHeader("relation", "shard"),
+		}
+		for _, sh := range stmt.Shards {
+			tts.WriteDataRow(stmt.RelationSelector.String(), sh)
+		}
+		return tts, nil
 	default:
 		return nil, ErrUnknownCoordinatorCommand
 	}

@@ -1491,7 +1491,7 @@ sync_reference_tables_stmt:
 	}
 
 alter_reference_table_storage_stmt:
-	ALTER REFERENCE table_or_relation any_id STORAGE TO TOPENBR any_id_list TCLOSEBR
+	ALTER REFERENCE table_or_relation qualified_name STORAGE TO TOPENBR any_id_list TCLOSEBR
 	{
 		$$ = &AlterReferenceTableStorage {
 			RelationSelector: $4,
