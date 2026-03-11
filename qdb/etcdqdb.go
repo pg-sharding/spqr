@@ -1374,7 +1374,6 @@ func (q *EtcdQDB) ListDistributions(ctx context.Context) ([]*Distribution, error
 	return dds, nil
 }
 
-// TODO : unit tests
 func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
