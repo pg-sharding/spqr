@@ -1183,7 +1183,7 @@ func ProcMetadataCommand(ctx context.Context,
 
 		return tts, nil
 	case *spqrparser.AlterReferenceTableStorage:
-		if err := mgr.AlterReferenceRelationStorage(ctx, stmt.RelationSelector, stmt.Shards); err != nil {
+		if err := mgr.AlterReferenceRelationStorageAdvanced(ctx, stmt.RelationSelector, stmt.Shards); err != nil {
 			return nil, err
 		}
 		tts := &tupleslot.TupleTableSlot{

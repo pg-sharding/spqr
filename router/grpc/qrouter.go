@@ -69,6 +69,19 @@ func (l *LocalQrouterServer) AlterReferenceRelationStorage(ctx context.Context, 
 	return nil, nil
 }
 
+// CreateReferenceRelations implements proto.ReferenceRelationsServiceServer.
+func (l *LocalQrouterServer) AlterReferenceRelationStorageAdvanced(ctx context.Context, request *protos.AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
+
+	if err := l.mgr.AlterReferenceRelationStorage(ctx, &rfqn.RelationFQN{
+		RelationName: request.Relation.RelationName,
+		SchemaName:   request.Relation.SchemaName,
+	}, request.ShardIds); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
 // DropReferenceRelations implements proto.ReferenceRelationsServiceServer.
 func (l *LocalQrouterServer) DropReferenceRelations(ctx context.Context, r *protos.DropReferenceRelationsRequest) (*emptypb.Empty, error) {
 	for _, qualName := range r.GetRelations() {

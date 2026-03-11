@@ -108,6 +108,16 @@ func (a *Adapter) AlterReferenceRelationStorage(ctx context.Context, relName *rf
 	return fmt.Errorf("AlterReferenceRelationStorage should not be used in proxy adapter")
 }
 
+// AlterReferenceRelationStorage implements meta.EntityMgr.
+func (a *Adapter) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	c := proto.NewReferenceRelationsServiceClient(a.conn)
+	_, err := c.AlterReferenceRelationStorageAdvanced(ctx, &proto.AlterReferenceRelationStorageRequest{
+		Relation: rfqn.RelationFQNToProto(relName),
+		ShardIds: shs,
+	})
+	return err
+}
+
 // CreateReferenceRelation implements meta.EntityMgr.
 func (a *Adapter) CreateReferenceRelation(ctx context.Context, r *rrelation.ReferenceRelation, entry []*rrelation.AutoIncrementEntry) error {
 	c := proto.NewReferenceRelationsServiceClient(a.conn)

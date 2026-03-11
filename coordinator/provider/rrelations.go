@@ -43,3 +43,12 @@ func (rr *ReferenceRelationServer) DropReferenceRelations(ctx context.Context, r
 	}
 	return nil, nil
 }
+
+func (rr *ReferenceRelationServer) AlterReferenceRelationStorageAdvanced(ctx context.Context, req *protos.AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
+	err := rr.impl.AlterReferenceRelationStorage(ctx, &rfqn.RelationFQN{
+		RelationName: req.Relation.RelationName,
+		SchemaName:   req.Relation.SchemaName,
+	}, req.ShardIds)
+
+	return nil, err
+}

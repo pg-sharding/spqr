@@ -2645,7 +2645,7 @@ func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relN
 }
 
 // AlterReferenceRelationStorage implements meta.EntityMgr.
-func (qc *ClusteredCoordinator) AlterReferenceRelationStorage(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
 	rel, err := qc.GetReferenceRelation(ctx, relName)
 	if err != nil {
 		return err
