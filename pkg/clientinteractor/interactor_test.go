@@ -276,8 +276,8 @@ func TestClientsOrderBy(t *testing.T) {
 	shw := &spqrparser.Show{
 		Cmd:   spqrparser.ClientsStr,
 		Where: &lyx.AExprEmpty{},
-		Order: spqrparser.Order{OptAscDesc: spqrparser.SortByAsc{},
-			Col: spqrparser.ColumnRef{ColName: "user"}},
+		Order: &lyx.SortBy{SortbyDir: lyx.SORTBY_ASC,
+			Node: &lyx.ColumnRef{ColName: "user"}},
 	}
 
 	tts, err := engine.ClientsVirtualRelationScan(context.TODO(), ci)
@@ -496,7 +496,7 @@ func TestBackendConnectionsGroupBySuccessDescData(t *testing.T) {
 	}
 	cmd := &spqrparser.Show{
 		Cmd:     spqrparser.BackendConnectionsStr,
-		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
+		GroupBy: spqrparser.GroupBy{Col: []*lyx.ColumnRef{{ColName: "hostname"}}},
 	}
 
 	tts, err := engine.BackendConnectionsVirtualRelationScan(shards)
@@ -546,7 +546,7 @@ func TestBackendConnectionsGroupBySuccessAscData(t *testing.T) {
 	}
 	cmd := &spqrparser.Show{
 		Cmd:     spqrparser.BackendConnectionsStr,
-		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "hostname"}}},
+		GroupBy: spqrparser.GroupBy{Col: []*lyx.ColumnRef{{ColName: "hostname"}}},
 	}
 
 	tts, err := engine.BackendConnectionsVirtualRelationScan(shards)
@@ -571,7 +571,7 @@ func TestBackendConnectionsGroupByFail(t *testing.T) {
 	}
 	cmd := &spqrparser.Show{
 		Cmd:     spqrparser.BackendConnectionsStr,
-		GroupBy: spqrparser.GroupBy{Col: []spqrparser.ColumnRef{{ColName: "someColumn"}}},
+		GroupBy: spqrparser.GroupBy{Col: []*lyx.ColumnRef{{ColName: "someColumn"}}},
 	}
 	tts, err := engine.BackendConnectionsVirtualRelationScan(shards)
 	assert.NoError(err)
