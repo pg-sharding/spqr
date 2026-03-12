@@ -70,8 +70,7 @@ func (d *DistributionsServer) AlterDistributionAttach(ctx context.Context, req *
 
 func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *protos.AlterDistributionDetachRequest) (*emptypb.Empty, error) {
 	for _, rel := range req.GetRelNames() {
-		qualifiedName := &rfqn.RelationFQN{RelationName: rel.RelationName, SchemaName: rel.SchemaName}
-		if err := d.impl.AlterDistributionDetach(ctx, req.GetId(), qualifiedName); err != nil {
+		if err := d.impl.AlterDistributionDetach(ctx, req.GetId(), rfqn.RelationFQNFromProto(rel)); err != nil {
 			return nil, err
 		}
 	}
