@@ -103,6 +103,12 @@ func TestMultiShardRouting(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query: "create table xx(i int)",
+			exp: &plan.ScatterPlan{
+				IsDDL: true,
+			},
+		},
+		{
 			query: "DROP TABLE copy_test;",
 			exp: &plan.ScatterPlan{
 				IsDDL: true,
@@ -226,7 +232,7 @@ func TestCreateTable(t *testing.T) {
 	}
 	lc := coord.NewLocalInstanceMetadataMgr(db, nil, nil, shardMapping, false)
 
-	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{}, nil, getIdentityMngr(lc))
+	pr, err := qrouter.NewProxyRouter(shardMapping, lc, nil, &config.QRouter{ForbidDirectShardQueries: true}, nil, getIdentityMngr(lc))
 
 	assert.NoError(err)
 

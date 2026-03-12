@@ -143,6 +143,8 @@ type QRouter struct {
 	// Controls whether to calculate sliding window RPS stats (requires mutex).
 	// Total requests are always counted atomically.
 	RouterRpsAggregation bool `json:"router_rps_aggregation" toml:"router_rps_aggregation" yaml:"router_rps_aggregation"`
+
+	ForbidDirectShardQueries bool `json:"forbid_direct_shard_queries" toml:"forbid_direct_shard_queries" yaml:"forbid_direct_shard_queries"`
 }
 
 const (

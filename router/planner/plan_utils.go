@@ -20,7 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 )
 
-func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {
+func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node, setUpSpqrguard bool) (plan.Plan, error) {
 
 	switch node := stmt.(type) {
 
@@ -67,6 +67,15 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 		/*
 		 * Disallow to create table which does not contain any sharding column
 		 */
+		if err := CheckRelationIsRoutable(ctx, rm.Mgr, node); err != nil {
+			return nil, err
+		}
+
+		if !setUpSpqrguard {
+			return &plan.ScatterPlan{
+				IsDDL: true,
+			}, nil
+		}
 
 		tmpPlan := &plan.ScatterPlan{
 			IsDDL:    true,
@@ -161,9 +170,6 @@ func PlanUtility(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx
 			return nil
 		}
 
-		if err := CheckRelationIsRoutable(ctx, rm.Mgr, node); err != nil {
-			return nil, err
-		}
 		return tmpPlan, nil
 	case *lyx.VacuumStmt:
 		/* Send vacuum to each shard */
