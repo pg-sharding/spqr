@@ -40,7 +40,7 @@ type Coordinator struct {
 	DataMoveQueryLogLevel     string `json:"data_move_query_log_level" toml:"data_move_query_log_level" yaml:"data_move_query_log_level"`
 	DataMoveAwaitPIDException string `json:"data_move_await_pid_exception" toml:"data_move_await_pid_exception" yaml:"data_move_await_pid_exception"`
 
-	ForbidDirectShardQueries bool `json:"forbid_diret_shard_queries" toml:"forbid_diret_shard_queries" yaml:"forbid_diret_shard_queries"`
+	ForbidDirectShardQueries bool `json:"forbid_direct_shard_queries" toml:"forbid_direct_shard_queries" yaml:"forbid_direct_shard_queries"`
 
 	// gRPC keepalive settings for router connections
 	// Prevents connections from being closed by network intermediaries during idle periods
