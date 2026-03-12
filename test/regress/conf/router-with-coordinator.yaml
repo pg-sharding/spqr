@@ -14,6 +14,7 @@ show_notice_messages: true
 use_coordinator_init: true
 notice_message_format: "{shard}"
 query_routing:
+    forbid_direct_shard_queries: true
     enhanced_multishard_processing: true
 frontend_tls:
   key_file: /etc/spqr/ssl/server.key

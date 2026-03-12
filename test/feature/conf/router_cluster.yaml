@@ -10,6 +10,8 @@ world_shard_fallback: true
 show_notice_messages: true
 use_coordinator_init: true
 manage_shards_by_coordinator: true
+query_routing:
+  forbid_direct_shard_queries: true
 frontend_rules:
   - db: regress
     usr: regress
