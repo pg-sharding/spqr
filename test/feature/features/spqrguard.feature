@@ -11,7 +11,7 @@ Background:
     Given cluster is up and running
     And host "coordinator2" is stopped
     And host "coordinator2" is started
-    
+    And I wait for host "coordinator" to finish startup
 
     When I run SQL on host "coordinator"
     """

@@ -1404,6 +1404,35 @@ func (tctx *testContext) stepDeleteFromEtcd(key string) error {
 	return err
 }
 
+func (tctx *testContext) stepWaitForHostToFinishStartup(host string) error {
+	retryRes := testutil.Retry(tctx.checkStartupFinished(host), time.Minute, time.Second)
+	if !retryRes {
+		return fmt.Errorf("timed out waiting for \"%s\" to finish startup", host)
+	}
+	return nil
+}
+
+func (tctx *testContext) checkStartupFinished(host string) func() bool {
+	return func() bool {
+		_, err := tctx.queryPostgresql(host, shardUser, "SHOW startup_finished", postgresqlQueryTimeout, make([]any, 0))
+		if err != nil {
+			log.Printf("failed to check for finished startup on host \"%s\": %s", host, err)
+			return false
+		}
+		res, ok := tctx.sqlQueryResult[0]["startup_finished"]
+		if !ok {
+			log.Printf("failed to check for finished startup on host \"%s\": key \"startup_finished\" not found in result %v", host, res)
+			return false
+		}
+		resBool, ok := res.(bool)
+		if !ok {
+			log.Printf("failed to check for finished startup on host \"%s\": unexpected value type %T", host, res)
+			return false
+		}
+		return resBool
+	}
+}
+
 func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	tctx, err := newTestContext(t)
 	if err != nil {
@@ -1509,6 +1538,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^qdb should not contain transfer tasks$`, tctx.stepQDBShouldNotContainTasks)
 	s.Step(`^I run SQL on host "([^"]*)", then stop the host after "(\d+)" seconds$`, tctx.stepIKillHostAfterQuery)
 	s.Step(`^I delete key "([^"]*)" from etcd$`, tctx.stepDeleteFromEtcd)
+	s.Step(`^I wait for host "([^"]*)" to finish startup$`, tctx.stepWaitForHostToFinishStartup)
 
 	// variable manipulation
 	s.Step(`^we save response row "([^"]*)" column "([^"]*)"$`, tctx.stepSaveResponseBodyAtPathAsJSON)
