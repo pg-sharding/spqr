@@ -64,6 +64,13 @@ var kr1_not_locked = &kr.KeyRange{
 	IsLocked:     &boolFalse,
 }
 
+func expectedMissingShardError(shardID string, availableShards string) string {
+	return "Shard \"" + shardID + "\" not found.\n\n" +
+		"Available shards: " + availableShards + "\n" +
+		"Hint: Run 'SHOW SHARDS' to see all configured shards.\n" +
+		"      Run 'ADD SHARD " + shardID + " WITH HOSTS ...' to create it."
+}
+
 func prepareDbTestValidate(ctx context.Context) (*qdb.MemQDB, error) {
 	memqdb, err := qdb.RestoreQDB(MemQDBPath)
 	if err != nil {
@@ -217,4 +224,55 @@ func TestValidateKeyRangeForModify_intersection(t *testing.T) {
 	is.NoError(err)
 
 	is.Error(meta.ValidateKeyRangeForModify(ctx, mngr, kr1_double))
+}
+
+func TestValidateKeyRangeForCreate_unknownShardIncludesAvailableShardsAndHint(t *testing.T) {
+	is := assert.New(t)
+	ctx := context.TODO()
+
+	memqdb, err := prepareDbTestValidate(ctx)
+	is.NoError(err)
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+
+	reqKr := &kr.KeyRange{
+		ID:           "kr_missing",
+		ShardID:      "nonexistentshard",
+		Distribution: "ds1",
+		LowerBound:   []any{int64(100)},
+		ColumnTypes:  []string{qdb.ColumnTypeInteger},
+	}
+
+	err = meta.ValidateKeyRangeForCreate(ctx, mngr, reqKr)
+	is.EqualError(err, expectedMissingShardError("nonexistentshard", "sh1, sh2"))
+}
+
+func TestValidateKeyRangeForModify_unknownShardIncludesSingleAvailableShard(t *testing.T) {
+	is := assert.New(t)
+	ctx := context.TODO()
+
+	memqdb, err := prepareDbTestValidate(ctx)
+	is.NoError(err)
+	is.NoError(memqdb.DropShard(ctx, "sh2"))
+
+	mngr := coord.NewLocalInstanceMetadataMgr(memqdb, nil, nil, map[string]*config.Shard{}, false)
+	tranMngr := meta.NewTranEntityManager(mngr)
+
+	err = tranMngr.CreateKeyRange(ctx, kr1)
+	is.NoError(err)
+	err = tranMngr.ExecNoTran(ctx)
+	is.NoError(err)
+
+	_, err = mngr.LockKeyRange(ctx, kr1.ID)
+	is.NoError(err)
+
+	reqKr := &kr.KeyRange{
+		ID:           kr1.ID,
+		ShardID:      "nonexistentshard",
+		Distribution: kr1.Distribution,
+		LowerBound:   kr1.LowerBound,
+		ColumnTypes:  kr1.ColumnTypes,
+	}
+
+	err = meta.ValidateKeyRangeForModify(ctx, mngr, reqKr)
+	is.EqualError(err, expectedMissingShardError("nonexistentshard", "sh1"))
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/engine"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tupleslot"
@@ -237,6 +238,7 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 	if err == nil {
 		return nil
 	}
+	err = spqrerror.CleanGrpcError(err)
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{Severity: "ERROR",
 			Message: err.Error(),

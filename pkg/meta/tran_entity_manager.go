@@ -62,6 +62,7 @@ type EntityMgrReader interface {
 	GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error)
 	GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error)
 	ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error)
+	ListShards(ctx context.Context) ([]*topology.DataShard, error)
 }
 
 // Wrapper of EntityManager. Keeps track of changes made during a transaction that have not yet been committed.
