@@ -38,7 +38,11 @@ SHOW key_ranges;
 (1 row)
 
 CREATE KEY RANGE krid2 FROM 33 ROUTE TO nonexistentshard FOR DISTRIBUTION ds1;
-ERROR:  unknown shard nonexistentshard
+ERROR:  Shard "nonexistentshard" not found.
+
+Available shards: sh1, sh2, sh3, sh4
+Hint: Run 'SHOW SHARDS' to see all configured shards.
+      Run 'ADD SHARD nonexistentshard WITH HOSTS ...' to create it.
 DROP DISTRIBUTION ALL CASCADE;
  distribution_id 
 -----------------
