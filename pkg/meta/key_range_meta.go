@@ -3,6 +3,8 @@ package meta
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/pg-sharding/spqr/coordinator/statistics"
@@ -18,6 +20,43 @@ const (
 	LockRetryStep = 500 * time.Millisecond
 )
 
+func validateTargetShardExists(ctx context.Context, mngr EntityMgrReader, shardID string) error {
+	shards, err := mngr.ListShards(ctx)
+	if err != nil {
+		return err
+	}
+
+	shardIDs := make([]string, 0, len(shards))
+	exists := false
+	for _, shard := range shards {
+		if shard == nil {
+			continue
+		}
+		shardIDs = append(shardIDs, shard.ID)
+		if shard.ID == shardID {
+			exists = true
+		}
+	}
+
+	if exists {
+		return nil
+	}
+
+	sort.Strings(shardIDs)
+	availableShards := "none"
+	if len(shardIDs) > 0 {
+		availableShards = strings.Join(shardIDs, ", ")
+	}
+
+	return spqrerror.Newf(
+		spqrerror.SPQR_NO_DATASHARD,
+		"Shard %q not found.\n\nAvailable shards: %s\nHint: Run 'SHOW SHARDS' to see all configured shards.\n      Run 'ADD SHARD %s WITH HOSTS ...' to create it.",
+		shardID,
+		availableShards,
+		shardID,
+	)
+}
+
 // ValidateKeyRangeForCreate validates key range before create
 //
 // Parameters:
@@ -28,7 +67,7 @@ const (
 // Returns:
 // - error: an error if validation is not passed
 func ValidateKeyRangeForCreate(ctx context.Context, mngr EntityMgrReader, keyRange *kr.KeyRange) error {
-	if _, err := mngr.GetShard(ctx, keyRange.ShardID); err != nil {
+	if err := validateTargetShardExists(ctx, mngr, keyRange.ShardID); err != nil {
 		return err
 	}
 
@@ -84,7 +123,7 @@ func ValidateKeyRangeForModify(ctx context.Context, mngr EntityMgrReader, keyRan
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", keyRange.ID)
 	}
 
-	if _, err := mngr.GetShard(ctx, keyRange.ShardID); err != nil {
+	if err := validateTargetShardExists(ctx, mngr, keyRange.ShardID); err != nil {
 		return err
 	}
 
