@@ -57,6 +57,7 @@ clientv
 clmp
 cmds
 cmngr
+cmpopts
 cnth
 codeql
 colname
