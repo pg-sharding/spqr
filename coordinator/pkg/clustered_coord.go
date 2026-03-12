@@ -608,7 +608,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 				}
 			}
 		}
-		if err := qc.setUpSPQRGuard(ctx, shards); err != nil {
+		if err := qc.setUpSPQRGuard(ctx); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("failed to set up spqrguard on shards")
 		}
 	}
@@ -665,7 +665,7 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 }
 
 // TODO: move down
-func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context, shards *config.DatatransferConnections) error {
+func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context) error {
 	spqrlog.Zero.Debug().Msg("start setting up spqrguard")
 
 	relations := make([]*rfqn.RelationFQN, 0)
@@ -679,7 +679,7 @@ func (qc *ClusteredCoordinator) setUpSPQRGuard(ctx context.Context, shards *conf
 		}
 	}
 
-	return datatransfers.TraverseShards(ctx, shards, datatransfers.SetUpSPQRGuard(relations))
+	return datatransfers.TraverseShards(ctx, datatransfers.SetUpSPQRGuard(relations))
 }
 
 // TODO : unit tests
