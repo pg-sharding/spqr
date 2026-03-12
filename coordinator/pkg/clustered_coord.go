@@ -2644,6 +2644,52 @@ func (qc *ClusteredCoordinator) SyncReferenceRelations(ctx context.Context, relN
 	})
 }
 
+// AlterReferenceRelationStorage implements meta.EntityMgr.
+func (qc *ClusteredCoordinator) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	rel, err := qc.GetReferenceRelation(ctx, relName)
+	if err != nil {
+		return err
+	}
+	shardsExSet := make(map[string]struct{})
+	shardsToAdd := make([]string, 0)
+	shardsIntersect := make([]string, 0)
+	for _, sh := range rel.ShardIds {
+		shardsExSet[sh] = struct{}{}
+	}
+	for _, sh := range shs {
+		if _, ok := shardsExSet[sh]; !ok {
+			shardsToAdd = append(shardsToAdd, sh)
+		} else if ok {
+			shardsIntersect = append(shardsIntersect, sh)
+		}
+	}
+
+	if len(shardsIntersect) < len(rel.ShardIds) {
+		// We need to drop shards
+		if err := qc.db.AlterReferenceRelationStorage(ctx, relName, shardsIntersect); err != nil {
+			return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in coordinator: %s", err)
+		}
+		if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+			c := proto.NewReferenceRelationsServiceClient(cc)
+			_, err := c.AlterReferenceRelationStorage(ctx, &proto.AlterReferenceRelationStorageRequest{
+				Relation: rfqn.RelationFQNToProto(relName),
+				ShardIds: shardsIntersect,
+			})
+			return err
+		}); err != nil {
+			return fmt.Errorf("failed to alter reference relation storage: failed to remove excess shards in routers: %s", err)
+		}
+	}
+
+	rels := []*rfqn.RelationFQN{relName}
+	for _, sh := range shardsToAdd {
+		if err := qc.SyncReferenceRelations(ctx, rels, sh); err != nil {
+			return fmt.Errorf("failed to alter reference relation storage: failed to sync relation on shard \"%s\": %s", sh, err)
+		}
+	}
+	return nil
+}
+
 // TODO: unit tests
 func (qc *ClusteredCoordinator) DropReferenceRelation(ctx context.Context,
 	relName *rfqn.RelationFQN) error {

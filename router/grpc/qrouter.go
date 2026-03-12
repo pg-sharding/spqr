@@ -59,10 +59,17 @@ func (l *LocalQrouterServer) CreateReferenceRelations(ctx context.Context, reque
 // CreateReferenceRelations implements proto.ReferenceRelationsServiceServer.
 func (l *LocalQrouterServer) AlterReferenceRelationStorage(ctx context.Context, request *protos.AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
 
-	if err := l.mgr.AlterReferenceRelationStorage(ctx, &rfqn.RelationFQN{
-		RelationName: request.Relation.RelationName,
-		SchemaName:   request.Relation.SchemaName,
-	}, request.ShardIds); err != nil {
+	if err := l.mgr.AlterReferenceRelationStorage(ctx, rfqn.RelationFQNFromProto(request.Relation), request.ShardIds); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+// CreateReferenceRelations implements proto.ReferenceRelationsServiceServer.
+func (l *LocalQrouterServer) AlterReferenceRelationStorageAdvanced(ctx context.Context, request *protos.AlterReferenceRelationStorageRequest) (*emptypb.Empty, error) {
+
+	if err := l.mgr.AlterReferenceRelationStorage(ctx, rfqn.RelationFQNFromProto(request.Relation), request.ShardIds); err != nil {
 		return nil, err
 	}
 
@@ -73,7 +80,7 @@ func (l *LocalQrouterServer) AlterReferenceRelationStorage(ctx context.Context, 
 func (l *LocalQrouterServer) DropReferenceRelations(ctx context.Context, r *protos.DropReferenceRelationsRequest) (*emptypb.Empty, error) {
 	for _, qualName := range r.GetRelations() {
 		/* XXX: fix this to support schema */
-		if err := l.mgr.DropReferenceRelation(ctx, &rfqn.RelationFQN{RelationName: qualName.RelationName, SchemaName: qualName.SchemaName}); err != nil {
+		if err := l.mgr.DropReferenceRelation(ctx, rfqn.RelationFQNFromProto(qualName)); err != nil {
 			return nil, err
 		}
 	}

@@ -163,6 +163,20 @@ func (mr *MockCoordinatorMockRecorder) AlterReferenceRelationStorage(ctx, relNam
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorage", reflect.TypeOf((*MockCoordinator)(nil).AlterReferenceRelationStorage), ctx, relName, shs)
 }
 
+// AlterReferenceRelationStorageAdvanced mocks base method.
+func (m *MockCoordinator) AlterReferenceRelationStorageAdvanced(ctx context.Context, relName *rfqn.RelationFQN, shs []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AlterReferenceRelationStorageAdvanced", ctx, relName, shs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AlterReferenceRelationStorageAdvanced indicates an expected call of AlterReferenceRelationStorageAdvanced.
+func (mr *MockCoordinatorMockRecorder) AlterReferenceRelationStorageAdvanced(ctx, relName, shs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AlterReferenceRelationStorageAdvanced", reflect.TypeOf((*MockCoordinator)(nil).AlterReferenceRelationStorageAdvanced), ctx, relName, shs)
+}
+
 // AlterSequenceDetachRelation mocks base method.
 func (m *MockCoordinator) AlterSequenceDetachRelation(ctx context.Context, rel *rfqn.RelationFQN) error {
 	m.ctrl.T.Helper()
