@@ -20,7 +20,6 @@ AOk
 appdefaults
 APREQ
 argexpr
-ARRAYOID
 aspernatur
 astmt
 authed
@@ -36,6 +35,7 @@ bemp
 benchbase
 Benro
 berule
+BOOLOID
 Bootstrapper
 buildpackage
 cachedchecker
@@ -118,6 +118,7 @@ DOUBLEOID
 drb
 drel
 dserr
+Dsn
 dssd
 dstmt
 Duis
