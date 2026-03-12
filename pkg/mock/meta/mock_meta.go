@@ -1066,6 +1066,20 @@ func (mr *MockEntityMgrMockRecorder) Split(ctx, split any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Split", reflect.TypeOf((*MockEntityMgr)(nil).Split), ctx, split)
 }
 
+// StartupFinished mocks base method.
+func (m *MockEntityMgr) StartupFinished() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StartupFinished")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// StartupFinished indicates an expected call of StartupFinished.
+func (mr *MockEntityMgrMockRecorder) StartupFinished() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartupFinished", reflect.TypeOf((*MockEntityMgr)(nil).StartupFinished))
+}
+
 // StopMoveTaskGroup mocks base method.
 func (m *MockEntityMgr) StopMoveTaskGroup(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()

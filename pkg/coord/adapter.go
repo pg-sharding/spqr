@@ -60,6 +60,10 @@ func (a *Adapter) Cache() *cache.SchemaCache {
 	panic("Adapter.Cache not implemented")
 }
 
+func (a *Adapter) StartupFinished() bool {
+	return true
+}
+
 // TODO : unit tests
 // TODO : implement
 

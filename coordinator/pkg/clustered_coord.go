@@ -313,6 +313,8 @@ type ClusteredCoordinator struct {
 
 	routerConnCache map[string]*grpc.ClientConn
 	routerConnMutex sync.RWMutex
+
+	startupFinished bool
 }
 
 func (qc *ClusteredCoordinator) QDB() qdb.QDB {
@@ -321,6 +323,10 @@ func (qc *ClusteredCoordinator) QDB() qdb.QDB {
 
 func (qc *ClusteredCoordinator) Cache() *cache.SchemaCache {
 	return qc.cache
+}
+
+func (qc *ClusteredCoordinator) StartupFinished() bool {
+	return qc.startupFinished
 }
 
 var _ coordinator.Coordinator = &ClusteredCoordinator{}
@@ -652,6 +658,8 @@ func (qc *ClusteredCoordinator) RunCoordinator(ctx context.Context, initialRoute
 		}
 	}
 	wg.Wait()
+
+	qc.startupFinished = true
 
 	go qc.watchRouters(context.TODO())
 }

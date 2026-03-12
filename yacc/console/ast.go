@@ -409,6 +409,7 @@ const (
 	TaskGroupsExtendedStr = "task_groups_ext"
 	RedistributeTasksStr  = "redistribute_tasks"
 	ErrorStr              = "errors"
+	StartupFinishedStr    = "startup_finished"
 )
 
 // not SHOW target

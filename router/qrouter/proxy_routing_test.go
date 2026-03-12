@@ -2409,7 +2409,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 					Desc: []pgproto3.FieldDescription{
 						{
 							Name:         []byte("pg_is_in_recovery"),
-							DataTypeOID:  catalog.ARRAYOID,
+							DataTypeOID:  catalog.BOOLOID,
 							TypeModifier: -1,
 							DataTypeSize: 1,
 						},
@@ -2463,7 +2463,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 					Desc: []pgproto3.FieldDescription{
 						{
 							Name:         []byte("pg_is_in_recovery"),
-							DataTypeOID:  catalog.ARRAYOID,
+							DataTypeOID:  catalog.BOOLOID,
 							TypeModifier: -1,
 							DataTypeSize: 1,
 						},
@@ -2482,7 +2482,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 					Desc: []pgproto3.FieldDescription{
 						{
 							Name:         []byte("__spqr__is_ready"),
-							DataTypeOID:  catalog.ARRAYOID,
+							DataTypeOID:  catalog.BOOLOID,
 							TypeModifier: -1,
 							DataTypeSize: 1,
 						},
