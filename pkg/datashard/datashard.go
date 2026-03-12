@@ -423,6 +423,7 @@ func (sh *Conn) Auth(sp *startup.StartupParams) error {
 			"client_encoding":  "UTF8",
 			"user":             sh.Usr(),
 			"database":         sh.beRule.DB,
+			"spqrguard.prevent_distributed_table_modify": "off",
 		},
 	}
 
