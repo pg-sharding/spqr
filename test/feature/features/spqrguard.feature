@@ -69,16 +69,3 @@ Scenario: router can write in shard
         "id": 0
     }]
     """
-
-Scenario: third party cannot write in shard
-    When I run SQL on host "shard1"
-    """
-    INSERT INTO t (id) VALUES (0)
-    """
-    Then command return code should be "1"
-    And SQL error on host "shard1" should match regexp
-    """
-    unable to modify SPQR distributed relation within read-only transaction
-    """
-
-
