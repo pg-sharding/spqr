@@ -3,6 +3,7 @@ package frontend
 import (
 	"context"
 	"io"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -16,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/relay"
 	"github.com/pg-sharding/spqr/router/statistics"
+	"github.com/pg-sharding/spqr/router/xproto"
 )
 
 // ProcessMessage: process client iteration, until next transaction status idle
@@ -54,6 +56,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		// copy interface
 		cpQ := *q
 		q = &cpQ
+		q.ParameterOIDs = slices.Clone(q.ParameterOIDs)
 
 		rst.AddExtendedProtocMessage(q)
 		return nil
@@ -68,6 +71,8 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		// copy interface
 		cpQ := *q
 		q = &cpQ
+		q.Arguments = xproto.CopyByteSlices(q.Arguments)
+
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Msg("client function call: simply fire parse stmt to connection")
@@ -85,6 +90,9 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		// copy interface
 		cpQ := *q
 		q = &cpQ
+		q.Parameters = xproto.CopyByteSlices(q.Parameters)
+		q.ResultFormatCodes = slices.Clone(q.ResultFormatCodes)
+		q.ParameterFormatCodes = slices.Clone(q.ParameterFormatCodes)
 
 		rst.AddExtendedProtocMessage(q)
 		return nil
