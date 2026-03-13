@@ -27,6 +27,7 @@ import (
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/virtual"
+	"github.com/pg-sharding/spqr/router/xproto"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -473,7 +474,7 @@ func (qr *ProxyQrouter) planQueryV1(
 						for _, is := range iis {
 							for _, col := range is.Columns {
 								colValues[col] = append(colValues[col],
-									v.Values[ind])
+									append([]byte(nil), v.Values[ind]...))
 								ind++
 							}
 						}
@@ -1311,7 +1312,7 @@ func (qr *ProxyQrouter) planSPQR_CTID(
 					case *pgproto3.ErrorResponse:
 						errmsg = v
 					case *pgproto3.DataRow:
-						vals := v.Values
+						vals := xproto.CopyByteSlices(v.Values)
 
 						vals = append([][]byte{fmt.Appendf(nil, "shard %s", sh.Name())}, vals...)
 
