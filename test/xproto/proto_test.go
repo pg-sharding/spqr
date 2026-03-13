@@ -5966,7 +5966,7 @@ func TestXProtoPureVirtual(t *testing.T) {
 							Name:                 []byte("pg_is_in_recovery"),
 							TableOID:             0x0,
 							TableAttributeNumber: 0x0,
-							DataTypeOID:          catalog.ARRAYOID,
+							DataTypeOID:          catalog.BOOLOID,
 							DataTypeSize:         1,
 							TypeModifier:         -1,
 							Format:               0,

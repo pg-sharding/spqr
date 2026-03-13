@@ -16,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/rrelation"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"github.com/sethvargo/go-retry"
 	"github.com/spaolacci/murmur3"
 
 	pgx "github.com/jackc/pgx/v5"
@@ -26,7 +27,10 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-const spqrguardReferenceRelationLock = 69
+const (
+	spqrguardDistributedRelationsLock = 42
+	spqrguardReferenceRelationLock    = 69
+)
 
 const spqrTransferApplicationName = "spqr-transfer"
 
@@ -873,8 +877,8 @@ func CheckConstraints(ctx context.Context, conn *pgx.Conn, dsRels []string, rpRe
 	return false, conName, nil
 }
 
-func CheckHashExtension(ctx context.Context, conn *pgx.Conn) (bool, error) {
-	res := conn.QueryRow(ctx, "SELECT count(*) FROM pg_extension WHERE extname = 'spqrhash'")
+func CheckExtension(ctx context.Context, conn *pgx.Conn, extname string) (bool, error) {
+	res := conn.QueryRow(ctx, fmt.Sprintf("SELECT count(*) FROM pg_extension WHERE extname = '%s'", extname))
 	count := 0
 	if err := res.Scan(&count); err != nil {
 		return false, err
@@ -900,4 +904,70 @@ func getEntriesCount(ctx context.Context, conn Queryable, relName string, condit
 		return 0, err
 	}
 	return count, nil
+}
+
+func TraverseShards(ctx context.Context, cb func(ctx context.Context, conn *pgx.Conn) error) error {
+	if shards == nil {
+		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error loading config")
+		}
+	}
+	for id, shard := range shards.ShardsData {
+		conn, err := retry.DoValue(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) (*pgx.Conn, error) {
+			return GetMasterConnection(ctx, shard, "traverse_shards")
+		})
+		if err != nil {
+			return err
+		}
+		if err := retry.Do(ctx, retry.WithMaxRetries(10, retry.NewConstant(time.Second)), func(ctx context.Context) error { return cb(ctx, conn) }); err != nil {
+			spqrlog.Zero.Error().Str("shard id", id).Err(err).Msg("error in traverse shards")
+			return err
+		}
+	}
+	return nil
+}
+
+func SetUpSPQRGuard(relations []*rfqn.RelationFQN) func(context.Context, *pgx.Conn) error {
+	return func(ctx context.Context, conn *pgx.Conn) error {
+		if hasSPQRGuard, err := CheckExtension(ctx, conn, "spqrguard"); err != nil {
+			return err
+		} else if !hasSPQRGuard {
+			// TODO: should we return error?
+			spqrlog.Zero.Error().Str("host", conn.Config().Host).Msg("cannot setup spqrguard on shard: extension not present")
+			return nil
+		}
+		tx, err := conn.Begin(ctx)
+		if err != nil {
+			return nil
+		}
+		for _, rel := range relations {
+			row := tx.QueryRow(ctx, fmt.Sprintf("SELECT count(*) > 0 as table_exists FROM spqr_metadata.spqr_distributed_relations WHERE reloid = '%s'::regclass::oid;", rel.String()))
+			exists := false
+			if err := row.Scan(&exists); err != nil {
+				return err
+			}
+			if !exists {
+				if _, err := tx.Exec(ctx, fmt.Sprintf("SELECT spqr_metadata.mark_distributed_relation('%s')", rel.String())); err != nil {
+					return err
+				}
+			}
+		}
+
+		if config.CoordinatorConfig().ForbidDirectShardQueries {
+			if _, err = tx.Exec(ctx, "LOCK TABLE spqr_metadata.spqr_global_settings IN ACCESS EXCLUSIVE MODE"); err != nil {
+				return err
+			}
+
+			if _, err := tx.Exec(ctx, fmt.Sprintf("INSERT INTO spqr_metadata.spqr_global_settings (name, enabled) VALUES (%d, true);", spqrguardDistributedRelationsLock)); err != nil {
+				return err
+			}
+		}
+
+		err = tx.Commit(ctx)
+		if err != nil {
+			return retry.RetryableError(err)
+		}
+		return nil
+	}
 }

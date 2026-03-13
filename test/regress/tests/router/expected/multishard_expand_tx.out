@@ -48,6 +48,7 @@ CREATE DISTRIBUTED RELATION xxm_expd (id);
 SET __spqr__engine_v2 TO true;
 CREATE TABLE xxm_expd(id int, j INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY xxm_expd (id, j) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 BEGIN;

@@ -53,7 +53,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY i;
 \c regress
 CREATE TABLE table1(i INT PRIMARY KEY);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE ref_rel_1(i int, j int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- with engine v2 this should NOT be dispatched
 SELECT i, (SELECT count(*) from table1) FROM table1 WHERE i = 101;

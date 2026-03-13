@@ -47,7 +47,7 @@ func (p *PlannerV2) Ready() bool {
 	return true
 }
 
-func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *lyx.CreateTable) (plan.Plan, error) {
+func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *lyx.CreateTable) (*plan.ScatterPlan, error) {
 	if distributionId := rm.SPH.AutoDistribution(); distributionId != "" {
 
 		switch q := v.TableRv.(type) {
@@ -97,9 +97,11 @@ func PlanCreateTable(ctx context.Context, rm *rmeta.RoutingMetadataContext, v *l
 	}
 
 	/*XXX: fix this */
-	return &plan.ScatterPlan{
+	p := &plan.ScatterPlan{
 		IsDDL: true,
-	}, nil
+	}
+
+	return p, nil
 }
 
 func (p *PlannerV2) PlanReferenceRelationModifyWithSubquery(ctx context.Context,

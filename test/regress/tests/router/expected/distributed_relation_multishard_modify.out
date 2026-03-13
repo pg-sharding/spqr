@@ -34,6 +34,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION distrr_mm_test DISTRIBUTION KEY id;
 \c regress
 CREATE TABLE distrr_mm_test (id INTEGER, t TEXT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY distrr_mm_test(id,t) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY distrr_mm_test(id,t) FROM STDIN;

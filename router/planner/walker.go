@@ -53,7 +53,7 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 					virtualRowCols = append(virtualRowCols,
 						pgproto3.FieldDescription{
 							Name:                 []byte("pg_is_in_recovery"),
-							DataTypeOID:          catalog.ARRAYOID,
+							DataTypeOID:          catalog.BOOLOID,
 							TypeModifier:         -1,
 							DataTypeSize:         1,
 							TableAttributeNumber: 0,
@@ -79,7 +79,7 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 				virtualRowCols = append(virtualRowCols,
 					pgproto3.FieldDescription{
 						Name:                 []byte("pg_is_in_recovery"),
-						DataTypeOID:          catalog.ARRAYOID,
+						DataTypeOID:          catalog.BOOLOID,
 						TypeModifier:         -1,
 						DataTypeSize:         1,
 						TableAttributeNumber: 0,
@@ -98,7 +98,7 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 				virtualRowCols = append(virtualRowCols,
 					pgproto3.FieldDescription{
 						Name:                 []byte(virtual.VirtualFuncIsReady),
-						DataTypeOID:          catalog.ARRAYOID,
+						DataTypeOID:          catalog.BOOLOID,
 						TypeModifier:         -1,
 						DataTypeSize:         1,
 						TableAttributeNumber: 0,
@@ -161,7 +161,7 @@ func PlanTargetList(ctx context.Context, rm *rmeta.RoutingMetadataContext, plr Q
 					virtualRowCols = append(virtualRowCols,
 						pgproto3.FieldDescription{
 							Name:                 []byte("current_setting"),
-							DataTypeOID:          catalog.ARRAYOID,
+							DataTypeOID:          catalog.BOOLOID,
 							TypeModifier:         -1,
 							DataTypeSize:         1,
 							TableAttributeNumber: 0,

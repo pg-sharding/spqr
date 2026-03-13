@@ -144,46 +144,58 @@ func main() {
 
 	ctx := context.Background()
 
-	connFrom, err := pgx.Connect(ctx, *fromShardConnSt)
+	connConfig, err := pgx.ParseConfig(*fromShardConnSt)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
-		return
+		os.Exit(1)
+	}
+	connConfig.RuntimeParams["spqrguard.prevent_distributed_table_modify"] = "off"
+	connFrom, err := pgx.ConnectConfig(ctx, connConfig)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		os.Exit(1)
 	}
 
-	connTo, err := pgx.Connect(ctx, *toShardConnSt)
+	connConfig, err = pgx.ParseConfig(*toShardConnSt)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
-		return
+		os.Exit(1)
+	}
+	connConfig.RuntimeParams["spqrguard.prevent_distributed_table_modify"] = "off"
+	connTo, err := pgx.ConnectConfig(ctx, connConfig)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		os.Exit(1)
 	}
 
 	db, err := qdb.NewEtcdQDB([]string{*etcdAddr}, 0)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
-		return
+		os.Exit(1)
 	}
 
 	qdbKr, err := db.GetKeyRange(ctx, *krId)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
-		return
+		os.Exit(1)
 	}
 
 	ds, err := db.GetDistribution(ctx, qdbKr.DistributionId)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
-		return
+		os.Exit(1)
 	}
 
 	keyRange, err := kr.KeyRangeFromDB(qdbKr, ds.ColTypes)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
-		return
+		os.Exit(1)
 	}
 
 	krs, err := db.ListKeyRanges(ctx, keyRange.Distribution)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
-		return
+		os.Exit(1)
 	}
 
 	var nextKeyRange *kr.KeyRange
@@ -192,7 +204,7 @@ func main() {
 		typedKr, err := kr.KeyRangeFromDB(currkr, ds.ColTypes)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
-			return
+			os.Exit(1)
 		}
 		if kr.CmpRangesLess(keyRange.LowerBound, typedKr.LowerBound, ds.ColTypes) {
 			if nextKeyRange == nil || kr.CmpRangesLess(typedKr.LowerBound, nextKeyRange.LowerBound, ds.ColTypes) {
@@ -204,7 +216,7 @@ func main() {
 	dbDs, err := db.GetDistribution(ctx, keyRange.Distribution)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
-		return
+		os.Exit(1)
 	}
 
 	/* Fix this to use ListRelations() */
@@ -212,5 +224,6 @@ func main() {
 		connFrom, connTo, keyRange, nextKeyRange,
 		distributions.DistributionFromDB(dbDs).Relations); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
+		os.Exit(1)
 	}
 }

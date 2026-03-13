@@ -12,3 +12,4 @@ frontend_rules:
     pool_prepared_statement: false
     auth_rule:
       auth_method: ok
+forbid_direct_shard_queries: true

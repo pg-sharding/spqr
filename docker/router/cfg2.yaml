@@ -8,6 +8,8 @@ use_init_sql: true
 
 router_mode: PROXY
 log_level: debug
+query_routing:
+  forbid_direct_shard_queries: true
 time_quantiles:
   - 0.8
 frontend_tls:

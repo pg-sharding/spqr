@@ -47,6 +47,7 @@ CREATE DISTRIBUTED RELATION xx_insert_rel DISTRIBUTION KEY a IN ds1;
 \c regress
 CREATE TABLE xx_insert_rel(a INT, b INT, c INT);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xx_insert_rel (a, b, c) VALUES(1,2,3),(2,3,4), (3,4,5);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx_insert_rel (a, b, c) VALUES(1,2,3),(2,3,4), (300,4,5) /*__spqr__engine_v2: false */;

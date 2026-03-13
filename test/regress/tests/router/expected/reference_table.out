@@ -70,13 +70,17 @@ CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
 \c regress
 CREATE TABLE test_ref_rel(i int, j int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE SCHEMA sh1;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE sh1.test_ref_rel_rel(i int, j int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE test_distr_ref_rel(id int, val int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE test_ref_rel_part(i int, j int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY test_ref_rel FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

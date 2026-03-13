@@ -48,6 +48,7 @@ CREATE DISTRIBUTED RELATION xxmultish (id);
 SET __spqr__engine_v2 TO true;
 CREATE TABLE xxmultish(id int, val int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY xxmultish (id) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 /* XXX: sort result here is not stable until proper router processing support */
