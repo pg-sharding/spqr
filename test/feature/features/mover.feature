@@ -195,10 +195,10 @@ Feature: Mover test
     """
     /spqr/spqr-mover -from-shard-connstring postgresql://regress@spqr_shard_1:6432/regress -to-shard-connstring postgresql://regress@nonexistent:6432/regress -key-range krid1 -etcd-addr regress_qdb_0_1:2379
     """
-    Then command return code should be "0"
+    Then command return code should be "1"
     And command output should match regexp
     """
-    hostname resolving error
+    connection refused
     """
 
   Scenario: Move nonexistent key range fails
@@ -206,7 +206,7 @@ Feature: Mover test
     """
     /spqr/spqr-mover -from-shard-connstring postgresql://regress@spqr_shard_1:6432/regress -to-shard-connstring postgresql://regress@spqr_shard_2:6432/regress -key-range krid3 -etcd-addr regress_qdb_0_1:2379
     """
-    Then command return code should be "0"
+    Then command return code should be "1"
     And command output should match regexp
     """
     no key range found at /keyranges/krid3
